@@ -492,7 +492,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.4.0', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.4.1', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
