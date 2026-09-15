@@ -32,6 +32,7 @@ const MAX_BODY = 48 * 1024;
 const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 60)) * 60 * 1000;
 const SESSION_MAX_MS = Math.max(1, Number(process.env.SESSION_MAX_HOURS || 8)) * 60 * 60 * 1000;
 const ROOM_TTL_MS = Math.max(2, Number(process.env.ROOM_TTL_HOURS || 12)) * 60 * 60 * 1000;
+const GUEST_LOCK_TTL_MS = Math.max(30, Number(process.env.GUEST_LOCK_TTL_SECONDS || 90)) * 1000;
 
 if (!ADMIN_PASSWORD) {
   console.error('ADMIN_PASSWORD 환경변수가 필요합니다.');
@@ -48,6 +49,7 @@ const MIME = {
 };
 
 const sessions = new Map(); // token -> session
+const activeGuestSessions = new Map(); // guestKeyId -> sessionToken
 const rooms = new Map(); // roomId -> room
 const streams = new Map(); // roomId -> Set<{res, sessionToken}>
 const rateLimits = new Map();
@@ -184,16 +186,61 @@ function checkRateLimit(key, limit, windowMs) {
 function createSession({ role, label, guestKeyId = null }) {
   const token = newSecret(32);
   const t = nowMs();
-  sessions.set(token, {
+  const session = {
     token,
     role,
     label,
     guestKeyId,
     createdAt: t,
     lastSeen: t,
+    leaseSeenAt: t,
     currentRoomId: null,
-  });
-  return sessions.get(token);
+  };
+  sessions.set(token, session);
+  if (guestKeyId) activeGuestSessions.set(guestKeyId, token);
+  return session;
+}
+
+function releaseSessionToken(token, { message = null } = {}) {
+  const session = sessions.get(token);
+  if (!session) return false;
+  sessions.delete(token);
+  if (session.guestKeyId && activeGuestSessions.get(session.guestKeyId) === token) {
+    activeGuestSessions.delete(session.guestKeyId);
+  }
+  for (const [roomId, set] of streams) {
+    for (const entry of [...set]) {
+      if (entry.sessionToken !== token) continue;
+      try {
+        if (message) sseWrite(entry.res, 'sessionExpired', { message });
+        entry.res.end();
+      } catch {}
+      set.delete(entry);
+    }
+    if (!set.size) streams.delete(roomId);
+  }
+  return true;
+}
+
+function guestKeyInUse(guestKeyId) {
+  const token = activeGuestSessions.get(guestKeyId);
+  if (!token) return false;
+  const session = sessions.get(token);
+  if (!session || session.guestKeyId !== guestKeyId) {
+    activeGuestSessions.delete(guestKeyId);
+    return false;
+  }
+  const now = nowMs();
+  const leaseSeenAt = session.leaseSeenAt || session.lastSeen || session.createdAt;
+  if (
+    now - session.createdAt > SESSION_MAX_MS ||
+    now - session.lastSeen > SESSION_IDLE_MS ||
+    now - leaseSeenAt > GUEST_LOCK_TTL_MS
+  ) {
+    releaseSessionToken(token, { message: '입장 세션이 만료되었습니다.' });
+    return false;
+  }
+  return true;
 }
 
 function getSession(req, { touch = true } = {}) {
@@ -203,10 +250,13 @@ function getSession(req, { touch = true } = {}) {
   if (!session) return null;
   const now = nowMs();
   if (now - session.lastSeen > SESSION_IDLE_MS || now - session.createdAt > SESSION_MAX_MS) {
-    sessions.delete(token);
+    releaseSessionToken(token, { message: '입장 세션이 만료되었습니다.' });
     return null;
   }
-  if (touch) session.lastSeen = now;
+  if (touch) {
+    session.lastSeen = now;
+    if (session.guestKeyId) session.leaseSeenAt = now;
+  }
   return session;
 }
 
@@ -395,22 +445,11 @@ function findRoomByCode(code) {
 }
 
 function invalidateGuestSessions(guestKeyId) {
-  const invalidTokens = new Set();
-  for (const [token, session] of sessions) {
-    if (session.guestKeyId === guestKeyId) {
-      invalidTokens.add(token);
-      sessions.delete(token);
-    }
+  for (const [token, session] of [...sessions]) {
+    if (session.guestKeyId !== guestKeyId) continue;
+    releaseSessionToken(token, { message: '이 입장 파일의 권한이 취소되었습니다.' });
   }
-  if (!invalidTokens.size) return;
-  for (const [roomId, set] of streams) {
-    for (const entry of [...set]) {
-      if (!invalidTokens.has(entry.sessionToken)) continue;
-      try { sseWrite(entry.res, 'sessionExpired', { message: '이 입장 파일의 권한이 취소되었습니다.' }); entry.res.end(); } catch {}
-      set.delete(entry);
-    }
-    if (!set.size) streams.delete(roomId);
-  }
+  activeGuestSessions.delete(guestKeyId);
 }
 
 async function handleRoomAction(req, res, action, session) {
@@ -492,7 +531,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.4.1', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.4.2', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -504,6 +543,14 @@ async function requestHandler(req, res) {
     if (token.length < 30 || token.length > 200) return sendSimpleHtml(res, 403, '입장 거부', '유효하지 않은 입장 파일입니다.');
     const key = await accessStore.validateAndRecord(token);
     if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
+    if (guestKeyInUse(key.id)) {
+      return sendSimpleHtml(
+        res,
+        409,
+        '이미 사용 중',
+        '이 입장 파일은 현재 다른 기기나 브라우저에서 사용 중입니다. 기존 사용자가 나간 뒤 다시 시도해 주세요. 비정상 종료된 경우에는 최대 약 90초 뒤 자동으로 다시 사용할 수 있습니다.'
+      );
+    }
     const session = createSession({ role: 'guest', label: key.label, guestKeyId: key.id });
     return sendIndex(res, { sessionToken: session.token, role: 'guest', label: session.label });
   }
@@ -525,9 +572,23 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { authenticated: true, role: session.role, label: session.label, hasRoom: Boolean(getCurrentRoom(session)) });
   }
 
+  if (pathname === '/api/session/heartbeat' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    session.leaseSeenAt = nowMs();
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/session/release' && req.method === 'POST') {
+    const body = await parseJson(req);
+    const token = String(body.sessionToken || '');
+    if (token) releaseSessionToken(token);
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (pathname === '/api/logout' && req.method === 'POST') {
     const session = getSession(req, { touch: false });
-    if (session) sessions.delete(session.token);
+    if (session) releaseSessionToken(session.token);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -648,6 +709,7 @@ async function requestHandler(req, res) {
         return clearInterval(heartbeat);
       }
       current.lastSeen = nowMs();
+      if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
       res.write(': ping\n\n');
     }, 15000);
 
@@ -697,7 +759,7 @@ async function main() {
   setInterval(() => {
     const now = nowMs();
     for (const [token, session] of sessions) {
-      if (now - session.lastSeen > SESSION_IDLE_MS || now - session.createdAt > SESSION_MAX_MS) sessions.delete(token);
+      if (now - session.lastSeen > SESSION_IDLE_MS || now - session.createdAt > SESSION_MAX_MS) releaseSessionToken(token);
     }
     for (const [id, room] of rooms) {
       const age = now - new Date(room.updatedAt).getTime();
@@ -708,7 +770,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`오목 서버 v1.4.0 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`오목 서버 v1.4.2 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
