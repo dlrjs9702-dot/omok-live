@@ -557,6 +557,23 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, key: row });
   }
 
+  match = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/restore$/i);
+  if (match && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const row = await accessStore.restore(match[1]);
+    if (!row) return sendError(res, 404, 'KEY_NOT_FOUND', '취소된 입장 파일을 찾을 수 없습니다.');
+    return sendJson(res, 200, { ok: true, key: row });
+  }
+
+  match = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})$/i);
+  if (match && req.method === 'DELETE') {
+    if (!requireAdmin(req, res)) return;
+    const row = await accessStore.remove(match[1]);
+    if (!row) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
+    invalidateGuestSessions(row.id);
+    return sendJson(res, 200, { ok: true, key: row });
+  }
+
   if (pathname === '/api/rooms' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;

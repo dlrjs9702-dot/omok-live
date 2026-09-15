@@ -19,6 +19,7 @@
   const issueFileForm = document.getElementById('issueFileForm');
   const guestLabelInput = document.getElementById('guestLabelInput');
   const guestKeyList = document.getElementById('guestKeyList');
+  const revokedGuestKeyList = document.getElementById('revokedGuestKeyList');
   const persistenceBadge = document.getElementById('persistenceBadge');
   const hostRoomCodeBox = document.getElementById('hostRoomCodeBox');
   const hostRoomCode = document.getElementById('hostRoomCode');
@@ -191,32 +192,61 @@
 
   function renderGuestKeys(keys) {
     guestKeyList.innerHTML = '';
-    if (!keys.length) {
+    revokedGuestKeyList.innerHTML = '';
+    const activeKeys = keys.filter((key) => !key.revokedAt);
+    const revokedKeys = keys.filter((key) => key.revokedAt);
+    if (!activeKeys.length) {
       const empty = document.createElement('p');
       empty.className = 'emptyState';
-      empty.textContent = '아직 발급한 입장 파일이 없습니다.';
+      empty.textContent = '사용 가능한 입장 파일이 없습니다.';
       guestKeyList.appendChild(empty);
-      return;
     }
-    for (const key of keys) {
+    if (!revokedKeys.length) {
+      const empty = document.createElement('p');
+      empty.className = 'emptyState';
+      empty.textContent = '취소된 입장 파일이 없습니다.';
+      revokedGuestKeyList.appendChild(empty);
+    }
+    for (const key of activeKeys) {
       const row = document.createElement('div');
-      row.className = `keyRow${key.revokedAt ? ' revoked' : ''}`;
+      row.className = 'keyRow';
       const text = document.createElement('div');
       const strong = document.createElement('strong');
       strong.textContent = key.label;
       const small = document.createElement('small');
       const used = key.lastUsedAt ? `최근 사용 ${new Date(key.lastUsedAt).toLocaleString('ko-KR')}` : '아직 사용 안 함';
-      small.textContent = `${key.revokedAt ? '권한 취소됨' : '사용 가능'} · ${used} · ${key.useCount || 0}회`;
+      small.textContent = `사용 가능 · ${used} · ${key.useCount || 0}회`;
       text.append(strong, small);
       row.appendChild(text);
-      if (!key.revokedAt) {
-        const btn = document.createElement('button');
-        btn.className = 'danger tiny';
-        btn.textContent = '권한 취소';
-        btn.addEventListener('click', () => revokeKey(key.id, key.label));
-        row.appendChild(btn);
-      }
+      const btn = document.createElement('button');
+      btn.className = 'danger tiny';
+      btn.textContent = '권한 취소';
+      btn.addEventListener('click', () => revokeKey(key.id, key.label));
+      row.appendChild(btn);
       guestKeyList.appendChild(row);
+    }
+    for (const key of revokedKeys) {
+      const row = document.createElement('div');
+      row.className = 'keyRow revoked';
+      const text = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = key.label;
+      const small = document.createElement('small');
+      small.textContent = `권한 취소됨 · ${new Date(key.revokedAt).toLocaleString('ko-KR')} · ${key.useCount || 0}회`;
+      text.append(strong, small);
+      const actions = document.createElement('div');
+      actions.className = 'keyActions';
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'secondary tiny';
+      restoreBtn.textContent = '권한 복구';
+      restoreBtn.addEventListener('click', () => restoreKey(key.id, key.label));
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'danger tiny';
+      deleteBtn.textContent = '영구 삭제';
+      deleteBtn.addEventListener('click', () => deleteKey(key.id, key.label));
+      actions.append(restoreBtn, deleteBtn);
+      row.append(text, actions);
+      revokedGuestKeyList.appendChild(row);
     }
   }
 
@@ -249,6 +279,24 @@
     try {
       await api(`/api/admin/keys/${id}/revoke`, { method: 'POST', body: '{}' });
       showToast(`${label} 권한을 취소했습니다.`);
+      await loadGuestKeys();
+    } catch (err) { showToast(err.message); }
+  }
+
+  async function restoreKey(id, label) {
+    if (!confirm(`${label} 입장 파일의 권한을 복구할까요?\n기존 HTML 입장 파일로 다시 접속할 수 있습니다.`)) return;
+    try {
+      await api(`/api/admin/keys/${id}/restore`, { method: 'POST', body: '{}' });
+      showToast(`${label} 권한을 복구했습니다.`);
+      await loadGuestKeys();
+    } catch (err) { showToast(err.message); }
+  }
+
+  async function deleteKey(id, label) {
+    if (!confirm(`${label} 입장 파일 기록을 영구 삭제할까요?\n이 작업은 되돌릴 수 없으며 기존 HTML 입장 파일도 더 이상 사용할 수 없습니다.`)) return;
+    try {
+      await api(`/api/admin/keys/${id}`, { method: 'DELETE' });
+      showToast(`${label} 기록을 영구 삭제했습니다.`);
       await loadGuestKeys();
     } catch (err) { showToast(err.message); }
   }
