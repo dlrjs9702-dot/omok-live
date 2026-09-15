@@ -1,185 +1,390 @@
 (() => {
-  const $ = (sel) => document.querySelector(sel);
-  const homeView = $('#homeView');
-  const roomView = $('#roomView');
-  const createRoomBtn = $('#createRoomBtn');
-  const newRoomBtn = $('#newRoomBtn');
-  const shareBtn = $('#shareBtn');
-  const copyBtn = $('#copyBtn');
-  const resignBtn = $('#resignBtn');
-  const sideResignBtn = $('#sideResignBtn');
-  const rematchBtn = $('#rematchBtn');
-  const sideRematchBtn = $('#sideRematchBtn');
-  const statusText = $('#statusText');
-  const seatLabel = $('#seatLabel');
-  const connectionBadge = $('#connectionBadge');
-  const blackPlayer = $('#blackPlayer');
-  const whitePlayer = $('#whitePlayer');
-  const roomCode = $('#roomCode');
-  const moveCount = $('#moveCount');
-  const mySeat = $('#mySeat');
-  const roundNumber = $('#roundNumber');
-  const connectedCount = $('#connectedCount');
-  const spectatorCount = $('#spectatorCount');
-  const boardOverlay = $('#boardOverlay');
-  const hostTopActions = $('#hostTopActions');
-  const hostInviteBox = $('#hostInviteBox');
-  const roleChooser = $('#roleChooser');
-  const chooseBlackBtn = $('#chooseBlackBtn');
-  const chooseWhiteBtn = $('#chooseWhiteBtn');
-  const chooseSpectatorBtn = $('#chooseSpectatorBtn');
-  const toast = $('#toast');
-  const canvas = $('#board');
+  'use strict';
+
+  const gateView = document.getElementById('gateView');
+  const lobbyView = document.getElementById('lobbyView');
+  const roomView = document.getElementById('roomView');
+  const adminLoginForm = document.getElementById('adminLoginForm');
+  const adminPassword = document.getElementById('adminPassword');
+  const identityLabel = document.getElementById('identityLabel');
+  const roomIdentityLabel = document.getElementById('roomIdentityLabel');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const roomLogoutBtn = document.getElementById('roomLogoutBtn');
+  const createRoomBtn = document.getElementById('createRoomBtn');
+  const newRoomBtn = document.getElementById('newRoomBtn');
+  const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+  const joinRoomForm = document.getElementById('joinRoomForm');
+  const roomPasswordInput = document.getElementById('roomPasswordInput');
+  const adminPanel = document.getElementById('adminPanel');
+  const issueFileForm = document.getElementById('issueFileForm');
+  const guestLabelInput = document.getElementById('guestLabelInput');
+  const guestKeyList = document.getElementById('guestKeyList');
+  const persistenceBadge = document.getElementById('persistenceBadge');
+  const hostRoomCodeBox = document.getElementById('hostRoomCodeBox');
+  const hostRoomCode = document.getElementById('hostRoomCode');
+  const copyRoomCodeBtn = document.getElementById('copyRoomCodeBtn');
+  const connectionBadge = document.getElementById('connectionBadge');
+  const statusText = document.getElementById('statusText');
+  const seatLabel = document.getElementById('seatLabel');
+  const blackPlayer = document.getElementById('blackPlayer');
+  const whitePlayer = document.getElementById('whitePlayer');
+  const roleChooser = document.getElementById('roleChooser');
+  const chooseBlackBtn = document.getElementById('chooseBlackBtn');
+  const chooseWhiteBtn = document.getElementById('chooseWhiteBtn');
+  const chooseSpectatorBtn = document.getElementById('chooseSpectatorBtn');
+  const boardOverlay = document.getElementById('boardOverlay');
+  const resignBtn = document.getElementById('resignBtn');
+  const sideResignBtn = document.getElementById('sideResignBtn');
+  const rematchBtn = document.getElementById('rematchBtn');
+  const sideRematchBtn = document.getElementById('sideRematchBtn');
+  const roundNumber = document.getElementById('roundNumber');
+  const moveCount = document.getElementById('moveCount');
+  const mySeat = document.getElementById('mySeat');
+  const connectedCount = document.getElementById('connectedCount');
+  const spectatorCount = document.getElementById('spectatorCount');
+  const toast = document.getElementById('toast');
+  const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
 
   const SIZE = 15;
   const PAD = 48;
   const GRID = (canvas.width - PAD * 2) / (SIZE - 1);
-  const pathMatch = location.pathname.match(/^\/room\/([A-Za-z0-9_-]{8,32})$/);
-  const currentRoomId = pathMatch?.[1] || null;
-  const clientId = getClientId();
 
-  let socket = null;
+  let sessionToken = document.body.dataset.session || '';
+  let sessionRole = document.body.dataset.role || '';
+  let sessionLabel = document.body.dataset.label || '';
   let state = null;
   let seat = null;
-  let choice = null;
   let isHost = false;
+  let streamController = null;
+  let streamRetryTimer = null;
   let hover = null;
   let toastTimer = null;
 
-  function makeClientId() {
-    return (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
-      .replace(/[^A-Za-z0-9_-]/g, '');
-  }
+  if (sessionToken) history.replaceState(null, '', '/');
 
-  function validClientId(id) {
-    return /^[A-Za-z0-9_-]{8,80}$/.test(String(id || ''));
-  }
-
-  function getClientId() {
-    let id = localStorage.getItem('omok-client-id');
-    if (!validClientId(id)) {
-      id = makeClientId();
-      localStorage.setItem('omok-client-id', id);
-    }
-    return id;
-  }
-
-  function showToast(message, duration = 2200) {
+  function showToast(message, ms = 2800) {
     toast.textContent = message;
     toast.classList.remove('hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.add('hidden'), duration);
+    toastTimer = setTimeout(() => toast.classList.add('hidden'), ms);
   }
 
-  async function createRoom(triggerBtn = createRoomBtn) {
-    if (triggerBtn) triggerBtn.disabled = true;
-    try {
-      const res = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ clientId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || '방을 만들지 못했습니다.');
-      if (validClientId(data.clientId) && data.clientId !== clientId) {
-        localStorage.setItem('omok-client-id', data.clientId);
-      }
-      location.href = data.path;
-    } catch (err) {
-      showToast(err.message || '방을 만들지 못했습니다. 다시 시도해 주세요.');
-      if (triggerBtn) triggerBtn.disabled = false;
+  function showView(name) {
+    gateView.classList.toggle('hidden', name !== 'gate');
+    lobbyView.classList.toggle('hidden', name !== 'lobby');
+    roomView.classList.toggle('hidden', name !== 'room');
+  }
+
+  function identityText() {
+    return sessionRole === 'admin' ? '관리자 세션' : `${sessionLabel || '게스트'} · 입장 파일 세션`;
+  }
+
+  async function api(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+    if (sessionToken) headers['X-Session-Token'] = sessionToken;
+    if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    const res = await fetch(path, { ...options, headers, cache: 'no-store' });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (!res.ok) {
+      if (res.status === 401) expireSession(data.message);
+      const err = new Error(data.message || '요청을 처리하지 못했습니다.');
+      err.status = res.status;
+      err.data = data;
+      throw err;
     }
+    return data;
+  }
+
+  function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
+    stopStream();
+    sessionToken = '';
+    sessionRole = '';
+    sessionLabel = '';
+    state = null;
+    showView('gate');
+    if (message) showToast(message, 5000);
+  }
+
+  async function loadSession() {
+    if (!sessionToken) return showView('gate');
+    try {
+      const info = await api('/api/session');
+      if (!info.authenticated) return expireSession('입장 세션이 만료되었습니다.');
+      sessionRole = info.role;
+      sessionLabel = info.label;
+      identityLabel.textContent = identityText();
+      roomIdentityLabel.textContent = identityText();
+      adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
+      if (sessionRole === 'admin') await loadGuestKeys();
+      const room = await api('/api/room');
+      if (room.state) enterRoomState(room.state);
+      else showView('lobby');
+    } catch (err) {
+      if (err.status !== 401) showToast(err.message);
+    }
+  }
+
+  async function adminLogin(event) {
+    event.preventDefault();
+    try {
+      const data = await api('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ password: adminPassword.value }),
+      });
+      sessionToken = data.sessionToken;
+      sessionRole = data.role;
+      sessionLabel = data.label;
+      adminPassword.value = '';
+      await loadSession();
+    } catch (err) {
+      showToast(err.message, 4500);
+    }
+  }
+
+  async function logout() {
+    try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
+    expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
+  }
+
+  async function createRoom() {
+    try {
+      const data = await api('/api/rooms', { method: 'POST', body: '{}' });
+      enterRoomState(data.state);
+      if (data.state?.me?.roomCode) showToast(`방 비밀번호 ${data.state.me.roomCode} 생성 완료`);
+    } catch (err) { showToast(err.message); }
+  }
+
+  async function joinRoom(event) {
+    event.preventDefault();
+    try {
+      const data = await api('/api/rooms/join', {
+        method: 'POST',
+        body: JSON.stringify({ code: roomPasswordInput.value }),
+      });
+      roomPasswordInput.value = '';
+      enterRoomState(data.state);
+    } catch (err) { showToast(err.message, 4000); }
+  }
+
+  async function leaveRoom() {
+    stopStream();
+    try { await api('/api/room/leave', { method: 'POST', body: '{}' }); } catch {}
+    state = null;
+    showView('lobby');
+    if (sessionRole === 'admin') loadGuestKeys().catch(() => {});
+  }
+
+  function formatCodeInput() {
+    const raw = roomPasswordInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    roomPasswordInput.value = raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
+  }
+
+  async function loadGuestKeys() {
+    if (sessionRole !== 'admin' || !sessionToken) return;
+    const data = await api('/api/admin/keys');
+    persistenceBadge.textContent = data.persistence === 'database' ? '영구 DB 저장' : '임시 서버 저장';
+    persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
+    renderGuestKeys(data.keys || []);
+  }
+
+  function renderGuestKeys(keys) {
+    guestKeyList.innerHTML = '';
+    if (!keys.length) {
+      const empty = document.createElement('p');
+      empty.className = 'emptyState';
+      empty.textContent = '아직 발급한 입장 파일이 없습니다.';
+      guestKeyList.appendChild(empty);
+      return;
+    }
+    for (const key of keys) {
+      const row = document.createElement('div');
+      row.className = `keyRow${key.revokedAt ? ' revoked' : ''}`;
+      const text = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = key.label;
+      const small = document.createElement('small');
+      const used = key.lastUsedAt ? `최근 사용 ${new Date(key.lastUsedAt).toLocaleString('ko-KR')}` : '아직 사용 안 함';
+      small.textContent = `${key.revokedAt ? '권한 취소됨' : '사용 가능'} · ${used} · ${key.useCount || 0}회`;
+      text.append(strong, small);
+      row.appendChild(text);
+      if (!key.revokedAt) {
+        const btn = document.createElement('button');
+        btn.className = 'danger tiny';
+        btn.textContent = '권한 취소';
+        btn.addEventListener('click', () => revokeKey(key.id, key.label));
+        row.appendChild(btn);
+      }
+      guestKeyList.appendChild(row);
+    }
+  }
+
+  async function issueFile(event) {
+    event.preventDefault();
+    const label = guestLabelInput.value.trim();
+    if (!label) return;
+    try {
+      const data = await api('/api/admin/keys', {
+        method: 'POST',
+        body: JSON.stringify({ label }),
+      });
+      const blob = new Blob([data.html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      guestLabelInput.value = '';
+      showToast(`${data.fileName} 발급 완료`);
+      await loadGuestKeys();
+    } catch (err) { showToast(err.message, 4500); }
+  }
+
+  async function revokeKey(id, label) {
+    if (!confirm(`${label} 입장 파일의 권한을 취소할까요?\n취소 즉시 현재 접속도 끊기며 해당 파일은 더 이상 사용할 수 없습니다.`)) return;
+    try {
+      await api(`/api/admin/keys/${id}/revoke`, { method: 'POST', body: '{}' });
+      showToast(`${label} 권한을 취소했습니다.`);
+      await loadGuestKeys();
+    } catch (err) { showToast(err.message); }
+  }
+
+  function enterRoomState(next) {
+    state = next;
+    seat = state?.me?.seat || null;
+    isHost = Boolean(state?.me?.isHost);
+    showView('room');
+    renderRoom();
+    startStream();
+  }
+
+  function stopStream() {
+    if (streamController) streamController.abort();
+    streamController = null;
+    clearTimeout(streamRetryTimer);
+    streamRetryTimer = null;
+  }
+
+  async function startStream() {
+    stopStream();
+    if (!sessionToken || !state) return;
+    const controller = new AbortController();
+    streamController = controller;
+    connectionBadge.textContent = '연결 중';
+    connectionBadge.classList.remove('online');
+    try {
+      const res = await fetch('/api/room/events', {
+        headers: { 'X-Session-Token': sessionToken, Accept: 'text/event-stream' },
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (res.status === 401) return expireSession();
+      if (!res.ok || !res.body) throw new Error('실시간 연결 실패');
+      connectionBadge.textContent = '온라인';
+      connectionBadge.classList.add('online');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let split;
+        while ((split = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, split).replace(/\r/g, '');
+          buffer = buffer.slice(split + 2);
+          handleSseBlock(block);
+        }
+      }
+      if (!controller.signal.aborted) throw new Error('실시간 연결 종료');
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      connectionBadge.textContent = '재연결 중';
+      connectionBadge.classList.remove('online');
+      streamRetryTimer = setTimeout(() => startStream(), 1800);
+    }
+  }
+
+  function handleSseBlock(block) {
+    if (!block || block.startsWith(':')) return;
+    let event = 'message';
+    let data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trim();
+    }
+    if (!data) return;
+    let parsed;
+    try { parsed = JSON.parse(data); } catch { return; }
+    if (event === 'roomState') {
+      state = parsed;
+      seat = state.me?.seat || null;
+      isHost = Boolean(state.me?.isHost);
+      renderRoom();
+    } else if (event === 'sessionExpired') {
+      expireSession(parsed.message);
+    }
+  }
+
+  function choiceKo(choice) {
+    if (choice === 'black') return '흑';
+    if (choice === 'white') return '백';
+    if (choice === 'spectator') return '관전';
+    return '미선택';
   }
 
   function seatKo(value) {
     if (value === 'black') return '흑';
     if (value === 'white') return '백';
-    return '-';
-  }
-
-  function choiceKo(value) {
-    if (value === 'black') return '흑';
-    if (value === 'white') return '백';
-    if (value === 'spectator') return '관전';
-    return '선택 전';
-  }
-
-  function syncMe(payload) {
-    if (!payload?.me) return;
-    seat = payload.me.seat || null;
-    choice = payload.me.choice || null;
-    isHost = Boolean(payload.me.isHost);
-  }
-
-  function statusMessage() {
-    if (!state) return '방에 연결하고 있습니다';
-    const g = state.game;
-    if (g.status === 'selecting') {
-      if (!choice) return '흑 · 백 · 관전 중 역할을 선택하세요';
-      if (choice === 'spectator') return '관전 선택 · 흑과 백을 기다리고 있습니다';
-      return `${choiceKo(choice)} 선택 · 다른 역할 선택을 기다리고 있습니다`;
-    }
-    if (g.status === 'draw') return '무승부입니다';
-    if (g.status === 'finished') {
-      if (!seat) return `${seatKo(g.winner)} 승리 · 관전 종료`;
-      return g.winner === seat ? '승리했습니다' : '패배했습니다';
-    }
-    if (!seat) return `관전 중 · ${seatKo(g.turn)} 차례입니다`;
-    return g.turn === seat ? '내 차례입니다' : '상대 차례입니다';
+    return '관전';
   }
 
   function setPlayerCard(el, color, player) {
     const small = el.querySelector('small');
-    const active = state?.game.status === 'playing' && state.game.turn === color;
-    const mine = seat === color;
-    el.classList.toggle('active', Boolean(active));
-    el.classList.toggle('mine', Boolean(mine));
-    if (!player) small.textContent = state?.game.status === 'selecting' ? '선택 가능' : '빈 자리';
-    else if (mine) small.textContent = player.connected ? '내 역할 · 접속 중' : '내 역할 · 연결 끊김';
-    else small.textContent = player.connected ? '플레이어 · 접속 중' : '플레이어 · 연결 끊김';
+    el.classList.toggle('occupied', Boolean(player));
+    el.classList.toggle('disconnected', Boolean(player && !player.connected));
+    if (!player) small.textContent = '선택 가능';
+    else small.textContent = player.connected ? '접속 중' : '연결 끊김';
+    el.classList.toggle('mySeat', seat === color);
   }
 
   function renderRoleChooser() {
-    const canChoose = state?.game.status === 'selecting';
-    roleChooser.classList.toggle('hidden', !canChoose);
-    if (!canChoose) return;
-
-    const blackTakenByOther = Boolean(state.players.black) && seat !== 'black';
-    const whiteTakenByOther = Boolean(state.players.white) && seat !== 'white';
-
-    chooseBlackBtn.disabled = blackTakenByOther;
-    chooseWhiteBtn.disabled = whiteTakenByOther;
-    chooseSpectatorBtn.disabled = false;
-
+    const g = state.game;
+    const choice = state.me?.choice;
+    const selecting = g.status === 'selecting';
+    roleChooser.classList.toggle('hidden', !selecting);
+    chooseBlackBtn.disabled = Boolean(state.players.black && seat !== 'black');
+    chooseWhiteBtn.disabled = Boolean(state.players.white && seat !== 'white');
     chooseBlackBtn.classList.toggle('selected', choice === 'black');
     chooseWhiteBtn.classList.toggle('selected', choice === 'white');
     chooseSpectatorBtn.classList.toggle('selected', choice === 'spectator');
-
-    chooseBlackBtn.innerHTML = `<span class="stoneMini"></span>${choice === 'black' ? '흑 선택됨' : (blackTakenByOther ? '흑 마감' : '흑 선택')}`;
-    chooseWhiteBtn.innerHTML = `<span class="stoneMini"></span>${choice === 'white' ? '백 선택됨' : (whiteTakenByOther ? '백 마감' : '백 선택')}`;
-    chooseSpectatorBtn.innerHTML = `<span class="spectatorIcon">◎</span>${choice === 'spectator' ? '관전 선택됨' : '관전 선택'}`;
   }
 
-  function renderUi() {
+  function renderRoom() {
     if (!state) return;
-    syncMe(state);
     const g = state.game;
+    seat = state.me?.seat || null;
+    isHost = Boolean(state.me?.isHost);
+    roomIdentityLabel.textContent = identityText();
+    newRoomBtn.classList.toggle('hidden', !isHost);
+    hostRoomCodeBox.classList.toggle('hidden', !isHost);
+    hostRoomCode.textContent = state.me?.roomCode || '----';
 
-    statusText.textContent = statusMessage();
-    if (seat) seatLabel.textContent = `${isHost ? '방장 · ' : ''}나는 ${seatKo(seat)}입니다`;
-    else if (choice === 'spectator' || g.status !== 'selecting') seatLabel.textContent = `${isHost ? '방장 · ' : ''}현재 관전 중`;
-    else seatLabel.textContent = `${isHost ? '방장 · ' : ''}역할 선택 전`;
+    roundNumber.textContent = `${g.round || 1}판`;
+    moveCount.textContent = String(g.moveCount || 0);
+    mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
+    connectedCount.textContent = `${state.connectedCount || 0}명`;
+    spectatorCount.textContent = `${state.spectatorCount || 0}명`;
+    seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
-    roomCode.textContent = state.id;
-    moveCount.textContent = String(g.moveCount);
-    mySeat.textContent = seat ? seatKo(seat) : choiceKo(choice === 'spectator' ? 'spectator' : null);
-    roundNumber.textContent = `${g.round}판`;
-    connectedCount.textContent = `${state.connectedCount}명`;
-    spectatorCount.textContent = `${state.spectatorCount}명`;
-
-    hostTopActions.classList.toggle('hidden', !isHost);
-    hostInviteBox.classList.toggle('hidden', !isHost);
+    if (g.status === 'selecting') statusText.textContent = '역할 선택 중';
+    else if (g.status === 'playing') statusText.textContent = `${seatKo(g.turn)} 차례`;
+    else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
+    else statusText.textContent = '무승부';
 
     setPlayerCard(blackPlayer, 'black', state.players.black);
     setPlayerCard(whitePlayer, 'white', state.players.white);
@@ -187,33 +392,30 @@
 
     const finished = ['finished', 'draw'].includes(g.status);
     const canAct = Boolean(seat);
-    [resignBtn, sideResignBtn].forEach((b) => {
+    for (const b of [resignBtn, sideResignBtn]) {
       b.classList.toggle('hidden', !canAct || g.status !== 'playing');
       b.disabled = !canAct || g.status !== 'playing';
-    });
-    [rematchBtn, sideRematchBtn].forEach((b) => {
+    }
+    for (const b of [rematchBtn, sideRematchBtn]) {
       b.classList.toggle('hidden', !finished || !canAct);
       const requested = canAct && g.rematchRequests?.[seat];
       b.disabled = Boolean(requested);
       b.textContent = requested ? '상대 응답 대기 중' : '다음 대국 신청';
-    });
+    }
 
     if (g.status === 'selecting') {
+      const choice = state.me?.choice;
       if (!choice) boardOverlay.textContent = '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
-      boardOverlay.textContent = seat
-        ? (g.winner === seat ? '승리!' : '패배')
-        : `${seatKo(g.winner)} 승리`;
+      boardOverlay.textContent = seat ? (g.winner === seat ? '승리!' : '패배') : `${seatKo(g.winner)} 승리`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'draw') {
       boardOverlay.textContent = '무승부';
       boardOverlay.classList.remove('hidden');
-    } else {
-      boardOverlay.classList.add('hidden');
-    }
+    } else boardOverlay.classList.add('hidden');
 
     drawBoard();
   }
@@ -253,25 +455,22 @@
       ctx.stroke();
     }
 
-    const stars = [[3,3],[11,3],[7,7],[3,11],[11,11]];
     ctx.fillStyle = '#51391d';
-    for (const [x,y] of stars) {
+    for (const [x, y] of [[3,3],[11,3],[7,7],[3,11],[11,11]]) {
       ctx.beginPath();
       ctx.arc(PAD + x * GRID, PAD + y * GRID, 5.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (!state) return;
-    const winning = new Set((state.game.winningLine || []).map(([x,y]) => `${x},${y}`));
+    const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
-
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
         if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
       }
     }
-
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seat);
   }
 
@@ -289,26 +488,25 @@
       g.addColorStop(.38, '#252525');
       g.addColorStop(1, '#050505');
     } else {
-      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0, '#fff');
       g.addColorStop(.55, '#f2f2f2');
       g.addColorStop(1, '#c9c9c9');
     }
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-
     if (winning) {
       ctx.strokeStyle = color === 'black' ? '#ffd85a' : '#ef4444';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(cx, cy, r * .72, 0, Math.PI*2);
+      ctx.arc(cx, cy, r * .72, 0, Math.PI * 2);
       ctx.stroke();
     } else if (last) {
       ctx.fillStyle = color === 'black' ? '#f8fafc' : '#ef4444';
       ctx.beginPath();
-      ctx.arc(cx, cy, 5.2, 0, Math.PI*2);
+      ctx.arc(cx, cy, 5.2, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -320,9 +518,8 @@
     ctx.globalAlpha = .32;
     ctx.fillStyle = color === 'black' ? '#111' : '#fff';
     ctx.strokeStyle = color === 'black' ? '#111' : '#aaa';
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(cx, cy, GRID * .42, 0, Math.PI*2);
+    ctx.arc(cx, cy, GRID * .42, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -345,124 +542,62 @@
     return state && seat && state.game.status === 'playing' && state.game.turn === seat && !state.game.board[y][x];
   }
 
-  async function copyInvite() {
-    if (!isHost) return;
+  async function roomAction(action, payload = {}) {
     try {
-      await navigator.clipboard.writeText(location.href);
-      showToast('초대 링크를 복사했습니다');
+      const data = await api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify(payload) });
+      if (data.state) {
+        state = data.state;
+        renderRoom();
+      }
+    } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
+  }
+
+  async function copyRoomCode() {
+    const code = state?.me?.roomCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast('방 비밀번호를 복사했습니다.');
     } catch {
       const ta = document.createElement('textarea');
-      ta.value = location.href;
+      ta.value = code;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       ta.remove();
-      showToast('초대 링크를 복사했습니다');
+      showToast('방 비밀번호를 복사했습니다.');
     }
   }
 
-  async function shareInvite() {
-    if (!isHost) return;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: '오목 한 판', text: '이 링크로 들어와서 오목 두자.', url: location.href });
-        return;
-      } catch (e) {
-        if (e?.name === 'AbortError') return;
-      }
-    }
-    copyInvite();
-  }
-
-  function connect() {
-    connectionBadge.textContent = '연결 중';
-    connectionBadge.className = 'badge';
-    const eventsUrl = `/api/rooms/${encodeURIComponent(currentRoomId)}/events?clientId=${encodeURIComponent(clientId)}`;
-    const es = new EventSource(eventsUrl);
-    socket = es;
-
-    es.addEventListener('open', () => {
-      connectionBadge.textContent = '실시간 연결';
-      connectionBadge.className = 'badge live';
-    });
-
-    es.addEventListener('error', () => {
-      connectionBadge.textContent = '재연결 중';
-      connectionBadge.className = 'badge offline';
-    });
-
-    es.addEventListener('roomState', (ev) => {
-      state = JSON.parse(ev.data);
-      syncMe(state);
-      renderUi();
-    });
-  }
-
-  async function action(name, body = {}) {
-    try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(currentRoomId)}/${name}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ clientId, ...body }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const err = new Error(data.message || '처리하지 못했습니다.');
-        err.code = data.error;
-        err.forbidden = data.forbidden;
-        throw err;
-      }
-      if (data.state) {
-        state = data.state;
-        syncMe(state);
-        renderUi();
-      }
-      return data;
-    } catch (err) {
-      showToast(err.message || '처리하지 못했습니다.', err.code === 'FORBIDDEN_MOVE' ? 3000 : 2200);
-      throw err;
-    }
-  }
-
-  createRoomBtn?.addEventListener('click', () => createRoom(createRoomBtn));
-  newRoomBtn?.addEventListener('click', () => {
-    if (isHost) createRoom(newRoomBtn);
-  });
-  shareBtn?.addEventListener('click', shareInvite);
-  copyBtn?.addEventListener('click', copyInvite);
-  chooseBlackBtn?.addEventListener('click', () => action('choose-role', { choice: 'black' }).catch(() => {}));
-  chooseWhiteBtn?.addEventListener('click', () => action('choose-role', { choice: 'white' }).catch(() => {}));
-  chooseSpectatorBtn?.addEventListener('click', () => action('choose-role', { choice: 'spectator' }).catch(() => {}));
-
-  [resignBtn, sideResignBtn].forEach((btn) => btn?.addEventListener('click', () => {
-    if (!socket || !state || state.game.status !== 'playing' || !seat) return;
-    if (confirm('정말 기권할까요?')) action('resign').catch(() => {});
-  }));
-
-  [rematchBtn, sideRematchBtn].forEach((btn) => btn?.addEventListener('click', () => action('rematch').catch(() => {})));
+  adminLoginForm.addEventListener('submit', adminLogin);
+  logoutBtn.addEventListener('click', logout);
+  roomLogoutBtn.addEventListener('click', logout);
+  createRoomBtn.addEventListener('click', createRoom);
+  newRoomBtn.addEventListener('click', createRoom);
+  leaveRoomBtn.addEventListener('click', leaveRoom);
+  joinRoomForm.addEventListener('submit', joinRoom);
+  roomPasswordInput.addEventListener('input', formatCodeInput);
+  issueFileForm.addEventListener('submit', issueFile);
+  copyRoomCodeBtn.addEventListener('click', copyRoomCode);
+  chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
+  chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
+  chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
+  resignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
+  sideResignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
+  rematchBtn.addEventListener('click', () => roomAction('rematch'));
+  sideRematchBtn.addEventListener('click', () => roomAction('rematch'));
 
   canvas.addEventListener('pointermove', (ev) => {
     hover = canvasPoint(ev);
     drawBoard();
   });
-  canvas.addEventListener('pointerleave', () => {
-    hover = null;
-    drawBoard();
-  });
-  canvas.addEventListener('pointerdown', (ev) => {
+  canvas.addEventListener('pointerleave', () => { hover = null; drawBoard(); });
+  canvas.addEventListener('pointerup', (ev) => {
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
-    action('move', p).catch(() => {});
+    roomAction('move', p);
   });
 
-  if (!currentRoomId) {
-    homeView.classList.remove('hidden');
-    roomView.classList.add('hidden');
-  } else {
-    homeView.classList.add('hidden');
-    roomView.classList.remove('hidden');
-    roomCode.textContent = currentRoomId;
-    drawBoard();
-    connect();
-  }
+  drawBoard();
+  loadSession();
 })();
