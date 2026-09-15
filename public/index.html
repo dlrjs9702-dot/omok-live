@@ -4,26 +4,73 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#111827" />
-  <title>링크 오목</title>
-  <link rel="stylesheet" href="/styles.css?v=1.3.0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>보안 오목</title>
+  <link rel="stylesheet" href="/styles.css?v=1.4.0" />
 </head>
-<body>
+<body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
-    <section id="homeView" class="home card">
+    <section id="gateView" class="gate card">
       <div class="brandMark" aria-hidden="true"><span></span><span></span></div>
-      <p class="eyebrow">가입 없이 바로 시작</p>
-      <h1>링크 오목</h1>
-      <p class="lead">방을 만들고 주소만 보내세요. 참가자들은 매 판 흑·백·관전 중 역할을 고르고, 흑과 백이 정해지면 바로 시작합니다.</p>
-      <button id="createRoomBtn" class="primary big">새 대국 만들기</button>
-      <p class="ruleNote">15×15 · 렌주식 금수 · 흑 선공</p>
+      <p class="eyebrow">PRIVATE OMOK</p>
+      <h1>보안 오목</h1>
+      <p class="lead">게스트는 발급받은 전용 입장 파일로만 들어올 수 있습니다. 일반 주소로는 관리자만 로그인할 수 있습니다.</p>
+      <form id="adminLoginForm" class="stackForm">
+        <label for="adminPassword">관리자 비밀번호</label>
+        <input id="adminPassword" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required />
+        <button class="primary big" type="submit">관리자로 입장</button>
+      </form>
+      <p class="ruleNote">게스트는 이 화면에서 입장할 수 없습니다 · 전용 HTML 입장 파일 필요</p>
+    </section>
+
+    <section id="lobbyView" class="hidden">
+      <header class="topbar card">
+        <div>
+          <span class="logo">보안 오목</span>
+          <small id="identityLabel" class="smallMuted"></small>
+        </div>
+        <button id="logoutBtn" class="ghost">나가기</button>
+      </header>
+
+      <section class="lobbyGrid">
+        <article class="card lobbyCard">
+          <p class="eyebrow">ROOM</p>
+          <h2>대국 시작</h2>
+          <p class="muted">방을 만들면 8자리 방 비밀번호가 생성됩니다. 같이 둘 사람에게 비밀번호만 알려주세요.</p>
+          <button id="createRoomBtn" class="primary big">방 만들기</button>
+          <div class="divider"><span>또는</span></div>
+          <form id="joinRoomForm" class="joinForm">
+            <label for="roomPasswordInput">방 비밀번호</label>
+            <input id="roomPasswordInput" inputmode="text" autocomplete="off" maxlength="9" placeholder="ABCD-EFGH" required />
+            <button class="secondary" type="submit">방 입장</button>
+          </form>
+        </article>
+
+        <article id="adminPanel" class="card lobbyCard hidden">
+          <p class="eyebrow">ADMIN</p>
+          <h2>게스트 입장 파일</h2>
+          <p class="muted">사람·기기별로 파일을 따로 발급하세요. 파일 자체가 사이트 출입 열쇠입니다.</p>
+          <form id="issueFileForm" class="joinForm">
+            <label for="guestLabelInput">파일 이름</label>
+            <input id="guestLabelInput" autocomplete="off" maxlength="40" placeholder="예: 우성_PC" required />
+            <button class="primary" type="submit">입장 파일 발급</button>
+          </form>
+          <div class="adminMeta"><span id="persistenceBadge" class="badge">저장소 확인 중</span></div>
+          <div id="guestKeyList" class="keyList"></div>
+        </article>
+      </section>
     </section>
 
     <section id="roomView" class="room hidden">
-      <header class="topbar">
-        <span class="logo">링크 오목</span>
-        <div id="hostTopActions" class="topActions hidden">
-          <button id="shareBtn" class="ghost">초대하기</button>
-          <button id="newRoomBtn" class="ghost">새 방</button>
+      <header class="topbar card">
+        <div>
+          <span class="logo">보안 오목</span>
+          <small id="roomIdentityLabel" class="smallMuted"></small>
+        </div>
+        <div class="topActions">
+          <button id="leaveRoomBtn" class="ghost">로비</button>
+          <button id="newRoomBtn" class="ghost hidden">새 방</button>
+          <button id="roomLogoutBtn" class="ghost">나가기</button>
         </div>
       </header>
 
@@ -73,21 +120,21 @@
         </div>
 
         <aside class="side card">
+          <div id="hostRoomCodeBox" class="roomSecret hidden">
+            <span>방 비밀번호</span>
+            <strong id="hostRoomCode">----</strong>
+            <button id="copyRoomCodeBtn" class="primary">비밀번호 복사</button>
+            <small>입장 파일이 있는 사람에게만 이 비밀번호를 알려주세요.</small>
+          </div>
+
           <h3>대국 정보</h3>
           <dl class="infoList">
-            <div><dt>방 코드</dt><dd id="roomCode">-</dd></div>
             <div><dt>현재 판</dt><dd id="roundNumber">1판</dd></div>
             <div><dt>착수 수</dt><dd id="moveCount">0</dd></div>
             <div><dt>내 역할</dt><dd id="mySeat">-</dd></div>
             <div><dt>접속 인원</dt><dd id="connectedCount">0명</dd></div>
             <div><dt>관전자</dt><dd id="spectatorCount">0명</dd></div>
           </dl>
-
-          <div id="hostInviteBox" class="inviteBox hidden">
-            <p>방장 전용</p>
-            <button id="copyBtn" class="primary">초대 링크 복사</button>
-            <small id="copyHint">같은 링크로 플레이어와 관전자를 여러 명 초대할 수 있습니다.</small>
-          </div>
 
           <div class="sideActions">
             <button id="sideResignBtn" class="danger subtle">기권하기</button>
@@ -96,7 +143,7 @@
 
           <div class="rules">
             <strong>현재 규칙</strong>
-            <p>15×15, 흑 선공입니다. 흑은 정확히 5목이면 승리하고 3-3, 4-4, 6목 이상 장목은 금수입니다. 백은 5목 이상이면 승리하며 같은 금수 제한이 없습니다. 흑의 4-3은 허용됩니다. 금수는 서버에서도 검증합니다.</p>
+            <p>15×15, 흑 선공. 흑은 정확히 5목 승리, 3-3·4-4·6목 이상 장목 금수. 백은 5목 이상이면 승리하며 같은 금수 제한이 없습니다. 흑 4-3은 허용합니다.</p>
           </div>
         </aside>
       </section>
@@ -104,7 +151,6 @@
   </main>
 
   <div id="toast" class="toast hidden" role="status"></div>
-
-  <script src="/app.js?v=1.3.0"></script>
+  <script src="/app.js?v=1.4.0"></script>
 </body>
 </html>
