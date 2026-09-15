@@ -1,0 +1,32 @@
+name: Apply v1.4.2 single guest session
+
+on:
+  push:
+    branches:
+      - single-guest-session-v142
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[v142-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Rebuild server.js
+        run: |
+          cat .tmp/server.b64.part* | base64 -d > server.js
+          echo "458813836900129a2f8f3111b028f53293678f66e604ceb873060927960d4c8b  server.js" | sha256sum -c -
+          test "$(git hash-object server.js)" = "2617d2a68abfba1b118321a3f52424aed76a7aa4"
+      - name: Commit final files
+        run: |
+          rm -rf .tmp
+          rm -f .github/workflows/apply-v142.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Limit each guest file to one active session [v142-applied]"
+          git push origin HEAD:single-guest-session-v142
