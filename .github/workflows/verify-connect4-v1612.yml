@@ -18,6 +18,8 @@ jobs:
           node-version: '22'
       - name: Apply guarded Connect Four integration
         run: python3 scripts/apply-connect4-v1612.py
+      - name: Update stale UI expectations for fifth game
+        run: python3 scripts/adjust-connect4-tests.py
       - name: Verify JavaScript syntax
         run: |
           node --check server.js
@@ -41,7 +43,7 @@ jobs:
           grep -Fq 'renameAndRotateToken' lib/access-store.js
           grep -Fq "reissueBtn.textContent = '재발급'" public/app.js
       - name: Remove one-time tools
-        run: rm -f scripts/apply-connect4-v1612.py .github/workflows/verify-connect4-v1612.yml
+        run: rm -f scripts/apply-connect4-v1612.py scripts/adjust-connect4-tests.py .github/workflows/verify-connect4-v1612.yml
       - name: Commit only verified changes
         run: |
           git config user.name 'github-actions[bot]'
