@@ -1,0 +1,51 @@
+name: Verify Connect Four v1.6.12
+on:
+  push:
+    branches:
+      - feature-connect-four-v1612
+    paths:
+      - .github/workflows/verify-connect4-v1612.yml
+permissions:
+  contents: write
+jobs:
+  implement-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded Connect Four integration
+        run: python3 scripts/apply-connect4-v1612.py
+      - name: Verify JavaScript syntax
+        run: |
+          node --check server.js
+          node --check lib/games/connect4.js
+          node --check lib/games/index.js
+          node --check public/app.js
+          node --check test/connect4.test.js
+      - name: Run full suite including previous games and guest entry
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+      - name: Check release boundaries and UI integration
+        run: |
+          grep -Fq "version: '1.6.12'" server.js
+          grep -Fq 'app.js?v=1.6.12' public/index.html
+          grep -Fq 'styles.css?v=1.6.12' public/index.html
+          grep -Fq 'connect4' lib/games/index.js
+          grep -Fq 'data-game="connect4"' public/index.html
+          grep -Fq 'function drawConnect4Board()' public/app.js
+          grep -Fq 'legalColumns' public/app.js
+          grep -Fq 'renameAndRotateToken' lib/access-store.js
+          grep -Fq "reissueBtn.textContent = '재발급'" public/app.js
+      - name: Remove one-time tools
+        run: rm -f scripts/apply-connect4-v1612.py .github/workflows/verify-connect4-v1612.yml
+      - name: Commit only verified changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add Connect Four with gravity, multiplayer rooms and responsive board [v1612-applied]'
+          git push
