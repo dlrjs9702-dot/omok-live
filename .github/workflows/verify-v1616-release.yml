@@ -1,0 +1,40 @@
+name: Verify game center v1.6.16 release
+on:
+  push:
+    branches:
+      - verify-release-v1616-render-20260916
+    paths:
+      - .github/workflows/verify-v1616-release.yml
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check entry access and game code syntax
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check lib/access-store.js
+          node --check lib/games/connect4.js
+          node --check lib/games/yut.js
+          node --check lib/games/dots.js
+          node --check test/new-games-server.test.js
+      - name: Install and test entire repository
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+      - name: Check exact release version and preserved entry features
+        run: |
+          node -e "const p=require('./package.json');const l=require('./package-lock.json');if(p.version!=='1.6.16'||l.version!=='1.6.16')process.exit(1)"
+          node -e "const ids=require('./lib/games').listGames().map(x=>x.id); for (const id of ['omok','omok2v2','othello','baseball','connect4','yut','dots']) {if (!ids.includes(id)) throw Error('Missing '+id)}; console.log('Game modes:',ids.join(', '))"
+          grep -Fq '/api/admin/keys' server.js
+          grep -Fq '/reissue' server.js
+          grep -Fq '/rename' server.js
+          grep -Fq 'app.js?v=1.6.16' public/index.html
+          grep -Fq 'styles.css?v=1.6.16' public/index.html
