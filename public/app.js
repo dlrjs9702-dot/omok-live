@@ -323,7 +323,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '도시왕'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹'
         : (type === 'othello' ? '오셀로' : '오목');
   }
 
@@ -1759,7 +1759,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = '950 35px system-ui, sans-serif';
-    ctx.fillText('도시왕', 360, 285);
+    ctx.fillText('랜드킹', 360, 285);
     ctx.font = '800 17px system-ui, sans-serif';
     ctx.fillStyle = '#93c5fd';
     ctx.fillText(`턴 ${g.turnCount || 0} / ${g.turnLimit || 50}`, 360, 326);

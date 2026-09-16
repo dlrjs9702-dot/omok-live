@@ -18,7 +18,7 @@ function freePort() {
   });
 }
 
-test('Yut Nori, Dots and Boxes, and City King use protected multiplayer room actions', { timeout: 30000 }, async t => {
+test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room actions', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-new-games-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -116,7 +116,7 @@ test('Yut Nori, Dots and Boxes, and City King use protected multiplayer room act
   assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.17');
+  assert.equal(health.data.version, '1.6.18');
   assert.ok(health.data.games.includes('yut'));
   assert.ok(health.data.games.includes('dots'));
   assert.ok(health.data.games.includes('cityking'));

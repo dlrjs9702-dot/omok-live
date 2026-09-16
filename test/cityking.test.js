@@ -11,8 +11,9 @@ function dice(...values) {
   return () => values[index++] ?? 1;
 }
 
-test('City King is registered as an original 24-space board game', () => {
+test('Land King is registered as an original 24-space board game', () => {
   assert.equal(getGame('cityking'), cityking);
+  assert.equal(cityking.name, '랜드킹');
   const game = cityking.create();
   assert.equal(game.players.black.cash, 1500);
   assert.equal(game.players.white.properties.length, 0);
@@ -90,7 +91,7 @@ test('declining an unaffordable property advances turn instead of deadlocking', 
   assert.equal(game.owners[12], undefined);
 });
 
-test('City King UI and protected action routes are wired', async () => {
+test('Land King UI and protected action routes are wired', async () => {
   const root = path.join(__dirname, '..');
   const [html, js, server] = await Promise.all([
     fs.readFile(path.join(root, 'public/index.html'), 'utf8'),
@@ -98,10 +99,15 @@ test('City King UI and protected action routes are wired', async () => {
     fs.readFile(path.join(root, 'server.js'), 'utf8'),
   ]);
   assert.match(html, /data-game="cityking"/);
+  assert.match(html, /랜드킹/);
+  assert.doesNotMatch(html, /도시왕/);
+  assert.match(js, /랜드킹/);
+  assert.doesNotMatch(js, /도시왕/);
+  assert.doesNotMatch(server, /도시왕/);
   assert.match(html, /id="cityRollBtn"/);
   assert.match(html, /id="citySkipBtn"/);
   assert.match(js, /function drawCityBoard\(/);
   assert.match(js, /roomAction\('roll-city'\)/);
   assert.match(server, /roll-city\|buy-city\|skip-city/);
-  assert.match(html, /app\.js\?v=1\.6\.17/);
+  assert.match(html, /app\.js\?v=1\.6\.18/);
 });

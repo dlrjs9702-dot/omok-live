@@ -791,7 +791,7 @@ async function handleRoomAction(req, res, action, session) {
   }
 
   if (action === 'roll-city') {
-    if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '도시왕 방에서만 주사위를 굴릴 수 있습니다.');
+    if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 주사위를 굴릴 수 있습니다.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 주사위를 굴릴 수 없습니다.');
     const engine = getGame('cityking');
@@ -801,7 +801,7 @@ async function handleRoomAction(req, res, action, session) {
   }
 
   if (action === 'buy-city' || action === 'skip-city') {
-    if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '도시왕 방에서만 도시를 매입할 수 있습니다.');
+    if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 도시를 매입할 수 있습니다.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 도시를 매입할 수 없습니다.');
     const engine = getGame('cityking');
@@ -812,7 +812,7 @@ async function handleRoomAction(req, res, action, session) {
   if (action === 'move') {
     if (room.gameType === 'baseball') return sendError(res, 400, 'WRONG_GAME', '숫자야구는 숫자 추측 기능을 이용해 주세요.');
     if (room.gameType === 'yut') return sendError(res, 400, 'WRONG_GAME', '윷놀이는 윷 던지기와 말 이동 기능을 이용해 주세요.');
-    if (room.gameType === 'cityking') return sendError(res, 400, 'WRONG_GAME', '도시왕은 주사위와 도시 매입 기능을 이용해 주세요.');
+    if (room.gameType === 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹은 주사위와 도시 매입 기능을 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -871,7 +871,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.17', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.18', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1414,7 +1414,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.17 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.18 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
