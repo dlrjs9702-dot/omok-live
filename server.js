@@ -587,7 +587,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.3', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.4', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -715,6 +715,18 @@ async function requestHandler(req, res) {
     const fileName = safeFilename(label);
     const html = makeGuestFile({ baseUrl: publicBaseUrl(req), token, label });
     return sendJson(res, 201, { key: row, fileName, html });
+  }
+
+  const noteMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/note$/i);
+  if (noteMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (typeof body.note !== 'string') return sendError(res, 400, 'BAD_NOTE', '메모는 문자로 입력해 주세요.');
+    const note = body.note.trim().replace(/\s+/g, ' ');
+    if (note.length > 200) return sendError(res, 400, 'NOTE_TOO_LONG', '메모는 200자까지 입력할 수 있습니다.');
+    const key = await accessStore.setNote(noteMatch[1], note);
+    if (!key) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
+    return sendJson(res, 200, { ok: true, key });
   }
 
   let match = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/revoke$/i);
@@ -899,7 +911,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.3 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.4 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -250,7 +250,17 @@
       const status = document.createElement('span');
       status.className = `keyStatus${key.presence?.online ? ' online' : ''}`;
       status.textContent = key.presence?.online ? '접속 중' : '오프라인';
-      identity.append(strong, status);
+      const memoPreview = document.createElement('span');
+      memoPreview.className = 'keyMemoPreview';
+      const refreshMemo = () => {
+        const note = key.adminNote || '';
+        memoPreview.textContent = note ? '· ' + note : '';
+        memoPreview.title = note;
+        memoPreview.classList.toggle('hidden', !note);
+        identity.classList.toggle('withMemo', Boolean(note));
+      };
+      refreshMemo();
+      identity.append(strong, status, memoPreview);
       main.appendChild(identity);
 
       const actions = document.createElement('div');
@@ -258,24 +268,77 @@
       const detailBtn = document.createElement('button');
       detailBtn.className = 'ghost tiny compactAction';
       detailBtn.textContent = '자세히 보기';
+      const memoBtn = document.createElement('button');
+      memoBtn.className = 'ghost tiny compactAction';
+      memoBtn.textContent = '메모';
+      memoBtn.title = '관리자 전용 메모 입력·수정';
       const revokeBtn = document.createElement('button');
       revokeBtn.className = 'danger tiny compactAction';
       revokeBtn.textContent = '권한 취소';
       revokeBtn.addEventListener('click', () => revokeKey(key.id, key.label));
-      actions.append(detailBtn, revokeBtn);
+      actions.append(detailBtn, memoBtn, revokeBtn);
 
       const detail = document.createElement('div');
       detail.className = 'keyDetail hidden';
       const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
       const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
       detail.textContent = `상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
+      const memoEditor = document.createElement('form');
+      memoEditor.className = 'keyMemoEditor hidden';
+      const memoInput = document.createElement('input');
+      memoInput.className = 'keyMemoInput';
+      memoInput.type = 'text';
+      memoInput.maxLength = 200;
+      memoInput.autocomplete = 'off';
+      memoInput.placeholder = '누구인지 구분할 메모 (최대 200자)';
+      memoInput.setAttribute('aria-label', `${key.label} 관리자 메모`);
+      const saveMemoBtn = document.createElement('button');
+      saveMemoBtn.className = 'secondary tiny compactAction';
+      saveMemoBtn.type = 'submit';
+      saveMemoBtn.textContent = '저장';
+      const cancelMemoBtn = document.createElement('button');
+      cancelMemoBtn.className = 'ghost tiny compactAction';
+      cancelMemoBtn.type = 'button';
+      cancelMemoBtn.textContent = '취소';
+      memoEditor.append(memoInput, saveMemoBtn, cancelMemoBtn);
+      const closeMemoEditor = () => memoEditor.classList.add('hidden');
+      memoBtn.addEventListener('click', () => {
+        const opening = memoEditor.classList.contains('hidden');
+        memoEditor.classList.toggle('hidden', !opening);
+        if (opening) {
+          memoInput.value = key.adminNote || '';
+          memoInput.focus();
+        }
+      });
+      cancelMemoBtn.addEventListener('click', closeMemoEditor);
+      memoEditor.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const note = memoInput.value.trim().replace(/\s+/g, ' ');
+        if (note.length > 200) return showToast('메모는 200자까지 입력할 수 있습니다.');
+        saveMemoBtn.disabled = true;
+        try {
+          const data = await api(`/api/admin/keys/${key.id}/note`, {
+            method: 'POST',
+            body: JSON.stringify({ note }),
+          });
+          key.adminNote = data.key.adminNote || '';
+          memoInput.value = key.adminNote;
+          refreshMemo();
+          closeMemoEditor();
+          showToast('관리자 메모를 저장했습니다.');
+        } catch (err) {
+          showToast(err.message, 4000);
+        } finally {
+          saveMemoBtn.disabled = false;
+        }
+      });
       detailBtn.addEventListener('click', () => {
         const opening = detail.classList.contains('hidden');
         detail.classList.toggle('hidden', !opening);
         detailBtn.textContent = opening ? '접기' : '자세히 보기';
       });
 
-      row.append(main, actions, detail);
+      row.append(main, actions, detail, memoEditor);
       guestKeyList.appendChild(row);
     }
     for (const key of revokedKeys) {
@@ -291,7 +354,13 @@
       const status = document.createElement('span');
       status.className = 'keyStatus revokedStatus';
       status.textContent = '취소됨';
-      identity.append(strong, status);
+      const note = document.createElement('span');
+      note.className = 'keyMemoPreview';
+      note.textContent = key.adminNote ? '· ' + key.adminNote : '';
+      note.title = key.adminNote || '';
+      note.classList.toggle('hidden', !key.adminNote);
+      identity.classList.toggle('withMemo', Boolean(key.adminNote));
+      identity.append(strong, status, note);
       main.appendChild(identity);
 
       const actions = document.createElement('div');
