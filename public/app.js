@@ -194,6 +194,7 @@
     stopStream();
     try { await api('/api/room/leave', { method: 'POST', body: '{}' }); } catch {}
     state = null;
+    document.title = '게임센터';
     showView('lobby');
     if (sessionRole === 'admin') loadGuestKeys().catch(() => {});
   }
@@ -325,6 +326,7 @@
 
   function enterRoomState(next) {
     state = next;
+    selectedGameType = state?.gameType === 'othello' ? 'othello' : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
