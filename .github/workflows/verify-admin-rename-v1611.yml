@@ -1,0 +1,49 @@
+name: Verify admin nickname rename v1.6.11
+on:
+  push:
+    branches:
+      - feature-admin-rename-v1611
+    paths:
+      - .github/workflows/verify-admin-rename-v1611.yml
+permissions:
+  contents: write
+jobs:
+  implement-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded source changes
+        run: python3 scripts/apply-admin-rename-v1611.py
+      - name: Verify JavaScript syntax
+        run: |
+          node --check server.js
+          node --check lib/access-store.js
+          node --check public/app.js
+          node --check test/admin-rename.test.js
+      - name: Run all unit and integration tests
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+      - name: Check version and admin-only credential rotation
+        run: |
+          grep -Fq "version: '1.6.11'" server.js
+          grep -Fq 'app.js?v=1.6.11' public/index.html
+          grep -Fq 'styles.css?v=1.6.11' public/index.html
+          grep -Fq 'renameAndRotateToken' lib/access-store.js
+          grep -Fq "invalidateGuestSessions(row.id, '닉네임 변경" server.js
+          grep -Fq "renameBtn.textContent = '닉네임 변경'" public/app.js
+          grep -Fq 'WHERE id = $1 AND revoked_at IS NULL' lib/access-store.js
+      - name: Remove temporary automation files
+        run: |
+          rm -f scripts/apply-admin-rename-v1611.py .github/workflows/verify-admin-rename-v1611.yml
+      - name: Commit only tested implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add admin-only nickname editing and entry-file regeneration [v1611-applied]'
+          git push
