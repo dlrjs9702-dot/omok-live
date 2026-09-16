@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: '20'
       - name: Apply upgrade
-        run: node scripts/apply-social-v150.js
+        run: python3 scripts/apply-social-v150.py
       - name: Validate syntax
         run: |
           node --check server.js
@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: npm test
       - name: Remove one-shot migration files
-        run: rm -f .github/workflows/apply-social-v150.yml scripts/apply-social-v150.js
+        run: rm -f .github/workflows/apply-social-v150.yml scripts/apply-social-v150.js scripts/apply-social-v150.py
       - name: Commit applied upgrade
         run: |
           git config user.name "github-actions[bot]"
