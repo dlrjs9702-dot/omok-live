@@ -455,6 +455,8 @@ function roomView(room, session) {
       choice: p?.choice || null,
       watching: Boolean(p && !seat && p.choice === 'spectator'),
       roomCode: isHost ? room.code : null,
+      // A secret is only ever sent back to its owning player, never to other players or spectators.
+      mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
     },
   };
 }
@@ -545,6 +547,26 @@ async function handleRoomAction(req, res, action, session) {
     maybeStart(room);
   }
 
+  if (action === 'set-secret') {
+    if (room.gameType !== 'baseball') return sendError(res, 400, 'WRONG_GAME', '숫자야구 방에서만 사용할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 비밀 숫자를 정할 수 없습니다.');
+    const engine = getGame('baseball');
+    const verdict = engine.setSecret(room.game, seat, body.secret);
+    if (!verdict.legal) return sendError(res, verdict.reason === 'invalid-number' ? 400 : 409, 'INVALID_SECRET', engine.moveError(verdict.reason));
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 비밀 숫자 준비를 완료했습니다.`);
+    if (verdict.ready) appendSystemMessage(room, '양쪽 비밀 숫자 준비 완료! 선공부터 추측하세요.');
+  }
+
+  if (action === 'guess') {
+    if (room.gameType !== 'baseball') return sendError(res, 400, 'WRONG_GAME', '숫자야구 방에서만 사용할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 숫자를 추측할 수 없습니다.');
+    const engine = getGame('baseball');
+    const verdict = engine.applyGuess(room.game, body.guess, seat, nowIso());
+    if (!verdict.legal) return sendError(res, verdict.reason === 'invalid-number' ? 400 : 409, 'INVALID_GUESS', engine.moveError(verdict.reason));
+  }
+
   if (action === 'move') {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
@@ -563,7 +585,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'resign') {
     const seat = findSeat(room, session.token);
-    if (!seat || room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
+    if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
     room.game.winner = seat === 'black' ? 'white' : 'black';
     room.game.winningLine = null;
@@ -587,7 +609,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.4', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.5', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -869,7 +891,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|move|resign|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-secret|guess|move|resign|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -911,7 +933,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.4 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.5 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

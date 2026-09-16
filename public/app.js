@@ -42,6 +42,17 @@
   const chooseWhiteBtn = document.getElementById('chooseWhiteBtn');
   const chooseSpectatorBtn = document.getElementById('chooseSpectatorBtn');
   const boardOverlay = document.getElementById('boardOverlay');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const baseballPanel = document.getElementById('baseballPanel');
+  const baseballReady = document.getElementById('baseballReady');
+  const baseballMySecret = document.getElementById('baseballMySecret');
+  const baseballHint = document.getElementById('baseballHint');
+  const baseballSecretForm = document.getElementById('baseballSecretForm');
+  const baseballSecretInput = document.getElementById('baseballSecretInput');
+  const baseballGuessForm = document.getElementById('baseballGuessForm');
+  const baseballGuessInput = document.getElementById('baseballGuessInput');
+  const baseballHistory = document.getElementById('baseballHistory');
+  const moveCountLabel = document.getElementById('moveCountLabel');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
   const nextRoundBtn = document.getElementById('nextRoundBtn');
@@ -170,11 +181,11 @@
   }
 
   function gameName(type) {
-    return type === 'othello' ? '오셀로' : '오목';
+    return type === 'baseball' ? '숫자야구' : (type === 'othello' ? '오셀로' : '오목');
   }
 
   function selectGame(type) {
-    selectedGameType = type === 'othello' ? 'othello' : 'omok';
+    selectedGameType = ['othello', 'baseball'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
   }
@@ -455,7 +466,7 @@
   function enterRoomState(next) {
     stopLobbyStream();
     state = next;
-    selectedGameType = state?.gameType === 'othello' ? 'othello' : 'omok';
+    selectedGameType = ['othello', 'baseball'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
@@ -598,19 +609,20 @@
   }
 
   function choiceKo(choice) {
-    if (choice === 'black') return '흑';
-    if (choice === 'white') return '백';
+    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : '흑';
+    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : '백';
     if (choice === 'spectator') return '관전';
     return '미선택';
   }
 
   function seatKo(value) {
-    if (value === 'black') return '흑';
-    if (value === 'white') return '백';
+    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : '흑';
+    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : '백';
     return '관전';
   }
 
   function setPlayerCard(el, color, player) {
+    el.querySelector('strong').textContent = seatKo(color);
     const small = el.querySelector('small');
     el.classList.toggle('occupied', Boolean(player));
     el.classList.toggle('disconnected', Boolean(player && !player.connected));
@@ -620,8 +632,8 @@
   }
 
   function participantRoleText(p) {
-    if (p.seat === 'black') return '흑';
-    if (p.seat === 'white') return '백';
+    if (p.seat === 'black') return seatKo('black');
+    if (p.seat === 'white') return seatKo('white');
     if (p.choice === 'spectator') return '관전';
     return '역할 선택 중';
   }
@@ -720,6 +732,12 @@
     const g = state.game;
     const choice = state.me?.choice;
     const selecting = g.status === 'selecting';
+    const baseball = state.gameType === 'baseball';
+    chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : '흑 선택';
+    chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : '백 선택';
+    roleChooser.querySelector('small').textContent = baseball
+      ? '선공·후공이 정해지면 각자 비밀 숫자를 설정합니다. 나머지 참가자는 자동 관전됩니다.'
+      : '매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.';
     roleChooser.classList.toggle('hidden', !selecting);
     chooseBlackBtn.disabled = Boolean(state.players.black && seat !== 'black');
     chooseWhiteBtn.disabled = Boolean(state.players.white && seat !== 'white');
@@ -742,6 +760,7 @@
     hostRoomCode.textContent = state.me?.roomCode || '----';
 
     roundNumber.textContent = `${g.round || 1}판`;
+    moveCountLabel.textContent = state.gameType === 'baseball' ? '추측 횟수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
@@ -752,6 +771,7 @@
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     if (g.status === 'selecting') statusText.textContent = '역할 선택 중';
+    else if (g.status === 'setup') statusText.textContent = '비밀 숫자 설정 중';
     else if (g.status === 'playing') {
       statusText.textContent = `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
     } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
@@ -765,9 +785,10 @@
 
     const finished = ['finished', 'draw'].includes(g.status);
     const canAct = Boolean(seat);
+    const canResign = canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
     for (const b of [resignBtn, sideResignBtn]) {
-      b.classList.toggle('hidden', !canAct || g.status !== 'playing');
-      b.disabled = !canAct || g.status !== 'playing';
+      b.classList.toggle('hidden', !canResign);
+      b.disabled = !canResign;
     }
     for (const b of [nextRoundBtn, sideNextRoundBtn]) {
       b.classList.toggle('hidden', !finished);
@@ -775,7 +796,13 @@
       b.textContent = '다음 판 준비';
     }
 
-    if (g.status === 'selecting') {
+    const baseball = state.gameType === 'baseball';
+    canvasWrap.classList.toggle('hidden', baseball);
+    baseballPanel.classList.toggle('hidden', !baseball);
+    if (baseball) {
+      boardOverlay.classList.add('hidden');
+      renderBaseball();
+    } else if (g.status === 'selecting') {
       const choice = state.me?.choice;
       if (!choice) boardOverlay.textContent = '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
@@ -792,7 +819,46 @@
     drawBoard();
   }
 
+  function renderBaseball() {
+    const g = state.game;
+    const ready = g.ready || {};
+    baseballReady.textContent = `비밀 숫자 준비: 선공 ${ready.black ? '완료' : '대기'} · 후공 ${ready.white ? '완료' : '대기'}`;
+    baseballMySecret.textContent = seat
+      ? (state.me?.mySecret ? `내 비밀 숫자: ${state.me.mySecret}` : '내 비밀 숫자: 미설정')
+      : '관전 중 · 비밀 숫자는 각 플레이어에게만 보입니다.';
+    const myReady = Boolean(seat && ready[seat]);
+    baseballSecretForm.classList.toggle('hidden', !(g.status === 'setup' && seat && !myReady));
+    baseballGuessForm.classList.toggle('hidden', !(g.status === 'playing' && seat && g.turn === seat));
+    if (g.status === 'selecting') baseballHint.textContent = '선공·후공을 선택하면 각자 비밀 숫자를 설정할 수 있습니다.';
+    else if (g.status === 'setup') baseballHint.textContent = !seat ? '플레이어들의 비밀 숫자 준비를 기다리는 중입니다.' : (myReady ? '비밀 숫자 설정 완료. 상대방이 준비할 때까지 기다려 주세요.' : '상대에게 보이지 않을 비밀 숫자 3개를 입력해 주세요.');
+    else if (g.status === 'playing') baseballHint.textContent = seat === g.turn ? '내 차례입니다! 상대의 숫자를 추측해 주세요.' : `${seatKo(g.turn)}이(가) 추측할 차례입니다.`;
+    else baseballHint.textContent = g.winner ? `${seatKo(g.winner)} 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.` : '이번 판이 끝났습니다.';
+    baseballHistory.replaceChildren();
+    const guesses = g.guesses || [];
+    if (!guesses.length) {
+      const empty = document.createElement('p');
+      empty.className = 'chatEmpty';
+      empty.textContent = '아직 추측 기록이 없습니다.';
+      baseballHistory.appendChild(empty);
+    }
+    for (const [i, entry] of [...guesses].reverse().entries()) {
+      const item = document.createElement('div');
+      item.className = 'baseballHistoryRow' + (entry.color === seat ? ' mine' : '');
+      const left = document.createElement('span');
+      left.textContent = `#${guesses.length - i} ${seatKo(entry.color)} · `;
+      const digits = document.createElement('strong');
+      digits.textContent = entry.guess;
+      left.appendChild(digits);
+      const result = document.createElement('span');
+      result.className = 'result';
+      result.textContent = entry.strikes === 0 && entry.balls === 0 ? '아웃' : `${entry.strikes}S ${entry.balls}B`;
+      item.append(left, result);
+      baseballHistory.appendChild(item);
+    }
+  }
+
   function drawBoard() {
+    if (state?.gameType === 'baseball') return;
     if (state?.gameType === 'othello') return drawOthelloBoard();
     return drawOmokBoard();
   }
@@ -994,6 +1060,7 @@
   }
 
   function canPlace(x, y) {
+    if (state?.gameType === 'baseball') return false;
     if (!state || !seat || state.game.status !== 'playing' || state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
       return (state.game.legalMoves || []).some((move) => move.x === x && move.y === y);
@@ -1009,6 +1076,24 @@
         renderRoom();
       }
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
+  }
+
+  function validBaseballInput(value) {
+    return /^[1-9][0-9]{2}$/.test(value) && new Set(value).size === 3;
+  }
+
+  async function sendBaseballAction(event, action, input, name) {
+    event.preventDefault();
+    const value = input.value.trim();
+    if (!validBaseballInput(value)) return showToast('첫 자리가 0이 아닌 서로 다른 숫자 3개를 입력해 주세요.', 4000);
+    const button = event.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const data = await api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify({ [name]: value }) });
+      if (data.state) { state = data.state; renderRoom(); }
+      input.value = '';
+    } catch (err) { showToast(err.message, 4000); }
+    finally { button.disabled = false; }
   }
 
   async function sendLobbyChat(event) {
@@ -1078,6 +1163,8 @@
   issueFileForm.addEventListener('submit', issueFile);
   lobbyChatForm.addEventListener('submit', sendLobbyChat);
   chatForm.addEventListener('submit', sendChat);
+  baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
+  baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
   chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
