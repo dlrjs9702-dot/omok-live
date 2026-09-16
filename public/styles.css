@@ -34,6 +34,6 @@
 .lobbyTopGrid .lobbyChatHead{flex:0 0 auto}
 .lobbyTopGrid .lobbyChatMessages{flex:1 1 auto;height:auto;min-height:300px;max-height:430px}
 .lobbyTopGrid .chatForm{flex:0 0 auto}
-.lobbyAdminCard{margin-top:18px;padding:24px 28px}
+.lobbyAdminCard{grid-column:1/-1;margin-top:0;padding:24px 28px}
 .lobbyAdminCard .keyList{max-height:320px}
-@media(max-width:880px){.lobbyTopGrid{grid-template-columns:1fr}.lobbyTopGrid>.lobbyChatCard{min-height:0}.lobbyTopGrid .lobbyChatMessages{height:230px;min-height:230px;max-height:300px}.lobbyAdminCard{margin-top:18px;padding:14px}}
+@media(max-width:880px){.lobbyTopGrid{grid-template-columns:1fr}.lobbyTopGrid>.lobbyChatCard{min-height:0}.lobbyTopGrid .lobbyChatMessages{height:230px;min-height:230px;max-height:300px}.lobbyAdminCard{margin-top:0;padding:14px}}
