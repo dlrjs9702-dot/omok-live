@@ -19,7 +19,7 @@ test('scores exact positions as strikes and other digits as balls', () => {
   assert.deepEqual(baseball.score('123','123'), { strikes: 3, balls: 0 });
   assert.deepEqual(baseball.score('123','132'), { strikes: 1, balls: 2 });
   assert.deepEqual(baseball.score('123','456'), { strikes: 0, balls: 0 });
-  assert.deepEqual(baseball.score('102','201'), { strikes: 0, balls: 3 });
+  assert.deepEqual(baseball.score('102','210'), { strikes: 0, balls: 3 });
   assert.deepEqual(baseball.score('123','124'), { strikes: 2, balls: 0 });
 });
 
