@@ -26,3 +26,14 @@
 .lobbyChatStatus{display:flex;flex-direction:column;align-items:flex-end;gap:7px;white-space:nowrap}
 .lobbyChatMessages{height:220px;margin-top:14px}
 @media(max-width:640px){.lobbyChatCard{padding:14px}.lobbyChatHead{gap:10px}.lobbyChatNote{font-size:.76rem}.lobbyChatMessages{height:190px}}
+
+/* Lobby layout v1.6.3: game left, chat right, admin below */
+.lobbyTopGrid{display:grid;grid-template-columns:minmax(320px,.92fr) minmax(0,1.28fr);gap:18px;align-items:stretch}
+.lobbyTopGrid>.lobbyCard,.lobbyTopGrid>.lobbyChatCard{margin:0;min-width:0}
+.lobbyTopGrid>.lobbyChatCard{display:flex;flex-direction:column}
+.lobbyTopGrid .lobbyChatHead{flex:0 0 auto}
+.lobbyTopGrid .lobbyChatMessages{flex:1 1 auto;height:auto;min-height:300px;max-height:430px}
+.lobbyTopGrid .chatForm{flex:0 0 auto}
+.lobbyAdminCard{margin-top:18px;padding:24px 28px}
+.lobbyAdminCard .keyList{max-height:320px}
+@media(max-width:880px){.lobbyTopGrid{grid-template-columns:1fr}.lobbyTopGrid>.lobbyChatCard{min-height:0}.lobbyTopGrid .lobbyChatMessages{height:230px;min-height:230px;max-height:300px}.lobbyAdminCard{margin-top:18px;padding:14px}}
