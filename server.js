@@ -12,6 +12,13 @@ const {
 } = require('./lib/game');
 const { createAccessStore } = require('./lib/access-store');
 const {
+  MAX_CHAT_LENGTH,
+  createRoomSocial,
+  appendSystemMessage,
+  appendChatMessage,
+  publicChatMessages,
+} = require('./lib/room-social');
+const {
   generateRoomCode,
   normalizeRoomCode,
   newSecret,
@@ -305,26 +312,33 @@ function makeRoom(hostSession) {
   do code = generateRoomCode(); while ([...rooms.values()].some((r) => r.code === code));
   const id = newSecret(12);
   const t = nowIso();
-  return {
+  const room = {
     id,
     code,
+    gameType: 'omok',
     createdAt: t,
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: { black: null, white: null },
+    social: createRoomSocial(),
     game: makeInitialGame(),
   };
+  appendSystemMessage(room, (hostSession.label || '방장') + '님이 방을 만들었습니다.');
+  return room;
 }
 
 function touchRoom(room) { room.updatedAt = nowIso(); }
 
 function registerParticipant(room, session) {
-  if (!room.participants[session.token]) room.participants[session.token] = newParticipant(session, true);
+  const isNew = !room.participants[session.token];
+  if (isNew) room.participants[session.token] = newParticipant(session, true);
   const p = room.participants[session.token];
+  p.label = session.label;
   p.connected = true;
   p.lastSeen = nowIso();
   if (room.game.status !== 'selecting' && !findSeat(room, session.token)) p.choice = 'spectator';
+  if (isNew) appendSystemMessage(room, (session.label || '게스트') + '님이 입장했습니다.');
   return p;
 }
 
@@ -338,7 +352,7 @@ function publicPlayer(room, color) {
   const token = room.players[color];
   if (!token) return null;
   const p = room.participants[token];
-  return { connected: Boolean(p?.connected) };
+  return { label: p?.label || '게스트', connected: Boolean(p?.connected) };
 }
 
 function liveSpectatorCount(room) {
@@ -351,13 +365,30 @@ function liveSpectatorCount(room) {
   return count;
 }
 
+function publicParticipants(room) {
+  const live = uniqueLiveTokens(room.id);
+  return Object.values(room.participants)
+    .filter((p) => p.connected || live.has(p.sessionToken))
+    .map((p) => ({
+      label: p.label || '게스트',
+      connected: Boolean(p.connected || live.has(p.sessionToken)),
+      seat: findSeat(room, p.sessionToken),
+      choice: p.choice || null,
+      isHost: room.hostSessionToken === p.sessionToken,
+    }))
+    .sort((a, b) => Number(b.isHost) - Number(a.isHost) || a.label.localeCompare(b.label, 'ko'));
+}
+
 function publicRoom(room) {
   const live = uniqueLiveTokens(room.id);
   return {
+    gameType: room.gameType || 'omok',
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     connectedCount: live.size,
     spectatorCount: liveSpectatorCount(room),
+    participants: publicParticipants(room),
+    chat: { messages: publicChatMessages(room) },
     players: {
       black: publicPlayer(room, 'black'),
       white: publicPlayer(room, 'white'),
@@ -384,6 +415,7 @@ function roomView(room, session) {
   return {
     ...publicRoom(room),
     me: {
+      label: session.label,
       isHost,
       seat,
       choice: p?.choice || null,
@@ -450,6 +482,16 @@ function invalidateGuestSessions(guestKeyId) {
     releaseSessionToken(token, { message: '이 입장 파일의 권한이 취소되었습니다.' });
   }
   activeGuestSessions.delete(guestKeyId);
+}
+
+function guestPresence(guestKeyId) {
+  if (!guestKeyInUse(guestKeyId)) return { online: false, inRoom: false };
+  const token = activeGuestSessions.get(guestKeyId);
+  const session = token ? sessions.get(token) : null;
+  return {
+    online: Boolean(session),
+    inRoom: Boolean(session && getCurrentRoom(session)),
+  };
 }
 
 async function handleRoomAction(req, res, action, session) {
@@ -531,7 +573,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.4.2', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.5.0', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -594,7 +636,8 @@ async function requestHandler(req, res) {
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
-    return sendJson(res, 200, { keys: await accessStore.list(), persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
+    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id) }));
+    return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
   }
 
   if (pathname === '/api/admin/keys' && req.method === 'POST') {
@@ -678,9 +721,27 @@ async function requestHandler(req, res) {
     if (room?.participants[session.token]) {
       room.participants[session.token].connected = false;
       room.participants[session.token].lastSeen = nowIso();
+      appendSystemMessage(room, (session.label || '게스트') + '님이 방에서 나갔습니다.');
       touchRoom(room);
       broadcast(room);
     }
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/room/chat' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const room = getCurrentRoom(session);
+    if (!room) return sendError(res, 404, 'NO_ROOM', '현재 입장한 방이 없습니다.');
+    const key = 'room-chat:' + session.token.slice(0, 12);
+    if (!checkRateLimit(key, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
+    const body = await parseJson(req);
+    const text = String(body.text || '').trim();
+    if (!text) return sendError(res, 400, 'EMPTY_CHAT', '메시지를 입력해 주세요.');
+    if (text.length > MAX_CHAT_LENGTH) return sendError(res, 400, 'CHAT_TOO_LONG', '채팅은 ' + MAX_CHAT_LENGTH + '자까지 입력할 수 있습니다.');
+    appendChatMessage(room, session, text);
+    touchRoom(room);
+    broadcast(room);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -770,7 +831,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`오목 서버 v1.4.2 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.5.0 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

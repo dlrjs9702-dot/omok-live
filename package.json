@@ -1,8 +1,8 @@
 {
   "name": "omok-live",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "private": true,
-  "description": "입장 파일 + 방 비밀번호 기반 실시간 오목",
+  "description": "입장 파일 + 닉네임 + 방 채팅 기반 실시간 보드게임 서버",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

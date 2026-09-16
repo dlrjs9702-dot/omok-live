@@ -43,6 +43,10 @@
   const mySeat = document.getElementById('mySeat');
   const connectedCount = document.getElementById('connectedCount');
   const spectatorCount = document.getElementById('spectatorCount');
+  const participantList = document.getElementById('participantList');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
   const toast = document.getElementById('toast');
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
@@ -215,7 +219,8 @@
       strong.textContent = key.label;
       const small = document.createElement('small');
       const used = key.lastUsedAt ? `최근 사용 ${new Date(key.lastUsedAt).toLocaleString('ko-KR')}` : '아직 사용 안 함';
-      small.textContent = `사용 가능 · ${used} · ${key.useCount || 0}회`;
+      const online = key.presence?.online ? (key.presence.inRoom ? '🟢 접속 중 · 방 참여 중' : '🟢 접속 중') : '⚫ 오프라인';
+      small.textContent = `${online} · ${used} · ${key.useCount || 0}회`;
       text.append(strong, small);
       row.appendChild(text);
       const btn = document.createElement('button');
@@ -396,8 +401,73 @@
     el.classList.toggle('occupied', Boolean(player));
     el.classList.toggle('disconnected', Boolean(player && !player.connected));
     if (!player) small.textContent = '선택 가능';
-    else small.textContent = player.connected ? '접속 중' : '연결 끊김';
+    else small.textContent = `${player.label || '게스트'} · ${player.connected ? '접속 중' : '연결 끊김'}`;
     el.classList.toggle('mySeat', seat === color);
+  }
+
+  function participantRoleText(p) {
+    if (p.seat === 'black') return '흑';
+    if (p.seat === 'white') return '백';
+    if (p.choice === 'spectator') return '관전';
+    return '역할 선택 중';
+  }
+
+  function renderParticipants() {
+    participantList.innerHTML = '';
+    const people = state?.participants || [];
+    if (!people.length) {
+      const empty = document.createElement('span');
+      empty.className = 'participantEmpty';
+      empty.textContent = '접속자가 없습니다.';
+      participantList.appendChild(empty);
+      return;
+    }
+    for (const person of people) {
+      const chip = document.createElement('div');
+      chip.className = 'participantChip';
+      const dot = document.createElement('span');
+      dot.className = `presenceDot${person.connected ? ' online' : ''}`;
+      const name = document.createElement('strong');
+      name.textContent = person.label || '게스트';
+      const role = document.createElement('small');
+      role.textContent = `${person.isHost ? '방장 · ' : ''}${participantRoleText(person)}`;
+      chip.append(dot, name, role);
+      participantList.appendChild(chip);
+    }
+  }
+
+  function renderChat() {
+    const rows = state?.chat?.messages || [];
+    chatMessages.innerHTML = '';
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'chatEmpty';
+      empty.textContent = '아직 메시지가 없습니다.';
+      chatMessages.appendChild(empty);
+      return;
+    }
+    for (const row of rows) {
+      const item = document.createElement('div');
+      item.className = `chatMessage ${row.type === 'system' ? 'system' : ''}`;
+      if (row.type === 'system') {
+        item.textContent = row.text;
+      } else {
+        const head = document.createElement('div');
+        head.className = 'chatMessageHead';
+        const who = document.createElement('strong');
+        who.textContent = row.label || '게스트';
+        const time = document.createElement('time');
+        const d = new Date(row.at);
+        time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        head.append(who, time);
+        const text = document.createElement('div');
+        text.className = 'chatMessageText';
+        text.textContent = row.text;
+        item.append(head, text);
+      }
+      chatMessages.appendChild(item);
+    }
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
   function renderRoleChooser() {
@@ -436,6 +506,8 @@
 
     setPlayerCard(blackPlayer, 'black', state.players.black);
     setPlayerCard(whitePlayer, 'white', state.players.white);
+    renderParticipants();
+    renderChat();
     renderRoleChooser();
 
     const finished = ['finished', 'draw'].includes(g.status);
@@ -600,6 +672,25 @@
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
   }
 
+  async function sendChat(event) {
+    event.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.disabled = true;
+    try {
+      await api('/api/room/chat', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+      chatInput.value = '';
+    } catch (err) {
+      showToast(err.message, 3500);
+    } finally {
+      chatInput.disabled = false;
+      chatInput.focus();
+    }
+  }
+
   async function copyRoomCode() {
     const code = state?.me?.roomCode;
     if (!code) return;
@@ -626,6 +717,7 @@
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
   issueFileForm.addEventListener('submit', issueFile);
+  chatForm.addEventListener('submit', sendChat);
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
   chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
