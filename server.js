@@ -555,12 +555,12 @@ async function handleRoomAction(req, res, action, session) {
     room.game.winningLine = null;
   }
 
-  if (action === 'rematch') {
-    const seat = findSeat(room, session.token);
-    if (!seat) return sendError(res, 403, 'SPECTATOR', '이번 대국의 흑·백만 다음 대국을 신청할 수 있습니다.');
-    if (!['finished', 'draw'].includes(room.game.status)) return sendError(res, 409, 'NOT_FINISHED', '대국이 끝난 뒤 신청할 수 있습니다.');
-    room.game.rematchRequests[seat] = true;
-    if (room.game.rematchRequests.black && room.game.rematchRequests.white) prepareNextRound(room);
+  if (action === 'next-round' || action === 'rematch') {
+    if (!['finished', 'draw'].includes(room.game.status)) {
+      return sendError(res, 409, 'NOT_FINISHED', '대국이 끝난 뒤 다음 판을 열 수 있습니다.');
+    }
+    prepareNextRound(room);
+    appendSystemMessage(room, `${session.label || '참가자'}님이 다음 판을 열었습니다. 역할을 다시 선택해 주세요.`);
   }
 
   touchRoom(room);
@@ -573,7 +573,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.5.0', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.5.1', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -789,7 +789,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|move|resign|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|move|resign|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -831,7 +831,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.5.0 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.5.1 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

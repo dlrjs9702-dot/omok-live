@@ -36,8 +36,8 @@
   const boardOverlay = document.getElementById('boardOverlay');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
-  const rematchBtn = document.getElementById('rematchBtn');
-  const sideRematchBtn = document.getElementById('sideRematchBtn');
+  const nextRoundBtn = document.getElementById('nextRoundBtn');
+  const sideNextRoundBtn = document.getElementById('sideNextRoundBtn');
   const roundNumber = document.getElementById('roundNumber');
   const moveCount = document.getElementById('moveCount');
   const mySeat = document.getElementById('mySeat');
@@ -516,11 +516,10 @@
       b.classList.toggle('hidden', !canAct || g.status !== 'playing');
       b.disabled = !canAct || g.status !== 'playing';
     }
-    for (const b of [rematchBtn, sideRematchBtn]) {
-      b.classList.toggle('hidden', !finished || !canAct);
-      const requested = canAct && g.rematchRequests?.[seat];
-      b.disabled = Boolean(requested);
-      b.textContent = requested ? '상대 응답 대기 중' : '다음 대국 신청';
+    for (const b of [nextRoundBtn, sideNextRoundBtn]) {
+      b.classList.toggle('hidden', !finished);
+      b.disabled = !finished;
+      b.textContent = '다음 판 준비';
     }
 
     if (g.status === 'selecting') {
@@ -724,8 +723,8 @@
   chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
   resignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
   sideResignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
-  rematchBtn.addEventListener('click', () => roomAction('rematch'));
-  sideRematchBtn.addEventListener('click', () => roomAction('rematch'));
+  nextRoundBtn.addEventListener('click', () => roomAction('next-round'));
+  sideNextRoundBtn.addEventListener('click', () => roomAction('next-round'));
 
   canvas.addEventListener('pointermove', (ev) => {
     hover = canvasPoint(ev);
