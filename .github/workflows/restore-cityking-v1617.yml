@@ -1,0 +1,71 @@
+name: Restore and verify City King v1.6.17
+on:
+  push:
+    branches: [restore-cityking-v1617-20260917]
+permissions:
+  contents: write
+jobs:
+  restore-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify recovered source payload
+        shell: bash
+        run: |
+          cat .release/cityking-part-{1,2,3,4}.b64 | base64 --decode | xz --decompress --stdout > /tmp/cityking.patch
+          echo 'c2c2ef36874e6e9d9dcfcc47614fe42c4a26869a94481de3790e4ac4b13af81a  /tmp/cityking.patch' | sha256sum --check
+      - name: Apply patch on exact current main commit
+        shell: bash
+        run: |
+          git fetch origin main
+          git switch --detach origin/main
+          test "$(git rev-parse HEAD)" = '27a50e17f513c9bc7fc111e50871b8992eca35ac'
+          git apply --check /tmp/cityking.patch
+          git apply /tmp/cityking.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/release-announcements.js')
+          text = p.read_text()
+          assert "key: 'v1.6.17'" not in text and text.rstrip().endswith('];'), 'Unexpected release announcement baseline'
+          entry = """  {
+            key: 'v1.6.17',
+            title: '[업데이트] v1.6.17 독자 보드게임 도시왕 추가',
+            body: '독자 규칙의 2인 도시왕을 추가했습니다. 주사위로 이동하며 도시 매입·매입 안 함·통행료·이벤트를 진행하고, 상대 파산 또는 50턴 뒤 순자산으로 승패를 결정합니다.',
+            publishedAt: '2026-09-16T15:55:00Z',
+          },
+          """
+          text = text.rstrip()[:-2].rstrip() + '\n' + entry + '];\n'
+          p.write_text(text)
+          PY
+          node --check server.js
+          node --check public/app.js
+          node --check lib/games/cityking.js
+          node --check test/cityking.test.js
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install PostgreSQL driver and all dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run complete regression tests
+        run: npm test
+      - name: Verify version, all existing games, and guest access routes
+        run: |
+          node -e "const p=require('./package.json');const l=require('./package-lock.json');if(p.version!=='1.6.17'||l.version!=='1.6.17')process.exit(1);require('pg');const ids=require('./lib/games').listGames().map(g=>g.id);for(const id of ['omok','omok2v2','othello','baseball','connect4','yut','dots','cityking'])if(!ids.includes(id))throw Error('missing '+id);console.log('Registered games:',ids.join(', '))"
+          grep -Fq '/api/admin/keys' server.js
+          grep -Fq '/reissue' server.js
+          grep -Fq '/rename' server.js
+          grep -Fq 'skip-city' server.js
+          grep -Fq 'citySkipBtn' public/app.js
+          grep -Fq 'app.js?v=1.6.17' public/index.html
+      - name: Commit tested City King to main
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/games lib/release-announcements.js package.json package-lock.json public server.js test
+          git commit -m 'Restore City King and skip-purchase fix [v1.6.17]'
+          git push origin HEAD:main
