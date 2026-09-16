@@ -18,7 +18,7 @@ function freePort() {
   });
 }
 
-test('Yut Nori and Dots and Boxes use protected multiplayer room actions', { timeout: 30000 }, async t => {
+test('Yut Nori, Dots and Boxes, and City King use protected multiplayer room actions', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-new-games-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
@@ -94,8 +94,30 @@ test('Yut Nori and Dots and Boxes use protected multiplayer room actions', { tim
   assert.equal(firstLine.data.state.game.turn, 'white');
   assert.equal(firstLine.data.state.game.legalEdges.length, 39);
   assert.equal((await req('/api/room/move', dPlayer, { x: 0, y: 0 })).status, 409);
+
+  await req('/api/room/leave', dHost, {});
+  await req('/api/room/leave', dPlayer, {});
+  await req('/api/room/leave', dWatcher, {});
+  const cHost = dHost;
+  const cPlayer = dPlayer;
+  const cWatcher = dWatcher;
+  const cRoom = await req('/api/rooms', cHost, { gameType: 'cityking', visibility: 'public' });
+  assert.equal(cRoom.status, 201);
+  const cityRoomId = (await req('/api/rooms/public', cPlayer, undefined, 'GET')).data.rooms.find(room => room.gameType === 'cityking').id;
+  assert.equal((await req('/api/rooms/public/join', cPlayer, { roomId: cityRoomId })).status, 200);
+  assert.equal((await req('/api/rooms/join', cWatcher, { code: cRoom.data.state.me.roomCode })).status, 200);
+  await req('/api/room/choose-role', cHost, { choice: 'black' });
+  const cStarted = await req('/api/room/choose-role', cPlayer, { choice: 'white' });
+  assert.equal(cStarted.data.state.game.status, 'playing');
+  assert.equal((await req('/api/room/roll-city', cWatcher, {})).status, 403);
+  assert.equal((await req('/api/room/roll-city', cPlayer, {})).status, 409);
+  const cityRoll = await req('/api/room/roll-city', cHost, {});
+  assert.equal(cityRoll.status, 200);
+  assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
+
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.16');
+  assert.equal(health.data.version, '1.6.17');
   assert.ok(health.data.games.includes('yut'));
   assert.ok(health.data.games.includes('dots'));
+  assert.ok(health.data.games.includes('cityking'));
 });

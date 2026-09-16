@@ -131,6 +131,18 @@ body.resultWinActive .canvasWrap,body.resultWinActive .baseballPanel{box-shadow:
 body.resultWinActive .yutControls{box-shadow:0 0 0 2px rgba(250,204,21,.55),0 0 34px rgba(250,204,21,.3)}
 body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shadow:0 0 0 2px rgba(127,29,29,.65)}
 @media(max-width:520px){.yutControls{padding:11px}.yutThrowSummary{align-items:stretch;flex-direction:column}.yutThrowSummary button{width:100%}.yutPieceChoice{flex:1 1 calc(50% - 8px);font-size:.78rem}}
+
+/* v1.6.17: original City King board-game MVP. */
+.canvasWrap.cityBoard{background:#172554}
+.cityControls{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #334155;border-radius:15px;background:linear-gradient(145deg,#111c30,#0b1324)}
+.cityActionRow,.cityBuyRow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cityLastRoll{font-size:1.02rem;font-weight:900;color:#bfdbfe}
+.cityEvent{margin:0;color:#cbd5e1;font-size:.86rem;line-height:1.5;min-height:22px}
+.cityPropertyOffer{color:#fde68a;font-size:.86rem;font-weight:800}
+.cityBuyRow span{color:#fde68a;font-size:.84rem;font-weight:800}
+body.resultWinActive .cityControls{box-shadow:0 0 0 2px rgba(250,204,21,.55),0 0 34px rgba(250,204,21,.3)}
+body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shadow:0 0 0 2px rgba(127,29,29,.65)}
+@media(max-width:520px){.cityControls{padding:11px}.cityActionRow,.cityBuyRow{align-items:stretch;flex-direction:column}.cityActionRow button,.cityBuyRow button{width:100%}.cityBuyRow span{text-align:center}}
 .noticeForm input:focus,.noticeForm textarea:focus{border-color:#60a5fa}
 .noticeFormActions{display:flex;gap:8px;justify-content:flex-end;margin-top:5px}
 .helpHeading{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 12px}

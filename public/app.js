@@ -93,6 +93,13 @@
   const yutThrowBtn = document.getElementById('yutThrowBtn');
   const yutHint = document.getElementById('yutHint');
   const yutMoveChoices = document.getElementById('yutMoveChoices');
+  const cityControls = document.getElementById('cityControls');
+  const cityLastRoll = document.getElementById('cityLastRoll');
+  const cityRollBtn = document.getElementById('cityRollBtn');
+  const cityEvent = document.getElementById('cityEvent');
+  const cityPropertyOffer = document.getElementById('cityPropertyOffer');
+  const cityBuyBtn = document.getElementById('cityBuyBtn');
+  const citySkipBtn = document.getElementById('citySkipBtn');
   const moveCountLabel = document.getElementById('moveCountLabel');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
@@ -316,7 +323,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'dots' ? '점과 상자'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '도시왕'
         : (type === 'othello' ? '오셀로' : '오목');
   }
 
@@ -324,7 +331,7 @@
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots', 'cityking'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
   }
@@ -1016,7 +1023,7 @@
     stopPresenceRefresh();
     stopLobbyStream();
     state = next;
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots'].includes(state?.gameType) ? state.gameType : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots', 'cityking'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
@@ -1167,16 +1174,16 @@
 
   function choiceKo(choice) {
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
-    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
-    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
+    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
     if (choice === 'spectator') return '관전';
     return '미선택';
   }
 
   function seatKo(value) {
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
-    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
-    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
+    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
     return '관전';
   }
 
@@ -1312,9 +1319,10 @@
     const connect4 = state.gameType === 'connect4';
     const yut = state.gameType === 'yut';
     const dots = state.gameType === 'dots';
+    const city = state.gameType === 'cityking';
     const team = isTeamGame();
     roleChooser.classList.toggle('connectFourRole', connect4);
-    roleChooser.classList.toggle('blueRedRole', yut || dots);
+    roleChooser.classList.toggle('blueRedRole', yut || dots || city);
     standardRoleButtons.classList.toggle('hidden', team);
     teamRoleButtons.classList.toggle('hidden', !team);
     roleChooser.classList.toggle('hidden', !selecting);
@@ -1328,13 +1336,14 @@
       teamSpectatorBtn.classList.toggle('selected', choice === 'spectator');
       return;
     }
-    chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : connect4 ? '빨강 선택' : (yut || dots) ? '파랑 선택' : '흑 선택';
-    chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : connect4 ? '노랑 선택' : (yut || dots) ? '빨강 선택' : '백 선택';
+    chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : connect4 ? '빨강 선택' : (yut || dots || city) ? '파랑 선택' : '흑 선택';
+    chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : connect4 ? '노랑 선택' : (yut || dots || city) ? '빨강 선택' : '백 선택';
     roleChooser.querySelector('small').textContent = baseball
       ? '선공·후공이 정해지면 각자 비밀 숫자를 설정합니다. 나머지 참가자는 자동 관전됩니다.'
       : connect4 ? '빨강·노랑 선수를 선택하세요. 두 사람이 정해지면 게임이 시작됩니다. 열을 눌러 돌을 떨어뜨리세요.'
       : yut ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 윷을 던집니다.'
       : dots ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 빈 선을 선택합니다.'
+      : city ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 주사위를 굴립니다.'
       : '매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.';
     roleChooser.classList.toggle('hidden', !selecting);
     chooseBlackBtn.disabled = Boolean(state.players.black && seat !== 'black');
@@ -1363,11 +1372,11 @@
     const team = isTeamGame();
     standardPlayers.classList.toggle('hidden', team);
     standardPlayers.classList.toggle('connectFourPlayers', state.gameType === 'connect4');
-    standardPlayers.classList.toggle('blueRedPlayers', ['yut','dots'].includes(state.gameType));
+    standardPlayers.classList.toggle('blueRedPlayers', ['yut','dots','cityking'].includes(state.gameType));
     teamPlayers.classList.toggle('hidden', !team);
 
     roundNumber.textContent = `${g.round || 1}판`;
-    moveCountLabel.textContent = state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'dots' ? '그은 선 수' : '착수 수';
+    moveCountLabel.textContent = state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
@@ -1377,6 +1386,7 @@
     gameScoreText.textContent = scores ? (state.gameType === 'yut'
       ? `파랑 완주 ${scores.black} · 빨강 완주 ${scores.white}`
       : state.gameType === 'dots' ? `파랑 상자 ${scores.black} · 빨강 상자 ${scores.white}`
+        : state.gameType === 'cityking' ? `파랑 자산 ${scores.black} · 빨강 자산 ${scores.white}`
         : `흑 ${scores.black} · 백 ${scores.white}`) : '-';
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
@@ -1388,6 +1398,8 @@
         : `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`)
         : state.gameType === 'yut'
           ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}`
+          : state.gameType === 'cityking'
+            ? `${seatKo(g.turn)} · ${g.phase === 'buy' ? '도시 매입 여부 선택' : '주사위 굴릴 차례'}`
           : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
     } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
     else statusText.textContent = '무승부';
@@ -1433,19 +1445,22 @@
 
     const baseball = state.gameType === 'baseball';
     const yut = state.gameType === 'yut';
+    const city = state.gameType === 'cityking';
     canvasWrap.classList.toggle('hidden', baseball);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
     yutControls.classList.toggle('hidden', !yut);
     if (yut) renderYut();
+    cityControls.classList.toggle('hidden', !city);
+    if (city) renderCityControls();
     if (baseball) {
       boardOverlay.classList.add('hidden');
       renderBaseball();
     } else if (g.status === 'selecting') {
       boardOverlay.classList.remove('resultWin', 'resultLoss');
       const choice = state.me?.choice;
-      if (!choice) boardOverlay.textContent = team ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : ['yut','dots'].includes(state.gameType) ? '파랑 · 빨강 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
+      if (!choice) boardOverlay.textContent = team ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : ['yut','dots','cityking'].includes(state.gameType) ? '파랑 · 빨강 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
@@ -1546,10 +1561,32 @@
     }
   }
 
+  function renderCityControls() {
+    const g = state.game;
+    const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
+    cityRollBtn.disabled = !(mine && g.phase === 'roll');
+    cityRollBtn.textContent = mine && g.phase === 'roll' ? '주사위 굴리기' : '굴리기 대기';
+    cityLastRoll.textContent = g.lastRoll
+      ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}`
+      : '아직 주사위를 굴리지 않았습니다';
+    cityEvent.textContent = g.lastEvent || (g.status === 'selecting'
+      ? '파랑과 빨강이 정해지면 파랑부터 시작합니다.'
+      : !seat ? `${seatKo(g.turn)}의 차례를 관전하고 있습니다.`
+        : g.turn === seat ? '내 차례입니다.' : `${seatKo(g.turn)} 차례입니다.`);
+    const offer = g.pendingProperty === null ? null : g.tiles?.[g.pendingProperty];
+    const canBuy = Boolean(offer && mine && g.phase === 'buy');
+    cityPropertyOffer.textContent = offer ? `${offer.name} · 매입 ${offer.price} · 통행료 ${offer.toll}` : '';
+    cityBuyBtn.classList.toggle('hidden', !offer);
+    cityBuyBtn.disabled = !canBuy || (g.players?.[seat]?.cash ?? 0) < (offer?.price ?? 0);
+    citySkipBtn.classList.toggle('hidden', !offer);
+    citySkipBtn.disabled = !canBuy;
+  }
+
   function drawBoard() {
     if (state?.gameType === 'baseball') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
+    if (state?.gameType === 'cityking') return drawCityBoard();
     if (state?.gameType === 'connect4') return drawConnect4Board();
     if (state?.gameType === 'othello') return drawOthelloBoard();
     return drawOmokBoard();
@@ -1698,6 +1735,76 @@
       ctx.fillStyle = '#fff';
       ctx.beginPath(); ctx.arc(x-3,y-3,3,0,Math.PI*2); ctx.fill();
     }
+  }
+
+  function cityCellPosition(index) {
+    const pad = 86;
+    const step = 91;
+    if (index <= 6) return [pad + index * step, pad];
+    if (index <= 12) return [pad + 6 * step, pad + (index - 6) * step];
+    if (index <= 18) return [pad + (18 - index) * step, pad + 6 * step];
+    return [pad, pad + (24 - index) * step];
+  }
+
+  function drawCityBoard() {
+    const g = state.game;
+    const bg = ctx.createLinearGradient(0, 0, 720, 720);
+    bg.addColorStop(0, '#172554');
+    bg.addColorStop(1, '#0f172a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, 720, 720);
+    ctx.fillStyle = 'rgba(30,64,175,.22)';
+    ctx.fillRect(140, 140, 440, 440);
+    ctx.fillStyle = '#dbeafe';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '950 35px system-ui, sans-serif';
+    ctx.fillText('도시왕', 360, 285);
+    ctx.font = '800 17px system-ui, sans-serif';
+    ctx.fillStyle = '#93c5fd';
+    ctx.fillText(`턴 ${g.turnCount || 0} / ${g.turnLimit || 50}`, 360, 326);
+    ctx.fillStyle = '#cbd5e1';
+    if (g.status === 'playing') ctx.fillText(`${seatKo(g.turn)} 차례`, 360, 365);
+    else if (g.status === 'finished') ctx.fillText(`${seatKo(g.winner)} 승리`, 360, 365);
+    else if (g.status === 'draw') ctx.fillText('무승부', 360, 365);
+
+    for (const tile of g.tiles || []) {
+      const [x, y] = cityCellPosition(tile.index);
+      const owner = g.owners?.[tile.index];
+      ctx.fillStyle = tile.type === 'property' ? '#f8fafc' : tile.type === 'event' ? '#fef3c7' : tile.type === 'tax' ? '#fee2e2' : tile.type === 'start' ? '#bfdbfe' : '#e2e8f0';
+      ctx.fillRect(x - 39, y - 39, 78, 78);
+      ctx.strokeStyle = owner === 'black' ? '#2563eb' : owner === 'white' ? '#ef4444' : '#475569';
+      ctx.lineWidth = owner ? 5 : 2;
+      ctx.strokeRect(x - 39, y - 39, 78, 78);
+      ctx.fillStyle = '#172033';
+      ctx.font = '900 12px system-ui, sans-serif';
+      const words = String(tile.name).length > 4 ? [String(tile.name).slice(0, 4), String(tile.name).slice(4)] : [String(tile.name)];
+      words.forEach((word, i) => ctx.fillText(word, x, y - 8 + i * 15));
+      if (tile.type === 'property') {
+        ctx.font = '750 10px system-ui, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText(`${tile.price}`, x, y + 27);
+      }
+    }
+    for (const color of ['black', 'white']) {
+      const player = g.players?.[color];
+      if (!player) continue;
+      const [x, y] = cityCellPosition(player.position);
+      const offset = color === 'black' ? -16 : 16;
+      ctx.fillStyle = color === 'black' ? '#2563eb' : '#ef4444';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x + offset, y - 18, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = '950 12px system-ui, sans-serif';
+      ctx.fillText(color === 'black' ? 'P' : 'R', x + offset, y - 17);
+    }
+    ctx.textAlign = 'left';
+    ctx.font = '850 17px system-ui, sans-serif';
+    ctx.fillStyle = '#93c5fd';
+    ctx.fillText(`파랑 ${g.players?.black?.cash ?? 0}`, 150, 665);
+    ctx.fillStyle = '#fca5a5';
+    ctx.fillText(`빨강 ${g.players?.white?.cash ?? 0}`, 450, 665);
   }
 
   // Connect Four uses a 7x6 gravity board, independent of the Omok and Othello geometry.
@@ -1977,7 +2084,7 @@
     const rect = canvas.getBoundingClientRect();
     const px = (ev.clientX - rect.left) * (canvas.width / rect.width);
     const py = (ev.clientY - rect.top) * (canvas.height / rect.height);
-    if (state?.gameType === 'yut') return null;
+    if (state?.gameType === 'yut' || state?.gameType === 'cityking') return null;
     if (state?.gameType === 'dots') {
       let best = null;
       for (let edgeId = 0; edgeId < 40; edgeId += 1) {
@@ -2014,7 +2121,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'baseball' || state?.gameType === 'yut') return false;
+    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (isTeamGame() ? (state.game.paused || state.game.nextSeat !== seat) : state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
@@ -2155,6 +2262,9 @@
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
   baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));
   yutThrowBtn.addEventListener('click', () => roomAction('throw-yut'));
+  cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
+  cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
+  citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
   chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
