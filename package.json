@@ -1,8 +1,8 @@
 {
   "name": "omok-live",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
-  "description": "입장 파일 + 닉네임 + 방 채팅 기반 실시간 보드게임 서버",
+  "description": "입장 파일 + 공용 방/채팅 + 오목/오셀로 기반 실시간 보드게임 서버",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

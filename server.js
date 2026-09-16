@@ -3,13 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const crypto = require('crypto');
-const {
-  inBounds,
-  evaluateMove,
-  isBoardFull,
-  makeInitialGame,
-  resetForNextRound,
-} = require('./lib/game');
+const { getGame, hasGame, listGames } = require('./lib/games');
 const { createAccessStore } = require('./lib/access-store');
 const {
   MAX_CHAT_LENGTH,
@@ -307,7 +301,9 @@ function newParticipant(session, connected = false) {
   };
 }
 
-function makeRoom(hostSession) {
+function makeRoom(hostSession, requestedGameType = 'omok') {
+  const gameEngine = getGame(requestedGameType);
+  if (!gameEngine) return null;
   let code;
   do code = generateRoomCode(); while ([...rooms.values()].some((r) => r.code === code));
   const id = newSecret(12);
@@ -315,16 +311,16 @@ function makeRoom(hostSession) {
   const room = {
     id,
     code,
-    gameType: 'omok',
+    gameType: gameEngine.id,
     createdAt: t,
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: { black: null, white: null },
     social: createRoomSocial(),
-    game: makeInitialGame(),
+    game: gameEngine.create(),
   };
-  appendSystemMessage(room, (hostSession.label || '방장') + '님이 방을 만들었습니다.');
+  appendSystemMessage(room, `${hostSession.label || '방장'}님이 ${gameEngine.name} 방을 만들었습니다.`);
   return room;
 }
 
@@ -381,8 +377,11 @@ function publicParticipants(room) {
 
 function publicRoom(room) {
   const live = uniqueLiveTokens(room.id);
+  const gameEngine = getGame(room.gameType) || getGame('omok');
   return {
-    gameType: room.gameType || 'omok',
+    gameType: gameEngine.id,
+    gameName: gameEngine.name,
+    rules: gameEngine.rules,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     connectedCount: live.size,
@@ -393,18 +392,7 @@ function publicRoom(room) {
       black: publicPlayer(room, 'black'),
       white: publicPlayer(room, 'white'),
     },
-    game: {
-      size: room.game.size,
-      board: room.game.board,
-      turn: room.game.turn,
-      status: room.game.status,
-      winner: room.game.winner,
-      winningLine: room.game.winningLine,
-      moveCount: room.game.moves.length,
-      lastMove: room.game.moves.at(-1) || null,
-      rematchRequests: room.game.rematchRequests,
-      round: room.game.round,
-    },
+    game: gameEngine.publicState(room.game),
   };
 }
 
@@ -442,8 +430,8 @@ function broadcast(room) {
 
 function maybeStart(room) {
   if (room.players.black && room.players.white && room.game.status === 'selecting') {
-    room.game.status = 'playing';
-    room.game.turn = 'black';
+    const gameEngine = getGame(room.gameType) || getGame('omok');
+    gameEngine.start(room.game);
     for (const p of Object.values(room.participants)) {
       if (p.sessionToken !== room.players.black && p.sessionToken !== room.players.white) p.choice = 'spectator';
     }
@@ -451,16 +439,10 @@ function maybeStart(room) {
 }
 
 function prepareNextRound(room) {
-  resetForNextRound(room.game);
+  const gameEngine = getGame(room.gameType) || getGame('omok');
+  gameEngine.reset(room.game);
   room.players = { black: null, white: null };
   for (const p of Object.values(room.participants)) p.choice = null;
-}
-
-function forbiddenMessage(reason) {
-  if (reason === 'double-three') return '금수입니다: 흑은 3-3에 둘 수 없습니다.';
-  if (reason === 'double-four') return '금수입니다: 흑은 4-4에 둘 수 없습니다.';
-  if (reason === 'overline') return '금수입니다: 흑은 6목 이상 장목에 둘 수 없습니다.';
-  return '금수 자리에는 둘 수 없습니다.';
 }
 
 function getCurrentRoom(session) {
@@ -522,29 +504,15 @@ async function handleRoomAction(req, res, action, session) {
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
     if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
-    const x = Number(body.x);
-    const y = Number(body.y);
-    if (!inBounds(x, y)) return sendError(res, 400, 'BAD_POSITION', '착수 위치가 올바르지 않습니다.');
-    if (room.game.board[y][x]) return sendError(res, 409, 'OCCUPIED', '이미 돌이 놓인 자리입니다.');
-    const verdict = evaluateMove(room.game.board, x, y, seat);
+    const gameEngine = getGame(room.gameType) || getGame('omok');
+    const verdict = gameEngine.applyMove(room.game, Number(body.x), Number(body.y), seat, nowIso());
     if (!verdict.legal) {
-      if (['double-three', 'double-four', 'overline'].includes(verdict.reason)) {
-        return sendError(res, 409, 'FORBIDDEN_MOVE', forbiddenMessage(verdict.reason), { forbidden: verdict.reason });
-      }
-      return sendError(res, 409, 'ILLEGAL_MOVE', '둘 수 없는 자리입니다.');
+      const extra = verdict.forbidden ? { forbidden: verdict.forbidden } : {};
+      return sendError(res, 409, verdict.forbidden ? 'FORBIDDEN_MOVE' : 'ILLEGAL_MOVE', gameEngine.moveError(verdict.reason), extra);
     }
-    room.game.board[y][x] = seat;
-    room.game.moves.push({ x, y, color: seat, at: nowIso() });
-    room.game.rematchRequests = { black: false, white: false };
-    if (verdict.win) {
-      room.game.status = 'finished';
-      room.game.winner = seat;
-      room.game.winningLine = verdict.winningLine;
-    } else if (isBoardFull(room.game.board)) {
-      room.game.status = 'draw';
-      room.game.winner = null;
-      room.game.winningLine = null;
-    } else room.game.turn = seat === 'black' ? 'white' : 'black';
+    if (verdict.passed) {
+      appendSystemMessage(room, `${verdict.passed === 'black' ? '흑' : '백'}은 둘 수 있는 곳이 없어 자동으로 패스했습니다.`);
+    }
   }
 
   if (action === 'resign') {
@@ -573,7 +541,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, version: '1.5.1', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.0', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -681,7 +649,10 @@ async function requestHandler(req, res) {
   if (pathname === '/api/rooms' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
-    const room = makeRoom(session);
+    const body = await parseJson(req);
+    const gameType = String(body.gameType || 'omok').toLowerCase();
+    if (!hasGame(gameType)) return sendError(res, 400, 'BAD_GAME_TYPE', '지원하지 않는 게임입니다.');
+    const room = makeRoom(session, gameType);
     rooms.set(room.id, room);
     session.currentRoomId = room.id;
     registerParticipant(room, session);
@@ -831,7 +802,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.5.1 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.0 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

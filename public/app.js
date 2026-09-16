@@ -12,6 +12,9 @@
   const roomLogoutBtn = document.getElementById('roomLogoutBtn');
   const createRoomBtn = document.getElementById('createRoomBtn');
   const newRoomBtn = document.getElementById('newRoomBtn');
+  const gameChoiceButtons = [...document.querySelectorAll('.gameChoice')];
+  const selectedGameText = document.getElementById('selectedGameText');
+  const roomGameLogo = document.getElementById('roomGameLogo');
   const leaveRoomBtn = document.getElementById('leaveRoomBtn');
   const joinRoomForm = document.getElementById('joinRoomForm');
   const roomPasswordInput = document.getElementById('roomPasswordInput');
@@ -43,6 +46,9 @@
   const mySeat = document.getElementById('mySeat');
   const connectedCount = document.getElementById('connectedCount');
   const spectatorCount = document.getElementById('spectatorCount');
+  const gameScoreRow = document.getElementById('gameScoreRow');
+  const gameScoreText = document.getElementById('gameScoreText');
+  const rulesText = document.getElementById('rulesText');
   const participantList = document.getElementById('participantList');
   const chatMessages = document.getElementById('chatMessages');
   const chatForm = document.getElementById('chatForm');
@@ -58,6 +64,7 @@
   let sessionToken = document.body.dataset.session || '';
   let sessionRole = document.body.dataset.role || '';
   let sessionLabel = document.body.dataset.label || '';
+  let selectedGameType = 'omok';
   let state = null;
   let seat = null;
   let isHost = false;
@@ -153,9 +160,19 @@
     expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
   }
 
+  function gameName(type) {
+    return type === 'othello' ? '오셀로' : '오목';
+  }
+
+  function selectGame(type) {
+    selectedGameType = type === 'othello' ? 'othello' : 'omok';
+    for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
+    selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
+  }
+
   async function createRoom() {
     try {
-      const data = await api('/api/rooms', { method: 'POST', body: '{}' });
+      const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: selectedGameType }) });
       enterRoomState(data.state);
       if (data.state?.me?.roomCode) showToast(`방 비밀번호 ${data.state.me.roomCode} 생성 완료`);
     } catch (err) { showToast(err.message); }
@@ -488,6 +505,9 @@
     seat = state.me?.seat || null;
     isHost = Boolean(state.me?.isHost);
     roomIdentityLabel.textContent = identityText();
+    roomGameLogo.textContent = state.gameName || gameName(state.gameType);
+    rulesText.textContent = state.rules || '';
+    document.title = `${state.gameName || gameName(state.gameType)} · 게임센터`;
     newRoomBtn.classList.toggle('hidden', !isHost);
     hostRoomCodeBox.classList.toggle('hidden', !isHost);
     hostRoomCode.textContent = state.me?.roomCode || '----';
@@ -497,11 +517,15 @@
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
     spectatorCount.textContent = `${state.spectatorCount || 0}명`;
+    const scores = g.scores;
+    gameScoreRow.classList.toggle('hidden', !scores);
+    gameScoreText.textContent = scores ? `흑 ${scores.black} · 백 ${scores.white}` : '-';
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     if (g.status === 'selecting') statusText.textContent = '역할 선택 중';
-    else if (g.status === 'playing') statusText.textContent = `${seatKo(g.turn)} 차례`;
-    else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
+    else if (g.status === 'playing') {
+      statusText.textContent = `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
+    } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
     else statusText.textContent = '무승부';
 
     setPlayerCard(blackPlayer, 'black', state.players.black);
@@ -540,6 +564,11 @@
   }
 
   function drawBoard() {
+    if (state?.gameType === 'othello') return drawOthelloBoard();
+    return drawOmokBoard();
+  }
+
+  function drawOmokBoard() {
     const w = canvas.width;
     const h = canvas.height;
     const gradient = ctx.createLinearGradient(0, 0, w, h);
@@ -591,6 +620,77 @@
       }
     }
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seat);
+  }
+
+  function drawOthelloDisc(x, y, color, last) {
+    const cell = canvas.width / 8;
+    const cx = (x + .5) * cell;
+    const cy = (y + .5) * cell;
+    const r = cell * .38;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.28)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    const gradient = ctx.createRadialGradient(cx-r*.3, cy-r*.35, r*.08, cx, cy, r);
+    if (color === 'black') {
+      gradient.addColorStop(0, '#505050');
+      gradient.addColorStop(.45, '#181818');
+      gradient.addColorStop(1, '#020202');
+    } else {
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(.6, '#eeeeee');
+      gradient.addColorStop(1, '#bfc5c9');
+    }
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (last) {
+      ctx.fillStyle = color === 'black' ? '#f8fafc' : '#ef4444';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawOthelloBoard() {
+    const w = canvas.width;
+    const cell = w / 8;
+    ctx.fillStyle = '#18794e';
+    ctx.fillRect(0, 0, w, w);
+    ctx.strokeStyle = 'rgba(4,38,24,.85)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= 8; i += 1) {
+      const p = i * cell;
+      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, w); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
+    }
+
+    const legal = new Set((state?.game?.legalMoves || []).map(({ x, y }) => `${x},${y}`));
+    if (seat && state?.game?.status === 'playing' && state.game.turn === seat) {
+      ctx.fillStyle = 'rgba(255,255,255,.28)';
+      for (const key of legal) {
+        const [x, y] = key.split(',').map(Number);
+        ctx.beginPath();
+        ctx.arc((x + .5) * cell, (y + .5) * cell, cell * .1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const last = state?.game?.lastMove;
+    for (let y = 0; y < 8; y += 1) {
+      for (let x = 0; x < 8; x += 1) {
+        const color = state?.game?.board?.[y]?.[x];
+        if (color) drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
+      }
+    }
+
+    if (hover && canPlace(hover.x, hover.y)) {
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(hover.x * cell + 5, hover.y * cell + 5, cell - 10, cell - 10);
+    }
   }
 
   function drawStone(x, y, color, winning, last) {
@@ -648,6 +748,13 @@
     const rect = canvas.getBoundingClientRect();
     const px = (ev.clientX - rect.left) * (canvas.width / rect.width);
     const py = (ev.clientY - rect.top) * (canvas.height / rect.height);
+    if (state?.gameType === 'othello') {
+      const cell = canvas.width / 8;
+      const x = Math.floor(px / cell);
+      const y = Math.floor(py / cell);
+      if (x < 0 || x >= 8 || y < 0 || y >= 8) return null;
+      return { x, y };
+    }
     const x = Math.round((px - PAD) / GRID);
     const y = Math.round((py - PAD) / GRID);
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return null;
@@ -658,7 +765,11 @@
   }
 
   function canPlace(x, y) {
-    return state && seat && state.game.status === 'playing' && state.game.turn === seat && !state.game.board[y][x];
+    if (!state || !seat || state.game.status !== 'playing' || state.game.turn !== seat) return false;
+    if (state.gameType === 'othello') {
+      return (state.game.legalMoves || []).some((move) => move.x === x && move.y === y);
+    }
+    return Boolean(state.game.board?.[y] && !state.game.board[y][x]);
   }
 
   async function roomAction(action, payload = {}) {
@@ -712,6 +823,7 @@
   roomLogoutBtn.addEventListener('click', logout);
   createRoomBtn.addEventListener('click', createRoom);
   newRoomBtn.addEventListener('click', createRoom);
+  for (const button of gameChoiceButtons) button.addEventListener('click', () => selectGame(button.dataset.game));
   leaveRoomBtn.addEventListener('click', leaveRoom);
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
@@ -737,6 +849,7 @@
     roomAction('move', p);
   });
 
+  selectGame('omok');
   drawBoard();
   loadSession();
 })();
