@@ -195,10 +195,10 @@ test('Connect Four game selection and separate canvas hit detection are present 
   const html = await fs.readFile(path.join(root, 'public/index.html'), 'utf8');
   const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
   assert.match(html, /data-game="connect4"/);
-  assert.match(html, /7열×6행/);
+  assert.match(js, /7열×6행/);
   assert.match(js, /function drawConnect4Board\(/);
   assert.match(js, /function connect4Layout\(/);
   assert.match(js, /state\.gameType === 'connect4'/);
   assert.match(js, /legalColumns/);
-  assert.match(html, /app\.js\?v=1\.6\.18/);
+  assert.match(html, /app\.js\?v=1\.6\.19/);
 });

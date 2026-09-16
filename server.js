@@ -1414,7 +1414,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.18 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.19 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -329,11 +329,37 @@
 
   function isTeamGame() { return state?.gameType === 'omok2v2'; }
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
+  // Winner is the same black/white color for all eight games; 2v2 seat numbers map to team colors.
+  function resultOutcome(game, playerSeat, gameType) {
+    if (game?.status !== 'finished' || !playerSeat || !['black', 'white'].includes(game.winner)) return null;
+    const color = gameType === 'omok2v2' ? seatColor(playerSeat) : playerSeat;
+    if (!['black', 'white'].includes(color)) return null;
+    return color === game.winner ? 'win' : 'loss';
+  }
+
+  // Shared rules viewer: one disclosure and one selector for all eight games.
+  const gameRulesSelect = document.getElementById('gameRulesSelect');
+  const gameRulesText = document.getElementById('gameRulesText');
+  const gameRules = Object.freeze({
+    "omok": "15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.",
+    "omok2v2": "4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.",
+    "connect4": "7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.",
+    "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용합니다.",
+    "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
+    "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
+    "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
+    "baseball": "각자 서로 다른 숫자 3개로 비밀 숫자를 정합니다. 첫 자리는 0이 아니어야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선공부터 번갈아 추측해 먼저 3스트라이크를 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다."
+});
+  function showGameRule(type) {
+    gameRulesText.textContent = gameRules[type] || '';
+  }
 
   function selectGame(type) {
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots', 'cityking'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
+    gameRulesSelect.value = selectedGameType;
+    showGameRule(selectedGameType);
   }
 
   async function createRoom() {
@@ -561,6 +587,7 @@
       head.className = 'announcementHead';
       const title = document.createElement('strong');
       title.textContent = item.title;
+      title.title = item.title;
       if (item.pinned) {
         const pin = document.createElement('span');
         pin.className = 'announcementPin';
@@ -1010,6 +1037,8 @@
   function enterLobby() {
     stopStream();
     state = null;
+    lastResultEffectKey = null;
+    clearResultEffect();
     document.title = '게임센터';
     showView('lobby');
     renderLobbyChat();
@@ -1023,6 +1052,8 @@
     stopPresenceRefresh();
     stopLobbyStream();
     state = next;
+    lastResultEffectKey = null;
+    clearResultEffect();
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'dots', 'cityking'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
@@ -1414,8 +1445,7 @@
     renderRoleChooser();
 
     const finished = ['finished', 'draw'].includes(g.status);
-    const myColor = seat ? (team ? seatColor(seat) : seat) : null;
-    const outcome = g.status === 'finished' && myColor ? (myColor === g.winner ? 'win' : 'loss') : null;
+    const outcome = resultOutcome(g, seat, state.gameType);
     if (outcome) {
       const effectKey = `${g.round || 1}:${g.status}:${g.winner}:${seat}`;
       if (lastResultEffectKey !== effectKey) {
@@ -1450,6 +1480,8 @@
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
+    baseballPanel.classList.toggle('resultWinPanel', baseball && outcome === 'win');
+    baseballPanel.classList.toggle('resultLossPanel', baseball && outcome === 'loss');
     yutControls.classList.toggle('hidden', !yut);
     if (yut) renderYut();
     cityControls.classList.toggle('hidden', !city);
@@ -1500,6 +1532,9 @@
     if (g.status === 'selecting') baseballHint.textContent = '선공·후공을 선택하면 각자 비밀 숫자를 설정할 수 있습니다.';
     else if (g.status === 'setup') baseballHint.textContent = !seat ? '플레이어들의 비밀 숫자 준비를 기다리는 중입니다.' : (myReady ? '비밀 숫자 설정 완료. 상대방이 준비할 때까지 기다려 주세요.' : '상대에게 보이지 않을 비밀 숫자 3개를 입력해 주세요.');
     else if (g.status === 'playing') baseballHint.textContent = seat === g.turn ? '내 차례입니다! 상대의 숫자를 추측해 주세요.' : `${seatKo(g.turn)}이(가) 추측할 차례입니다.`;
+    else if (g.status === 'finished' && seat) baseballHint.textContent = resultOutcome(g, seat, state.gameType) === 'win'
+      ? '🏆 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.'
+      : '패배! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.';
     else baseballHint.textContent = g.winner ? `${seatKo(g.winner)} 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.` : '이번 판이 끝났습니다.';
     baseballHistory.replaceChildren();
     const guesses = g.guesses || [];
@@ -2248,6 +2283,7 @@
   newRoomBtn.addEventListener('click', createRoom);
   refreshPublicRoomsBtn.addEventListener('click', () => loadPublicRooms().catch(err => showToast(err.message, 3500)));
   refreshInviteTargetsBtn.addEventListener('click', () => loadInviteTargets().catch(err => showToast(err.message, 3500)));
+  gameRulesSelect.addEventListener('change', () => showGameRule(gameRulesSelect.value));
   for (const button of gameChoiceButtons) button.addEventListener('click', () => selectGame(button.dataset.game));
   leaveRoomBtn.addEventListener('click', leaveRoom);
   joinRoomForm.addEventListener('submit', joinRoom);
