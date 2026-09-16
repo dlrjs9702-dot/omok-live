@@ -108,6 +108,11 @@
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
   const toast = document.getElementById('toast');
+  const resultEffect = document.getElementById('resultEffect');
+  const resultParticles = document.getElementById('resultParticles');
+  const resultIcon = document.getElementById('resultIcon');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultMessage = document.getElementById('resultMessage');
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
 
@@ -133,6 +138,8 @@
   let editingAnnouncementId = null;
   let hover = null;
   let toastTimer = null;
+  let resultEffectTimer = null;
+  let lastResultEffectKey = null;
 
   if (sessionToken) history.replaceState(null, '', '/');
 
@@ -141,6 +148,81 @@
     toast.classList.remove('hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.add('hidden'), ms);
+  }
+
+  const victoryMessages = [
+    '완벽한 마무리! 오늘의 주인공은 당신입니다.',
+    '멋진 승리입니다. 이 보드는 지금 당신 편이네요.',
+    '상대가 재대결 버튼을 바라보고 있습니다.',
+    '결정적인 한 수! 축포를 받아주세요.',
+  ];
+  const defeatMessages = [
+    '한 수만 더 봤다면… 아, 상대는 봤네요.',
+    '이번 판은 상대의 하이라이트가 되었습니다.',
+    '보드는 이미 알고 있었습니다. 다음 판은 다르겠죠?',
+    '상대가 방금 승리를 꽤 오래 자랑할 것 같네요.',
+    '재대결 버튼이 유난히 잘 보이는 밤입니다.',
+    '괜찮아요. 상대도 이렇게 잘 풀릴 줄은 몰랐을 거예요.',
+  ];
+
+  function resultCopy(outcome, game) {
+    const list = outcome === 'win' ? victoryMessages : defeatMessages;
+    const seed = Number(game.round || 1) * 17 + Number(game.moveCount || 0) * 7 + String(state?.gameType || '').length;
+    return list[Math.abs(seed) % list.length];
+  }
+
+  function clearResultEffect() {
+    clearTimeout(resultEffectTimer);
+    resultEffect.classList.add('hidden');
+    resultEffect.classList.remove('win', 'loss', 'playing');
+    document.body.classList.remove('resultWinActive', 'resultLossActive');
+  }
+
+  function fillVictoryParticles() {
+    const colors = ['#facc15', '#f97316', '#22d3ee', '#a78bfa', '#f472b6', '#ffffff'];
+    resultParticles.replaceChildren();
+    for (let i = 0; i < 42; i += 1) {
+      const particle = document.createElement('i');
+      particle.style.setProperty('--x', `${(i * 37) % 100}vw`);
+      particle.style.setProperty('--delay', `${(i % 9) * 0.055}s`);
+      particle.style.setProperty('--duration', `${1.8 + (i % 7) * 0.12}s`);
+      particle.style.setProperty('--drift', `${((i % 11) - 5) * 8}px`);
+      particle.style.setProperty('--spin', `${180 + (i % 6) * 90}deg`);
+      particle.style.setProperty('--color', colors[i % colors.length]);
+      resultParticles.appendChild(particle);
+    }
+  }
+
+  function showResultEffect(outcome, game) {
+    const win = outcome === 'win';
+    clearTimeout(resultEffectTimer);
+    resultEffect.classList.remove('hidden', 'win', 'loss', 'playing');
+    resultEffect.classList.add(outcome);
+    resultIcon.textContent = win ? '🏆' : '😏';
+    resultTitle.textContent = win ? '화려한 승리!' : '이번 판은 패배…';
+    resultMessage.textContent = resultCopy(outcome, game);
+    resultParticles.replaceChildren();
+    if (win) fillVictoryParticles();
+    document.body.classList.toggle('resultWinActive', win);
+    document.body.classList.toggle('resultLossActive', !win);
+    // Re-run the entrance animation even if the previous round ended moments ago.
+    void resultEffect.offsetWidth;
+    resultEffect.classList.add('playing');
+    resultEffectTimer = setTimeout(() => {
+      resultEffect.classList.remove('playing');
+      clearResultEffect();
+    }, win ? 5000 : 4600);
+  }
+
+  function setResultBoardOverlay(outcome, game) {
+    const win = outcome === 'win';
+    const heading = document.createElement('strong');
+    const detail = document.createElement('span');
+    heading.textContent = win ? '🏆 승리!' : '패배';
+    detail.textContent = resultCopy(outcome, game);
+    boardOverlay.replaceChildren(heading, detail);
+    boardOverlay.classList.remove('resultWin', 'resultLoss');
+    boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss');
   }
 
   function showView(name) {
@@ -178,6 +260,8 @@
     sessionRole = '';
     sessionLabel = '';
     state = null;
+    lastResultEffectKey = null;
+    clearResultEffect();
     showView('gate');
     if (message) showToast(message, 5000);
   }
@@ -1300,6 +1384,18 @@
     renderRoleChooser();
 
     const finished = ['finished', 'draw'].includes(g.status);
+    const myColor = seat ? (team ? seatColor(seat) : seat) : null;
+    const outcome = g.status === 'finished' && myColor ? (myColor === g.winner ? 'win' : 'loss') : null;
+    if (outcome) {
+      const effectKey = `${g.round || 1}:${g.status}:${g.winner}:${seat}`;
+      if (lastResultEffectKey !== effectKey) {
+        lastResultEffectKey = effectKey;
+        showResultEffect(outcome, g);
+      }
+    } else if (!finished) {
+      lastResultEffectKey = null;
+      clearResultEffect();
+    }
     const canAct = Boolean(seat);
     const canResign = canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
     const canEndPaused = team && isHost && g.status === 'playing' && g.paused;
@@ -1325,21 +1421,31 @@
       boardOverlay.classList.add('hidden');
       renderBaseball();
     } else if (g.status === 'selecting') {
+      boardOverlay.classList.remove('resultWin', 'resultLoss');
       const choice = state.me?.choice;
       if (!choice) boardOverlay.textContent = team ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (team && g.status === 'playing' && g.paused) {
+      boardOverlay.classList.remove('resultWin', 'resultLoss');
       boardOverlay.textContent = `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
-      boardOverlay.textContent = seat ? ((team ? seatColor(seat) : seat) === g.winner ? '우리 팀 승리!' : (team ? '우리 팀 패배' : '패배')) : `${seatKo(g.winner)} 승리`;
+      if (outcome) setResultBoardOverlay(outcome, g);
+      else {
+        boardOverlay.classList.remove('resultWin', 'resultLoss');
+        boardOverlay.textContent = `${seatKo(g.winner)} 승리`;
+      }
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'draw') {
+      boardOverlay.classList.remove('resultWin', 'resultLoss');
       boardOverlay.textContent = '무승부';
       boardOverlay.classList.remove('hidden');
-    } else boardOverlay.classList.add('hidden');
+    } else {
+      boardOverlay.classList.remove('resultWin', 'resultLoss');
+      boardOverlay.classList.add('hidden');
+    }
 
     drawBoard();
   }
