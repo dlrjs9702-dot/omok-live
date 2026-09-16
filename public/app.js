@@ -231,44 +231,86 @@
     }
     for (const key of activeKeys) {
       const row = document.createElement('div');
-      row.className = 'keyRow';
-      const text = document.createElement('div');
+      row.className = 'keyRow compactKeyRow';
+
+      const main = document.createElement('div');
+      main.className = 'keyMain';
+      const identity = document.createElement('div');
+      identity.className = 'keyIdentity';
       const strong = document.createElement('strong');
       strong.textContent = key.label;
-      const small = document.createElement('small');
-      const used = key.lastUsedAt ? `최근 사용 ${new Date(key.lastUsedAt).toLocaleString('ko-KR')}` : '아직 사용 안 함';
-      const online = key.presence?.online ? (key.presence.inRoom ? '🟢 접속 중 · 방 참여 중' : '🟢 접속 중') : '⚫ 오프라인';
-      small.textContent = `${online} · ${used} · ${key.useCount || 0}회`;
-      text.append(strong, small);
-      row.appendChild(text);
-      const btn = document.createElement('button');
-      btn.className = 'danger tiny';
-      btn.textContent = '권한 취소';
-      btn.addEventListener('click', () => revokeKey(key.id, key.label));
-      row.appendChild(btn);
+      const status = document.createElement('span');
+      status.className = `keyStatus${key.presence?.online ? ' online' : ''}`;
+      status.textContent = key.presence?.online ? '접속 중' : '오프라인';
+      identity.append(strong, status);
+      main.appendChild(identity);
+
+      const actions = document.createElement('div');
+      actions.className = 'keyActions';
+      const detailBtn = document.createElement('button');
+      detailBtn.className = 'ghost tiny compactAction';
+      detailBtn.textContent = '자세히 보기';
+      const revokeBtn = document.createElement('button');
+      revokeBtn.className = 'danger tiny compactAction';
+      revokeBtn.textContent = '권한 취소';
+      revokeBtn.addEventListener('click', () => revokeKey(key.id, key.label));
+      actions.append(detailBtn, revokeBtn);
+
+      const detail = document.createElement('div');
+      detail.className = 'keyDetail hidden';
+      const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
+      const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
+      detail.textContent = `상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
+      detailBtn.addEventListener('click', () => {
+        const opening = detail.classList.contains('hidden');
+        detail.classList.toggle('hidden', !opening);
+        detailBtn.textContent = opening ? '접기' : '자세히 보기';
+      });
+
+      row.append(main, actions, detail);
       guestKeyList.appendChild(row);
     }
     for (const key of revokedKeys) {
       const row = document.createElement('div');
-      row.className = 'keyRow revoked';
-      const text = document.createElement('div');
+      row.className = 'keyRow compactKeyRow revoked';
+
+      const main = document.createElement('div');
+      main.className = 'keyMain';
+      const identity = document.createElement('div');
+      identity.className = 'keyIdentity';
       const strong = document.createElement('strong');
       strong.textContent = key.label;
-      const small = document.createElement('small');
-      small.textContent = `권한 취소됨 · ${new Date(key.revokedAt).toLocaleString('ko-KR')} · ${key.useCount || 0}회`;
-      text.append(strong, small);
+      const status = document.createElement('span');
+      status.className = 'keyStatus revokedStatus';
+      status.textContent = '취소됨';
+      identity.append(strong, status);
+      main.appendChild(identity);
+
       const actions = document.createElement('div');
       actions.className = 'keyActions';
+      const detailBtn = document.createElement('button');
+      detailBtn.className = 'ghost tiny compactAction';
+      detailBtn.textContent = '자세히 보기';
       const restoreBtn = document.createElement('button');
-      restoreBtn.className = 'secondary tiny';
+      restoreBtn.className = 'secondary tiny compactAction';
       restoreBtn.textContent = '권한 복구';
       restoreBtn.addEventListener('click', () => restoreKey(key.id, key.label));
       const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'danger tiny';
+      deleteBtn.className = 'danger tiny compactAction';
       deleteBtn.textContent = '영구 삭제';
       deleteBtn.addEventListener('click', () => deleteKey(key.id, key.label));
-      actions.append(restoreBtn, deleteBtn);
-      row.append(text, actions);
+      actions.append(detailBtn, restoreBtn, deleteBtn);
+
+      const detail = document.createElement('div');
+      detail.className = 'keyDetail hidden';
+      detail.textContent = `권한 취소 ${new Date(key.revokedAt).toLocaleString('ko-KR')} · 총 ${key.useCount || 0}회 사용`;
+      detailBtn.addEventListener('click', () => {
+        const opening = detail.classList.contains('hidden');
+        detail.classList.toggle('hidden', !opening);
+        detailBtn.textContent = opening ? '접기' : '자세히 보기';
+      });
+
+      row.append(main, actions, detail);
       revokedGuestKeyList.appendChild(row);
     }
   }
