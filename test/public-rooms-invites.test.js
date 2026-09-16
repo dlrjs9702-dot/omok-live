@@ -11,9 +11,10 @@ async function freePort() {
   return new Promise((resolve, reject) => {
     const s = net.createServer();
     s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => s.close(() => resolve(s.address()?.port || port)));
-    let port;
-    s.on('listening', () => { port = s.address().port; });
+    s.listen(0, '127.0.0.1', () => {
+      const port = s.address().port;
+      s.close(() => resolve(port));
+    });
   });
 }
 
@@ -74,7 +75,7 @@ async function withServer(t) {
 
 // Invites target one live member rather than exposing a private room's join code in public data.
 test('private rooms remain hidden; only the named lobby recipient can accept an invite', { timeout: 25000 }, async t => {
-  const { req, guest } = await withServer(t);
+  const { base, req, guest } = await withServer(t);
   const host = await guest('방장');
   const target = await guest('초대받는 사람');
   const stranger = await guest('다른 사람');
@@ -91,25 +92,34 @@ test('private rooms remain hidden; only the named lobby recipient can accept an 
   assert.doesNotMatch(JSON.stringify(listed.data), new RegExp(code));
   assert.equal((await req('/api/rooms/public/join', target.session, { roomId: privateRoom.data.state.me.roomCode })).status, 404);
   // Establish real lobby connections: the invite picker must not expose sessions or guest credentials.
-  const lobbyHeaders = { 'X-Session-Token': target.session };
   const targetStream = new AbortController();
   const strangerStream = new AbortController();
-  const targetConnection = await fetch(`http://127.0.0.1:${(new URL('http://test')).port || ''}`, { signal: targetStream.signal }).catch(() => null);
-  void targetConnection;
+  assert.equal((await fetch(base + '/api/lobby/events', { headers: { 'X-Session-Token': target.session }, signal: targetStream.signal })).status, 200);
+  assert.equal((await fetch(base + '/api/lobby/events', { headers: { 'X-Session-Token': stranger.session }, signal: strangerStream.signal })).status, 200);
+  t.after(() => { targetStream.abort(); strangerStream.abort(); });
   const available = await req('/api/lobby/players', host.session, undefined, 'GET');
   assert.equal(available.status, 200);
-  assert.ok(Array.isArray(available.data.players));
+  const targetId = available.data.players.find(person => person.label === '초대받는 사람')?.id;
+  assert.ok(targetId);
   assert.doesNotMatch(JSON.stringify(available.data), /sessionToken|guestKeyId|roomCode|tokenHash/);
-  targetStream.abort();
-  strangerStream.abort();
-  void lobbyHeaders;
-  // Lobby SSE connections are tested separately below; no account may be invited by guessing a token.
   assert.equal((await req('/api/rooms/invite', host.session, { targetId: target.session })).status, 404);
-  const passwordJoin = await req('/api/rooms/join', target.session, { code });
+  const invite = await req('/api/rooms/invite', host.session, { targetId });
+  assert.equal(invite.status, 201);
+  const received = await req('/api/invitations', target.session, undefined, 'GET');
+  assert.equal(received.data.items.length, 1);
+  assert.equal(received.data.items[0].game, '숫자야구');
+  assert.doesNotMatch(JSON.stringify(received.data), new RegExp(code));
+  assert.equal((await req('/api/invitations', stranger.session, undefined, 'GET')).data.items.length, 0);
+  assert.equal((await req('/api/invitations/' + invite.data.id + '/respond', stranger.session, { accept: true })).status, 403);
+  const accepted = await req('/api/invitations/' + invite.data.id + '/respond', target.session, { accept: true });
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.data.state.visibility, 'private');
+  assert.equal(accepted.data.state.me.roomCode, null);
+  assert.equal((await req('/api/invitations/' + invite.data.id + '/respond', target.session, { accept: true })).status, 404);
+  const passwordJoin = await req('/api/rooms/join', stranger.session, { code });
   assert.equal(passwordJoin.status, 200);
   assert.equal(passwordJoin.data.state.visibility, 'private');
   assert.equal(passwordJoin.data.state.me.roomCode, null);
-  assert.equal((await req('/api/invitations', stranger.session, undefined, 'GET')).data.items.length, 0);
 });
 
 test('public listings, spectator click-join and targeted invite accept/decline with lobby SSE', { timeout: 30000 }, async t => {

@@ -140,3 +140,37 @@
 .presenceFootnote{margin:12px 0 0;color:#64748b;font-size:.7rem;line-height:1.5}
 @media(max-width:880px){.adminPresencePanel{padding:15px}.presenceRow{grid-template-columns:minmax(0,1fr) auto;gap:5px 10px}.presenceDetail{grid-column:1/-1;grid-row:2}}
 @media(max-width:520px){.presenceStats{gap:5px}.presenceStats>div{padding:9px 6px;text-align:center}.presenceStats strong{font-size:1.12rem}.presenceStats small{font-size:.65rem}.presenceIdentity strong{max-width:50%}.presenceDetail{font-size:.72rem}}
+
+
+/* Public rooms and direct member invitations v1.6.8 */
+.visibilityChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;border:0;padding:0;margin:13px 0 16px}
+.visibilityChoices legend{font-size:.79rem;font-weight:850;color:#cbd5e1;padding:0 0 7px}
+.visibilityChoices label{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:5px;row-gap:3px;padding:9px 7px;border:1px solid #334155;background:#0f172a;border-radius:10px;font-size:.76rem;font-weight:800;cursor:pointer}
+.visibilityChoices label:has(input:checked){border-color:#60a5fa;background:#172554}
+.visibilityChoices input{accent-color:#60a5fa}
+.visibilityChoices small{grid-column:2;color:#94a3b8;font-size:.65rem;font-weight:500;line-height:1.4}
+.lobbyTopGrid>.publicRoomsCard{grid-column:2;grid-row:1;min-width:0;padding:22px}
+.lobbyTopGrid>.lobbyChatCard{grid-column:1/-1;grid-row:auto}
+.lobbyTopGrid>.publicRoomsCard h2{margin:0}
+.publicRoomsHeader{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.publicRoomsNote{font-size:.76rem;line-height:1.45;margin:9px 0 12px}
+.publicRoomList{display:grid;align-content:start;gap:8px;max-height:350px;overflow-y:auto;scrollbar-width:thin}
+.publicRoomRow,.lobbyInvitationRow,.inviteTargetRow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:10px;background:#0f172a;border:1px solid #273449;border-radius:11px}
+.publicRoomMain{display:grid;gap:4px;min-width:0}
+.publicRoomMain strong{font-size:.86rem;overflow-wrap:anywhere}
+.publicRoomMain small{color:#94a3b8;font-size:.72rem;line-height:1.4}
+.publicRoomRow button,.inviteTargetRow button{flex:0 0 auto;white-space:nowrap}
+.lobbyInvitations{margin-top:14px;padding-top:12px;border-top:1px solid #334155;display:grid;gap:8px}
+.lobbyInvitations>strong{font-size:.85rem;color:#bfdbfe}
+.lobbyInvitationRow{flex-wrap:wrap}
+.lobbyInvitationRow span{font-size:.8rem;line-height:1.5}
+.inviteActions{display:flex;gap:6px;margin-left:auto}
+.roomInvitePanel{border-top:1px solid #263246;border-bottom:1px solid #263246;padding:13px 0;margin:4px 0 18px}
+.roomInviteHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.roomInviteHead h3{font-size:.97rem;margin:0}
+.roomInvitePanel>.smallMuted{font-size:.74rem;line-height:1.5;margin:8px 0}
+.inviteTargetList{display:grid;gap:6px;max-height:195px;overflow:auto}
+.inviteTargetRow{padding:7px 9px}
+.inviteTargetRow span{font-size:.8rem;min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:880px){.lobbyTopGrid>.publicRoomsCard{grid-column:1;grid-row:auto;padding:14px}.lobbyTopGrid>.lobbyChatCard{grid-column:1}.visibilityChoices{gap:6px}}
+@media(max-width:520px){.visibilityChoices label{font-size:.69rem;padding:8px 5px}.visibilityChoices small{font-size:.61rem}.publicRoomMain strong{font-size:.8rem}.publicRoomMain small{font-size:.65rem}.publicRoomRow{padding:9px 7px}}

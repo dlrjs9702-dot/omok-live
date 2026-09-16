@@ -16,6 +16,13 @@
   const logoutBtn = document.getElementById('logoutBtn');
   const roomLogoutBtn = document.getElementById('roomLogoutBtn');
   const createRoomBtn = document.getElementById('createRoomBtn');
+  const publicRoomList = document.getElementById('publicRoomList');
+  const refreshPublicRoomsBtn = document.getElementById('refreshPublicRoomsBtn');
+  const lobbyInvitations = document.getElementById('lobbyInvitations');
+  const roomInvitePanel = document.getElementById('roomInvitePanel');
+  const inviteTargetList = document.getElementById('inviteTargetList');
+  const refreshInviteTargetsBtn = document.getElementById('refreshInviteTargetsBtn');
+  const roomCodeHelp = document.getElementById('roomCodeHelp');
   const newRoomBtn = document.getElementById('newRoomBtn');
   const gameChoiceButtons = [...document.querySelectorAll('.gameChoice')];
   const selectedGameText = document.getElementById('selectedGameText');
@@ -110,7 +117,7 @@
   let streamRetryTimer = null;
   let lobbyStreamController = null;
   let lobbyStreamRetryTimer = null;
-  let lobbyState = { messages: [], connectedCount: 0 };
+  let lobbyState = { messages: [], connectedCount: 0, rooms: [], invitations: [] };
   let announcements = [];
   let presenceTimer = null;
   let presenceLoading = false;
@@ -221,9 +228,10 @@
 
   async function createRoom() {
     try {
-      const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: selectedGameType }) });
+      const visibility = document.querySelector('input[name="roomVisibility"]:checked')?.value || 'private';
+      const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: selectedGameType, visibility }) });
       enterRoomState(data.state);
-      if (data.state?.me?.roomCode) showToast(`방 비밀번호 ${data.state.me.roomCode} 생성 완료`);
+      showToast(visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
   }
 
@@ -250,6 +258,149 @@
   function formatCodeInput() {
     const raw = roomPasswordInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     roomPasswordInput.value = raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
+  }
+
+  // No room codes, session tokens, or baseball secrets are ever placed in lobby cards.
+  function renderPublicRooms() {
+    publicRoomList.replaceChildren();
+    const rooms = Array.isArray(lobbyState.rooms) ? lobbyState.rooms : [];
+    if (!rooms.length) {
+      const empty = document.createElement('p');
+      empty.className = 'emptyState';
+      empty.textContent = '현재 공개방이 없습니다. 왼쪽에서 공개방을 만들고 상대를 기다려 보세요.';
+      publicRoomList.appendChild(empty);
+      return;
+    }
+    for (const room of rooms) {
+      const row = document.createElement('div');
+      row.className = 'publicRoomRow';
+      const main = document.createElement('div');
+      main.className = 'publicRoomMain';
+      const name = document.createElement('strong');
+      name.textContent = `${room.host || '방장'}의 ${room.gameName || gameName(room.gameType)}방`;
+      const info = document.createElement('small');
+      const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : '대국 중';
+      info.textContent = `${status} · 선수 ${room.playerCount || 0}/2 · 접속 ${room.connectedCount || 0}명`;
+      main.append(name, info);
+      const enter = document.createElement('button');
+      enter.type = 'button';
+      enter.className = room.status === 'waiting' ? 'secondary tiny' : 'ghost tiny';
+      enter.textContent = room.status === 'waiting' ? '바로 입장' : '관전하기';
+      enter.addEventListener('click', async () => {
+        enter.disabled = true;
+        try { await joinPublicRoom(room.id); }
+        catch (err) { showToast(err.message, 4200); await loadPublicRooms().catch(() => {}); }
+        finally { enter.disabled = false; }
+      });
+      row.append(main, enter);
+      publicRoomList.appendChild(row);
+    }
+  }
+
+  async function loadPublicRooms() {
+    if (!sessionToken || state) return;
+    const data = await api('/api/rooms/public');
+    lobbyState.rooms = Array.isArray(data.rooms) ? data.rooms : [];
+    renderPublicRooms();
+  }
+
+  async function joinPublicRoom(roomId) {
+    const data = await api('/api/rooms/public/join', { method: 'POST', body: JSON.stringify({ roomId }) });
+    enterRoomState(data.state);
+  }
+
+  function renderLobbyInvitations() {
+    lobbyInvitations.replaceChildren();
+    const items = (Array.isArray(lobbyState.invitations) ? lobbyState.invitations : [])
+      .filter(invite => Date.parse(invite.expiresAt) > Date.now());
+    lobbyInvitations.classList.toggle('hidden', !items.length);
+    if (!items.length) return;
+    const head = document.createElement('strong');
+    head.textContent = `✉️ 대전 초대 ${items.length}건`;
+    lobbyInvitations.appendChild(head);
+    for (const invite of items) {
+      const row = document.createElement('div');
+      row.className = 'lobbyInvitationRow';
+      const label = document.createElement('span');
+      label.textContent = `${invite.from}님이 ${invite.game} 대전을 신청했습니다.`;
+      const actions = document.createElement('div');
+      actions.className = 'inviteActions';
+      const accept = document.createElement('button');
+      accept.className = 'secondary tiny';
+      accept.type = 'button';
+      accept.textContent = '수락';
+      const decline = document.createElement('button');
+      decline.className = 'ghost tiny';
+      decline.type = 'button';
+      decline.textContent = '거절';
+      accept.addEventListener('click', () => respondInvitation(invite.id, true, [accept, decline]));
+      decline.addEventListener('click', () => respondInvitation(invite.id, false, [accept, decline]));
+      actions.append(accept, decline);
+      row.append(label, actions);
+      lobbyInvitations.appendChild(row);
+    }
+  }
+
+  async function respondInvitation(inviteId, accept, buttons) {
+    for (const button of buttons) button.disabled = true;
+    try {
+      const data = await api(`/api/invitations/${encodeURIComponent(inviteId)}/respond`, {
+        method: 'POST', body: JSON.stringify({ accept }),
+      });
+      if (data.accepted) enterRoomState(data.state);
+      else {
+        lobbyState.invitations = (lobbyState.invitations || []).filter(item => item.id !== inviteId);
+        renderLobbyInvitations();
+        showToast('초대를 거절했습니다.');
+      }
+    } catch (err) {
+      showToast(err.message, 4200);
+      try {
+        const data = await api('/api/invitations');
+        lobbyState.invitations = data.items || [];
+        renderLobbyInvitations();
+      } catch {}
+    } finally {
+      for (const button of buttons) button.disabled = false;
+    }
+  }
+
+  async function loadInviteTargets() {
+    if (!sessionToken || !state || !isHost || state.game.status !== 'selecting') return;
+    refreshInviteTargetsBtn.disabled = true;
+    try {
+      const data = await api('/api/lobby/players');
+      if (!state || !isHost || state.game.status !== 'selecting') return;
+      inviteTargetList.replaceChildren();
+      const people = Array.isArray(data.players) ? data.players : [];
+      if (!people.length) {
+        const empty = document.createElement('p');
+        empty.className = 'emptyState';
+        empty.textContent = '현재 로비에서 대기 중인 사람이 없습니다.';
+        inviteTargetList.appendChild(empty);
+      }
+      for (const person of people) {
+        const row = document.createElement('div');
+        row.className = 'inviteTargetRow';
+        const name = document.createElement('span');
+        name.textContent = person.label;
+        const send = document.createElement('button');
+        send.type = 'button';
+        send.className = 'ghost tiny';
+        send.textContent = '초대하기';
+        send.addEventListener('click', async () => {
+          send.disabled = true;
+          try {
+            await api('/api/rooms/invite', { method: 'POST', body: JSON.stringify({ targetId: person.id }) });
+            send.textContent = '초대 보냄';
+            showToast(`${person.label}님에게 대전 초대를 보냈습니다.`);
+          } catch (err) { showToast(err.message, 4200); send.disabled = false; }
+        });
+        row.append(name, send);
+        inviteTargetList.appendChild(row);
+      }
+    } catch (err) { showToast(err.message, 3500); }
+    finally { refreshInviteTargetsBtn.disabled = false; }
   }
 
   async function loadAnnouncements() {
@@ -686,6 +837,7 @@
     showView('lobby');
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
+    loadPublicRooms().catch(err => showToast(err.message, 3500));
     startLobbyStream();
     startPresenceRefresh();
   }
@@ -698,8 +850,10 @@
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
+    inviteTargetList.replaceChildren();
     renderRoom();
     startStream();
+    if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
   }
 
   function stopStream() {
@@ -768,8 +922,10 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'lobbyState') {
-      lobbyState = parsed || { messages: [], connectedCount: 0 };
+      lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       renderLobbyChat();
+      renderPublicRooms();
+      renderLobbyInvitations();
     } else if (event === 'announcements') {
       announcements = Array.isArray(parsed.items) ? parsed.items : [];
       renderAnnouncements();
@@ -989,6 +1145,10 @@
     newRoomBtn.classList.toggle('hidden', !isHost);
     hostRoomCodeBox.classList.toggle('hidden', !isHost);
     hostRoomCode.textContent = state.me?.roomCode || '----';
+    roomCodeHelp.textContent = state.visibility === 'public'
+      ? '이 방은 공개방 목록에서도 비밀번호 없이 입장할 수 있습니다.'
+      : '비공개방은 비밀번호 또는 직접 받은 초대로만 입장할 수 있습니다.';
+    roomInvitePanel.classList.toggle('hidden', !(isHost && g.status === 'selecting'));
 
     roundNumber.textContent = `${g.round || 1}판`;
     moveCountLabel.textContent = state.gameType === 'baseball' ? '추측 횟수' : '착수 수';
@@ -1410,6 +1570,8 @@
   roomLogoutBtn.addEventListener('click', logout);
   createRoomBtn.addEventListener('click', createRoom);
   newRoomBtn.addEventListener('click', createRoom);
+  refreshPublicRoomsBtn.addEventListener('click', () => loadPublicRooms().catch(err => showToast(err.message, 3500)));
+  refreshInviteTargetsBtn.addEventListener('click', () => loadInviteTargets().catch(err => showToast(err.message, 3500)));
   for (const button of gameChoiceButtons) button.addEventListener('click', () => selectGame(button.dataset.game));
   leaveRoomBtn.addEventListener('click', leaveRoom);
   joinRoomForm.addEventListener('submit', joinRoom);
