@@ -187,3 +187,6 @@
 .teamRoleButtons .teamRolePick{min-width:0;justify-content:center;font-size:.81rem;padding:10px 7px}
 .teamRoleButtons #teamSpectatorBtn{grid-column:1/-1;justify-content:center}
 @media(max-width:520px){.teamPlayers{gap:6px}.teamPlayer{padding:9px}.teamPlayer strong{font-size:.76rem}.teamPlayer small{font-size:.67rem}}
+
+/* Compact nickname change control remains inside expandable key details. */
+.keyDetail .renameAction{display:inline-flex;margin:5px 0 0 8px;vertical-align:middle}

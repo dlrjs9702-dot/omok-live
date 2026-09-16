@@ -155,8 +155,11 @@ test('admin rename endpoint validates input, invalidates prior file and active s
   assert.equal(after[0].id, id);
   assert.equal(after[0].label, '새로운이름');
   assert.equal(after[0].adminNote, '기존 관리 메모');
-  assert.equal((await request(`/api/admin/keys/${id}/revoke`, 'POST', admin)).status, 200);
-  assert.equal((await request(route, 'POST', admin, { label: '취소상태' })).status, 404);
+  const revokedIssue = await request('/api/admin/keys', 'POST', admin, { label: '취소 검증' });
+  assert.equal(revokedIssue.status, 201);
+  const revokedId = revokedIssue.data.key.id;
+  assert.equal((await request(`/api/admin/keys/${revokedId}/revoke`, 'POST', admin)).status, 200);
+  assert.equal((await request(`/api/admin/keys/${revokedId}/rename`, 'POST', admin, { label: '취소상태' })).status, 404);
   assert.equal((await request('/api/admin/keys/00000000-0000-4000-8000-000000000000/rename', 'POST', admin, { label: '없음' })).status, 404);
 });
 

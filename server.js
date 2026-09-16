@@ -826,7 +826,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.10', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.11', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1033,6 +1033,28 @@ async function requestHandler(req, res) {
     const key = await accessStore.setNote(noteMatch[1], note);
     if (!key) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
     return sendJson(res, 200, { ok: true, key });
+  }
+
+  // Rename and reissue must be atomic: the old file must not authenticate with an outdated name.
+  const renameMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/rename$/i);
+  if (renameMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    if (!checkRateLimit('rename:' + renameMatch[1], 5, 60 * 1000)) {
+      return sendError(res, 429, 'RENAME_RATE_LIMIT', '닉네임 변경이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const body = await parseJson(req);
+    if (typeof body.label !== 'string' || body.label.trim().length > 40) {
+      return sendError(res, 400, 'BAD_LABEL', '새 닉네임은 1~40자 이내로 입력해 주세요.');
+    }
+    const label = sanitizeLabel(body.label);
+    if (!label) return sendError(res, 400, 'BAD_LABEL', '새 닉네임은 1~40자 이내로 입력해 주세요.');
+    const token = newSecret(32);
+    const row = await accessStore.renameAndRotateToken(renameMatch[1], label, token);
+    if (!row) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 입장파일을 찾을 수 없습니다. 취소된 파일은 먼저 권한을 복구해 주세요.');
+    invalidateGuestSessions(row.id, '닉네임 변경으로 기존 접속이 종료됐습니다. 새 입장파일로 접속해 주세요.');
+    const fileName = safeFilename(row.label);
+    const html = makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label });
+    return sendJson(res, 200, { ok: true, key: row, fileName, html });
   }
 
   // Reissue rotates the credential on its existing row. The old HTML file and

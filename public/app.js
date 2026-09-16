@@ -691,6 +691,17 @@
       const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
       const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
       detail.textContent = `상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'ghost tiny compactAction renameAction';
+      renameBtn.textContent = '닉네임 변경';
+      renameBtn.title = '닉네임 변경 후 새 입장파일 자동 발급 · 기존 파일 무효화';
+      renameBtn.addEventListener('click', async () => {
+        renameBtn.disabled = true;
+        try { await renameKey(key.id, key.label); }
+        finally { renameBtn.disabled = false; }
+      });
+      detail.appendChild(renameBtn);
       const memoEditor = document.createElement('form');
       memoEditor.className = 'keyMemoEditor hidden';
       const memoInput = document.createElement('input');
@@ -818,6 +829,27 @@
       const data = await api(`/api/admin/keys/${id}/reissue`, { method: 'POST' });
       downloadEntryFile(data);
       showToast(`${data.fileName} 재발급 완료 · 기존 파일은 사용할 수 없습니다.`, 5000);
+      await loadGuestKeys();
+      loadPresence().catch(() => {});
+    } catch (err) { showToast(err.message, 4500); }
+  }
+
+  async function renameKey(id, oldLabel) {
+    const input = prompt(`${oldLabel}님의 새 닉네임을 입력해 주세요.\n변경 시 새 입장파일이 발급됩니다.`, oldLabel);
+    if (input === null) return;
+    const label = input.trim().replace(/\s+/g, ' ');
+    if (!label || label.length > 40 || /[<>\r\n\t]/.test(label)) {
+      return showToast('닉네임은 특수 기호 <, > 및 줄바꿈을 제외하고 1~40자로 입력해 주세요.', 4500);
+    }
+    if (label === oldLabel) return showToast('기존 닉네임과 같습니다. 파일만 바꾸려면 재발급을 이용해 주세요.');
+    if (!confirm(`${oldLabel} → ${label}\n닉네임을 변경하고 새 입장파일을 발급할까요?\n기존 파일과 접속은 즉시 무효화됩니다. 새 파일을 반드시 저장해 전달해 주세요.`)) return;
+    try {
+      const data = await api(`/api/admin/keys/${id}/rename`, {
+        method: 'POST',
+        body: JSON.stringify({ label }),
+      });
+      downloadEntryFile(data);
+      showToast(`${data.key.label} 닉네임 변경 완료 · 새 입장파일을 전달해 주세요.`, 5000);
       await loadGuestKeys();
       loadPresence().catch(() => {});
     } catch (err) { showToast(err.message, 4500); }
