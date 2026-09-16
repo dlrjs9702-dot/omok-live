@@ -190,3 +190,9 @@
 
 /* Compact nickname change control remains inside expandable key details. */
 .keyDetail .renameAction{display:inline-flex;margin:5px 0 0 8px;vertical-align:middle}
+
+
+/* Connect Four: red/yellow player identity on the existing two-person room UI. */
+.connectFourPlayers .player.black .stoneMini,.connectFourRole .blackPick .stoneMini{background:#f43f5e;border-color:#be123c}
+.connectFourPlayers .player.white .stoneMini,.connectFourRole .whitePick .stoneMini{background:#facc15;border-color:#ca8a04}
+.canvasWrap.connectFour{background:#0b1c38}

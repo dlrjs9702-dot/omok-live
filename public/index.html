@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.11" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.12" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -65,6 +65,10 @@
             <div class="gameOption" data-game-option="omok2v2">
               <button type="button" class="gameChoice" data-game="omok2v2"><strong>오목 2vs2</strong></button>
               <details class="gameRuleDetails"><summary>자세히 보기</summary><p>4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.</p></details>
+            </div>
+            <div class="gameOption" data-game-option="connect4">
+              <button type="button" class="gameChoice" data-game="connect4"><strong>사목 (4목)</strong></button>
+              <details class="gameRuleDetails"><summary>자세히 보기</summary><p>7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.</p></details>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오셀로</strong></button>
@@ -302,7 +306,7 @@
   </main>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/session-lock.js?v=1.6.9"></script>
-  <script src="/app.js?v=1.6.11"></script>
+  <script src="/session-lock.js?v=1.6.12"></script>
+  <script src="/app.js?v=1.6.12"></script>
 </body>
 </html>
