@@ -234,4 +234,6 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
 /* Connect Four: red/yellow player identity on the existing two-person room UI. */
 .connectFourPlayers .player.black .stoneMini,.connectFourRole .blackPick .stoneMini{background:#f43f5e;border-color:#be123c}
 .connectFourPlayers .player.white .stoneMini,.connectFourRole .whitePick .stoneMini{background:#facc15;border-color:#ca8a04}
+.blueRedPlayers .player.black .stoneMini,.blueRedRole .blackPick .stoneMini{background:#2563eb;border-color:#1d4ed8}
+.blueRedPlayers .player.white .stoneMini,.blueRedRole .whitePick .stoneMini{background:#ef4444;border-color:#b91c1c}
 .canvasWrap.connectFour{background:#0b1c38}
