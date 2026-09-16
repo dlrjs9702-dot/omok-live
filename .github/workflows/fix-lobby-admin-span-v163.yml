@@ -1,0 +1,40 @@
+name: Fix lobby admin span v1.6.3
+
+on:
+  push:
+    branches: [lobby-layout-v163]
+    paths:
+      - 'scripts/fix-lobby-admin-span-v163.py'
+      - '.github/workflows/fix-lobby-admin-span-v163.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply fix
+        run: python3 scripts/fix-lobby-admin-span-v163.py
+      - name: Validate
+        run: |
+          node --check server.js
+          node --check public/app.js
+          npm install --no-package-lock
+          npm test
+          grep -q '.lobbyAdminCard{grid-column:1/-1' public/styles.css
+      - name: Remove one-shot fix files
+        run: |
+          rm -f scripts/fix-lobby-admin-span-v163.py
+          rm -f .github/workflows/fix-lobby-admin-span-v163.yml
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Make admin panel full-width below lobby row [v163-layout-fix]'
+          git push origin HEAD:lobby-layout-v163
