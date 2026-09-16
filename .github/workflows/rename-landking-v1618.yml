@@ -1,0 +1,66 @@
+name: Verify and publish Land King name v1.6.18
+on:
+  push:
+    branches: [rename-landking-v1618-20260917]
+permissions:
+  contents: write
+jobs:
+  rename-test-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply guarded rename to exact deployed City King source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .release/rename-landking-v1618.py /tmp/rename-landking-v1618.py
+          git fetch origin main
+          git switch --detach origin/main
+          test "$(git rev-parse HEAD)" = '3155884a95bc59de1eadb96daa644a5753a8f9ff'
+          python3 /tmp/rename-landking-v1618.py
+          node --check server.js
+          node --check public/app.js
+          node --check lib/games/cityking.js
+          node --check lib/release-announcements.js
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install all dependencies including PostgreSQL driver
+        run: npm ci --no-audit --no-fund
+      - name: Run full regression suite
+        run: npm test
+      - name: Verify public display and compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          if (pkg.version !== '1.6.18' || lock.version !== '1.6.18') throw Error('Version mismatch');
+          require('pg');
+          const games = require('./lib/games').listGames();
+          if (games.length !== 8 || games.find(g => g.id === 'cityking')?.name !== '랜드킹') throw Error('Game registration changed');
+          const visible = ['lib/games/cityking.js', 'public/index.html', 'public/app.js', 'server.js', 'lib/release-announcements.js'];
+          for (const path of visible) if (fs.readFileSync(path, 'utf8').includes('도시왕')) throw Error('Old name in ' + path);
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          if (!html.includes('<strong>랜드킹</strong>') || !html.includes('/app.js?v=1.6.18')) throw Error('Frontend cache or label mismatch');
+          const notices = require('./lib/release-announcements');
+          for (const version of ['v1.6.17', 'v1.6.18']) if (!notices.some(n => n.key === version && n.title.includes('랜드킹'))) throw Error('Notice mismatch: ' + version);
+          for (const api of ['/api/admin/keys', '/reissue', '/rename', 'skip-city']) if (!fs.readFileSync('server.js', 'utf8').includes(api)) throw Error('Missing existing route ' + api);
+          console.log('8 original game IDs, Land King display, notices, pg and admin access verified');
+          JS
+      - name: Commit only verified application changes to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/games/cityking.js lib/release-announcements.js public/index.html public/app.js public/styles.css server.js package.json package-lock.json test/cityking.test.js test/connect4.test.js test/new-games-server.test.js
+          git diff --cached --check
+          git commit -m 'Rename City King display to Land King [v1.6.18]'
+          git push origin HEAD:main
