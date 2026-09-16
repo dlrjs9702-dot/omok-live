@@ -53,6 +53,9 @@ const sessions = new Map(); // token -> session
 const activeGuestSessions = new Map(); // guestKeyId -> sessionToken
 const rooms = new Map(); // roomId -> room
 const streams = new Map(); // roomId -> Set<{res, sessionToken}>
+const lobbyStreams = new Set(); // Set<{res, sessionToken}>
+const lobbySocial = { social: createRoomSocial() }; // memory-only, never persisted
+const LOBBY_CHAT_MESSAGES = 50;
 const rateLimits = new Map();
 let accessStore;
 let indexTemplate = '';
@@ -220,6 +223,17 @@ function releaseSessionToken(token, { message = null } = {}) {
     }
     if (!set.size) streams.delete(roomId);
   }
+  let lobbyChanged = false;
+  for (const entry of [...lobbyStreams]) {
+    if (entry.sessionToken !== token) continue;
+    try {
+      if (message) sseWrite(entry.res, 'sessionExpired', { message });
+      entry.res.end();
+    } catch {}
+    lobbyStreams.delete(entry);
+    lobbyChanged = true;
+  }
+  if (lobbyChanged) broadcastLobby();
   return true;
 }
 
@@ -283,6 +297,38 @@ function requireAdmin(req, res) {
 function sseWrite(res, event, data) {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function trimLobbyMessages() {
+  const messages = lobbySocial.social?.messages || [];
+  if (messages.length > LOBBY_CHAT_MESSAGES) {
+    messages.splice(0, messages.length - LOBBY_CHAT_MESSAGES);
+  }
+}
+
+function publicLobbyState() {
+  const liveTokens = new Set([...lobbyStreams].map((entry) => entry.sessionToken));
+  return {
+    connectedCount: liveTokens.size,
+    messages: publicChatMessages(lobbySocial).slice(-LOBBY_CHAT_MESSAGES),
+  };
+}
+
+function broadcastLobby() {
+  const state = publicLobbyState();
+  for (const entry of [...lobbyStreams]) {
+    const session = sessions.get(entry.sessionToken);
+    if (!session || session.currentRoomId) {
+      try { entry.res.end(); } catch {}
+      lobbyStreams.delete(entry);
+      continue;
+    }
+    try {
+      sseWrite(entry.res, 'lobbyState', state);
+    } catch {
+      lobbyStreams.delete(entry);
+    }
+  }
 }
 
 function uniqueLiveTokens(roomId) {
@@ -541,7 +587,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.1', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.2', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -600,6 +646,57 @@ async function requestHandler(req, res) {
     const session = getSession(req, { touch: false });
     if (session) releaseSessionToken(session.token);
     return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/lobby/chat' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '게임 방에서는 방 채팅을 이용해 주세요.');
+    const key = 'lobby-chat:' + session.token.slice(0, 12);
+    if (!checkRateLimit(key, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
+    const body = await parseJson(req);
+    const text = String(body.text || '').trim();
+    if (!text) return sendError(res, 400, 'EMPTY_CHAT', '메시지를 입력해 주세요.');
+    if (text.length > MAX_CHAT_LENGTH) return sendError(res, 400, 'CHAT_TOO_LONG', '채팅은 ' + MAX_CHAT_LENGTH + '자까지 입력할 수 있습니다.');
+    appendChatMessage(lobbySocial, session, text);
+    trimLobbyMessages();
+    broadcastLobby();
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/lobby/events' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
+    res.writeHead(200, securityHeaders({
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    }));
+    res.write(': connected\n\n');
+    const entry = { res, sessionToken: session.token };
+    lobbyStreams.add(entry);
+    broadcastLobby();
+
+    const heartbeat = setInterval(() => {
+      const current = sessions.get(session.token);
+      if (!current || current.currentRoomId) {
+        try { res.end(); } catch {}
+        clearInterval(heartbeat);
+        return;
+      }
+      current.lastSeen = nowMs();
+      if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
+      res.write(': ping\n\n');
+    }, 15000);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      lobbyStreams.delete(entry);
+      broadcastLobby();
+    });
+    return;
   }
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
@@ -802,7 +899,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.1 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.2 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

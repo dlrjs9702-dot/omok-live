@@ -8,6 +8,11 @@
   const adminPassword = document.getElementById('adminPassword');
   const identityLabel = document.getElementById('identityLabel');
   const roomIdentityLabel = document.getElementById('roomIdentityLabel');
+  const lobbyChatMessages = document.getElementById('lobbyChatMessages');
+  const lobbyChatForm = document.getElementById('lobbyChatForm');
+  const lobbyChatInput = document.getElementById('lobbyChatInput');
+  const lobbyConnectionBadge = document.getElementById('lobbyConnectionBadge');
+  const lobbyConnectedCount = document.getElementById('lobbyConnectedCount');
   const logoutBtn = document.getElementById('logoutBtn');
   const roomLogoutBtn = document.getElementById('roomLogoutBtn');
   const createRoomBtn = document.getElementById('createRoomBtn');
@@ -70,6 +75,9 @@
   let isHost = false;
   let streamController = null;
   let streamRetryTimer = null;
+  let lobbyStreamController = null;
+  let lobbyStreamRetryTimer = null;
+  let lobbyState = { messages: [], connectedCount: 0 };
   let hover = null;
   let toastTimer = null;
 
@@ -111,6 +119,7 @@
 
   function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
     stopStream();
+    stopLobbyStream();
     sessionToken = '';
     sessionRole = '';
     sessionLabel = '';
@@ -132,7 +141,7 @@
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');
       if (room.state) enterRoomState(room.state);
-      else showView('lobby');
+      else enterLobby();
     } catch (err) {
       if (err.status !== 401) showToast(err.message);
     }
@@ -194,8 +203,7 @@
     stopStream();
     try { await api('/api/room/leave', { method: 'POST', body: '{}' }); } catch {}
     state = null;
-    document.title = '게임센터';
-    showView('lobby');
+    enterLobby();
     if (sessionRole === 'admin') loadGuestKeys().catch(() => {});
   }
 
@@ -366,7 +374,17 @@
     } catch (err) { showToast(err.message); }
   }
 
+  function enterLobby() {
+    stopStream();
+    state = null;
+    document.title = '게임센터';
+    showView('lobby');
+    renderLobbyChat();
+    startLobbyStream();
+  }
+
   function enterRoomState(next) {
+    stopLobbyStream();
     state = next;
     selectedGameType = state?.gameType === 'othello' ? 'othello' : 'omok';
     seat = state?.me?.seat || null;
@@ -381,6 +399,72 @@
     streamController = null;
     clearTimeout(streamRetryTimer);
     streamRetryTimer = null;
+  }
+
+  function stopLobbyStream() {
+    if (lobbyStreamController) lobbyStreamController.abort();
+    lobbyStreamController = null;
+    clearTimeout(lobbyStreamRetryTimer);
+    lobbyStreamRetryTimer = null;
+  }
+
+  async function startLobbyStream() {
+    stopLobbyStream();
+    if (!sessionToken || state) return;
+    const controller = new AbortController();
+    lobbyStreamController = controller;
+    lobbyConnectionBadge.textContent = '연결 중';
+    lobbyConnectionBadge.classList.remove('online');
+    try {
+      const res = await fetch('/api/lobby/events', {
+        headers: { 'X-Session-Token': sessionToken, Accept: 'text/event-stream' },
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (res.status === 401) return expireSession();
+      if (!res.ok || !res.body) throw new Error('대기방 실시간 연결 실패');
+      lobbyConnectionBadge.textContent = '온라인';
+      lobbyConnectionBadge.classList.add('online');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let split;
+        while ((split = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, split).replace(/\r/g, '');
+          buffer = buffer.slice(split + 2);
+          handleLobbySseBlock(block);
+        }
+      }
+      if (!controller.signal.aborted) throw new Error('대기방 실시간 연결 종료');
+    } catch (err) {
+      if (controller.signal.aborted || state) return;
+      lobbyConnectionBadge.textContent = '재연결 중';
+      lobbyConnectionBadge.classList.remove('online');
+      lobbyStreamRetryTimer = setTimeout(() => startLobbyStream(), 1800);
+    }
+  }
+
+  function handleLobbySseBlock(block) {
+    if (!block || block.startsWith(':')) return;
+    let event = 'message';
+    let data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trim();
+    }
+    if (!data) return;
+    let parsed;
+    try { parsed = JSON.parse(data); } catch { return; }
+    if (event === 'lobbyState') {
+      lobbyState = parsed || { messages: [], connectedCount: 0 };
+      renderLobbyChat();
+    } else if (event === 'sessionExpired') {
+      expireSession(parsed.message);
+    }
   }
 
   async function startStream() {
@@ -495,6 +579,38 @@
       chip.append(dot, name, role);
       participantList.appendChild(chip);
     }
+  }
+
+  function renderLobbyChat() {
+    if (!lobbyChatMessages) return;
+    const rows = lobbyState?.messages || [];
+    lobbyConnectedCount.textContent = `대기 ${lobbyState?.connectedCount || 0}명`;
+    lobbyChatMessages.innerHTML = '';
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'chatEmpty';
+      empty.textContent = '아직 대기방 메시지가 없습니다.';
+      lobbyChatMessages.appendChild(empty);
+      return;
+    }
+    for (const row of rows) {
+      const item = document.createElement('div');
+      item.className = 'chatMessage';
+      const head = document.createElement('div');
+      head.className = 'chatMessageHead';
+      const who = document.createElement('strong');
+      who.textContent = row.label || '게스트';
+      const time = document.createElement('time');
+      const d = new Date(row.at);
+      time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      head.append(who, time);
+      const text = document.createElement('div');
+      text.className = 'chatMessageText';
+      text.textContent = row.text;
+      item.append(head, text);
+      lobbyChatMessages.appendChild(item);
+    }
+    lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
   }
 
   function renderChat() {
@@ -826,6 +942,25 @@
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
   }
 
+  async function sendLobbyChat(event) {
+    event.preventDefault();
+    const text = lobbyChatInput.value.trim();
+    if (!text) return;
+    lobbyChatInput.disabled = true;
+    try {
+      await api('/api/lobby/chat', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+      lobbyChatInput.value = '';
+    } catch (err) {
+      showToast(err.message, 3500);
+    } finally {
+      lobbyChatInput.disabled = false;
+      lobbyChatInput.focus();
+    }
+  }
+
   async function sendChat(event) {
     event.preventDefault();
     const text = chatInput.value.trim();
@@ -872,6 +1007,7 @@
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
   issueFileForm.addEventListener('submit', issueFile);
+  lobbyChatForm.addEventListener('submit', sendLobbyChat);
   chatForm.addEventListener('submit', sendChat);
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));

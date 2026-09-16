@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.1" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.2" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -70,6 +70,25 @@
           <h3 class="keySectionTitle">취소됨</h3>
           <div id="revokedGuestKeyList" class="keyList"></div>
         </article>
+      </section>
+
+      <section class="card lobbyChatCard" aria-label="대기방 채팅">
+        <div class="lobbyChatHead">
+          <div>
+            <p class="eyebrow">LOBBY CHAT</p>
+            <h2>대기방 채팅</h2>
+            <p class="muted lobbyChatNote">방에 들어가기 전 대화하는 공용 채팅입니다. 최근 50개만 임시 보관되며 서버가 재시작되면 모두 사라집니다.</p>
+          </div>
+          <div class="lobbyChatStatus">
+            <span id="lobbyConnectionBadge" class="badge">연결 중</span>
+            <small id="lobbyConnectedCount" class="smallMuted">대기 0명</small>
+          </div>
+        </div>
+        <div id="lobbyChatMessages" class="chatMessages lobbyChatMessages"></div>
+        <form id="lobbyChatForm" class="chatForm">
+          <input id="lobbyChatInput" type="text" maxlength="300" autocomplete="off" placeholder="대기방에 메시지 보내기" aria-label="대기방 메시지" />
+          <button class="secondary" type="submit">보내기</button>
+        </form>
       </section>
     </section>
 
@@ -178,7 +197,7 @@
   </main>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/session-lock.js?v=1.6.1"></script>
-  <script src="/app.js?v=1.6.1"></script>
+  <script src="/session-lock.js?v=1.6.2"></script>
+  <script src="/app.js?v=1.6.2"></script>
 </body>
 </html>

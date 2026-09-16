@@ -17,3 +17,12 @@
 .compactKeyRow .compactAction{padding:5px 7px;font-size:.67rem;border-radius:8px;white-space:nowrap}
 .keyDetail{grid-column:1/-1;padding:6px 8px;margin-top:1px;border-radius:8px;background:#0b1324;color:#94a3b8;font-size:.69rem;line-height:1.45}
 @media(max-width:520px){.compactKeyRow{padding:6px 7px;gap:5px}.keyIdentity{gap:5px}.keyIdentity strong{font-size:.78rem}.keyStatus{font-size:.63rem}.compactKeyRow .compactAction{padding:5px 6px;font-size:.62rem}}
+
+/* Lobby chat: one realtime connection only while waiting in lobby */
+.lobbyChatCard{margin-top:18px;padding:22px}
+.lobbyChatHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.lobbyChatHead h2{margin:.15em 0 .35em}
+.lobbyChatNote{margin:0;max-width:760px;font-size:.84rem}
+.lobbyChatStatus{display:flex;flex-direction:column;align-items:flex-end;gap:7px;white-space:nowrap}
+.lobbyChatMessages{height:220px;margin-top:14px}
+@media(max-width:640px){.lobbyChatCard{padding:14px}.lobbyChatHead{gap:10px}.lobbyChatNote{font-size:.76rem}.lobbyChatMessages{height:190px}}
