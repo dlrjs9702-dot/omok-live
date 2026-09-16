@@ -28,6 +28,12 @@ jobs:
               s=s[2:]
               p.write_text(s, encoding='utf-8')
           assert s.startswith("'use strict';"), repr(s[:20])
+          p=Path('test/connect4.test.js')
+          s=p.read_text(encoding='utf-8')
+          old='assert.match(html, /7열×6행/);'
+          new='assert.match(js, /7열×6행/);'
+          assert s.count(old)==1, ('Stale Connect Four rule assertion',s.count(old))
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
           PY
           node --check server.js
           node --check public/app.js
