@@ -1,0 +1,51 @@
+name: Integrate admin presence v1.6.7
+on:
+  push:
+    branches: [feature-admin-presence-v167]
+    paths:
+      - .github/workflows/apply-admin-presence-v167.yml
+      - scripts/apply-admin-presence-v167.py
+      - test/admin-presence.test.js
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply guarded dashboard and endpoint
+        run: python3 scripts/apply-admin-presence-v167.py
+      - name: Validate JavaScript syntax
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check test/admin-presence.test.js
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run all games, announcement, security and presence tests
+        run: npm test
+      - name: Check release assets and avoid exposing secret fields
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const server = fs.readFileSync('server.js', 'utf8');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const app = fs.readFileSync('public/app.js', 'utf8');
+          if (!server.includes("version: '1.6.7'")) throw Error('health version mismatch');
+          if (!server.includes("pathname === '/api/admin/presence'")) throw Error('missing admin endpoint');
+          if (!html.includes('id="adminPresencePanel"') || !html.includes('v=1.6.7')) throw Error('missing UI or cache update');
+          if (!app.includes("api('/api/admin/presence')")) throw Error('missing live fetch');
+          console.log('Dashboard release assertions passed');
+          NODE
+      - name: Remove one-shot automation
+        run: rm -f scripts/apply-admin-presence-v167.py .github/workflows/apply-admin-presence-v167.yml
+      - name: Commit verified code to feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add admin-only live presence and game dashboard [v167-applied]'
+          git push
