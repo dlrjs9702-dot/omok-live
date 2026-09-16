@@ -1,0 +1,57 @@
+name: Apply administrator notes v1.6.4
+on:
+  push:
+    branches: [admin-key-notes-v164]
+    paths: [.github/workflows/apply-admin-key-notes-v164.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply persistent administrator notes
+        run: node scripts/apply-admin-key-notes-v164.cjs
+      - name: Syntax check
+        run: |
+          node --check lib/access-store.js
+          node --check server.js
+          node --check public/app.js
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run tests
+        run: npm test
+      - name: Verify admin-only memo functionality
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const server = fs.readFileSync('server.js','utf8');
+          const store = fs.readFileSync('lib/access-store.js','utf8');
+          const app = fs.readFileSync('public/app.js','utf8');
+          const css = fs.readFileSync('public/styles.css','utf8');
+          const html = fs.readFileSync('public/index.html','utf8');
+          if (!server.includes("if (!requireAdmin(req, res)) return;\n    const body = await parseJson(req);\n    if (typeof body.note")) throw Error('Note endpoint lacks administrator guard');
+          if (!store.includes('ADD COLUMN IF NOT EXISTS admin_note')) throw Error('Missing non-destructive DB migration');
+          if (!store.includes('async setNote(id, note)')) throw Error('Missing store note update');
+          if (!app.includes('memoEditor.addEventListener(\'submit\'')) throw Error('Missing UI note saving');
+          if (!app.includes("memoPreview.textContent = note ? '· ' + note : '';")) throw Error('Missing compact memo preview');
+          if (!css.includes('.keyMemoEditor')) throw Error('Missing editor styles');
+          if (!html.includes('?v=1.6.4')) throw Error('Missing cache invalidation');
+          console.log('Admin memo route, data migration, compact UI and asset version verified.');
+          NODE
+      - name: Remove one-off migration files
+        run: |
+          rm -f scripts/apply-admin-key-notes-v164.cjs .github/workflows/apply-admin-key-notes-v164.yml
+          rmdir scripts 2>/dev/null || true
+      - name: Commit tested upgrade
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add persistent admin-only notes to guest keys [v164-applied]'
+          git push
