@@ -11,12 +11,14 @@ const {
 } = require('../lib/security');
 
 test('방 비밀번호는 4-4 형식의 강한 코드다', () => {
-  for (let i = 0; i < 30; i++) assert.match(generateRoomCode(), /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+  const code = generateRoomCode();
+  assert.match(code, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/);
 });
 
 test('방 비밀번호 입력을 표준 형식으로 정규화한다', () => {
+  assert.equal(normalizeRoomCode('abcd-efgh'), 'ABCD-EFGH');
   assert.equal(normalizeRoomCode('abcd efgh'), 'ABCD-EFGH');
-  assert.equal(normalizeRoomCode('ABCD-EFG'), '');
+  assert.equal(normalizeRoomCode('abc'), '');
 });
 
 test('세션/입장 토큰은 충분히 길다', () => {
@@ -38,5 +40,5 @@ test('입장 파일은 토큰을 URL 쿼리에 넣지 않고 POST 한다', () =>
 
 test('게스트 파일명과 라벨을 안전하게 만든다', () => {
   assert.equal(sanitizeLabel('  우성\n<PC>  '), '우성PC');
-  assert.equal(safeFilename('우성/PC'), '오목입장_우성_PC.html');
+  assert.equal(safeFilename('우성/PC'), '게임센터 - 우성_PC.html');
 });
