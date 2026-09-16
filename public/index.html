@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.6" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.7" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -99,6 +99,25 @@
           <button class="secondary" type="submit">보내기</button>
         </form>
       </section>
+
+        <section id="adminPresencePanel" class="card adminPresencePanel hidden" aria-label="관리자 접속 현황">
+          <div class="presenceHeader">
+            <div><p class="eyebrow">ADMIN · LIVE</p><h2>접속 현황</h2></div>
+            <div class="presenceHeaderActions"><small id="presenceUpdatedAt" class="smallMuted" aria-live="polite">조회 전</small><button id="presenceRefreshBtn" type="button" class="ghost tiny">새로고침</button></div>
+          </div>
+          <div class="presenceStats" aria-label="접속 현황 집계">
+            <div><strong id="presenceOnlineCount">-</strong><small>온라인</small></div>
+            <div><strong id="presencePlayingCount">-</strong><small>대국 중</small></div>
+            <div><strong id="presenceWatchingCount">-</strong><small>관전 중</small></div>
+            <div><strong id="presenceWaitingCount">-</strong><small>대기 중</small></div>
+          </div>
+          <div id="presenceOnlineList" class="presenceList" aria-live="polite"><p class="emptyState">접속 현황을 불러오는 중입니다.</p></div>
+          <details id="presenceOfflineDetails" class="presenceOfflineDetails">
+            <summary id="presenceOfflineSummary">오프라인 0명 · 자세히 보기</summary>
+            <div id="presenceOfflineList" class="presenceList"></div>
+          </details>
+          <p class="presenceFootnote">약 12초마다 갱신합니다. 비정상 종료 시 접속 상태가 최대 약 90초 늦게 반영될 수 있습니다.</p>
+        </section>
 
         <article id="adminPanel" class="card lobbyCard lobbyAdminCard hidden">
           <p class="eyebrow">ADMIN</p>
@@ -247,7 +266,7 @@
   </main>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/session-lock.js?v=1.6.6"></script>
-  <script src="/app.js?v=1.6.6"></script>
+  <script src="/session-lock.js?v=1.6.7"></script>
+  <script src="/app.js?v=1.6.7"></script>
 </body>
 </html>

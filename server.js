@@ -535,6 +535,57 @@ function guestPresence(guestKeyId) {
   };
 }
 
+// Admin-only read model. No room passwords, session tokens or baseball secrets leave the server.
+function presenceForSession(session) {
+  if (!session) return { status: 'offline', game: null, role: null, opponent: null };
+  const room = getCurrentRoom(session);
+  if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
+  const seat = findSeat(room, session.token);
+  const role = seat ? (room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공') : (seat === 'black' ? '흑' : '백')) : '관전자';
+  const game = getGame(room.gameType)?.name || '게임';
+  const otherSeat = seat === 'black' ? 'white' : 'black';
+  const opponentToken = seat ? room.players[otherSeat] : null;
+  const opponent = opponentToken ? (room.participants[opponentToken]?.label || null) : null;
+  let status = 'room-waiting';
+  if (room.game.status === 'playing') status = seat ? 'playing' : 'spectating';
+  else if (room.game.status === 'setup') status = seat ? 'preparing' : 'room-waiting';
+  else if (['finished', 'draw'].includes(room.game.status)) status = 'finished';
+  return { status, game, role, opponent };
+}
+
+async function adminPresenceSnapshot() {
+  const keys = await accessStore.list();
+  const entries = [];
+  for (const key of keys) {
+    if (key.revokedAt) continue;
+    const online = guestKeyInUse(key.id);
+    const token = online ? activeGuestSessions.get(key.id) : null;
+    const session = token ? sessions.get(token) : null;
+    entries.push({ label: key.label, note: key.adminNote || '', online: Boolean(session),
+      ...presenceForSession(session) });
+  }
+  const now = nowMs();
+  for (const session of sessions.values()) {
+    if (session.role !== 'admin') continue;
+    if (now - session.lastSeen > GUEST_LOCK_TTL_MS || now - session.createdAt > SESSION_MAX_MS) continue;
+    entries.push({ label: session.label, note: '', online: true, ...presenceForSession(session) });
+  }
+  const order = { playing: 0, spectating: 1, preparing: 2, 'room-waiting': 3, finished: 4, lobby: 5, offline: 6 };
+  entries.sort((a, b) => (order[a.status] ?? 10) - (order[b.status] ?? 10) || a.label.localeCompare(b.label, 'ko'));
+  const online = entries.filter((person) => person.online);
+  return {
+    updatedAt: nowIso(),
+    counts: {
+      online: online.length,
+      playing: online.filter((person) => person.status === 'playing').length,
+      spectating: online.filter((person) => person.status === 'spectating').length,
+      waiting: online.filter((person) => !['playing', 'spectating'].includes(person.status)).length,
+      offline: entries.length - online.length,
+    },
+    entries,
+  };
+}
+
 async function handleRoomAction(req, res, action, session) {
   const room = getCurrentRoom(session);
   if (!room) return sendError(res, 404, 'NO_ROOM', '먼저 방을 만들거나 방 비밀번호를 입력해 주세요.');
@@ -621,7 +672,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.6', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.7', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -783,6 +834,11 @@ async function requestHandler(req, res) {
     if (!removed) return sendError(res, 404, 'NOTICE_NOT_FOUND', '공지사항을 찾을 수 없습니다.');
     await broadcastAnnouncements();
     return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/admin/presence' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    return sendJson(res, 200, await adminPresenceSnapshot());
   }
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
@@ -998,7 +1054,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.6 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.7 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

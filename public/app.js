@@ -24,6 +24,17 @@
   const joinRoomForm = document.getElementById('joinRoomForm');
   const roomPasswordInput = document.getElementById('roomPasswordInput');
   const adminPanel = document.getElementById('adminPanel');
+  const adminPresencePanel = document.getElementById('adminPresencePanel');
+  const presenceRefreshBtn = document.getElementById('presenceRefreshBtn');
+  const presenceUpdatedAt = document.getElementById('presenceUpdatedAt');
+  const presenceOnlineCount = document.getElementById('presenceOnlineCount');
+  const presencePlayingCount = document.getElementById('presencePlayingCount');
+  const presenceWatchingCount = document.getElementById('presenceWatchingCount');
+  const presenceWaitingCount = document.getElementById('presenceWaitingCount');
+  const presenceOnlineList = document.getElementById('presenceOnlineList');
+  const presenceOfflineDetails = document.getElementById('presenceOfflineDetails');
+  const presenceOfflineSummary = document.getElementById('presenceOfflineSummary');
+  const presenceOfflineList = document.getElementById('presenceOfflineList');
   const announcementTab = document.getElementById('announcementTab');
   const announcementPanel = document.getElementById('announcementPanel');
   const announcementCount = document.getElementById('announcementCount');
@@ -101,6 +112,8 @@
   let lobbyStreamRetryTimer = null;
   let lobbyState = { messages: [], connectedCount: 0 };
   let announcements = [];
+  let presenceTimer = null;
+  let presenceLoading = false;
   let editingAnnouncementId = null;
   let hover = null;
   let toastTimer = null;
@@ -144,6 +157,7 @@
   function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
     stopStream();
     stopLobbyStream();
+    stopPresenceRefresh();
     sessionToken = '';
     sessionRole = '';
     sessionLabel = '';
@@ -162,6 +176,7 @@
       identityLabel.textContent = identityText();
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
+      adminPresencePanel.classList.toggle('hidden', sessionRole !== 'admin');
       announcementAddBtn.classList.toggle('hidden', sessionRole !== 'admin');
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');
@@ -344,6 +359,93 @@
       showToast(id ? '공지사항을 수정했습니다.' : '공지사항을 등록했습니다.');
     } catch (err) { showToast(err.message, 4000); }
     finally { announcementSaveBtn.disabled = false; }
+  }
+
+  function stopPresenceRefresh() {
+    clearInterval(presenceTimer);
+    presenceTimer = null;
+  }
+
+  function presenceLabel(status) {
+    return ({ lobby: '로비 대기', 'room-waiting': '방 대기', preparing: '숫자 준비 중',
+      playing: '대국 중', spectating: '관전 중', finished: '대국 종료', offline: '오프라인' })[status] || '대기 중';
+  }
+
+  function createPresenceRow(person) {
+    const row = document.createElement('div');
+    row.className = 'presenceRow';
+    const identity = document.createElement('div');
+    identity.className = 'presenceIdentity';
+    const name = document.createElement('strong');
+    name.textContent = person.label || '게스트';
+    identity.appendChild(name);
+    if (person.note) {
+      const note = document.createElement('small');
+      note.textContent = person.note;
+      note.title = person.note;
+      identity.appendChild(note);
+    }
+    const detail = document.createElement('div');
+    detail.className = 'presenceDetail';
+    if (person.game) {
+      const match = [person.game, person.role, person.opponent ? `상대 ${person.opponent}` : ''].filter(Boolean);
+      detail.textContent = match.join(' · ');
+    }
+    const badge = document.createElement('span');
+    badge.className = `presenceBadge${person.status === 'playing' ? ' isPlaying' : person.status === 'spectating' ? ' isWatching' : person.online ? ' isWaiting' : ''}`;
+    badge.textContent = presenceLabel(person.status);
+    row.append(identity, detail, badge);
+    return row;
+  }
+
+  function renderPresence(data) {
+    const counts = data.counts || {};
+    presenceOnlineCount.textContent = counts.online ?? 0;
+    presencePlayingCount.textContent = counts.playing ?? 0;
+    presenceWatchingCount.textContent = counts.spectating ?? 0;
+    presenceWaitingCount.textContent = counts.waiting ?? 0;
+    const date = new Date(data.updatedAt);
+    presenceUpdatedAt.textContent = Number.isNaN(date.getTime()) ? '방금 갱신' : `${date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} 기준`;
+    const all = Array.isArray(data.entries) ? data.entries : [];
+    const online = all.filter(person => person.online);
+    const offline = all.filter(person => !person.online);
+    presenceOnlineList.replaceChildren();
+    presenceOfflineList.replaceChildren();
+    if (!online.length) {
+      const empty = document.createElement('p');
+      empty.className = 'emptyState';
+      empty.textContent = '현재 온라인 접속자가 없습니다.';
+      presenceOnlineList.appendChild(empty);
+    }
+    for (const person of online) presenceOnlineList.appendChild(createPresenceRow(person));
+    for (const person of offline) presenceOfflineList.appendChild(createPresenceRow(person));
+    presenceOfflineSummary.textContent = `오프라인 ${offline.length}명 · 자세히 보기`;
+    presenceOfflineDetails.classList.toggle('hidden', !offline.length);
+  }
+
+  async function loadPresence() {
+    if (sessionRole !== 'admin' || !sessionToken || state || presenceLoading) return;
+    presenceLoading = true;
+    presenceRefreshBtn.disabled = true;
+    const token = sessionToken;
+    try {
+      const data = await api('/api/admin/presence');
+      if (sessionToken === token && sessionRole === 'admin' && !state) renderPresence(data);
+    } catch (err) {
+      if (err.status !== 401 && sessionToken === token) presenceUpdatedAt.textContent = `갱신 실패 · ${err.message}`;
+    } finally {
+      presenceLoading = false;
+      presenceRefreshBtn.disabled = false;
+    }
+  }
+
+  function startPresenceRefresh() {
+    stopPresenceRefresh();
+    if (sessionRole !== 'admin') return;
+    loadPresence();
+    presenceTimer = setInterval(() => {
+      if (!document.hidden) loadPresence();
+    }, 12000);
   }
 
   async function loadGuestKeys() {
@@ -585,9 +687,11 @@
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
     startLobbyStream();
+    startPresenceRefresh();
   }
 
   function enterRoomState(next) {
+    stopPresenceRefresh();
     stopLobbyStream();
     state = next;
     selectedGameType = ['othello', 'baseball'].includes(state?.gameType) ? state.gameType : 'omok';
@@ -1311,6 +1415,10 @@
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
   issueFileForm.addEventListener('submit', issueFile);
+  presenceRefreshBtn.addEventListener('click', loadPresence);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadPresence();
+  });
   lobbyChatForm.addEventListener('submit', sendLobbyChat);
   chatForm.addEventListener('submit', sendChat);
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));

@@ -116,3 +116,27 @@
 /* Keep expanded rules legible: details must not shrink to summary width. */
 .gameOption .gameRuleDetails{align-self:stretch;width:100%}
 .gameOption .gameRuleDetails p,.gameOption[data-game-option="baseball"] .gameRuleDetails p{width:100%;max-width:none}
+
+/* Admin-only online and game activity board v1.6.7 */
+.adminPresencePanel{grid-column:1/-1;min-width:0;padding:20px 24px}
+.presenceHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.presenceHeader h2{margin:0}
+.presenceHeaderActions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.presenceStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.presenceStats>div{display:grid;gap:2px;background:#0f172a;border:1px solid #273449;border-radius:12px;padding:10px 12px}
+.presenceStats strong{font-size:1.35rem;font-variant-numeric:tabular-nums}
+.presenceStats small{font-size:.73rem;color:#94a3b8}
+.presenceList{display:grid;gap:6px;max-height:310px;overflow:auto;scrollbar-width:thin}
+.presenceRow{display:grid;grid-template-columns:minmax(95px,1fr) minmax(0,1.6fr) auto;gap:9px;align-items:center;background:#0f172a;border:1px solid #273449;border-radius:11px;padding:8px 10px;min-height:42px}
+.presenceIdentity{display:flex;align-items:baseline;gap:8px;min-width:0}
+.presenceIdentity strong{white-space:nowrap;font-size:.84rem;max-width:48%;overflow:hidden;text-overflow:ellipsis}
+.presenceIdentity small{font-size:.72rem;color:#a5b4fc;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.presenceDetail{font-size:.76rem;color:#cbd5e1;min-width:0;overflow-wrap:anywhere}
+.presenceBadge{font-size:.69rem;font-weight:850;color:#94a3b8;white-space:nowrap}
+.presenceBadge.isPlaying{color:#86efac}.presenceBadge.isWatching{color:#c4b5fd}.presenceBadge.isWaiting{color:#93c5fd}
+.presenceOfflineDetails{margin-top:11px;border-top:1px solid #263246;padding-top:11px}
+.presenceOfflineDetails summary{color:#94a3b8;font-size:.77rem;font-weight:800;cursor:pointer}
+.presenceOfflineDetails .presenceList{margin-top:10px;max-height:220px}
+.presenceFootnote{margin:12px 0 0;color:#64748b;font-size:.7rem;line-height:1.5}
+@media(max-width:880px){.adminPresencePanel{padding:15px}.presenceRow{grid-template-columns:minmax(0,1fr) auto;gap:5px 10px}.presenceDetail{grid-column:1/-1;grid-row:2}}
+@media(max-width:520px){.presenceStats{gap:5px}.presenceStats>div{padding:9px 6px;text-align:center}.presenceStats strong{font-size:1.12rem}.presenceStats small{font-size:.65rem}.presenceIdentity strong{max-width:50%}.presenceDetail{font-size:.72rem}}
