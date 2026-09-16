@@ -568,6 +568,7 @@ async function handleRoomAction(req, res, action, session) {
   }
 
   if (action === 'move') {
+    if (room.gameType === 'baseball') return sendError(res, 400, 'WRONG_GAME', '숫자야구는 숫자 추측 기능을 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
