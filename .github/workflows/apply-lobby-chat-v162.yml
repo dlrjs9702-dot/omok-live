@@ -1,0 +1,46 @@
+name: Apply lobby chat v1.6.2
+
+on:
+  push:
+    branches: [lobby-chat-v162]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply upgrade
+        run: python3 scripts/apply-lobby-chat-v162.py
+      - name: Validate syntax
+        run: |
+          node --check server.js
+          node --check public/app.js
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Run tests
+        run: npm test
+      - name: Verify lobby chat wiring
+        run: |
+          grep -q "/api/lobby/chat" server.js
+          grep -q "/api/lobby/events" server.js
+          grep -q "LOBBY_CHAT_MESSAGES = 50" server.js
+          grep -q "대기방 채팅" public/index.html
+          grep -q "startLobbyStream" public/app.js
+          grep -q '"version": "1.6.2"' package.json
+      - name: Remove one-shot migration files
+        run: rm -f .github/workflows/apply-lobby-chat-v162.yml scripts/apply-lobby-chat-v162.py
+      - name: Commit applied upgrade
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Add memory-only lobby chat [v162-applied]"
+          git push
