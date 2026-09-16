@@ -1,0 +1,95 @@
+name: Rename City King to Land King v1.6.18
+on:
+  push:
+    branches: [restore-cityking-v1617-20260917]
+    paths: ['.github/workflows/rename-landking-v1618.yml']
+permissions:
+  contents: write
+jobs:
+  rename-verify-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rename display copy without changing persistent game ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git switch --detach origin/main
+          test "$(git rev-parse HEAD)" = '3155884a95bc59de1eadb96daa644a5753a8f9ff'
+          python3 - <<'PY'
+          from pathlib import Path
+          files = ['lib/games/cityking.js','public/index.html','public/app.js','server.js','lib/release-announcements.js']
+          expected = {'lib/games/cityking.js':1,'public/index.html':2,'public/app.js':2,'server.js':3,'lib/release-announcements.js':2}
+          for file in files:
+              p=Path(file)
+              s=p.read_text(encoding='utf-8')
+              assert s.count('도시왕')==expected[file], (file,s.count('도시왕'))
+              p.write_text(s.replace('도시왕','랜드킹'),encoding='utf-8')
+          for file in ['package.json','package-lock.json','public/index.html','server.js','test/connect4.test.js','test/new-games-server.test.js','test/cityking.test.js']:
+              p=Path(file)
+              s=p.read_text(encoding='utf-8')
+              assert '1.6.17' in s, file
+              p.write_text(s.replace('1.6.17','1.6.18'),encoding='utf-8')
+          releases=Path('lib/release-announcements.js')
+          text=releases.read_text(encoding='utf-8')
+          assert text.count("key: 'v1.6.17'")==1
+          assert "key: 'v1.6.18'" not in text
+          addition="""  {
+            key: 'v1.6.18',
+            title: '[업데이트] v1.6.18 랜드킹 이름 확정',
+            body: '게임 이름을 랜드킹으로 확정했습니다. 게임 선택 화면·게임판·규칙 설명과 안내 문구에 적용했습니다. 기존 게임방과 입장파일은 동일하게 사용할 수 있으며 게임 규칙은 변경되지 않습니다.',
+            publishedAt: '2026-09-16T16:10:00Z',
+          },
+          """
+          assert text.rstrip().endswith('];')
+          releases.write_text(text.rstrip()[:-2].rstrip()+'\n'+addition+'];\n',encoding='utf-8')
+          p=Path('test/cityking.test.js')
+          text=p.read_text(encoding='utf-8')
+          text=text.replace('City King is registered','Land King is registered').replace('City King UI','Land King UI')
+          text=text.replace('  assert.equal(getGame(\'cityking\'), cityking);',"  assert.equal(getGame('cityking'), cityking);\n  assert.equal(cityking.name, '랜드킹');")
+          text=text.replace('  assert.match(html, /data-game="cityking"/);',"  assert.match(html, /data-game=\"cityking\"/);\n  assert.match(html, /<strong>랜드킹<\\/strong>/);\n  assert.doesNotMatch(html, /도시왕/);\n  assert.match(js, /랜드킹/);\n  assert.doesNotMatch(js, /도시왕/);\n  assert.doesNotMatch(server, /도시왕/);")
+          p.write_text(text,encoding='utf-8')
+          assert "id: 'cityking'" in Path('lib/games/cityking.js').read_text(encoding='utf-8')
+          for file in files:
+              assert '도시왕' not in Path(file).read_text(encoding='utf-8'),file
+          print('Land King display rename verified; persistent cityking ID untouched')
+          PY
+          node --check server.js
+          node --check public/app.js
+          node --check lib/games/cityking.js
+          node --check test/cityking.test.js
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: All regression tests
+        run: npm test
+      - name: Assert full functionality and clean game naming
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');const p=require('./package.json');const lock=require('./package-lock.json');
+          if(p.version!=='1.6.18'||lock.version!=='1.6.18')throw Error('version mismatch');
+          require('pg');const games=require('./lib/games').listGames();
+          for(const id of ['omok','omok2v2','othello','baseball','connect4','yut','dots','cityking'])if(!games.some(x=>x.id===id))throw Error('game missing: '+id);
+          if(games.find(x=>x.id==='cityking').name!=='랜드킹')throw Error('display label incorrect');
+          const releases=require('./lib/release-announcements');
+          if(!releases.some(x=>x.key==='v1.6.18'&&x.title.includes('랜드킹')))throw Error('release missing');
+          const html=fs.readFileSync('public/index.html','utf8');if(!html.includes('app.js?v=1.6.18'))throw Error('stale app cache');
+          for(const route of ['/api/admin/keys','/reissue','/rename'])if(!fs.readFileSync('server.js','utf8').includes(route))throw Error('guest flow changed: '+route);
+          console.log('Eight games, persistent game ID, guest controls, PostgreSQL driver, and release copy verified');
+          NODE
+      - name: Commit verified rename to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/games/cityking.js lib/release-announcements.js public/index.html public/app.js server.js package.json package-lock.json test/connect4.test.js test/new-games-server.test.js test/cityking.test.js
+          git commit -m 'Rename City King display to Land King [v1.6.18]'
+          git push origin HEAD:main
