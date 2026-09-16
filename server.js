@@ -5,6 +5,7 @@ const fsp = require('fs/promises');
 const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
 const { createAccessStore } = require('./lib/access-store');
+const { createAnnouncementStore } = require('./lib/announcement-store');
 const {
   MAX_CHAT_LENGTH,
   createRoomSocial,
@@ -58,6 +59,7 @@ const lobbySocial = { social: createRoomSocial() }; // memory-only, never persis
 const LOBBY_CHAT_MESSAGES = 50;
 const rateLimits = new Map();
 let accessStore;
+let announcementStore;
 let indexTemplate = '';
 
 function nowIso() { return new Date().toISOString(); }
@@ -328,6 +330,15 @@ function broadcastLobby() {
     } catch {
       lobbyStreams.delete(entry);
     }
+  }
+}
+
+async function broadcastAnnouncements() {
+  const items = await announcementStore.list();
+  for (const entry of [...lobbyStreams]) {
+    if (!sessions.has(entry.sessionToken)) continue;
+    try { sseWrite(entry.res, 'announcements', { items }); }
+    catch { lobbyStreams.delete(entry); }
   }
 }
 
@@ -610,7 +621,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.5', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.6', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -701,6 +712,7 @@ async function requestHandler(req, res) {
     const entry = { res, sessionToken: session.token };
     lobbyStreams.add(entry);
     broadcastLobby();
+    sseWrite(res, 'announcements', { items: await announcementStore.list() });
 
     const heartbeat = setInterval(() => {
       const current = sessions.get(session.token);
@@ -720,6 +732,57 @@ async function requestHandler(req, res) {
       broadcastLobby();
     });
     return;
+  }
+
+  // Public to authenticated members; only administrators may modify notices.
+  if (pathname === '/api/announcements' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    return sendJson(res, 200, { items: await announcementStore.list() });
+  }
+
+  if (pathname === '/api/announcements' && req.method === 'POST') {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    if (!checkRateLimit('announcements:' + admin.token.slice(0, 12), 20, 60 * 1000)) {
+      return sendError(res, 429, 'RATE_LIMIT', '공지 변경이 너무 빠릅니다. 잠시 뒤 다시 시도해 주세요.');
+    }
+    const body = await parseJson(req);
+    if (typeof body.title !== 'string' || typeof body.body !== 'string') {
+      return sendError(res, 400, 'BAD_ANNOUNCEMENT', '공지 제목과 내용을 입력해 주세요.');
+    }
+    const title = body.title.trim();
+    const content = body.body.trim();
+    if (!title || title.length > 100 || !content || content.length > 3000) {
+      return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
+    }
+    const item = await announcementStore.create(title, content);
+    await broadcastAnnouncements();
+    return sendJson(res, 201, { ok: true, item });
+  }
+
+  const announcementMatch = pathname.match(/^\/api\/announcements\/([0-9a-f-]{36})$/i);
+  if (announcementMatch && req.method === 'PUT') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (typeof body.title !== 'string' || typeof body.body !== 'string') {
+      return sendError(res, 400, 'BAD_ANNOUNCEMENT', '공지 제목과 내용을 입력해 주세요.');
+    }
+    const title = body.title.trim();
+    const content = body.body.trim();
+    if (!title || title.length > 100 || !content || content.length > 3000) {
+      return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
+    }
+    const item = await announcementStore.update(announcementMatch[1], title, content);
+    if (!item) return sendError(res, 404, 'NOTICE_NOT_FOUND', '공지사항을 찾을 수 없습니다.');
+    await broadcastAnnouncements();
+    return sendJson(res, 200, { ok: true, item });
+  }
+  if (announcementMatch && req.method === 'DELETE') {
+    if (!requireAdmin(req, res)) return;
+    const removed = await announcementStore.remove(announcementMatch[1]);
+    if (!removed) return sendError(res, 404, 'NOTICE_NOT_FOUND', '공지사항을 찾을 수 없습니다.');
+    await broadcastAnnouncements();
+    return sendJson(res, 200, { ok: true });
   }
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
@@ -911,6 +974,7 @@ async function main() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
 
   const server = http.createServer((req, res) => {
     requestHandler(req, res).catch((err) => {
@@ -934,7 +998,7 @@ async function main() {
     }
   }, 10 * 60 * 1000).unref();
 
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.5 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.6 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
