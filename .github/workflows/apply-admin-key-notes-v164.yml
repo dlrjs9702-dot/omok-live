@@ -17,11 +17,23 @@ jobs:
           node-version: '22'
       - name: Apply persistent administrator notes
         run: node scripts/apply-admin-key-notes-v164.cjs
+      - name: Correct PostgreSQL mock fixture
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'test/access-store.test.js';
+          let data = fs.readFileSync(file, 'utf8');
+          const old = 'const store = Object.create(PostgresAccessStore.prototype);';
+          if (!data.includes(old)) throw Error('Expected mock fixture missing');
+          data = data.replace(old, "const store = new PostgresAccessStore('postgres://mock:mock@localhost:5432/mock');");
+          fs.writeFileSync(file, data);
+          NODE
       - name: Syntax check
         run: |
           node --check lib/access-store.js
           node --check server.js
           node --check public/app.js
+          node --check test/access-store.test.js
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Run tests
