@@ -79,8 +79,10 @@
 .noticePanel{padding-top:3px;border-top:1px solid #263246}
 .announcementList{display:grid;gap:6px;max-height:360px;overflow-y:auto;scrollbar-width:thin;margin-top:9px}
 .announcementRow{border:1px solid #263246;background:#0e1729;border-radius:10px;padding:9px 12px;min-width:0}
+.announcementRow.isPinned{border-color:#475569;background:linear-gradient(135deg,#172033,#111827)}
 .announcementHead{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .announcementHead strong{font-size:.84rem;overflow-wrap:anywhere;min-width:0}
+.announcementPin{display:inline-flex;align-items:center;margin-right:7px;padding:2px 6px;border-radius:999px;background:#f59e0b;color:#1f2937;font-size:.62rem;font-weight:900;vertical-align:1px}
 .announcementHead time{color:#94a3b8;white-space:nowrap;font-size:.68rem}
 .announcementDetails{margin-top:5px}
 .announcementDetails summary,.helpDisclosure summary,.gameRuleDetails summary,.roomRuleDetails summary{color:#93c5fd;cursor:pointer;list-style:none;font-size:.73rem;font-weight:800;user-select:none}
@@ -92,6 +94,8 @@
 .noticeForm{display:grid;gap:7px;margin-top:12px;border:1px solid #334155;border-radius:12px;background:#0b1324;padding:14px}
 .noticeForm strong{margin-bottom:3px}.noticeForm label{font-size:.77rem;font-weight:800;color:#cbd5e1}
 .noticeForm input,.noticeForm textarea{display:block;width:100%;min-width:0;resize:vertical;font:inherit;color:#f8fafc;background:#111827;border:1px solid #334155;border-radius:9px;padding:10px;outline:none}
+.noticeForm .noticePinOption{display:flex;align-items:center;gap:8px;padding:5px 1px;color:#f8fafc;cursor:pointer}
+.noticeForm .noticePinOption input{width:17px;height:17px;margin:0;accent-color:#f59e0b}
 .noticeForm input:focus,.noticeForm textarea:focus{border-color:#60a5fa}
 .noticeFormActions{display:flex;gap:8px;justify-content:flex-end;margin-top:5px}
 .helpHeading{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 12px}

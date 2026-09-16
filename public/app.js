@@ -51,6 +51,7 @@
   const announcementFormTitle = document.getElementById('announcementFormTitle');
   const announcementTitle = document.getElementById('announcementTitle');
   const announcementBody = document.getElementById('announcementBody');
+  const announcementPinned = document.getElementById('announcementPinned');
   const announcementSaveBtn = document.getElementById('announcementSaveBtn');
   const announcementCancelBtn = document.getElementById('announcementCancelBtn');
   const issueFileForm = document.getElementById('issueFileForm');
@@ -425,6 +426,7 @@
     editingAnnouncementId = null;
     announcementTitle.value = '';
     announcementBody.value = '';
+    announcementPinned.checked = false;
     announcementForm.classList.add('hidden');
     announcementFormTitle.textContent = '공지 등록';
   }
@@ -437,6 +439,7 @@
     announcementFormTitle.textContent = item ? '공지 수정' : '공지 등록';
     announcementTitle.value = item?.title || '';
     announcementBody.value = item?.body || '';
+    announcementPinned.checked = item?.pinned === true;
     announcementForm.classList.remove('hidden');
     announcementTitle.focus();
   }
@@ -455,10 +458,18 @@
     for (const item of announcements) {
       const row = document.createElement('article');
       row.className = 'announcementRow';
+      if (item.pinned) row.classList.add('isPinned');
       const head = document.createElement('div');
       head.className = 'announcementHead';
       const title = document.createElement('strong');
       title.textContent = item.title;
+      if (item.pinned) {
+        const pin = document.createElement('span');
+        pin.className = 'announcementPin';
+        pin.textContent = '고정';
+        pin.setAttribute('aria-label', '상단 고정 공지');
+        title.prepend(pin);
+      }
       const time = document.createElement('time');
       const date = new Date(item.createdAt);
       time.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -514,7 +525,7 @@
     try {
       await api(id ? `/api/announcements/${id}` : '/api/announcements', {
         method: id ? 'PUT' : 'POST',
-        body: JSON.stringify({ title, body }),
+        body: JSON.stringify({ title, body, pinned: announcementPinned.checked }),
       });
       closeAnnouncementEditor();
       await loadAnnouncements();

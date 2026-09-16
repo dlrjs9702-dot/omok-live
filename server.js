@@ -9,6 +9,7 @@ const isTeam = (room) => room.gameType === 'omok2v2';
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
+const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
   createRoomSocial,
@@ -826,7 +827,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.12', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.13', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -970,7 +971,7 @@ async function requestHandler(req, res) {
     if (!title || title.length > 100 || !content || content.length > 3000) {
       return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
     }
-    const item = await announcementStore.create(title, content);
+    const item = await announcementStore.create(title, content, body.pinned === true);
     await broadcastAnnouncements();
     return sendJson(res, 201, { ok: true, item });
   }
@@ -987,7 +988,7 @@ async function requestHandler(req, res) {
     if (!title || title.length > 100 || !content || content.length > 3000) {
       return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
     }
-    const item = await announcementStore.update(announcementMatch[1], title, content);
+    const item = await announcementStore.update(announcementMatch[1], title, content, body.pinned === true);
     if (!item) return sendError(res, 404, 'NOTICE_NOT_FOUND', '공지사항을 찾을 수 없습니다.');
     await broadcastAnnouncements();
     return sendJson(res, 200, { ok: true, item });
@@ -1339,6 +1340,12 @@ async function main() {
   indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  if (process.env.NODE_ENV !== 'test') {
+    await announcementStore.seedReleases(releaseAnnouncements);
+    const notices = await announcementStore.list();
+    const nicknamePinned = notices.some(item => item.pinned && /닉네임.*변경.*안내/.test(item.title));
+    console.log(`공지사항 동기화: ${notices.length}개 · 닉네임 변경안내 고정 ${nicknamePinned ? '확인' : '미확인'}`);
+  }
 
   const server = http.createServer((req, res) => {
     requestHandler(req, res).catch((err) => {
@@ -1363,7 +1370,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.12 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.13 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
