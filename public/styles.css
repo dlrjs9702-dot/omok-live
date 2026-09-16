@@ -118,6 +118,19 @@ body.resultWinActive .canvasWrap,body.resultWinActive .baseballPanel{box-shadow:
 @keyframes resultCardIn{0%{opacity:0;transform:scale(.72) translateY(26px)}65%{opacity:1;transform:scale(1.04) translateY(-3px)}100%{opacity:1;transform:scale(1) translateY(0)}}@keyframes resultShine{0%{transform:translateX(-65%) rotate(8deg)}100%{transform:translateX(65%) rotate(8deg)}}@keyframes resultLightMove{from{opacity:.45;transform:scale(.86) translate3d(-2vw,-1vh,0)}to{opacity:.9;transform:scale(1.12) translate3d(3vw,2vh,0)}}@keyframes confettiFall{0%{opacity:0;transform:translate3d(0,-5vh,0) rotate(0)}12%{opacity:1}100%{opacity:0;transform:translate3d(var(--drift),105vh,0) rotate(var(--spin))}}@keyframes winBoardPulse{from{filter:brightness(.95)}to{filter:brightness(1.16)}}@keyframes lossCardFlicker{from{filter:brightness(.78)}to{filter:brightness(1)}}
 @media(max-width:520px){.resultEffectCard{padding:25px 20px;border-radius:21px}.resultParticles i{width:8px;height:14px}}
 @media(prefers-reduced-motion:reduce){.resultEffect.playing .resultEffectCard,.resultEffect.playing .resultLight,.resultParticles i,.boardOverlay.resultWin,.resultEffect.loss .resultEffectCard{animation:none!important}.resultEffect.playing .resultEffectCard{opacity:1;transform:none}.resultParticles{display:none}}
+
+/* v1.6.15: server-authoritative two-player Yut Nori. */
+.canvasWrap.yutBoard{background:#d2a35c}
+.yutControls{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #334155;border-radius:15px;background:linear-gradient(145deg,#111c30,#0b1324)}
+.yutThrowSummary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.yutLastThrow{font-size:1.02rem;font-weight:900;color:#fde68a}
+.yutHint{margin:0;color:#cbd5e1;font-size:.86rem;line-height:1.5}
+.yutMoveChoices{display:flex;flex-wrap:wrap;gap:8px;min-height:20px}
+.yutPieceChoice{background:#1d4ed8;color:#fff;border:1px solid #60a5fa;padding:10px 12px}
+.yutPieceChoice:hover:not(:disabled){background:#2563eb}
+body.resultWinActive .yutControls{box-shadow:0 0 0 2px rgba(250,204,21,.55),0 0 34px rgba(250,204,21,.3)}
+body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shadow:0 0 0 2px rgba(127,29,29,.65)}
+@media(max-width:520px){.yutControls{padding:11px}.yutThrowSummary{align-items:stretch;flex-direction:column}.yutThrowSummary button{width:100%}.yutPieceChoice{flex:1 1 calc(50% - 8px);font-size:.78rem}}
 .noticeForm input:focus,.noticeForm textarea:focus{border-color:#60a5fa}
 .noticeFormActions{display:flex;gap:8px;justify-content:flex-end;margin-top:5px}
 .helpHeading{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 12px}

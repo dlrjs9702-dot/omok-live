@@ -188,5 +188,5 @@ test('team mode appears in lobby and its isolated seat controls are used only in
   assert.match(html, /id="endGameBtn"/);
   assert.match(app, /state\.game\.nextSeat !== seat/);
   assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !team\)/);
-  assert.match(html, /v=1\.6\.14/);
+  assert.match(html, /v=1\.6\.15/);
 });
