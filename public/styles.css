@@ -112,3 +112,7 @@
 .roomRuleDetails p{margin-top:9px}
 @media(max-width:880px){.noticeCard{padding:0 14px 12px}}
 @media(max-width:520px){.noticeCard{margin-bottom:10px;padding:0 11px 10px}.noticeBar{min-height:48px}.announcementRow{padding:8px}.announcementHead strong{font-size:.78rem}.announcementHead time{font-size:.62rem}.gamePicker{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.gameOption .gameChoice{min-height:43px}.helpHeading h2{font-size:1.12rem}}
+
+/* Keep expanded rules legible: details must not shrink to summary width. */
+.gameOption .gameRuleDetails{align-self:stretch;width:100%}
+.gameOption .gameRuleDetails p,.gameOption[data-game-option="baseball"] .gameRuleDetails p{width:100%;max-width:none}
