@@ -114,7 +114,7 @@ test('lobby has top notice tab and all guidance and game rules are closed by def
   assert.ok(html.indexOf('id="announcementsCard"') < html.indexOf('class="lobbyTopGrid"'));
   assert.match(html, /id="announcementTab"/);
   assert.match(html, /id="announcementForm" class="noticeForm hidden"/);
-  assert.equal((html.match(/class="gameRuleDetails"/g) || []).length, 3);
+  assert.equal((html.match(/class="gameRuleDetails"/g) || []).length, 4);
   assert.equal((html.match(/class="helpDisclosure"/g) || []).length, 3);
   assert.doesNotMatch(html, /class="(?:helpDisclosure|gameRuleDetails)" open/);
   assert.match(app, /announcementAddBtn\.classList\.toggle\('hidden', sessionRole !== 'admin'\)/);

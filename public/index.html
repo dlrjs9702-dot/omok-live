@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.8" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.9" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -61,6 +61,10 @@
             <div class="gameOption" data-game-option="omok">
               <button type="button" class="gameChoice selected" data-game="omok"><strong>오목</strong></button>
               <details class="gameRuleDetails"><summary>자세히 보기</summary><p>15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p></details>
+            </div>
+            <div class="gameOption" data-game-option="omok2v2">
+              <button type="button" class="gameChoice" data-game="omok2v2"><strong>오목 2vs2</strong></button>
+              <details class="gameRuleDetails"><summary>자세히 보기</summary><p>4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.</p></details>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오셀로</strong></button>
@@ -175,7 +179,7 @@
             <span id="connectionBadge" class="badge">연결 중</span>
           </div>
 
-          <div class="players" aria-label="플레이어 상태">
+          <div id="standardPlayers" class="players" aria-label="플레이어 상태">
             <div id="blackPlayer" class="player black">
               <span class="stoneMini"></span>
               <div><strong>흑</strong><small>선택 가능</small></div>
@@ -187,15 +191,24 @@
             </div>
           </div>
 
+          <div id="teamPlayers" class="teamPlayers hidden" aria-label="4인 팀 선수와 착수 순서"></div>
+
           <div id="roleChooser" class="roleChooser hidden">
             <div>
               <strong>이번 대국 역할 선택</strong>
               <small>매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.</small>
             </div>
-            <div class="roleButtons">
+            <div id="standardRoleButtons" class="roleButtons">
               <button id="chooseBlackBtn" class="rolePick blackPick"><span class="stoneMini"></span>흑 선택</button>
               <button id="chooseWhiteBtn" class="rolePick whitePick"><span class="stoneMini"></span>백 선택</button>
               <button id="chooseSpectatorBtn" class="rolePick spectatorPick"><span class="spectatorIcon">◎</span>관전 선택</button>
+            </div>
+            <div id="teamRoleButtons" class="teamRoleButtons hidden" aria-label="4인 자리 선택">
+              <button type="button" data-team-seat="1" class="rolePick teamRolePick blackPick">⚫ 1번 · 흑팀</button>
+              <button type="button" data-team-seat="2" class="rolePick teamRolePick whitePick">⚪ 2번 · 백팀</button>
+              <button type="button" data-team-seat="3" class="rolePick teamRolePick blackPick">⚫ 3번 · 흑팀</button>
+              <button type="button" data-team-seat="4" class="rolePick teamRolePick whitePick">⚪ 4번 · 백팀</button>
+              <button id="teamSpectatorBtn" type="button" class="rolePick spectatorPick">◎ 관전 선택</button>
             </div>
           </div>
 
@@ -230,6 +243,7 @@
           <div class="mobileActions">
             <button id="resignBtn" class="danger subtle">기권</button>
             <button id="nextRoundBtn" class="primary hidden">다음 판 준비</button>
+            <button id="endGameBtn" class="ghost hidden">중단된 대국 종료</button>
           </div>
         </div>
 
@@ -274,6 +288,7 @@
           <div class="sideActions">
             <button id="sideResignBtn" class="danger subtle">기권하기</button>
             <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
+            <button id="sideEndGameBtn" class="ghost hidden">중단된 대국 종료</button>
           </div>
 
           <details class="rules roomRuleDetails">
@@ -286,7 +301,7 @@
   </main>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/session-lock.js?v=1.6.8"></script>
-  <script src="/app.js?v=1.6.8"></script>
+  <script src="/session-lock.js?v=1.6.9"></script>
+  <script src="/app.js?v=1.6.9"></script>
 </body>
 </html>

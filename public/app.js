@@ -64,6 +64,12 @@
   const connectionBadge = document.getElementById('connectionBadge');
   const statusText = document.getElementById('statusText');
   const seatLabel = document.getElementById('seatLabel');
+  const standardPlayers = document.getElementById('standardPlayers');
+  const teamPlayers = document.getElementById('teamPlayers');
+  const standardRoleButtons = document.getElementById('standardRoleButtons');
+  const teamRoleButtons = document.getElementById('teamRoleButtons');
+  const teamSeatButtons = [...document.querySelectorAll('[data-team-seat]')];
+  const teamSpectatorBtn = document.getElementById('teamSpectatorBtn');
   const blackPlayer = document.getElementById('blackPlayer');
   const whitePlayer = document.getElementById('whitePlayer');
   const roleChooser = document.getElementById('roleChooser');
@@ -84,6 +90,8 @@
   const moveCountLabel = document.getElementById('moveCountLabel');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
+  const endGameBtn = document.getElementById('endGameBtn');
+  const sideEndGameBtn = document.getElementById('sideEndGameBtn');
   const nextRoundBtn = document.getElementById('nextRoundBtn');
   const sideNextRoundBtn = document.getElementById('sideNextRoundBtn');
   const roundNumber = document.getElementById('roundNumber');
@@ -217,11 +225,14 @@
   }
 
   function gameName(type) {
-    return type === 'baseball' ? '숫자야구' : (type === 'othello' ? '오셀로' : '오목');
+    return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구' : (type === 'othello' ? '오셀로' : '오목');
   }
 
+  function isTeamGame() { return state?.gameType === 'omok2v2'; }
+  function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
+
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
   }
@@ -279,8 +290,8 @@
       const name = document.createElement('strong');
       name.textContent = `${room.host || '방장'}의 ${room.gameName || gameName(room.gameType)}방`;
       const info = document.createElement('small');
-      const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : '대국 중';
-      info.textContent = `${status} · 선수 ${room.playerCount || 0}/2 · 접속 ${room.connectedCount || 0}명`;
+      const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : room.status === 'paused' ? '일시정지' : '대국 중';
+      info.textContent = `${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
       main.append(name, info);
       const enter = document.createElement('button');
       enter.type = 'button';
@@ -846,7 +857,7 @@
     stopPresenceRefresh();
     stopLobbyStream();
     state = next;
-    selectedGameType = ['othello', 'baseball'].includes(state?.gameType) ? state.gameType : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
@@ -996,15 +1007,17 @@
   }
 
   function choiceKo(choice) {
-    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : '흑';
-    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : '백';
+    if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
+    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : (isTeamGame() ? '흑팀' : '흑');
+    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : (isTeamGame() ? '백팀' : '백');
     if (choice === 'spectator') return '관전';
     return '미선택';
   }
 
   function seatKo(value) {
-    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : '흑';
-    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : '백';
+    if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
+    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : (isTeamGame() ? '흑팀' : '흑');
+    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : (isTeamGame() ? '백팀' : '백');
     return '관전';
   }
 
@@ -1019,6 +1032,7 @@
   }
 
   function participantRoleText(p) {
+    if (isTeamGame() && ['1','2','3','4'].includes(p.seat)) return seatKo(p.seat);
     if (p.seat === 'black') return seatKo('black');
     if (p.seat === 'white') return seatKo('white');
     if (p.choice === 'spectator') return '관전';
@@ -1115,11 +1129,41 @@
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
+  function renderTeamPlayers() {
+    teamPlayers.replaceChildren();
+    for (const number of ['1','2','3','4']) {
+      const player = state.players[number];
+      const card = document.createElement('div');
+      const color = seatColor(number);
+      card.className = `teamPlayer ${color}${seat === number ? ' mySeat' : ''}${state.game.nextSeat === number && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
+      const title = document.createElement('strong');
+      title.textContent = `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
+      const name = document.createElement('small');
+      name.textContent = player ? `${player.label} · ${player.connected ? '접속 중' : '연결 끊김'}` : '자리 선택 가능';
+      card.append(title, name);
+      teamPlayers.appendChild(card);
+    }
+  }
+
   function renderRoleChooser() {
     const g = state.game;
     const choice = state.me?.choice;
     const selecting = g.status === 'selecting';
     const baseball = state.gameType === 'baseball';
+    const team = isTeamGame();
+    standardRoleButtons.classList.toggle('hidden', team);
+    teamRoleButtons.classList.toggle('hidden', !team);
+    roleChooser.classList.toggle('hidden', !selecting);
+    if (team) {
+      roleChooser.querySelector('small').textContent = '1·3번은 흑팀, 2·4번은 백팀입니다. 네 명이 모두 자리를 정하면 1→2→3→4 순서로 시작합니다.';
+      for (const button of teamSeatButtons) {
+        const number = button.dataset.teamSeat;
+        button.disabled = Boolean(state.players[number] && seat !== number);
+        button.classList.toggle('selected', choice === number);
+      }
+      teamSpectatorBtn.classList.toggle('selected', choice === 'spectator');
+      return;
+    }
     chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : '흑 선택';
     chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : '백 선택';
     roleChooser.querySelector('small').textContent = baseball
@@ -1149,6 +1193,9 @@
       ? '이 방은 공개방 목록에서도 비밀번호 없이 입장할 수 있습니다.'
       : '비공개방은 비밀번호 또는 직접 받은 초대로만 입장할 수 있습니다.';
     roomInvitePanel.classList.toggle('hidden', !(isHost && g.status === 'selecting'));
+    const team = isTeamGame();
+    standardPlayers.classList.toggle('hidden', team);
+    teamPlayers.classList.toggle('hidden', !team);
 
     roundNumber.textContent = `${g.round || 1}판`;
     moveCountLabel.textContent = state.gameType === 'baseball' ? '추측 횟수' : '착수 수';
@@ -1161,15 +1208,21 @@
     gameScoreText.textContent = scores ? `흑 ${scores.black} · 백 ${scores.white}` : '-';
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
-    if (g.status === 'selecting') statusText.textContent = '역할 선택 중';
+    if (g.status === 'selecting') statusText.textContent = team ? '4명 자리 선택 중' : '역할 선택 중';
     else if (g.status === 'setup') statusText.textContent = '비밀 숫자 설정 중';
     else if (g.status === 'playing') {
-      statusText.textContent = `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
+      statusText.textContent = team ? (g.paused
+        ? `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 복귀 대기`
+        : `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`)
+        : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
     } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
     else statusText.textContent = '무승부';
 
-    setPlayerCard(blackPlayer, 'black', state.players.black);
-    setPlayerCard(whitePlayer, 'white', state.players.white);
+    if (team) renderTeamPlayers();
+    else {
+      setPlayerCard(blackPlayer, 'black', state.players.black);
+      setPlayerCard(whitePlayer, 'white', state.players.white);
+    }
     renderParticipants();
     renderChat();
     renderRoleChooser();
@@ -1177,6 +1230,11 @@
     const finished = ['finished', 'draw'].includes(g.status);
     const canAct = Boolean(seat);
     const canResign = canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
+    const canEndPaused = team && isHost && g.status === 'playing' && g.paused;
+    for (const b of [endGameBtn, sideEndGameBtn]) {
+      b.classList.toggle('hidden', !canEndPaused);
+      b.disabled = !canEndPaused;
+    }
     for (const b of [resignBtn, sideResignBtn]) {
       b.classList.toggle('hidden', !canResign);
       b.disabled = !canResign;
@@ -1195,12 +1253,15 @@
       renderBaseball();
     } else if (g.status === 'selecting') {
       const choice = state.me?.choice;
-      if (!choice) boardOverlay.textContent = '흑 · 백 · 관전 중 역할을 선택하세요';
+      if (!choice) boardOverlay.textContent = team ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
+    } else if (team && g.status === 'playing' && g.paused) {
+      boardOverlay.textContent = `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 플레이어를 기다리는 중`;
+      boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
-      boardOverlay.textContent = seat ? (g.winner === seat ? '승리!' : '패배') : `${seatKo(g.winner)} 승리`;
+      boardOverlay.textContent = seat ? ((team ? seatColor(seat) : seat) === g.winner ? '우리 팀 승리!' : (team ? '우리 팀 패배' : '패배')) : `${seatKo(g.winner)} 승리`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'draw') {
       boardOverlay.textContent = '무승부';
@@ -1305,7 +1366,7 @@
         if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
       }
     }
-    if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seat);
+    if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }
 
   function drawOthelloDisc(x, y, color, last) {
@@ -1452,7 +1513,8 @@
 
   function canPlace(x, y) {
     if (state?.gameType === 'baseball') return false;
-    if (!state || !seat || state.game.status !== 'playing' || state.game.turn !== seat) return false;
+    if (!state || !seat || state.game.status !== 'playing') return false;
+    if (isTeamGame() ? (state.game.paused || state.game.nextSeat !== seat) : state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
       return (state.game.legalMoves || []).some((move) => move.x === x && move.y === y);
     }
@@ -1589,6 +1651,10 @@
   chooseBlackBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'black' }));
   chooseWhiteBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'white' }));
   chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
+  for (const button of teamSeatButtons) button.addEventListener('click', () => roomAction('choose-role', { choice: button.dataset.teamSeat }));
+  teamSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
+  endGameBtn.addEventListener('click', () => confirm('중단된 대국을 승패 없이 종료할까요?') && roomAction('end-game'));
+  sideEndGameBtn.addEventListener('click', () => confirm('중단된 대국을 승패 없이 종료할까요?') && roomAction('end-game'));
   resignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
   sideResignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
   nextRoundBtn.addEventListener('click', () => roomAction('next-round'));

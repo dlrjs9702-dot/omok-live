@@ -4,6 +4,9 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
+const TEAM_SEATS = ['1', '2', '3', '4'];
+const isTeam = (room) => room.gameType === 'omok2v2';
+const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const {
@@ -245,6 +248,14 @@ function releaseSessionToken(token, { message = null } = {}) {
     lobbyStreams.delete(entry);
     lobbyChanged = true;
   }
+  for (const room of rooms.values()) {
+    const p = room.participants[token];
+    if (!p || !isTeam(room)) continue;
+    p.connected = false;
+    p.rejoinable = Boolean(findSeat(room, token) && room.game.status === 'playing');
+    syncTeamPause(room);
+    broadcast(room);
+  }
   if (lobbyChanged || session.currentRoomId || cancelledInvitation) broadcastLobby();
   return true;
 }
@@ -336,10 +347,13 @@ function publicRoomSummary(room) {
   return {
     id: room.id, gameType: room.gameType, gameName: engine?.name || '게임',
     host: host.label || '방장',
-    playerCount: Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
+    playerCount: isTeam(room) ? TEAM_SEATS.filter(seat => room.players[seat]).length
+      : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
+    maxPlayers: isTeam(room) ? 4 : 2,
     connectedCount: Object.values(room.participants).filter(p => p.connected && sessions.has(p.sessionToken)).length,
     status: room.game.status === 'selecting' ? 'waiting'
-      : ['finished', 'draw'].includes(room.game.status) ? 'finished' : 'playing',
+      : ['finished', 'draw'].includes(room.game.status) ? 'finished'
+      : room.game.paused ? 'paused' : 'playing',
   };
 }
 
@@ -418,6 +432,8 @@ function newParticipant(session, connected = false) {
   return {
     sessionToken: session.token,
     label: session.label,
+    guestKeyId: session.guestKeyId, // server-only identity for interrupted game reconnection
+    rejoinable: false,
     connected,
     joinedAt: nowIso(),
     lastSeen: nowIso(),
@@ -441,7 +457,9 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: { black: null, white: null },
+    players: gameEngine.id === 'omok2v2'
+      ? { '1': null, '2': null, '3': null, '4': null }
+      : { black: null, white: null },
     social: createRoomSocial(),
     game: gameEngine.create(),
   };
@@ -453,10 +471,25 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 
 function registerParticipant(room, session) {
   const isNew = !room.participants[session.token];
+  let reclaimedSeat = null;
+  if (isNew && isTeam(room) && session.guestKeyId) {
+    for (const [oldToken, old] of Object.entries(room.participants)) {
+      if (old.guestKeyId !== session.guestKeyId || old.connected || sessions.has(oldToken)) continue;
+      const oldSeat = findSeat(room, oldToken);
+      if (!oldSeat) continue;
+      room.players[oldSeat] = session.token;
+      if (room.hostSessionToken === oldToken) room.hostSessionToken = session.token;
+      delete room.participants[oldToken];
+      reclaimedSeat = oldSeat;
+      break;
+    }
+  }
   if (isNew) room.participants[session.token] = newParticipant(session, true);
   const p = room.participants[session.token];
+  if (reclaimedSeat) p.choice = reclaimedSeat;
   p.label = session.label;
   p.connected = true;
+  p.rejoinable = false;
   p.lastSeen = nowIso();
   if (room.game.status !== 'selecting' && !findSeat(room, session.token)) p.choice = 'spectator';
   if (isNew) appendSystemMessage(room, (session.label || '게스트') + '님이 입장했습니다.');
@@ -464,9 +497,27 @@ function registerParticipant(room, session) {
 }
 
 function findSeat(room, token) {
+  if (isTeam(room)) return TEAM_SEATS.find(seat => room.players[seat] === token) || null;
   if (room.players.black === token) return 'black';
   if (room.players.white === token) return 'white';
   return null;
+}
+
+// A team match retains assigned seats when a connection drops; no teammate may skip an absent player.
+function syncTeamPause(room) {
+  if (!isTeam(room)) return;
+  if (room.game.status !== 'playing') {
+    room.game.paused = false;
+    room.game.disconnectedSeats = [];
+    return;
+  }
+  const disconnected = TEAM_SEATS.filter(seat => {
+    const token = room.players[seat];
+    const person = token && room.participants[token];
+    return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
+  });
+  room.game.paused = disconnected.length > 0;
+  room.game.disconnectedSeats = disconnected;
 }
 
 function publicPlayer(room, color) {
@@ -480,7 +531,7 @@ function liveSpectatorCount(room) {
   const live = uniqueLiveTokens(room.id);
   let count = 0;
   for (const token of live) {
-    if (room.players.black === token || room.players.white === token) continue;
+    if (findSeat(room, token)) continue;
     count += 1;
   }
   return count;
@@ -514,10 +565,11 @@ function publicRoom(room) {
     spectatorCount: liveSpectatorCount(room),
     participants: publicParticipants(room),
     chat: { messages: publicChatMessages(room) },
-    players: {
+    players: isTeam(room) ? Object.fromEntries(TEAM_SEATS.map(seat => [seat, publicPlayer(room, seat)])) : {
       black: publicPlayer(room, 'black'),
       white: publicPlayer(room, 'white'),
     },
+    maxPlayers: isTeam(room) ? 4 : 2,
     game: gameEngine.publicState(room.game),
   };
 }
@@ -542,6 +594,7 @@ function roomView(room, session) {
 }
 
 function broadcast(room) {
+  syncTeamPause(room);
   const set = streams.get(room.id);
   if (!set) return;
   for (const client of [...set]) {
@@ -558,6 +611,15 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
+  if (isTeam(room)) {
+    if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
+    getGame('omok2v2').start(room.game);
+    for (const p of Object.values(room.participants)) {
+      if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    }
+    syncTeamPause(room);
+    return;
+  }
   if (room.players.black && room.players.white && room.game.status === 'selecting') {
     const gameEngine = getGame(room.gameType) || getGame('omok');
     gameEngine.start(room.game);
@@ -570,7 +632,7 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
-  room.players = { black: null, white: null };
+  room.players = isTeam(room) ? { '1': null, '2': null, '3': null, '4': null } : { black: null, white: null };
   for (const p of Object.values(room.participants)) p.choice = null;
 }
 
@@ -611,13 +673,17 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공') : (seat === 'black' ? '흑' : '백')) : '관전자';
+  const role = seat ? (isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
+    : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공') : (seat === 'black' ? '흑' : '백')) : '관전자';
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = opponentToken ? (room.participants[opponentToken]?.label || null) : null;
+  const opponent = isTeam(room) && seat
+    ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
+      .map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
+    : opponentToken ? (room.participants[opponentToken]?.label || null) : null;
   let status = 'room-waiting';
-  if (room.game.status === 'playing') status = seat ? 'playing' : 'spectating';
+  if (room.game.status === 'playing') status = room.game.paused ? (seat ? 'paused' : 'spectating') : (seat ? 'playing' : 'spectating');
   else if (room.game.status === 'setup') status = seat ? 'preparing' : 'room-waiting';
   else if (['finished', 'draw'].includes(room.game.status)) status = 'finished';
   return { status, game, role, opponent };
@@ -664,10 +730,11 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
-    const choice = ['black', 'white', 'spectator'].includes(body.choice) ? body.choice : null;
-    if (!choice) return sendError(res, 400, 'BAD_ROLE', '흑, 백, 관전 중에서 선택해 주세요.');
-    if ((choice === 'black' || choice === 'white') && room.players[choice] && room.players[choice] !== session.token) {
-      return sendError(res, 409, 'ROLE_TAKEN', `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
+    const valid = isTeam(room) ? [...TEAM_SEATS, 'spectator'] : ['black', 'white', 'spectator'];
+    const choice = valid.includes(body.choice) ? body.choice : null;
+    if (!choice) return sendError(res, 400, 'BAD_ROLE', isTeam(room) ? '1~4번 자리 또는 관전을 선택해 주세요.' : '흑, 백, 관전 중에서 선택해 주세요.');
+    if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
+      return sendError(res, 409, 'ROLE_TAKEN', isTeam(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
     const oldSeat = findSeat(room, session.token);
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
@@ -704,7 +771,11 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
-    if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
+    if (isTeam(room)) {
+      syncTeamPause(room);
+      if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '팀원 접속이 끊겨 일시정지 중입니다. 전원이 복귀할 때까지 기다려 주세요.');
+      if (room.game.nextSeat !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '현재 차례의 플레이어만 착수할 수 있습니다.');
+    } else if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
     const gameEngine = getGame(room.gameType) || getGame('omok');
     const verdict = gameEngine.applyMove(room.game, Number(body.x), Number(body.y), seat, nowIso());
     if (!verdict.legal) {
@@ -720,8 +791,21 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
-    room.game.winner = seat === 'black' ? 'white' : 'black';
+    room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
     room.game.winningLine = null;
+    if (isTeam(room)) { room.game.paused = false; room.game.disconnectedSeats = []; }
+  }
+
+  if (action === 'end-game') {
+    if (!isTeam(room) || room.hostSessionToken !== session.token || room.game.status !== 'playing' || !room.game.paused) {
+      return sendError(res, 403, 'HOST_PAUSED_ONLY', '오목 2vs2 일시정지 중에 방장만 대국을 종료할 수 있습니다.');
+    }
+    room.game.status = 'draw';
+    room.game.winner = null;
+    room.game.winningLine = null;
+    room.game.paused = false;
+    room.game.disconnectedSeats = [];
+    appendSystemMessage(room, '방장이 접속 이탈로 중단된 대국을 승패 없이 종료했습니다.');
   }
 
   if (action === 'next-round' || action === 'rematch') {
@@ -742,7 +826,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.8', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.9', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -763,6 +847,16 @@ async function requestHandler(req, res) {
       );
     }
     const session = createSession({ role: 'guest', label: key.label, guestKeyId: key.id });
+    for (const room of rooms.values()) {
+      if (!isTeam(room) || room.game.status !== 'playing') continue;
+      const previous = Object.entries(room.participants).find(([oldToken, p]) =>
+        p.guestKeyId === key.id && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
+      if (!previous) continue;
+      session.currentRoomId = room.id;
+      registerParticipant(room, session);
+      broadcast(room);
+      break;
+    }
     return sendIndex(res, { sessionToken: session.token, role: 'guest', label: session.label });
   }
 
@@ -1114,6 +1208,7 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     session.currentRoomId = null;
     if (room?.participants[session.token]) {
+      room.participants[session.token].rejoinable = false;
       room.participants[session.token].connected = false;
       room.participants[session.token].lastSeen = nowIso();
       appendSystemMessage(room, (session.label || '게스트') + '님이 방에서 나갔습니다.');
@@ -1177,6 +1272,7 @@ async function requestHandler(req, res) {
       if (!uniqueLiveTokens(room.id).has(session.token) && room.participants[session.token]) {
         room.participants[session.token].connected = false;
         room.participants[session.token].lastSeen = nowIso();
+        syncTeamPause(room);
         touchRoom(room);
         broadcast(room);
       }
@@ -1184,7 +1280,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-secret|guess|move|resign|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-secret|guess|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -1228,7 +1324,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.8 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.9 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
