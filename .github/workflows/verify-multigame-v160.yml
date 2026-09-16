@@ -1,0 +1,35 @@
+name: Verify multi-game Othello v1.6.0
+
+on:
+  push:
+    branches: [multi-game-othello-v160]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply polish
+        run: python3 scripts/fix-multigame-v160.py
+      - name: Validate
+        run: |
+          node --check public/app.js
+          npm install --no-package-lock
+          npm test
+      - name: Remove one-shot files
+        run: rm -f .github/workflows/verify-multigame-v160.yml scripts/fix-multigame-v160.py
+      - name: Commit polish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Polish game switching behavior [v160-polish]"
+          git push
