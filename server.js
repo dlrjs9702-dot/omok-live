@@ -649,10 +649,10 @@ function findRoomByCode(code) {
   return [...rooms.values()].find((r) => r.code === normalized) || null;
 }
 
-function invalidateGuestSessions(guestKeyId) {
+function invalidateGuestSessions(guestKeyId, message = '이 입장 파일의 권한이 취소되었습니다.') {
   for (const [token, session] of [...sessions]) {
     if (session.guestKeyId !== guestKeyId) continue;
-    releaseSessionToken(token, { message: '이 입장 파일의 권한이 취소되었습니다.' });
+    releaseSessionToken(token, { message });
   }
   activeGuestSessions.delete(guestKeyId);
 }
@@ -826,7 +826,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.9', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.10', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1033,6 +1033,23 @@ async function requestHandler(req, res) {
     const key = await accessStore.setNote(noteMatch[1], note);
     if (!key) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
     return sendJson(res, 200, { ok: true, key });
+  }
+
+  // Reissue rotates the credential on its existing row. The old HTML file and
+  // any session authenticated by it cease working immediately after persistence.
+  const reissueMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/reissue$/i);
+  if (reissueMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    if (!checkRateLimit('reissue:' + reissueMatch[1], 5, 60 * 1000)) {
+      return sendError(res, 429, 'REISSUE_RATE_LIMIT', '재발급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const token = newSecret(32);
+    const row = await accessStore.rotateToken(reissueMatch[1], token);
+    if (!row) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 입장파일을 찾을 수 없습니다. 취소된 파일은 먼저 권한을 복구해 주세요.');
+    invalidateGuestSessions(row.id, '입장파일이 재발급되어 기존 접속이 종료됐습니다. 새 입장파일로 접속해 주세요.');
+    const fileName = safeFilename(row.label);
+    const html = makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label });
+    return sendJson(res, 200, { ok: true, key: row, fileName, html });
   }
 
   let match = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/revoke$/i);
@@ -1324,7 +1341,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.9 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.10 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

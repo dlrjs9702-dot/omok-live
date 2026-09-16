@@ -670,11 +670,21 @@
       memoBtn.className = 'ghost tiny compactAction';
       memoBtn.textContent = '메모';
       memoBtn.title = '관리자 전용 메모 입력·수정';
+      const reissueBtn = document.createElement('button');
+      reissueBtn.className = 'secondary tiny compactAction';
+      reissueBtn.type = 'button';
+      reissueBtn.textContent = '재발급';
+      reissueBtn.title = '새 파일 발급 · 이전 파일 즉시 무효화';
+      reissueBtn.addEventListener('click', async () => {
+        reissueBtn.disabled = true;
+        try { await reissueKey(key.id, key.label); }
+        finally { reissueBtn.disabled = false; }
+      });
       const revokeBtn = document.createElement('button');
       revokeBtn.className = 'danger tiny compactAction';
       revokeBtn.textContent = '권한 취소';
       revokeBtn.addEventListener('click', () => revokeKey(key.id, key.label));
-      actions.append(detailBtn, memoBtn, revokeBtn);
+      actions.append(detailBtn, memoBtn, reissueBtn, revokeBtn);
 
       const detail = document.createElement('div');
       detail.className = 'keyDetail hidden';
@@ -790,6 +800,29 @@
     }
   }
 
+  function downloadEntryFile(data) {
+    const blob = new Blob([data.html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function reissueKey(id, label) {
+    if (!confirm(`${label} 입장파일을 재발급할까요?\n기존 HTML 파일은 즉시 무효화되고, 현재 접속 중이라면 로그아웃됩니다.\n새 파일을 저장하고 사용자에게 전달해 주세요.`)) return;
+    try {
+      const data = await api(`/api/admin/keys/${id}/reissue`, { method: 'POST' });
+      downloadEntryFile(data);
+      showToast(`${data.fileName} 재발급 완료 · 기존 파일은 사용할 수 없습니다.`, 5000);
+      await loadGuestKeys();
+      loadPresence().catch(() => {});
+    } catch (err) { showToast(err.message, 4500); }
+  }
+
   async function issueFile(event) {
     event.preventDefault();
     const label = guestLabelInput.value.trim();
@@ -799,15 +832,7 @@
         method: 'POST',
         body: JSON.stringify({ label }),
       });
-      const blob = new Blob([data.html], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = data.fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      downloadEntryFile(data);
       guestLabelInput.value = '';
       showToast(`${data.fileName} 발급 완료`);
       await loadGuestKeys();
