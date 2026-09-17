@@ -5,9 +5,12 @@ const fsp = require('fs/promises');
 const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
 const TEAM_SEATS = ['1', '2', '3', '4'];
+const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room);
+const isPictionary = (room) => room.gameType === 'pictionary';
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room);
+const seatsFor = (room) => isPictionary(room) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
@@ -351,9 +354,9 @@ function publicRoomSummary(room) {
     id: room.id, gameType: room.gameType, gameName: engine?.name || '게임',
     title: room.title || null,
     host: host.label || '방장',
-    playerCount: isNumberedSeatGame(room) ? TEAM_SEATS.filter(seat => room.players[seat]).length
+    playerCount: isNumberedSeatGame(room) ? seatsFor(room).filter(seat => room.players[seat]).length
       : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
-    maxPlayers: isNumberedSeatGame(room) ? 4 : 2,
+    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
     connectedCount: Object.values(room.participants).filter(p => p.connected && sessions.has(p.sessionToken)).length,
     status: room.game.status === 'selecting' ? 'waiting'
       : ['finished', 'draw'].includes(room.game.status) ? 'finished'
@@ -462,9 +465,11 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: ['omok2v2', 'bingo'].includes(gameEngine.id)
-      ? { '1': null, '2': null, '3': null, '4': null }
-      : { black: null, white: null },
+    players: gameEngine.id === 'pictionary'
+      ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
+      : ['omok2v2', 'bingo'].includes(gameEngine.id)
+        ? { '1': null, '2': null, '3': null, '4': null }
+        : { black: null, white: null },
     social: createRoomSocial(),
     game: gameEngine.create(gameEngine.id === 'baseball' ? { digitCount: options.digitCount } : undefined),
   };
@@ -502,7 +507,7 @@ function registerParticipant(room, session) {
 }
 
 function findSeat(room, token) {
-  if (isNumberedSeatGame(room)) return TEAM_SEATS.find(seat => room.players[seat] === token) || null;
+  if (isNumberedSeatGame(room)) return seatsFor(room).find(seat => room.players[seat] === token) || null;
   if (room.players.black === token) return 'black';
   if (room.players.white === token) return 'white';
   return null;
@@ -571,11 +576,11 @@ function publicRoom(room) {
     spectatorCount: liveSpectatorCount(room),
     participants: publicParticipants(room),
     chat: { messages: publicChatMessages(room) },
-    players: isNumberedSeatGame(room) ? Object.fromEntries(TEAM_SEATS.map(seat => [seat, publicPlayer(room, seat)])) : {
+    players: isNumberedSeatGame(room) ? Object.fromEntries(seatsFor(room).map(seat => [seat, publicPlayer(room, seat)])) : {
       black: publicPlayer(room, 'black'),
       white: publicPlayer(room, 'white'),
     },
-    maxPlayers: isNumberedSeatGame(room) ? 4 : 2,
+    maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
     game: gameEngine.publicState(room.game),
   };
 }
@@ -596,6 +601,7 @@ function roomView(room, session) {
       // A secret is only ever sent back to its owning player, never to other players or spectators.
       mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
+      myWord: isPictionary(room) ? getGame('pictionary').wordFor(room.game, seat) : null,
     },
   };
 }
@@ -618,7 +624,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room)) return;
+  if (isBingo(room) || isPictionary(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -640,7 +646,7 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
-  if (isBingo(room)) {
+  if (isBingo(room) || isPictionary(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -687,7 +693,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -696,8 +702,8 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = isBingo(room) && seat
-    ? TEAM_SEATS.filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
+  const opponent = (isBingo(room) || isPictionary(room)) && seat
+    ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
         .map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
@@ -742,6 +748,27 @@ async function adminPresenceSnapshot() {
   };
 }
 
+// Server-authoritative round/reveal timers so pictionary always advances even if the drawer disconnects.
+function tickPictionaryRooms() {
+  const now = nowMs();
+  const engine = getGame('pictionary');
+  for (const room of rooms.values()) {
+    if (!isPictionary(room) || room.game.status !== 'playing') continue;
+    let changed = false;
+    if (room.game.phase === 'drawing' && room.game.roundEndsAt && now >= room.game.roundEndsAt) {
+      engine.endRound(room.game);
+      changed = true;
+    } else if (room.game.phase === 'reveal' && room.game.revealEndsAt && now >= room.game.revealEndsAt) {
+      const verdict = engine.advance(room.game);
+      if (verdict.legal && !verdict.finished) {
+        appendSystemMessage(room, `${room.participants[room.players[room.game.drawerSeat]]?.label || '다음 출제자'}님 차례입니다.`);
+      }
+      changed = true;
+    }
+    if (changed) { touchRoom(room); broadcast(room); }
+  }
+}
+
 async function handleRoomAction(req, res, action, session) {
   const room = getCurrentRoom(session);
   if (!room) return sendError(res, 404, 'NO_ROOM', '먼저 방을 만들거나 방 비밀번호를 입력해 주세요.');
@@ -750,9 +777,9 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
-    const valid = isNumberedSeatGame(room) ? [...TEAM_SEATS, 'spectator'] : ['black', 'white', 'spectator'];
+    const valid = isNumberedSeatGame(room) ? [...seatsFor(room), 'spectator'] : ['black', 'white', 'spectator'];
     const choice = valid.includes(body.choice) ? body.choice : null;
-    if (!choice) return sendError(res, 400, 'BAD_ROLE', isNumberedSeatGame(room) ? '1~4번 자리 또는 관전을 선택해 주세요.' : '흑, 백, 관전 중에서 선택해 주세요.');
+    if (!choice) return sendError(res, 400, 'BAD_ROLE', isNumberedSeatGame(room) ? `1~${seatsFor(room).length}번 자리 또는 관전을 선택해 주세요.` : '흑, 백, 관전 중에서 선택해 주세요.');
     if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
       return sendError(res, 409, 'ROLE_TAKEN', isNumberedSeatGame(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
@@ -795,6 +822,54 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_SELECTION', engine.moveError(verdict.reason));
     appendSystemMessage(room, `${session.label || '플레이어'}님이 ${Number(body.number)}번을 선택했습니다.`);
     if (verdict.finished) appendSystemMessage(room, `${room.participants[room.players[room.game.winner]]?.label || room.game.winner + '번'}님이 빙고 승리 조건을 달성했습니다!`);
+  }
+
+  if (action === 'start-pictionary') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 시작할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 그림 맞히기를 시작할 수 있습니다.');
+    const seats = PICTIONARY_SEATS.filter(seat => room.players[seat]);
+    const engine = getGame('pictionary');
+    const verdict = engine.start(room.game, seats);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_PICTIONARY_START', engine.moveError(verdict.reason));
+    for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    appendSystemMessage(room, `그림 맞히기 시작! ${room.participants[room.players[room.game.drawerSeat]]?.label || '첫 출제자'}님부터 그립니다.`);
+  }
+
+  if (action === 'pictionary-stroke') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 사용할 수 있습니다.');
+    if (!checkRateLimit(`pictionary-stroke:${session.token}`, 40, 1000)) {
+      return sendError(res, 429, 'TOO_MANY_STROKES', '그리기 요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 그림을 그릴 수 없습니다.');
+    const engine = getGame('pictionary');
+    const verdict = engine.addStroke(room.game, seat, body.stroke);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_STROKE', engine.moveError(verdict.reason));
+  }
+
+  if (action === 'pictionary-clear') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 사용할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 그림판을 지울 수 없습니다.');
+    const engine = getGame('pictionary');
+    const verdict = engine.clearCanvas(room.game, seat);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_CLEAR', engine.moveError(verdict.reason));
+  }
+
+  if (action === 'pictionary-guess') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 사용할 수 있습니다.');
+    if (!checkRateLimit(`pictionary-guess:${session.token}`, 10, 5000)) {
+      return sendError(res, 429, 'TOO_MANY_GUESSES', '정답 제출이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 정답을 제출할 수 없습니다.');
+    const engine = getGame('pictionary');
+    const verdict = engine.submitGuess(room.game, seat, body.guess);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_GUESS', engine.moveError(verdict.reason));
+    if (verdict.correct) {
+      appendSystemMessage(room, `${session.label || '참가자'}님이 정답을 맞혔습니다!`);
+      if (verdict.allGuessed) engine.endRound(room.game);
+    }
   }
 
   if (action === 'set-secret') {
@@ -861,6 +936,7 @@ async function handleRoomAction(req, res, action, session) {
     if (room.gameType === 'yut') return sendError(res, 400, 'WRONG_GAME', '윷놀이는 윷 던지기와 말 이동 기능을 이용해 주세요.');
     if (room.gameType === 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹은 주사위와 도시 매입 기능을 이용해 주세요.');
     if (room.gameType === 'bingo') return sendError(res, 400, 'WRONG_GAME', '빙고는 자신의 숫자판에서 숫자를 선택해 주세요.');
+    if (room.gameType === 'pictionary') return sendError(res, 400, 'WRONG_GAME', '그림 맞히기는 그리기와 정답 제출 기능을 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -882,6 +958,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'resign') {
     if (isBingo(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '빙고에서는 기권 기능을 사용하지 않습니다.');
+    if (isPictionary(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '그림 맞히기에서는 기권 기능을 사용하지 않습니다.');
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
@@ -920,7 +997,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.22', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.23', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1425,7 +1502,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-bingo-target|start-bingo|select-bingo|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-bingo-target|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -1475,7 +1552,8 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.22 실행: http://${HOST}:${PORT}`));
+  setInterval(tickPictionaryRooms, 1000).unref();
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.23 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

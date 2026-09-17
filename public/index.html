@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.22" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.23" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -72,6 +72,7 @@
                   <option value="cityking">랜드킹</option>
                   <option value="othello">오델로</option>
                   <option value="baseball">숫자야구</option>
+                  <option value="pictionary">그림 맞히기</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
@@ -103,6 +104,9 @@
             </div>
             <div class="gameOption" data-game-option="baseball">
               <button type="button" class="gameChoice" data-game="baseball"><strong>숫자야구</strong></button>
+            </div>
+            <div class="gameOption" data-game-option="pictionary">
+              <button type="button" class="gameChoice" data-game="pictionary"><strong>그림 맞히기</strong></button>
             </div>
           </div>
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
@@ -219,10 +223,14 @@
 
           <section class="roomInfoArea" aria-label="방 정보">
             <div id="hostRoomCodeBox" class="roomSecret hidden">
-              <span>방 비밀번호</span>
-              <strong id="hostRoomCode">----</strong>
-              <button id="copyRoomCodeBtn" class="primary">비밀번호 복사</button>
-              <small id="roomCodeHelp">비공개방은 이 비밀번호로만 입장할 수 있습니다.</small>
+              <details id="roomCodeDisclosure" class="collapsibleInfo">
+                <summary class="collapsibleSummary"><span class="collapsibleArrow" aria-hidden="true">▶</span> 방 비밀번호</summary>
+                <div class="collapsibleBody">
+                  <strong id="hostRoomCode">----</strong>
+                  <button id="copyRoomCodeBtn" class="primary">비밀번호 복사</button>
+                  <small id="roomCodeHelp">비공개방은 이 비밀번호로만 입장할 수 있습니다.</small>
+                </div>
+              </details>
             </div>
 
             <section id="roomInvitePanel" class="roomInvitePanel hidden" aria-label="온라인 사용자 초대">
@@ -232,15 +240,17 @@
             </section>
 
             <section class="gameInfoCard" aria-label="대국 정보">
-              <h3>대국 정보</h3>
-              <dl class="infoList">
-                <div><dt>현재 판</dt><dd id="roundNumber">1판</dd></div>
-                <div><dt id="moveCountLabel">착수 수</dt><dd id="moveCount">0</dd></div>
-                <div><dt>내 역할</dt><dd id="mySeat">-</dd></div>
-                <div><dt>접속 인원</dt><dd id="connectedCount">0명</dd></div>
-                <div><dt>관전자</dt><dd id="spectatorCount">0명</dd></div>
-                <div id="gameScoreRow" class="hidden"><dt>돌 개수</dt><dd id="gameScoreText">-</dd></div>
-              </dl>
+              <details id="gameInfoDisclosure" class="collapsibleInfo">
+                <summary class="collapsibleSummary"><span class="collapsibleArrow" aria-hidden="true">▶</span> 대국 정보</summary>
+                <dl class="infoList">
+                  <div><dt>현재 판</dt><dd id="roundNumber">1판</dd></div>
+                  <div><dt id="moveCountLabel">착수 수</dt><dd id="moveCount">0</dd></div>
+                  <div><dt>내 역할</dt><dd id="mySeat">-</dd></div>
+                  <div><dt>접속 인원</dt><dd id="connectedCount">0명</dd></div>
+                  <div><dt>관전자</dt><dd id="spectatorCount">0명</dd></div>
+                  <div id="gameScoreRow" class="hidden"><dt>돌 개수</dt><dd id="gameScoreText">-</dd></div>
+                </dl>
+              </details>
             </section>
           </section>
 
@@ -273,6 +283,10 @@
               <button type="button" data-team-seat="2" class="rolePick teamRolePick whitePick">⚪ 2번 · 백팀</button>
               <button type="button" data-team-seat="3" class="rolePick teamRolePick blackPick">⚫ 3번 · 흑팀</button>
               <button type="button" data-team-seat="4" class="rolePick teamRolePick whitePick">⚪ 4번 · 백팀</button>
+              <button type="button" data-team-seat="5" class="rolePick teamRolePick">5번</button>
+              <button type="button" data-team-seat="6" class="rolePick teamRolePick">6번</button>
+              <button type="button" data-team-seat="7" class="rolePick teamRolePick">7번</button>
+              <button type="button" data-team-seat="8" class="rolePick teamRolePick">8번</button>
               <button id="teamSpectatorBtn" type="button" class="rolePick spectatorPick">◎ 관전 선택</button>
             </div>
           </div>
@@ -342,6 +356,30 @@
             <div id="baseballHistory" class="baseballHistory" aria-live="polite"></div>
           </section>
 
+          <section id="pictionaryPanel" class="pictionaryPanel hidden" aria-label="그림 맞히기">
+            <button id="pictionaryStartBtn" type="button" class="primary hidden">그림 맞히기 시작</button>
+            <div class="pictionaryHead">
+              <span id="pictionaryDrawerLabel">출제자를 기다리는 중</span>
+              <span id="pictionaryTimer" class="pictionaryTimer hidden">90초</span>
+            </div>
+            <p id="pictionaryWordBox" class="pictionaryWordBox hidden">제시어 <strong id="pictionaryWord"></strong></p>
+            <p id="pictionaryRoundResult" class="pictionaryRoundResult hidden"></p>
+            <div id="pictionaryDrawTools" class="pictionaryToolbar hidden">
+              <label>색상 <input id="pictionaryColor" type="color" value="#1f2937" aria-label="펜 색상" /></label>
+              <label>굵기 <input id="pictionaryWidth" type="range" min="2" max="20" value="4" aria-label="펜 굵기" /></label>
+              <button id="pictionaryEraserBtn" type="button" class="ghost tiny">지우개</button>
+              <button id="pictionaryClearBtn" type="button" class="ghost tiny">전체 지우기</button>
+            </div>
+            <div class="pictionaryCanvasWrap">
+              <canvas id="pictionaryCanvas" width="720" height="480" aria-label="그림판"></canvas>
+            </div>
+            <form id="pictionaryGuessForm" class="pictionaryGuessForm hidden" autocomplete="off">
+              <input id="pictionaryGuessInput" type="text" maxlength="40" placeholder="정답 입력" aria-label="정답 입력" />
+              <button class="primary" type="submit">제출</button>
+            </form>
+            <div id="pictionaryScoreboard" class="pictionaryScoreboard" aria-label="참가자 점수"></div>
+          </section>
+
           <div class="mobileActions">
             <button id="resignBtn" class="danger subtle">기권</button>
             <button id="nextRoundBtn" class="primary hidden">다음 판 준비</button>
@@ -390,7 +428,7 @@
       <p id="resultMessage" class="resultMessage"></p>
     </div>
   </div>
-  <script src="/session-lock.js?v=1.6.22"></script>
-  <script src="/app.js?v=1.6.22"></script>
+  <script src="/session-lock.js?v=1.6.23"></script>
+  <script src="/app.js?v=1.6.23"></script>
 </body>
 </html>
