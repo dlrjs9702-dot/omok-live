@@ -20,7 +20,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply guarded integration patch
-        run: python3 .release/apply-liar-v1624.py
+        run: |
+          python3 .release/apply-liar-v1624.py
+          sed -i '1{/^\\$/d;}' test/liar-server.test.js
 
       - name: Syntax and diff checks
         run: |
