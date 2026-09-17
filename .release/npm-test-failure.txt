@@ -1,0 +1,120 @@
+    
+              <section id="pictionaryPanel" class="pictionaryPanel hidden" aria-label="그림 맞히기">
+                <button id="pictionaryStartBtn" type="button" class="primary hidden">그림 맞히기 시작</button>
+                <div class="pictionaryHead">
+                  <span id="pictionaryDrawerLabel">출제자를 기다리는 중</span>
+                  <span id="pictionaryTimer" class="pictionaryTimer hidden">90초</span>
+                </div>
+                <p id="pictionaryWordBox" class="pictionaryWordBox hidden">제시어 <strong id="pictionaryWord"></strong></p>
+                <p id="pictionaryRoundResult" class="pictionaryRoundResult hidden"></p>
+                <div id="pictionaryDrawTools" class="pictionaryToolbar hidden">
+                  <label>색상 <input id="pictionaryColor" type="color" value="#1f2937" aria-label="펜 색상" /></label>
+                  <label>굵기 <input id="pictionaryWidth" type="range" min="2" max="20" value="4" aria-label="펜 굵기" /></label>
+                  <button id="pictionaryEraserBtn" type="button" class="ghost tiny">지우개</button>
+                  <button id="pictionaryClearBtn" type="button" class="ghost tiny">전체 지우기</button>
+                </div>
+                <div class="pictionaryCanvasWrap">
+                  <canvas id="pictionaryCanvas" width="720" height="480" aria-label="그림판"></canvas>
+                </div>
+                <form id="pictionaryGuessForm" class="pictionaryGuessForm hidden" autocomplete="off">
+                  <input id="pictionaryGuessInput" type="text" maxlength="40" placeholder="정답 입력" aria-label="정답 입력" />
+                  <button class="primary" type="submit">제출</button>
+                </form>
+                <div id="pictionaryScoreboard" class="pictionaryScoreboard" aria-label="참가자 점수"></div>
+              </section>
+    
+    
+              <section id="liarPanel" class="liarPanel hidden" aria-label="라이어게임">
+                <div class="liarSetupRow">
+                  <label for="liarRoundsSelect">게임 판 수</label>
+                  <select id="liarRoundsSelect"><option value="1">1판</option><option value="3">3판</option></select>
+                  <button id="liarStartBtn" type="button" class="primary">라이어게임 시작</button>
+                </div>
+                <div id="liarRoleBox" class="liarRoleBox">게임 시작 후 내 역할이 표시됩니다.</div>
+                <div class="liarProgress">
+                  <strong id="liarPhaseLabel">참가자 대기 중</strong>
+                  <span id="liarSpeakerLabel" class="smallMuted"></span>
+                  <span id="liarTimer" class="liarTimer hidden">60초</span>
+                </div>
+                <div id="liarHintLog" class="liarHintLog" aria-live="polite"></div>
+                <form id="liarHintForm" class="liarActionForm hidden" autocomplete="off">
+                  <input id="liarHintInput" type="text" maxlength="100" placeholder="힌트를 입력하세요" aria-label="라이어게임 힌트" />
+                  <button type="submit" class="primary">힌트 제출</button>
+                </form>
+                <div id="liarVoteBox" class="liarVoteBox hidden"></div>
+                <form id="liarGuessForm" class="liarActionForm hidden" autocomplete="off">
+                  <input id="liarGuessInput" type="text" maxlength="40" placeholder="제시어 최종 추측" aria-label="라이어 최종 제시어 추측" />
+                  <button type="submit" class="primary">최종 추측</button>
+                </form>
+                <div id="liarResult" class="liarResult hidden" aria-live="polite"></div>
+                <div id="liarScoreboard" class="liarScoreboard" aria-label="라이어게임 누적 점수"></div>
+              </section>
+    
+              <div class="mobileActions">
+                <button id="resignBtn" class="danger subtle">기권</button>
+                <button id="nextRoundBtn" class="primary hidden">다음 판 준비</button>
+                <button id="endGameBtn" class="ghost hidden">중단된 대국 종료</button>
+              </div>
+            </div>
+    
+            <aside class="side card">
+              <section class="roomPeople" aria-label="현재 접속자">
+                <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
+                <div id="participantList" class="participantList"></div>
+              </section>
+    
+              <section class="chatPanel" aria-label="방 채팅">
+                <div class="sectionTitleRow"><h3>방 채팅</h3><small>방 종료 시 삭제</small></div>
+                <div id="chatMessages" class="chatMessages" aria-live="polite"></div>
+                <form id="chatForm" class="chatForm">
+                  <input id="chatInput" maxlength="300" autocomplete="off" placeholder="메시지 입력" aria-label="채팅 메시지" />
+                  <button class="secondary" type="submit">전송</button>
+                </form>
+              </section>
+    
+              <div class="sideActions">
+                <button id="sideResignBtn" class="danger subtle">기권하기</button>
+                <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
+                <button id="sideEndGameBtn" class="ghost hidden">중단된 대국 종료</button>
+              </div>
+    
+              <details class="rules roomRuleDetails">
+                <summary>게임 규칙 자세히 보기</summary>
+                <p id="rulesText">게임 규칙을 불러오는 중입니다.</p>
+              </details>
+            </aside>
+          </section>
+        </section>
+      </main>
+    
+      <div id="toast" class="toast hidden" role="status"></div>
+      <div id="resultEffect" class="resultEffect hidden" role="status" aria-live="assertive">
+        <div class="resultLight resultLightOne" aria-hidden="true"></div>
+        <div class="resultLight resultLightTwo" aria-hidden="true"></div>
+        <div id="resultParticles" class="resultParticles" aria-hidden="true"></div>
+        <div class="resultEffectCard">
+          <span id="resultIcon" class="resultIcon" aria-hidden="true"></span>
+          <strong id="resultTitle" class="resultTitle"></strong>
+          <p id="resultMessage" class="resultMessage"></p>
+        </div>
+      </div>
+      <script src="/session-lock.js?v=1.6.24"></script>
+      <script src="/app.js?v=1.6.24"></script>
+    </body>
+    </html>
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/omok-live/omok-live/test/yut.test.js:104:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+1..120
+# tests 120
+# suites 0
+# pass 107
+# fail 13
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2879.717947
