@@ -93,6 +93,14 @@ Do not create unnecessary temporary branches or workflows. Do not repeatedly ret
 
 If a check fails, identify the cause and make one focused correction. If it cannot be resolved efficiently, stop and report the exact blocker.
 
+### 6.1 Specific usage-saving rules (learned from past sessions)
+
+- Never use PowerShell text substitution (`-replace`, `Set-Content`, etc.) to edit files containing Korean/non-ASCII text — it has corrupted encoding before, forcing a git restore and a full redo of the edits. Always use the Edit tool for these files.
+- When a feature already has passing unit/integration tests covering its logic (scoring, turn rotation, permissions, etc.), do not also reenact a full multi-tab live gameplay session in the browser to re-prove the same logic. Live browser checks should confirm the feature renders and one interaction round-trips, not replay the entire flow end to end.
+- Do not rerun the full test suite after every single small edit. Batch a related group of edits, then run the full suite once before moving on.
+- Do not verify the same thing with two different tools (e.g., Grep and then PowerShell Select-String) for extra certainty when the first result was already clear.
+- Keep live-browser UI verification (screenshots, viewport resizes) to the minimum needed to confirm the specific change; don't re-screenshot every state already implied by the code.
+
 ## 7. Automatic Announcement Update
 
 For every released game, user-visible feature, bug fix, or UI improvement, review the existing Game Center announcement format and update it as part of the same release.
