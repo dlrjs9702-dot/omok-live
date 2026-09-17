@@ -51,7 +51,7 @@ write('package-lock.json', json.dumps(lock, ensure_ascii=False, indent=2) + '\n'
 # Update tests that deliberately assert the current asset cache version.
 for path in (ROOT / 'test').glob('*.test.js'):
     source = path.read_text(encoding='utf-8')
-    changed = source.replace(r'1\\.6\\.19', r'1\\.6\\.20')
+    changed = source.replace(r'1\.6\.19', r'1\.6\.20')
     if changed != source:
         path.write_text(changed, encoding='utf-8')
         print('Updated cache expectation', path)
