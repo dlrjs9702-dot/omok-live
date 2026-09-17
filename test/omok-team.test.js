@@ -178,7 +178,7 @@ test('team room accepts four distinct seats, pauses, resumes and protects turns'
   assert.equal(stopped.game.winner, null);
 });
 
-test('team mode appears in lobby and its isolated seat controls are used only in team rooms', async () => {
+test('team and Bingo modes share numbered seats without changing team turn controls', async () => {
   const html = await fs.readFile(path.resolve(__dirname, '../public/index.html'), 'utf8');
   const app = await fs.readFile(path.resolve(__dirname, '../public/app.js'), 'utf8');
   assert.match(html, /data-game="omok2v2"/);
@@ -187,6 +187,7 @@ test('team mode appears in lobby and its isolated seat controls are used only in
   assert.match(html, /id="standardPlayers"/);
   assert.match(html, /id="endGameBtn"/);
   assert.match(app, /state\.game\.nextSeat !== seat/);
-  assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !team\)/);
-  assert.match(html, /v=1\.6\.20/);
+  assert.match(html, /data-game="bingo"/);
+  assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !numbered\)/);
+  assert.match(html, /v=1\.6\.21/);
 });

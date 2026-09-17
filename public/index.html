@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.20" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.21" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -67,6 +67,7 @@
                   <option value="omok2v2">오목 2vs2</option>
                   <option value="connect4">사목 (4목)</option>
                   <option value="yut">윷놀이</option>
+                  <option value="bingo">빙고</option>
                   <option value="dots">점과 상자</option>
                   <option value="cityking">랜드킹</option>
                   <option value="othello">오셀로</option>
@@ -87,6 +88,9 @@
             </div>
             <div class="gameOption" data-game-option="yut">
               <button type="button" class="gameChoice" data-game="yut"><strong>윷놀이</strong></button>
+            </div>
+            <div class="gameOption" data-game-option="bingo">
+              <button type="button" class="gameChoice" data-game="bingo"><strong>빙고</strong></button>
             </div>
             <div class="gameOption" data-game-option="dots">
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
@@ -253,6 +257,25 @@
             <div id="yutMoveChoices" class="yutMoveChoices" aria-live="polite"></div>
           </section>
 
+
+          <section id="bingoPanel" class="bingoPanel hidden" aria-label="빙고 게임">
+            <div class="bingoSetupRow">
+              <label for="bingoTargetSelect">승리 조건</label>
+              <select id="bingoTargetSelect" aria-label="승리에 필요한 빙고 줄 수">
+                <option value="1">1줄</option><option value="2">2줄</option><option value="3">3줄</option><option value="4">4줄</option>
+                <option value="5" selected>5줄</option><option value="6">6줄</option><option value="7">7줄</option><option value="8">8줄</option>
+                <option value="9">9줄</option><option value="10">10줄</option><option value="11">11줄</option><option value="12">12줄</option>
+              </select>
+              <button id="bingoStartBtn" class="primary" type="button">빙고 시작</button>
+            </div>
+            <p id="bingoStatus" class="bingoStatus">2명 이상 자리를 선택하면 방장이 시작할 수 있습니다.</p>
+            <div class="bingoInfoGrid">
+              <div><strong>선택된 숫자</strong><p id="bingoSelectedNumbers">없음</p></div>
+              <div><strong>현재 빙고</strong><p id="bingoLineSummary">-</p></div>
+            </div>
+            <div id="bingoBoard" class="bingoBoard" aria-live="polite"></div>
+          </section>
+
           <section id="cityControls" class="cityControls hidden" aria-label="랜드킹 조작">
             <div class="cityActionRow">
               <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
@@ -356,7 +379,7 @@
       <p id="resultMessage" class="resultMessage"></p>
     </div>
   </div>
-  <script src="/session-lock.js?v=1.6.20"></script>
-  <script src="/app.js?v=1.6.20"></script>
+  <script src="/session-lock.js?v=1.6.21"></script>
+  <script src="/app.js?v=1.6.21"></script>
 </body>
 </html>

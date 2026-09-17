@@ -189,5 +189,5 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);
-  assert.match(html, /app\.js\?v=1\.6\.20/);
+  assert.match(html, /app\.js\?v=1\.6\.21/);
 });
