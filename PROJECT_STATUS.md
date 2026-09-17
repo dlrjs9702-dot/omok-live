@@ -6,9 +6,9 @@
 
 - 저장소: `dlrjs9702-dot/omok-live`
 - 기준 브랜치: `main`
-- 현재 릴리스: `v1.6.22` 준비 완료 (기준 브랜치 반영 대기)
+- 현재 릴리스: `v1.6.22` (`main` 반영 완료: `ec7102e`)
 - 이전 운영 커밋: `bb2c931` (v1.6.21)
-- 작업 브랜치: `feature/v1622-chat-title-baseball4-othello-20260917`
+- 작업 브랜치: `feature/v1622-chat-title-baseball4-othello-20260917` (PR #3 병합 완료)
 - 공개 주소: `https://silent-lake-9bcf.dlrjs9702.workers.dev/`
 - 원본 서버: `https://omok-live.onrender.com`
 
