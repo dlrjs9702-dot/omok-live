@@ -1,3 +1,0 @@
-Render auto-deploy verification marker.
-Created on 2026-09-17 to confirm that commits pushed to main are detected automatically by Render.
-This file has no runtime effect.
