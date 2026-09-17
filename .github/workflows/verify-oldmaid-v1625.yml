@@ -1,0 +1,80 @@
+name: Verify Old Maid v1.6.25
+
+on:
+  push:
+    branches:
+      - feature/oldmaid-v1625-20260918
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/oldmaid-v1625-20260918
+          fetch-depth: 0
+
+      - name: Apply guarded production integration patch
+        run: |
+          python3 .release/apply-oldmaid-v1625.py
+          python3 .release/harden-oldmaid-v1625.py
+
+      - name: Syntax and diff checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check lib/games/oldmaid.js
+          node --check lib/games/index.js
+          node --check test/oldmaid.test.js
+          node --check test/oldmaid-server.test.js
+          git diff --check
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Old Maid targeted tests
+        run: node --test test/oldmaid.test.js test/oldmaid-server.test.js
+
+      - name: Run complete regression suite
+        run: npm test
+
+      - name: Verify v1.6.25 release integrity
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const { getGame, listGames } = require('./lib/games');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const app = fs.readFileSync('public/app.js', 'utf8');
+          const server = fs.readFileSync('server.js', 'utf8');
+          const notices = fs.readFileSync('lib/release-announcements.js', 'utf8');
+          if (pkg.version !== '1.6.25' || lock.version !== '1.6.25' || lock.packages[''].version !== '1.6.25') throw new Error('version mismatch');
+          if (listGames().length !== 12 || !getGame('oldmaid')) throw new Error('old maid missing in registry');
+          if (!/start-oldmaid/.test(server) || !/draw-oldmaid/.test(server) || !/myOldMaidHand/.test(server)) throw new Error('server missing');
+          if (!/data-game="oldmaid"/.test(html) || !/id="oldmaidPanel"/.test(html) || !/app\.js\?v=1\.6\.25/.test(html)) throw new Error('UI/cache missing');
+          if (!/function renderOldMaid\(/.test(app) || !/shuffle-oldmaid/.test(app) || !/draw-oldmaid/.test(app)) throw new Error('client missing');
+          if (!/key: 'v1\.6\.25'/.test(notices)) throw new Error('notice missing');
+          const engine = getGame('oldmaid');
+          if (engine.publicState(engine.create()).hands !== undefined) throw new Error('public card leak');
+          NODE
+
+      - name: Commit verified release content
+        run: |
+          git config user.name "game-center-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .release/apply-oldmaid-v1625.py .release/harden-oldmaid-v1625.py .github/workflows/verify-oldmaid-v1625.yml
+          git add -A
+          git commit -m "Release v1.6.25: add Old Maid [skip ci]"
+          git push origin HEAD:feature/oldmaid-v1625-20260918
