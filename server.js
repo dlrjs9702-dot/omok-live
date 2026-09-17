@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const isTeam = (room) => room.gameType === 'omok2v2';
+const isBingo = (room) => room.gameType === 'bingo';
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room);
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
@@ -251,7 +253,7 @@ function releaseSessionToken(token, { message = null } = {}) {
   }
   for (const room of rooms.values()) {
     const p = room.participants[token];
-    if (!p || !isTeam(room)) continue;
+    if (!p || !isNumberedSeatGame(room)) continue;
     p.connected = false;
     p.rejoinable = Boolean(findSeat(room, token) && room.game.status === 'playing');
     syncTeamPause(room);
@@ -348,9 +350,9 @@ function publicRoomSummary(room) {
   return {
     id: room.id, gameType: room.gameType, gameName: engine?.name || '게임',
     host: host.label || '방장',
-    playerCount: isTeam(room) ? TEAM_SEATS.filter(seat => room.players[seat]).length
+    playerCount: isNumberedSeatGame(room) ? TEAM_SEATS.filter(seat => room.players[seat]).length
       : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
-    maxPlayers: isTeam(room) ? 4 : 2,
+    maxPlayers: isNumberedSeatGame(room) ? 4 : 2,
     connectedCount: Object.values(room.participants).filter(p => p.connected && sessions.has(p.sessionToken)).length,
     status: room.game.status === 'selecting' ? 'waiting'
       : ['finished', 'draw'].includes(room.game.status) ? 'finished'
@@ -458,7 +460,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: gameEngine.id === 'omok2v2'
+    players: ['omok2v2', 'bingo'].includes(gameEngine.id)
       ? { '1': null, '2': null, '3': null, '4': null }
       : { black: null, white: null },
     social: createRoomSocial(),
@@ -473,7 +475,7 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 function registerParticipant(room, session) {
   const isNew = !room.participants[session.token];
   let reclaimedSeat = null;
-  if (isNew && isTeam(room) && session.guestKeyId) {
+  if (isNew && isNumberedSeatGame(room) && session.guestKeyId) {
     for (const [oldToken, old] of Object.entries(room.participants)) {
       if (old.guestKeyId !== session.guestKeyId || old.connected || sessions.has(oldToken)) continue;
       const oldSeat = findSeat(room, oldToken);
@@ -498,7 +500,7 @@ function registerParticipant(room, session) {
 }
 
 function findSeat(room, token) {
-  if (isTeam(room)) return TEAM_SEATS.find(seat => room.players[seat] === token) || null;
+  if (isNumberedSeatGame(room)) return TEAM_SEATS.find(seat => room.players[seat] === token) || null;
   if (room.players.black === token) return 'black';
   if (room.players.white === token) return 'white';
   return null;
@@ -566,11 +568,11 @@ function publicRoom(room) {
     spectatorCount: liveSpectatorCount(room),
     participants: publicParticipants(room),
     chat: { messages: publicChatMessages(room) },
-    players: isTeam(room) ? Object.fromEntries(TEAM_SEATS.map(seat => [seat, publicPlayer(room, seat)])) : {
+    players: isNumberedSeatGame(room) ? Object.fromEntries(TEAM_SEATS.map(seat => [seat, publicPlayer(room, seat)])) : {
       black: publicPlayer(room, 'black'),
       white: publicPlayer(room, 'white'),
     },
-    maxPlayers: isTeam(room) ? 4 : 2,
+    maxPlayers: isNumberedSeatGame(room) ? 4 : 2,
     game: gameEngine.publicState(room.game),
   };
 }
@@ -590,6 +592,7 @@ function roomView(room, session) {
       roomCode: isHost ? room.code : null,
       // A secret is only ever sent back to its owning player, never to other players or spectators.
       mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
+      myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
     },
   };
 }
@@ -612,6 +615,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
+  if (isBingo(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -633,6 +637,12 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
+  if (isBingo(room)) {
+    for (const p of Object.values(room.participants)) {
+      if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    }
+    return;
+  }
   room.players = isTeam(room) ? { '1': null, '2': null, '3': null, '4': null } : { black: null, white: null };
   for (const p of Object.values(room.participants)) p.choice = null;
 }
@@ -674,7 +684,8 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
+  const role = seat ? (isBingo(room) ? `${seat}번`
+    : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
         : ['yut', 'dots', 'cityking'].includes(room.gameType) ? (seat === 'black' ? '파랑' : '빨강')
@@ -682,10 +693,12 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = isTeam(room) && seat
-    ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
-      .map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
-    : opponentToken ? (room.participants[opponentToken]?.label || null) : null;
+  const opponent = isBingo(room) && seat
+    ? TEAM_SEATS.filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
+    : isTeam(room) && seat
+      ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
+        .map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
+      : opponentToken ? (room.participants[opponentToken]?.label || null) : null;
   let status = 'room-waiting';
   if (room.game.status === 'playing') status = room.game.paused ? (seat ? 'paused' : 'spectating') : (seat ? 'playing' : 'spectating');
   else if (room.game.status === 'setup') status = seat ? 'preparing' : 'room-waiting';
@@ -734,11 +747,11 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
-    const valid = isTeam(room) ? [...TEAM_SEATS, 'spectator'] : ['black', 'white', 'spectator'];
+    const valid = isNumberedSeatGame(room) ? [...TEAM_SEATS, 'spectator'] : ['black', 'white', 'spectator'];
     const choice = valid.includes(body.choice) ? body.choice : null;
-    if (!choice) return sendError(res, 400, 'BAD_ROLE', isTeam(room) ? '1~4번 자리 또는 관전을 선택해 주세요.' : '흑, 백, 관전 중에서 선택해 주세요.');
+    if (!choice) return sendError(res, 400, 'BAD_ROLE', isNumberedSeatGame(room) ? '1~4번 자리 또는 관전을 선택해 주세요.' : '흑, 백, 관전 중에서 선택해 주세요.');
     if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
-      return sendError(res, 409, 'ROLE_TAKEN', isTeam(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
+      return sendError(res, 409, 'ROLE_TAKEN', isNumberedSeatGame(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
     const oldSeat = findSeat(room, session.token);
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
@@ -748,6 +761,37 @@ async function handleRoomAction(req, res, action, session) {
       participant.choice = choice;
     }
     maybeStart(room);
+  }
+
+
+  if (action === 'set-bingo-target') {
+    if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 승리 조건을 변경할 수 있습니다.');
+    const engine = getGame('bingo');
+    const verdict = engine.setTarget(room.game, Number(body.targetLines));
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_TARGET', engine.moveError(verdict.reason));
+  }
+
+  if (action === 'start-bingo') {
+    if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 시작할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 빙고를 시작할 수 있습니다.');
+    const seats = TEAM_SEATS.filter(seat => room.players[seat]);
+    const engine = getGame('bingo');
+    const verdict = engine.start(room.game, seats);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_START', engine.moveError(verdict.reason));
+    for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    appendSystemMessage(room, `빙고 시작! ${room.game.targetLines}줄을 먼저 완성하면 승리합니다.`);
+  }
+
+  if (action === 'select-bingo') {
+    if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 숫자를 선택할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 숫자를 선택할 수 없습니다.');
+    const engine = getGame('bingo');
+    const verdict = engine.selectNumber(room.game, seat, Number(body.number), nowIso(), Number(body.expectedMoveCount));
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_SELECTION', engine.moveError(verdict.reason));
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${Number(body.number)}번을 선택했습니다.`);
+    if (verdict.finished) appendSystemMessage(room, `${room.participants[room.players[room.game.winner]]?.label || room.game.winner + '번'}님이 빙고 승리 조건을 달성했습니다!`);
   }
 
   if (action === 'set-secret') {
@@ -813,6 +857,7 @@ async function handleRoomAction(req, res, action, session) {
     if (room.gameType === 'baseball') return sendError(res, 400, 'WRONG_GAME', '숫자야구는 숫자 추측 기능을 이용해 주세요.');
     if (room.gameType === 'yut') return sendError(res, 400, 'WRONG_GAME', '윷놀이는 윷 던지기와 말 이동 기능을 이용해 주세요.');
     if (room.gameType === 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹은 주사위와 도시 매입 기능을 이용해 주세요.');
+    if (room.gameType === 'bingo') return sendError(res, 400, 'WRONG_GAME', '빙고는 자신의 숫자판에서 숫자를 선택해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -833,6 +878,7 @@ async function handleRoomAction(req, res, action, session) {
   }
 
   if (action === 'resign') {
+    if (isBingo(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '빙고에서는 기권 기능을 사용하지 않습니다.');
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
@@ -871,7 +917,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.18', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.21', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -893,7 +939,7 @@ async function requestHandler(req, res) {
     }
     const session = createSession({ role: 'guest', label: key.label, guestKeyId: key.id });
     for (const room of rooms.values()) {
-      if (!isTeam(room) || room.game.status !== 'playing') continue;
+      if (!isNumberedSeatGame(room) || room.game.status !== 'playing') continue;
       const previous = Object.entries(room.participants).find(([oldToken, p]) =>
         p.guestKeyId === key.id && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
       if (!previous) continue;
@@ -1364,7 +1410,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-bingo-target|start-bingo|select-bingo|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -1414,7 +1460,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.19 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.21 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
