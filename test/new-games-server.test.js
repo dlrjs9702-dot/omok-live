@@ -116,7 +116,7 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.18');
+  assert.equal(health.data.version, '1.6.21');
   assert.ok(health.data.games.includes('yut'));
   assert.ok(health.data.games.includes('dots'));
   assert.ok(health.data.games.includes('cityking'));

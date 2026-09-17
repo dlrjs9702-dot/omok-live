@@ -154,3 +154,23 @@ test('Bingo API supports 3-player authoritative turns, duplicate protection, ref
   assert.equal(newHostBoard.length, 25);
   assert.notDeepEqual(newHostBoard, boards['1']);
 });
+
+test('Bingo lobby and room UI expose the host controls, numbered seats and private board selection', async () => {
+  const root = path.join(__dirname, '..');
+  const [html, app, css, server] = await Promise.all([
+    fs.readFile(path.join(root, 'public/index.html'), 'utf8'),
+    fs.readFile(path.join(root, 'public/app.js'), 'utf8'),
+    fs.readFile(path.join(root, 'public/styles.css'), 'utf8'),
+    fs.readFile(path.join(root, 'server.js'), 'utf8'),
+  ]);
+  assert.match(html, /data-game="bingo"/);
+  assert.match(html, /id="bingoTargetSelect"/);
+  assert.match(html, /id="bingoStartBtn"/);
+  assert.match(html, /id="bingoBoard"/);
+  assert.match(html, /app\.js\?v=1\.6\.21/);
+  assert.match(app, /function isBingoGame\(/);
+  assert.match(app, /function renderBingo\(/);
+  assert.match(app, /roomAction\('select-bingo'/);
+  assert.match(server, /start-bingo\|select-bingo/);
+  assert.match(css, /Bingo v1\.6\.21/);
+});
