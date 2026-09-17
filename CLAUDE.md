@@ -35,6 +35,15 @@ When authorized:
 
 Ask one focused question only when missing information would materially affect game rules, data, security, or core behavior. Otherwise, follow existing project patterns and proceed.
 
+### 3.1 Model recommendation before starting
+
+Before beginning implementation of a requested patch, give one short line recommending a model fit for the task, based on its nature:
+
+- Recommend a stronger model when the patch touches shared systems (lobby, room, player, spectator, chat, reconnection, rematch, invitation, administrator) or introduces new game-engine-level logic, since mistakes there can silently affect unrelated games.
+- Recommend a lighter/faster model when the patch is routine: announcement/doc backfills, reusing an existing UI pattern, version/text bumps, or a narrowly scoped bug fix.
+
+Give this recommendation once, then proceed with implementation in the same reply using the session's current model — do not stop and wait for the user to switch models before continuing, unless they ask to switch first.
+
 ## 4. Efficient Repository Reading
 
 Do not read the entire repository before modifying code.
