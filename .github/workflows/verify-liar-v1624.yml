@@ -23,6 +23,7 @@ jobs:
         run: |
           rm -f .release/npm-test-failure.txt
           python3 .release/apply-liar-v1624.py
+          python3 .release/fix-v1624-test-expectations.py
           sed -i '1{/^\\$/d;}' test/liar-server.test.js
 
       - name: Syntax and diff checks
@@ -91,7 +92,7 @@ jobs:
         run: |
           git config user.name "game-center-release-bot"
           git config user.email "actions@users.noreply.github.com"
-          git rm .release/apply-liar-v1624.py .github/workflows/verify-liar-v1624.yml
+          git rm .release/apply-liar-v1624.py .release/fix-v1624-test-expectations.py .github/workflows/verify-liar-v1624.yml
           rm -f .release/npm-test-failure.txt
           git add -A
           git commit -m "Release v1.6.24: add Liar Game [skip ci]"
