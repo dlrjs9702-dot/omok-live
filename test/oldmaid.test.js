@@ -91,11 +91,12 @@ test('final joker owner loses, remaining players win, rematch resets everything'
   assert.deepEqual(state.winner,['2']);
   assert.equal(game.draw(state,'1','2',0,5).legal,false);
   const oldRound = state.round;
+  const previousRevision = state.revision;
   game.reset(state);
   assert.equal(state.status,'selecting');
   assert.equal(state.round,oldRound+1);
   assert.deepEqual(state.hands,{});
   assert.deepEqual(state.history,[]);
   assert.equal(state.loser,null);
-  assert.equal(state.revision,0);
+  assert.equal(state.revision,previousRevision+1);
 });
