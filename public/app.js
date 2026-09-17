@@ -26,6 +26,8 @@
   const newRoomBtn = document.getElementById('newRoomBtn');
   const gameChoiceButtons = [...document.querySelectorAll('.gameChoice')];
   const selectedGameText = document.getElementById('selectedGameText');
+  const roomTitleInput = document.getElementById('roomTitleInput');
+  const baseballDigitChoices = document.getElementById('baseballDigitChoices');
   const roomGameLogo = document.getElementById('roomGameLogo');
   const leaveRoomBtn = document.getElementById('leaveRoomBtn');
   const joinRoomForm = document.getElementById('joinRoomForm');
@@ -331,7 +333,7 @@
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
       : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹'
-        : (type === 'othello' ? '오셀로' : '오목');
+        : (type === 'othello' ? '오델로' : '오목');
   }
 
   function isTeamGame() { return state?.gameType === 'omok2v2'; }
@@ -360,7 +362,7 @@
     "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
-    "baseball": "각자 서로 다른 숫자 3개로 비밀 숫자를 정합니다. 첫 자리는 0이 아니어야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선공부터 번갈아 추측해 먼저 3스트라이크를 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다."
+    "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다."
 });
   function showGameRule(type) {
     gameRulesText.textContent = gameRules[type] || '';
@@ -370,6 +372,7 @@
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
+    baseballDigitChoices.classList.toggle('hidden', selectedGameType !== 'baseball');
     gameRulesSelect.value = selectedGameType;
     showGameRule(selectedGameType);
   }
@@ -377,7 +380,14 @@
   async function createRoom() {
     try {
       const visibility = document.querySelector('input[name="roomVisibility"]:checked')?.value || 'private';
-      const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: selectedGameType, visibility }) });
+      const digitCount = Number(document.querySelector('input[name="baseballDigitCount"]:checked')?.value || 3);
+      const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({
+        gameType: selectedGameType,
+        visibility,
+        title: roomTitleInput.value,
+        ...(selectedGameType === 'baseball' ? { digitCount } : {}),
+      }) });
+      roomTitleInput.value = '';
       enterRoomState(data.state);
       showToast(visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
@@ -425,7 +435,7 @@
       const main = document.createElement('div');
       main.className = 'publicRoomMain';
       const name = document.createElement('strong');
-      name.textContent = `${room.host || '방장'}의 ${room.gameName || gameName(room.gameType)}방`;
+      name.textContent = room.title || `${room.host || '방장'}의 ${room.gameName || gameName(room.gameType)}방`;
       const info = document.createElement('small');
       const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : room.status === 'paused' ? '일시정지' : '대국 중';
       info.textContent = `${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
@@ -1410,10 +1420,12 @@
     const g = state.game;
     seat = state.me?.seat || null;
     isHost = Boolean(state.me?.isHost);
-    roomIdentityLabel.textContent = identityText();
-    roomGameLogo.textContent = state.gameName || gameName(state.gameType);
+    const gameLabel = state.gameName || gameName(state.gameType);
+    const roomLabel = state.title || gameLabel;
+    roomIdentityLabel.textContent = state.title ? `${gameLabel} · ${identityText()}` : identityText();
+    roomGameLogo.textContent = roomLabel;
     rulesText.textContent = state.rules || '';
-    document.title = `${state.gameName || gameName(state.gameType)} · 게임센터`;
+    document.title = `${roomLabel} · 게임센터`;
     newRoomBtn.classList.toggle('hidden', !isHost);
     hostRoomCodeBox.classList.toggle('hidden', !isHost);
     hostRoomCode.textContent = state.me?.roomCode || '----';
@@ -1444,7 +1456,7 @@
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     if (g.status === 'selecting') statusText.textContent = isBingoGame() ? '빙고 참가자 자리 선택 · 방장 시작' : team ? '4명 자리 선택 중' : '역할 선택 중';
-    else if (g.status === 'setup') statusText.textContent = '비밀 숫자 설정 중';
+    else if (g.status === 'setup') statusText.textContent = `비밀 숫자 ${g.digitCount || 3}자리 설정 중`;
     else if (g.status === 'playing') {
       statusText.textContent = isBingoGame()
         ? `${seatKo(g.turn)} · ${state.players[g.turn]?.label || '플레이어'}님 숫자 선택 차례`
@@ -1548,8 +1560,17 @@
 
   function renderBaseball() {
     const g = state.game;
+    const digitCount = Number(g.digitCount) === 4 ? 4 : 3;
+    const numberPattern = `[1-9][0-9]{${digitCount - 1}}`;
+    for (const input of [baseballSecretInput, baseballGuessInput]) {
+      input.pattern = numberPattern;
+      input.minLength = digitCount;
+      input.maxLength = digitCount;
+    }
+    baseballSecretInput.placeholder = `서로 다른 숫자 ${digitCount}개`;
+    baseballGuessInput.placeholder = digitCount === 3 ? '예: 123' : '예: 1234';
     const ready = g.ready || {};
-    baseballReady.textContent = `비밀 숫자 준비: 선공 ${ready.black ? '완료' : '대기'} · 후공 ${ready.white ? '완료' : '대기'}`;
+    baseballReady.textContent = `${digitCount}자리 비밀 숫자 준비: 선공 ${ready.black ? '완료' : '대기'} · 후공 ${ready.white ? '완료' : '대기'}`;
     baseballMySecret.textContent = seat
       ? (state.me?.mySecret ? `내 비밀 숫자: ${state.me.mySecret}` : '내 비밀 숫자: 미설정')
       : '관전 중 · 비밀 숫자는 각 플레이어에게만 보입니다.';
@@ -1557,7 +1578,7 @@
     baseballSecretForm.classList.toggle('hidden', !(g.status === 'setup' && seat && !myReady));
     baseballGuessForm.classList.toggle('hidden', !(g.status === 'playing' && seat && g.turn === seat));
     if (g.status === 'selecting') baseballHint.textContent = '선공·후공을 선택하면 각자 비밀 숫자를 설정할 수 있습니다.';
-    else if (g.status === 'setup') baseballHint.textContent = !seat ? '플레이어들의 비밀 숫자 준비를 기다리는 중입니다.' : (myReady ? '비밀 숫자 설정 완료. 상대방이 준비할 때까지 기다려 주세요.' : '상대에게 보이지 않을 비밀 숫자 3개를 입력해 주세요.');
+    else if (g.status === 'setup') baseballHint.textContent = !seat ? '플레이어들의 비밀 숫자 준비를 기다리는 중입니다.' : (myReady ? '비밀 숫자 설정 완료. 상대방이 준비할 때까지 기다려 주세요.' : `상대에게 보이지 않을 비밀 숫자 ${digitCount}개를 입력해 주세요.`);
     else if (g.status === 'playing') baseballHint.textContent = seat === g.turn ? '내 차례입니다! 상대의 숫자를 추측해 주세요.' : `${seatKo(g.turn)}이(가) 추측할 차례입니다.`;
     else if (g.status === 'finished' && seat) baseballHint.textContent = resultOutcome(g, seat, state.gameType) === 'win'
       ? '🏆 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.'
@@ -2270,14 +2291,16 @@
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
   }
 
-  function validBaseballInput(value) {
-    return /^[1-9][0-9]{2}$/.test(value) && new Set(value).size === 3;
+  function validBaseballInput(value, digitCount) {
+    const digits = Number(digitCount) === 4 ? 4 : 3;
+    return new RegExp(`^[1-9][0-9]{${digits - 1}}$`).test(value) && new Set(value).size === digits;
   }
 
   async function sendBaseballAction(event, action, input, name) {
     event.preventDefault();
     const value = input.value.trim();
-    if (!validBaseballInput(value)) return showToast('첫 자리가 0이 아닌 서로 다른 숫자 3개를 입력해 주세요.', 4000);
+    const digitCount = state?.game?.digitCount || 3;
+    if (!validBaseballInput(value, digitCount)) return showToast(`첫 자리가 0이 아닌 서로 다른 숫자 ${digitCount}개를 입력해 주세요.`, 4000);
     const button = event.currentTarget.querySelector('button[type="submit"]');
     button.disabled = true;
     try {

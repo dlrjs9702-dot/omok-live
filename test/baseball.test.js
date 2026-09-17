@@ -15,6 +15,12 @@ test('three distinct digits, leading zero forbidden and zero elsewhere allowed',
   for (const number of ['012','111','122','12','1234','abc','1e2','1 2',123]) assert.equal(baseball.validNumber(number), false);
 });
 
+test('four-digit mode keeps the same leading-zero and duplicate rules', () => {
+  for (const number of ['1234', '1023', '9876']) assert.equal(baseball.validNumber(number, 4), true);
+  for (const number of ['0123', '1123', '123', '12345']) assert.equal(baseball.validNumber(number, 4), false);
+  assert.deepEqual(baseball.score('1234', '1243', 4), { strikes: 2, balls: 2 });
+});
+
 test('scores exact positions as strikes and other digits as balls', () => {
   assert.deepEqual(baseball.score('123','123'), { strikes: 3, balls: 0 });
   assert.deepEqual(baseball.score('123','132'), { strikes: 1, balls: 2 });
@@ -44,6 +50,20 @@ test('both secrets are required, submitted only once; own guesses score against 
   assert.equal(game.winner,'black');
   assert.equal(game.status,'finished');
   assert.equal(baseball.applyGuess(game, '789','white','now').reason,'not-playing');
+});
+
+test('four-digit room keeps its selected digit count through the next round', () => {
+  const game = baseball.create({ digitCount: 4 });
+  assert.equal(game.digitCount, 4);
+  baseball.start(game);
+  assert.equal(baseball.setSecret(game, 'black', '1234').legal, true);
+  assert.equal(baseball.setSecret(game, 'white', '4567').ready, true);
+  const win = baseball.applyGuess(game, '4567', 'black', 'now');
+  assert.equal(win.finished, true);
+  assert.equal(win.strikes, 4);
+  baseball.reset(game);
+  assert.equal(game.round, 2);
+  assert.equal(game.digitCount, 4);
 });
 
 test('public state does not reveal either private secret, including after victory', () => {

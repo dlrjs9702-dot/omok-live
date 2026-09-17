@@ -349,6 +349,7 @@ function publicRoomSummary(room) {
   const engine = getGame(room.gameType);
   return {
     id: room.id, gameType: room.gameType, gameName: engine?.name || '게임',
+    title: room.title || null,
     host: host.label || '방장',
     playerCount: isNumberedSeatGame(room) ? TEAM_SEATS.filter(seat => room.players[seat]).length
       : Number(Boolean(room.players.black)) + Number(Boolean(room.players.white)),
@@ -444,7 +445,7 @@ function newParticipant(session, connected = false) {
   };
 }
 
-function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private') {
+function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private', options = {}) {
   const gameEngine = getGame(requestedGameType);
   if (!gameEngine) return null;
   let code;
@@ -456,6 +457,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     code,
     visibility,
     gameType: gameEngine.id,
+    title: options.title || '',
     createdAt: t,
     updatedAt: t,
     hostSessionToken: hostSession.token,
@@ -464,9 +466,9 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
       ? { '1': null, '2': null, '3': null, '4': null }
       : { black: null, white: null },
     social: createRoomSocial(),
-    game: gameEngine.create(),
+    game: gameEngine.create(gameEngine.id === 'baseball' ? { digitCount: options.digitCount } : undefined),
   };
-  appendSystemMessage(room, `${hostSession.label || '방장'}님이 ${gameEngine.name} 방을 만들었습니다.`);
+  appendSystemMessage(room, `${hostSession.label || '방장'}님이 ${room.title || gameEngine.name + ' 방'}을 만들었습니다.`);
   return room;
 }
 
@@ -561,6 +563,7 @@ function publicRoom(room) {
     visibility: room.visibility,
     gameType: gameEngine.id,
     gameName: gameEngine.name,
+    title: room.title || null,
     rules: gameEngine.rules,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
@@ -917,7 +920,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.21', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.22', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1293,13 +1296,25 @@ async function requestHandler(req, res) {
     if (visibility !== 'public' && visibility !== 'private') {
       return sendError(res, 400, 'BAD_VISIBILITY', '공개방 또는 비공개방을 선택해 주세요.');
     }
+    if (body.title !== undefined && typeof body.title !== 'string') {
+      return sendError(res, 400, 'BAD_ROOM_TITLE', '방 제목은 문자로 입력해 주세요.');
+    }
+    const title = String(body.title || '').trim().replace(/\s+/g, ' ');
+    if (title.length > 40) return sendError(res, 400, 'ROOM_TITLE_TOO_LONG', '방 제목은 40자까지 입력할 수 있습니다.');
+    let digitCount = 3;
+    if (gameType === 'baseball') {
+      digitCount = Number(body.digitCount === undefined ? 3 : body.digitCount);
+      if (![3, 4].includes(digitCount)) {
+        return sendError(res, 400, 'BAD_DIGIT_COUNT', '숫자야구는 3자리 또는 4자리로 선택해 주세요.');
+      }
+    }
     const previous = getCurrentRoom(session);
     if (previous && previous.participants[session.token]) {
       previous.participants[session.token].connected = false;
       appendSystemMessage(previous, session.label + '님이 새 방을 만들었습니다.');
       broadcast(previous);
     }
-    const room = makeRoom(session, gameType, visibility);
+    const room = makeRoom(session, gameType, visibility, { title, digitCount });
     rooms.set(room.id, room);
     session.currentRoomId = room.id;
     registerParticipant(room, session);
@@ -1460,7 +1475,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.21 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.22 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.21" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.22" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -70,7 +70,7 @@
                   <option value="bingo">빙고</option>
                   <option value="dots">점과 상자</option>
                   <option value="cityking">랜드킹</option>
-                  <option value="othello">오셀로</option>
+                  <option value="othello">오델로</option>
                   <option value="baseball">숫자야구</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
@@ -99,7 +99,7 @@
               <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
             </div>
             <div class="gameOption" data-game-option="othello">
-              <button type="button" class="gameChoice" data-game="othello"><strong>오셀로</strong></button>
+              <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
             </div>
             <div class="gameOption" data-game-option="baseball">
               <button type="button" class="gameChoice" data-game="baseball"><strong>숫자야구</strong></button>
@@ -110,6 +110,13 @@
             <legend>방 공개 설정</legend>
             <label><input type="radio" name="roomVisibility" value="public" checked /> 🌐 공개방 <small>목록에서 바로 입장</small></label>
             <label><input type="radio" name="roomVisibility" value="private" /> 🔒 비공개방 <small>비밀번호로만 입장</small></label>
+          </fieldset>
+          <label class="roomTitleField" for="roomTitleInput">방 제목 <small>선택 입력 · 비워두면 기본 이름을 사용합니다</small></label>
+          <input id="roomTitleInput" type="text" maxlength="40" autocomplete="off" placeholder="예: 금요일 저녁 한 판" />
+          <fieldset id="baseballDigitChoices" class="baseballDigitChoices hidden">
+            <legend>숫자야구 자릿수</legend>
+            <label><input type="radio" name="baseballDigitCount" value="3" checked /> 3자리</label>
+            <label><input type="radio" name="baseballDigitCount" value="4" /> 4자리</label>
           </fieldset>
           <button id="createRoomBtn" class="primary big">방 만들기</button>
           <div class="divider"><span>또는 방 참가</span></div>
@@ -209,6 +216,33 @@
             </div>
             <span id="connectionBadge" class="badge">연결 중</span>
           </div>
+
+          <section class="roomInfoArea" aria-label="방 정보">
+            <div id="hostRoomCodeBox" class="roomSecret hidden">
+              <span>방 비밀번호</span>
+              <strong id="hostRoomCode">----</strong>
+              <button id="copyRoomCodeBtn" class="primary">비밀번호 복사</button>
+              <small id="roomCodeHelp">비공개방은 이 비밀번호로만 입장할 수 있습니다.</small>
+            </div>
+
+            <section id="roomInvitePanel" class="roomInvitePanel hidden" aria-label="온라인 사용자 초대">
+              <div class="roomInviteHead"><h3>대전 초대</h3><button id="refreshInviteTargetsBtn" type="button" class="ghost tiny">대기자 갱신</button></div>
+              <p class="smallMuted">로비에 있는 사용자를 초대합니다. 상대가 수락하면 이 방에 입장합니다.</p>
+              <div id="inviteTargetList" class="inviteTargetList"><p class="emptyState">접속자를 불러오는 중입니다.</p></div>
+            </section>
+
+            <section class="gameInfoCard" aria-label="대국 정보">
+              <h3>대국 정보</h3>
+              <dl class="infoList">
+                <div><dt>현재 판</dt><dd id="roundNumber">1판</dd></div>
+                <div><dt id="moveCountLabel">착수 수</dt><dd id="moveCount">0</dd></div>
+                <div><dt>내 역할</dt><dd id="mySeat">-</dd></div>
+                <div><dt>접속 인원</dt><dd id="connectedCount">0명</dd></div>
+                <div><dt>관전자</dt><dd id="spectatorCount">0명</dd></div>
+                <div id="gameScoreRow" class="hidden"><dt>돌 개수</dt><dd id="gameScoreText">-</dd></div>
+              </dl>
+            </section>
+          </section>
 
           <div id="standardPlayers" class="players" aria-label="플레이어 상태">
             <div id="blackPlayer" class="player black">
@@ -316,29 +350,6 @@
         </div>
 
         <aside class="side card">
-          <div id="hostRoomCodeBox" class="roomSecret hidden">
-            <span>방 비밀번호</span>
-            <strong id="hostRoomCode">----</strong>
-            <button id="copyRoomCodeBtn" class="primary">비밀번호 복사</button>
-            <small id="roomCodeHelp">비공개방은 이 비밀번호로만 입장할 수 있습니다.</small>
-          </div>
-
-          <section id="roomInvitePanel" class="roomInvitePanel hidden" aria-label="온라인 사용자 초대">
-            <div class="roomInviteHead"><h3>대전 초대</h3><button id="refreshInviteTargetsBtn" type="button" class="ghost tiny">대기자 갱신</button></div>
-            <p class="smallMuted">로비에 있는 사용자를 초대합니다. 상대가 수락하면 이 방에 입장합니다.</p>
-            <div id="inviteTargetList" class="inviteTargetList"><p class="emptyState">접속자를 불러오는 중입니다.</p></div>
-          </section>
-
-          <h3>대국 정보</h3>
-          <dl class="infoList">
-            <div><dt>현재 판</dt><dd id="roundNumber">1판</dd></div>
-            <div><dt id="moveCountLabel">착수 수</dt><dd id="moveCount">0</dd></div>
-            <div><dt>내 역할</dt><dd id="mySeat">-</dd></div>
-            <div><dt>접속 인원</dt><dd id="connectedCount">0명</dd></div>
-            <div><dt>관전자</dt><dd id="spectatorCount">0명</dd></div>
-            <div id="gameScoreRow" class="hidden"><dt>돌 개수</dt><dd id="gameScoreText">-</dd></div>
-          </dl>
-
           <section class="roomPeople" aria-label="현재 접속자">
             <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
             <div id="participantList" class="participantList"></div>
@@ -379,7 +390,7 @@
       <p id="resultMessage" class="resultMessage"></p>
     </div>
   </div>
-  <script src="/session-lock.js?v=1.6.21"></script>
-  <script src="/app.js?v=1.6.21"></script>
+  <script src="/session-lock.js?v=1.6.22"></script>
+  <script src="/app.js?v=1.6.22"></script>
 </body>
 </html>

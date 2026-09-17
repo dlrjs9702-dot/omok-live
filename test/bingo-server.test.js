@@ -167,10 +167,10 @@ test('Bingo lobby and room UI expose the host controls, numbered seats and priva
   assert.match(html, /id="bingoTargetSelect"/);
   assert.match(html, /id="bingoStartBtn"/);
   assert.match(html, /id="bingoBoard"/);
-  assert.match(html, /app\.js\?v=1\.6\.21/);
+  assert.match(html, /app\.js\?v=1\.6\.22/);
   assert.match(app, /function isBingoGame\(/);
   assert.match(app, /function renderBingo\(/);
   assert.match(app, /roomAction\('select-bingo'/);
   assert.match(server, /start-bingo\|select-bingo/);
-  assert.match(css, /Bingo v1\.6\.21/);
+  assert.match(css, /Bingo v1\.6\.22/);
 });

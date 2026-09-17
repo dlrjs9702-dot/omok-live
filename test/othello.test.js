@@ -7,7 +7,7 @@ test('game registry exposes omok and othello independently', () => {
   assert.equal(hasGame('omok'), true);
   assert.equal(hasGame('othello'), true);
   assert.equal(getGame('omok').name, '오목');
-  assert.equal(getGame('othello').name, '오셀로');
+  assert.equal(getGame('othello').name, '오델로');
 });
 
 test('othello starts with four stones and four legal black moves', () => {
