@@ -1,0 +1,65 @@
+name: Verify Yut stacked-piece display v1.6.20
+on:
+  push:
+    branches: [yut-stacked-pieces-v1620-20260917]
+permissions:
+  contents: write
+jobs:
+  verify-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply guarded Yut display patch to production base
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .release/yut-stacked-v1620.py /tmp/yut-stacked-v1620.py
+          git fetch origin main
+          git switch --detach origin/main
+          test "$(git rev-parse HEAD)" = '6bb55a488c3864daf5b0e52b5ac1ba254470b880'
+          python3 /tmp/yut-stacked-v1620.py
+          node --check public/app.js
+          node --check lib/release-announcements.js
+          node --check test/yut.test.js
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run complete regression suite
+        run: npm test
+      - name: Verify release integrity
+        shell: bash
+        run: |
+          node - <<'JS'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const games = require('./lib/games').listGames();
+          const notices = require('./lib/release-announcements');
+          if (pkg.version !== '1.6.20' || lock.version !== '1.6.20') throw Error('Wrong version');
+          if (games.length !== 8 || games.find(g => g.id === 'yut')?.name !== '윷놀이') throw Error('Game registry changed');
+          if (notices.filter(n => n.key === 'v1.6.20').length !== 1) throw Error('Release notice missing or duplicate');
+          const app = fs.readFileSync('public/app.js', 'utf8');
+          if (!app.includes('function yutStackOffsets(count)')) throw Error('Stack helper missing');
+          if (!app.includes("fillText(piece.id.split('-').at(-1), px, y + 5)")) throw Error('Piece number labels missing');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          if (!html.includes('app.js?v=1.6.20')) throw Error('Asset cache version missing');
+          require('pg');
+          console.log('Yut stacked pieces, eight games, PostgreSQL driver and cache version verified');
+          JS
+      - name: Push verified release branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/app.js public/index.html package.json package-lock.json lib/release-announcements.js test
+          git diff --cached --check
+          git commit -m 'Improve Yut stacked-piece visibility [v1.6.20]'
+          git push origin HEAD:refs/heads/verified-yut-stacked-v1620-20260917
+          echo "Verified commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
