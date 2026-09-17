@@ -126,6 +126,15 @@
   const pictionaryGuessForm = document.getElementById('pictionaryGuessForm');
   const pictionaryGuessInput = document.getElementById('pictionaryGuessInput');
   const pictionaryScoreboard = document.getElementById('pictionaryScoreboard');
+  const oldmaidPanel = document.getElementById('oldmaidPanel');
+  const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
+  const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
+  const oldmaidStatus = document.getElementById('oldmaidStatus');
+  const oldmaidResult = document.getElementById('oldmaidResult');
+  const oldmaidCounts = document.getElementById('oldmaidCounts');
+  const oldmaidOpponents = document.getElementById('oldmaidOpponents');
+  const oldmaidMyHand = document.getElementById('oldmaidMyHand');
+  const oldmaidHistory = document.getElementById('oldmaidHistory');
   const liarPanel = document.getElementById('liarPanel');
   const liarRoundsSelect = document.getElementById('liarRoundsSelect');
   const liarStartBtn = document.getElementById('liarStartBtn');
@@ -364,7 +373,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -372,8 +381,9 @@
   function isBingoGame() { return state?.gameType === 'bingo'; }
   function isPictionaryGame() { return state?.gameType === 'pictionary'; }
   function isLiarGame() { return state?.gameType === 'liar'; }
-  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame(); }
-  function numberedSeats() { return (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
+  function isOldMaidGame() { return state?.gameType === 'oldmaid'; }
+  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame(); }
+  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4','5','6'] : (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
   // Winner is the same black/white color for most games; 2v2 seat numbers map to team colors.
   // Bingo uses numbered seats; pictionary's winner is an array of seats, so it never matches 'black'/'white'
@@ -381,7 +391,7 @@
   function resultOutcome(game, playerSeat, gameType) {
     if (game?.status !== 'finished' || !playerSeat || !game.winner) return null;
     if (gameType === 'bingo') return String(playerSeat) === String(game.winner) ? 'win' : 'loss';
-    if (gameType === 'liar' && Array.isArray(game.winner)) return game.winner.includes(String(playerSeat)) ? 'win' : 'loss';
+    if (['liar', 'oldmaid'].includes(gameType) && Array.isArray(game.winner)) return game.winner.includes(String(playerSeat)) ? 'win' : 'loss';
     if (!['black', 'white'].includes(game.winner)) return null;
     const color = gameType === 'omok2v2' ? seatColor(playerSeat) : playerSeat;
     if (!['black', 'white'].includes(color)) return null;
@@ -402,14 +412,15 @@
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
     "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
-    "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다."
+    "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다.",
+    "oldmaid": "2~6명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다."
 });
   function showGameRule(type) {
     gameRulesText.textContent = gameRules[type] || '';
   }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
     baseballDigitChoices.classList.toggle('hidden', selectedGameType !== 'baseball');
@@ -1266,7 +1277,7 @@
   }
 
   function choiceKo(choice) {
-    if ((isBingoGame() || isPictionaryGame() || isLiarGame()) && numberedSeats().includes(choice)) return `${choice}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -1275,7 +1286,7 @@
   }
 
   function seatKo(value) {
-    if ((isBingoGame() || isPictionaryGame() || isLiarGame()) && numberedSeats().includes(value)) return `${value}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -1395,20 +1406,22 @@
     const bingo = isBingoGame();
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
+    const oldmaid = isOldMaidGame();
     for (const number of numberedSeats()) {
       const player = state.players[number];
       const card = document.createElement('div');
       const color = seatColor(number);
-      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : bingo ? state.game.turn === number : state.game.nextSeat === number;
-      card.className = `teamPlayer ${(bingo || pictionary || liar) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
+      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : bingo ? state.game.turn === number : state.game.nextSeat === number;
+      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
       const title = document.createElement('strong');
       title.textContent = pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
         : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
+        : oldmaid ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 뽑기 차례' : ''}`
         : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}` : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
       const name = document.createElement('small');
       name.textContent = player
-        ? `${player.label}${(pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -1427,6 +1440,7 @@
     const bingo = isBingoGame();
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
+    const oldmaid = isOldMaidGame();
     const team = isTeamGame();
     const numbered = isNumberedSeatGame();
     const seats = numberedSeats();
@@ -1439,13 +1453,14 @@
       roleChooser.querySelector('small').textContent = pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
+        : oldmaid ? '2~6명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
         : bingo
         ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 승리 줄 수를 정하고 시작합니다.'
         : '1·3번은 흑팀, 2·4번은 백팀입니다. 네 명이 모두 자리를 정하면 1→2→3→4 순서로 시작합니다.';
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (bingo || pictionary || liar) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
+        button.textContent = (bingo || pictionary || liar || oldmaid) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
         button.classList.toggle('selected', choice === number);
       }
@@ -1496,8 +1511,9 @@
 
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
+    const oldmaid = isOldMaidGame();
     roundNumber.textContent = pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : liar ? `${g.roundNumber || 0}/${g.totalRounds || 1}판` : `${g.round || 1}판`;
-    moveCountLabel.textContent = pictionary ? '진행 라운드' : liar ? '진행 행동' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
+    moveCountLabel.textContent = pictionary ? '진행 라운드' : liar ? '진행 행동' : oldmaid ? '뽑기 횟수' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
@@ -1511,7 +1527,9 @@
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
-    if (liar) {
+    if (oldmaid) {
+      statusText.textContent = g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작' : g.status === 'finished' ? `${state.players[g.loser]?.label || '조커 보유자'}님 패배` : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`;
+    } else if (liar) {
       const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
       const phases = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 투표', revote: '재투표', guess: '라이어 최종 추측', reveal: '판 결과 공개' };
       statusText.textContent = g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작' : g.status === 'finished' ? '라이어게임 종료' : `${phases[g.phase] || '진행 중'}${speaker ? ` · ${speaker}` : ''}`;
@@ -1559,7 +1577,7 @@
       clearResultEffect();
     }
     const canAct = Boolean(seat);
-    const canResign = !isBingoGame() && !pictionary && !liar && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
+    const canResign = !isBingoGame() && !pictionary && !liar && !oldmaid && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
     const canEndPaused = team && isHost && g.status === 'playing' && g.paused;
     for (const b of [endGameBtn, sideEndGameBtn]) {
       b.classList.toggle('hidden', !canEndPaused);
@@ -1579,7 +1597,7 @@
     const yut = state.gameType === 'yut';
     const bingo = state.gameType === 'bingo';
     const city = state.gameType === 'cityking';
-    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar);
+    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
@@ -1595,7 +1613,9 @@
     if (pictionary) renderPictionary();
     liarPanel.classList.toggle('hidden', !liar);
     if (liar) renderLiar();
-    if (pictionary || liar) {
+    oldmaidPanel.classList.toggle('hidden', !oldmaid);
+    if (oldmaid) renderOldMaid();
+    if (pictionary || liar || oldmaid) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -2013,8 +2033,80 @@
     }
   }
 
+  function renderOldMaid() {
+    const g = state.game;
+    const active = g.seatOrder?.length || numberedSeats().filter(number => state.players[number]).length;
+    oldmaidStartBtn.classList.toggle('hidden', g.status !== 'selecting');
+    oldmaidStartBtn.disabled = !(isHost && active >= 2 && g.status === 'selecting');
+    oldmaidShuffleBtn.disabled = !(seat && g.status === 'playing' && (g.counts?.[seat] || 0) > 0);
+    const label = number => state.players[number]?.label || `${number}번`;
+    oldmaidStatus.textContent = g.status === 'selecting'
+      ? `참가자 ${active}명 · 2~6명이 자리를 선택하면 방장이 시작합니다.`
+      : g.status === 'finished' ? `종료 · ${label(g.loser)}님이 조커를 보유했습니다.`
+      : g.turn === seat ? `내 차례! ${label(g.target)}님의 카드 한 장을 뽑으세요.`
+      : `${label(g.turn)}님 차례 · ${label(g.target)}님의 카드를 뽑는 중`;
+    oldmaidResult.classList.toggle('hidden', g.status !== 'finished');
+    oldmaidResult.textContent = g.status === 'finished'
+      ? `🃏 ${label(g.loser)}님 패배 · 나머지 참가자 승리` : '';
+    oldmaidCounts.replaceChildren();
+    for (const number of (g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]))) {
+      const chip = document.createElement('span');
+      chip.className = 'oldmaidCount' + (g.turn === number ? ' active' : '');
+      chip.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.target === number ? ' · 뽑기 대상' : ''}`;
+      oldmaidCounts.appendChild(chip);
+    }
+    oldmaidMyHand.replaceChildren();
+    if (seat && Array.isArray(state.me?.myOldMaidHand)) {
+      for (const card of state.me.myOldMaidHand) {
+        const face = document.createElement('span');
+        face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : '');
+        face.textContent = card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
+        face.setAttribute('aria-label', card.rank === 'JOKER' ? '조커' : `${card.suit} ${card.rank}`);
+        oldmaidMyHand.appendChild(face);
+      }
+    } else {
+      oldmaidMyHand.textContent = seat ? '게임 시작 후 내 카드가 표시됩니다.' : '관전자는 다른 참가자의 카드 내용을 볼 수 없습니다.';
+    }
+    if (seat && g.status === 'playing' && !state.me.myOldMaidHand?.length) oldmaidMyHand.textContent = '카드를 모두 버렸습니다!';
+    oldmaidOpponents.replaceChildren();
+    for (const number of (g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]))) {
+      if (number === seat) continue;
+      const row = document.createElement('section');
+      row.className = 'oldmaidOpponent' + (g.target === number ? ' target' : '');
+      const name = document.createElement('strong');
+      name.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.target === number ? ' · 뽑기 대상' : ''}`;
+      const cards = document.createElement('div');
+      cards.className = 'oldmaidCards';
+      const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
+      for (let index = 0; index < (g.counts?.[number] || 0); index += 1) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+        button.textContent = '🂠';
+        button.disabled = !canDraw;
+        button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
+        button.addEventListener('click', () => {
+          if (button.disabled) return;
+          button.classList.add('selected');
+          for (const candidate of cards.querySelectorAll('button')) candidate.disabled = true;
+          roomAction('draw-oldmaid', { targetSeat: number, index, expectedRevision: g.revision });
+        });
+        cards.appendChild(button);
+      }
+      row.append(name, cards);
+      oldmaidOpponents.appendChild(row);
+    }
+    oldmaidHistory.replaceChildren();
+    for (const item of (g.history || []).slice(-12).reverse()) {
+      const line = document.createElement('p');
+      line.textContent = `${label(item.actor)}님이 ${label(item.target)}님의 카드 1장을 뽑았습니다.${item.pairs ? ` · ${item.pairs}쌍 버림` : ''}${item.emptied ? ` · ${label(item.emptied)}님 카드 소진` : ''}`;
+      oldmaidHistory.appendChild(line);
+    }
+    if (!g.history?.length) oldmaidHistory.textContent = '아직 카드를 뽑지 않았습니다.';
+  }
+
   function drawBoard() {
-    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar') return;
+    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
@@ -2571,7 +2663,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar') return false;
+    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (isTeamGame() ? (state.game.paused || state.game.nextSeat !== seat) : state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
@@ -2720,6 +2812,13 @@
   cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
+
+  oldmaidStartBtn.addEventListener('click', () => roomAction('start-oldmaid'));
+  oldmaidShuffleBtn.addEventListener('click', async () => {
+    if (oldmaidShuffleBtn.disabled || !state) return;
+    oldmaidShuffleBtn.disabled = true;
+    await roomAction('shuffle-oldmaid', { expectedRevision: state.game.revision });
+  });
 
   liarRoundsSelect.addEventListener('change', () => roomAction('set-liar-rounds', { totalRounds: Number(liarRoundsSelect.value) }));
   liarStartBtn.addEventListener('click', () => roomAction('start-liar'));

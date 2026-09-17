@@ -6,12 +6,14 @@ const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
+const OLDMAID_SEATS = ['1', '2', '3', '4', '5', '6'];
 const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
 const isLiar = (room) => room.gameType === 'liar';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room);
-const seatsFor = (room) => (isPictionary(room) || isLiar(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
+const isOldMaid = (room) => room.gameType === 'oldmaid';
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room);
+const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
@@ -466,7 +468,9 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: ['pictionary', 'liar'].includes(gameEngine.id)
+    players: gameEngine.id === 'oldmaid'
+      ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
+      : ['pictionary', 'liar'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
       : ['omok2v2', 'bingo'].includes(gameEngine.id)
         ? { '1': null, '2': null, '3': null, '4': null }
@@ -604,6 +608,7 @@ function roomView(room, session) {
       mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
       myWord: isPictionary(room) ? getGame('pictionary').wordFor(room.game, seat) : null,
+      myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
     },
   };
 }
@@ -626,7 +631,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room)) return;
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -648,7 +653,7 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
-  if (isBingo(room) || isPictionary(room) || isLiar(room)) {
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -695,7 +700,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -704,7 +709,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room)) && seat
+  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -857,6 +862,38 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_LIAR_GUESS', engine.moveError(verdict.reason));
   }
 
+  if (action === 'start-oldmaid') {
+    if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 시작할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 도둑잡기를 시작할 수 있습니다.');
+    const players = seatsFor(room).filter(n => room.players[n]);
+    const engine = getGame('oldmaid');
+    const verdict = engine.start(room.game, players);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_START', engine.moveError(verdict.reason));
+    for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+    appendSystemMessage(room, '도둑잡기가 시작됐습니다. 각자 자동으로 짝을 버렸습니다.');
+  }
+
+  if (action === 'shuffle-oldmaid' || action === 'draw-oldmaid') {
+    if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 카드 조작이 가능합니다.');
+    const playerSeat = findSeat(room, session.token);
+    if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 카드를 조작할 수 없습니다.');
+    const engine = getGame('oldmaid');
+    if (action === 'shuffle-oldmaid') {
+      const verdict = engine.shuffleHand(room.game, playerSeat, body.expectedRevision);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_SHUFFLE', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `${session.label || '플레이어'}님이 자신의 카드를 섞었습니다.`);
+    } else {
+      const verdict = engine.draw(room.game, playerSeat, body.targetSeat, body.index, body.expectedRevision);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_DRAW', engine.moveError(verdict.reason));
+      const targetLabel = room.participants[room.players[body.targetSeat]]?.label || '상대';
+      appendSystemMessage(room, `${session.label || '플레이어'}님이 ${targetLabel}님의 카드 1장을 뽑았습니다.`);
+      if (verdict.pairs) appendSystemMessage(room, `${session.label || '플레이어'}님이 카드 ${verdict.pairs}쌍을 버렸습니다.`);
+      if (room.game.hands[body.targetSeat].length === 0) appendSystemMessage(room, `${targetLabel}님의 카드가 모두 없어졌습니다.`);
+      if (room.game.hands[playerSeat].length === 0) appendSystemMessage(room, `${session.label || '플레이어'}님의 카드가 모두 없어졌습니다.`);
+      if (verdict.finished) appendSystemMessage(room, `${room.participants[room.players[room.game.loser]]?.label || '마지막 참가자'}님이 조커를 보유하여 패배했습니다.`);
+    }
+  }
+
   if (action === 'set-bingo-target') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
     if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 승리 조건을 변경할 수 있습니다.');
@@ -1001,6 +1038,7 @@ async function handleRoomAction(req, res, action, session) {
     if (room.gameType === 'bingo') return sendError(res, 400, 'WRONG_GAME', '빙고는 자신의 숫자판에서 숫자를 선택해 주세요.');
     if (room.gameType === 'pictionary') return sendError(res, 400, 'WRONG_GAME', '그림 맞히기는 그리기와 정답 제출 기능을 이용해 주세요.');
     if (room.gameType === 'liar') return sendError(res, 400, 'WRONG_GAME', '라이어게임은 힌트·투표·최종 추측 기능을 이용해 주세요.');
+    if (isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기는 카드 뽑기를 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -1024,6 +1062,7 @@ async function handleRoomAction(req, res, action, session) {
     if (isBingo(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '빙고에서는 기권 기능을 사용하지 않습니다.');
     if (isPictionary(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '그림 맞히기에서는 기권 기능을 사용하지 않습니다.');
     if (isLiar(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '라이어게임에서는 기권 기능을 사용하지 않습니다.');
+    if (isOldMaid(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '도둑잡기에서는 기권 기능을 사용하지 않습니다.');
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
@@ -1062,7 +1101,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.24', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.25', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1567,7 +1606,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|start-oldmaid|shuffle-oldmaid|draw-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -1619,7 +1658,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(tickPictionaryRooms, 1000).unref();
   setInterval(tickLiarRooms, 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.24 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.25 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -335,3 +335,19 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .liarResult{padding:14px;border-radius:13px;background:#111c30;border:1px solid #475569}.liarResult p{margin:7px 0 0;line-height:1.5}.liarFinalWinners{font-weight:900;color:#fde68a}
 .liarScoreboard{display:grid;gap:6px}.liarScoreRow{display:flex;justify-content:space-between;gap:12px;padding:9px 11px;border-radius:10px;background:#0f172a}.liarScoreRow.isMe{outline:2px solid #60a5fa}
 @media(max-width:520px){.liarSetupRow{align-items:stretch}.liarSetupRow label{width:100%}.liarSetupRow select,.liarSetupRow button{flex:1}.liarActionForm{grid-template-columns:1fr}.liarHintRow{grid-template-columns:1fr}.liarTimer{margin-left:0}}
+
+/* v1.6.25: old maid only; shared room/chat styles remain unchanged. */
+.oldmaidPanel{display:grid;gap:12px;min-width:0}.oldmaidPanel.hidden{display:none}
+.oldmaidHeader,.oldmaidMyHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.oldmaidHeader strong{font-size:1rem}.oldmaidResult{padding:12px;border-radius:12px;background:#fef3c7;color:#713f12;font-weight:800}
+.oldmaidCounts{display:flex;gap:6px;flex-wrap:wrap}.oldmaidCount{padding:6px 9px;border-radius:9px;background:#f1f5f9;color:#334155;font-size:.85rem}
+.oldmaidCount.active{background:#dbeafe;color:#1d4ed8;font-weight:800}.oldmaidOpponents{display:grid;gap:10px}
+.oldmaidOpponent{padding:10px;border:2px solid #cbd5e1;border-radius:12px;min-width:0}.oldmaidOpponent.target{border-color:#2563eb;background:#eff6ff}
+.oldmaidCards{display:flex;gap:7px;flex-wrap:wrap;align-items:center;min-width:0;max-height:300px;overflow-y:auto;padding:4px 0}
+.oldmaidCard{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 57px;width:57px;height:77px;border-radius:8px;border:2px solid #94a3b8;font-weight:800;font-size:1rem}
+.oldmaidFace{background:white;color:#172554}.oldmaidFace.joker{color:#7c3aed}
+.oldmaidBack{background:#1e40af;color:white;font-size:1.8rem;cursor:pointer}
+.oldmaidBack.selectable{border-color:#eab308;box-shadow:0 0 0 2px #fde68a}.oldmaidBack.selected{background:#16a34a;border-color:#166534}
+.oldmaidBack:disabled{cursor:default;opacity:.68}.oldmaidHistory{max-height:170px;overflow-y:auto;font-size:.88rem;color:#475569}
+.oldmaidHistory p{margin:4px 0}.oldmaidPanel h3{margin:4px 0;font-size:1rem}.oldmaidPanel h3 small{font-weight:400;font-size:.75rem}
+@media(max-width:600px){.oldmaidCard{flex-basis:49px;width:49px;height:68px}.oldmaidCards{gap:5px}.oldmaidOpponent{padding:8px}.oldmaidHeader button,.oldmaidMyHeader button{min-height:44px}}

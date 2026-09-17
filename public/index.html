@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.24" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.25" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -74,6 +74,7 @@
                   <option value="baseball">숫자야구</option>
                   <option value="pictionary">그림 맞히기</option>
                   <option value="liar">라이어게임</option>
+                  <option value="oldmaid">도둑잡기</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
@@ -111,6 +112,9 @@
             </div>
             <div class="gameOption" data-game-option="liar">
               <button type="button" class="gameChoice" data-game="liar"><strong>라이어게임</strong></button>
+            </div>
+            <div class="gameOption" data-game-option="oldmaid">
+              <button type="button" class="gameChoice" data-game="oldmaid"><strong>도둑잡기</strong></button>
             </div>
           </div>
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
@@ -385,6 +389,17 @@
           </section>
 
 
+          <section id="oldmaidPanel" class="oldmaidPanel hidden" aria-label="도둑잡기">
+            <div class="oldmaidHeader"><strong id="oldmaidStatus">참가자를 기다리는 중</strong><button type="button" id="oldmaidStartBtn" class="primary">도둑잡기 시작</button></div>
+            <p id="oldmaidResult" class="oldmaidResult hidden" aria-live="polite"></p>
+            <div id="oldmaidCounts" class="oldmaidCounts"></div>
+            <h3>상대방 카드 <small>현재 뽑을 상대의 카드만 선택할 수 있습니다</small></h3>
+            <div id="oldmaidOpponents" class="oldmaidOpponents"></div>
+            <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="secondary">카드 섞기</button></div>
+            <div id="oldmaidMyHand" class="oldmaidCards" aria-label="내 손패"></div>
+            <h3>최근 행동</h3><div id="oldmaidHistory" class="oldmaidHistory" aria-live="polite"></div>
+          </section>
+
           <section id="liarPanel" class="liarPanel hidden" aria-label="라이어게임">
             <div class="liarSetupRow">
               <label for="liarRoundsSelect">게임 판 수</label>
@@ -459,7 +474,7 @@
       <p id="resultMessage" class="resultMessage"></p>
     </div>
   </div>
-  <script src="/session-lock.js?v=1.6.24"></script>
-  <script src="/app.js?v=1.6.24"></script>
+  <script src="/session-lock.js?v=1.6.25"></script>
+  <script src="/app.js?v=1.6.25"></script>
 </body>
 </html>
