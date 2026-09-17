@@ -53,6 +53,24 @@ test('stacked pieces move together and corner stops use the shortcut', () => {
   assert.deepEqual(game.pieces.black.slice(0, 2).map(piece => piece.route), ['shortcut5', 'shortcut5']);
 });
 
+test('stacked Yut pieces are spread sideways so every piece number remains visible', async () => {
+  const root = path.join(__dirname, '..');
+  const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
+  assert.match(js, /function yutStackOffsets\(count\)/);
+  assert.match(js, /const offsets = yutStackOffsets\(ordered\.length\)/);
+  assert.match(js, /ctx\.arc\(px,y,18,0,Math\.PI\*2\)/);
+  assert.match(js, /ctx\.fillText\(piece\.id\.split\('-'\)\.at\(-1\), px, y \+ 5\)/);
+  assert.match(js, /carriedNumbers\.map\(value => `\$\{value\}번`\)\.join\(' \+ '\)/);
+  const match = js.match(/  function yutStackOffsets\(count\) \{[\s\S]*?\n  \}/);
+  assert.ok(match, 'yutStackOffsets helper missing');
+  const vm = require('node:vm');
+  const offsets = vm.runInNewContext(match[0] + '\nyutStackOffsets');
+  assert.deepEqual(Array.from(offsets(1)), [0]);
+  assert.deepEqual(Array.from(offsets(2)), [-13, 13]);
+  assert.deepEqual(Array.from(offsets(3)), [-26, 0, 26]);
+  assert.deepEqual(Array.from(offsets(4)), [-39, -13, 13, 39]);
+});
+
 test('the first player to finish all four pieces wins and reset opens a clean round', () => {
   const game = yut.create();
   yut.start(game);
@@ -83,5 +101,5 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.19/);
+  assert.match(html, /app\.js\?v=1\.6\.20/);
 });

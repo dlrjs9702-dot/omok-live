@@ -1582,9 +1582,10 @@
       button.type = 'button';
       button.className = 'yutPieceChoice';
       const number = Number(String(move.pieceId).split('-').at(-1));
-      const carried = move.carried?.length > 1 ? ` · ${move.carried.length}개 업기` : '';
+      const carriedNumbers = (move.carried || [move.pieceId]).map(id => Number(String(id).split('-').at(-1))).sort((a, b) => a - b);
+      const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.map(value => `${value}번`).join(' + ')} 말 · ${carriedNumbers.length}개 업기` : `${number}번 말`;
       const target = move.destination?.status === 'finished' ? '완주' : `${move.destination?.position}번 칸`;
-      button.textContent = `${number}번 말${carried} → ${target}`;
+      button.textContent = `${pieceLabel} → ${target}`;
       button.addEventListener('click', () => roomAction('move-yut', { pieceId: move.pieceId }));
       yutMoveChoices.appendChild(button);
     }
@@ -1639,6 +1640,13 @@
     return map[node] || map[0];
   }
 
+  function yutStackOffsets(count) {
+    const total = Math.max(1, Math.min(4, Number(count) || 1));
+    const spacing = 26;
+    const start = -((total - 1) * spacing) / 2;
+    return Array.from({ length: total }, (_, index) => start + index * spacing);
+  }
+
   function drawYutBoard() {
     const g = state.game;
     const bg = ctx.createLinearGradient(0, 0, 720, 720);
@@ -1686,13 +1694,25 @@
       const [position, color] = key.split(':');
       const [x,y] = yutNodePosition(Number(position));
       const fill = color === 'black' ? '#2563eb' : '#ef4444';
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(x,y,24,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = '950 16px system-ui, sans-serif';
-      ctx.fillText(pieces.length > 1 ? String(pieces.length) : pieces[0].id.split('-').at(-1), x, y + 6);
+      const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
+      const offsets = yutStackOffsets(ordered.length);
+      for (const [index, piece] of ordered.entries()) {
+        const px = x + offsets[index];
+        ctx.save();
+        ctx.shadowColor = 'rgba(36,20,8,.32)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(px,y,18,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.font = '950 15px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(piece.id.split('-').at(-1), px, y + 5);
+        ctx.restore();
+      }
     }
     const home = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'home').length;
     const done = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'finished').length;
