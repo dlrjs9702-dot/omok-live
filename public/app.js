@@ -126,6 +126,21 @@
   const pictionaryGuessForm = document.getElementById('pictionaryGuessForm');
   const pictionaryGuessInput = document.getElementById('pictionaryGuessInput');
   const pictionaryScoreboard = document.getElementById('pictionaryScoreboard');
+  const liarPanel = document.getElementById('liarPanel');
+  const liarRoundsSelect = document.getElementById('liarRoundsSelect');
+  const liarStartBtn = document.getElementById('liarStartBtn');
+  const liarRoleBox = document.getElementById('liarRoleBox');
+  const liarPhaseLabel = document.getElementById('liarPhaseLabel');
+  const liarSpeakerLabel = document.getElementById('liarSpeakerLabel');
+  const liarTimer = document.getElementById('liarTimer');
+  const liarHintLog = document.getElementById('liarHintLog');
+  const liarHintForm = document.getElementById('liarHintForm');
+  const liarHintInput = document.getElementById('liarHintInput');
+  const liarVoteBox = document.getElementById('liarVoteBox');
+  const liarGuessForm = document.getElementById('liarGuessForm');
+  const liarGuessInput = document.getElementById('liarGuessInput');
+  const liarResult = document.getElementById('liarResult');
+  const liarScoreboard = document.getElementById('liarScoreboard');
   const moveCountLabel = document.getElementById('moveCountLabel');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
@@ -349,15 +364,16 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
   function isTeamGame() { return state?.gameType === 'omok2v2'; }
   function isBingoGame() { return state?.gameType === 'bingo'; }
   function isPictionaryGame() { return state?.gameType === 'pictionary'; }
-  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame(); }
-  function numberedSeats() { return isPictionaryGame() ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
+  function isLiarGame() { return state?.gameType === 'liar'; }
+  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame(); }
+  function numberedSeats() { return (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
   // Winner is the same black/white color for most games; 2v2 seat numbers map to team colors.
   // Bingo uses numbered seats; pictionary's winner is an array of seats, so it never matches 'black'/'white'
@@ -365,6 +381,7 @@
   function resultOutcome(game, playerSeat, gameType) {
     if (game?.status !== 'finished' || !playerSeat || !game.winner) return null;
     if (gameType === 'bingo') return String(playerSeat) === String(game.winner) ? 'win' : 'loss';
+    if (gameType === 'liar' && Array.isArray(game.winner)) return game.winner.includes(String(playerSeat)) ? 'win' : 'loss';
     if (!['black', 'white'].includes(game.winner)) return null;
     const color = gameType === 'omok2v2' ? seatColor(playerSeat) : playerSeat;
     if (!['black', 'white'].includes(color)) return null;
@@ -384,14 +401,15 @@
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
-    "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다."
+    "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
+    "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다."
 });
   function showGameRule(type) {
     gameRulesText.textContent = gameRules[type] || '';
   }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
     baseballDigitChoices.classList.toggle('hidden', selectedGameType !== 'baseball');
@@ -1098,7 +1116,7 @@
     state = next;
     lastResultEffectKey = null;
     clearResultEffect();
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary'].includes(state?.gameType) ? state.gameType : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
@@ -1248,7 +1266,7 @@
   }
 
   function choiceKo(choice) {
-    if ((isBingoGame() || isPictionaryGame()) && numberedSeats().includes(choice)) return `${choice}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -1257,7 +1275,7 @@
   }
 
   function seatKo(value) {
-    if ((isBingoGame() || isPictionaryGame()) && numberedSeats().includes(value)) return `${value}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -1376,19 +1394,21 @@
     teamPlayers.replaceChildren();
     const bingo = isBingoGame();
     const pictionary = isPictionaryGame();
+    const liar = isLiarGame();
     for (const number of numberedSeats()) {
       const player = state.players[number];
       const card = document.createElement('div');
       const color = seatColor(number);
-      const currentTurn = pictionary ? state.game.drawerSeat === number : bingo ? state.game.turn === number : state.game.nextSeat === number;
-      card.className = `teamPlayer ${(bingo || pictionary) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
+      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : bingo ? state.game.turn === number : state.game.nextSeat === number;
+      card.className = `teamPlayer ${(bingo || pictionary || liar) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
       const title = document.createElement('strong');
       title.textContent = pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
+        : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
         : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}` : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
       const name = document.createElement('small');
       name.textContent = player
-        ? `${player.label}${pictionary ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${(pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -1406,6 +1426,7 @@
     const city = state.gameType === 'cityking';
     const bingo = isBingoGame();
     const pictionary = isPictionaryGame();
+    const liar = isLiarGame();
     const team = isTeamGame();
     const numbered = isNumberedSeatGame();
     const seats = numberedSeats();
@@ -1417,13 +1438,14 @@
     if (numbered) {
       roleChooser.querySelector('small').textContent = pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
+        : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
         : bingo
         ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 승리 줄 수를 정하고 시작합니다.'
         : '1·3번은 흑팀, 2·4번은 백팀입니다. 네 명이 모두 자리를 정하면 1→2→3→4 순서로 시작합니다.';
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (bingo || pictionary) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
+        button.textContent = (bingo || pictionary || liar) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
         button.classList.toggle('selected', choice === number);
       }
@@ -1473,13 +1495,14 @@
     teamPlayers.classList.toggle('hidden', !numbered);
 
     const pictionary = isPictionaryGame();
-    roundNumber.textContent = pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : `${g.round || 1}판`;
-    moveCountLabel.textContent = pictionary ? '진행 라운드' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
+    const liar = isLiarGame();
+    roundNumber.textContent = pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : liar ? `${g.roundNumber || 0}/${g.totalRounds || 1}판` : `${g.round || 1}판`;
+    moveCountLabel.textContent = pictionary ? '진행 라운드' : liar ? '진행 행동' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
     spectatorCount.textContent = `${state.spectatorCount || 0}명`;
-    const scores = !pictionary && g.scores;
+    const scores = !pictionary && !liar && g.scores;
     gameScoreRow.classList.toggle('hidden', !scores);
     gameScoreText.textContent = scores ? (state.gameType === 'yut'
       ? `파랑 완주 ${scores.black} · 빨강 완주 ${scores.white}`
@@ -1488,7 +1511,11 @@
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
-    if (pictionary) {
+    if (liar) {
+      const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
+      const phases = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 투표', revote: '재투표', guess: '라이어 최종 추측', reveal: '판 결과 공개' };
+      statusText.textContent = g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작' : g.status === 'finished' ? '라이어게임 종료' : `${phases[g.phase] || '진행 중'}${speaker ? ` · ${speaker}` : ''}`;
+    } else if (pictionary) {
       const drawerLabel = g.drawerSeat ? `${state.players[g.drawerSeat]?.label || g.drawerSeat + '번'}님` : '출제자';
       statusText.textContent = g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작'
         : g.status === 'finished' ? '그림 맞히기 종료'
@@ -1532,7 +1559,7 @@
       clearResultEffect();
     }
     const canAct = Boolean(seat);
-    const canResign = !isBingoGame() && !pictionary && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
+    const canResign = !isBingoGame() && !pictionary && !liar && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
     const canEndPaused = team && isHost && g.status === 'playing' && g.paused;
     for (const b of [endGameBtn, sideEndGameBtn]) {
       b.classList.toggle('hidden', !canEndPaused);
@@ -1552,7 +1579,7 @@
     const yut = state.gameType === 'yut';
     const bingo = state.gameType === 'bingo';
     const city = state.gameType === 'cityking';
-    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary);
+    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
@@ -1566,7 +1593,9 @@
     if (city) renderCityControls();
     pictionaryPanel.classList.toggle('hidden', !pictionary);
     if (pictionary) renderPictionary();
-    if (pictionary) {
+    liarPanel.classList.toggle('hidden', !liar);
+    if (liar) renderLiar();
+    if (pictionary || liar) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -1884,8 +1913,108 @@
     redrawPictionaryCanvas();
   }
 
+
+  function liarCountdownText(endsAt) {
+    if (!endsAt) return '';
+    return `${Math.max(0, Math.ceil((Number(endsAt) - Date.now()) / 1000))}초`;
+  }
+
+  function renderLiar() {
+    const g = state.game;
+    const occupied = numberedSeats().filter(number => state.players[number]);
+    liarRoundsSelect.value = String(g.totalRounds || 1);
+    liarRoundsSelect.disabled = !(isHost && g.status === 'selecting');
+    liarStartBtn.classList.toggle('hidden', g.status !== 'selecting');
+    liarStartBtn.disabled = !(isHost && occupied.length >= 3 && g.status === 'selecting');
+
+    if (g.status === 'selecting') liarRoleBox.textContent = '게임 시작 후 내 역할이 개인 화면에 공개됩니다.';
+    else if (!seat) liarRoleBox.textContent = '관전 중 · 진행 중인 판의 역할과 제시어는 공개되지 않습니다.';
+    else if (g.role === 'liar') liarRoleBox.textContent = '🕵️ 당신은 라이어입니다. 시민들의 힌트를 듣고 제시어를 추리하세요.';
+    else if (g.role === 'citizen') liarRoleBox.textContent = `👥 시민 · 제시어: ${g.myWord || '-'}`;
+    else liarRoleBox.textContent = '판 결과를 확인하세요.';
+
+    const phaseNames = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 비밀 투표', revote: '동률 후보 재투표', guess: '라이어 최종 제시어 추측', reveal: '판 결과 공개', finished: '게임 종료' };
+    liarPhaseLabel.textContent = g.status === 'selecting' ? `현재 ${occupied.length}명 · 3명 이상 필요` : (phaseNames[g.phase] || '진행 중');
+    liarSpeakerLabel.textContent = g.currentSpeaker ? `현재 발언: ${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}` : '';
+    liarTimer.classList.toggle('hidden', !g.deadlineAt);
+    if (g.deadlineAt) liarTimer.textContent = liarCountdownText(g.deadlineAt);
+
+    liarHintLog.replaceChildren();
+    for (const hint of g.hints || []) {
+      const row = document.createElement('div');
+      row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}`;
+      const who = document.createElement('strong');
+      const stage = hint.stage === 'hint1' ? '1차' : hint.stage === 'hint2' ? '2차' : '추가';
+      who.textContent = `${stage} · ${state.players[hint.seat]?.label || hint.seat + '번'}`;
+      const text = document.createElement('span');
+      text.textContent = hint.text;
+      row.append(who, text);
+      liarHintLog.appendChild(row);
+    }
+    if (!(g.hints || []).length) {
+      const empty = document.createElement('p'); empty.className = 'smallMuted'; empty.textContent = '아직 공개된 힌트가 없습니다.'; liarHintLog.appendChild(empty);
+    }
+
+    const hintPhase = ['hint1','hint2','extraHint'].includes(g.phase);
+    const canHint = Boolean(seat && g.status === 'playing' && hintPhase && g.currentSpeaker === seat);
+    liarHintForm.classList.toggle('hidden', !canHint);
+    liarHintInput.disabled = !canHint;
+
+    liarVoteBox.replaceChildren();
+    const voting = ['vote','revote'].includes(g.phase);
+    liarVoteBox.classList.toggle('hidden', !voting);
+    if (voting) {
+      const note = document.createElement('p');
+      note.className = 'smallMuted';
+      note.textContent = !seat ? '관전자는 투표할 수 없습니다.' : g.myVoted ? '투표 완료 · 다른 참가자의 투표는 개표 전까지 비공개입니다.' : '라이어라고 생각하는 참가자 한 명에게 투표하세요.';
+      liarVoteBox.appendChild(note);
+      if (seat && !g.myVoted) for (const target of g.voteTargets || []) {
+        if (target === seat) continue;
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'ghost liarVoteBtn';
+        button.textContent = state.players[target]?.label || `${target}번`;
+        button.addEventListener('click', () => roomAction('liar-vote', { target, expectedPhaseId: g.phaseId }));
+        liarVoteBox.appendChild(button);
+      }
+    }
+
+    liarGuessForm.classList.toggle('hidden', !g.canGuess);
+    liarGuessInput.disabled = !g.canGuess;
+
+    const result = g.lastResult;
+    liarResult.classList.toggle('hidden', !result);
+    liarResult.replaceChildren();
+    if (result) {
+      const title = document.createElement('strong');
+      title.textContent = result.winningSide === 'liar' ? '🕵️ 라이어 승리' : '👥 시민 승리';
+      const detail = document.createElement('p');
+      detail.textContent = `라이어: ${state.players[result.liarSeat]?.label || result.liarSeat + '번'} · 제시어: ${result.word}`;
+      liarResult.append(title, detail);
+      const ballot = result.voteHistory?.at(-1);
+      if (ballot) {
+        const vote = document.createElement('p'); vote.className = 'smallMuted';
+        vote.textContent = `최종 투표 · ${Object.entries(ballot.counts || {}).map(([s,c]) => `${state.players[s]?.label || s + '번'} ${c}표`).join(' · ')}`;
+        liarResult.appendChild(vote);
+      }
+      if (g.status === 'finished' && Array.isArray(g.winner)) {
+        const final = document.createElement('p'); final.className = 'liarFinalWinners';
+        final.textContent = `최종 승자: ${g.winner.map(s => state.players[s]?.label || s + '번').join(', ')}`;
+        liarResult.appendChild(final);
+      }
+    }
+
+    liarScoreboard.replaceChildren();
+    const seats = g.players?.length ? g.players : occupied;
+    for (const s of [...seats].sort((a,b) => (g.scores?.[b] || 0) - (g.scores?.[a] || 0))) {
+      const row = document.createElement('div'); row.className = `liarScoreRow${s === seat ? ' isMe' : ''}`;
+      const name = document.createElement('span'); name.textContent = state.players[s]?.label || `${s}번`;
+      const score = document.createElement('strong'); score.textContent = `${g.scores?.[s] || 0}점`;
+      row.append(name, score); liarScoreboard.appendChild(row);
+    }
+  }
+
   function drawBoard() {
-    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary') return;
+    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
@@ -2442,7 +2571,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo') return false;
+    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (isTeamGame() ? (state.game.paused || state.game.nextSeat !== seat) : state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
@@ -2591,6 +2720,28 @@
   cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
+
+  liarRoundsSelect.addEventListener('change', () => roomAction('set-liar-rounds', { totalRounds: Number(liarRoundsSelect.value) }));
+  liarStartBtn.addEventListener('click', () => roomAction('start-liar'));
+  liarHintForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const hint = liarHintInput.value.trim();
+    if (!hint) return;
+    const phaseId = state?.game?.phaseId;
+    liarHintInput.disabled = true;
+    try { await roomAction('liar-hint', { hint, expectedPhaseId: phaseId }); liarHintInput.value = ''; }
+    finally { liarHintInput.disabled = false; }
+  });
+  liarGuessForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const guess = liarGuessInput.value.trim();
+    if (!guess) return;
+    const phaseId = state?.game?.phaseId;
+    liarGuessInput.disabled = true;
+    try { await roomAction('liar-guess', { guess, expectedPhaseId: phaseId }); liarGuessInput.value = ''; }
+    finally { liarGuessInput.disabled = false; }
+  });
+
   pictionaryStartBtn.addEventListener('click', () => roomAction('start-pictionary'));
   pictionaryClearBtn.addEventListener('click', () => { redrawPictionaryCanvas(); roomAction('pictionary-clear'); });
   pictionaryEraserBtn.addEventListener('click', () => {
@@ -2622,6 +2773,12 @@
     const endsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
     if (!endsAt) return;
     pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
+  }, 1000);
+
+  setInterval(() => {
+    if (state?.gameType !== 'liar' || liarPanel.classList.contains('hidden')) return;
+    if (!state.game.deadlineAt) return;
+    liarTimer.textContent = liarCountdownText(state.game.deadlineAt);
   }, 1000);
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   for (const details of document.querySelectorAll('.collapsibleInfo')) {
