@@ -1,0 +1,76 @@
+name: Verify Liar Game v1.6.24
+
+on:
+  push:
+    branches:
+      - feature/liar-game-v1624-20260918
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/liar-game-v1624-20260918
+          fetch-depth: 0
+
+      - name: Apply guarded integration patch
+        run: python3 .release/apply-liar-v1624.py
+
+      - name: Syntax and diff checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check lib/games/liar.js
+          node --check lib/games/index.js
+          node --check test/liar.test.js
+          node --check test/liar-server.test.js
+          git diff --check
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run liar targeted tests
+        run: node --test test/liar.test.js test/liar-server.test.js
+
+      - name: Run complete regression suite
+        run: npm test
+
+      - name: Verify release integrity
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const { listGames, getGame } = require('./lib/games');
+          if (pkg.version !== '1.6.24' || lock.version !== '1.6.24' || lock.packages[''].version !== '1.6.24') throw new Error('version mismatch');
+          if (listGames().length !== 11 || !getGame('liar')) throw new Error('liar registry missing');
+          const server = fs.readFileSync('server.js', 'utf8');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const js = fs.readFileSync('public/app.js', 'utf8');
+          const notices = fs.readFileSync('lib/release-announcements.js', 'utf8');
+          if (!/start-liar/.test(server) || !/liar-hint/.test(server) || !/tickLiarRooms/.test(server)) throw new Error('liar server integration missing');
+          if (!/data-game="liar"/.test(html) || !/liarPanel/.test(html) || !/app\.js\?v=1\.6\.24/.test(html)) throw new Error('liar UI/cache missing');
+          if (!/function renderLiar\(/.test(js) || !/liar-vote/.test(js)) throw new Error('liar client integration missing');
+          if (!/key: 'v1\.6\.24'/.test(notices)) throw new Error('release notice missing');
+          NODE
+
+      - name: Commit verified v1.6.24 content
+        run: |
+          git config user.name "game-center-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .release/apply-liar-v1624.py .github/workflows/verify-liar-v1624.yml
+          git add -A
+          git commit -m "Release v1.6.24: add Liar Game [skip ci]"
+          git push origin HEAD:feature/liar-game-v1624-20260918
