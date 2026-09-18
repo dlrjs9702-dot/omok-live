@@ -44,8 +44,8 @@ jobs:
           from pathlib import Path
           path = Path('server.js')
           text = path.read_text(encoding='utf-8')
-          old = 'Number(body.expectedMoveCount));'
-          new = 'body.expectedMoveCount == null ? null : Number(body.expectedMoveCount));'
+          old = 'const verdict = engine.rollDice(room.game, seat, nowIso(), undefined, Number(body.expectedMoveCount));'
+          new = 'const verdict = engine.rollDice(room.game, seat, nowIso(), undefined, body.expectedMoveCount == null ? null : Number(body.expectedMoveCount));'
           if text.count(old) != 1: raise RuntimeError('Unexpected Land King roll request handler')
           path.write_text(text.replace(old, new), encoding='utf-8')
           PY
