@@ -386,12 +386,15 @@ test('the dice-roll animation is a generic reusable function driven by prefers-r
 
 test('Land King wires its two dice into the common animation only on a genuinely new roll', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  // Same reconnect-safe key-diff guard already used for the token-movement animation --
-  // cityLastRollKey stays null on first paint, so a reconnect never replays the roll animation.
-  assert.match(app, /const isNewRoll = Boolean\(rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey\);/);
+  // cityRollTrackingStarted (not "cityLastRollKey !== null") gates the animation: a reconnect that
+  // lands on an already-existing roll must not replay it, but a fresh game's own first roll -- which
+  // also takes cityLastRollKey from null to a real key -- must still animate.
+  assert.match(app, /const isNewRoll = Boolean\(rollKey && cityRollTrackingStarted && cityLastRollKey !== rollKey\);/);
   assert.match(app, /animateDiceRoll\(\[cityDieFirst, cityDieSecond\], \[roll\.first, roll\.second\]/);
   // While the animation is in flight, unrelated re-renders must not stomp the rolling faces.
   assert.match(app, /\} else if \(!cityDiceAnimating\) \{\s*\n\s*cityDieFirst\.textContent/);
+  // Leaving the Land King screen resets the tracking flag so the next room starts clean too.
+  assert.match(app, /cityRollTrackingStarted = false;/);
 });
 
 test('the dice animation respects prefers-reduced-motion in CSS as well as JS', () => {

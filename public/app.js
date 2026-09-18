@@ -250,6 +250,7 @@
   let selectedGameType = 'omok';
   let citySelectedTileIndex = null;
   let cityLastRollKey = null;
+  let cityRollTrackingStarted = false;
   let cityAnimation = null;
   let cityAnimationFrame = null;
   let cityDiceAnimating = false;
@@ -2050,6 +2051,7 @@
     else {
       citySelectedTileIndex = null;
       cityLastRollKey = null;
+      cityRollTrackingStarted = false;
       cityAnimation = null;
       if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
       cityAnimationFrame = null;
@@ -2297,7 +2299,12 @@
     }
     const roll = g.lastRoll;
     const rollKey = roll ? `${g.round}:${roll.at}:${roll.seat}:${roll.from}:${roll.to}` : null;
-    const isNewRoll = Boolean(rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey);
+    // cityRollTrackingStarted (not "cityLastRollKey !== null") is what tells a genuinely new roll
+    // apart from a stale one inherited on first render -- a fresh game's very first roll also goes
+    // from "no roll" (cityLastRollKey === null) to a real key, so checking null alone would wrongly
+    // skip animating it. Requiring one prior render instead still skips a reconnect that lands on an
+    // already-existing roll, while still animating a fresh game's first roll correctly.
+    const isNewRoll = Boolean(rollKey && cityRollTrackingStarted && cityLastRollKey !== rollKey);
     if (isNewRoll) {
       cityDiceAnimating = true;
       animateDiceRoll([cityDieFirst, cityDieSecond], [roll.first, roll.second], {
@@ -2325,6 +2332,7 @@
       cityAnimationFrame = requestAnimationFrame(advance);
     }
     cityLastRollKey = rollKey;
+    cityRollTrackingStarted = true;
     if (citySelectedTileIndex === null || !g.tiles?.[citySelectedTileIndex])
       citySelectedTileIndex = g.pendingProperty ?? g.players?.[g.turn]?.position ?? roll?.to ?? 0;
     cityTileSelect.value = String(citySelectedTileIndex);
