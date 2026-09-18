@@ -1,0 +1,69 @@
+name: Verify chat height v1.6.27
+
+on:
+  push:
+    branches:
+      - fix/chat-board-height-v1627-20260918
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          ref: fix/chat-board-height-v1627-20260918
+          fetch-depth: 0
+      - name: Apply focused patch
+        run: python3 .release/apply-chat-height-v1627.py
+      - name: Syntax and diff checks
+        run: |
+          node --check public/room-chat-height.js
+          node --check server.js
+          node --check lib/release-announcements.js
+          node --check test/chat-height.test.js
+          git diff --check
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Targeted chat and announcements tests
+        run: node --test test/chat-height.test.js test/announcements.test.js
+      - name: Complete regression suite
+        shell: bash
+        run: |
+          set +e
+          npm test > /tmp/chat-height-full-tests.txt 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -A 16 -B 1 '^not ok ' /tmp/chat-height-full-tests.txt | head -n 100 || true
+          fi
+          tail -n 16 /tmp/chat-height-full-tests.txt
+          exit "$status"
+      - name: Verify release integrity
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const notices = require('./lib/release-announcements');
+          if (pkg.version !== '1.6.27' || lock.version !== '1.6.27' || lock.packages[''].version !== '1.6.27') throw Error('version mismatch');
+          if (notices.filter(item => item.key === 'v1.6.27').length !== 1) throw Error('notice missing or duplicate');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          if (!html.includes('app.js?v=1.6.27') || !html.includes('room-chat-height.js?v=1.6.27')) throw Error('browser script version mismatch');
+          NODE
+      - name: Commit only verified release content
+        run: |
+          git config user.name 'game-center-release-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm .release/apply-chat-height-v1627.py .github/workflows/verify-chat-height-v1627.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Release v1.6.27: bound room chat height to game board [skip ci]'
+          git push origin HEAD:fix/chat-board-height-v1627-20260918
