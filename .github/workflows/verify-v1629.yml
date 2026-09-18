@@ -1,0 +1,76 @@
+name: Verify Game Center v1.6.29
+
+on:
+  push:
+    branches:
+      - feature/city-build-logout-yut-v1629-20260918
+
+permissions:
+  contents: write
+
+jobs:
+  verify-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/city-build-logout-yut-v1629-20260918
+          fetch-depth: 0
+      - name: Apply scoped changes sequentially
+        run: |
+          python3 .release/apply-v1629.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('test/v1629.test.js')
+          s = p.read_text(encoding='utf-8')
+          if not s.startswith("\\n'use strict';"):
+              raise RuntimeError('unexpected test file prefix')
+          p.write_text(s[2:], encoding='utf-8')
+          PY
+      - name: Syntax and diff check
+        run: |
+          node --check lib/games/cityking.js
+          node --check lib/games/yut.js
+          node --check server.js
+          node --check public/app.js
+          node --check test/v1629.test.js
+          git diff --check
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install existing dependencies
+        run: npm ci
+      - name: Targeted feature and existing engine tests
+        run: node --test test/v1629.test.js test/cityking.test.js test/yut.test.js
+      - name: Existing full test suite
+        run: npm test
+      - name: Release integrity and code scope
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const notices = require('./lib/release-announcements');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const server = fs.readFileSync('server.js', 'utf8');
+          if (pkg.version !== '1.6.29' || lock.version !== '1.6.29' || lock.packages[''].version !== '1.6.29') throw Error('version mismatch');
+          if (notices.filter(item => item.key === 'v1.6.29').length !== 1) throw Error('notice mismatch');
+          for (const asset of ['styles.css','app.js','room-chat-height.js','session-lock.js']) if (!html.includes(asset + '?v=1.6.29')) throw Error('cache version: ' + asset);
+          if (!server.includes("version: '1.6.29'")) throw Error('server version mismatch');
+          if (html.includes('v1.6.28')) throw Error('old html version');
+          NODE
+          git diff --check
+          test "$(git diff --name-only | grep -E '^lib/games/' | grep -Ev '^lib/games/(cityking|yut)\.js$' | wc -l)" -eq 0
+          test "$(git diff --name-only | grep -E '^lib/(access-store|announcement-store)' | wc -l)" -eq 0
+      - name: Commit only verified release and remove temporary files
+        run: |
+          git config user.name game-center-release-bot
+          git config user.email actions@users.noreply.github.com
+          git rm .release/apply-v1629.py .github/workflows/verify-v1629.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Release v1.6.29: city building, logout confirmation and Yut route fix [skip ci]'
+          git push origin HEAD:feature/city-build-logout-yut-v1629-20260918
