@@ -404,3 +404,17 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityControls .cityActionRow button,.cityControls .cityBuyRow button{min-height:44px}
 @media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}.cityControls .cityActionRow,.cityControls .cityBuyRow{flex-wrap:wrap}.cityControls .cityActionRow button{flex:1 1 150px}.cityControls .cityBuyRow button{flex:1 1 120px}}
 @media(prefers-reduced-motion:reduce){.cityControls.isRolling .cityDice span{animation:none}}
+
+
+/* v1.6.29: scoped city construction and explicit logout confirmation. */
+#cityControls .cityBuildRow{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:12px;border:1px solid #2563eb;border-radius:11px;background:#14274a}
+#cityControls .cityBuildRow.hidden{display:none}
+#cityControls .cityBuildRow span{flex:1 1 180px;font-size:.82rem;line-height:1.4;font-weight:800;color:#dbeafe}
+#cityControls .cityBuildRow button{min-height:42px}
+.logoutDialog{border:1px solid #475569;border-radius:16px;background:#0f172a;color:#f8fafc;padding:22px;width:min(92vw,460px);box-shadow:0 22px 80px #0009}
+.logoutDialog::backdrop{background:#020617cc}
+.logoutDialog h2{margin:0 0 12px;font-size:1.2rem}
+.logoutDialog p{line-height:1.65;overflow-wrap:anywhere}
+.logoutDialogActions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.logoutDialogActions button{min-height:44px}
+@media(max-width:520px){#cityControls .cityBuildRow button{flex:1}.logoutDialogActions button{flex:1}}
