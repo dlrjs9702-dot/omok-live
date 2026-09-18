@@ -1,0 +1,59 @@
+name: Verify announcement ordering v1.6.26
+
+on:
+  push:
+    branches:
+      - fix/announcement-version-order-v1626-20260918
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          ref: fix/announcement-version-order-v1626-20260918
+          fetch-depth: 0
+      - name: Apply guarded patch
+        run: python3 .release/fix-announcement-order-v1626.py
+      - name: Syntax and diff checks
+        run: |
+          node --check lib/announcement-store.js
+          node --check server.js
+          node --check public/app.js
+          node --check test/announcement-order.test.js
+          git diff --check
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Targeted notice tests
+        run: node --test test/announcement-order.test.js test/announcements.test.js
+      - name: Complete regression suite
+        run: npm test
+      - name: Verify release contents
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const notices = require('./lib/release-announcements');
+          if (pkg.version !== '1.6.26' || lock.version !== '1.6.26' || lock.packages[''].version !== '1.6.26') throw Error('version mismatch');
+          if (notices.filter(item => item.key === 'v1.6.26').length !== 1) throw Error('notice missing or duplicate');
+          if (!fs.readFileSync('public/index.html', 'utf8').includes('app.js?v=1.6.26')) throw Error('browser cache version mismatch');
+          NODE
+      - name: Commit only verified production content
+        run: |
+          git config user.name 'game-center-release-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm .release/fix-announcement-order-v1626.py .github/workflows/verify-announcement-order-v1626.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Release v1.6.26: sort notices by patch version [skip ci]'
+          git push origin HEAD:fix/announcement-version-order-v1626-20260918
