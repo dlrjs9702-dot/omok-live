@@ -18,7 +18,10 @@ jobs:
           ref: fix/announcement-version-order-v1626-20260918
           fetch-depth: 0
       - name: Apply guarded patch
-        run: python3 .release/fix-announcement-order-v1626.py
+        run: |
+          rm -f .release/announcement-test-failure.txt
+          python3 .release/fix-announcement-order-v1626.py
+          python3 .release/fix-escaped-cache-v1626.py
       - name: Syntax and diff checks
         run: |
           node --check lib/announcement-store.js
@@ -43,7 +46,7 @@ jobs:
           npm test > /tmp/full-regression.txt 2>&1
           status=$?
           if [ "$status" -ne 0 ]; then
-            grep -A 45 -B 1 '^not ok ' /tmp/full-regression.txt > .release/announcement-test-failure.txt || true
+            grep -A 12 -B 1 '^not ok ' /tmp/full-regression.txt > .release/announcement-test-failure.txt || true
             tail -n 15 /tmp/full-regression.txt >> .release/announcement-test-failure.txt
             cat .release/announcement-test-failure.txt
           else
@@ -73,8 +76,7 @@ jobs:
         run: |
           git config user.name 'game-center-release-bot'
           git config user.email 'actions@users.noreply.github.com'
-          git rm .release/fix-announcement-order-v1626.py .github/workflows/verify-announcement-order-v1626.yml
-          rm -f .release/announcement-test-failure.txt
+          git rm .release/fix-announcement-order-v1626.py .release/fix-escaped-cache-v1626.py .github/workflows/verify-announcement-order-v1626.yml .release/announcement-test-failure.txt
           git add -A
           git diff --cached --check
           git commit -m 'Release v1.6.26: sort notices by patch version [skip ci]'
