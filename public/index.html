@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.35" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.36" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -106,7 +106,7 @@
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
             </div>
             <div class="gameOption" data-game-option="cityking">
-              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
+              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹(업데이트 중)</strong></button>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
@@ -370,6 +370,7 @@
               <div id="cityTileSellRow" class="cityTileSellRow hidden">
                 <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
                 <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
+                <span id="cityTileSellPreview" class="cityTileSellPreview"></span>
               </div>
             </div>
             <p id="cityEvent" class="cityEvent">방장이 랜드킹을 시작하면 1번 참가자부터 진행합니다.</p>
@@ -439,9 +440,13 @@
               <small>특수 능력 모드는 시작 시 엿보기·방향전환·방어막·조커탐지 중 하나를 무작위로 받아 게임당 1회 사용합니다.</small>
             </div>
             <div id="oldmaidAbilityBar" class="oldmaidAbilityBar hidden">
-              <span id="oldmaidAbilityLabel">내 능력: -</span>
-              <button type="button" id="oldmaidAbilityUseBtn" class="secondary tiny">능력 사용</button>
-              <span id="oldmaidAbilityReveal" class="oldmaidAbilityReveal hidden"></span>
+              <div class="oldmaidAbilityHead">
+                <span id="oldmaidAbilityLabel">내 능력: -</span>
+                <button type="button" id="oldmaidAbilityUseBtn" class="secondary tiny">능력 사용</button>
+              </div>
+              <p id="oldmaidAbilityDesc" class="oldmaidAbilityDesc"></p>
+              <p id="oldmaidAbilityHint" class="oldmaidAbilityHint hidden"></p>
+              <p id="oldmaidAbilityReveal" class="oldmaidAbilityReveal hidden"></p>
             </div>
             <p id="oldmaidResult" class="oldmaidResult hidden" aria-live="polite"></p>
             <div id="oldmaidTable" class="oldmaidTable" aria-label="카드 테이블">
@@ -566,7 +571,7 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 입장 파일을 열어야 합니다.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.35"></script>
-  <script src="/app.js?v=1.6.35"></script>
+  <script src="/session-lock.js?v=1.6.36"></script>
+  <script src="/app.js?v=1.6.36"></script>
 </body>
 </html>

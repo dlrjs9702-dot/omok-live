@@ -379,9 +379,12 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .oldmaidModeChooser input{accent-color:#a855f7}
 .oldmaidModeChooser input:disabled{cursor:not-allowed}
 .oldmaidModeChooser small{width:100%;color:#94a3b8;font-size:.7rem;line-height:1.4}
-.oldmaidAbilityBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 4px;padding:9px 12px;border:1px solid #7c3aed;border-radius:12px;background:#1e1b3a}
-.oldmaidAbilityBar span:first-child{font-weight:900;color:#e9d5ff;font-size:.82rem}
-.oldmaidAbilityReveal{font-size:.78rem;color:#fde68a;font-weight:800}
+.oldmaidAbilityBar{display:grid;gap:6px;margin:2px 0 4px;padding:10px 12px;border:1px solid #7c3aed;border-radius:12px;background:#1e1b3a}
+.oldmaidAbilityHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.oldmaidAbilityHead span{font-weight:900;color:#e9d5ff;font-size:.82rem}
+.oldmaidAbilityDesc{margin:0;font-size:.76rem;color:#c4b5fd;line-height:1.5}
+.oldmaidAbilityHint{margin:0;font-size:.72rem;color:#fca5a5;font-weight:700}
+.oldmaidAbilityReveal{margin:0;font-size:.78rem;color:#fde68a;font-weight:800;background:#2e1065;border-radius:8px;padding:6px 9px}
 .oldmaidCard{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 57px;width:57px;height:77px;border-radius:8px;border:2px solid #94a3b8;font-weight:800;font-size:1rem}
 .oldmaidFace{background:#f8fafc;color:#0f172a}.oldmaidFace.red{color:#dc2626}.oldmaidFace.joker{color:#7c3aed}
 .oldmaidBack{background:#1e40af;color:#dbeafe;font-size:1.6rem;cursor:pointer}
@@ -458,8 +461,9 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
    push the chat input off-screen. */
 .sideTabBar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;flex:0 0 auto;margin-bottom:10px}
 .sideTabs{display:flex;gap:4px}
-.sideTab{position:relative;background:#0f172a;color:#94a3b8;border:1px solid #263246;padding:8px 12px;font-size:.8rem;font-weight:850;border-radius:10px}
-.sideTab.active{background:#172554;color:#e2e8f0;border-color:#3b82f6}
+.sideTab{position:relative;background:#0f172a;color:#94a3b8;border:1px solid #263246;padding:8px 12px;font-size:.8rem;font-weight:850;border-radius:10px;transition:background .12s ease,border-color .12s ease,color .12s ease}
+.sideTab:hover:not(.active){background:#141f36;color:#cbd5e1}
+.sideTab.active{background:#172554;color:#e2e8f0;border-color:#3b82f6;box-shadow:0 0 0 1px rgba(59,130,246,.35)}
 .sideTabBadge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-left:5px;padding:0 4px;border-radius:999px;background:#ef4444;color:#fff;font-size:.62rem;font-weight:900;vertical-align:middle}
 .sideTabTools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sideSizeGroup{display:flex;gap:3px}
@@ -498,18 +502,29 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityOverview{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:10px 0;padding:11px 13px;border:1px solid #334155;border-radius:12px;background:#0f172a}
 .cityOverview>strong{font-size:.85rem;color:#e2e8f0;font-variant-numeric:tabular-nums}
 .cityDice{display:flex;gap:7px;font-size:1.6rem;color:#facc15;line-height:1}
-.cityControls.isRolling .cityDice span{animation:cityRollPulse .56s ease-in-out}
-@keyframes cityRollPulse{0%{transform:rotate(-22deg) scale(.8)}55%{transform:rotate(30deg) scale(1.25)}100%{transform:rotate(0) scale(1)}}
+.cityDice span{display:inline-block}
+.cityDice span.diceRolling{animation:diceShake .17s linear infinite}
+.cityDice span.diceSettle{animation:diceSettle .26s ease-out}
+.cityDice span.diceDouble{animation:diceDoubleGlow .7s ease-out}
+@keyframes diceShake{0%{transform:rotate(0deg)}25%{transform:rotate(-16deg) scale(.94)}50%{transform:rotate(12deg) scale(1.06)}75%{transform:rotate(-8deg) scale(.98)}100%{transform:rotate(0deg)}}
+@keyframes diceSettle{0%{transform:scale(1.35)}60%{transform:scale(.92)}100%{transform:scale(1)}}
+@keyframes diceDoubleGlow{0%{text-shadow:0 0 0 rgba(250,204,21,0)}35%{text-shadow:0 0 14px rgba(250,204,21,.95)}100%{text-shadow:0 0 0 rgba(250,204,21,0)}}
 .cityAssets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
 .cityAssetCard{display:grid;gap:6px;min-width:0;padding:11px 13px;border:1px solid #334155;border-radius:11px;background:#0f172a}
-.cityAssetCard strong{display:flex;align-items:center;gap:6px;font-size:.86rem;overflow-wrap:anywhere}.cityAssetCard span{font-size:.77rem;color:#cbd5e1;line-height:1.5;overflow-wrap:anywhere}
+.cityAssetCard strong{display:flex;align-items:center;gap:6px;font-size:.86rem;overflow-wrap:anywhere}
+.cityAssetMetrics{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.cityAssetMetrics span{display:flex;flex-direction:column;font-size:.82rem;color:#e2e8f0;font-weight:800;overflow-wrap:anywhere}
+.cityAssetMetrics small{font-size:.63rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
 .cityAssetCard.seat1{border-left:4px solid #2563eb}.cityAssetCard.seat2{border-left:4px solid #ef4444}.cityAssetCard.seat3{border-left:4px solid #16a34a}.cityAssetCard.seat4{border-left:4px solid #9333ea}
-.cityAssetCard.isTurn{outline:2px solid #facc15;background:#172554}
+.cityAssetCard.isTurn{outline:2px solid #facc15;background:#172554;animation:cityTurnPulse 1.8s ease-in-out infinite}
+@keyframes cityTurnPulse{0%,100%{box-shadow:0 0 0 0 rgba(250,204,21,.35)}50%{box-shadow:0 0 0 5px rgba(250,204,21,0)}}
+@media(prefers-reduced-motion:reduce){.cityAssetCard.isTurn{animation:none}}
 .cityAssetCard.bankrupt{opacity:.55}
 .cityAssetDot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:currentColor}
 .cityAssetCard.seat1 .cityAssetDot{color:#2563eb}.cityAssetCard.seat2 .cityAssetDot{color:#ef4444}.cityAssetCard.seat3 .cityAssetDot{color:#16a34a}.cityAssetCard.seat4 .cityAssetDot{color:#9333ea}
 .cityLiquidateBanner{margin:8px 0;padding:9px 12px;border-radius:11px;background:#422006;border:1px solid #b45309;color:#fde68a;font-weight:800;font-size:.82rem}
-.cityTileSellRow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.cityTileSellRow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;align-items:center}
+.cityTileSellPreview{width:100%;font-size:.72rem;color:#94a3b8;font-weight:700}
 .cityTileLabel{display:block;margin:13px 0 6px;font-size:.81rem;font-weight:850;color:#cbd5e1}
 .cityTileSelect{width:100%;min-height:44px;padding:9px 12px;border:1px solid #475569;border-radius:10px;color:#f8fafc;background:#0f172a;font:inherit}
 .cityTileSelect:focus-visible{outline:2px solid #facc15;outline-offset:2px}
@@ -518,8 +533,8 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityTileDetails dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
 .cityTileDetails dl div{display:grid;gap:3px;min-width:0}.cityTileDetails dt{font-size:.69rem;color:#94a3b8}.cityTileDetails dd{margin:0;font-size:.84rem;font-weight:850;overflow-wrap:anywhere}
 .cityControls .cityActionRow button,.cityControls .cityBuyRow button{min-height:44px}
-@media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}.cityControls .cityActionRow,.cityControls .cityBuyRow{flex-wrap:wrap}.cityControls .cityActionRow button{flex:1 1 150px}.cityControls .cityBuyRow button{flex:1 1 120px}}
-@media(prefers-reduced-motion:reduce){.cityControls.isRolling .cityDice span{animation:none}}
+@media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}.cityControls .cityActionRow,.cityControls .cityBuyRow{flex-wrap:wrap}.cityControls .cityActionRow button{flex:1 1 auto;min-width:150px}.cityControls .cityBuyRow button{flex:1 1 auto;min-width:120px}}
+@media(prefers-reduced-motion:reduce){.cityDice span.diceRolling,.cityDice span.diceSettle,.cityDice span.diceDouble{animation:none}}
 
 
 /* v1.6.29: scoped city construction and explicit logout confirmation. */

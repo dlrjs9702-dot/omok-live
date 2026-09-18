@@ -309,10 +309,95 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6\.35/);
+  assert.match(html, /app\.js\?v=1\.6\.36/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
   assert.match(server, /isCityKing\(room\)/);
   assert.match(js, /function isCityKingGame\(\)/);
+});
+
+// v1.6.36: confirmed rule -- a tied net worth at the turn limit keeps seat order (no co-ranking).
+test('a net-worth tie at the turn limit is broken by seat order, lower seat number ranks higher', () => {
+  const game = cityking.create();
+  cityking.start(game, ['1', '2', '3']);
+  game.turnCount = cityking.TURN_LIMIT - 1;
+  game.completedTurns = { '1': true, '2': true, '3': false };
+  game.players['1'].cash = 1500;
+  game.players['2'].cash = 1500; // tied with seat 1
+  game.players['3'].cash = 500;
+  game.turn = '3';
+  const result = cityking.rollDice(game, '3', 'last', dice(1, 3)); // tile 4, tax, non-double
+  assert.equal(result.finished, true);
+  assert.deepEqual(game.ranking, ['1', '2', '3']); // 1 and 2 tied at 1500 -> seat 1 ranks first
+  assert.equal(game.winner, '1');
+});
+
+// v1.6.36: confirmed rule -- 3-4 player Land King matches never count as a 1:1 result.
+test('a 3+ player Land King match is excluded from head-to-head even though it has a single winner', () => {
+  const { matchSeats } = require('../lib/match-result');
+  const room = { gameType: 'cityking', game: { seatOrder: ['1', '2', '3'] } };
+  assert.equal(matchSeats(room).length, 3);
+});
+
+// v1.6.36: a double that lands on a toll the player can't afford must still grant the extra roll
+// once the resulting liquidation is settled -- the asset-sale detour doesn't eat the double.
+test('settling a liquidation triggered by a double roll still leaves the extra roll available', () => {
+  const game = cityking.create();
+  cityking.start(game, ['1', '2']);
+  game.players['2'].cash = 20;
+  game.players['2'].properties = [10];
+  game.owners[10] = '2';
+  game.turn = '2';
+  // Simulate the state right after a double roll triggered a liquidation mid-landing (rollDice
+  // itself is exercised by other tests; this isolates the settle+extraRoll interaction).
+  game.extraRoll = true;
+  game.phase = 'liquidate';
+  game.liquidating = '2';
+  game.pendingDebt = { amount: 50, payee: '1' };
+  const sold = cityking.sellProperty(game, '2', 10, 'now');
+  assert.equal(sold.legal, true);
+  assert.equal(game.phase, 'roll');
+  assert.equal(game.liquidating, null);
+  assert.equal(game.turn, '2'); // still seat 2's turn -- the double's extra roll was preserved
+});
+
+// v1.6.36: usability pass -- buy/build/sell previews show the resulting cash, not just the cost.
+test('buy, build and sell offers preview the resulting cash balance', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /매입 시 현금 \$\{myCashNow\} → \$\{myCashNow - offer\.price\}/);
+  assert.match(app, /건설 시 현금 \$\{myCashNow\} → \$\{myCashNow - cost\}/);
+  assert.match(app, /매각 시 현금 \$\{myCash\} → \$\{myCash \+ sellValue\}/);
+});
+
+// v1.6.36: common dice-roll animation -- a reusable function/component, not a Land King-only effect.
+test('the dice-roll animation is a generic reusable function driven by prefers-reduced-motion', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /function animateDiceRoll\(dieEls, finalValues/);
+  assert.match(app, /function reducedMotionActive\(\)/);
+  assert.match(app, /if \(reducedMotionActive\(\) \|\| !dieEls\.length\) \{ settle\(\); return; \}/);
+  // The final face shown is always taken from the server-confirmed values, never a random one.
+  const settleBlock = app.slice(app.indexOf('const settle = () => {'), app.indexOf('const settle = () => {') + 400);
+  assert.match(settleBlock, /el\.textContent = DICE_FACE_CHARS\[finalValues\[i\] - 1\]/);
+  // Doubles get a brief shared emphasis effect.
+  assert.match(settleBlock, /finalValues\.every\(v => v === finalValues\[0\]\)/);
+  assert.match(settleBlock, /diceDouble/);
+});
+
+test('Land King wires its two dice into the common animation only on a genuinely new roll', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  // Same reconnect-safe key-diff guard already used for the token-movement animation --
+  // cityLastRollKey stays null on first paint, so a reconnect never replays the roll animation.
+  assert.match(app, /const isNewRoll = Boolean\(rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey\);/);
+  assert.match(app, /animateDiceRoll\(\[cityDieFirst, cityDieSecond\], \[roll\.first, roll\.second\]/);
+  // While the animation is in flight, unrelated re-renders must not stomp the rolling faces.
+  assert.match(app, /\} else if \(!cityDiceAnimating\) \{\s*\n\s*cityDieFirst\.textContent/);
+});
+
+test('the dice animation respects prefers-reduced-motion in CSS as well as JS', () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.match(css, /@keyframes diceShake/);
+  assert.match(css, /@keyframes diceSettle/);
+  assert.match(css, /@keyframes diceDoubleGlow/);
+  assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.cityDice span\.diceRolling,\.cityDice span\.diceSettle,\.cityDice span\.diceDouble\{animation:none\}\}/);
 });

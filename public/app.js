@@ -151,6 +151,7 @@
   const cityTileSellRow = document.getElementById('cityTileSellRow');
   const citySellBuildingBtn = document.getElementById('citySellBuildingBtn');
   const citySellPropertyBtn = document.getElementById('citySellPropertyBtn');
+  const cityTileSellPreview = document.getElementById('cityTileSellPreview');
   const pictionaryPanel = document.getElementById('pictionaryPanel');
   const pictionaryStartBtn = document.getElementById('pictionaryStartBtn');
   const pictionaryDrawerLabel = document.getElementById('pictionaryDrawerLabel');
@@ -177,6 +178,8 @@
   const oldmaidAbilityBar = document.getElementById('oldmaidAbilityBar');
   const oldmaidAbilityLabel = document.getElementById('oldmaidAbilityLabel');
   const oldmaidAbilityUseBtn = document.getElementById('oldmaidAbilityUseBtn');
+  const oldmaidAbilityDesc = document.getElementById('oldmaidAbilityDesc');
+  const oldmaidAbilityHint = document.getElementById('oldmaidAbilityHint');
   const oldmaidAbilityReveal = document.getElementById('oldmaidAbilityReveal');
   const oldmaidStatus = document.getElementById('oldmaidStatus');
   const oldmaidResult = document.getElementById('oldmaidResult');
@@ -249,6 +252,7 @@
   let cityLastRollKey = null;
   let cityAnimation = null;
   let cityAnimationFrame = null;
+  let cityDiceAnimating = false;
   let state = null;
   let seat = null;
   let isHost = false;
@@ -304,11 +308,14 @@
     roomSidebar.classList.toggle('collapsedDocked', !sideOverlayOpen && !mobile && collapsed);
     if (gameLayoutEl) gameLayoutEl.classList.toggle('sideCollapsed', !mobile && collapsed && !sideOverlayOpen);
     sideOverlayBackdrop.classList.toggle('hidden', !(sideOverlayOpen && mobile));
-    chatFloatBtn.classList.toggle('hidden', !(mobile || collapsed || sideOverlayOpen));
-    chatFloatBtn.setAttribute('aria-label', sideOverlayOpen ? '채팅 닫기' : '채팅 열기');
-    chatFloatBtn.classList.toggle('isOpen', sideOverlayOpen);
-    sideCollapseBtn.textContent = collapsed ? '펼치기 ◂' : '접기 ▸';
-    sideCollapseBtn.setAttribute('aria-label', collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
+    // While the overlay is open, its own "닫기" button (below) and the backdrop tap (mobile)
+    // are the way to close it -- the separate floating button is hidden so it never sits on top
+    // of the overlay's own content (it used to visually collide with the chat send button).
+    chatFloatBtn.classList.toggle('hidden', sideOverlayOpen || !(mobile || collapsed));
+    chatFloatBtn.setAttribute('aria-label', '채팅 열기');
+    chatFloatBtn.classList.remove('isOpen');
+    sideCollapseBtn.textContent = sideOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
+    sideCollapseBtn.setAttribute('aria-label', sideOverlayOpen ? '채팅 패널 닫기' : collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
     for (const btn of roomSidebar.querySelectorAll('.sideTab')) {
       const active = btn.dataset.sideTab === sideActiveTab;
       btn.classList.toggle('active', active);
@@ -317,7 +324,10 @@
     for (const pane of roomSidebar.querySelectorAll('.sidePane')) {
       pane.classList.toggle('hidden', pane.dataset.sidePane !== sideActiveTab);
     }
-    if (sideChatVisible()) markChatSeen();
+    // Only auto-clear unread when the reader is actually at the bottom of the chat pane --
+    // otherwise a message arriving while they're scrolled up in history (chat pane still
+    // "visible") would silently reset the unread badge before they ever saw it.
+    if (sideChatVisible() && chatAtBottom) markChatSeen();
   }
 
   function setSideTab(tab) {
@@ -353,6 +363,12 @@
     chatAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
     if (chatAtBottom) { chatJumpBtn.classList.add('hidden'); if (sideChatVisible()) markChatSeen(); }
   });
+  chatInput.addEventListener('focus', () => {
+    // Belt-and-suspenders for the mobile keyboard: the overlay already sizes itself with dvh,
+    // but scrolling the input into view also covers older WebKit builds that resize the layout
+    // viewport late.
+    setTimeout(() => chatInput.scrollIntoView({ block: 'end', behavior: 'smooth' }), 150);
+  });
   chatJumpBtn.addEventListener('click', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     chatAtBottom = true;
@@ -363,9 +379,15 @@
     btn.addEventListener('click', () => setSideTab(btn.dataset.sideTab));
   }
   sideCollapseBtn.addEventListener('click', () => {
+    if (sideOverlayOpen) {
+      // Just close the overlay -- opening it never implied a permanent docked preference change,
+      // so closing it shouldn't silently flip one either.
+      sideOverlayOpen = false;
+      applySideLayout();
+      return;
+    }
     sideCollapsedPref = !sideShouldCollapse();
     try { localStorage.setItem(SIDE_COLLAPSE_KEY, sideCollapsedPref ? '1' : '0'); } catch {}
-    if (!sideCollapsedPref) sideOverlayOpen = false;
     applySideLayout();
   });
   chatFloatBtn.addEventListener('click', () => toggleSideOverlay());
@@ -405,6 +427,43 @@
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
   }
   function oldmaidEffectsActive() { return oldmaidEffectsOn && !oldmaidReducedMotion(); }
+
+  // Common dice-roll animation: reusable by any game that rolls one or more dice.
+  const DICE_FACE_CHARS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  function reducedMotionActive() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  }
+  function animateDiceRoll(dieEls, finalValues, { duration = 480, stepMs = 85, onDone } = {}) {
+    dieEls.forEach(el => el.classList.remove('diceRolling', 'diceSettle', 'diceDouble'));
+    const settle = () => {
+      dieEls.forEach((el, i) => { el.textContent = DICE_FACE_CHARS[finalValues[i] - 1] || '⚀'; });
+      void dieEls[0]?.offsetWidth;
+      dieEls.forEach(el => el.classList.add('diceSettle'));
+      if (finalValues.length > 1 && finalValues.every(v => v === finalValues[0])) {
+        dieEls.forEach(el => el.classList.add('diceDouble'));
+      }
+      if (onDone) onDone();
+    };
+    if (reducedMotionActive() || !dieEls.length) { settle(); return; }
+    dieEls.forEach(el => el.classList.add('diceRolling'));
+    const start = performance.now();
+    let lastStep = -1;
+    const frame = timestamp => {
+      const elapsed = timestamp - start;
+      if (elapsed >= duration) {
+        dieEls.forEach(el => el.classList.remove('diceRolling'));
+        settle();
+        return;
+      }
+      const step = Math.floor(elapsed / stepMs);
+      if (step !== lastStep) {
+        lastStep = step;
+        dieEls.forEach(el => { el.textContent = DICE_FACE_CHARS[Math.floor(Math.random() * 6)]; });
+      }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
 
   if (sessionToken) history.replaceState(null, '', '/');
 
@@ -2192,9 +2251,12 @@
     cityRollBtn.classList.toggle('hidden', g.status === 'selecting');
     cityLiquidateBanner.classList.toggle('hidden', g.phase !== 'liquidate');
     if (g.phase === 'liquidate') {
+      const debtAmount = g.pendingDebt?.amount ?? 0;
+      const liquidatingCash = g.players?.[g.liquidating]?.cash ?? 0;
+      const shortBy = Math.max(0, debtAmount - liquidatingCash);
       cityLiquidateBanner.textContent = g.liquidating === seat
-        ? `자산 정리 단계 · ${name(g.liquidating)}님이 ${g.pendingDebt?.amount ?? 0} 부족합니다. 도시나 건물을 매각해 정산하세요.`
-        : `자산 정리 단계 · ${name(g.liquidating)}님이 부족한 금액(${g.pendingDebt?.amount ?? 0})을 정산하기 위해 자산을 매각하고 있습니다.`;
+        ? `자산 정리 단계 · ${debtAmount} 중 ${shortBy}이(가) 부족합니다. 아래 도시 목록에서 도시나 건물을 매각해 부족한 금액을 채우세요. 충분해지면 자동으로 정산됩니다.`
+        : `자산 정리 단계 · ${name(g.liquidating)}님이 ${debtAmount} 중 ${shortBy}이(가) 부족해 자산을 매각하고 있습니다.`;
     }
     cityAssets.replaceChildren();
     for (const color of g.seatOrder || []) {
@@ -2208,8 +2270,19 @@
       dot.className = 'cityAssetDot';
       heading.appendChild(dot);
       heading.appendChild(document.createTextNode(`${name(color)}${seat === color ? ' · 나' : ''}${g.turn === color && g.status === 'playing' ? ' · 현재 차례' : ''}${bankrupt ? ' · 파산' : ''}`));
-      const metrics = document.createElement('span');
-      metrics.textContent = `현금 ${player.cash} · 도시 ${player.properties?.length || 0}개 · 순자산 ${g.scores?.[color] ?? player.cash} · 위치 ${player.position}번`;
+      const metrics = document.createElement('div');
+      metrics.className = 'cityAssetMetrics';
+      const metricEntries = [
+        ['현금', player.cash], ['순자산', g.scores?.[color] ?? player.cash],
+        ['소유 도시', `${player.properties?.length || 0}개`], ['위치', `${player.position}번`],
+      ];
+      for (const [metricLabel, metricValue] of metricEntries) {
+        const item = document.createElement('span');
+        const dt = document.createElement('small');
+        dt.textContent = metricLabel;
+        item.append(dt, document.createTextNode(String(metricValue)));
+        metrics.appendChild(item);
+      }
       card.append(heading, metrics);
       cityAssets.appendChild(card);
     }
@@ -2223,10 +2296,18 @@
       }
     }
     const roll = g.lastRoll;
-    cityDieFirst.textContent = roll ? String.fromCodePoint(0x267f + roll.first) : '⚀';
-    cityDieSecond.textContent = roll ? String.fromCodePoint(0x267f + roll.second) : '⚀';
     const rollKey = roll ? `${g.round}:${roll.at}:${roll.seat}:${roll.from}:${roll.to}` : null;
-    if (rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey) {
+    const isNewRoll = Boolean(rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey);
+    if (isNewRoll) {
+      cityDiceAnimating = true;
+      animateDiceRoll([cityDieFirst, cityDieSecond], [roll.first, roll.second], {
+        onDone: () => { cityDiceAnimating = false; },
+      });
+    } else if (!cityDiceAnimating) {
+      cityDieFirst.textContent = roll ? DICE_FACE_CHARS[roll.first - 1] : '⚀';
+      cityDieSecond.textContent = roll ? DICE_FACE_CHARS[roll.second - 1] : '⚀';
+    }
+    if (isNewRoll) {
       if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
       cityAnimation = { seat: roll.seat, from: roll.from, position: roll.from, steps: roll.total, started: performance.now() };
       citySelectedTileIndex = roll.to;
@@ -2263,6 +2344,15 @@
     cityTileSellRow.classList.toggle('hidden', !(tile?.type === 'property' && owner === seat));
     citySellBuildingBtn.disabled = !(canSellThis && level > 0);
     citySellPropertyBtn.disabled = !canSellThis;
+    if (tile?.type === 'property' && owner === seat) {
+      const myCash = g.players?.[seat]?.cash ?? 0;
+      const buildingRefund = level > 0 ? Math.floor(tileBuildCost * 0.5) : 0;
+      cityTileSellPreview.textContent = level > 0
+        ? `건물 매각 시 현금 ${myCash} → ${myCash + buildingRefund} · 도시 전체 매각 시 ${myCash} → ${myCash + sellValue}`
+        : `매각 시 현금 ${myCash} → ${myCash + sellValue}`;
+    } else {
+      cityTileSellPreview.textContent = '';
+    }
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
     cityRollBtn.textContent = mine && g.phase === 'roll' ? (g.extraRoll ? '더블 · 추가 굴리기' : '주사위 굴리기') : '굴리기 대기';
     cityLastRoll.textContent = g.lastRoll
@@ -2276,19 +2366,20 @@
       : !seat ? `${seatKo(g.turn)}의 차례를 관전하고 있습니다.`
         : g.phase === 'liquidate' ? (g.liquidating === seat ? '현금이 부족합니다. 자산을 정리하세요.' : `${seatKo(g.liquidating)}님이 자산을 정리하고 있습니다.`)
         : g.turn === seat ? (g.phase === 'roll' ? '주사위를 굴리세요.' : '내 차례입니다.') : `${seatKo(g.turn)} 차례입니다.`);
+    const myCashNow = g.players?.[seat]?.cash ?? 0;
     const offer = g.pendingProperty === null ? null : g.tiles?.[g.pendingProperty];
     const canBuy = Boolean(offer && mine && g.phase === 'buy');
-    cityPropertyOffer.textContent = offer ? `${offer.name} · 매입 ${offer.price} · 통행료 ${offer.toll}` : '';
+    cityPropertyOffer.textContent = offer ? `${offer.name} · 매입 ${offer.price} · 통행료 ${offer.toll}${mine ? ` · 매입 시 현금 ${myCashNow} → ${myCashNow - offer.price}` : ''}` : '';
     cityBuyBtn.classList.toggle('hidden', !offer);
-    cityBuyBtn.disabled = !canBuy || (g.players?.[seat]?.cash ?? 0) < (offer?.price ?? 0);
+    cityBuyBtn.disabled = !canBuy || myCashNow < (offer?.price ?? 0);
     citySkipBtn.classList.toggle('hidden', !offer);
     citySkipBtn.disabled = !canBuy;
     const buildTile = g.phase === 'build' && g.pendingProperty !== null ? g.tiles?.[g.pendingProperty] : null;
     const buildLevel = buildTile ? Math.max(0, Math.min(3, Number(g.developments?.[buildTile.index]) || 0)) : 0;
     const cost = buildTile ? Math.floor(buildTile.price / 2) : 0;
     cityBuildRow.classList.toggle('hidden', !buildTile);
-    cityBuildOffer.textContent = buildTile ? `${buildTile.name} · 다음 ${['별장', '빌딩', '호텔'][buildLevel] || '건설 완료'} · 건설비 ${cost} · 현재 통행료 ${g.tolls?.[buildTile.index] ?? buildTile.toll}` : '';
-    cityBuildBtn.disabled = !(buildTile && mine && g.owners?.[buildTile.index] === seat && buildLevel < 3 && g.players?.[seat]?.cash >= cost);
+    cityBuildOffer.textContent = buildTile ? `${buildTile.name} · 다음 ${['별장', '빌딩', '호텔'][buildLevel] || '건설 완료'} · 건설비 ${cost} · 건설 후 통행료 ${(buildTile.toll || 0) * [1, 2, 3, 5][Math.min(3, buildLevel + 1)]}${mine ? ` · 건설 시 현금 ${myCashNow} → ${myCashNow - cost}` : ''}` : '';
+    cityBuildBtn.disabled = !(buildTile && mine && g.owners?.[buildTile.index] === seat && buildLevel < 3 && myCashNow >= cost);
     cityBuildSkipBtn.disabled = !(buildTile && mine);
   }
 
@@ -2578,20 +2669,39 @@
     oldmaidAbilityBar.classList.toggle('hidden', !showAbility);
     if (showAbility) {
       const ABILITY_KO = { peek: '엿보기', redirect: '방향 전환', shield: '방어막', detect: '조커 탐지' };
-      oldmaidAbilityLabel.textContent = `내 능력: ${ABILITY_KO[ability.type] || ability.type}${ability.used ? ' · 사용 완료' : ' · 사용 가능'}`;
+      const ABILITY_DESC = {
+        peek: '내 차례에 뽑기 전, 지금 뽑을 대상의 카드 한 장을 나에게만 공개합니다.',
+        redirect: '이번 차례만 뽑기 대상을 반대쪽 참가자로 바꿉니다. 2인전에서는 사용할 수 없습니다.',
+        shield: '지금 발동해두면, 다음번 누군가 내 카드를 뽑을 때 그 사람이 고른 카드 대신 서버가 무작위로 한 장을 뽑습니다.',
+        detect: '내 차례에 뽑기 대상이 조커를 갖고 있는지(위치는 제외) 나에게만 공개합니다.',
+      };
+      oldmaidAbilityDesc.textContent = ABILITY_DESC[ability.type] || '';
       const myTurnNow = g.turn === seat;
-      const canUse = !ability.used && (ability.type === 'shield' || myTurnNow);
+      const needsTurn = ability.type !== 'shield';
+      const tooFewForRedirect = ability.type === 'redirect' && active < 3;
+      const canUse = !ability.used && !tooFewForRedirect && (!needsTurn || myTurnNow);
+      // The label's status word always matches the button right below it -- never claims
+      // "사용 가능" while the button is actually disabled for some other reason.
+      oldmaidAbilityLabel.textContent = `내 능력: ${ABILITY_KO[ability.type] || ability.type}${ability.used ? ' · 사용 완료' : canUse ? ' · 사용 가능' : ' · 지금은 사용 불가'}`;
       oldmaidAbilityUseBtn.disabled = !canUse;
       oldmaidAbilityUseBtn.textContent = ability.type === 'peek' ? (oldmaidPeekArmed ? '대상 카드를 선택하세요' : '카드 엿보기')
         : ability.type === 'redirect' ? '방향 전환'
         : ability.type === 'shield' ? (ability.shieldArmed ? '방어막 발동 중' : '방어막 사용')
         : ability.type === 'detect' ? '조커 탐지' : '능력 사용';
+      // When the button is disabled, say exactly why instead of leaving the player to guess.
+      const hintText = ability.used ? '이미 사용한 능력입니다.'
+        : tooFewForRedirect ? '2인전에서는 방향 전환을 사용할 수 없습니다.'
+        : needsTurn && !myTurnNow ? '내 차례가 되면 사용할 수 있습니다.'
+        : ability.type === 'shield' && ability.shieldArmed ? '방어막이 발동 중입니다. 다음번 카드를 뽑히면 자동으로 소모됩니다.'
+        : '';
+      oldmaidAbilityHint.textContent = hintText;
+      oldmaidAbilityHint.classList.toggle('hidden', !hintText);
       oldmaidAbilityReveal.classList.toggle('hidden', !ability.reveal);
       if (ability.reveal?.type === 'peek') {
         const c = ability.reveal.card;
-        oldmaidAbilityReveal.textContent = `엿본 카드(${label(ability.reveal.targetSeat)}): ${c.rank === 'JOKER' ? '🃏 조커' : `${c.suit} ${c.rank}`}`;
+        oldmaidAbilityReveal.textContent = `🔒 나에게만 보임 · 엿본 카드(${label(ability.reveal.targetSeat)}): ${c.rank === 'JOKER' ? '🃏 조커' : `${c.suit} ${c.rank}`}`;
       } else if (ability.reveal?.type === 'detect') {
-        oldmaidAbilityReveal.textContent = `${label(ability.reveal.targetSeat)}님의 조커 보유: ${ability.reveal.hasJoker ? '있음' : '없음'}`;
+        oldmaidAbilityReveal.textContent = `🔒 나에게만 보임 · ${label(ability.reveal.targetSeat)}님의 조커 보유: ${ability.reveal.hasJoker ? '있음' : '없음'}`;
       }
     } else {
       oldmaidPeekArmed = false;

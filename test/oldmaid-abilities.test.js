@@ -248,3 +248,21 @@ test('special-mode room over HTTP: ability use is authorized, one-shot, and neve
   assert.equal('reveals' in started2.data.state.game, false);
   assert.ok(started2.data.state.game.abilityUsed);
 });
+
+// v1.6.36: usability pass -- explain each ability, and say why the button is disabled instead of
+// just greying it out.
+test('the ability bar explains what each ability does and why it is currently unusable', () => {
+  const readSync = require('node:fs').readFileSync;
+  const app = readSync(path.join(__dirname, '..', 'public/app.js'), 'utf8');
+  const html = readSync(path.join(__dirname, '..', 'public/index.html'), 'utf8');
+  assert.match(html, /id="oldmaidAbilityDesc"/);
+  assert.match(html, /id="oldmaidAbilityHint"/);
+  assert.match(app, /const ABILITY_DESC = \{/);
+  assert.match(app, /const tooFewForRedirect = ability\.type === 'redirect' && active < 3;/);
+  assert.match(app, /'2인전에서는 방향 전환을 사용할 수 없습니다\.'/);
+  assert.match(app, /'내 차례가 되면 사용할 수 있습니다\.'/);
+  assert.match(app, /'이미 사용한 능력입니다\.'/);
+  // Reveals (private to the viewing seat) are visibly marked as such, not shown the same as
+  // public information.
+  assert.match(app, /🔒 나에게만 보임/);
+});
