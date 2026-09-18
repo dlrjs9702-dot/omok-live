@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.33" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.34" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -418,13 +418,21 @@
 
 
           <section id="oldmaidPanel" class="oldmaidPanel hidden" aria-label="도둑잡기">
-            <div class="oldmaidHeader"><strong id="oldmaidStatus">참가자를 기다리는 중</strong><button type="button" id="oldmaidStartBtn" class="primary">도둑잡기 시작</button></div>
+            <div class="oldmaidHeader">
+              <strong id="oldmaidStatus">참가자를 기다리는 중</strong>
+              <div class="oldmaidHeaderActions">
+                <label class="oldmaidEffectsToggle"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 연출 효과</label>
+                <button type="button" id="oldmaidStartBtn" class="primary">도둑잡기 시작</button>
+              </div>
+            </div>
             <p id="oldmaidResult" class="oldmaidResult hidden" aria-live="polite"></p>
-            <div id="oldmaidCounts" class="oldmaidCounts"></div>
-            <h3>상대방 카드 <small>현재 뽑을 상대의 카드만 선택할 수 있습니다</small></h3>
-            <div id="oldmaidOpponents" class="oldmaidOpponents"></div>
+            <div id="oldmaidTable" class="oldmaidTable" aria-label="카드 테이블">
+              <div class="oldmaidFelt"></div>
+              <div id="oldmaidSeats" class="oldmaidSeats"></div>
+              <div id="oldmaidFlyer" class="oldmaidFlyer" aria-hidden="true"></div>
+            </div>
             <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="secondary">카드 섞기</button></div>
-            <div id="oldmaidMyHand" class="oldmaidCards" aria-label="내 손패"></div>
+            <div id="oldmaidMyHand" class="oldmaidMyHandCards" aria-label="내 손패"></div>
             <h3>최근 행동</h3><div id="oldmaidHistory" class="oldmaidHistory" aria-live="polite"></div>
           </section>
 
@@ -514,8 +522,8 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 입장 파일을 열어야 합니다.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.33"></script>
-  <script src="/room-chat-height.js?v=1.6.33"></script>
-  <script src="/app.js?v=1.6.33"></script>
+  <script src="/session-lock.js?v=1.6.34"></script>
+  <script src="/room-chat-height.js?v=1.6.34"></script>
+  <script src="/app.js?v=1.6.34"></script>
 </body>
 </html>

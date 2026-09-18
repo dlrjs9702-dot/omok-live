@@ -43,5 +43,5 @@ test('shared room CSS bounds sidebar and makes excess chat scroll internally', (
   assert.match(override, /#roomView \.gameLayout > \.side \{[^}]*height: var\(--room-board-height/);
   assert.match(override, /#roomView \.side \.chatPanel \{[^}]*min-height: 0/);
   assert.match(override, /#roomView \.side \.chatMessages \{[^}]*min-height: 0;[^}]*overflow-y: auto/);
-  assert.match(html, /room-chat-height\.js\?v=1\.6\.33/);
+  assert.match(html, /room-chat-height\.js\?v=1\.6\.34/);
 });

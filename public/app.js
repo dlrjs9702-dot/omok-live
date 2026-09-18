@@ -164,10 +164,12 @@
   const oldmaidPanel = document.getElementById('oldmaidPanel');
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
+  const oldmaidEffectsToggle = document.getElementById('oldmaidEffectsToggle');
   const oldmaidStatus = document.getElementById('oldmaidStatus');
   const oldmaidResult = document.getElementById('oldmaidResult');
-  const oldmaidCounts = document.getElementById('oldmaidCounts');
-  const oldmaidOpponents = document.getElementById('oldmaidOpponents');
+  const oldmaidTable = document.getElementById('oldmaidTable');
+  const oldmaidSeatsEl = document.getElementById('oldmaidSeats');
+  const oldmaidFlyerLayer = document.getElementById('oldmaidFlyer');
   const oldmaidMyHand = document.getElementById('oldmaidMyHand');
   const oldmaidHistory = document.getElementById('oldmaidHistory');
   const liarPanel = document.getElementById('liarPanel');
@@ -243,6 +245,21 @@
   let toastTimer = null;
   let resultEffectTimer = null;
   let lastResultEffectKey = null;
+
+  // Old Maid table effects state. Purely cosmetic bookkeeping: never the source of truth for
+  // game state (that always comes from `state.game`, applied immediately by roomAction/SSE).
+  let oldmaidEffectsOn = true;
+  try { oldmaidEffectsOn = localStorage.getItem('oldmaidEffects') !== 'off'; } catch {}
+  let oldmaidDrawBusy = false;
+  let oldmaidLastHistoryLen = 0;
+  let oldmaidSeenEscaped = new Set();
+  let oldmaidSeenFinishedKey = null;
+  let oldmaidKnownRound = null;
+
+  function oldmaidReducedMotion() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  }
+  function oldmaidEffectsActive() { return oldmaidEffectsOn && !oldmaidReducedMotion(); }
 
   if (sessionToken) history.replaceState(null, '', '/');
 
@@ -2287,9 +2304,25 @@
     }
   }
 
+  // Rotates the seat list so that `anchorSeat` (my own seat, or the fixed spectator anchor)
+  // always comes first -- index 0 is always placed at the bottom-center table position.
+  function oldmaidRotatedSeats(order, anchorSeat) {
+    if (!order?.length) return [];
+    const anchorIndex = anchorSeat && order.includes(anchorSeat) ? order.indexOf(anchorSeat) : 0;
+    return order.slice(anchorIndex).concat(order.slice(0, anchorIndex));
+  }
+  // Evenly spaces `n` seats around an ellipse, starting at the bottom (180deg) and going
+  // clockwise -- this alone produces the "me at bottom, one opponent at top-center" 2-seat
+  // layout, the top+sides 3/4-seat layouts, and a regular pentagon/hexagon for 5-6 seats.
+  function oldmaidSeatPoint(angleDeg) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { left: 50 + 36 * Math.sin(rad), top: 50 - 38 * Math.cos(rad) };
+  }
+
   function renderOldMaid() {
     const g = state.game;
-    const active = g.seatOrder?.length || numberedSeats().filter(number => state.players[number]).length;
+    const rosterSeats = g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(number => state.players[number]);
+    const active = rosterSeats.length;
     oldmaidStartBtn.classList.toggle('hidden', g.status !== 'selecting');
     oldmaidStartBtn.disabled = !(isHost && active >= 2 && g.status === 'selecting');
     oldmaidShuffleBtn.disabled = !(seat && g.status === 'playing' && (g.counts?.[seat] || 0) > 0);
@@ -2302,13 +2335,87 @@
     oldmaidResult.classList.toggle('hidden', g.status !== 'finished');
     oldmaidResult.textContent = g.status === 'finished'
       ? `🃏 ${label(g.loser)}님 패배 · 나머지 참가자 승리` : '';
-    oldmaidCounts.replaceChildren();
-    for (const number of (g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]))) {
-      const chip = document.createElement('span');
-      chip.className = 'oldmaidCount' + (g.turn === number ? ' active' : '');
-      chip.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.target === number ? ' · 뽑기 대상' : ''}`;
-      oldmaidCounts.appendChild(chip);
+    oldmaidPanel.classList.toggle('effectsOff', !oldmaidEffectsActive());
+    oldmaidEffectsToggle.checked = oldmaidEffectsOn;
+
+    // A fresh deal reuses the same seats, so effect history (who has already been shown
+    // escaping, whether the finish flourish already played) resets per round.
+    if (oldmaidKnownRound !== g.round) {
+      oldmaidKnownRound = g.round;
+      oldmaidSeenEscaped = new Set();
+      oldmaidSeenFinishedKey = null;
+      oldmaidLastHistoryLen = 0;
     }
+
+    const iAmSeated = Boolean(seat && rosterSeats.includes(seat));
+    const rotated = oldmaidRotatedSeats(rosterSeats, iAmSeated ? seat : null);
+    const n = rotated.length;
+    oldmaidSeatsEl.dataset.count = String(n);
+    oldmaidSeatsEl.replaceChildren();
+    rotated.forEach((number, k) => {
+      const isMe = iAmSeated && number === seat;
+      const { left, top } = oldmaidSeatPoint(180 + (n ? (360 / n) * k : 0));
+      const count = g.counts?.[number] ?? 0;
+      const isLoser = g.status === 'finished' && number === g.loser;
+      const escaped = g.status !== 'selecting' && count === 0 && !isLoser;
+
+      const seatEl = document.createElement('div');
+      seatEl.className = 'oldmaidSeat'
+        + (isMe ? ' me' : '') + (g.turn === number ? ' turn' : '') + (g.target === number ? ' target' : '')
+        + (escaped ? ' escaped' : '') + (isLoser ? ' finalGlow' : '');
+      seatEl.dataset.seat = number;
+      seatEl.style.left = `${left}%`;
+      seatEl.style.top = `${top}%`;
+
+      const info = document.createElement('div');
+      info.className = 'oldmaidSeatInfo';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = isMe ? `나 · ${label(number)}` : label(number);
+      info.appendChild(nameSpan);
+      if (g.status !== 'selecting') {
+        const countSpan = document.createElement('span');
+        countSpan.textContent = `${count}장`;
+        info.appendChild(countSpan);
+      }
+      if (isLoser) {
+        const badge = document.createElement('span');
+        badge.className = 'oldmaidSeatBadge loser';
+        badge.textContent = '패배';
+        info.appendChild(badge);
+      } else if (escaped) {
+        const badge = document.createElement('span');
+        badge.className = 'oldmaidSeatBadge';
+        badge.textContent = '탈출 성공';
+        info.appendChild(badge);
+      }
+      seatEl.appendChild(info);
+
+      if (!isMe) {
+        if (count > 0) {
+          const cards = document.createElement('div');
+          cards.className = 'oldmaidSeatCards';
+          const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
+          for (let index = 0; index < count; index += 1) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+            button.textContent = '🎴';
+            button.disabled = !canDraw;
+            button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
+            button.addEventListener('click', () => oldmaidDrawCard(number, index, button));
+            cards.appendChild(button);
+          }
+          seatEl.appendChild(cards);
+        } else if (g.status !== 'selecting') {
+          const empty = document.createElement('div');
+          empty.className = 'oldmaidSeatEmpty';
+          empty.textContent = isLoser ? '조커 보유 중' : '카드 없음';
+          seatEl.appendChild(empty);
+        }
+      }
+      oldmaidSeatsEl.appendChild(seatEl);
+    });
+
     oldmaidMyHand.replaceChildren();
     if (seat && Array.isArray(state.me?.myOldMaidHand)) {
       for (const card of state.me.myOldMaidHand) {
@@ -2323,34 +2430,7 @@
       oldmaidMyHand.textContent = seat ? '게임 시작 후 내 카드가 표시됩니다.' : '관전자는 다른 참가자의 카드 내용을 볼 수 없습니다.';
     }
     if (seat && g.status === 'playing' && !state.me.myOldMaidHand?.length) oldmaidMyHand.textContent = '카드를 모두 버렸습니다!';
-    oldmaidOpponents.replaceChildren();
-    for (const number of (g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]))) {
-      if (number === seat) continue;
-      const row = document.createElement('section');
-      row.className = 'oldmaidOpponent' + (g.target === number ? ' target' : '') + (g.turn === number ? ' turn' : '');
-      const name = document.createElement('strong');
-      name.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.turn === number ? ' · 차례' : ''}${g.target === number ? ' · 뽑기 대상' : ''}`;
-      const cards = document.createElement('div');
-      cards.className = 'oldmaidCards';
-      const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
-      for (let index = 0; index < (g.counts?.[number] || 0); index += 1) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
-        button.textContent = '🎴';
-        button.disabled = !canDraw;
-        button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
-        button.addEventListener('click', () => {
-          if (button.disabled) return;
-          button.classList.add('selected');
-          for (const candidate of cards.querySelectorAll('button')) candidate.disabled = true;
-          roomAction('draw-oldmaid', { targetSeat: number, index, expectedRevision: g.revision });
-        });
-        cards.appendChild(button);
-      }
-      row.append(name, cards);
-      oldmaidOpponents.appendChild(row);
-    }
+
     oldmaidHistory.replaceChildren();
     for (const item of (g.history || []).slice(-12).reverse()) {
       const line = document.createElement('p');
@@ -2358,6 +2438,130 @@
       oldmaidHistory.appendChild(line);
     }
     if (!g.history?.length) oldmaidHistory.textContent = '아직 카드를 뽑지 않았습니다.';
+
+    oldmaidRunEffects(g);
+  }
+
+  // One-shot decorative flourishes, all derived from state the server already confirmed
+  // (history entries, counts, status/loser) -- never a source of truth, and always safe to
+  // skip if effects are off or the relevant seat element isn't on screen.
+  function oldmaidRunEffects(g) {
+    const history = g.history || [];
+    if (!oldmaidEffectsActive()) {
+      oldmaidLastHistoryLen = history.length;
+      for (const number of g.seatOrder || []) if ((g.counts?.[number] ?? 1) === 0) oldmaidSeenEscaped.add(number);
+      if (g.status === 'finished') oldmaidSeenFinishedKey = `${g.round}:${g.loser}`;
+      return;
+    }
+    if (history.length > oldmaidLastHistoryLen) {
+      for (const entry of history.slice(oldmaidLastHistoryLen)) {
+        if (entry.pairs > 0) oldmaidShowPairEffect(entry.actor, entry.pairs);
+      }
+    }
+    oldmaidLastHistoryLen = history.length;
+
+    for (const number of g.seatOrder || []) {
+      const emptied = (g.counts?.[number] ?? 1) === 0 && !(g.status === 'finished' && number === g.loser);
+      if (emptied && !oldmaidSeenEscaped.has(number)) {
+        oldmaidSeenEscaped.add(number);
+        oldmaidShowEscapeEffect(number);
+      }
+    }
+
+    if (g.status === 'finished') {
+      const key = `${g.round}:${g.loser}`;
+      if (oldmaidSeenFinishedKey !== key) oldmaidSeenFinishedKey = key;
+    }
+  }
+
+  function oldmaidFindSeatEl(number) {
+    return oldmaidSeatsEl.querySelector(`[data-seat="${CSS.escape(String(number))}"]`);
+  }
+
+  function oldmaidShowPairEffect(actorSeat, pairs) {
+    const seatEl = oldmaidFindSeatEl(actorSeat);
+    if (!seatEl) return;
+    seatEl.classList.add('pairPulse');
+    const badge = document.createElement('span');
+    badge.className = 'oldmaidPairBadge';
+    badge.textContent = pairs > 1 ? `PAIR! ×${pairs}` : 'PAIR!';
+    seatEl.appendChild(badge);
+    setTimeout(() => { seatEl.classList.remove('pairPulse'); badge.remove(); }, 1100);
+  }
+
+  function oldmaidShowEscapeEffect(number) {
+    const seatEl = oldmaidFindSeatEl(number);
+    if (!seatEl) return;
+    seatEl.classList.add('escapeCelebrate');
+    const banner = document.createElement('div');
+    banner.className = 'oldmaidEscapeBanner';
+    banner.textContent = '탈출 성공!';
+    seatEl.appendChild(banner);
+    setTimeout(() => { seatEl.classList.remove('escapeCelebrate'); banner.remove(); }, 1300);
+  }
+
+  // Card-back travels from the clicked seat to my hand. Purely cosmetic: the actual draw
+  // request/response (and the resulting renderOldMaid call) is what determines game state.
+  function oldmaidStartFlyer(originEl) {
+    const originRect = originEl.getBoundingClientRect();
+    if (!originRect.width || !originRect.height) return null;
+    const destRect = oldmaidMyHand.getBoundingClientRect();
+    const flyer = document.createElement('span');
+    flyer.className = 'oldmaidCard oldmaidBack oldmaidFlyingCard';
+    flyer.textContent = '🎴';
+    flyer.style.left = `${originRect.left}px`;
+    flyer.style.top = `${originRect.top}px`;
+    flyer.style.width = `${originRect.width}px`;
+    flyer.style.height = `${originRect.height}px`;
+    oldmaidFlyerLayer.appendChild(flyer);
+    const dx = (destRect.left + destRect.width / 2) - (originRect.left + originRect.width / 2);
+    const dy = (destRect.top + Math.min(24, destRect.height / 2)) - originRect.top;
+    requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy - 16}px) scale(.92)`; });
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      flyer.classList.add('landed');
+      setTimeout(() => flyer.remove(), 240);
+    };
+    const safety = setTimeout(finish, 900);
+    return () => { clearTimeout(safety); finish(); };
+  }
+
+  // Joker tension: only ever evaluated from MY OWN already-private hand (state.me.myOldMaidHand),
+  // right after MY OWN draw resolves -- never derived from or added to shared game state, so
+  // nothing about who holds the joker is exposed to opponents or spectators.
+  function oldmaidShowJokerTension() {
+    const flash = document.createElement('div');
+    flash.className = 'oldmaidJokerFlash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 700);
+    const jokerCard = oldmaidMyHand.querySelector('.oldmaidFace.joker');
+    if (jokerCard) {
+      jokerCard.classList.add('jokerShake');
+      setTimeout(() => jokerCard.classList.remove('jokerShake'), 500);
+    }
+    try { if (navigator.vibrate) navigator.vibrate(120); } catch {}
+  }
+
+  async function oldmaidDrawCard(targetSeat, index, buttonEl) {
+    if (oldmaidDrawBusy || !state?.game) return;
+    const g = state.game;
+    oldmaidDrawBusy = true;
+    buttonEl.classList.add('selected');
+    for (const candidate of oldmaidSeatsEl.querySelectorAll('.oldmaidBack')) candidate.disabled = true;
+    const beforeIds = new Set((state.me?.myOldMaidHand || []).map(card => card.id));
+    const finishFlyer = oldmaidEffectsActive() ? oldmaidStartFlyer(buttonEl) : null;
+    try {
+      await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
+      if (oldmaidEffectsActive()) {
+        const after = state.me?.myOldMaidHand || [];
+        if (after.some(card => card.rank === 'JOKER' && !beforeIds.has(card.id))) oldmaidShowJokerTension();
+      }
+    } finally {
+      if (finishFlyer) finishFlyer();
+      oldmaidDrawBusy = false;
+    }
   }
 
   function drawBoard() {
@@ -3132,6 +3336,11 @@
     if (oldmaidShuffleBtn.disabled || !state) return;
     oldmaidShuffleBtn.disabled = true;
     await roomAction('shuffle-oldmaid', { expectedRevision: state.game.revision });
+  });
+  oldmaidEffectsToggle.addEventListener('change', () => {
+    oldmaidEffectsOn = oldmaidEffectsToggle.checked;
+    try { localStorage.setItem('oldmaidEffects', oldmaidEffectsOn ? 'on' : 'off'); } catch {}
+    oldmaidPanel.classList.toggle('effectsOff', !oldmaidEffectsActive());
   });
 
   liarRoundsSelect.addEventListener('change', () => roomAction('set-liar-rounds', { totalRounds: Number(liarRoundsSelect.value) }));

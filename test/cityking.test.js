@@ -189,7 +189,7 @@ test('Land King UI and protected action routes are wired', async () => {
   assert.match(js, /function drawCityBoard\(/);
   assert.match(js, /roomAction\('roll-city', \{ expectedMoveCount \}\)/);
   assert.match(server, /roll-city\|buy-city\|skip-city/);
-  assert.match(html, /app\.js\?v=1\.6\.33/);
+  assert.match(html, /app\.js\?v=1\.6\.34/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
 });
