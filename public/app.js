@@ -48,6 +48,20 @@
   const presenceOfflineDetails = document.getElementById('presenceOfflineDetails');
   const presenceOfflineSummary = document.getElementById('presenceOfflineSummary');
   const presenceOfflineList = document.getElementById('presenceOfflineList');
+  const myRecordsName = document.getElementById('myRecordsName');
+  const myRecordsSummary = document.getElementById('myRecordsSummary');
+  const myRecordsGame = document.getElementById('myRecordsGame');
+  const myRecordsDetail = document.getElementById('myRecordsDetail');
+  const otherRecordsBtn = document.getElementById('otherRecordsBtn');
+  const recordsDialog = document.getElementById('recordsDialog');
+  const recordsCloseBtn = document.getElementById('recordsCloseBtn');
+  const recordsSearchForm = document.getElementById('recordsSearchForm');
+  const recordsSearchInput = document.getElementById('recordsSearchInput');
+  const recordsSearchResults = document.getElementById('recordsSearchResults');
+  const recordsProfileName = document.getElementById('recordsProfileName');
+  const recordsProfileSummary = document.getElementById('recordsProfileSummary');
+  const recordsProfileGame = document.getElementById('recordsProfileGame');
+  const recordsProfileDetail = document.getElementById('recordsProfileDetail');
   const announcementTab = document.getElementById('announcementTab');
   const announcementPanel = document.getElementById('announcementPanel');
   const announcementCount = document.getElementById('announcementCount');
@@ -216,6 +230,8 @@
   let lobbyStreamRetryTimer = null;
   let lobbyState = { messages: [], connectedCount: 0, rooms: [], invitations: [] };
   let announcements = [];
+  let ownRecords = null;
+  let viewedRecords = null;
   let presenceTimer = null;
   let presenceLoading = false;
   let editingAnnouncementId = null;
@@ -1141,6 +1157,93 @@
     } catch (err) { showToast(err.message); }
   }
 
+  function recordLine(data) {
+    if (!data) return '0전 · 0승 0패 0무 · 승률 0%';
+    return `${data.played}전 · ${data.wins}승 ${data.losses}패 ${data.draws}무 · 승률 ${data.winRate}%`;
+  }
+
+  function renderRecords(data, select, name, summary, detail) {
+    name.textContent = data?.player?.label || '기록 없음';
+    select.replaceChildren();
+    const all = document.createElement('option');
+    all.value = 'all'; all.textContent = '전체 게임'; select.appendChild(all);
+    for (const gameType of Object.keys(data?.byGame || {}).sort((a, b) => gameName(a).localeCompare(gameName(b), 'ko'))) {
+      const option = document.createElement('option');
+      option.value = gameType; option.textContent = gameDisplayName(gameType);
+      select.appendChild(option);
+    }
+    select.value = 'all';
+    const update = () => {
+      const row = select.value === 'all' ? data?.total : data?.byGame?.[select.value];
+      summary.textContent = recordLine(row);
+      detail.textContent = row?.played ? `${select.value === 'all' ? '전체 게임' : gameDisplayName(select.value)} 기준 · 총 ${row.played}대국` : '아직 기록된 대국이 없습니다.';
+    };
+    select.onchange = update;
+    update();
+  }
+
+  async function loadMyRecords() {
+    if (!sessionToken) return;
+    const token = sessionToken;
+    try {
+      const data = await api('/api/records/me');
+      if (token !== sessionToken) return;
+      ownRecords = data;
+      renderRecords(data, myRecordsGame, myRecordsName, myRecordsSummary, myRecordsDetail);
+    } catch (error) {
+      if (token === sessionToken) myRecordsDetail.textContent = `전적 조회 실패 · ${error.message}`;
+    }
+  }
+
+  async function openPlayerRecords(playerId = null) {
+    if (!sessionToken) return;
+    recordsDialog.showModal();
+    recordsSearchResults.replaceChildren();
+    recordsSearchForm.classList.toggle('hidden', Boolean(playerId));
+    if (!playerId) {
+      recordsProfileName.textContent = '닉네임을 검색해 플레이어를 선택하세요.';
+      recordsProfileSummary.textContent = '';
+      recordsProfileDetail.textContent = '';
+      recordsProfileGame.replaceChildren();
+      recordsSearchInput.focus();
+      return;
+    }
+    await showPlayerRecords(playerId);
+  }
+
+  async function showPlayerRecords(playerId) {
+    recordsProfileName.textContent = '전적 조회 중...';
+    try {
+      const data = await api(`/api/records/${encodeURIComponent(playerId)}`);
+      if (!recordsDialog.open) return;
+      viewedRecords = data;
+      renderRecords(data, recordsProfileGame, recordsProfileName, recordsProfileSummary, recordsProfileDetail);
+    } catch (error) {
+      if (recordsDialog.open) recordsProfileName.textContent = `전적 조회 실패 · ${error.message}`;
+    }
+  }
+
+  async function searchRecordPlayers(event) {
+    event.preventDefault();
+    recordsSearchResults.replaceChildren();
+    const query = recordsSearchInput.value.trim();
+    if (!query) return;
+    try {
+      const data = await api(`/api/records/players?q=${encodeURIComponent(query)}`);
+      if (!recordsDialog.open) return;
+      if (!data.players.length) recordsSearchResults.textContent = '검색 결과가 없습니다.';
+      for (const person of data.players) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'ghost recordSearchItem';
+        button.textContent = `${person.label} · 식별 ${person.id.slice(-6)}`;
+        button.addEventListener('click', () => showPlayerRecords(person.id));
+        recordsSearchResults.appendChild(button);
+      }
+    } catch (error) {
+      if (recordsDialog.open) recordsSearchResults.textContent = `검색 실패 · ${error.message}`;
+    }
+  }
+
   function enterLobby() {
     stopStream();
     state = null;
@@ -1150,6 +1253,7 @@
     showView('lobby');
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
+    loadMyRecords();
     loadPublicRooms().catch(err => showToast(err.message, 3500));
     startLobbyStream();
     startPresenceRefresh();
@@ -1361,7 +1465,13 @@
       const dot = document.createElement('span');
       dot.className = `presenceDot${person.connected ? ' online' : ''}`;
       const name = document.createElement('strong');
-      name.textContent = person.label || '게스트';
+      const nameButton = document.createElement('button');
+      nameButton.type = 'button'; nameButton.className = 'participantRecordName';
+      nameButton.textContent = person.label || '게스트';
+      nameButton.title = '닉네임을 눌러 전적 조회';
+      nameButton.disabled = !person.playerId;
+      if (person.playerId) nameButton.addEventListener('click', () => openPlayerRecords(person.playerId));
+      name.appendChild(nameButton);
       const role = document.createElement('small');
       role.textContent = `${person.isHost ? '방장 · ' : ''}${participantRoleText(person)}`;
       chip.append(dot, name, role);
@@ -2906,6 +3016,9 @@
     }
   }
 
+  otherRecordsBtn.addEventListener('click', () => openPlayerRecords());
+  recordsCloseBtn.addEventListener('click', () => recordsDialog.close());
+  recordsSearchForm.addEventListener('submit', searchRecordPlayers);
   announcementTab.addEventListener('click', () => {
     const opening = announcementPanel.classList.contains('hidden');
     announcementPanel.classList.toggle('hidden', !opening);
