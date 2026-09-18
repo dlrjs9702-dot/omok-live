@@ -15,6 +15,9 @@
   const lobbyConnectedCount = document.getElementById('lobbyConnectedCount');
   const logoutBtn = document.getElementById('logoutBtn');
   const roomLogoutBtn = document.getElementById('roomLogoutBtn');
+  const logoutDialog = document.getElementById('logoutDialog');
+  const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+  const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
   const createRoomBtn = document.getElementById('createRoomBtn');
   const publicRoomList = document.getElementById('publicRoomList');
   const refreshPublicRoomsBtn = document.getElementById('refreshPublicRoomsBtn');
@@ -110,6 +113,10 @@
   const cityPropertyOffer = document.getElementById('cityPropertyOffer');
   const cityBuyBtn = document.getElementById('cityBuyBtn');
   const citySkipBtn = document.getElementById('citySkipBtn');
+  const cityBuildRow = document.getElementById('cityBuildRow');
+  const cityBuildOffer = document.getElementById('cityBuildOffer');
+  const cityBuildBtn = document.getElementById('cityBuildBtn');
+  const cityBuildSkipBtn = document.getElementById('cityBuildSkipBtn');
   const cityTurnSummary = document.getElementById('cityTurnSummary');
   const cityDieFirst = document.getElementById('cityDieFirst');
   const cityDieSecond = document.getElementById('cityDieSecond');
@@ -380,6 +387,10 @@
     }
   }
 
+  function requestLogout() {
+    if (sessionToken && !logoutDialog.open) logoutDialog.showModal();
+  }
+
   async function logout() {
     try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
     expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
@@ -428,7 +439,7 @@
     "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용합니다.",
     "bingo": "2~4명이 1~50 중 서로 다른 25개 숫자로 된 5×5 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 시작 전에 1~12줄 중 승리 조건을 정하며 가로·세로·두 대각선을 합쳐 먼저 조건을 달성하면 승리합니다.",
     "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
-    "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
+    "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 자기 소유 도시에 도착하면 매입가의 50%로 별장·빌딩·호텔을 방문당 한 단계 건설할 수 있습니다. 통행료는 기본·2배·3배·5배이며, 건설비는 순자산에 포함됩니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
     "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
@@ -1867,9 +1878,11 @@
       citySelectedTileIndex = g.pendingProperty ?? g.players?.[g.turn]?.position ?? roll?.to ?? 0;
     cityTileSelect.value = String(citySelectedTileIndex);
     const tile = g.tiles?.[citySelectedTileIndex];
-    cityTileName.textContent = tile ? `${tile.index}번 · ${tile.name}` : '칸 정보 없음';
+    const level = tile?.type === 'property' ? Math.max(0, Math.min(3, Number(g.developments?.[tile.index]) || 0)) : 0;
+    const building = ['도시', '별장', '빌딩', '호텔'][level];
+    cityTileName.textContent = tile ? `${tile.index}번 · ${tile.name}${g.owners?.[tile.index] ? ` · ${building} (${level}단계)` : ''}` : '칸 정보 없음';
     cityTilePrice.textContent = tile?.type === 'property' ? `${tile.price}` : '-';
-    cityTileToll.textContent = tile?.type === 'property' ? `${tile.toll}` : '-';
+    cityTileToll.textContent = tile?.type === 'property' ? `${g.tolls?.[tile.index] ?? tile.toll}` : '-';
     const owner = tile ? g.owners?.[tile.index] : null;
     cityTileOwner.textContent = tile?.type !== 'property' ? '해당 없음' : owner ? name(owner) : '미소유';
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
@@ -1888,6 +1901,13 @@
     cityBuyBtn.disabled = !canBuy || (g.players?.[seat]?.cash ?? 0) < (offer?.price ?? 0);
     citySkipBtn.classList.toggle('hidden', !offer);
     citySkipBtn.disabled = !canBuy;
+    const buildTile = g.phase === 'build' && g.pendingProperty !== null ? g.tiles?.[g.pendingProperty] : null;
+    const buildLevel = buildTile ? Math.max(0, Math.min(3, Number(g.developments?.[buildTile.index]) || 0)) : 0;
+    const cost = buildTile ? Math.floor(buildTile.price / 2) : 0;
+    cityBuildRow.classList.toggle('hidden', !buildTile);
+    cityBuildOffer.textContent = buildTile ? `${buildTile.name} · 다음 ${['별장', '빌딩', '호텔'][buildLevel] || '건설 완료'} · 건설비 ${cost} · 현재 통행료 ${g.tolls?.[buildTile.index] ?? buildTile.toll}` : '';
+    cityBuildBtn.disabled = !(buildTile && mine && g.owners?.[buildTile.index] === seat && buildLevel < 3 && g.players?.[seat]?.cash >= cost);
+    cityBuildSkipBtn.disabled = !(buildTile && mine);
   }
 
   let pictionaryTool = 'pen';
@@ -2236,7 +2256,7 @@
     ctx.lineWidth = 9;
     const paths = [
       [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,0],
-      [5,21,22,23,28,29,0], [10,26,27,23,24,25,15],
+      [5,21,22,23,24,25,15], [10,26,27,23,28,29,0],
     ];
     for (const path of paths) {
       ctx.beginPath();
@@ -2442,7 +2462,13 @@
       if (tile.type === 'property') {
         ctx.font = '750 10px system-ui, sans-serif';
         ctx.fillStyle = '#475569';
-        ctx.fillText(`${tile.price}`, x, y + 27);
+        ctx.fillText(`${tile.price} / ${g.tolls?.[tile.index] ?? tile.toll}`, x, y + 27);
+        if (owner) {
+          const level = Math.max(0, Math.min(3, Number(g.developments?.[tile.index]) || 0));
+          ctx.fillStyle = '#1d4ed8';
+          ctx.font = '900 10px system-ui, sans-serif';
+          ctx.fillText(`${['도시', '별장', '빌딩', '호텔'][level]} · ${level}단계`, x, y - 29);
+        }
       }
     }
     for (const color of ['black', 'white']) {
@@ -2904,8 +2930,10 @@
   }, true);
 
   adminLoginForm.addEventListener('submit', adminLogin);
-  logoutBtn.addEventListener('click', logout);
-  roomLogoutBtn.addEventListener('click', logout);
+  logoutBtn.addEventListener('click', requestLogout);
+  roomLogoutBtn.addEventListener('click', requestLogout);
+  logoutCancelBtn.addEventListener('click', () => logoutDialog.close());
+  logoutConfirmBtn.addEventListener('click', () => { logoutDialog.close(); logout(); });
   createRoomBtn.addEventListener('click', createRoom);
   newRoomBtn.addEventListener('click', createRoom);
   refreshPublicRoomsBtn.addEventListener('click', () => loadPublicRooms().catch(err => showToast(err.message, 3500)));
@@ -2933,6 +2961,8 @@
   cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
+  cityBuildBtn.addEventListener('click', () => roomAction('build-city'));
+  cityBuildSkipBtn.addEventListener('click', () => roomAction('skip-build-city'));
   cityTileSelect.addEventListener('change', () => {
     if (state?.gameType !== 'cityking') return;
     const index = Number(cityTileSelect.value);
