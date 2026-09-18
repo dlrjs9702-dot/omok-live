@@ -1,0 +1,64 @@
+name: Verify omok selection and city UI v1.6.28
+
+on:
+  push:
+    branches:
+      - feature/omok-mode-city-ui-v1628-20260918
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature
+        uses: actions/checkout@v4
+        with:
+          ref: feature/omok-mode-city-ui-v1628-20260918
+          fetch-depth: 0
+      - name: Apply scoped Omok patch then Land King UI patch
+        run: python3 .release/apply-omok-city-v1628.py
+      - name: Syntax and modified-code checks
+        run: |
+          node --check public/app.js
+          node --check server.js
+          node --check lib/games/cityking.js
+          node --check test/omok-city-ui.test.js
+          git diff --check
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Targeted Omok and Land King checks
+        run: node --test test/omok-city-ui.test.js test/omok-team.test.js test/cityking.test.js
+      - name: Existing entire test suite
+        run: npm test
+      - name: Release integrity and scope
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const notices = require('./lib/release-announcements');
+          if (pkg.version !== '1.6.28' || lock.version !== '1.6.28' || lock.packages[''].version !== '1.6.28') throw Error('version mismatch');
+          if (notices.filter(item => item.key === 'v1.6.28').length !== 1) throw Error('notice missing or duplicated');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          if (!html.includes('app.js?v=1.6.28')) throw Error('client cache version missing');
+          if (html.includes('data-game="omok2v2"')) throw Error('duplicate lobby team choice');
+          NODE
+          git diff --check
+          git diff --name-only | grep -Ev '^(lib/games/|lib/access-store|lib/announcement-store)' >/dev/null
+          test "$(git diff --name-only | grep -E '^lib/games/' | wc -l)" -eq 0
+      - name: Save verified release only
+        run: |
+          git config user.name game-center-release-bot
+          git config user.email actions@users.noreply.github.com
+          git rm .release/apply-omok-city-v1628.py .github/workflows/verify-omok-city-v1628.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Release v1.6.28: unify Omok choice and improve Land King UI [skip ci]'
+          git push origin HEAD:feature/omok-mode-city-ui-v1628-20260918
