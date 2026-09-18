@@ -126,7 +126,9 @@
   const bingoBoard = document.getElementById('bingoBoard');
   const cityControls = document.getElementById('cityControls');
   const cityLastRoll = document.getElementById('cityLastRoll');
+  const cityStartBtn = document.getElementById('cityStartBtn');
   const cityRollBtn = document.getElementById('cityRollBtn');
+  const cityLiquidateBanner = document.getElementById('cityLiquidateBanner');
   const cityEvent = document.getElementById('cityEvent');
   const cityPropertyOffer = document.getElementById('cityPropertyOffer');
   const cityBuyBtn = document.getElementById('cityBuyBtn');
@@ -144,6 +146,11 @@
   const cityTilePrice = document.getElementById('cityTilePrice');
   const cityTileToll = document.getElementById('cityTileToll');
   const cityTileOwner = document.getElementById('cityTileOwner');
+  const cityTileBuildCost = document.getElementById('cityTileBuildCost');
+  const cityTileSellValue = document.getElementById('cityTileSellValue');
+  const cityTileSellRow = document.getElementById('cityTileSellRow');
+  const citySellBuildingBtn = document.getElementById('citySellBuildingBtn');
+  const citySellPropertyBtn = document.getElementById('citySellPropertyBtn');
   const pictionaryPanel = document.getElementById('pictionaryPanel');
   const pictionaryStartBtn = document.getElementById('pictionaryStartBtn');
   const pictionaryDrawerLabel = document.getElementById('pictionaryDrawerLabel');
@@ -165,6 +172,12 @@
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
   const oldmaidEffectsToggle = document.getElementById('oldmaidEffectsToggle');
+  const oldmaidModeChooser = document.getElementById('oldmaidModeChooser');
+  const oldmaidModeRadios = document.querySelectorAll('[data-oldmaid-mode]');
+  const oldmaidAbilityBar = document.getElementById('oldmaidAbilityBar');
+  const oldmaidAbilityLabel = document.getElementById('oldmaidAbilityLabel');
+  const oldmaidAbilityUseBtn = document.getElementById('oldmaidAbilityUseBtn');
+  const oldmaidAbilityReveal = document.getElementById('oldmaidAbilityReveal');
   const oldmaidStatus = document.getElementById('oldmaidStatus');
   const oldmaidResult = document.getElementById('oldmaidResult');
   const oldmaidTable = document.getElementById('oldmaidTable');
@@ -206,6 +219,15 @@
   const chatMessages = document.getElementById('chatMessages');
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
+  const systemMessages = document.getElementById('systemMessages');
+  const chatJumpBtn = document.getElementById('chatJumpBtn');
+  const chatUnreadBadge = document.getElementById('chatUnreadBadge');
+  const chatFloatBtn = document.getElementById('chatFloatBtn');
+  const chatFloatBadge = document.getElementById('chatFloatBadge');
+  const roomSidebar = document.getElementById('roomSidebar');
+  const sideCollapseBtn = document.getElementById('sideCollapseBtn');
+  const sideOverlayBackdrop = document.getElementById('sideOverlayBackdrop');
+  const gameLayoutEl = document.querySelector('#roomView .gameLayout');
   const toast = document.getElementById('toast');
   const resultEffect = document.getElementById('resultEffect');
   const resultParticles = document.getElementById('resultParticles');
@@ -246,11 +268,134 @@
   let resultEffectTimer = null;
   let lastResultEffectKey = null;
 
+  // Room sidebar (chat/system/room-info) state. The sidebar never depends on measuring the
+  // board's rendered height (that was the cause of the chat panel being pushed off-screen on
+  // tall boards like Land King/Old Maid) — it is bounded purely by viewport height in CSS.
+  const SIDE_SIZE_KEY = 'roomSideSize';
+  const SIDE_COLLAPSE_KEY = 'roomSideCollapsed';
+  let sideActiveTab = 'chat';
+  let sideOverlayOpen = false;
+  let sideCollapsedPref = null; // null = no explicit user choice yet; use the per-game default
+  try { sideCollapsedPref = localStorage.getItem(SIDE_COLLAPSE_KEY); if (sideCollapsedPref !== null) sideCollapsedPref = sideCollapsedPref === '1'; } catch {}
+  let chatUnreadCount = 0;
+  let chatAtBottom = true;
+  let chatLastSeenId = 0;
+  let lastRenderedChatIds = [];
+
+  function wideBoardGame() { return state?.gameType === 'cityking' || state?.gameType === 'oldmaid'; }
+  function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
+
+  function sideShouldCollapse() {
+    if (sideCollapsedPref !== null) return sideCollapsedPref;
+    return wideBoardGame();
+  }
+
+  function sideChatVisible() {
+    // True when the chat pane is actually on-screen and readable right now.
+    if (isMobileLayout()) return sideOverlayOpen && sideActiveTab === 'chat';
+    if (sideOverlayOpen) return sideActiveTab === 'chat';
+    return !sideShouldCollapse() && sideActiveTab === 'chat';
+  }
+
+  function applySideLayout() {
+    const mobile = isMobileLayout();
+    const collapsed = sideShouldCollapse();
+    roomSidebar.classList.toggle('overlayOpen', sideOverlayOpen);
+    roomSidebar.classList.toggle('collapsedDocked', !sideOverlayOpen && !mobile && collapsed);
+    if (gameLayoutEl) gameLayoutEl.classList.toggle('sideCollapsed', !mobile && collapsed && !sideOverlayOpen);
+    sideOverlayBackdrop.classList.toggle('hidden', !(sideOverlayOpen && mobile));
+    chatFloatBtn.classList.toggle('hidden', !(mobile || collapsed || sideOverlayOpen));
+    chatFloatBtn.setAttribute('aria-label', sideOverlayOpen ? '채팅 닫기' : '채팅 열기');
+    chatFloatBtn.classList.toggle('isOpen', sideOverlayOpen);
+    sideCollapseBtn.textContent = collapsed ? '펼치기 ◂' : '접기 ▸';
+    sideCollapseBtn.setAttribute('aria-label', collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
+    for (const btn of roomSidebar.querySelectorAll('.sideTab')) {
+      const active = btn.dataset.sideTab === sideActiveTab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    }
+    for (const pane of roomSidebar.querySelectorAll('.sidePane')) {
+      pane.classList.toggle('hidden', pane.dataset.sidePane !== sideActiveTab);
+    }
+    if (sideChatVisible()) markChatSeen();
+  }
+
+  function setSideTab(tab) {
+    sideActiveTab = tab;
+    if (sideShouldCollapse() && !sideOverlayOpen && !isMobileLayout() && tab === 'chat') {
+      // Picking the chat tab while docked-collapsed opens the overlay so it's actually visible.
+      sideOverlayOpen = true;
+    }
+    applySideLayout();
+  }
+
+  function toggleSideOverlay(forceOpen) {
+    sideOverlayOpen = typeof forceOpen === 'boolean' ? forceOpen : !sideOverlayOpen;
+    if (sideOverlayOpen) sideActiveTab = 'chat';
+    applySideLayout();
+  }
+
+  function markChatSeen() {
+    chatUnreadCount = 0;
+    updateChatBadges();
+    if (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 8) chatAtBottom = true;
+  }
+
+  function updateChatBadges() {
+    const show = chatUnreadCount > 0;
+    chatUnreadBadge.textContent = String(Math.min(chatUnreadCount, 99));
+    chatUnreadBadge.classList.toggle('hidden', !show);
+    chatFloatBadge.textContent = String(Math.min(chatUnreadCount, 99));
+    chatFloatBadge.classList.toggle('hidden', !show);
+  }
+
+  chatMessages.addEventListener('scroll', () => {
+    chatAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
+    if (chatAtBottom) { chatJumpBtn.classList.add('hidden'); if (sideChatVisible()) markChatSeen(); }
+  });
+  chatJumpBtn.addEventListener('click', () => {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    chatAtBottom = true;
+    chatJumpBtn.classList.add('hidden');
+    markChatSeen();
+  });
+  for (const btn of document.querySelectorAll('.sideTab')) {
+    btn.addEventListener('click', () => setSideTab(btn.dataset.sideTab));
+  }
+  sideCollapseBtn.addEventListener('click', () => {
+    sideCollapsedPref = !sideShouldCollapse();
+    try { localStorage.setItem(SIDE_COLLAPSE_KEY, sideCollapsedPref ? '1' : '0'); } catch {}
+    if (!sideCollapsedPref) sideOverlayOpen = false;
+    applySideLayout();
+  });
+  chatFloatBtn.addEventListener('click', () => toggleSideOverlay());
+  sideOverlayBackdrop.addEventListener('click', () => toggleSideOverlay(false));
+  for (const btn of document.querySelectorAll('.sideSizeBtn')) {
+    btn.addEventListener('click', () => {
+      const size = btn.dataset.sideSize;
+      if (gameLayoutEl) gameLayoutEl.classList.remove('sideNarrow', 'sideWide');
+      if (size === 'narrow') gameLayoutEl?.classList.add('sideNarrow');
+      else if (size === 'wide') gameLayoutEl?.classList.add('sideWide');
+      try { localStorage.setItem(SIDE_SIZE_KEY, size); } catch {}
+      for (const b of document.querySelectorAll('.sideSizeBtn')) b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+    });
+  }
+  try {
+    const savedSize = localStorage.getItem(SIDE_SIZE_KEY);
+    if (savedSize === 'narrow' || savedSize === 'wide') {
+      gameLayoutEl?.classList.add(savedSize === 'narrow' ? 'sideNarrow' : 'sideWide');
+      document.querySelector(`.sideSizeBtn[data-side-size="${savedSize}"]`)?.setAttribute('aria-pressed', 'true');
+    }
+  } catch {}
+  window.addEventListener('resize', () => applySideLayout());
+  window.addEventListener('orientationchange', () => applySideLayout());
+
   // Old Maid table effects state. Purely cosmetic bookkeeping: never the source of truth for
   // game state (that always comes from `state.game`, applied immediately by roomAction/SSE).
   let oldmaidEffectsOn = true;
   try { oldmaidEffectsOn = localStorage.getItem('oldmaidEffects') !== 'off'; } catch {}
   let oldmaidDrawBusy = false;
+  let oldmaidPeekArmed = false;
   let oldmaidLastHistoryLen = 0;
   let oldmaidSeenEscaped = new Set();
   let oldmaidSeenFinishedKey = null;
@@ -450,7 +595,8 @@
   function isPictionaryGame() { return state?.gameType === 'pictionary'; }
   function isLiarGame() { return state?.gameType === 'liar'; }
   function isOldMaidGame() { return state?.gameType === 'oldmaid'; }
-  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame(); }
+  function isCityKingGame() { return state?.gameType === 'cityking'; }
+  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame(); }
   function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4','5','6'] : (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
   // Winner is the same black/white color for most games; 2v2 seat numbers map to team colors.
@@ -458,7 +604,7 @@
   // below and falls through to null, which is correct since it has its own win display, not the shared effect.
   function resultOutcome(game, playerSeat, gameType) {
     if (game?.status !== 'finished' || !playerSeat || !game.winner) return null;
-    if (gameType === 'bingo') return String(playerSeat) === String(game.winner) ? 'win' : 'loss';
+    if (gameType === 'bingo' || gameType === 'cityking') return String(playerSeat) === String(game.winner) ? 'win' : 'loss';
     if (['liar', 'oldmaid'].includes(gameType) && Array.isArray(game.winner)) return game.winner.includes(String(playerSeat)) ? 'win' : 'loss';
     if (!['black', 'white'].includes(game.winner)) return null;
     const color = gameType === 'omok2v2' ? seatColor(playerSeat) : playerSeat;
@@ -1196,7 +1342,8 @@
     const update = () => {
       const row = select.value === 'all' ? data?.total : data?.byGame?.[select.value];
       summary.textContent = recordLine(row);
-      detail.textContent = row?.played ? `${select.value === 'all' ? '전체 게임' : gameDisplayName(select.value)} 기준 · 총 ${row.played}대국` : '아직 기록된 대국이 없습니다.';
+      const rankSuffix = row?.avgRank ? ` · 평균 순위 ${row.avgRank}위` : '';
+      detail.textContent = row?.played ? `${select.value === 'all' ? '전체 게임' : gameDisplayName(select.value)} 기준 · 총 ${row.played}대국${rankSuffix}` : '아직 기록된 대국이 없습니다.';
     };
     select.onchange = update;
     update();
@@ -1305,6 +1452,13 @@
     state = next;
     lastResultEffectKey = null;
     clearResultEffect();
+    chatUnreadCount = 0;
+    chatAtBottom = true;
+    chatLastSeenId = 0;
+    lastRenderedChatIds = [];
+    sideOverlayOpen = false;
+    sideActiveTab = 'chat';
+    updateChatBadges();
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
@@ -1464,10 +1618,10 @@
   }
 
   function seatKo(value) {
-    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame()) && numberedSeats().includes(value)) return `${value}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
-    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
-    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
+    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
     return '관전';
   }
 
@@ -1551,38 +1705,69 @@
     lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
   }
 
-  function renderChat() {
-    const rows = state?.chat?.messages || [];
-    chatMessages.innerHTML = '';
+  function buildChatMessageEl(row) {
+    const item = document.createElement('div');
+    item.className = `chatMessage ${row.type === 'system' ? 'system' : ''}`;
+    if (row.type === 'system') {
+      item.textContent = row.text;
+    } else {
+      const head = document.createElement('div');
+      head.className = 'chatMessageHead';
+      const who = document.createElement('strong');
+      who.textContent = row.label || '게스트';
+      const time = document.createElement('time');
+      const d = new Date(row.at);
+      time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      head.append(who, time);
+      const text = document.createElement('div');
+      text.className = 'chatMessageText';
+      text.textContent = row.text;
+      item.append(head, text);
+    }
+    return item;
+  }
+
+  function fillMessageList(container, rows, emptyText) {
+    container.innerHTML = '';
     if (!rows.length) {
       const empty = document.createElement('div');
       empty.className = 'chatEmpty';
-      empty.textContent = '아직 메시지가 없습니다.';
-      chatMessages.appendChild(empty);
+      empty.textContent = emptyText;
+      container.appendChild(empty);
       return;
     }
-    for (const row of rows) {
-      const item = document.createElement('div');
-      item.className = `chatMessage ${row.type === 'system' ? 'system' : ''}`;
-      if (row.type === 'system') {
-        item.textContent = row.text;
-      } else {
-        const head = document.createElement('div');
-        head.className = 'chatMessageHead';
-        const who = document.createElement('strong');
-        who.textContent = row.label || '게스트';
-        const time = document.createElement('time');
-        const d = new Date(row.at);
-        time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        head.append(who, time);
-        const text = document.createElement('div');
-        text.className = 'chatMessageText';
-        text.textContent = row.text;
-        item.append(head, text);
-      }
-      chatMessages.appendChild(item);
+    for (const row of rows) container.appendChild(buildChatMessageEl(row));
+  }
+
+  function renderChat() {
+    const rows = state?.chat?.messages || [];
+    const chatRows = rows.filter(row => row.type !== 'system');
+    const systemRows = rows.filter(row => row.type === 'system');
+
+    const newestId = chatRows.length ? chatRows[chatRows.length - 1].id : 0;
+    const hasNewChat = newestId > chatLastSeenId && lastRenderedChatIds.length > 0;
+    chatLastSeenId = Math.max(chatLastSeenId, newestId);
+
+    const wasAtBottom = chatAtBottom;
+    fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.');
+    fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
+    lastRenderedChatIds = chatRows.map(row => row.id);
+
+    if (wasAtBottom) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    // Otherwise leave scrollTop untouched — a reader scrolled up in history is never yanked back down.
+
+    if (hasNewChat) {
+      if (sideChatVisible() && wasAtBottom) {
+        markChatSeen();
+      } else {
+        chatUnreadCount += 1;
+        updateChatBadges();
+        if (!wasAtBottom) chatJumpBtn.classList.remove('hidden');
+      }
+    }
+    applySideLayout();
   }
 
   function renderTeamPlayers() {
@@ -1591,21 +1776,28 @@
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
     const oldmaid = isOldMaidGame();
-    for (const number of numberedSeats()) {
+    const city = isCityKingGame();
+    // Land King is host-started like bingo/oldmaid, so this strip only ever shows seats the
+    // engine actually knows about once playing; before start it still lists every open seat.
+    const seats = city && state.game.status !== 'selecting' ? (state.game.seatOrder || []) : numberedSeats();
+    for (const number of seats) {
       const player = state.players[number];
       const card = document.createElement('div');
       const color = seatColor(number);
-      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : bingo ? state.game.turn === number : state.game.nextSeat === number;
-      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}`;
+      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : state.game.nextSeat === number;
+      const eliminated = city && state.game.players?.[number]?.eliminated;
+      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       const title = document.createElement('strong');
       title.textContent = pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
         : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
         : oldmaid ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 뽑기 차례' : ''}`
-        : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}` : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
+        : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}`
+        : city ? `${number}번${eliminated ? ' · 파산' : currentTurn && state.game.status === 'playing' ? ' · 현재 차례' : ''}`
+        : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
       const name = document.createElement('small');
       name.textContent = player
-        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -1640,11 +1832,12 @@
         : oldmaid ? '2~6명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
         : bingo
         ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 승리 줄 수를 정하고 시작합니다.'
+        : city ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 랜드킹을 시작합니다.'
         : '1·3번은 흑팀, 2·4번은 백팀입니다. 네 명이 모두 자리를 정하면 1→2→3→4 순서로 시작합니다.';
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (bingo || pictionary || liar || oldmaid) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
+        button.textContent = (bingo || pictionary || liar || oldmaid || city) ? `${number}번 자리` : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
         button.classList.toggle('selected', choice === number);
       }
@@ -1816,7 +2009,7 @@
     } else if (g.status === 'selecting') {
       boardOverlay.classList.remove('resultWin', 'resultLoss');
       const choice = state.me?.choice;
-      if (!choice) boardOverlay.textContent = team ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : ['yut','dots','cityking'].includes(state.gameType) ? '파랑 · 빨강 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
+      if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : ['yut','dots'].includes(state.gameType) ? '파랑 · 빨강 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
@@ -1986,20 +2179,35 @@
 
   function renderCityControls() {
     const g = state.game;
+    const canActNow = Boolean(seat && g.status === 'playing' && (g.turn === seat || (g.phase === 'liquidate' && g.liquidating === seat)));
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
     const turn = Math.max(0, Number(g.turnCount) || 0);
     const limit = Number(g.turnLimit) || 50;
-    const name = color => state.players?.[color]?.label || (color === 'black' ? '파랑' : '빨강');
+    const name = seatNumber => state.players?.[seatNumber]?.label || `${seatNumber}번`;
     const extraText = g.extraRoll ? (g.phase === 'roll' ? ' · 더블 추가 굴림' : ' · 더블: 칸 처리 후 추가 굴림') : '';
     cityTurnSummary.textContent = `전체 턴 ${turn}/${limit} 완료 · 남은 ${Math.max(0, limit - turn)}턴 · ${g.turn ? name(g.turn) + ' 차례' + extraText : '대국 종료'}`;
+    const seatedCount = Object.keys(state.players || {}).filter(k => /^[1-4]$/.test(k) && state.players[k]).length;
+    cityStartBtn.classList.toggle('hidden', g.status !== 'selecting');
+    cityStartBtn.disabled = !(isHost && g.status === 'selecting' && seatedCount >= 2);
+    cityRollBtn.classList.toggle('hidden', g.status === 'selecting');
+    cityLiquidateBanner.classList.toggle('hidden', g.phase !== 'liquidate');
+    if (g.phase === 'liquidate') {
+      cityLiquidateBanner.textContent = g.liquidating === seat
+        ? `자산 정리 단계 · ${name(g.liquidating)}님이 ${g.pendingDebt?.amount ?? 0} 부족합니다. 도시나 건물을 매각해 정산하세요.`
+        : `자산 정리 단계 · ${name(g.liquidating)}님이 부족한 금액(${g.pendingDebt?.amount ?? 0})을 정산하기 위해 자산을 매각하고 있습니다.`;
+    }
     cityAssets.replaceChildren();
-    for (const color of ['black', 'white']) {
+    for (const color of g.seatOrder || []) {
       const player = g.players?.[color];
       if (!player) continue;
+      const bankrupt = Boolean(player.eliminated);
       const card = document.createElement('div');
-      card.className = `cityAssetCard ${color}${g.status === 'playing' && g.turn === color ? ' isTurn' : ''}`;
+      card.className = `cityAssetCard seat${color}${g.status === 'playing' && g.turn === color ? ' isTurn' : ''}${bankrupt ? ' bankrupt' : ''}`;
       const heading = document.createElement('strong');
-      heading.textContent = `${name(color)}${seat === color ? ' · 나' : ''}${g.turn === color && g.status === 'playing' ? ' · 현재 차례' : ''}`;
+      const dot = document.createElement('span');
+      dot.className = 'cityAssetDot';
+      heading.appendChild(dot);
+      heading.appendChild(document.createTextNode(`${name(color)}${seat === color ? ' · 나' : ''}${g.turn === color && g.status === 'playing' ? ' · 현재 차례' : ''}${bankrupt ? ' · 파산' : ''}`));
       const metrics = document.createElement('span');
       metrics.textContent = `현금 ${player.cash} · 도시 ${player.properties?.length || 0}개 · 순자산 ${g.scores?.[color] ?? player.cash} · 위치 ${player.position}번`;
       card.append(heading, metrics);
@@ -2017,10 +2225,10 @@
     const roll = g.lastRoll;
     cityDieFirst.textContent = roll ? String.fromCodePoint(0x267f + roll.first) : '⚀';
     cityDieSecond.textContent = roll ? String.fromCodePoint(0x267f + roll.second) : '⚀';
-    const rollKey = roll ? `${g.round}:${roll.at}:${roll.color}:${roll.from}:${roll.to}` : null;
+    const rollKey = roll ? `${g.round}:${roll.at}:${roll.seat}:${roll.from}:${roll.to}` : null;
     if (rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey) {
       if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
-      cityAnimation = { color: roll.color, from: roll.from, position: roll.from, steps: roll.total, started: performance.now() };
+      cityAnimation = { seat: roll.seat, from: roll.from, position: roll.from, steps: roll.total, started: performance.now() };
       citySelectedTileIndex = roll.to;
       cityControls.classList.remove('isRolling');
       void cityControls.offsetWidth;
@@ -2047,15 +2255,27 @@
     cityTileToll.textContent = tile?.type === 'property' ? `${g.tolls?.[tile.index] ?? tile.toll}` : '-';
     const owner = tile ? g.owners?.[tile.index] : null;
     cityTileOwner.textContent = tile?.type !== 'property' ? '해당 없음' : owner ? name(owner) : '미소유';
+    const tileBuildCost = tile?.type === 'property' ? Math.floor(tile.price / 2) : 0;
+    cityTileBuildCost.textContent = tile?.type === 'property' ? (level < 3 ? `${tileBuildCost}` : '건설 완료') : '-';
+    const sellValue = tile?.type === 'property' ? Math.floor(tile.price * 0.5) + Math.floor(tileBuildCost * 0.5) * level : 0;
+    cityTileSellValue.textContent = tile?.type === 'property' && owner ? `${sellValue}` : '-';
+    const canSellThis = Boolean(tile?.type === 'property' && owner === seat && canActNow);
+    cityTileSellRow.classList.toggle('hidden', !(tile?.type === 'property' && owner === seat));
+    citySellBuildingBtn.disabled = !(canSellThis && level > 0);
+    citySellPropertyBtn.disabled = !canSellThis;
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
     cityRollBtn.textContent = mine && g.phase === 'roll' ? (g.extraRoll ? '더블 · 추가 굴리기' : '주사위 굴리기') : '굴리기 대기';
     cityLastRoll.textContent = g.lastRoll
       ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}${g.lastRoll.double ? ' · 더블!' : ''}`
       : '아직 주사위를 굴리지 않았습니다';
-    cityEvent.textContent = g.lastEvent || (g.status === 'selecting'
-      ? '파랑과 빨강이 정해지면 파랑부터 시작합니다.'
+    const rankingText = Array.isArray(g.ranking) ? ' · 순위 ' + g.ranking.map((s, i) => `${i + 1}위 ${name(s)}`).join(', ') : '';
+    cityEvent.textContent = g.status === 'finished' ? `게임이 종료되었습니다 · ${g.winner ? `${name(g.winner)} 승리` : ''}${rankingText}`
+      : g.status === 'draw' ? '게임이 종료되었습니다 · 순자산 동률로 무승부입니다.'
+      : g.lastEvent || (g.status === 'selecting'
+      ? '방장이 랜드킹을 시작하면 1번 참가자부터 진행합니다.'
       : !seat ? `${seatKo(g.turn)}의 차례를 관전하고 있습니다.`
-        : g.turn === seat ? '내 차례입니다.' : `${seatKo(g.turn)} 차례입니다.`);
+        : g.phase === 'liquidate' ? (g.liquidating === seat ? '현금이 부족합니다. 자산을 정리하세요.' : `${seatKo(g.liquidating)}님이 자산을 정리하고 있습니다.`)
+        : g.turn === seat ? (g.phase === 'roll' ? '주사위를 굴리세요.' : '내 차례입니다.') : `${seatKo(g.turn)} 차례입니다.`);
     const offer = g.pendingProperty === null ? null : g.tiles?.[g.pendingProperty];
     const canBuy = Boolean(offer && mine && g.phase === 'buy');
     cityPropertyOffer.textContent = offer ? `${offer.name} · 매입 ${offer.price} · 통행료 ${offer.toll}` : '';
@@ -2345,6 +2565,36 @@
       oldmaidSeenEscaped = new Set();
       oldmaidSeenFinishedKey = null;
       oldmaidLastHistoryLen = 0;
+      oldmaidPeekArmed = false;
+    }
+
+    oldmaidModeChooser.classList.toggle('hidden', g.status !== 'selecting');
+    for (const radio of oldmaidModeRadios) {
+      radio.checked = radio.value === (g.mode || 'normal');
+      radio.disabled = !isHost;
+    }
+    const ability = state.me?.myOldMaidAbility;
+    const showAbility = g.mode === 'special' && g.status === 'playing' && Boolean(seat) && Boolean(ability);
+    oldmaidAbilityBar.classList.toggle('hidden', !showAbility);
+    if (showAbility) {
+      const ABILITY_KO = { peek: '엿보기', redirect: '방향 전환', shield: '방어막', detect: '조커 탐지' };
+      oldmaidAbilityLabel.textContent = `내 능력: ${ABILITY_KO[ability.type] || ability.type}${ability.used ? ' · 사용 완료' : ' · 사용 가능'}`;
+      const myTurnNow = g.turn === seat;
+      const canUse = !ability.used && (ability.type === 'shield' || myTurnNow);
+      oldmaidAbilityUseBtn.disabled = !canUse;
+      oldmaidAbilityUseBtn.textContent = ability.type === 'peek' ? (oldmaidPeekArmed ? '대상 카드를 선택하세요' : '카드 엿보기')
+        : ability.type === 'redirect' ? '방향 전환'
+        : ability.type === 'shield' ? (ability.shieldArmed ? '방어막 발동 중' : '방어막 사용')
+        : ability.type === 'detect' ? '조커 탐지' : '능력 사용';
+      oldmaidAbilityReveal.classList.toggle('hidden', !ability.reveal);
+      if (ability.reveal?.type === 'peek') {
+        const c = ability.reveal.card;
+        oldmaidAbilityReveal.textContent = `엿본 카드(${label(ability.reveal.targetSeat)}): ${c.rank === 'JOKER' ? '🃏 조커' : `${c.suit} ${c.rank}`}`;
+      } else if (ability.reveal?.type === 'detect') {
+        oldmaidAbilityReveal.textContent = `${label(ability.reveal.targetSeat)}님의 조커 보유: ${ability.reveal.hasJoker ? '있음' : '없음'}`;
+      }
+    } else {
+      oldmaidPeekArmed = false;
     }
 
     const iAmSeated = Boolean(seat && rosterSeats.includes(seat));
@@ -2402,7 +2652,14 @@
             button.textContent = '🎴';
             button.disabled = !canDraw;
             button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
-            button.addEventListener('click', () => oldmaidDrawCard(number, index, button));
+            button.addEventListener('click', () => {
+              if (oldmaidPeekArmed && canDraw) {
+                oldmaidPeekArmed = false;
+                oldmaidUsePeek(index);
+              } else {
+                oldmaidDrawCard(number, index, button);
+              }
+            });
             cards.appendChild(button);
           }
           seatEl.appendChild(cards);
@@ -2560,6 +2817,18 @@
       }
     } finally {
       if (finishFlyer) finishFlyer();
+      oldmaidDrawBusy = false;
+    }
+  }
+
+  async function oldmaidUsePeek(index) {
+    if (oldmaidDrawBusy || !state?.game) return;
+    oldmaidDrawBusy = true;
+    try {
+      await roomAction('use-ability-oldmaid', { type: 'peek', index, expectedRevision: state.game.revision });
+    } catch (err) {
+      showToast(err.message, 3000);
+    } finally {
       oldmaidDrawBusy = false;
     }
   }
@@ -2788,12 +3057,22 @@
     else if (g.status === 'finished') ctx.fillText(`${seatKo(g.winner)} 승리`, 360, 365);
     else if (g.status === 'draw') ctx.fillText('무승부', 360, 365);
 
+    const CITY_TYPE_BG = { start: '#bbf7d0', property: '#dbeafe', event: '#fef3c7', tax: '#fee2e2', rest: '#e2e8f0' };
+    const CITY_TYPE_ICON = { start: '🚩', property: '🏙️', event: '🎁', tax: '💰', rest: '☕' };
+    const CITY_BUILD_ICON = ['🏠', '🏡', '🏢', '🏨'];
+    const CITY_PLAYER_COLORS = { '1': '#2563eb', '2': '#ef4444', '3': '#16a34a', '4': '#9333ea' };
     for (const tile of g.tiles || []) {
       const [x, y] = cityCellPosition(tile.index);
       const owner = g.owners?.[tile.index];
-      ctx.fillStyle = tile.type === 'property' ? '#f8fafc' : tile.type === 'event' ? '#fef3c7' : tile.type === 'tax' ? '#fee2e2' : tile.type === 'start' ? '#bfdbfe' : '#e2e8f0';
+      ctx.fillStyle = CITY_TYPE_BG[tile.type] || '#e2e8f0';
       ctx.fillRect(x - 39, y - 39, 78, 78);
-      ctx.strokeStyle = owner === 'black' ? '#2563eb' : owner === 'white' ? '#ef4444' : '#475569';
+      // Ownership stripe: a solid color band across the top of the tile in the owner's color,
+      // in addition to the border, so ownership reads clearly even at a glance.
+      if (owner) {
+        ctx.fillStyle = CITY_PLAYER_COLORS[owner] || '#475569';
+        ctx.fillRect(x - 39, y - 39, 78, 8);
+      }
+      ctx.strokeStyle = owner ? (CITY_PLAYER_COLORS[owner] || '#475569') : '#475569';
       ctx.lineWidth = owner ? 5 : 2;
       ctx.strokeRect(x - 39, y - 39, 78, 78);
       if (tile.index === citySelectedTileIndex) {
@@ -2806,42 +3085,53 @@
         ctx.lineWidth = 4;
         ctx.strokeRect(x - 43, y - 43, 86, 86);
       }
+      ctx.font = '13px system-ui, sans-serif';
+      ctx.fillText(CITY_TYPE_ICON[tile.type] || '📍', x, y - 24);
       ctx.fillStyle = '#172033';
       ctx.font = '900 12px system-ui, sans-serif';
       const words = String(tile.name).length > 4 ? [String(tile.name).slice(0, 4), String(tile.name).slice(4)] : [String(tile.name)];
-      words.forEach((word, i) => ctx.fillText(word, x, y - 8 + i * 15));
+      words.forEach((word, i) => ctx.fillText(word, x, y - 6 + i * 15));
       if (tile.type === 'property') {
         ctx.font = '750 10px system-ui, sans-serif';
         ctx.fillStyle = '#475569';
         ctx.fillText(`${tile.price} / ${g.tolls?.[tile.index] ?? tile.toll}`, x, y + 27);
         if (owner) {
           const level = Math.max(0, Math.min(3, Number(g.developments?.[tile.index]) || 0));
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.fillText(CITY_BUILD_ICON[level], x - 20, y - 29);
           ctx.fillStyle = '#1d4ed8';
-          ctx.font = '900 10px system-ui, sans-serif';
-          ctx.fillText(`${['도시', '별장', '빌딩', '호텔'][level]} · ${level}단계`, x, y - 29);
+          ctx.font = '900 9px system-ui, sans-serif';
+          ctx.fillText(`${['도시', '별장', '빌딩', '호텔'][level]} ${level}단계`, x + 8, y - 29);
         }
       }
     }
-    for (const color of ['black', 'white']) {
+    const CITY_TOKEN_OFFSETS = [[-16, -22], [16, -22], [-16, -4], [16, -4]];
+    (g.seatOrder || []).forEach((color, tokenIndex) => {
       const player = g.players?.[color];
-      if (!player) continue;
-      const animatedPosition = cityAnimation?.color === color ? cityAnimation.position : player.position;
+      if (!player) return;
+      const animatedPosition = cityAnimation?.seat === color ? cityAnimation.position : player.position;
       const [x, y] = cityCellPosition(animatedPosition);
-      const offset = color === 'black' ? -16 : 16;
-      ctx.fillStyle = color === 'black' ? '#2563eb' : '#ef4444';
+      const [ox, oy] = CITY_TOKEN_OFFSETS[tokenIndex % 4];
+      const isTurn = g.status === 'playing' && g.turn === color;
+      if (isTurn) {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x + ox, y + oy, 13, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = player.eliminated ? 0.35 : 1;
+      ctx.fillStyle = CITY_PLAYER_COLORS[color] || '#64748b';
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x + offset, y - 18, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + ox, y + oy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#fff';
-      ctx.font = '950 12px system-ui, sans-serif';
-      ctx.fillText(color === 'black' ? 'P' : 'R', x + offset, y - 17);
-    }
-    ctx.textAlign = 'left';
-    ctx.font = '850 17px system-ui, sans-serif';
-    ctx.fillStyle = '#93c5fd';
-    ctx.fillText(`파랑 ${g.players?.black?.cash ?? 0}`, 150, 665);
-    ctx.fillStyle = '#fca5a5';
-    ctx.fillText(`빨강 ${g.players?.white?.cash ?? 0}`, 450, 665);
+      ctx.font = '950 10px system-ui, sans-serif';
+      const initial = (state.players?.[color]?.label || `${color}번`)[0] || color;
+      ctx.fillText(initial, x + ox, y + oy + 1);
+      ctx.globalAlpha = 1;
+    });
+    // Per-seat cash is already shown clearly in the .cityAssetCard list below the board; the
+    // board itself only needs the tiles and tokens, so it doesn't duplicate (and collide with)
+    // that text here.
   }
 
   // Connect Four uses a 7x6 gravity board, independent of the Omok and Othello geometry.
@@ -3318,10 +3608,19 @@
     await roomAction('roll-city', { expectedMoveCount });
     if (state?.gameType === 'cityking') renderCityControls();
   });
+  cityStartBtn.addEventListener('click', () => roomAction('start-city'));
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
   cityBuildBtn.addEventListener('click', () => roomAction('build-city'));
   cityBuildSkipBtn.addEventListener('click', () => roomAction('skip-build-city'));
+  citySellBuildingBtn.addEventListener('click', () => {
+    if (citySelectedTileIndex === null) return;
+    roomAction('sell-building-city', { tileIndex: citySelectedTileIndex });
+  });
+  citySellPropertyBtn.addEventListener('click', () => {
+    if (citySelectedTileIndex === null) return;
+    roomAction('sell-property-city', { tileIndex: citySelectedTileIndex });
+  });
   cityTileSelect.addEventListener('change', () => {
     if (state?.gameType !== 'cityking') return;
     const index = Number(cityTileSelect.value);
@@ -3341,6 +3640,29 @@
     oldmaidEffectsOn = oldmaidEffectsToggle.checked;
     try { localStorage.setItem('oldmaidEffects', oldmaidEffectsOn ? 'on' : 'off'); } catch {}
     oldmaidPanel.classList.toggle('effectsOff', !oldmaidEffectsActive());
+  });
+  for (const radio of oldmaidModeRadios) {
+    radio.addEventListener('change', () => {
+      if (!radio.checked || radio.disabled) return;
+      roomAction('set-oldmaid-mode', { mode: radio.value }).catch(err => showToast(err.message, 3000));
+    });
+  }
+  oldmaidAbilityUseBtn.addEventListener('click', async () => {
+    const ability = state?.me?.myOldMaidAbility;
+    if (!ability || ability.used || !state?.game) return;
+    if (ability.type === 'peek') {
+      oldmaidPeekArmed = !oldmaidPeekArmed;
+      renderOldMaid();
+      return;
+    }
+    oldmaidAbilityUseBtn.disabled = true;
+    try {
+      await roomAction('use-ability-oldmaid', { type: ability.type, expectedRevision: state.game.revision });
+    } catch (err) {
+      showToast(err.message, 3000);
+    } finally {
+      oldmaidAbilityUseBtn.disabled = false;
+    }
   });
 
   liarRoundsSelect.addEventListener('change', () => roomAction('set-liar-rounds', { totalRounds: Number(liarRoundsSelect.value) }));

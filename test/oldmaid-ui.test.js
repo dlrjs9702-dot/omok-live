@@ -47,7 +47,7 @@ test('existing shuffle, draw and start behavior is untouched', () => {
   assert.match(server, /start-oldmaid\|shuffle-oldmaid\|draw-oldmaid/);
 });
 
-// v1.6.34: the flat opponent list was replaced with a seat layout positioned around a table.
+// v1.6.35: the flat opponent list was replaced with a seat layout positioned around a table.
 test('seats are arranged around the table relative to my own seat, not in server roster order', () => {
   const app = read('public/app.js');
   assert.match(app, /function oldmaidRotatedSeats\(order, anchorSeat\)/);
@@ -84,7 +84,7 @@ test('draw clicks are routed through a busy-guarded handler that disables all ca
   assert.match(app, /oldmaidDrawBusy = true;/);
   assert.match(app, /for \(const candidate of oldmaidSeatsEl\.querySelectorAll\('\.oldmaidBack'\)\) candidate\.disabled = true;/);
   assert.match(app, /oldmaidDrawBusy = false;/);
-  assert.match(app, /button\.addEventListener\('click', \(\) => oldmaidDrawCard\(number, index, button\)\);/);
+  assert.match(app, /oldmaidDrawCard\(number, index, button\);/);
 });
 
 test('the draw flight animation and pair/escape effects are purely cosmetic and never gate the real state update', () => {

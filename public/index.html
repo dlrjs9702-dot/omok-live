@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.34" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.35" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -106,7 +106,7 @@
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
             </div>
             <div class="gameOption" data-game-option="cityking">
-              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹(패치중)</strong></button>
+              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
@@ -347,8 +347,10 @@
           <section id="cityControls" class="cityControls hidden" aria-label="랜드킹 조작">
             <div class="cityActionRow">
               <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
+              <button id="cityStartBtn" class="primary hidden" type="button">랜드킹 시작</button>
               <button id="cityRollBtn" class="primary" type="button">주사위 굴리기</button>
             </div>
+            <p id="cityLiquidateBanner" class="cityLiquidateBanner hidden" role="alert"></p>
             <div id="cityOverview" class="cityOverview" aria-live="polite">
               <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
               <div id="cityDice" class="cityDice" aria-label="주사위 결과"><span id="cityDieFirst">⚀</span><span id="cityDieSecond">⚀</span></div>
@@ -362,9 +364,15 @@
                 <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
                 <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
                 <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
+                <div><dt>다음 건설 비용</dt><dd id="cityTileBuildCost">-</dd></div>
+                <div><dt>매각 가능 금액</dt><dd id="cityTileSellValue">-</dd></div>
               </dl>
+              <div id="cityTileSellRow" class="cityTileSellRow hidden">
+                <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
+                <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
+              </div>
             </div>
-            <p id="cityEvent" class="cityEvent">파랑과 빨강이 정해지면 파랑부터 시작합니다.</p>
+            <p id="cityEvent" class="cityEvent">방장이 랜드킹을 시작하면 1번 참가자부터 진행합니다.</p>
             <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
             <div class="cityBuildRow hidden" id="cityBuildRow"><span id="cityBuildOffer"></span><button id="cityBuildBtn" class="secondary" type="button">건설</button><button id="cityBuildSkipBtn" class="ghost" type="button">건설 안 함</button></div>
           </section>
@@ -425,6 +433,16 @@
                 <button type="button" id="oldmaidStartBtn" class="primary">도둑잡기 시작</button>
               </div>
             </div>
+            <div id="oldmaidModeChooser" class="oldmaidModeChooser hidden" role="radiogroup" aria-label="도둑잡기 모드">
+              <label><input type="radio" name="oldmaidMode" value="normal" data-oldmaid-mode checked /> 일반 모드</label>
+              <label><input type="radio" name="oldmaidMode" value="special" data-oldmaid-mode /> 특수 능력 모드</label>
+              <small>특수 능력 모드는 시작 시 엿보기·방향전환·방어막·조커탐지 중 하나를 무작위로 받아 게임당 1회 사용합니다.</small>
+            </div>
+            <div id="oldmaidAbilityBar" class="oldmaidAbilityBar hidden">
+              <span id="oldmaidAbilityLabel">내 능력: -</span>
+              <button type="button" id="oldmaidAbilityUseBtn" class="secondary tiny">능력 사용</button>
+              <span id="oldmaidAbilityReveal" class="oldmaidAbilityReveal hidden"></span>
+            </div>
             <p id="oldmaidResult" class="oldmaidResult hidden" aria-live="polite"></p>
             <div id="oldmaidTable" class="oldmaidTable" aria-label="카드 테이블">
               <div class="oldmaidFelt"></div>
@@ -469,19 +487,45 @@
           </div>
         </div>
 
-        <aside class="side card">
-          <section class="roomPeople" aria-label="현재 접속자">
-            <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
-            <div id="participantList" class="participantList"></div>
-          </section>
+        <aside class="side card" id="roomSidebar">
+          <div class="sideTabBar">
+            <div class="sideTabs" role="tablist" aria-label="사이드 패널 전환">
+              <button type="button" class="sideTab" data-side-tab="chat" aria-selected="true">채팅<span id="chatUnreadBadge" class="sideTabBadge hidden">0</span></button>
+              <button type="button" class="sideTab" data-side-tab="system" aria-selected="false">시스템</button>
+              <button type="button" class="sideTab" data-side-tab="info" aria-selected="false">방정보</button>
+            </div>
+            <div class="sideTabTools">
+              <div class="sideSizeGroup" role="group" aria-label="채팅 영역 크기">
+                <button type="button" class="sideSizeBtn" data-side-size="narrow" title="좁게">좁게</button>
+                <button type="button" class="sideSizeBtn" data-side-size="normal" title="기본" aria-pressed="true">기본</button>
+                <button type="button" class="sideSizeBtn" data-side-size="wide" title="넓게">넓게</button>
+              </div>
+              <button type="button" id="sideCollapseBtn" class="sideCollapseBtn" aria-label="채팅 패널 접기">접기 ▸</button>
+            </div>
+          </div>
 
-          <section class="chatPanel" aria-label="방 채팅">
-            <div class="sectionTitleRow"><h3>방 채팅</h3><small>방 종료 시 삭제</small></div>
+          <section class="sidePane" data-side-pane="chat" aria-label="방 채팅">
             <div id="chatMessages" class="chatMessages" aria-live="polite"></div>
+            <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
             <form id="chatForm" class="chatForm">
               <input id="chatInput" maxlength="300" autocomplete="off" placeholder="메시지 입력" aria-label="채팅 메시지" />
               <button class="secondary" type="submit">전송</button>
             </form>
+          </section>
+
+          <section class="sidePane hidden" data-side-pane="system" aria-label="시스템 알림">
+            <div id="systemMessages" class="chatMessages systemMessages" aria-live="polite"></div>
+          </section>
+
+          <section class="sidePane hidden" data-side-pane="info" aria-label="방 정보">
+            <section class="roomPeople" aria-label="현재 접속자">
+              <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
+              <div id="participantList" class="participantList"></div>
+            </section>
+            <details class="rules roomRuleDetails">
+              <summary>게임 규칙 자세히 보기</summary>
+              <p id="rulesText">게임 규칙을 불러오는 중입니다.</p>
+            </details>
           </section>
 
           <div class="sideActions">
@@ -489,15 +533,15 @@
             <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
             <button id="sideEndGameBtn" class="ghost hidden">중단된 대국 종료</button>
           </div>
-
-          <details class="rules roomRuleDetails">
-            <summary>게임 규칙 자세히 보기</summary>
-            <p id="rulesText">게임 규칙을 불러오는 중입니다.</p>
-          </details>
         </aside>
       </section>
     </section>
   </main>
+
+  <button type="button" id="chatFloatBtn" class="chatFloatBtn hidden" aria-label="채팅 열기">
+    💬<span id="chatFloatBadge" class="chatFloatBadge hidden">0</span>
+  </button>
+  <div id="sideOverlayBackdrop" class="sideOverlayBackdrop hidden"></div>
 
   <div id="toast" class="toast hidden" role="status"></div>
   <div id="resultEffect" class="resultEffect hidden" role="status" aria-live="assertive">
@@ -522,8 +566,7 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 입장 파일을 열어야 합니다.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.34"></script>
-  <script src="/room-chat-height.js?v=1.6.34"></script>
-  <script src="/app.js?v=1.6.34"></script>
+  <script src="/session-lock.js?v=1.6.35"></script>
+  <script src="/app.js?v=1.6.35"></script>
 </body>
 </html>

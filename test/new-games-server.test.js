@@ -115,9 +115,15 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   const cityRoomId = (await req('/api/rooms/public', cPlayer, undefined, 'GET')).data.rooms.find(room => room.gameType === 'cityking').id;
   assert.equal((await req('/api/rooms/public/join', cPlayer, { roomId: cityRoomId })).status, 200);
   assert.equal((await req('/api/rooms/join', cWatcher, { code: cRoom.data.state.me.roomCode })).status, 200);
-  await req('/api/room/choose-role', cHost, { choice: 'black' });
-  const cStarted = await req('/api/room/choose-role', cPlayer, { choice: 'white' });
+  // Land King is now a 2-4 numbered-seat game (like bingo/oldmaid): seats are picked by number
+  // and the host explicitly starts it, it doesn't auto-start once two roles are chosen.
+  await req('/api/room/choose-role', cHost, { choice: '1' });
+  const cChosen = await req('/api/room/choose-role', cPlayer, { choice: '2' });
+  assert.equal(cChosen.data.state.game.status, 'selecting');
+  assert.equal((await req('/api/room/start-city', cPlayer, {})).status, 403); // host only
+  const cStarted = await req('/api/room/start-city', cHost, {});
   assert.equal(cStarted.data.state.game.status, 'playing');
+  assert.deepEqual(cStarted.data.state.game.seatOrder, ['1', '2']);
   assert.equal((await req('/api/room/roll-city', cWatcher, {})).status, 403);
   assert.equal((await req('/api/room/roll-city', cPlayer, {})).status, 409);
   const cityRoll = await req('/api/room/roll-city', cHost, {});
@@ -125,7 +131,7 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.34');
+  assert.equal(health.data.version, '1.6.35');
   assert.ok(health.data.games.includes('yut'));
   assert.ok(health.data.games.includes('dots'));
   assert.ok(health.data.games.includes('cityking'));

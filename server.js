@@ -12,7 +12,8 @@ const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room);
+const isCityKing = (room) => room.gameType === 'cityking';
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room);
 const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
@@ -615,6 +616,7 @@ function roomView(room, session) {
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
       myWord: isPictionary(room) ? getGame('pictionary').wordFor(room.game, seat) : null,
       myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
+      myOldMaidAbility: isOldMaid(room) && seat ? getGame('oldmaid').abilityFor(room.game, seat) : null,
     },
   };
 }
@@ -637,7 +639,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) return;
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -659,7 +661,7 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) {
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -734,16 +736,16 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
-        : ['yut', 'dots', 'cityking'].includes(room.gameType) ? (seat === 'black' ? '파랑' : '빨강')
+        : ['yut', 'dots'].includes(room.gameType) ? (seat === 'black' ? '파랑' : '빨강')
           : (seat === 'black' ? '흑' : '백')) : '관전자';
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room)) && seat
+  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -907,6 +909,14 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_LIAR_GUESS', engine.moveError(verdict.reason));
   }
 
+  if (action === 'set-oldmaid-mode') {
+    if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 설정할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 모드를 변경할 수 있습니다.');
+    const engine = getGame('oldmaid');
+    const verdict = engine.setMode(room.game, body.mode);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_MODE', engine.moveError(verdict.reason));
+  }
+
   if (action === 'start-oldmaid') {
     if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 시작할 수 있습니다.');
     if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 도둑잡기를 시작할 수 있습니다.');
@@ -915,7 +925,9 @@ async function handleRoomAction(req, res, action, session) {
     const verdict = engine.start(room.game, players);
     if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_START', engine.moveError(verdict.reason));
     for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
-    appendSystemMessage(room, '도둑잡기가 시작됐습니다. 각자 자동으로 짝을 버렸습니다.');
+    appendSystemMessage(room, room.game.mode === 'special'
+      ? '도둑잡기(특수 능력 모드)가 시작됐습니다. 각자 무작위 능력을 하나씩 받았습니다.'
+      : '도둑잡기가 시작됐습니다. 각자 자동으로 짝을 버렸습니다.');
   }
 
   if (action === 'shuffle-oldmaid' || action === 'draw-oldmaid') {
@@ -936,6 +948,36 @@ async function handleRoomAction(req, res, action, session) {
       if (room.game.hands[body.targetSeat].length === 0) appendSystemMessage(room, `${targetLabel}님의 카드가 모두 없어졌습니다.`);
       if (room.game.hands[playerSeat].length === 0) appendSystemMessage(room, `${session.label || '플레이어'}님의 카드가 모두 없어졌습니다.`);
       if (verdict.finished) appendSystemMessage(room, `${room.participants[room.players[room.game.loser]]?.label || '마지막 참가자'}님이 조커를 보유하여 패배했습니다.`);
+      if (verdict.shieldTriggered) appendSystemMessage(room, `${targetLabel}님의 방어막이 발동해 무작위 카드가 뽑혔습니다.`);
+    }
+  }
+
+  if (action === 'use-ability-oldmaid') {
+    if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 능력을 사용할 수 있습니다.');
+    const playerSeat = findSeat(room, session.token);
+    if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 능력을 사용할 수 없습니다.');
+    const engine = getGame('oldmaid');
+    const type = body.type;
+    const rev = body.expectedRevision;
+    const label = session.label || '플레이어';
+    if (type === 'peek') {
+      const verdict = engine.peekCard(room.game, playerSeat, Number(body.index), rev);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_ABILITY', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `${label}님이 엿보기 능력을 사용했습니다.`);
+    } else if (type === 'redirect') {
+      const verdict = engine.redirectTarget(room.game, playerSeat, rev);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_ABILITY', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `${label}님이 방향 전환 능력을 사용했습니다.`);
+    } else if (type === 'shield') {
+      const verdict = engine.armShield(room.game, playerSeat, rev);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_ABILITY', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `${label}님이 방어막 능력을 사용했습니다.`);
+    } else if (type === 'detect') {
+      const verdict = engine.detectJoker(room.game, playerSeat, rev);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_ABILITY', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `${label}님이 조커 탐지 능력을 사용했습니다.`);
+    } else {
+      return sendError(res, 400, 'BAD_ABILITY', '알 수 없는 능력입니다.');
     }
   }
 
@@ -1057,6 +1099,17 @@ async function handleRoomAction(req, res, action, session) {
     if (verdict.captured.length) appendSystemMessage(room, `${session.label || '플레이어'}님이 상대 말 ${verdict.captured.length}개를 잡았습니다!`);
   }
 
+  if (action === 'start-city') {
+    if (!isCityKing(room)) return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 시작할 수 있습니다.');
+    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 랜드킹을 시작할 수 있습니다.');
+    const seats = seatsFor(room).filter(seatNumber => room.players[seatNumber]);
+    const engine = getGame('cityking');
+    const verdict = engine.start(room.game, seats);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_CITY_START', engine.moveError(verdict.reason));
+    for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+    appendSystemMessage(room, `랜드킹 시작! ${seats.length}명이 참가합니다.`);
+  }
+
   if (action === 'roll-city') {
     if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 주사위를 굴릴 수 있습니다.');
     const seat = findSeat(room, session.token);
@@ -1084,6 +1137,20 @@ async function handleRoomAction(req, res, action, session) {
     const engine = getGame('cityking');
     const verdict = action === 'build-city' ? engine.buildProperty(room.game, seat, nowIso()) : engine.skipBuild(room.game, seat, nowIso());
     if (!verdict.legal) return sendError(res, 409, 'INVALID_CITY_BUILD', engine.moveError(verdict.reason));
+  }
+
+  if (action === 'sell-property-city' || action === 'sell-building-city') {
+    if (room.gameType !== 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 자산을 매각할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 자산을 매각할 수 없습니다.');
+    const engine = getGame('cityking');
+    const tileIndex = Number(body.tileIndex);
+    const verdict = action === 'sell-property-city'
+      ? engine.sellProperty(room.game, seat, tileIndex, nowIso())
+      : engine.sellBuilding(room.game, seat, tileIndex, nowIso());
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_CITY_SALE', engine.moveError(verdict.reason));
+    const tileName = engine.TILES[tileIndex]?.name || '도시';
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 ${tileName} ${action === 'sell-property-city' ? '도시' : '건물'}을(를) 매각해 ${verdict.refund}을 받았습니다.`);
   }
 
   if (action === 'move') {
@@ -1157,7 +1224,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.34', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.35', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1722,7 +1789,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|start-oldmaid|shuffle-oldmaid|draw-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|roll-city|buy-city|skip-city|build-city|skip-build-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -1775,7 +1842,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.34 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.35 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

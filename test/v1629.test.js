@@ -9,46 +9,46 @@ const root = path.resolve(__dirname, '..');
 const dice = () => 1;
 
 test('Land King: one build per owned-city landing, all three levels, value and tolls', () => {
-  const g = city.create(); city.start(g);
-  g.owners[3] = 'black'; g.players.black.properties.push(3);
+  const g = city.create(); city.start(g, ['1', '2']);
+  g.owners[3] = '1'; g.players['1'].properties.push(3);
   for (let level = 1; level <= 3; level++) {
-    g.turn = 'black'; g.phase = 'roll'; g.players.black.position = 1;
-    const result = city.rollDice(g, 'black', 'roll' + level, dice);
+    g.turn = '1'; g.phase = 'roll'; g.players['1'].position = 1;
+    const result = city.rollDice(g, '1', 'roll' + level, dice);
     assert.equal(result.phase, 'build');
     assert.equal(g.pendingProperty, 3);
-    assert.equal(city.buildProperty(g, 'white', 'bad').reason, 'not-your-turn');
-    const before = city.netWorth(g, 'black');
-    const cash = g.players.black.cash;
-    assert.equal(city.buildProperty(g, 'black', 'build' + level).legal, true);
-    assert.equal(g.players.black.cash, cash - 70);
-    assert.equal(city.netWorth(g, 'black'), before);
+    assert.equal(city.buildProperty(g, '2', 'bad').reason, 'not-your-turn');
+    const before = city.netWorth(g, '1');
+    const cash = g.players['1'].cash;
+    assert.equal(city.buildProperty(g, '1', 'build' + level).legal, true);
+    assert.equal(g.players['1'].cash, cash - 70);
+    assert.equal(city.netWorth(g, '1'), before);
     assert.equal(g.developments[3], level);
     assert.equal(city.publicState(g).tolls[3], 50 * [1, 2, 3, 5][level]);
-    assert.equal(city.buildProperty(g, 'black', 'repeat').legal, false);
+    assert.equal(city.buildProperty(g, '1', 'repeat').legal, false);
   }
-  g.turn = 'black'; g.phase = 'roll'; g.players.black.position = 1;
-  assert.equal(city.rollDice(g, 'black', 'max', dice).phase, 'roll');
+  g.turn = '1'; g.phase = 'roll'; g.players['1'].position = 1;
+  assert.equal(city.rollDice(g, '1', 'max', dice).phase, 'roll');
   assert.equal(g.pendingProperty, null);
-  g.turn = 'white'; g.phase = 'roll'; g.players.white.position = 1;
-  const cash = g.players.white.cash;
-  city.rollDice(g, 'white', 'toll', dice);
-  assert.equal(g.players.white.cash, cash - 250);
+  g.turn = '2'; g.phase = 'roll'; g.players['2'].position = 1;
+  const cash = g.players['2'].cash;
+  city.rollDice(g, '2', 'toll', dice);
+  assert.equal(g.players['2'].cash, cash - 250);
   city.reset(g);
   assert.deepEqual(g.developments, {});
   assert.equal(city.publicState(g).tolls[3], 50);
 });
 
 test('Land King: no building on another tile or without cash; skip is allowed', () => {
-  const g = city.create(); city.start(g);
-  assert.equal(city.buildProperty(g, 'black', 'early').reason, 'not-buildable');
-  g.owners[3] = 'black'; g.players.black.properties.push(3);
-  g.players.black.position = 1; g.players.black.cash = 50;
-  city.rollDice(g, 'black', 'arrive', dice);
+  const g = city.create(); city.start(g, ['1', '2']);
+  assert.equal(city.buildProperty(g, '1', 'early').reason, 'not-buildable');
+  g.owners[3] = '1'; g.players['1'].properties.push(3);
+  g.players['1'].position = 1; g.players['1'].cash = 50;
+  city.rollDice(g, '1', 'arrive', dice);
   assert.equal(g.phase, 'build');
-  assert.equal(city.buildProperty(g, 'black', 'poor').reason, 'not-enough-cash');
-  assert.equal(city.skipBuild(g, 'white', 'other').reason, 'not-your-turn');
-  assert.equal(city.skipBuild(g, 'black', 'skip').legal, true);
-  assert.equal(g.turn, 'black');
+  assert.equal(city.buildProperty(g, '1', 'poor').reason, 'not-enough-cash');
+  assert.equal(city.skipBuild(g, '2', 'other').reason, 'not-your-turn');
+  assert.equal(city.skipBuild(g, '1', 'skip').legal, true);
+  assert.equal(g.turn, '1');
   assert.equal(g.developments[3], undefined);
 });
 

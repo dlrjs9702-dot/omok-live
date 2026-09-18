@@ -21,11 +21,12 @@ test('Omok has one lobby choice with 1vs1 default and 2vs2 mapped to existing en
   assert.equal(getGame('omok2v2').id, 'omok2v2');
 });
 
-test('Land King only gains clickable tile details, net-worth board and visual movement', () => {
+test('Land King has clickable tile details, net-worth board and visual movement', () => {
   const html = read('public/index.html');
   const app = read('public/app.js');
   const css = read('public/styles.css');
-  assert.match(html, /data-game="cityking"><strong>랜드킹\(패치중\)/);
+  assert.match(html, /data-game="cityking"><strong>랜드킹<\/strong>/);
+  assert.doesNotMatch(html, /랜드킹\(패치중\)/);
   for (const id of ['cityTurnSummary', 'cityAssets', 'cityTileSelect', 'cityTileName', 'cityTilePrice', 'cityTileToll', 'cityTileOwner'])
     assert.ok(html.includes(`id="${id}"`), id);
   assert.match(app, /function selectCityTileFromPointer\(/);
@@ -39,5 +40,8 @@ test('Land King only gains clickable tile details, net-worth board and visual mo
   assert.equal(city.TILES.length, 24);
   assert.equal(city.TILES.filter(tile => tile.type === 'property').length, 10);
   assert.equal(city.TURN_LIMIT, 50);
-  assert.equal(game.players.black.cash, 1500);
+  // Land King is now a 2-4 numbered-seat game -- players only exist once start() is called.
+  assert.deepEqual(game.players, {});
+  assert.equal(city.start(game, ['1', '2']).legal, true);
+  assert.equal(game.players['1'].cash, 1500);
 });
