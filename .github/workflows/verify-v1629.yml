@@ -17,16 +17,44 @@ jobs:
         with:
           ref: feature/city-build-logout-yut-v1629-20260918
           fetch-depth: 0
-      - name: Apply scoped changes sequentially
+      - name: Apply scoped changes and focused stacking correction
         run: |
           python3 .release/apply-v1629.py
           python3 - <<'PY'
           from pathlib import Path
+          p = Path('lib/games/yut.js')
+          s = p.read_text(encoding='utf-8')
+          old = """  return game.pieces[color].filter(other => other.status === 'board' && other.position === piece.position
+              && (piece.position !== 23 || (other.route || 'outer') === (piece.route || 'outer')));"""
+          new = "  return game.pieces[color].filter(other => other.status === 'board' && other.position === piece.position);"
+          if s.count(old) != 1: raise RuntimeError('Yut group correction anchor missing')
+          s = s.replace(old, new, 1)
+          old = """    // Only a genuine shared path may merge routes. At the center, each diagonal retains its entry route.
+              if (option.destination.position !== 23) for (const piece of game.pieces[color]) {"""
+          new = "    for (const piece of game.pieces[color]) {"
+          if s.count(old) != 1: raise RuntimeError('Yut arrival correction anchor missing')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
           p = Path('test/v1629.test.js')
           s = p.read_text(encoding='utf-8')
-          if not s.startswith("\\n'use strict';"):
-              raise RuntimeError('unexpected test file prefix')
-          p.write_text(s[2:], encoding='utf-8')
+          if not s.startswith("\\n'use strict';"): raise RuntimeError('unexpected new test file prefix')
+          s = s[2:]
+          for old, new in [
+              ('independent center groups', 'same-color center stacking'),
+              ('  assert.equal(options.length, 2);', '  assert.equal(options.length, 1);'),
+              ('  assert.equal(options[1].destination.position, 28);\n', ''),
+              ('  assert.equal(g.pieces.black[1].position, 23);', '  assert.equal(g.pieces.black[1].position, 24);'),
+              ("  assert.equal(g.pieces.black[1].route, 'shortcut10');", "  assert.equal(g.pieces.black[1].route, 'shortcut5');"),
+          ]:
+              if s.count(old) != 1: raise RuntimeError('targeted center test anchor missing: ' + old)
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          p = Path('lib/release-announcements.js')
+          s = p.read_text(encoding='utf-8')
+          old = '윷놀이 중앙 대각선의 경로 표시를 실제 이동과 일치시키고 서로 다른 진입 경로를 유지하도록 수정했습니다.'
+          new = '윷놀이 중앙 대각선의 화면 경로를 서버 이동 경로와 일치시키고 말이 진입한 방향대로 이동하도록 표시를 수정했습니다.'
+          if s.count(old) != 1: raise RuntimeError('Yut announcement correction anchor missing')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          print('Preserved existing friendly stacking; corrected only the displayed Yut path')
           PY
       - name: Syntax and diff check
         run: |
@@ -44,7 +72,7 @@ jobs:
       - name: Install existing dependencies
         run: npm ci
       - name: Targeted feature and existing engine tests
-        run: node --test test/v1629.test.js test/cityking.test.js test/yut.test.js
+        run: node --test test/v1629.test.js test/cityking.test.js test/yut.test.js test/yut-path-regression.test.js
       - name: Existing full test suite
         run: npm test
       - name: Release integrity and code scope
