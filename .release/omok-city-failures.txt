@@ -1,0 +1,82 @@
+# Subtest: lobby has top notice tab and all guidance and game rules are closed by default
+not ok 17 - lobby has top notice tab and all guidance and game rules are closed by default
+  ---
+  duration_ms: 17.871792
+  location: '/home/runner/work/omok-live/omok-live/test/announcements.test.js:162:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    11 !== 12
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 12
+  actual: 11
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/omok-live/omok-live/test/announcements.test.js:171:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: two-player baseball API keeps secrets private, validates roles and resets the next round
+--
+# Subtest: shared room CSS bounds sidebar and makes excess chat scroll internally
+not ok 36 - shared room CSS bounds sidebar and makes excess chat scroll internally
+  ---
+  duration_ms: 2.765288
+  location: '/home/runner/work/omok-live/omok-live/test/chat-height.test.js:39:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /#roomView \.gameLayout > \.side \{[^}]*height: var\(--room-board-height/. Input:
+    
+    '\n'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/omok-live/omok-live/test/chat-height.test.js:43:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+--
+# Subtest: all twelve games expose one shared rules selector with the original full rule text
+not ok 74 - all twelve games expose one shared rules selector with the original full rule text
+  ---
+  duration_ms: 9.750426
+  location: '/home/runner/work/omok-live/omok-live/test/lobby-compact-effects.test.js:13:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /gameRulesSelect\.value = selectedGameType;/. Input:
+    
+    '(() => {\n' +
+      "  'use strict';\n" +
+      '\n' +
+      "  const gateView = document.getElementById('gateView');\n" +
+      "  const lobbyView = document.getElementById('lobbyView');\n" +
+      "  const roomView = document.getElementById('roomView');\n" +
+      "  const adminLoginForm = document.getElementById('adminLoginForm');\n" +
+      "  const adminPassword = document.getElementById('adminPassword');\n" +
+      "  const identityLabel = document.getElementById('identityLabel');\n" +
+      "  const roomIdentityLabel = document.getElementById('roomIdentityLabel');\n" +
+      "  const lobbyChatMessages = document.getElementById('lobbyChatMessages');\n" +
+      "  const lobbyChatForm = document.getElementById('lobbyChatForm');\n" +
+      "  const lobbyChatInput = document.getElementById('lobbyChatInput');\n" +
+# Subtest: Yut Nori UI, actions and cache version are wired without changing guest entry
+ok 133 - Yut Nori UI, actions and cache version are wired without changing guest entry
+  ---
+  duration_ms: 4.827925
+  ...
+1..133
+# tests 133
+# suites 0
+# pass 130
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3133.282177
