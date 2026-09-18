@@ -28,6 +28,7 @@
   const selectedGameText = document.getElementById('selectedGameText');
   const roomTitleInput = document.getElementById('roomTitleInput');
   const baseballDigitChoices = document.getElementById('baseballDigitChoices');
+  const omokModeChoices = document.getElementById('omokModeChoices');
   const roomGameLogo = document.getElementById('roomGameLogo');
   const leaveRoomBtn = document.getElementById('leaveRoomBtn');
   const joinRoomForm = document.getElementById('joinRoomForm');
@@ -109,6 +110,15 @@
   const cityPropertyOffer = document.getElementById('cityPropertyOffer');
   const cityBuyBtn = document.getElementById('cityBuyBtn');
   const citySkipBtn = document.getElementById('citySkipBtn');
+  const cityTurnSummary = document.getElementById('cityTurnSummary');
+  const cityDieFirst = document.getElementById('cityDieFirst');
+  const cityDieSecond = document.getElementById('cityDieSecond');
+  const cityAssets = document.getElementById('cityAssets');
+  const cityTileSelect = document.getElementById('cityTileSelect');
+  const cityTileName = document.getElementById('cityTileName');
+  const cityTilePrice = document.getElementById('cityTilePrice');
+  const cityTileToll = document.getElementById('cityTileToll');
+  const cityTileOwner = document.getElementById('cityTileOwner');
   const pictionaryPanel = document.getElementById('pictionaryPanel');
   const pictionaryStartBtn = document.getElementById('pictionaryStartBtn');
   const pictionaryDrawerLabel = document.getElementById('pictionaryDrawerLabel');
@@ -186,6 +196,10 @@
   let sessionRole = document.body.dataset.role || '';
   let sessionLabel = document.body.dataset.label || '';
   let selectedGameType = 'omok';
+  let citySelectedTileIndex = null;
+  let cityLastRollKey = null;
+  let cityAnimation = null;
+  let cityAnimationFrame = null;
   let state = null;
   let seat = null;
   let isHost = false;
@@ -377,6 +391,12 @@
         : (type === 'othello' ? '오델로' : '오목');
   }
 
+  function omokMode() {
+    return document.querySelector('input[name="omokMode"]:checked')?.value === '2v2' ? '2v2' : '1v1';
+  }
+  function gameDisplayName(type) {
+    return type === 'omok' ? '오목 · 1vs1' : type === 'omok2v2' ? '오목 · 2vs2' : gameName(type);
+  }
   function isTeamGame() { return state?.gameType === 'omok2v2'; }
   function isBingoGame() { return state?.gameType === 'bingo'; }
   function isPictionaryGame() { return state?.gameType === 'pictionary'; }
@@ -422,10 +442,12 @@
   function selectGame(type) {
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
-    selectedGameText.textContent = `${gameName(selectedGameType)} 방을 만듭니다.`;
+    const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
+    selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
+    omokModeChoices.classList.toggle('hidden', selectedGameType !== 'omok');
     baseballDigitChoices.classList.toggle('hidden', selectedGameType !== 'baseball');
-    gameRulesSelect.value = selectedGameType;
-    showGameRule(selectedGameType);
+    gameRulesSelect.value = resolvedType;
+    showGameRule(resolvedType);
   }
 
   async function createRoom() {
@@ -433,7 +455,7 @@
       const visibility = document.querySelector('input[name="roomVisibility"]:checked')?.value || 'private';
       const digitCount = Number(document.querySelector('input[name="baseballDigitCount"]:checked')?.value || 3);
       const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({
-        gameType: selectedGameType,
+        gameType: selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType,
         visibility,
         title: roomTitleInput.value,
         ...(selectedGameType === 'baseball' ? { digitCount } : {}),
@@ -486,10 +508,11 @@
       const main = document.createElement('div');
       main.className = 'publicRoomMain';
       const name = document.createElement('strong');
-      name.textContent = room.title || `${room.host || '방장'}의 ${room.gameName || gameName(room.gameType)}방`;
+      const displayedGame = gameDisplayName(room.gameType);
+      name.textContent = room.title || `${room.host || '방장'}의 ${displayedGame}방`;
       const info = document.createElement('small');
       const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : room.status === 'paused' ? '일시정지' : '대국 중';
-      info.textContent = `${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
+      info.textContent = `${displayedGame} · ${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
       main.append(name, info);
       const enter = document.createElement('button');
       enter.type = 'button';
@@ -1489,7 +1512,8 @@
     const g = state.game;
     seat = state.me?.seat || null;
     isHost = Boolean(state.me?.isHost);
-    const gameLabel = state.gameName || gameName(state.gameType);
+    const gameLabel = ['omok', 'omok2v2'].includes(state.gameType)
+      ? gameDisplayName(state.gameType) : (state.gameName || gameName(state.gameType));
     const roomLabel = state.title || gameLabel;
     roomIdentityLabel.textContent = state.title ? `${gameLabel} · ${identityText()}` : identityText();
     roomGameLogo.textContent = roomLabel;
@@ -1608,7 +1632,15 @@
     bingoPanel.classList.toggle('hidden', !bingo);
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
+    canvasWrap.classList.toggle('cityBoard', city);
     if (city) renderCityControls();
+    else {
+      citySelectedTileIndex = null;
+      cityLastRollKey = null;
+      cityAnimation = null;
+      if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
+      cityAnimationFrame = null;
+    }
     pictionaryPanel.classList.toggle('hidden', !pictionary);
     if (pictionary) renderPictionary();
     liarPanel.classList.toggle('hidden', !liar);
@@ -1783,6 +1815,63 @@
   function renderCityControls() {
     const g = state.game;
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
+    const turn = Math.max(0, Number(g.turnCount) || 0);
+    const limit = Number(g.turnLimit) || 50;
+    const name = color => state.players?.[color]?.label || (color === 'black' ? '파랑' : '빨강');
+    cityTurnSummary.textContent = `진행 ${turn}/${limit}턴 · 남은 ${Math.max(0, limit - turn)}턴 · ${g.turn ? name(g.turn) + ' 차례' : '대국 종료'}`;
+    cityAssets.replaceChildren();
+    for (const color of ['black', 'white']) {
+      const player = g.players?.[color];
+      if (!player) continue;
+      const card = document.createElement('div');
+      card.className = `cityAssetCard ${color}${g.status === 'playing' && g.turn === color ? ' isTurn' : ''}`;
+      const heading = document.createElement('strong');
+      heading.textContent = `${name(color)}${seat === color ? ' · 나' : ''}${g.turn === color && g.status === 'playing' ? ' · 현재 차례' : ''}`;
+      const metrics = document.createElement('span');
+      metrics.textContent = `현금 ${player.cash} · 도시 ${player.properties?.length || 0}개 · 순자산 ${g.scores?.[color] ?? player.cash} · 위치 ${player.position}번`;
+      card.append(heading, metrics);
+      cityAssets.appendChild(card);
+    }
+    if (cityTileSelect.options.length !== (g.tiles?.length || 0)) {
+      cityTileSelect.replaceChildren();
+      for (const tile of g.tiles || []) {
+        const option = document.createElement('option');
+        option.value = String(tile.index);
+        option.textContent = `${tile.index}번 · ${tile.name}`;
+        cityTileSelect.appendChild(option);
+      }
+    }
+    const roll = g.lastRoll;
+    cityDieFirst.textContent = roll ? String.fromCodePoint(0x267f + roll.first) : '⚀';
+    cityDieSecond.textContent = roll ? String.fromCodePoint(0x267f + roll.second) : '⚀';
+    const rollKey = roll ? `${g.round}:${roll.at}:${roll.color}:${roll.from}:${roll.to}` : null;
+    if (rollKey && cityLastRollKey !== null && cityLastRollKey !== rollKey) {
+      if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
+      cityAnimation = { color: roll.color, from: roll.from, position: roll.from, steps: roll.total, started: performance.now() };
+      citySelectedTileIndex = roll.to;
+      cityControls.classList.remove('isRolling');
+      void cityControls.offsetWidth;
+      cityControls.classList.add('isRolling');
+      const advance = timestamp => {
+        if (!cityAnimation || state?.gameType !== 'cityking') return;
+        const elapsed = timestamp - cityAnimation.started;
+        cityAnimation.position = (cityAnimation.from + Math.min(cityAnimation.steps, Math.floor(elapsed / 110))) % 24;
+        drawCityBoard();
+        if (elapsed < cityAnimation.steps * 110 + 140) cityAnimationFrame = requestAnimationFrame(advance);
+        else { cityAnimation = null; cityAnimationFrame = null; cityControls.classList.remove('isRolling'); drawCityBoard(); }
+      };
+      cityAnimationFrame = requestAnimationFrame(advance);
+    }
+    cityLastRollKey = rollKey;
+    if (citySelectedTileIndex === null || !g.tiles?.[citySelectedTileIndex])
+      citySelectedTileIndex = g.pendingProperty ?? g.players?.[g.turn]?.position ?? roll?.to ?? 0;
+    cityTileSelect.value = String(citySelectedTileIndex);
+    const tile = g.tiles?.[citySelectedTileIndex];
+    cityTileName.textContent = tile ? `${tile.index}번 · ${tile.name}` : '칸 정보 없음';
+    cityTilePrice.textContent = tile?.type === 'property' ? `${tile.price}` : '-';
+    cityTileToll.textContent = tile?.type === 'property' ? `${tile.toll}` : '-';
+    const owner = tile ? g.owners?.[tile.index] : null;
+    cityTileOwner.textContent = tile?.type !== 'property' ? '해당 없음' : owner ? name(owner) : '미소유';
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
     cityRollBtn.textContent = mine && g.phase === 'roll' ? '주사위 굴리기' : '굴리기 대기';
     cityLastRoll.textContent = g.lastRoll
@@ -2288,6 +2377,24 @@
     return [pad, pad + (24 - index) * step];
   }
 
+  function selectCityTileFromPointer(event) {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = (event.clientX - rect.left) * canvas.width / rect.width;
+    const y = (event.clientY - rect.top) * canvas.height / rect.height;
+    let selected = null;
+    let best = 52 * 52;
+    for (const tile of state?.game?.tiles || []) {
+      const [cx, cy] = cityCellPosition(tile.index);
+      const distance = (cx - x) ** 2 + (cy - y) ** 2;
+      if (distance <= best) { best = distance; selected = tile.index; }
+    }
+    if (selected === null) return;
+    citySelectedTileIndex = selected;
+    renderCityControls();
+    drawCityBoard();
+  }
+
   function drawCityBoard() {
     const g = state.game;
     const bg = ctx.createLinearGradient(0, 0, 720, 720);
@@ -2318,6 +2425,16 @@
       ctx.strokeStyle = owner === 'black' ? '#2563eb' : owner === 'white' ? '#ef4444' : '#475569';
       ctx.lineWidth = owner ? 5 : 2;
       ctx.strokeRect(x - 39, y - 39, 78, 78);
+      if (tile.index === citySelectedTileIndex) {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x - 33, y - 33, 66, 66);
+      }
+      if (g.turn && g.status === 'playing' && g.players?.[g.turn]?.position === tile.index) {
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x - 43, y - 43, 86, 86);
+      }
       ctx.fillStyle = '#172033';
       ctx.font = '900 12px system-ui, sans-serif';
       const words = String(tile.name).length > 4 ? [String(tile.name).slice(0, 4), String(tile.name).slice(4)] : [String(tile.name)];
@@ -2331,7 +2448,8 @@
     for (const color of ['black', 'white']) {
       const player = g.players?.[color];
       if (!player) continue;
-      const [x, y] = cityCellPosition(player.position);
+      const animatedPosition = cityAnimation?.color === color ? cityAnimation.position : player.position;
+      const [x, y] = cityCellPosition(animatedPosition);
       const offset = color === 'black' ? -16 : 16;
       ctx.fillStyle = color === 'black' ? '#2563eb' : '#ef4444';
       ctx.strokeStyle = '#fff';
@@ -2793,6 +2911,9 @@
   refreshPublicRoomsBtn.addEventListener('click', () => loadPublicRooms().catch(err => showToast(err.message, 3500)));
   refreshInviteTargetsBtn.addEventListener('click', () => loadInviteTargets().catch(err => showToast(err.message, 3500)));
   gameRulesSelect.addEventListener('change', () => showGameRule(gameRulesSelect.value));
+  omokModeChoices.addEventListener('change', () => {
+    if (selectedGameType === 'omok') selectGame('omok');
+  });
   for (const button of gameChoiceButtons) button.addEventListener('click', () => selectGame(button.dataset.game));
   leaveRoomBtn.addEventListener('click', leaveRoom);
   joinRoomForm.addEventListener('submit', joinRoom);
@@ -2812,6 +2933,14 @@
   cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
+  cityTileSelect.addEventListener('change', () => {
+    if (state?.gameType !== 'cityking') return;
+    const index = Number(cityTileSelect.value);
+    if (!Number.isInteger(index) || !state.game.tiles?.[index]) return;
+    citySelectedTileIndex = index;
+    renderCityControls();
+    drawCityBoard();
+  });
 
   oldmaidStartBtn.addEventListener('click', () => roomAction('start-oldmaid'));
   oldmaidShuffleBtn.addEventListener('click', async () => {
@@ -2903,6 +3032,7 @@
   });
   canvas.addEventListener('pointerleave', () => { hover = null; drawBoard(); });
   canvas.addEventListener('pointerup', (ev) => {
+    if (state?.gameType === 'cityking') { selectCityTileFromPointer(ev); return; }
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
     roomAction('move', state?.gameType === 'connect4' ? { x: p.x } : p);
