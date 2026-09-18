@@ -18,13 +18,16 @@ jobs:
           ref: feature/omok-mode-city-ui-v1628-20260918
           fetch-depth: 0
       - name: Apply scoped Omok patch then Land King UI patch
-        run: python3 .release/apply-omok-city-v1628.py
+        run: |
+          python3 .release/apply-omok-city-v1628.py
+          python3 .release/fix-omok-city-v1628.py
       - name: Syntax and modified-code checks
         run: |
           node --check public/app.js
           node --check server.js
           node --check lib/games/cityking.js
           node --check test/omok-city-ui.test.js
+          node --check test/omok-team.test.js
           git diff --check
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -57,7 +60,7 @@ jobs:
         run: |
           git config user.name game-center-release-bot
           git config user.email actions@users.noreply.github.com
-          git rm .release/apply-omok-city-v1628.py .github/workflows/verify-omok-city-v1628.yml
+          git rm .release/apply-omok-city-v1628.py .release/fix-omok-city-v1628.py .github/workflows/verify-omok-city-v1628.yml
           git add -A
           git diff --cached --check
           git commit -m 'Release v1.6.28: unify Omok choice and improve Land King UI [skip ci]'
