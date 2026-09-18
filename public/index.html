@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.27" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.28" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -83,9 +83,6 @@
             <div class="gameOption" data-game-option="omok">
               <button type="button" class="gameChoice selected" data-game="omok"><strong>오목</strong></button>
             </div>
-            <div class="gameOption" data-game-option="omok2v2">
-              <button type="button" class="gameChoice" data-game="omok2v2"><strong>오목 2vs2</strong></button>
-            </div>
             <div class="gameOption" data-game-option="connect4">
               <button type="button" class="gameChoice" data-game="connect4"><strong>사목 (4목)</strong></button>
             </div>
@@ -99,7 +96,7 @@
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
             </div>
             <div class="gameOption" data-game-option="cityking">
-              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
+              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹(패치중)</strong></button>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
@@ -125,6 +122,11 @@
           </fieldset>
           <label class="roomTitleField" for="roomTitleInput">방 제목 <small>선택 입력 · 비워두면 기본 이름을 사용합니다</small></label>
           <input id="roomTitleInput" type="text" maxlength="40" autocomplete="off" placeholder="예: 금요일 저녁 한 판" />
+          <fieldset id="omokModeChoices" class="baseballDigitChoices" aria-label="오목 대전 방식">
+            <legend>오목 대전 방식</legend>
+            <label><input type="radio" name="omokMode" value="1v1" checked /> 1vs1 · 기본</label>
+            <label><input type="radio" name="omokMode" value="2v2" /> 2vs2 · 팀전</label>
+          </fieldset>
           <fieldset id="baseballDigitChoices" class="baseballDigitChoices hidden">
             <legend>숫자야구 자릿수</legend>
             <label><input type="radio" name="baseballDigitCount" value="3" checked /> 3자리</label>
@@ -337,6 +339,21 @@
               <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
               <button id="cityRollBtn" class="primary" type="button">주사위 굴리기</button>
             </div>
+            <div id="cityOverview" class="cityOverview" aria-live="polite">
+              <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
+              <div id="cityDice" class="cityDice" aria-label="주사위 결과"><span id="cityDieFirst">⚀</span><span id="cityDieSecond">⚀</span></div>
+            </div>
+            <div id="cityAssets" class="cityAssets" aria-label="플레이어별 자산 현황"></div>
+            <label class="cityTileLabel" for="cityTileSelect">도시 및 칸 정보 선택</label>
+            <select id="cityTileSelect" class="cityTileSelect" aria-label="랜드킹 도시 선택"></select>
+            <div id="cityTileDetails" class="cityTileDetails" aria-live="polite">
+              <strong id="cityTileName">게임판의 도시를 선택하세요.</strong>
+              <dl>
+                <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
+                <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
+                <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
+              </dl>
+            </div>
             <p id="cityEvent" class="cityEvent">파랑과 빨강이 정해지면 파랑부터 시작합니다.</p>
             <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
           </section>
@@ -474,8 +491,8 @@
       <p id="resultMessage" class="resultMessage"></p>
     </div>
   </div>
-  <script src="/session-lock.js?v=1.6.27"></script>
-  <script src="/room-chat-height.js?v=1.6.27"></script>
-  <script src="/app.js?v=1.6.27"></script>
+  <script src="/session-lock.js?v=1.6.28"></script>
+  <script src="/room-chat-height.js?v=1.6.28"></script>
+  <script src="/app.js?v=1.6.28"></script>
 </body>
 </html>

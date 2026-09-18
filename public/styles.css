@@ -380,3 +380,27 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 #roomView .side .chatForm { flex: 0 0 auto; }
 #roomView .side .sideActions,
 #roomView .side .roomRuleDetails { flex-shrink: 0; }
+
+/* v1.6.28: Land King-only information and responsive controls. */
+.cityBoard canvas{cursor:pointer;touch-action:manipulation}
+.cityControls{min-width:0}
+.cityOverview{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:10px 0;padding:11px 13px;border:1px solid #334155;border-radius:12px;background:#0f172a}
+.cityOverview>strong{font-size:.85rem;color:#e2e8f0;font-variant-numeric:tabular-nums}
+.cityDice{display:flex;gap:7px;font-size:1.6rem;color:#facc15;line-height:1}
+.cityControls.isRolling .cityDice span{animation:cityRollPulse .56s ease-in-out}
+@keyframes cityRollPulse{0%{transform:rotate(-22deg) scale(.8)}55%{transform:rotate(30deg) scale(1.25)}100%{transform:rotate(0) scale(1)}}
+.cityAssets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
+.cityAssetCard{display:grid;gap:6px;min-width:0;padding:11px 13px;border:1px solid #334155;border-radius:11px;background:#0f172a}
+.cityAssetCard strong{font-size:.86rem;overflow-wrap:anywhere}.cityAssetCard span{font-size:.77rem;color:#cbd5e1;line-height:1.5;overflow-wrap:anywhere}
+.cityAssetCard.black{border-left:4px solid #2563eb}.cityAssetCard.white{border-left:4px solid #ef4444}
+.cityAssetCard.isTurn{outline:2px solid #facc15;background:#172554}
+.cityTileLabel{display:block;margin:13px 0 6px;font-size:.81rem;font-weight:850;color:#cbd5e1}
+.cityTileSelect{width:100%;min-height:44px;padding:9px 12px;border:1px solid #475569;border-radius:10px;color:#f8fafc;background:#0f172a;font:inherit}
+.cityTileSelect:focus-visible{outline:2px solid #facc15;outline-offset:2px}
+.cityTileDetails{margin:9px 0;padding:12px 13px;border:1px solid #475569;border-radius:12px;background:#111c30}
+.cityTileDetails>strong{display:block;margin-bottom:9px;font-size:.93rem;color:#fde68a}
+.cityTileDetails dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.cityTileDetails dl div{display:grid;gap:3px;min-width:0}.cityTileDetails dt{font-size:.69rem;color:#94a3b8}.cityTileDetails dd{margin:0;font-size:.84rem;font-weight:850;overflow-wrap:anywhere}
+.cityControls .cityActionRow button,.cityControls .cityBuyRow button{min-height:44px}
+@media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}.cityControls .cityActionRow,.cityControls .cityBuyRow{flex-wrap:wrap}.cityControls .cityActionRow button{flex:1 1 150px}.cityControls .cityBuyRow button{flex:1 1 120px}}
+@media(prefers-reduced-motion:reduce){.cityControls.isRolling .cityDice span{animation:none}}

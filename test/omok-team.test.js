@@ -181,7 +181,9 @@ test('team room accepts four distinct seats, pauses, resumes and protects turns'
 test('team and Bingo modes share numbered seats without changing team turn controls', async () => {
   const html = await fs.readFile(path.resolve(__dirname, '../public/index.html'), 'utf8');
   const app = await fs.readFile(path.resolve(__dirname, '../public/app.js'), 'utf8');
-  assert.match(html, /data-game="omok2v2"/);
+  assert.doesNotMatch(html, /data-game="omok2v2"/);
+  assert.match(html, /name="omokMode" value="2v2"/);
+  assert.match(app, /omokMode\(\) === '2v2' \? 'omok2v2'/);
   assert.match(html, /id="teamRoleButtons"/);
   assert.match(html, /id="teamPlayers"/);
   assert.match(html, /id="standardPlayers"/);
@@ -189,5 +191,5 @@ test('team and Bingo modes share numbered seats without changing team turn contr
   assert.match(app, /state\.game\.nextSeat !== seat/);
   assert.match(html, /data-game="bingo"/);
   assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !numbered\)/);
-  assert.match(html, /v=1\.6\.27/);
+  assert.match(html, /v=1\.6\.28/);
 });
