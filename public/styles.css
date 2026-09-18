@@ -351,3 +351,32 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .oldmaidBack:disabled{cursor:default;opacity:.68}.oldmaidHistory{max-height:170px;overflow-y:auto;font-size:.88rem;color:#475569}
 .oldmaidHistory p{margin:4px 0}.oldmaidPanel h3{margin:4px 0;font-size:1rem}.oldmaidPanel h3 small{font-weight:400;font-size:.75rem}
 @media(max-width:600px){.oldmaidCard{flex-basis:49px;width:49px;height:68px}.oldmaidCards{gap:5px}.oldmaidOpponent{padding:8px}.oldmaidHeader button,.oldmaidMyHeader button{min-height:44px}}
+
+
+/* v1.6.27: keep room chat within the actual board height */
+#roomView .gameLayout > .side {
+  height: var(--room-board-height, 650px);
+  max-height: var(--room-board-height, 650px);
+  min-height: 0;
+  overflow: hidden;
+}
+#roomView .side .roomPeople {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 30%;
+  overflow-y: auto;
+}
+#roomView .side .chatPanel {
+  flex: 1 1 0;
+  min-height: 0;
+}
+#roomView .side .chatMessages {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#roomView .side .chatForm { flex: 0 0 auto; }
+#roomView .side .sideActions,
+#roomView .side .roomRuleDetails { flex-shrink: 0; }
