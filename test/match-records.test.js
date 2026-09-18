@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { JsonMatchStore, tally } = require('../lib/match-records');
+const { JsonMatchStore, tally, headToHead } = require('../lib/match-records');
 const { buildMatchResult } = require('../lib/match-result');
 
 function room(gameType, winner, status = 'finished') {
@@ -55,6 +55,29 @@ test('file-backed records survive reopening, reject duplicate rounds and recover
   assert.equal((await (async () => { const again = new JsonMatchStore(file); await again.init(); return again.stats('guest-black'); })()).total.played,3);
   assert.deepEqual(tally([{ gameType:'liar', outcomes:[{id:'same',result:'loss'}] }], 'same').total,
     {played:1,wins:0,losses:1,draws:0,winRate:0});
+});
+
+test('head-to-head only tallies direct two-person matches between exactly those two players', () => {
+  const matches = [
+    buildMatchResult(room('omok','black')), // black=session-black -> guest-black, white=guest-white
+    { ...buildMatchResult(room('othello','white')), id:'room-othello:2' },
+    // A 4-seat team match that includes BOTH guest-black and guest-white must still be excluded,
+    // since it was never a direct two-person contest between just the two of them.
+    { id:'room-omok2v2:x', gameType:'omok2v2', at:new Date().toISOString(), outcomes:[
+      {id:'guest-black',result:'win'},{id:'guest-white',result:'loss'},{id:'guest-3',result:'win'},{id:'guest-4',result:'loss'}] },
+    { ...buildMatchResult(room('baseball','black')), id:'room-baseball:x',
+      outcomes:[{id:'guest-black',result:'win'},{id:'someone-else',result:'loss'}] }, // not a match against guest-white
+  ];
+  const versus = headToHead(matches, 'guest-black', 'guest-white');
+  assert.deepEqual(versus.total, { played:2, wins:1, losses:1, draws:0, winRate:50 });
+  assert.deepEqual(Object.keys(versus.byGame).sort(), ['omok','othello']);
+  assert.equal(versus.byGame.omok.wins, 1);
+  assert.equal(versus.byGame.othello.losses, 1);
+  // Reversing the perspective flips wins/losses but keeps the same match count.
+  const reversed = headToHead(matches, 'guest-white', 'guest-black');
+  assert.deepEqual(reversed.total, { played:2, wins:1, losses:1, draws:0, winRate:50 });
+  // A player who never faced this exact opponent directly gets an empty result.
+  assert.deepEqual(headToHead(matches, 'guest-black', 'nobody').total, { played:0, wins:0, losses:0, draws:0, winRate:0 });
 });
 
 async function freePort() {
@@ -141,6 +164,20 @@ test('authenticated records: completion, duplicate guard, rematch, rename, reiss
   assert.equal((await req('/api/records/me',d,undefined,'GET')).data.byGame.omok2v2.wins,1);
   assert.equal((await req('/api/records/me',c,undefined,'GET')).data.total.played,1);
   assert.equal((await req('/api/records/me',a,undefined,'GET')).data.byGame.baseball.played,2);
+
+  // Head-to-head: only the two direct baseball games between a and b count, the 2v2 team
+  // match (4 outcomes) is excluded even though both a and b also played in it together.
+  const bVersusA=await req(`/api/records/${keyA.key.id}/versus-me`,b,undefined,'GET');
+  assert.equal(bVersusA.status,200);
+  assert.equal(bVersusA.data.player.id,keyA.key.id);
+  assert.equal(bVersusA.data.total.played,2);assert.equal(bVersusA.data.total.wins,1);assert.equal(bVersusA.data.total.losses,1);
+  assert.equal(bVersusA.data.byGame.baseball.played,2);
+  assert.equal(bVersusA.data.byGame.omok2v2,undefined);
+  const aVersusB=await req(`/api/records/${keyB.key.id}/versus-me`,a,undefined,'GET');
+  assert.equal(aVersusB.data.total.played,2);assert.equal(aVersusB.data.total.wins,1);assert.equal(aVersusB.data.total.losses,1);
+  const selfVersusSelf=await req(`/api/records/${keyA.key.id}/versus-me`,a,undefined,'GET');
+  assert.equal(selfVersusSelf.status,400);assert.equal(selfVersusSelf.data.error,'SAME_PLAYER');
+  assert.equal((await req(`/api/records/${keyA.key.id}/versus-me`,null,undefined,'GET')).status,401);
 });
 
 test('lobby layout, announcements, small participant links and modal preserve room state', async () => {
@@ -156,5 +193,5 @@ test('lobby layout, announcements, small participant links and modal preserve ro
   assert.match(app,/loadMyRecords\(\);/);assert.match(app,/recordsDialog\.showModal\(\)/);
   assert.match(app,/recordsDialog\.close\(\)/);assert.match(app,/loadAnnouncements\(\)/);
   assert.match(server,/requireSession\(req, res\)/);assert.match(server,/MATCH_RECORD_FAILED/);
-  assert.match(html,/app\.js\?v=1\.6\.32/);
+  assert.match(html,/app\.js\?v=1\.6\.33/);
 });

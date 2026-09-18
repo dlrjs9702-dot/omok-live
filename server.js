@@ -1157,7 +1157,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.32', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.33', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1471,6 +1471,25 @@ async function requestHandler(req, res) {
     }
   }
 
+  // Head-to-head only ever looks at matches with exactly two outcomes (see lib/match-records.js),
+  // so multiplayer games and 2v2 team matches are excluded without any extra bookkeeping here.
+  const headToHeadLookup = pathname.match(/^\/api\/records\/(admin:[A-Za-z0-9_-]{10,40}|[0-9a-f-]{36})\/versus-me$/i);
+  if (headToHeadLookup && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    try {
+      const myId = recordIdentity(session);
+      const player = (await recordPlayers()).find(person => person.id === headToHeadLookup[1]);
+      if (!player) return sendError(res, 404, 'PLAYER_NOT_FOUND', '해당 플레이어를 찾을 수 없습니다.');
+      if (player.id === myId) return sendError(res, 400, 'SAME_PLAYER', '자기 자신과의 상대 전적은 조회할 수 없습니다.');
+      const stats = await matchStore.headToHead(myId, player.id);
+      return sendJson(res, 200, { player, ...stats });
+    } catch (error) {
+      console.error('상대 전적 조회 실패:', error);
+      return sendError(res, 503, 'RECORDS_UNAVAILABLE', '상대 전적을 불러오지 못했습니다.');
+    }
+  }
+
   if (pathname === '/api/rooms/public' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { rooms: listPublicRooms() });
@@ -1756,7 +1775,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.32 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.33 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

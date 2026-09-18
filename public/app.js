@@ -62,6 +62,10 @@
   const recordsProfileSummary = document.getElementById('recordsProfileSummary');
   const recordsProfileGame = document.getElementById('recordsProfileGame');
   const recordsProfileDetail = document.getElementById('recordsProfileDetail');
+  const recordsHeadToHead = document.getElementById('recordsHeadToHead');
+  const h2hSummary = document.getElementById('h2hSummary');
+  const h2hGame = document.getElementById('h2hGame');
+  const h2hDetail = document.getElementById('h2hDetail');
   const announcementTab = document.getElementById('announcementTab');
   const announcementPanel = document.getElementById('announcementPanel');
   const announcementCount = document.getElementById('announcementCount');
@@ -452,7 +456,7 @@
     "omok": "15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.",
     "omok2v2": "4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.",
     "connect4": "7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.",
-    "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용합니다.",
+    "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 빽도가 나오면 보드 위의 말 하나를 한 칸 뒤로 물립니다(대기 중인 말은 낼 수 없고, 물릴 말이 없으면 차례가 자동으로 넘어갑니다). 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용하며, 중앙에 정확히 멈춘 말은 항상 짧은 지름길로 출발합니다. 완주 직전 칸에 도착한 말은 그 칸에 머무르고, 다음 이동에서 한 칸 이상 더 나아가야 완주합니다.",
     "bingo": "2~4명이 1~50 중 서로 다른 25개 숫자로 된 5×5 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 시작 전에 1~12줄 중 승리 조건을 정하며 가로·세로·두 대각선을 합쳐 먼저 조건을 달성하면 승리합니다.",
     "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 자기 소유 도시에 도착하면 매입가의 50%로 별장·빌딩·호텔을 방문당 한 단계 건설할 수 있습니다. 통행료는 기본·2배·3배·5배이며, 건설비는 순자산에 포함됩니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
@@ -1162,8 +1166,7 @@
     return `${data.played}전 · ${data.wins}승 ${data.losses}패 ${data.draws}무 · 승률 ${data.winRate}%`;
   }
 
-  function renderRecords(data, select, name, summary, detail) {
-    name.textContent = data?.player?.label || '기록 없음';
+  function renderRecordsSection(data, select, summary, detail) {
     select.replaceChildren();
     const all = document.createElement('option');
     all.value = 'all'; all.textContent = '전체 게임'; select.appendChild(all);
@@ -1180,6 +1183,11 @@
     };
     select.onchange = update;
     update();
+  }
+
+  function renderRecords(data, select, name, summary, detail) {
+    name.textContent = data?.player?.label || '기록 없음';
+    renderRecordsSection(data, select, summary, detail);
   }
 
   async function loadMyRecords() {
@@ -1205,6 +1213,7 @@
       recordsProfileSummary.textContent = '';
       recordsProfileDetail.textContent = '';
       recordsProfileGame.replaceChildren();
+      recordsHeadToHead.classList.add('hidden');
       recordsSearchInput.focus();
       return;
     }
@@ -1213,6 +1222,7 @@
 
   async function showPlayerRecords(playerId) {
     recordsProfileName.textContent = '전적 조회 중...';
+    recordsHeadToHead.classList.add('hidden');
     try {
       const data = await api(`/api/records/${encodeURIComponent(playerId)}`);
       if (!recordsDialog.open) return;
@@ -1220,6 +1230,19 @@
       renderRecords(data, recordsProfileGame, recordsProfileName, recordsProfileSummary, recordsProfileDetail);
     } catch (error) {
       if (recordsDialog.open) recordsProfileName.textContent = `전적 조회 실패 · ${error.message}`;
+      return;
+    }
+    h2hSummary.textContent = '상대 전적 조회 중...';
+    h2hDetail.textContent = '';
+    try {
+      const versus = await api(`/api/records/${encodeURIComponent(playerId)}/versus-me`);
+      if (!recordsDialog.open) return;
+      recordsHeadToHead.classList.remove('hidden');
+      renderRecordsSection(versus, h2hGame, h2hSummary, h2hDetail);
+    } catch (error) {
+      // Viewing my own profile: there is no head-to-head against myself, so stay hidden.
+      if (error.data?.error === 'SAME_PLAYER') { recordsHeadToHead.classList.add('hidden'); return; }
+      if (recordsDialog.open) { recordsHeadToHead.classList.remove('hidden'); h2hSummary.textContent = `상대 전적 조회 실패 · ${error.message}`; }
     }
   }
 
@@ -1693,7 +1716,7 @@
           ? `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 복귀 대기`
           : `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`)
         : state.gameType === 'yut'
-          ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}`
+          ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`
           : state.gameType === 'cityking'
             ? `${seatKo(g.turn)} · ${g.phase === 'buy' ? '도시 매입 여부 선택' : '주사위 굴릴 차례'}`
           : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
@@ -1856,23 +1879,29 @@
     }
   }
 
+  function yutStepsLabel(steps) {
+    return steps < 0 ? `${Math.abs(steps)}칸 후진` : `${steps}칸`;
+  }
+
   function renderYut() {
     const g = state.game;
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
     yutThrowBtn.disabled = !(mine && g.phase === 'throw');
     yutThrowBtn.textContent = mine && g.phase === 'throw' ? '윷 던지기' : '던지기 대기';
     yutLastThrow.textContent = g.lastThrow
-      ? `최근 결과: ${g.lastThrow.name} · ${g.lastThrow.steps}칸`
+      ? `최근 결과: ${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}`
       : '아직 던진 윷이 없습니다';
     if (g.status === 'selecting') yutHint.textContent = '파랑과 빨강이 정해지면 파랑부터 시작합니다.';
     else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 4개를 모두 완주했습니다.`;
-    else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.`;
-    else if (g.turn !== seat) yutHint.textContent = `${seatKo(g.turn)} 차례입니다.`;
+    else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
+    else if (g.turn !== seat) yutHint.textContent = `${seatKo(g.turn)} 차례입니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
     else if (g.phase === 'throw') yutHint.textContent = '내 차례입니다. 윷을 던져 주세요.';
+    else if (g.pendingSteps < 0) yutHint.textContent = `${g.lastThrow?.name || ''} · 한 칸 뒤로 물릴 말을 선택하세요.`;
     else yutHint.textContent = `${g.lastThrow?.name || ''} · ${g.pendingSteps || 0}칸 이동할 말을 선택하세요.`;
 
     yutMoveChoices.replaceChildren();
     const moves = mine && g.phase === 'move' ? (g.legalMoves || []) : [];
+    const backward = g.pendingSteps < 0;
     for (const move of moves) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -1880,8 +1909,10 @@
       const number = Number(String(move.pieceId).split('-').at(-1));
       const carriedNumbers = (move.carried || [move.pieceId]).map(id => Number(String(id).split('-').at(-1))).sort((a, b) => a - b);
       const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.map(value => `${value}번`).join(' + ')} 말 · ${carriedNumbers.length}개 업기` : `${number}번 말`;
-      const target = move.destination?.status === 'finished' ? '완주' : `${move.destination?.position}번 칸`;
-      button.textContent = `${pieceLabel} → ${target}`;
+      const target = move.destination?.status === 'finished' ? '완주'
+        : move.destination?.position === 'finishLine' ? '완주 직전 칸'
+        : `${move.destination?.position}번 칸`;
+      button.textContent = `${pieceLabel} → ${target}${backward ? ' (뒤로)' : ''}`;
       button.addEventListener('click', () => roomAction('move-yut', { pieceId: move.pieceId }));
       yutMoveChoices.appendChild(button);
     }
@@ -2281,8 +2312,9 @@
     oldmaidMyHand.replaceChildren();
     if (seat && Array.isArray(state.me?.myOldMaidHand)) {
       for (const card of state.me.myOldMaidHand) {
+        const red = card.suit === '♥' || card.suit === '♦';
         const face = document.createElement('span');
-        face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : '');
+        face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : red ? ' red' : '');
         face.textContent = card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
         face.setAttribute('aria-label', card.rank === 'JOKER' ? '조커' : `${card.suit} ${card.rank}`);
         oldmaidMyHand.appendChild(face);
@@ -2295,9 +2327,9 @@
     for (const number of (g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]))) {
       if (number === seat) continue;
       const row = document.createElement('section');
-      row.className = 'oldmaidOpponent' + (g.target === number ? ' target' : '');
+      row.className = 'oldmaidOpponent' + (g.target === number ? ' target' : '') + (g.turn === number ? ' turn' : '');
       const name = document.createElement('strong');
-      name.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.target === number ? ' · 뽑기 대상' : ''}`;
+      name.textContent = `${label(number)} · ${g.counts?.[number] ?? 0}장${g.turn === number ? ' · 차례' : ''}${g.target === number ? ' · 뽑기 대상' : ''}`;
       const cards = document.createElement('div');
       cards.className = 'oldmaidCards';
       const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
@@ -2305,7 +2337,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
-        button.textContent = '🂠';
+        button.textContent = '🎴';
         button.disabled = !canDraw;
         button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
         button.addEventListener('click', () => {
@@ -2344,6 +2376,8 @@
       6:[518,70], 7:[406,70], 8:[294,70], 9:[182,70], 10:[70,70],
       11:[70,182], 12:[70,294], 13:[70,406], 14:[70,518], 15:[70,630],
       16:[182,630], 17:[294,630], 18:[406,630], 19:[518,630],
+      // The finish line sits right where the outer ring closes back on the start corner.
+      finishLine:[630,630],
       21:[540,160], 22:[450,250], 23:[350,350], 28:[445,445], 29:[540,540],
       26:[160,160], 27:[250,250], 24:[250,450], 25:[160,540],
     };
@@ -2397,12 +2431,11 @@
     for (const color of ['black','white']) for (const piece of g.pieces?.[color] || []) {
       if (piece.status !== 'board') continue;
       const key = `${piece.position}:${color}`;
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(piece);
+      if (!grouped.has(key)) grouped.set(key, { position: piece.position, color, pieces: [] });
+      grouped.get(key).pieces.push(piece);
     }
-    for (const [key, pieces] of grouped) {
-      const [position, color] = key.split(':');
-      const [x,y] = yutNodePosition(Number(position));
+    for (const { position, color, pieces } of grouped.values()) {
+      const [x,y] = yutNodePosition(position);
       const fill = color === 'black' ? '#2563eb' : '#ef4444';
       const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
       const offsets = yutStackOffsets(ordered.length);

@@ -18,13 +18,13 @@ test('Yut Nori is independently registered with four pieces per player', () => {
 test('server-authoritative throws enforce phases, turns, bonus throws and capture', () => {
   const game = yut.create();
   yut.start(game);
-  assert.deepEqual(yut.throwYut(game, 'black', 't1', 1), { legal: true, name: '도', steps: 1, backs: 1, color: 'black', at: 't1' });
+  assert.deepEqual(yut.throwYut(game, 'black', 't1', 1, false), { legal: true, name: '도', steps: 1, backs: 1, color: 'black', at: 't1', passed: false });
   assert.equal(yut.throwYut(game, 'black', 'bad', 2).reason, 'must-move');
   assert.equal(yut.applyMove(game, 'black-1', 'black', 't2').legal, true);
   assert.equal(game.pieces.black[0].position, 1);
   assert.equal(game.turn, 'white');
 
-  yut.throwYut(game, 'white', 't3', 1);
+  yut.throwYut(game, 'white', 't3', 1, false);
   const capture = yut.applyMove(game, 'white-1', 'white', 't4');
   assert.deepEqual(capture.captured, ['black-1']);
   assert.equal(capture.bonus, true);
@@ -71,12 +71,26 @@ test('stacked Yut pieces are spread sideways so every piece number remains visib
   assert.deepEqual(Array.from(offsets(4)), [-39, -13, 13, 39]);
 });
 
-test('the first player to finish all four pieces wins and reset opens a clean round', () => {
+test('reaching the finish line does not finish a piece by itself; a later move does', () => {
   const game = yut.create();
   yut.start(game);
   for (let i = 0; i < 3; i += 1) Object.assign(game.pieces.black[i], { status: 'finished', position: null });
   Object.assign(game.pieces.black[3], { status: 'board', position: 19, route: 'outer' });
-  yut.throwYut(game, 'black', 'throw', 1);
+  yut.throwYut(game, 'black', 'throw', 1, false);
+  const resting = yut.applyMove(game, 'black-4', 'black', 'move');
+  assert.equal(resting.finished, false);
+  assert.equal(game.pieces.black[3].status, 'board');
+  assert.equal(game.pieces.black[3].position, 'finishLine');
+  assert.equal(game.status, 'playing');
+  assert.equal(game.turn, 'white');
+});
+
+test('the first player to finish all four pieces wins and reset opens a clean round', () => {
+  const game = yut.create();
+  yut.start(game);
+  for (let i = 0; i < 3; i += 1) Object.assign(game.pieces.black[i], { status: 'finished', position: null });
+  Object.assign(game.pieces.black[3], { status: 'board', position: 'finishLine', route: 'outer' });
+  yut.throwYut(game, 'black', 'throw', 1, false);
   const result = yut.applyMove(game, 'black-4', 'black', 'move');
   assert.equal(result.finished, true);
   assert.equal(game.status, 'finished');
@@ -101,5 +115,5 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.32/);
+  assert.match(html, /app\.js\?v=1\.6\.33/);
 });

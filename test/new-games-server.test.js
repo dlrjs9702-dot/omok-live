@@ -70,11 +70,20 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   assert.equal(yStarted.data.state.game.status, 'playing');
   assert.equal((await req('/api/room/throw-yut', yWatcher, {})).status, 403);
   assert.equal((await req('/api/room/throw-yut', yPlayer, {})).status, 409);
-  const thrown = await req('/api/room/throw-yut', yHost, {});
+  // A back-do rolled while every piece is still waiting to start has no legal move and
+  // auto-passes the turn (see lib/games/yut.js); retry as whoever now holds the turn until a
+  // throw actually produces a move, instead of assuming the very first roll always does.
+  let thrown = await req('/api/room/throw-yut', yHost, {});
   assert.equal(thrown.status, 200);
+  for (let attempts = 0; thrown.data.state.game.phase !== 'move' && attempts < 20; attempts += 1) {
+    const turnToken = thrown.data.state.game.turn === 'black' ? yHost : yPlayer;
+    thrown = await req('/api/room/throw-yut', turnToken, {});
+    assert.equal(thrown.status, 200);
+  }
   assert.equal(thrown.data.state.game.phase, 'move');
+  const actingToken = thrown.data.state.game.turn === 'black' ? yHost : yPlayer;
   const pieceId = thrown.data.state.game.legalMoves[0].pieceId;
-  assert.equal((await req('/api/room/move-yut', yHost, { pieceId })).status, 200);
+  assert.equal((await req('/api/room/move-yut', actingToken, { pieceId })).status, 200);
 
   await req('/api/room/leave', yPlayer, {});
   await req('/api/room/leave', yWatcher, {});
@@ -116,7 +125,7 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.32');
+  assert.equal(health.data.version, '1.6.33');
   assert.ok(health.data.games.includes('yut'));
   assert.ok(health.data.games.includes('dots'));
   assert.ok(health.data.games.includes('cityking'));
