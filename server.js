@@ -17,6 +17,8 @@ const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room)
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
+const { createMatchStore } = require('./lib/match-records');
+const { buildMatchResult } = require('./lib/match-result');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -74,6 +76,7 @@ const invitations = new Map(); // inviteId -> {fromToken,toToken,roomId,createdA
 const INVITE_TTL_MS = 2 * 60 * 1000;
 let accessStore;
 let announcementStore;
+let matchStore;
 let indexTemplate = '';
 
 function nowIso() { return new Date().toISOString(); }
@@ -443,6 +446,8 @@ function newParticipant(session, connected = false) {
     sessionToken: session.token,
     label: session.label,
     guestKeyId: session.guestKeyId, // server-only identity for interrupted game reconnection
+    role: session.role,
+    recordId: session.guestKeyId || `admin:${session.publicId}`,
     rejoinable: false,
     connected,
     joinedAt: nowIso(),
@@ -558,6 +563,7 @@ function publicParticipants(room) {
     .filter((p) => p.connected || live.has(p.sessionToken))
     .map((p) => ({
       label: p.label || '게스트',
+      playerId: p.recordId || p.guestKeyId || null,
       connected: Boolean(p.connected || live.has(p.sessionToken)),
       seat: findSeat(room, p.sessionToken),
       choice: p.choice || null,
@@ -663,6 +669,34 @@ function prepareNextRound(room) {
   for (const p of Object.values(room.participants)) p.choice = null;
 }
 
+// The game engine, never the client, supplies the final result. An individual match
+// (including a three-round liar match) has one stable id across retries and reconnects.
+async function recordFinishedMatch(room) {
+  const result = buildMatchResult(room, nowIso());
+  if (!result) return false;
+  room.recordedMatches ||= new Set();
+  if (room.recordedMatches.has(result.id)) return false;
+  await matchStore.recordMatch(result);
+  room.recordedMatches.add(result.id);
+  return true;
+}
+
+async function recordOrError(room, res) {
+  try { await recordFinishedMatch(room); return true; }
+  catch (error) {
+    console.error('전적 영구 저장 실패:', error);
+    sendError(res, 503, 'MATCH_RECORD_FAILED', '전적 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    return false;
+  }
+}
+
+function recordIdentity(session) { return session.guestKeyId || `admin:${session.publicId}`; }
+
+async function recordPlayers() {
+  const keys = await accessStore.list();
+  return [...[...sessions.values()].filter(session => session.role === 'admin').map(session => ({ id: recordIdentity(session), label: session.label })), ...keys.map(key => ({ id: key.id, label: key.label }))];
+}
+
 function getCurrentRoom(session) {
   if (!session.currentRoomId) return null;
   const room = rooms.get(session.currentRoomId) || null;
@@ -756,7 +790,7 @@ async function adminPresenceSnapshot() {
 }
 
 // Server-authoritative round/reveal timers so pictionary always advances even if the drawer disconnects.
-function tickPictionaryRooms() {
+async function tickPictionaryRooms() {
   const now = nowMs();
   const engine = getGame('pictionary');
   for (const room of rooms.values()) {
@@ -772,19 +806,29 @@ function tickPictionaryRooms() {
       }
       changed = true;
     }
-    if (changed) { touchRoom(room); broadcast(room); }
+    if (changed) {
+      if (['finished', 'draw'].includes(room.game.status)) {
+        try { await recordFinishedMatch(room); }
+        catch (error) { console.error('그림 맞히기 전적 저장 실패:', error); continue; }
+      }
+      touchRoom(room); broadcast(room);
+    }
   }
 }
 
 
 // Server-authoritative phase timers for liar game. Deadlines are stored on the game,
 // so reload/reconnect never resets hint, vote, reveal or final-guess time limits.
-function tickLiarRooms() {
+async function tickLiarRooms() {
   const now = nowMs();
   const engine = getGame('liar');
   for (const room of rooms.values()) {
     if (!isLiar(room) || room.game.status !== 'playing') continue;
     if (!engine.tick(room.game, now)) continue;
+    if (['finished', 'draw'].includes(room.game.status)) {
+      try { await recordFinishedMatch(room); }
+      catch (error) { console.error('라이어게임 전적 저장 실패:', error); continue; }
+    }
     touchRoom(room);
     broadcast(room);
   }
@@ -795,6 +839,7 @@ async function handleRoomAction(req, res, action, session) {
   if (!room) return sendError(res, 404, 'NO_ROOM', '먼저 방을 만들거나 방 비밀번호를 입력해 주세요.');
   const body = await parseJson(req);
   const participant = room.participants[session.token] || registerParticipant(room, session);
+  if ((action === 'next-round' || action === 'rematch') && !(await recordOrError(room, res))) return;
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
@@ -1100,6 +1145,7 @@ async function handleRoomAction(req, res, action, session) {
     appendSystemMessage(room, `${session.label || '참가자'}님이 다음 판을 열었습니다. 역할을 다시 선택해 주세요.`);
   }
 
+  if (!(await recordOrError(room, res))) return;
   touchRoom(room);
   broadcast(room);
   return sendJson(res, 200, { ok: true, state: roomView(room, session) });
@@ -1110,7 +1156,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.29', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.30', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1384,6 +1430,46 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, key: row });
   }
 
+  // Authenticated read models expose only player labels and aggregated outcomes.
+  if (pathname === '/api/records/me' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    try {
+      const id = recordIdentity(session);
+      const stats = await matchStore.stats(id);
+      return sendJson(res, 200, { player: { id, label: session.label }, ...stats });
+    } catch (error) {
+      console.error('내 전적 조회 실패:', error);
+      return sendError(res, 503, 'RECORDS_UNAVAILABLE', '전적을 불러오지 못했습니다.');
+    }
+  }
+  if (pathname === '/api/records/players' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    const query = String(url.searchParams.get('q') || '').trim().slice(0, 40).toLocaleLowerCase('ko');
+    if (!query) return sendJson(res, 200, { players: [] });
+    try {
+      const people = (await recordPlayers()).filter(person => person.label.toLocaleLowerCase('ko').includes(query))
+        .sort((a, b) => a.label.localeCompare(b.label, 'ko') || a.id.localeCompare(b.id)).slice(0, 20);
+      return sendJson(res, 200, { players: people });
+    } catch (error) {
+      console.error('플레이어 전적 검색 실패:', error);
+      return sendError(res, 503, 'RECORDS_UNAVAILABLE', '플레이어를 조회하지 못했습니다.');
+    }
+  }
+  const recordLookup = pathname.match(/^\/api\/records\/(admin:[A-Za-z0-9_-]{10,40}|[0-9a-f-]{36})$/i);
+  if (recordLookup && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    try {
+      const player = (await recordPlayers()).find(person => person.id === recordLookup[1]);
+      if (!player) return sendError(res, 404, 'PLAYER_NOT_FOUND', '해당 플레이어를 찾을 수 없습니다.');
+      const stats = await matchStore.stats(player.id);
+      return sendJson(res, 200, { player, ...stats });
+    } catch (error) {
+      console.error('플레이어 전적 조회 실패:', error);
+      return sendError(res, 503, 'RECORDS_UNAVAILABLE', '전적을 불러오지 못했습니다.');
+    }
+  }
+
   if (pathname === '/api/rooms/public' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { rooms: listPublicRooms() });
@@ -1534,6 +1620,7 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (!room) return sendJson(res, 200, { state: null });
     registerParticipant(room, session);
+    if (!(await recordOrError(room, res))) return;
     return sendJson(res, 200, { state: roomView(room, session) });
   }
 
@@ -1635,6 +1722,7 @@ async function main() {
   indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   if (process.env.NODE_ENV !== 'test') {
     await announcementStore.seedReleases(releaseAnnouncements);
     const notices = await announcementStore.list();
@@ -1665,9 +1753,9 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
-  setInterval(tickPictionaryRooms, 1000).unref();
-  setInterval(tickLiarRooms, 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.29 실행: http://${HOST}:${PORT}`));
+  setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
+  setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.30 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
