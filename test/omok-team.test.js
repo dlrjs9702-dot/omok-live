@@ -191,5 +191,5 @@ test('team and Bingo modes share numbered seats without changing team turn contr
   assert.match(app, /state\.game\.nextSeat !== seat/);
   assert.match(html, /data-game="bingo"/);
   assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !numbered\)/);
-  assert.match(html, /v=1\.6\.30/);
+  assert.match(html, /v=1\.6\.31/);
 });

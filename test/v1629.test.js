@@ -48,7 +48,7 @@ test('Land King: no building on another tile or without cash; skip is allowed', 
   assert.equal(city.buildProperty(g, 'black', 'poor').reason, 'not-enough-cash');
   assert.equal(city.skipBuild(g, 'white', 'other').reason, 'not-your-turn');
   assert.equal(city.skipBuild(g, 'black', 'skip').legal, true);
-  assert.equal(g.turn, 'white');
+  assert.equal(g.turn, 'black');
   assert.equal(g.developments[3], undefined);
 });
 

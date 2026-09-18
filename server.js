@@ -1062,9 +1062,10 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 주사위를 굴릴 수 없습니다.');
     const engine = getGame('cityking');
-    const verdict = engine.rollDice(room.game, seat, nowIso());
+    const verdict = engine.rollDice(room.game, seat, nowIso(), undefined,
+      body.expectedMoveCount == null ? null : Number(body.expectedMoveCount));
     if (!verdict.legal) return sendError(res, 409, 'INVALID_CITY_ROLL', engine.moveError(verdict.reason));
-    appendSystemMessage(room, `${session.label || '플레이어'}님이 주사위를 굴려 ${verdict.total}칸 이동했습니다.`);
+    appendSystemMessage(room, `${session.label || '플레이어'}님이 주사위를 굴려 ${verdict.total}칸 이동했습니다.${verdict.double && !verdict.finished ? ' 더블! 칸 처리 후 추가 굴림입니다.' : ''}`);
   }
 
   if (action === 'buy-city' || action === 'skip-city') {
@@ -1156,7 +1157,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.30', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.31', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1755,7 +1756,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.30 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.31 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

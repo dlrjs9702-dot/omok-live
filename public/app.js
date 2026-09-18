@@ -1939,7 +1939,8 @@
     const turn = Math.max(0, Number(g.turnCount) || 0);
     const limit = Number(g.turnLimit) || 50;
     const name = color => state.players?.[color]?.label || (color === 'black' ? '파랑' : '빨강');
-    cityTurnSummary.textContent = `진행 ${turn}/${limit}턴 · 남은 ${Math.max(0, limit - turn)}턴 · ${g.turn ? name(g.turn) + ' 차례' : '대국 종료'}`;
+    const extraText = g.extraRoll ? (g.phase === 'roll' ? ' · 더블 추가 굴림' : ' · 더블: 칸 처리 후 추가 굴림') : '';
+    cityTurnSummary.textContent = `전체 턴 ${turn}/${limit} 완료 · 남은 ${Math.max(0, limit - turn)}턴 · ${g.turn ? name(g.turn) + ' 차례' + extraText : '대국 종료'}`;
     cityAssets.replaceChildren();
     for (const color of ['black', 'white']) {
       const player = g.players?.[color];
@@ -1996,9 +1997,9 @@
     const owner = tile ? g.owners?.[tile.index] : null;
     cityTileOwner.textContent = tile?.type !== 'property' ? '해당 없음' : owner ? name(owner) : '미소유';
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
-    cityRollBtn.textContent = mine && g.phase === 'roll' ? '주사위 굴리기' : '굴리기 대기';
+    cityRollBtn.textContent = mine && g.phase === 'roll' ? (g.extraRoll ? '더블 · 추가 굴리기' : '주사위 굴리기') : '굴리기 대기';
     cityLastRoll.textContent = g.lastRoll
-      ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}`
+      ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}${g.lastRoll.double ? ' · 더블!' : ''}`
       : '아직 주사위를 굴리지 않았습니다';
     cityEvent.textContent = g.lastEvent || (g.status === 'selecting'
       ? '파랑과 빨강이 정해지면 파랑부터 시작합니다.'
@@ -3071,7 +3072,12 @@
   yutThrowBtn.addEventListener('click', () => roomAction('throw-yut'));
   bingoTargetSelect.addEventListener('change', () => roomAction('set-bingo-target', { targetLines: Number(bingoTargetSelect.value) }));
   bingoStartBtn.addEventListener('click', () => roomAction('start-bingo'));
-  cityRollBtn.addEventListener('click', () => roomAction('roll-city'));
+  cityRollBtn.addEventListener('click', async () => {
+    const expectedMoveCount = state?.game?.moveCount ?? 0;
+    cityRollBtn.disabled = true;
+    await roomAction('roll-city', { expectedMoveCount });
+    if (state?.gameType === 'cityking') renderCityControls();
+  });
   cityBuyBtn.addEventListener('click', () => roomAction('buy-city'));
   citySkipBtn.addEventListener('click', () => roomAction('skip-city'));
   cityBuildBtn.addEventListener('click', () => roomAction('build-city'));
