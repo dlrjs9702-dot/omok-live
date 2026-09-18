@@ -1,0 +1,64 @@
+name: Verify Game Center v1.6.30
+on:
+  push:
+    branches:
+      - feature/match-records-v1630-20260918
+permissions:
+  contents: write
+jobs:
+  verify-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/match-records-v1630-20260918
+          fetch-depth: 0
+      - name: Apply only match record patch, identity correction and result resolver
+        run: |
+          python3 .release/apply-v1630.py
+          python3 .release/admin-record-identity-v1630.py
+          python3 .release/match-outcome-v1630.py
+      - name: Syntax and patch hygiene
+        run: |
+          node --check lib/match-records.js
+          node --check lib/match-result.js
+          node --check server.js
+          node --check public/app.js
+          node --check test/match-records.test.js
+          node --check lib/release-announcements.js
+          git diff --check
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install existing dependencies
+        run: npm ci
+      - name: New match-record integration and privacy tests
+        run: node --test test/match-records.test.js
+      - name: Entire existing automated regression suite
+        run: npm test
+      - name: Release version and scope check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');const pkg=require('./package.json');const lock=require('./package-lock.json');
+          const html=fs.readFileSync('public/index.html','utf8');const server=fs.readFileSync('server.js','utf8');
+          const notices=require('./lib/release-announcements');
+          if(pkg.version!=='1.6.30'||lock.version!=='1.6.30'||lock.packages[''].version!=='1.6.30')throw Error('version mismatch');
+          for(const asset of ['app.js','styles.css','room-chat-height.js','session-lock.js'])if(!html.includes(asset+'?v=1.6.30'))throw Error('cache mismatch '+asset);
+          if(!server.includes("version: '1.6.30'"))throw Error('server version mismatch');
+          if(notices.filter(item=>item.key==='v1.6.30').length!==1)throw Error('release announcement missing or duplicated');
+          NODE
+          git diff --check
+          test "$(git diff --name-only | grep -E '^lib/games/' | wc -l)" -eq 0
+          test "$(git diff --name-only | grep -E '^lib/(access-store|announcement-store)' | wc -l)" -eq 0
+      - name: Commit verified implementation and remove temporary automation
+        run: |
+          git config user.name game-center-release-bot
+          git config user.email actions@users.noreply.github.com
+          git rm .release/apply-v1630.py .release/admin-record-identity-v1630.py .release/match-outcome-v1630.py .github/workflows/verify-v1630.yml
+          git add -A
+          git diff --cached --check
+          git commit -m 'Release v1.6.30: persistent match records and player profiles [skip ci]'
+          git push origin HEAD:feature/match-records-v1630-20260918
