@@ -37,8 +37,18 @@ jobs:
           test.write_text(text.replace(before, after), encoding='utf-8')
           PY
 
-      - name: Apply exact-context v1.6.31 patch
-        run: python3 .release/apply-cityking-v1631.py
+      - name: Apply exact-context v1.6.31 patch and preserve legacy roll requests
+        run: |
+          python3 .release/apply-cityking-v1631.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('server.js')
+          text = path.read_text(encoding='utf-8')
+          old = 'Number(body.expectedMoveCount));'
+          new = 'body.expectedMoveCount == null ? null : Number(body.expectedMoveCount));'
+          if text.count(old) != 1: raise RuntimeError('Unexpected Land King roll request handler')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
 
       - name: Syntax and whitespace checks
         run: |
@@ -79,7 +89,7 @@ jobs:
           if (notices.filter(x => x.key === 'v1.6.31').length !== 1) throw new Error('notice missing or duplicated');
           if (engine.TURN_LIMIT !== 50 || !/double/.test(String(engine.rollDice))) throw new Error('engine rules missing');
           if (html.includes('v=1.6.30') || !/app\.js\?v=1\.6\.31/.test(html) || !js.includes('더블 추가 굴림')) throw new Error('client/version missing');
-          if (!server.includes('Number(body.expectedMoveCount)')) throw new Error('replay guard missing');
+          if (!server.includes('body.expectedMoveCount == null ? null : Number(body.expectedMoveCount)')) throw new Error('replay guard or compatibility missing');
           NODE
           git diff --stat
           git diff --check
