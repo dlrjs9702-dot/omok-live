@@ -1,0 +1,95 @@
+name: Verify Game Center v1.6.31 Land King
+
+on:
+  push:
+    branches:
+      - feature/cityking-double-turn-v1631-20260918
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cityking-double-turn-v1631-20260918
+          fetch-depth: 0
+
+      - name: Prepare guarded cache tags and legacy Land King assertion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('public/index.html')
+          text = html.read_text(encoding='utf-8')
+          for asset in ('session-lock.js', 'room-chat-height.js'):
+              before = f'{asset}?v=1.6.30'
+              if text.count(before) != 1: raise RuntimeError(f'unexpected cache tag: {before}')
+              text = text.replace(before, f'{asset}?v=1.6.31')
+          html.write_text(text, encoding='utf-8')
+          test = Path('test/cityking.test.js')
+          text = test.read_text(encoding='utf-8')
+          before = "  assert.equal(game.turn, 'white');\n  assert.equal(game.pendingProperty, null);\n  assert.equal(game.owners[12], undefined);"
+          after = "  assert.equal(game.turn, 'black'); // double permits another roll after declining\n  assert.equal(game.pendingProperty, null);\n  assert.equal(game.owners[12], undefined);"
+          if text.count(before) != 1: raise RuntimeError('unexpected legacy double test')
+          test.write_text(text.replace(before, after), encoding='utf-8')
+          PY
+
+      - name: Apply exact-context v1.6.31 patch
+        run: python3 .release/apply-cityking-v1631.py
+
+      - name: Syntax and whitespace checks
+        run: |
+          node --check lib/games/cityking.js
+          node --check server.js
+          node --check public/app.js
+          node --check lib/release-announcements.js
+          node --check test/cityking.test.js
+          git diff --check
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Targeted Land King rule tests
+        run: node --test test/cityking.test.js
+
+      - name: Full existing regression suite
+        run: npm test
+
+      - name: Confirm release and change scope
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const notices = require('./lib/release-announcements');
+          const engine = require('./lib/games/cityking');
+          const html = fs.readFileSync('public/index.html','utf8');
+          const js = fs.readFileSync('public/app.js','utf8');
+          const server = fs.readFileSync('server.js','utf8');
+          if (pkg.version !== '1.6.31' || lock.version !== '1.6.31' || lock.packages[''].version !== '1.6.31') throw new Error('version mismatch');
+          if (notices.filter(x => x.key === 'v1.6.31').length !== 1) throw new Error('notice missing or duplicated');
+          if (engine.TURN_LIMIT !== 50 || !/double/.test(String(engine.rollDice))) throw new Error('engine rules missing');
+          if (html.includes('v=1.6.30') || !/app\.js\?v=1\.6\.31/.test(html) || !js.includes('더블 추가 굴림')) throw new Error('client/version missing');
+          if (!server.includes('Number(body.expectedMoveCount)')) throw new Error('replay guard missing');
+          NODE
+          git diff --stat
+          git diff --check
+
+      - name: Commit tested changes and remove staging files
+        run: |
+          git config user.name 'game-center-release-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add lib/games/cityking.js server.js public/app.js public/index.html package.json package-lock.json lib/release-announcements.js test/cityking.test.js
+          git rm .release/apply-cityking-v1631.py .github/workflows/verify-cityking-v1631.yml
+          git diff --cached --check
+          git commit -m 'Release v1.6.31: Land King doubles and completed-round turn counting'
+          git push origin HEAD:refs/heads/feature/cityking-double-turn-v1631-20260918
