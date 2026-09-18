@@ -1,6 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const baseball = require('../lib/games/baseball');
 const { getGame, hasGame, listGames } = require('../lib/games');
 
@@ -83,4 +85,19 @@ test('public state does not reveal either private secret, including after victor
   assert.equal(game.status,'selecting');
   assert.deepEqual(game.secrets,{ black:null, white:null });
   assert.equal(game.moves.length,0);
+});
+
+// The secret/guess inputs start at minlength="3" maxlength="3" in the static HTML. Raising
+// minLength past the still-3 maxLength (or lowering maxLength past a still-raised minLength)
+// throws a DOMException in real browsers, which used to abort renderRoom() mid-render for a
+// 4-digit room and silently break the SSE reconnect (game start + chat both looked frozen).
+test('client input length is always relaxed to 0 before either bound is raised, so 3<->4 never crosses', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const fn = app.match(/function renderBaseball\(\)[\s\S]*?\n  \}\n/)[0];
+  const loop = fn.match(/for \(const input of \[baseballSecretInput, baseballGuessInput\]\)[\s\S]*?\n    \}/)[0];
+  assert.match(loop, /input\.minLength = 0;/);
+  const minZero = loop.indexOf('input.minLength = 0;');
+  const maxSet = loop.indexOf('input.maxLength = digitCount;');
+  const minSet = loop.lastIndexOf('input.minLength = digitCount;');
+  assert.ok(minZero < maxSet && maxSet < minSet, 'minLength must be relaxed to 0, then maxLength, then minLength, in that order');
 });

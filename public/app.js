@@ -1809,8 +1809,11 @@
     const numberPattern = `[1-9][0-9]{${digitCount - 1}}`;
     for (const input of [baseballSecretInput, baseballGuessInput]) {
       input.pattern = numberPattern;
-      input.minLength = digitCount;
+      // minLength/maxLength must never cross during the swap, or the browser throws
+      // (e.g. raising minLength past the still-3 maxLength when a 4-digit room loads).
+      input.minLength = 0;
       input.maxLength = digitCount;
+      input.minLength = digitCount;
     }
     baseballSecretInput.placeholder = `서로 다른 숫자 ${digitCount}개`;
     baseballGuessInput.placeholder = digitCount === 3 ? '예: 123' : '예: 1234';
