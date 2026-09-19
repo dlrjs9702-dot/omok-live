@@ -12,7 +12,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // tab-bar button is the one, unambiguous close affordance.
 test('the floating chat button hides while the overlay is open, instead of colliding with the overlay\'s own controls', () => {
   const app = read('public/app.js');
-  assert.match(app, /chatFloatBtn\.classList\.toggle\('hidden', sideOverlayOpen \|\| !\(mobile \|\| collapsed\)\)/);
+  assert.match(app, /chatFloatBtn\.classList\.toggle\('hidden', pipActive \|\| sideOverlayOpen \|\| !\(mobile \|\| collapsed\)\)/);
   assert.match(app, /chatFloatBtn\.setAttribute\('aria-label', '채팅 열기'\)/);
 });
 

@@ -500,20 +500,18 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .sideSizeBtn{background:#0f172a;color:#94a3b8;border:1px solid #263246;padding:5px 8px;font-size:.68rem;font-weight:800;border-radius:8px}
 .sideSizeBtn[aria-pressed="true"]{background:#1e3a8a;color:#eff6ff;border-color:#3b82f6}
 .sideCollapseBtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;font-size:.72rem;font-weight:800;border-radius:9px}
+.pipToggleBtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;font-size:.72rem;font-weight:800;border-radius:9px}
 .pipToggleBtn[aria-pressed="true"]{background:#1e3a8a;color:#eff6ff;border-color:#3b82f6}
-#roomPipPlaceholder{max-width:520px;margin:8vh auto 0;padding:34px;text-align:center}
-#roomPipPlaceholder h2{margin:.2em 0}
-#roomPipPlaceholder .lead{margin-bottom:20px}
-/* Applied to <html> inside the PIP popup document only (see openRoomPip in app.js). The room
-   layout otherwise assumes real page width -- a side-by-side grid above 880px, the chat sidebar
-   hidden entirely below it -- neither of which fits a small floating window, so it's forced into
-   a single scrollable column instead. Lives here rather than an injected <style> tag because this
-   page's CSP (style-src 'self') silently drops inline styles. */
-html.roomPipLayout,html.roomPipLayout body{margin:0;height:100%;background:#0b1220;overflow:auto}
-html.roomPipLayout #roomView{display:block!important;height:auto}
-html.roomPipLayout .gameLayout{display:flex!important;flex-direction:column;gap:14px}
-html.roomPipLayout .side{position:static!important;display:flex!important;max-height:none!important;width:100%}
-html.roomPipLayout .sideTabTools .sideSizeGroup,html.roomPipLayout #sideCollapseBtn{display:none!important}
+/* Applied to <html> inside the PIP popup document only (see openSidePip in app.js), which holds
+   just the reparented #roomSidebar (chat/system/room-info tabs + the resign/end-game/next-round
+   actions -- the board and topbar stay on the main page). The sidebar otherwise assumes it's
+   docked next to a board (sticky positioning, a viewport-height cap, a mobile breakpoint that
+   hides it outside an in-page overlay), none of which fits a small floating window, so those are
+   overridden into a plain, fully visible column. Lives here rather than an injected <style> tag
+   because this page's CSP (style-src 'self') silently drops inline styles. */
+html.sidePipLayout,html.sidePipLayout body{margin:0;height:100%;background:#0b1220;overflow:auto}
+html.sidePipLayout .side{display:flex!important;position:static!important;max-height:none!important;width:100%;height:auto}
+html.sidePipLayout .sideTabTools .sideSizeGroup,html.sidePipLayout #sideCollapseBtn{display:none!important}
 .sidePane{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .sidePane.hidden{display:none}
 .systemMessages{flex:1 1 auto}

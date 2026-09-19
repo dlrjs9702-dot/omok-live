@@ -5,8 +5,6 @@
   const lobbyView = document.getElementById('lobbyView');
   const roomView = document.getElementById('roomView');
   const roomPipBtn = document.getElementById('roomPipBtn');
-  const roomPipPlaceholder = document.getElementById('roomPipPlaceholder');
-  const roomPipRestoreBtn = document.getElementById('roomPipRestoreBtn');
   const adminLoginForm = document.getElementById('adminLoginForm');
   const adminPassword = document.getElementById('adminPassword');
   const identityLabel = document.getElementById('identityLabel');
@@ -333,17 +331,19 @@
   let chatLastSeenId = 0;
   let lastRenderedChatIds = [];
 
-  // Room "PIP" window: reparents the whole real #roomView -- board, chat, resign/end/rematch
-  // buttons, everything, with all their already-wired logic intact, not copies -- into a Document
-  // Picture-in-Picture window, so the entire room floats above every other window. Same browser
-  // feature YouTube's video PIP uses, Chromium-only (feature-detected below). The preference
-  // persists across rooms; the window itself never does (closed on every room exit).
+  // Sidebar "PIP" window: reparents the whole real #roomSidebar -- chat, system messages, room
+  // info, AND the resign/end-game/next-round actions (all of it lives inside that one <aside>),
+  // with all their already-wired logic intact, not copies -- into a Document Picture-in-Picture
+  // window, so it floats above every other window. Same browser feature YouTube's video PIP uses,
+  // Chromium-only (feature-detected below). The board and topbar stay on the main page; only the
+  // sidebar leaves. The preference persists across rooms; the window itself never does (closed on
+  // every room exit).
   const ROOM_PIP_KEY = 'roomPipPref';
   const roomPipSupported = 'documentPictureInPicture' in window;
   let roomPipPref = false;
   try { roomPipPref = localStorage.getItem(ROOM_PIP_KEY) === '1'; } catch {}
   let roomPipWindow = null;
-  let roomViewHome = null; // { parent, next } -- where to put #roomView back on close
+  let roomSidebarHome = null; // { parent, next } -- where to put #roomSidebar back on close
 
   function roomPipActive() { return Boolean(roomPipWindow); }
 
@@ -356,39 +356,37 @@
 
   function closeRoomPip() {
     // Closing itself finishes the job via the pagehide handler registered in openRoomPip (which
-    // restores #roomView and clears roomPipWindow) -- this just asks the window to go away.
+    // restores #roomSidebar and clears roomPipWindow) -- this just asks the window to go away.
     if (roomPipWindow) { try { roomPipWindow.close(); } catch {} }
   }
 
   async function openRoomPip() {
-    if (!roomPipSupported || roomPipWindow || !roomView) return;
+    if (!roomPipSupported || roomPipWindow || !roomSidebar) return;
     try {
-      const pipWindow = await documentPictureInPicture.requestWindow({ width: 460, height: 760 });
+      const pipWindow = await documentPictureInPicture.requestWindow({ width: 400, height: 680 });
       for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
         const clone = pipWindow.document.createElement('link');
         clone.rel = 'stylesheet';
         clone.href = link.href;
         pipWindow.document.head.appendChild(clone);
       }
-      // The layout override lives in styles.css as the .roomPipLayout class, not an injected
+      // The layout override lives in styles.css as the .sidePipLayout class, not an injected
       // <style> tag here -- this page's CSP (style-src 'self') silently drops inline styles, so a
       // tag full of rules would parse into the DOM but never actually apply.
-      pipWindow.document.documentElement.classList.add('roomPipLayout');
-      pipWindow.document.title = `${state?.gameName || '게임센터'} · PIP`;
-      roomViewHome = { parent: roomView.parentElement, next: roomView.nextElementSibling };
-      roomView.classList.remove('hidden');
-      pipWindow.document.body.appendChild(roomView);
+      pipWindow.document.documentElement.classList.add('sidePipLayout');
+      pipWindow.document.title = `채팅·정보 · ${state?.gameName || '게임센터'}`;
+      roomSidebarHome = { parent: roomSidebar.parentElement, next: roomSidebar.nextElementSibling };
+      pipWindow.document.body.appendChild(roomSidebar);
       roomPipWindow = pipWindow;
-      roomPipPlaceholder?.classList.remove('hidden');
+      applySideLayout();
       pipWindow.addEventListener('pagehide', () => {
         roomPipWindow = null;
-        if (roomViewHome) {
-          const { parent, next } = roomViewHome;
-          if (next && next.parentElement === parent) parent.insertBefore(roomView, next);
-          else parent.appendChild(roomView);
-          roomViewHome = null;
+        if (roomSidebarHome) {
+          const { parent, next } = roomSidebarHome;
+          if (next && next.parentElement === parent) parent.insertBefore(roomSidebar, next);
+          else parent.appendChild(roomSidebar);
+          roomSidebarHome = null;
         }
-        roomPipPlaceholder?.classList.add('hidden');
         applySideLayout();
         updateRoomPipBtn();
       }, { once: true });
@@ -419,14 +417,19 @@
   function applySideLayout() {
     const mobile = isMobileLayout();
     const collapsed = sideShouldCollapse();
+    const pipActive = roomPipActive();
     roomSidebar.classList.toggle('overlayOpen', sideOverlayOpen);
     roomSidebar.classList.toggle('collapsedDocked', !sideOverlayOpen && !mobile && collapsed);
-    if (gameLayoutEl) gameLayoutEl.classList.toggle('sideCollapsed', !mobile && collapsed && !sideOverlayOpen);
+    // While the sidebar is popped out to PIP it's not in this document's layout at all (moved into
+    // the popup), so the board always gets the full-width "collapsed" treatment regardless of the
+    // normal collapse preference, and the floating "open chat" bubble stays hidden -- there's
+    // nothing left here for it to open, the sidebar is already a real separate window.
+    if (gameLayoutEl) gameLayoutEl.classList.toggle('sideCollapsed', pipActive || (!mobile && collapsed && !sideOverlayOpen));
     sideOverlayBackdrop.classList.toggle('hidden', !(sideOverlayOpen && mobile));
     // While the overlay is open, its own "닫기" button (below) and the backdrop tap (mobile)
     // are the way to close it -- the separate floating button is hidden so it never sits on top
     // of the overlay's own content (it used to visually collide with the chat send button).
-    chatFloatBtn.classList.toggle('hidden', sideOverlayOpen || !(mobile || collapsed));
+    chatFloatBtn.classList.toggle('hidden', pipActive || sideOverlayOpen || !(mobile || collapsed));
     chatFloatBtn.setAttribute('aria-label', '채팅 열기');
     chatFloatBtn.classList.remove('isOpen');
     sideCollapseBtn.textContent = sideOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
@@ -511,11 +514,6 @@
     roomPipPref = !roomPipActive();
     try { localStorage.setItem(ROOM_PIP_KEY, roomPipPref ? '1' : '0'); } catch {}
     if (roomPipActive()) closeRoomPip(); else openRoomPip();
-  });
-  roomPipRestoreBtn?.addEventListener('click', () => {
-    roomPipPref = false;
-    try { localStorage.setItem(ROOM_PIP_KEY, '0'); } catch {}
-    closeRoomPip();
   });
   updateRoomPipBtn();
   for (const btn of document.querySelectorAll('.sideSizeBtn')) {
