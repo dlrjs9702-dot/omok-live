@@ -1261,7 +1261,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.41', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.42', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1769,6 +1769,12 @@ async function requestHandler(req, res) {
     if (!session) return;
     const room = getCurrentRoom(session);
     if (!room) return sendError(res, 404, 'NO_ROOM', '현재 입장한 방이 없습니다.');
+    // v1.6.42: liar-game hints must stay unseen by everyone but the speaker until they're actually
+    // spoken in turn -- room chat would let players trade the word or accuse each other mid-hint,
+    // so it's locked for the duration of the hint phases only (voting/guessing/reveal are unaffected).
+    if (isLiar(room) && room.game.status === 'playing' && ['hint1', 'hint2', 'extraHint'].includes(room.game.phase)) {
+      return sendError(res, 409, 'LIAR_HINT_CHAT_LOCKED', '힌트 진행 중에는 채팅할 수 없습니다.');
+    }
     const key = 'room-chat:' + session.token.slice(0, 12);
     if (!checkRateLimit(key, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
     const body = await parseJson(req);
@@ -1879,7 +1885,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.41 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.42 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

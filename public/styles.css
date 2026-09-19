@@ -600,3 +600,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .pauseDialog::backdrop{background:#020617cc}
 .pauseDialog h2{color:#fbbf24}
 .pauseDialog p{color:#fde68a}
+
+/* v1.6.42: liar-game hint-phase chat lock notice (only shown for that one game, that one phase). */
+.chatLockNotice{flex:0 0 auto;margin:4px 0;padding:6px 10px;border-radius:9px;background:#3f2d0b;border:1px solid #b45309;color:#fde68a;font-size:.76rem;font-weight:700;text-align:center}
+.chatLockNotice.hidden{display:none}

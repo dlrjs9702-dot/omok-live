@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 const liar = require('../lib/games/liar');
 const SEATS = ['1', '2', '3'];
 
@@ -175,4 +177,20 @@ test('three rounds retain scores, reveal prior round, avoid repeated words, and 
   assert.equal(g.roundNumber, 0);
   assert.deepEqual(g.results, []);
   assert.deepEqual(g.scores, {});
+});
+
+// v1.6.42: client-side chat lock for the liar game's hint phases only -- gated on isLiarGame() so
+// no other game's chat can ever be affected, and only while phase is one of the three hint stages.
+test('room chat is disabled client-side only during the liar game hint phases', async () => {
+  const root = path.join(__dirname, '..');
+  const html = await fs.readFile(path.join(root, 'public/index.html'), 'utf8');
+  const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
+  assert.match(html, /id="chatLockNotice"/);
+  assert.match(html, /id="chatSendBtn"/);
+  assert.match(js, /function chatLockedForHints\(\) \{/);
+  assert.match(js, /isLiarGame\(\) && g\?\.status === 'playing' && \['hint1', 'hint2', 'extraHint'\]\.includes\(g\.phase\)/);
+  assert.match(js, /chatInput\.disabled = locked/);
+  assert.match(js, /chatSendBtn\.disabled = locked/);
+  assert.match(js, /chatLockNotice\.classList\.toggle\('hidden', !locked\)/);
+  assert.match(js, /if \(chatLockedForHints\(\)\) return;/);
 });

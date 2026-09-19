@@ -32,10 +32,20 @@ test('liar server keeps roles/word private and restores phase on reconnect', { t
   assert.ok(!JSON.stringify(playerViews[liarIndex].game).includes(word)); assert.ok(!JSON.stringify(views[3].game).includes(word));
   const reloaded=(await req('/api/room',tokens[liarIndex],undefined,'GET')).data.state; assert.equal(reloaded.game.phase,playerViews[liarIndex].game.phase); assert.equal(reloaded.game.phaseId,playerViews[liarIndex].game.phaseId);
   assert.equal((await req('/api/room/liar-hint',tokens[3],{hint:'관전자',expectedPhaseId:views[3].game.phaseId})).status,403);
+  // v1.6.42: room chat is locked server-side for the whole hint phase (both hint1 and hint2), so
+  // players can't trade the word or accuse each other before hints are actually spoken in turn.
+  const lockedChat=await req('/api/room/chat',tokens[0],{text:'힌트인데 채팅 시도'});
+  assert.equal(lockedChat.status,409); assert.equal(lockedChat.data.error,'LIAR_HINT_CHAT_LOCKED');
   const bySeat={}; for(let i=0;i<3;i+=1) bySeat[playerViews[i].me.seat]=tokens[i];
   let current=(await req('/api/room',tokens[0],undefined,'GET')).data.state;
-  for(let i=0;i<6;i+=1){const speaker=current.game.currentSpeaker;const r=await req('/api/room/liar-hint',bySeat[speaker],{hint:`힌트 ${i}`,expectedPhaseId:current.game.phaseId});assert.equal(r.status,200);current=r.data.state;}
+  for(let i=0;i<6;i+=1){
+    const speaker=current.game.currentSpeaker;
+    assert.equal((await req('/api/room/chat',tokens[0],{text:`힌트 ${i} 중 채팅 시도`})).status,409);
+    const r=await req('/api/room/liar-hint',bySeat[speaker],{hint:`힌트 ${i}`,expectedPhaseId:current.game.phaseId});assert.equal(r.status,200);current=r.data.state;
+  }
   assert.equal(current.game.phase,'vote');
+  // Voting isn't a hint phase, so chat is unlocked again.
+  assert.equal((await req('/api/room/chat',tokens[0],{text:'투표 중 채팅'})).status,200);
   const liarSeat=playerViews[liarIndex].me.seat; const alternative=Object.keys(bySeat).find(s=>s!==liarSeat);
   for(const s of Object.keys(bySeat)){current=(await req('/api/room',bySeat[s],undefined,'GET')).data.state;const target=s===liarSeat?alternative:liarSeat;const r=await req('/api/room/liar-vote',bySeat[s],{target,expectedPhaseId:current.game.phaseId});assert.equal(r.status,200);}
   current=(await req('/api/room',tokens[liarIndex],undefined,'GET')).data.state; assert.equal(current.game.phase,'guess'); assert.equal(current.game.canGuess,true);

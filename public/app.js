@@ -231,6 +231,8 @@
   const chatMessages = document.getElementById('chatMessages');
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+  const chatLockNotice = document.getElementById('chatLockNotice');
   const systemMessages = document.getElementById('systemMessages');
   const chatJumpBtn = document.getElementById('chatJumpBtn');
   const chatUnreadBadge = document.getElementById('chatUnreadBadge');
@@ -1870,7 +1872,20 @@
     for (const row of rows) container.appendChild(buildChatMessageEl(row));
   }
 
+  // v1.6.42: only the liar game's hint phases lock room chat (so hints stay spoken-in-turn, not
+  // traded ahead of time) -- every other game and every other liar-game phase is unaffected.
+  function chatLockedForHints() {
+    const g = state?.game;
+    return isLiarGame() && g?.status === 'playing' && ['hint1', 'hint2', 'extraHint'].includes(g.phase);
+  }
+
   function renderChat() {
+    const locked = state ? chatLockedForHints() : false;
+    chatInput.disabled = locked;
+    chatSendBtn.disabled = locked;
+    chatLockNotice.classList.toggle('hidden', !locked);
+    chatInput.placeholder = locked ? '힌트 진행 중에는 채팅할 수 없습니다' : '메시지 입력';
+
     const rows = state?.chat?.messages || [];
     const chatRows = rows.filter(row => row.type !== 'system');
     const systemRows = rows.filter(row => row.type === 'system');
@@ -3841,6 +3856,7 @@
 
   async function sendChat(event) {
     event.preventDefault();
+    if (chatLockedForHints()) return;
     const text = chatInput.value.trim();
     if (!text) return;
     chatInput.disabled = true;
