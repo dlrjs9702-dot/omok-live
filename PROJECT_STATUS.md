@@ -8,7 +8,7 @@
 - 기준 브랜치: `main`
 - 현재 릴리스: `v1.6.40`
 - 이전 운영 커밋: `12d5688` (v1.6.39)
-- 최신 반영 커밋: `(이 릴리스의 커밋 해시로 다음 세션에서 갱신)` (v1.6.40)
+- 최신 반영 커밋: `aa763b1` (v1.6.40, `claude/game-center-v1-6-32-patch-cfhw6c` 브랜치 — 아직 `main`에 병합되지 않았으므로 Render에는 배포되지 않음)
 - 배포 서버(권위 있는 실행 URL): `https://omok-live.onrender.com` — Render 서비스 `omok-live`(`srv-dakk44afngtc73ano4f0`), `main` 브랜치 커밋 시 자동 배포(`autoDeploy: commit`)
 - 참고: 과거 문서에 있던 Cloudflare Workers 프록시 주소(`silent-lake-9bcf.dlrjs9702.workers.dev`)는 이번 세션에서 재확인하지 않았다. 접속 안 되면 Render 주소를 기준으로 삼는다.
 
