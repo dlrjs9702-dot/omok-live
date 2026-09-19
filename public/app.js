@@ -193,7 +193,6 @@
   const oldmaidAbilityReveal = document.getElementById('oldmaidAbilityReveal');
   const oldmaidStatus = document.getElementById('oldmaidStatus');
   const oldmaidResult = document.getElementById('oldmaidResult');
-  const oldmaidTable = document.getElementById('oldmaidTable');
   const oldmaidSeatsEl = document.getElementById('oldmaidSeats');
   const oldmaidFlyerLayer = document.getElementById('oldmaidFlyer');
   const oldmaidMyHand = document.getElementById('oldmaidMyHand');
@@ -3174,18 +3173,11 @@
   }
 
   // Rotates the seat list so that `anchorSeat` (my own seat, or the fixed spectator anchor)
-  // always comes first -- index 0 is always placed at the bottom-center table position.
+  // always comes first in the grid.
   function oldmaidRotatedSeats(order, anchorSeat) {
     if (!order?.length) return [];
     const anchorIndex = anchorSeat && order.includes(anchorSeat) ? order.indexOf(anchorSeat) : 0;
     return order.slice(anchorIndex).concat(order.slice(0, anchorIndex));
-  }
-  // Evenly spaces `n` seats around an ellipse, starting at the bottom (180deg) and going
-  // clockwise -- this alone produces the "me at bottom, one opponent at top-center" 2-seat
-  // layout, the top+sides 3/4-seat layouts, and a regular pentagon/hexagon for 5-6 seats.
-  function oldmaidSeatPoint(angleDeg) {
-    const rad = (angleDeg * Math.PI) / 180;
-    return { left: 50 + 36 * Math.sin(rad), top: 50 - 38 * Math.cos(rad) };
   }
 
   function renderOldMaid() {
@@ -3271,12 +3263,9 @@
 
     const iAmSeated = Boolean(seat && rosterSeats.includes(seat));
     const rotated = oldmaidRotatedSeats(rosterSeats, iAmSeated ? seat : null);
-    const n = rotated.length;
-    oldmaidSeatsEl.dataset.count = String(n);
     oldmaidSeatsEl.replaceChildren();
-    rotated.forEach((number, k) => {
+    rotated.forEach((number) => {
       const isMe = iAmSeated && number === seat;
-      const { left, top } = oldmaidSeatPoint(180 + (n ? (360 / n) * k : 0));
       const count = g.counts?.[number] ?? 0;
       const isLoser = g.status === 'finished' && number === g.loser;
       const escaped = g.status !== 'selecting' && count === 0 && !isLoser;
@@ -3286,8 +3275,6 @@
         + (isMe ? ' me' : '') + (g.turn === number ? ' turn' : '') + (g.target === number ? ' target' : '')
         + (escaped ? ' escaped' : '') + (isLoser ? ' finalGlow' : '');
       seatEl.dataset.seat = number;
-      seatEl.style.left = `${left}%`;
-      seatEl.style.top = `${top}%`;
 
       const info = document.createElement('div');
       info.className = 'oldmaidSeatInfo';

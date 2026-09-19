@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.49" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.50" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -476,14 +476,13 @@
               <p id="oldmaidAbilityReveal" class="oldmaidAbilityReveal hidden"></p>
             </div>
             <p id="oldmaidResult" class="oldmaidResult hidden" aria-live="polite"></p>
-            <div id="oldmaidTable" class="oldmaidTable" aria-label="카드 테이블">
-              <div class="oldmaidFelt"></div>
-              <div id="oldmaidSeats" class="oldmaidSeats"></div>
-              <div id="oldmaidFlyer" class="oldmaidFlyer" aria-hidden="true"></div>
-            </div>
-            <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="secondary">카드 섞기</button></div>
-            <div id="oldmaidMyHand" class="oldmaidMyHandCards" aria-label="내 손패"></div>
+            <div id="oldmaidSeats" class="oldmaidSeats" aria-label="참가자"></div>
+            <div id="oldmaidFlyer" class="oldmaidFlyer" aria-hidden="true"></div>
             <h3>최근 행동</h3><div id="oldmaidHistory" class="oldmaidHistory" aria-live="polite"></div>
+            <div class="oldmaidHandDock">
+              <div class="oldmaidMyHeader"><h3>내 손패</h3><button type="button" id="oldmaidShuffleBtn" class="secondary">카드 섞기</button></div>
+              <div id="oldmaidMyHand" class="oldmaidMyHandCards" aria-label="내 손패"></div>
+            </div>
           </section>
 
           <section id="liarPanel" class="liarPanel hidden" aria-label="라이어게임">
@@ -650,7 +649,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.49"></script>
-  <script src="/app.js?v=1.6.49"></script>
+  <script src="/session-lock.js?v=1.6.50"></script>
+  <script src="/app.js?v=1.6.50"></script>
 </body>
 </html>

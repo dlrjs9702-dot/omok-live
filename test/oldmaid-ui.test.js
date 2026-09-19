@@ -52,21 +52,25 @@ test('existing shuffle, draw and start behavior is untouched', () => {
   assert.match(server, /start-oldmaid\|shuffle-oldmaid\|draw-oldmaid/);
 });
 
-// v1.6.35: the flat opponent list was replaced with a seat layout positioned around a table.
-test('seats are arranged around the table relative to my own seat, not in server roster order', () => {
+// v1.6.35 first arranged seats around a circular table; v1.6.50 replaced that with a responsive
+// grid (the circular layout reserved a large fixed-height block that pushed "내 손패" off-screen,
+// and squeezed each seat too narrow, forcing a horizontal scrollbar for a many-card hand), but
+// seats are still ordered relative to my own seat, not in raw server roster order.
+test('seats are ordered relative to my own seat in a responsive grid, not in server roster order', () => {
   const app = read('public/app.js');
+  const css = read('public/styles.css');
   assert.match(app, /function oldmaidRotatedSeats\(order, anchorSeat\)/);
-  assert.match(app, /function oldmaidSeatPoint\(angleDeg\)/);
   assert.match(app, /const rotated = oldmaidRotatedSeats\(rosterSeats, iAmSeated \? seat : null\)/);
-  assert.match(app, /oldmaidSeatPoint\(180 \+ \(n \? \(360 \/ n\) \* k : 0\)\)/);
-  // my seat is always anchored to the bottom-center angle (180deg) via the rotation, not hardcoded per player count
-  assert.doesNotMatch(app, /if \(n === 2\)/);
+  assert.match(css, /\.oldmaidSeats\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(150px,1fr\)\)/);
+  // opponent cards wrap onto more lines instead of needing a horizontal scrollbar
+  assert.match(css, /\.oldmaidSeatCards\{display:flex;flex-wrap:wrap/);
+  assert.doesNotMatch(css, /\.oldmaidSeatCards\{[^}]*overflow-x:auto/);
 });
 
 test('a player who empties their hand keeps their seat instead of being removed from the table', () => {
   const app = read('public/app.js');
   assert.match(app, /const escaped = g\.status !== 'selecting' && count === 0 && !isLoser;/);
-  assert.match(app, /rotated\.forEach\(\(number, k\) => \{/);
+  assert.match(app, /rotated\.forEach\(\(number\) => \{/);
   // escaped seats stay rendered with a badge, they are not filtered out of the seat list
   assert.doesNotMatch(app, /rotated\.filter\(/);
 });
@@ -153,11 +157,22 @@ test('an effects on/off toggle exists, persists to localStorage, and respects pr
   assert.match(app, /localStorage\.setItem\('oldmaidEffects', oldmaidEffectsOn \? 'on' : 'off'\)/);
 });
 
-test('the table CSS is scoped to Old Maid seat/table classes and does not touch other games', () => {
+test('the seat grid CSS is scoped to Old Maid seat classes and does not touch other games', () => {
   const css = read('public/styles.css');
-  assert.match(css, /\.oldmaidTable\{/);
   assert.match(css, /\.oldmaidSeats\{/);
   assert.match(css, /\.oldmaidSeat\{/);
   assert.match(css, /\.oldmaidSeat\.me\{/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{[\s\S]*?\.oldmaidFlyingCard/);
+});
+
+// v1.6.50: "내 손패" is pinned to the bottom of the viewport (position:sticky) so it's always
+// visible regardless of player count or hand sizes -- this is also the draw-flight animation's
+// destination, so pinning it fixes the animation landing off-screen too (the bug this was
+// diagnosed from: a tall opponent grid could push "내 손패" below the fold entirely).
+test('"내 손패" is pinned to the bottom of the viewport so it and the draw-flight destination are always visible', () => {
+  const html = read('public/index.html');
+  const css = read('public/styles.css');
+  const dockMarkup = html.slice(html.indexOf('class="oldmaidHandDock"'), html.indexOf('</section>', html.indexOf('class="oldmaidHandDock"')));
+  assert.match(dockMarkup, /id="oldmaidMyHand"/);
+  assert.match(css, /\.oldmaidHandDock\{position:sticky;bottom:0/);
 });
