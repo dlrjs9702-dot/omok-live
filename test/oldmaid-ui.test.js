@@ -99,7 +99,7 @@ test('draw clicks are routed through a busy-guarded handler that disables all ca
 test('the draw flight animation and pair/escape effects are purely cosmetic and never gate the real state update', () => {
   const app = read('public/app.js');
   assert.match(app, /await roomAction\('draw-oldmaid', \{ targetSeat, index, expectedRevision: g\.revision \}\);/);
-  assert.match(app, /function oldmaidFlyDrawnCard\(originRect, card\)/);
+  assert.match(app, /function oldmaidFlyDrawnCard\(originRect, card, destRect\)/);
   assert.match(app, /function oldmaidRunEffects\(g\)/);
   // effects are derived from a diff against already-applied server state (g.history / counts), not from the request itself
   assert.match(app, /if \(history\.length > oldmaidLastHistoryLen\)/);
@@ -112,7 +112,7 @@ test('the draw flyer is server-confirmed (starts only after the request resolves
   const app = read('public/app.js');
   const drawFn = app.slice(app.indexOf('async function oldmaidDrawCard'), app.indexOf('async function oldmaidUsePeek'));
   const awaitIndex = drawFn.indexOf("await roomAction('draw-oldmaid'");
-  const flyIndex = drawFn.indexOf('oldmaidFlyDrawnCard(originRect, drawnCard)');
+  const flyIndex = drawFn.indexOf('oldmaidFlyDrawnCard(originRect, drawnCard, destRect)');
   assert.ok(awaitIndex >= 0 && flyIndex >= 0 && flyIndex > awaitIndex,
     'the flight must be triggered only after the draw request has resolved, not before it');
   // v1.6.45: the drawn card's identity now comes straight from the server response, not from
@@ -121,7 +121,12 @@ test('the draw flyer is server-confirmed (starts only after the request resolves
   // never recover it and silently skipped the animation on every such pair (non-joker cards pair
   // often; the joker never does, which is why only joker draws visibly animated before this fix).
   assert.match(drawFn, /const drawnCard = data\?\.drawnOldMaidCard \|\| null;/);
-  assert.match(drawFn, /if \(originRect\?\.width && originRect\?\.height\) await oldmaidFlyDrawnCard\(originRect, drawnCard\);/);
+  // v1.6.53: lands on the real drawn card's own element (found by data-card-id), not the whole
+  // hand container -- otherwise the ghost could fly toward an empty stretch of the container while
+  // the actual new card sat elsewhere in the row, so the landing looked like it vanished into
+  // empty space instead of visibly landing among the real hand cards.
+  assert.match(drawFn, /const targetEl = oldmaidMyHand\.querySelector\(`\[data-card-id="\$\{CSS\.escape\(String\(drawnCard\.id\)\)\}"\]`\);/);
+  assert.match(drawFn, /const destRect = \(targetEl \|\| oldmaidMyHand\)\.getBoundingClientRect\(\);/);
   assert.match(app, /flyer\.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' \+ oldmaidCardFaceClass\(card\);/);
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "omok-live",
-  "version": "1.6.52",
+  "version": "1.6.53",
   "private": true,
   "description": "입장 파일 + 공용 방/채팅 + 오목/오델로 기반 실시간 보드게임 서버",
   "main": "server.js",

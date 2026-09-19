@@ -3441,9 +3441,12 @@
   // the request, since the room re-render that follows replaces that button) and shows the card
   // FACE-UP the whole flight: this element only ever exists in the drawer's own browser, so the
   // face is never sent to or visible from any other participant's screen.
-  function oldmaidFlyDrawnCard(originRect, card) {
+  // v1.6.53: lands on the real drawn-card element's own position (destRect, passed in by the
+  // caller) instead of the whole hand container's box -- aiming at the container meant the ghost
+  // could fly toward a mostly-empty stretch of it while the actual new card appeared elsewhere in
+  // the row, making the landing look like it vanished into empty space instead of into the hand.
+  function oldmaidFlyDrawnCard(originRect, card, destRect) {
     return new Promise((resolve) => {
-      const destRect = oldmaidMyHand.getBoundingClientRect();
       const flyer = document.createElement('span');
       flyer.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' + oldmaidCardFaceClass(card);
       flyer.textContent = oldmaidCardFaceText(card);
@@ -3453,8 +3456,8 @@
       flyer.style.height = `${originRect.height}px`;
       oldmaidFlyerLayer.appendChild(flyer);
       const dx = (destRect.left + destRect.width / 2) - (originRect.left + originRect.width / 2);
-      const dy = (destRect.top + Math.min(24, destRect.height / 2)) - originRect.top;
-      requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy - 16}px) scale(.92)`; });
+      const dy = (destRect.top + destRect.height / 2) - (originRect.top + originRect.height / 2);
+      requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy}px) scale(.92)`; });
       let done = false;
       const finish = () => {
         if (done) return;
@@ -3533,7 +3536,15 @@
           // local, cosmetic display -- the real state never changes) gives the fly-in a real card
           // to land next to, then the matching pair glows together and fades from that same spot.
           if (completesPair) oldmaidRenderMyHandFaces([...beforeHand, drawnCard]);
-          if (originRect?.width && originRect?.height) await oldmaidFlyDrawnCard(originRect, drawnCard);
+          if (originRect?.width && originRect?.height) {
+            // v1.6.53: land on the drawn card's own real position in the hand, not the hand
+            // container's box -- flying toward the container's center could point at a stretch of
+            // empty padding while the actual new card sat elsewhere in the row, making the ghost
+            // look like it vanished into empty space instead of landing among the real cards.
+            const targetEl = oldmaidMyHand.querySelector(`[data-card-id="${CSS.escape(String(drawnCard.id))}"]`);
+            const destRect = (targetEl || oldmaidMyHand).getBoundingClientRect();
+            await oldmaidFlyDrawnCard(originRect, drawnCard, destRect);
+          }
           if (completesPair) {
             await oldmaidGlowAndRemovePair(removedCards);
             oldmaidRenderMyHandFaces(afterHand);
