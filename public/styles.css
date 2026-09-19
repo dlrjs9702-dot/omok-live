@@ -471,11 +471,10 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
    existing draw-flyer; only the transition timing and the glow box-shadow live here. */
 .oldmaidPairFlyer{position:fixed;z-index:72;pointer-events:none;transition:transform .24s ease,opacity .24s ease}
 .oldmaidPairFlyer.glow{box-shadow:0 0 20px 7px rgba(250,204,21,.85)}
-@media(prefers-reduced-motion:reduce){
-  .oldmaidFlyingCard{transition:opacity .18s ease!important}
-  .oldmaidPairFlyer{transition:opacity .18s ease!important;transform:none!important}
-  .oldmaidPairBadge,.oldmaidSeat.pairPulse .oldmaidSeatInfo,.oldmaidCard.jokerShake,.oldmaidJokerFlash,.oldmaidSeat.escapeCelebrate .oldmaidSeatInfo,.oldmaidEscapeBanner{animation:none!important}
-}
+/* v1.6.51: no prefers-reduced-motion override here anymore -- oldmaidEffectsActive() now decides
+   this in JS from the "연출 효과" checkbox alone (see app.js), so effects are either fully on
+   (created and animated normally) or fully off (.effectsOff hides them via display:none above),
+   never a silently reduced middle state a checked checkbox wouldn't explain. */
 
 @media(max-width:680px){
   .oldmaidSeats{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}

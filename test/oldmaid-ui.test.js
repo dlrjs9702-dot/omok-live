@@ -147,13 +147,17 @@ test('the joker tension effect only reads my own private hand, never touches sha
   assert.doesNotMatch(app, /game\.joker/);
 });
 
-test('an effects on/off toggle exists, persists to localStorage, and respects prefers-reduced-motion', () => {
+// v1.6.51: previously the checkbox was silently AND-ed with the browser/OS's own
+// prefers-reduced-motion setting, so a player with that accessibility setting on could never see
+// effects even with the checkbox checked, with no indication why. A user confirmed this should be
+// an explicit in-app opt-in that overrides the system default, so the checkbox is now the sole
+// source of truth -- system reduced-motion no longer silently vetoes it.
+test('an effects on/off toggle exists, persists to localStorage, and is the sole source of truth (system reduced-motion no longer silently overrides it)', () => {
   const app = read('public/app.js');
   const html = read('public/index.html');
   assert.match(html, /id="oldmaidEffectsToggle"/);
-  assert.match(app, /function oldmaidReducedMotion\(\)/);
-  assert.match(app, /window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/);
-  assert.match(app, /function oldmaidEffectsActive\(\) \{ return oldmaidEffectsOn && !oldmaidReducedMotion\(\); \}/);
+  assert.match(app, /function oldmaidEffectsActive\(\) \{ return oldmaidEffectsOn; \}/);
+  assert.doesNotMatch(app, /oldmaidEffectsOn && !oldmaidReducedMotion\(\)/);
   assert.match(app, /localStorage\.setItem\('oldmaidEffects', oldmaidEffectsOn \? 'on' : 'off'\)/);
 });
 
@@ -162,7 +166,6 @@ test('the seat grid CSS is scoped to Old Maid seat classes and does not touch ot
   assert.match(css, /\.oldmaidSeats\{/);
   assert.match(css, /\.oldmaidSeat\{/);
   assert.match(css, /\.oldmaidSeat\.me\{/);
-  assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{[\s\S]*?\.oldmaidFlyingCard/);
 });
 
 // v1.6.50: "내 손패" is pinned to the bottom of the viewport (position:sticky) so it's always

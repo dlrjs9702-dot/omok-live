@@ -546,10 +546,12 @@
   let oldmaidSeenFinishedKey = null;
   let oldmaidKnownRound = null;
 
-  function oldmaidReducedMotion() {
-    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-  }
-  function oldmaidEffectsActive() { return oldmaidEffectsOn && !oldmaidReducedMotion(); }
+  // v1.6.51: the in-page "연출 효과" checkbox is the sole source of truth -- it used to be
+  // silently AND-ed with the browser/OS's prefers-reduced-motion setting, so a player with that
+  // accessibility setting on could never see effects even with the checkbox checked, with no
+  // indication why. Confirmed with the user: an explicit in-app opt-in should override the
+  // system default rather than be silently vetoed by it.
+  function oldmaidEffectsActive() { return oldmaidEffectsOn; }
 
   // Common dice-roll animation: reusable by any game that rolls one or more dice.
   // Each die is a static 3D CSS cube (6 fixed faces, see index.html's .diceCube markup) -- rolling
