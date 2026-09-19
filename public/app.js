@@ -470,13 +470,23 @@
     };
     if (reducedMotionActive() || !dieEls.length) { settle(false); return; }
     const start = performance.now();
-    const spin = dieEls.map(() => ({ x: 340 + Math.random() * 220, y: 280 + Math.random() * 260 }));
+    // Same hop + decaying wobble as the yut-stick toss (animateYutThrow) -- a bounce and a bit of
+    // extra tumble on top of the spin that actually determines the landing face, purely for flair;
+    // settle() below resets translateY/rotateZ to nothing, so none of this affects which face lands.
+    const spin = dieEls.map(() => ({
+      x: 340 + Math.random() * 220,
+      y: 280 + Math.random() * 260,
+      z: (Math.random() - 0.5) * 60,
+    }));
     const frame = timestamp => {
       const elapsed = timestamp - start;
       if (elapsed >= duration) { settle(true); return; }
       const t = elapsed / 1000;
+      const progress = elapsed / duration;
+      const hop = Math.sin(progress * Math.PI) * -34 * (1 - progress * 0.15);
+      const wobbleDecay = 1 - progress * 0.6;
       dieEls.forEach((el, i) => {
-        el.style.transform = `rotateX(${spin[i].x * t}deg) rotateY(${spin[i].y * t}deg)`;
+        el.style.transform = `translateY(${hop}px) rotateX(${spin[i].x * t}deg) rotateY(${spin[i].y * t}deg) rotateZ(${spin[i].z * t * wobbleDecay}deg)`;
       });
       requestAnimationFrame(frame);
     };

@@ -79,5 +79,5 @@ test('Dots and Boxes selection, canvas hit-testing and cache version are present
   assert.match(js, /function drawDotsBoard\(/);
   assert.match(js, /function dotsEdgeEndpoints\(/);
   assert.match(js, /state\.gameType === 'dots'/);
-  assert.match(html, /app\.js\?v=1\.6.38/);
+  assert.match(html, /app\.js\?v=1\.6.39/);
 });

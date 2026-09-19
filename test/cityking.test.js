@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6.38/);
+  assert.match(html, /app\.js\?v=1\.6.39/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -384,6 +384,20 @@ test('the dice-roll animation is a generic reusable function driven by prefers-r
   // Doubles get a brief shared emphasis effect.
   assert.match(app, /const isDouble = finalValues\.length > 1 && finalValues\.every\(v => v === finalValues\[0\]\);/);
   assert.match(settleBlock, /diceDouble/);
+});
+
+// v1.6.39: the dice roll now hops and wobbles like the yut-stick toss (animateYutThrow), instead
+// of only spinning in place -- purely a flight-phase flourish, since settle() above still only
+// ever sets rotateX/rotateY from DICE_CUBE_ROTATIONS, so it can't change which face lands.
+test('dice rolling now hops and wobbles like the yut-stick toss, without affecting which face lands', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  const fnBody = app.slice(app.indexOf('function animateDiceRoll'), app.indexOf('function animateYutThrow'));
+  assert.match(fnBody, /const hop = Math\.sin\(progress \* Math\.PI\) \* -34 \* \(1 - progress \* 0\.15\);/);
+  assert.match(fnBody, /const wobbleDecay = 1 - progress \* 0\.6;/);
+  assert.match(fnBody, /el\.style\.transform = `translateY\(\$\{hop\}px\) rotateX\(\$\{spin\[i\]\.x \* t\}deg\) rotateY\(\$\{spin\[i\]\.y \* t\}deg\) rotateZ\(\$\{spin\[i\]\.z \* t \* wobbleDecay\}deg\)`;/);
+  // settle() never includes translateY/rotateZ, so a fresh transform string always clears them.
+  const settleBlock = app.slice(app.indexOf('const settle = (withTransition)'), app.indexOf('const settle = (withTransition)') + 400);
+  assert.doesNotMatch(settleBlock, /translateY|rotateZ/);
 });
 
 test('Land King wires its two dice into the common animation only on a genuinely new roll', () => {
