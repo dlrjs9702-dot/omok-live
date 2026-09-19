@@ -2339,17 +2339,22 @@
     yutMoveChoices.replaceChildren();
     const moves = mine && g.phase === 'move' ? (g.legalMoves || []) : [];
     const backward = g.pendingSteps < 0;
+    // v1.6.41: distance-focused move-choice text (몇 칸 이동하는지가 핵심 정보) instead of the
+    // destination tile number, which meant little without studying the board. The actual move
+    // (piece, path, capture/backdo/finish rules) is unchanged -- only this label changed.
+    const steps = Math.abs(g.pendingSteps || 0);
     for (const move of moves) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'yutPieceChoice';
       const number = Number(String(move.pieceId).split('-').at(-1));
       const carriedNumbers = (move.carried || [move.pieceId]).map(id => Number(String(id).split('-').at(-1))).sort((a, b) => a - b);
-      const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.map(value => `${value}번`).join(' + ')} 말 · ${carriedNumbers.length}개 업기` : `${number}번 말`;
-      const target = move.destination?.status === 'finished' ? '완주'
-        : move.destination?.position === 'finishLine' ? '완주 직전 칸'
-        : `${move.destination?.position}번 칸`;
-      button.textContent = `${pieceLabel} → ${target}${backward ? ' (뒤로)' : ''}`;
+      const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.join('·')}번 말` : `${number}번 말`;
+      const moveLabel = backward ? `${steps}칸 뒤로` : `${steps}칸 이동`;
+      const statusNote = move.destination?.status === 'finished' ? ' · 완주'
+        : move.destination?.position === 'finishLine' ? ' · 완주 직전 칸'
+        : '';
+      button.textContent = `${pieceLabel} · ${moveLabel}${statusNote}`;
       button.addEventListener('click', () => roomAction('move-yut', { pieceId: move.pieceId }));
       yutMoveChoices.appendChild(button);
     }
@@ -3175,21 +3180,29 @@
       path.forEach((node, i) => { const [x,y] = yutNodePosition(node); if (i) ctx.lineTo(x,y); else ctx.moveTo(x,y); });
       ctx.stroke();
     }
+    // v1.6.41: the start/finish tile (node 0) gets a solid, high-contrast blue fill instead of the
+    // shared brown corner style, so it reads at a glance without a text label. The "지름길"/"출발 ·
+    // 완주" labels that used to float over the board's center and start corner were removed -- the
+    // path lines and this tile's distinct color already show the same information, and the finish
+    // count is already shown in the score row above the board.
     const nodes = [...new Set(paths.flat())];
     for (const node of nodes) {
       const [x,y] = yutNodePosition(node);
+      const isStart = node === 0;
       const corner = [0,5,10,15,23].includes(node);
+      if (isStart) {
+        ctx.fillStyle = '#1d4ed8';
+        ctx.beginPath(); ctx.arc(x,y,30,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fef9c3';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        continue;
+      }
       ctx.fillStyle = corner ? '#7c3f17' : '#9a5b27';
       ctx.beginPath(); ctx.arc(x,y,corner ? 25 : 18,0,Math.PI*2); ctx.fill();
       ctx.fillStyle = '#f8e7bf';
       ctx.beginPath(); ctx.arc(x,y,corner ? 15 : 10,0,Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = '#5f3518';
-    ctx.font = '900 20px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('출발 · 완주', 603, 685);
-    ctx.font = '800 17px system-ui, sans-serif';
-    ctx.fillText('지름길', 350, 388);
 
     const grouped = new Map();
     for (const color of ['black','white']) for (const piece of g.pieces?.[color] || []) {

@@ -60,7 +60,7 @@ test('stacked Yut pieces are spread sideways so every piece number remains visib
   assert.match(js, /const offsets = yutStackOffsets\(ordered\.length\)/);
   assert.match(js, /ctx\.arc\(px,y,18,0,Math\.PI\*2\)/);
   assert.match(js, /ctx\.fillText\(piece\.id\.split\('-'\)\.at\(-1\), px, y \+ 5\)/);
-  assert.match(js, /carriedNumbers\.map\(value => `\$\{value\}번`\)\.join\(' \+ '\)/);
+  assert.match(js, /carriedNumbers\.join\('·'\)/);
   const match = js.match(/  function yutStackOffsets\(count\) \{[\s\S]*?\n  \}/);
   assert.ok(match, 'yutStackOffsets helper missing');
   const vm = require('node:vm');
@@ -69,6 +69,23 @@ test('stacked Yut pieces are spread sideways so every piece number remains visib
   assert.deepEqual(Array.from(offsets(2)), [-13, 13]);
   assert.deepEqual(Array.from(offsets(3)), [-26, 0, 26]);
   assert.deepEqual(Array.from(offsets(4)), [-39, -13, 13, 39]);
+});
+
+// v1.6.41: move-choice buttons show how many spaces a piece moves instead of the destination tile
+// number, the start tile gets a solid, high-contrast blue fill instead of a text label, and the
+// floating "지름길"/"출발 · 완주" center-board labels were removed -- purely presentational, the
+// underlying move/backdo/piggyback/shortcut/finish rules are untouched (still covered above).
+test('move-choice buttons are distance-focused and the start tile is a distinct blue fill', async () => {
+  const root = path.join(__dirname, '..');
+  const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
+  assert.match(js, /const moveLabel = backward \? `\$\{steps\}칸 뒤로` : `\$\{steps\}칸 이동`/);
+  assert.match(js, /pieceLabel = carriedNumbers\.length > 1 \? `\$\{carriedNumbers\.join\('·'\)\}번 말` : `\$\{number\}번 말`/);
+  assert.match(js, /button\.textContent = `\$\{pieceLabel\} · \$\{moveLabel\}\$\{statusNote\}`/);
+  assert.doesNotMatch(js, /→ \$\{target\}/);
+  assert.match(js, /const isStart = node === 0;/);
+  assert.match(js, /ctx\.fillStyle = '#1d4ed8';\s*\n\s*ctx\.beginPath\(\); ctx\.arc\(x,y,30,0,Math\.PI\*2\); ctx\.fill\(\);/);
+  assert.doesNotMatch(js, /fillText\('지름길'/);
+  assert.doesNotMatch(js, /fillText\('출발 · 완주'/);
 });
 
 test('reaching the finish line does not finish a piece by itself; a later move does', () => {
@@ -115,7 +132,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6.40/);
+  assert.match(html, /app\.js\?v=1\.6.41/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video
