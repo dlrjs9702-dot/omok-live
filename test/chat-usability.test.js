@@ -42,10 +42,13 @@ test('the unread badge only auto-clears when the reader is actually at the botto
 // narrow phones (flex-basis applies to the main axis, which becomes height once the row flips to
 // flex-direction:column at <=520px), which is also what caused the floating chat button to
 // visually collide with the "랜드킹 시작" button on first load. min-width isn't direction-sensitive.
-test('Land King action buttons never gain an explicit height from the narrow-viewport flex-basis rule', () => {
+test('Land King action buttons never gain an explicit height from a narrow-viewport flex-basis rule', () => {
   const css = read('public/styles.css');
-  assert.doesNotMatch(css, /\.cityControls \.cityActionRow button\{flex:1 1 150px\}/);
-  assert.match(css, /\.cityControls \.cityActionRow button\{flex:1 1 auto;min-width:150px\}/);
+  // The v1.6.36 fix removed the buggy flex:1 1 150px rule; v1.6.37 moved the action row into the
+  // central board panel entirely, so neither the old buggy selector nor its narrow-width variant
+  // should reappear (min-width is direction-agnostic and doesn't have this bug).
+  assert.doesNotMatch(css, /\.cityActionRow button\{flex:1 1 150px\}/);
+  assert.doesNotMatch(css, /\.cityBuyRow button\{flex:1 1 120px\}/);
 });
 
 test('focusing the chat input nudges it into view for the mobile keyboard', () => {

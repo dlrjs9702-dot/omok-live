@@ -125,10 +125,13 @@
   const bingoLineSummary = document.getElementById('bingoLineSummary');
   const bingoBoard = document.getElementById('bingoBoard');
   const cityControls = document.getElementById('cityControls');
+  const cityActionPanel = document.getElementById('cityActionPanel');
   const cityLastRoll = document.getElementById('cityLastRoll');
   const cityStartBtn = document.getElementById('cityStartBtn');
   const cityRollBtn = document.getElementById('cityRollBtn');
   const cityLiquidateBanner = document.getElementById('cityLiquidateBanner');
+  const cityResultSummary = document.getElementById('cityResultSummary');
+  const cityTileDetailsToggle = document.getElementById('cityTileDetailsToggle');
   const cityEvent = document.getElementById('cityEvent');
   const cityPropertyOffer = document.getElementById('cityPropertyOffer');
   const cityBuyBtn = document.getElementById('cityBuyBtn');
@@ -430,37 +433,45 @@
   function oldmaidEffectsActive() { return oldmaidEffectsOn && !oldmaidReducedMotion(); }
 
   // Common dice-roll animation: reusable by any game that rolls one or more dice.
-  const DICE_FACE_CHARS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  // Each die is a static 3D CSS cube (6 fixed faces, see index.html's .diceCube markup) -- rolling
+  // never swaps face content, it only spins the cube's own transform, and settling snaps to the
+  // exact rotation that brings the server-confirmed face to the front. The face-content is fixed
+  // per element, so the number shown can never drift from what the cube's own markup says.
+  // Container rotation that brings face N to the front, derived as the inverse of that face's own
+  // placement transform in the .diceCube CSS (cf1..cf6) -- see the CSS comment next to them.
+  const DICE_CUBE_ROTATIONS = {
+    1: 'rotateX(0deg) rotateY(0deg)',
+    2: 'rotateX(0deg) rotateY(90deg)',
+    3: 'rotateX(-90deg) rotateY(0deg)',
+    4: 'rotateX(90deg) rotateY(0deg)',
+    5: 'rotateX(0deg) rotateY(-90deg)',
+    6: 'rotateX(0deg) rotateY(180deg)',
+  };
   function reducedMotionActive() {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
   }
-  function animateDiceRoll(dieEls, finalValues, { duration = 480, stepMs = 85, onDone } = {}) {
-    dieEls.forEach(el => el.classList.remove('diceRolling', 'diceSettle', 'diceDouble'));
-    const settle = () => {
-      dieEls.forEach((el, i) => { el.textContent = DICE_FACE_CHARS[finalValues[i] - 1] || '⚀'; });
-      void dieEls[0]?.offsetWidth;
-      dieEls.forEach(el => el.classList.add('diceSettle'));
-      if (finalValues.length > 1 && finalValues.every(v => v === finalValues[0])) {
-        dieEls.forEach(el => el.classList.add('diceDouble'));
-      }
+  function animateDiceRoll(dieEls, finalValues, { duration = 650, onDone } = {}) {
+    dieEls.forEach(el => { el.classList.remove('settling', 'diceDouble'); });
+    const isDouble = finalValues.length > 1 && finalValues.every(v => v === finalValues[0]);
+    const settle = (withTransition) => {
+      dieEls.forEach((el, i) => {
+        if (withTransition) el.classList.add('settling');
+        el.style.transform = DICE_CUBE_ROTATIONS[finalValues[i]] || DICE_CUBE_ROTATIONS[1];
+        if (isDouble) el.classList.add('diceDouble');
+      });
+      if (withTransition) setTimeout(() => dieEls.forEach(el => el.classList.remove('settling')), 420);
       if (onDone) onDone();
     };
-    if (reducedMotionActive() || !dieEls.length) { settle(); return; }
-    dieEls.forEach(el => el.classList.add('diceRolling'));
+    if (reducedMotionActive() || !dieEls.length) { settle(false); return; }
     const start = performance.now();
-    let lastStep = -1;
+    const spin = dieEls.map(() => ({ x: 340 + Math.random() * 220, y: 280 + Math.random() * 260 }));
     const frame = timestamp => {
       const elapsed = timestamp - start;
-      if (elapsed >= duration) {
-        dieEls.forEach(el => el.classList.remove('diceRolling'));
-        settle();
-        return;
-      }
-      const step = Math.floor(elapsed / stepMs);
-      if (step !== lastStep) {
-        lastStep = step;
-        dieEls.forEach(el => { el.textContent = DICE_FACE_CHARS[Math.floor(Math.random() * 6)]; });
-      }
+      if (elapsed >= duration) { settle(true); return; }
+      const t = elapsed / 1000;
+      dieEls.forEach((el, i) => {
+        el.style.transform = `rotateX(${spin[i].x * t}deg) rotateY(${spin[i].y * t}deg)`;
+      });
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
@@ -2046,6 +2057,7 @@
     bingoPanel.classList.toggle('hidden', !bingo);
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
+    cityActionPanel.classList.toggle('hidden', !city);
     canvasWrap.classList.toggle('cityBoard', city);
     if (city) renderCityControls();
     else {
@@ -2055,6 +2067,7 @@
       cityAnimation = null;
       if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
       cityAnimationFrame = null;
+      if (canvas.width !== 720 || canvas.height !== 720) { canvas.width = 720; canvas.height = 720; }
     }
     pictionaryPanel.classList.toggle('hidden', !pictionary);
     if (pictionary) renderPictionary();
@@ -2257,8 +2270,10 @@
       const liquidatingCash = g.players?.[g.liquidating]?.cash ?? 0;
       const shortBy = Math.max(0, debtAmount - liquidatingCash);
       cityLiquidateBanner.textContent = g.liquidating === seat
-        ? `자산 정리 단계 · ${debtAmount} 중 ${shortBy}이(가) 부족합니다. 아래 도시 목록에서 도시나 건물을 매각해 부족한 금액을 채우세요. 충분해지면 자동으로 정산됩니다.`
+        ? `자산 정리 단계 · ${debtAmount} 중 ${shortBy}이(가) 부족합니다. 아래 "도시 정보·매각 관리"에서 도시나 건물을 매각해 부족한 금액을 채우세요. 충분해지면 자동으로 정산됩니다.`
         : `자산 정리 단계 · ${name(g.liquidating)}님이 ${debtAmount} 중 ${shortBy}이(가) 부족해 자산을 매각하고 있습니다.`;
+      // My turn to sell -- open the panel automatically so the required action isn't hidden behind a click.
+      if (g.liquidating === seat) cityTileDetailsToggle.open = true;
     }
     cityAssets.replaceChildren();
     for (const color of g.seatOrder || []) {
@@ -2311,8 +2326,8 @@
         onDone: () => { cityDiceAnimating = false; },
       });
     } else if (!cityDiceAnimating) {
-      cityDieFirst.textContent = roll ? DICE_FACE_CHARS[roll.first - 1] : '⚀';
-      cityDieSecond.textContent = roll ? DICE_FACE_CHARS[roll.second - 1] : '⚀';
+      cityDieFirst.style.transform = DICE_CUBE_ROTATIONS[roll ? roll.first : 1];
+      cityDieSecond.style.transform = DICE_CUBE_ROTATIONS[roll ? roll.second : 1];
     }
     if (isNewRoll) {
       if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
@@ -2367,6 +2382,11 @@
       ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}${g.lastRoll.double ? ' · 더블!' : ''}`
       : '아직 주사위를 굴리지 않았습니다';
     const rankingText = Array.isArray(g.ranking) ? ' · 순위 ' + g.ranking.map((s, i) => `${i + 1}위 ${name(s)}`).join(', ') : '';
+    // Central, at-a-glance result banner (spec F) -- the fuller narration stays in cityEvent below.
+    const resultText = g.status === 'finished' ? `게임 종료 · ${g.winner ? `${name(g.winner)} 승리` : ''}${rankingText}`
+      : g.status === 'draw' ? '게임 종료 · 순자산 동률로 무승부입니다.' : '';
+    cityResultSummary.textContent = resultText;
+    cityResultSummary.classList.toggle('hidden', !resultText);
     cityEvent.textContent = g.status === 'finished' ? `게임이 종료되었습니다 · ${g.winner ? `${name(g.winner)} 승리` : ''}${rankingText}`
       : g.status === 'draw' ? '게임이 종료되었습니다 · 순자산 동률로 무승부입니다.'
       : g.lastEvent || (g.status === 'selecting'
@@ -3126,13 +3146,27 @@
     }
   }
 
+  // v1.6.37: the board display is 7 rows x 11 columns (was 7x7), but the 24 real game tiles,
+  // their index order and movement logic are unchanged -- only these drawing coordinates moved.
+  // Rows (left/right sides) keep the original 7-position spacing untouched. Columns (top/bottom
+  // sides) grew from 7 to 11 positions; the 5 non-corner tiles per side are spread across the
+  // now-wider row at every other column. The 4 leftover columns per side get no invented tile --
+  // drawCityBoard() paints a continuous path strip behind the whole row instead, so those gaps
+  // read as the walking path continuing rather than a break in it.
+  const CITY_CANVAS_W = 980;
+  const CITY_CANVAS_H = 720;
+  const CITY_PAD_X = 70;
+  const CITY_PAD_Y = 87;
+  const CITY_STEP_X = 84;
+  const CITY_STEP_Y = 91;
+  const CITY_TOP_COLS = [0, 1, 3, 5, 7, 9, 10];
+  const CITY_BOTTOM_COLS = [10, 9, 7, 5, 3, 1, 0];
+
   function cityCellPosition(index) {
-    const pad = 86;
-    const step = 91;
-    if (index <= 6) return [pad + index * step, pad];
-    if (index <= 12) return [pad + 6 * step, pad + (index - 6) * step];
-    if (index <= 18) return [pad + (18 - index) * step, pad + 6 * step];
-    return [pad, pad + (24 - index) * step];
+    if (index <= 6) return [CITY_PAD_X + CITY_TOP_COLS[index] * CITY_STEP_X, CITY_PAD_Y];
+    if (index <= 12) return [CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y + (index - 6) * CITY_STEP_Y];
+    if (index <= 18) return [CITY_PAD_X + CITY_BOTTOM_COLS[index - 12] * CITY_STEP_X, CITY_PAD_Y + 6 * CITY_STEP_Y];
+    return [CITY_PAD_X, CITY_PAD_Y + (24 - index) * CITY_STEP_Y];
   }
 
   function selectCityTileFromPointer(event) {
@@ -3149,36 +3183,45 @@
     }
     if (selected === null) return;
     citySelectedTileIndex = selected;
+    cityTileDetailsToggle.open = true;
     renderCityControls();
     drawCityBoard();
   }
 
   function drawCityBoard() {
     const g = state.game;
-    const bg = ctx.createLinearGradient(0, 0, 720, 720);
+    if (canvas.width !== CITY_CANVAS_W || canvas.height !== CITY_CANVAS_H) {
+      canvas.width = CITY_CANVAS_W;
+      canvas.height = CITY_CANVAS_H;
+    }
+    const bg = ctx.createLinearGradient(0, 0, CITY_CANVAS_W, CITY_CANVAS_H);
     bg.addColorStop(0, '#172554');
     bg.addColorStop(1, '#0f172a');
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 720, 720);
-    ctx.fillStyle = 'rgba(30,64,175,.22)';
-    ctx.fillRect(140, 140, 440, 440);
-    ctx.fillStyle = '#dbeafe';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '950 35px system-ui, sans-serif';
-    ctx.fillText('랜드킹', 360, 285);
-    ctx.font = '800 17px system-ui, sans-serif';
-    ctx.fillStyle = '#93c5fd';
-    ctx.fillText(`턴 ${g.turnCount || 0} / ${g.turnLimit || 50}`, 360, 326);
-    ctx.fillStyle = '#cbd5e1';
-    if (g.status === 'playing') ctx.fillText(`${seatKo(g.turn)} 차례`, 360, 365);
-    else if (g.status === 'finished') ctx.fillText(`${seatKo(g.winner)} 승리`, 360, 365);
-    else if (g.status === 'draw') ctx.fillText('무승부', 360, 365);
+    ctx.fillRect(0, 0, CITY_CANVAS_W, CITY_CANVAS_H);
+    // The interior used to carry a canvas-drawn title/turn readout; that space is now the
+    // cityActionPanel DOM overlay (see renderCityControls), so the canvas only needs a soft
+    // backdrop plate behind it for contrast.
+    ctx.fillStyle = 'rgba(15,23,42,.35)';
+    ctx.fillRect(CITY_PAD_X + CITY_STEP_X, CITY_PAD_Y + CITY_STEP_Y, 8 * CITY_STEP_X, 4 * CITY_STEP_Y);
 
     const CITY_TYPE_BG = { start: '#bbf7d0', property: '#dbeafe', event: '#fef3c7', tax: '#fee2e2', rest: '#e2e8f0' };
     const CITY_TYPE_ICON = { start: '🚩', property: '🏙️', event: '🎁', tax: '💰', rest: '☕' };
     const CITY_BUILD_ICON = ['🏠', '🏡', '🏢', '🏨'];
     const CITY_PLAYER_COLORS = { '1': '#2563eb', '2': '#ef4444', '3': '#16a34a', '4': '#9333ea' };
+    // A continuous walking-path strip along the top/bottom rows, drawn *behind* the tiles: each
+    // tile's own box covers the strip within its footprint, so only the gaps between tiles show
+    // it -- reading as one connected road through the 4 decorative filler positions per row
+    // instead of isolated blank patches.
+    ctx.strokeStyle = 'rgba(148,163,184,.4)';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(CITY_PAD_X, CITY_PAD_Y);
+    ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y);
+    ctx.moveTo(CITY_PAD_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
+    ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
+    ctx.stroke();
     for (const tile of g.tiles || []) {
       const [x, y] = cityCellPosition(tile.index);
       const owner = g.owners?.[tile.index];

@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6\.36/);
+  assert.match(html, /app\.js\?v=1\.6.37/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -375,12 +375,14 @@ test('the dice-roll animation is a generic reusable function driven by prefers-r
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
   assert.match(app, /function animateDiceRoll\(dieEls, finalValues/);
   assert.match(app, /function reducedMotionActive\(\)/);
-  assert.match(app, /if \(reducedMotionActive\(\) \|\| !dieEls\.length\) \{ settle\(\); return; \}/);
-  // The final face shown is always taken from the server-confirmed values, never a random one.
-  const settleBlock = app.slice(app.indexOf('const settle = () => {'), app.indexOf('const settle = () => {') + 400);
-  assert.match(settleBlock, /el\.textContent = DICE_FACE_CHARS\[finalValues\[i\] - 1\]/);
+  assert.match(app, /if \(reducedMotionActive\(\) \|\| !dieEls\.length\) \{ settle\(false\); return; \}/);
+  // Each die is a static 3D cube (fixed faces in the markup); settling only ever sets the cube's
+  // transform to the rotation for the server-confirmed value, never a random one, and never
+  // touches face content -- so the number shown can't drift from what the cube's own faces say.
+  const settleBlock = app.slice(app.indexOf('const settle = (withTransition)'), app.indexOf('const settle = (withTransition)') + 400);
+  assert.match(settleBlock, /el\.style\.transform = DICE_CUBE_ROTATIONS\[finalValues\[i\]\] \|\| DICE_CUBE_ROTATIONS\[1\]/);
   // Doubles get a brief shared emphasis effect.
-  assert.match(settleBlock, /finalValues\.every\(v => v === finalValues\[0\]\)/);
+  assert.match(app, /const isDouble = finalValues\.length > 1 && finalValues\.every\(v => v === finalValues\[0\]\);/);
   assert.match(settleBlock, /diceDouble/);
 });
 
@@ -391,16 +393,86 @@ test('Land King wires its two dice into the common animation only on a genuinely
   // also takes cityLastRollKey from null to a real key -- must still animate.
   assert.match(app, /const isNewRoll = Boolean\(rollKey && cityRollTrackingStarted && cityLastRollKey !== rollKey\);/);
   assert.match(app, /animateDiceRoll\(\[cityDieFirst, cityDieSecond\], \[roll\.first, roll\.second\]/);
-  // While the animation is in flight, unrelated re-renders must not stomp the rolling faces.
-  assert.match(app, /\} else if \(!cityDiceAnimating\) \{\s*\n\s*cityDieFirst\.textContent/);
+  // While the animation is in flight, unrelated re-renders must not stomp the spinning cubes.
+  assert.match(app, /\} else if \(!cityDiceAnimating\) \{\s*\n\s*cityDieFirst\.style\.transform/);
   // Leaving the Land King screen resets the tracking flag so the next room starts clean too.
   assert.match(app, /cityRollTrackingStarted = false;/);
 });
 
 test('the dice animation respects prefers-reduced-motion in CSS as well as JS', () => {
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
-  assert.match(css, /@keyframes diceShake/);
-  assert.match(css, /@keyframes diceSettle/);
   assert.match(css, /@keyframes diceDoubleGlow/);
-  assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.cityDice span\.diceRolling,\.cityDice span\.diceSettle,\.cityDice span\.diceDouble\{animation:none\}\}/);
+  assert.match(css, /\.diceCube\.settling\{transition:transform/);
+  assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.diceCube\{transition:none!important\}\.diceCube\.diceDouble \.cf\{animation:none\}\}/);
+});
+
+test('each die is a fixed 6-face 3D cube -- rolling never swaps face content, only spins the cube', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(html, /<div id="cityDieFirst" class="diceCube">/);
+  assert.match(html, /<div id="cityDieSecond" class="diceCube">/);
+  for (const face of ['cf1', 'cf2', 'cf3', 'cf4', 'cf5', 'cf6']) {
+    const count = (html.match(new RegExp(`class="cf ${face}"`, 'g')) || []).length;
+    assert.equal(count, 2, `expected both dice to have a ${face} face`);
+  }
+  // The container rotation for each value is the exact inverse of that face's own CSS placement.
+  assert.match(app, /1: 'rotateX\(0deg\) rotateY\(0deg\)'/);
+  assert.match(app, /6: 'rotateX\(0deg\) rotateY\(180deg\)'/);
+});
+
+// v1.6.37: the board is now 7 rows x 11 columns, but the 24 real tiles and their index order are
+// exactly what the engine already had -- only display coordinates moved.
+test('the 7x11 board keeps exactly the 24 real tiles at their original index order', () => {
+  assert.equal(cityking.TILES.length, 24);
+  assert.deepEqual(cityking.TILES.map(t => t.index), Array.from({ length: 24 }, (_, i) => i));
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  // Rows (7) are untouched from the original layout; only the two 11-wide columns rows changed.
+  assert.match(app, /const CITY_TOP_COLS = \[0, 1, 3, 5, 7, 9, 10\];/);
+  assert.match(app, /const CITY_BOTTOM_COLS = \[10, 9, 7, 5, 3, 1, 0\];/);
+  assert.match(app, /const CITY_CANVAS_W = 980;/);
+  assert.match(app, /const CITY_CANVAS_H = 720;/);
+  // The canvas resizes to the wider board only for Land King, and resets when leaving it.
+  assert.match(app, /canvas\.width = CITY_CANVAS_W;/);
+  assert.match(app, /if \(canvas\.width !== 720 \|\| canvas\.height !== 720\) \{ canvas\.width = 720; canvas\.height = 720; \}/);
+});
+
+// v1.6.37: every actionable Land King control now lives in the board-center panel, not scattered
+// below the board -- and nothing was duplicated in both places.
+test('roll, buy/skip, build/skip and sell controls all live inside the central board panel, not below it', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  const panelStart = html.indexOf('id="cityActionPanel"');
+  const panelEnd = html.indexOf('</div>\n            </div>\n          </div>', panelStart);
+  const panel = html.slice(panelStart, panelEnd);
+  const below = html.slice(html.indexOf('id="cityControls"'), html.indexOf('</section>', html.indexOf('id="cityControls"')));
+  for (const id of ['cityRollBtn', 'cityBuyBtn', 'citySkipBtn', 'cityBuildBtn', 'cityBuildSkipBtn', 'citySellPropertyBtn', 'citySellBuildingBtn']) {
+    assert.ok(panel.includes(`id="${id}"`), `${id} should be inside the central panel`);
+    assert.ok(!below.includes(`id="${id}"`), `${id} must not be duplicated below the board`);
+  }
+  // Only supplementary info stays below the board, per spec.
+  assert.ok(below.includes('id="cityAssets"'));
+  assert.ok(below.includes('id="cityEvent"'));
+});
+
+// v1.6.37: the tile browser/sell tool is collapsed by default (declutters the roll/buy/build
+// phases) but force-opens itself for a required liquidation sale or an explicit tile click.
+test('the tile info/sell panel is collapsible and force-opens only when actually needed', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  assert.match(html, /<details id="cityTileDetailsToggle" class="cityTileDetailsToggle">/);
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /if \(g\.liquidating === seat\) cityTileDetailsToggle\.open = true;/);
+  assert.match(app, /citySelectedTileIndex = selected;\s*\n\s*cityTileDetailsToggle\.open = true;/);
+});
+
+// v1.6.37: a wider board must not push the room chat off-screen again (the exact bug v1.6.36 fixed
+// for the old 7x7 board) -- the chat float button stays reachable even when the board scrolls.
+test('the widened board scrolls horizontally on narrow screens without hiding the chat button', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  assert.match(html, /<div id="boardScroll" class="boardScroll">/);
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.match(css, /\.boardScroll\{overflow-x:auto/);
+  assert.match(css, /@media\(max-width:640px\)\{\.canvasWrap\.cityBoard\{min-width:640px\}/);
+  // chatFloatBtn lives outside #boardScroll entirely, so it's never affected by the board's own scroll.
+  const boardScrollBlock = html.slice(html.indexOf('id="boardScroll"'), html.indexOf('id="boardScroll"') + 3000);
+  assert.ok(!boardScrollBlock.includes('id="chatFloatBtn"'));
+  assert.ok(html.includes('id="chatFloatBtn"'));
 });

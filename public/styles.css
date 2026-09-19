@@ -137,7 +137,7 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
 @media(max-width:520px){.yutControls{padding:11px}.yutThrowSummary{align-items:stretch;flex-direction:column}.yutThrowSummary button{width:100%}.yutPieceChoice{flex:1 1 calc(50% - 8px);font-size:.78rem}}
 
 /* v1.6.17: original City King board-game MVP. */
-.canvasWrap.cityBoard{background:#172554}
+.canvasWrap.cityBoard{background:#172554;aspect-ratio:980/720}
 .cityControls{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #334155;border-radius:15px;background:linear-gradient(145deg,#111c30,#0b1324)}
 .cityActionRow,.cityBuyRow{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .cityLastRoll{font-size:1.02rem;font-weight:900;color:#bfdbfe}
@@ -501,14 +501,21 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityControls{min-width:0}
 .cityOverview{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:10px 0;padding:11px 13px;border:1px solid #334155;border-radius:12px;background:#0f172a}
 .cityOverview>strong{font-size:.85rem;color:#e2e8f0;font-variant-numeric:tabular-nums}
-.cityDice{display:flex;gap:7px;font-size:1.6rem;color:#facc15;line-height:1}
-.cityDice span{display:inline-block}
-.cityDice span.diceRolling{animation:diceShake .17s linear infinite}
-.cityDice span.diceSettle{animation:diceSettle .26s ease-out}
-.cityDice span.diceDouble{animation:diceDoubleGlow .7s ease-out}
-@keyframes diceShake{0%{transform:rotate(0deg)}25%{transform:rotate(-16deg) scale(.94)}50%{transform:rotate(12deg) scale(1.06)}75%{transform:rotate(-8deg) scale(.98)}100%{transform:rotate(0deg)}}
-@keyframes diceSettle{0%{transform:scale(1.35)}60%{transform:scale(.92)}100%{transform:scale(1)}}
-@keyframes diceDoubleGlow{0%{text-shadow:0 0 0 rgba(250,204,21,0)}35%{text-shadow:0 0 14px rgba(250,204,21,.95)}100%{text-shadow:0 0 0 rgba(250,204,21,0)}}
+/* v1.6.37: 3D CSS cube dice -- each die is a fixed 6-face cube (markup in index.html); rolling
+   only spins the cube's own transform (driven per-frame from JS), it never swaps face content, so
+   the number shown is always exactly whichever face the settle rotation brings to the front. */
+.cityDice{display:flex;gap:14px;justify-content:center;perspective:280px}
+.diceCube{width:34px;height:34px;position:relative;transform-style:preserve-3d;transform:rotateX(0deg) rotateY(0deg)}
+.diceCube .cf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#fff,#dbe3ee);border-radius:7px;box-shadow:inset 0 0 0 1px rgba(15,23,42,.3),0 2px 5px rgba(0,0,0,.3);font-size:19px;line-height:1;color:#111827;backface-visibility:hidden}
+.diceCube .cf1{transform:translateZ(17px)}
+.diceCube .cf6{transform:rotateY(180deg) translateZ(17px)}
+.diceCube .cf2{transform:rotateY(-90deg) translateZ(17px)}
+.diceCube .cf5{transform:rotateY(90deg) translateZ(17px)}
+.diceCube .cf3{transform:rotateX(90deg) translateZ(17px)}
+.diceCube .cf4{transform:rotateX(-90deg) translateZ(17px)}
+.diceCube.settling{transition:transform .38s cubic-bezier(.2,.8,.3,1)}
+.diceCube.diceDouble .cf{animation:diceDoubleGlow .7s ease-out}
+@keyframes diceDoubleGlow{0%{box-shadow:inset 0 0 0 1px rgba(15,23,42,.3),0 2px 5px rgba(0,0,0,.3)}35%{box-shadow:inset 0 0 0 1px rgba(250,204,21,.9),0 0 14px rgba(250,204,21,.85)}100%{box-shadow:inset 0 0 0 1px rgba(15,23,42,.3),0 2px 5px rgba(0,0,0,.3)}}
 .cityAssets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
 .cityAssetCard{display:grid;gap:6px;min-width:0;padding:11px 13px;border:1px solid #334155;border-radius:11px;background:#0f172a}
 .cityAssetCard strong{display:flex;align-items:center;gap:6px;font-size:.86rem;overflow-wrap:anywhere}
@@ -523,6 +530,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityAssetDot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:currentColor}
 .cityAssetCard.seat1 .cityAssetDot{color:#2563eb}.cityAssetCard.seat2 .cityAssetDot{color:#ef4444}.cityAssetCard.seat3 .cityAssetDot{color:#16a34a}.cityAssetCard.seat4 .cityAssetDot{color:#9333ea}
 .cityLiquidateBanner{margin:8px 0;padding:9px 12px;border-radius:11px;background:#422006;border:1px solid #b45309;color:#fde68a;font-weight:800;font-size:.82rem}
+.cityResultSummary{margin:8px 0;padding:9px 12px;border-radius:11px;background:#052e16;border:1px solid #166534;color:#bbf7d0;font-weight:850;font-size:.85rem;text-align:center}
 .cityTileSellRow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;align-items:center}
 .cityTileSellPreview{width:100%;font-size:.72rem;color:#94a3b8;font-weight:700}
 .cityTileLabel{display:block;margin:13px 0 6px;font-size:.81rem;font-weight:850;color:#cbd5e1}
@@ -532,9 +540,31 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .cityTileDetails>strong{display:block;margin-bottom:9px;font-size:.93rem;color:#fde68a}
 .cityTileDetails dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
 .cityTileDetails dl div{display:grid;gap:3px;min-width:0}.cityTileDetails dt{font-size:.69rem;color:#94a3b8}.cityTileDetails dd{margin:0;font-size:.84rem;font-weight:850;overflow-wrap:anywhere}
-.cityControls .cityActionRow button,.cityControls .cityBuyRow button{min-height:44px}
-@media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}.cityControls .cityActionRow,.cityControls .cityBuyRow{flex-wrap:wrap}.cityControls .cityActionRow button{flex:1 1 auto;min-width:150px}.cityControls .cityBuyRow button{flex:1 1 auto;min-width:120px}}
-@media(prefers-reduced-motion:reduce){.cityDice span.diceRolling,.cityDice span.diceSettle,.cityDice span.diceDouble{animation:none}}
+.cityActionPanel button{min-height:40px}
+@media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}}
+@media(prefers-reduced-motion:reduce){.diceCube{transition:none!important}.diceCube.diceDouble .cf{animation:none}}
+
+/* v1.6.37: central board action panel -- the board's own interior (surrounded by the tile ring)
+   hosts every actionable Land King control, so players never have to look away from the board to
+   find "what to do now". Only supplementary info (player cards, event log) stays below the board. */
+.boardScroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cityActionPanel{position:absolute;left:16%;right:16%;top:25%;bottom:25%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(10,16,32,.88);border:1px solid rgba(148,163,184,.28);box-shadow:0 12px 34px rgba(0,0,0,.45);overflow-y:auto}
+.cityActionPanel .cityActionRow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center}
+.cityActionPanel .cityLastRoll{font-size:.78rem;color:#cbd5e1;width:100%;text-align:center}
+.cityActionPanel .cityOverview{margin:0;flex-direction:column;gap:6px;text-align:center}
+.cityActionPanel .cityBuyRow,.cityActionPanel .cityBuildRow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;padding:10px;border:1px solid #2563eb;border-radius:11px;background:#14274a}
+.cityActionPanel .cityBuyRow span,.cityActionPanel .cityBuildRow span{width:100%;font-size:.78rem;font-weight:800;color:#dbeafe}
+.cityActionPanel .cityTileLabel{margin:6px 0 4px;font-size:.74rem}
+.cityActionPanel .cityTileDetails{margin:4px 0 0;padding:10px 11px}
+.cityActionPanel .cityTileDetails dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* v1.6.37: the tile browser/sell tool is collapsed by default so the roll/buy/build phases stay
+   uncluttered; it force-opens itself for a required liquidation sale or a tile click (see app.js). */
+.cityTileDetailsToggle{margin-top:6px}
+.cityTileDetailsToggle summary{cursor:pointer;list-style:none;padding:8px 10px;border-radius:9px;background:#1e293b;border:1px solid #334155;font-size:.78rem;font-weight:800;color:#cbd5e1;text-align:center}
+.cityTileDetailsToggle summary::-webkit-details-marker{display:none}
+.cityTileDetailsToggle summary:before{content:'▸ ';color:#94a3b8}
+.cityTileDetailsToggle[open] summary:before{content:'▾ '}
+@media(max-width:640px){.canvasWrap.cityBoard{min-width:640px}.cityActionPanel{left:14%;right:14%;top:22%;bottom:22%;padding:8px 10px;gap:5px}.cityActionPanel .cityTileDetails dl{grid-template-columns:1fr 1fr;gap:4px}.cityActionPanel .cityTileDetails dd{font-size:.7rem}.cityActionPanel .cityTileLabel{margin:4px 0 2px}.cityTileDetailsToggle summary{padding:6px 8px;font-size:.72rem}}
 
 
 /* v1.6.29: scoped city construction and explicit logout confirmation. */

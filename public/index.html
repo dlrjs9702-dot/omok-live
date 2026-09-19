@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.36" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.37" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -311,9 +311,55 @@
             </div>
           </div>
 
-          <div id="canvasWrap" class="canvasWrap">
-            <canvas id="board" width="720" height="720" aria-label="게임판"></canvas>
-            <div id="boardOverlay" class="boardOverlay hidden"></div>
+          <div id="boardScroll" class="boardScroll">
+            <div id="canvasWrap" class="canvasWrap">
+              <canvas id="board" width="720" height="720" aria-label="게임판"></canvas>
+              <div id="boardOverlay" class="boardOverlay hidden"></div>
+              <div id="cityActionPanel" class="cityActionPanel hidden" aria-label="랜드킹 행동 패널">
+                <div class="cityActionRow">
+                  <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
+                  <button id="cityStartBtn" class="primary hidden" type="button">랜드킹 시작</button>
+                  <button id="cityRollBtn" class="primary big" type="button">주사위 굴리기</button>
+                </div>
+                <div id="cityOverview" class="cityOverview" aria-live="polite">
+                  <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
+                  <div id="cityDice" class="cityDice" aria-label="주사위 결과">
+                    <div id="cityDieFirst" class="diceCube">
+                      <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
+                      <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
+                    </div>
+                    <div id="cityDieSecond" class="diceCube">
+                      <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
+                      <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
+                    </div>
+                  </div>
+                </div>
+                <p id="cityLiquidateBanner" class="cityLiquidateBanner hidden" role="alert"></p>
+                <p id="cityResultSummary" class="cityResultSummary hidden" role="status"></p>
+                <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
+                <div class="cityBuildRow hidden" id="cityBuildRow"><span id="cityBuildOffer"></span><button id="cityBuildBtn" class="secondary" type="button">건설</button><button id="cityBuildSkipBtn" class="ghost" type="button">건설 안 함</button></div>
+                <details id="cityTileDetailsToggle" class="cityTileDetailsToggle">
+                  <summary>도시 정보·매각 관리</summary>
+                  <label class="cityTileLabel" for="cityTileSelect">도시 및 칸 정보 선택</label>
+                  <select id="cityTileSelect" class="cityTileSelect" aria-label="랜드킹 도시 선택"></select>
+                  <div id="cityTileDetails" class="cityTileDetails" aria-live="polite">
+                    <strong id="cityTileName">게임판의 도시를 선택하세요.</strong>
+                    <dl>
+                      <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
+                      <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
+                      <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
+                      <div><dt>다음 건설 비용</dt><dd id="cityTileBuildCost">-</dd></div>
+                      <div><dt>매각 가능 금액</dt><dd id="cityTileSellValue">-</dd></div>
+                    </dl>
+                    <div id="cityTileSellRow" class="cityTileSellRow hidden">
+                      <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
+                      <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
+                      <span id="cityTileSellPreview" class="cityTileSellPreview"></span>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
 
           <section id="yutControls" class="yutControls hidden" aria-label="윷놀이 조작">
@@ -344,38 +390,9 @@
             <div id="bingoBoard" class="bingoBoard" aria-live="polite"></div>
           </section>
 
-          <section id="cityControls" class="cityControls hidden" aria-label="랜드킹 조작">
-            <div class="cityActionRow">
-              <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
-              <button id="cityStartBtn" class="primary hidden" type="button">랜드킹 시작</button>
-              <button id="cityRollBtn" class="primary" type="button">주사위 굴리기</button>
-            </div>
-            <p id="cityLiquidateBanner" class="cityLiquidateBanner hidden" role="alert"></p>
-            <div id="cityOverview" class="cityOverview" aria-live="polite">
-              <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
-              <div id="cityDice" class="cityDice" aria-label="주사위 결과"><span id="cityDieFirst">⚀</span><span id="cityDieSecond">⚀</span></div>
-            </div>
+          <section id="cityControls" class="cityControls hidden" aria-label="랜드킹 현황">
             <div id="cityAssets" class="cityAssets" aria-label="플레이어별 자산 현황"></div>
-            <label class="cityTileLabel" for="cityTileSelect">도시 및 칸 정보 선택</label>
-            <select id="cityTileSelect" class="cityTileSelect" aria-label="랜드킹 도시 선택"></select>
-            <div id="cityTileDetails" class="cityTileDetails" aria-live="polite">
-              <strong id="cityTileName">게임판의 도시를 선택하세요.</strong>
-              <dl>
-                <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
-                <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
-                <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
-                <div><dt>다음 건설 비용</dt><dd id="cityTileBuildCost">-</dd></div>
-                <div><dt>매각 가능 금액</dt><dd id="cityTileSellValue">-</dd></div>
-              </dl>
-              <div id="cityTileSellRow" class="cityTileSellRow hidden">
-                <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
-                <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
-                <span id="cityTileSellPreview" class="cityTileSellPreview"></span>
-              </div>
-            </div>
             <p id="cityEvent" class="cityEvent">방장이 랜드킹을 시작하면 1번 참가자부터 진행합니다.</p>
-            <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
-            <div class="cityBuildRow hidden" id="cityBuildRow"><span id="cityBuildOffer"></span><button id="cityBuildBtn" class="secondary" type="button">건설</button><button id="cityBuildSkipBtn" class="ghost" type="button">건설 안 함</button></div>
           </section>
 
           <section id="baseballPanel" class="baseballPanel hidden" aria-label="숫자야구 경기">
@@ -571,7 +588,7 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 입장 파일을 열어야 합니다.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.36"></script>
-  <script src="/app.js?v=1.6.36"></script>
+  <script src="/session-lock.js?v=1.6.37"></script>
+  <script src="/app.js?v=1.6.37"></script>
 </body>
 </html>
