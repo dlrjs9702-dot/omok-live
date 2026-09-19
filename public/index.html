@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.45" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.46" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -577,11 +577,12 @@
                 <button type="button" class="sideSizeBtn" data-side-size="normal" title="기본" aria-pressed="true">기본</button>
                 <button type="button" class="sideSizeBtn" data-side-size="wide" title="넓게">넓게</button>
               </div>
+              <button type="button" id="chatPipBtn" class="chatPipBtn hidden" aria-pressed="false" title="채팅을 항상 위에 뜨는 창으로 보기">PIP로 보기</button>
               <button type="button" id="sideCollapseBtn" class="sideCollapseBtn" aria-label="채팅 패널 접기">접기 ▸</button>
             </div>
           </div>
 
-          <section class="sidePane" data-side-pane="chat" aria-label="방 채팅">
+          <section class="sidePane" data-side-pane="chat" id="chatSidePane" aria-label="방 채팅">
             <div id="chatMessages" class="chatMessages" aria-live="polite"></div>
             <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
             <p id="chatLockNotice" class="chatLockNotice hidden" role="status">힌트 진행 중에는 채팅할 수 없습니다.</p>
@@ -649,7 +650,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.45"></script>
-  <script src="/app.js?v=1.6.45"></script>
+  <script src="/session-lock.js?v=1.6.46"></script>
+  <script src="/app.js?v=1.6.46"></script>
 </body>
 </html>

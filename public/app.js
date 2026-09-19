@@ -251,6 +251,8 @@
   const rulesText = document.getElementById('rulesText');
   const participantList = document.getElementById('participantList');
   const chatMessages = document.getElementById('chatMessages');
+  const chatSidePane = document.getElementById('chatSidePane');
+  const chatPipBtn = document.getElementById('chatPipBtn');
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
   const chatSendBtn = document.getElementById('chatSendBtn');
@@ -330,6 +332,72 @@
   let chatLastSeenId = 0;
   let lastRenderedChatIds = [];
 
+  // Chat "PIP" window: reparents the real #chatSidePane (with its already-wired render/send logic
+  // intact) into a Document Picture-in-Picture window, so it floats above every other window --
+  // same browser feature YouTube's video PIP uses, Chromium-only (feature-detected below). The
+  // preference persists across rooms; the window itself never does (closed on every room exit).
+  const CHAT_PIP_KEY = 'roomChatPipPref';
+  const chatPipSupported = 'documentPictureInPicture' in window;
+  let chatPipPref = false;
+  try { chatPipPref = localStorage.getItem(CHAT_PIP_KEY) === '1'; } catch {}
+  let chatPipWindow = null;
+  let chatSidePaneHome = null; // { parent, next } -- where to put #chatSidePane back on close
+
+  function chatPipActive() { return Boolean(chatPipWindow); }
+
+  function updateChatPipBtn() {
+    if (!chatPipBtn) return;
+    chatPipBtn.classList.toggle('hidden', !chatPipSupported);
+    chatPipBtn.textContent = chatPipActive() ? 'PIP 닫기' : 'PIP로 보기';
+    chatPipBtn.setAttribute('aria-pressed', chatPipActive() ? 'true' : 'false');
+  }
+
+  function closeChatPip() {
+    // Closing itself finishes the job via the pagehide handler registered in openChatPip (which
+    // restores #chatSidePane and clears chatPipWindow) -- this just asks the window to go away.
+    if (chatPipWindow) { try { chatPipWindow.close(); } catch {} }
+  }
+
+  async function openChatPip() {
+    if (!chatPipSupported || chatPipWindow || !chatSidePane) return;
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({ width: 360, height: 480 });
+      for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+        const clone = pipWindow.document.createElement('link');
+        clone.rel = 'stylesheet';
+        clone.href = link.href;
+        pipWindow.document.head.appendChild(clone);
+      }
+      const style = pipWindow.document.createElement('style');
+      style.textContent = 'html,body{margin:0;height:100%;background:#0b1220}' +
+        '.sidePane{height:100%;display:flex!important;flex-direction:column}' +
+        '.chatMessages{flex:1}';
+      pipWindow.document.head.appendChild(style);
+      pipWindow.document.title = `채팅 · ${state?.gameName || '게임센터'}`;
+      chatSidePaneHome = { parent: chatSidePane.parentElement, next: chatSidePane.nextElementSibling };
+      chatSidePane.classList.remove('hidden');
+      pipWindow.document.body.appendChild(chatSidePane);
+      chatPipWindow = pipWindow;
+      pipWindow.addEventListener('pagehide', () => {
+        chatPipWindow = null;
+        if (chatSidePaneHome) {
+          const { parent, next } = chatSidePaneHome;
+          if (next && next.parentElement === parent) parent.insertBefore(chatSidePane, next);
+          else parent.appendChild(chatSidePane);
+          chatSidePaneHome = null;
+        }
+        applySideLayout();
+        updateChatPipBtn();
+      }, { once: true });
+      chatInput?.focus();
+      updateChatPipBtn();
+    } catch {
+      // Most likely: no recent click to authorize it (e.g. a silent session restore on page load).
+      // The button stays visible in its "not open yet" state so one click finishes the job.
+      chatPipWindow = null;
+    }
+  }
+
   function wideBoardGame() { return state?.gameType === 'cityking' || state?.gameType === 'oldmaid'; }
   function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
 
@@ -340,6 +408,7 @@
 
   function sideChatVisible() {
     // True when the chat pane is actually on-screen and readable right now.
+    if (chatPipActive()) return true; // floating in its own always-visible PIP window
     if (isMobileLayout()) return sideOverlayOpen && sideActiveTab === 'chat';
     if (sideOverlayOpen) return sideActiveTab === 'chat';
     return !sideShouldCollapse() && sideActiveTab === 'chat';
@@ -436,6 +505,12 @@
   });
   chatFloatBtn.addEventListener('click', () => toggleSideOverlay());
   sideOverlayBackdrop.addEventListener('click', () => toggleSideOverlay(false));
+  chatPipBtn?.addEventListener('click', () => {
+    chatPipPref = !chatPipActive();
+    try { localStorage.setItem(CHAT_PIP_KEY, chatPipPref ? '1' : '0'); } catch {}
+    if (chatPipActive()) closeChatPip(); else openChatPip();
+  });
+  updateChatPipBtn();
   for (const btn of document.querySelectorAll('.sideSizeBtn')) {
     btn.addEventListener('click', () => {
       const size = btn.dataset.sideSize;
@@ -1618,6 +1693,7 @@
 
   function enterLobby() {
     stopStream();
+    closeChatPip();
     state = null;
     lastResultEffectKey = null;
     clearResultEffect();
@@ -1652,6 +1728,10 @@
     renderRoom();
     startStream();
     if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
+    // Only actually opens when this call chain started from a real click (create/join/accept
+    // invite) -- a silent page-load reconnect has no such gesture, so this just no-ops and the
+    // chatPipBtn stays available for one manual click instead.
+    if (chatPipPref && chatPipSupported && !chatPipActive()) openChatPip();
   }
 
   function stopStream() {

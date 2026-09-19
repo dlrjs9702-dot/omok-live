@@ -500,6 +500,8 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .sideSizeBtn{background:#0f172a;color:#94a3b8;border:1px solid #263246;padding:5px 8px;font-size:.68rem;font-weight:800;border-radius:8px}
 .sideSizeBtn[aria-pressed="true"]{background:#1e3a8a;color:#eff6ff;border-color:#3b82f6}
 .sideCollapseBtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;font-size:.72rem;font-weight:800;border-radius:9px}
+.chatPipBtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;font-size:.72rem;font-weight:800;border-radius:9px}
+.chatPipBtn[aria-pressed="true"]{background:#1e3a8a;color:#eff6ff;border-color:#3b82f6}
 .sidePane{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .sidePane.hidden{display:none}
 .systemMessages{flex:1 1 auto}
