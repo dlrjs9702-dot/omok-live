@@ -155,6 +155,72 @@ test('Bingo API supports 3-player authoritative turns, duplicate protection, ref
   assert.notDeepEqual(newHostBoard, boards['1']);
 });
 
+test('Bingo resign (v1.6.49) ends the match immediately and credits every other seated player as the winner, as an array', { timeout: 30000 }, async t => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-resign-'));
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const proc = spawn(process.execPath, ['server.js'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir,
+      DATABASE_URL: '', ADMIN_PASSWORD: 'bingo-resign-secret', NODE_ENV: 'test' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  proc.stdout.on('data', chunk => output += chunk.toString());
+  proc.stderr.on('data', chunk => output += chunk.toString());
+  t.after(async () => {
+    proc.kill('SIGTERM');
+    await new Promise(resolve => { if (proc.exitCode !== null) resolve(); else { proc.once('exit', resolve); setTimeout(resolve, 2000).unref(); } });
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  let started = false;
+  for (let i = 0; i < 90; i += 1) {
+    if (proc.exitCode !== null) break;
+    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.ok(started, `test server failed to start: ${output}`);
+
+  async function req(route, token, body, method = 'POST') {
+    const headers = {};
+    if (token) headers['X-Session-Token'] = token;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(base + route, { method, headers,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    return { status: res.status, data };
+  }
+  async function login() {
+    const response = await req('/api/admin/login', null, { password: 'bingo-resign-secret' });
+    assert.equal(response.status, 200);
+    return response.data.sessionToken;
+  }
+
+  const host = await login();
+  const second = await login();
+  const third = await login();
+  const created = await req('/api/rooms', host, { gameType: 'bingo' });
+  assert.equal(created.status, 201);
+  const code = created.data.state.me.roomCode;
+  for (const token of [second, third]) assert.equal((await req('/api/rooms/join', token, { code })).status, 200);
+  assert.equal((await req('/api/room/choose-role', host, { choice: '1' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', second, { choice: '2' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', third, { choice: '3' })).status, 200);
+  assert.equal((await req('/api/room/start-bingo', host, {})).status, 200);
+
+  // Host resigns mid-game; the two remaining seated players (2 and 3) are both credited as
+  // winners -- always an array here (never collapsed to a lone scalar), matching how the other
+  // free-for-all games' own displays already expect a resign-ended winner to be shaped.
+  const resigned = await req('/api/room/resign', host, {});
+  assert.equal(resigned.status, 200);
+  assert.equal(resigned.data.state.game.status, 'finished');
+  assert.deepEqual(resigned.data.state.game.winner.sort(), ['2', '3']);
+  assert.equal(resigned.data.state.game.endReason, 'resign');
+  // The game is already finished, so a further select-bingo move is rejected.
+  assert.equal((await req('/api/room/select-bingo', second, { number: 1, expectedMoveCount: resigned.data.state.game.moveCount })).status, 409);
+});
+
 test('Bingo lobby and room UI expose the host controls, numbered seats and private board selection', async () => {
   const root = path.join(__dirname, '..');
   const [html, app, css, server] = await Promise.all([
@@ -167,7 +233,7 @@ test('Bingo lobby and room UI expose the host controls, numbered seats and priva
   assert.match(html, /id="bingoTargetSelect"/);
   assert.match(html, /id="bingoStartBtn"/);
   assert.match(html, /id="bingoBoard"/);
-  assert.match(html, /app\.js\?v=1\.6\.48/);
+  assert.match(html, /app\.js\?v=1\.6\.49/);
   assert.match(app, /function isBingoGame\(/);
   assert.match(app, /function renderBingo\(/);
   assert.match(app, /roomAction\('select-bingo'/);

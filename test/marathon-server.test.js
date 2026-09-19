@@ -184,3 +184,49 @@ test('marathon: a disconnected teammate loses as a team; the other fully-connect
   // even though team A's OTHER member (seat 1 / a) is still connected -- team-unit resolution.
   assert.equal(finished.winner, 'B');
 });
+
+test('marathon individual mode: resigning (v1.6.49) ends the match immediately and credits every other seat', { timeout: 30000 }, async t => {
+  const { req, guest, admin } = await serverFixture(t);
+  const a = await guest('마A');
+  const b = await guest('마B');
+  const c = await guest('마C');
+  assert.equal((await req('/api/rooms', a.session, { gameType: 'marathon', visibility: 'public' })).status, 201);
+  const rid = (await req('/api/rooms/public', admin, undefined, 'GET')).data.rooms[0].id;
+  for (const p of [b, c]) assert.equal((await req('/api/rooms/public/join', p.session, { roomId: rid })).status, 200);
+  for (const [p, choice] of [[a, '1'], [b, '2'], [c, '3']]) {
+    assert.equal((await req('/api/room/choose-role', p.session, { choice })).status, 200);
+  }
+  assert.equal((await req('/api/room/start-marathon', a.session, {})).status, 200);
+
+  const resigned = await req('/api/room/resign', a.session, {});
+  assert.equal(resigned.status, 200);
+  const finished = resigned.data.state.game;
+  assert.equal(finished.status, 'finished');
+  assert.equal(finished.endReason, 'resign');
+  assert.deepEqual([...finished.winner].sort(), ['2', '3']);
+});
+
+test('marathon team mode: one teammate resigning loses the whole team, matching the disconnect-team-loss rule', { timeout: 30000 }, async t => {
+  const { req, guest, admin } = await serverFixture(t);
+  const a = await guest('마A');
+  const b = await guest('마B');
+  const c = await guest('마C');
+  const d = await guest('마D');
+  assert.equal((await req('/api/rooms', a.session, { gameType: 'marathon', visibility: 'public' })).status, 201);
+  const rid = (await req('/api/rooms/public', admin, undefined, 'GET')).data.rooms[0].id;
+  for (const p of [b, c, d]) assert.equal((await req('/api/rooms/public/join', p.session, { roomId: rid })).status, 200);
+  assert.equal((await req('/api/room/set-marathon-config', a.session, { mode: 'team', teamLayout: '2v2' })).status, 200);
+  for (const [p, choice] of [[a, '1'], [b, '2'], [c, '3'], [d, '4']]) {
+    assert.equal((await req('/api/room/choose-role', p.session, { choice })).status, 200);
+  }
+  assert.equal((await req('/api/room/start-marathon', a.session, {})).status, 200);
+
+  // Seat 1 (team A) resigns -- team A loses as a whole, team B (seats 2 & 4) wins, even though
+  // seat 3 (a's teammate) never resigned or disconnected -- same team-unit rule as disconnect.
+  const resigned = await req('/api/room/resign', a.session, {});
+  assert.equal(resigned.status, 200);
+  const finished = resigned.data.state.game;
+  assert.equal(finished.status, 'finished');
+  assert.equal(finished.endReason, 'resign');
+  assert.equal(finished.winner, 'B');
+});

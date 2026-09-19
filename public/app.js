@@ -857,8 +857,14 @@
   // below and falls through to null, which is correct since it has its own win display, not the shared effect.
   function resultOutcome(game, playerSeat, gameType) {
     if (game?.status !== 'finished' || !playerSeat || !game.winner) return null;
-    if (gameType === 'bingo' || gameType === 'cityking') return String(playerSeat) === String(game.winner) ? 'win' : 'loss';
-    if (['liar', 'oldmaid'].includes(gameType) && Array.isArray(game.winner)) return game.winner.includes(String(playerSeat)) ? 'win' : 'loss';
+    // bingo/cityking naturally produce a single winning seat; pictionary/liar/oldmaid naturally
+    // produce an array (ties, or "everyone but the loser"); resigning in bingo/pictionary/liar/
+    // oldmaid can now also produce either shape depending on how many seats are left, so all five
+    // are normalized the same way here rather than assuming one fixed shape per game.
+    if (['bingo', 'cityking', 'pictionary', 'liar', 'oldmaid'].includes(gameType)) {
+      const winners = Array.isArray(game.winner) ? game.winner.map(String) : [String(game.winner)];
+      return winners.includes(String(playerSeat)) ? 'win' : 'loss';
+    }
     if (gameType === 'marathon') {
       // Self-contained like every other branch here (derives the group from playerSeat + game
       // fields only, mirroring marathon.js's own groupForSeat()) rather than relying on the
@@ -2257,7 +2263,9 @@
         : g.phase === 'roll' ? `${marathonGroupLabel(g.turnGroup, g)} 주사위 차례`
         : `${marathonGroupLabel(g.turnGroup, g)} 미션 진행 중`);
     } else if (oldmaid) {
-      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작' : g.status === 'finished' ? `${state.players[g.loser]?.label || '조커 보유자'}님 패배` : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`);
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작'
+        : g.status === 'finished' ? (g.endReason === 'resign' ? '도둑잡기 종료' : `${state.players[g.loser]?.label || '조커 보유자'}님 패배`)
+        : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`);
     } else if (liar) {
       const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
       const phases = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 투표', revote: '재투표', guess: '라이어 최종 추측', reveal: '판 결과 공개' };
@@ -2268,12 +2276,14 @@
         : g.status === 'finished' ? '그림 맞히기 종료'
         : g.phase === 'reveal' ? `${drawerLabel} 라운드 결과 공개`
         : `${drawerLabel} 그리는 중`);
-    } else if (g.status === 'selecting') statusText.textContent = isBingoGame() ? '빙고 참가자 자리 선택 · 방장 시작' : team ? '4명 자리 선택 중' : '역할 선택 중';
+    } else if (isBingoGame()) {
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '빙고 참가자 자리 선택 · 방장 시작'
+        : g.status === 'finished' ? '빙고 종료'
+        : `${seatKo(g.turn)} · ${state.players[g.turn]?.label || '플레이어'}님 숫자 선택 차례`);
+    } else if (g.status === 'selecting') statusText.textContent = team ? '4명 자리 선택 중' : '역할 선택 중';
     else if (g.status === 'setup') statusText.textContent = `비밀 숫자 ${g.digitCount || 3}자리 설정 중`;
     else if (g.status === 'playing') {
-      statusText.textContent = pauseStatusText || (isBingoGame()
-        ? `${seatKo(g.turn)} · ${state.players[g.turn]?.label || '플레이어'}님 숫자 선택 차례`
-        : team ? `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`
+      statusText.textContent = pauseStatusText || (team ? `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`
         : state.gameType === 'yut'
           ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`
           : state.gameType === 'cityking'
@@ -2284,6 +2294,8 @@
     if (g.status === 'finished' && g.endReason === 'disconnect') {
       const names = (g.disconnectedAtEnd || []).map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
       statusText.textContent += ` · ${names} 접속 끊김으로 종료`;
+    } else if (g.status === 'finished' && g.endReason === 'resign') {
+      statusText.textContent += ' · 기권으로 종료';
     }
     updatePauseDialog();
 
@@ -2309,7 +2321,7 @@
       clearResultEffect();
     }
     const canAct = Boolean(seat);
-    const canResign = !isBingoGame() && !pictionary && !liar && !oldmaid && !isMarathonGame() && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
+    const canResign = canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
     // v1.6.40: any connected, seated participant may end a paused match -- not just the host of
     // the 4-seat team game it started on -- matching the server's generalized end-game handler.
     const canEndPaused = canAct && g.status === 'playing' && g.paused;
@@ -2559,7 +2571,16 @@
       : '-';
     if (g.status === 'selecting') bingoStatus.textContent = `승리 조건 ${g.targetLines || 5}줄 · 현재 선수 ${occupied.length}명 · 2명 이상이면 방장이 시작할 수 있습니다.`;
     else if (g.status === 'playing') bingoStatus.textContent = `승리 조건 ${g.targetLines}줄 · 현재 ${seatKo(g.turn)} 차례${g.lastSelected ? ` · 직전 선택 ${g.lastSelected.number}` : ''}`;
-    else if (g.status === 'finished') bingoStatus.textContent = `${state.players[g.winner]?.label || seatKo(g.winner)} 승리 · ${g.lineCounts?.[g.winner] || 0}줄 완성`;
+    else if (g.status === 'finished') {
+      // The natural win (someone completes their target line count) always sets a lone seat;
+      // resigning (v1.6.49) credits every other seated player instead, which can be more than
+      // one -- normalized the same way here so resign doesn't hand this a shape it can't render.
+      const winners = Array.isArray(g.winner) ? g.winner : [g.winner];
+      const names = winners.map((w) => state.players[w]?.label || seatKo(w)).join(', ');
+      bingoStatus.textContent = winners.length === 1
+        ? `${names} 승리 · ${g.lineCounts?.[winners[0]] || 0}줄 완성`
+        : `${names} 승리`;
+    }
 
     bingoBoard.replaceChildren();
     const board = state.me?.myBingoBoard;
@@ -3112,9 +3133,18 @@
     liarGuessInput.disabled = !g.canGuess;
 
     const result = g.lastResult;
-    liarResult.classList.toggle('hidden', !result);
+    // A resign ends the game mid-round, before liar.js ever computes lastResult (no vote or reveal
+    // happened) -- so this box would otherwise just stay empty with no explanation.
+    const resignedFinish = g.status === 'finished' && g.endReason === 'resign' && !result;
+    liarResult.classList.toggle('hidden', !result && !resignedFinish);
     liarResult.replaceChildren();
-    if (result) {
+    if (resignedFinish) {
+      const title = document.createElement('strong');
+      title.textContent = '게임 종료 · 기권';
+      const detail = document.createElement('p');
+      detail.textContent = `최종 승자: ${(Array.isArray(g.winner) ? g.winner : [g.winner]).map((s) => state.players[s]?.label || s + '번').join(', ')}`;
+      liarResult.append(title, detail);
+    } else if (result) {
       const title = document.createElement('strong');
       title.textContent = result.winningSide === 'liar' ? '🕵️ 라이어 승리' : '👥 시민 승리';
       const detail = document.createElement('p');
@@ -3166,14 +3196,18 @@
     oldmaidStartBtn.disabled = !(isHost && active >= 2 && g.status === 'selecting');
     oldmaidShuffleBtn.disabled = !(seat && g.status === 'playing' && (g.counts?.[seat] || 0) > 0);
     const label = number => state.players[number]?.label || `${number}번`;
+    // A resign never sets g.loser (there's no joker holder to blame -- someone just quit), so it
+    // gets its own text here rather than falling into the "조커를 보유했습니다" wording below.
+    const resigned = g.status === 'finished' && g.endReason === 'resign';
+    const oldmaidWinnerNames = () => (Array.isArray(g.winner) ? g.winner : [g.winner]).map(label).join(', ');
     oldmaidStatus.textContent = g.status === 'selecting'
       ? `참가자 ${active}명 · 2~6명이 자리를 선택하면 방장이 시작합니다.`
-      : g.status === 'finished' ? `종료 · ${label(g.loser)}님이 조커를 보유했습니다.`
+      : g.status === 'finished' ? (resigned ? `종료 · 기권으로 종료 · 승자: ${oldmaidWinnerNames()}` : `종료 · ${label(g.loser)}님이 조커를 보유했습니다.`)
       : g.turn === seat ? `내 차례! ${label(g.target)}님의 카드 한 장을 뽑으세요.`
       : `${label(g.turn)}님 차례 · ${label(g.target)}님의 카드를 뽑는 중`;
     oldmaidResult.classList.toggle('hidden', g.status !== 'finished');
     oldmaidResult.textContent = g.status === 'finished'
-      ? `🃏 ${label(g.loser)}님 패배 · 나머지 참가자 승리` : '';
+      ? (resigned ? `🏳️ 기권으로 종료 · 승자: ${oldmaidWinnerNames()}` : `🃏 ${label(g.loser)}님 패배 · 나머지 참가자 승리`) : '';
     oldmaidPanel.classList.toggle('effectsOff', !oldmaidEffectsActive());
     oldmaidEffectsToggle.checked = oldmaidEffectsOn;
 

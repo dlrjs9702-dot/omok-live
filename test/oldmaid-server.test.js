@@ -118,5 +118,12 @@ test('Old Maid server protects hands, authorizes shuffles/draws and restores sta
   assert.equal(JSON.stringify(after.game).includes('"rank"'), false);
   assert.equal(after.game.history.length, 1);
   assert.equal((await req('/api/room/move', actorToken, { x: 0, y: 0 })).status, 400);
-  assert.equal((await req('/api/room/resign', actorToken, {})).status, 400);
+  // Resigning (v1.6.49) now works for oldmaid too: it ends the game immediately and credits
+  // every other seated player -- just the opponent here -- as the winner.
+  const opponentSeat = g.turn === '1' ? '2' : '1';
+  const resigned = await req('/api/room/resign', actorToken, {});
+  assert.equal(resigned.status, 200);
+  assert.equal(resigned.data.state.game.status, 'finished');
+  assert.deepEqual(resigned.data.state.game.winner, [opponentSeat]);
+  assert.equal(resigned.data.state.game.endReason, 'resign');
 });

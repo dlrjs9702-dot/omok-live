@@ -509,9 +509,20 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
    hides it outside an in-page overlay), none of which fits a small floating window, so those are
    overridden into a plain, fully visible column. Lives here rather than an injected <style> tag
    because this page's CSP (style-src 'self') silently drops inline styles. */
-html.sidePipLayout,html.sidePipLayout body{margin:0;height:100%;background:#0b1220;overflow:auto}
-html.sidePipLayout .side{display:flex!important;position:static!important;max-height:none!important;width:100%;height:auto}
+html.sidePipLayout,html.sidePipLayout body{margin:0;height:100%;background:#0b1220;overflow:hidden}
+/* height:100% (not the max-height:calc(100vh - 32px) the docked sidebar uses, and not an
+   unbounded height:auto either) makes .side fill exactly the popup's own viewport -- the same
+   fixed-height-with-overflow:hidden container the docked view already relies on for its
+   tabs/actions-stay-put-and-only-.chatMessages-scrolls behavior (that inner scrolling is already
+   built from .sidePane{flex:1 1 auto;min-height:0} and .chatMessages{overflow-y:auto} -- nothing
+   extra needed here to get it, just don't fight it with an unbounded height like the first cut
+   of this override did). */
+html.sidePipLayout .side{display:flex!important;position:static!important;width:100%;height:100%}
 html.sidePipLayout .sideTabTools .sideSizeGroup,html.sidePipLayout #sideCollapseBtn{display:none!important}
+/* The mobile breakpoint (<880px) hides .sideActions entirely in favor of the separate
+   .mobileActions bar near the board -- but the popup has no board, so without this override
+   기권하기/다음 판 준비/중단된 대국 종료 would silently vanish inside a compact PIP window. */
+html.sidePipLayout .sideActions{display:grid!important}
 .sidePane{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 .sidePane.hidden{display:none}
 .systemMessages{flex:1 1 auto}

@@ -50,5 +50,7 @@ test('liar server keeps roles/word private and restores phase on reconnect', { t
   for(const s of Object.keys(bySeat)){current=(await req('/api/room',bySeat[s],undefined,'GET')).data.state;const target=s===liarSeat?alternative:liarSeat;const r=await req('/api/room/liar-vote',bySeat[s],{target,expectedPhaseId:current.game.phaseId});assert.equal(r.status,200);}
   current=(await req('/api/room',tokens[liarIndex],undefined,'GET')).data.state; assert.equal(current.game.phase,'guess'); assert.equal(current.game.canGuess,true);
   const guessed=await req('/api/room/liar-guess',tokens[liarIndex],{guess:word,expectedPhaseId:current.game.phaseId}); assert.equal(guessed.status,200); assert.equal(guessed.data.state.game.status,'finished'); assert.equal(guessed.data.state.game.lastResult.winningSide,'liar');
-  assert.equal((await req('/api/room/resign',tokens[0],{})).status,400); assert.equal((await req('/api/room/move',tokens[0],{x:0,y:0})).status,400);
+  // The round is already finished (liar guessed correctly above), so resigning now (v1.6.49 lets
+  // liar resign mid-round) is rejected for being on a non-playing game, not as unsupported.
+  assert.equal((await req('/api/room/resign',tokens[0],{})).status,409); assert.equal((await req('/api/room/move',tokens[0],{x:0,y:0})).status,400);
 });

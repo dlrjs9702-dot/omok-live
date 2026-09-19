@@ -1271,15 +1271,32 @@ async function handleRoomAction(req, res, action, session) {
   }
 
   if (action === 'resign') {
-    if (isBingo(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '빙고에서는 기권 기능을 사용하지 않습니다.');
-    if (isPictionary(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '그림 맞히기에서는 기권 기능을 사용하지 않습니다.');
-    if (isLiar(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '라이어게임에서는 기권 기능을 사용하지 않습니다.');
-    if (isOldMaid(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '도둑잡기에서는 기권 기능을 사용하지 않습니다.');
-    if (isMarathon(room)) return sendError(res, 400, 'UNSUPPORTED_ACTION', '마라톤에서는 기권 기능을 사용하지 않습니다.');
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
-    room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
+    // Bingo/pictionary/liar/oldmaid/marathon are free-for-all games with no black/white side for a
+    // resign to flip. Ending immediately and crediting every other seated player as the winner
+    // mirrors exactly what already happens when a required player disconnects and someone calls
+    // end-game -- just self-triggered instead of waiting on someone else to notice and act.
+    // Marathon's team modes share one piece per team, so the whole team loses together here too,
+    // matching the same rule already used for a disconnected teammate (confirmed by the user) --
+    // including collapsing to a lone scalar group id when exactly one team remains, since
+    // marathon's own natural win condition (game.winner = group) and its disconnect/end-game path
+    // both always hand the client a single group id in that case, never a 1-item array.
+    // Bingo/pictionary/liar/oldmaid stay an array (never collapsed to a lone scalar the way
+    // end-game's disconnect path does for them): pictionary/liar/oldmaid's own result displays
+    // already only ever expect an array (their natural win conditions never produce a scalar), so
+    // resign matches that rather than handing them a shape they don't render.
+    if (isMarathon(room) && room.game.mode === 'team') {
+      const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
+      room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
+      room.game.endReason = 'resign';
+    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room)) {
+      room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
+      room.game.endReason = 'resign';
+    } else {
+      room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
+    }
     room.game.winningLine = null;
     room.game.paused = false;
     room.game.disconnectedSeats = [];
@@ -1350,7 +1367,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.48', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.49', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1975,7 +1992,7 @@ async function main() {
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.48 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.49 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

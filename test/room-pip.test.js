@@ -91,3 +91,25 @@ test('the chat pane counts as visible for unread-badge purposes while the sideba
   const fn = app.slice(app.indexOf('function sideChatVisible()'), app.indexOf('function applySideLayout()'));
   assert.match(fn, /if \(roomPipActive\(\)\) return true;/);
 });
+
+// Bug reported after v1.6.48 shipped: the popup's own narrow requested width (400px) falls under
+// the site's <880px mobile breakpoint, which hides .sideActions entirely (mobile relies on a
+// separate .mobileActions bar near the board instead, which the sidebar-only popup doesn't have) --
+// so 기권하기/다음 판 준비/중단된 대국 종료 silently vanished inside the popup. Fixed by forcing it visible.
+test('the resign/end-game/next-round action row stays visible inside the PIP popup despite its narrow width', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /html\.sidePipLayout \.sideActions\{display:grid!important\}/);
+});
+
+// Requested follow-up: inside the popup, the tab bar/close button (top) and chat input (bottom)
+// should stay fixed while only the middle message list scrolls -- the same behavior the docked
+// sidebar already has via .side{overflow:hidden} + .sidePane{flex:1 1 auto;min-height:0} +
+// .chatMessages{overflow-y:auto}. That only works if .side itself has a bounded height; an earlier
+// cut of this override set height:auto (unbounded), which broke it into a whole-popup-page scroll.
+test('the PIP popup keeps .side height-bounded so only the chat message list scrolls, not the whole popup', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /html\.sidePipLayout \.side\{display:flex!important;position:static!important;width:100%;height:100%\}/);
+  assert.doesNotMatch(css, /html\.sidePipLayout \.side\{[^}]*height:auto/);
+  assert.doesNotMatch(css, /html\.sidePipLayout \.side\{[^}]*max-height:none/);
+  assert.match(css, /html\.sidePipLayout,html\.sidePipLayout body\{margin:0;height:100%;background:#0b1220;overflow:hidden\}/);
+});

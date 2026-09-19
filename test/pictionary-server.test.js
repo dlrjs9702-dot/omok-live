@@ -135,7 +135,12 @@ test('Pictionary API isolates the secret word, gates drawing to the drawer, scor
   // Duplicate correct guesses are rejected.
   assert.equal((await req('/api/room/pictionary-guess', guesserToken, { guess: secretWord })).status, 409);
 
-  // Resign and board moves are explicitly unsupported for this game.
-  assert.equal((await req('/api/room/resign', guesserToken, {})).status, 400);
+  // Board moves stay unsupported, but resigning (v1.6.49) now works: it ends the game immediately
+  // and credits every other seated player -- just the drawer here -- as the winner.
+  const resigned = await req('/api/room/resign', guesserToken, {});
+  assert.equal(resigned.status, 200);
+  assert.equal(resigned.data.state.game.status, 'finished');
+  assert.deepEqual(resigned.data.state.game.winner, [drawerSeat]);
+  assert.equal(resigned.data.state.game.endReason, 'resign');
   assert.equal((await req('/api/room/move', guesserToken, { x: 0, y: 0 })).status, 400);
 });
