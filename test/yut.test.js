@@ -115,5 +115,57 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6.37/);
+  assert.match(html, /app\.js\?v=1\.6.38/);
+});
+
+// v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video
+// production tooling is available in this environment) -- 4 sticks tumble in the board center and
+// settle on the server-confirmed backs-up pattern. Engine rules are completely untouched.
+test('the yut-throw animation is a reusable function, reconnect-safe, and duplicate-throw safe', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /function animateYutThrow\(stickEls, backFlags/);
+  assert.match(app, /if \(reducedMotionActive\(\) \|\| !stickEls\.length\) \{ settle\(false\); return; \}/);
+  // Face content is fixed per stick element (see index.html); settling only ever rotates to 0deg
+  // (front/flat) or 180deg (back/round) for the server-confirmed count, never touching content.
+  const settleBlock = app.slice(app.indexOf("function animateYutThrow"), app.indexOf("function animateYutThrow") + 700);
+  assert.match(settleBlock, /rotateY\(\$\{backFlags\[i\] \? 180 : 0\}deg\)/);
+  // Same reconnect-safe key-diff guard used for Land King's dice/token animations -- a throw
+  // inherited on first render (reconnect) must not replay, but a fresh game's own first throw must.
+  assert.match(app, /const isNewThrow = Boolean\(throwKey && yutThrowTrackingStarted && yutLastThrowKey !== throwKey\);/);
+  assert.match(app, /animateYutThrow\(yutSticks, flags,/);
+  // Duplicate-throw prevention: disabled the instant the button is clicked (before the request
+  // resolves), and again while the animation itself is still in flight.
+  assert.match(app, /yutThrowBtn\.disabled = true;\s*\n\s*await roomAction\('throw-yut'\);/);
+  assert.match(app, /yutThrowBtn\.disabled = !\(mine && g\.phase === 'throw'\) \|\| yutThrowAnimating;/);
+});
+
+test('the yut-throw animation only ever displays the server-confirmed backs count, never invents one', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  // The count of true flags always equals g.lastThrow.backs -- only which specific stick shows
+  // which face is shuffled client-side for visual variety, since the engine never reports that.
+  assert.match(app, /const backs = Math\.max\(0, Math\.min\(4, Number\(g\.lastThrow\.backs\) \|\| 0\)\);/);
+  assert.match(app, /const flags = \[true, true, true, true\]\.map\(\(_, i\) => i < backs\);/);
+  // 빽도 and 도 are visually identical to this engine (both a single back-up stick); mark it so the
+  // player has a visual anchor, but only as decoration -- it changes no logic.
+  assert.match(app, /g\.lastThrow\.name === '빽도' && flags\[i\]/);
+});
+
+test('the yut-throw stage lives inside the shared board canvas wrap (center of the board)', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  const wrapStart = html.indexOf('id="canvasWrap"');
+  const wrapEnd = html.indexOf('id="cityActionPanel"', wrapStart);
+  const wrapBlock = html.slice(wrapStart, wrapEnd);
+  assert.match(wrapBlock, /<div id="yutThrowStage" class="yutThrowStage hidden"/);
+  for (const n of [1, 2, 3, 4]) {
+    assert.match(wrapBlock, new RegExp(`<div id="yutStick${n}" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>`));
+  }
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.match(css, /\.yutThrowStage\{position:absolute;inset:0;[^}]*pointer-events:none\}/);
+  assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.yutStick\{transition:none!important\}\}/);
+});
+
+test('leaving the Yut Nori screen resets the throw-tracking state and hides the stage', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /yutLastThrowKey = null;\s*\n\s*yutThrowTrackingStarted = false;\s*\n\s*yutThrowAnimating = false;/);
+  assert.match(app, /yutThrowStage\.classList\.add\('hidden'\);/);
 });

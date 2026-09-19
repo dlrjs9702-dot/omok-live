@@ -117,6 +117,8 @@
   const yutThrowBtn = document.getElementById('yutThrowBtn');
   const yutHint = document.getElementById('yutHint');
   const yutMoveChoices = document.getElementById('yutMoveChoices');
+  const yutThrowStage = document.getElementById('yutThrowStage');
+  const yutSticks = [1, 2, 3, 4].map(n => document.getElementById(`yutStick${n}`));
   const bingoPanel = document.getElementById('bingoPanel');
   const bingoTargetSelect = document.getElementById('bingoTargetSelect');
   const bingoStartBtn = document.getElementById('bingoStartBtn');
@@ -257,6 +259,10 @@
   let cityAnimation = null;
   let cityAnimationFrame = null;
   let cityDiceAnimating = false;
+  let yutLastThrowKey = null;
+  let yutThrowTrackingStarted = false;
+  let yutThrowAnimating = false;
+  let yutStageHideTimer = null;
   let state = null;
   let seat = null;
   let isHost = false;
@@ -471,6 +477,42 @@
       const t = elapsed / 1000;
       dieEls.forEach((el, i) => {
         el.style.transform = `rotateX(${spin[i].x * t}deg) rotateY(${spin[i].y * t}deg)`;
+      });
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  // Common yut-stick throw animation: 4 sticks (fixed front/flat + back/round faces, see
+  // index.html's .yutStick markup) toss and tumble in the board center, then settle with each
+  // stick's rotateY snapped to 0 (front up) or 180deg (back up) to match the server's confirmed
+  // "backs" pattern -- face content never changes, so it can't drift from the real result.
+  function animateYutThrow(stickEls, backFlags, { duration = 780, onDone } = {}) {
+    stickEls.forEach(el => el.classList.remove('settling'));
+    const settle = (withTransition) => {
+      stickEls.forEach((el, i) => {
+        if (withTransition) el.classList.add('settling');
+        el.style.transform = `translateY(0) rotateX(0deg) rotateZ(0deg) rotateY(${backFlags[i] ? 180 : 0}deg)`;
+      });
+      if (withTransition) setTimeout(() => stickEls.forEach(el => el.classList.remove('settling')), 480);
+      if (onDone) onDone();
+    };
+    if (reducedMotionActive() || !stickEls.length) { settle(false); return; }
+    const start = performance.now();
+    const spin = stickEls.map(() => ({
+      y: 420 + Math.random() * 360,
+      x: (Math.random() - 0.5) * 90,
+      z: (Math.random() - 0.5) * 70,
+    }));
+    const frame = timestamp => {
+      const elapsed = timestamp - start;
+      if (elapsed >= duration) { settle(true); return; }
+      const t = elapsed / 1000;
+      const progress = elapsed / duration;
+      const hop = Math.sin(progress * Math.PI) * -46 * (1 - progress * 0.15);
+      const wobbleDecay = 1 - progress * 0.6;
+      stickEls.forEach((el, i) => {
+        el.style.transform = `translateY(${hop}px) rotateX(${spin[i].x * t * wobbleDecay}deg) rotateZ(${spin[i].z * t * wobbleDecay}deg) rotateY(${spin[i].y * t}deg)`;
       });
       requestAnimationFrame(frame);
     };
@@ -2054,6 +2096,14 @@
     baseballPanel.classList.toggle('resultLossPanel', baseball && outcome === 'loss');
     yutControls.classList.toggle('hidden', !yut);
     if (yut) renderYut();
+    else {
+      yutLastThrowKey = null;
+      yutThrowTrackingStarted = false;
+      yutThrowAnimating = false;
+      if (yutStageHideTimer !== null) clearTimeout(yutStageHideTimer);
+      yutStageHideTimer = null;
+      yutThrowStage.classList.add('hidden');
+    }
     bingoPanel.classList.toggle('hidden', !bingo);
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
@@ -2170,11 +2220,38 @@
   function renderYut() {
     const g = state.game;
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
-    yutThrowBtn.disabled = !(mine && g.phase === 'throw');
+    yutThrowBtn.disabled = !(mine && g.phase === 'throw') || yutThrowAnimating;
     yutThrowBtn.textContent = mine && g.phase === 'throw' ? '윷 던지기' : '던지기 대기';
     yutLastThrow.textContent = g.lastThrow
       ? `최근 결과: ${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}`
       : '아직 던진 윷이 없습니다';
+    const throwKey = g.lastThrow ? `${g.lastThrow.at}:${g.lastThrow.color}:${g.lastThrow.backs}:${g.lastThrow.name}` : null;
+    // Same reconnect-safe pattern as Land King's dice: yutThrowTrackingStarted (not a null check on
+    // the key alone) tells a genuinely new throw apart from a stale one inherited on first render.
+    const isNewThrow = Boolean(throwKey && yutThrowTrackingStarted && yutLastThrowKey !== throwKey);
+    if (isNewThrow) {
+      const backs = Math.max(0, Math.min(4, Number(g.lastThrow.backs) || 0));
+      // Only the count of backs-up sticks is server-confirmed; which specific stick shows which
+      // face is purely cosmetic, so shuffle it for visual variety each throw.
+      const flags = [true, true, true, true].map((_, i) => i < backs);
+      for (let i = flags.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [flags[i], flags[j]] = [flags[j], flags[i]];
+      }
+      yutSticks.forEach((el, i) => el.classList.toggle('backdoMark', g.lastThrow.name === '빽도' && flags[i]));
+      if (yutStageHideTimer !== null) clearTimeout(yutStageHideTimer);
+      yutThrowStage.classList.remove('hidden');
+      yutThrowAnimating = true;
+      animateYutThrow(yutSticks, flags, {
+        onDone: () => {
+          yutThrowAnimating = false;
+          renderYut();
+          yutStageHideTimer = setTimeout(() => yutThrowStage.classList.add('hidden'), 1200);
+        },
+      });
+    }
+    yutLastThrowKey = throwKey;
+    yutThrowTrackingStarted = true;
     if (g.status === 'selecting') yutHint.textContent = '파랑과 빨강이 정해지면 파랑부터 시작합니다.';
     else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 4개를 모두 완주했습니다.`;
     else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
@@ -3760,7 +3837,11 @@
   chatForm.addEventListener('submit', sendChat);
   baseballSecretForm.addEventListener('submit', (event) => sendBaseballAction(event, 'set-secret', baseballSecretInput, 'secret'));
   baseballGuessForm.addEventListener('submit', (event) => sendBaseballAction(event, 'guess', baseballGuessInput, 'guess'));
-  yutThrowBtn.addEventListener('click', () => roomAction('throw-yut'));
+  yutThrowBtn.addEventListener('click', async () => {
+    yutThrowBtn.disabled = true;
+    await roomAction('throw-yut');
+    if (state?.gameType === 'yut') renderYut();
+  });
   bingoTargetSelect.addEventListener('change', () => roomAction('set-bingo-target', { targetLines: Number(bingoTargetSelect.value) }));
   bingoStartBtn.addEventListener('click', () => roomAction('start-bingo'));
   cityRollBtn.addEventListener('click', async () => {

@@ -136,6 +136,20 @@ body.resultWinActive .yutControls{box-shadow:0 0 0 2px rgba(250,204,21,.55),0 0 
 body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shadow:0 0 0 2px rgba(127,29,29,.65)}
 @media(max-width:520px){.yutControls{padding:11px}.yutThrowSummary{align-items:stretch;flex-direction:column}.yutThrowSummary button{width:100%}.yutPieceChoice{flex:1 1 calc(50% - 8px);font-size:.78rem}}
 
+/* v1.6.37: CSS/JS-only advanced yut-throw animation -- 4 sticks tumble in the board center, each a
+   real 3D flip card (flat "front" face vs round "back" face). Rolling only spins each stick's own
+   transform (driven per-frame from JS, like the Land King dice cube); settling snaps each stick to
+   rotateY(0) (front/flat up) or rotateY(180deg) (back/round up) to match the server's confirmed
+   result -- face content never changes, so the pattern shown can't drift from the real result. */
+.yutThrowStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;perspective:640px;pointer-events:none}
+.yutStick{position:relative;width:24px;height:104px;transform-style:preserve-3d}
+.yutStick .ysFace{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;box-shadow:0 5px 12px rgba(0,0,0,.4)}
+.yutStick .ysFront{background:linear-gradient(180deg,#fdf6e3,#e2cf9c);border:2px solid #a9814a}
+.yutStick .ysBack{background:linear-gradient(180deg,#4a2f1c,#241209);border:2px solid #0d0704;transform:rotateY(180deg)}
+.yutStick.settling{transition:transform .42s cubic-bezier(.2,.8,.3,1)}
+.yutStick.backdoMark .ysFront{box-shadow:0 0 0 2px #ef4444 inset,0 5px 12px rgba(0,0,0,.4)}
+@media(prefers-reduced-motion:reduce){.yutStick{transition:none!important}}
+
 /* v1.6.17: original City King board-game MVP. */
 .canvasWrap.cityBoard{background:#172554;aspect-ratio:980/720}
 .cityControls{display:grid;gap:10px;margin-top:12px;padding:14px;border:1px solid #334155;border-radius:15px;background:linear-gradient(145deg,#111c30,#0b1324)}
