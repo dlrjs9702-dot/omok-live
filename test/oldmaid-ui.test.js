@@ -29,13 +29,18 @@ test('the current-turn seat is highlighted separately from the draw target', () 
   assert.match(app, /\(g\.turn === number \? ' turn' : ''\) \+ \(g\.target === number \? ' target' : ''\)/);
 });
 
-test('hand cards color-code red suits for readability and the draw pile uses a real emoji glyph', () => {
+test('hand cards color-code red suits for readability and the card back is a custom CSS design, not an OS emoji', () => {
   const app = read('public/app.js');
+  const css = read('public/styles.css');
   assert.match(app, /const red = card\.suit === '♥' \|\| card\.suit === '♦';/);
   assert.match(app, /'oldmaidCard oldmaidFace' \+ \(card\.rank === 'JOKER' \? ' joker' : red \? ' red' : ''\)/);
   assert.match(app, /'oldmaidCard oldmaidBack'/);
-  assert.match(app, /button\.textContent = '🎴';/);
+  // v1.6.43: no emoji glyph is ever set as the back-card's text content anymore -- the back is a
+  // pure CSS pattern (diagonal weave + inner frame) so it renders identically on every OS/browser.
+  assert.doesNotMatch(app, /button\.textContent = '🎴';/);
   assert.doesNotMatch(app, /🂠/); // the old Playing-Card-Back glyph renders as a blank box in many fonts
+  assert.match(css, /\.oldmaidBack\{[^}]*repeating-linear-gradient/);
+  assert.match(css, /\.oldmaidBack::after\{/);
 });
 
 test('existing shuffle, draw and start behavior is untouched', () => {
@@ -71,10 +76,10 @@ test('opponent cards are always rendered face-down; only my own hand shows card 
   assert.match(app, /if \(!isMe\) \{/);
   assert.match(app, /cards\.className = 'oldmaidSeatCards';/);
   assert.match(app, /button\.className = 'oldmaidCard oldmaidBack' \+ \(canDraw \? ' selectable' : ''\);/);
-  assert.match(app, /button\.textContent = '🎴';/);
-  // opponent seat cards never read from card.rank/card.suit - only my own hand does
+  // opponent seat cards never read from card.rank/card.suit (their face content) - only my own
+  // hand does; the back's look comes entirely from the .oldmaidBack CSS class, not a text glyph.
   const seatCardsBlock = app.slice(app.indexOf("cards.className = 'oldmaidSeatCards'"), app.indexOf('seatEl.appendChild(cards)'));
-  assert.doesNotMatch(seatCardsBlock, /card\.rank|card\.suit/);
+  assert.doesNotMatch(seatCardsBlock, /card\.rank|card\.suit|textContent/);
 });
 
 test('draw clicks are routed through a busy-guarded handler that disables all card backs during the request', () => {
@@ -90,16 +95,43 @@ test('draw clicks are routed through a busy-guarded handler that disables all ca
 test('the draw flight animation and pair/escape effects are purely cosmetic and never gate the real state update', () => {
   const app = read('public/app.js');
   assert.match(app, /await roomAction\('draw-oldmaid', \{ targetSeat, index, expectedRevision: g\.revision \}\);/);
-  assert.match(app, /function oldmaidStartFlyer\(originEl\)/);
+  assert.match(app, /function oldmaidFlyDrawnCard\(originRect, card\)/);
   assert.match(app, /function oldmaidRunEffects\(g\)/);
   // effects are derived from a diff against already-applied server state (g.history / counts), not from the request itself
   assert.match(app, /if \(history\.length > oldmaidLastHistoryLen\)/);
 });
 
+// v1.6.43: the draw flyer used to start optimistically on click and always show the card back; it
+// now only ever starts after roomAction() resolves, and only when a genuinely new card id shows up
+// in my own hand (a failed/stale draw leaves the hand unchanged, so nothing plays).
+test('the draw flyer is server-confirmed (starts only after the request resolves, driven by a hand diff) and reveals the real face', () => {
+  const app = read('public/app.js');
+  const drawFn = app.slice(app.indexOf('async function oldmaidDrawCard'), app.indexOf('async function oldmaidUsePeek'));
+  const awaitIndex = drawFn.indexOf("await roomAction('draw-oldmaid'");
+  const flyIndex = drawFn.indexOf('oldmaidFlyDrawnCard(originRect, drawnCard)');
+  assert.ok(awaitIndex >= 0 && flyIndex >= 0 && flyIndex > awaitIndex,
+    'the flight must be triggered only after the draw request has resolved, not before it');
+  assert.match(drawFn, /const drawnCard = afterHand\.find\(card => !beforeIds\.has\(card\.id\)\);/);
+  assert.match(drawFn, /if \(drawnCard && originRect\?\.width && originRect\?\.height\)/);
+  assert.match(app, /flyer\.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' \+ oldmaidCardFaceClass\(card\);/);
+});
+
+// v1.6.43: a completed pair's two cards converge, glow and fade -- but this is decorative clones
+// only; the real hand array (state.me.myOldMaidHand) is never written to by this code.
+test('the pair-removal convergence effect animates clones and never mutates the real hand array', () => {
+  const app = read('public/app.js');
+  assert.match(app, /function oldmaidFlyPairsToDiscard\(removedCards\)/);
+  assert.match(app, /const removedCards = \[\.\.\.beforeHand, drawnCard\]\.filter\(card => !afterIds\.has\(card\.id\)\);/);
+  assert.match(app, /if \(removedCards\.length >= 2\) oldmaidFlyPairsToDiscard\(removedCards\);/);
+  const flyFn = app.slice(app.indexOf('function oldmaidFlyPairsToDiscard'), app.indexOf('function oldmaidShowJokerTension'));
+  assert.doesNotMatch(flyFn, /myOldMaidHand\s*=|myOldMaidHand\.push|myOldMaidHand\.splice/);
+});
+
 test('the joker tension effect only reads my own private hand, never touches shared game state', () => {
   const app = read('public/app.js');
   assert.match(app, /function oldmaidShowJokerTension\(\)/);
-  assert.match(app, /after\.some\(card => card\.rank === 'JOKER' && !beforeIds\.has\(card\.id\)\)/);
+  assert.match(app, /const drawnCard = afterHand\.find\(card => !beforeIds\.has\(card\.id\)\);/);
+  assert.match(app, /if \(drawnCard\.rank === 'JOKER'\) oldmaidShowJokerTension\(\);/);
   assert.match(app, /state\.me\.myOldMaidHand/);
   // must never write a joker/private flag onto the shared game object
   assert.doesNotMatch(app, /g\.joker/);

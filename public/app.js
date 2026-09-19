@@ -2960,7 +2960,6 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
-            button.textContent = '🎴';
             button.disabled = !canDraw;
             button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
             button.addEventListener('click', () => {
@@ -3068,32 +3067,79 @@
     setTimeout(() => { seatEl.classList.remove('escapeCelebrate'); banner.remove(); }, 1300);
   }
 
-  // Card-back travels from the clicked seat to my hand. Purely cosmetic: the actual draw
-  // request/response (and the resulting renderOldMaid call) is what determines game state.
-  function oldmaidStartFlyer(originEl) {
-    const originRect = originEl.getBoundingClientRect();
-    if (!originRect.width || !originRect.height) return null;
-    const destRect = oldmaidMyHand.getBoundingClientRect();
-    const flyer = document.createElement('span');
-    flyer.className = 'oldmaidCard oldmaidBack oldmaidFlyingCard';
-    flyer.textContent = '🎴';
-    flyer.style.left = `${originRect.left}px`;
-    flyer.style.top = `${originRect.top}px`;
-    flyer.style.width = `${originRect.width}px`;
-    flyer.style.height = `${originRect.height}px`;
-    oldmaidFlyerLayer.appendChild(flyer);
-    const dx = (destRect.left + destRect.width / 2) - (originRect.left + originRect.width / 2);
-    const dy = (destRect.top + Math.min(24, destRect.height / 2)) - originRect.top;
-    requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy - 16}px) scale(.92)`; });
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      flyer.classList.add('landed');
-      setTimeout(() => flyer.remove(), 240);
-    };
-    const safety = setTimeout(finish, 900);
-    return () => { clearTimeout(safety); finish(); };
+  function oldmaidCardFaceClass(card) {
+    const red = card.suit === '♥' || card.suit === '♦';
+    return card.rank === 'JOKER' ? ' joker' : red ? ' red' : '';
+  }
+  function oldmaidCardFaceText(card) {
+    return card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
+  }
+
+  // v1.6.43: the draw flyer is now driven entirely by the server-confirmed drawn card (found by
+  // diffing my hand before/after the request resolves -- see oldmaidDrawCard), never started
+  // optimistically on click. It starts from the clicked seat's on-screen position (captured before
+  // the request, since the room re-render that follows replaces that button) and shows the card
+  // FACE-UP the whole flight: this element only ever exists in the drawer's own browser, so the
+  // face is never sent to or visible from any other participant's screen.
+  function oldmaidFlyDrawnCard(originRect, card) {
+    return new Promise((resolve) => {
+      const destRect = oldmaidMyHand.getBoundingClientRect();
+      const flyer = document.createElement('span');
+      flyer.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' + oldmaidCardFaceClass(card);
+      flyer.textContent = oldmaidCardFaceText(card);
+      flyer.style.left = `${originRect.left}px`;
+      flyer.style.top = `${originRect.top}px`;
+      flyer.style.width = `${originRect.width}px`;
+      flyer.style.height = `${originRect.height}px`;
+      oldmaidFlyerLayer.appendChild(flyer);
+      const dx = (destRect.left + destRect.width / 2) - (originRect.left + originRect.width / 2);
+      const dy = (destRect.top + Math.min(24, destRect.height / 2)) - originRect.top;
+      requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy - 16}px) scale(.92)`; });
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        flyer.classList.add('landed');
+        setTimeout(() => { flyer.remove(); resolve(); }, 240);
+      };
+      setTimeout(finish, 900);
+    });
+  }
+
+  // Pair-completion: the two (or more, in a rare chained match) cards that just left MY OWN hand
+  // converge toward the hand's center, glow, then fade out together. Only ever called with cards
+  // diffed out of my own already-private myOldMaidHand, and the real hand array itself is never
+  // touched here -- these are purely decorative clones layered on top of the already-updated hand,
+  // so there is no way for this to re-add a card the server has already removed.
+  function oldmaidFlyPairsToDiscard(removedCards) {
+    if (removedCards.length < 2) return;
+    const handRect = oldmaidMyHand.getBoundingClientRect();
+    if (!handRect.width) return;
+    const centerX = handRect.left + handRect.width / 2;
+    const top = handRect.top - 6;
+    const spread = 46;
+    const flyers = removedCards.map((card, i) => {
+      const el = document.createElement('span');
+      el.className = 'oldmaidCard oldmaidFace oldmaidPairFlyer' + oldmaidCardFaceClass(card);
+      el.textContent = oldmaidCardFaceText(card);
+      const offsetX = (i - (removedCards.length - 1) / 2) * spread;
+      el.style.left = `${centerX + offsetX - 28}px`;
+      el.style.top = `${top}px`;
+      el.dataset.offsetX = String(offsetX);
+      oldmaidFlyerLayer.appendChild(el);
+      return el;
+    });
+    requestAnimationFrame(() => {
+      for (const el of flyers) el.style.transform = `translateX(${-Number(el.dataset.offsetX)}px) scale(1.06)`;
+    });
+    setTimeout(() => { for (const el of flyers) el.classList.add('glow'); }, 220);
+    setTimeout(() => {
+      for (const el of flyers) {
+        el.style.transform = `translateX(${-Number(el.dataset.offsetX)}px) scale(.55)`;
+        el.style.opacity = '0';
+      }
+    }, 460);
+    setTimeout(() => { for (const el of flyers) el.remove(); }, 760);
   }
 
   // Joker tension: only ever evaluated from MY OWN already-private hand (state.me.myOldMaidHand),
@@ -3118,16 +3164,29 @@
     oldmaidDrawBusy = true;
     buttonEl.classList.add('selected');
     for (const candidate of oldmaidSeatsEl.querySelectorAll('.oldmaidBack')) candidate.disabled = true;
-    const beforeIds = new Set((state.me?.myOldMaidHand || []).map(card => card.id));
-    const finishFlyer = oldmaidEffectsActive() ? oldmaidStartFlyer(buttonEl) : null;
+    const beforeHand = state.me?.myOldMaidHand || [];
+    const beforeIds = new Set(beforeHand.map(card => card.id));
+    // The button this rect comes from is destroyed by roomAction()'s re-render below, so it must
+    // be captured now, before the request -- not read again afterward.
+    const originRect = oldmaidEffectsActive() ? buttonEl.getBoundingClientRect() : null;
     try {
       await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
       if (oldmaidEffectsActive()) {
-        const after = state.me?.myOldMaidHand || [];
-        if (after.some(card => card.rank === 'JOKER' && !beforeIds.has(card.id))) oldmaidShowJokerTension();
+        const afterHand = state.me?.myOldMaidHand || [];
+        const afterIds = new Set(afterHand.map(card => card.id));
+        const drawnCard = afterHand.find(card => !beforeIds.has(card.id));
+        // A failed/stale draw leaves my hand unchanged -- drawnCard stays undefined and nothing
+        // animates, which is exactly right: the animation only ever reflects a confirmed result.
+        if (drawnCard && originRect?.width && originRect?.height) {
+          await oldmaidFlyDrawnCard(originRect, drawnCard);
+        }
+        if (drawnCard) {
+          const removedCards = [...beforeHand, drawnCard].filter(card => !afterIds.has(card.id));
+          if (removedCards.length >= 2) oldmaidFlyPairsToDiscard(removedCards);
+          if (drawnCard.rank === 'JOKER') oldmaidShowJokerTension();
+        }
       }
     } finally {
-      if (finishFlyer) finishFlyer();
       oldmaidDrawBusy = false;
     }
   }
