@@ -3182,6 +3182,23 @@
     return order.slice(anchorIndex).concat(order.slice(0, anchorIndex));
   }
 
+  // v1.6.52: factored out of renderOldMaid() so oldmaidDrawCard() can also use it to briefly show
+  // an intermediate hand (the drawn card added, before any pair is removed) for the draw-flight
+  // and pair-glow animation to land in and play out against -- see oldmaidDrawCard below. Each
+  // face gets data-cardId so oldmaidGlowAndRemovePair() can find the exact DOM elements to animate.
+  function oldmaidRenderMyHandFaces(hand) {
+    oldmaidMyHand.replaceChildren();
+    for (const card of hand) {
+      const red = card.suit === '♥' || card.suit === '♦';
+      const face = document.createElement('span');
+      face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : red ? ' red' : '');
+      face.textContent = card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
+      face.setAttribute('aria-label', card.rank === 'JOKER' ? '조커' : `${card.suit} ${card.rank}`);
+      face.dataset.cardId = card.id;
+      oldmaidMyHand.appendChild(face);
+    }
+  }
+
   function renderOldMaid() {
     const g = state.game;
     const rosterSeats = g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(number => state.players[number]);
@@ -3333,17 +3350,10 @@
       oldmaidSeatsEl.appendChild(seatEl);
     });
 
-    oldmaidMyHand.replaceChildren();
     if (seat && Array.isArray(state.me?.myOldMaidHand)) {
-      for (const card of state.me.myOldMaidHand) {
-        const red = card.suit === '♥' || card.suit === '♦';
-        const face = document.createElement('span');
-        face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : red ? ' red' : '');
-        face.textContent = card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
-        face.setAttribute('aria-label', card.rank === 'JOKER' ? '조커' : `${card.suit} ${card.rank}`);
-        oldmaidMyHand.appendChild(face);
-      }
+      oldmaidRenderMyHandFaces(state.me.myOldMaidHand);
     } else {
+      oldmaidMyHand.replaceChildren();
       oldmaidMyHand.textContent = seat ? '게임 시작 후 내 카드가 표시됩니다.' : '관전자는 다른 참가자의 카드 내용을 볼 수 없습니다.';
     }
     if (seat && g.status === 'playing' && !state.me.myOldMaidHand?.length) oldmaidMyHand.textContent = '카드를 모두 버렸습니다!';
@@ -3456,40 +3466,23 @@
     });
   }
 
-  // Pair-completion: the two (or more, in a rare chained match) cards that just left MY OWN hand
-  // converge toward the hand's center, glow, then fade out together. Only ever called with cards
-  // diffed out of my own already-private myOldMaidHand, and the real hand array itself is never
-  // touched here -- these are purely decorative clones layered on top of the already-updated hand,
-  // so there is no way for this to re-add a card the server has already removed.
-  function oldmaidFlyPairsToDiscard(removedCards) {
-    if (removedCards.length < 2) return;
-    const handRect = oldmaidMyHand.getBoundingClientRect();
-    if (!handRect.width) return;
-    const centerX = handRect.left + handRect.width / 2;
-    const top = handRect.top - 6;
-    const spread = 46;
-    const flyers = removedCards.map((card, i) => {
-      const el = document.createElement('span');
-      el.className = 'oldmaidCard oldmaidFace oldmaidPairFlyer' + oldmaidCardFaceClass(card);
-      el.textContent = oldmaidCardFaceText(card);
-      const offsetX = (i - (removedCards.length - 1) / 2) * spread;
-      el.style.left = `${centerX + offsetX - 28}px`;
-      el.style.top = `${top}px`;
-      el.dataset.offsetX = String(offsetX);
-      oldmaidFlyerLayer.appendChild(el);
-      return el;
+  // v1.6.52: pair-completion now glows and fades the ACTUAL matching cards inside "내 손패" (found
+  // by data-cardId, set by oldmaidRenderMyHandFaces) instead of separate floating clones -- so the
+  // sequence reads as "the drawn card flies into my hand, then (if it matches) glows together with
+  // its partner and both fade away", not two disconnected effects. Only ever called with cards
+  // diffed out of my own already-private myOldMaidHand; the real hand array itself is never
+  // written here, this only toggles CSS classes on already-rendered DOM elements.
+  function oldmaidGlowAndRemovePair(removedCards) {
+    return new Promise((resolve) => {
+      const ids = new Set(removedCards.map((card) => card.id));
+      const cardEls = [...oldmaidMyHand.querySelectorAll('.oldmaidFace')].filter((el) => ids.has(el.dataset.cardId));
+      if (!cardEls.length) return resolve();
+      for (const el of cardEls) el.classList.add('pairGlow');
+      setTimeout(() => {
+        for (const el of cardEls) el.classList.add('pairFadeOut');
+        setTimeout(resolve, 320);
+      }, 380);
     });
-    requestAnimationFrame(() => {
-      for (const el of flyers) el.style.transform = `translateX(${-Number(el.dataset.offsetX)}px) scale(1.06)`;
-    });
-    setTimeout(() => { for (const el of flyers) el.classList.add('glow'); }, 220);
-    setTimeout(() => {
-      for (const el of flyers) {
-        el.style.transform = `translateX(${-Number(el.dataset.offsetX)}px) scale(.55)`;
-        el.style.opacity = '0';
-      }
-    }, 460);
-    setTimeout(() => { for (const el of flyers) el.remove(); }, 760);
   }
 
   // Joker tension: only ever evaluated from MY OWN already-private hand (state.me.myOldMaidHand),
@@ -3530,12 +3523,21 @@
         const drawnCard = data?.drawnOldMaidCard || null;
         // A failed/stale draw never gets a drawnOldMaidCard back -- nothing animates, which is
         // exactly right: the animation only ever reflects a confirmed result.
-        if (drawnCard && originRect?.width && originRect?.height) {
-          await oldmaidFlyDrawnCard(originRect, drawnCard);
-        }
         if (drawnCard) {
           const removedCards = [...beforeHand, drawnCard].filter(card => !afterIds.has(card.id));
-          if (removedCards.length >= 2) oldmaidFlyPairsToDiscard(removedCards);
+          const completesPair = removedCards.length >= 2;
+          // v1.6.52: when the draw instantly completes a pair, roomAction() already re-rendered
+          // "내 손패" with that pair already gone -- so without this, the fly-in ghost would land
+          // on a hand that never visibly held the card, and the pair effect would look like a
+          // separate, disconnected flourish. Showing the drawn card in the hand first (purely a
+          // local, cosmetic display -- the real state never changes) gives the fly-in a real card
+          // to land next to, then the matching pair glows together and fades from that same spot.
+          if (completesPair) oldmaidRenderMyHandFaces([...beforeHand, drawnCard]);
+          if (originRect?.width && originRect?.height) await oldmaidFlyDrawnCard(originRect, drawnCard);
+          if (completesPair) {
+            await oldmaidGlowAndRemovePair(removedCards);
+            oldmaidRenderMyHandFaces(afterHand);
+          }
           if (drawnCard.rank === 'JOKER') oldmaidShowJokerTension();
         }
       }

@@ -464,13 +464,15 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 
 .oldmaidSeat.finalGlow .oldmaidSeatInfo{outline:3px solid #ef4444;box-shadow:0 0 0 6px rgba(239,68,68,.3)}
 
-.oldmaidPanel.effectsOff .oldmaidFlyingCard,.oldmaidPanel.effectsOff .oldmaidPairBadge,.oldmaidPanel.effectsOff .oldmaidJokerFlash,.oldmaidPanel.effectsOff .oldmaidEscapeBanner,.oldmaidPanel.effectsOff .oldmaidPairFlyer{display:none!important}
+.oldmaidPanel.effectsOff .oldmaidFlyingCard,.oldmaidPanel.effectsOff .oldmaidPairBadge,.oldmaidPanel.effectsOff .oldmaidJokerFlash,.oldmaidPanel.effectsOff .oldmaidEscapeBanner{display:none!important}
 .oldmaidPanel.effectsOff .oldmaidSeat.pairPulse .oldmaidSeatInfo,.oldmaidPanel.effectsOff .oldmaidSeat.escapeCelebrate .oldmaidSeatInfo,.oldmaidPanel.effectsOff .oldmaidCard.jokerShake{animation:none!important}
-/* v1.6.43: pair-completion flyers -- two removed cards converge to the hand's center, glow, then
-   fade out. Positioned/animated via inline left/top/transform (set in app.js), same pattern as the
-   existing draw-flyer; only the transition timing and the glow box-shadow live here. */
-.oldmaidPairFlyer{position:fixed;z-index:72;pointer-events:none;transition:transform .24s ease,opacity .24s ease}
-.oldmaidPairFlyer.glow{box-shadow:0 0 20px 7px rgba(250,204,21,.85)}
+/* v1.6.52: pair-completion now glows and fades the actual matching cards inside "내 손패" itself
+   (oldmaidGlowAndRemovePair in app.js toggles these two classes on the real .oldmaidFace elements,
+   found by data-cardId) instead of separate floating clones -- so the drawn card visibly enters
+   the hand first, then (if it matches) glows together with its partner and both fade from there,
+   rather than two disconnected effects. */
+.oldmaidMyHandCards .oldmaidFace.pairGlow{box-shadow:0 0 0 3px rgba(250,204,21,.9),0 0 22px 6px rgba(250,204,21,.75);transition:box-shadow .2s ease}
+.oldmaidMyHandCards .oldmaidFace.pairFadeOut{transition:opacity .32s ease,transform .32s ease;opacity:0;transform:scale(.7)}
 /* v1.6.51: no prefers-reduced-motion override here anymore -- oldmaidEffectsActive() now decides
    this in JS from the "연출 효과" checkbox alone (see app.js), so effects are either fully on
    (created and animated normally) or fully off (.effectsOff hides them via display:none above),

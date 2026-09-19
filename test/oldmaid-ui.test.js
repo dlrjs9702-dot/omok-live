@@ -121,19 +121,29 @@ test('the draw flyer is server-confirmed (starts only after the request resolves
   // never recover it and silently skipped the animation on every such pair (non-joker cards pair
   // often; the joker never does, which is why only joker draws visibly animated before this fix).
   assert.match(drawFn, /const drawnCard = data\?\.drawnOldMaidCard \|\| null;/);
-  assert.match(drawFn, /if \(drawnCard && originRect\?\.width && originRect\?\.height\)/);
+  assert.match(drawFn, /if \(originRect\?\.width && originRect\?\.height\) await oldmaidFlyDrawnCard\(originRect, drawnCard\);/);
   assert.match(app, /flyer\.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' \+ oldmaidCardFaceClass\(card\);/);
 });
 
-// v1.6.43: a completed pair's two cards converge, glow and fade -- but this is decorative clones
-// only; the real hand array (state.me.myOldMaidHand) is never written to by this code.
-test('the pair-removal convergence effect animates clones and never mutates the real hand array', () => {
+// v1.6.52: a completed pair now glows and fades the actual matching cards inside "내 손패" (found
+// by data-cardId), not separate floating clones -- so it reads as "drawn card enters the hand,
+// then (if it matches) glows with its partner and both fade", instead of two disconnected effects.
+// The intermediate render (drawn card shown before any pair is removed) is purely a local display
+// choice for the animation to land against; the real hand array (state.me.myOldMaidHand) itself is
+// never written to by any of this.
+test('a completed pair glows and fades the real hand cards in place, and never mutates the real hand array', () => {
   const app = read('public/app.js');
-  assert.match(app, /function oldmaidFlyPairsToDiscard\(removedCards\)/);
-  assert.match(app, /const removedCards = \[\.\.\.beforeHand, drawnCard\]\.filter\(card => !afterIds\.has\(card\.id\)\);/);
-  assert.match(app, /if \(removedCards\.length >= 2\) oldmaidFlyPairsToDiscard\(removedCards\);/);
-  const flyFn = app.slice(app.indexOf('function oldmaidFlyPairsToDiscard'), app.indexOf('function oldmaidShowJokerTension'));
-  assert.doesNotMatch(flyFn, /myOldMaidHand\s*=|myOldMaidHand\.push|myOldMaidHand\.splice/);
+  const drawFn = app.slice(app.indexOf('async function oldmaidDrawCard'), app.indexOf('async function oldmaidUsePeek'));
+  assert.match(drawFn, /const removedCards = \[\.\.\.beforeHand, drawnCard\]\.filter\(card => !afterIds\.has\(card\.id\)\);/);
+  assert.match(drawFn, /const completesPair = removedCards\.length >= 2;/);
+  assert.match(drawFn, /if \(completesPair\) oldmaidRenderMyHandFaces\(\[\.\.\.beforeHand, drawnCard\]\);/);
+  assert.match(drawFn, /await oldmaidGlowAndRemovePair\(removedCards\);/);
+  assert.match(drawFn, /oldmaidRenderMyHandFaces\(afterHand\);/);
+  assert.match(app, /function oldmaidGlowAndRemovePair\(removedCards\)/);
+  const glowFn = app.slice(app.indexOf('function oldmaidGlowAndRemovePair'), app.indexOf('async function oldmaidDrawCard'));
+  assert.doesNotMatch(glowFn, /myOldMaidHand\s*=|myOldMaidHand\.push|myOldMaidHand\.splice/);
+  assert.match(glowFn, /el\.classList\.add\('pairGlow'\)/);
+  assert.match(glowFn, /el\.classList\.add\('pairFadeOut'\)/);
 });
 
 test('the joker tension effect only reads my own private hand, never touches shared game state', () => {
