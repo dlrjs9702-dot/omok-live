@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.43" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.44" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -85,6 +85,7 @@
                   <option value="pictionary">그림 맞히기</option>
                   <option value="liar">라이어게임</option>
                   <option value="oldmaid">도둑잡기</option>
+                  <option value="marathon">마라톤</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
@@ -122,6 +123,9 @@
             </div>
             <div class="gameOption" data-game-option="oldmaid">
               <button type="button" class="gameChoice" data-game="oldmaid"><strong>도둑잡기</strong></button>
+            </div>
+            <div class="gameOption" data-game-option="marathon">
+              <button type="button" class="gameChoice" data-game="marathon"><strong>마라톤</strong></button>
             </div>
           </div>
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
@@ -508,6 +512,51 @@
             <div id="liarScoreboard" class="liarScoreboard" aria-label="라이어게임 누적 점수"></div>
           </section>
 
+          <section id="marathonPanel" class="marathonPanel hidden" aria-label="마라톤">
+            <div class="marathonHeader">
+              <strong id="marathonStatus">참가자를 기다리는 중</strong>
+              <button type="button" id="marathonStartBtn" class="primary">마라톤 시작</button>
+            </div>
+            <div id="marathonConfigChooser" class="marathonConfigChooser hidden">
+              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
+                <label><input type="radio" name="marathonMode" value="individual" data-marathon-mode checked /> 개인전</label>
+                <label><input type="radio" name="marathonMode" value="team" data-marathon-mode /> 팀전</label>
+              </div>
+              <div id="marathonLayoutChooser" class="marathonConfigRow hidden" role="radiogroup" aria-label="팀 구성">
+                <label><input type="radio" name="marathonLayout" value="2v2" data-marathon-layout checked /> 2대2 (4인)</label>
+                <label><input type="radio" name="marathonLayout" value="3v3" data-marathon-layout /> 3대3 (6인)</label>
+                <label><input type="radio" name="marathonLayout" value="2v2v2" data-marathon-layout /> 2대2대2 (6인)</label>
+              </div>
+              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
+                <label><input type="radio" name="marathonDifficulty" value="easy" data-marathon-difficulty /> 쉬움</label>
+                <label><input type="radio" name="marathonDifficulty" value="normal" data-marathon-difficulty checked /> 보통</label>
+                <label><input type="radio" name="marathonDifficulty" value="hard" data-marathon-difficulty /> 어려움</label>
+              </div>
+              <small>팀전은 선택한 팀 구성과 정확히 같은 인원이 자리를 선택해야 시작할 수 있습니다.</small>
+            </div>
+            <div id="marathonTrack" class="marathonTrack" aria-label="30칸 트랙"></div>
+            <div class="marathonDiceRow">
+              <span id="marathonTurnLabel" class="marathonTurnLabel">차례를 기다리는 중</span>
+              <button type="button" id="marathonRollBtn" class="primary big" disabled>주사위 굴리기</button>
+              <span id="marathonLastRoll" class="marathonLastRoll"></span>
+            </div>
+            <div id="marathonMissionBox" class="marathonMissionBox hidden">
+              <div class="marathonMissionHead">
+                <strong id="marathonMissionType"></strong>
+                <span id="marathonMissionTimer" class="marathonMissionTimer"></span>
+              </div>
+              <p id="marathonMissionPrompt" class="marathonMissionPrompt"></p>
+              <form id="marathonAnswerForm" class="marathonAnswerForm hidden" autocomplete="off">
+                <input id="marathonAnswerInput" type="text" maxlength="60" placeholder="정답 입력" aria-label="마라톤 미션 정답" />
+                <button type="submit" class="primary">제출</button>
+              </form>
+              <div id="marathonReflexOptions" class="marathonReflexOptions hidden"></div>
+              <p id="marathonMissionFeedback" class="marathonMissionFeedback hidden" aria-live="polite"></p>
+            </div>
+            <p id="marathonResult" class="marathonResult hidden" aria-live="polite"></p>
+            <h3>최근 진행</h3><div id="marathonHistory" class="marathonHistory" aria-live="polite"></div>
+          </section>
+
           <div class="mobileActions">
             <button id="resignBtn" class="danger subtle">기권</button>
             <button id="nextRoundBtn" class="primary hidden">다음 판 준비</button>
@@ -600,7 +649,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.43"></script>
-  <script src="/app.js?v=1.6.43"></script>
+  <script src="/session-lock.js?v=1.6.44"></script>
+  <script src="/app.js?v=1.6.44"></script>
 </body>
 </html>
