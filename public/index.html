@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.39" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.40" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -594,7 +594,12 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 입장 파일을 열어야 합니다.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.39"></script>
-  <script src="/app.js?v=1.6.39"></script>
+  <dialog id="pauseDialog" class="logoutDialog pauseDialog" aria-labelledby="pauseDialogTitle" aria-describedby="pauseDialogMessage">
+    <h2 id="pauseDialogTitle">대국 일시 중단</h2>
+    <p id="pauseDialogMessage"></p>
+    <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
+  </dialog>
+  <script src="/session-lock.js?v=1.6.40"></script>
+  <script src="/app.js?v=1.6.40"></script>
 </body>
 </html>

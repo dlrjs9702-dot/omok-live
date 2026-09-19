@@ -18,6 +18,10 @@
   const logoutDialog = document.getElementById('logoutDialog');
   const logoutCancelBtn = document.getElementById('logoutCancelBtn');
   const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+  const pauseDialog = document.getElementById('pauseDialog');
+  const pauseDialogMessage = document.getElementById('pauseDialogMessage');
+  const pauseWaitBtn = document.getElementById('pauseWaitBtn');
+  const pauseEndBtn = document.getElementById('pauseEndBtn');
   const createRoomBtn = document.getElementById('createRoomBtn');
   const publicRoomList = document.getElementById('publicRoomList');
   const refreshPublicRoomsBtn = document.getElementById('refreshPublicRoomsBtn');
@@ -266,6 +270,10 @@
   let state = null;
   let seat = null;
   let isHost = false;
+  let pauseDialogShownKey = null;
+  let pauseDialogDismissedKey = null;
+  let pauseDialogPendingKey = null;
+  let pauseDialogShowTimer = null;
   let streamController = null;
   let streamRetryTimer = null;
   let lobbyStreamController = null;
@@ -1984,6 +1992,47 @@
     chooseSpectatorBtn.classList.toggle('selected', choice === 'spectator');
   }
 
+  // v1.6.40: universal connection-drop popup. A brief network blip should never pop this up --
+  // syncGamePause on the server already only flags `paused` once a participant's SSE stream and
+  // session both drop, but we additionally debounce showing the dialog itself so a disconnect that
+  // resolves within a couple of seconds (the client's own SSE stream retries after 1.8s) never even
+  // flashes the popup. "기다리기" only dismisses this one disconnect episode -- the persistent
+  // end-game button stays available the whole time, and a fresh disconnect (new round or a
+  // different seat) always re-prompts.
+  function pauseEpisodeKey(g) {
+    const disconnected = (g?.disconnectedSeats || []);
+    return disconnected.length ? `${g.round || 1}:${disconnected.slice().sort().join(',')}` : null;
+  }
+
+  function updatePauseDialog() {
+    const g = state?.game;
+    const active = g && g.status === 'playing' && g.paused && seat;
+    const key = active ? pauseEpisodeKey(g) : null;
+
+    if (key !== pauseDialogPendingKey) {
+      if (pauseDialogShowTimer !== null) clearTimeout(pauseDialogShowTimer);
+      pauseDialogShowTimer = null;
+      pauseDialogPendingKey = key;
+      if (key && key !== pauseDialogDismissedKey) {
+        const disconnectedNow = g.disconnectedSeats.slice();
+        pauseDialogShowTimer = setTimeout(() => {
+          pauseDialogShowTimer = null;
+          if (pauseEpisodeKey(state?.game) !== key || key === pauseDialogDismissedKey) return;
+          pauseDialogShownKey = key;
+          const names = disconnectedNow.map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
+          pauseDialogMessage.textContent = `참가자 ${names}님의 연결이 끊겨 게임이 일시 중단되었습니다.`;
+          if (!pauseDialog.open) pauseDialog.showModal();
+        }, 2000);
+      }
+    }
+
+    if (!key) {
+      pauseDialogShownKey = null;
+      pauseDialogDismissedKey = null;
+      if (pauseDialog.open) pauseDialog.close();
+    }
+  }
+
   function renderRoom() {
     if (!state) return;
     const g = state.game;
@@ -2028,33 +2077,42 @@
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
+    // v1.6.40: a paused, disconnect-affected match takes over the status line for every game type
+    // (it used to be shown only for the 4-seat team game); each game's own turn/phase text is only
+    // shown while nobody required to act is disconnected.
+    const pauseStatusText = g.status === 'playing' && g.paused
+      ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 복귀 대기`
+      : null;
     if (oldmaid) {
-      statusText.textContent = g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작' : g.status === 'finished' ? `${state.players[g.loser]?.label || '조커 보유자'}님 패배` : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`;
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작' : g.status === 'finished' ? `${state.players[g.loser]?.label || '조커 보유자'}님 패배` : `${state.players[g.turn]?.label || '플레이어'}님 차례 · ${state.players[g.target]?.label || '상대'}님 카드 뽑기`);
     } else if (liar) {
       const speaker = g.currentSpeaker ? `${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}님` : '';
       const phases = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 투표', revote: '재투표', guess: '라이어 최종 추측', reveal: '판 결과 공개' };
-      statusText.textContent = g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작' : g.status === 'finished' ? '라이어게임 종료' : `${phases[g.phase] || '진행 중'}${speaker ? ` · ${speaker}` : ''}`;
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작' : g.status === 'finished' ? '라이어게임 종료' : `${phases[g.phase] || '진행 중'}${speaker ? ` · ${speaker}` : ''}`);
     } else if (pictionary) {
       const drawerLabel = g.drawerSeat ? `${state.players[g.drawerSeat]?.label || g.drawerSeat + '번'}님` : '출제자';
-      statusText.textContent = g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작'
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '참가자 자리 선택 · 방장 시작'
         : g.status === 'finished' ? '그림 맞히기 종료'
         : g.phase === 'reveal' ? `${drawerLabel} 라운드 결과 공개`
-        : `${drawerLabel} 그리는 중`;
+        : `${drawerLabel} 그리는 중`);
     } else if (g.status === 'selecting') statusText.textContent = isBingoGame() ? '빙고 참가자 자리 선택 · 방장 시작' : team ? '4명 자리 선택 중' : '역할 선택 중';
     else if (g.status === 'setup') statusText.textContent = `비밀 숫자 ${g.digitCount || 3}자리 설정 중`;
     else if (g.status === 'playing') {
-      statusText.textContent = isBingoGame()
+      statusText.textContent = pauseStatusText || (isBingoGame()
         ? `${seatKo(g.turn)} · ${state.players[g.turn]?.label || '플레이어'}님 숫자 선택 차례`
-        : team ? (g.paused
-          ? `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 복귀 대기`
-          : `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`)
+        : team ? `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`
         : state.gameType === 'yut'
           ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`
           : state.gameType === 'cityking'
             ? `${seatKo(g.turn)} · ${g.phase === 'buy' ? '도시 매입 여부 선택' : '주사위 굴릴 차례'}`
-          : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`;
+          : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`);
     } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
     else statusText.textContent = '무승부';
+    if (g.status === 'finished' && g.endReason === 'disconnect') {
+      const names = (g.disconnectedAtEnd || []).map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
+      statusText.textContent += ` · ${names} 접속 끊김으로 종료`;
+    }
+    updatePauseDialog();
 
     if (numbered) renderTeamPlayers();
     else {
@@ -2079,7 +2137,9 @@
     }
     const canAct = Boolean(seat);
     const canResign = !isBingoGame() && !pictionary && !liar && !oldmaid && canAct && (g.status === 'playing' || (state.gameType === 'baseball' && g.status === 'setup'));
-    const canEndPaused = team && isHost && g.status === 'playing' && g.paused;
+    // v1.6.40: any connected, seated participant may end a paused match -- not just the host of
+    // the 4-seat team game it started on -- matching the server's generalized end-game handler.
+    const canEndPaused = canAct && g.status === 'playing' && g.paused;
     for (const b of [endGameBtn, sideEndGameBtn]) {
       b.classList.toggle('hidden', !canEndPaused);
       b.disabled = !canEndPaused;
@@ -2147,15 +2207,21 @@
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
-    } else if (team && g.status === 'playing' && g.paused) {
+    } else if (g.status === 'playing' && g.paused) {
       boardOverlay.classList.remove('resultWin', 'resultLoss');
-      boardOverlay.textContent = `일시정지 · ${g.disconnectedSeats.map(n => n + '번').join(', ')} 플레이어를 기다리는 중`;
+      boardOverlay.textContent = `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
       if (outcome) setResultBoardOverlay(outcome, g);
       else {
         boardOverlay.classList.remove('resultWin', 'resultLoss');
         boardOverlay.textContent = `${seatKo(g.winner)} 승리`;
+      }
+      if (g.endReason === 'disconnect') {
+        const names = (g.disconnectedAtEnd || []).map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
+        const note = document.createElement('span');
+        note.textContent = `${names} 접속 끊김으로 종료`;
+        boardOverlay.appendChild(note);
       }
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'draw') {
@@ -3698,7 +3764,8 @@
   function canPlace(x, y) {
     if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
-    if (isTeamGame() ? (state.game.paused || state.game.nextSeat !== seat) : state.game.turn !== seat) return false;
+    if (state.game.paused) return false;
+    if (isTeamGame() ? state.game.nextSeat !== seat : state.game.turn !== seat) return false;
     if (state.gameType === 'othello') {
       return (state.game.legalMoves || []).some((move) => move.x === x && move.y === y);
     }
@@ -3987,8 +4054,20 @@
   chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
   for (const button of teamSeatButtons) button.addEventListener('click', () => roomAction('choose-role', { choice: button.dataset.teamSeat }));
   teamSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
-  endGameBtn.addEventListener('click', () => confirm('중단된 대국을 승패 없이 종료할까요?') && roomAction('end-game'));
-  sideEndGameBtn.addEventListener('click', () => confirm('중단된 대국을 승패 없이 종료할까요?') && roomAction('end-game'));
+  const endPausedConfirmMsg = '접속이 끊긴 참가자를 패배로, 접속 중인 참가자를 승리로 기록하며 대국을 종료할까요?';
+  endGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
+  sideEndGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
+  pauseWaitBtn.addEventListener('click', () => {
+    pauseDialogDismissedKey = pauseDialogShownKey;
+    pauseDialog.close();
+  });
+  pauseEndBtn.addEventListener('click', () => {
+    pauseDialog.close();
+    roomAction('end-game');
+  });
+  pauseDialog.addEventListener('close', () => {
+    if (pauseDialogShownKey) pauseDialogDismissedKey = pauseDialogShownKey;
+  });
   resignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
   sideResignBtn.addEventListener('click', () => confirm('기권할까요?') && roomAction('resign'));
   nextRoundBtn.addEventListener('click', () => roomAction('next-round'));

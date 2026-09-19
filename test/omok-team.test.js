@@ -141,12 +141,14 @@ test('team room accepts four distinct seats, pauses, resumes and protects turns'
   assert.deepEqual(game.game.disconnectedSeats, ['3']);
   assert.equal((await req('/api/rooms/public', spectator.session, undefined, 'GET')).data.rooms[0].status, 'paused');
   assert.equal((await req('/api/room/move', b.session, {x:14,y:14})).data.error, 'GAME_PAUSED');
-  assert.equal((await req('/api/room/end-game', b.session, {})).status, 403);
+  // v1.6.40: end-game no longer requires the host -- any connected seat may end a paused game --
+  // but a spectator still may not, and it still only works while actually paused.
+  assert.equal((await req('/api/room/end-game', spectator.session, {})).status, 403);
   assert.equal((await req('/api/rooms/public/join', c.session, { roomId })).status, 200);
   game = (await req('/api/room', a.session, undefined, 'GET')).data.state;
   assert.equal(game.game.paused, false);
   assert.equal(game.game.nextSeat, '2');
-  assert.equal((await req('/api/room/end-game', a.session, {})).status, 403);
+  assert.equal((await req('/api/room/end-game', a.session, {})).data.error, 'NOT_PAUSED');
   assert.equal((await req('/api/room/move', b.session, {x:14,y:14})).status, 200);
   assert.equal((await req('/api/logout', d.session, {})).status, 200);
   assert.equal((await req('/api/room', a.session, undefined, 'GET')).data.state.game.paused, true);
@@ -172,10 +174,24 @@ test('team room accepts four distinct seats, pauses, resumes and protects turns'
   assert.equal((await req('/api/room/choose-role', c.session, {choice:'3'})).status, 200);
   assert.equal((await req('/api/room/choose-role', d.session, {choice:'4'})).status, 200);
   assert.equal((await req('/api/room/leave', c.session, {})).status, 200);
-  assert.equal((await req('/api/room/end-game', a.session, {})).status, 200);
+  // v1.6.40: connection-drop handling -- any connected participant (b here, not the host a) can
+  // end a paused game. Team games resolve by whole team: seat 3 (black) disconnected, so black
+  // loses and white (the still-connected team, including b's own teammate d) wins -- recorded as
+  // a real finish, not a no-result draw.
+  assert.equal((await req('/api/room/end-game', b.session, {})).status, 200);
   const stopped = (await req('/api/room', b.session, undefined, 'GET')).data.state;
-  assert.equal(stopped.game.status, 'draw');
-  assert.equal(stopped.game.winner, null);
+  assert.equal(stopped.game.status, 'finished');
+  assert.equal(stopped.game.winner, 'white');
+  assert.equal(stopped.game.endReason, 'disconnect');
+  assert.deepEqual(stopped.game.disconnectedAtEnd, ['3']);
+  assert.equal(stopped.game.paused, false);
+  assert.deepEqual(stopped.game.disconnectedSeats, []);
+  // The ending is final: it can't be triggered twice (seat 3 here left the room outright via
+  // /api/room/leave above, so a fresh guest-entry for them lands back in the lobby, not this
+  // already-finished room -- a true reconnect-after-end scenario, where the disconnected seat's
+  // *session* survives and comes back rather than leaving outright, is covered for a 2-seat game
+  // in "a paused 2-seat game...").
+  assert.equal((await req('/api/room/end-game', a.session, {})).data.error, 'NOT_PAUSED');
 });
 
 test('team and Bingo modes share numbered seats without changing team turn controls', async () => {
@@ -191,5 +207,5 @@ test('team and Bingo modes share numbered seats without changing team turn contr
   assert.match(app, /state\.game\.nextSeat !== seat/);
   assert.match(html, /data-game="bingo"/);
   assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !numbered\)/);
-  assert.match(html, /v=1\.6.39/);
+  assert.match(html, /v=1\.6.40/);
 });

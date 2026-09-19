@@ -16,6 +16,11 @@ const isCityKing = (room) => room.gameType === 'cityking';
 const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room);
 const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
+// Seats actually holding a player, for any room type -- the generic set connection-drop handling
+// (pause detection, disconnect-forced ending) operates over.
+const assignedSeatsFor = (room) => isNumberedSeatGame(room)
+  ? seatsFor(room).filter(seat => room.players[seat])
+  : ['black', 'white'].filter(color => room.players[color]);
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
@@ -263,10 +268,10 @@ function releaseSessionToken(token, { message = null } = {}) {
   }
   for (const room of rooms.values()) {
     const p = room.participants[token];
-    if (!p || !isNumberedSeatGame(room)) continue;
+    if (!p) continue;
     p.connected = false;
     p.rejoinable = Boolean(findSeat(room, token) && room.game.status === 'playing');
-    syncTeamPause(room);
+    syncGamePause(room);
     broadcast(room);
   }
   if (lobbyChanged || session.currentRoomId || cancelledInvitation) broadcastLobby();
@@ -524,15 +529,19 @@ function findSeat(room, token) {
   return null;
 }
 
-// A team match retains assigned seats when a connection drops; no teammate may skip an absent player.
-function syncTeamPause(room) {
-  if (!isTeam(room)) return;
+// Applies to every game (originally an omok2v2-only team check): while a game is in progress, any
+// assigned seat whose holder has disconnected (SSE stream closed, or left this room entirely)
+// pauses the game for everyone still connected and is listed so the "connection dropped" prompt
+// can name them. This is a room-wide "someone required is gone" signal, not a per-turn check --
+// it does not by itself block individual game actions except where a handler already consults it
+// (the shared `move` action; other games' actions are unaffected by this pass).
+function syncGamePause(room) {
   if (room.game.status !== 'playing') {
     room.game.paused = false;
     room.game.disconnectedSeats = [];
     return;
   }
-  const disconnected = TEAM_SEATS.filter(seat => {
+  const disconnected = assignedSeatsFor(room).filter(seat => {
     const token = room.players[seat];
     const person = token && room.participants[token];
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
@@ -622,7 +631,7 @@ function roomView(room, session) {
 }
 
 function broadcast(room) {
-  syncTeamPause(room);
+  syncGamePause(room);
   const set = streams.get(room.id);
   if (!set) return;
   for (const client of [...set]) {
@@ -646,7 +655,7 @@ function maybeStart(room) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
-    syncTeamPause(room);
+    syncGamePause(room);
     return;
   }
   if (room.players.black && room.players.white && room.game.status === 'selecting') {
@@ -661,6 +670,12 @@ function maybeStart(room) {
 function prepareNextRound(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   gameEngine.reset(room.game);
+  // A prior round's disconnect-forced ending must not leak into the fresh round (no engine's own
+  // reset() knows about these connection-drop fields, so they're cleared here in one place).
+  room.game.paused = false;
+  room.game.disconnectedSeats = [];
+  room.game.endReason = null;
+  room.game.disconnectedAtEnd = [];
   if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
@@ -1164,9 +1179,9 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
+    syncGamePause(room);
+    if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '상대 접속이 끊겨 일시정지 중입니다. 복귀를 기다리거나 대국을 종료할 수 있습니다.');
     if (isTeam(room)) {
-      syncTeamPause(room);
-      if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '팀원 접속이 끊겨 일시정지 중입니다. 전원이 복귀할 때까지 기다려 주세요.');
       if (room.game.nextSeat !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '현재 차례의 플레이어만 착수할 수 있습니다.');
     } else if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
     const gameEngine = getGame(room.gameType) || getGame('omok');
@@ -1190,19 +1205,41 @@ async function handleRoomAction(req, res, action, session) {
     room.game.status = 'finished';
     room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
     room.game.winningLine = null;
-    if (isTeam(room)) { room.game.paused = false; room.game.disconnectedSeats = []; }
-  }
-
-  if (action === 'end-game') {
-    if (!isTeam(room) || room.hostSessionToken !== session.token || room.game.status !== 'playing' || !room.game.paused) {
-      return sendError(res, 403, 'HOST_PAUSED_ONLY', '오목 2vs2 일시정지 중에 방장만 대국을 종료할 수 있습니다.');
-    }
-    room.game.status = 'draw';
-    room.game.winner = null;
-    room.game.winningLine = null;
     room.game.paused = false;
     room.game.disconnectedSeats = [];
-    appendSystemMessage(room, '방장이 접속 이탈로 중단된 대국을 승패 없이 종료했습니다.');
+  }
+
+  // Any connected participant may end a game that's paused for a disconnected required player --
+  // no host approval or unanimous vote required. The connected side(s) are recorded as the winner,
+  // the disconnected side as the loser (team games resolve by whole team, confirmed by the user);
+  // this is the one and only server-side resolution (status flips 'playing' -> 'finished' exactly
+  // once, guarded by the same status check every other ending path already relies on, so a repeat
+  // click, a race between two connected players, or a last-second reconnect can't double-record or
+  // overturn the result).
+  if (action === 'end-game') {
+    if (!findSeat(room, session.token)) return sendError(res, 403, 'SPECTATOR', '관전자는 대국을 종료할 수 없습니다.');
+    syncGamePause(room);
+    if (room.game.status !== 'playing' || !room.game.paused) {
+      return sendError(res, 409, 'NOT_PAUSED', '접속이 끊겨 일시정지된 상태에서만 대국을 종료할 수 있습니다.');
+    }
+    const disconnectedSeats = room.game.disconnectedSeats.slice();
+    const connectedSeats = assignedSeatsFor(room).filter(seat => !disconnectedSeats.includes(seat));
+    if (!connectedSeats.length) {
+      return sendError(res, 409, 'NO_CONNECTED_PLAYERS', '접속 중인 참가자가 없어 종료할 수 없습니다.');
+    }
+    room.game.status = 'finished';
+    // 2-seat games (and anywhere else exactly one seat is left) keep the plain single-value
+    // winner every other ending path on that game already uses; only a 3+ seat free-for-all with
+    // more than one seat still connected needs the array form.
+    room.game.winner = isTeam(room)
+      ? (teamColor(disconnectedSeats[0]) === 'black' ? 'white' : 'black')
+      : connectedSeats.length === 1 ? connectedSeats[0] : connectedSeats;
+    room.game.winningLine = null;
+    room.game.endReason = 'disconnect';
+    room.game.disconnectedAtEnd = disconnectedSeats;
+    room.game.paused = false;
+    room.game.disconnectedSeats = [];
+    appendSystemMessage(room, `${session.label || '참가자'}님이 접속 이탈로 대국을 종료했습니다. 접속 중인 참가자 승리로 기록됩니다.`);
   }
 
   if (action === 'next-round' || action === 'rematch') {
@@ -1224,7 +1261,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.39', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.40', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1781,7 +1818,7 @@ async function requestHandler(req, res) {
       if (!uniqueLiveTokens(room.id).has(session.token) && room.participants[session.token]) {
         room.participants[session.token].connected = false;
         room.participants[session.token].lastSeen = nowIso();
-        syncTeamPause(room);
+        syncGamePause(room);
         touchRoom(room);
         broadcast(room);
       }
@@ -1842,7 +1879,7 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.39 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.40 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

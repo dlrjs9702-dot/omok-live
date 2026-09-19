@@ -593,3 +593,10 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .logoutDialogActions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
 .logoutDialogActions button{min-height:44px}
 @media(max-width:520px){#cityControls .cityBuildRow button{flex:1}.logoutDialogActions button{flex:1}}
+
+/* v1.6.40: universal pause/end-game dialog shown to every connected participant when a required
+   seat disconnects, across every game type (not just the 4-seat team games it started on). */
+.pauseDialog{border-color:#b45309}
+.pauseDialog::backdrop{background:#020617cc}
+.pauseDialog h2{color:#fbbf24}
+.pauseDialog p{color:#fde68a}
