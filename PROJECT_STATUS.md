@@ -8,7 +8,7 @@
 - 기준 브랜치: `main`
 - 현재 릴리스: `v1.6.38`
 - 이전 운영 커밋: `56d973a` (v1.6.37)
-- 최신 반영 커밋: (병합 후 갱신 예정) (v1.6.38)
+- 최신 반영 커밋: `68d75de` (v1.6.38)
 - 배포 서버(권위 있는 실행 URL): `https://omok-live.onrender.com` — Render 서비스 `omok-live`(`srv-dakk44afngtc73ano4f0`), `main` 브랜치 커밋 시 자동 배포(`autoDeploy: commit`)
 - 참고: 과거 문서에 있던 Cloudflare Workers 프록시 주소(`silent-lake-9bcf.dlrjs9702.workers.dev`)는 이번 세션에서 재확인하지 않았다. 접속 안 되면 Render 주소를 기준으로 삼는다.
 
