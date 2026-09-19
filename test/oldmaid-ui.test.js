@@ -111,7 +111,12 @@ test('the draw flyer is server-confirmed (starts only after the request resolves
   const flyIndex = drawFn.indexOf('oldmaidFlyDrawnCard(originRect, drawnCard)');
   assert.ok(awaitIndex >= 0 && flyIndex >= 0 && flyIndex > awaitIndex,
     'the flight must be triggered only after the draw request has resolved, not before it');
-  assert.match(drawFn, /const drawnCard = afterHand\.find\(card => !beforeIds\.has\(card\.id\)\);/);
+  // v1.6.45: the drawn card's identity now comes straight from the server response, not from
+  // diffing beforeHand/afterHand -- a draw that immediately completes a pair removes that same
+  // card from the hand again before the response ever reaches the client, so the old diff could
+  // never recover it and silently skipped the animation on every such pair (non-joker cards pair
+  // often; the joker never does, which is why only joker draws visibly animated before this fix).
+  assert.match(drawFn, /const drawnCard = data\?\.drawnOldMaidCard \|\| null;/);
   assert.match(drawFn, /if \(drawnCard && originRect\?\.width && originRect\?\.height\)/);
   assert.match(app, /flyer\.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' \+ oldmaidCardFaceClass\(card\);/);
 });
@@ -130,7 +135,7 @@ test('the pair-removal convergence effect animates clones and never mutates the 
 test('the joker tension effect only reads my own private hand, never touches shared game state', () => {
   const app = read('public/app.js');
   assert.match(app, /function oldmaidShowJokerTension\(\)/);
-  assert.match(app, /const drawnCard = afterHand\.find\(card => !beforeIds\.has\(card\.id\)\);/);
+  assert.match(app, /const drawnCard = data\?\.drawnOldMaidCard \|\| null;/);
   assert.match(app, /if \(drawnCard\.rank === 'JOKER'\) oldmaidShowJokerTension\(\);/);
   assert.match(app, /state\.me\.myOldMaidHand/);
   // must never write a joker/private flag onto the shared game object

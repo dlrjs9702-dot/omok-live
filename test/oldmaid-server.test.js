@@ -104,6 +104,14 @@ test('Old Maid server protects hands, authorizes shuffles/draws and restores sta
   assert.equal(drawn.status, 200);
   assert.equal(drawn.data.state.game.moveCount, 1);
   assert.equal(drawn.data.state.game.revision, g.revision + 2);
+  // v1.6.45: the drawn card's identity is returned directly (not left for the client to infer by
+  // diffing hands), since a draw that immediately completes a pair removes that same card from the
+  // hand again before the response goes out -- and it must never leak to anyone but the drawer.
+  assert.ok(drawn.data.drawnOldMaidCard);
+  assert.ok(typeof drawn.data.drawnOldMaidCard.id === 'string' && drawn.data.drawnOldMaidCard.rank);
+  const otherToken = actorToken === host ? other : host;
+  const drawnFromOpponentSide = await req('/api/room', otherToken, undefined, 'GET');
+  assert.equal(drawnFromOpponentSide.data.drawnOldMaidCard, undefined);
   assert.equal((await req('/api/room/draw-oldmaid', actorToken, { targetSeat: g.target, index: 0, expectedRevision: refreshed.game.revision })).status, 409);
   const after = (await req('/api/room', spectator, undefined, 'GET')).data.state;
   assert.equal(JSON.stringify(after.game).includes('"hands"'), false);

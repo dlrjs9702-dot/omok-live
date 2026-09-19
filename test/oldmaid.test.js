@@ -41,7 +41,13 @@ test('draw transfers exactly one and auto-pairs, then skips empty seats clockwis
   const state = fixture({ '1':[card('A','a'),card('JOKER','joker')], '2':[card('A','b'),card('3','c')], '3':[], '4':[card('4','d')] });
   const before = Object.values(state.hands).flat().length;
   assert.deepEqual(game.draw(state,'1','4',0,4), { legal:false, reason:'bad-target' });
-  assert.equal(game.draw(state,'1','2',0,4).legal, true);
+  const verdict = game.draw(state,'1','2',0,4);
+  assert.equal(verdict.legal, true);
+  // v1.6.45: this draw immediately completes a pair, so the drawn card ('b') is spliced back out
+  // of hands['1'] within this same call -- the verdict must still hand back its true identity
+  // (this is exactly the case a plain before/after hand diff can never recover, since the card
+  // is gone from both sides of the diff).
+  assert.deepEqual(verdict.card, { id: 'b', rank: 'A', suit: '♠' });
   assert.equal(Object.values(state.hands).flat().length, before - 2);
   assert.deepEqual(state.hands['1'].map(c => c.id), ['joker']);
   assert.equal(state.turn, '2');

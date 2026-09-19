@@ -886,6 +886,9 @@ async function handleRoomAction(req, res, action, session) {
   const body = await parseJson(req);
   const participant = room.participants[session.token] || registerParticipant(room, session);
   if ((action === 'next-round' || action === 'rematch') && !(await recordOrError(room, res))) return;
+  // Only draw-oldmaid ever sets this: the drawn card's identity, for the drawer's own animation --
+  // never broadcast (see roomView/broadcast below), so opponents and spectators never see it.
+  let drawnOldMaidCard = null;
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
@@ -986,6 +989,7 @@ async function handleRoomAction(req, res, action, session) {
     } else {
       const verdict = engine.draw(room.game, playerSeat, body.targetSeat, body.index, body.expectedRevision);
       if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_DRAW', engine.moveError(verdict.reason));
+      drawnOldMaidCard = verdict.card;
       const targetLabel = room.participants[room.players[body.targetSeat]]?.label || '상대';
       appendSystemMessage(room, `${session.label || '플레이어'}님이 ${targetLabel}님의 카드 1장을 뽑았습니다.`);
       if (verdict.pairs) appendSystemMessage(room, `${session.label || '플레이어'}님이 카드 ${verdict.pairs}쌍을 버렸습니다.`);
@@ -1334,7 +1338,11 @@ async function handleRoomAction(req, res, action, session) {
   if (!(await recordOrError(room, res))) return;
   touchRoom(room);
   broadcast(room);
-  return sendJson(res, 200, { ok: true, state: roomView(room, session) });
+  return sendJson(res, 200, {
+    ok: true,
+    state: roomView(room, session),
+    ...(drawnOldMaidCard ? { drawnOldMaidCard } : {}),
+  });
 }
 
 async function requestHandler(req, res) {
@@ -1342,7 +1350,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.44', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.45', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1967,7 +1975,7 @@ async function main() {
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.44 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.45 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

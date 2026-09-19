@@ -3407,18 +3407,21 @@
     buttonEl.classList.add('selected');
     for (const candidate of oldmaidSeatsEl.querySelectorAll('.oldmaidBack')) candidate.disabled = true;
     const beforeHand = state.me?.myOldMaidHand || [];
-    const beforeIds = new Set(beforeHand.map(card => card.id));
     // The button this rect comes from is destroyed by roomAction()'s re-render below, so it must
     // be captured now, before the request -- not read again afterward.
     const originRect = oldmaidEffectsActive() ? buttonEl.getBoundingClientRect() : null;
     try {
-      await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
+      const data = await roomAction('draw-oldmaid', { targetSeat, index, expectedRevision: g.revision });
       if (oldmaidEffectsActive()) {
         const afterHand = state.me?.myOldMaidHand || [];
         const afterIds = new Set(afterHand.map(card => card.id));
-        const drawnCard = afterHand.find(card => !beforeIds.has(card.id));
-        // A failed/stale draw leaves my hand unchanged -- drawnCard stays undefined and nothing
-        // animates, which is exactly right: the animation only ever reflects a confirmed result.
+        // The server tells us exactly which card was drawn -- required because a draw that
+        // immediately completes a pair removes that same card from the hand again before this
+        // ever reaches the client, so it can never be recovered by diffing beforeHand/afterHand
+        // (that used to be how this worked, and silently skipped the animation on every such pair).
+        const drawnCard = data?.drawnOldMaidCard || null;
+        // A failed/stale draw never gets a drawnOldMaidCard back -- nothing animates, which is
+        // exactly right: the animation only ever reflects a confirmed result.
         if (drawnCard && originRect?.width && originRect?.height) {
           await oldmaidFlyDrawnCard(originRect, drawnCard);
         }
@@ -4113,6 +4116,7 @@
         state = data.state;
         renderRoom();
       }
+      return data;
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
   }
 
