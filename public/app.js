@@ -4,7 +4,8 @@
   const gateView = document.getElementById('gateView');
   const lobbyView = document.getElementById('lobbyView');
   const roomView = document.getElementById('roomView');
-  const roomPipBtn = document.getElementById('roomPipBtn');
+  const chatPipBtn = document.getElementById('chatPipBtn');
+  const gameInfoPipBtn = document.getElementById('gameInfoPipBtn');
   const adminLoginForm = document.getElementById('adminLoginForm');
   const adminPassword = document.getElementById('adminPassword');
   const identityLabel = document.getElementById('identityLabel');
@@ -123,10 +124,8 @@
   const yutHint = document.getElementById('yutHint');
   const yutMoveChoices = document.getElementById('yutMoveChoices');
   const yutSticks = [1, 2, 3, 4].map(n => document.getElementById(`yutStick${n}`));
-  // v1.6.55: common dice/yut animation panel, docked above chat -- see applyDiceYutPanelMode below.
-  const diceYutPanel = document.getElementById('diceYutPanel');
-  const diceYutPipBtn = document.getElementById('diceYutPipBtn');
-  const diceYutCollapseBtn = document.getElementById('diceYutCollapseBtn');
+  // v1.6.55: common dice/yut animation stage, embedded inside #gameInfoPanel (see below).
+  const diceYutSection = document.getElementById('diceYutSection');
   const diceYutStage = document.getElementById('diceYutStage');
   const diceYutResult = document.getElementById('diceYutResult');
   const bingoPanel = document.getElementById('bingoPanel');
@@ -267,8 +266,11 @@
   const chatUnreadBadge = document.getElementById('chatUnreadBadge');
   const chatFloatBtn = document.getElementById('chatFloatBtn');
   const chatFloatBadge = document.getElementById('chatFloatBadge');
-  const roomSidebar = document.getElementById('roomSidebar');
-  const sideCollapseBtn = document.getElementById('sideCollapseBtn');
+  const gameInfoFloatBtn = document.getElementById('gameInfoFloatBtn');
+  const chatPanel = document.getElementById('chatPanel');
+  const chatCollapseBtn = document.getElementById('chatCollapseBtn');
+  const gameInfoPanel = document.getElementById('gameInfoPanel');
+  const gameInfoCollapseBtn = document.getElementById('gameInfoCollapseBtn');
   const sideOverlayBackdrop = document.getElementById('sideOverlayBackdrop');
   const gameLayoutEl = document.querySelector('#roomView .gameLayout');
   const toast = document.getElementById('toast');
@@ -337,50 +339,73 @@
   // Room sidebar (chat/system/room-info) state. The sidebar never depends on measuring the
   // board's rendered height (that was the cause of the chat panel being pushed off-screen on
   // tall boards like Land King/Old Maid) — it is bounded purely by viewport height in CSS.
+  // v1.6.58: two fully independent sidebar cards -- #chatPanel (chat messages/input only) and
+  // #gameInfoPanel (system/room-info tabs, the dice/yut animation stage, every game's own
+  // #gameActionsPanel controls, and 기권/재대결/종료) -- replacing the single combined #roomSidebar
+  // (which used to hold all of it) and the separately-poppable #diceYutPanel (v1.6.57). A browser
+  // only ever allows ONE native Document Picture-in-Picture window open at a time (system-wide, not
+  // per-tab): giving chat and the dice/yut stage their own independent PIP buttons meant opening one
+  // silently closed the other, which read as things randomly vanishing rather than a real second
+  // window. Splitting into exactly these two panels -- chat, and "everything else" -- means a
+  // player only ever wants at most one of them floating at once, so the same one-PIP-window
+  // limitation stops being surprising.
   const SIDE_SIZE_KEY = 'roomSideSize';
-  const SIDE_COLLAPSE_KEY = 'roomSideCollapsed';
-  let sideActiveTab = 'chat';
-  let sideOverlayOpen = false;
-  let sideCollapsedPref = null; // null = no explicit user choice yet; use the per-game default
-  try { sideCollapsedPref = localStorage.getItem(SIDE_COLLAPSE_KEY); if (sideCollapsedPref !== null) sideCollapsedPref = sideCollapsedPref === '1'; } catch {}
+  const CHAT_COLLAPSE_KEY = 'chatPanelCollapsed';
+  const GAME_INFO_COLLAPSE_KEY = 'gameInfoPanelCollapsed';
+  let chatOverlayOpen = false;
+  let chatCollapsedPref = null; // null = no explicit user choice yet; default to open
+  try { chatCollapsedPref = localStorage.getItem(CHAT_COLLAPSE_KEY); if (chatCollapsedPref !== null) chatCollapsedPref = chatCollapsedPref === '1'; } catch {}
+  let gameInfoActiveTab = 'system';
+  let gameInfoOverlayOpen = false;
+  let gameInfoCollapsedPref = null;
+  try { gameInfoCollapsedPref = localStorage.getItem(GAME_INFO_COLLAPSE_KEY); if (gameInfoCollapsedPref !== null) gameInfoCollapsedPref = gameInfoCollapsedPref === '1'; } catch {}
   let chatUnreadCount = 0;
   let chatAtBottom = true;
   let chatLastSeenId = 0;
   let lastRenderedChatIds = [];
 
-  // Sidebar "PIP" window: reparents the whole real #roomSidebar -- chat, system messages, room
-  // info, AND the resign/end-game/next-round actions (all of it lives inside that one <aside>),
-  // with all their already-wired logic intact, not copies -- into a Document Picture-in-Picture
-  // window, so it floats above every other window. Same browser feature YouTube's video PIP uses,
-  // Chromium-only (feature-detected below). The board and topbar stay on the main page; only the
-  // sidebar leaves. The preference persists across rooms; the window itself never does (closed on
-  // every room exit).
-  const ROOM_PIP_KEY = 'roomPipPref';
-  const roomPipSupported = 'documentPictureInPicture' in window;
-  let roomPipPref = false;
-  try { roomPipPref = localStorage.getItem(ROOM_PIP_KEY) === '1'; } catch {}
-  let roomPipWindow = null;
-  let roomSidebarHome = null; // { parent, next } -- where to put #roomSidebar back on close
+  function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
 
-  function roomPipActive() { return Boolean(roomPipWindow); }
+  // v1.6.56: cityking/oldmaid no longer auto-collapse the sidebar by default. That default existed
+  // to give their wide boards more room, back when the sidebar was optional for actually playing
+  // them -- now that #gameActionsPanel (start/roll/buy/build buttons etc.) lives inside
+  // #gameInfoPanel, collapsing it by default would hide controls a host needs just to start the
+  // game. The user can still collapse it manually as before.
+  function chatShouldCollapse() { return chatCollapsedPref === true; }
+  function gameInfoShouldCollapse() { return gameInfoCollapsedPref === true; }
 
-  function updateRoomPipBtn() {
-    if (!roomPipBtn) return;
-    roomPipBtn.classList.toggle('hidden', !roomPipSupported);
-    roomPipBtn.textContent = roomPipActive() ? 'PIP 닫기' : 'PIP로 보기';
-    roomPipBtn.setAttribute('aria-pressed', roomPipActive() ? 'true' : 'false');
+  // Chat and game-info "PIP" windows: each reparents the whole real panel -- with all its
+  // already-wired logic intact, not a copy -- into a Document Picture-in-Picture window, so it
+  // floats above every other window. Same browser feature YouTube's video PIP uses, Chromium-only
+  // (feature-detected below). The board and topbar stay on the main page; only the popped-out panel
+  // leaves. Each preference persists across rooms; the window itself never does (closed on every
+  // room exit).
+  const CHAT_PIP_KEY = 'chatPipPref';
+  const chatPipSupported = 'documentPictureInPicture' in window;
+  let chatPipPref = false;
+  try { chatPipPref = localStorage.getItem(CHAT_PIP_KEY) === '1'; } catch {}
+  let chatPipWindow = null;
+  let chatPanelHome = null; // { parent, next } -- where to put #chatPanel back on close
+
+  function chatPipActive() { return Boolean(chatPipWindow); }
+
+  function updateChatPipBtn() {
+    if (!chatPipBtn) return;
+    chatPipBtn.classList.toggle('hidden', !chatPipSupported);
+    chatPipBtn.textContent = chatPipActive() ? 'PIP 닫기' : 'PIP로 보기';
+    chatPipBtn.setAttribute('aria-pressed', chatPipActive() ? 'true' : 'false');
   }
 
-  function closeRoomPip() {
-    // Closing itself finishes the job via the pagehide handler registered in openRoomPip (which
-    // restores #roomSidebar and clears roomPipWindow) -- this just asks the window to go away.
-    if (roomPipWindow) { try { roomPipWindow.close(); } catch {} }
+  function closeChatPip() {
+    // Closing itself finishes the job via the pagehide handler registered in openChatPip (which
+    // restores #chatPanel and clears chatPipWindow) -- this just asks the window to go away.
+    if (chatPipWindow) { try { chatPipWindow.close(); } catch {} }
   }
 
-  async function openRoomPip() {
-    if (!roomPipSupported || roomPipWindow || !roomSidebar) return;
+  async function openChatPip() {
+    if (!chatPipSupported || chatPipWindow || !chatPanel) return;
     try {
-      const pipWindow = await documentPictureInPicture.requestWindow({ width: 400, height: 680 });
+      const pipWindow = await documentPictureInPicture.requestWindow({ width: 380, height: 640 });
       for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
         const clone = pipWindow.document.createElement('link');
         clone.rel = 'stylesheet';
@@ -391,97 +416,192 @@
       // <style> tag here -- this page's CSP (style-src 'self') silently drops inline styles, so a
       // tag full of rules would parse into the DOM but never actually apply.
       pipWindow.document.documentElement.classList.add('sidePipLayout');
-      pipWindow.document.title = `채팅·정보 · ${state?.gameName || '게임센터'}`;
-      roomSidebarHome = { parent: roomSidebar.parentElement, next: roomSidebar.nextElementSibling };
-      pipWindow.document.body.appendChild(roomSidebar);
-      roomPipWindow = pipWindow;
-      applySideLayout();
+      pipWindow.document.title = `채팅 · ${state?.gameName || '게임센터'}`;
+      chatPanelHome = { parent: chatPanel.parentElement, next: chatPanel.nextElementSibling };
+      pipWindow.document.body.appendChild(chatPanel);
+      chatPipWindow = pipWindow;
+      applyChatLayout();
       pipWindow.addEventListener('pagehide', () => {
-        roomPipWindow = null;
-        if (roomSidebarHome) {
-          const { parent, next } = roomSidebarHome;
-          if (next && next.parentElement === parent) parent.insertBefore(roomSidebar, next);
-          else parent.appendChild(roomSidebar);
-          roomSidebarHome = null;
+        chatPipWindow = null;
+        if (chatPanelHome) {
+          const { parent, next } = chatPanelHome;
+          if (next && next.parentElement === parent) parent.insertBefore(chatPanel, next);
+          else parent.appendChild(chatPanel);
+          chatPanelHome = null;
         }
-        applySideLayout();
-        updateRoomPipBtn();
+        applyChatLayout();
+        updateChatPipBtn();
       }, { once: true });
-      updateRoomPipBtn();
+      updateChatPipBtn();
     } catch {
       // Most likely: no recent click to authorize it (e.g. a silent session restore on page load).
       // The button stays visible in its "not open yet" state so one click finishes the job.
-      roomPipWindow = null;
+      chatPipWindow = null;
     }
   }
 
-  function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
+  const GAME_INFO_PIP_KEY = 'gameInfoPipPref';
+  const gameInfoPipSupported = 'documentPictureInPicture' in window;
+  let gameInfoPipPref = false;
+  try { gameInfoPipPref = localStorage.getItem(GAME_INFO_PIP_KEY) === '1'; } catch {}
+  let gameInfoPipWindow = null;
+  let gameInfoPanelHome = null;
+  let gameInfoPipResizeObserver = null;
 
-  // v1.6.56: cityking/oldmaid no longer auto-collapse the sidebar by default. That default existed
-  // to give their wide boards more room, back when the sidebar was optional for actually playing
-  // them -- now that #gameActionsPanel (start/roll/buy/build buttons etc., moved out of the board
-  // area this patch) lives inside the sidebar, collapsing it by default would hide controls a host
-  // needs just to start the game. The user can still collapse it manually as before.
-  function sideShouldCollapse() {
-    if (sideCollapsedPref !== null) return sideCollapsedPref;
-    return false;
+  function gameInfoPipActive() { return Boolean(gameInfoPipWindow); }
+
+  function updateGameInfoPipBtn() {
+    if (!gameInfoPipBtn) return;
+    gameInfoPipBtn.classList.toggle('hidden', !gameInfoPipSupported);
+    gameInfoPipBtn.textContent = gameInfoPipActive() ? 'PIP 닫기' : 'PIP로 보기';
+    gameInfoPipBtn.setAttribute('aria-pressed', gameInfoPipActive() ? 'true' : 'false');
   }
 
-  function sideChatVisible() {
-    // True when the chat pane is actually on-screen and readable right now.
-    if (roomPipActive()) return true; // floating in its own always-visible PIP window
-    if (isMobileLayout()) return sideOverlayOpen && sideActiveTab === 'chat';
-    if (sideOverlayOpen) return sideActiveTab === 'chat';
-    return !sideShouldCollapse() && sideActiveTab === 'chat';
+  function closeGameInfoPip() {
+    if (gameInfoPipWindow) { try { gameInfoPipWindow.close(); } catch {} }
   }
 
-  function applySideLayout() {
+  // As the popped-out window is resized, scale the dice-cube/yut-stick stage proportionally -- a
+  // smaller PIP window should show a smaller-but-legible 3D stage, not one clipped at the edges.
+  // Pure CSS custom property + transform:scale (see .diceYutStage in styles.css); it never touches
+  // the animation math (translate/rotate) already running against these same elements.
+  function applyDiceYutPipScale(pipWindow) {
+    if (!diceYutStage) return;
+    const naturalWidth = 260;
+    const available = Math.max(160, pipWindow.innerWidth - 32);
+    const scale = Math.min(1, available / naturalWidth);
+    diceYutStage.style.setProperty('--diceYutScale', String(scale));
+  }
+
+  function watchDiceYutPipScale(pipWindow) {
+    if (gameInfoPipResizeObserver) { try { gameInfoPipResizeObserver.disconnect(); } catch {} }
+    gameInfoPipResizeObserver = null;
+    applyDiceYutPipScale(pipWindow);
+    if (typeof pipWindow.ResizeObserver === 'undefined') return;
+    gameInfoPipResizeObserver = new pipWindow.ResizeObserver(() => applyDiceYutPipScale(pipWindow));
+    gameInfoPipResizeObserver.observe(pipWindow.document.documentElement);
+  }
+
+  async function openGameInfoPip() {
+    if (!gameInfoPipSupported || gameInfoPipWindow || !gameInfoPanel) return;
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({ width: 420, height: 720 });
+      for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+        const clone = pipWindow.document.createElement('link');
+        clone.rel = 'stylesheet';
+        clone.href = link.href;
+        pipWindow.document.head.appendChild(clone);
+      }
+      pipWindow.document.documentElement.classList.add('sidePipLayout');
+      pipWindow.document.title = `게임 진행 · ${state?.gameName || '게임센터'}`;
+      gameInfoPanelHome = { parent: gameInfoPanel.parentElement, next: gameInfoPanel.nextElementSibling };
+      pipWindow.document.body.appendChild(gameInfoPanel);
+      gameInfoPipWindow = pipWindow;
+      if (diceYutStage) watchDiceYutPipScale(pipWindow);
+      applyGameInfoLayout();
+      pipWindow.addEventListener('pagehide', () => {
+        gameInfoPipWindow = null;
+        if (gameInfoPipResizeObserver) { try { gameInfoPipResizeObserver.disconnect(); } catch {} gameInfoPipResizeObserver = null; }
+        if (diceYutStage) diceYutStage.style.removeProperty('--diceYutScale');
+        if (gameInfoPanelHome) {
+          const { parent, next } = gameInfoPanelHome;
+          if (next && next.parentElement === parent) parent.insertBefore(gameInfoPanel, next);
+          else parent.appendChild(gameInfoPanel);
+          gameInfoPanelHome = null;
+        }
+        applyGameInfoLayout();
+        updateGameInfoPipBtn();
+      }, { once: true });
+      updateGameInfoPipBtn();
+    } catch {
+      gameInfoPipWindow = null;
+    }
+  }
+
+  function updateSideOverlayBackdrop() {
+    sideOverlayBackdrop.classList.toggle('hidden', !((chatOverlayOpen || gameInfoOverlayOpen) && isMobileLayout()));
+  }
+
+  // Widens the board (collapses this whole grid column) only once BOTH panels are actually gone
+  // from the page -- either popped out to their own PIP window, or manually collapsed/docked and
+  // not currently shown as a mobile overlay. Either panel alone staying docked keeps the column at
+  // its normal width, since #gameInfoPanel in particular holds controls a player still needs.
+  function updateGameLayoutCollapsed() {
+    if (!gameLayoutEl) return;
     const mobile = isMobileLayout();
-    const collapsed = sideShouldCollapse();
-    const pipActive = roomPipActive();
-    roomSidebar.classList.toggle('overlayOpen', sideOverlayOpen);
-    roomSidebar.classList.toggle('collapsedDocked', !sideOverlayOpen && !mobile && collapsed);
-    // While the sidebar is popped out to PIP it's not in this document's layout at all (moved into
-    // the popup), so the board always gets the full-width "collapsed" treatment regardless of the
-    // normal collapse preference, and the floating "open chat" bubble stays hidden -- there's
-    // nothing left here for it to open, the sidebar is already a real separate window.
-    if (gameLayoutEl) gameLayoutEl.classList.toggle('sideCollapsed', pipActive || (!mobile && collapsed && !sideOverlayOpen));
-    sideOverlayBackdrop.classList.toggle('hidden', !(sideOverlayOpen && mobile));
-    // While the overlay is open, its own "닫기" button (below) and the backdrop tap (mobile)
-    // are the way to close it -- the separate floating button is hidden so it never sits on top
-    // of the overlay's own content (it used to visually collide with the chat send button).
-    chatFloatBtn.classList.toggle('hidden', pipActive || sideOverlayOpen || !(mobile || collapsed));
+    const chatGone = chatPipActive() || (!mobile && chatShouldCollapse() && !chatOverlayOpen);
+    const gameInfoGone = gameInfoPipActive() || (!mobile && gameInfoShouldCollapse() && !gameInfoOverlayOpen);
+    gameLayoutEl.classList.toggle('sideCollapsed', chatGone && gameInfoGone);
+  }
+
+  function chatVisible() {
+    // True when the chat pane is actually on-screen and readable right now.
+    if (chatPipActive()) return true; // floating in its own always-visible PIP window
+    if (isMobileLayout()) return chatOverlayOpen;
+    return !chatShouldCollapse();
+  }
+
+  function applyChatLayout() {
+    const mobile = isMobileLayout();
+    const collapsed = chatShouldCollapse();
+    const pipActive = chatPipActive();
+    chatPanel.classList.toggle('overlayOpen', chatOverlayOpen);
+    chatPanel.classList.toggle('collapsedDocked', !chatOverlayOpen && !mobile && collapsed);
+    // While popped out to PIP the panel isn't in this document's layout at all (moved into the
+    // popup), so the floating "open chat" bubble stays hidden -- there's nothing left here for it
+    // to open, the panel is already a real separate window.
+    chatFloatBtn.classList.toggle('hidden', pipActive || chatOverlayOpen || !(mobile || collapsed));
     chatFloatBtn.setAttribute('aria-label', '채팅 열기');
     chatFloatBtn.classList.remove('isOpen');
-    sideCollapseBtn.textContent = sideOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
-    sideCollapseBtn.setAttribute('aria-label', sideOverlayOpen ? '채팅 패널 닫기' : collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
-    for (const btn of roomSidebar.querySelectorAll('.sideTab')) {
-      const active = btn.dataset.sideTab === sideActiveTab;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-    }
-    for (const pane of roomSidebar.querySelectorAll('.sidePane')) {
-      pane.classList.toggle('hidden', pane.dataset.sidePane !== sideActiveTab);
-    }
+    chatCollapseBtn.textContent = chatOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
+    chatCollapseBtn.setAttribute('aria-label', chatOverlayOpen ? '채팅 패널 닫기' : collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
+    updateSideOverlayBackdrop();
+    updateGameLayoutCollapsed();
     // Only auto-clear unread when the reader is actually at the bottom of the chat pane --
     // otherwise a message arriving while they're scrolled up in history (chat pane still
     // "visible") would silently reset the unread badge before they ever saw it.
-    if (sideChatVisible() && chatAtBottom) markChatSeen();
+    if (chatVisible() && chatAtBottom) markChatSeen();
   }
 
-  function setSideTab(tab) {
-    sideActiveTab = tab;
-    if (sideShouldCollapse() && !sideOverlayOpen && !isMobileLayout() && tab === 'chat') {
-      // Picking the chat tab while docked-collapsed opens the overlay so it's actually visible.
-      sideOverlayOpen = true;
+  function toggleChatOverlay(forceOpen) {
+    chatOverlayOpen = typeof forceOpen === 'boolean' ? forceOpen : !chatOverlayOpen;
+    if (chatOverlayOpen) gameInfoOverlayOpen = false; // only one mobile overlay open at a time
+    applyChatLayout();
+    applyGameInfoLayout();
+  }
+
+  function applyGameInfoLayout() {
+    const mobile = isMobileLayout();
+    const collapsed = gameInfoShouldCollapse();
+    const pipActive = gameInfoPipActive();
+    gameInfoPanel.classList.toggle('overlayOpen', gameInfoOverlayOpen);
+    gameInfoPanel.classList.toggle('collapsedDocked', !gameInfoOverlayOpen && !mobile && collapsed);
+    gameInfoFloatBtn.classList.toggle('hidden', pipActive || gameInfoOverlayOpen || !(mobile || collapsed));
+    gameInfoFloatBtn.classList.remove('isOpen');
+    gameInfoCollapseBtn.textContent = gameInfoOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
+    gameInfoCollapseBtn.setAttribute('aria-label', gameInfoOverlayOpen ? '게임 진행 패널 닫기' : collapsed ? '게임 진행 패널 펼치기' : '게임 진행 패널 접기');
+    for (const btn of gameInfoPanel.querySelectorAll('.sideTab')) {
+      const active = btn.dataset.sideTab === gameInfoActiveTab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
     }
-    applySideLayout();
+    for (const pane of gameInfoPanel.querySelectorAll('.sidePane')) {
+      pane.classList.toggle('hidden', pane.dataset.sidePane !== gameInfoActiveTab);
+    }
+    updateSideOverlayBackdrop();
+    updateGameLayoutCollapsed();
   }
 
-  function toggleSideOverlay(forceOpen) {
-    sideOverlayOpen = typeof forceOpen === 'boolean' ? forceOpen : !sideOverlayOpen;
-    if (sideOverlayOpen) sideActiveTab = 'chat';
-    applySideLayout();
+  function setGameInfoTab(tab) {
+    gameInfoActiveTab = tab;
+    applyGameInfoLayout();
+  }
+
+  function toggleGameInfoOverlay(forceOpen) {
+    gameInfoOverlayOpen = typeof forceOpen === 'boolean' ? forceOpen : !gameInfoOverlayOpen;
+    if (gameInfoOverlayOpen) chatOverlayOpen = false;
+    applyGameInfoLayout();
+    applyChatLayout();
   }
 
   function markChatSeen() {
@@ -500,7 +620,7 @@
 
   chatMessages.addEventListener('scroll', () => {
     chatAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
-    if (chatAtBottom) { chatJumpBtn.classList.add('hidden'); if (sideChatVisible()) markChatSeen(); }
+    if (chatAtBottom) { chatJumpBtn.classList.add('hidden'); if (chatVisible()) markChatSeen(); }
   });
   chatInput.addEventListener('focus', () => {
     // Belt-and-suspenders for the mobile keyboard: the overlay already sizes itself with dvh,
@@ -514,29 +634,49 @@
     chatJumpBtn.classList.add('hidden');
     markChatSeen();
   });
-  for (const btn of document.querySelectorAll('.sideTab')) {
-    btn.addEventListener('click', () => setSideTab(btn.dataset.sideTab));
-  }
-  sideCollapseBtn.addEventListener('click', () => {
-    if (sideOverlayOpen) {
+  chatCollapseBtn.addEventListener('click', () => {
+    if (chatOverlayOpen) {
       // Just close the overlay -- opening it never implied a permanent docked preference change,
       // so closing it shouldn't silently flip one either.
-      sideOverlayOpen = false;
-      applySideLayout();
+      chatOverlayOpen = false;
+      applyChatLayout();
       return;
     }
-    sideCollapsedPref = !sideShouldCollapse();
-    try { localStorage.setItem(SIDE_COLLAPSE_KEY, sideCollapsedPref ? '1' : '0'); } catch {}
-    applySideLayout();
+    chatCollapsedPref = !chatShouldCollapse();
+    try { localStorage.setItem(CHAT_COLLAPSE_KEY, chatCollapsedPref ? '1' : '0'); } catch {}
+    applyChatLayout();
   });
-  chatFloatBtn.addEventListener('click', () => toggleSideOverlay());
-  sideOverlayBackdrop.addEventListener('click', () => toggleSideOverlay(false));
-  roomPipBtn?.addEventListener('click', () => {
-    roomPipPref = !roomPipActive();
-    try { localStorage.setItem(ROOM_PIP_KEY, roomPipPref ? '1' : '0'); } catch {}
-    if (roomPipActive()) closeRoomPip(); else openRoomPip();
+  chatFloatBtn.addEventListener('click', () => toggleChatOverlay());
+  chatPipBtn?.addEventListener('click', () => {
+    chatPipPref = !chatPipActive();
+    try { localStorage.setItem(CHAT_PIP_KEY, chatPipPref ? '1' : '0'); } catch {}
+    if (chatPipActive()) closeChatPip(); else openChatPip();
   });
-  updateRoomPipBtn();
+  updateChatPipBtn();
+
+  for (const btn of gameInfoPanel.querySelectorAll('.sideTab')) {
+    btn.addEventListener('click', () => setGameInfoTab(btn.dataset.sideTab));
+  }
+  gameInfoCollapseBtn.addEventListener('click', () => {
+    if (gameInfoOverlayOpen) {
+      gameInfoOverlayOpen = false;
+      applyGameInfoLayout();
+      return;
+    }
+    gameInfoCollapsedPref = !gameInfoShouldCollapse();
+    try { localStorage.setItem(GAME_INFO_COLLAPSE_KEY, gameInfoCollapsedPref ? '1' : '0'); } catch {}
+    applyGameInfoLayout();
+  });
+  gameInfoFloatBtn.addEventListener('click', () => toggleGameInfoOverlay());
+  gameInfoPipBtn?.addEventListener('click', () => {
+    gameInfoPipPref = !gameInfoPipActive();
+    try { localStorage.setItem(GAME_INFO_PIP_KEY, gameInfoPipPref ? '1' : '0'); } catch {}
+    if (gameInfoPipActive()) closeGameInfoPip(); else openGameInfoPip();
+  });
+  updateGameInfoPipBtn();
+
+  sideOverlayBackdrop.addEventListener('click', () => { toggleChatOverlay(false); toggleGameInfoOverlay(false); });
+
   for (const btn of document.querySelectorAll('.sideSizeBtn')) {
     btn.addEventListener('click', () => {
       const size = btn.dataset.sideSize;
@@ -554,143 +694,8 @@
       document.querySelector(`.sideSizeBtn[data-side-size="${savedSize}"]`)?.setAttribute('aria-pressed', 'true');
     }
   } catch {}
-  window.addEventListener('resize', () => applySideLayout());
-  window.addEventListener('orientationchange', () => applySideLayout());
-
-  // v1.6.57: dice/yut animation panel display mode -- default (docked above chat) / pip (a REAL
-  // native Document Picture-in-Picture window) / collapsed (title bar only). PiP now uses the exact
-  // same mechanism as roomSidebar's own "PIP" (openRoomPip/closeRoomPip above) -- reparenting the
-  // real #diceYutPanel node into a `documentPictureInPicture.requestWindow()` popup that floats
-  // above every other window, rather than the earlier in-app floating <div> (drag/resize, clipped
-  // to this browser tab). The three modes are mutually exclusive (a single string, not independent
-  // booleans), matching the spec's "세 가지 상태가 충돌하지 않도록" requirement directly. Switching
-  // modes only ever moves/classes the panel's own DOM node and writes to localStorage -- it never
-  // touches state.game, roomAction, or any other shared/server state, and it never rebuilds
-  // #diceYutStage's children, so an in-flight throw animation (a running requestAnimationFrame loop
-  // against those exact DOM nodes) keeps playing uninterrupted across a mode switch instead of
-  // restarting.
-  const DICE_PANEL_MODE_KEY = 'diceYutPanelMode';
-  let diceYutPanelMode = 'default';
-  try {
-    const saved = localStorage.getItem(DICE_PANEL_MODE_KEY);
-    if (saved === 'default' || saved === 'pip' || saved === 'collapsed') diceYutPanelMode = saved;
-  } catch {}
-  const diceYutPipSupported = 'documentPictureInPicture' in window;
-  let diceYutPipWindow = null;
-  let diceYutPanelHome = null; // { parent, next } -- where to put the panel back on leaving PiP mode
-  let diceYutPipResizeObserver = null;
-
-  function diceYutPipActive() { return Boolean(diceYutPipWindow); }
-
-  function closeDiceYutPip() {
-    // Closing itself finishes the job via the pagehide handler registered in openDiceYutPip (which
-    // restores #diceYutPanel and clears diceYutPipWindow) -- this just asks the window to go away.
-    if (diceYutPipWindow) { try { diceYutPipWindow.close(); } catch {} }
-  }
-
-  // Part E: as the popped-out window is resized, scale the dice-cube/yut-stick stage proportionally
-  // -- a smaller PiP window should show a smaller-but-legible 3D stage, not one clipped at the
-  // edges. Pure CSS custom property + transform:scale (see .diceYutStage in styles.css); it never
-  // touches the animation math (translate/rotate) already running against these same elements.
-  function applyDiceYutPipScale(pipWindow) {
-    if (!diceYutStage) return;
-    const naturalWidth = 260;
-    const available = Math.max(160, pipWindow.innerWidth - 32);
-    const scale = Math.min(1, available / naturalWidth);
-    diceYutStage.style.setProperty('--diceYutScale', String(scale));
-  }
-
-  function watchDiceYutPipScale(pipWindow) {
-    if (diceYutPipResizeObserver) { try { diceYutPipResizeObserver.disconnect(); } catch {} }
-    diceYutPipResizeObserver = null;
-    applyDiceYutPipScale(pipWindow);
-    if (typeof pipWindow.ResizeObserver === 'undefined') return;
-    diceYutPipResizeObserver = new pipWindow.ResizeObserver(() => applyDiceYutPipScale(pipWindow));
-    diceYutPipResizeObserver.observe(pipWindow.document.documentElement);
-  }
-
-  async function openDiceYutPip() {
-    if (!diceYutPipSupported || diceYutPipWindow || !diceYutPanel) return;
-    try {
-      const pipWindow = await documentPictureInPicture.requestWindow({ width: 300, height: 340 });
-      for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
-        const clone = pipWindow.document.createElement('link');
-        clone.rel = 'stylesheet';
-        clone.href = link.href;
-        pipWindow.document.head.appendChild(clone);
-      }
-      // The layout override lives in styles.css as .diceYutPipLayout, not an injected <style> tag --
-      // this page's CSP (style-src 'self') silently drops inline styles (see openRoomPip's own note).
-      pipWindow.document.documentElement.classList.add('diceYutPipLayout');
-      pipWindow.document.title = `주사위·윷 · ${state?.gameName || '게임센터'}`;
-      diceYutPanelHome = { parent: diceYutPanel.parentElement, next: diceYutPanel.nextElementSibling };
-      diceYutPanel.classList.remove('collapsed');
-      pipWindow.document.body.appendChild(diceYutPanel);
-      diceYutPipWindow = pipWindow;
-      watchDiceYutPipScale(pipWindow);
-      pipWindow.addEventListener('pagehide', () => {
-        diceYutPipWindow = null;
-        if (diceYutPipResizeObserver) { try { diceYutPipResizeObserver.disconnect(); } catch {} diceYutPipResizeObserver = null; }
-        if (diceYutStage) diceYutStage.style.removeProperty('--diceYutScale');
-        if (diceYutPanelHome) {
-          const { parent, next } = diceYutPanelHome;
-          if (next && next.parentElement === parent) parent.insertBefore(diceYutPanel, next);
-          else parent.appendChild(diceYutPanel);
-          diceYutPanelHome = null;
-        }
-        // The window can also be closed directly by the user (its own OS close button), not just via
-        // closeDiceYutPip() -- fall back to 'default' so the panel reappears inline instead of the
-        // saved mode silently pointing at a PiP window that no longer exists.
-        if (diceYutPanelMode === 'pip') { diceYutPanelMode = 'default'; try { localStorage.setItem(DICE_PANEL_MODE_KEY, 'default'); } catch {} }
-        applyDiceYutPanelMode();
-      }, { once: true });
-      applyDiceYutPanelMode();
-    } catch {
-      // Most likely: no recent click to authorize it (e.g. the mode was restored from localStorage
-      // on page load with no user gesture yet) -- fall back to 'default' so the panel stays visible
-      // inline instead of silently vanishing; the PiP button stays available to retry with a click.
-      diceYutPipWindow = null;
-      if (diceYutPanelMode === 'pip') { diceYutPanelMode = 'default'; try { localStorage.setItem(DICE_PANEL_MODE_KEY, 'default'); } catch {} }
-      applyDiceYutPanelMode();
-    }
-  }
-
-  function applyDiceYutPanelMode() {
-    const pip = diceYutPanelMode === 'pip' && diceYutPipSupported;
-    const collapsed = diceYutPanelMode === 'collapsed';
-    diceYutPanel.classList.toggle('collapsed', collapsed && !pip);
-    diceYutPipBtn.classList.toggle('hidden', !diceYutPipSupported);
-    diceYutPipBtn.textContent = diceYutPipActive() ? 'PiP 닫기' : 'PiP';
-    diceYutPipBtn.setAttribute('aria-pressed', diceYutPipActive() ? 'true' : 'false');
-    diceYutCollapseBtn.classList.toggle('hidden', pip);
-    diceYutCollapseBtn.textContent = collapsed ? '펼치기 ◂' : '접기 ▸';
-    diceYutCollapseBtn.setAttribute('aria-label', collapsed ? '주사위·윷 패널 펼치기' : '주사위·윷 패널 접기');
-    if (pip) {
-      if (!diceYutPipActive()) openDiceYutPip();
-    } else if (diceYutPipActive()) {
-      closeDiceYutPip();
-    }
-  }
-
-  function setDiceYutPanelMode(mode) {
-    diceYutPanelMode = mode;
-    try { localStorage.setItem(DICE_PANEL_MODE_KEY, mode); } catch {}
-    applyDiceYutPanelMode();
-  }
-
-  // Undoes the PiP reparent (if any) and hides the panel, without touching diceYutPanelMode or
-  // localStorage -- called on room exit (see enterLobby) so a popped-out PiP window never lingers
-  // over the lobby, while the user's chosen mode still applies next time they play yut. Mirrors
-  // enterLobby's own closeRoomPip() call for the chat sidebar's PIP window.
-  function resetDiceYutPanelForRoomExit() {
-    diceYutPanel.classList.add('hidden');
-    closeDiceYutPip();
-  }
-
-  diceYutPipBtn.addEventListener('click', () => setDiceYutPanelMode(diceYutPanelMode === 'pip' ? 'default' : 'pip'));
-  diceYutCollapseBtn.addEventListener('click', () => setDiceYutPanelMode(diceYutPanelMode === 'collapsed' ? 'default' : 'collapsed'));
-
-  applyDiceYutPanelMode();
+  window.addEventListener('resize', () => { applyChatLayout(); applyGameInfoLayout(); });
+  window.addEventListener('orientationchange', () => { applyChatLayout(); applyGameInfoLayout(); });
 
   // Old Maid table effects state. Purely cosmetic bookkeeping: never the source of truth for
   // game state (that always comes from `state.game`, applied immediately by roomAction/SSE).
@@ -1960,13 +1965,12 @@
 
   function enterLobby() {
     stopStream();
-    closeRoomPip();
-    // The dice/yut panel's PiP mode reparents it to document.body (see applyDiceYutPanelMode), so
-    // leaving the room must hide it and move it back to its normal spot -- otherwise a floating
-    // panel opened during a yut game would keep floating over the lobby after the player leaves.
-    // This is purely a DOM/visibility reset: it does NOT touch diceYutPanelMode or localStorage, so
-    // the user's chosen mode (default/pip/collapsed) is still honored the next time they play yut.
-    resetDiceYutPanelForRoomExit();
+    // Closing both PIP windows here (rather than leaving either to linger) mirrors the same
+    // reasoning as before: whichever panel is currently popped out must not keep floating over the
+    // lobby after the player leaves. This never touches either PIP preference or localStorage, so
+    // the user's chosen mode is still honored the next time they enter a room.
+    closeChatPip();
+    closeGameInfoPip();
     state = null;
     lastResultEffectKey = null;
     clearResultEffect();
@@ -1990,8 +1994,9 @@
     chatAtBottom = true;
     chatLastSeenId = 0;
     lastRenderedChatIds = [];
-    sideOverlayOpen = false;
-    sideActiveTab = 'chat';
+    chatOverlayOpen = false;
+    gameInfoOverlayOpen = false;
+    gameInfoActiveTab = 'system';
     updateChatBadges();
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
@@ -2003,8 +2008,10 @@
     if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
     // Only actually opens when this call chain started from a real click (create/join/accept
     // invite) -- a silent page-load reconnect has no such gesture, so this just no-ops and the
-    // roomPipBtn stays available for one manual click instead.
-    if (roomPipPref && roomPipSupported && !roomPipActive()) openRoomPip();
+    // PIP button stays available for one manual click instead. Restoring both would fight over the
+    // one native PIP window a browser allows at a time, so only chat's own preference auto-restores
+    // here -- if the player wants 게임 진행 floating too, they open it themselves.
+    if (chatPipPref && chatPipSupported && !chatPipActive()) openChatPip();
   }
 
   function stopStream() {
@@ -2311,7 +2318,7 @@
     // Otherwise leave scrollTop untouched — a reader scrolled up in history is never yanked back down.
 
     if (hasNewChat) {
-      if (sideChatVisible() && wasAtBottom) {
+      if (chatVisible() && wasAtBottom) {
         markChatSeen();
       } else {
         chatUnreadCount += 1;
@@ -2319,7 +2326,8 @@
         if (!wasAtBottom) chatJumpBtn.classList.remove('hidden');
       }
     }
-    applySideLayout();
+    applyChatLayout();
+    applyGameInfoLayout();
   }
 
   function renderTeamPlayers() {
@@ -2622,15 +2630,10 @@
     // still runs right after this and only when yut is actually active, same order as before.
     yutThrowBtn.classList.toggle('hidden', !yut);
     yutMoveChoices.classList.toggle('hidden', !yut);
-    // v1.6.55: the dice/yut animation panel is shared UI (docked above chat, see applyDiceYutPanelMode)
-    // that's only relevant while a dice/yut-style game is active -- today that's just yut, but a future
-    // dice game adds itself to this same condition rather than growing a second panel. Re-apply the
-    // persisted mode only on a hidden->visible transition (a fresh yut game/room/reconnect), never on
-    // every render while already visible -- otherwise a live drag or resize-in-progress would get
-    // fought by a stale saved position/size read back from localStorage on the next unrelated render.
-    const diceYutWasHidden = diceYutPanel.classList.contains('hidden');
-    diceYutPanel.classList.toggle('hidden', !yut);
-    if (yut && diceYutWasHidden) applyDiceYutPanelMode();
+    // v1.6.55: the dice/yut animation stage is shared UI (embedded in #gameInfoPanel, see index.html)
+    // that's only relevant while a dice/yut-style game is active -- today that's just yut, but a
+    // future dice game adds itself to this same condition rather than growing a second stage.
+    diceYutSection.classList.toggle('hidden', !yut);
     if (yut) renderYut();
     else {
       yutLastThrowKey = null;

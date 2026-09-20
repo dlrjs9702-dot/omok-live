@@ -8,23 +8,24 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 // v1.6.56: every game's role/seat selection, start button, and turn-action inputs (throw/roll
 // buttons, guess/hint/answer forms, setup selects) moved out from under the board into a single
-// shared #gameActionsPanel, docked below the chat/system/room-info tabs inside <aside id="roomSidebar">
-// -- the same "below chat" placement already established for #diceYutPanel/.sideActions. Passive
+// shared #gameActionsPanel, docked below the dice/yut stage inside <aside id="gameInfoPanel"> --
+// the same "게임 진행" panel that also holds the system/room-info tabs and .sideActions (v1.6.58
+// split chat out into its own separate #chatPanel; #gameActionsPanel never lived there). Passive
 // board content (bingo's number grid, oldmaid's seat cards, marathon's track, pictionary's drawing
 // canvas, the actual game boards) stays where it was; only interactive controls moved. All of this
 // is a pure DOM relocation -- every element keeps its original id, so none of app.js's
 // getElementById-based render/toggle/click-wiring logic needed to change.
-test('#gameActionsPanel exists inside the sidebar, below the chat/system/room-info tabs and above the resign/next-round row', () => {
+test('#gameActionsPanel exists inside #gameInfoPanel, below the dice/yut stage and above the resign/next-round row', () => {
   const html = read('public/index.html');
-  const asideStart = html.indexOf('<aside class="side card" id="roomSidebar">');
-  const asideEnd = html.indexOf('</aside>');
+  const asideStart = html.indexOf('<aside class="side card" id="gameInfoPanel"');
+  const asideEnd = html.indexOf('</aside>', asideStart);
   const infoStart = html.indexOf('data-side-pane="info"', asideStart);
   const panelStart = html.indexOf('id="gameActionsPanel"', asideStart);
   const sideActionsStart = html.indexOf('class="sideActions"', asideStart);
-  assert.ok(asideStart >= 0 && asideStart < infoStart, 'aside must contain the info tab');
-  assert.ok(infoStart < panelStart, '#gameActionsPanel must come after the sidePane tabs (below chat)');
+  assert.ok(asideStart >= 0 && asideStart < panelStart, 'aside must contain #gameActionsPanel');
+  assert.ok(panelStart < infoStart, '#gameActionsPanel must come before the system/info sidePane tabs');
   assert.ok(panelStart < sideActionsStart, '#gameActionsPanel must come before .sideActions');
-  assert.ok(sideActionsStart < asideEnd, '.sideActions must still be inside the aside');
+  assert.ok(infoStart < asideEnd && sideActionsStart < asideEnd, 'the info tab and .sideActions must still be inside the aside');
 });
 
 test('the shared role/seat chooser lives inside #gameActionsPanel, not under the board', () => {

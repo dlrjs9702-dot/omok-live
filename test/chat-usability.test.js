@@ -12,30 +12,30 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // tab-bar button is the one, unambiguous close affordance.
 test('the floating chat button hides while the overlay is open, instead of colliding with the overlay\'s own controls', () => {
   const app = read('public/app.js');
-  assert.match(app, /chatFloatBtn\.classList\.toggle\('hidden', pipActive \|\| sideOverlayOpen \|\| !\(mobile \|\| collapsed\)\)/);
+  assert.match(app, /chatFloatBtn\.classList\.toggle\('hidden', pipActive \|\| chatOverlayOpen \|\| !\(mobile \|\| collapsed\)\)/);
   assert.match(app, /chatFloatBtn\.setAttribute\('aria-label', '채팅 열기'\)/);
 });
 
-test('the sidebar\'s collapse button becomes an unambiguous close button while the overlay is open, and never silently changes the docked preference', () => {
+test('the chat panel\'s collapse button becomes an unambiguous close button while the overlay is open, and never silently changes the docked preference', () => {
   const app = read('public/app.js');
-  assert.match(app, /sideCollapseBtn\.textContent = sideOverlayOpen \? '닫기 ✕'/);
-  const handler = app.slice(app.indexOf("sideCollapseBtn.addEventListener('click'"), app.indexOf("sideCollapseBtn.addEventListener('click'") + 400);
-  assert.match(handler, /if \(sideOverlayOpen\)/);
-  assert.match(handler, /sideOverlayOpen = false;/);
+  assert.match(app, /chatCollapseBtn\.textContent = chatOverlayOpen \? '닫기 ✕'/);
+  const handler = app.slice(app.indexOf("chatCollapseBtn.addEventListener('click'"), app.indexOf("chatCollapseBtn.addEventListener('click'") + 400);
+  assert.match(handler, /if \(chatOverlayOpen\)/);
+  assert.match(handler, /chatOverlayOpen = false;/);
   assert.match(handler, /return;/);
 });
 
-// v1.6.36: applySideLayout() used to mark chat as "seen" purely because the chat pane was the
+// v1.6.36: applyChatLayout() used to mark chat as "seen" purely because the chat pane was the
 // active/visible pane, even while the reader had scrolled away from the bottom to read history.
 // A message arriving mid-read would immediately zero out the unread badge before it was ever
 // actually seen. It's now gated on chatAtBottom too.
 test('the unread badge only auto-clears when the reader is actually at the bottom of the chat pane', () => {
   const app = read('public/app.js');
-  assert.match(app, /if \(sideChatVisible\(\) && chatAtBottom\) markChatSeen\(\);/);
-  // The scroll handler's own (already chatAtBottom-gated) call is fine; applySideLayout's
+  assert.match(app, /if \(chatVisible\(\) && chatAtBottom\) markChatSeen\(\);/);
+  // The scroll handler's own (already chatAtBottom-gated) call is fine; applyChatLayout's
   // trailing call is specifically the one that used to fire unconditionally.
-  const applySideLayoutBody = app.slice(app.indexOf('function applySideLayout()'), app.indexOf('function setSideTab('));
-  assert.doesNotMatch(applySideLayoutBody, /if \(sideChatVisible\(\)\) markChatSeen\(\);/);
+  const applyChatLayoutBody = app.slice(app.indexOf('function applyChatLayout()'), app.indexOf('function toggleChatOverlay('));
+  assert.doesNotMatch(applyChatLayoutBody, /if \(chatVisible\(\)\) markChatSeen\(\);/);
 });
 
 // v1.6.36: a stray media-query collision made Land King's action buttons render ~150px tall on

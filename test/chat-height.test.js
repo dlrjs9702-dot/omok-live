@@ -25,13 +25,19 @@ test('the sidebar is bounded by the viewport height, not the board\'s rendered h
   assert.match(css, /\.side\{[^}]*overflow:hidden/);
 });
 
-test('the sidebar is split into chat / system / room-info tabs', () => {
+// v1.6.58: chat is now its own single-pane panel (#chatPanel, no tabs -- it only ever shows one
+// thing). System/room-info stayed a tab pair, now inside the separate "게임 진행" panel
+// (#gameInfoPanel) alongside the dice/yut stage and every game's own action controls.
+test('chat is a standalone single-pane panel; system/room-info stayed a tab pair inside #gameInfoPanel', () => {
   const html = read('public/index.html');
-  assert.match(html, /id="roomSidebar"/);
-  assert.match(html, /data-side-tab="chat"/);
+  assert.match(html, /id="chatPanel"/);
+  assert.match(html, /id="gameInfoPanel"/);
+  assert.doesNotMatch(html, /data-side-tab="chat"/);
   assert.match(html, /data-side-tab="system"/);
   assert.match(html, /data-side-tab="info"/);
-  assert.match(html, /data-side-pane="chat"/);
+  const chatMarkup = html.slice(html.indexOf('id="chatPanel"'), html.indexOf('id="gameInfoPanel"'));
+  assert.match(chatMarkup, /id="chatMessages"/);
+  assert.doesNotMatch(chatMarkup, /data-side-pane=/);
   assert.match(html, /data-side-pane="system"[\s\S]{0,80}id="systemMessages"/);
   assert.match(html, /data-side-pane="info"[\s\S]{0,400}id="participantList"/);
   // The room-info tab reuses the existing participant list and rules markup, it does not
@@ -83,21 +89,25 @@ test('the chat overlay repositions the same chat panel over the game instead of 
   const css = read('public/styles.css');
   assert.match(css, /\.side\.overlayOpen\{position:fixed/);
   const app = read('public/app.js');
-  assert.match(app, /function toggleSideOverlay\(forceOpen\)/);
+  assert.match(app, /function toggleChatOverlay\(forceOpen\)/);
 });
 
 // v1.6.56: Land King and Old Maid used to default the sidebar to collapsed (to give their wide
 // boards more room), back when the sidebar was optional for actually playing them. Now that
-// #gameActionsPanel (start/roll/buy/build etc., moved out of the board area this patch) lives in
-// the sidebar for every game including these two, collapsing it by default would hide controls a
-// host needs just to start the game -- so no game defaults to collapsed anymore.
-test('no game defaults the sidebar to collapsed, since every game now needs its action controls there', () => {
+// #gameActionsPanel (start/roll/buy/build etc.) lives inside #gameInfoPanel for every game
+// including these two, collapsing it by default would hide controls a host needs just to start
+// the game -- so no game defaults to collapsed anymore. v1.6.58 split the single collapse
+// preference into two independent ones (chat vs. 게임 진행), both still defaulting to open.
+test('neither panel defaults to collapsed, since every game now needs #gameActionsPanel there', () => {
   const app = read('public/app.js');
   assert.doesNotMatch(app, /function wideBoardGame\(\)/);
-  assert.match(app, /function sideShouldCollapse\(\) \{\s*if \(sideCollapsedPref !== null\) return sideCollapsedPref;\s*return false;/);
-  // A user's manual collapse/expand choice still overrides the (now-uniform) default.
-  assert.match(app, /sideCollapsedPref = !sideShouldCollapse\(\);/);
-  assert.match(app, /localStorage\.setItem\(SIDE_COLLAPSE_KEY/);
+  assert.match(app, /function chatShouldCollapse\(\) \{ return chatCollapsedPref === true; \}/);
+  assert.match(app, /function gameInfoShouldCollapse\(\) \{ return gameInfoCollapsedPref === true; \}/);
+  // A user's manual collapse/expand choice still overrides the (now-uniform) default, per panel.
+  assert.match(app, /chatCollapsedPref = !chatShouldCollapse\(\);/);
+  assert.match(app, /localStorage\.setItem\(CHAT_COLLAPSE_KEY/);
+  assert.match(app, /gameInfoCollapsedPref = !gameInfoShouldCollapse\(\);/);
+  assert.match(app, /localStorage\.setItem\(GAME_INFO_COLLAPSE_KEY/);
 });
 
 test('on mobile the sidebar is never docked inline; chat/system/room-info are only reachable via the overlay', () => {

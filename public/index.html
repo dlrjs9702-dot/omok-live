@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.57" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.58" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -418,67 +418,54 @@
         </div>
 
         <div class="sideColumn">
-          <section id="diceYutPanel" class="diceYutPanel hidden" aria-label="주사위·윷 애니메이션">
-            <div id="diceYutHeader" class="diceYutHeader">
-              <span class="diceYutTitle">🎲 주사위 / 윷</span>
-              <div class="diceYutHeaderActions">
-                <button type="button" id="diceYutPipBtn" class="diceYutIconBtn hidden" aria-pressed="false" title="주사위·윷 패널을 항상 위에 뜨는 창으로 보기">PiP</button>
-                <button type="button" id="diceYutCollapseBtn" class="diceYutIconBtn" aria-label="주사위·윷 패널 접기">접기 ▸</button>
+          <aside class="side card" id="chatPanel" aria-label="채팅">
+            <div class="sideTabBar">
+              <div class="sideTabs">
+                <span class="chatPanelTitle">💬 채팅<span id="chatUnreadBadge" class="sideTabBadge hidden">0</span></span>
+              </div>
+              <div class="sideTabTools">
+                <div class="sideSizeGroup" role="group" aria-label="채팅 영역 크기">
+                  <button type="button" class="sideSizeBtn" data-side-size="narrow" title="좁게">좁게</button>
+                  <button type="button" class="sideSizeBtn" data-side-size="normal" title="기본" aria-pressed="true">기본</button>
+                  <button type="button" class="sideSizeBtn" data-side-size="wide" title="넓게">넓게</button>
+                </div>
+                <button type="button" id="chatPipBtn" class="pipToggleBtn hidden" aria-pressed="false" title="채팅 패널을 항상 위에 뜨는 창으로 보기">PIP로 보기</button>
+                <button type="button" id="chatCollapseBtn" class="sideCollapseBtn" aria-label="채팅 패널 접기">접기 ▸</button>
               </div>
             </div>
-            <div class="diceYutBody">
-              <div id="diceYutStage" class="diceYutStage" aria-hidden="true">
-                <div id="yutStick1" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick2" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick3" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick4" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-              </div>
-              <p id="diceYutResult" class="diceYutResult">아직 던진 윷이 없습니다</p>
-            </div>
-          </section>
 
-          <aside class="side card" id="roomSidebar">
+            <section class="sidePane" aria-label="방 채팅">
+              <div id="chatMessages" class="chatMessages" aria-live="polite"></div>
+              <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
+              <p id="chatLockNotice" class="chatLockNotice hidden" role="status">힌트 진행 중에는 채팅할 수 없습니다.</p>
+              <form id="chatForm" class="chatForm">
+                <input id="chatInput" maxlength="300" autocomplete="off" placeholder="메시지 입력" aria-label="채팅 메시지" />
+                <button id="chatSendBtn" class="secondary" type="submit">전송</button>
+              </form>
+            </section>
+          </aside>
+
+          <aside class="side card" id="gameInfoPanel" aria-label="게임 진행">
           <div class="sideTabBar">
-            <div class="sideTabs" role="tablist" aria-label="사이드 패널 전환">
-              <button type="button" class="sideTab" data-side-tab="chat" aria-selected="true">채팅<span id="chatUnreadBadge" class="sideTabBadge hidden">0</span></button>
-              <button type="button" class="sideTab" data-side-tab="system" aria-selected="false">시스템</button>
+            <div class="sideTabs" role="tablist" aria-label="게임 정보 전환">
+              <button type="button" class="sideTab" data-side-tab="system" aria-selected="true">시스템</button>
               <button type="button" class="sideTab" data-side-tab="info" aria-selected="false">방정보</button>
             </div>
             <div class="sideTabTools">
-              <div class="sideSizeGroup" role="group" aria-label="채팅 영역 크기">
-                <button type="button" class="sideSizeBtn" data-side-size="narrow" title="좁게">좁게</button>
-                <button type="button" class="sideSizeBtn" data-side-size="normal" title="기본" aria-pressed="true">기본</button>
-                <button type="button" class="sideSizeBtn" data-side-size="wide" title="넓게">넓게</button>
-              </div>
-              <button type="button" id="roomPipBtn" class="pipToggleBtn hidden" aria-pressed="false" title="채팅·시스템·방정보 패널을 항상 위에 뜨는 창으로 보기">PIP로 보기</button>
-              <button type="button" id="sideCollapseBtn" class="sideCollapseBtn" aria-label="채팅 패널 접기">접기 ▸</button>
+              <button type="button" id="gameInfoPipBtn" class="pipToggleBtn hidden" aria-pressed="false" title="게임 진행 패널을 항상 위에 뜨는 창으로 보기">PIP로 보기</button>
+              <button type="button" id="gameInfoCollapseBtn" class="sideCollapseBtn" aria-label="게임 진행 패널 접기">접기 ▸</button>
             </div>
           </div>
 
-          <section class="sidePane" data-side-pane="chat" aria-label="방 채팅">
-            <div id="chatMessages" class="chatMessages" aria-live="polite"></div>
-            <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
-            <p id="chatLockNotice" class="chatLockNotice hidden" role="status">힌트 진행 중에는 채팅할 수 없습니다.</p>
-            <form id="chatForm" class="chatForm">
-              <input id="chatInput" maxlength="300" autocomplete="off" placeholder="메시지 입력" aria-label="채팅 메시지" />
-              <button id="chatSendBtn" class="secondary" type="submit">전송</button>
-            </form>
-          </section>
-
-          <section class="sidePane hidden" data-side-pane="system" aria-label="시스템 알림">
-            <div id="systemMessages" class="chatMessages systemMessages" aria-live="polite"></div>
-          </section>
-
-          <section class="sidePane hidden" data-side-pane="info" aria-label="방 정보">
-            <section class="roomPeople" aria-label="현재 접속자">
-              <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
-              <div id="participantList" class="participantList"></div>
-            </section>
-            <details class="rules roomRuleDetails">
-              <summary>게임 규칙 자세히 보기</summary>
-              <p id="rulesText">게임 규칙을 불러오는 중입니다.</p>
-            </details>
-          </section>
+          <div id="diceYutSection" class="diceYutSection hidden" aria-label="주사위·윷 애니메이션">
+            <div id="diceYutStage" class="diceYutStage" aria-hidden="true">
+              <div id="yutStick1" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+              <div id="yutStick2" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+              <div id="yutStick3" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+              <div id="yutStick4" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+            </div>
+            <p id="diceYutResult" class="diceYutResult">아직 던진 윷이 없습니다</p>
+          </div>
 
           <section id="gameActionsPanel" class="gameActionsPanel" aria-label="게임 조작">
             <div id="roleChooser" class="roleChooser hidden">
@@ -636,6 +623,21 @@
             </form>
           </section>
 
+          <section class="sidePane" data-side-pane="system" aria-label="시스템 알림">
+            <div id="systemMessages" class="chatMessages systemMessages" aria-live="polite"></div>
+          </section>
+
+          <section class="sidePane hidden" data-side-pane="info" aria-label="방 정보">
+            <section class="roomPeople" aria-label="현재 접속자">
+              <div class="sectionTitleRow"><h3>현재 접속자</h3><small>닉네임 기준</small></div>
+              <div id="participantList" class="participantList"></div>
+            </section>
+            <details class="rules roomRuleDetails">
+              <summary>게임 규칙 자세히 보기</summary>
+              <p id="rulesText">게임 규칙을 불러오는 중입니다.</p>
+            </details>
+          </section>
+
           <div class="sideActions">
             <button id="sideResignBtn" class="danger subtle">기권하기</button>
             <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
@@ -649,6 +651,9 @@
 
   <button type="button" id="chatFloatBtn" class="chatFloatBtn hidden" aria-label="채팅 열기">
     💬<span id="chatFloatBadge" class="chatFloatBadge hidden">0</span>
+  </button>
+  <button type="button" id="gameInfoFloatBtn" class="chatFloatBtn gameInfoFloatBtn hidden" aria-label="게임 진행 열기">
+    🎮
   </button>
   <div id="sideOverlayBackdrop" class="sideOverlayBackdrop hidden"></div>
 
@@ -680,7 +685,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.57"></script>
-  <script src="/app.js?v=1.6.57"></script>
+  <script src="/session-lock.js?v=1.6.58"></script>
+  <script src="/app.js?v=1.6.58"></script>
 </body>
 </html>
