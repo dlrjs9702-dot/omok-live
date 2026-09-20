@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
-const OLDMAID_SEATS = ['1', '2', '3', '4', '5', '6'];
+const OLDMAID_SEATS = ['1', '2', '3', '4'];
 const MARATHON_SEATS = ['1', '2', '3', '4', '5', '6'];
 const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
@@ -1367,7 +1367,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.53', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.54', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1992,7 +1992,7 @@ async function main() {
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.53 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.54 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

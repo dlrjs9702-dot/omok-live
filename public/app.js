@@ -843,7 +843,7 @@
     if (g?.mode === 'team' && g?.teamLayout === '2v2') return ['1','2','3','4'];
     return ['1','2','3','4','5','6'];
   }
-  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4','5','6'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
+  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   // Mirrors marathon.js's groupForSeat(): odd/even split for 2v2 and 3v3, a 1-of-3 cycle for
   // 2v2v2. Only meaningful once the host has picked team mode; individual mode has no groups.
   function marathonGroupForSeat(seat) {
@@ -898,7 +898,7 @@
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
     "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
     "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다.",
-    "oldmaid": "2~6명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다.",
+    "oldmaid": "2~4명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다.",
     "marathon": "2~6인 개인전 또는 4인 2대2·6인 3대3·6인 2대2대2 팀전. 주사위 1개를 굴려 이동하고, 도착한 칸마다(같은 칸 재방문 포함) 타이핑·기억력·반응·계산 미션이 매번 새로 나옵니다. 제한시간 안에 맞히면 그 자리에 머물고, 못 맞히면 2칸 뒤로 물러나며 그 자리에서 새 미션이 바로 이어집니다. 30칸 이상 도달하면 즉시 승리합니다. 팀전은 말 하나를 공유하며 팀원끼리 주사위를 돌아가며 굴리고 미션은 팀원 누구나 제출할 수 있습니다."
 });
   function showGameRule(type) {
@@ -2126,7 +2126,7 @@
       roleChooser.querySelector('small').textContent = pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
-        : oldmaid ? '2~6명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
+        : oldmaid ? '2~4명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
         : bingo
         ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 승리 줄 수를 정하고 시작합니다.'
         : city ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 랜드킹을 시작합니다.'
@@ -3212,7 +3212,7 @@
     const resigned = g.status === 'finished' && g.endReason === 'resign';
     const oldmaidWinnerNames = () => (Array.isArray(g.winner) ? g.winner : [g.winner]).map(label).join(', ');
     oldmaidStatus.textContent = g.status === 'selecting'
-      ? `참가자 ${active}명 · 2~6명이 자리를 선택하면 방장이 시작합니다.`
+      ? `참가자 ${active}명 · 2~4명이 자리를 선택하면 방장이 시작합니다.`
       : g.status === 'finished' ? (resigned ? `종료 · 기권으로 종료 · 승자: ${oldmaidWinnerNames()}` : `종료 · ${label(g.loser)}님이 조커를 보유했습니다.`)
       : g.turn === seat ? `내 차례! ${label(g.target)}님의 카드 한 장을 뽑으세요.`
       : `${label(g.turn)}님 차례 · ${label(g.target)}님의 카드를 뽑는 중`;
@@ -3280,25 +3280,33 @@
       oldmaidPeekArmed = false;
     }
 
+    // v1.6.54: max 4 players now, arranged on a fixed compass cross (동/북/서 for opponents) instead
+    // of a wrapping grid -- "나"(me) is represented by the existing "내 손패" dock below, not a
+    // seat bubble here, so this loop only ever renders opponents. Compass slots fill in a fixed
+    // priority (북 first, so a lone opponent in a 2인전 sits "across the table" from me; 동, then
+    // 서) rather than by seat number, so the layout reads the same regardless of which numbers were
+    // picked.
     const iAmSeated = Boolean(seat && rosterSeats.includes(seat));
     const rotated = oldmaidRotatedSeats(rosterSeats, iAmSeated ? seat : null);
+    const opponents = iAmSeated ? rotated.slice(1) : rotated;
+    const COMPASS_ORDER = ['north', 'east', 'west'];
     oldmaidSeatsEl.replaceChildren();
-    rotated.forEach((number) => {
-      const isMe = iAmSeated && number === seat;
+    opponents.forEach((number, index) => {
       const count = g.counts?.[number] ?? 0;
       const isLoser = g.status === 'finished' && number === g.loser;
       const escaped = g.status !== 'selecting' && count === 0 && !isLoser;
 
       const seatEl = document.createElement('div');
       seatEl.className = 'oldmaidSeat'
-        + (isMe ? ' me' : '') + (g.turn === number ? ' turn' : '') + (g.target === number ? ' target' : '')
+        + (g.turn === number ? ' turn' : '') + (g.target === number ? ' target' : '')
         + (escaped ? ' escaped' : '') + (isLoser ? ' finalGlow' : '');
       seatEl.dataset.seat = number;
+      seatEl.dataset.compass = COMPASS_ORDER[index] || 'north';
 
       const info = document.createElement('div');
       info.className = 'oldmaidSeatInfo';
       const nameSpan = document.createElement('span');
-      nameSpan.textContent = isMe ? `나 · ${label(number)}` : label(number);
+      nameSpan.textContent = label(number);
       info.appendChild(nameSpan);
       if (g.status !== 'selecting') {
         const countSpan = document.createElement('span');
@@ -3318,23 +3326,23 @@
       }
       seatEl.appendChild(info);
 
-      if (!isMe) {
+      {
         if (count > 0) {
           const cards = document.createElement('div');
           cards.className = 'oldmaidSeatCards';
           const canDraw = Boolean(seat && g.status === 'playing' && g.turn === seat && g.target === number);
-          for (let index = 0; index < count; index += 1) {
+          for (let cardIndex = 0; cardIndex < count; cardIndex += 1) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
             button.disabled = !canDraw;
-            button.setAttribute('aria-label', `${label(number)}님의 ${index + 1}번째 카드 뽑기`);
+            button.setAttribute('aria-label', `${label(number)}님의 ${cardIndex + 1}번째 카드 뽑기`);
             button.addEventListener('click', () => {
               if (oldmaidPeekArmed && canDraw) {
                 oldmaidPeekArmed = false;
-                oldmaidUsePeek(index);
+                oldmaidUsePeek(cardIndex);
               } else {
-                oldmaidDrawCard(number, index, button);
+                oldmaidDrawCard(number, cardIndex, button);
               }
             });
             cards.appendChild(button);
@@ -3445,6 +3453,17 @@
   // caller) instead of the whole hand container's box -- aiming at the container meant the ghost
   // could fly toward a mostly-empty stretch of it while the actual new card appeared elsewhere in
   // the row, making the landing look like it vanished into empty space instead of into the hand.
+  // v1.6.54: opponents can now sit on a compass cross where the same "내 손패" destination can be
+  // much closer (west neighbor) or much farther (north, across the table) than the old wrapping
+  // grid ever produced -- a fixed .38s transform made short hops sluggish and long hops feel
+  // rushed, and it also looked inconsistent across different browser-window sizes. Duration is now
+  // derived from travel distance at a constant px/ms speed (matching classic Solitaire's dealing
+  // animation), clamped to a sane range, and applied as an inline transition so perceived speed
+  // stays the same regardless of distance or viewport.
+  const OLDMAID_FLY_SPEED_PX_PER_MS = 1.5;
+  const OLDMAID_FLY_MIN_MS = 220;
+  const OLDMAID_FLY_MAX_MS = 620;
+
   function oldmaidFlyDrawnCard(originRect, card, destRect) {
     return new Promise((resolve) => {
       const flyer = document.createElement('span');
@@ -3454,9 +3473,16 @@
       flyer.style.top = `${originRect.top}px`;
       flyer.style.width = `${originRect.width}px`;
       flyer.style.height = `${originRect.height}px`;
-      oldmaidFlyerLayer.appendChild(flyer);
       const dx = (destRect.left + destRect.width / 2) - (originRect.left + originRect.width / 2);
       const dy = (destRect.top + destRect.height / 2) - (originRect.top + originRect.height / 2);
+      const distance = Math.hypot(dx, dy);
+      const duration = Math.min(OLDMAID_FLY_MAX_MS, Math.max(OLDMAID_FLY_MIN_MS, distance / OLDMAID_FLY_SPEED_PX_PER_MS));
+      const opacityDelay = Math.max(0, duration - 80);
+      flyer.style.transitionProperty = 'transform, opacity';
+      flyer.style.transitionDuration = `${duration}ms, .18s`;
+      flyer.style.transitionTimingFunction = 'cubic-bezier(.22,.85,.32,1), ease';
+      flyer.style.transitionDelay = `0s, ${opacityDelay}ms`;
+      oldmaidFlyerLayer.appendChild(flyer);
       requestAnimationFrame(() => { flyer.style.transform = `translate(${dx}px, ${dy}px) scale(.92)`; });
       let done = false;
       const finish = () => {
@@ -3465,7 +3491,7 @@
         flyer.classList.add('landed');
         setTimeout(() => { flyer.remove(); resolve(); }, 240);
       };
-      setTimeout(finish, 900);
+      setTimeout(finish, duration + 520);
     });
   }
 

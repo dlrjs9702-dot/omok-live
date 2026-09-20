@@ -8,12 +8,12 @@ function fixture(hands, turn = '1') {
     turn, target: game.nextActive({ seatOrder: Object.keys(hands), hands }, turn), revision: 4 };
 }
 
-test('2 to 6 seats, 53 unique cards, one joker and automatic initial pairs', () => {
+test('2 to 4 seats, 53 unique cards, one joker and automatic initial pairs', () => {
   const cards = game.deck();
   assert.equal(cards.length, 53);
   assert.equal(new Set(cards.map(c => c.id)).size, 53);
   assert.equal(cards.filter(c => c.rank === 'JOKER').length, 1);
-  for (const n of [2, 6]) {
+  for (const n of [2, 4]) {
     const state = game.create();
     assert.equal(game.start(state, Array.from({ length: n }, (_, i) => String(i + 1))).legal, true);
     const hands = Object.values(state.hands).flat();
@@ -26,7 +26,7 @@ test('2 to 6 seats, 53 unique cards, one joker and automatic initial pairs', () 
     }
     assert.equal(game.start(state, ['1', '2']).legal, false);
   }
-  for (const seats of [[], ['1'], ['1','1'], ['1','7'], ['1','2','3','4','5','6','7']]) {
+  for (const seats of [[], ['1'], ['1','1'], ['1','7'], ['1','2','3','4','5'], ['1','2','3','4','5','6','7']]) {
     assert.equal(game.start(game.create(), seats).legal, false);
   }
 });

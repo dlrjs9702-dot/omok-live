@@ -53,15 +53,17 @@ test('existing shuffle, draw and start behavior is untouched', () => {
 });
 
 // v1.6.35 first arranged seats around a circular table; v1.6.50 replaced that with a responsive
-// grid (the circular layout reserved a large fixed-height block that pushed "내 손패" off-screen,
-// and squeezed each seat too narrow, forcing a horizontal scrollbar for a many-card hand), but
-// seats are still ordered relative to my own seat, not in raw server roster order.
-test('seats are ordered relative to my own seat in a responsive grid, not in server roster order', () => {
+// grid; v1.6.54 dropped the max player count 6->4 and replaced the responsive grid with a fixed
+// 동서남북 compass cross, since only opponents are ever grid cells now ("나" is represented by the
+// sticky "내 손패" dock, not a seat cell) -- opponents are still ordered relative to my own seat,
+// not in raw server roster order.
+test('opponents are ordered relative to my own seat on a fixed compass cross, not in server roster order', () => {
   const app = read('public/app.js');
   const css = read('public/styles.css');
   assert.match(app, /function oldmaidRotatedSeats\(order, anchorSeat\)/);
   assert.match(app, /const rotated = oldmaidRotatedSeats\(rosterSeats, iAmSeated \? seat : null\)/);
-  assert.match(css, /\.oldmaidSeats\{display:grid;grid-template-columns:repeat\(auto-fill,minmax\(150px,1fr\)\)/);
+  assert.match(app, /const opponents = iAmSeated \? rotated\.slice\(1\) : rotated;/);
+  assert.match(css, /\.oldmaidSeats\{[^}]*grid-template-areas:"\. north \." "west \. east"/);
   // opponent cards wrap onto more lines instead of needing a horizontal scrollbar
   assert.match(css, /\.oldmaidSeatCards\{display:flex;flex-wrap:wrap/);
   assert.doesNotMatch(css, /\.oldmaidSeatCards\{[^}]*overflow-x:auto/);
@@ -70,14 +72,13 @@ test('seats are ordered relative to my own seat in a responsive grid, not in ser
 test('a player who empties their hand keeps their seat instead of being removed from the table', () => {
   const app = read('public/app.js');
   assert.match(app, /const escaped = g\.status !== 'selecting' && count === 0 && !isLoser;/);
-  assert.match(app, /rotated\.forEach\(\(number\) => \{/);
+  assert.match(app, /opponents\.forEach\(\(number, index\) => \{/);
   // escaped seats stay rendered with a badge, they are not filtered out of the seat list
-  assert.doesNotMatch(app, /rotated\.filter\(/);
+  assert.doesNotMatch(app, /opponents\.filter\(/);
 });
 
 test('opponent cards are always rendered face-down; only my own hand shows card faces', () => {
   const app = read('public/app.js');
-  assert.match(app, /if \(!isMe\) \{/);
   assert.match(app, /cards\.className = 'oldmaidSeatCards';/);
   assert.match(app, /button\.className = 'oldmaidCard oldmaidBack' \+ \(canDraw \? ' selectable' : ''\);/);
   // opponent seat cards never read from card.rank/card.suit (their face content) - only my own
@@ -93,7 +94,7 @@ test('draw clicks are routed through a busy-guarded handler that disables all ca
   assert.match(app, /oldmaidDrawBusy = true;/);
   assert.match(app, /for \(const candidate of oldmaidSeatsEl\.querySelectorAll\('\.oldmaidBack'\)\) candidate\.disabled = true;/);
   assert.match(app, /oldmaidDrawBusy = false;/);
-  assert.match(app, /oldmaidDrawCard\(number, index, button\);/);
+  assert.match(app, /oldmaidDrawCard\(number, cardIndex, button\);/);
 });
 
 test('the draw flight animation and pair/escape effects are purely cosmetic and never gate the real state update', () => {
@@ -180,7 +181,9 @@ test('the seat grid CSS is scoped to Old Maid seat classes and does not touch ot
   const css = read('public/styles.css');
   assert.match(css, /\.oldmaidSeats\{/);
   assert.match(css, /\.oldmaidSeat\{/);
-  assert.match(css, /\.oldmaidSeat\.me\{/);
+  assert.match(css, /\.oldmaidSeat\[data-compass="north"\]\{grid-area:north\}/);
+  assert.match(css, /\.oldmaidSeat\[data-compass="east"\]\{grid-area:east\}/);
+  assert.match(css, /\.oldmaidSeat\[data-compass="west"\]\{grid-area:west\}/);
 });
 
 // v1.6.50: "내 손패" is pinned to the bottom of the viewport (position:sticky) so it's always

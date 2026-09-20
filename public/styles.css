@@ -412,15 +412,28 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .oldmaidBack:disabled{cursor:default;opacity:.68}.oldmaidHistory{max-height:170px;overflow-y:auto;font-size:.88rem;color:#94a3b8}
 .oldmaidHistory p{margin:4px 0}.oldmaidPanel h3{margin:4px 0;font-size:1rem;color:#cbd5e1}.oldmaidPanel h3 small{font-weight:400;font-size:.75rem;color:#64748b}
 
-/* v1.6.50: opponent roster is a responsive grid (2~6 players) instead of a fixed-size circular
-   table. The old table reserved a large fixed vertical block (up to 540px) that pushed "내 손패"
-   off the bottom of the viewport, and each seat's card row was squeezed to ~150px wide, forcing a
-   horizontal scrollbar once someone held more than a few cards -- both replaced below. Scoped
+/* v1.6.54: max players dropped 6->4 so opponents can sit on a fixed 동서남북 compass cross instead
+   of a wrapping grid -- "나"(me/남) is not a cell here at all, it's the existing sticky "내 손패"
+   dock below, which already reads as "south". Unused compass slots (2~3인 games) simply stay
+   empty; each opponent's data-compass attribute (set in renderOldMaid) picks its grid-area. Scoped
    entirely to these Old Maid classes so nothing here can leak into other games' boards. */
-.oldmaidSeats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:14px 0}
+.oldmaidSeats{
+  display:grid;
+  grid-template-columns:1fr minmax(0,1fr) 1fr;
+  grid-template-areas:". north ." "west . east";
+  gap:14px;
+  margin:14px 0;
+  justify-items:center;
+}
 .oldmaidFlyer{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:40}
-.oldmaidSeat{position:relative;display:grid;justify-items:center;gap:5px;padding:10px 8px;border-radius:16px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.16)}
-.oldmaidSeat.me{border-color:rgba(96,165,250,.35);background:rgba(30,58,138,.22)}
+.oldmaidSeat{position:relative;display:grid;justify-items:center;gap:5px;padding:10px 8px;border-radius:16px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.16);min-width:0;max-width:220px;width:100%}
+.oldmaidSeat[data-compass="north"]{grid-area:north}
+.oldmaidSeat[data-compass="east"]{grid-area:east}
+.oldmaidSeat[data-compass="west"]{grid-area:west}
+@media (max-width:680px){
+  .oldmaidSeats{grid-template-columns:1fr;grid-template-areas:"north" "east" "west";gap:10px}
+  .oldmaidSeat{max-width:none}
+}
 .oldmaidSeatInfo{position:relative;display:flex;align-items:center;gap:5px;background:rgba(3,10,6,.82);border:1px solid rgba(148,163,184,.3);border-radius:999px;padding:4px 10px;font-size:.72rem;font-weight:800;color:#e2e8f0;max-width:none;white-space:nowrap;overflow:visible}
 .oldmaidSeat.turn .oldmaidSeatInfo{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.35)}
 .oldmaidSeat.target .oldmaidSeatInfo{border-color:#facc15;box-shadow:0 0 0 2px rgba(250,204,21,.42);color:#fde68a}
@@ -443,7 +456,12 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 
 /* Draw flight: a single ghost card-back travels from the clicked seat to my hand; only ever
    shown to the drawing player's own client, and it is purely decorative -- the state that
-   lands underneath always comes from the server response, never a guess. */
+   lands underneath always comes from the server response, never a guess.
+   v1.6.54: transform duration is no longer fixed here -- distance now varies a lot more (a
+   compass seat can be much farther from "내 손패" than the old grid ever was), so a constant
+   duration made short hops look sluggish and long hops look rushed. oldmaidFlyDrawnCard sets
+   transition-duration inline per-flight (constant px/ms speed, Solitaire-style); the easing
+   curve and opacity fade stay fixed here. */
 .oldmaidFlyingCard{position:fixed;z-index:70;pointer-events:none;box-shadow:0 12px 26px rgba(0,0,0,.5);transition:transform .38s cubic-bezier(.22,.85,.32,1),opacity .18s ease .3s;transform:translate(0,0) scale(1)}
 .oldmaidFlyingCard.landed{opacity:0}
 
