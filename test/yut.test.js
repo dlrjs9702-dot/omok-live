@@ -132,7 +132,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.54/);
+  assert.match(html, /app\.js\?v=1\.6\.55/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video
@@ -141,7 +141,10 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
 test('the yut-throw animation is a reusable function, reconnect-safe, and duplicate-throw safe', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
   assert.match(app, /function animateYutThrow\(stickEls, backFlags/);
-  assert.match(app, /if \(reducedMotionActive\(\) \|\| !stickEls\.length\) \{ settle\(false\); return; \}/);
+  // v1.6.55: the reduced-motion bypass now lives in the shared animateTumble core (also used by
+  // animateDiceRoll), not duplicated inside animateYutThrow itself.
+  const tumbleBody = app.slice(app.indexOf('function animateTumble'), app.indexOf('function animateDiceRoll'));
+  assert.match(tumbleBody, /if \(reducedMotionActive\(\) \|\| !els\.length\) \{ settle\(false\); return; \}/);
   // Face content is fixed per stick element (see index.html); settling only ever rotates to 0deg
   // (front/flat) or 180deg (back/round) for the server-confirmed count, never touching content.
   const settleBlock = app.slice(app.indexOf("function animateYutThrow"), app.indexOf("function animateYutThrow") + 700);
@@ -167,22 +170,107 @@ test('the yut-throw animation only ever displays the server-confirmed backs coun
   assert.match(app, /g\.lastThrow\.name === '빽도' && flags\[i\]/);
 });
 
-test('the yut-throw stage lives inside the shared board canvas wrap (center of the board)', () => {
+// v1.6.55: the yut-throw stage moved out of the board canvas overlay into the common dice/yut
+// animation panel docked above chat (#diceYutPanel), shared with any future dice game -- see
+// PROJECT_STATUS.md's v1.6.55 section. It's no longer hidden/shown per-throw (that was only ever
+// needed to get the old full-board overlay out of the way); the panel's own visibility now tracks
+// whether a dice/yut-style game is active at all.
+test('the yut-throw stage lives inside the common dice/yut panel docked above chat', () => {
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
-  const wrapStart = html.indexOf('id="canvasWrap"');
-  const wrapEnd = html.indexOf('id="cityActionPanel"', wrapStart);
-  const wrapBlock = html.slice(wrapStart, wrapEnd);
-  assert.match(wrapBlock, /<div id="yutThrowStage" class="yutThrowStage hidden"/);
+  const panelStart = html.indexOf('id="diceYutPanel"');
+  const panelEnd = html.indexOf('</section>', panelStart);
+  const panelBlock = html.slice(panelStart, panelEnd);
+  assert.match(panelBlock, /<div id="diceYutStage" class="diceYutStage" aria-hidden="true">/);
   for (const n of [1, 2, 3, 4]) {
-    assert.match(wrapBlock, new RegExp(`<div id="yutStick${n}" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>`));
+    assert.match(panelBlock, new RegExp(`<div id="yutStick${n}" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>`));
   }
+  // The panel sits inside .sideColumn, right before <aside id="roomSidebar"> -- i.e. directly
+  // above the chat panel, not inside the board's own canvas overlay area.
+  const sideColumnStart = html.indexOf('class="sideColumn"');
+  assert.ok(sideColumnStart >= 0 && sideColumnStart < panelStart);
+  const asideStart = html.indexOf('id="roomSidebar"');
+  assert.ok(panelStart < asideStart);
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
-  assert.match(css, /\.yutThrowStage\{position:absolute;inset:0;[^}]*pointer-events:none\}/);
+  assert.match(css, /\.diceYutStage\{position:relative;min-height:120px;[^}]*perspective:640px\}/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.yutStick\{transition:none!important\}\}/);
 });
 
-test('leaving the Yut Nori screen resets the throw-tracking state and hides the stage', () => {
+test('the dice/yut panel is only shown while a dice/yut-style game (today: yut) is active', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  assert.match(app, /yutLastThrowKey = null;\s*\n\s*yutThrowTrackingStarted = false;\s*\n\s*yutThrowAnimating = false;/);
-  assert.match(app, /yutThrowStage\.classList\.add\('hidden'\);/);
+  assert.match(app, /diceYutPanel\.classList\.toggle\('hidden', !yut\);/);
+  assert.match(app, /if \(yut && diceYutWasHidden\) applyDiceYutPanelMode\(\);/);
+});
+
+test('leaving the Yut Nori screen resets the throw-tracking state (no stale re-shuffle on the next game)', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /yutLastThrowKey = null;\s*\n\s*yutThrowTrackingStarted = false;\s*\n\s*yutThrowAnimating = false;\s*\n\s*yutLastThrowFlags = null;/);
+});
+
+test('leaving the room hides the dice/yut panel and restores it from PiP without changing the saved mode preference', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /function resetDiceYutPanelForRoomExit\(\) \{/);
+  const fnBody = app.slice(app.indexOf('function resetDiceYutPanelForRoomExit'), app.indexOf('function resetDiceYutPanelForRoomExit') + 600);
+  assert.match(fnBody, /diceYutPanel\.classList\.add\('hidden'\);/);
+  assert.match(fnBody, /diceYutPanel\.classList\.remove\('floating'\);/);
+  assert.doesNotMatch(fnBody, /localStorage\.setItem\(DICE_PANEL_MODE_KEY/);
+  assert.match(app, /resetDiceYutPanelForRoomExit\(\);/);
+});
+
+// v1.6.55: dice/yut animation panel -- default (docked) / pip (in-app floating window) / collapsed
+// (title bar only), a single mode string so the three states can never combine/conflict, matching
+// the spec's "세 가지 상태가 충돌하지 않도록" requirement directly.
+test('the dice/yut panel has three mutually exclusive modes stored as a single string, persisted across games', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /const DICE_PANEL_MODE_KEY = 'diceYutPanelMode';/);
+  assert.match(app, /let diceYutPanelMode = 'default';/);
+  assert.match(app, /if \(saved === 'default' \|\| saved === 'pip' \|\| saved === 'collapsed'\) diceYutPanelMode = saved;/);
+  assert.match(app, /function setDiceYutPanelMode\(mode\) \{\s*\n\s*diceYutPanelMode = mode;\s*\n\s*try \{ localStorage\.setItem\(DICE_PANEL_MODE_KEY, mode\); \} catch \{\}/);
+  assert.match(app, /diceYutPipBtn\.addEventListener\('click', \(\) => setDiceYutPanelMode\(diceYutPanelMode === 'pip' \? 'default' : 'pip'\)\);/);
+  assert.match(app, /diceYutCollapseBtn\.addEventListener\('click', \(\) => setDiceYutPanelMode\(diceYutPanelMode === 'collapsed' \? 'default' : 'collapsed'\)\);/);
+});
+
+// The panel's own PiP is deliberately NOT roomSidebar's native documentPictureInPicture-based PIP
+// (Chromium-only, opens a real second OS window) -- it's a hand-rolled floating <div> so it behaves
+// identically on every browser and on touch devices, per the spec's explicit instruction not to
+// depend on the native API.
+test('the dice/yut panel PiP mode is an in-app floating panel, not the native documentPictureInPicture API', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  const fnBody = app.slice(app.indexOf('function applyDiceYutPanelMode'), app.indexOf('function setDiceYutPanelMode'));
+  assert.doesNotMatch(fnBody, /documentPictureInPicture/);
+  assert.match(fnBody, /diceYutPanel\.classList\.toggle\('floating', pip\);/);
+  assert.match(fnBody, /if \(diceYutPanel\.parentElement !== document\.body\) document\.body\.appendChild\(diceYutPanel\);/);
+  // Dragging is Pointer Events against the panel's own header, not any native window-manager API.
+  assert.match(app, /diceYutHeader\.addEventListener\('pointerdown', \(e\) => \{/);
+  assert.match(app, /diceYutHeader\.addEventListener\('pointermove', \(e\) => \{/);
+  assert.match(app, /if \(diceYutPanelMode !== 'pip' \|\| e\.target\.closest\('button'\)\) return;/);
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  // Resizable via the native CSS handle (desktop pointer input), disabled on touch/mobile widths.
+  assert.match(css, /\.diceYutPanel\.floating\{[^}]*resize:both;overflow:auto;/);
+  assert.match(css, /@media\(max-width:680px\)\{\s*\n\s*\.diceYutPanel\.floating\{resize:none\}/);
+});
+
+test('collapsed mode hides only the panel body (stage + result), keeping the title bar', () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.match(css, /\.diceYutPanel\.collapsed \.diceYutBody\{display:none\}/);
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /diceYutPanel\.classList\.toggle\('collapsed', collapsed\);/);
+});
+
+// Switching the panel's own display mode must never touch game/server state, and must not restart
+// an in-flight throw animation -- it only ever moves/classes the panel's own DOM node.
+test('switching the dice/yut panel mode never touches game state and never rebuilds the stage', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  const fnBody = app.slice(app.indexOf('function applyDiceYutPanelMode'), app.indexOf('function setDiceYutPanelMode'));
+  assert.doesNotMatch(fnBody, /roomAction|state\.game|diceYutStage\.replaceChildren|diceYutStage\.innerHTML/);
+});
+
+// The panel is a sibling of <aside id="roomSidebar">, not nested inside it, so it isn't subject to
+// the sidebar's own mobile-only "hidden unless overlay open" rule -- it must stay visible in the
+// normal page flow on mobile too, per the spec's mobile requirement.
+test('the dice/yut panel is independent of the chat sidebar\'s own collapse/overlay/PiP state', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
+  const sideColumnStart = html.indexOf('class="sideColumn"');
+  const panelStart = html.indexOf('id="diceYutPanel"');
+  const asideOpenTag = html.indexOf('<aside class="side card" id="roomSidebar">');
+  assert.ok(sideColumnStart < panelStart && panelStart < asideOpenTag, 'panel must be a sibling of <aside>, not nested inside it');
 });

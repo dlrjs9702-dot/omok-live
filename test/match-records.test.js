@@ -193,5 +193,5 @@ test('lobby layout, announcements, small participant links and modal preserve ro
   assert.match(app,/loadMyRecords\(\);/);assert.match(app,/recordsDialog\.showModal\(\)/);
   assert.match(app,/recordsDialog\.close\(\)/);assert.match(app,/loadAnnouncements\(\)/);
   assert.match(server,/requireSession\(req, res\)/);assert.match(server,/MATCH_RECORD_FAILED/);
-  assert.match(html,/app\.js\?v=1\.6\.54/);
+  assert.match(html,/app\.js\?v=1\.6\.55/);
 });

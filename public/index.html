@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.54" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.55" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -319,12 +319,6 @@
             <div id="canvasWrap" class="canvasWrap">
               <canvas id="board" width="720" height="720" aria-label="게임판"></canvas>
               <div id="boardOverlay" class="boardOverlay hidden"></div>
-              <div id="yutThrowStage" class="yutThrowStage hidden" aria-hidden="true">
-                <div id="yutStick1" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick2" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick3" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-                <div id="yutStick4" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
-              </div>
               <div id="cityActionPanel" class="cityActionPanel hidden" aria-label="랜드킹 행동 패널">
                 <div class="cityActionRow">
                   <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
@@ -563,7 +557,27 @@
           </div>
         </div>
 
-        <aside class="side card" id="roomSidebar">
+        <div class="sideColumn">
+          <section id="diceYutPanel" class="diceYutPanel hidden" aria-label="주사위·윷 애니메이션">
+            <div id="diceYutHeader" class="diceYutHeader">
+              <span class="diceYutTitle">🎲 주사위 / 윷</span>
+              <div class="diceYutHeaderActions">
+                <button type="button" id="diceYutPipBtn" class="diceYutIconBtn" aria-pressed="false" title="플로팅 창으로 보기">PiP</button>
+                <button type="button" id="diceYutCollapseBtn" class="diceYutIconBtn" aria-label="주사위·윷 패널 접기">접기 ▸</button>
+              </div>
+            </div>
+            <div class="diceYutBody">
+              <div id="diceYutStage" class="diceYutStage" aria-hidden="true">
+                <div id="yutStick1" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+                <div id="yutStick2" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+                <div id="yutStick3" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+                <div id="yutStick4" class="yutStick"><div class="ysFace ysFront"></div><div class="ysFace ysBack"></div></div>
+              </div>
+              <p id="diceYutResult" class="diceYutResult">아직 던진 윷이 없습니다</p>
+            </div>
+          </section>
+
+          <aside class="side card" id="roomSidebar">
           <div class="sideTabBar">
             <div class="sideTabs" role="tablist" aria-label="사이드 패널 전환">
               <button type="button" class="sideTab" data-side-tab="chat" aria-selected="true">채팅<span id="chatUnreadBadge" class="sideTabBadge hidden">0</span></button>
@@ -611,7 +625,8 @@
             <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
             <button id="sideEndGameBtn" class="ghost hidden">중단된 대국 종료</button>
           </div>
-        </aside>
+          </aside>
+        </div>
       </section>
     </section>
   </main>
@@ -649,7 +664,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.54"></script>
-  <script src="/app.js?v=1.6.54"></script>
+  <script src="/session-lock.js?v=1.6.55"></script>
+  <script src="/app.js?v=1.6.55"></script>
 </body>
 </html>

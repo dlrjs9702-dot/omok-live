@@ -122,8 +122,13 @@
   const yutThrowBtn = document.getElementById('yutThrowBtn');
   const yutHint = document.getElementById('yutHint');
   const yutMoveChoices = document.getElementById('yutMoveChoices');
-  const yutThrowStage = document.getElementById('yutThrowStage');
   const yutSticks = [1, 2, 3, 4].map(n => document.getElementById(`yutStick${n}`));
+  // v1.6.55: common dice/yut animation panel, docked above chat -- see applyDiceYutPanelMode below.
+  const diceYutPanel = document.getElementById('diceYutPanel');
+  const diceYutHeader = document.getElementById('diceYutHeader');
+  const diceYutPipBtn = document.getElementById('diceYutPipBtn');
+  const diceYutCollapseBtn = document.getElementById('diceYutCollapseBtn');
+  const diceYutResult = document.getElementById('diceYutResult');
   const bingoPanel = document.getElementById('bingoPanel');
   const bingoTargetSelect = document.getElementById('bingoTargetSelect');
   const bingoStartBtn = document.getElementById('bingoStartBtn');
@@ -290,7 +295,7 @@
   let yutLastThrowKey = null;
   let yutThrowTrackingStarted = false;
   let yutThrowAnimating = false;
-  let yutStageHideTimer = null;
+  let yutLastThrowFlags = null;
   let state = null;
   let seat = null;
   let isHost = false;
@@ -535,6 +540,145 @@
   window.addEventListener('resize', () => applySideLayout());
   window.addEventListener('orientationchange', () => applySideLayout());
 
+  // v1.6.55: dice/yut animation panel display mode -- default (docked above chat) / pip (an
+  // in-app floating window) / collapsed (title bar only). Deliberately NOT the same mechanism as
+  // roomSidebar's own "PIP" (openRoomPip/closeRoomPip above), which opens a real second browser
+  // window via the native, Chromium-only `documentPictureInPicture` API -- this panel's PiP mode
+  // is a hand-rolled floating <div> (drag via Pointer Events, resize via CSS `resize:both`) so it
+  // works identically in every browser, including ones without documentPictureInPicture support,
+  // and on mobile/touch where a second OS window isn't practical. The three modes are mutually
+  // exclusive (a single string, not independent booleans), matching the spec's "세 가지 상태가
+  // 충돌하지 않도록" requirement directly. Switching modes only ever moves/classes the panel's own
+  // DOM node and writes to localStorage -- it never touches state.game, roomAction, or any other
+  // shared/server state, and it never rebuilds #diceYutStage's children, so an in-flight throw
+  // animation (a running requestAnimationFrame loop against those exact DOM nodes) keeps playing
+  // uninterrupted across a mode switch instead of restarting.
+  const DICE_PANEL_MODE_KEY = 'diceYutPanelMode';
+  const DICE_PANEL_POS_KEY = 'diceYutPanelPos';
+  let diceYutPanelMode = 'default';
+  try {
+    const saved = localStorage.getItem(DICE_PANEL_MODE_KEY);
+    if (saved === 'default' || saved === 'pip' || saved === 'collapsed') diceYutPanelMode = saved;
+  } catch {}
+  let diceYutPanelHome = null; // { parent, next } -- where to put the panel back on leaving PiP mode
+  let diceYutDrag = null;
+
+  function saveDiceYutPanelPos() {
+    if (diceYutPanelMode !== 'pip') return;
+    try {
+      const rect = diceYutPanel.getBoundingClientRect();
+      localStorage.setItem(DICE_PANEL_POS_KEY, JSON.stringify({ left: rect.left, top: rect.top, width: rect.width, height: rect.height }));
+    } catch {}
+  }
+
+  // Keeps the floating panel fully on-screen after a viewport resize/rotation (e.g. desktop window
+  // shrunk, or a phone rotated) instead of letting it drift off the edge where it can't be reached.
+  function clampDiceYutPanelPosition() {
+    if (diceYutPanelMode !== 'pip') return;
+    const rect = diceYutPanel.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+    diceYutPanel.style.left = `${Math.min(Math.max(8, rect.left), maxLeft)}px`;
+    diceYutPanel.style.top = `${Math.min(Math.max(8, rect.top), maxTop)}px`;
+  }
+
+  function applyDiceYutPanelMode() {
+    const pip = diceYutPanelMode === 'pip';
+    const collapsed = diceYutPanelMode === 'collapsed';
+    diceYutPanel.classList.toggle('floating', pip);
+    diceYutPanel.classList.toggle('collapsed', collapsed);
+    diceYutPipBtn.textContent = pip ? '기본으로' : 'PiP';
+    diceYutPipBtn.setAttribute('aria-pressed', pip ? 'true' : 'false');
+    diceYutCollapseBtn.textContent = collapsed ? '펼치기 ◂' : '접기 ▸';
+    diceYutCollapseBtn.setAttribute('aria-label', collapsed ? '주사위·윷 패널 펼치기' : '주사위·윷 패널 접기');
+    if (pip) {
+      if (!diceYutPanelHome) diceYutPanelHome = { parent: diceYutPanel.parentElement, next: diceYutPanel.nextElementSibling };
+      if (diceYutPanel.parentElement !== document.body) document.body.appendChild(diceYutPanel);
+      let pos = null;
+      try { pos = JSON.parse(localStorage.getItem(DICE_PANEL_POS_KEY) || 'null'); } catch {}
+      diceYutPanel.style.left = pos ? `${pos.left}px` : '';
+      diceYutPanel.style.top = pos ? `${pos.top}px` : '';
+      diceYutPanel.style.width = pos?.width ? `${pos.width}px` : '';
+      diceYutPanel.style.height = pos?.height ? `${pos.height}px` : '';
+      requestAnimationFrame(clampDiceYutPanelPosition);
+    } else if (diceYutPanelHome) {
+      const { parent, next } = diceYutPanelHome;
+      if (next && next.parentElement === parent) parent.insertBefore(diceYutPanel, next);
+      else parent.appendChild(diceYutPanel);
+      diceYutPanelHome = null;
+      diceYutPanel.style.left = '';
+      diceYutPanel.style.top = '';
+      diceYutPanel.style.width = '';
+      diceYutPanel.style.height = '';
+    }
+  }
+
+  function setDiceYutPanelMode(mode) {
+    diceYutPanelMode = mode;
+    try { localStorage.setItem(DICE_PANEL_MODE_KEY, mode); } catch {}
+    applyDiceYutPanelMode();
+  }
+
+  // Undoes the PiP reparent/inline-position-and-size (if any) and hides the panel, without touching
+  // diceYutPanelMode or localStorage -- called on room exit (see enterLobby) so a floating panel
+  // never lingers over the lobby, while the user's chosen mode still applies next time they play.
+  function resetDiceYutPanelForRoomExit() {
+    diceYutPanel.classList.add('hidden');
+    if (diceYutPanelHome) {
+      const { parent, next } = diceYutPanelHome;
+      if (next && next.parentElement === parent) parent.insertBefore(diceYutPanel, next);
+      else parent.appendChild(diceYutPanel);
+      diceYutPanelHome = null;
+    }
+    diceYutPanel.classList.remove('floating');
+    diceYutPanel.style.left = '';
+    diceYutPanel.style.top = '';
+    diceYutPanel.style.width = '';
+    diceYutPanel.style.height = '';
+  }
+
+  diceYutPipBtn.addEventListener('click', () => setDiceYutPanelMode(diceYutPanelMode === 'pip' ? 'default' : 'pip'));
+  diceYutCollapseBtn.addEventListener('click', () => setDiceYutPanelMode(diceYutPanelMode === 'collapsed' ? 'default' : 'collapsed'));
+
+  diceYutHeader.addEventListener('pointerdown', (e) => {
+    if (diceYutPanelMode !== 'pip' || e.target.closest('button')) return;
+    const rect = diceYutPanel.getBoundingClientRect();
+    diceYutDrag = { pointerId: e.pointerId, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+    try { diceYutHeader.setPointerCapture(e.pointerId); } catch {}
+  });
+  diceYutHeader.addEventListener('pointermove', (e) => {
+    if (!diceYutDrag || diceYutDrag.pointerId !== e.pointerId) return;
+    const rect = diceYutPanel.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+    diceYutPanel.style.left = `${Math.min(Math.max(8, e.clientX - diceYutDrag.offsetX), maxLeft)}px`;
+    diceYutPanel.style.top = `${Math.min(Math.max(8, e.clientY - diceYutDrag.offsetY), maxTop)}px`;
+  });
+  const endDiceYutDrag = (e) => {
+    if (!diceYutDrag || (e && e.pointerId !== diceYutDrag.pointerId)) return;
+    try { diceYutHeader.releasePointerCapture(diceYutDrag.pointerId); } catch {}
+    diceYutDrag = null;
+    saveDiceYutPanelPos();
+  };
+  diceYutHeader.addEventListener('pointerup', endDiceYutDrag);
+  diceYutHeader.addEventListener('pointercancel', endDiceYutDrag);
+
+  // Captures size changes from the native CSS `resize:both` handle (desktop only, see styles.css),
+  // debounced so it isn't written to localStorage on every intermediate frame of a drag-resize.
+  let diceYutResizeSaveTimer = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    const diceYutResizeObserver = new ResizeObserver(() => {
+      if (diceYutPanelMode !== 'pip') return;
+      clearTimeout(diceYutResizeSaveTimer);
+      diceYutResizeSaveTimer = setTimeout(saveDiceYutPanelPos, 200);
+    });
+    diceYutResizeObserver.observe(diceYutPanel);
+  }
+
+  window.addEventListener('resize', () => clampDiceYutPanelPosition());
+  window.addEventListener('orientationchange', () => clampDiceYutPanelPosition());
+  applyDiceYutPanelMode();
+
   // Old Maid table effects state. Purely cosmetic bookkeeping: never the source of truth for
   // game state (that always comes from `state.game`, applied immediately by roomAction/SSE).
   let oldmaidEffectsOn = true;
@@ -553,6 +697,44 @@
   // system default rather than be silently vetoed by it.
   function oldmaidEffectsActive() { return oldmaidEffectsOn; }
 
+  function reducedMotionActive() {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  }
+
+  // v1.6.55: common 3D "tumble and settle" core shared by every dice/yut-style widget (today: the
+  // Land King dice and the yut sticks; any future dice game reuses this directly, no copy-paste).
+  // It only ever plays a COSMETIC spin on top of a result the caller already decided -- buildFrame
+  // computes each element's in-flight transform every animation frame, finalTransforms is where
+  // each element must land (always server-confirmed by the caller), and decorate lets a caller
+  // attach a result-only CSS class (e.g. "double dice" glow) at the exact moment it settles. The
+  // hop/wobble math, the reduced-motion bypass, the .settling transition class and the onDone
+  // callback are identical for every widget; only the per-frame transform string and the final
+  // resting transforms differ, which is exactly what dice cubes vs yut sticks need to differ on.
+  function animateTumble(els, spins, buildFrame, finalTransforms, { duration = 700, settleMs = 420, decorate, onDone } = {}) {
+    els.forEach(el => el.classList.remove('settling'));
+    const settle = (withTransition) => {
+      els.forEach((el, i) => {
+        if (decorate) decorate(el, i);
+        if (withTransition) el.classList.add('settling');
+        el.style.transform = finalTransforms[i];
+      });
+      if (withTransition) setTimeout(() => els.forEach(el => el.classList.remove('settling')), settleMs);
+      if (onDone) onDone();
+    };
+    if (reducedMotionActive() || !els.length) { settle(false); return; }
+    const start = performance.now();
+    const frame = timestamp => {
+      const elapsed = timestamp - start;
+      if (elapsed >= duration) { settle(true); return; }
+      const t = elapsed / 1000;
+      const progress = elapsed / duration;
+      const wobbleDecay = 1 - progress * 0.6;
+      els.forEach((el, i) => { el.style.transform = buildFrame(spins[i], t, wobbleDecay, progress); });
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
   // Common dice-roll animation: reusable by any game that rolls one or more dice.
   // Each die is a static 3D CSS cube (6 fixed faces, see index.html's .diceCube markup) -- rolling
   // never swaps face content, it only spins the cube's own transform, and settling snaps to the
@@ -568,44 +750,27 @@
     5: 'rotateX(0deg) rotateY(-90deg)',
     6: 'rotateX(0deg) rotateY(180deg)',
   };
-  function reducedMotionActive() {
-    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-  }
   function animateDiceRoll(dieEls, finalValues, { duration = 650, onDone } = {}) {
-    dieEls.forEach(el => { el.classList.remove('settling', 'diceDouble'); });
+    dieEls.forEach(el => el.classList.remove('diceDouble'));
     const isDouble = finalValues.length > 1 && finalValues.every(v => v === finalValues[0]);
-    const settle = (withTransition) => {
-      dieEls.forEach((el, i) => {
-        if (withTransition) el.classList.add('settling');
-        el.style.transform = DICE_CUBE_ROTATIONS[finalValues[i]] || DICE_CUBE_ROTATIONS[1];
-        if (isDouble) el.classList.add('diceDouble');
-      });
-      if (withTransition) setTimeout(() => dieEls.forEach(el => el.classList.remove('settling')), 420);
-      if (onDone) onDone();
-    };
-    if (reducedMotionActive() || !dieEls.length) { settle(false); return; }
-    const start = performance.now();
-    // Same hop + decaying wobble as the yut-stick toss (animateYutThrow) -- a bounce and a bit of
-    // extra tumble on top of the spin that actually determines the landing face, purely for flair;
-    // settle() below resets translateY/rotateZ to nothing, so none of this affects which face lands.
+    // Same hop + decaying wobble shape as the yut-stick toss (animateYutThrow) via the shared
+    // animateTumble core -- a bounce and a bit of extra tumble on top of the spin that actually
+    // determines the landing face, purely for flair; settle() resets translateY/rotateZ to
+    // nothing, so none of this affects which face lands.
     const spin = dieEls.map(() => ({
       x: 340 + Math.random() * 220,
       y: 280 + Math.random() * 260,
       z: (Math.random() - 0.5) * 60,
     }));
-    const frame = timestamp => {
-      const elapsed = timestamp - start;
-      if (elapsed >= duration) { settle(true); return; }
-      const t = elapsed / 1000;
-      const progress = elapsed / duration;
-      const hop = Math.sin(progress * Math.PI) * -34 * (1 - progress * 0.15);
-      const wobbleDecay = 1 - progress * 0.6;
-      dieEls.forEach((el, i) => {
-        el.style.transform = `translateY(${hop}px) rotateX(${spin[i].x * t}deg) rotateY(${spin[i].y * t}deg) rotateZ(${spin[i].z * t * wobbleDecay}deg)`;
-      });
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
+    animateTumble(
+      dieEls, spin,
+      (s, t, wobbleDecay, progress) => {
+        const hop = Math.sin(progress * Math.PI) * -34 * (1 - progress * 0.15);
+        return `translateY(${hop}px) rotateX(${s.x * t}deg) rotateY(${s.y * t}deg) rotateZ(${s.z * t * wobbleDecay}deg)`;
+      },
+      dieEls.map((_, i) => DICE_CUBE_ROTATIONS[finalValues[i]] || DICE_CUBE_ROTATIONS[1]),
+      { duration, settleMs: 420, decorate: isDouble ? (el) => el.classList.add('diceDouble') : null, onDone },
+    );
   }
 
   // Common yut-stick throw animation: 4 sticks (fixed front/flat + back/round faces, see
@@ -613,35 +778,20 @@
   // stick's rotateY snapped to 0 (front up) or 180deg (back up) to match the server's confirmed
   // "backs" pattern -- face content never changes, so it can't drift from the real result.
   function animateYutThrow(stickEls, backFlags, { duration = 780, onDone } = {}) {
-    stickEls.forEach(el => el.classList.remove('settling'));
-    const settle = (withTransition) => {
-      stickEls.forEach((el, i) => {
-        if (withTransition) el.classList.add('settling');
-        el.style.transform = `translateY(0) rotateX(0deg) rotateZ(0deg) rotateY(${backFlags[i] ? 180 : 0}deg)`;
-      });
-      if (withTransition) setTimeout(() => stickEls.forEach(el => el.classList.remove('settling')), 480);
-      if (onDone) onDone();
-    };
-    if (reducedMotionActive() || !stickEls.length) { settle(false); return; }
-    const start = performance.now();
     const spin = stickEls.map(() => ({
       y: 420 + Math.random() * 360,
       x: (Math.random() - 0.5) * 90,
       z: (Math.random() - 0.5) * 70,
     }));
-    const frame = timestamp => {
-      const elapsed = timestamp - start;
-      if (elapsed >= duration) { settle(true); return; }
-      const t = elapsed / 1000;
-      const progress = elapsed / duration;
-      const hop = Math.sin(progress * Math.PI) * -46 * (1 - progress * 0.15);
-      const wobbleDecay = 1 - progress * 0.6;
-      stickEls.forEach((el, i) => {
-        el.style.transform = `translateY(${hop}px) rotateX(${spin[i].x * t * wobbleDecay}deg) rotateZ(${spin[i].z * t * wobbleDecay}deg) rotateY(${spin[i].y * t}deg)`;
-      });
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
+    animateTumble(
+      stickEls, spin,
+      (s, t, wobbleDecay, progress) => {
+        const hop = Math.sin(progress * Math.PI) * -46 * (1 - progress * 0.15);
+        return `translateY(${hop}px) rotateX(${s.x * t * wobbleDecay}deg) rotateZ(${s.z * t * wobbleDecay}deg) rotateY(${s.y * t}deg)`;
+      },
+      stickEls.map((_, i) => `translateY(0) rotateX(0deg) rotateZ(0deg) rotateY(${backFlags[i] ? 180 : 0}deg)`),
+      { duration, settleMs: 480, onDone },
+    );
   }
 
   if (sessionToken) history.replaceState(null, '', '/');
@@ -1706,6 +1856,12 @@
   function enterLobby() {
     stopStream();
     closeRoomPip();
+    // The dice/yut panel's PiP mode reparents it to document.body (see applyDiceYutPanelMode), so
+    // leaving the room must hide it and move it back to its normal spot -- otherwise a floating
+    // panel opened during a yut game would keep floating over the lobby after the player leaves.
+    // This is purely a DOM/visibility reset: it does NOT touch diceYutPanelMode or localStorage, so
+    // the user's chosen mode (default/pip/collapsed) is still honored the next time they play yut.
+    resetDiceYutPanelForRoomExit();
     state = null;
     lastResultEffectKey = null;
     clearResultEffect();
@@ -2352,14 +2508,21 @@
     baseballPanel.classList.toggle('resultWinPanel', baseball && outcome === 'win');
     baseballPanel.classList.toggle('resultLossPanel', baseball && outcome === 'loss');
     yutControls.classList.toggle('hidden', !yut);
+    // v1.6.55: the dice/yut animation panel is shared UI (docked above chat, see applyDiceYutPanelMode)
+    // that's only relevant while a dice/yut-style game is active -- today that's just yut, but a future
+    // dice game adds itself to this same condition rather than growing a second panel. Re-apply the
+    // persisted mode only on a hidden->visible transition (a fresh yut game/room/reconnect), never on
+    // every render while already visible -- otherwise a live drag or resize-in-progress would get
+    // fought by a stale saved position/size read back from localStorage on the next unrelated render.
+    const diceYutWasHidden = diceYutPanel.classList.contains('hidden');
+    diceYutPanel.classList.toggle('hidden', !yut);
+    if (yut && diceYutWasHidden) applyDiceYutPanelMode();
     if (yut) renderYut();
     else {
       yutLastThrowKey = null;
       yutThrowTrackingStarted = false;
       yutThrowAnimating = false;
-      if (yutStageHideTimer !== null) clearTimeout(yutStageHideTimer);
-      yutStageHideTimer = null;
-      yutThrowStage.classList.add('hidden');
+      yutLastThrowFlags = null;
     }
     bingoPanel.classList.toggle('hidden', !bingo);
     if (bingo) renderBingo();
@@ -2491,6 +2654,7 @@
     yutLastThrow.textContent = g.lastThrow
       ? `최근 결과: ${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}`
       : '아직 던진 윷이 없습니다';
+    diceYutResult.textContent = yutLastThrow.textContent;
     const throwKey = g.lastThrow ? `${g.lastThrow.at}:${g.lastThrow.color}:${g.lastThrow.backs}:${g.lastThrow.name}` : null;
     // Same reconnect-safe pattern as Land King's dice: yutThrowTrackingStarted (not a null check on
     // the key alone) tells a genuinely new throw apart from a stale one inherited on first render.
@@ -2504,17 +2668,31 @@
         const j = Math.floor(Math.random() * (i + 1));
         [flags[i], flags[j]] = [flags[j], flags[i]];
       }
+      yutLastThrowFlags = flags;
       yutSticks.forEach((el, i) => el.classList.toggle('backdoMark', g.lastThrow.name === '빽도' && flags[i]));
-      if (yutStageHideTimer !== null) clearTimeout(yutStageHideTimer);
-      yutThrowStage.classList.remove('hidden');
       yutThrowAnimating = true;
       animateYutThrow(yutSticks, flags, {
-        onDone: () => {
-          yutThrowAnimating = false;
-          renderYut();
-          yutStageHideTimer = setTimeout(() => yutThrowStage.classList.add('hidden'), 1200);
-        },
+        onDone: () => { yutThrowAnimating = false; renderYut(); },
       });
+    } else if (!yutThrowAnimating) {
+      // v1.6.55: the dice/yut panel is now a small always-visible panel above chat instead of a
+      // full-board overlay that only ever appeared mid-throw, so it must always show the correct
+      // settled pose (not a default/neutral one) even on a render that isn't a fresh throw -- e.g.
+      // the very first render after page load/reconnect (isNewThrow is deliberately false there,
+      // see the comment above) or any re-render triggered by something unrelated to yut. Reuses the
+      // last shuffled flags so the sticks don't visually re-shuffle on every unrelated re-render;
+      // only computes a fresh shuffle once, the first time this game has anything to show.
+      if (!yutLastThrowFlags) {
+        const backs = g.lastThrow ? Math.max(0, Math.min(4, Number(g.lastThrow.backs) || 0)) : 0;
+        const flags = [true, true, true, true].map((_, i) => i < backs);
+        for (let i = flags.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [flags[i], flags[j]] = [flags[j], flags[i]];
+        }
+        yutLastThrowFlags = flags;
+        yutSticks.forEach((el, i) => el.classList.toggle('backdoMark', g.lastThrow?.name === '빽도' && flags[i]));
+      }
+      yutSticks.forEach((el, i) => { el.style.transform = `translateY(0) rotateX(0deg) rotateZ(0deg) rotateY(${yutLastThrowFlags[i] ? 180 : 0}deg)`; });
     }
     yutLastThrowKey = throwKey;
     yutThrowTrackingStarted = true;

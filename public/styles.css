@@ -141,7 +141,6 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
    transform (driven per-frame from JS, like the Land King dice cube); settling snaps each stick to
    rotateY(0) (front/flat up) or rotateY(180deg) (back/round up) to match the server's confirmed
    result -- face content never changes, so the pattern shown can't drift from the real result. */
-.yutThrowStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;perspective:640px;pointer-events:none}
 .yutStick{position:relative;width:24px;height:104px;transform-style:preserve-3d}
 .yutStick .ysFace{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;box-shadow:0 5px 12px rgba(0,0,0,.4)}
 .yutStick .ysFront{background:linear-gradient(180deg,#fdf6e3,#e2cf9c);border:2px solid #a9814a}
@@ -149,6 +148,62 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
 .yutStick.settling{transition:transform .42s cubic-bezier(.2,.8,.3,1)}
 .yutStick.backdoMark .ysFront{box-shadow:0 0 0 2px #ef4444 inset,0 5px 12px rgba(0,0,0,.4)}
 @media(prefers-reduced-motion:reduce){.yutStick{transition:none!important}}
+
+/* v1.6.55: common dice/yut animation panel, docked above the chat sidebar by default (see
+   .sideColumn -- a plain flex column wrapping this panel + <aside id="roomSidebar">, replacing
+   roomSidebar as the .gameLayout grid's 2nd column). Replaces the old .yutThrowStage, which was an
+   absolutely-positioned full-board overlay that only ever appeared for ~1.5s during a throw; this
+   panel is a small always-visible card instead, so its stage never needs a show/hide timer -- see
+   the else-branch in renderYut() that keeps the sticks snapped to their last confirmed pose whenever
+   nothing is actively animating. Built to hold any future dice game's cubes the same way, not just
+   yut's sticks: only the stage's *contents* differ per game, this shell does not. PiP mode is a
+   hand-rolled floating panel (position:fixed + Pointer Events drag + CSS resize), deliberately NOT
+   the native documentPictureInPicture API roomSidebar's own PIP button uses (see applyDiceYutPanelMode
+   in app.js for why: it needs to work the same way in every browser, including ones without that API,
+   and on touch devices where a second OS window isn't practical). */
+.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0}
+.diceYutPanel{background:#111c30;border:1px solid #263246;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.diceYutPanel.hidden{display:none}
+.diceYutHeader{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.diceYutPanel.floating .diceYutHeader{cursor:grab;touch-action:none}
+.diceYutPanel.floating .diceYutHeader:active{cursor:grabbing}
+.diceYutTitle{font-weight:800;font-size:.85rem;color:#e2e8f0}
+.diceYutHeaderActions{display:flex;gap:6px;flex:0 0 auto}
+.diceYutIconBtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:5px 9px;font-size:.7rem;font-weight:800;border-radius:8px}
+.diceYutIconBtn[aria-pressed="true"]{background:#1e3a8a;color:#eff6ff;border-color:#3b82f6}
+.diceYutBody{display:flex;flex-direction:column;gap:6px;min-height:0}
+.diceYutPanel.collapsed .diceYutBody{display:none}
+.diceYutStage{position:relative;min-height:120px;display:flex;align-items:center;justify-content:center;gap:16px;perspective:640px}
+.diceYutResult{margin:0;font-size:.78rem;color:#94a3b8;text-align:center}
+
+/* Floating (PiP) mode: an in-page fixed-position window instead of the board overlay it replaced --
+   draggable via its header (Pointer Events, app.js) and resizable via the native CSS handle below
+   (desktop pointer input only; touch browsers don't expose a usable resize corner, so it's disabled
+   under the same breakpoint used elsewhere for mobile layout). Initial position sits below the
+   topbar and off the right edge, clear of the board's own action buttons; a saved drag/resize
+   position overrides this via inline left/top/width/height (see applyDiceYutPanelMode). */
+.diceYutPanel.floating{
+  position:fixed;top:76px;right:12px;left:auto;z-index:75;
+  width:min(320px,calc(100vw - 24px));
+  min-width:220px;min-height:160px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);
+  box-shadow:0 20px 50px rgba(0,0,0,.5);
+  resize:both;overflow:auto;
+}
+@media(max-width:680px){
+  .diceYutPanel.floating{resize:none}
+}
+
+/* The chat sidebar's own "접기" collapses the WHOLE 2nd grid column to reclaim board width
+   (.gameLayout.sideCollapsed above, in the base stylesheet), which would also squeeze out the
+   dice/yut panel since both now live in that same column (.sideColumn). This override keeps the
+   column at its normal width whenever the panel is actually showing there (visible for the active
+   game and not floated away in PiP mode) so collapsing chat never hides the panel -- the two
+   controls are meant to be fully independent per the spec. Progressive enhancement: browsers
+   without :has() support just keep the base rule's older behavior (collapsing chat also shrinks
+   the panel), never a broken layout. */
+@supports selector(:has(*)) {
+  .gameLayout.sideCollapsed:has(.diceYutPanel:not(.hidden):not(.floating)){grid-template-columns:minmax(0,1fr) var(--side-w,350px);gap:18px}
+}
 
 /* v1.6.17: original City King board-game MVP. */
 .canvasWrap.cityBoard{background:#172554;aspect-ratio:980/720}

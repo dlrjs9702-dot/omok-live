@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6\.54/);
+  assert.match(html, /app\.js\?v=1\.6\.55/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -371,33 +371,45 @@ test('buy, build and sell offers preview the resulting cash balance', () => {
 });
 
 // v1.6.36: common dice-roll animation -- a reusable function/component, not a Land King-only effect.
+// v1.6.55: animateDiceRoll is now a thin wrapper over the shared animateTumble core (also used by
+// animateYutThrow), so the reduced-motion bypass, the hop/wobble loop and the .settling transition
+// now live in animateTumble itself, not duplicated per widget.
 test('the dice-roll animation is a generic reusable function driven by prefers-reduced-motion', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /function animateTumble\(els, spins, buildFrame, finalTransforms, \{ duration = 700, settleMs = 420, decorate, onDone \} = \{\}\)/);
   assert.match(app, /function animateDiceRoll\(dieEls, finalValues/);
   assert.match(app, /function reducedMotionActive\(\)/);
-  assert.match(app, /if \(reducedMotionActive\(\) \|\| !dieEls\.length\) \{ settle\(false\); return; \}/);
+  assert.match(app, /if \(reducedMotionActive\(\) \|\| !els\.length\) \{ settle\(false\); return; \}/);
   // Each die is a static 3D cube (fixed faces in the markup); settling only ever sets the cube's
   // transform to the rotation for the server-confirmed value, never a random one, and never
   // touches face content -- so the number shown can't drift from what the cube's own faces say.
-  const settleBlock = app.slice(app.indexOf('const settle = (withTransition)'), app.indexOf('const settle = (withTransition)') + 400);
-  assert.match(settleBlock, /el\.style\.transform = DICE_CUBE_ROTATIONS\[finalValues\[i\]\] \|\| DICE_CUBE_ROTATIONS\[1\]/);
-  // Doubles get a brief shared emphasis effect.
-  assert.match(app, /const isDouble = finalValues\.length > 1 && finalValues\.every\(v => v === finalValues\[0\]\);/);
-  assert.match(settleBlock, /diceDouble/);
+  const settleBlock = app.slice(app.indexOf('function animateTumble'), app.indexOf('function animateTumble') + 900);
+  assert.match(settleBlock, /el\.style\.transform = finalTransforms\[i\];/);
+  const diceBlock = app.slice(app.indexOf('function animateDiceRoll'), app.indexOf('function animateYutThrow'));
+  assert.match(diceBlock, /dieEls\.map\(\(_, i\) => DICE_CUBE_ROTATIONS\[finalValues\[i\]\] \|\| DICE_CUBE_ROTATIONS\[1\]\)/);
+  // Doubles get a brief shared emphasis effect, applied via animateTumble's decorate hook right as
+  // each die settles (never mid-flight, since it's purely a result-confirmed visual, not a guess).
+  assert.match(diceBlock, /const isDouble = finalValues\.length > 1 && finalValues\.every\(v => v === finalValues\[0\]\);/);
+  assert.match(diceBlock, /decorate: isDouble \? \(el\) => el\.classList\.add\('diceDouble'\) : null/);
+  assert.match(settleBlock, /if \(decorate\) decorate\(el, i\);/);
 });
 
 // v1.6.39: the dice roll now hops and wobbles like the yut-stick toss (animateYutThrow), instead
 // of only spinning in place -- purely a flight-phase flourish, since settle() above still only
-// ever sets rotateX/rotateY from DICE_CUBE_ROTATIONS, so it can't change which face lands.
+// ever sets each element's transform to its finalTransforms entry, so it can't change which face
+// lands. v1.6.55: both widgets now share animateTumble's hop math; only each widget's own transform
+// string (rotation axes/order) and hop height differ.
 test('dice rolling now hops and wobbles like the yut-stick toss, without affecting which face lands', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  const fnBody = app.slice(app.indexOf('function animateDiceRoll'), app.indexOf('function animateYutThrow'));
-  assert.match(fnBody, /const hop = Math\.sin\(progress \* Math\.PI\) \* -34 \* \(1 - progress \* 0\.15\);/);
-  assert.match(fnBody, /const wobbleDecay = 1 - progress \* 0\.6;/);
-  assert.match(fnBody, /el\.style\.transform = `translateY\(\$\{hop\}px\) rotateX\(\$\{spin\[i\]\.x \* t\}deg\) rotateY\(\$\{spin\[i\]\.y \* t\}deg\) rotateZ\(\$\{spin\[i\]\.z \* t \* wobbleDecay\}deg\)`;/);
-  // settle() never includes translateY/rotateZ, so a fresh transform string always clears them.
-  const settleBlock = app.slice(app.indexOf('const settle = (withTransition)'), app.indexOf('const settle = (withTransition)') + 400);
-  assert.doesNotMatch(settleBlock, /translateY|rotateZ/);
+  const tumbleBody = app.slice(app.indexOf('function animateTumble'), app.indexOf('function animateDiceRoll'));
+  assert.match(tumbleBody, /const wobbleDecay = 1 - progress \* 0\.6;/);
+  assert.match(tumbleBody, /el\.style\.transform = buildFrame\(spins\[i\], t, wobbleDecay, progress\);/);
+  const diceBlock = app.slice(app.indexOf('function animateDiceRoll'), app.indexOf('function animateYutThrow'));
+  assert.match(diceBlock, /const hop = Math\.sin\(progress \* Math\.PI\) \* -34 \* \(1 - progress \* 0\.15\);/);
+  assert.match(diceBlock, /return `translateY\(\$\{hop\}px\) rotateX\(\$\{s\.x \* t\}deg\) rotateY\(\$\{s\.y \* t\}deg\) rotateZ\(\$\{s\.z \* t \* wobbleDecay\}deg\)`;/);
+  // settle() (inside animateTumble) never includes translateY/rotateZ in finalTransforms -- a fresh
+  // transform string always clears them once a die/stick actually lands.
+  assert.doesNotMatch(diceBlock, /finalTransforms.*translateY|finalTransforms.*rotateZ/);
 });
 
 test('Land King wires its two dice into the common animation only on a genuinely new roll', () => {
