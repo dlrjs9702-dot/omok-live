@@ -35,7 +35,7 @@ test('the PIP preference persists per-browser across rooms, independent of the w
 
 test('opening PIP moves the real #roomSidebar (not a copy, and never the board) into the popped-out window and back on close', () => {
   const app = read('public/app.js');
-  const openFn = app.slice(app.indexOf('async function openRoomPip()'), app.indexOf('function wideBoardGame()'));
+  const openFn = app.slice(app.indexOf('async function openRoomPip()'), app.indexOf('function isMobileLayout()'));
   assert.match(openFn, /documentPictureInPicture\.requestWindow\(\{ width: 400, height: 680 \}\)/);
   assert.match(openFn, /pipWindow\.document\.body\.appendChild\(roomSidebar\)/);
   assert.doesNotMatch(openFn, /appendChild\(roomView\)/);
@@ -60,7 +60,7 @@ test('the resign/end-game/next-round buttons travel with the sidebar since they 
 // styles.css as a real class instead, and that lesson carries over to this corrected version.
 test('the popped-out layout override lives in the real (CSP-safe) stylesheet, not an injected <style> tag', () => {
   const app = read('public/app.js');
-  const openFn = app.slice(app.indexOf('async function openRoomPip()'), app.indexOf('function wideBoardGame()'));
+  const openFn = app.slice(app.indexOf('async function openRoomPip()'), app.indexOf('function isMobileLayout()'));
   assert.doesNotMatch(openFn, /createElement\('style'\)/);
   assert.match(openFn, /pipWindow\.document\.documentElement\.classList\.add\('sidePipLayout'\)/);
   const css = read('public/styles.css');

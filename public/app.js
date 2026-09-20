@@ -130,6 +130,7 @@
   const diceYutCollapseBtn = document.getElementById('diceYutCollapseBtn');
   const diceYutResult = document.getElementById('diceYutResult');
   const bingoPanel = document.getElementById('bingoPanel');
+  const bingoSetupRow = document.getElementById('bingoSetupRow');
   const bingoTargetSelect = document.getElementById('bingoTargetSelect');
   const bingoStartBtn = document.getElementById('bingoStartBtn');
   const bingoStatus = document.getElementById('bingoStatus');
@@ -203,6 +204,7 @@
   const oldmaidMyHand = document.getElementById('oldmaidMyHand');
   const oldmaidHistory = document.getElementById('oldmaidHistory');
   const liarPanel = document.getElementById('liarPanel');
+  const liarSetupRow = document.getElementById('liarSetupRow');
   const liarRoundsSelect = document.getElementById('liarRoundsSelect');
   const liarStartBtn = document.getElementById('liarStartBtn');
   const liarRoleBox = document.getElementById('liarRoleBox');
@@ -402,12 +404,16 @@
     }
   }
 
-  function wideBoardGame() { return state?.gameType === 'cityking' || state?.gameType === 'oldmaid'; }
   function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
 
+  // v1.6.56: cityking/oldmaid no longer auto-collapse the sidebar by default. That default existed
+  // to give their wide boards more room, back when the sidebar was optional for actually playing
+  // them -- now that #gameActionsPanel (start/roll/buy/build buttons etc., moved out of the board
+  // area this patch) lives inside the sidebar, collapsing it by default would hide controls a host
+  // needs just to start the game. The user can still collapse it manually as before.
   function sideShouldCollapse() {
     if (sideCollapsedPref !== null) return sideCollapsedPref;
-    return wideBoardGame();
+    return false;
   }
 
   function sideChatVisible() {
@@ -2507,7 +2513,16 @@
     baseballPanel.classList.toggle('hidden', !baseball);
     baseballPanel.classList.toggle('resultWinPanel', baseball && outcome === 'win');
     baseballPanel.classList.toggle('resultLossPanel', baseball && outcome === 'loss');
+    baseballSecretForm.classList.toggle('hidden', !baseball);
+    baseballGuessForm.classList.toggle('hidden', !baseball);
     yutControls.classList.toggle('hidden', !yut);
+    // v1.6.56: yutThrowBtn/yutMoveChoices used to be inside #yutControls and inherited its hidden
+    // toggle for free; now that they live in the sidebar's #gameActionsPanel (shared across every
+    // game), each moved control needs this same "hide entirely when it's not even this game" toggle
+    // of its own -- renderYut()'s own finer-grained toggle (disabled state, move-choice contents)
+    // still runs right after this and only when yut is actually active, same order as before.
+    yutThrowBtn.classList.toggle('hidden', !yut);
+    yutMoveChoices.classList.toggle('hidden', !yut);
     // v1.6.55: the dice/yut animation panel is shared UI (docked above chat, see applyDiceYutPanelMode)
     // that's only relevant while a dice/yut-style game is active -- today that's just yut, but a future
     // dice game adds itself to this same condition rather than growing a second panel. Re-apply the
@@ -2525,6 +2540,7 @@
       yutLastThrowFlags = null;
     }
     bingoPanel.classList.toggle('hidden', !bingo);
+    bingoSetupRow.classList.toggle('hidden', !bingo);
     if (bingo) renderBingo();
     cityControls.classList.toggle('hidden', !city);
     cityActionPanel.classList.toggle('hidden', !city);
@@ -2540,12 +2556,23 @@
       if (canvas.width !== 720 || canvas.height !== 720) { canvas.width = 720; canvas.height = 720; }
     }
     pictionaryPanel.classList.toggle('hidden', !pictionary);
+    pictionaryStartBtn.classList.toggle('hidden', !pictionary);
+    pictionaryGuessForm.classList.toggle('hidden', !pictionary);
     if (pictionary) renderPictionary();
     liarPanel.classList.toggle('hidden', !liar);
+    liarSetupRow.classList.toggle('hidden', !liar);
+    liarHintForm.classList.toggle('hidden', !liar);
+    liarGuessForm.classList.toggle('hidden', !liar);
     if (liar) renderLiar();
     oldmaidPanel.classList.toggle('hidden', !oldmaid);
+    oldmaidStartBtn.classList.toggle('hidden', !oldmaid);
+    oldmaidModeChooser.classList.toggle('hidden', !oldmaid);
     if (oldmaid) renderOldMaid();
     marathonPanel.classList.toggle('hidden', !marathon);
+    marathonStartBtn.classList.toggle('hidden', !marathon);
+    marathonConfigChooser.classList.toggle('hidden', !marathon);
+    marathonRollBtn.classList.toggle('hidden', !marathon);
+    marathonAnswerForm.classList.toggle('hidden', !marathon);
     if (marathon) renderMarathon();
     else if (marathonMemoryHideTimer) { clearTimeout(marathonMemoryHideTimer); marathonMemoryHideTimer = null; marathonMemoryHideKey = null; }
     if (pictionary || liar || oldmaid || marathon) {
@@ -4009,11 +4036,28 @@
     bg.addColorStop(1, '#0f172a');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, CITY_CANVAS_W, CITY_CANVAS_H);
-    // The interior used to carry a canvas-drawn title/turn readout; that space is now the
-    // cityActionPanel DOM overlay (see renderCityControls), so the canvas only needs a soft
-    // backdrop plate behind it for contrast.
-    ctx.fillStyle = 'rgba(15,23,42,.35)';
+    // v1.6.56: #cityActionPanel (start/roll/buy/build controls) moved off the board into the
+    // sidebar's #gameActionsPanel, so this interior space is no longer a DOM overlay -- restored to
+    // a canvas-drawn status readout (turn/phase + last roll), reusing #cityTurnSummary/#cityLastRoll's
+    // own already-computed text (renderCityControls() always runs immediately before this in every
+    // render path, see its call sites) rather than recomputing the same turn/phase logic twice.
+    const cityCenterX = CITY_PAD_X + 5 * CITY_STEP_X;
+    const cityCenterY = CITY_PAD_Y + 3 * CITY_STEP_Y;
+    ctx.fillStyle = 'rgba(15,23,42,.55)';
     ctx.fillRect(CITY_PAD_X + CITY_STEP_X, CITY_PAD_Y + CITY_STEP_Y, 8 * CITY_STEP_X, 4 * CITY_STEP_Y);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fde68a';
+    ctx.font = '900 20px Inter, Pretendard, sans-serif';
+    ctx.fillText('랜드킹', cityCenterX, cityCenterY - 24);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '700 15px Inter, Pretendard, sans-serif';
+    ctx.fillText(cityTurnSummary.textContent, cityCenterX, cityCenterY + 6);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 13px Inter, Pretendard, sans-serif';
+    ctx.fillText(cityLastRoll.textContent, cityCenterX, cityCenterY + 30);
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'alphabetic';
 
     const CITY_TYPE_BG = { start: '#bbf7d0', property: '#dbeafe', event: '#fef3c7', tax: '#fee2e2', rest: '#e2e8f0' };
     const CITY_TYPE_ICON = { start: '🚩', property: '🏙️', event: '🎁', tax: '💰', rest: '☕' };

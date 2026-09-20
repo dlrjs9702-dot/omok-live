@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.55" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.56" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -292,100 +292,22 @@
 
           <div id="teamPlayers" class="teamPlayers hidden" aria-label="4인 팀 선수와 착수 순서"></div>
 
-          <div id="roleChooser" class="roleChooser hidden">
-            <div>
-              <strong>이번 대국 역할 선택</strong>
-              <small>매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.</small>
-            </div>
-            <div id="standardRoleButtons" class="roleButtons">
-              <button id="chooseBlackBtn" class="rolePick blackPick"><span class="stoneMini"></span>흑 선택</button>
-              <button id="chooseWhiteBtn" class="rolePick whitePick"><span class="stoneMini"></span>백 선택</button>
-              <button id="chooseSpectatorBtn" class="rolePick spectatorPick"><span class="spectatorIcon">◎</span>관전 선택</button>
-            </div>
-            <div id="teamRoleButtons" class="teamRoleButtons hidden" aria-label="4인 자리 선택">
-              <button type="button" data-team-seat="1" class="rolePick teamRolePick blackPick">⚫ 1번 · 흑팀</button>
-              <button type="button" data-team-seat="2" class="rolePick teamRolePick whitePick">⚪ 2번 · 백팀</button>
-              <button type="button" data-team-seat="3" class="rolePick teamRolePick blackPick">⚫ 3번 · 흑팀</button>
-              <button type="button" data-team-seat="4" class="rolePick teamRolePick whitePick">⚪ 4번 · 백팀</button>
-              <button type="button" data-team-seat="5" class="rolePick teamRolePick">5번</button>
-              <button type="button" data-team-seat="6" class="rolePick teamRolePick">6번</button>
-              <button type="button" data-team-seat="7" class="rolePick teamRolePick">7번</button>
-              <button type="button" data-team-seat="8" class="rolePick teamRolePick">8번</button>
-              <button id="teamSpectatorBtn" type="button" class="rolePick spectatorPick">◎ 관전 선택</button>
-            </div>
-          </div>
-
           <div id="boardScroll" class="boardScroll">
             <div id="canvasWrap" class="canvasWrap">
               <canvas id="board" width="720" height="720" aria-label="게임판"></canvas>
               <div id="boardOverlay" class="boardOverlay hidden"></div>
-              <div id="cityActionPanel" class="cityActionPanel hidden" aria-label="랜드킹 행동 패널">
-                <div class="cityActionRow">
-                  <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
-                  <button id="cityStartBtn" class="primary hidden" type="button">랜드킹 시작</button>
-                  <button id="cityRollBtn" class="primary big" type="button">주사위 굴리기</button>
-                </div>
-                <div id="cityOverview" class="cityOverview" aria-live="polite">
-                  <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
-                  <div id="cityDice" class="cityDice" aria-label="주사위 결과">
-                    <div id="cityDieFirst" class="diceCube">
-                      <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
-                      <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
-                    </div>
-                    <div id="cityDieSecond" class="diceCube">
-                      <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
-                      <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
-                    </div>
-                  </div>
-                </div>
-                <p id="cityLiquidateBanner" class="cityLiquidateBanner hidden" role="alert"></p>
-                <p id="cityResultSummary" class="cityResultSummary hidden" role="status"></p>
-                <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
-                <div class="cityBuildRow hidden" id="cityBuildRow"><span id="cityBuildOffer"></span><button id="cityBuildBtn" class="secondary" type="button">건설</button><button id="cityBuildSkipBtn" class="ghost" type="button">건설 안 함</button></div>
-                <details id="cityTileDetailsToggle" class="cityTileDetailsToggle">
-                  <summary>도시 정보·매각 관리</summary>
-                  <label class="cityTileLabel" for="cityTileSelect">도시 및 칸 정보 선택</label>
-                  <select id="cityTileSelect" class="cityTileSelect" aria-label="랜드킹 도시 선택"></select>
-                  <div id="cityTileDetails" class="cityTileDetails" aria-live="polite">
-                    <strong id="cityTileName">게임판의 도시를 선택하세요.</strong>
-                    <dl>
-                      <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
-                      <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
-                      <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
-                      <div><dt>다음 건설 비용</dt><dd id="cityTileBuildCost">-</dd></div>
-                      <div><dt>매각 가능 금액</dt><dd id="cityTileSellValue">-</dd></div>
-                    </dl>
-                    <div id="cityTileSellRow" class="cityTileSellRow hidden">
-                      <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
-                      <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
-                      <span id="cityTileSellPreview" class="cityTileSellPreview"></span>
-                    </div>
-                  </div>
-                </details>
-              </div>
             </div>
           </div>
 
           <section id="yutControls" class="yutControls hidden" aria-label="윷놀이 조작">
             <div class="yutThrowSummary">
               <span id="yutLastThrow" class="yutLastThrow">윷을 던질 차례입니다</span>
-              <button id="yutThrowBtn" class="primary" type="button">윷 던지기</button>
             </div>
             <p id="yutHint" class="yutHint">파랑과 빨강이 정해지면 파랑부터 시작합니다.</p>
-            <div id="yutMoveChoices" class="yutMoveChoices" aria-live="polite"></div>
           </section>
 
 
           <section id="bingoPanel" class="bingoPanel hidden" aria-label="빙고 게임">
-            <div class="bingoSetupRow">
-              <label for="bingoTargetSelect">승리 조건</label>
-              <select id="bingoTargetSelect" aria-label="승리에 필요한 빙고 줄 수">
-                <option value="1">1줄</option><option value="2">2줄</option><option value="3">3줄</option><option value="4">4줄</option>
-                <option value="5" selected>5줄</option><option value="6">6줄</option><option value="7">7줄</option><option value="8">8줄</option>
-                <option value="9">9줄</option><option value="10">10줄</option><option value="11">11줄</option><option value="12">12줄</option>
-              </select>
-              <button id="bingoStartBtn" class="primary" type="button">빙고 시작</button>
-            </div>
             <p id="bingoStatus" class="bingoStatus">2명 이상 자리를 선택하면 방장이 시작할 수 있습니다.</p>
             <div class="bingoInfoGrid">
               <div><strong>선택된 숫자</strong><p id="bingoSelectedNumbers">없음</p></div>
@@ -403,27 +325,11 @@
             <p id="baseballReady" class="baseballReady">양쪽 비밀 숫자를 기다리고 있습니다.</p>
             <p id="baseballMySecret" class="baseballMySecret">내 비밀 숫자: 미설정</p>
             <p id="baseballHint" class="baseballHint">플레이어가 정해지면 각자 비밀 숫자를 설정합니다.</p>
-            <form id="baseballSecretForm" class="baseballForm hidden" autocomplete="off">
-              <label for="baseballSecretInput">내 비밀 숫자 정하기</label>
-              <div class="baseballInputRow">
-                <input id="baseballSecretInput" type="password" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="new-password" placeholder="서로 다른 숫자 3개" aria-label="내 비밀 숫자" required />
-                <button class="primary" type="submit">비밀 숫자 확정</button>
-              </div>
-              <small>첫 자리는 0이 아니어야 하며 중복 숫자는 쓸 수 없습니다. 확정 후에는 변경할 수 없습니다.</small>
-            </form>
-            <form id="baseballGuessForm" class="baseballForm hidden" autocomplete="off">
-              <label for="baseballGuessInput">상대의 비밀 숫자 추측하기</label>
-              <div class="baseballInputRow">
-                <input id="baseballGuessInput" type="text" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="off" placeholder="예: 123" aria-label="추측할 숫자" required />
-                <button class="secondary" type="submit">추측하기</button>
-              </div>
-            </form>
             <div class="baseballHistoryHead"><h3>추측 기록</h3><small>최신 기록이 위에 표시됩니다</small></div>
             <div id="baseballHistory" class="baseballHistory" aria-live="polite"></div>
           </section>
 
           <section id="pictionaryPanel" class="pictionaryPanel hidden" aria-label="그림 맞히기">
-            <button id="pictionaryStartBtn" type="button" class="primary hidden">그림 맞히기 시작</button>
             <div class="pictionaryHead">
               <span id="pictionaryDrawerLabel">출제자를 기다리는 중</span>
               <span id="pictionaryTimer" class="pictionaryTimer hidden">90초</span>
@@ -439,10 +345,6 @@
             <div class="pictionaryCanvasWrap">
               <canvas id="pictionaryCanvas" width="720" height="480" aria-label="그림판"></canvas>
             </div>
-            <form id="pictionaryGuessForm" class="pictionaryGuessForm hidden" autocomplete="off">
-              <input id="pictionaryGuessInput" type="text" maxlength="40" placeholder="정답 입력" aria-label="정답 입력" />
-              <button class="primary" type="submit">제출</button>
-            </form>
             <div id="pictionaryScoreboard" class="pictionaryScoreboard" aria-label="참가자 점수"></div>
           </section>
 
@@ -452,13 +354,7 @@
               <strong id="oldmaidStatus">참가자를 기다리는 중</strong>
               <div class="oldmaidHeaderActions">
                 <label class="oldmaidEffectsToggle"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 연출 효과</label>
-                <button type="button" id="oldmaidStartBtn" class="primary">도둑잡기 시작</button>
               </div>
-            </div>
-            <div id="oldmaidModeChooser" class="oldmaidModeChooser hidden" role="radiogroup" aria-label="도둑잡기 모드">
-              <label><input type="radio" name="oldmaidMode" value="normal" data-oldmaid-mode checked /> 일반 모드</label>
-              <label><input type="radio" name="oldmaidMode" value="special" data-oldmaid-mode /> 특수 능력 모드</label>
-              <small>특수 능력 모드는 시작 시 엿보기·방향전환·방어막·조커탐지 중 하나를 무작위로 받아 게임당 1회 사용합니다.</small>
             </div>
             <div id="oldmaidAbilityBar" class="oldmaidAbilityBar hidden">
               <div class="oldmaidAbilityHead">
@@ -480,11 +376,6 @@
           </section>
 
           <section id="liarPanel" class="liarPanel hidden" aria-label="라이어게임">
-            <div class="liarSetupRow">
-              <label for="liarRoundsSelect">게임 판 수</label>
-              <select id="liarRoundsSelect"><option value="1">1판</option><option value="3">3판</option></select>
-              <button id="liarStartBtn" type="button" class="primary">라이어게임 시작</button>
-            </div>
             <div id="liarRoleBox" class="liarRoleBox">게임 시작 후 내 역할이 표시됩니다.</div>
             <div class="liarProgress">
               <strong id="liarPhaseLabel">참가자 대기 중</strong>
@@ -492,15 +383,7 @@
               <span id="liarTimer" class="liarTimer hidden">60초</span>
             </div>
             <div id="liarHintLog" class="liarHintLog" aria-live="polite"></div>
-            <form id="liarHintForm" class="liarActionForm hidden" autocomplete="off">
-              <input id="liarHintInput" type="text" maxlength="100" placeholder="힌트를 입력하세요" aria-label="라이어게임 힌트" />
-              <button type="submit" class="primary">힌트 제출</button>
-            </form>
             <div id="liarVoteBox" class="liarVoteBox hidden"></div>
-            <form id="liarGuessForm" class="liarActionForm hidden" autocomplete="off">
-              <input id="liarGuessInput" type="text" maxlength="40" placeholder="제시어 최종 추측" aria-label="라이어 최종 제시어 추측" />
-              <button type="submit" class="primary">최종 추측</button>
-            </form>
             <div id="liarResult" class="liarResult hidden" aria-live="polite"></div>
             <div id="liarScoreboard" class="liarScoreboard" aria-label="라이어게임 누적 점수"></div>
           </section>
@@ -508,29 +391,10 @@
           <section id="marathonPanel" class="marathonPanel hidden" aria-label="마라톤">
             <div class="marathonHeader">
               <strong id="marathonStatus">참가자를 기다리는 중</strong>
-              <button type="button" id="marathonStartBtn" class="primary">마라톤 시작</button>
-            </div>
-            <div id="marathonConfigChooser" class="marathonConfigChooser hidden">
-              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
-                <label><input type="radio" name="marathonMode" value="individual" data-marathon-mode checked /> 개인전</label>
-                <label><input type="radio" name="marathonMode" value="team" data-marathon-mode /> 팀전</label>
-              </div>
-              <div id="marathonLayoutChooser" class="marathonConfigRow hidden" role="radiogroup" aria-label="팀 구성">
-                <label><input type="radio" name="marathonLayout" value="2v2" data-marathon-layout checked /> 2대2 (4인)</label>
-                <label><input type="radio" name="marathonLayout" value="3v3" data-marathon-layout /> 3대3 (6인)</label>
-                <label><input type="radio" name="marathonLayout" value="2v2v2" data-marathon-layout /> 2대2대2 (6인)</label>
-              </div>
-              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
-                <label><input type="radio" name="marathonDifficulty" value="easy" data-marathon-difficulty /> 쉬움</label>
-                <label><input type="radio" name="marathonDifficulty" value="normal" data-marathon-difficulty checked /> 보통</label>
-                <label><input type="radio" name="marathonDifficulty" value="hard" data-marathon-difficulty /> 어려움</label>
-              </div>
-              <small>팀전은 선택한 팀 구성과 정확히 같은 인원이 자리를 선택해야 시작할 수 있습니다.</small>
             </div>
             <div id="marathonTrack" class="marathonTrack" aria-label="30칸 트랙"></div>
             <div class="marathonDiceRow">
               <span id="marathonTurnLabel" class="marathonTurnLabel">차례를 기다리는 중</span>
-              <button type="button" id="marathonRollBtn" class="primary big" disabled>주사위 굴리기</button>
               <span id="marathonLastRoll" class="marathonLastRoll"></span>
             </div>
             <div id="marathonMissionBox" class="marathonMissionBox hidden">
@@ -539,10 +403,6 @@
                 <span id="marathonMissionTimer" class="marathonMissionTimer"></span>
               </div>
               <p id="marathonMissionPrompt" class="marathonMissionPrompt"></p>
-              <form id="marathonAnswerForm" class="marathonAnswerForm hidden" autocomplete="off">
-                <input id="marathonAnswerInput" type="text" maxlength="60" placeholder="정답 입력" aria-label="마라톤 미션 정답" />
-                <button type="submit" class="primary">제출</button>
-              </form>
               <div id="marathonReflexOptions" class="marathonReflexOptions hidden"></div>
               <p id="marathonMissionFeedback" class="marathonMissionFeedback hidden" aria-live="polite"></p>
             </div>
@@ -620,6 +480,162 @@
             </details>
           </section>
 
+          <section id="gameActionsPanel" class="gameActionsPanel" aria-label="게임 조작">
+            <div id="roleChooser" class="roleChooser hidden">
+              <div>
+                <strong>이번 대국 역할 선택</strong>
+                <small>매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.</small>
+              </div>
+              <div id="standardRoleButtons" class="roleButtons">
+                <button id="chooseBlackBtn" class="rolePick blackPick"><span class="stoneMini"></span>흑 선택</button>
+                <button id="chooseWhiteBtn" class="rolePick whitePick"><span class="stoneMini"></span>백 선택</button>
+                <button id="chooseSpectatorBtn" class="rolePick spectatorPick"><span class="spectatorIcon">◎</span>관전 선택</button>
+              </div>
+              <div id="teamRoleButtons" class="teamRoleButtons hidden" aria-label="4인 자리 선택">
+                <button type="button" data-team-seat="1" class="rolePick teamRolePick blackPick">⚫ 1번 · 흑팀</button>
+                <button type="button" data-team-seat="2" class="rolePick teamRolePick whitePick">⚪ 2번 · 백팀</button>
+                <button type="button" data-team-seat="3" class="rolePick teamRolePick blackPick">⚫ 3번 · 흑팀</button>
+                <button type="button" data-team-seat="4" class="rolePick teamRolePick whitePick">⚪ 4번 · 백팀</button>
+                <button type="button" data-team-seat="5" class="rolePick teamRolePick">5번</button>
+                <button type="button" data-team-seat="6" class="rolePick teamRolePick">6번</button>
+                <button type="button" data-team-seat="7" class="rolePick teamRolePick">7번</button>
+                <button type="button" data-team-seat="8" class="rolePick teamRolePick">8번</button>
+                <button id="teamSpectatorBtn" type="button" class="rolePick spectatorPick">◎ 관전 선택</button>
+              </div>
+            </div>
+
+            <div class="yutActionRow">
+              <button id="yutThrowBtn" class="primary" type="button">윷 던지기</button>
+            </div>
+            <div id="yutMoveChoices" class="yutMoveChoices" aria-live="polite"></div>
+
+            <div id="bingoSetupRow" class="bingoSetupRow">
+              <label for="bingoTargetSelect">승리 조건</label>
+              <select id="bingoTargetSelect" aria-label="승리에 필요한 빙고 줄 수">
+                <option value="1">1줄</option><option value="2">2줄</option><option value="3">3줄</option><option value="4">4줄</option>
+                <option value="5" selected>5줄</option><option value="6">6줄</option><option value="7">7줄</option><option value="8">8줄</option>
+                <option value="9">9줄</option><option value="10">10줄</option><option value="11">11줄</option><option value="12">12줄</option>
+              </select>
+              <button id="bingoStartBtn" class="primary" type="button">빙고 시작</button>
+            </div>
+
+            <div id="cityActionPanel" class="cityActionPanel hidden" aria-label="랜드킹 행동 패널">
+              <div class="cityActionRow">
+                <span id="cityLastRoll" class="cityLastRoll">주사위를 굴릴 차례입니다</span>
+                <button id="cityStartBtn" class="primary hidden" type="button">랜드킹 시작</button>
+                <button id="cityRollBtn" class="primary big" type="button">주사위 굴리기</button>
+              </div>
+              <div id="cityOverview" class="cityOverview" aria-live="polite">
+                <strong id="cityTurnSummary">진행 0/50 · 남은 50턴</strong>
+                <div id="cityDice" class="cityDice" aria-label="주사위 결과">
+                  <div id="cityDieFirst" class="diceCube">
+                    <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
+                    <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
+                  </div>
+                  <div id="cityDieSecond" class="diceCube">
+                    <div class="cf cf1">⚀</div><div class="cf cf2">⚁</div><div class="cf cf3">⚂</div>
+                    <div class="cf cf4">⚃</div><div class="cf cf5">⚄</div><div class="cf cf6">⚅</div>
+                  </div>
+                </div>
+              </div>
+              <p id="cityLiquidateBanner" class="cityLiquidateBanner hidden" role="alert"></p>
+              <p id="cityResultSummary" class="cityResultSummary hidden" role="status"></p>
+              <div class="cityBuyRow"><span id="cityPropertyOffer"></span><button id="cityBuyBtn" class="secondary" type="button">도시 매입</button><button id="citySkipBtn" class="ghost" type="button">매입 안 함</button></div>
+              <div class="cityBuildRow hidden" id="cityBuildRow"><span id="cityBuildOffer"></span><button id="cityBuildBtn" class="secondary" type="button">건설</button><button id="cityBuildSkipBtn" class="ghost" type="button">건설 안 함</button></div>
+              <details id="cityTileDetailsToggle" class="cityTileDetailsToggle">
+                <summary>도시 정보·매각 관리</summary>
+                <label class="cityTileLabel" for="cityTileSelect">도시 및 칸 정보 선택</label>
+                <select id="cityTileSelect" class="cityTileSelect" aria-label="랜드킹 도시 선택"></select>
+                <div id="cityTileDetails" class="cityTileDetails" aria-live="polite">
+                  <strong id="cityTileName">게임판의 도시를 선택하세요.</strong>
+                  <dl>
+                    <div><dt>매입가</dt><dd id="cityTilePrice">-</dd></div>
+                    <div><dt>통행료</dt><dd id="cityTileToll">-</dd></div>
+                    <div><dt>소유자</dt><dd id="cityTileOwner">-</dd></div>
+                    <div><dt>다음 건설 비용</dt><dd id="cityTileBuildCost">-</dd></div>
+                    <div><dt>매각 가능 금액</dt><dd id="cityTileSellValue">-</dd></div>
+                  </dl>
+                  <div id="cityTileSellRow" class="cityTileSellRow hidden">
+                    <button id="citySellBuildingBtn" type="button" class="ghost tiny">건물 매각</button>
+                    <button id="citySellPropertyBtn" type="button" class="ghost tiny">도시 매각</button>
+                    <span id="cityTileSellPreview" class="cityTileSellPreview"></span>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <form id="baseballSecretForm" class="baseballForm hidden" autocomplete="off">
+              <label for="baseballSecretInput">내 비밀 숫자 정하기</label>
+              <div class="baseballInputRow">
+                <input id="baseballSecretInput" type="password" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="new-password" placeholder="서로 다른 숫자 3개" aria-label="내 비밀 숫자" required />
+                <button class="primary" type="submit">비밀 숫자 확정</button>
+              </div>
+              <small>첫 자리는 0이 아니어야 하며 중복 숫자는 쓸 수 없습니다. 확정 후에는 변경할 수 없습니다.</small>
+            </form>
+            <form id="baseballGuessForm" class="baseballForm hidden" autocomplete="off">
+              <label for="baseballGuessInput">상대의 비밀 숫자 추측하기</label>
+              <div class="baseballInputRow">
+                <input id="baseballGuessInput" type="text" inputmode="numeric" pattern="[1-9][0-9]{2}" minlength="3" maxlength="3" autocomplete="off" placeholder="예: 123" aria-label="추측할 숫자" required />
+                <button class="secondary" type="submit">추측하기</button>
+              </div>
+            </form>
+
+            <button id="pictionaryStartBtn" type="button" class="primary hidden">그림 맞히기 시작</button>
+            <form id="pictionaryGuessForm" class="pictionaryGuessForm hidden" autocomplete="off">
+              <input id="pictionaryGuessInput" type="text" maxlength="40" placeholder="정답 입력" aria-label="정답 입력" />
+              <button class="primary" type="submit">제출</button>
+            </form>
+
+            <div class="oldmaidStartRow">
+              <button type="button" id="oldmaidStartBtn" class="primary hidden">도둑잡기 시작</button>
+            </div>
+            <div id="oldmaidModeChooser" class="oldmaidModeChooser hidden" role="radiogroup" aria-label="도둑잡기 모드">
+              <label><input type="radio" name="oldmaidMode" value="normal" data-oldmaid-mode checked /> 일반 모드</label>
+              <label><input type="radio" name="oldmaidMode" value="special" data-oldmaid-mode /> 특수 능력 모드</label>
+              <small>특수 능력 모드는 시작 시 엿보기·방향전환·방어막·조커탐지 중 하나를 무작위로 받아 게임당 1회 사용합니다.</small>
+            </div>
+
+            <div id="liarSetupRow" class="liarSetupRow">
+              <label for="liarRoundsSelect">게임 판 수</label>
+              <select id="liarRoundsSelect"><option value="1">1판</option><option value="3">3판</option></select>
+              <button id="liarStartBtn" type="button" class="primary">라이어게임 시작</button>
+            </div>
+            <form id="liarHintForm" class="liarActionForm hidden" autocomplete="off">
+              <input id="liarHintInput" type="text" maxlength="100" placeholder="힌트를 입력하세요" aria-label="라이어게임 힌트" />
+              <button type="submit" class="primary">힌트 제출</button>
+            </form>
+            <form id="liarGuessForm" class="liarActionForm hidden" autocomplete="off">
+              <input id="liarGuessInput" type="text" maxlength="40" placeholder="제시어 최종 추측" aria-label="라이어 최종 제시어 추측" />
+              <button type="submit" class="primary">최종 추측</button>
+            </form>
+
+            <div class="marathonStartRow">
+              <button type="button" id="marathonStartBtn" class="primary">마라톤 시작</button>
+            </div>
+            <div id="marathonConfigChooser" class="marathonConfigChooser hidden">
+              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
+                <label><input type="radio" name="marathonMode" value="individual" data-marathon-mode checked /> 개인전</label>
+                <label><input type="radio" name="marathonMode" value="team" data-marathon-mode /> 팀전</label>
+              </div>
+              <div id="marathonLayoutChooser" class="marathonConfigRow hidden" role="radiogroup" aria-label="팀 구성">
+                <label><input type="radio" name="marathonLayout" value="2v2" data-marathon-layout checked /> 2대2 (4인)</label>
+                <label><input type="radio" name="marathonLayout" value="3v3" data-marathon-layout /> 3대3 (6인)</label>
+                <label><input type="radio" name="marathonLayout" value="2v2v2" data-marathon-layout /> 2대2대2 (6인)</label>
+              </div>
+              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
+                <label><input type="radio" name="marathonDifficulty" value="easy" data-marathon-difficulty /> 쉬움</label>
+                <label><input type="radio" name="marathonDifficulty" value="normal" data-marathon-difficulty checked /> 보통</label>
+                <label><input type="radio" name="marathonDifficulty" value="hard" data-marathon-difficulty /> 어려움</label>
+              </div>
+              <small>팀전은 선택한 팀 구성과 정확히 같은 인원이 자리를 선택해야 시작할 수 있습니다.</small>
+            </div>
+            <button type="button" id="marathonRollBtn" class="primary big" disabled>주사위 굴리기</button>
+            <form id="marathonAnswerForm" class="marathonAnswerForm hidden" autocomplete="off">
+              <input id="marathonAnswerInput" type="text" maxlength="60" placeholder="정답 입력" aria-label="마라톤 미션 정답" />
+              <button type="submit" class="primary">제출</button>
+            </form>
+          </section>
+
           <div class="sideActions">
             <button id="sideResignBtn" class="danger subtle">기권하기</button>
             <button id="sideNextRoundBtn" class="primary hidden">다음 판 준비</button>
@@ -664,7 +680,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.55"></script>
-  <script src="/app.js?v=1.6.55"></script>
+  <script src="/session-lock.js?v=1.6.56"></script>
+  <script src="/app.js?v=1.6.56"></script>
 </body>
 </html>

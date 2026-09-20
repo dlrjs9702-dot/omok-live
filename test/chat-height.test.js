@@ -86,11 +86,16 @@ test('the chat overlay repositions the same chat panel over the game instead of 
   assert.match(app, /function toggleSideOverlay\(forceOpen\)/);
 });
 
-test('Land King and Old Maid default the sidebar to collapsed so the board gets priority width, other games do not', () => {
+// v1.6.56: Land King and Old Maid used to default the sidebar to collapsed (to give their wide
+// boards more room), back when the sidebar was optional for actually playing them. Now that
+// #gameActionsPanel (start/roll/buy/build etc., moved out of the board area this patch) lives in
+// the sidebar for every game including these two, collapsing it by default would hide controls a
+// host needs just to start the game -- so no game defaults to collapsed anymore.
+test('no game defaults the sidebar to collapsed, since every game now needs its action controls there', () => {
   const app = read('public/app.js');
-  assert.match(app, /function wideBoardGame\(\) \{ return state\?\.gameType === 'cityking' \|\| state\?\.gameType === 'oldmaid'; \}/);
-  assert.match(app, /function sideShouldCollapse\(\) \{\s*if \(sideCollapsedPref !== null\) return sideCollapsedPref;\s*return wideBoardGame\(\);/);
-  // A user's manual collapse/expand choice always overrides the per-game default.
+  assert.doesNotMatch(app, /function wideBoardGame\(\)/);
+  assert.match(app, /function sideShouldCollapse\(\) \{\s*if \(sideCollapsedPref !== null\) return sideCollapsedPref;\s*return false;/);
+  // A user's manual collapse/expand choice still overrides the (now-uniform) default.
   assert.match(app, /sideCollapsedPref = !sideShouldCollapse\(\);/);
   assert.match(app, /localStorage\.setItem\(SIDE_COLLAPSE_KEY/);
 });

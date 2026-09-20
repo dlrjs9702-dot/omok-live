@@ -371,6 +371,16 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .roomTitleField{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 6px;font-size:.79rem;font-weight:850;color:#cbd5e1}.roomTitleField small{font-size:.66rem;font-weight:500;color:#94a3b8}.roomTitleField+input{width:100%;margin:0 0 12px;border:1px solid #334155;border-radius:10px;padding:10px 11px;background:#0f172a;color:#fff;outline:none}.roomTitleField+input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.12)}.baseballDigitChoices{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0 0 14px}.baseballDigitChoices legend{padding:0;margin-right:4px;font-size:.79rem;font-weight:850;color:#cbd5e1}.baseballDigitChoices label{display:flex;align-items:center;gap:5px;font-size:.78rem;font-weight:800;cursor:pointer}.baseballDigitChoices input{accent-color:#60a5fa}
 .roomInfoArea{display:grid;grid-template-columns:minmax(180px,.78fr) minmax(230px,1.08fr) minmax(220px,.94fr);gap:10px;margin:0 0 16px;align-items:start}.roomInfoArea .roomSecret,.roomInfoArea .roomInvitePanel,.gameInfoCard{margin:0;border:1px solid #263246;border-radius:14px;background:#0b1324;padding:12px}.roomInfoArea .roomSecret{background:linear-gradient(145deg,#172554,#0f172a);border-color:#1d4ed8}.roomInfoArea .roomSecret strong{font-size:1.28rem;margin:6px 0 8px}.roomInfoArea .roomSecret small{font-size:.68rem}.roomInfoArea .roomSecret button{padding:8px 9px;font-size:.75rem}.roomInfoArea .roomInvitePanel{display:flex;flex-direction:column}.roomInfoArea .roomInvitePanel>.smallMuted{font-size:.69rem;margin:6px 0}.roomInfoArea .inviteTargetList{max-height:130px}.gameInfoCard h3{font-size:.9rem;margin:0 0 7px}.gameInfoCard .infoList{display:grid;grid-template-columns:1fr 1fr;column-gap:12px}.gameInfoCard .infoList div{padding:6px 0;font-size:.76rem}.gameInfoCard .infoList dt{font-size:.69rem}
 .side .roomPeople{padding-top:0}.side .sideActions{flex:0 0 auto}.side .rules{flex:0 0 auto;margin-top:12px}
+/* v1.6.56: every game's role/seat selection, start button and turn-action inputs now render here,
+   below the chat/system/room-info tabs, instead of scattered under the board -- see index.html's
+   #gameActionsPanel and the "게임 조작" comment in app.js's renderRoom() toggle block. Only the
+   specific control(s) each game needs are ever unhidden at once (same per-game hidden-class toggles
+   as before, now just aimed at elements living here); each control's own existing CSS class
+   (.roleChooser, .bingoSetupRow, .cityActionPanel, .liarActionForm, etc.) still supplies its actual
+   look, this is only the shared shell + scroll behavior. */
+.side .gameActionsPanel{flex:0 0 auto;display:grid;gap:10px;max-height:42vh;overflow-y:auto;padding-right:2px}
+.gameActionsPanel .roleChooser,.gameActionsPanel .bingoSetupRow,.gameActionsPanel .liarSetupRow{margin-bottom:0}
+.yutActionRow,.oldmaidStartRow,.marathonStartRow{display:flex;justify-content:flex-end}
 @media(max-width:1120px){.roomInfoArea{grid-template-columns:repeat(2,minmax(0,1fr))}.gameInfoCard{grid-column:1/-1}.roomInfoArea .inviteTargetList{max-height:120px}}@media(max-width:880px){.roomInfoArea{grid-template-columns:1fr}.gameInfoCard{grid-column:auto}.roomInfoArea .inviteTargetList{max-height:150px}}@media(max-width:520px){.roomTitleField{align-items:flex-start;flex-direction:column;gap:3px}.baseballDigitChoices{flex-wrap:wrap;gap:8px 12px}.baseballDigitChoices legend{width:100%}.roomInfoArea{margin-bottom:12px}.gameInfoCard .infoList{column-gap:9px}}
 
 /* v1.6.30: compact lobby statistics and read-only participant record dialog. */
@@ -671,11 +681,13 @@ html.sidePipLayout .sideActions{display:grid!important}
 @media(max-width:600px){.cityAssets{grid-template-columns:1fr}.cityOverview{padding:10px}.cityTileDetails dl{gap:5px}.cityTileDetails dd{font-size:.76rem}}
 @media(prefers-reduced-motion:reduce){.diceCube{transition:none!important}.diceCube.diceDouble .cf{animation:none}}
 
-/* v1.6.37: central board action panel -- the board's own interior (surrounded by the tile ring)
-   hosts every actionable Land King control, so players never have to look away from the board to
-   find "what to do now". Only supplementary info (player cards, event log) stays below the board. */
+/* v1.6.37 introduced this as a panel absolutely overlaid on the board's own interior. v1.6.56
+   moved it into the sidebar's #gameActionsPanel (see index.html) along with every other game's
+   start/action controls, so it's a normal in-flow block now -- drawCityBoard() fills the board's
+   center with a plain status readout instead (see app.js) so the ring isn't left with a blank hole
+   where this panel used to sit. */
 .boardScroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.cityActionPanel{position:absolute;left:16%;right:16%;top:25%;bottom:25%;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(10,16,32,.88);border:1px solid rgba(148,163,184,.28);box-shadow:0 12px 34px rgba(0,0,0,.45);overflow-y:auto}
+.cityActionPanel{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(10,16,32,.88);border:1px solid rgba(148,163,184,.28)}
 .cityActionPanel .cityActionRow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center}
 .cityActionPanel .cityLastRoll{font-size:.78rem;color:#cbd5e1;width:100%;text-align:center}
 .cityActionPanel .cityOverview{margin:0;flex-direction:column;gap:6px;text-align:center}
@@ -691,7 +703,7 @@ html.sidePipLayout .sideActions{display:grid!important}
 .cityTileDetailsToggle summary::-webkit-details-marker{display:none}
 .cityTileDetailsToggle summary:before{content:'▸ ';color:#94a3b8}
 .cityTileDetailsToggle[open] summary:before{content:'▾ '}
-@media(max-width:640px){.canvasWrap.cityBoard{min-width:640px}.cityActionPanel{left:14%;right:14%;top:22%;bottom:22%;padding:8px 10px;gap:5px}.cityActionPanel .cityTileDetails dl{grid-template-columns:1fr 1fr;gap:4px}.cityActionPanel .cityTileDetails dd{font-size:.7rem}.cityActionPanel .cityTileLabel{margin:4px 0 2px}.cityTileDetailsToggle summary{padding:6px 8px;font-size:.72rem}}
+@media(max-width:640px){.canvasWrap.cityBoard{min-width:640px}.cityActionPanel{padding:8px 10px;gap:5px}.cityActionPanel .cityTileDetails dl{grid-template-columns:1fr 1fr;gap:4px}.cityActionPanel .cityTileDetails dd{font-size:.7rem}.cityActionPanel .cityTileLabel{margin:4px 0 2px}.cityTileDetailsToggle summary{padding:6px 8px;font-size:.72rem}}
 
 
 /* v1.6.29: scoped city construction and explicit logout confirmation. */

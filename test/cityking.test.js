@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6\.55/);
+  assert.match(html, /app\.js\?v=1\.6\.56/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -462,13 +462,17 @@ test('the 7x11 board keeps exactly the 24 real tiles at their original index ord
   assert.match(app, /if \(canvas\.width !== 720 \|\| canvas\.height !== 720\) \{ canvas\.width = 720; canvas\.height = 720; \}/);
 });
 
-// v1.6.37: every actionable Land King control now lives in the board-center panel, not scattered
-// below the board -- and nothing was duplicated in both places.
-test('roll, buy/skip, build/skip and sell controls all live inside the central board panel, not below it', () => {
+// v1.6.37 put every actionable Land King control in a board-center panel; v1.6.56 moved that whole
+// panel into the sidebar's #gameActionsPanel (below chat, alongside every other game's controls),
+// since it overlaid the board's own canvas and blocked relocating the board itself. Either way,
+// nothing should be duplicated between the action panel and the below-board info section.
+test('roll, buy/skip, build/skip and sell controls all live inside #gameActionsPanel, not below the board', () => {
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/index.html'), 'utf8');
   const panelStart = html.indexOf('id="cityActionPanel"');
-  const panelEnd = html.indexOf('</div>\n            </div>\n          </div>', panelStart);
+  const panelEnd = html.indexOf('id="baseballSecretForm"', panelStart);
   const panel = html.slice(panelStart, panelEnd);
+  const gameActionsStart = html.indexOf('id="gameActionsPanel"');
+  assert.ok(gameActionsStart >= 0 && gameActionsStart < panelStart, '#cityActionPanel should live inside #gameActionsPanel');
   const below = html.slice(html.indexOf('id="cityControls"'), html.indexOf('</section>', html.indexOf('id="cityControls"')));
   for (const id of ['cityRollBtn', 'cityBuyBtn', 'citySkipBtn', 'cityBuildBtn', 'cityBuildSkipBtn', 'citySellPropertyBtn', 'citySellBuildingBtn']) {
     assert.ok(panel.includes(`id="${id}"`), `${id} should be inside the central panel`);
@@ -477,6 +481,18 @@ test('roll, buy/skip, build/skip and sell controls all live inside the central b
   // Only supplementary info stays below the board, per spec.
   assert.ok(below.includes('id="cityAssets"'));
   assert.ok(below.includes('id="cityEvent"'));
+});
+
+// v1.6.56: #cityActionPanel no longer overlays the canvas (it moved into the sidebar), so
+// drawCityBoard() now fills that interior with a canvas-drawn status readout instead of leaving a
+// blank hole where the DOM overlay used to sit -- reusing #cityTurnSummary/#cityLastRoll's own
+// already-computed text rather than recomputing the same turn/phase logic a second time.
+test("the board's center is redrawn with a status readout now that the action panel no longer overlays it", () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.doesNotMatch(css, /\.cityActionPanel\{position:absolute/);
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /ctx\.fillText\(cityTurnSummary\.textContent, cityCenterX, cityCenterY \+ 6\);/);
+  assert.match(app, /ctx\.fillText\(cityLastRoll\.textContent, cityCenterX, cityCenterY \+ 30\);/);
 });
 
 // v1.6.37: the tile browser/sell tool is collapsed by default (declutters the roll/buy/build
