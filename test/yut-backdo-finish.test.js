@@ -10,15 +10,15 @@ function freshGame() {
 }
 
 test('back-do moves a board piece one step back along its own current path', () => {
-  assert.deepEqual(yut.destination({ status: 'board', position: 3, route: 'outer' }, -1), { status: 'board', position: 2, route: 'outer' });
+  assert.deepEqual(yut.destination({ status: 'board', position: 3, route: 'outer' }, -1), { status: 'board', position: 2, route: 'outer', path: [3, 2] });
   // On the shortcut branch it retreats along the same diagonal, not the outer ring.
-  assert.deepEqual(yut.destination({ status: 'board', position: 22, route: 'shortcut5' }, -1), { status: 'board', position: 21, route: 'shortcut5' });
-  assert.deepEqual(yut.destination({ status: 'board', position: 21, route: 'shortcut5' }, -1), { status: 'board', position: 5, route: 'shortcut5' });
+  assert.deepEqual(yut.destination({ status: 'board', position: 22, route: 'shortcut5' }, -1), { status: 'board', position: 21, route: 'shortcut5', path: [22, 21] });
+  assert.deepEqual(yut.destination({ status: 'board', position: 21, route: 'shortcut5' }, -1), { status: 'board', position: 5, route: 'shortcut5', path: [21, 5] });
 });
 
 test('back-do is clamped at the start corner and never sends a piece back home', () => {
-  assert.deepEqual(yut.destination({ status: 'board', position: 1, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer' });
-  assert.deepEqual(yut.destination({ status: 'board', position: 0, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer' });
+  assert.deepEqual(yut.destination({ status: 'board', position: 1, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer', path: [1, 0] });
+  assert.deepEqual(yut.destination({ status: 'board', position: 0, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer', path: [0] });
 });
 
 test('back-do cannot launch a waiting piece and cannot move a finished one', () => {
@@ -27,8 +27,8 @@ test('back-do cannot launch a waiting piece and cannot move a finished one', () 
 });
 
 test('back-do at the finish line retreats to the last real cell on that route', () => {
-  assert.deepEqual(yut.destination({ status: 'board', position: 'finishLine', route: 'outer' }, -1), { status: 'board', position: 19, route: 'outer' });
-  assert.deepEqual(yut.destination({ status: 'board', position: 'finishLine', route: 'shortcut10' }, -1), { status: 'board', position: 29, route: 'shortcut10' });
+  assert.deepEqual(yut.destination({ status: 'board', position: 'finishLine', route: 'outer' }, -1), { status: 'board', position: 19, route: 'outer', path: ['finishLine', 19] });
+  assert.deepEqual(yut.destination({ status: 'board', position: 'finishLine', route: 'shortcut10' }, -1), { status: 'board', position: 29, route: 'shortcut10', path: ['finishLine', 29] });
 });
 
 test('a back-do throw with no piece able to move (everyone still waiting) auto-passes the turn', () => {

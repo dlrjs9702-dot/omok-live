@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1\.6\.56/);
+  assert.match(html, /app\.js\?v=1\.6\.57/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -399,13 +399,18 @@ test('the dice-roll animation is a generic reusable function driven by prefers-r
 // ever sets each element's transform to its finalTransforms entry, so it can't change which face
 // lands. v1.6.55: both widgets now share animateTumble's hop math; only each widget's own transform
 // string (rotation axes/order) and hop height differ.
-test('dice rolling now hops and wobbles like the yut-stick toss, without affecting which face lands', () => {
+test('dice rolling now bounces (multiple decaying hops) and wobbles like the yut-stick toss, without affecting which face lands', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
   const tumbleBody = app.slice(app.indexOf('function animateTumble'), app.indexOf('function animateDiceRoll'));
   assert.match(tumbleBody, /const wobbleDecay = 1 - progress \* 0\.6;/);
-  assert.match(tumbleBody, /el\.style\.transform = buildFrame\(spins\[i\], t, wobbleDecay, progress\);/);
+  // v1.6.57: spin now eases out (friction slowing it toward rest) instead of growing linearly with
+  // elapsed time, and each element gets its own decaying multi-bounce height (bounceHeight) with a
+  // per-element phase/scale jitter so several elements don't bounce in perfect lockstep.
+  assert.match(tumbleBody, /const eased = 1 - \(1 - progress\) \*\* 3;/);
+  assert.match(tumbleBody, /const bounce = bounceHeight\(localProgress\) \* \(spin\.bounceScale \?\? 1\);/);
+  assert.match(tumbleBody, /el\.style\.transform = buildFrame\(spin, t, wobbleDecay, progress, bounce\);/);
   const diceBlock = app.slice(app.indexOf('function animateDiceRoll'), app.indexOf('function animateYutThrow'));
-  assert.match(diceBlock, /const hop = Math\.sin\(progress \* Math\.PI\) \* -34 \* \(1 - progress \* 0\.15\);/);
+  assert.match(diceBlock, /const hop = -bounce \* 38;/);
   assert.match(diceBlock, /return `translateY\(\$\{hop\}px\) rotateX\(\$\{s\.x \* t\}deg\) rotateY\(\$\{s\.y \* t\}deg\) rotateZ\(\$\{s\.z \* t \* wobbleDecay\}deg\)`;/);
   // settle() (inside animateTumble) never includes translateY/rotateZ in finalTransforms -- a fresh
   // transform string always clears them once a die/stick actually lands.

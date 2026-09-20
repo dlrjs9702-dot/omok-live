@@ -111,3 +111,45 @@ test('landing on a friendly piece at center normalizes the joined stack to the c
   assert.equal(next.legal, true);
   assert.deepEqual(game.pieces.black.slice(0,2).map(p => p.position), [28, 28]);
 });
+
+// v1.6.57: destination() now also returns the full node-by-node path a piece walks (see the
+// forwardDestination/backwardDestination comment), not just the final resting spot, so the client
+// can animate the move one step at a time instead of teleporting straight to the result. This is
+// server-authoritative real judged path data, the same one the existing move logic already
+// computes -- never a client-side guess.
+test('a forward move\'s path starts at the current position and lists every node visited, ending at the result', () => {
+  assert.deepEqual(yut.destination(piece(1, 'outer'), 3).path, [1, 2, 3, 4]);
+});
+
+test('a path that turns onto a shortcut mid-throw lists the shortcut nodes it actually crosses', () => {
+  // Stopped exactly on 5 (the shortcut5 entrance), so the very next departure turns onto the
+  // diagonal -- the path must show 5 -> 21 -> 22, not continue along the outer ring.
+  assert.deepEqual(yut.destination(piece(5, 'outer'), 2).path, [5, 21, 22]);
+});
+
+test('a path that lands past the finish stops the path at the finish line, not beyond it', () => {
+  // From 19 with any steps >= 1, the piece only ever advances one node (to the finish line) and
+  // rests there -- the path must not contain any node past 'finishLine'.
+  assert.deepEqual(yut.destination(piece(19, 'outer'), 5).path, [19, 'finishLine']);
+});
+
+test("a piece entering from home paths from the start corner up to its landing spot", () => {
+  const home = { id: 'black-1', color: 'black', status: 'home', position: null, route: 'outer' };
+  assert.deepEqual(yut.destination(home, 3).path, [0, 1, 2, 3]);
+});
+
+test('a back-do path lists the nodes walked in actual travel order (current position first, oldest-visited last)', () => {
+  assert.deepEqual(yut.destination(piece(4, 'outer'), -1).path, [4, 3]);
+});
+
+test("a piggybacked group's shared destination carries one path for the whole stack, matching the mover's own walk", () => {
+  const game = yut.create();
+  yut.start(game);
+  game.pieces.black[0] = { id: 'black-1', color: 'black', status: 'board', position: 1, route: 'outer' };
+  game.pieces.black[1] = { id: 'black-2', color: 'black', status: 'board', position: 1, route: 'outer' };
+  game.phase = 'move';
+  game.pendingSteps = 2;
+  const option = yut.legalMoves(game, 'black').find(move => move.pieceId === 'black-1');
+  assert.deepEqual(option.carried, ['black-1', 'black-2']);
+  assert.deepEqual(option.destination.path, [1, 2, 3]);
+});

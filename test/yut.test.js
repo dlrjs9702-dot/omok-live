@@ -132,7 +132,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.56/);
+  assert.match(html, /app\.js\?v=1\.6\.57/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video
@@ -147,8 +147,12 @@ test('the yut-throw animation is a reusable function, reconnect-safe, and duplic
   assert.match(tumbleBody, /if \(reducedMotionActive\(\) \|\| !els\.length\) \{ settle\(false\); return; \}/);
   // Face content is fixed per stick element (see index.html); settling only ever rotates to 0deg
   // (front/flat) or 180deg (back/round) for the server-confirmed count, never touching content.
-  const settleBlock = app.slice(app.indexOf("function animateYutThrow"), app.indexOf("function animateYutThrow") + 700);
+  const settleBlock = app.slice(app.indexOf("function animateYutThrow"), app.indexOf("function animateYutThrow") + 1100);
   assert.match(settleBlock, /rotateY\(\$\{backFlags\[i\] \? 180 : 0\}deg\)/);
+  // v1.6.57: each of the 4 sticks gets its own bounce-height/timing jitter (bouncePhase/
+  // bounceScale) on top of its own spin axes, so the sticks visibly don't all tumble identically.
+  assert.match(settleBlock, /bouncePhase: \(Math\.random\(\) - 0\.5\) \* 0\.08,/);
+  assert.match(settleBlock, /bounceScale: 0\.82 \+ Math\.random\(\) \* 0\.36,/);
   // Same reconnect-safe key-diff guard used for Land King's dice/token animations -- a throw
   // inherited on first render (reconnect) must not replay, but a fresh game's own first throw must.
   assert.match(app, /const isNewThrow = Boolean\(throwKey && yutThrowTrackingStarted && yutLastThrowKey !== throwKey\);/);
@@ -191,7 +195,7 @@ test('the yut-throw stage lives inside the common dice/yut panel docked above ch
   const asideStart = html.indexOf('id="roomSidebar"');
   assert.ok(panelStart < asideStart);
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
-  assert.match(css, /\.diceYutStage\{position:relative;min-height:120px;[^}]*perspective:640px\}/);
+  assert.match(css, /\.diceYutStage\{position:relative;min-height:120px;[^}]*perspective:640px;/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)\{\.yutStick\{transition:none!important\}\}/);
 });
 
@@ -206,12 +210,14 @@ test('leaving the Yut Nori screen resets the throw-tracking state (no stale re-s
   assert.match(app, /yutLastThrowKey = null;\s*\n\s*yutThrowTrackingStarted = false;\s*\n\s*yutThrowAnimating = false;\s*\n\s*yutLastThrowFlags = null;/);
 });
 
-test('leaving the room hides the dice/yut panel and restores it from PiP without changing the saved mode preference', () => {
+test('leaving the room hides the dice/yut panel and closes its PiP window without changing the saved mode preference', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
   assert.match(app, /function resetDiceYutPanelForRoomExit\(\) \{/);
-  const fnBody = app.slice(app.indexOf('function resetDiceYutPanelForRoomExit'), app.indexOf('function resetDiceYutPanelForRoomExit') + 600);
+  const fnBody = app.slice(app.indexOf('function resetDiceYutPanelForRoomExit'), app.indexOf('function resetDiceYutPanelForRoomExit') + 300);
   assert.match(fnBody, /diceYutPanel\.classList\.add\('hidden'\);/);
-  assert.match(fnBody, /diceYutPanel\.classList\.remove\('floating'\);/);
+  // v1.6.57: closing the real PiP window (mirrors enterLobby's own closeRoomPip() call) triggers
+  // openDiceYutPip's own pagehide handler, which puts #diceYutPanel back in its normal spot.
+  assert.match(fnBody, /closeDiceYutPip\(\);/);
   assert.doesNotMatch(fnBody, /localStorage\.setItem\(DICE_PANEL_MODE_KEY/);
   assert.match(app, /resetDiceYutPanelForRoomExit\(\);/);
 });
@@ -229,31 +235,46 @@ test('the dice/yut panel has three mutually exclusive modes stored as a single s
   assert.match(app, /diceYutCollapseBtn\.addEventListener\('click', \(\) => setDiceYutPanelMode\(diceYutPanelMode === 'collapsed' \? 'default' : 'collapsed'\)\);/);
 });
 
-// The panel's own PiP is deliberately NOT roomSidebar's native documentPictureInPicture-based PIP
-// (Chromium-only, opens a real second OS window) -- it's a hand-rolled floating <div> so it behaves
-// identically on every browser and on touch devices, per the spec's explicit instruction not to
-// depend on the native API.
-test('the dice/yut panel PiP mode is an in-app floating panel, not the native documentPictureInPicture API', () => {
+// v1.6.57: the panel's own PiP now uses the SAME native documentPictureInPicture-based mechanism as
+// roomSidebar's own PIP (openRoomPip/closeRoomPip) -- a real second OS window, not an in-app
+// floating <div> -- per the confirmed "네이티브 브라우저 창으로 변경" decision.
+test('the dice/yut panel PiP mode uses the real native documentPictureInPicture window, reparenting the panel itself', () => {
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  const fnBody = app.slice(app.indexOf('function applyDiceYutPanelMode'), app.indexOf('function setDiceYutPanelMode'));
-  assert.doesNotMatch(fnBody, /documentPictureInPicture/);
-  assert.match(fnBody, /diceYutPanel\.classList\.toggle\('floating', pip\);/);
-  assert.match(fnBody, /if \(diceYutPanel\.parentElement !== document\.body\) document\.body\.appendChild\(diceYutPanel\);/);
-  // Dragging is Pointer Events against the panel's own header, not any native window-manager API.
-  assert.match(app, /diceYutHeader\.addEventListener\('pointerdown', \(e\) => \{/);
-  assert.match(app, /diceYutHeader\.addEventListener\('pointermove', \(e\) => \{/);
-  assert.match(app, /if \(diceYutPanelMode !== 'pip' \|\| e\.target\.closest\('button'\)\) return;/);
+  assert.match(app, /const diceYutPipSupported = 'documentPictureInPicture' in window;/);
+  const openBody = app.slice(app.indexOf('async function openDiceYutPip'), app.indexOf('function applyDiceYutPanelMode'));
+  assert.match(openBody, /const pipWindow = await documentPictureInPicture\.requestWindow\(\{ width: 300, height: 340 \}\);/);
+  // Clones stylesheets into the popup's own <head> and applies a layout-override class to its
+  // <html> -- same technique as openRoomPip, required because this page's CSP blocks inline styles.
+  assert.match(openBody, /clone\.rel = 'stylesheet';/);
+  assert.match(openBody, /pipWindow\.document\.documentElement\.classList\.add\('diceYutPipLayout'\);/);
+  assert.match(openBody, /pipWindow\.document\.body\.appendChild\(diceYutPanel\);/);
+  // Restoration on close is via the popup's own pagehide event, not a manual close handler.
+  assert.match(openBody, /pipWindow\.addEventListener\('pagehide', \(\) => \{/);
+  const applyBody = app.slice(app.indexOf('function applyDiceYutPanelMode'), app.indexOf('function setDiceYutPanelMode'));
+  assert.doesNotMatch(applyBody, /diceYutPanel\.classList\.toggle\('floating'/);
+  assert.match(applyBody, /if \(!diceYutPipActive\(\)\) openDiceYutPip\(\);/);
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
-  // Resizable via the native CSS handle (desktop pointer input), disabled on touch/mobile widths.
-  assert.match(css, /\.diceYutPanel\.floating\{[^}]*resize:both;overflow:auto;/);
-  assert.match(css, /@media\(max-width:680px\)\{\s*\n\s*\.diceYutPanel\.floating\{resize:none\}/);
+  assert.doesNotMatch(css, /\.diceYutPanel\.floating/);
+  assert.match(css, /html\.diceYutPipLayout,html\.diceYutPipLayout body\{/);
 });
 
-test('collapsed mode hides only the panel body (stage + result), keeping the title bar', () => {
+test('collapsed mode hides only the panel body (stage + result), keeping the title bar, and never applies while PiP is active', () => {
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
   assert.match(css, /\.diceYutPanel\.collapsed \.diceYutBody\{display:none\}/);
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  assert.match(app, /diceYutPanel\.classList\.toggle\('collapsed', collapsed\);/);
+  assert.match(app, /diceYutPanel\.classList\.toggle\('collapsed', collapsed && !pip\);/);
+});
+
+// Part E: as the popped-out PiP window is resized, the 3D stage scales down proportionally instead
+// of clipping, via a CSS custom property so the underlying translate/rotate animation math is
+// untouched.
+test('the dice/yut PiP window scales the 3D stage proportionally as it is resized', () => {
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(app, /function applyDiceYutPipScale\(pipWindow\) \{/);
+  assert.match(app, /diceYutStage\.style\.setProperty\('--diceYutScale', String\(scale\)\);/);
+  assert.match(app, /diceYutPipResizeObserver = new pipWindow\.ResizeObserver\(\(\) => applyDiceYutPipScale\(pipWindow\)\);/);
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
+  assert.match(css, /transform:scale\(var\(--diceYutScale,1\)\)/);
 });
 
 // Switching the panel's own display mode must never touch game/server state, and must not restart
