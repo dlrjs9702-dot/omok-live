@@ -88,6 +88,26 @@ test('move-choice buttons are distance-focused and the start tile is a distinct 
   assert.doesNotMatch(js, /fillText\('출발 · 완주'/);
 });
 
+// v1.6.64 bug fix: a piece resting on the finish line (server: lib/games/yut.js FINISH_LINE) used
+// to be drawn at the exact same board coordinate as node 0 (the start corner), so a back-do off of
+// it could look like nothing happened whenever another piece of the same color also sat on node 0.
+test('the finish-line resting waypoint is drawn at its own board position, distinct from the start tile', async () => {
+  const root = path.join(__dirname, '..');
+  const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
+  const mapMatch = js.match(/function yutNodePosition\(node\) \{\s*const map = \{([\s\S]*?)\};/);
+  assert.ok(mapMatch, 'yutNodePosition coordinate map missing');
+  assert.doesNotMatch(mapMatch[1], /finishLine:\[630,630\]/);
+  assert.match(mapMatch[1], /finishLine:\[\d+,\d+\]/);
+  const vm = require('node:vm');
+  const positions = vm.runInNewContext(`(${js.match(/function yutNodePosition\(node\) \{[\s\S]*?\n  \}/)[0]})`);
+  assert.notDeepEqual(positions('finishLine'), positions(0));
+  // The distinct green marker tile and the board's own track line both route through it, so it
+  // reads as a real waypoint rather than empty space.
+  assert.match(js, /const isFinish = node === 'finishLine';/);
+  assert.match(js, /if \(isFinish\) \{\s*\n\s*ctx\.fillStyle = '#15803d';/);
+  assert.match(js, /\[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'finishLine',0\]/);
+});
+
 test('reaching the finish line does not finish a piece by itself; a later move does', () => {
   const game = yut.create();
   yut.start(game);
@@ -132,7 +152,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.63/);
+  assert.match(html, /app\.js\?v=1\.6\.64/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video

@@ -75,7 +75,7 @@ test('Yut: a piece resting on center always departs via the short 10-side diagon
   assert.equal(g.pieces.black[1].position, 28);
   assert.equal(g.pieces.black[1].route, 'shortcut10');
   const js = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
-  assert.match(js, /\[5,21,22,23,24,25,15\], \[10,26,27,23,28,29,0\]/);
+  assert.match(js, /\[5,21,22,23,24,25,15\], \[10,26,27,23,28,29,'finishLine'\]/);
 });
 
 test('UI: logout requires a second explicit click; lobby return retains session', () => {

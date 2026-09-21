@@ -4015,8 +4015,11 @@
       6:[518,70], 7:[406,70], 8:[294,70], 9:[182,70], 10:[70,70],
       11:[70,182], 12:[70,294], 13:[70,406], 14:[70,518], 15:[70,630],
       16:[182,630], 17:[294,630], 18:[406,630], 19:[518,630],
-      // The finish line sits right where the outer ring closes back on the start corner.
-      finishLine:[630,630],
+      // The finish line is a resting waypoint just outside the start corner, not the same tile as
+      // node 0 -- a piece parked there (after a full lap, per lib/games/yut.js FINISH_LINE) must be
+      // visually distinguishable from one actually sitting on the start corner, or a back-do off of
+      // it looks like nothing moved when another piece of the same color happens to be on node 0.
+      finishLine:[678,678],
       21:[540,160], 22:[450,250], 23:[350,350], 28:[445,445], 29:[540,540],
       26:[160,160], 27:[250,250], 24:[250,450], 25:[160,540],
     };
@@ -4042,8 +4045,8 @@
     ctx.strokeStyle = 'rgba(80,48,18,.62)';
     ctx.lineWidth = 9;
     const paths = [
-      [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,0],
-      [5,21,22,23,24,25,15], [10,26,27,23,28,29,0],
+      [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'finishLine',0],
+      [5,21,22,23,24,25,15], [10,26,27,23,28,29,'finishLine'],
     ];
     for (const path of paths) {
       ctx.beginPath();
@@ -4059,12 +4062,24 @@
     for (const node of nodes) {
       const [x,y] = yutNodePosition(node);
       const isStart = node === 0;
+      const isFinish = node === 'finishLine';
       const corner = [0,5,10,15,23].includes(node);
       if (isStart) {
         ctx.fillStyle = '#1d4ed8';
         ctx.beginPath(); ctx.arc(x,y,30,0,Math.PI*2); ctx.fill();
         ctx.strokeStyle = '#fef9c3';
         ctx.lineWidth = 4;
+        ctx.stroke();
+        continue;
+      }
+      // v1.6.64: a distinct green tile for the "완주 직전 칸" (FINISH_LINE) resting waypoint, so a
+      // piece parked there -- and a back-do moving it off again -- is never mistaken for the blue
+      // start tile it used to sit directly on top of.
+      if (isFinish) {
+        ctx.fillStyle = '#15803d';
+        ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fef9c3';
+        ctx.lineWidth = 3;
         ctx.stroke();
         continue;
       }
