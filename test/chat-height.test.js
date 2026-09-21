@@ -126,3 +126,16 @@ test('a PC-only three-preset chat width control exists and never breaks the boar
   assert.match(css, /\.gameLayout\.sideWide\{--side-w:460px\}/);
   assert.match(css, /@media\(max-width:880px\)\{[\s\S]*?\.sideSizeGroup\{display:none\}/);
 });
+
+// v1.6.60 bug fix: #chatPanel and #gameInfoPanel each individually claimed up to
+// max-height:calc(100vh - 32px) (the base .side rule), so stacking the two of them inside
+// .sideColumn made the whole docked column roughly twice as tall as the board -- reported live as
+// the chat panel "growing endlessly" whenever it wasn't popped out to its own window. The fix caps
+// .sideColumn itself to that same one-viewport budget and makes each child .side an equal-share
+// flex item inside it, so the two cards split one viewport-tall column (matching the old single
+// #roomSidebar's footprint) instead of each independently claiming a full one.
+test('the docked column caps both panels together at one viewport height instead of letting each claim its own', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /\.sideColumn\{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;max-height:calc\(100vh - 32px\)\}/);
+  assert.match(css, /\.sideColumn>\.side\{position:static;flex:1 1 0;min-height:0;max-height:none\}/);
+});

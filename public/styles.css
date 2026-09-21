@@ -165,7 +165,22 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
    not a real second window. Consolidating into one "게임 진행" panel + the separate "채팅" panel
    below is the fix: at most 2 panels ever want to be a floating window, matching how a user
    actually uses them (rarely both at once). */
-.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0}
+/* v1.6.60: .sideColumn now stacks TWO .side cards (#chatPanel, #gameInfoPanel), but each .side on
+   its own still claims up to max-height:calc(100vh - 32px) (see the base .side rule below) -- two
+   of those stacked made the whole column roughly twice as tall as the board/game area, reported
+   live as the docked chat panel "growing endlessly" whenever it wasn't popped out to its own
+   window. The column itself now owns that same height budget (sticky + capped, matching what the
+   single old #roomSidebar used to be), and each child .side becomes a plain equal-share flex item
+   inside it (position:static, no max-height of its own) rather than independently sticky/capped --
+   so the two cards split one viewport-tall column instead of each claiming a full one. When only
+   one panel remains docked (the other popped out to its own window), that lone flex item naturally
+   grows to fill the whole column on its own, same as the old single-sidebar footprint. This never
+   applies to the popped-out/overlay states: documentPictureInPicture and window.open() popups get
+   their own real window (sized via .sidePipLayout, unaffected by this column), and the mobile
+   overlay (.side.overlayOpen) uses position:fixed, which escapes .sideColumn's box model entirely --
+   both of those rules keep winning because they're declared later in this file. */
+.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;max-height:calc(100vh - 32px)}
+.sideColumn>.side{position:static;flex:1 1 0;min-height:0;max-height:none}
 .diceYutSection{display:flex;flex-direction:column;gap:6px;min-height:0;flex:0 0 auto}
 .diceYutSection.hidden{display:none}
 /* --diceYutScale (set by applyDiceYutPipScale in app.js, PiP-window-resize only) scales the whole
