@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.61" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.62" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -429,6 +429,7 @@
                   <button type="button" class="sideSizeBtn" data-side-size="normal" title="기본" aria-pressed="true">기본</button>
                   <button type="button" class="sideSizeBtn" data-side-size="wide" title="넓게">넓게</button>
                 </div>
+                <button type="button" id="chatResetBtn" class="sideCollapseBtn hidden" aria-label="채팅 패널을 기본 보기로 되돌리기">기본으로</button>
                 <button type="button" id="chatPipBtn" class="pipToggleBtn hidden" aria-pressed="false" title="채팅을 별도 창으로 보기 (게임 진행 PIP와 동시에 열 수 있습니다)">별도 창으로 보기</button>
                 <button type="button" id="chatCollapseBtn" class="sideCollapseBtn" aria-label="채팅 패널 접기">접기 ▸</button>
               </div>
@@ -452,6 +453,7 @@
               <button type="button" class="sideTab" data-side-tab="info" aria-selected="false">방정보</button>
             </div>
             <div class="sideTabTools">
+              <button type="button" id="gameInfoResetBtn" class="sideCollapseBtn hidden" aria-label="게임 진행 패널을 기본 보기로 되돌리기">기본으로</button>
               <button type="button" id="gameInfoPipBtn" class="pipToggleBtn hidden" aria-pressed="false" title="게임 진행 패널을 항상 위에 뜨는 창으로 보기">PIP로 보기</button>
               <button type="button" id="gameInfoCollapseBtn" class="sideCollapseBtn" aria-label="게임 진행 패널 접기">접기 ▸</button>
             </div>
@@ -685,7 +687,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.61"></script>
-  <script src="/app.js?v=1.6.61"></script>
+  <script src="/session-lock.js?v=1.6.62"></script>
+  <script src="/app.js?v=1.6.62"></script>
 </body>
 </html>

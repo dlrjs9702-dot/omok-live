@@ -182,3 +182,41 @@ test('the game-info PIP window scales the dice/yut 3D stage proportionally as it
   assert.match(css, /transform:scale\(var\(--diceYutScale,1\)\)/);
 });
 
+
+// v1.6.62: a one-click "기본으로" (back to default) button per panel -- regardless of which
+// non-default state a panel is currently in (popped out to its own window, floating in the
+// mobile/collapsed overlay, or just manually collapsed), one click returns it to its plain docked,
+// expanded state. Requested live after confirming there wasn't already a single button that did
+// this from every starting state.
+test('each panel has its own "기본으로" reset button that closes its window, its overlay, and clears its collapsed preference', () => {
+  const html = read('public/index.html');
+  assert.match(html, /<button type="button" id="chatResetBtn" class="sideCollapseBtn hidden"/);
+  assert.match(html, /<button type="button" id="gameInfoResetBtn" class="sideCollapseBtn hidden"/);
+  const chatMarkup = html.slice(html.indexOf('id="chatPanel"'), html.indexOf('id="gameInfoPanel"'));
+  assert.match(chatMarkup, /id="chatResetBtn"/);
+  const gameInfoMarkup = html.slice(html.indexOf('id="gameInfoPanel"'), html.indexOf('id="chatFloatBtn"'));
+  assert.match(gameInfoMarkup, /id="gameInfoResetBtn"/);
+
+  const app = read('public/app.js');
+  const resetChatFn = app.slice(app.indexOf('function resetChatToDocked()'), app.indexOf('function toggleChatOverlay('));
+  assert.match(resetChatFn, /closeChatPip\(\);/);
+  assert.match(resetChatFn, /chatPipPref = false;/);
+  assert.match(resetChatFn, /chatOverlayOpen = false;/);
+  assert.match(resetChatFn, /chatCollapsedPref = false;/);
+  assert.match(app, /chatResetBtn\?\.addEventListener\('click', \(\) => resetChatToDocked\(\)\);/);
+
+  const resetGameInfoFn = app.slice(app.indexOf('function resetGameInfoToDocked()'), app.indexOf('function toggleGameInfoOverlay('));
+  assert.match(resetGameInfoFn, /closeGameInfoPip\(\);/);
+  assert.match(resetGameInfoFn, /gameInfoPipPref = false;/);
+  assert.match(resetGameInfoFn, /gameInfoOverlayOpen = false;/);
+  assert.match(resetGameInfoFn, /gameInfoCollapsedPref = false;/);
+  assert.match(app, /gameInfoResetBtn\?\.addEventListener\('click', \(\) => resetGameInfoToDocked\(\)\);/);
+});
+
+test('the reset button only shows once a panel actually left its default docked/expanded state, and never on mobile', () => {
+  const app = read('public/app.js');
+  const applyChatFn = app.slice(app.indexOf('function applyChatLayout()'), app.indexOf('function resetChatToDocked('));
+  assert.match(applyChatFn, /chatResetBtn\?\.classList\.toggle\('hidden', mobile \|\| \(!pipActive && !chatOverlayOpen && !collapsed\)\);/);
+  const applyGameInfoFn = app.slice(app.indexOf('function applyGameInfoLayout()'), app.indexOf('function setGameInfoTab('));
+  assert.match(applyGameInfoFn, /gameInfoResetBtn\?\.classList\.toggle\('hidden', mobile \|\| \(!pipActive && !gameInfoOverlayOpen && !collapsed\)\);/);
+});

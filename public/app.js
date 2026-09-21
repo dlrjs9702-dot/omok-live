@@ -269,8 +269,10 @@
   const gameInfoFloatBtn = document.getElementById('gameInfoFloatBtn');
   const chatPanel = document.getElementById('chatPanel');
   const chatCollapseBtn = document.getElementById('chatCollapseBtn');
+  const chatResetBtn = document.getElementById('chatResetBtn');
   const gameInfoPanel = document.getElementById('gameInfoPanel');
   const gameInfoCollapseBtn = document.getElementById('gameInfoCollapseBtn');
+  const gameInfoResetBtn = document.getElementById('gameInfoResetBtn');
   const sideOverlayBackdrop = document.getElementById('sideOverlayBackdrop');
   const gameLayoutEl = document.querySelector('#roomView .gameLayout');
   const toast = document.getElementById('toast');
@@ -566,12 +568,36 @@
     chatFloatBtn.classList.remove('isOpen');
     chatCollapseBtn.textContent = chatOverlayOpen ? '닫기 ✕' : collapsed ? '펼치기 ◂' : '접기 ▸';
     chatCollapseBtn.setAttribute('aria-label', chatOverlayOpen ? '채팅 패널 닫기' : collapsed ? '채팅 패널 펼치기' : '채팅 패널 접기');
+    // "기본으로" only matters (and only shows) once the panel has actually left its plain docked,
+    // expanded state -- popped out to its own window, floating in the mobile/collapsed overlay, or
+    // manually collapsed. On mobile the docked layout isn't shown at all (see the mobile media
+    // query on .side), so there's no meaningful "default" to return to there either.
+    chatResetBtn?.classList.toggle('hidden', mobile || (!pipActive && !chatOverlayOpen && !collapsed));
     updateSideOverlayBackdrop();
     updateGameLayoutCollapsed();
     // Only auto-clear unread when the reader is actually at the bottom of the chat pane --
     // otherwise a message arriving while they're scrolled up in history (chat pane still
     // "visible") would silently reset the unread badge before they ever saw it.
     if (chatVisible() && chatAtBottom) markChatSeen();
+  }
+
+  // Returns the panel to its plain docked, expanded state regardless of where it currently is --
+  // popped out to its own separate window, floating in the mobile/collapsed overlay, or manually
+  // collapsed. closeChatPip() is fire-and-forget (its own pagehide handler finishes reparenting
+  // the panel back and re-applies the layout once the window actually closes); the overlay/collapse
+  // state is cleared immediately so the docked view is correct even before that happens. Also
+  // clears the separate-window preference, so it doesn't silently reopen on the next room entry --
+  // "기본으로" is a full reset, not a one-time close.
+  function resetChatToDocked() {
+    closeChatPip();
+    chatPipPref = false;
+    try { localStorage.setItem(CHAT_PIP_KEY, '0'); } catch {}
+    chatOverlayOpen = false;
+    if (chatCollapsedPref !== false) {
+      chatCollapsedPref = false;
+      try { localStorage.setItem(CHAT_COLLAPSE_KEY, '0'); } catch {}
+    }
+    applyChatLayout();
   }
 
   function toggleChatOverlay(forceOpen) {
@@ -599,12 +625,27 @@
     for (const pane of gameInfoPanel.querySelectorAll('.sidePane')) {
       pane.classList.toggle('hidden', pane.dataset.sidePane !== gameInfoActiveTab);
     }
+    // See chatResetBtn's own comment in applyChatLayout -- same reasoning, mirrored per panel.
+    gameInfoResetBtn?.classList.toggle('hidden', mobile || (!pipActive && !gameInfoOverlayOpen && !collapsed));
     updateSideOverlayBackdrop();
     updateGameLayoutCollapsed();
   }
 
   function setGameInfoTab(tab) {
     gameInfoActiveTab = tab;
+    applyGameInfoLayout();
+  }
+
+  // See resetChatToDocked's own comment above -- same reasoning, mirrored per panel.
+  function resetGameInfoToDocked() {
+    closeGameInfoPip();
+    gameInfoPipPref = false;
+    try { localStorage.setItem(GAME_INFO_PIP_KEY, '0'); } catch {}
+    gameInfoOverlayOpen = false;
+    if (gameInfoCollapsedPref !== false) {
+      gameInfoCollapsedPref = false;
+      try { localStorage.setItem(GAME_INFO_COLLAPSE_KEY, '0'); } catch {}
+    }
     applyGameInfoLayout();
   }
 
@@ -658,6 +699,7 @@
     applyChatLayout();
   });
   chatFloatBtn.addEventListener('click', () => toggleChatOverlay());
+  chatResetBtn?.addEventListener('click', () => resetChatToDocked());
   chatPipBtn?.addEventListener('click', () => {
     chatPipPref = !chatPipActive();
     try { localStorage.setItem(CHAT_PIP_KEY, chatPipPref ? '1' : '0'); } catch {}
@@ -679,6 +721,7 @@
     applyGameInfoLayout();
   });
   gameInfoFloatBtn.addEventListener('click', () => toggleGameInfoOverlay());
+  gameInfoResetBtn?.addEventListener('click', () => resetGameInfoToDocked());
   gameInfoPipBtn?.addEventListener('click', () => {
     gameInfoPipPref = !gameInfoPipActive();
     try { localStorage.setItem(GAME_INFO_PIP_KEY, gameInfoPipPref ? '1' : '0'); } catch {}
