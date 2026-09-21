@@ -134,8 +134,16 @@ test('a PC-only three-preset chat width control exists and never breaks the boar
 // .sideColumn itself to that same one-viewport budget and makes each child .side an equal-share
 // flex item inside it, so the two cards split one viewport-tall column (matching the old single
 // #roomSidebar's footprint) instead of each independently claiming a full one.
-test('the docked column caps both panels together at one viewport height instead of letting each claim its own', () => {
+// v1.6.61 follow-up fix: the first cut used max-height (only an upper bound) on .sideColumn, so
+// the column's own height stayed "auto" and the flex:1 1 0 children had no real space to grow
+// into -- both collapsed toward min-height:0, reported live as the whole sidebar going empty. A
+// definite height (not just max-height) gives flex-grow actual space to distribute.
+test('the docked column gives both panels a definite, equal-share height instead of an unbounded auto height', () => {
   const css = read('public/styles.css');
-  assert.match(css, /\.sideColumn\{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;max-height:calc\(100vh - 32px\)\}/);
+  assert.match(css, /\.sideColumn\{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;height:calc\(100vh - 32px\)\}/);
   assert.match(css, /\.sideColumn>\.side\{position:static;flex:1 1 0;min-height:0;max-height:none\}/);
+  // Mobile hides both .side children by default (shown only via the fixed-position .overlayOpen
+  // state, which escapes this column's box model) -- a fixed viewport height here would otherwise
+  // reserve a full phantom screen of empty space below the board.
+  assert.match(css, /@media\(max-width:880px\)\{\.sideColumn\{position:static;height:auto\}\}/);
 });

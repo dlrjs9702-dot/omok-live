@@ -178,9 +178,21 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
    applies to the popped-out/overlay states: documentPictureInPicture and window.open() popups get
    their own real window (sized via .sidePipLayout, unaffected by this column), and the mobile
    overlay (.side.overlayOpen) uses position:fixed, which escapes .sideColumn's box model entirely --
-   both of those rules keep winning because they're declared later in this file. */
-.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;max-height:calc(100vh - 32px)}
+   both of those rules keep winning because they're declared later in this file.
+   v1.6.61 fix: the first cut of this used max-height (an upper bound only) instead of height on
+   .sideColumn. flex:1 1 0 children only get real space to grow into when their flex CONTAINER has
+   a definite height -- with only max-height set, the column's own height stayed "auto" (shrink to
+   content), so there was no extra space for flex-grow to hand out and both zero-flex-basis
+   children collapsed toward their min-height:0, rendering as an empty sliver (reported live as the
+   whole sidebar "disappearing entirely"). height (a definite value, not just a ceiling) fixes it. */
+.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;height:calc(100vh - 32px)}
 .sideColumn>.side{position:static;flex:1 1 0;min-height:0;max-height:none}
+/* On mobile both .side children default to display:none (only shown via the fixed-position
+   .overlayOpen state, which escapes this column's box model entirely) -- so a fixed
+   height:calc(100vh - 32px) here would reserve a full phantom screen's worth of empty space below
+   the board. Collapse the column back to auto/static, matching how .side itself already behaves
+   at this breakpoint. */
+@media(max-width:880px){.sideColumn{position:static;height:auto}}
 .diceYutSection{display:flex;flex-direction:column;gap:6px;min-height:0;flex:0 0 auto}
 .diceYutSection.hidden{display:none}
 /* --diceYutScale (set by applyDiceYutPipScale in app.js, PiP-window-resize only) scales the whole
