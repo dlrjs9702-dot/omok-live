@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.65" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.66" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -499,6 +499,18 @@
             <div id="yutMoveChoices" class="yutMoveChoices" aria-live="polite"></div>
 
             <div id="bingoSetupRow" class="bingoSetupRow">
+              <label for="bingoGridSelect">판 크기</label>
+              <select id="bingoGridSelect" aria-label="빙고판 크기">
+                <option value="5" selected>5×5</option>
+                <option value="7">7×7</option>
+              </select>
+              <label for="bingoPoolSelect">숫자 범위</label>
+              <select id="bingoPoolSelect" aria-label="빙고 숫자 범위">
+                <option value="50" selected>1~50</option>
+                <option value="75">1~75</option>
+                <option value="100">1~100</option>
+                <option value="150">1~150</option>
+              </select>
               <label for="bingoTargetSelect">승리 조건</label>
               <select id="bingoTargetSelect" aria-label="승리에 필요한 빙고 줄 수">
                 <option value="1">1줄</option><option value="2">2줄</option><option value="3">3줄</option><option value="4">4줄</option>
@@ -687,7 +699,7 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.65"></script>
-  <script src="/app.js?v=1.6.65"></script>
+  <script src="/session-lock.js?v=1.6.66"></script>
+  <script src="/app.js?v=1.6.66"></script>
 </body>
 </html>

@@ -130,6 +130,8 @@
   const diceYutResult = document.getElementById('diceYutResult');
   const bingoPanel = document.getElementById('bingoPanel');
   const bingoSetupRow = document.getElementById('bingoSetupRow');
+  const bingoGridSelect = document.getElementById('bingoGridSelect');
+  const bingoPoolSelect = document.getElementById('bingoPoolSelect');
   const bingoTargetSelect = document.getElementById('bingoTargetSelect');
   const bingoStartBtn = document.getElementById('bingoStartBtn');
   const bingoStatus = document.getElementById('bingoStatus');
@@ -1205,7 +1207,7 @@
     "omok2v2": "4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.",
     "connect4": "7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.",
     "yut": "각자 말 4개를 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 빽도가 나오면 보드 위의 말 하나를 한 칸 뒤로 물립니다(대기 중인 말은 낼 수 없고, 물릴 말이 없으면 차례가 자동으로 넘어갑니다). 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용하며, 중앙에 정확히 멈춘 말은 항상 짧은 지름길로 출발합니다. 완주 직전 칸에 도착한 말은 그 칸에 머무르고, 다음 이동에서 한 칸 이상 더 나아가야 완주합니다.",
-    "bingo": "2~4명이 1~50 중 서로 다른 25개 숫자로 된 5×5 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 시작 전에 1~12줄 중 승리 조건을 정하며 가로·세로·두 대각선을 합쳐 먼저 조건을 달성하면 승리합니다.",
+    "bingo": "2~4명이 참가합니다. 방장이 시작 전에 판 크기(5×5/7×7)와 숫자 범위(1~50/75/100/150)를 정하면 각자 그 범위에서 중복 없는 숫자로 자신의 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 정한 목표 줄 수(5×5는 최대 12줄, 7×7은 최대 16줄)를 가로·세로·두 대각선을 합쳐 먼저 달성하면 승리합니다.",
     "dots": "5×5 점 사이에 번갈아 선을 하나씩 긋습니다. 네 변을 완성해 상자를 만든 사람이 그 상자를 차지하고 한 번 더 긋습니다. 모든 선을 그은 뒤 차지한 상자가 더 많은 사람이 승리합니다.",
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 자기 소유 도시에 도착하면 매입가의 50%로 별장·빌딩·호텔을 방문당 한 단계 건설할 수 있습니다. 통행료는 기본·2배·3배·5배이며, 건설비는 순자산에 포함됩니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
@@ -2965,8 +2967,29 @@
     const g = state.game;
     const selected = new Set(g.selectedNumbers || []);
     const occupied = ['1','2','3','4'].filter(number => state.players[number]);
+    const gridSize = Number(g.gridSize) || 5;
+    const poolMax = Number(g.poolMax) || 50;
+    const configurable = isHost && g.status === 'selecting';
+    bingoGridSelect.value = String(gridSize);
+    bingoGridSelect.disabled = !configurable;
+    bingoPoolSelect.value = String(poolMax);
+    bingoPoolSelect.disabled = !configurable;
+    // v1.6.66: the win-line target range depends on grid size (5x5 tops out at 12 lines, 7x7 at
+    // 16), so the option list is rebuilt only when that ceiling actually changes -- not on every
+    // render -- to avoid disturbing an open dropdown.
+    const maxLines = gridSize * 2 + 2;
+    if (Number(bingoTargetSelect.dataset.maxLines) !== maxLines) {
+      bingoTargetSelect.replaceChildren();
+      for (let n = 1; n <= maxLines; n += 1) {
+        const option = document.createElement('option');
+        option.value = String(n);
+        option.textContent = `${n}줄`;
+        bingoTargetSelect.appendChild(option);
+      }
+      bingoTargetSelect.dataset.maxLines = String(maxLines);
+    }
     bingoTargetSelect.value = String(g.targetLines || 5);
-    bingoTargetSelect.disabled = !(isHost && g.status === 'selecting');
+    bingoTargetSelect.disabled = !configurable;
     bingoStartBtn.classList.toggle('hidden', g.status !== 'selecting');
     bingoStartBtn.disabled = !(isHost && occupied.length >= 2 && g.status === 'selecting');
     bingoSelectedNumbers.textContent = (g.selectedNumbers || []).length ? g.selectedNumbers.join(', ') : '없음';
@@ -2987,9 +3010,11 @@
         : `${names} 승리`;
     }
 
+    bingoBoard.style.gridTemplateColumns = `repeat(${gridSize}, minmax(0,1fr))`;
+    bingoBoard.classList.toggle('bingoGrid7', gridSize === 7);
     bingoBoard.replaceChildren();
     const board = state.me?.myBingoBoard;
-    if (!Array.isArray(board) || board.length !== 25) {
+    if (!Array.isArray(board) || board.length !== gridSize * gridSize) {
       const note = document.createElement('p');
       note.className = 'smallMuted bingoSpectatorNote';
       note.textContent = g.status === 'selecting' ? '자리를 선택하면 게임 시작 후 내 빙고판이 생성됩니다.' : '관전 중입니다. 참가자별 완성 줄 수와 선택 숫자를 확인할 수 있습니다.';
@@ -4854,6 +4879,8 @@
     await roomAction('throw-yut');
     if (state?.gameType === 'yut') renderYut();
   });
+  bingoGridSelect.addEventListener('change', () => roomAction('set-bingo-grid', { gridSize: Number(bingoGridSelect.value) }));
+  bingoPoolSelect.addEventListener('change', () => roomAction('set-bingo-pool', { poolMax: Number(bingoPoolSelect.value) }));
   bingoTargetSelect.addEventListener('change', () => roomAction('set-bingo-target', { targetLines: Number(bingoTargetSelect.value) }));
   bingoStartBtn.addEventListener('click', () => roomAction('start-bingo'));
   cityRollBtn.addEventListener('click', async () => {

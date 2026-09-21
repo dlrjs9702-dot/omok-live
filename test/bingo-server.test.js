@@ -155,6 +155,84 @@ test('Bingo API supports 3-player authoritative turns, duplicate protection, ref
   assert.notDeepEqual(newHostBoard, boards['1']);
 });
 
+test('Bingo grid size and number-pool are host-configurable (v1.6.66) and generate matching boards', { timeout: 30000 }, async t => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-config-'));
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const proc = spawn(process.execPath, ['server.js'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir,
+      DATABASE_URL: '', ADMIN_PASSWORD: 'bingo-config-secret', NODE_ENV: 'test' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  proc.stdout.on('data', chunk => output += chunk.toString());
+  proc.stderr.on('data', chunk => output += chunk.toString());
+  t.after(async () => {
+    proc.kill('SIGTERM');
+    await new Promise(resolve => { if (proc.exitCode !== null) resolve(); else { proc.once('exit', resolve); setTimeout(resolve, 2000).unref(); } });
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  let started = false;
+  for (let i = 0; i < 90; i += 1) {
+    if (proc.exitCode !== null) break;
+    try { const res = await fetch(`${base}/health`); if (res.ok) { started = true; break; } } catch {}
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.ok(started, `test server failed to start: ${output}`);
+
+  async function req(route, token, body, method = 'POST') {
+    const headers = {};
+    if (token) headers['X-Session-Token'] = token;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(base + route, { method, headers,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    return { status: res.status, data };
+  }
+  async function login() {
+    const response = await req('/api/admin/login', null, { password: 'bingo-config-secret' });
+    assert.equal(response.status, 200);
+    return response.data.sessionToken;
+  }
+
+  const host = await login();
+  const second = await login();
+  const created = await req('/api/rooms', host, { gameType: 'bingo' });
+  assert.equal(created.status, 201);
+  const code = created.data.state.me.roomCode;
+  assert.equal((await req('/api/rooms/join', second, { code })).status, 200);
+  assert.equal((await req('/api/room/choose-role', host, { choice: '1' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', second, { choice: '2' })).status, 200);
+
+  // Only the host may configure it, and only before the game starts.
+  assert.equal((await req('/api/room/set-bingo-grid', second, { gridSize: 7 })).status, 403);
+  assert.equal((await req('/api/room/set-bingo-grid', host, { gridSize: 6 })).data.error, 'INVALID_BINGO_GRID');
+  assert.equal((await req('/api/room/set-bingo-pool', host, { poolMax: 60 })).data.error, 'INVALID_BINGO_POOL');
+
+  const gridSet = await req('/api/room/set-bingo-grid', host, { gridSize: 7 });
+  assert.equal(gridSet.status, 200);
+  const poolSet = await req('/api/room/set-bingo-pool', host, { poolMax: 150 });
+  assert.equal(poolSet.status, 200);
+  // Setting a 7x7 grid raises the target-line ceiling from 12 to 16, so a value in between is now legal.
+  assert.equal((await req('/api/room/set-bingo-target', host, { targetLines: 16 })).status, 200);
+  assert.equal((await req('/api/room/set-bingo-target', host, { targetLines: 17 })).data.error, 'INVALID_BINGO_TARGET');
+
+  const startedGame = await req('/api/room/start-bingo', host, {});
+  assert.equal(startedGame.status, 200);
+  assert.equal(startedGame.data.state.game.gridSize, 7);
+  assert.equal(startedGame.data.state.game.poolMax, 150);
+
+  const hostBoard = (await req('/api/room', host, undefined, 'GET')).data.state.me.myBingoBoard;
+  assert.equal(hostBoard.length, 49);
+  assert.equal(new Set(hostBoard).size, 49);
+  assert.ok(hostBoard.every(n => n >= 1 && n <= 150));
+
+  // Settings lock once play begins.
+  assert.equal((await req('/api/room/set-bingo-grid', host, { gridSize: 5 })).data.error, 'INVALID_BINGO_GRID');
+});
+
 test('Bingo resign (v1.6.49) ends the match immediately and credits every other seated player as the winner, as an array', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-bingo-resign-'));
   const port = await freePort();
@@ -233,7 +311,7 @@ test('Bingo lobby and room UI expose the host controls, numbered seats and priva
   assert.match(html, /id="bingoTargetSelect"/);
   assert.match(html, /id="bingoStartBtn"/);
   assert.match(html, /id="bingoBoard"/);
-  assert.match(html, /app\.js\?v=1\.6\.65/);
+  assert.match(html, /app\.js\?v=1\.6\.66/);
   assert.match(app, /function isBingoGame\(/);
   assert.match(app, /function renderBingo\(/);
   assert.match(app, /roomAction\('select-bingo'/);
