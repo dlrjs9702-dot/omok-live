@@ -233,10 +233,26 @@ test('Bingo lobby and room UI expose the host controls, numbered seats and priva
   assert.match(html, /id="bingoTargetSelect"/);
   assert.match(html, /id="bingoStartBtn"/);
   assert.match(html, /id="bingoBoard"/);
-  assert.match(html, /app\.js\?v=1\.6\.64/);
+  assert.match(html, /app\.js\?v=1\.6\.65/);
   assert.match(app, /function isBingoGame\(/);
   assert.match(app, /function renderBingo\(/);
   assert.match(app, /roomAction\('select-bingo'/);
   assert.match(server, /start-bingo\|select-bingo/);
   assert.match(css, /Bingo v1\.6\.22/);
+});
+
+// v1.6.65: white board + larger digits + a red diagonal hatch marking a chosen number, replacing
+// the old dark navy tiles and solid green fill (readability request).
+test('Bingo cells are a white board with larger digits and a red hatch marks a selected number', async () => {
+  const root = path.join(__dirname, '..');
+  const css = await fs.readFile(path.join(root, 'public/styles.css'), 'utf8');
+  const cellRule = css.match(/\.bingoCell\{[^}]*\}/)?.[0];
+  assert.ok(cellRule, '.bingoCell rule missing');
+  assert.match(cellRule, /background:#fff/);
+  assert.match(cellRule, /color:#0f172a/);
+  assert.match(cellRule, /font-size:clamp\(1\.2rem,3\.6vw,1\.7rem\)/);
+  const selectedRule = css.match(/\.bingoCell\.selected\{[^}]*\}/)?.[0];
+  assert.ok(selectedRule, '.bingoCell.selected rule missing');
+  assert.match(selectedRule, /repeating-linear-gradient\(45deg,rgba\(220,38,38,\.9\)/);
+  assert.doesNotMatch(selectedRule, /#14532d/); // old solid dark-green fill
 });
