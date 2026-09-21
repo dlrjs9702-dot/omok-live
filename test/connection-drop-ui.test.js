@@ -21,7 +21,7 @@ test('every game gets a debounced wait/end popup and a generalized end-game affo
   assert.match(app, /function updatePauseDialog/);
   assert.match(app, /}, 2000\);/);
   assert.match(app, /pauseDialogDismissedKey = pauseDialogShownKey/);
-  assert.match(app, /참가자 \$\{names\}님의 연결이 끊겨 게임이 일시 중단되었습니다\./);
+  assert.match(app, /참가자 \$\{names\}님이 응답하지 않아 게임이 일시 중단되었습니다\./);
 
   // The end-game button is no longer restricted to the team game's host -- any connected, seated
   // participant may end a paused match, matching the server's generalized handler.
@@ -33,7 +33,8 @@ test('every game gets a debounced wait/end popup and a generalized end-game affo
   assert.match(app, /} else if \(g\.status === 'playing' && g\.paused\) \{/);
   assert.doesNotMatch(app, /else if \(team && g\.status === 'playing' && g\.paused\)/);
 
-  // A disconnect-caused finish is called out distinctly from a normal win, without inventing a
-  // whole separate end screen per game.
-  assert.match(app, /접속 끊김으로 종료/);
+  // A pause-caused finish (disconnect or AFK timeout, worded neutrally since the client can't and
+  // needn't tell them apart) is called out distinctly from a normal win, without inventing a whole
+  // separate end screen per game.
+  assert.match(app, /응답 없음으로 종료/);
 });

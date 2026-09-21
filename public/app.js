@@ -2492,9 +2492,12 @@
   // syncGamePause on the server already only flags `paused` once a participant's SSE stream and
   // session both drop, but we additionally debounce showing the dialog itself so a disconnect that
   // resolves within a couple of seconds (the client's own SSE stream retries after 1.8s) never even
-  // flashes the popup. "기다리기" only dismisses this one disconnect episode -- the persistent
-  // end-game button stays available the whole time, and a fresh disconnect (new round or a
-  // different seat) always re-prompts.
+  // flashes the popup. "기다리기" only dismisses this one pause episode -- the persistent end-game
+  // button stays available the whole time, and a fresh pause (new round, a different seat, or the
+  // same seat going quiet again) always re-prompts. v1.6.63: the same `disconnectedSeats`/`paused`
+  // pair is also set when a still-connected seat just sits on its own turn for a minute
+  // (server-side syncGamePause folds that in), so this dialog and the confirm text below cover
+  // both "gone" and "gone quiet" without the client needing to tell them apart.
   function pauseEpisodeKey(g) {
     const disconnected = (g?.disconnectedSeats || []);
     return disconnected.length ? `${g.round || 1}:${disconnected.slice().sort().join(',')}` : null;
@@ -2516,7 +2519,7 @@
           if (pauseEpisodeKey(state?.game) !== key || key === pauseDialogDismissedKey) return;
           pauseDialogShownKey = key;
           const names = disconnectedNow.map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
-          pauseDialogMessage.textContent = `참가자 ${names}님의 연결이 끊겨 게임이 일시 중단되었습니다.`;
+          pauseDialogMessage.textContent = `참가자 ${names}님이 응답하지 않아 게임이 일시 중단되었습니다.`;
           if (!pauseDialog.open) pauseDialog.showModal();
         }, 2000);
       }
@@ -2577,7 +2580,7 @@
     // (it used to be shown only for the 4-seat team game); each game's own turn/phase text is only
     // shown while nobody required to act is disconnected.
     const pauseStatusText = g.status === 'playing' && g.paused
-      ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 복귀 대기`
+      ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 응답 대기`
       : null;
     if (isMarathonGame()) {
       // Marathon has its own dedicated status line (marathonStatus, set inside renderMarathon())
@@ -2619,7 +2622,7 @@
     else statusText.textContent = '무승부';
     if (g.status === 'finished' && g.endReason === 'disconnect') {
       const names = (g.disconnectedAtEnd || []).map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
-      statusText.textContent += ` · ${names} 접속 끊김으로 종료`;
+      statusText.textContent += ` · ${names} 응답 없음으로 종료`;
     } else if (g.status === 'finished' && g.endReason === 'resign') {
       statusText.textContent += ' · 기권으로 종료';
     }
@@ -2762,7 +2765,7 @@
       if (g.endReason === 'disconnect') {
         const names = (g.disconnectedAtEnd || []).map((s) => `${state.players?.[s]?.label || seatKo(s)}`).join(', ');
         const note = document.createElement('span');
-        note.textContent = `${names} 접속 끊김으로 종료`;
+        note.textContent = `${names} 응답 없음으로 종료`;
         boardOverlay.appendChild(note);
       }
       boardOverlay.classList.remove('hidden');
@@ -5000,7 +5003,7 @@
   chooseSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
   for (const button of teamSeatButtons) button.addEventListener('click', () => roomAction('choose-role', { choice: button.dataset.teamSeat }));
   teamSpectatorBtn.addEventListener('click', () => roomAction('choose-role', { choice: 'spectator' }));
-  const endPausedConfirmMsg = '접속이 끊긴 참가자를 패배로, 접속 중인 참가자를 승리로 기록하며 대국을 종료할까요?';
+  const endPausedConfirmMsg = '응답이 없는 참가자를 패배로, 응답 중인 참가자를 승리로 기록하며 대국을 종료할까요?';
   endGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
   sideEndGameBtn.addEventListener('click', () => confirm(endPausedConfirmMsg) && roomAction('end-game'));
   pauseWaitBtn.addEventListener('click', () => {

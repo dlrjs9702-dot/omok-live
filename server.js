@@ -30,6 +30,11 @@ const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 
 const assignedSeatsFor = (room) => isNumberedSeatGame(room)
   ? seatsFor(room).filter(seat => room.players[seat])
   : ['black', 'white'].filter(color => room.players[color]);
+// Turn-based games all park "whose action is required next" in game.turn (omok2v2 alone uses
+// nextSeat, inherited from omok's engine). Liar/pictionary/marathon are excluded from the AFK
+// watch below -- they already run their own server-authoritative phase-deadline tick, so layering
+// a second timeout on top of that would fight it instead of covering a gap.
+const currentTurnSeat = (room) => (isTeam(room) ? room.game.nextSeat : room.game.turn) || null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
@@ -64,6 +69,10 @@ const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 
 const SESSION_MAX_MS = Math.max(1, Number(process.env.SESSION_MAX_HOURS || 8)) * 60 * 60 * 1000;
 const ROOM_TTL_MS = Math.max(2, Number(process.env.ROOM_TTL_HOURS || 12)) * 60 * 60 * 1000;
 const GUEST_LOCK_TTL_MS = Math.max(30, Number(process.env.GUEST_LOCK_TTL_SECONDS || 90)) * 1000;
+// Overridable only so tests don't have to wait a real minute; production always gets the 60s/5s
+// defaults below.
+const AFK_TIMEOUT_MS = Math.max(200, Number(process.env.AFK_TIMEOUT_MS) || 60_000);
+const AFK_TICK_MS = Math.max(50, Number(process.env.AFK_TICK_MS) || 5000);
 
 if (!ADMIN_PASSWORD) {
   console.error('ADMIN_PASSWORD 환경변수가 필요합니다.');
@@ -544,10 +553,17 @@ function findSeat(room, token) {
 // can name them. This is a room-wide "someone required is gone" signal, not a per-turn check --
 // it does not by itself block individual game actions except where a handler already consults it
 // (the shared `move` action; other games' actions are unaffected by this pass).
+//
+// v1.6.63: a seat that's still connected but has sat on its own turn for over a minute is folded
+// into this exact same disconnected/paused signal (same pause popup, same "any connected
+// participant may end it" resolution) -- room.turnWatch is transient, in-memory-only bookkeeping
+// (never sent to the client, never part of game state) that just remembers when the current
+// game.turn value last changed, so no game engine needs to know this exists.
 function syncGamePause(room) {
   if (room.game.status !== 'playing') {
     room.game.paused = false;
     room.game.disconnectedSeats = [];
+    room.turnWatch = null;
     return;
   }
   const disconnected = assignedSeatsFor(room).filter(seat => {
@@ -555,8 +571,37 @@ function syncGamePause(room) {
     const person = token && room.participants[token];
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
+  // Only run the idle watch while nothing is already paused for a disconnect: if some other seat
+  // is the one that's actually gone, the current turn holder is already blocked from acting (the
+  // shared `move` action itself refuses while paused) and must not be clocked as if they were
+  // ignoring their turn. The watch resets clean the moment a disconnect resolves, too, so a
+  // seat gets its own full minute rather than one shortened by time spent waiting on someone else.
+  if (isPictionary(room) || isLiar(room) || isMarathon(room) || disconnected.length > 0) {
+    room.turnWatch = null;
+  } else {
+    const turnSeat = currentTurnSeat(room);
+    if (!turnSeat) {
+      room.turnWatch = null;
+    } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
+      room.turnWatch = { seat: turnSeat, since: Date.now() };
+    } else if (Date.now() - room.turnWatch.since >= AFK_TIMEOUT_MS) {
+      disconnected.push(turnSeat);
+    }
+  }
   room.game.paused = disconnected.length > 0;
   room.game.disconnectedSeats = disconnected;
+}
+
+// Idle turns don't produce a fresh broadcast on their own (nobody acted, so no handler runs) --
+// this is the only thing that notices a minute has quietly passed and pushes the resulting pause
+// out to clients, mirroring how liar/pictionary/marathon already push their own deadline ticks.
+function tickIdleRooms() {
+  for (const room of rooms.values()) {
+    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room)) continue;
+    const wasPaused = room.game.paused;
+    syncGamePause(room);
+    if (room.game.paused && !wasPaused) { touchRoom(room); broadcast(room); }
+  }
 }
 
 function publicPlayer(room, color) {
@@ -1255,7 +1300,7 @@ async function handleRoomAction(req, res, action, session) {
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
     syncGamePause(room);
-    if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '상대 접속이 끊겨 일시정지 중입니다. 복귀를 기다리거나 대국을 종료할 수 있습니다.');
+    if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '상대가 응답하지 않아 일시정지 중입니다. 기다리거나 대국을 종료할 수 있습니다.');
     if (isTeam(room)) {
       if (room.game.nextSeat !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '현재 차례의 플레이어만 착수할 수 있습니다.');
     } else if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
@@ -1313,7 +1358,7 @@ async function handleRoomAction(req, res, action, session) {
     if (!findSeat(room, session.token)) return sendError(res, 403, 'SPECTATOR', '관전자는 대국을 종료할 수 없습니다.');
     syncGamePause(room);
     if (room.game.status !== 'playing' || !room.game.paused) {
-      return sendError(res, 409, 'NOT_PAUSED', '접속이 끊겨 일시정지된 상태에서만 대국을 종료할 수 있습니다.');
+      return sendError(res, 409, 'NOT_PAUSED', '상대가 응답하지 않아 일시정지된 상태에서만 대국을 종료할 수 있습니다.');
     }
     const disconnectedSeats = room.game.disconnectedSeats.slice();
     const connectedSeats = assignedSeatsFor(room).filter(seat => !disconnectedSeats.includes(seat));
@@ -1341,7 +1386,7 @@ async function handleRoomAction(req, res, action, session) {
     room.game.disconnectedAtEnd = disconnectedSeats;
     room.game.paused = false;
     room.game.disconnectedSeats = [];
-    appendSystemMessage(room, `${session.label || '참가자'}님이 접속 이탈로 대국을 종료했습니다. 접속 중인 참가자 승리로 기록됩니다.`);
+    appendSystemMessage(room, `${session.label || '참가자'}님이 응답 없는 참가자를 상대로 대국을 종료했습니다. 응답 중인 참가자 승리로 기록됩니다.`);
   }
 
   if (action === 'next-round' || action === 'rematch') {
@@ -1367,7 +1412,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.62', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.63', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1992,7 +2037,8 @@ async function main() {
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.62 실행: http://${HOST}:${PORT}`));
+  setInterval(() => { try { tickIdleRooms(); } catch (error) { console.error('자리비움 감지 처리 오류:', error); } }, AFK_TICK_MS).unref();
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.63 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
