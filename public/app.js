@@ -342,13 +342,14 @@
   // v1.6.58: two fully independent sidebar cards -- #chatPanel (chat messages/input only) and
   // #gameInfoPanel (system/room-info tabs, the dice/yut animation stage, every game's own
   // #gameActionsPanel controls, and 기권/재대결/종료) -- replacing the single combined #roomSidebar
-  // (which used to hold all of it) and the separately-poppable #diceYutPanel (v1.6.57). A browser
-  // only ever allows ONE native Document Picture-in-Picture window open at a time (system-wide, not
-  // per-tab): giving chat and the dice/yut stage their own independent PIP buttons meant opening one
-  // silently closed the other, which read as things randomly vanishing rather than a real second
-  // window. Splitting into exactly these two panels -- chat, and "everything else" -- means a
-  // player only ever wants at most one of them floating at once, so the same one-PIP-window
-  // limitation stops being surprising.
+  // (which used to hold all of it) and the separately-poppable #diceYutPanel (v1.6.57).
+  // v1.6.59: both panels having their own native Document Picture-in-Picture button still meant
+  // opening one silently closed the other -- a browser only ever allows ONE such window open at a
+  // time, system-wide, not per-tab. Reported live as things randomly vanishing when the player
+  // actually wanted both floating at once. #gameInfoPanel keeps the real native PIP (open*GameInfoPip
+  // below); #chatPanel now opens as a regular window.open() secondary window instead (see
+  // openChatPip below) -- a different browser mechanism with no "one at a time" limit, so it can
+  // stay open at the exact same time #gameInfoPanel is floating in its own PIP window.
   const SIDE_SIZE_KEY = 'roomSideSize';
   const CHAT_COLLAPSE_KEY = 'chatPanelCollapsed';
   const GAME_INFO_COLLAPSE_KEY = 'gameInfoPanelCollapsed';
@@ -374,14 +375,19 @@
   function chatShouldCollapse() { return chatCollapsedPref === true; }
   function gameInfoShouldCollapse() { return gameInfoCollapsedPref === true; }
 
-  // Chat and game-info "PIP" windows: each reparents the whole real panel -- with all its
-  // already-wired logic intact, not a copy -- into a Document Picture-in-Picture window, so it
-  // floats above every other window. Same browser feature YouTube's video PIP uses, Chromium-only
-  // (feature-detected below). The board and topbar stay on the main page; only the popped-out panel
-  // leaves. Each preference persists across rooms; the window itself never does (closed on every
-  // room exit).
+  // v1.6.59: a browser only ever allows ONE native Document Picture-in-Picture window open at a
+  // time (system-wide, not per-tab) -- so v1.6.58's two independent PIP buttons still fought each
+  // other the moment a player actually wanted both floating at once (reported live: opening one
+  // silently closed the other). The user picked which panel keeps the real "always on top of
+  // everything" PIP behavior: #gameInfoPanel (openGameInfoPip below) stays on `documentPictureInPicture`.
+  // #chatPanel instead opens as a REGULAR secondary browser window via `window.open()` -- a
+  // completely different browser mechanism with no "one at a time" limit, so it can be open at the
+  // very same moment #gameInfoPanel is floating in its own PIP window. The trade-off: this window
+  // is an ordinary window (the user can alt-tab it behind other apps, it won't auto-float above
+  // them) rather than a true PIP -- reflected in its own "별도 창" wording, never called "PIP", so
+  // the button never claims a floating behavior it doesn't have.
   const CHAT_PIP_KEY = 'chatPipPref';
-  const chatPipSupported = 'documentPictureInPicture' in window;
+  const chatPipSupported = typeof window.open === 'function';
   let chatPipPref = false;
   try { chatPipPref = localStorage.getItem(CHAT_PIP_KEY) === '1'; } catch {}
   let chatPipWindow = null;
@@ -392,7 +398,7 @@
   function updateChatPipBtn() {
     if (!chatPipBtn) return;
     chatPipBtn.classList.toggle('hidden', !chatPipSupported);
-    chatPipBtn.textContent = chatPipActive() ? 'PIP 닫기' : 'PIP로 보기';
+    chatPipBtn.textContent = chatPipActive() ? '별도 창 닫기' : '별도 창으로 보기';
     chatPipBtn.setAttribute('aria-pressed', chatPipActive() ? 'true' : 'false');
   }
 
@@ -402,42 +408,47 @@
     if (chatPipWindow) { try { chatPipWindow.close(); } catch {} }
   }
 
-  async function openChatPip() {
+  function openChatPip() {
     if (!chatPipSupported || chatPipWindow || !chatPanel) return;
-    try {
-      const pipWindow = await documentPictureInPicture.requestWindow({ width: 380, height: 640 });
-      for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
-        const clone = pipWindow.document.createElement('link');
-        clone.rel = 'stylesheet';
-        clone.href = link.href;
-        pipWindow.document.head.appendChild(clone);
-      }
-      // The layout override lives in styles.css as the .sidePipLayout class, not an injected
-      // <style> tag here -- this page's CSP (style-src 'self') silently drops inline styles, so a
-      // tag full of rules would parse into the DOM but never actually apply.
-      pipWindow.document.documentElement.classList.add('sidePipLayout');
-      pipWindow.document.title = `채팅 · ${state?.gameName || '게임센터'}`;
-      chatPanelHome = { parent: chatPanel.parentElement, next: chatPanel.nextElementSibling };
-      pipWindow.document.body.appendChild(chatPanel);
-      chatPipWindow = pipWindow;
-      applyChatLayout();
-      pipWindow.addEventListener('pagehide', () => {
-        chatPipWindow = null;
-        if (chatPanelHome) {
-          const { parent, next } = chatPanelHome;
-          if (next && next.parentElement === parent) parent.insertBefore(chatPanel, next);
-          else parent.appendChild(chatPanel);
-          chatPanelHome = null;
-        }
-        applyChatLayout();
-        updateChatPipBtn();
-      }, { once: true });
-      updateChatPipBtn();
-    } catch {
-      // Most likely: no recent click to authorize it (e.g. a silent session restore on page load).
-      // The button stays visible in its "not open yet" state so one click finishes the job.
+    // window.open (unlike documentPictureInPicture.requestWindow) returns synchronously and a
+    // blocked/failed popup just returns null -- no promise, no catch needed.
+    const pipWindow = window.open('about:blank', 'gameCenterChat', 'width=380,height=640,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+    if (!pipWindow) {
+      // Most likely: no recent click to authorize it (e.g. a silent session restore on page load)
+      // or the browser's popup blocker. The button stays visible in its "not open yet" state so
+      // one click finishes the job.
       chatPipWindow = null;
+      return;
     }
+    for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+      const clone = pipWindow.document.createElement('link');
+      clone.rel = 'stylesheet';
+      clone.href = link.href;
+      pipWindow.document.head.appendChild(clone);
+    }
+    // The layout override lives in styles.css as the .sidePipLayout class, not an injected
+    // <style> tag here -- this page's CSP (style-src 'self') silently drops inline styles, so a
+    // tag full of rules would parse into the DOM but never actually apply. Reused as-is from the
+    // native-PIP popup: every rule it applies is generic (.side, .sideActions, ...), and this
+    // window needs the exact same "fill the window, no mobile-breakpoint hiding" treatment.
+    pipWindow.document.documentElement.classList.add('sidePipLayout');
+    pipWindow.document.title = `채팅 · ${state?.gameName || '게임센터'}`;
+    chatPanelHome = { parent: chatPanel.parentElement, next: chatPanel.nextElementSibling };
+    pipWindow.document.body.appendChild(chatPanel);
+    chatPipWindow = pipWindow;
+    applyChatLayout();
+    pipWindow.addEventListener('pagehide', () => {
+      chatPipWindow = null;
+      if (chatPanelHome) {
+        const { parent, next } = chatPanelHome;
+        if (next && next.parentElement === parent) parent.insertBefore(chatPanel, next);
+        else parent.appendChild(chatPanel);
+        chatPanelHome = null;
+      }
+      applyChatLayout();
+      updateChatPipBtn();
+    }, { once: true });
+    updateChatPipBtn();
   }
 
   const GAME_INFO_PIP_KEY = 'gameInfoPipPref';
@@ -536,7 +547,7 @@
 
   function chatVisible() {
     // True when the chat pane is actually on-screen and readable right now.
-    if (chatPipActive()) return true; // floating in its own always-visible PIP window
+    if (chatPipActive()) return true; // showing in its own always-visible separate window
     if (isMobileLayout()) return chatOverlayOpen;
     return !chatShouldCollapse();
   }
@@ -1965,10 +1976,11 @@
 
   function enterLobby() {
     stopStream();
-    // Closing both PIP windows here (rather than leaving either to linger) mirrors the same
-    // reasoning as before: whichever panel is currently popped out must not keep floating over the
-    // lobby after the player leaves. This never touches either PIP preference or localStorage, so
-    // the user's chosen mode is still honored the next time they enter a room.
+    // Closing both windows here (rather than leaving either to linger) mirrors the same reasoning
+    // as before: whichever panel is currently popped out -- chat's separate window, 게임 진행's
+    // native PIP window, or both at once -- must not keep sitting over the lobby after the player
+    // leaves. This never touches either preference or localStorage, so the user's chosen mode is
+    // still honored the next time they enter a room.
     closeChatPip();
     closeGameInfoPip();
     state = null;
@@ -2007,11 +2019,12 @@
     startStream();
     if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
     // Only actually opens when this call chain started from a real click (create/join/accept
-    // invite) -- a silent page-load reconnect has no such gesture, so this just no-ops and the
-    // PIP button stays available for one manual click instead. Restoring both would fight over the
-    // one native PIP window a browser allows at a time, so only chat's own preference auto-restores
-    // here -- if the player wants 게임 진행 floating too, they open it themselves.
+    // invite) -- a silent page-load reconnect has no such gesture, so this just no-ops and each
+    // button stays available for one manual click instead. Restoring both is safe now: chat opens
+    // via window.open (no "one at a time" limit) while 게임 진행 keeps the real native PIP, so the
+    // two never compete for the same browser-wide PIP slot.
     if (chatPipPref && chatPipSupported && !chatPipActive()) openChatPip();
+    if (gameInfoPipPref && gameInfoPipSupported && !gameInfoPipActive()) openGameInfoPip();
   }
 
   function stopStream() {

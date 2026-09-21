@@ -11,15 +11,17 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // v1.6.57 gave the dice/yut panel its own separate native PIP button -- but a browser only ever
 // allows ONE Document Picture-in-Picture window open at a time (system-wide, not per-tab), so
 // opening one silently closed the other, which read as things randomly vanishing rather than a
-// real second window. v1.6.58 is the fix: the old single #roomSidebar (chat + system + room-info +
-// resign/end-game/next-round) is split into two fully independent cards -- #chatPanel (chat only)
-// and #gameInfoPanel (system/room-info tabs, the dice/yut stage, every game's own
-// #gameActionsPanel controls, and 기권/재대결/종료) -- each with its OWN native PIP button, reusing
-// the exact same mechanism (openChatPip/openGameInfoPip), reparenting the real element (not a
-// copy) into a documentPictureInPicture.requestWindow() popup. A player only ever wants at most
-// one of the two floating at once, so the one-PIP-window browser limitation stops being surprising.
+// real second window. v1.6.58 split the old single #roomSidebar into two independent cards --
+// #chatPanel (chat only) and #gameInfoPanel (system/room-info tabs, the dice/yut stage, every
+// game's own #gameActionsPanel controls, and 기권/재대결/종료) -- but giving BOTH their own native
+// PIP button meant they still fought each other the moment a player wanted both floating at once.
+// v1.6.59 is the real fix: #gameInfoPanel keeps the true native `documentPictureInPicture` window
+// (openGameInfoPip, "always on top of everything"); #chatPanel instead opens as a regular
+// `window.open()` secondary window (openChatPip) -- a different browser mechanism with no
+// "one at a time" limit, so both can be open at the exact same moment. The trade-off is explicit
+// in its own UI text ("별도 창으로 보기", never "PIP") since it doesn't float above other windows.
 
-test('each panel has its own PIP toggle button in its own tab tools, feature-detected hidden by default', () => {
+test('each panel has its own toggle button in its own tab tools, feature-detected hidden by default', () => {
   const html = read('public/index.html');
   assert.match(html, /<button type="button" id="chatPipBtn" class="pipToggleBtn hidden"/);
   assert.match(html, /<button type="button" id="gameInfoPipBtn" class="pipToggleBtn hidden"/);
@@ -29,7 +31,9 @@ test('each panel has its own PIP toggle button in its own tab tools, feature-det
   const gameInfoMarkup = html.slice(html.indexOf('id="gameInfoPanel"'), html.indexOf('id="chatFloatBtn"'));
   assert.match(gameInfoMarkup, /id="gameInfoPipBtn"/);
   const app = read('public/app.js');
-  assert.match(app, /const chatPipSupported = 'documentPictureInPicture' in window;/);
+  // Chat's button is universally supported (window.open, not a Chromium-only API); game-info's
+  // stays feature-detected on the native PIP API.
+  assert.match(app, /const chatPipSupported = typeof window\.open === 'function';/);
   assert.match(app, /const gameInfoPipSupported = 'documentPictureInPicture' in window;/);
   assert.match(app, /chatPipBtn\.classList\.toggle\('hidden', !chatPipSupported\)/);
   assert.match(app, /gameInfoPipBtn\.classList\.toggle\('hidden', !gameInfoPipSupported\)/);
@@ -47,17 +51,29 @@ test('each PIP preference persists per-browser across rooms, independent of the 
   assert.match(gameInfoClick, /localStorage\.setItem\(GAME_INFO_PIP_KEY, gameInfoPipPref \? '1' : '0'\)/);
 });
 
-test('opening chat PIP moves the real #chatPanel (not a copy, and never the board) into the popped-out window and back on close', () => {
+test('opening chat\'s separate window moves the real #chatPanel (not a copy, and never the board) via window.open, and back on close', () => {
   const app = read('public/app.js');
-  const openFn = app.slice(app.indexOf('async function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
-  assert.match(openFn, /documentPictureInPicture\.requestWindow\(\{ width: 380, height: 640 \}\)/);
+  const openFn = app.slice(app.indexOf('function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
+  assert.match(openFn, /window\.open\('about:blank', 'gameCenterChat', 'width=380,height=640,menubar=no,toolbar=no,location=no,status=no,resizable=yes'\)/);
   assert.match(openFn, /pipWindow\.document\.body\.appendChild\(chatPanel\)/);
   assert.doesNotMatch(openFn, /appendChild\(roomView\)/);
+  assert.doesNotMatch(openFn, /await documentPictureInPicture\.requestWindow/);
   assert.match(openFn, /pipWindow\.addEventListener\('pagehide'/);
   assert.match(openFn, /parent\.insertBefore\(chatPanel, next\)/);
-  // A rejected/blocked request (no recent click) must never throw up to the caller or leave
-  // chatPipWindow pointing at a half-open window -- it just silently stays closed.
-  assert.match(openFn, /catch \{[\s\S]*chatPipWindow = null;/);
+  // window.open returns synchronously (null on failure/block), unlike
+  // documentPictureInPicture.requestWindow's promise -- no async/catch needed, just a null check.
+  assert.doesNotMatch(app.slice(app.indexOf('function openChatPip()'), app.indexOf('function openChatPip()') + 30), /async/);
+  assert.match(openFn, /if \(!pipWindow\) \{[\s\S]*chatPipWindow = null;[\s\S]*return;/);
+});
+
+// A regular window.open() popup can stay open at the exact same time #gameInfoPanel's native PIP
+// window is floating -- the whole reason chat moved off documentPictureInPicture.
+test('opening chat\'s window never checks or waits on #gameInfoPanel\'s PIP state, and vice versa', () => {
+  const app = read('public/app.js');
+  const openFn = app.slice(app.indexOf('function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
+  assert.doesNotMatch(openFn, /gameInfoPipWindow|gameInfoPipActive/);
+  const gameInfoOpenFn = app.slice(app.indexOf('async function openGameInfoPip()'), app.indexOf('function updateSideOverlayBackdrop()'));
+  assert.doesNotMatch(gameInfoOpenFn, /chatPipWindow|chatPipActive/);
 });
 
 test('opening game-info PIP moves the real #gameInfoPanel (not a copy, and never the board) into the popped-out window and back on close', () => {
@@ -85,12 +101,13 @@ test('the resign/end-game/next-round buttons and #gameActionsPanel travel with #
 // v1.6.47 follow-up bug, still relevant here: a layout override injected as a <style> tag parses
 // into the popup's DOM but is silently dropped by this page's own CSP (style-src 'self' has no
 // 'unsafe-inline') -- confirmed live via computed styles, not just a screenshot. Moved into
-// styles.css as a real class instead, and that lesson carries over. Both panels' popups reuse the
-// SAME .sidePipLayout class (every rule it applies is class-based, not #roomSidebar-specific), so
-// there's one shared override, not two duplicated ones.
+// styles.css as a real class instead, and that lesson carries over. Both panels' popups -- chat's
+// window.open() secondary window and 게임 진행's native PIP window -- reuse the SAME
+// .sidePipLayout class (every rule it applies is class-based, not #roomSidebar-specific, and both
+// need the identical "fill the window" treatment), so there's one shared override, not two.
 test('the popped-out layout override lives in the real (CSP-safe) stylesheet, shared by both panels, not an injected <style> tag', () => {
   const app = read('public/app.js');
-  const chatOpenFn = app.slice(app.indexOf('async function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
+  const chatOpenFn = app.slice(app.indexOf('function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
   assert.doesNotMatch(chatOpenFn, /createElement\('style'\)/);
   assert.match(chatOpenFn, /pipWindow\.document\.documentElement\.classList\.add\('sidePipLayout'\)/);
   const gameInfoOpenFn = app.slice(app.indexOf('async function openGameInfoPip()'), app.indexOf('function updateSideOverlayBackdrop()'));
@@ -99,8 +116,8 @@ test('the popped-out layout override lives in the real (CSP-safe) stylesheet, sh
   const css = read('public/styles.css');
   assert.match(css, /html\.sidePipLayout \.side\{display:flex!important;position:static!important/);
   assert.match(css, /html\.sidePipLayout \.sideTabTools \.sideSizeGroup,html\.sidePipLayout \.sideCollapseBtn\{display:none!important\}/);
-  // Neither PIP button itself may be hidden -- each stays visible and functional inside its own
-  // popup as that popup's close control.
+  // Neither button itself may be hidden -- each stays visible and functional inside its own popup
+  // as that popup's close control.
   assert.doesNotMatch(css, /#chatPipBtn\{display:none|#gameInfoPipBtn\{display:none/);
 });
 
@@ -112,15 +129,17 @@ test('the board widens only once BOTH panels are actually gone (popped out or do
   assert.match(fn, /gameLayoutEl\.classList\.toggle\('sideCollapsed', chatGone && gameInfoGone\);/);
 });
 
-test('leaving the room always closes both PIP windows; entering one only auto-restores chat\'s own preference', () => {
+// v1.6.59: since chat's window and 게임 진행's PIP window use two different, non-competing browser
+// mechanisms, restoring both preferences on room entry is now safe (unlike the short-lived v1.6.58
+// design, which deliberately restored only one to avoid the two native-PIP buttons fighting).
+test('leaving the room always closes both windows; entering one restores BOTH preferences since they no longer compete', () => {
   const app = read('public/app.js');
   const enterLobbyFn = app.slice(app.indexOf('function enterLobby()'), app.indexOf('function enterRoomState('));
   assert.match(enterLobbyFn, /closeChatPip\(\);/);
   assert.match(enterLobbyFn, /closeGameInfoPip\(\);/);
   const enterRoomFn = app.slice(app.indexOf('function enterRoomState('), app.indexOf('function stopStream()'));
   assert.match(enterRoomFn, /if \(chatPipPref && chatPipSupported && !chatPipActive\(\)\) openChatPip\(\);/);
-  // Restoring both on entry would fight over the single native PIP window a browser allows.
-  assert.doesNotMatch(enterRoomFn, /openGameInfoPip\(\);/);
+  assert.match(enterRoomFn, /if \(gameInfoPipPref && gameInfoPipSupported && !gameInfoPipActive\(\)\) openGameInfoPip\(\);/);
 });
 
 test('the chat pane counts as visible for unread-badge purposes while chat is popped out to its own PIP', () => {
@@ -163,14 +182,3 @@ test('the game-info PIP window scales the dice/yut 3D stage proportionally as it
   assert.match(css, /transform:scale\(var\(--diceYutScale,1\)\)/);
 });
 
-// A browser only ever allows one native Document Picture-in-Picture window open at a time -- the
-// exact bug this whole redesign fixes. Both open functions must feature-detect independently and
-// neither must assume the other is closed (the browser itself enforces that by auto-closing
-// whichever one was already open, handled gracefully by each one's own pagehide handler).
-test('opening either PIP is independent of the other -- neither open function checks the other panel\'s state', () => {
-  const app = read('public/app.js');
-  const chatOpenFn = app.slice(app.indexOf('async function openChatPip()'), app.indexOf('const GAME_INFO_PIP_KEY'));
-  assert.doesNotMatch(chatOpenFn, /gameInfoPipWindow|gameInfoPipActive/);
-  const gameInfoOpenFn = app.slice(app.indexOf('async function openGameInfoPip()'), app.indexOf('function updateSideOverlayBackdrop()'));
-  assert.doesNotMatch(gameInfoOpenFn, /chatPipWindow|chatPipActive/);
-});
