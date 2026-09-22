@@ -29,8 +29,10 @@ test('a piece merely passing through center mid-throw keeps following its own di
   assert.deepEqual(destinations(24, 'shortcut5').map(x => x.position), [25,15,16,17,18]);
   assert.deepEqual(destinations(25, 'shortcut5').map(x => x.position), [15,16,17,18,19]);
   assert.deepEqual(destinations(26, 'shortcut10').map(x => x.position), [27,23,28,29,'finishLine']);
+  // From 27, a throw of 5 overshoots the finish line by one step (v1.6.68) -- see the dedicated
+  // finish-line test below for the exact-vs-overshoot rule this all follows.
   assert.deepEqual(destinations(27, 'shortcut10').map(x => [x.status, x.position]), [
-    ['board',23], ['board',28], ['board',29], ['board','finishLine'], ['board','finishLine'],
+    ['board',23], ['board',28], ['board',29], ['board','finishLine'], ['finished',null],
   ]);
 });
 
@@ -40,21 +42,28 @@ test('a piece resting exactly on center always departs toward home via the short
   // which used to be the "goes the wrong way / the long way around" bug.
   const viaFive = destinations(23, 'shortcut5').map(x => [x.status, x.position]);
   const viaTen = destinations(23, 'shortcut10').map(x => [x.status, x.position]);
+  // A throw of 3 lands exactly on the finish line; 4 and 5 overshoot it and finish outright.
   const expected = [
-    ['board',28], ['board',29], ['board','finishLine'], ['board','finishLine'], ['board','finishLine'],
+    ['board',28], ['board',29], ['board','finishLine'], ['finished',null], ['finished',null],
   ];
   assert.deepEqual(viaFive, expected);
   assert.deepEqual(viaTen, expected);
 });
 
-test('reaching the finish line rests there; only a later move from it actually finishes', () => {
-  // Landing exactly on 19, or overshooting past it, both stop AT the finish line -- never
-  // straight through to "finished" in the same throw.
+// v1.6.68: landing EXACTLY on the finish line rests there (a separate later move is what
+// actually finishes it) -- but a throw that has steps left over after reaching it has overshot,
+// and finishes outright in that same throw. Traditional Yut Nori rule (confirmed by the user):
+// from the cell right before the finish line, only an exact 도 stops there -- 개 or more finishes.
+test('reaching the finish line rests there only on an exact throw; a throw with steps to spare overshoots and finishes outright', () => {
+  // From 15 the finish line is exactly 5 away, so no throw (max 5) can overshoot it -- all five
+  // amounts land short of or exactly on it.
   assert.deepEqual(destinations(15).map(x => [x.status, x.position]), [
     ['board',16], ['board',17], ['board',18], ['board',19], ['board','finishLine'],
   ]);
+  // From 19 the finish line is exactly 1 away: only 도(1) is exact and rests there; 개(2) and up
+  // all overshoot it and finish immediately, regardless of how much they overshoot by.
   assert.deepEqual(destinations(19).map(x => [x.status, x.position]), [
-    ['board','finishLine'], ['board','finishLine'], ['board','finishLine'], ['board','finishLine'], ['board','finishLine'],
+    ['board','finishLine'], ['finished',null], ['finished',null], ['finished',null], ['finished',null],
   ]);
   // A piece already resting on the finish line finishes on ANY next move, regardless of amount.
   const atFinishLine = { id: 'black-1', color: 'black', status: 'board', position: 'finishLine', route: 'outer' };
@@ -127,10 +136,12 @@ test('a path that turns onto a shortcut mid-throw lists the shortcut nodes it ac
   assert.deepEqual(yut.destination(piece(5, 'outer'), 2).path, [5, 21, 22]);
 });
 
-test('a path that lands past the finish stops the path at the finish line, not beyond it', () => {
-  // From 19 with any steps >= 1, the piece only ever advances one node (to the finish line) and
-  // rests there -- the path must not contain any node past 'finishLine'.
-  assert.deepEqual(yut.destination(piece(19, 'outer'), 5).path, [19, 'finishLine']);
+test('a path that overshoots the finish line walks through it into "finished", not stopping short', () => {
+  // From 19, a throw of 5 overshoots the 1-step-away finish line by 4 -- the path shows the piece
+  // actually passing through the finish line on its way to finishing, not stopping there.
+  assert.deepEqual(yut.destination(piece(19, 'outer'), 5).path, [19, 'finishLine', 'finished', 'finished', 'finished', 'finished']);
+  // An exact throw (1, from 19) still just rests at the finish line.
+  assert.deepEqual(yut.destination(piece(19, 'outer'), 1).path, [19, 'finishLine']);
 });
 
 test("a piece entering from home paths from the start corner up to its landing spot", () => {
