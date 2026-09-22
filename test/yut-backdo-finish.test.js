@@ -16,8 +16,8 @@ test('back-do moves a board piece one step back along its own current path', () 
   assert.deepEqual(yut.destination({ status: 'board', position: 21, route: 'shortcut5' }, -1), { status: 'board', position: 5, route: 'shortcut5', path: [21, 5] });
 });
 
-test('back-do is clamped at the start corner and never sends a piece back home', () => {
-  assert.deepEqual(yut.destination({ status: 'board', position: 1, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer', path: [1, 0] });
+test('back-do off the first cell wraps to the finish line (v1.6.67 house rule); off the start corner itself it stays put and never sends a piece back home', () => {
+  assert.deepEqual(yut.destination({ status: 'board', position: 1, route: 'outer' }, -1), { status: 'board', position: 'finishLine', route: 'outer', path: [1, 'finishLine'] });
   assert.deepEqual(yut.destination({ status: 'board', position: 0, route: 'outer' }, -1), { status: 'board', position: 0, route: 'outer', path: [0] });
 });
 

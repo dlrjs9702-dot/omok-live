@@ -53,6 +53,32 @@ test('stacked pieces move together and corner stops use the shortcut', () => {
   assert.deepEqual(game.pieces.black.slice(0, 2).map(piece => piece.route), ['shortcut5', 'shortcut5']);
 });
 
+// v1.6.67 house rule: the start corner and the finish line are the same landing spot approached
+// from opposite directions, so a back-do that would push a piece off the very first cell (1)
+// instead sends it straight to the finish line -- exactly as if it had gone all the way around.
+test('a back-do off the first cell lands on the finish line instead of the start corner', () => {
+  const game = yut.create();
+  yut.start(game);
+  Object.assign(game.pieces.black[0], { status: 'board', position: 1, route: 'outer' });
+  game.phase = 'move';
+  game.pendingSteps = -1;
+  const option = yut.legalMoves(game).find(move => move.pieceId === 'black-1');
+  assert.equal(option.destination.status, 'board');
+  assert.equal(option.destination.position, 'finishLine');
+  assert.deepEqual(option.destination.path, [1, 'finishLine']);
+  const moved = yut.applyMove(game, 'black-1', 'black', 'now');
+  assert.equal(moved.legal, true);
+  assert.equal(game.pieces.black[0].status, 'board');
+  assert.equal(game.pieces.black[0].position, 'finishLine');
+  // Reaching the finish line this way still doesn't finish the piece by itself -- a further move
+  // is required, same as reaching it by any other route (a plain forward walk or a shortcut).
+  assert.equal(game.status, 'playing');
+
+  // Backing up from any other cell is unaffected -- only cell 1 gets the wrap-around.
+  const other = { status: 'board', position: 2, route: 'outer' };
+  assert.equal(yut.destination(other, -1).position, 1);
+});
+
 test('stacked Yut pieces are spread sideways so every piece number remains visible', async () => {
   const root = path.join(__dirname, '..');
   const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
@@ -152,7 +178,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1\.6\.66/);
+  assert.match(html, /app\.js\?v=1\.6\.67/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video
