@@ -25,7 +25,7 @@ test('Land King has clickable tile details, net-worth board and visual movement'
   const html = read('public/index.html');
   const app = read('public/app.js');
   const css = read('public/styles.css');
-  assert.match(html, /data-game="cityking"><strong>랜드킹\(업데이트\)<\/strong>/);
+  assert.match(html, /data-game="cityking"><strong>랜드킹<\/strong>/);
   for (const id of ['cityTurnSummary', 'cityAssets', 'cityTileSelect', 'cityTileName', 'cityTilePrice', 'cityTileToll', 'cityTileOwner'])
     assert.ok(html.includes(`id="${id}"`), id);
   assert.match(app, /function selectCityTileFromPointer\(/);
