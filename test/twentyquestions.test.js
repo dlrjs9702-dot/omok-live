@@ -33,6 +33,34 @@ test('turn, spectator, drawer and official-answer permissions', () => {
   assert.equal(engine.currentTurn(game), '3');
   assert.equal(engine.publicState(game).questions[0].text, '첫 질문');
 });
+test('idle challenger turns can be skipped without spending a regular action, while final skips spend the final chance', () => {
+  const game = started();
+  engine.setSecret(game, '1', '정답');
+  assert.equal(engine.currentTurn(game), '2');
+  const skipped = engine.skipTurn(game, '2');
+  assert.equal(skipped.legal, true);
+  assert.equal(skipped.final, false);
+  assert.equal(skipped.nextSeat, '3');
+  assert.equal(engine.publicState(game).questionsUsed, 0);
+  assert.equal(engine.publicState(game).questionsRemaining, 20);
+
+  for (let i = 0; i < 20; i++) {
+    const player = engine.currentTurn(game);
+    assert.equal(engine.submitQuestion(game, player, `질문 ${i + 1}`).legal, true);
+    assert.equal(engine.answerQuestion(game, '1', '아니오').legal, true);
+  }
+  assert.equal(game.phase, 'final-guesses');
+  const firstFinal = engine.currentTurn(game);
+  const finalSkip = engine.skipTurn(game, firstFinal);
+  assert.equal(finalSkip.legal, true);
+  assert.equal(finalSkip.final, true);
+  assert.notEqual(engine.currentTurn(game), firstFinal);
+  const lastFinal = engine.currentTurn(game);
+  const finished = engine.skipTurn(game, lastFinal);
+  assert.equal(finished.legal, true);
+  assert.equal(game.status, 'round-ended');
+  assert.equal(game.scores['1'], 1);
+});
 test('the server enforces 20 official questions', () => {
   const game = started('cooperative');
   engine.setSecret(game, '1', '정답');

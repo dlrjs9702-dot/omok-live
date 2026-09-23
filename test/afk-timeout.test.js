@@ -138,6 +138,39 @@ test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whic
   assert.deepEqual(state.game.disconnectedAtEnd, [idleSeat]);
 });
 
+test('Twenty Questions skips an idle challenger turn instead of pausing the whole room', { timeout: 30000 }, async t => {
+  const { req, login } = await serverFixture(t);
+  const a = await login();
+  const b = await login();
+  const cToken = await login();
+  assert.equal((await req('/api/rooms', a, { gameType: 'twentyquestions', visibility: 'public' })).status, 201);
+  const rid = (await req('/api/rooms/public', b, undefined, 'GET')).data.rooms[0].id;
+  assert.equal((await req('/api/rooms/public/join', b, { roomId: rid })).status, 200);
+  assert.equal((await req('/api/rooms/public/join', cToken, { roomId: rid })).status, 200);
+  assert.equal((await req('/api/room/choose-role', a, { choice: '1' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', b, { choice: '2' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', cToken, { choice: '3' })).status, 200);
+  assert.equal((await req('/api/room/twenty-start', a, { mode: 'individual', totalRounds: 1 })).status, 200);
+  assert.equal((await req('/api/room/twenty-secret', a, { secret: '정답' })).status, 200);
+
+  let state = (await req('/api/room', a, undefined, 'GET')).data.state;
+  assert.equal(state.game.turnSeat, '2');
+  assert.equal(state.game.questionsUsed, 0);
+
+  let sawNextChallenger = false;
+  for (let i = 0; i < 12; i += 1) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    state = (await req('/api/room', a, undefined, 'GET')).data.state;
+    if (state.game.turnSeat === '3') { sawNextChallenger = true; break; }
+  }
+  assert.equal(sawNextChallenger, true);
+  assert.equal(state.game.questionsUsed, 0);
+  assert.ok(state.chat.messages.some(row => row.type === 'system' && /입력 시간이 지나 다음 도전자로/.test(row.text)));
+  const nextAction = await req('/api/room/twenty-question', cToken, { question: '다음 도전자 질문' });
+  assert.equal(nextAction.status, 200);
+  assert.equal(nextAction.data.state.game.pendingQuestion.seat, '3');
+});
+
 test('liar, pictionary and marathon are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 30000 }, async t => {
   const { req, login } = await serverFixture(t);
   const tokens = [await login(), await login(), await login()];
