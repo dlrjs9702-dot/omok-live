@@ -157,6 +157,32 @@ test('twenty questions grant everyone one final attempt, then award the drawer',
   assert.equal(game.roundResults[0].success, false);
   assert.equal(engine.submitGuess(game, '2', '추가').reason, 'wrong-phase');
 });
+test('drawer timeout can void a round without changing scores and still rotate the drawer', () => {
+  const game = engine.create();
+  assert.equal(engine.configure(game, 'individual', 2).legal, true);
+  assert.equal(engine.beginRound(game, ['1', '2', '3'], '1', () => 0).legal, true);
+  assert.equal(engine.setSecret(game, '1', '비밀').legal, true);
+  const before = { ...game.scores };
+  const voided = engine.voidRound(game, 'drawer-timeout');
+  assert.equal(voided.legal, true);
+  assert.equal(voided.finished, false);
+  assert.equal(game.status, 'round-ended');
+  assert.deepEqual(game.scores, before);
+  assert.equal(game.roundResults[0].voided, true);
+  assert.equal(game.roundResults[0].reason, 'drawer-timeout');
+  assert.deepEqual(game.roundResults[0].winners, []);
+  const next = engine.nextRound(game, () => 0);
+  assert.equal(next.legal, true);
+  assert.equal(game.drawerSeat, '2');
+  assert.equal(game.roundNumber, 2);
+
+  const finalVoid = engine.voidRound(game, 'drawer-disconnected');
+  assert.equal(finalVoid.legal, true);
+  assert.equal(finalVoid.finished, true);
+  assert.equal(game.status, 'finished');
+  assert.deepEqual(game.scores, before);
+  assert.deepEqual(game.winners, ['1', '2', '3']);
+});
 test('individual success scores single guesser and rotates drawer', () => {
   const game = started();
   engine.setSecret(game, '1', '첫 정답');
