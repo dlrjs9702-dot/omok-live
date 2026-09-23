@@ -579,6 +579,7 @@ function syncGamePause(room) {
   // shared `move` action itself refuses while paused) and must not be clocked as if they were
   // ignoring their turn. The watch resets clean the moment a disconnect resolves, too, so a
   // seat gets its own full minute rather than one shortened by time spent waiting on someone else.
+  let turnTimedOut = false;
   if (isPictionary(room) || isLiar(room) || isMarathon(room) || disconnected.length > 0) {
     room.turnWatch = null;
   } else {
@@ -588,11 +589,22 @@ function syncGamePause(room) {
     } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
       room.turnWatch = { seat: turnSeat, since: Date.now() };
     } else if (Date.now() - room.turnWatch.since >= AFK_TIMEOUT_MS) {
-      disconnected.push(turnSeat);
+      if (isTwenty(room) && ['asking', 'final-guesses'].includes(room.game.phase)) {
+        const verdict = getGame('twentyquestions').skipTurn(room.game, turnSeat);
+        if (verdict.legal) {
+          const label = room.participants[room.players[turnSeat]]?.label || `${turnSeat}번`;
+          appendSystemMessage(room, verdict.final
+            ? `${label}님의 최종 정답 시간이 지나 마지막 기회가 소진됐습니다.`
+            : `${label}님의 입력 시간이 지나 다음 도전자로 넘어갑니다.`);
+          room.turnWatch = null;
+          turnTimedOut = true;
+        } else disconnected.push(turnSeat);
+      } else disconnected.push(turnSeat);
     }
   }
   room.game.paused = disconnected.length > 0;
   room.game.disconnectedSeats = disconnected;
+  return { turnTimedOut };
 }
 
 // Idle turns don't produce a fresh broadcast on their own (nobody acted, so no handler runs) --
@@ -602,8 +614,8 @@ function tickIdleRooms() {
   for (const room of rooms.values()) {
     if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room)) continue;
     const wasPaused = room.game.paused;
-    syncGamePause(room);
-    if (room.game.paused && !wasPaused) { touchRoom(room); broadcast(room); }
+    const pauseResult = syncGamePause(room);
+    if ((room.game.paused && !wasPaused) || pauseResult?.turnTimedOut) { touchRoom(room); broadcast(room); }
   }
 }
 
