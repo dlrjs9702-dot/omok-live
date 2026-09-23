@@ -277,6 +277,8 @@
   const gameInfoResetBtn = document.getElementById('gameInfoResetBtn');
   const sideOverlayBackdrop = document.getElementById('sideOverlayBackdrop');
   const gameLayoutEl = document.querySelector('#roomView .gameLayout');
+  const boardCardEl = document.querySelector('#roomView .boardCard');
+  const sideColumnEl = document.querySelector('#roomView .sideColumn');
   const toast = document.getElementById('toast');
   const resultEffect = document.getElementById('resultEffect');
   const resultParticles = document.getElementById('resultParticles');
@@ -340,9 +342,10 @@
   let resultEffectTimer = null;
   let lastResultEffectKey = null;
 
-  // Room sidebar (chat/system/room-info) state. The sidebar never depends on measuring the
-  // board's rendered height (that was the cause of the chat panel being pushed off-screen on
-  // tall boards like Land King/Old Maid) — it is bounded purely by viewport height in CSS.
+  // Room sidebar (chat/system/room-info) state. v1.6.72 measures the board only to keep a
+  // short game from being paired with a much taller sidebar; the measured value is always capped
+  // by the viewport space remaining below the room header, so tall games can never push the chat
+  // input or game controls below the visible window.
   // v1.6.58: two fully independent sidebar cards -- #chatPanel (chat messages/input only) and
   // #gameInfoPanel (system/room-info tabs, the dice/yut animation stage, every game's own
   // #gameActionsPanel controls, and 기권/재대결/종료) -- replacing the single combined #roomSidebar
@@ -370,6 +373,37 @@
   let lastRenderedChatIds = [];
 
   function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
+
+  let roomSideHeightFrame = 0;
+  let roomSideResizeObserver = null;
+
+  function syncRoomSideHeight() {
+    if (!sideColumnEl || !gameLayoutEl || !boardCardEl) return;
+    if (isMobileLayout()) {
+      sideColumnEl.style.removeProperty('--room-side-height');
+      return;
+    }
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
+    const layoutTop = gameLayoutEl.getBoundingClientRect().top;
+    const boardHeight = boardCardEl.getBoundingClientRect().height;
+    const stickyGap = 16;
+    const viewportBudget = Math.max(1, viewportHeight - Math.max(layoutTop, stickyGap) - stickyGap);
+    const targetHeight = Math.max(1, Math.min(boardHeight || viewportBudget, viewportBudget));
+    sideColumnEl.style.setProperty('--room-side-height', `${Math.floor(targetHeight)}px`);
+  }
+
+  function scheduleRoomSideHeightSync() {
+    if (roomSideHeightFrame) cancelAnimationFrame(roomSideHeightFrame);
+    roomSideHeightFrame = requestAnimationFrame(() => {
+      roomSideHeightFrame = 0;
+      syncRoomSideHeight();
+    });
+  }
+
+  if (typeof ResizeObserver === 'function' && boardCardEl) {
+    roomSideResizeObserver = new ResizeObserver(scheduleRoomSideHeightSync);
+    roomSideResizeObserver.observe(boardCardEl);
+  }
 
   // v1.6.56: cityking/oldmaid no longer auto-collapse the sidebar by default. That default existed
   // to give their wide boards more room, back when the sidebar was optional for actually playing
@@ -750,8 +784,9 @@
       document.querySelector(`.sideSizeBtn[data-side-size="${savedSize}"]`)?.setAttribute('aria-pressed', 'true');
     }
   } catch {}
-  window.addEventListener('resize', () => { applyChatLayout(); applyGameInfoLayout(); });
-  window.addEventListener('orientationchange', () => { applyChatLayout(); applyGameInfoLayout(); });
+  window.addEventListener('resize', () => { applyChatLayout(); applyGameInfoLayout(); scheduleRoomSideHeightSync(); });
+  window.addEventListener('orientationchange', () => { applyChatLayout(); applyGameInfoLayout(); scheduleRoomSideHeightSync(); });
+  window.visualViewport?.addEventListener('resize', scheduleRoomSideHeightSync);
 
   // Old Maid table effects state. Purely cosmetic bookkeeping: never the source of truth for
   // game state (that always comes from `state.game`, applied immediately by roomAction/SSE).
@@ -2063,6 +2098,7 @@
     showView('room');
     inviteTargetList.replaceChildren();
     renderRoom();
+    scheduleRoomSideHeightSync();
     startStream();
     if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
     // Only actually opens when this call chain started from a real click (create/join/accept
