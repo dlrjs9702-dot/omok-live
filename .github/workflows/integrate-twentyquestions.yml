@@ -23,7 +23,7 @@ jobs:
           ref: feature/twenty-questions-20260923
           fetch-depth: 0
 
-      - name: Correct guarded lockfile anchors
+      - name: Correct guarded lockfile anchors and cache version assertions
         run: node .release/fix-twenty-integration.cjs
 
       - name: Apply guarded integration to targeted files
@@ -55,7 +55,8 @@ jobs:
           if npm test > /tmp/twenty-test-results.log 2>&1; then
             tail -n 15 /tmp/twenty-test-results.log
           else
-            grep -E '^not ok |^  error: |^# tests |^# pass |^# fail |^# cancelled |^# skipped ' /tmp/twenty-test-results.log | cut -c 1-250 | head -n 110 || true
+            awk '/^not ok / { n=10 } n>0 { print substr($0,1,190); n-- }' /tmp/twenty-test-results.log | head -n 130 || true
+            grep -E '^# tests |^# pass |^# fail |^# cancelled |^# skipped ' /tmp/twenty-test-results.log || true
             exit 1
           fi
 
@@ -85,6 +86,7 @@ jobs:
           git config user.name "game-center-release-bot"
           git config user.email "actions@users.noreply.github.com"
           git add .release/integrate-twentyquestions.cjs server.js public/index.html public/app.js public/styles.css package.json package-lock.json lib/games/index.js lib/match-result.js
+          git add -u test
           if git diff --cached --quiet; then
             echo 'Already integrated; no commit needed'
           else
