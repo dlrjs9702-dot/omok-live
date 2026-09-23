@@ -91,7 +91,9 @@
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
           </details></div>
-          <div class="gamePicker" id="gamePicker">
+          <details class="gameListPanel" open>
+            <summary class="gameListPanelSummary"><strong>게임 목록</strong><small>접기 / 펼치기</small></summary>
+            <div class="gamePicker" id="gamePicker">
             <div class="gameOption" data-game-option="omok">
               <button type="button" class="gameChoice selected" data-game="omok"><strong>오목</strong></button>
             </div>
@@ -126,10 +128,9 @@
               <button type="button" class="gameChoice" data-game="twentyquestions"><strong>스무고개</strong></button>
             </div>
           </div>
-          <section class="developmentGamesPanel" aria-label="게임 구현중">
-            <div class="developmentGamesHead">
-              <strong>게임 구현중</strong>
-            </div>
+          </details>
+          <details class="developmentGamesPanel" open aria-label="게임 구현중">
+            <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
             <div class="gamePicker developmentGamePicker">
               <div class="gameOption" data-game-option="cityking">
                 <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
@@ -138,7 +139,7 @@
                 <button type="button" class="gameChoice" data-game="marathon"><strong>마라톤</strong></button>
               </div>
             </div>
-          </section>
+          </details>
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
           <fieldset class="visibilityChoices">
             <legend>방 공개 설정</legend>
