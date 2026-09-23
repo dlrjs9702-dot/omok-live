@@ -61,7 +61,7 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   const guest = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.72');
+  assert.equal(health.data.version, '1.6.73');
   assert.equal(health.data.games.includes('twentyquestions'), true);
   const created = await req('/api/rooms', host, { gameType: 'twentyquestions', visibility: 'public' });
   assert.equal(created.status, 201);
