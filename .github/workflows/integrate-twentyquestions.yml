@@ -53,10 +53,9 @@ jobs:
       - name: Test game integration and all existing games
         run: |
           if npm test > /tmp/twenty-test-results.log 2>&1; then
-            tail -n 25 /tmp/twenty-test-results.log
+            tail -n 15 /tmp/twenty-test-results.log
           else
-            grep -n -E -A 23 -B 2 '^not ok |^# fail |ERR_ASSERTION|Error:' /tmp/twenty-test-results.log | tail -n 155 || true
-            tail -n 22 /tmp/twenty-test-results.log
+            grep -E '^not ok |^  error: |^# tests |^# pass |^# fail |^# cancelled |^# skipped ' /tmp/twenty-test-results.log | cut -c 1-250 | head -n 110 || true
             exit 1
           fi
 
