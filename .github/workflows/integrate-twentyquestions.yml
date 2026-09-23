@@ -29,9 +29,13 @@ jobs:
       - name: Apply guarded integration to targeted files
         run: node .release/integrate-twentyquestions.cjs
 
+      - name: Stage new game release announcement only
+        run: node .release/add-twenty-announcement.cjs
+
       - name: Check syntax and patch whitespace
         run: |
           node --check .release/integrate-twentyquestions.cjs
+          node --check .release/add-twenty-announcement.cjs
           node --check server.js
           node --check public/app.js
           node --check public/twentyquestions-ui.js
@@ -39,6 +43,7 @@ jobs:
           node --check lib/games/twentyquestions.js
           node --check lib/games/twentyquestions-adapter.js
           node --check lib/match-result.js
+          node --check lib/release-announcements.js
           git diff --check
 
       - name: Setup Node
@@ -78,18 +83,19 @@ jobs:
           assert(js.includes('window.TwentyQuestionsUI.init(roomAction)'));
           assert(js.includes('window.TwentyQuestionsUI.render(state)'));
           assert.equal(require('./package.json').version, '1.6.69');
-          console.log('Twenty Questions registry, UI actions and private-answer path verified');
+          assert(require('./lib/release-announcements').some(n => n.key === 'v1.6.69'));
+          console.log('Twenty Questions registry, UI actions, announcement and private-answer path verified');
           NODE
 
       - name: Publish only verified integration to feature branch
         run: |
           git config user.name "game-center-release-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add .release/integrate-twentyquestions.cjs server.js public/index.html public/app.js public/styles.css package.json package-lock.json lib/games/index.js lib/match-result.js
+          git add .release/integrate-twentyquestions.cjs server.js public/index.html public/app.js public/styles.css package.json package-lock.json lib/games/index.js lib/match-result.js lib/release-announcements.js
           git add -u test
           if git diff --cached --quiet; then
             echo 'Already integrated; no commit needed'
           else
-            git commit -m "Integrate Twenty Questions game center [v1.6.69]"
+            git commit -m "Verify and announce Twenty Questions game center [v1.6.69]"
             git push origin HEAD:refs/heads/feature/twenty-questions-20260923
           fi
