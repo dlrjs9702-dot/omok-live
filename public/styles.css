@@ -165,34 +165,18 @@ body.resultLossActive .yutControls{filter:saturate(.6) brightness(.62);box-shado
    not a real second window. Consolidating into one "게임 진행" panel + the separate "채팅" panel
    below is the fix: at most 2 panels ever want to be a floating window, matching how a user
    actually uses them (rarely both at once). */
-/* v1.6.60: .sideColumn now stacks TWO .side cards (#chatPanel, #gameInfoPanel), but each .side on
-   its own still claims up to max-height:calc(100vh - 32px) (see the base .side rule below) -- two
-   of those stacked made the whole column roughly twice as tall as the board/game area, reported
-   live as the docked chat panel "growing endlessly" whenever it wasn't popped out to its own
-   window. The column itself now owns that same height budget (sticky + capped, matching what the
-   single old #roomSidebar used to be), and each child .side becomes a plain equal-share flex item
-   inside it (position:static, no max-height of its own) rather than independently sticky/capped --
-   so the two cards split one viewport-tall column instead of each claiming a full one. When only
-   one panel remains docked (the other popped out to its own window), that lone flex item naturally
-   grows to fill the whole column on its own, same as the old single-sidebar footprint. This never
-   applies to the popped-out/overlay states: documentPictureInPicture and window.open() popups get
-   their own real window (sized via .sidePipLayout, unaffected by this column), and the mobile
-   overlay (.side.overlayOpen) uses position:fixed, which escapes .sideColumn's box model entirely --
-   both of those rules keep winning because they're declared later in this file.
-   v1.6.61 fix: the first cut of this used max-height (an upper bound only) instead of height on
-   .sideColumn. flex:1 1 0 children only get real space to grow into when their flex CONTAINER has
-   a definite height -- with only max-height set, the column's own height stayed "auto" (shrink to
-   content), so there was no extra space for flex-grow to hand out and both zero-flex-basis
-   children collapsed toward their min-height:0, rendering as an empty sliver (reported live as the
-   whole sidebar "disappearing entirely"). height (a definite value, not just a ceiling) fixes it. */
-.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;height:calc(100vh - 32px)}
+/* v1.6.72: docked room sidebars follow the actual game card height, but never exceed
+   the viewport space left below the room header. app.js measures min(boardCard height,
+   remaining viewport height) and writes --room-side-height. This removes the old
+   height:calc(100vh - 32px) behavior that always added almost a full extra viewport below the
+   header and made the page scroll even when the game itself fit on screen. Both panels still
+   share the available docked height, while their message/action bodies own any necessary internal
+   scrolling. If both panels are collapsed/popped out, the zero-width side column also becomes
+   zero-height so it cannot keep the grid row artificially tall. */
+.sideColumn{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;height:var(--room-side-height,min(70vh,720px));max-height:calc(100dvh - 32px)}
 .sideColumn>.side{position:static;flex:1 1 0;min-height:0;max-height:none}
-/* On mobile both .side children default to display:none (only shown via the fixed-position
-   .overlayOpen state, which escapes this column's box model entirely) -- so a fixed
-   height:calc(100vh - 32px) here would reserve a full phantom screen's worth of empty space below
-   the board. Collapse the column back to auto/static, matching how .side itself already behaves
-   at this breakpoint. */
-@media(max-width:880px){.sideColumn{position:static;height:auto}}
+.gameLayout.sideCollapsed .sideColumn{height:0;max-height:0;overflow:hidden;gap:0}
+@media(max-width:880px){.sideColumn{position:static;height:auto;max-height:none}}
 .diceYutSection{display:flex;flex-direction:column;gap:6px;min-height:0;flex:0 0 auto}
 .diceYutSection.hidden{display:none}
 /* --diceYutScale (set by applyDiceYutPipScale in app.js, PiP-window-resize only) scales the whole
@@ -800,4 +784,4 @@ html.sidePipLayout .sideActions{display:grid!important}
 }
 
 /* Twenty Questions: scoped layout; existing game/side panel layouts unchanged. */
-.twentyPanel{padding:18px;display:grid;gap:12px;min-width:0}.twentyHeading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.twentyHeading h3,.twentyPanel h4{margin:0}.twentyCategory{background:#1e3a8a;color:#fff;padding:12px;border-radius:12px;font-weight:800}.twentyStatus,.twentyPrivate,.twentyResult{margin:0;padding:12px;border-radius:12px;background:#1f2937;color:#f1f5f9;line-height:1.5}.twentyPrivate{border:1px solid #64748b}.twentyResult{background:#14532d}.twentyScoreboard{display:grid;gap:8px}.twentyScore{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid #64748b;border-radius:10px}.twentyQuestionLog{display:grid;gap:9px;margin:0;padding:0 0 0 22px;max-height:440px;overflow-y:auto}.twentyQuestionLog li,.twentyGuessLog p{padding:9px;border-bottom:1px solid #475569;line-height:1.5;overflow-wrap:anywhere}.twentyActionPanel{display:grid;gap:12px;padding:12px 0}.twentyHostSetup,.twentyJudgeBox{display:grid;gap:9px}.twentyAnswerButtons,.twentyRecommendations{display:flex;flex-wrap:wrap;gap:8px}.twentyAnswerButtons button{flex:1 1 100px}.twentyActionPanel input,.twentyActionPanel select{width:100%;max-width:100%;box-sizing:border-box}.twentyPanel.hidden,.twentyActionPanel.hidden,.twentyHostSetup.hidden,.twentyJudgeBox.hidden{display:none!important}
+.twentyPanel{padding:18px;display:grid;gap:12px;min-width:0}.twentyHeading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.twentyHeading h3,.twentyPanel h4{margin:0}.twentyCategory{background:#1e3a8a;color:#fff;padding:12px;border-radius:12px;font-weight:800}.twentyStatus,.twentyPrivate,.twentyResult{margin:0;padding:12px;border-radius:12px;background:#1f2937;color:#f1f5f9;line-height:1.5}.twentyPrivate{border:1px solid #64748b}.twentyResult{background:#14532d}.twentyScoreboard{display:grid;gap:8px}.twentyScore{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid #64748b;border-radius:10px}.twentyQuestionLog{display:grid;gap:9px;margin:0;padding:0 0 0 22px;max-height:none;overflow:visible}.twentyQuestionLog li,.twentyGuessLog p{padding:9px;border-bottom:1px solid #475569;line-height:1.5;overflow-wrap:anywhere}.twentyActionPanel{display:grid;gap:12px;padding:12px 0}.twentyHostSetup,.twentyJudgeBox{display:grid;gap:9px}.twentyAnswerButtons,.twentyRecommendations{display:flex;flex-wrap:wrap;gap:8px}.twentyAnswerButtons button{flex:1 1 100px}.twentyActionPanel input,.twentyActionPanel select{width:100%;max-width:100%;box-sizing:border-box}.twentyPanel.hidden,.twentyActionPanel.hidden,.twentyHostSetup.hidden,.twentyJudgeBox.hidden{display:none!important}
