@@ -142,7 +142,11 @@
     }
     const last = (g.roundResults || []).at(-1);
     if (last && (g.status === 'round-ended' || g.status === 'finished')) {
-      setText('twentyRoundResult', `지난 라운드 정답: ${last.secret} · ${last.success ? '도전자 정답 성공' : '출제자 방어 성공'} · 획득: ${last.winners.map(n => nameFor(state, n)).join(', ')}`);
+      if (last.voided) {
+        setText('twentyRoundResult', `지난 라운드: 출제자 응답/연결 시간 초과로 무효 · 점수 변동 없음`);
+      } else {
+        setText('twentyRoundResult', `지난 라운드 정답: ${last.secret} · ${last.success ? '도전자 정답 성공' : '출제자 방어 성공'} · 획득: ${last.winners.map(n => nameFor(state, n)).join(', ')}`);
+      }
       hidden('twentyRoundResult', false);
     } else hidden('twentyRoundResult', true);
     if (g.status === 'finished') {

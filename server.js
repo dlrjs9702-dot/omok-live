@@ -550,36 +550,116 @@ function findSeat(room, token) {
   return null;
 }
 
-// Applies to every game (originally an omok2v2-only team check): while a game is in progress, any
-// assigned seat whose holder has disconnected (SSE stream closed, or left this room entirely)
-// pauses the game for everyone still connected and is listed so the "connection dropped" prompt
-// can name them. This is a room-wide "someone required is gone" signal, not a per-turn check --
-// it does not by itself block individual game actions except where a handler already consults it
-// (the shared `move` action; other games' actions are unaffected by this pass).
-//
-// v1.6.63: a seat that's still connected but has sat on its own turn for over a minute is folded
-// into this exact same disconnected/paused signal (same pause popup, same "any connected
-// participant may end it" resolution) -- room.turnWatch is transient, in-memory-only bookkeeping
-// (never sent to the client, never part of game state) that just remembers when the current
-// game.turn value last changed, so no game engine needs to know this exists.
-function syncGamePause(room) {
+// Shared disconnect/AFK handling. Most games keep the existing room-wide pause behavior.
+// Twenty Questions is intentionally different: one missing challenger must not lock everybody.
+// Challengers get a 60s turn/reconnect window and are skipped; the drawer gets a 60s reconnect
+// or response window because only the drawer can answer/judge the secret. If that expires, the
+// current round is voided with no score and the server advances to the next round automatically.
+function voidStalledTwentyRound(room, reason) {
+  const engine = getGame('twentyquestions');
+  const drawerSeat = room.game.drawerSeat;
+  const label = room.participants[room.players[drawerSeat]]?.label || `${drawerSeat}번 출제자`;
+  const verdict = engine.voidRound(room.game, reason);
+  if (!verdict.legal) return { stateChanged: false, gameFinished: false };
+
+  appendSystemMessage(room, reason === 'drawer-disconnected'
+    ? `${label}님이 60초 안에 재접속하지 않아 이번 라운드는 점수 없이 무효 처리됩니다.`
+    : `${label}님이 60초 동안 응답하지 않아 이번 라운드는 점수 없이 무효 처리됩니다.`);
+
+  room.turnWatch = null;
+  room.twentyDrawerDisconnectSince = null;
+
+  if (!verdict.finished) {
+    const next = engine.nextRound(room.game);
+    if (next.legal) {
+      appendSystemMessage(room, `스무고개 ${room.game.roundNumber}/${room.game.totalRounds}라운드 자동 시작 · 카테고리: ${room.game.category}`);
+    }
+  } else {
+    appendSystemMessage(room, '스무고개 종료! 무효 라운드는 점수에 포함하지 않고 최종 점수가 확정됐습니다.');
+  }
+  return { stateChanged: true, gameFinished: room.game.status === 'finished' };
+}
+
+function syncGamePause(room, allowTimeouts = true) {
   if (room.game.status !== 'playing') {
     room.game.paused = false;
     room.game.disconnectedSeats = [];
     room.turnWatch = null;
-    return;
+    room.twentyDrawerDisconnectSince = null;
+    return { stateChanged: false, gameFinished: false };
   }
+
   const disconnected = assignedSeatsFor(room).filter(seat => {
     const token = room.players[seat];
     const person = token && room.participants[token];
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
-  // Only run the idle watch while nothing is already paused for a disconnect: if some other seat
-  // is the one that's actually gone, the current turn holder is already blocked from acting (the
-  // shared `move` action itself refuses while paused) and must not be clocked as if they were
-  // ignoring their turn. The watch resets clean the moment a disconnect resolves, too, so a
-  // seat gets its own full minute rather than one shortened by time spent waiting on someone else.
-  let turnTimedOut = false;
+
+  if (isTwenty(room)) {
+    room.game.paused = false;
+    room.game.disconnectedSeats = disconnected;
+
+    const now = Date.now();
+    const drawerSeat = room.game.drawerSeat;
+    const drawerDisconnected = Boolean(drawerSeat && disconnected.includes(drawerSeat));
+
+    // A disconnected drawer gets a full reconnect grace period even if a challenger currently has
+    // the question turn. Reconnecting clears this clock instead of voiding the round.
+    if (drawerDisconnected) {
+      if (!room.twentyDrawerDisconnectSince) room.twentyDrawerDisconnectSince = now;
+      else if (allowTimeouts && now - room.twentyDrawerDisconnectSince >= AFK_TIMEOUT_MS) {
+        return voidStalledTwentyRound(room, 'drawer-disconnected');
+      }
+    } else {
+      room.twentyDrawerDisconnectSince = null;
+    }
+
+    const turnSeat = currentTurnSeat(room);
+    if (!turnSeat) {
+      room.turnWatch = null;
+      return { stateChanged: false, gameFinished: false };
+    }
+
+    // Drawer disconnects use the dedicated reconnect grace clock above; don't also run the generic
+    // turn clock or the round could expire twice for the same outage.
+    if (turnSeat === drawerSeat && drawerDisconnected) {
+      room.turnWatch = null;
+      return { stateChanged: false, gameFinished: false };
+    }
+
+    const turnDisconnected = disconnected.includes(turnSeat);
+    const watchKey = `${room.game.phase}:${turnSeat}:${turnDisconnected ? 'disconnected' : 'idle'}`;
+    if (!room.turnWatch || room.turnWatch.key !== watchKey) {
+      room.turnWatch = { key: watchKey, seat: turnSeat, since: now };
+      return { stateChanged: false, gameFinished: false };
+    }
+    if (!allowTimeouts || now - room.turnWatch.since < AFK_TIMEOUT_MS) {
+      return { stateChanged: false, gameFinished: false };
+    }
+
+    if (['asking', 'final-guesses'].includes(room.game.phase)) {
+      const verdict = getGame('twentyquestions').skipTurn(room.game, turnSeat);
+      if (!verdict.legal) return { stateChanged: false, gameFinished: false };
+      const label = room.participants[room.players[turnSeat]]?.label || `${turnSeat}번`;
+      appendSystemMessage(room, verdict.final
+        ? `${label}님의 최종 정답 시간이 지나 마지막 기회가 소진됐습니다.`
+        : turnDisconnected
+          ? `${label}님이 차례 중 60초 안에 재접속하지 않아 다음 도전자로 넘어갑니다.`
+          : `${label}님의 입력 시간이 지나 다음 도전자로 넘어갑니다.`);
+      room.turnWatch = null;
+      return { stateChanged: true, gameFinished: room.game.status === 'finished' };
+    }
+
+    if (['secret', 'answering', 'judging'].includes(room.game.phase)) {
+      return voidStalledTwentyRound(room, 'drawer-timeout');
+    }
+
+    room.turnWatch = null;
+    return { stateChanged: false, gameFinished: false };
+  }
+
+  // Existing behavior for all other games: a real disconnect immediately pauses the room, while
+  // a connected player sitting on their own turn for 60s is folded into the same pause signal.
   if (isPictionary(room) || isLiar(room) || isMarathon(room) || disconnected.length > 0) {
     room.turnWatch = null;
   } else {
@@ -588,34 +668,30 @@ function syncGamePause(room) {
       room.turnWatch = null;
     } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
       room.turnWatch = { seat: turnSeat, since: Date.now() };
-    } else if (Date.now() - room.turnWatch.since >= AFK_TIMEOUT_MS) {
-      if (isTwenty(room) && ['asking', 'final-guesses'].includes(room.game.phase)) {
-        const verdict = getGame('twentyquestions').skipTurn(room.game, turnSeat);
-        if (verdict.legal) {
-          const label = room.participants[room.players[turnSeat]]?.label || `${turnSeat}번`;
-          appendSystemMessage(room, verdict.final
-            ? `${label}님의 최종 정답 시간이 지나 마지막 기회가 소진됐습니다.`
-            : `${label}님의 입력 시간이 지나 다음 도전자로 넘어갑니다.`);
-          room.turnWatch = null;
-          turnTimedOut = true;
-        } else disconnected.push(turnSeat);
-      } else disconnected.push(turnSeat);
+    } else if (allowTimeouts && Date.now() - room.turnWatch.since >= AFK_TIMEOUT_MS) {
+      disconnected.push(turnSeat);
     }
   }
   room.game.paused = disconnected.length > 0;
   room.game.disconnectedSeats = disconnected;
-  return { turnTimedOut };
+  return { stateChanged: false, gameFinished: false };
 }
 
-// Idle turns don't produce a fresh broadcast on their own (nobody acted, so no handler runs) --
-// this is the only thing that notices a minute has quietly passed and pushes the resulting pause
-// out to clients, mirroring how liar/pictionary/marathon already push their own deadline ticks.
-function tickIdleRooms() {
+// Idle turns don't produce a request on their own, so this tick owns timeout transitions and
+// broadcasts them. It also records a Twenty Questions match if a final drawer timeout ends it.
+async function tickIdleRooms() {
   for (const room of rooms.values()) {
     if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
-    if ((room.game.paused && !wasPaused) || pauseResult?.turnTimedOut) { touchRoom(room); broadcast(room); }
+    if (pauseResult?.gameFinished) {
+      try { await recordFinishedMatch(room); }
+      catch (error) { console.error('스무고개 시간초과 전적 저장 실패:', error); }
+    }
+    if ((room.game.paused && !wasPaused) || pauseResult?.stateChanged) {
+      touchRoom(room);
+      broadcast(room);
+    }
   }
 }
 
@@ -703,7 +779,9 @@ function roomView(room, session) {
 }
 
 function broadcast(room) {
-  syncGamePause(room);
+  // Twenty Questions timeout transitions are owned by the periodic tick/action path so a broadcast
+  // cannot void or skip twice. Other games retain their existing broadcast-time AFK pause behavior.
+  syncGamePause(room, !isTwenty(room));
   const set = streams.get(room.id);
   if (!set) return;
   for (const client of [...set]) {
@@ -975,7 +1053,14 @@ async function handleRoomAction(req, res, action, session) {
     } else {
       const playerSeat = findSeat(room, session.token);
       if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 질문·출제·판정을 할 수 없습니다.');
-      syncGamePause(room);
+      const twentyPauseResult = syncGamePause(room);
+      if (twentyPauseResult?.gameFinished) {
+        recordFinishedMatch(room).catch(error => console.error('스무고개 시간초과 전적 저장 실패:', error));
+      }
+      if (twentyPauseResult?.stateChanged) {
+        touchRoom(room);
+        broadcast(room);
+      }
       if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '응답이 없는 참가자가 있어 일시정지 중입니다.');
       let verdict;
       if (action === 'twenty-secret') {
@@ -2123,7 +2208,7 @@ async function main() {
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
-  setInterval(() => { try { tickIdleRooms(); } catch (error) { console.error('자리비움 감지 처리 오류:', error); } }, AFK_TICK_MS).unref();
+  setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
   server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.71 실행: http://${HOST}:${PORT}`));
 }
 
