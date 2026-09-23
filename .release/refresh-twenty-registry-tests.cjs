@@ -1,5 +1,9 @@
 'use strict';
 const fs = require('node:fs');
+if (fs.readFileSync('test/lobby-compact-effects.test.js', 'utf8').includes('assert.equal(games.length, 14);')) {
+  console.log('Fourteenth-game regression assertions already updated');
+  process.exit(0);
+}
 const staged = new Map();
 function replace(file, needle, replacement, expected = 1) {
   const old = staged.has(file) ? staged.get(file) : fs.readFileSync(file, 'utf8');
