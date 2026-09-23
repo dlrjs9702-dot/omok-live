@@ -1,82 +1,28 @@
-name: Verify Yut path fix and Bingo v1.6.21
+name: Verify Twenty Questions guess limit
 
 on:
   push:
     branches:
-      - feature/yut-path-bingo-v1621-20260917
-  workflow_dispatch:
+      - fix/twenty-questions-guess-limit-v1672
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  verify-publish:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout feature branch
-        uses: actions/checkout@v4
-        with:
-          ref: feature/yut-path-bingo-v1621-20260917
-          fetch-depth: 0
-
-      - name: Apply guarded production integration patch
-        run: python3 .release/apply-yut-bingo-v1621.py
-
-      - name: Syntax checks
-        run: |
-          node --check server.js
-          node --check public/app.js
-          node --check lib/games/yut.js
-          node --check lib/games/bingo.js
-          node --check lib/games/index.js
-          git diff --check
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run complete regression suite
+      - run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check lib/games/twentyquestions.js
+          node --check public/twentyquestions-ui.js
+          node --check test/twentyquestions.test.js
+          git diff --check HEAD^ HEAD
+      - name: Full regression suite
         run: npm test
-
-      - name: Verify release integrity
-        run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const pkg = require('./package.json');
-          const lock = require('./package-lock.json');
-          const { listGames, getGame } = require('./lib/games');
-          const yut = getGame('yut');
-          const bingo = getGame('bingo');
-          if (pkg.version !== '1.6.21' || lock.version !== '1.6.21' || lock.packages[''].version !== '1.6.21') throw new Error('version mismatch');
-          if (listGames().length !== 9 || !bingo) throw new Error('Bingo registry missing');
-          if (yut.destination({status:'board',position:23,route:'shortcut5'}, 1).position !== 24) throw new Error('shortcut5 center continuity broken');
-          if (yut.destination({status:'board',position:23,route:'shortcut10'}, 1).position !== 28) throw new Error('shortcut10 center continuity broken');
-          const html = fs.readFileSync('public/index.html','utf8');
-          const js = fs.readFileSync('public/app.js','utf8');
-          const css = fs.readFileSync('public/styles.css','utf8');
-          const server = fs.readFileSync('server.js','utf8');
-          if (!/data-game="bingo"/.test(html) || !/app\.js\?v=1\.6\.21/.test(html)) throw new Error('Bingo/cache HTML missing');
-          if (!/function renderBingo\(/.test(js) || !/select-bingo/.test(js)) throw new Error('Bingo client missing');
-          if (!/Bingo v1\.6\.21/.test(css)) throw new Error('Bingo CSS missing');
-          if (!/start-bingo/.test(server) || !/set-bingo-target/.test(server)) throw new Error('Bingo server routes missing');
-          if (!/key: 'v1\.6\.21'/.test(fs.readFileSync('lib/release-announcements.js','utf8'))) throw new Error('release notice missing');
-          NODE
-
-      - name: Commit verified release content
-        run: |
-          git config user.name "game-center-release-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add server.js public/index.html public/app.js public/styles.css package.json package-lock.json lib/release-announcements.js test
-          if git diff --cached --quiet; then
-            echo "No generated integration changes to commit"
-          else
-            git commit -m "Add Bingo and fix Yut movement paths [v1.6.21]"
-          fi
-
-      - name: Publish verified release branch
-        run: git push --force origin HEAD:refs/heads/verified-yut-bingo-v1621-20260917
