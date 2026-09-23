@@ -49,7 +49,7 @@ test('guess is an alternative to question, pending adjudication without revealin
   const game = started();
   engine.setSecret(game, '1', '진짜 비밀');
   assert.equal(engine.submitGuess(game, '2', '틀린 답').legal, true);
-  assert.equal(engine.publicState(game).questionsUsed, 2);
+  assert.equal(engine.publicState(game).questionsUsed, 1);
   assert.equal(engine.publicState(game).questionsRemaining, 19);
   assert.equal(engine.submitQuestion(game, '2', '추가 질문').reason, 'wrong-phase');
   assert.equal(game.winner, null);
@@ -84,7 +84,7 @@ test('drawer judges allowed replies and failed guesses pass the turn', () => {
   assert.equal(engine.judgeGuess(game, '3', false).reason, 'not-drawer');
   assert.equal(engine.judgeGuess(game, '1', false).legal, true);
   assert.equal(engine.currentTurn(game), '2');
-  assert.equal(engine.publicState(game).questionsUsed, 1);
+  assert.equal(engine.publicState(game).questionsUsed, 2);
   assert.equal(JSON.stringify(engine.publicState(game)).includes('비행기'), false);
 });
 test('one-on-one wrong guesses consume the 20-action limit and cannot repeat forever', () => {
