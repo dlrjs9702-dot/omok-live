@@ -785,3 +785,12 @@ html.sidePipLayout .sideActions{display:grid!important}
 
 /* Twenty Questions: scoped layout; existing game/side panel layouts unchanged. */
 .twentyPanel{padding:18px;display:grid;gap:12px;min-width:0}.twentyHeading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.twentyHeading h3,.twentyPanel h4{margin:0}.twentyCategory{background:#1e3a8a;color:#fff;padding:12px;border-radius:12px;font-weight:800}.twentyStatus,.twentyPrivate,.twentyResult{margin:0;padding:12px;border-radius:12px;background:#1f2937;color:#f1f5f9;line-height:1.5}.twentyPrivate{border:1px solid #64748b}.twentyResult{background:#14532d}.twentyScoreboard{display:grid;gap:8px}.twentyScore{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid #64748b;border-radius:10px}.twentyQuestionLog{display:grid;gap:9px;margin:0;padding:0 0 0 22px;max-height:none;overflow:visible}.twentyQuestionLog li,.twentyGuessLog p{padding:9px;border-bottom:1px solid #475569;line-height:1.5;overflow-wrap:anywhere}.twentyActionPanel{display:grid;gap:12px;padding:12px 0}.twentyHostSetup,.twentyJudgeBox{display:grid;gap:9px}.twentyAnswerButtons,.twentyRecommendations{display:flex;flex-wrap:wrap;gap:8px}.twentyAnswerButtons button{flex:1 1 100px}.twentyActionPanel input,.twentyActionPanel select{width:100%;max-width:100%;box-sizing:border-box}.twentyPanel.hidden,.twentyActionPanel.hidden,.twentyHostSetup.hidden,.twentyJudgeBox.hidden{display:none!important}
+.davinciPanel { padding: 1rem; overflow: auto; }
+.davinciHand { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin: .8rem 0; }
+.davinciHand strong { width: 100%; }
+.davinciTile { width: 2.6rem; height: 3.7rem; border-radius: .45rem; border: 2px solid #b8a580; font-weight: 800; font-size: 1.2rem; cursor: pointer; }
+.davinciTile.black { background: #252b33; color: #fff; }
+.davinciTile.white { background: #fffdf8; color: #20252b; }
+.davinciTile.selected { outline: 4px solid #ea9d2f; outline-offset: 2px; }
+.davinciTile:disabled { cursor: default; opacity: .8; }
+.davinciActions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }

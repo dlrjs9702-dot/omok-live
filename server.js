@@ -12,11 +12,12 @@ const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
 const isTwenty = (room) => room.gameType === 'twentyquestions';
+const isDavinci = (room) => room.gameType === 'davinci';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room);
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
 // seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
 function marathonSeatSlots(room) {
@@ -24,7 +25,7 @@ function marathonSeatSlots(room) {
   if (g?.mode === 'team' && g?.teamLayout === '2v2') return MARATHON_SEATS.slice(0, 4);
   return MARATHON_SEATS;
 }
-const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
+const seatsFor = (room) => isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -500,7 +501,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     updatedAt: t,
     hostSessionToken: hostSession.token,
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: ['oldmaid', 'marathon'].includes(gameEngine.id)
+    players: ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
       : ['pictionary', 'liar', 'twentyquestions'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
@@ -595,6 +596,13 @@ function syncGamePause(room, allowTimeouts = true) {
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
 
+  if (isDavinci(room)) {
+    room.game.paused = false;
+    room.game.disconnectedSeats = disconnected;
+    room.turnWatch = null;
+    return { stateChanged: false, gameFinished: false };
+  }
+
   if (isTwenty(room)) {
     room.game.paused = false;
     room.game.disconnectedSeats = disconnected;
@@ -681,7 +689,7 @@ function syncGamePause(room, allowTimeouts = true) {
 // broadcasts them. It also records a Twenty Questions match if a final drawer timeout ends it.
 async function tickIdleRooms() {
   for (const room of rooms.values()) {
-    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room)) continue;
+    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room) || isDavinci(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
     if (pauseResult?.gameFinished) {
@@ -772,6 +780,8 @@ function roomView(room, session) {
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
       myWord: isPictionary(room) ? getGame('pictionary').wordFor(room.game, seat) : null,
       myTwentySecret: isTwenty(room) ? getGame('twentyquestions').secretFor(room.game, seat) : null,
+      myDavinciTiles: isDavinci(room) ? getGame('davinci').tilesFor(room.game, seat) : null,
+      myDavinciDrawn: isDavinci(room) ? getGame('davinci').drawnFor(room.game, seat) : null,
       myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
       myOldMaidAbility: isOldMaid(room) && seat ? getGame('oldmaid').abilityFor(room.game, seat) : null,
     },
@@ -798,7 +808,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room)) return;
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -826,7 +836,7 @@ function prepareNextRound(room) {
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room)) {
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -901,7 +911,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -910,7 +920,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room)) && seat
+  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -1014,6 +1024,27 @@ async function tickLiarRooms() {
       try { await recordFinishedMatch(room); }
       catch (error) { console.error('라이어게임 전적 저장 실패:', error); continue; }
     }
+    touchRoom(room);
+    broadcast(room);
+  }
+}
+
+async function tickDavinciRooms() {
+  const now = nowMs();
+  const engine = getGame('davinci');
+  for (const room of rooms.values()) {
+    if (!isDavinci(room) || room.game.status !== 'playing') continue;
+    syncGamePause(room, false);
+    const seat = room.game.turn;
+    const token = room.players[seat];
+    const connected = Boolean(room.participants[token]?.connected && sessions.get(token)?.currentRoomId === room.id);
+    if (!connected && room.davinciDisconnectedTurn !== seat) {
+      room.davinciDisconnectedTurn = seat;
+      room.game.deadlineAt = now + 60_000;
+    } else if (connected) room.davinciDisconnectedTurn = null;
+    if (!engine.tick(room.game, now)) continue;
+    room.davinciDisconnectedTurn = null;
+    if (room.game.status === 'finished') await recordFinishedMatch(room);
     touchRoom(room);
     broadcast(room);
   }
@@ -1150,6 +1181,25 @@ async function handleRoomAction(req, res, action, session) {
     const engine = getGame('liar');
     const verdict = engine.submitGuess(room.game, playerSeat, body.guess, Number(body.expectedPhaseId), nowMs());
     if (!verdict.legal) return sendError(res, 409, 'INVALID_LIAR_GUESS', engine.moveError(verdict.reason));
+  }
+
+  if (action === 'start-davinci' || action === 'guess-davinci' || action === 'stop-davinci' || action === 'reveal-davinci') {
+    if (!isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드 방에서만 사용할 수 있습니다.');
+    const engine = getGame('davinci');
+    const playerSeat = findSeat(room, session.token);
+    if (action !== 'start-davinci' && !playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
+    let verdict;
+    if (action === 'start-davinci') {
+      if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 시작할 수 있습니다.');
+      verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]), nowMs());
+      if (verdict.legal) {
+        for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+        appendSystemMessage(room, '다빈치 코드가 시작됐습니다. 타일의 색을 보고 숨겨진 숫자를 추리하세요.');
+      }
+    } else if (action === 'guess-davinci') verdict = engine.guess(room.game, playerSeat, String(body.targetSeat), String(body.tileId), Number(body.number), Number(body.expectedRevision), nowMs());
+    else if (action === 'stop-davinci') verdict = engine.stop(room.game, playerSeat, Number(body.expectedRevision), nowMs());
+    else verdict = engine.reveal(room.game, playerSeat, String(body.tileId), Number(body.expectedRevision), nowMs());
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_DAVINCI_ACTION', engine.moveError(verdict.reason));
   }
 
   if (action === 'set-oldmaid-mode') {
@@ -1464,6 +1514,7 @@ async function handleRoomAction(req, res, action, session) {
     if (isTwenty(room)) return sendError(res, 400, 'WRONG_GAME', '스무고개는 질문과 정답 제출 기능을 이용해 주세요.');
     if (room.gameType === 'liar') return sendError(res, 400, 'WRONG_GAME', '라이어게임은 힌트·투표·최종 추측 기능을 이용해 주세요.');
     if (isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기는 카드 뽑기를 이용해 주세요.');
+    if (isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드는 타일 추측 기능을 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -1504,7 +1555,7 @@ async function handleRoomAction(req, res, action, session) {
       const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
       room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
       room.game.endReason = 'resign';
-    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room)) {
+    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
     } else {
@@ -1580,7 +1631,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.72', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.73', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2154,7 +2205,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|start-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -2206,10 +2257,11 @@ async function main() {
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
+  setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.72 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.73 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
