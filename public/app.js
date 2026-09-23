@@ -2345,19 +2345,32 @@
     for (const row of rows) container.appendChild(buildChatMessageEl(row));
   }
 
-  // v1.6.42: only the liar game's hint phases lock room chat (so hints stay spoken-in-turn, not
-  // traded ahead of time) -- every other game and every other liar-game phase is unaffected.
+  // Liar hint phases stay private, and the current Twenty Questions drawer cannot use room chat
+  // while a round is actively playing. Challengers and spectators keep normal chat access.
   function chatLockedForHints() {
     const g = state?.game;
     return isLiarGame() && g?.status === 'playing' && ['hint1', 'hint2', 'extraHint'].includes(g.phase);
   }
 
+  function chatLockedForTwentyDrawer() {
+    const g = state?.game;
+    return Boolean(isTwentyGame() && g?.status === 'playing' && seat && String(seat) === String(g.drawerSeat));
+  }
+
+  function chatLockMessage() {
+    if (chatLockedForHints()) return '힌트 진행 중에는 채팅할 수 없습니다';
+    if (chatLockedForTwentyDrawer()) return '출제자는 스무고개 진행 중 채팅할 수 없습니다';
+    return '';
+  }
+
   function renderChat() {
-    const locked = state ? chatLockedForHints() : false;
+    const lockMessage = state ? chatLockMessage() : '';
+    const locked = Boolean(lockMessage);
     chatInput.disabled = locked;
     chatSendBtn.disabled = locked;
+    chatLockNotice.textContent = lockMessage;
     chatLockNotice.classList.toggle('hidden', !locked);
-    chatInput.placeholder = locked ? '힌트 진행 중에는 채팅할 수 없습니다' : '메시지 입력';
+    chatInput.placeholder = locked ? lockMessage : '메시지 입력';
 
     const rows = state?.chat?.messages || [];
     const chatRows = rows.filter(row => row.type !== 'system');
@@ -4797,7 +4810,7 @@
 
   async function sendChat(event) {
     event.preventDefault();
-    if (chatLockedForHints()) return;
+    if (chatLockMessage()) return;
     const text = chatInput.value.trim();
     if (!text) return;
     chatInput.disabled = true;
