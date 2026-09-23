@@ -1,24 +1,17 @@
-# Game Center 인수인계
+# Game Center 릴리스 기술 기록
 
-이 문서는 ChatGPT와 Claude가 교대로 작업할 때의 공통 기준입니다. 대화 기록보다 GitHub `main`과 이 문서를 우선합니다. 세션이 끊기면 다음 작업자는 대화 맥락 없이 이 문서 + `main`의 실제 코드 + `lib/release-announcements.js` 이력만 보고 이어받을 수 있어야 합니다.
+릴리스별 구현·검증의 기술 이력이다. 현재 코드·버전은 [omok-live main](https://github.com/dlrjs9702-dot/omok-live), 진행 작업과 담당은 비공개 [STATUS.md](https://github.com/dlrjs9702-dot/gamecenter-notes/blob/main/STATUS.md), 확정 결정은 비공개 [IDEAS.md](https://github.com/dlrjs9702-dot/gamecenter-notes/blob/main/IDEAS.md)를 확인한다. 운영 배포 상태는 Render에서 조회하고 공통 작업 규칙은 [AGENTS.md](AGENTS.md)를 따른다.
 
-## 현재 상태
+## 데이터 저장 구조
 
-- 저장소: `dlrjs9702-dot/omok-live`
-- 기준 브랜치: `main`
-- 현재 릴리스: `v1.6.72` (PR #11)
-- 이전 운영 커밋: `96b362b` (v1.6.71, 스무고개 연결 끊김·출제자 무응답 처리)
-- v1.6.72 검증 기준 커밋: `e56f3ea` (전체 자동 테스트 324/324 + UI 레이아웃 전용 검증 통과). PR #11의 최종 병합 SHA는 GitHub `main`을 기준으로 확인한다.
-- 배포 서버(권위 있는 실행 URL): `https://omok-live.onrender.com` — Render 서비스 `omok-live`(`srv-dakk44afngtc73ano4f0`), `main` 브랜치 커밋 시 자동 배포(`autoDeploy: commit`)
-- 참고: 과거 문서에 있던 Cloudflare Workers 프록시 주소(`silent-lake-9bcf.dlrjs9702.workers.dev`)는 이번 세션에서 재확인하지 않았다. 접속 안 되면 Render 주소를 기준으로 삼는다.
+- `DATABASE_URL`이 설정된 환경의 PostgreSQL: 입장키·닉네임·관리자 메모·공지사항과 전체 게임 누적 전적/대전 결과를 영구 저장한다. 개발용 환경에서 `DATABASE_URL`이 없으면 각 저장소 모듈의 JSON 파일 방식을 사용한다. 구현 근거: `lib/access-store.js`, `lib/announcement-store.js`, `lib/match-records.js` 및 `server.js`.
+- 서버 메모리: 게임방, 진행 중 대국, 세션, 초대, 로비·방 채팅(재배포하면 초기화). 실제 운영 배포 상태와 PostgreSQL 만료 대응은 Render 및 비공개 `STATUS.md`에서 확인한다.
 
-## 게임과 공통 기능
+## 코드 위치 참고
 
-현재 등록된 게임(코드 기준, `server.js` health 응답의 `games` 목록과 동일): 오목(omok), 오목 2vs2(omok2v2), 사목/커넥트4(connect4), 오델로(othello), 윷놀이(yut), 빙고(bingo), 점과 상자(dots), 랜드킹(cityking), 숫자야구(baseball), 그림 맞히기(pictionary), 라이어게임(liar), 도둑잡기(oldmaid), 마라톤(marathon), 스무고개(twentyquestions) — 총 14종.
+- 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
-공개·비공개방, 방 비밀번호, 대전 초대, 관전, 재접속, 재대결, 로비·방 채팅, 입장 파일(게스트 키), 관리자 입장 파일 관리·메모·공지사항·접속 현황, 전체 게임 누적 전적 및 1:1 상대 전적 조회를 공통 기능으로 유지한다.
-
-## 릴리스 이력 (v1.6.24 ~ v1.6.53 요약)
+## 릴리스 이력 (색인)
 
 전체 공지 문구는 `lib/release-announcements.js`에 릴리스별로 저장되어 있다(코드가 원본, 아래는 목차용 요약).
 
@@ -67,14 +60,14 @@
 - v1.6.66 빙고 판 크기(5×5/7×7)와 숫자 범위(1~50/75/100/150)를 방장이 게임 시작 전 선택 가능
 - v1.6.67 윷놀이: 출발 직후 첫 칸에서 빽도를 맞으면 완주 직전 칸으로 (전통 규칙 반영)
 - v1.6.68 윷놀이: 완주 직전 칸을 넘어가는 눈이면 그 던지기 안에서 바로 완주
-- v1.6.69 스무고개 신규 추가(2~8명 개인전·협동전, 1~10라운드, 20회 질문/정답 행동, 최종 정답 기회, 누적 점수)
-- v1.6.70 로비의 일반 게임/게임 구현중 패널 분리 및 각각 접기·펼치기, 랜드킹·마라톤을 구현중으로 이동
-- v1.6.71 스무고개 출제자 채팅 제한 및 후속 핫픽스(일반 정답 시도 20회 한도 포함, 도전자 무응답 자동 턴 넘김, 연결 끊김·출제자 무응답 전용 처리)
-- **v1.6.72 (현재) 공통 게임방 UI 높이·스크롤 정리** — 아래 상세
+- v1.6.69 스무고개 신규 추가(2~8명 개인전·협동전, 1~10라운드, 20회 질문/정답 행동, 최종 정답 기회, 누적 점수) — [PR #5](https://github.com/dlrjs9702-dot/omok-live/pull/5) / main [1480871](https://github.com/dlrjs9702-dot/omok-live/commit/1480871b40021b6320421f137eaf1d0bc8207f7c)
+- v1.6.70 로비의 일반 게임/게임 구현중 패널 분리 및 각각 접기·펼치기, 랜드킹·마라톤을 구현중으로 이동 — [PR #6](https://github.com/dlrjs9702-dot/omok-live/pull/6) / main [f28c3e7](https://github.com/dlrjs9702-dot/omok-live/commit/f28c3e7a64d94de7023abdb80442c4034c921887)
+- v1.6.71 스무고개 출제자 채팅 제한 및 후속 핫픽스(일반 정답 시도 20회 한도 포함, 도전자 무응답 자동 턴 넘김, 연결 끊김·출제자 무응답 전용 처리) — [PR #7](https://github.com/dlrjs9702-dot/omok-live/pull/7) / main [069a328](https://github.com/dlrjs9702-dot/omok-live/commit/069a32848a8227ba36bdb547e3f336d74f62f254); 후속 [PR #8](https://github.com/dlrjs9702-dot/omok-live/pull/8) / [c965ee9](https://github.com/dlrjs9702-dot/omok-live/commit/c965ee9d61731f941ebc59fdd79aedc557693ea5), [PR #9](https://github.com/dlrjs9702-dot/omok-live/pull/9) / [e273a91](https://github.com/dlrjs9702-dot/omok-live/commit/e273a9192e4d756425015c9b5a0d41132a1ae8c3), [PR #10](https://github.com/dlrjs9702-dot/omok-live/pull/10) / [96b362b](https://github.com/dlrjs9702-dot/omok-live/commit/96b362bfdeff825905788cd0571fcef860218a4c)
+- **v1.6.72 공통 게임방 UI 높이·스크롤 정리** — [PR #11](https://github.com/dlrjs9702-dot/omok-live/pull/11) / main [590e713](https://github.com/dlrjs9702-dot/omok-live/commit/590e71378ee0b724caa8991327b075ccacc4798b) (검증 기준 `e56f3ea`는 PR 브랜치 커밋) — 아래 상세
 
 v1.6.23 이전(v1.6.7~v1.6.16 공지 복원 포함)의 세부 이력은 `lib/release-announcements.js`의 git 이력 및 해당 파일 내 각 항목 본문을 참고한다. 이 문서에서는 별도로 중복 기술하지 않는다.
 
-## v1.6.72 확정 범위 (최신 작업 상세)
+## v1.6.72 확정 범위
 
 사용자가 스무고개를 포함한 게임 내부 UI에서 창 크기와 무관하게 스크롤바가 생기고, 게임창보다 채팅·시스템 영역이 지나치게 길어지는 문제를 실제 화면으로 보고했다. 관련 공통 레이아웃만 확인한 결과, `.sideColumn`이 방 상단 영역의 실제 위치와 관계없이 `height:calc(100vh - 32px)`로 고정되어 있었고, 그 안의 채팅/게임 진행 두 카드를 `flex:1 1 0`으로 동일 높이 분배하고 있었다. 따라서 게임 화면이 짧아도 오른쪽 컬럼은 거의 한 화면 높이를 추가로 차지해 페이지 자체 스크롤을 만들 수 있었다. 스무고개는 별도로 `.twentyQuestionLog{max-height:440px;overflow-y:auto}`가 있어 페이지·채팅·질문기록의 중첩 스크롤도 발생했다.
 
@@ -394,40 +387,3 @@ v1.6.46을 배포하고 사용자가 실제로 써본 직후 "기권하게, 종�
 - 멈출 때(`settle()`)는 이전과 동일하게 `DICE_CUBE_ROTATIONS[결과값]`만 대입하는 문자열 전체 교체이므로, 비행 중 추가된 `translateY`/`rotateZ`는 자동으로 초기화된다 — 어떤 눈금이 나올지는 여전히 서버 확정값에만 좌우된다(실제 라이브 굴림으로 "4+5=9" 결과가 화면에도 정확히 4·5로 표시되는 것을 확인).
 - 더블 강조, `prefers-reduced-motion` 시 애니메이션 생략 등 기존 동작은 전혀 바뀌지 않았다.
 
-### 버전 동기화 체크리스트 (다음 릴리스에도 동일하게 적용)
-
-버전 문자열은 `package.json`, `server.js`(health 응답 + 시작 로그), `public/index.html`(캐시 버스팅), `lib/release-announcements.js`(새 항목만 — 과거 항목의 버전 텍스트는 절대 건드리지 말 것), 그리고 테스트 내 하드코딩된 버전 정규식(여러 파일에 `app.js?v=1.6.3x` 또는 `health.data.version` 형태로 흩어져 있음, 이스케이프된 `1\\.6\\.3x` 형태도 있으니 sed로 일괄 치환 시 두 패턴 모두 확인)까지 전부 동기화해야 한다.
-
-## 데이터와 배포 주의사항
-
-- Render PostgreSQL: 입장키, 닉네임, 관리자 메모, 공지사항을 영구 저장한다.
-- 서버 메모리: 게임방, 진행 중 대국, 세션, 초대, 로비·방 채팅을 보관한다(재배포 시 초기화됨).
-- Render 재배포 시 진행 중 게임·채팅·세션은 초기화된다.
-- Render PostgreSQL 무료 플랜 만료 예정일은 2026-10-15이다(이전 문서 기준, 이번 세션에서 재확인하지 않음. 만료 임박 시 별도 확인 필요).
-- Render 서비스는 `main` 브랜치 커밋마다 자동 배포된다(수동 트리거 불필요, 확인만 하면 됨).
-
-## 작업 규칙
-
-1. 시작 전 `main` 최신 커밋과 이 문서를 확인한다.
-2. 아이디어는 `아이디어 저장` 대화(Claude 프로젝트)의 최신 확정사항만 구현한다. **ChatGPT는 이 대화에 직접 접근할 수 없으므로, 사용자가 해당 아이디어를 이 문서나 채팅에 직접 옮겨줘야 구현 가능하다.**
-3. 한 릴리스는 한 도구(Claude 또는 ChatGPT)가 끝까지 담당하고, 두 도구가 같은 작업 브랜치를 동시에 수정하지 않는다. 작업 시작 전 어느 도구가 마지막으로 작업했는지 이 문서의 "최신 반영 커밋"으로 확인한다.
-4. 기존 게임·저장 데이터·방·관전·재접속·재대결 기능을 보존하고 관계없는 리팩터링·인프라 변경은 하지 않는다.
-5. 변경 후 문법 검사, 빌드 가능 여부, `npm test` 전체, 변경 기능 중심 테스트를 실행한다.
-6. 사용자에게 보이는 변경은 버전 문자열(위 "버전 동기화 체크리스트") · `lib/release-announcements.js` 공지를 같은 릴리스에서 함께 갱신한다.
-7. GitHub `main` 반영 후 Render 자동배포 결과를 확인하고, 이 문서의 "현재 상태"·"릴리스 이력"을 갱신한다.
-8. Work 전수 검증은 사용자가 별도로 지시할 때만 한다.
-
-## ChatGPT로 이어받을 때
-
-- ChatGPT는 이 저장소에 대한 GitHub 접근 권한(코드 읽기/커밋 권한이 있는 연동, 또는 로컬 클론)이 별도로 필요하다. Render·GitHub MCP 같은 Claude Code 전용 도구는 없으므로, 배포 확인은 Render 대시보드(`https://dashboard.render.com`)나 `curl https://omok-live.onrender.com/health`로 대체한다.
-- 작업 시작 시: 이 문서 전체 → `main`의 `CLAUDE.md`(작업 방식) → 필요한 코드 파일 순으로 읽는다.
-- 작업 종료 시: 위 "작업 규칙" 6~7번대로 버전·공지·이 문서를 갱신하고 `main`까지 반영한 뒤 커밋 해시를 이 문서의 "최신 반영 커밋"에 남긴다.
-
-## 저장소 참고
-
-- 핵심 서버: `server.js`
-- 화면: `public/index.html`, `public/app.js`, `public/styles.css`
-- 게임 로직: `lib/games/`
-- 자동 공지: `lib/release-announcements.js`
-- 테스트: `test/`
-- `README.md`는 초기 버전 설명이라 현재 기능의 기준 문서로 사용하지 않는다.
