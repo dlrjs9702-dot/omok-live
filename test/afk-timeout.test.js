@@ -156,16 +156,16 @@ test('Twenty Questions skips an idle challenger turn instead of pausing the whol
   let state = (await req('/api/room', a, undefined, 'GET')).data.state;
   assert.equal(state.game.turnSeat, '2');
   assert.equal(state.game.questionsUsed, 0);
-  assert.equal(state.game.paused, false);
 
   await new Promise(resolve => setTimeout(resolve, 700));
 
   state = (await req('/api/room', a, undefined, 'GET')).data.state;
   assert.equal(state.game.turnSeat, '3');
   assert.equal(state.game.questionsUsed, 0);
-  assert.equal(state.game.paused, false);
-  assert.deepEqual(state.game.disconnectedSeats, []);
   assert.ok(state.chat.messages.some(row => row.type === 'system' && /입력 시간이 지나 다음 도전자로/.test(row.text)));
+  const nextAction = await req('/api/room/twenty-question', cToken, { question: '다음 도전자 질문' });
+  assert.equal(nextAction.status, 200);
+  assert.equal(nextAction.data.state.game.pendingQuestion.seat, '3');
 });
 
 test('liar, pictionary and marathon are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 30000 }, async t => {
