@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.69" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.70" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -91,7 +91,9 @@
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
           </details></div>
-          <div class="gamePicker" id="gamePicker">
+          <details class="gameListPanel" open>
+            <summary class="gameListPanelSummary"><strong>게임 목록</strong><small>접기 / 펼치기</small></summary>
+            <div class="gamePicker" id="gamePicker">
             <div class="gameOption" data-game-option="omok">
               <button type="button" class="gameChoice selected" data-game="omok"><strong>오목</strong></button>
             </div>
@@ -106,9 +108,6 @@
             </div>
             <div class="gameOption" data-game-option="dots">
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
-            </div>
-            <div class="gameOption" data-game-option="cityking">
-              <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹(업데이트)</strong></button>
             </div>
             <div class="gameOption" data-game-option="othello">
               <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
@@ -128,10 +127,19 @@
             <div class="gameOption" data-game-option="twentyquestions">
               <button type="button" class="gameChoice" data-game="twentyquestions"><strong>스무고개</strong></button>
             </div>
-            <div class="gameOption" data-game-option="marathon">
-              <button type="button" class="gameChoice" data-game="marathon"><strong>마라톤</strong></button>
-            </div>
           </div>
+          </details>
+          <details class="developmentGamesPanel" open aria-label="게임 구현중">
+            <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
+            <div class="gamePicker developmentGamePicker">
+              <div class="gameOption" data-game-option="cityking">
+                <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
+              </div>
+              <div class="gameOption" data-game-option="marathon">
+                <button type="button" class="gameChoice" data-game="marathon"><strong>마라톤</strong></button>
+              </div>
+            </div>
+          </details>
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
           <fieldset class="visibilityChoices">
             <legend>방 공개 설정</legend>
@@ -749,8 +757,8 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.69"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.69"></script>
-  <script src="/app.js?v=1.6.69"></script>
+  <script src="/session-lock.js?v=1.6.70"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.70"></script>
+  <script src="/app.js?v=1.6.70"></script>
 </body>
 </html>
