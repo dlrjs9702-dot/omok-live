@@ -6,23 +6,25 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
-// v1.6.27 bound the sidebar's height to the board's *measured* rendered height via a
-// ResizeObserver + CSS var, then clipped it with overflow:hidden. On tall boards (Land King's
-// dense controls, Old Maid's v1.6.35 card table) that pushed the chat input off-screen entirely,
-// because a position:sticky element taller than the viewport can't reveal its own bottom by
-// scrolling. v1.6.35 replaces it: the sidebar's height is bounded purely by the viewport
-// (max-height:calc(100vh - 32px)), independent of how tall the board's content is.
-test('room-chat-height.js (the board-height-mirroring script) was removed', () => {
+// v1.6.72 keeps the useful part of board-height matching (a short game should not have a
+// sidebar hanging far below it), but fixes the original failure mode by hard-capping the measured
+// height to the actual viewport space remaining below the room header.
+test('room sidebar height sync is integrated in app.js and needs no extra height script', () => {
   assert.equal(fs.existsSync(path.join(root, 'public/room-chat-height.js')), false);
   const html = read('public/index.html');
   assert.doesNotMatch(html, /room-chat-height\.js/);
+  const app = read('public/app.js');
+  assert.match(app, /function syncRoomSideHeight\(\)/);
+  assert.match(app, /new ResizeObserver\(scheduleRoomSideHeightSync\)/);
+  assert.match(app, /Math\.min\(boardHeight \|\| viewportBudget, viewportBudget\)/);
 });
 
-test('the sidebar is bounded by the viewport height, not the board\'s rendered height', () => {
+test('the docked sidebar uses the measured capped height and collapses its phantom grid height', () => {
   const css = read('public/styles.css');
-  assert.doesNotMatch(css, /--room-board-height/);
-  assert.match(css, /\.side\{[^}]*max-height:calc\(100vh - 32px\)/);
-  assert.match(css, /\.side\{[^}]*overflow:hidden/);
+  assert.match(css, /\.sideColumn\{[^}]*height:var\(--room-side-height/);
+  assert.match(css, /\.sideColumn\{[^}]*max-height:calc\(100dvh - 32px\)/);
+  assert.match(css, /\.gameLayout\.sideCollapsed \.sideColumn\{height:0;max-height:0;overflow:hidden;gap:0\}/);
+  assert.match(css, /@media\(max-width:880px\)\{\.sideColumn\{position:static;height:auto;max-height:none\}\}/);
 });
 
 // v1.6.58: chat is now its own single-pane panel (#chatPanel, no tabs -- it only ever shows one
@@ -127,23 +129,20 @@ test('a PC-only three-preset chat width control exists and never breaks the boar
   assert.match(css, /@media\(max-width:880px\)\{[\s\S]*?\.sideSizeGroup\{display:none\}/);
 });
 
-// v1.6.60 bug fix: #chatPanel and #gameInfoPanel each individually claimed up to
-// max-height:calc(100vh - 32px) (the base .side rule), so stacking the two of them inside
-// .sideColumn made the whole docked column roughly twice as tall as the board -- reported live as
-// the chat panel "growing endlessly" whenever it wasn't popped out to its own window. The fix caps
-// .sideColumn itself to that same one-viewport budget and makes each child .side an equal-share
-// flex item inside it, so the two cards split one viewport-tall column (matching the old single
-// #roomSidebar's footprint) instead of each independently claiming a full one.
-// v1.6.61 follow-up fix: the first cut used max-height (only an upper bound) on .sideColumn, so
-// the column's own height stayed "auto" and the flex:1 1 0 children had no real space to grow
-// into -- both collapsed toward min-height:0, reported live as the whole sidebar going empty. A
-// definite height (not just max-height) gives flex-grow actual space to distribute.
-test('the docked column gives both panels a definite, equal-share height instead of an unbounded auto height', () => {
+// v1.6.72 regression: the old fixed full-viewport column forced an unnecessary page
+// scrollbar below the room header. The column now gets an exact capped pixel height from app.js;
+// the two docked panels share only that budget.
+test('the docked column no longer hard-codes a full viewport below the already-rendered room header', () => {
   const css = read('public/styles.css');
-  assert.match(css, /\.sideColumn\{display:flex;flex-direction:column;gap:12px;min-width:0;position:sticky;top:16px;height:calc\(100vh - 32px\)\}/);
+  assert.doesNotMatch(css, /\.sideColumn\{[^}]*height:calc\(100vh - 32px\)/);
   assert.match(css, /\.sideColumn>\.side\{position:static;flex:1 1 0;min-height:0;max-height:none\}/);
-  // Mobile hides both .side children by default (shown only via the fixed-position .overlayOpen
-  // state, which escapes this column's box model) -- a fixed viewport height here would otherwise
-  // reserve a full phantom screen of empty space below the board.
-  assert.match(css, /@media\(max-width:880px\)\{\.sideColumn\{position:static;height:auto\}\}/);
+  const app = read('public/app.js');
+  assert.match(app, /const viewportBudget = Math\.max\(1, viewportHeight - Math\.max\(layoutTop, stickyGap\) - stickyGap\)/);
+  assert.match(app, /sideColumnEl\.style\.setProperty\('--room-side-height'/);
+});
+
+test('twenty questions history flows with the game page instead of adding a nested scrollbar', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /\.twentyQuestionLog\{[^}]*max-height:none;overflow:visible\}/);
+  assert.doesNotMatch(css, /\.twentyQuestionLog\{[^}]*overflow-y:auto/);
 });
