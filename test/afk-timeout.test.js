@@ -157,10 +157,13 @@ test('Twenty Questions skips an idle challenger turn instead of pausing the whol
   assert.equal(state.game.turnSeat, '2');
   assert.equal(state.game.questionsUsed, 0);
 
-  await new Promise(resolve => setTimeout(resolve, 700));
-
-  state = (await req('/api/room', a, undefined, 'GET')).data.state;
-  assert.equal(state.game.turnSeat, '3');
+  let sawNextChallenger = false;
+  for (let i = 0; i < 12; i += 1) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    state = (await req('/api/room', a, undefined, 'GET')).data.state;
+    if (state.game.turnSeat === '3') { sawNextChallenger = true; break; }
+  }
+  assert.equal(sawNextChallenger, true);
   assert.equal(state.game.questionsUsed, 0);
   assert.ok(state.chat.messages.some(row => row.type === 'system' && /입력 시간이 지나 다음 도전자로/.test(row.text)));
   const nextAction = await req('/api/room/twenty-question', cToken, { question: '다음 도전자 질문' });
