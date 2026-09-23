@@ -51,7 +51,14 @@ jobs:
         run: npm ci
 
       - name: Test game integration and all existing games
-        run: npm test
+        run: |
+          if npm test > /tmp/twenty-test-results.log 2>&1; then
+            tail -n 25 /tmp/twenty-test-results.log
+          else
+            grep -n -E -A 23 -B 2 '^not ok |^# fail |ERR_ASSERTION|Error:' /tmp/twenty-test-results.log | tail -n 155 || true
+            tail -n 22 /tmp/twenty-test-results.log
+            exit 1
+          fi
 
       - name: Verify UI wiring and private-answer boundary
         run: |
