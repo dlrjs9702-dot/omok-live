@@ -49,7 +49,8 @@ test('guess is an alternative to question, pending adjudication without revealin
   const game = started();
   engine.setSecret(game, '1', '진짜 비밀');
   assert.equal(engine.submitGuess(game, '2', '틀린 답').legal, true);
-  assert.equal(engine.publicState(game).questionsUsed, 0);
+  assert.equal(engine.publicState(game).questionsUsed, 2);
+  assert.equal(engine.publicState(game).questionsRemaining, 19);
   assert.equal(engine.submitQuestion(game, '2', '추가 질문').reason, 'wrong-phase');
   assert.equal(game.winner, null);
   assert.equal(JSON.stringify(engine.publicState(game)).includes('진짜 비밀'), false);
@@ -85,6 +86,29 @@ test('drawer judges allowed replies and failed guesses pass the turn', () => {
   assert.equal(engine.currentTurn(game), '2');
   assert.equal(engine.publicState(game).questionsUsed, 1);
   assert.equal(JSON.stringify(engine.publicState(game)).includes('비행기'), false);
+});
+test('one-on-one wrong guesses consume the 20-action limit and cannot repeat forever', () => {
+  const game = engine.create();
+  assert.equal(engine.configure(game, 'individual', 1).legal, true);
+  assert.equal(engine.beginRound(game, ['1', '2'], '1', () => 0).legal, true);
+  assert.equal(engine.setSecret(game, '1', '정답').legal, true);
+  for (let i = 0; i < 20; i++) {
+    const submitted = engine.submitGuess(game, '2', `오답 ${i + 1}`);
+    assert.equal(submitted.legal, true);
+    assert.equal(engine.publicState(game).questionsUsed, i + 1);
+    assert.equal(engine.publicState(game).questionsRemaining, 19 - i);
+    const judged = engine.judgeGuess(game, '1', false);
+    assert.equal(judged.legal, true);
+    assert.equal(game.phase, i === 19 ? 'final-guesses' : 'asking');
+  }
+  assert.deepEqual(game.finalGuessSeats, ['2']);
+  assert.equal(engine.publicState(game).questionsUsed, 20);
+  assert.equal(engine.submitGuess(game, '2', '최종 오답').legal, true);
+  assert.equal(engine.publicState(game).questionsUsed, 20);
+  assert.equal(engine.judgeGuess(game, '1', false).legal, true);
+  assert.equal(game.status, 'finished');
+  assert.equal(game.scores['1'], 1);
+  assert.equal(engine.submitGuess(game, '2', '추가 정답').reason, 'wrong-phase');
 });
 test('twenty questions grant everyone one final attempt, then award the drawer', () => {
   const game = started();
