@@ -186,6 +186,17 @@
   const pictionaryGuessForm = document.getElementById('pictionaryGuessForm');
   const pictionaryGuessInput = document.getElementById('pictionaryGuessInput');
   const pictionaryScoreboard = document.getElementById('pictionaryScoreboard');
+  const halliPanel = document.getElementById('halliPanel');
+  const halliStatus = document.getElementById('halliStatus');
+  const halliCards = document.getElementById('halliCards');
+  const halliBellBtn = document.getElementById('halliBellBtn');
+  const halliFlipBtn = document.getElementById('halliFlipBtn');
+  const halliStartBtn = document.getElementById('halliStartBtn');
+  const halliSetupRow = document.getElementById('halliSetupRow');
+  const halliTimeSelect = document.getElementById('halliTimeSelect');
+  const halliLastBell = document.getElementById('halliLastBell');
+  const halliBellLog = document.getElementById('halliBellLog');
+  let halliClockOffset = 0;
   const davinciPanel = document.getElementById('davinciPanel');
   const davinciStartBtn = document.getElementById('davinciStartBtn');
   const davinciStatus = document.getElementById('davinciStatus');
@@ -1179,7 +1190,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'halligalli' ? '할리갈리'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -1195,10 +1206,11 @@
   function isLiarGame() { return state?.gameType === 'liar'; }
   function isOldMaidGame() { return state?.gameType === 'oldmaid'; }
   function isDavinciGame() { return state?.gameType === 'davinci'; }
+  function isHalliGame() { return state?.gameType === 'halligalli'; }
   function isCityKingGame() { return state?.gameType === 'cityking'; }
   function isMarathonGame() { return state?.gameType === 'marathon'; }
   function isTwentyGame() { return state?.gameType === 'twentyquestions'; }
-  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame() || isDavinciGame(); }
+  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame() || isDavinciGame() || isHalliGame(); }
   // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
   // seats; individual/3v3/2v2v2 use all 6) -- mirrors server.js's marathonSeatSlots().
   function marathonSeatSlots() {
@@ -1206,7 +1218,7 @@
     if (g?.mode === 'team' && g?.teamLayout === '2v2') return ['1','2','3','4'];
     return ['1','2','3','4','5','6'];
   }
-  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame() || isTwentyGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
+  function numberedSeats() { return isHalliGame() ? ['1','2','3','4','5','6'] : isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame() || isTwentyGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   // Mirrors marathon.js's groupForSeat(): odd/even split for 2v2 and 3v3, a 1-of-3 cycle for
   // 2v2v2. Only meaningful once the host has picked team mode; individual mode has no groups.
   function marathonGroupForSeat(seat) {
@@ -1225,7 +1237,7 @@
     // produce an array (ties, or "everyone but the loser"); resigning in bingo/pictionary/liar/
     // oldmaid can now also produce either shape depending on how many seats are left, so all five
     // are normalized the same way here rather than assuming one fixed shape per game.
-    if (['bingo', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci'].includes(gameType)) {
+    if (['bingo', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli'].includes(gameType)) {
       const winners = Array.isArray(game.winner) ? game.winner.map(String) : [String(game.winner)];
       return winners.includes(String(playerSeat)) ? 'win' : 'loss';
     }
@@ -1263,6 +1275,7 @@
     "twentyquestions": "2~8인 개인전·협동전. 1~10라운드 및 출제 횟수 추천 선택. 무작위 카테고리를 보고 출제자가 비밀 정답을 정합니다. 도전자는 순서대로 질문 20개 또는 질문 대신 정답을 제출하고, 출제자는 예·아니오·비슷함·애매함으로 답하며 정답을 직접 판정합니다. 오답이면 다음 사람 차례이며 질문 20개 후 모두 최종 정답 기회 1회씩 받습니다. 개인전 정답자는 +1점, 협동전 성공 시 도전자 전원 +1점, 전원 실패 시 출제자 +1점. 최종 최고점 공동 우승 가능.",
     "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다.",
     "oldmaid": "2~4명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다.",
+    "halligalli": "2~6명이 순서대로 카드를 공개합니다. 공개된 카드 맨 위의 한 과일 합이 정확히 5개면 종을 먼저 치세요. 맞히면 공개 카드를 전부 가져오고, 틀리면 다른 참가자에게 카드 한 장씩 줍니다. 카드가 없어도 자기 차례 전 종으로 카드를 얻으면 생존합니다. 방장이 정한 5분 또는 10분이 끝나면 뒷면 카드가 가장 많은 사람이 승리하며 공동 승리할 수 있습니다.",
     "davinci": "2~4명 개인전. 타일 색은 모두 볼 수 있고 숫자는 본인 것만 볼 수 있습니다. 0~11의 흑·백 타일을 숫자 오름차순, 같은 숫자는 흑·백 순으로 정렬합니다. 차례마다 한 장을 뽑고 상대 타일 숫자를 추측합니다. 맞히면 계속 추측하거나 멈추고, 틀리면 뽑은 타일을 공개합니다. 더미가 비면 틀렸을 때 자기 타일을 공개합니다. 마지막 생존자가 승리합니다.",
     "marathon": "2~6인 개인전 또는 4인 2대2·6인 3대3·6인 2대2대2 팀전. 주사위 1개를 굴려 이동하고, 도착한 칸마다(같은 칸 재방문 포함) 타이핑·기억력·반응·계산 미션이 매번 새로 나옵니다. 제한시간 안에 맞히면 그 자리에 머물고, 못 맞히면 2칸 뒤로 물러나며 그 자리에서 새 미션이 바로 이어집니다. 30칸 이상 도달하면 즉시 승리합니다. 팀전은 말 하나를 공유하며 팀원끼리 주사위를 돌아가며 굴리고 미션은 팀원 누구나 제출할 수 있습니다."
 });
@@ -1271,7 +1284,7 @@
   }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci', 'halligalli'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
@@ -2262,7 +2275,7 @@
   }
 
   function choiceKo(choice) {
-    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame()) && numberedSeats().includes(choice)) return `${choice}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -2272,7 +2285,7 @@
 
   function seatKo(value) {
     if (isMarathonGame() && numberedSeats().includes(value)) return marathonGroupLabel(state.game.mode === 'team' ? marathonGroupForSeat(value) : value, state.game);
-    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame()) && numberedSeats().includes(value)) return `${value}번`;
+    if ((isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -2461,6 +2474,7 @@
     const marathon = isMarathonGame();
     const twenty = isTwentyGame();
     const davinci = isDavinciGame();
+    const halli = isHalliGame();
     // Land King is host-started like bingo/oldmaid, so this strip only ever shows seats the
     // engine actually knows about once playing; before start it still lists every open seat.
     const seats = city && state.game.status !== 'selecting' ? (state.game.seatOrder || []) : numberedSeats();
@@ -2470,22 +2484,24 @@
       const color = seatColor(number);
       const marathonGroup = marathon ? (state.game.mode === 'team' ? marathonGroupForSeat(number) : number) : null;
       const marathonRoller = marathon && state.game.status === 'playing' && state.game.currentRoller === number;
-      const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
-      const eliminated = city && state.game.players?.[number]?.eliminated;
-      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : halli ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
+      const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
+      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
         : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
         : oldmaid ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 뽑기 차례' : ''}`
         : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}`
+        : halli ? `${number}번${eliminated ? ' · 탈락' : currentTurn && state.game.status === 'playing' ? ' · 뒤집을 차례' : ''}`
+        : davinci ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 추측 차례' : ''}`
         : city ? `${number}번${eliminated ? ' · 파산' : currentTurn && state.game.status === 'playing' ? ' · 현재 차례' : ''}`
         : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroup}팀` : ''}${marathonRoller ? ' · 굴릴 차례' : ''}`
         : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
       const name = document.createElement('small');
       const marathonPos = marathon && state.game.status === 'playing' ? (state.game.positions?.[marathonGroup] ?? 0) : null;
       name.textContent = player
-        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : marathon && marathonPos !== null ? ` · ${marathonPos}칸` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : halli ? ` · 뒷면 ${state.game.pileCounts?.[number] ?? 0}장` : davinci ? ` · 타일 ${state.game.hands?.[number]?.length ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : marathon && marathonPos !== null ? ` · ${marathonPos}칸` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -2508,6 +2524,7 @@
     const marathon = isMarathonGame();
     const twenty = isTwentyGame();
     const davinci = isDavinciGame();
+    const halli = isHalliGame();
     const team = isTeamGame();
     const numbered = isNumberedSeatGame();
     const seats = numberedSeats();
@@ -2520,6 +2537,7 @@
       roleChooser.querySelector('small').textContent = twenty ? '2~8명이 자리를 선택합니다. 방장이 개인전/협동전과 1~10라운드를 정한 후 시작합니다.' : pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
+        : halli ? '2~6명이 자리를 선택합니다. 방장이 5분 또는 10분을 정하고 시작합니다.'
         : davinci ? '2~4명이 자리를 선택합니다. 방장이 시작하면 숫자 타일을 나눠 받습니다.'
         : oldmaid ? '2~4명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
         : bingo
@@ -2532,7 +2550,7 @@
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (bingo || pictionary || liar || oldmaid || city || twenty || davinci) ? `${number}번 자리`
+        button.textContent = (bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
           : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroupForSeat(number)}팀` : ''}`
           : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
@@ -2633,6 +2651,7 @@
     const twenty = isTwentyGame();
     const oldmaid = isOldMaidGame();
     const davinci = isDavinciGame();
+    const halli = isHalliGame();
     roundNumber.textContent = twenty ? `${g.roundNumber || 0}/${g.totalRounds || '?'}라운드` : pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : liar ? `${g.roundNumber || 0}/${g.totalRounds || 1}판` : `${g.round || 1}판`;
     moveCountLabel.textContent = twenty ? '진행 행동' : pictionary ? '진행 라운드' : liar ? '진행 행동' : oldmaid ? '뽑기 횟수' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
@@ -2654,7 +2673,9 @@
     const pauseStatusText = g.status === 'playing' && g.paused
       ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 응답 대기`
       : null;
-    if (davinci) {
+    if (halli) {
+      statusText.textContent = g.status === 'selecting' ? '할리갈리 · 방장 시작 대기' : g.status === 'finished' ? '할리갈리 종료' : `${state.players[g.turn]?.label || '참가자'}님 카드 뒤집기 차례`;
+    } else if (davinci) {
       statusText.textContent = g.status === 'selecting' ? '다빈치 코드 · 방장 시작 대기' : g.status === 'finished' ? '다빈치 코드 종료' : `${state.players[g.turn]?.label || '참가자'}님 · ${g.phase === 'reveal-own' ? '내 타일 공개' : '숫자 추측'}`;
     } else if (twenty) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '스무고개 · 방장 시작 대기' : g.status === 'round-ended' ? '라운드 결과 · 다음 라운드 대기' : g.status === 'finished' ? '스무고개 종료' : `스무고개 · ${g.category || '카테고리 선택'} · ${g.phase || '준비'}`);
@@ -2749,7 +2770,7 @@
     const bingo = state.gameType === 'bingo';
     const city = state.gameType === 'cityking';
     const marathon = isMarathonGame();
-    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci);
+    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci || halli);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
@@ -2808,6 +2829,9 @@
     document.getElementById('twentyPanel').classList.toggle('hidden', !twenty);
     document.getElementById('twentyActionPanel').classList.toggle('hidden', !twenty);
     if (twenty) window.TwentyQuestionsUI.render(state);
+    halliPanel.classList.toggle('hidden', !halli);
+    halliSetupRow.classList.toggle('hidden', !halli || g.status !== 'selecting');
+    if (halli) renderHalli();
     davinciPanel.classList.toggle('hidden', !davinci);
     davinciStartBtn.classList.toggle('hidden', !davinci || g.status !== 'selecting');
     if (davinci) renderDavinci();
@@ -2822,7 +2846,7 @@
     marathonAnswerForm.classList.toggle('hidden', !marathon);
     if (marathon) renderMarathon();
     else if (marathonMemoryHideTimer) { clearTimeout(marathonMemoryHideTimer); marathonMemoryHideTimer = null; marathonMemoryHideKey = null; }
-    if (pictionary || liar || oldmaid || marathon || twenty || davinci) {
+    if (pictionary || liar || oldmaid || marathon || twenty || davinci || halli) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -4104,6 +4128,41 @@
     }
   }
 
+  function renderHalli() {
+    const g = state.game;
+    halliClockOffset = Date.now() - (g.serverNow || Date.now());
+    halliTimeSelect.value = String(g.durationMinutes || 5);
+    halliTimeSelect.disabled = !(isHost && g.status === 'selecting');
+    halliStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
+    halliFlipBtn.disabled = !(seat && g.status === 'playing' && g.turn === seat);
+    halliBellBtn.disabled = !(seat && g.status === 'playing' && !g.eliminated.includes(seat));
+    const left = g.endsAt ? Math.max(0, Math.ceil((g.endsAt - (Date.now() - halliClockOffset)) / 1000)) : 0;
+    halliStatus.textContent = g.status === 'selecting' ? '2~6명이 준비되면 시작할 수 있습니다.'
+      : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
+      : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · 카드를 뒤집은 직후 0.3초 동안 종 입력이 잠깁니다.`;
+    halliCards.replaceChildren();
+    const icons = { '딸기': '🍓', '바나나': '🍌', '라임': '🍋', '자두': '🍇' };
+    for (const owner of g.seatOrder || []) {
+      const card = document.createElement('div');
+      card.className = `halliCard${g.eliminated.includes(owner) ? ' eliminated' : ''}`;
+      const name = document.createElement('strong');
+      name.textContent = state.players[owner]?.label || `${owner}번`;
+      const fruit = document.createElement('span');
+      fruit.textContent = g.faceTops?.[owner] ? `${icons[g.faceTops[owner].fruit]} ${g.faceTops[owner].fruit} ${g.faceTops[owner].count}개` : '아직 공개한 카드 없음';
+      const count = document.createElement('small');
+      count.textContent = `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
+      card.append(name, fruit, count);
+      halliCards.append(card);
+    }
+    halliLastBell.textContent = g.lastBell ? `${state.players[g.lastBell.seat]?.label || g.lastBell.seat + '번'}님 종: ${g.lastBell.correct ? '성공 · 공개 카드 획득' : '오판 · 카드 벌칙'}` : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
+    halliBellLog.replaceChildren();
+    for (const entry of (g.bellLog || []).slice(-6).reverse()) {
+      const line = document.createElement('p');
+      line.textContent = `${state.players[entry.seat]?.label || entry.seat + '번'} · ${entry.type === 'ring' ? entry.correct ? '종 성공' : '종 오판' : entry.type === 'late' ? '늦게 종을 침' : entry.type === 'disconnected' ? '연결 끊김 탈락' : '카드 소진 탈락'}`;
+      halliBellLog.append(line);
+    }
+  }
+
   function renderDavinci() {
     const g = state.game;
     davinciStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
@@ -4141,7 +4200,7 @@
   }
 
   function drawBoard() {
-    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'marathon' || state?.gameType === 'davinci') return;
+    if (state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'marathon' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
@@ -4836,7 +4895,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'twentyquestions' || state?.gameType === 'davinci') return false;
+    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'twentyquestions' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (state.game.paused) return false;
     if (isTeamGame() ? state.game.nextSeat !== seat : state.game.turn !== seat) return false;
@@ -5027,6 +5086,22 @@
     drawCityBoard();
   });
 
+  halliStartBtn.addEventListener('click', () => roomAction('start-halligalli'));
+  halliTimeSelect.addEventListener('change', () => roomAction('set-halligalli-time', { minutes: Number(halliTimeSelect.value) }));
+  halliFlipBtn.addEventListener('click', () => roomAction('flip-halligalli', { expectedRevision: state.game.revision }));
+  halliBellBtn.addEventListener('click', () => roomAction('ring-halligalli', { expectedFlipId: state.game.flipId }));
+  document.addEventListener('keydown', event => {
+    if (event.code !== 'Space' || event.repeat || !isHalliGame() || !state?.me?.seat || state.game.status !== 'playing') return;
+    const target = event.target;
+    if (target?.closest?.('input, textarea, select, button, dialog[open]') || target?.isContentEditable || document.querySelector('dialog[open]')) return;
+    event.preventDefault();
+    if (!halliBellBtn.disabled) halliBellBtn.click();
+  });
+  setInterval(() => {
+    if (!isHalliGame() || state.game.status !== 'playing') return;
+    const left = Math.max(0, Math.ceil((state.game.endsAt - (Date.now() - halliClockOffset)) / 1000));
+    halliStatus.textContent = halliStatus.textContent.replace(/남은 시간 \d+:\d{2}/, `남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+  }, 1000);
   davinciStartBtn.addEventListener('click', () => roomAction('start-davinci'));
   davinciGuessBtn.addEventListener('click', () => {
     if (!davinciTarget || !state) return;
