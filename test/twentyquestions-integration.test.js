@@ -57,6 +57,32 @@ test('two round results map cumulative winning seats to permanent records, inclu
   assert.equal(state.round, 2);
 });
 
+test('a voided final round preserves prior scores and permanent match winners', () => {
+  const state = start('individual', 2, ['1', '2', '3']);
+  game.setSecret(state, '1', '첫 문제');
+  game.submitGuess(state, '2', '첫 문제');
+  game.judgeGuess(state, '1', true);
+  assert.equal(game.nextRound(state, () => 0).drawerSeat, '2');
+
+  const voided = game.voidRound(state, 'drawer-disconnected');
+  assert.equal(voided.finished, true);
+  assert.equal(state.status, 'finished');
+  assert.deepEqual(state.scores, { '1': 0, '2': 1, '3': 0 });
+  assert.deepEqual(state.winner, ['2']);
+  assert.equal(state.roundResults[1].voided, true);
+
+  const room = {
+    id: 'void-final', gameType: game.id, game: state,
+    players: { '1': 'a', '2': 'b', '3': 'c' },
+    participants: { a: { recordId: 'a-id' }, b: { recordId: 'b-id' }, c: { recordId: 'c-id' } },
+  };
+  assert.deepEqual(buildMatchResult(room).outcomes, [
+    { id: 'a-id', result: 'loss' },
+    { id: 'b-id', result: 'win' },
+    { id: 'c-id', result: 'loss' },
+  ]);
+});
+
 test('cooperative final result includes all successful challengers in match history', () => {
   const state = start('cooperative', 1);
   game.setSecret(state, '1', '비행기');
