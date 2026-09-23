@@ -779,9 +779,9 @@ function roomView(room, session) {
 }
 
 function broadcast(room) {
-  // Broadcasts refresh connection state but never execute a timeout transition themselves.
-  // Timeout state changes are owned by the periodic tick or the action path.
-  syncGamePause(room, false);
+  // Twenty Questions timeout transitions are owned by the periodic tick/action path so a broadcast
+  // cannot void or skip twice. Other games retain their existing broadcast-time AFK pause behavior.
+  syncGamePause(room, !isTwenty(room));
   const set = streams.get(room.id);
   if (!set) return;
   for (const client of [...set]) {
