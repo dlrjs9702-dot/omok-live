@@ -11,11 +11,12 @@ const MARATHON_SEATS = ['1', '2', '3', '4', '5', '6'];
 const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
+const isTwenty = (room) => room.gameType === 'twentyquestions';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room);
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
 // seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
 function marathonSeatSlots(room) {
@@ -23,7 +24,7 @@ function marathonSeatSlots(room) {
   if (g?.mode === 'team' && g?.teamLayout === '2v2') return MARATHON_SEATS.slice(0, 4);
   return MARATHON_SEATS;
 }
-const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
+const seatsFor = (room) => isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -34,7 +35,9 @@ const assignedSeatsFor = (room) => isNumberedSeatGame(room)
 // nextSeat, inherited from omok's engine). Liar/pictionary/marathon are excluded from the AFK
 // watch below -- they already run their own server-authoritative phase-deadline tick, so layering
 // a second timeout on top of that would fight it instead of covering a gap.
-const currentTurnSeat = (room) => (isTeam(room) ? room.game.nextSeat : room.game.turn) || null;
+const currentTurnSeat = (room) => isTwenty(room)
+  ? (['secret', 'answering', 'judging'].includes(room.game.phase) ? room.game.drawerSeat : getGame('twentyquestions').currentTurn(room.game))
+  : (isTeam(room) ? room.game.nextSeat : room.game.turn) || null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
@@ -288,7 +291,7 @@ function releaseSessionToken(token, { message = null } = {}) {
     const p = room.participants[token];
     if (!p) continue;
     p.connected = false;
-    p.rejoinable = Boolean(findSeat(room, token) && room.game.status === 'playing');
+    p.rejoinable = Boolean(findSeat(room, token) && (room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended')));
     syncGamePause(room);
     broadcast(room);
   }
@@ -499,7 +502,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: ['oldmaid', 'marathon'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
-      : ['pictionary', 'liar'].includes(gameEngine.id)
+      : ['pictionary', 'liar', 'twentyquestions'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
       : ['omok2v2', 'bingo'].includes(gameEngine.id)
         ? { '1': null, '2': null, '3': null, '4': null }
@@ -680,6 +683,7 @@ function roomView(room, session) {
       mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
       myWord: isPictionary(room) ? getGame('pictionary').wordFor(room.game, seat) : null,
+      myTwentySecret: isTwenty(room) ? getGame('twentyquestions').secretFor(room.game, seat) : null,
       myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
       myOldMaidAbility: isOldMaid(room) && seat ? getGame('oldmaid').abilityFor(room.game, seat) : null,
     },
@@ -704,7 +708,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room)) return;
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -732,7 +736,7 @@ function prepareNextRound(room) {
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room)) {
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -807,7 +811,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -816,7 +820,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room)) && seat
+  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -934,6 +938,56 @@ async function handleRoomAction(req, res, action, session) {
   // Only draw-oldmaid ever sets this: the drawn card's identity, for the drawer's own animation --
   // never broadcast (see roomView/broadcast below), so opponents and spectators never see it.
   let drawnOldMaidCard = null;
+
+  // Twenty Questions integrated: host-only setup, private drawer secret and server-owned adjudication.
+  if (action.startsWith('twenty-')) {
+    if (!isTwenty(room)) return sendError(res, 400, 'WRONG_GAME', '스무고개 방에서만 사용할 수 있습니다.');
+    const engine = getGame('twentyquestions');
+    if (['twenty-start', 'twenty-next'].includes(action) && room.hostSessionToken !== session.token) {
+      return sendError(res, 403, 'HOST_ONLY', '방장만 게임 시작과 다음 라운드를 진행할 수 있습니다.');
+    }
+    if (action === 'twenty-start') {
+      const occupied = seatsFor(room).filter(n => room.players[n]);
+      if (occupied.length < 2 || occupied.length > 8) return sendError(res, 409, 'INVALID_TWENTY_START', '2~8명이 자리를 선택해야 합니다.');
+      const configured = engine.configure(room.game, body.mode, Number(body.totalRounds));
+      if (!configured.legal) return sendError(res, 409, 'INVALID_TWENTY_CONFIG', engine.moveError(configured.reason));
+      const verdict = engine.beginRound(room.game, occupied);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_TWENTY_START', engine.moveError(verdict.reason));
+      for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+      appendSystemMessage(room, `스무고개 시작! ${room.game.totalRounds}판 · ${room.game.mode === 'cooperative' ? '협동전' : '개인전'} · 카테고리: ${room.game.category}`);
+    } else if (action === 'twenty-next') {
+      if (room.game.status !== 'round-ended') return sendError(res, 409, 'INVALID_TWENTY_NEXT', '라운드 결과가 나온 뒤 다음 라운드를 시작할 수 있습니다.');
+      const verdict = engine.nextRound(room.game);
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_TWENTY_NEXT', engine.moveError(verdict.reason));
+      appendSystemMessage(room, `스무고개 ${room.game.roundNumber}/${room.game.totalRounds}라운드 시작 · 카테고리: ${room.game.category}`);
+    } else {
+      const playerSeat = findSeat(room, session.token);
+      if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 질문·출제·판정을 할 수 없습니다.');
+      syncGamePause(room);
+      if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '응답이 없는 참가자가 있어 일시정지 중입니다.');
+      let verdict;
+      if (action === 'twenty-secret') {
+        verdict = engine.setSecret(room.game, playerSeat, body.secret);
+        if (verdict.legal) appendSystemMessage(room, `${session.label || '출제자'}님이 정답을 설정했습니다. 첫 질문을 시작하세요.`);
+      } else if (action === 'twenty-question') {
+        verdict = engine.submitQuestion(room.game, playerSeat, body.question);
+        if (verdict.legal) appendSystemMessage(room, `${session.label || '도전자'}님이 질문을 제출했습니다.`);
+      } else if (action === 'twenty-answer') {
+        verdict = engine.answerQuestion(room.game, playerSeat, body.reply);
+        if (verdict.legal) appendSystemMessage(room, `출제자가 ${body.reply}(으)로 답했습니다.`);
+      } else if (action === 'twenty-guess') {
+        verdict = engine.submitGuess(room.game, playerSeat, body.guess);
+        if (verdict.legal) appendSystemMessage(room, `${session.label || '도전자'}님이 정답을 제출했습니다. 출제자의 판정을 기다립니다.`);
+      } else if (action === 'twenty-judge') {
+        verdict = engine.judgeGuess(room.game, playerSeat, body.correct);
+        if (verdict.legal) {
+          appendSystemMessage(room, body.correct ? '정답입니다! 이번 라운드가 종료됐습니다.' : '오답입니다. 다음 도전자 차례입니다.');
+          if (verdict.finished) appendSystemMessage(room, `스무고개 종료! 공동 승자를 포함한 최종 점수가 확정됐습니다.`);
+        }
+      } else return sendError(res, 400, 'BAD_TWENTY_ACTION', '알 수 없는 스무고개 행동입니다.');
+      if (!verdict.legal) return sendError(res, 409, 'INVALID_TWENTY_ACTION', engine.moveError(verdict.reason));
+    }
+  }
 
   if (action === 'choose-role') {
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
@@ -1310,6 +1364,7 @@ async function handleRoomAction(req, res, action, session) {
     if (room.gameType === 'cityking') return sendError(res, 400, 'WRONG_GAME', '랜드킹은 주사위·도시 매입·건설 기능을 이용해 주세요.');
     if (room.gameType === 'bingo') return sendError(res, 400, 'WRONG_GAME', '빙고는 자신의 숫자판에서 숫자를 선택해 주세요.');
     if (room.gameType === 'pictionary') return sendError(res, 400, 'WRONG_GAME', '그림 맞히기는 그리기와 정답 제출 기능을 이용해 주세요.');
+    if (isTwenty(room)) return sendError(res, 400, 'WRONG_GAME', '스무고개는 질문과 정답 제출 기능을 이용해 주세요.');
     if (room.gameType === 'liar') return sendError(res, 400, 'WRONG_GAME', '라이어게임은 힌트·투표·최종 추측 기능을 이용해 주세요.');
     if (isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기는 카드 뽑기를 이용해 주세요.');
     const seat = findSeat(room, session.token);
@@ -1352,7 +1407,7 @@ async function handleRoomAction(req, res, action, session) {
       const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
       room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
       room.game.endReason = 'resign';
-    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room)) {
+    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
     } else {
@@ -1428,7 +1483,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.68', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.69', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1450,7 +1505,7 @@ async function requestHandler(req, res) {
     }
     const session = createSession({ role: 'guest', label: key.label, guestKeyId: key.id });
     for (const room of rooms.values()) {
-      if (!isNumberedSeatGame(room) || room.game.status !== 'playing') continue;
+      if (!isNumberedSeatGame(room) || !(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
       const previous = Object.entries(room.participants).find(([oldToken, p]) =>
         p.guestKeyId === key.id && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
       if (!previous) continue;
@@ -1999,7 +2054,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -2054,7 +2109,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => { try { tickIdleRooms(); } catch (error) { console.error('자리비움 감지 처리 오류:', error); } }, AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.68 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.69 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -12,9 +12,9 @@ const app = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
 
 test('all thirteen games expose one shared rules selector with the original full rule text', () => {
   const games = listGames();
-  assert.equal(games.length, 13);
-  const selectedIds = [...html.matchAll(/<option value="(omok|omok2v2|connect4|yut|bingo|dots|cityking|othello|baseball|pictionary|liar|oldmaid|marathon)">/g)].map(m => m[1]);
-  assert.equal(selectedIds.length, 13);
+  assert.equal(games.length, 14);
+  const selectedIds = [...html.matchAll(/<option value="(omok|omok2v2|connect4|yut|bingo|dots|cityking|othello|baseball|pictionary|liar|oldmaid|marathon|twentyquestions)">/g)].map(m => m[1]);
+  assert.equal(selectedIds.length, 14);
   assert.deepEqual(new Set(selectedIds), new Set(games.map(g => g.id)));
   assert.equal((html.match(/class="gameRuleDetails"/g) || []).length, 0);
   assert.equal((html.match(/id="gameRulesSelect"/g) || []).length, 1);
@@ -35,8 +35,8 @@ test('announcement rows are compact with inline controls and game choice heights
   assert.match(css, /\.announcementActions\{grid-column:3;grid-row:1/);
   assert.match(css, /\.announcementList\{max-height:240px/);
   assert.match(css, /\.gameOption \.gameChoice\{width:100%;min-height:34px/);
-  assert.match(html, /styles\.css\?v=1\.6\.68/);
-  assert.match(html, /app\.js\?v=1\.6\.68/);
+  assert.match(html, /styles\.css\?v=1\.6\.69/);
+  assert.match(html, /app\.js\?v=1\.6\.69/);
 });
 
 test('shared outcome drives win and loss effects for all game IDs, 2v2 teammates, Bingo seats, and excludes draws and spectators', () => {

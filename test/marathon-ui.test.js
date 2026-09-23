@@ -21,7 +21,7 @@ test('the shared canvas board never tries to render a marathon game (it has its 
   const match = app.match(/function drawBoard\(\) \{\n\s*if \(([^)]+)\) return;/);
   assert.ok(match, 'drawBoard() early-return guard not found');
   assert.match(match[1], /state\?\.gameType === 'marathon'/);
-  assert.match(app, /canvasWrap\.classList\.toggle\('hidden', baseball \|\| bingo \|\| pictionary \|\| liar \|\| oldmaid \|\| marathon\)/);
+  assert.match(app, /canvasWrap\.classList\.toggle\('hidden', baseball \|\| bingo \|\| pictionary \|\| liar \|\| oldmaid \|\| marathon \|\| twenty\)/);
 });
 
 test('the room view passes the viewer\'s own seat into marathon\'s publicState, like liar already does', async () => {
