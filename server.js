@@ -13,11 +13,12 @@ const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
 const isTwenty = (room) => room.gameType === 'twentyquestions';
 const isDavinci = (room) => room.gameType === 'davinci';
+const isHalli = (room) => room.gameType === 'halligalli';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room);
+const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
 // seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
 function marathonSeatSlots(room) {
@@ -25,7 +26,7 @@ function marathonSeatSlots(room) {
   if (g?.mode === 'team' && g?.teamLayout === '2v2') return MARATHON_SEATS.slice(0, 4);
   return MARATHON_SEATS;
 }
-const seatsFor = (room) => isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
+const seatsFor = (room) => isHalli(room) ? MARATHON_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -503,6 +504,8 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
+      : gameEngine.id === 'halligalli'
+      ? Object.fromEntries(MARATHON_SEATS.map((seat) => [seat, null]))
       : ['pictionary', 'liar', 'twentyquestions'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
       : ['omok2v2', 'bingo'].includes(gameEngine.id)
@@ -596,7 +599,7 @@ function syncGamePause(room, allowTimeouts = true) {
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
 
-  if (isDavinci(room)) {
+  if (isDavinci(room) || isHalli(room)) {
     room.game.paused = false;
     room.game.disconnectedSeats = disconnected;
     room.turnWatch = null;
@@ -689,7 +692,7 @@ function syncGamePause(room, allowTimeouts = true) {
 // broadcasts them. It also records a Twenty Questions match if a final drawer timeout ends it.
 async function tickIdleRooms() {
   for (const room of rooms.values()) {
-    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room) || isDavinci(room)) continue;
+    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room) || isDavinci(room) || isHalli(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
     if (pauseResult?.gameFinished) {
@@ -765,7 +768,8 @@ function roomView(room, session) {
   const isHost = room.hostSessionToken === session.token;
   return {
     ...publicRoom(room),
-    game: isLiar(room) ? getGame('liar').publicState(room.game, seat)
+    game: isHalli(room) ? { ...getGame('halligalli').publicState(room.game), serverNow: nowMs() }
+      : isLiar(room) ? getGame('liar').publicState(room.game, seat)
       : isMarathon(room) ? getGame('marathon').publicState(room.game, seat)
       : publicRoom(room).game,
     me: {
@@ -808,7 +812,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) return;
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -836,7 +840,7 @@ function prepareNextRound(room) {
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) {
+  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -911,7 +915,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) ? `${seat}번`
+  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -920,7 +924,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room)) && seat
+  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -1047,6 +1051,27 @@ async function tickDavinciRooms() {
     if (room.game.status === 'finished') await recordFinishedMatch(room);
     touchRoom(room);
     broadcast(room);
+  }
+}
+
+async function tickHalliRooms() {
+  const now = nowMs();
+  const engine = getGame('halligalli');
+  for (const room of rooms.values()) {
+    if (!isHalli(room) || room.game.status !== 'playing') continue;
+    let changed = false;
+    for (const seat of room.game.seatOrder) {
+      const token = room.players[seat];
+      const connected = Boolean(room.participants[token]?.connected && sessions.get(token)?.currentRoomId === room.id);
+      const wasDisconnected = Boolean(room.game.disconnectSince[seat]);
+      if (connected) engine.reconnect(room.game, seat);
+      else engine.disconnect(room.game, seat, now);
+      if (Boolean(room.game.disconnectSince[seat]) !== wasDisconnected) changed = true;
+    }
+    syncGamePause(room, false);
+    if (!engine.tick(room.game, now) && !changed) continue;
+    if (room.game.status === 'finished') await recordFinishedMatch(room);
+    touchRoom(room); broadcast(room);
   }
 }
 
@@ -1181,6 +1206,30 @@ async function handleRoomAction(req, res, action, session) {
     const engine = getGame('liar');
     const verdict = engine.submitGuess(room.game, playerSeat, body.guess, Number(body.expectedPhaseId), nowMs());
     if (!verdict.legal) return sendError(res, 409, 'INVALID_LIAR_GUESS', engine.moveError(verdict.reason));
+  }
+
+  if (['set-halligalli-time', 'start-halligalli', 'flip-halligalli', 'ring-halligalli'].includes(action)) {
+    if (!isHalli(room)) return sendError(res, 400, 'WRONG_GAME', '할리갈리 방에서만 사용할 수 있습니다.');
+    const engine = getGame('halligalli');
+    const playerSeat = findSeat(room, session.token);
+    if (action !== 'start-halligalli' && action !== 'set-halligalli-time' && !playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
+    let verdict;
+    if (action === 'start-halligalli' || action === 'set-halligalli-time') {
+      if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 설정하거나 시작할 수 있습니다.');
+      if (action === 'set-halligalli-time') verdict = engine.setTime(room.game, Number(body.minutes));
+      else {
+        verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]), nowMs());
+        if (verdict.legal) {
+          for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+          appendSystemMessage(room, `할리갈리 시작! 제한 시간 ${room.game.durationMinutes}분입니다.`);
+        }
+      }
+    } else if (action === 'flip-halligalli') verdict = engine.flip(room.game, playerSeat, nowMs(), Number(body.expectedRevision));
+    else {
+      if (!checkRateLimit(`halli-bell:${session.token}`, 20, 10_000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '종을 너무 자주 눌렀습니다.');
+      verdict = engine.ring(room.game, playerSeat, Number(body.expectedFlipId), nowMs());
+    }
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_HALLIGALLI_ACTION', engine.moveError(verdict.reason));
   }
 
   if (action === 'start-davinci' || action === 'guess-davinci' || action === 'stop-davinci' || action === 'reveal-davinci') {
@@ -1515,6 +1564,7 @@ async function handleRoomAction(req, res, action, session) {
     if (room.gameType === 'liar') return sendError(res, 400, 'WRONG_GAME', '라이어게임은 힌트·투표·최종 추측 기능을 이용해 주세요.');
     if (isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기는 카드 뽑기를 이용해 주세요.');
     if (isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드는 타일 추측 기능을 이용해 주세요.');
+    if (isHalli(room)) return sendError(res, 400, 'WRONG_GAME', '할리갈리는 카드 뒤집기와 종 기능을 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -1555,7 +1605,7 @@ async function handleRoomAction(req, res, action, session) {
       const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
       room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
       room.game.endReason = 'resign';
-    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room)) {
+    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
     } else {
@@ -1631,7 +1681,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.73', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.74', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2205,7 +2255,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|start-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -2257,11 +2307,12 @@ async function main() {
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
+  setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.73 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.74 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
