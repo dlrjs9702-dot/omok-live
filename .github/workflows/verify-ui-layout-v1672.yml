@@ -1,0 +1,55 @@
+name: Verify UI layout v1.6.72
+
+on:
+  push:
+    branches:
+      - feature/ui-layout-v1672-20260923
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check public/twentyquestions-ui.js
+
+      - name: Run full regression suite
+        run: npm test
+
+      - name: Verify v1.6.72 UI layout invariants
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const css = fs.readFileSync('public/styles.css','utf8');
+          const app = fs.readFileSync('public/app.js','utf8');
+          const html = fs.readFileSync('public/index.html','utf8');
+          const notices = fs.readFileSync('lib/release-announcements.js','utf8');
+          if (pkg.version !== '1.6.72' || lock.version !== '1.6.72' || lock.packages[''].version !== '1.6.72') throw new Error('version mismatch');
+          if (!/app\.js\?v=1\.6\.72/.test(html) || !/styles\.css\?v=1\.6\.72/.test(html)) throw new Error('cache version mismatch');
+          if (!/function syncRoomSideHeight\(\)/.test(app)) throw new Error('sidebar height sync missing');
+          if (!/Math\.min\(boardHeight \|\| viewportBudget, viewportBudget\)/.test(app)) throw new Error('viewport cap missing');
+          if (/\.sideColumn\{[^}]*height:calc\(100vh - 32px\)/.test(css)) throw new Error('legacy fixed viewport sidebar remains');
+          if (!/\.gameLayout\.sideCollapsed \.sideColumn\{height:0;max-height:0;overflow:hidden;gap:0\}/.test(css)) throw new Error('collapsed side phantom height fix missing');
+          if (!/\.twentyQuestionLog\{[^}]*max-height:none;overflow:visible\}/.test(css)) throw new Error('Twenty Questions nested scroll fix missing');
+          if (!/key: 'v1\.6\.72'/.test(notices)) throw new Error('release notice missing');
+          NODE
