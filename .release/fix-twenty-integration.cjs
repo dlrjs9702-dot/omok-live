@@ -13,3 +13,4 @@ if (script.includes(before) && script.includes(second)) {
   console.log('Integration script already corrected');
 } else throw Error('Unexpected integration script layout');
 require('./refresh-twenty-cache-tests.cjs');
+require('./refresh-twenty-registry-tests.cjs');
