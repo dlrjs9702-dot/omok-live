@@ -2,6 +2,15 @@
 
 릴리스별 구현·검증의 기술 이력이다. 현재 코드·버전은 [omok-live main](https://github.com/dlrjs9702-dot/omok-live), 진행 작업과 담당은 비공개 [STATUS.md](https://github.com/dlrjs9702-dot/gamecenter-notes/blob/main/STATUS.md), 확정 결정은 비공개 [IDEAS.md](https://github.com/dlrjs9702-dot/gamecenter-notes/blob/main/IDEAS.md)를 확인한다. 운영 배포 상태는 Render에서 조회하고 공통 작업 규칙은 [AGENTS.md](AGENTS.md)를 따른다.
 
+## 데이터 저장 구조
+
+- `DATABASE_URL`이 설정된 환경의 PostgreSQL: 입장키·닉네임·관리자 메모·공지사항과 전체 게임 누적 전적/대전 결과를 영구 저장한다. 개발용 환경에서 `DATABASE_URL`이 없으면 각 저장소 모듈의 JSON 파일 방식을 사용한다. 구현 근거: `lib/access-store.js`, `lib/announcement-store.js`, `lib/match-records.js` 및 `server.js`.
+- 서버 메모리: 게임방, 진행 중 대국, 세션, 초대, 로비·방 채팅(재배포하면 초기화). 실제 운영 배포 상태와 PostgreSQL 만료 대응은 Render 및 비공개 `STATUS.md`에서 확인한다.
+
+## 코드 위치 참고
+
+- 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
+
 ## 릴리스 이력 (색인)
 
 전체 공지 문구는 `lib/release-announcements.js`에 릴리스별로 저장되어 있다(코드가 원본, 아래는 목차용 요약).
@@ -51,10 +60,10 @@
 - v1.6.66 빙고 판 크기(5×5/7×7)와 숫자 범위(1~50/75/100/150)를 방장이 게임 시작 전 선택 가능
 - v1.6.67 윷놀이: 출발 직후 첫 칸에서 빽도를 맞으면 완주 직전 칸으로 (전통 규칙 반영)
 - v1.6.68 윷놀이: 완주 직전 칸을 넘어가는 눈이면 그 던지기 안에서 바로 완주
-- v1.6.69 스무고개 신규 추가(2~8명 개인전·협동전, 1~10라운드, 20회 질문/정답 행동, 최종 정답 기회, 누적 점수)
-- v1.6.70 로비의 일반 게임/게임 구현중 패널 분리 및 각각 접기·펼치기, 랜드킹·마라톤을 구현중으로 이동
-- v1.6.71 스무고개 출제자 채팅 제한 및 후속 핫픽스(일반 정답 시도 20회 한도 포함, 도전자 무응답 자동 턴 넘김, 연결 끊김·출제자 무응답 전용 처리)
-- **v1.6.72 공통 게임방 UI 높이·스크롤 정리** — 아래 상세
+- v1.6.69 스무고개 신규 추가(2~8명 개인전·협동전, 1~10라운드, 20회 질문/정답 행동, 최종 정답 기회, 누적 점수) — [PR #5](https://github.com/dlrjs9702-dot/omok-live/pull/5) / main [1480871](https://github.com/dlrjs9702-dot/omok-live/commit/1480871b40021b6320421f137eaf1d0bc8207f7c)
+- v1.6.70 로비의 일반 게임/게임 구현중 패널 분리 및 각각 접기·펼치기, 랜드킹·마라톤을 구현중으로 이동 — [PR #6](https://github.com/dlrjs9702-dot/omok-live/pull/6) / main [f28c3e7](https://github.com/dlrjs9702-dot/omok-live/commit/f28c3e7a64d94de7023abdb80442c4034c921887)
+- v1.6.71 스무고개 출제자 채팅 제한 및 후속 핫픽스(일반 정답 시도 20회 한도 포함, 도전자 무응답 자동 턴 넘김, 연결 끊김·출제자 무응답 전용 처리) — [PR #7](https://github.com/dlrjs9702-dot/omok-live/pull/7) / main [069a328](https://github.com/dlrjs9702-dot/omok-live/commit/069a32848a8227ba36bdb547e3f336d74f62f254); 후속 [PR #8](https://github.com/dlrjs9702-dot/omok-live/pull/8) / [c965ee9](https://github.com/dlrjs9702-dot/omok-live/commit/c965ee9d61731f941ebc59fdd79aedc557693ea5), [PR #9](https://github.com/dlrjs9702-dot/omok-live/pull/9) / [e273a91](https://github.com/dlrjs9702-dot/omok-live/commit/e273a9192e4d756425015c9b5a0d41132a1ae8c3), [PR #10](https://github.com/dlrjs9702-dot/omok-live/pull/10) / [96b362b](https://github.com/dlrjs9702-dot/omok-live/commit/96b362bfdeff825905788cd0571fcef860218a4c)
+- **v1.6.72 공통 게임방 UI 높이·스크롤 정리** — [PR #11](https://github.com/dlrjs9702-dot/omok-live/pull/11) / main [590e713](https://github.com/dlrjs9702-dot/omok-live/commit/590e71378ee0b724caa8991327b075ccacc4798b) (검증 기준 `e56f3ea`는 PR 브랜치 커밋) — 아래 상세
 
 v1.6.23 이전(v1.6.7~v1.6.16 공지 복원 포함)의 세부 이력은 `lib/release-announcements.js`의 git 이력 및 해당 파일 내 각 항목 본문을 참고한다. 이 문서에서는 별도로 중복 기술하지 않는다.
 
