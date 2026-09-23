@@ -1,0 +1,46 @@
+name: Temporary verify v1.6.70 lobby panels
+
+on:
+  push:
+    branches:
+      - feature/lobby-game-panels-v1670-20260923
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          git diff --check HEAD^ HEAD
+      - name: Full regression suite
+        run: npm test
+      - name: Verify lobby panel release
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          const html = fs.readFileSync('public/index.html','utf8');
+          const css = fs.readFileSync('public/styles.css','utf8');
+          const notices = fs.readFileSync('lib/release-announcements.js','utf8');
+          if (pkg.version !== '1.6.70' || lock.version !== '1.6.70' || lock.packages[''].version !== '1.6.70') throw new Error('version mismatch');
+          if (!html.includes('<details class="gameListPanel" open>')) throw new Error('main game panel not collapsible');
+          if (!html.includes('<details class="developmentGamesPanel" open')) throw new Error('development panel not collapsible');
+          if (!html.includes('<strong>랜드킹</strong>') || html.includes('랜드킹(업데이트)')) throw new Error('Landking label mismatch');
+          if ((html.match(/data-game-option="cityking"/g) || []).length !== 1) throw new Error('Landking duplicate');
+          if ((html.match(/data-game-option="marathon"/g) || []).length !== 1) throw new Error('Marathon duplicate');
+          if (!css.includes('.gameListPanel:not([open])') || !css.includes('.developmentGamesPanel:not([open])')) throw new Error('collapsed panel CSS missing');
+          if (!html.includes('styles.css?v=1.6.70') || !html.includes('app.js?v=1.6.70')) throw new Error('cache version mismatch');
+          if (!notices.includes("key: 'v1.6.70'")) throw new Error('release notice missing');
+          NODE
