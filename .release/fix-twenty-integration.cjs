@@ -12,3 +12,4 @@ if (script.includes(before) && script.includes(second)) {
 } else if (script.includes('Unexpected package-lock version layout')) {
   console.log('Integration script already corrected');
 } else throw Error('Unexpected integration script layout');
+require('./refresh-twenty-cache-tests.cjs');
