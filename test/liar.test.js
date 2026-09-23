@@ -179,9 +179,9 @@ test('three rounds retain scores, reveal prior round, avoid repeated words, and 
   assert.deepEqual(g.scores, {});
 });
 
-// v1.6.42: client-side chat lock for the liar game's hint phases only -- gated on isLiarGame() so
-// no other game's chat can ever be affected, and only while phase is one of the three hint stages.
-test('room chat is disabled client-side only during the liar game hint phases', async () => {
+// v1.6.42+: liar hint phases remain chat-locked; the shared chat lock dispatcher can also
+// enforce other game-specific locks without weakening the liar-game rule.
+test('room chat keeps the liar hint-phase lock inside the shared chat lock dispatcher', async () => {
   const root = path.join(__dirname, '..');
   const html = await fs.readFile(path.join(root, 'public/index.html'), 'utf8');
   const js = await fs.readFile(path.join(root, 'public/app.js'), 'utf8');
@@ -192,5 +192,6 @@ test('room chat is disabled client-side only during the liar game hint phases', 
   assert.match(js, /chatInput\.disabled = locked/);
   assert.match(js, /chatSendBtn\.disabled = locked/);
   assert.match(js, /chatLockNotice\.classList\.toggle\('hidden', !locked\)/);
-  assert.match(js, /if \(chatLockedForHints\(\)\) return;/);
+  assert.match(js, /if \(chatLockedForHints\(\)\) return '힌트 진행 중에는 채팅할 수 없습니다'/);
+  assert.match(js, /if \(chatLockMessage\(\)\) return;/);
 });

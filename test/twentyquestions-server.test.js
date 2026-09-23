@@ -61,7 +61,7 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   const guest = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.70');
+  assert.equal(health.data.version, '1.6.71');
   assert.equal(health.data.games.includes('twentyquestions'), true);
   const created = await req('/api/rooms', host, { gameType: 'twentyquestions', visibility: 'public' });
   assert.equal(created.status, 201);
@@ -79,6 +79,11 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   assert.equal(opened.status, 200);
   assert.equal(opened.data.state.game.roundNumber, 1);
   assert.equal(opened.data.state.game.drawerSeat, '1');
+  const drawerChatBlocked = await req('/api/room/chat', host, { text: '출제자 채팅' });
+  assert.equal(drawerChatBlocked.status, 409);
+  assert.equal(drawerChatBlocked.data.error, 'TWENTY_DRAWER_CHAT_LOCKED');
+  assert.equal((await req('/api/room/chat', guest, { text: '도전자 채팅' })).status, 200);
+  assert.equal((await req('/api/room/chat', watcher, { text: '관전자 채팅' })).status, 200);
   assert.equal((await req('/api/room/twenty-secret', watcher, { secret: '비밀' })).status, 403);
   assert.equal((await req('/api/room/twenty-secret', guest, { secret: '비밀' })).status, 409);
   const secret = '비밀비행기';
@@ -110,6 +115,8 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   assert.equal(next.status, 200);
   assert.equal(next.data.state.game.drawerSeat, '2');
   assert.equal(next.data.state.game.roundNumber, 2);
+  assert.equal((await req('/api/room/chat', host, { text: '이제 도전자 채팅' })).status, 200);
+  assert.equal((await req('/api/room/chat', guest, { text: '둘째 출제자 채팅' })).status, 409);
   assert.equal((await req('/api/room/twenty-secret', guest, { secret: '둘째정답' })).status, 200);
   assert.equal((await req('/api/room/twenty-guess', host, { guess: '둘째정답' })).status, 200);
   const finished = await req('/api/room/twenty-judge', guest, { correct: true });
@@ -120,4 +127,9 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   assert.deepEqual(finished.data.state.game.scores, { '1': 1, '2': 1 });
   assert.equal(finished.data.state.game.roundResults.length, 2);
   assert.equal((await req('/api/room/twenty-guess', host, { guess: '셋째' })).status, 409);
+
+  const appSource = await fs.readFile(path.join(__dirname, '..', 'public/app.js'), 'utf8');
+  assert.match(appSource, /function chatLockedForTwentyDrawer\(\)/);
+  assert.match(appSource, /String\(seat\) === String\(g\.drawerSeat\)/);
+  assert.match(appSource, /출제자는 스무고개 진행 중 채팅할 수 없습니다/);
 });
