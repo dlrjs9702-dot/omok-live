@@ -198,8 +198,10 @@ const css = 'public/styles.css';
 files.set(css, read(css) + `\n/* Twenty Questions: scoped layout; existing game/side panel layouts unchanged. */\n.twentyPanel{padding:18px;display:grid;gap:12px;min-width:0}.twentyHeading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.twentyHeading h3,.twentyPanel h4{margin:0}.twentyCategory{background:#1e3a8a;color:#fff;padding:12px;border-radius:12px;font-weight:800}.twentyStatus,.twentyPrivate,.twentyResult{margin:0;padding:12px;border-radius:12px;background:#1f2937;color:#f1f5f9;line-height:1.5}.twentyPrivate{border:1px solid #64748b}.twentyResult{background:#14532d}.twentyScoreboard{display:grid;gap:8px}.twentyScore{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid #64748b;border-radius:10px}.twentyQuestionLog{display:grid;gap:9px;margin:0;padding:0 0 0 22px;max-height:440px;overflow-y:auto}.twentyQuestionLog li,.twentyGuessLog p{padding:9px;border-bottom:1px solid #475569;line-height:1.5;overflow-wrap:anywhere}.twentyActionPanel{display:grid;gap:12px;padding:12px 0}.twentyHostSetup,.twentyJudgeBox{display:grid;gap:9px}.twentyAnswerButtons,.twentyRecommendations{display:flex;flex-wrap:wrap;gap:8px}.twentyAnswerButtons button{flex:1 1 100px}.twentyActionPanel input,.twentyActionPanel select{width:100%;max-width:100%;box-sizing:border-box}.twentyPanel.hidden,.twentyActionPanel.hidden,.twentyHostSetup.hidden,.twentyJudgeBox.hidden{display:none!important}\n`);
 
 replace('package.json', '"version": "1.6.68"', '"version": "1.6.69"');
-replace('package-lock.json', '"version": "1.6.31"', '"version": "1.6.69"');
-replace('package-lock.json', '      "version": "1.6.31",', '      "version": "1.6.69",');
+const lock = read('package-lock.json');
+if ((lock.match(/"version": "1\.6\.31"/g) || []).length !== 2) throw Error('Unexpected package-lock version layout');
+files.set('package-lock.json', lock.replace(/^  "version": "1\.6\.31",/m, '  "version": "1.6.69",').replace(/^      "version": "1\.6\.31",/m, '      "version": "1.6.69",'));
+
 replace(server, "version: '1.6.68'", "version: '1.6.69'");
 replace(server, '게임 서버 v1.6.68 실행', '게임 서버 v1.6.69 실행');
 for (const [file, content] of files) fs.writeFileSync(file, content, 'utf8');

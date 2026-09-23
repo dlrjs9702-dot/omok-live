@@ -1134,7 +1134,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -1151,7 +1151,8 @@
   function isOldMaidGame() { return state?.gameType === 'oldmaid'; }
   function isCityKingGame() { return state?.gameType === 'cityking'; }
   function isMarathonGame() { return state?.gameType === 'marathon'; }
-  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame(); }
+  function isTwentyGame() { return state?.gameType === 'twentyquestions'; }
+  function isNumberedSeatGame() { return isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame(); }
   // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
   // seats; individual/3v3/2v2v2 use all 6) -- mirrors server.js's marathonSeatSlots().
   function marathonSeatSlots() {
@@ -1159,7 +1160,7 @@
     if (g?.mode === 'team' && g?.teamLayout === '2v2') return ['1','2','3','4'];
     return ['1','2','3','4','5','6'];
   }
-  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
+  function numberedSeats() { return isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame() || isTwentyGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   // Mirrors marathon.js's groupForSeat(): odd/even split for 2v2 and 3v3, a 1-of-3 cycle for
   // 2v2v2. Only meaningful once the host has picked team mode; individual mode has no groups.
   function marathonGroupForSeat(seat) {
@@ -1178,7 +1179,7 @@
     // produce an array (ties, or "everyone but the loser"); resigning in bingo/pictionary/liar/
     // oldmaid can now also produce either shape depending on how many seats are left, so all five
     // are normalized the same way here rather than assuming one fixed shape per game.
-    if (['bingo', 'cityking', 'pictionary', 'liar', 'oldmaid'].includes(gameType)) {
+    if (['bingo', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions'].includes(gameType)) {
       const winners = Array.isArray(game.winner) ? game.winner.map(String) : [String(game.winner)];
       return winners.includes(String(playerSeat)) ? 'win' : 'loss';
     }
@@ -1213,6 +1214,7 @@
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
     "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
+    "twentyquestions": "2~8인 개인전·협동전. 1~10라운드 및 출제 횟수 추천 선택. 무작위 카테고리를 보고 출제자가 비밀 정답을 정합니다. 도전자는 순서대로 질문 20개 또는 질문 대신 정답을 제출하고, 출제자는 예·아니오·비슷함·애매함으로 답하며 정답을 직접 판정합니다. 오답이면 다음 사람 차례이며 질문 20개 후 모두 최종 정답 기회 1회씩 받습니다. 개인전 정답자는 +1점, 협동전 성공 시 도전자 전원 +1점, 전원 실패 시 출제자 +1점. 최종 최고점 공동 우승 가능.",
     "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다.",
     "oldmaid": "2~4명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다.",
     "marathon": "2~6인 개인전 또는 4인 2대2·6인 3대3·6인 2대2대2 팀전. 주사위 1개를 굴려 이동하고, 도착한 칸마다(같은 칸 재방문 포함) 타이핑·기억력·반응·계산 미션이 매번 새로 나옵니다. 제한시간 안에 맞히면 그 자리에 머물고, 못 맞히면 2칸 뒤로 물러나며 그 자리에서 새 미션이 바로 이어집니다. 30칸 이상 도달하면 즉시 승리합니다. 팀전은 말 하나를 공유하며 팀원끼리 주사위를 돌아가며 굴리고 미션은 팀원 누구나 제출할 수 있습니다."
@@ -1222,7 +1224,7 @@
   }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
@@ -2396,6 +2398,7 @@
     const oldmaid = isOldMaidGame();
     const city = isCityKingGame();
     const marathon = isMarathonGame();
+    const twenty = isTwentyGame();
     // Land King is host-started like bingo/oldmaid, so this strip only ever shows seats the
     // engine actually knows about once playing; before start it still lists every open seat.
     const seats = city && state.game.status !== 'selecting' ? (state.game.seatOrder || []) : numberedSeats();
@@ -2405,11 +2408,11 @@
       const color = seatColor(number);
       const marathonGroup = marathon ? (state.game.mode === 'team' ? marathonGroupForSeat(number) : number) : null;
       const marathonRoller = marathon && state.game.status === 'playing' && state.game.currentRoller === number;
-      const currentTurn = pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
+      const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
       const eliminated = city && state.game.players?.[number]?.eliminated;
-      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon || twenty) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       const title = document.createElement('strong');
-      title.textContent = pictionary
+      title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
         : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
         : oldmaid ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 뽑기 차례' : ''}`
@@ -2420,7 +2423,7 @@
       const name = document.createElement('small');
       const marathonPos = marathon && state.game.status === 'playing' ? (state.game.positions?.[marathonGroup] ?? 0) : null;
       name.textContent = player
-        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : marathon && marathonPos !== null ? ` · ${marathonPos}칸` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : marathon && marathonPos !== null ? ` · ${marathonPos}칸` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -2441,6 +2444,7 @@
     const liar = isLiarGame();
     const oldmaid = isOldMaidGame();
     const marathon = isMarathonGame();
+    const twenty = isTwentyGame();
     const team = isTeamGame();
     const numbered = isNumberedSeatGame();
     const seats = numberedSeats();
@@ -2450,7 +2454,7 @@
     teamRoleButtons.classList.toggle('hidden', !numbered);
     roleChooser.classList.toggle('hidden', !selecting);
     if (numbered) {
-      roleChooser.querySelector('small').textContent = pictionary
+      roleChooser.querySelector('small').textContent = twenty ? '2~8명이 자리를 선택합니다. 방장이 개인전/협동전과 1~10라운드를 정한 후 시작합니다.' : pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
         : oldmaid ? '2~4명이 자리를 선택할 수 있습니다. 방장이 시작하면 카드를 나누고 짝을 자동으로 버립니다.'
@@ -2464,7 +2468,7 @@
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (bingo || pictionary || liar || oldmaid || city) ? `${number}번 자리`
+        button.textContent = (bingo || pictionary || liar || oldmaid || city || twenty) ? `${number}번 자리`
           : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroupForSeat(number)}팀` : ''}`
           : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
@@ -2562,14 +2566,15 @@
 
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
+    const twenty = isTwentyGame();
     const oldmaid = isOldMaidGame();
-    roundNumber.textContent = pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : liar ? `${g.roundNumber || 0}/${g.totalRounds || 1}판` : `${g.round || 1}판`;
-    moveCountLabel.textContent = pictionary ? '진행 라운드' : liar ? '진행 행동' : oldmaid ? '뽑기 횟수' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
+    roundNumber.textContent = twenty ? `${g.roundNumber || 0}/${g.totalRounds || '?'}라운드` : pictionary ? `${g.roundNumber || 1}/${g.totalRounds || 0}라운드` : liar ? `${g.roundNumber || 0}/${g.totalRounds || 1}판` : `${g.round || 1}판`;
+    moveCountLabel.textContent = twenty ? '진행 행동' : pictionary ? '진행 라운드' : liar ? '진행 행동' : oldmaid ? '뽑기 횟수' : state.gameType === 'baseball' ? '추측 횟수' : state.gameType === 'yut' ? '말 이동 수' : state.gameType === 'bingo' ? '선택 수' : state.gameType === 'dots' ? '그은 선 수' : state.gameType === 'cityking' ? '진행 수' : '착수 수';
     moveCount.textContent = String(g.moveCount || 0);
     mySeat.textContent = seat ? seatKo(seat) : choiceKo(state.me?.choice);
     connectedCount.textContent = `${state.connectedCount || 0}명`;
     spectatorCount.textContent = `${state.spectatorCount || 0}명`;
-    const scores = !pictionary && !liar && g.scores;
+    const scores = !pictionary && !liar && !twenty && g.scores;
     gameScoreRow.classList.toggle('hidden', !scores);
     gameScoreText.textContent = scores ? (state.gameType === 'yut'
       ? `파랑 완주 ${scores.black} · 빨강 완주 ${scores.white}`
@@ -2584,7 +2589,9 @@
     const pauseStatusText = g.status === 'playing' && g.paused
       ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 응답 대기`
       : null;
-    if (isMarathonGame()) {
+    if (twenty) {
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '스무고개 · 방장 시작 대기' : g.status === 'round-ended' ? '라운드 결과 · 다음 라운드 대기' : g.status === 'finished' ? '스무고개 종료' : `스무고개 · ${g.category || '카테고리 선택'} · ${g.phase || '준비'}`);
+    } else if (isMarathonGame()) {
       // Marathon has its own dedicated status line (marathonStatus, set inside renderMarathon())
       // since its turn model (roll vs. mission phase, individual seats vs. team groups) doesn't
       // fit this shared ternary chain -- this shared header just needs to not show stale/wrong
@@ -2675,7 +2682,7 @@
     const bingo = state.gameType === 'bingo';
     const city = state.gameType === 'cityking';
     const marathon = isMarathonGame();
-    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid || marathon);
+    canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid || marathon || twenty);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     baseballPanel.classList.toggle('hidden', !baseball);
@@ -2731,6 +2738,9 @@
     liarHintForm.classList.toggle('hidden', !liar);
     liarGuessForm.classList.toggle('hidden', !liar);
     if (liar) renderLiar();
+    document.getElementById('twentyPanel').classList.toggle('hidden', !twenty);
+    document.getElementById('twentyActionPanel').classList.toggle('hidden', !twenty);
+    if (twenty) window.TwentyQuestionsUI.render(state);
     oldmaidPanel.classList.toggle('hidden', !oldmaid);
     oldmaidStartBtn.classList.toggle('hidden', !oldmaid);
     oldmaidModeChooser.classList.toggle('hidden', !oldmaid);
@@ -2742,7 +2752,7 @@
     marathonAnswerForm.classList.toggle('hidden', !marathon);
     if (marathon) renderMarathon();
     else if (marathonMemoryHideTimer) { clearTimeout(marathonMemoryHideTimer); marathonMemoryHideTimer = null; marathonMemoryHideKey = null; }
-    if (pictionary || liar || oldmaid || marathon) {
+    if (pictionary || liar || oldmaid || marathon || twenty) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -2780,7 +2790,7 @@
       boardOverlay.classList.add('hidden');
     }
 
-    drawBoard();
+    if (!twenty) drawBoard();
   }
 
   function renderBaseball() {
@@ -4720,7 +4730,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid') return false;
+    if (state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'twentyquestions') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (state.game.paused) return false;
     if (isTeamGame() ? state.game.nextSeat !== seat : state.game.turn !== seat) return false;
@@ -5076,6 +5086,7 @@
     roomAction('move', state?.gameType === 'connect4' ? { x: p.x } : p);
   });
 
+  window.TwentyQuestionsUI.init(roomAction);
   selectGame('omok');
   drawBoard();
   loadSession();
