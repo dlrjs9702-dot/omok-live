@@ -81,7 +81,7 @@ test('Twenty Questions HTTP: host starts, secret stays private, turns and two-ro
   assert.equal(opened.data.state.game.drawerSeat, '1');
   const drawerChatBlocked = await req('/api/room/chat', host, { text: '출제자 채팅' });
   assert.equal(drawerChatBlocked.status, 409);
-  assert.equal(drawerChatBlocked.data.code, 'TWENTY_DRAWER_CHAT_LOCKED');
+  assert.equal(drawerChatBlocked.data.error, 'TWENTY_DRAWER_CHAT_LOCKED');
   assert.equal((await req('/api/room/chat', guest, { text: '도전자 채팅' })).status, 200);
   assert.equal((await req('/api/room/chat', watcher, { text: '관전자 채팅' })).status, 200);
   assert.equal((await req('/api/room/twenty-secret', watcher, { secret: '비밀' })).status, 403);
