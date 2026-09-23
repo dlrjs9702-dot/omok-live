@@ -1,0 +1,28 @@
+name: Verify Twenty Questions guess limit
+
+on:
+  push:
+    branches:
+      - fix/twenty-questions-guess-limit-v1672
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check lib/games/twentyquestions.js
+          node --check public/twentyquestions-ui.js
+          node --check test/twentyquestions.test.js
+          git diff --check HEAD^ HEAD
+      - name: Full regression suite
+        run: npm test
