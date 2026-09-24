@@ -248,6 +248,30 @@ function createSession({ role, label, guestKeyId = null }) {
   return session;
 }
 
+// Session tokens are intentionally short-lived and browser-specific. Guest keys are the
+// durable identity that must survive a refresh, reconnect, or a browser handoff, while an
+// admin session is only durable for the lifetime of that login.
+function sessionIdentity(session) {
+  if (!session) return null;
+  return session.guestKeyId ? `guest:${session.guestKeyId}` : `admin:${session.publicId}`;
+}
+
+function participantIdentity(participant) {
+  if (!participant) return null;
+  if (participant.identity) return participant.identity;
+  if (participant.guestKeyId) return `guest:${participant.guestKeyId}`;
+  return participant.recordId || null;
+}
+
+function isRoomHost(room, session) {
+  if (!room || !session) return false;
+  const identity = sessionIdentity(session);
+  if (room.hostIdentity && room.hostIdentity === identity) return true;
+  const oldHost = room.participants?.[room.hostSessionToken];
+  return room.hostSessionToken === session.token
+    || (!room.hostIdentity && participantIdentity(oldHost) === identity);
+}
+
 function releaseSessionToken(token, { message = null } = {}) {
   const session = sessions.get(token);
   if (!session) return false;
@@ -467,6 +491,7 @@ function uniqueLiveTokens(roomId) {
 function newParticipant(session, connected = false) {
   return {
     sessionToken: session.token,
+    identity: sessionIdentity(session), // stable within the room; sessionToken is not
     label: session.label,
     guestKeyId: session.guestKeyId, // server-only identity for interrupted game reconnection
     role: session.role,
@@ -495,6 +520,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     createdAt: t,
     updatedAt: t,
     hostSessionToken: hostSession.token,
+    hostIdentity: sessionIdentity(hostSession),
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
@@ -517,25 +543,34 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 function registerParticipant(room, session) {
   const isNew = !room.participants[session.token];
   let reclaimedSeat = null;
-  if (isNew && isNumberedSeatGame(room) && session.guestKeyId) {
+  let previousChoice = null;
+  if (isNew && session.guestKeyId) {
     for (const [oldToken, old] of Object.entries(room.participants)) {
-      if (old.guestKeyId !== session.guestKeyId || old.connected || sessions.has(oldToken)) continue;
+      if (oldToken === session.token || participantIdentity(old) !== sessionIdentity(session)
+        || old.connected || sessions.has(oldToken)) continue;
       const oldSeat = findSeat(room, oldToken);
-      if (!oldSeat) continue;
-      room.players[oldSeat] = session.token;
-      if (room.hostSessionToken === oldToken) room.hostSessionToken = session.token;
+      const isReconnectingHost = room.hostIdentity === sessionIdentity(session)
+        || room.hostSessionToken === oldToken;
+      if (!isReconnectingHost && (!oldSeat || !old.rejoinable)) continue;
+      if (oldSeat) {
+        room.players[oldSeat] = session.token;
+        reclaimedSeat = oldSeat;
+      }
+      previousChoice = old.choice;
+      if (isReconnectingHost || room.hostSessionToken === oldToken) room.hostSessionToken = session.token;
       delete room.participants[oldToken];
-      reclaimedSeat = oldSeat;
       break;
     }
   }
   if (isNew) room.participants[session.token] = newParticipant(session, true);
   const p = room.participants[session.token];
   if (reclaimedSeat) p.choice = reclaimedSeat;
+  else if (previousChoice) p.choice = previousChoice;
   p.label = session.label;
   p.connected = true;
   p.rejoinable = false;
   p.lastSeen = nowIso();
+  if (room.hostIdentity === sessionIdentity(session)) room.hostSessionToken = session.token;
   if (room.game.status !== 'selecting' && !findSeat(room, session.token)) p.choice = 'spectator';
   if (isNew) appendSystemMessage(room, (session.label || '게스트') + '님이 입장했습니다.');
   return p;
@@ -727,7 +762,8 @@ function publicParticipants(room) {
       connected: Boolean(p.connected || live.has(p.sessionToken)),
       seat: findSeat(room, p.sessionToken),
       choice: p.choice || null,
-      isHost: room.hostSessionToken === p.sessionToken,
+      isHost: (room.hostIdentity && room.hostIdentity === participantIdentity(p))
+        || room.hostSessionToken === p.sessionToken,
     }))
     .sort((a, b) => Number(b.isHost) - Number(a.isHost) || a.label.localeCompare(b.label, 'ko'));
 }
@@ -759,7 +795,7 @@ function publicRoom(room) {
 function roomView(room, session) {
   const p = room.participants[session.token] || null;
   const seat = findSeat(room, session.token);
-  const isHost = room.hostSessionToken === session.token;
+  const isHost = isRoomHost(room, session);
   return {
     ...publicRoom(room),
     game: isHalli(room) ? { ...getGame('halligalli').publicState(room.game), serverNow: nowMs() }
@@ -1084,7 +1120,7 @@ async function handleRoomAction(req, res, action, session) {
   if (action.startsWith('twenty-')) {
     if (!isTwenty(room)) return sendError(res, 400, 'WRONG_GAME', '스무고개 방에서만 사용할 수 있습니다.');
     const engine = getGame('twentyquestions');
-    if (['twenty-start', 'twenty-next'].includes(action) && room.hostSessionToken !== session.token) {
+    if (['twenty-start', 'twenty-next'].includes(action) && !isRoomHost(room, session)) {
       return sendError(res, 403, 'HOST_ONLY', '방장만 게임 시작과 다음 라운드를 진행할 수 있습니다.');
     }
     if (action === 'twenty-start') {
@@ -1159,7 +1195,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-liar-rounds') {
     if (!isLiar(room)) return sendError(res, 400, 'WRONG_GAME', '라이어게임 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 판 수를 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 판 수를 변경할 수 있습니다.');
     const engine = getGame('liar');
     const verdict = engine.setRounds(room.game, Number(body.totalRounds));
     if (!verdict.legal) return sendError(res, 409, 'INVALID_LIAR_SETTING', engine.moveError(verdict.reason));
@@ -1167,7 +1203,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-liar') {
     if (!isLiar(room)) return sendError(res, 400, 'WRONG_GAME', '라이어게임 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 라이어게임을 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 라이어게임을 시작할 수 있습니다.');
     const seats = seatsFor(room).filter(seatNumber => room.players[seatNumber]);
     const engine = getGame('liar');
     const verdict = engine.start(room.game, seats, nowMs());
@@ -1210,7 +1246,7 @@ async function handleRoomAction(req, res, action, session) {
     if (action !== 'start-halligalli' && action !== 'set-halligalli-time' && !playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
     let verdict;
     if (action === 'start-halligalli' || action === 'set-halligalli-time') {
-      if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 설정하거나 시작할 수 있습니다.');
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 설정하거나 시작할 수 있습니다.');
       if (action === 'set-halligalli-time') verdict = engine.setTime(room.game, Number(body.minutes));
       else {
         verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]), nowMs());
@@ -1234,7 +1270,7 @@ async function handleRoomAction(req, res, action, session) {
     if (action !== 'start-davinci' && !playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
     let verdict;
     if (action === 'start-davinci') {
-      if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 시작할 수 있습니다.');
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 시작할 수 있습니다.');
       verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]), nowMs());
       if (verdict.legal) {
         for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
@@ -1248,7 +1284,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-oldmaid-mode') {
     if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 모드를 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 모드를 변경할 수 있습니다.');
     const engine = getGame('oldmaid');
     const verdict = engine.setMode(room.game, body.mode);
     if (!verdict.legal) return sendError(res, 409, 'INVALID_OLDMAID_MODE', engine.moveError(verdict.reason));
@@ -1256,7 +1292,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-oldmaid') {
     if (!isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 도둑잡기를 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 도둑잡기를 시작할 수 있습니다.');
     const players = seatsFor(room).filter(n => room.players[n]);
     const engine = getGame('oldmaid');
     const verdict = engine.start(room.game, players);
@@ -1321,7 +1357,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-marathon-config') {
     if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 설정을 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 설정을 변경할 수 있습니다.');
     const engine = getGame('marathon');
     const verdict = engine.configure(room.game, { mode: body.mode, teamLayout: body.teamLayout, difficulty: body.difficulty });
     if (!verdict.legal) return sendError(res, 409, 'INVALID_MARATHON_CONFIG', engine.moveError(verdict.reason));
@@ -1329,7 +1365,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-marathon') {
     if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 마라톤을 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 마라톤을 시작할 수 있습니다.');
     const seats = seatsFor(room).filter(n => room.players[n]);
     const engine = getGame('marathon');
     const verdict = engine.start(room.game, seats);
@@ -1363,7 +1399,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-bingo-target') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 승리 조건을 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 승리 조건을 변경할 수 있습니다.');
     const engine = getGame('bingo');
     const verdict = engine.setTarget(room.game, Number(body.targetLines));
     if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_TARGET', engine.moveError(verdict.reason));
@@ -1371,7 +1407,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-bingo-grid') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 판 크기를 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 판 크기를 변경할 수 있습니다.');
     const engine = getGame('bingo');
     const verdict = engine.setGridSize(room.game, Number(body.gridSize));
     if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_GRID', engine.moveError(verdict.reason));
@@ -1379,7 +1415,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'set-bingo-pool') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 숫자 범위를 변경할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 숫자 범위를 변경할 수 있습니다.');
     const engine = getGame('bingo');
     const verdict = engine.setPoolMax(room.game, Number(body.poolMax));
     if (!verdict.legal) return sendError(res, 409, 'INVALID_BINGO_POOL', engine.moveError(verdict.reason));
@@ -1387,7 +1423,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-bingo') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 빙고를 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 빙고를 시작할 수 있습니다.');
     const seats = TEAM_SEATS.filter(seat => room.players[seat]);
     const engine = getGame('bingo');
     const verdict = engine.start(room.game, seats);
@@ -1409,7 +1445,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-pictionary') {
     if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 그림 맞히기를 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 그림 맞히기를 시작할 수 있습니다.');
     const seats = PICTIONARY_SEATS.filter(seat => room.players[seat]);
     const engine = getGame('pictionary');
     const verdict = engine.start(room.game, seats);
@@ -1497,7 +1533,7 @@ async function handleRoomAction(req, res, action, session) {
 
   if (action === 'start-city') {
     if (!isCityKing(room)) return sendError(res, 400, 'WRONG_GAME', '랜드킹 방에서만 시작할 수 있습니다.');
-    if (room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 랜드킹을 시작할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 랜드킹을 시작할 수 있습니다.');
     const seats = seatsFor(room).filter(seatNumber => room.players[seatNumber]);
     const engine = getGame('cityking');
     const verdict = engine.start(room.game, seats);
@@ -1676,7 +1712,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.77', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.78', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -1697,15 +1733,31 @@ async function requestHandler(req, res) {
       );
     }
     const session = createSession({ role: 'guest', label: key.label, guestKeyId: key.id });
+    const identity = sessionIdentity(session);
+    // A host owns the room by guest-key identity, not by the old browser session token. This
+    // also covers the selecting/finished states where a host may not have chosen a seat yet.
     for (const room of rooms.values()) {
-      if (!isNumberedSeatGame(room) || !(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
-      const previous = Object.entries(room.participants).find(([oldToken, p]) =>
-        p.guestKeyId === key.id && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
-      if (!previous) continue;
+      if (room.hostIdentity !== identity) continue;
+      const previousHost = Object.entries(room.participants).find(([oldToken, p]) =>
+        participantIdentity(p) === identity && oldToken !== session.token
+        && !p.connected && !sessions.has(oldToken));
+      if (!previousHost && sessions.has(room.hostSessionToken)) continue;
       session.currentRoomId = room.id;
       registerParticipant(room, session);
       broadcast(room);
       break;
+    }
+    if (!session.currentRoomId) {
+      for (const room of rooms.values()) {
+        if (!(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
+        const previous = Object.entries(room.participants).find(([oldToken, p]) =>
+          participantIdentity(p) === identity && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
+        if (!previous) continue;
+        session.currentRoomId = room.id;
+        registerParticipant(room, session);
+        broadcast(room);
+        break;
+      }
     }
     return sendIndex(res, { sessionToken: session.token, role: 'guest', label: session.label });
   }
@@ -2018,7 +2070,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const room = getCurrentRoom(session);
-    if (!room || room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 초대할 수 있습니다.');
+    if (!room || !isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 초대할 수 있습니다.');
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '역할 선택 중에만 초대할 수 있습니다.');
     const players = lobbyPeers().filter(peer => peer.token !== session.token)
       .map(peer => ({ id: peer.publicId, label: peer.label }));
@@ -2029,7 +2081,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const room = getCurrentRoom(session);
-    if (!room || room.hostSessionToken !== session.token) return sendError(res, 403, 'HOST_ONLY', '방장만 초대할 수 있습니다.');
+    if (!room || !isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 초대할 수 있습니다.');
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국 시작 전까지만 초대할 수 있습니다.');
     if (!checkRateLimit('room-invite:' + session.token.slice(0, 12), 12, 60 * 1000)) {
       return sendError(res, 429, 'TOO_MANY_INVITES', '초대를 너무 많이 보냈습니다. 잠시 뒤 다시 시도해 주세요.');
@@ -2072,7 +2124,7 @@ async function requestHandler(req, res) {
     if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '이미 게임방에 참여 중입니다.');
     const room = rooms.get(invite.roomId);
     const host = sessions.get(invite.fromToken);
-    if (!room || !host || room.hostSessionToken !== host.token || host.currentRoomId !== room.id
+    if (!room || !host || !isRoomHost(room, host) || host.currentRoomId !== room.id
       || room.game.status !== 'selecting') {
       invitations.delete(inviteReply[1]);
       broadcastLobby();
@@ -2307,7 +2359,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.77 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.78 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
