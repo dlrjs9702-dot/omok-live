@@ -1,0 +1,114 @@
+name: Verify Halligalli card visibility v1.6.75
+
+on:
+  push:
+    branches:
+      - feature/halligalli-card-visibility-v1675-20260924
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/halligalli-card-visibility-v1675-20260924
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax and diff checks
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check test/halligalli-ui.test.js
+          git diff --check origin/main...HEAD
+
+      - name: Run complete regression suite
+        run: npm test
+
+      - name: Create Halligalli visual fixture
+        run: |
+          mkdir -p /tmp/halli-visual/assets/halli
+          cp public/styles.css /tmp/halli-visual/styles.css
+          cp public/assets/halli/*.svg /tmp/halli-visual/assets/halli/
+          node <<'NODE'
+          const fs = require('fs');
+          const fruits = [
+            ['딸기', 'strawberry.svg'],
+            ['바나나', 'banana.svg'],
+            ['라임', 'lime.svg'],
+            ['자두', 'plum.svg'],
+          ];
+          const card = (fruit, file, count, label) => `
+            <div class="halliCard" data-count="${count}">
+              <strong class="halliPlayerName">${label}</strong>
+              <div class="halliFace">
+                <div class="halliFruitHeading"><span class="halliFruitName">${fruit}</span><strong class="halliFruitCount">${count}개</strong></div>
+                <div class="halliFruitVisuals count-${count}" aria-label="${fruit} ${count}개">
+                  ${Array.from({ length: count }, () => `<img class="halliFruitIcon" src="assets/halli/${file}" alt="">`).join('')}
+                </div>
+              </div>
+              <small class="halliCardCounts">뒷면 14장 · 앞면 2장</small>
+            </div>`;
+          const matrix = fruits.flatMap(([fruit, file]) => Array.from({ length: 5 }, (_, i) => card(fruit, file, i + 1, `${fruit} ${i + 1}`))).join('');
+          const two = [card('딸기','strawberry.svg',1,'1번 참가자'), card('라임','lime.svg',5,'2번 참가자')].join('');
+          const sixData = [
+            ['딸기','strawberry.svg',5], ['바나나','banana.svg',4], ['라임','lime.svg',3],
+            ['자두','plum.svg',2], ['딸기','strawberry.svg',3], ['바나나','banana.svg',5],
+          ];
+          const six = sixData.map(([fruit,file,count], i) => card(fruit,file,count,`${i + 1}번 참가자`)).join('');
+          fs.writeFileSync('/tmp/halli-visual/preview.html', `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="styles.css">
+          <style>
+            body{margin:0;padding:24px;background:#20262e;font-family:system-ui,sans-serif}
+            .previewBox{margin:0 auto 24px;padding:16px;background:#eef1f4;border-radius:12px}
+            .previewBox h2{margin:0 0 12px;color:#17202b}
+            .preview2{width:900px}.preview6{width:1100px}.previewMatrix{width:1100px}
+          </style>
+          <section class="previewBox preview2"><h2>2인 배치</h2><div class="halliCards">${two}</div></section>
+          <section class="previewBox preview6"><h2>6인 배치</h2><div class="halliCards">${six}</div></section>
+          <section class="previewBox previewMatrix"><h2>과일 4종 × 1~5개</h2><div class="halliCards">${matrix}</div></section>
+          <script>
+            addEventListener('load', () => {
+              const images = [...document.querySelectorAll('.halliFruitIcon')];
+              const cards = [...document.querySelectorAll('.halliCard')];
+              const imageOk = images.every(img => img.complete && img.naturalWidth > 0);
+              const countOk = cards.every(card => card.querySelectorAll('.halliFruitIcon').length === Number(card.dataset.count));
+              const widthOk = cards.every(card => card.getBoundingClientRect().width >= 207);
+              const overflowOk = [...document.querySelectorAll('.halliFruitVisuals')].every(el => el.scrollWidth <= el.clientWidth + 1);
+              const twoOk = document.querySelectorAll('.preview2 .halliCard').length === 2;
+              const sixOk = document.querySelectorAll('.preview6 .halliCard').length === 6;
+              document.body.dataset.check = imageOk && countOk && widthOk && overflowOk && twoOk && sixOk ? 'ok' : 'bad';
+              document.body.dataset.detail = JSON.stringify({imageOk,countOk,widthOk,overflowOk,twoOk,sixOk,images:images.length,cards:cards.length});
+            });
+          </script>`);
+          NODE
+
+      - name: Headless Chrome layout check and screenshot
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          "$CHROME" --headless --no-sandbox --disable-gpu --allow-file-access-from-files --window-size=1440,2200 --screenshot=/tmp/halli-visual/halligalli-v1675.png file:///tmp/halli-visual/preview.html
+          "$CHROME" --headless --no-sandbox --disable-gpu --allow-file-access-from-files --dump-dom file:///tmp/halli-visual/preview.html > /tmp/halli-visual/dump.html
+          grep -q 'data-check="ok"' /tmp/halli-visual/dump.html
+          grep 'data-detail=' /tmp/halli-visual/dump.html | head -1
+
+      - name: Upload visual proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: halligalli-v1675-visual
+          path: |
+            /tmp/halli-visual/halligalli-v1675.png
+            /tmp/halli-visual/dump.html
+          if-no-files-found: error
