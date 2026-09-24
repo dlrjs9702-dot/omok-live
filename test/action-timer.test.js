@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { buildActionTimer, currentTurnSeat } = require('../lib/action-timer');
 
 function room(gameType, game, extra = {}) {
@@ -83,4 +85,22 @@ test('2대2 일반 차례는 nextSeat가 현재 행동자를 결정한다', () =
   const r = room('omok2v2', { nextSeat: '3', paused: false }, { turnWatch: { seat: '3', since: 500 } });
   assert.equal(currentTurnSeat(r), '3');
   assert.equal(buildActionTimer(r, '3', 600, 60_000).deadlineAt, 60_500);
+});
+
+
+test('PC 공통 타이머 UI는 상태 행을 사용하고 모바일 숨김·0초 서버 대기를 보장한다', () => {
+  const root = path.join(__dirname, '..');
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'public', 'styles.css'), 'utf8');
+
+  assert.match(html, /id="myActionTimer" class="myActionTimer hidden" role="timer"/);
+  assert.match(html, /class="statusIndicators"[\s\S]*id="myActionTimer"[\s\S]*id="connectionBadge"/);
+  assert.match(app, /serverNow = Date\.now\(\) - actionTimerClockOffset/);
+  assert.match(app, /서버 처리 대기 · \$\{timer\.timeoutText\}/);
+  assert.match(app, /desktopActionTimerOwns\('pictionary'\)/);
+  assert.match(app, /desktopActionTimerOwns\('liar'\)/);
+  assert.match(app, /desktopActionTimerOwns\('marathon'\)/);
+  assert.match(app, /desktopActionTimerOwns\('davinci'\)/);
+  assert.match(css, /@media\(max-width:880px\)\{\.myActionTimer\{display:none!important\}/);
 });
