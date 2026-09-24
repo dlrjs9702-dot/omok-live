@@ -93,6 +93,10 @@
   const hostRoomCode = document.getElementById('hostRoomCode');
   const copyRoomCodeBtn = document.getElementById('copyRoomCodeBtn');
   const connectionBadge = document.getElementById('connectionBadge');
+  const myActionTimer = document.getElementById('myActionTimer');
+  const myActionTimerLabel = document.getElementById('myActionTimerLabel');
+  const myActionTimerClock = document.getElementById('myActionTimerClock');
+  const myActionTimerResult = document.getElementById('myActionTimerResult');
   const statusText = document.getElementById('statusText');
   const seatLabel = document.getElementById('seatLabel');
   const standardPlayers = document.getElementById('standardPlayers');
@@ -362,6 +366,7 @@
   let toastTimer = null;
   let resultEffectTimer = null;
   let lastResultEffectKey = null;
+  let actionTimerClockOffset = 0;
 
   // Room sidebar (chat/system/room-info) state. v1.6.72 measures the board only to keep a
   // short game from being paired with a much taller sidebar; the measured value is always capped
@@ -394,6 +399,30 @@
   let lastRenderedChatIds = [];
 
   function isMobileLayout() { try { return window.matchMedia('(max-width:880px)').matches; } catch { return false; } }
+
+  function desktopActionTimerOwns(source) {
+    return !isMobileLayout() && Boolean(state?.me?.actionTimer && (!source || state.me.actionTimer.source === source));
+  }
+
+  function actionTimerText(ms) {
+    const seconds = Math.max(0, Math.ceil(ms / 1000));
+    return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  }
+
+  function renderMyActionTimer(syncClock = false) {
+    const timer = state?.me?.actionTimer;
+    const visible = Boolean(timer && !isMobileLayout());
+    myActionTimer.classList.toggle('hidden', !visible);
+    if (!visible) return;
+    if (syncClock && Number.isFinite(Number(timer.serverNow))) actionTimerClockOffset = Date.now() - Number(timer.serverNow);
+    const serverNow = Date.now() - actionTimerClockOffset;
+    const remainMs = Math.max(0, Number(timer.deadlineAt) - serverNow);
+    myActionTimerLabel.textContent = timer.label || '내 차례';
+    myActionTimerClock.textContent = actionTimerText(remainMs);
+    myActionTimerResult.textContent = remainMs > 0 ? timer.timeoutText : `서버 처리 대기 · ${timer.timeoutText}`;
+    myActionTimer.classList.toggle('expiredPending', remainMs <= 0);
+    myActionTimer.setAttribute('aria-label', `${myActionTimerLabel.textContent} ${myActionTimerClock.textContent}. ${myActionTimerResult.textContent}`);
+  }
 
   let roomSideHeightFrame = 0;
   let roomSideResizeObserver = null;
@@ -2625,6 +2654,7 @@
     const g = state.game;
     seat = state.me?.seat || null;
     isHost = Boolean(state.me?.isHost);
+    renderMyActionTimer(true);
     const gameLabel = ['omok', 'omok2v2'].includes(state.gameType)
       ? gameDisplayName(state.gameType) : (state.gameName || gameName(state.gameType));
     const roomLabel = state.title || gameLabel;
@@ -3393,8 +3423,9 @@
           : '그림 맞히기 종료')
         : `출제자 · ${state.players[g.drawerSeat]?.label || (g.drawerSeat ? g.drawerSeat + '번' : '-')}${isDrawer ? ' (나)' : ''}`;
     const timerEndsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
-    pictionaryTimer.classList.toggle('hidden', !timerEndsAt);
-    if (timerEndsAt) pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(timerEndsAt)}` : pictionaryCountdownText(timerEndsAt);
+    const pictionaryTimerDuplicated = g.phase === 'drawing' && desktopActionTimerOwns('pictionary');
+    pictionaryTimer.classList.toggle('hidden', !timerEndsAt || pictionaryTimerDuplicated);
+    if (timerEndsAt && !pictionaryTimerDuplicated) pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(timerEndsAt)}` : pictionaryCountdownText(timerEndsAt);
 
     pictionaryWordBox.classList.toggle('hidden', !(isDrawer && g.phase === 'drawing' && state.me?.myWord));
     if (state.me?.myWord) pictionaryWord.textContent = state.me.myWord;
@@ -3528,6 +3559,7 @@
       const mission = g.mission;
       const canAnswer = Boolean(seat && g.myGroup && g.myGroup === mission.group);
       marathonMissionType.textContent = `${MARATHON_MISSION_TYPE_KO[mission.type] || mission.type} 미션 · ${marathonGroupLabel(mission.group, g)}${canAnswer ? ' · 우리 차례' : ''}`;
+      marathonMissionTimer.classList.toggle('hidden', desktopActionTimerOwns('marathon'));
       marathonMissionTimer.textContent = g.deadlineAt ? liarCountdownText(g.deadlineAt) : '';
 
       if (mission.type === 'memory') {
@@ -3621,8 +3653,9 @@
     const phaseNames = { hint1: '1차 힌트', hint2: '2차 힌트', extraHint: '동률 후보 추가 힌트', vote: '라이어 비밀 투표', revote: '동률 후보 재투표', guess: '라이어 최종 제시어 추측', reveal: '판 결과 공개', finished: '게임 종료' };
     liarPhaseLabel.textContent = g.status === 'selecting' ? `현재 ${occupied.length}명 · 3명 이상 필요` : (phaseNames[g.phase] || '진행 중');
     liarSpeakerLabel.textContent = g.currentSpeaker ? `현재 발언: ${state.players[g.currentSpeaker]?.label || g.currentSpeaker + '번'}` : '';
-    liarTimer.classList.toggle('hidden', !g.deadlineAt);
-    if (g.deadlineAt) liarTimer.textContent = liarCountdownText(g.deadlineAt);
+    const liarTimerDuplicated = desktopActionTimerOwns('liar');
+    liarTimer.classList.toggle('hidden', !g.deadlineAt || liarTimerDuplicated);
+    if (g.deadlineAt && !liarTimerDuplicated) liarTimer.textContent = liarCountdownText(g.deadlineAt);
 
     liarHintLog.replaceChildren();
     for (const hint of g.hints || []) {
@@ -4202,9 +4235,11 @@
     davinciStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
     const active = g.status === 'playing' && g.turn === seat;
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
+    const inlineTimer = !active || !desktopActionTimerOwns('davinci');
+    const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
     davinciStatus.textContent = g.status === 'selecting' ? '2~4명이 자리를 선택하면 방장이 시작합니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
-      : `${g.turn}번 차례 · ${g.phase === 'reveal-own' ? '공개할 내 타일을 선택하세요' : '상대 타일을 선택해 숫자를 추측하세요'} · 남은 시간 ${seconds}초 · 더미 ${g.pileCount}장`;
+      : `${g.turn}번 차례 · ${g.phase === 'reveal-own' ? '공개할 내 타일을 선택하세요' : '상대 타일을 선택해 숫자를 추측하세요'}${inlineTimerText} · 더미 ${g.pileCount}장`;
     davinciHands.replaceChildren();
     for (const [owner, tiles] of Object.entries(g.hands || {})) {
       const group = document.createElement('div');
@@ -5255,20 +5290,24 @@
     finally { button.disabled = false; }
   });
   setInterval(() => {
+    renderMyActionTimer();
+  }, 250);
+
+  setInterval(() => {
     if (state?.gameType !== 'pictionary' || pictionaryPanel.classList.contains('hidden')) return;
     const g = state.game;
     const endsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
-    if (!endsAt) return;
+    if (!endsAt || (g.phase === 'drawing' && desktopActionTimerOwns('pictionary'))) return;
     pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(endsAt)}` : pictionaryCountdownText(endsAt);
   }, 1000);
 
   setInterval(() => {
-    if (state?.gameType !== 'liar' || liarPanel.classList.contains('hidden')) return;
+    if (state?.gameType !== 'liar' || liarPanel.classList.contains('hidden') || desktopActionTimerOwns('liar')) return;
     if (!state.game.deadlineAt) return;
     liarTimer.textContent = liarCountdownText(state.game.deadlineAt);
   }, 1000);
   setInterval(() => {
-    if (state?.gameType !== 'marathon' || marathonPanel.classList.contains('hidden')) return;
+    if (state?.gameType !== 'marathon' || marathonPanel.classList.contains('hidden') || desktopActionTimerOwns('marathon')) return;
     if (state.game.phase !== 'mission' || !state.game.deadlineAt) return;
     marathonMissionTimer.textContent = liarCountdownText(state.game.deadlineAt);
   }, 1000);
