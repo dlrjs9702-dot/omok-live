@@ -213,6 +213,11 @@
   const davinciStopBtn = document.getElementById('davinciStopBtn');
   for (let n = 0; n <= 11; n++) davinciNumber.add(new Option(String(n), String(n)));
   let davinciSelectionPending = false;
+  let davinciGuessPending = false;
+  let davinciGuessPendingNumber = null;
+  let davinciGuessFeedbackKey = null;
+  let davinciGuessFeedbackUntil = 0;
+  let davinciGuessFeedbackTimer = null;
   const davinciRevealStates = new Map();
   let davinciRevealRound = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
@@ -4277,6 +4282,34 @@
     }
   }
 
+  const DAVINCI_GUESS_FEEDBACK_MS = 520;
+
+  function davinciFeedbackKey(feedback) {
+    return feedback ? [feedback.submittedAt, feedback.seat, feedback.target, feedback.tileId, feedback.number, feedback.correct].join(':') : null;
+  }
+
+  function visibleDavinciGuessFeedback(game) {
+    const feedback = game?.lastGuess;
+    if (!feedback) {
+      if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
+      davinciGuessFeedbackTimer = null;
+      davinciGuessFeedbackKey = null;
+      davinciGuessFeedbackUntil = 0;
+      return null;
+    }
+    const key = davinciFeedbackKey(feedback);
+    if (key !== davinciGuessFeedbackKey) {
+      davinciGuessFeedbackKey = key;
+      davinciGuessFeedbackUntil = Date.now() + DAVINCI_GUESS_FEEDBACK_MS;
+      if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
+      davinciGuessFeedbackTimer = setTimeout(() => {
+        davinciGuessFeedbackTimer = null;
+        if (davinciFeedbackKey(state?.game?.lastGuess) === key) renderDavinci();
+      }, DAVINCI_GUESS_FEEDBACK_MS + 25);
+    }
+    return Date.now() < davinciGuessFeedbackUntil ? feedback : null;
+  }
+
   function renderDavinciFocusLine(selection) {
     if (!selection) return;
     const groups = [...davinciHands.querySelectorAll('.davinciHand')];
@@ -4321,7 +4354,7 @@
 
   async function selectDavinciTarget(owner, tileId) {
     const g = state?.game;
-    if (!g || g.status !== 'playing' || g.turn !== seat || !['guess', 'continue'].includes(g.phase) || davinciSelectionPending) return;
+    if (!g || g.status !== 'playing' || g.turn !== seat || !['guess', 'continue'].includes(g.phase) || davinciSelectionPending || davinciGuessPending) return;
     if (g.selection?.seat === seat && g.selection.target === owner && g.selection.tileId === tileId) return;
     davinciSelectionPending = true;
     renderDavinci();
@@ -4342,6 +4375,7 @@
     davinciStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
     const active = g.status === 'playing' && g.turn === seat;
     const focus = g.selection || null;
+    const feedback = visibleDavinciGuessFeedback(g);
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
     const inlineTimer = !active || !desktopActionTimerOwns('davinci');
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
@@ -4364,19 +4398,33 @@
       for (const tile of tiles) {
         const mine = owner === seat && state.me?.myDavinciTiles?.find(t => t.id === tile.id);
         const selected = focus?.target === owner && focus.tileId === tile.id;
+        const feedbackForTile = feedback?.target === owner && feedback.tileId === tile.id;
+        const localGuessForTile = davinciGuessPending && focus?.seat === seat && selected;
         const revealPending = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
         const wasRevealed = davinciRevealStates.get(tile.id);
-        const revealingNow = tile.revealed && wasRevealed === false;
+        const revealingNow = tile.revealed && wasRevealed === false && !feedbackForTile;
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.tileId = tile.id;
-        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : ''].filter(Boolean).join(' ');
+        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : '', feedbackForTile ? 'guess-result' : '', feedbackForTile && feedback.correct ? 'guess-correct' : '', feedbackForTile && !feedback.correct ? 'guess-wrong' : '', localGuessForTile ? 'guess-submitting' : ''].filter(Boolean).join(' ');
         const value = tile.revealed ? String(tile.number) : mine ? String(mine.number) : '?';
-        button.textContent = value;
+        const valueElement = document.createElement('span');
+        valueElement.className = 'davinciTileValue';
+        valueElement.textContent = value;
+        button.append(valueElement);
+        const guessNumber = feedbackForTile ? feedback.number : localGuessForTile ? davinciGuessPendingNumber : null;
+        if (guessNumber !== null && guessNumber !== undefined) {
+          const guessElement = document.createElement('span');
+          guessElement.className = 'davinciGuessValue';
+          guessElement.textContent = String(guessNumber);
+          guessElement.setAttribute('aria-hidden', 'true');
+          button.append(guessElement);
+        }
         const stateText = tile.revealed ? '공개 완료' : mine ? '비공개 · 내 화면에서 숫자 확인' : '비공개';
-        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${value} · ${stateText}${selected ? ' · 현재 추리 대상' : ''}`);
+        const feedbackText = feedbackForTile ? ` · 추측 숫자 ${feedback.number} · ${feedback.correct ? '정답' : '오답'}` : localGuessForTile ? ` · 추측 숫자 ${davinciGuessPendingNumber} 제출 중` : '';
+        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${value} · ${stateText}${selected ? ' · 현재 추리 대상' : ''}${feedbackText}`);
         const canReveal = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
-        const canSelect = active && !davinciSelectionPending && ['guess', 'continue'].includes(g.phase) && owner !== seat && !tile.revealed;
+        const canSelect = active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && owner !== seat && !tile.revealed;
         button.disabled = !(canReveal || canSelect);
         button.addEventListener('click', () => {
           if (g.phase === 'reveal-own') roomAction('reveal-davinci', { tileId: tile.id, expectedRevision: g.revision });
@@ -4399,9 +4447,9 @@
       davinciPrivate.append(drawnLabel, drawnTile);
     }
     const selectedTarget = focus?.seat === seat && g.hands[focus.target]?.some(tile => tile.id === focus.tileId && !tile.revealed);
-    davinciGuessBtn.disabled = !(active && !davinciSelectionPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
+    davinciGuessBtn.disabled = !(active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
     davinciStopBtn.classList.toggle('hidden', !(active && g.phase === 'continue'));
-    davinciStopBtn.disabled = davinciSelectionPending;
+    davinciStopBtn.disabled = davinciSelectionPending || davinciGuessPending;
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderDavinciFocusLine(focus));
     else renderDavinciFocusLine(focus);
   }
@@ -5310,10 +5358,20 @@
     halliStatus.textContent = halliStatus.textContent.replace(/남은 시간 \d+:\d{2}/, `남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
   }, 1000);
   davinciStartBtn.addEventListener('click', () => roomAction('start-davinci'));
-  davinciGuessBtn.addEventListener('click', () => {
+  davinciGuessBtn.addEventListener('click', async () => {
     const target = state?.game?.selection;
     if (!target || target.seat !== seat || !state) return;
-    roomAction('guess-davinci', { targetSeat: target.target, tileId: target.tileId, number: Number(davinciNumber.value), expectedRevision: state.game.revision });
+    const number = Number(davinciNumber.value);
+    davinciGuessPending = true;
+    davinciGuessPendingNumber = number;
+    renderDavinci();
+    try {
+      await roomAction('guess-davinci', { targetSeat: target.target, tileId: target.tileId, number, expectedRevision: state.game.revision });
+    } finally {
+      davinciGuessPending = false;
+      davinciGuessPendingNumber = null;
+      if (isDavinciGame()) renderDavinci();
+    }
   });
   davinciStopBtn.addEventListener('click', () => roomAction('stop-davinci', { expectedRevision: state.game.revision }));
   setInterval(() => {
