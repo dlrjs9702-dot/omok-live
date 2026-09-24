@@ -158,17 +158,16 @@ test('the resign/end-game/next-round action row stays visible inside the PIP pop
   assert.match(css, /html\.sidePipLayout \.sideActions\{display:grid!important\}/);
 });
 
-// Requested follow-up: inside the popup, the tab bar/close button (top) and chat input (bottom)
-// should stay fixed while only the middle message list scrolls -- the same behavior the docked
-// panel already has via .side{overflow:hidden} + .sidePane{flex:1 1 auto;min-height:0} +
-// .chatMessages{overflow-y:auto}. That only works if .side itself has a bounded height; an earlier
-// cut of this override set height:auto (unbounded), which broke it into a whole-popup-page scroll.
-test('the PIP popup keeps .side height-bounded so only the message list scrolls, not the whole popup', () => {
+// Chat PIP keeps its compact message-only scroll, but game-info PIP deliberately uses one whole-
+// panel scroll so long action controls never disappear behind a second nested scrollbar.
+test('PIP keeps chat scrolling compact and keeps the full game-info flow reachable', () => {
   const css = read('public/styles.css');
   assert.match(css, /html\.sidePipLayout \.side\{display:flex!important;position:static!important;width:100%;height:100%\}/);
   assert.doesNotMatch(css, /html\.sidePipLayout \.side\{[^}]*height:auto/);
   assert.doesNotMatch(css, /html\.sidePipLayout \.side\{[^}]*max-height:none/);
   assert.match(css, /html\.sidePipLayout,html\.sidePipLayout body\{margin:0;height:100%;background:#0b1220;overflow:hidden\}/);
+  assert.match(css, /html\.sidePipLayout #gameInfoPanel\{overflow-y:auto!important\}/);
+  assert.match(css, /html\.sidePipLayout #gameInfoPanel \.gameActionsPanel\{overflow:visible!important\}/);
 });
 
 // v1.6.58: as the "게임 진행" PIP popup is resized, the dice/yut 3D stage scales proportionally

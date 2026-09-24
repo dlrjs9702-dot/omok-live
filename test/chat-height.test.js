@@ -19,12 +19,13 @@ test('room sidebar height sync is integrated in app.js and needs no extra height
   assert.match(app, /Math\.min\(boardHeight \|\| viewportBudget, viewportBudget\)/);
 });
 
-test('the docked sidebar uses the measured capped height and collapses its phantom grid height', () => {
+test('the docked sidebar uses the measured minimum height and collapses its phantom grid height', () => {
   const css = read('public/styles.css');
   assert.match(css, /\.sideColumn\{[^}]*height:var\(--room-side-height/);
-  assert.match(css, /\.sideColumn\{[^}]*max-height:calc\(100dvh - 32px\)/);
-  assert.match(css, /\.gameLayout\.sideCollapsed \.sideColumn\{height:0;max-height:0;overflow:hidden;gap:0\}/);
-  assert.match(css, /@media\(max-width:880px\)\{\.sideColumn\{position:static;height:auto;max-height:none\}\}/);
+  assert.match(css, /\.sideColumn\{[^}]*height:auto;min-height:var\(--room-side-height/);
+  assert.match(css, /\.sideColumn\{[^}]*max-height:none/);
+  assert.match(css, /\.gameLayout\.sideCollapsed \.sideColumn\{height:0;min-height:0;max-height:0;overflow:hidden;gap:0\}/);
+  assert.match(css, /@media\(max-width:880px\)\{\.sideColumn\{position:static;height:auto;min-height:0;max-height:none\}\}/);
 });
 
 // v1.6.58: chat is now its own single-pane panel (#chatPanel, no tabs -- it only ever shows one
@@ -130,15 +131,26 @@ test('a PC-only three-preset chat width control exists and never breaks the boar
 });
 
 // v1.6.72 regression: the old fixed full-viewport column forced an unnecessary page
-// scrollbar below the room header. The column now gets an exact capped pixel height from app.js;
-// the two docked panels share only that budget.
+// scrollbar below the room header. The column still receives the measured board height as a
+// minimum, but complex game controls may grow naturally instead of being clipped into a nested
+// action scrollbar.
 test('the docked column no longer hard-codes a full viewport below the already-rendered room header', () => {
   const css = read('public/styles.css');
   assert.doesNotMatch(css, /\.sideColumn\{[^}]*height:calc\(100vh - 32px\)/);
-  assert.match(css, /\.sideColumn>\.side\{position:static;flex:1 1 0;min-height:0;max-height:none\}/);
+  assert.match(css, /\.sideColumn>\.side\{position:static;flex:0 0 auto;min-height:0;max-height:none\}/);
   const app = read('public/app.js');
   assert.match(app, /const viewportBudget = Math\.max\(1, viewportHeight - Math\.max\(layoutTop, stickyGap\) - stickyGap\)/);
   assert.match(app, /sideColumnEl\.style\.setProperty\('--room-side-height'/);
+});
+
+test('every game keeps controls in one flow while system history owns the only inner scroll', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /\.sideColumn\{[^}]*height:auto;min-height:var\(--room-side-height/);
+  assert.match(css, /\.side \.gameActionsPanel\{flex:0 0 auto;min-height:0;[^}]*max-height:none;overflow:visible/);
+  assert.match(css, /\.sidePane\{display:flex;flex-direction:column;flex:0 0 auto;min-height:0\}/);
+  assert.match(css, /\.systemMessages\{flex:0 1 180px;min-height:120px;max-height:180px;overflow-y:auto\}/);
+  assert.match(css, /\.side\.overlayOpen#gameInfoPanel\{overflow-y:auto\}/);
+  assert.match(css, /html\.sidePipLayout #gameInfoPanel\{overflow-y:auto!important\}/);
 });
 
 test('twenty questions history flows with the game page instead of adding a nested scrollbar', () => {

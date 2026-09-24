@@ -212,7 +212,9 @@
   const davinciGuessBtn = document.getElementById('davinciGuessBtn');
   const davinciStopBtn = document.getElementById('davinciStopBtn');
   for (let n = 0; n <= 11; n++) davinciNumber.add(new Option(String(n), String(n)));
-  let davinciTarget = null;
+  let davinciSelectionPending = false;
+  const davinciRevealStates = new Map();
+  let davinciRevealRound = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
@@ -4275,10 +4277,71 @@
     }
   }
 
+  function renderDavinciFocusLine(selection) {
+    if (!selection) return;
+    const groups = [...davinciHands.querySelectorAll('.davinciHand')];
+    const attacker = groups.find(group => group.dataset.owner === selection.seat);
+    const target = groups.flatMap(group => [...group.querySelectorAll('.davinciTile')])
+      .find(button => button.dataset.tileId === selection.tileId);
+    const label = attacker?.querySelector('strong');
+    if (!attacker || !target || !label) return;
+    const bounds = davinciHands.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const labelRect = label.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const startX = labelRect.right - bounds.left + 4;
+    const startY = labelRect.top - bounds.top + labelRect.height / 2;
+    const endX = targetRect.left - bounds.left + targetRect.width / 2;
+    const endY = targetRect.top - bounds.top + targetRect.height / 2;
+    const bendX = startX + (endX - startX) * .45;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.classList.add('davinciFocusLine');
+    svg.setAttribute('viewBox', `0 0 ${Math.max(1, bounds.width)} ${Math.max(1, bounds.height)}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const defs = document.createElementNS(ns, 'defs');
+    const marker = document.createElementNS(ns, 'marker');
+    marker.setAttribute('id', 'davinciFocusArrow');
+    marker.setAttribute('markerWidth', '7');
+    marker.setAttribute('markerHeight', '7');
+    marker.setAttribute('refX', '6');
+    marker.setAttribute('refY', '3.5');
+    marker.setAttribute('orient', 'auto');
+    const arrow = document.createElementNS(ns, 'path');
+    arrow.setAttribute('d', 'M0,0 L7,3.5 L0,7 Z');
+    arrow.setAttribute('fill', '#fbbf24');
+    marker.append(arrow);
+    defs.append(marker);
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', `M${startX.toFixed(1)} ${startY.toFixed(1)} C${bendX.toFixed(1)} ${startY.toFixed(1)}, ${bendX.toFixed(1)} ${endY.toFixed(1)}, ${endX.toFixed(1)} ${endY.toFixed(1)}`);
+    path.setAttribute('marker-end', 'url(#davinciFocusArrow)');
+    svg.append(defs, path);
+    davinciHands.prepend(svg);
+  }
+
+  async function selectDavinciTarget(owner, tileId) {
+    const g = state?.game;
+    if (!g || g.status !== 'playing' || g.turn !== seat || !['guess', 'continue'].includes(g.phase) || davinciSelectionPending) return;
+    if (g.selection?.seat === seat && g.selection.target === owner && g.selection.tileId === tileId) return;
+    davinciSelectionPending = true;
+    renderDavinci();
+    try {
+      await roomAction('select-davinci', { targetSeat: owner, tileId, expectedRevision: g.revision });
+    } finally {
+      davinciSelectionPending = false;
+      if (isDavinciGame()) renderDavinci();
+    }
+  }
+
   function renderDavinci() {
     const g = state.game;
+    if (davinciRevealRound !== g.round) {
+      davinciRevealStates.clear();
+      davinciRevealRound = g.round;
+    }
     davinciStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
     const active = g.status === 'playing' && g.turn === seat;
+    const focus = g.selection || null;
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
     const inlineTimer = !active || !desktopActionTimerOwns('davinci');
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
@@ -4288,29 +4351,59 @@
     davinciHands.replaceChildren();
     for (const [owner, tiles] of Object.entries(g.hands || {})) {
       const group = document.createElement('div');
-      group.className = 'davinciHand';
+      const isTurn = g.status === 'playing' && g.turn === owner;
+      const isTargetOwner = focus?.target === owner;
+      const isTargeting = focus?.seat === owner;
+      group.className = `davinciHand${isTurn ? ' is-active-turn' : ''}${isTargetOwner ? ' is-target-owner' : ''}${isTargeting ? ' is-targeting' : ''}${owner === seat ? ' is-my-hand' : ''}`;
+      group.dataset.owner = owner;
+      const ownerLabel = state.players[owner]?.label || owner + '번';
       const label = document.createElement('strong');
-      label.textContent = `${state.players[owner]?.label || owner + '번'}${owner === seat ? ' (나)' : ''}`;
+      label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}`;
+      group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
       for (const tile of tiles) {
+        const mine = owner === seat && state.me?.myDavinciTiles?.find(t => t.id === tile.id);
+        const selected = focus?.target === owner && focus.tileId === tile.id;
+        const revealPending = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
+        const wasRevealed = davinciRevealStates.get(tile.id);
+        const revealingNow = tile.revealed && wasRevealed === false;
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `davinciTile ${tile.color}${davinciTarget?.id === tile.id && davinciTarget.owner === owner ? ' selected' : ''}`;
-        const mine = owner === seat && state.me?.myDavinciTiles?.find(t => t.id === tile.id);
-        button.textContent = tile.revealed ? String(tile.number) : mine ? String(mine.number) : '?';
-        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${button.textContent}`);
-        button.disabled = !(active && (g.phase === 'reveal-own' ? owner === seat && !tile.revealed : owner !== seat && !tile.revealed));
+        button.dataset.tileId = tile.id;
+        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : ''].filter(Boolean).join(' ');
+        const value = tile.revealed ? String(tile.number) : mine ? String(mine.number) : '?';
+        button.textContent = value;
+        const stateText = tile.revealed ? '공개 완료' : mine ? '비공개 · 내 화면에서 숫자 확인' : '비공개';
+        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${value} · ${stateText}${selected ? ' · 현재 추리 대상' : ''}`);
+        const canReveal = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
+        const canSelect = active && !davinciSelectionPending && ['guess', 'continue'].includes(g.phase) && owner !== seat && !tile.revealed;
+        button.disabled = !(canReveal || canSelect);
         button.addEventListener('click', () => {
           if (g.phase === 'reveal-own') roomAction('reveal-davinci', { tileId: tile.id, expectedRevision: g.revision });
-          else { davinciTarget = { owner, id: tile.id }; renderDavinci(); }
+          else selectDavinciTarget(owner, tile.id);
         });
         group.append(button);
+        davinciRevealStates.set(tile.id, tile.revealed);
       }
       davinciHands.append(group);
     }
-    davinciPrivate.textContent = state.me?.myDavinciDrawn ? `이번에 뽑은 타일: ${state.me.myDavinciDrawn.color === 'black' ? '흑' : '백'} ${state.me.myDavinciDrawn.number}` : '';
-    davinciGuessBtn.disabled = !(active && ['guess', 'continue'].includes(g.phase) && davinciTarget && g.hands[davinciTarget.owner]?.some(t => t.id === davinciTarget.id && !t.revealed));
+    davinciPrivate.replaceChildren();
+    if (state.me?.myDavinciDrawn) {
+      const drawnLabel = document.createElement('span');
+      drawnLabel.className = 'davinciPrivateLabel';
+      drawnLabel.textContent = '이번에 뽑은 타일';
+      const drawnTile = document.createElement('span');
+      drawnTile.className = `davinciTile ${state.me.myDavinciDrawn.color} unrevealed known-private davinciDrawnTile`;
+      drawnTile.textContent = String(state.me.myDavinciDrawn.number);
+      drawnTile.setAttribute('aria-label', '이번에 뽑은 비공개 타일');
+      davinciPrivate.append(drawnLabel, drawnTile);
+    }
+    const selectedTarget = focus?.seat === seat && g.hands[focus.target]?.some(tile => tile.id === focus.tileId && !tile.revealed);
+    davinciGuessBtn.disabled = !(active && !davinciSelectionPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
     davinciStopBtn.classList.toggle('hidden', !(active && g.phase === 'continue'));
+    davinciStopBtn.disabled = davinciSelectionPending;
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderDavinciFocusLine(focus));
+    else renderDavinciFocusLine(focus);
   }
 
   function drawBoard() {
@@ -5218,9 +5311,9 @@
   }, 1000);
   davinciStartBtn.addEventListener('click', () => roomAction('start-davinci'));
   davinciGuessBtn.addEventListener('click', () => {
-    if (!davinciTarget || !state) return;
-    roomAction('guess-davinci', { targetSeat: davinciTarget.owner, tileId: davinciTarget.id, number: Number(davinciNumber.value), expectedRevision: state.game.revision });
-    davinciTarget = null;
+    const target = state?.game?.selection;
+    if (!target || target.seat !== seat || !state) return;
+    roomAction('guess-davinci', { targetSeat: target.target, tileId: target.tileId, number: Number(davinciNumber.value), expectedRevision: state.game.revision });
   });
   davinciStopBtn.addEventListener('click', () => roomAction('stop-davinci', { expectedRevision: state.game.revision }));
   setInterval(() => {
