@@ -1263,7 +1263,7 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_HALLIGALLI_ACTION', engine.moveError(verdict.reason));
   }
 
-  if (action === 'start-davinci' || action === 'guess-davinci' || action === 'stop-davinci' || action === 'reveal-davinci') {
+  if (action === 'start-davinci' || action === 'select-davinci' || action === 'guess-davinci' || action === 'stop-davinci' || action === 'reveal-davinci') {
     if (!isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드 방에서만 사용할 수 있습니다.');
     const engine = getGame('davinci');
     const playerSeat = findSeat(room, session.token);
@@ -1276,7 +1276,8 @@ async function handleRoomAction(req, res, action, session) {
         for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
         appendSystemMessage(room, '다빈치 코드가 시작됐습니다. 타일의 색을 보고 숨겨진 숫자를 추리하세요.');
       }
-    } else if (action === 'guess-davinci') verdict = engine.guess(room.game, playerSeat, String(body.targetSeat), String(body.tileId), Number(body.number), Number(body.expectedRevision), nowMs());
+    } else if (action === 'select-davinci') verdict = engine.select(room.game, playerSeat, String(body.targetSeat), String(body.tileId), Number(body.expectedRevision));
+    else if (action === 'guess-davinci') verdict = engine.guess(room.game, playerSeat, String(body.targetSeat), String(body.tileId), Number(body.number), Number(body.expectedRevision), nowMs());
     else if (action === 'stop-davinci') verdict = engine.stop(room.game, playerSeat, Number(body.expectedRevision), nowMs());
     else verdict = engine.reveal(room.game, playerSeat, String(body.tileId), Number(body.expectedRevision), nowMs());
     if (!verdict.legal) return sendError(res, 409, 'INVALID_DAVINCI_ACTION', engine.moveError(verdict.reason));
@@ -2302,7 +2303,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;

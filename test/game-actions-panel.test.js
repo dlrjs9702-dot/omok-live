@@ -105,9 +105,10 @@ test('#cityActionPanel is a normal in-flow block now, not absolutely positioned 
   assert.match(css, /\.cityActionPanel\{display:flex/);
 });
 
-test('#gameActionsPanel scrolls internally within the sidebar instead of overflowing or getting clipped', () => {
+test('#gameActionsPanel stays in one visible flow instead of hiding controls behind an inner scrollbar', () => {
   const css = read('public/styles.css');
-  assert.match(css, /\.side \.gameActionsPanel\{[^}]*overflow-y:auto/);
+  assert.match(css, /\.side \.gameActionsPanel\{[^}]*overflow:visible/);
+  assert.doesNotMatch(css, /\.side \.gameActionsPanel\{[^}]*overflow-y:auto/);
 });
 
 // Regression: every relocated control used to sit inside a per-game panel (#yutControls,

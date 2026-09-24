@@ -52,6 +52,12 @@ test('다빈치 코드: 서버는 다른 사람과 관전자에게 숫자를 숨
   const actor = g.turn === '1' ? host : other;
   const target = g.turn === '1' ? '2' : '1';
   const targetTile = g.hands[target][0];
+  assert.equal((await req('/api/room/select-davinci', watcher, { targetSeat: target, tileId: targetTile.id, expectedRevision: g.revision })).status, 403);
+  const selected = await req('/api/room/select-davinci', actor, { targetSeat: target, tileId: targetTile.id, expectedRevision: g.revision });
+  assert.equal(selected.status, 200);
+  assert.deepEqual(selected.data.state.game.selection, { seat: g.turn, target, tileId: targetTile.id });
+  const watcherAfterSelect = await req('/api/room', watcher, undefined, 'GET');
+  assert.deepEqual(watcherAfterSelect.data.state.game.selection, { seat: g.turn, target, tileId: targetTile.id });
   assert.equal((await req('/api/room/guess-davinci', watcher, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: g.revision })).status, 403);
   assert.equal((await req('/api/room/guess-davinci', actor, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: -1 })).status, 409);
   assert.equal((await req('/api/room/guess-davinci', actor, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: g.revision })).status, 200);

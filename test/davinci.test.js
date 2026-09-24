@@ -50,3 +50,20 @@ test('다빈치 코드: 추측, 멈춤, 더미 소진 후 공개, 시간 만료'
   assert.equal(engine.tick(game, game.deadlineAt), true);
   assert.equal(game.hands[actor].some(t => t.revealed), true);
 });
+
+test('다빈치 코드: 현재 추리 대상은 숫자 없이 모두에게 보이고 추측 뒤 해제된다', () => {
+  const game = engine.create();
+  engine.start(game, ['1', '2'], 1000);
+  const actor = game.turn;
+  const target = game.seatOrder.find(seat => seat !== actor);
+  const tile = game.hands[target].find(item => !item.revealed);
+
+  assert.equal(engine.select(game, actor, target, tile.id, game.revision).legal, true);
+  assert.deepEqual(game.selection, { seat: actor, target, tileId: tile.id });
+  const publicView = engine.publicState(game);
+  assert.deepEqual(publicView.selection, { seat: actor, target, tileId: tile.id });
+  assert.equal(Object.hasOwn(publicView.hands[target].find(item => item.id === tile.id), 'number'), false);
+
+  assert.equal(engine.guess(game, actor, target, tile.id, tile.number, game.revision, 1200).legal, true);
+  assert.equal(game.selection, null);
+});
