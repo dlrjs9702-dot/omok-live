@@ -35,8 +35,8 @@ test('announcement rows are compact with inline controls and game choice heights
   assert.match(css, /\.announcementActions\{grid-column:3;grid-row:1/);
   assert.match(css, /\.announcementList\{max-height:240px/);
   assert.match(css, /\.gameOption \.gameChoice\{width:100%;min-height:34px/);
-  assert.match(html, /styles\.css\?v=1\.6\.77/);
-  assert.match(html, /app\.js\?v=1\.6\.77/);
+  assert.match(html, /styles\.css\?v=1\.6\.78/);
+  assert.match(html, /app\.js\?v=1\.6\.78/);
 });
 
 test('shared outcome drives win and loss effects for all game IDs, 2v2 teammates, Bingo seats, and excludes draws and spectators', () => {
