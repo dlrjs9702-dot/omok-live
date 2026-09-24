@@ -794,10 +794,23 @@ html.sidePipLayout .sideActions{display:grid!important}
 .davinciTile.selected { outline: 4px solid #ea9d2f; outline-offset: 2px; }
 .davinciTile:disabled { cursor: default; opacity: .8; }
 .davinciActions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
-.halliPanel { padding: 1rem; overflow: auto; }
-.halliCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .6rem; }
-.halliCard { display: flex; flex-direction: column; gap: .4rem; min-height: 7rem; padding: .8rem; border: 2px solid #cfb583; border-radius: .8rem; background: #fffaf0; }
-.halliCard span { font-size: 1.25rem; font-weight: 750; }
+.halliPanel { padding: 1rem; overflow: auto; color: #1f2937; }
+.halliCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; align-items: stretch; }
+.halliCard { display: flex; flex-direction: column; gap: .55rem; min-width: 0; min-height: 11.5rem; padding: .75rem; border: 2px solid #b99a63; border-radius: .8rem; background: #fffaf0; color: #1d2733; box-shadow: 0 .12rem .4rem rgba(78,54,22,.12); }
+.halliPlayerName { color: #18212c; font-size: 1rem; font-weight: 850; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.halliFace { display: grid; gap: .45rem; min-width: 0; padding: .55rem .5rem .65rem; border: 1px solid #decba5; border-radius: .65rem; background: #fff; }
+.halliFruitHeading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; min-width: 0; }
+.halliFruitName { color: #26313d; font-size: 1.12rem; font-weight: 850; white-space: nowrap; }
+.halliFruitCount { flex: 0 0 auto; color: #101820; font-size: 1.35rem; font-weight: 950; line-height: 1; }
+.halliFruitVisuals { display: flex; align-items: center; justify-content: center; flex-wrap: nowrap; gap: .2rem; min-width: 0; min-height: 4.5rem; overflow: hidden; }
+.halliFruitIcon { display: block; width: 2rem; height: auto; aspect-ratio: 1; flex: 0 0 auto; object-fit: contain; }
+.halliFruitVisuals.count-1 .halliFruitIcon { width: 4.25rem; }
+.halliFruitVisuals.count-2 .halliFruitIcon { width: 3.35rem; }
+.halliFruitVisuals.count-3 .halliFruitIcon { width: 2.7rem; }
+.halliFruitVisuals.count-4 .halliFruitIcon { width: 2.2rem; }
+.halliFruitVisuals.count-5 .halliFruitIcon { width: 2rem; }
+.halliEmptyFace { display: grid; place-items: center; min-height: 6.2rem; padding: .8rem; border: 1px dashed #b6a98d; border-radius: .65rem; background: #fff; color: #4b5563; font-weight: 750; text-align: center; }
+.halliCardCounts { color: #38424e; font-size: .9rem; font-weight: 750; line-height: 1.25; }
 .halliCard.eliminated { opacity: .55; }
 .halliActions { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin: 1rem 0; }
 .halliBell { min-width: 9rem; min-height: 4rem; border-radius: 2rem; background: #e64a36; color: white; font-size: 1.35rem; font-weight: 800; box-shadow: 0 .2rem 0 #963322; touch-action: manipulation; }

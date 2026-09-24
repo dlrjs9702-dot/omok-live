@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="자두">
+  <path d="M50 28c-18-5-33 8-34 27-1 20 12 33 31 34 21 1 35-12 35-32 0-18-13-31-32-29Z" fill="#7d45a4" stroke="#41205d" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M50 29c-1-9 2-15 8-21" fill="none" stroke="#5c4322" stroke-width="5" stroke-linecap="round"/>
+  <path d="M56 17c9-7 17-6 23-1-5 9-12 13-23 10Z" fill="#4a9b4f" stroke="#2c6534" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M34 44c4-6 10-9 16-9" fill="none" stroke="#b887d4" stroke-width="5" stroke-linecap="round" opacity=".85"/>
+</svg>
