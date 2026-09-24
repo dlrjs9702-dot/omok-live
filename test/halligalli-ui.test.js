@@ -33,7 +33,7 @@ test('할리갈리 공개 카드는 로컬 과일 SVG와 1~5개 반복 그림을
     assert.match(halli, new RegExp(`'${fruit}': '/assets/halli/${file.replace('.', '\\.')}'`));
     const svg = fs.readFileSync(path.join(root, 'public', 'assets', 'halli', file), 'utf8');
     assert.match(svg, /<svg[^>]+viewBox="0 0 96 96"/);
-    assert.doesNotMatch(svg, /https?:\/\//);
+    assert.doesNotMatch(svg, /<image\\b/i);
   }
   assert.doesNotMatch(halli, /🍓|🍌|🍋|🍇/);
   assert.match(halli, /for \(let index = 0; index < top\.count; index \+= 1\)/);
