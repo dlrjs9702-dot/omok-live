@@ -1,0 +1,35 @@
+name: Verify action timer v1.6.76
+
+on:
+  push:
+    branches:
+      - feature/action-timer-v1676-20260924
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: JavaScript syntax
+        run: |
+          node --check server.js
+          node --check public/app.js
+          node --check lib/action-timer.js
+          node --check lib/release-announcements.js
+          node --check test/action-timer.test.js
+      - name: Diff whitespace
+        run: git diff --check origin/main...HEAD
+      - name: Full test suite
+        run: npm test
