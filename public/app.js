@@ -4141,17 +4141,51 @@
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
       : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · 카드를 뒤집은 직후 0.3초 동안 종 입력이 잠깁니다.`;
     halliCards.replaceChildren();
-    const icons = { '딸기': '🍓', '바나나': '🍌', '라임': '🍋', '자두': '🍇' };
+    const fruitAssets = {
+      '딸기': '/assets/halli/strawberry.svg',
+      '바나나': '/assets/halli/banana.svg',
+      '라임': '/assets/halli/lime.svg',
+      '자두': '/assets/halli/plum.svg',
+    };
     for (const owner of g.seatOrder || []) {
       const card = document.createElement('div');
       card.className = `halliCard${g.eliminated.includes(owner) ? ' eliminated' : ''}`;
       const name = document.createElement('strong');
+      name.className = 'halliPlayerName';
       name.textContent = state.players[owner]?.label || `${owner}번`;
-      const fruit = document.createElement('span');
-      fruit.textContent = g.faceTops?.[owner] ? `${icons[g.faceTops[owner].fruit]} ${g.faceTops[owner].fruit} ${g.faceTops[owner].count}개` : '아직 공개한 카드 없음';
+      const face = document.createElement('div');
+      const top = g.faceTops?.[owner];
+      if (top && fruitAssets[top.fruit]) {
+        face.className = 'halliFace';
+        const heading = document.createElement('div');
+        heading.className = 'halliFruitHeading';
+        const fruitName = document.createElement('span');
+        fruitName.className = 'halliFruitName';
+        fruitName.textContent = top.fruit;
+        const fruitCount = document.createElement('strong');
+        fruitCount.className = 'halliFruitCount';
+        fruitCount.textContent = `${top.count}개`;
+        heading.append(fruitName, fruitCount);
+        const visuals = document.createElement('div');
+        visuals.className = `halliFruitVisuals count-${top.count}`;
+        visuals.setAttribute('aria-label', `${top.fruit} ${top.count}개`);
+        for (let index = 0; index < top.count; index += 1) {
+          const image = document.createElement('img');
+          image.className = 'halliFruitIcon';
+          image.src = fruitAssets[top.fruit];
+          image.alt = '';
+          image.setAttribute('aria-hidden', 'true');
+          visuals.append(image);
+        }
+        face.append(heading, visuals);
+      } else {
+        face.className = 'halliEmptyFace';
+        face.textContent = '아직 공개한 카드 없음';
+      }
       const count = document.createElement('small');
+      count.className = 'halliCardCounts';
       count.textContent = `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
-      card.append(name, fruit, count);
+      card.append(name, face, count);
       halliCards.append(card);
     }
     halliLastBell.textContent = g.lastBell ? `${state.players[g.lastBell.seat]?.label || g.lastBell.seat + '번'}님 종: ${g.lastBell.correct ? '성공 · 공개 카드 획득' : '오판 · 카드 벌칙'}` : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
