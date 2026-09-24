@@ -815,3 +815,16 @@ html.sidePipLayout .sideActions{display:grid!important}
 .halliActions { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin: 1rem 0; }
 .halliBell { min-width: 9rem; min-height: 4rem; border-radius: 2rem; background: #e64a36; color: white; font-size: 1.35rem; font-weight: 800; box-shadow: 0 .2rem 0 #963322; touch-action: manipulation; }
 .halliBell:disabled { opacity: .5; }
+
+
+/* v1.6.76: PC-only server-authoritative "my action" countdown. It shares the existing status-row
+   height instead of adding another board row, so the game board/chat layout does not move. */
+.statusIndicators{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex:0 1 auto}
+.myActionTimer{display:flex;align-items:center;gap:7px;min-width:0;max-width:min(430px,46vw);height:31px;padding:5px 10px;border:1px solid #2563eb;border-radius:999px;background:#0f2749;box-shadow:0 5px 18px rgba(15,23,42,.24);font-size:.76rem;line-height:1;white-space:nowrap}
+.myActionTimerLabel{flex:0 0 auto;font-weight:900;color:#dbeafe}
+.myActionTimerClock{flex:0 0 auto;min-width:43px;color:#fef08a;font-size:.88rem;font-variant-numeric:tabular-nums;text-align:center}
+.myActionTimerResult{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#bfdbfe;font-weight:750}
+.myActionTimer.expiredPending{border-color:#92400e;background:#451a03}
+.myActionTimer.expiredPending .myActionTimerClock{color:#fde68a}
+.myActionTimer.expiredPending .myActionTimerResult{color:#fef3c7}
+@media(max-width:880px){.myActionTimer{display:none!important}.statusIndicators{flex:0 0 auto}}
