@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const crypto = require('crypto');
 const { getGame, hasGame, listGames } = require('./lib/games');
+const { buildActionTimer, currentTurnSeat } = require('./lib/action-timer');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const OLDMAID_SEATS = ['1', '2', '3', '4'];
@@ -33,13 +34,6 @@ const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 
 const assignedSeatsFor = (room) => isNumberedSeatGame(room)
   ? seatsFor(room).filter(seat => room.players[seat])
   : ['black', 'white'].filter(color => room.players[color]);
-// Turn-based games all park "whose action is required next" in game.turn (omok2v2 alone uses
-// nextSeat, inherited from omok's engine). Liar/pictionary/marathon are excluded from the AFK
-// watch below -- they already run their own server-authoritative phase-deadline tick, so layering
-// a second timeout on top of that would fight it instead of covering a gap.
-const currentTurnSeat = (room) => isTwenty(room)
-  ? (['secret', 'answering', 'judging'].includes(room.game.phase) ? room.game.drawerSeat : getGame('twentyquestions').currentTurn(room.game))
-  : (isTeam(room) ? room.game.nextSeat : room.game.turn) || null;
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
@@ -779,6 +773,7 @@ function roomView(room, session) {
       choice: p?.choice || null,
       watching: Boolean(p && !seat && p.choice === 'spectator'),
       roomCode: isHost ? room.code : null,
+      actionTimer: buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS),
       // A secret is only ever sent back to its owning player, never to other players or spectators.
       mySecret: room.gameType === 'baseball' && seat ? room.game.secrets[seat] : null,
       myBingoBoard: room.gameType === 'bingo' && seat ? getGame('bingo').boardFor(room.game, seat) : null,
@@ -1681,7 +1676,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.75', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.76', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2312,7 +2307,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.75 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.76 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

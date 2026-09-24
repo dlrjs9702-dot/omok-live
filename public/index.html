@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.75" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.76" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -262,7 +262,14 @@
               <p id="seatLabel" class="smallMuted">접속 중...</p>
               <h2 id="statusText">방에 연결하고 있습니다</h2>
             </div>
-            <span id="connectionBadge" class="badge">연결 중</span>
+            <div class="statusIndicators">
+              <div id="myActionTimer" class="myActionTimer hidden" role="timer" aria-label="내 행동 제한시간">
+                <span id="myActionTimerLabel" class="myActionTimerLabel">내 차례</span>
+                <strong id="myActionTimerClock" class="myActionTimerClock">00:00</strong>
+                <span id="myActionTimerResult" class="myActionTimerResult"></span>
+              </div>
+              <span id="connectionBadge" class="badge">연결 중</span>
+            </div>
           </div>
 
           <section class="roomInfoArea" aria-label="방 정보">
@@ -792,8 +799,8 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.75"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.75"></script>
-  <script src="/app.js?v=1.6.75"></script>
+  <script src="/session-lock.js?v=1.6.76"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.76"></script>
+  <script src="/app.js?v=1.6.76"></script>
 </body>
 </html>
