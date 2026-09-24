@@ -199,6 +199,8 @@
   const halliSetupRow = document.getElementById('halliSetupRow');
   const halliTimeSelect = document.getElementById('halliTimeSelect');
   const halliLastBell = document.getElementById('halliLastBell');
+  const halliTransferResult = document.getElementById('halliTransferResult');
+  const halliTransferDetails = document.getElementById('halliTransferDetails');
   const halliBellLog = document.getElementById('halliBellLog');
   let halliClockOffset = 0;
   const davinciPanel = document.getElementById('davinciPanel');
@@ -4163,6 +4165,7 @@
 
   function renderHalli() {
     const g = state.game;
+    const playerName = (number) => state.players[number]?.label || `${number}번`;
     halliClockOffset = Date.now() - (g.serverNow || Date.now());
     halliTimeSelect.value = String(g.durationMinutes || 5);
     halliTimeSelect.disabled = !(isHost && g.status === 'selecting');
@@ -4183,6 +4186,10 @@
     for (const owner of g.seatOrder || []) {
       const card = document.createElement('div');
       card.className = `halliCard${g.eliminated.includes(owner) ? ' eliminated' : ''}`;
+      if (g.lastBell?.flipId === g.flipId && (g.lastBell.transfers || []).length) {
+        if (g.lastBell.transfers.some(move => move.to === owner)) card.classList.add('receivedCards');
+        if (!g.lastBell.correct && g.lastBell.seat === owner) card.classList.add('paidPenalty');
+      }
       const name = document.createElement('strong');
       name.className = 'halliPlayerName';
       name.textContent = state.players[owner]?.label || `${owner}번`;
@@ -4221,7 +4228,45 @@
       card.append(name, face, count);
       halliCards.append(card);
     }
-    halliLastBell.textContent = g.lastBell ? `${state.players[g.lastBell.seat]?.label || g.lastBell.seat + '번'}님 종: ${g.lastBell.correct ? '성공 · 공개 카드 획득' : '오판 · 카드 벌칙'}` : '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
+    halliTransferDetails.replaceChildren();
+    halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
+    halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
+    if (!g.lastBell) {
+      halliLastBell.textContent = '스페이스바 또는 종 버튼으로 종을 칠 수 있습니다.';
+    } else {
+      const bell = g.lastBell;
+      const moves = bell.transfers || [];
+      const total = bell.totalTransferred ?? moves.reduce((sum, move) => sum + move.count, 0);
+      halliLastBell.textContent = bell.correct
+        ? `직전 종 성공 · ${playerName(bell.seat)}님이 공개 카드 ${total}장 획득`
+        : `직전 종 오판 · ${playerName(bell.seat)}님이 뒷면 카드 ${total}장 벌칙`;
+      if (!moves.length) {
+        const noCards = document.createElement('p');
+        noCards.textContent = bell.correct ? '옮길 공개 카드가 없습니다.' : '줄 수 있는 뒷면 카드가 없습니다.';
+        halliTransferDetails.append(noCards);
+      }
+      for (const move of moves) {
+        const row = document.createElement('div');
+        row.className = 'halliTransferRow';
+        if (bell.correct && move.top && fruitAssets[move.top.fruit]) {
+          const icon = document.createElement('img');
+          icon.className = 'halliTransferFruitIcon';
+          icon.src = fruitAssets[move.top.fruit];
+          icon.alt = '';
+          icon.setAttribute('aria-hidden', 'true');
+          row.append(icon);
+        }
+        const source = document.createElement('span');
+        source.textContent = `${playerName(move.from)}님 ${bell.correct ? '공개' : '뒷면'} 카드 ${move.count}장${bell.correct && move.top ? ` (맨 위 ${move.top.fruit} ${move.top.count}개)` : ''}`;
+        const arrow = document.createElement('span');
+        arrow.className = 'halliTransferArrow';
+        arrow.textContent = '→';
+        const destination = document.createElement('strong');
+        destination.textContent = `${playerName(move.to)}님 뒷면 더미`;
+        row.append(source, arrow, destination);
+        halliTransferDetails.append(row);
+      }
+    }
     halliBellLog.replaceChildren();
     for (const entry of (g.bellLog || []).slice(-6).reverse()) {
       const line = document.createElement('p');

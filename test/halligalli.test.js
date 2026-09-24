@@ -32,6 +32,12 @@ test('할리갈리 종은 0.3초 잠금 뒤 정확히 다섯 개에 처음 친 �
   const before = game.piles['1'].length;
   assert.equal(h.ring(game, '1', 1, 1300).correct, true);
   assert.equal(game.piles['1'].length, before + 2);
+  assert.deepEqual(game.lastBell.transfers, [
+    { from: '1', to: '1', count: 1, top: { fruit: '딸기', count: 2 } },
+    { from: '2', to: '1', count: 1, top: { fruit: '딸기', count: 3 } },
+  ]);
+  assert.equal(game.lastBell.totalTransferred, 2);
+  assert.equal(JSON.stringify(h.publicState(game)).includes('"piles"'), false);
   assert.equal(h.ring(game, '2', 1, 1300).ignored, 'late');
   assert.equal(game.piles['2'].length, before);
 });
@@ -43,6 +49,8 @@ test('할리갈리 오판은 카드 부족 시 있는 만큼만 순서대로 주
   game.lockUntil = 0;
   game.piles['1'] = [game.piles['1'][0]];
   assert.equal(h.ring(game, '1', 1, 1400).correct, false);
+  assert.deepEqual(game.lastBell.transfers, [{ from: '1', to: '2', count: 1 }]);
+  assert.equal(game.lastBell.totalTransferred, 1);
   assert.equal(game.piles['1'].length, 0);
   assert.equal(game.piles['2'].length, 19);
   assert.equal(game.piles['3'].length, 18);
