@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="라임">
+  <circle cx="48" cy="49" r="35" fill="#5ebf45" stroke="#245f2d" stroke-width="5"/>
+  <circle cx="48" cy="49" r="26" fill="#b8e86f" stroke="#f4ffd4" stroke-width="4"/>
+  <circle cx="48" cy="49" r="5" fill="#eefbc8"/>
+  <g stroke="#f4ffd4" stroke-width="4" stroke-linecap="round">
+    <path d="M48 23v20"/><path d="M48 55v20"/><path d="M22 49h20"/><path d="M54 49h20"/>
+    <path d="m30 31 14 14"/><path d="m52 53 14 14"/><path d="m66 31-14 14"/><path d="m44 53-14 14"/>
+  </g>
+  <path d="M63 17c7-6 14-6 19-2-5 8-11 11-19 10" fill="#2f8a45" stroke="#245f2d" stroke-width="3" stroke-linejoin="round"/>
+</svg>
