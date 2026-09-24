@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.76" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.77" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -360,7 +360,10 @@
               <button id="halliFlipBtn" type="button" class="primary">카드 뒤집기</button>
               <button id="halliBellBtn" type="button" class="halliBell" aria-label="종 치기">🔔 종 치기</button>
             </div>
-            <p id="halliLastBell" aria-live="polite"></p>
+            <div id="halliTransferResult" class="halliTransferResult" aria-live="polite">
+              <strong id="halliLastBell"></strong>
+              <div id="halliTransferDetails" class="halliTransferDetails"></div>
+            </div>
             <div id="halliBellLog"></div>
           </section>
 
@@ -799,8 +802,8 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.76"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.76"></script>
-  <script src="/app.js?v=1.6.76"></script>
+  <script src="/session-lock.js?v=1.6.77"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.77"></script>
+  <script src="/app.js?v=1.6.77"></script>
 </body>
 </html>
