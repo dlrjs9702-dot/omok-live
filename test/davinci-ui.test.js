@@ -17,5 +17,13 @@ test('다빈치 코드 UI는 공개 선택 상태와 카드 자세를 분리해 
   assert.match(css, /\.davinciTile\.unrevealed/);
   assert.match(css, /\.davinciTile\.selected-target/);
   assert.match(css, /\.davinciTile\.revealed/);
+  assert.match(css, /\.davinciTile\.guess-submitting/);
+  assert.match(css, /\.davinciTile\.guess-correct/);
+  assert.match(css, /\.davinciTile\.guess-wrong/);
+  assert.match(css, /\.davinciGuessValue/);
+  assert.match(app, /lastGuess/);
+  assert.match(app, /davinciGuessPending/);
   assert.match(css, /@keyframes davinciRevealFlip/);
+  assert.match(css, /@keyframes davinciGuessCorrect/);
+  assert.match(css, /@keyframes davinciGuessWrong/);
 });

@@ -1068,7 +1068,14 @@ async function tickDavinciRooms() {
   const now = nowMs();
   const engine = getGame('davinci');
   for (const room of rooms.values()) {
-    if (!isDavinci(room) || room.game.status !== 'playing') continue;
+    if (!isDavinci(room)) continue;
+    const feedbackExpired = engine.expireFeedback(room.game, now);
+    if (room.game.status !== 'playing') {
+      if (!feedbackExpired) continue;
+      touchRoom(room);
+      broadcast(room);
+      continue;
+    }
     syncGamePause(room, false);
     const seat = room.game.turn;
     const token = room.players[seat];
@@ -1077,9 +1084,10 @@ async function tickDavinciRooms() {
       room.davinciDisconnectedTurn = seat;
       room.game.deadlineAt = now + 60_000;
     } else if (connected) room.davinciDisconnectedTurn = null;
-    if (!engine.tick(room.game, now)) continue;
+    const timedOut = engine.tick(room.game, now);
+    if (!feedbackExpired && !timedOut) continue;
     room.davinciDisconnectedTurn = null;
-    if (room.game.status === 'finished') await recordFinishedMatch(room);
+    if (timedOut && room.game.status === 'finished') await recordFinishedMatch(room);
     touchRoom(room);
     broadcast(room);
   }
@@ -1713,7 +1721,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.78', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.79', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2360,7 +2368,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.78 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.79 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

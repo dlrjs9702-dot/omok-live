@@ -60,5 +60,14 @@ test('다빈치 코드: 서버는 다른 사람과 관전자에게 숫자를 숨
   assert.deepEqual(watcherAfterSelect.data.state.game.selection, { seat: g.turn, target, tileId: targetTile.id });
   assert.equal((await req('/api/room/guess-davinci', watcher, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: g.revision })).status, 403);
   assert.equal((await req('/api/room/guess-davinci', actor, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: -1 })).status, 409);
-  assert.equal((await req('/api/room/guess-davinci', actor, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: g.revision })).status, 200);
+  const guessed = await req('/api/room/guess-davinci', actor, { targetSeat: target, tileId: targetTile.id, number: 0, expectedRevision: g.revision });
+  assert.equal(guessed.status, 200);
+  const feedback = guessed.data.state.game.lastGuess;
+  assert.equal(feedback.seat, g.turn);
+  assert.equal(feedback.target, target);
+  assert.equal(feedback.tileId, targetTile.id);
+  assert.equal(feedback.number, 0);
+  assert.equal(Object.hasOwn(feedback, 'actualNumber'), false);
+  const afterGuess = await Promise.all([host, other, watcher].map(token => req('/api/room', token, undefined, 'GET')));
+  for (const view of afterGuess) assert.deepEqual(view.data.state.game.lastGuess, feedback);
 });
