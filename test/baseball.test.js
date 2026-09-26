@@ -9,7 +9,7 @@ const { getGame, hasGame, listGames } = require('../lib/games');
 test('number baseball is registered alongside existing games', () => {
   assert.equal(hasGame('baseball'), true);
   assert.equal(getGame('baseball').name, '숫자야구');
-  assert.deepEqual(listGames().map(x => x.id).sort(), ['baseball','bingo','cityking','connect4','davinci','dots','halligalli','liar','marathon','oldmaid', 'omok','omok2v2','othello','pictionary','twentyquestions','yut']);
+  assert.deepEqual(listGames().map(x => x.id).sort(), ['baseball','bingo','cityking','connect4','davinci','dots','gostop','halligalli','liar','marathon','oldmaid', 'omok','omok2v2','othello','pictionary','twentyquestions','yut']);
 });
 
 test('three distinct digits, leading zero forbidden and zero elsewhere allowed', () => {

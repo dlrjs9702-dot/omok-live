@@ -19,7 +19,9 @@ const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
-const isNumberedSeatGame = (room) => isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
+const isGostop = (room) => room.gameType === 'gostop';
+const GOSTOP_SEATS = ['1', '2', '3'];
+const isNumberedSeatGame = (room) => isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
 // seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
 function marathonSeatSlots(room) {
@@ -27,7 +29,7 @@ function marathonSeatSlots(room) {
   if (g?.mode === 'team' && g?.teamLayout === '2v2') return MARATHON_SEATS.slice(0, 4);
   return MARATHON_SEATS;
 }
-const seatsFor = (room) => isHalli(room) ? MARATHON_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
+const seatsFor = (room) => isGostop(room) ? GOSTOP_SEATS : isHalli(room) ? MARATHON_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -38,6 +40,7 @@ const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult } = require('./lib/match-result');
+const { createPointStore, validUserId } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -100,6 +103,7 @@ const INVITE_TTL_MS = 2 * 60 * 1000;
 let accessStore;
 let announcementStore;
 let matchStore;
+let pointStore;
 let indexTemplate = '';
 
 function nowIso() { return new Date().toISOString(); }
@@ -522,7 +526,9 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     hostSessionToken: hostSession.token,
     hostIdentity: sessionIdentity(hostSession),
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
-    players: ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
+    players: gameEngine.id === 'gostop'
+      ? Object.fromEntries(GOSTOP_SEATS.map((seat) => [seat, null]))
+      : ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
       : gameEngine.id === 'halligalli'
       ? Object.fromEntries(MARATHON_SEATS.map((seat) => [seat, null]))
@@ -828,6 +834,9 @@ function roomView(room, session) {
       myDavinciDrawn: isDavinci(room) ? getGame('davinci').drawnFor(room.game, seat) : null,
       myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
       myOldMaidAbility: isOldMaid(room) && seat ? getGame('oldmaid').abilityFor(room.game, seat) : null,
+      // Go-Stop: only this viewer's own hand ever leaves the server (never another player's).
+      myGostopHand: isGostop(room) && seat ? getGame('gostop').handFor(room.game, seat) : null,
+      pointBalance: pointStore?.cachedBalance(pointAccountForSession(session)) ?? null,
     },
   };
 }
@@ -852,7 +861,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
+  if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -880,7 +889,7 @@ function prepareNextRound(room) {
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
-  if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+  if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -895,6 +904,7 @@ function prepareNextRound(room) {
 async function recordFinishedMatch(room) {
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
+  await settleGostopIfNeeded(room);
   room.recordedMatches ||= new Set();
   if (room.recordedMatches.has(result.id)) return false;
   await matchStore.recordMatch(result);
@@ -912,6 +922,49 @@ async function recordOrError(room, res) {
 }
 
 function recordIdentity(session) { return session.guestKeyId || `admin:${session.publicId}`; }
+
+// Points belong to the durable guest key (kept through rename and reissue), never to a session
+// token. The operator's admin logins share one account so a re-login does not reset it.
+function pointAccountForSession(session) { return session?.guestKeyId ? `guest:${session.guestKeyId}` : 'admin'; }
+function pointAccountForParticipant(participant) {
+  if (!participant) return null;
+  return participant.guestKeyId ? `guest:${participant.guestKeyId}` : participant.role === 'admin' ? 'admin' : null;
+}
+function pointAccountForSeat(room, seat) {
+  const token = room.players[seat];
+  return pointAccountForParticipant(token && room.participants[token]);
+}
+
+// Go-Stop settles once per match (idempotent by settlement id) *before* the match record is saved,
+// so a stored result can never exist without its point transfers; a failure leaves the match
+// unrecorded and every later record attempt retries the very same settlement.
+async function settleGostopIfNeeded(room) {
+  if (!isGostop(room)) return;
+  const game = room.game;
+  if (!['finished', 'draw'].includes(game.status) || game.settlement?.status === 'done') return;
+  if (game.status === 'draw' || !game.result) {
+    game.settlement = { status: 'done', kind: 'nagari', transfers: [] };
+    return;
+  }
+  const seatOf = {};
+  for (const seat of game.seatOrder) seatOf[seat] = pointAccountForSeat(room, seat);
+  const plan = game.result.kind === 'forfeit'
+    ? game.result.payments.map(item => ({ fromSeat: item.from, toSeat: item.to, amount: item.amount }))
+    : game.result.losers.map(item => ({ fromSeat: item.seat, toSeat: game.result.winner, amount: item.amount }));
+  const usable = plan.filter(item => validUserId(seatOf[item.fromSeat]) && validUserId(seatOf[item.toSeat]) && seatOf[item.fromSeat] !== seatOf[item.toSeat]);
+  const outcome = await pointStore.settle({
+    settlementId: `gostop:${room.id}:${game.round}`, matchId: `${room.id}:${game.round}`, gameType: 'gostop',
+    transfers: usable.map(item => ({ from: seatOf[item.fromSeat], to: seatOf[item.toSeat], amount: item.amount, key: `${item.fromSeat}>${item.toSeat}` })),
+  });
+  game.settlement = {
+    status: 'done', kind: game.result.kind,
+    transfers: (outcome.transfers || []).map(item => {
+      const [fromSeat, toSeat] = String(item.key || '').split('>');
+      return { fromSeat, toSeat, requested: item.requested, paid: item.paid, capped: item.capped };
+    }),
+    balances: Object.fromEntries(game.seatOrder.map(seat => [seat, outcome.balances?.[seatOf[seat]] ?? pointStore.cachedBalance(seatOf[seat])])),
+  };
+}
 
 async function recordPlayers() {
   const keys = await accessStore.list();
@@ -955,7 +1008,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
+  const role = seat ? (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -964,7 +1017,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
+  const opponent = (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -1188,6 +1241,48 @@ async function handleRoomAction(req, res, action, session) {
       } else return sendError(res, 400, 'BAD_TWENTY_ACTION', '알 수 없는 스무고개 행동입니다.');
       if (!verdict.legal) return sendError(res, 409, 'INVALID_TWENTY_ACTION', engine.moveError(verdict.reason));
     }
+  }
+
+  if (action.startsWith('gostop-') || action === 'set-gostop-stake' || action === 'start-gostop') {
+    if (!isGostop(room)) return sendError(res, 400, 'WRONG_GAME', '고스톱·맞고 방에서만 사용할 수 있습니다.');
+    const engine = getGame('gostop');
+    const playerSeat = findSeat(room, session.token);
+    let verdict;
+    if (action === 'set-gostop-stake') {
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 점당 포인트를 바꿀 수 있습니다.');
+      verdict = engine.setStake(room.game, body.pointsPerScore);
+    } else if (action === 'start-gostop') {
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 시작할 수 있습니다.');
+      const seats = seatsFor(room).filter(seatNumber => room.players[seatNumber]);
+      if (seats.length < 2 || seats.length > 3) return sendError(res, 409, 'INVALID_GOSTOP_START', engine.moveError('player-count'));
+      const accounts = seats.map(seatNumber => pointAccountForSeat(room, seatNumber));
+      if (accounts.some(id => !validUserId(id)) || new Set(accounts).size !== accounts.length) {
+        return sendError(res, 409, 'SAME_POINT_ACCOUNT', '같은 포인트 계정으로 두 자리에 앉을 수 없습니다.');
+      }
+      for (const [index, id] of accounts.entries()) {
+        const { balance } = await pointStore.ensureAccount(id);
+        if (balance <= 0) {
+          const label = room.participants[room.players[seats[index]]]?.label || `${seats[index]}번`;
+          return sendError(res, 409, 'NO_POINTS', `${label}님의 보유 포인트가 0P라 포인트 대전을 시작할 수 없습니다. 출석체크 후 다시 시도해 주세요.`);
+        }
+      }
+      verdict = engine.start(room.game, seats, { signature: [...accounts].sort().join('|') });
+      if (verdict.legal) {
+        for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
+        appendSystemMessage(room, `${room.game.mode === 'matgo' ? '맞고' : '고스톱'} 시작 · 점당 ${room.game.pointsPerScore}P${room.game.nagariStreak ? ` · 나가리 ×${2 ** room.game.nagariStreak}` : ''}`);
+      }
+    } else {
+      if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
+      syncGamePause(room);
+      if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '응답이 없는 참가자가 있어 일시정지 중입니다.');
+      if (action === 'gostop-play') verdict = engine.play(room.game, playerSeat, String(body.cardId || ''), { shake: body.shake === true, bomb: body.bomb === true, kong: body.kong === true });
+      else if (action === 'gostop-choose') verdict = room.game.phase === 'choose-flip' ? engine.chooseFlip(room.game, playerSeat, String(body.cardId || '')) : engine.chooseFloor(room.game, playerSeat, String(body.cardId || ''));
+      else if (action === 'gostop-flip') verdict = engine.flipOnly(room.game, playerSeat);
+      else if (action === 'gostop-gukjin') verdict = engine.chooseGukjin(room.game, playerSeat, body.asPi === true);
+      else if (action === 'gostop-decide') verdict = engine.decide(room.game, playerSeat, String(body.choice || ''));
+      else return sendError(res, 400, 'BAD_GOSTOP_ACTION', '알 수 없는 고스톱 행동입니다.');
+    }
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_GOSTOP_ACTION', engine.moveError(verdict.reason));
   }
 
   if (action === 'choose-role') {
@@ -1654,9 +1749,10 @@ async function handleRoomAction(req, res, action, session) {
       const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
       room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
       room.game.endReason = 'resign';
-    } else if (isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+    } else if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
+      if (isGostop(room)) getGame('gostop').forfeitResult(room.game, [seat], 'resign');
     } else {
       room.game.winner = (isTeam(room) ? teamColor(seat) : seat) === 'black' ? 'white' : 'black';
     }
@@ -1702,6 +1798,10 @@ async function handleRoomAction(req, res, action, session) {
     room.game.winningLine = null;
     room.game.endReason = 'disconnect';
     room.game.disconnectedAtEnd = disconnectedSeats;
+    if (isGostop(room)) {
+      room.game.winner = connectedSeats;
+      getGame('gostop').forfeitResult(room.game, disconnectedSeats, 'disconnect');
+    }
     room.game.paused = false;
     room.game.disconnectedSeats = [];
     appendSystemMessage(room, `${session.label || '참가자'}님이 응답 없는 참가자를 상대로 대국을 종료했습니다. 응답 중인 참가자 승리로 기록됩니다.`);
@@ -1789,6 +1889,25 @@ async function requestHandler(req, res) {
     if (!safeEqualText(body.password || '', ADMIN_PASSWORD)) return sendError(res, 403, 'BAD_PASSWORD', '관리자 비밀번호가 올바르지 않습니다.');
     const session = createSession({ role: 'admin', label: '관리자' });
     return sendJson(res, 200, { sessionToken: session.token, role: 'admin', label: session.label });
+  }
+
+  // Game Center points: read the balance (creating the account with its one-time grant) and claim
+  // today's (Asia/Seoul) attendance. The server alone decides both; there is no transfer endpoint.
+  if (pathname === '/api/points' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = await pointStore.getAccount(pointAccountForSession(session));
+    return sendJson(res, 200, { ok: true, ...account, attendanceAmount: 50_000 });
+  }
+
+  if (pathname === '/api/points/attendance' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`attendance:${pointAccountForSession(session)}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const result = await pointStore.claimAttendance(pointAccountForSession(session));
+    const room = getCurrentRoom(session);
+    if (room) broadcast(room);
+    return sendJson(res, 200, { ok: true, ...result });
   }
 
   if (pathname === '/api/session' && req.method === 'GET') {
@@ -2320,7 +2439,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -2341,6 +2460,15 @@ async function main() {
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  // Existing guests get their one-time account on first sight; this backfill is idempotent.
+  try {
+    let created = 0;
+    for (const key of await accessStore.list()) if ((await pointStore.ensureAccount(`guest:${key.id}`)).created) created += 1;
+    console.log(`포인트 저장소: ${DATABASE_URL ? 'PostgreSQL' : '로컬 JSON'} · 신규 계정 ${created}개`);
+  } catch (error) {
+    console.error('포인트 계정 초기화 실패:', error);
+  }
   if (process.env.NODE_ENV !== 'test') {
     await announcementStore.seedReleases(releaseAnnouncements);
     const notices = await announcementStore.list();

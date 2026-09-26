@@ -11,7 +11,7 @@ const { getGame, listGames } = require('../lib/games');
 
 test('Connect Four is registered independently of existing games', () => {
   assert.equal(getGame('connect4'), connect4);
-  assert.deepEqual(listGames().map(g => g.id).sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'twentyquestions', 'yut']);
+  assert.deepEqual(listGames().map(g => g.id).sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'twentyquestions', 'yut']);
   assert.equal(connect4.create().board.length, 6);
   assert.equal(connect4.create().board[0].length, 7);
 });
@@ -137,7 +137,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
   assert.equal(health.data.version, '1.6.85');
-  assert.deepEqual(health.data.games.sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'twentyquestions', 'yut']);
+  assert.deepEqual(health.data.games.sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'twentyquestions', 'yut']);
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);
