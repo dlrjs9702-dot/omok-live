@@ -2470,6 +2470,77 @@
     return '관전';
   }
 
+  // v1.6.84: "who has to act right now?" -- read from each game's own server state (never plain
+  // `turn` everywhere) and painted on the existing seat/player cards in a sky-blue language that
+  // differs from recent-action amber (v1.6.80), actionable mint (v1.6.82) and the my-seat outline.
+  // Phases where everyone may act at once (votes, secret setup, guesses in pictionary, the Halli
+  // Galli bell) deliberately have no actor. Pure function of current state, so a refresh, reconnect
+  // or spectator join shows the right seat immediately; finished/waiting states show nothing.
+  function currentActorSeats() {
+    const g = state?.game;
+    const none = { seats: new Set(), paused: false };
+    if (!g || g.status !== 'playing') return none;
+    const one = value => (value === null || value === undefined || value === '' ? [] : [String(value)]);
+    let seats = [];
+    switch (state.gameType) {
+      case 'omok2v2':
+        seats = one(g.nextSeat);
+        break;
+      case 'yut':
+        // Keep the mover highlighted until its throw/hop animation has visibly settled, so a
+        // back-do auto-pass or a finished move doesn't jump the highlight ahead of the board.
+        if (yutPieceAnimation && g.lastMove?.color) seats = one(g.lastMove.color);
+        else if (yutThrowAnimating && g.lastThrow?.color) seats = one(g.lastThrow.color);
+        else seats = one(g.turn);
+        break;
+      case 'cityking':
+        seats = one(g.phase === 'liquidate' ? g.liquidating : g.turn);
+        break;
+      case 'twentyquestions':
+        // Secret entry, answering and judging belong to the drawer; asking and final guesses to the
+        // challenger whose turn the server reports; the result pause belongs to nobody.
+        if (['secret', 'answering', 'judging'].includes(g.phase)) seats = one(g.drawerSeat);
+        else if (['asking', 'final-guesses'].includes(g.phase)) seats = one(g.turnSeat);
+        break;
+      case 'pictionary':
+        if (g.phase === 'drawing') seats = one(g.drawerSeat);
+        break;
+      case 'liar':
+        // Only the hint phases have one public speaker. Votes are simultaneous, and the final guess
+        // is made by the liar, whose seat the public state never names -- so neither is marked.
+        if (['hint1', 'hint2', 'extraHint'].includes(g.phase)) seats = one(g.currentSpeaker);
+        break;
+      case 'marathon':
+        if (g.phase === 'roll') seats = one(g.currentRoller);
+        else if (g.mission?.group !== undefined && g.mission?.group !== null) {
+          seats = numberedSeats().filter(number => state.players[number]
+            && String(g.mode === 'team' ? marathonGroupForSeat(number) : number) === String(g.mission.group));
+        }
+        break;
+      default:
+        // omok, connect4, othello, dots, baseball (turns only once playing -- secret setup is
+        // simultaneous), bingo, oldmaid (the drawer), davinci (the guesser, including its own
+        // reveal-after-miss), halligalli (the card flipper -- never everyone who may ring the bell).
+        seats = one(g.turn);
+    }
+    return { seats: new Set(seats), paused: Boolean(g.paused) };
+  }
+
+  function renderCurrentActor() {
+    const { seats, paused } = currentActorSeats();
+    const cards = [
+      ['black', blackPlayer], ['white', whitePlayer],
+      ...[...teamPlayers.children].map(card => [card.dataset.seat, card]),
+    ];
+    for (const [seatId, card] of cards) {
+      if (!card) continue;
+      const on = Boolean(seatId) && seats.has(String(seatId));
+      card.classList.toggle('currentActor', on && !paused);
+      // A paused match keeps a faint, glow-less marker so nobody reads it as "move now".
+      card.classList.toggle('currentActorPaused', on && paused);
+    }
+  }
+
   function setPlayerCard(el, color, player) {
     el.querySelector('strong').textContent = seatKo(color);
     const small = el.querySelector('small');
@@ -2679,7 +2750,8 @@
       const marathonRoller = marathon && state.game.status === 'playing' && state.game.currentRoller === number;
       const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : halli ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
       const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
-      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${currentTurn && state.game.status === 'playing' ? ' myTurn' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      card.className = `teamPlayer ${(bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
@@ -2927,6 +2999,7 @@
     renderParticipants();
     renderChat();
     renderRoleChooser();
+    renderCurrentActor();
 
     const finished = ['finished', 'draw'].includes(g.status);
     const outcome = resultOutcome(g, seat, state.gameType);
@@ -3284,6 +3357,9 @@
       waiting.textContent = mine ? '움직일 말을 확인하는 중입니다.' : `${seatKo(g.turn)}이 말을 고르는 중입니다.`;
       yutMoveChoices.appendChild(waiting);
     }
+    // v1.6.84: the throw/hop animation flags are only settled here (and this also runs when either
+    // animation finishes), so refresh the current-actor seat from this point too.
+    renderCurrentActor();
   }
 
 
