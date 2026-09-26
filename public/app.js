@@ -447,6 +447,64 @@
 
   window.GameRecentAction = { observe: observeRecentAction, classes: recentActionClasses };
 
+  // v1.6.82: one shared visual language for "what can I act on right now?". It is deliberately
+  // unlike the recent-action marker above (amber outline + one-shot pulse): a steady mint glow drawn
+  // with box-shadow (so both markers can sit on the same element) and, on canvases, mint rings/dots.
+  // Every caller derives it from the exact condition that already enables that control (server
+  // legal-move lists, turn/phase checks, disabled state) -- never a new client-side rule -- and only
+  // for my own seat, so spectators and other players' options never light up, and no private value
+  // is ever encoded into a class name or data attribute.
+  const ACTIONABLE_RGB = '52,211,153';
+  const ACTIONABLE_ROLES = { target: 'actionableTarget', primary: 'actionablePrimary', area: 'actionableArea' };
+
+  function actionWindowOpen(g = state?.game) {
+    return Boolean(state && seat && g && g.status === 'playing' && !g.paused);
+  }
+
+  function actionableClasses(on, role = 'target') {
+    return on ? ` ${ACTIONABLE_ROLES[role] || ACTIONABLE_ROLES.target}` : '';
+  }
+
+  function setActionable(el, on, role = 'target') {
+    if (!el) return;
+    const wanted = on ? (ACTIONABLE_ROLES[role] || ACTIONABLE_ROLES.target) : null;
+    for (const name of Object.values(ACTIONABLE_ROLES)) el.classList.toggle(name, name === wanted);
+  }
+
+  function drawActionableMark(x, y, radius, { dashed = false, square = false, rgb = ACTIONABLE_RGB, alpha = .88, width = 3, fill = false } = {}) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(${rgb},${alpha})`;
+    ctx.fillStyle = `rgba(${rgb},${alpha * .6})`;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dashed ? [6, 5] : []);
+    // Filled dots (omok/othello can draw hundreds per hover repaint) skip the costlier blur.
+    if (!fill) {
+      ctx.shadowColor = `rgba(${rgb},.5)`;
+      ctx.shadowBlur = 6;
+    }
+    if (square) ctx.strokeRect(x - radius, y - radius, radius * 2, radius * 2);
+    else {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      if (fill) ctx.fill(); else ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Grid boards whose whole surface is the input: frame the board itself while it is my move.
+  function boardTurnActionable() {
+    const g = state?.game;
+    if (!actionWindowOpen(g)) return false;
+    if (!['omok', 'omok2v2', 'othello', 'connect4', 'dots'].includes(state.gameType)) return false;
+    if ((isTeamGame() ? g.nextSeat : g.turn) !== seat) return false;
+    if (state.gameType === 'othello') return (g.legalMoves || []).length > 0;
+    if (state.gameType === 'connect4') return (g.legalColumns || []).length > 0;
+    if (state.gameType === 'dots') return (g.legalEdges || []).length > 0;
+    return true;
+  }
+
+  window.GameActionable = { classes: actionableClasses, set: setActionable, windowOpen: actionWindowOpen };
+
   // Room sidebar (chat/system/room-info) state. v1.6.72 measures the board only to keep a
   // short game from being paired with a much taller sidebar; the measured value is always capped
   // by the viewport space remaining below the room header, so tall games can never push the chat
@@ -2900,6 +2958,7 @@
     canvasWrap.classList.toggle('hidden', baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci || halli);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
+    canvasWrap.classList.toggle('actionableBoard', boardTurnActionable());
     baseballPanel.classList.toggle('hidden', !baseball);
     baseballPanel.classList.toggle('resultWinPanel', baseball && outcome === 'win');
     baseballPanel.classList.toggle('resultLossPanel', baseball && outcome === 'loss');
@@ -3036,6 +3095,8 @@
     const myReady = Boolean(seat && ready[seat]);
     baseballSecretForm.classList.toggle('hidden', !(g.status === 'setup' && seat && !myReady));
     baseballGuessForm.classList.toggle('hidden', !(g.status === 'playing' && seat && g.turn === seat));
+    setActionable(baseballSecretInput, Boolean(g.status === 'setup' && seat && !myReady && !g.paused));
+    setActionable(baseballGuessInput, Boolean(g.turn === seat && actionWindowOpen(g)));
     if (g.status === 'selecting') baseballHint.textContent = '선공·후공을 선택하면 각자 비밀 숫자를 설정할 수 있습니다.';
     else if (g.status === 'setup') baseballHint.textContent = !seat ? '플레이어들의 비밀 숫자 준비를 기다리는 중입니다.' : (myReady ? '비밀 숫자 설정 완료. 상대방이 준비할 때까지 기다려 주세요.' : `상대에게 보이지 않을 비밀 숫자 ${digitCount}개를 입력해 주세요.`);
     else if (g.status === 'playing') baseballHint.textContent = seat === g.turn ? '내 차례입니다! 상대의 숫자를 추측해 주세요.' : `${seatKo(g.turn)}이(가) 추측할 차례입니다.`;
@@ -3079,6 +3140,7 @@
     const g = state.game;
     const mine = Boolean(seat && g.turn === seat && g.status === 'playing');
     yutThrowBtn.disabled = !(mine && g.phase === 'throw') || yutThrowAnimating;
+    setActionable(yutThrowBtn, !yutThrowBtn.disabled && actionWindowOpen(g), 'primary');
     yutThrowBtn.textContent = mine && g.phase === 'throw' ? '윷 던지기' : '던지기 대기';
     yutLastThrow.textContent = g.lastThrow
       ? `최근 결과: ${g.lastThrow.name} · ${yutStepsLabel(g.lastThrow.steps)}`
@@ -3101,7 +3163,8 @@
       yutSticks.forEach((el, i) => el.classList.toggle('backdoMark', g.lastThrow.name === '빽도' && flags[i]));
       yutThrowAnimating = true;
       animateYutThrow(yutSticks, flags, {
-        onDone: () => { yutThrowAnimating = false; renderYut(); },
+        // v1.6.82: also repaint the board so the movable-piece marks appear once the throw settles.
+        onDone: () => { yutThrowAnimating = false; renderYut(); if (state?.gameType === 'yut') drawYutBoard(); },
       });
     } else if (!yutThrowAnimating) {
       // v1.6.55: the dice/yut panel is now a small always-visible panel above chat instead of a
@@ -3177,7 +3240,7 @@
     for (const move of moves) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'yutPieceChoice';
+      button.className = 'yutPieceChoice' + actionableClasses(actionWindowOpen(g));
       const number = Number(String(move.pieceId).split('-').at(-1));
       const carriedNumbers = (move.carried || [move.pieceId]).map(id => Number(String(id).split('-').at(-1))).sort((a, b) => a - b);
       const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.join('·')}번 말` : `${number}번 말`;
@@ -3260,10 +3323,11 @@
       return;
     }
     const myTurn = Boolean(seat && g.status === 'playing' && g.turn === seat);
+    const bingoActionable = myTurn && actionWindowOpen(g);
     for (const number of board) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = `bingoCell${selected.has(number) ? ' selected' : ''}${g.lastSelected?.number === number ? recentActionClasses(bingoRecent) : ''}`;
+      button.className = `bingoCell${selected.has(number) ? ' selected' : ''}${g.lastSelected?.number === number ? recentActionClasses(bingoRecent) : ''}${actionableClasses(bingoActionable && !selected.has(number))}`;
       button.textContent = String(number);
       button.disabled = !myTurn || selected.has(number);
       button.setAttribute('aria-label', `${number}번${selected.has(number) ? ' 선택됨' : ''}`);
@@ -3391,6 +3455,8 @@
     cityTileSellRow.classList.toggle('hidden', !(tile?.type === 'property' && owner === seat));
     citySellBuildingBtn.disabled = !(canSellThis && level > 0);
     citySellPropertyBtn.disabled = !canSellThis;
+    setActionable(citySellPropertyBtn, canSellThis && g.phase === 'liquidate' && !g.paused);
+    setActionable(citySellBuildingBtn, canSellThis && level > 0 && g.phase === 'liquidate' && !g.paused);
     if (tile?.type === 'property' && owner === seat) {
       const myCash = g.players?.[seat]?.cash ?? 0;
       const buildingRefund = level > 0 ? Math.floor(tileBuildCost * 0.5) : 0;
@@ -3401,6 +3467,7 @@
       cityTileSellPreview.textContent = '';
     }
     cityRollBtn.disabled = !(mine && g.phase === 'roll');
+    setActionable(cityRollBtn, !cityRollBtn.disabled && actionWindowOpen(g), 'primary');
     cityRollBtn.textContent = mine && g.phase === 'roll' ? (g.extraRoll ? '더블 · 추가 굴리기' : '주사위 굴리기') : '굴리기 대기';
     cityLastRoll.textContent = g.lastRoll
       ? `최근 주사위: ${g.lastRoll.first} + ${g.lastRoll.second} = ${g.lastRoll.total}${g.lastRoll.double ? ' · 더블!' : ''}`
@@ -3433,6 +3500,9 @@
     cityBuildOffer.textContent = buildTile ? `${buildTile.name} · 다음 ${['별장', '빌딩', '호텔'][buildLevel] || '건설 완료'} · 건설비 ${cost} · 건설 후 통행료 ${(buildTile.toll || 0) * [1, 2, 3, 5][Math.min(3, buildLevel + 1)]}${mine ? ` · 건설 시 현금 ${myCashNow} → ${myCashNow - cost}` : ''}` : '';
     cityBuildBtn.disabled = !(buildTile && mine && g.owners?.[buildTile.index] === seat && buildLevel < 3 && myCashNow >= cost);
     cityBuildSkipBtn.disabled = !(buildTile && mine);
+    // Buy/build are a choice between two buttons, so the whole offer row is the actionable area.
+    setActionable(cityBuyBtn.parentElement, canBuy && actionWindowOpen(g), 'area');
+    setActionable(cityBuildRow, Boolean(buildTile && mine) && actionWindowOpen(g), 'area');
   }
 
   let pictionaryTool = 'pen';
@@ -3560,6 +3630,7 @@
     }
 
     const canDraw = pictionaryCanDraw();
+    setActionable(pictionaryCanvas.parentElement, canDraw && !g.paused, 'area');
     pictionaryDrawTools.classList.toggle('hidden', !canDraw);
     pictionaryCanvas.classList.toggle('drawable', canDraw);
 
@@ -3567,6 +3638,7 @@
     const canGuess = Boolean(seat && !isDrawer && g.status === 'playing' && g.phase === 'drawing' && !alreadyGuessed);
     pictionaryGuessForm.classList.toggle('hidden', !canGuess);
     pictionaryGuessInput.disabled = !canGuess;
+    setActionable(pictionaryGuessInput, canGuess && !g.paused);
 
     pictionaryScoreboard.replaceChildren();
     const seats = g.seatOrder.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]);
@@ -3671,6 +3743,7 @@
     marathonRollBtn.classList.toggle('hidden', g.status !== 'playing');
     const canRoll = Boolean(seat && g.status === 'playing' && g.phase === 'roll' && g.myTurn && g.currentRoller === seat);
     marathonRollBtn.disabled = !canRoll;
+    setActionable(marathonRollBtn, canRoll && !g.paused, 'primary');
     marathonTurnLabel.textContent = g.status !== 'playing' ? ''
       : g.phase === 'roll' ? `${marathonGroupLabel(g.turnGroup, g)} 차례${canRoll ? ' · 내 차례!' : ''}`
       : `${marathonGroupLabel(g.turnGroup, g)} 미션 진행 중`;
@@ -3708,13 +3781,14 @@
       const isReflex = mission.type === 'reflex';
       marathonAnswerForm.classList.toggle('hidden', !canAnswer || isReflex);
       marathonAnswerInput.disabled = !canAnswer;
+      setActionable(marathonAnswerInput, canAnswer && actionWindowOpen(g));
       marathonReflexOptions.classList.toggle('hidden', !canAnswer || !isReflex);
       marathonReflexOptions.replaceChildren();
       if (canAnswer && isReflex) {
         for (const option of mission.options || []) {
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = 'secondary marathonReflexBtn';
+          button.className = 'secondary marathonReflexBtn' + actionableClasses(actionWindowOpen(g));
           button.textContent = option;
           button.addEventListener('click', () => marathonSubmitAnswer(option));
           marathonReflexOptions.appendChild(button);
@@ -3808,6 +3882,7 @@
     const canHint = Boolean(seat && g.status === 'playing' && hintPhase && g.currentSpeaker === seat);
     liarHintForm.classList.toggle('hidden', !canHint);
     liarHintInput.disabled = !canHint;
+    setActionable(liarHintInput, canHint && !g.paused);
 
     liarVoteBox.replaceChildren();
     const voting = ['vote','revote'].includes(g.phase);
@@ -3820,7 +3895,7 @@
       if (seat && !g.myVoted) for (const target of g.voteTargets || []) {
         if (target === seat) continue;
         const button = document.createElement('button');
-        button.type = 'button'; button.className = 'ghost liarVoteBtn';
+        button.type = 'button'; button.className = 'ghost liarVoteBtn' + actionableClasses(actionWindowOpen(g));
         button.textContent = state.players[target]?.label || `${target}번`;
         button.addEventListener('click', () => roomAction('liar-vote', { target, expectedPhaseId: g.phaseId }));
         liarVoteBox.appendChild(button);
@@ -3829,6 +3904,7 @@
 
     liarGuessForm.classList.toggle('hidden', !g.canGuess);
     liarGuessInput.disabled = !g.canGuess;
+    setActionable(liarGuessInput, Boolean(g.canGuess && seat) && !g.paused);
 
     const result = g.lastResult;
     // A resign ends the game mid-round, before liar.js ever computes lastResult (no vote or reveal
@@ -4040,6 +4116,7 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+            if (canDraw && !g.paused) button.classList.add('actionableTarget');
             button.disabled = !canDraw;
             button.setAttribute('aria-label', `${label(number)}님의 ${cardIndex + 1}번째 카드 뽑기`);
             button.addEventListener('click', () => {
@@ -4318,6 +4395,9 @@
     halliTimeSelect.disabled = !(isHost && g.status === 'selecting');
     halliStartBtn.disabled = !(isHost && g.status === 'selecting' && Object.values(state.players).filter(Boolean).length >= 2);
     halliFlipBtn.disabled = !(seat && g.status === 'playing' && g.turn === seat);
+    // Only the turn-bound flip is marked. The bell is open to everyone all game long, so lighting it
+    // up would just be permanent noise (and would hint nothing the fruit cards don't already show).
+    setActionable(halliFlipBtn, !halliFlipBtn.disabled && !g.paused, 'primary');
     halliBellBtn.disabled = !(seat && g.status === 'playing' && !g.eliminated.includes(seat));
     const left = g.endsAt ? Math.max(0, Math.ceil((g.endsAt - (Date.now() - halliClockOffset)) / 1000)) : 0;
     halliStatus.textContent = g.status === 'selecting' ? '2~6명이 준비되면 시작할 수 있습니다.'
@@ -4575,6 +4655,9 @@
         const canReveal = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
         const canSelect = active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && owner !== seat && !tile.revealed;
         button.disabled = !(canReveal || canSelect);
+        // Built only from public tile fields (owner/revealed) and my own turn/phase -- the same
+        // condition that enables the button -- so it never encodes a hidden number.
+        if ((canReveal || canSelect) && !selected && !feedbackForTile && !localGuessForTile && !g.paused) button.classList.add('actionableTarget');
         button.addEventListener('click', () => {
           if (g.phase === 'reveal-own') roomAction('reveal-davinci', { tileId: tile.id, expectedRevision: g.revision });
           else selectDavinciTarget(owner, tile.id);
@@ -4598,6 +4681,7 @@
     const selectedTarget = focus?.seat === seat && g.hands[focus.target]?.some(tile => tile.id === focus.tileId && !tile.revealed);
     davinciGuessBtn.disabled = !(active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
     davinciStopBtn.classList.toggle('hidden', !(active && g.phase === 'continue'));
+    setActionable(davinciGuessBtn, !davinciGuessBtn.disabled && !g.paused, 'primary');
     davinciStopBtn.disabled = davinciSelectionPending || davinciGuessPending;
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => renderDavinciFocusLine(focus));
     else renderDavinciFocusLine(focus);
@@ -4635,6 +4719,14 @@
     const spacing = 26;
     const start = -((total - 1) * spacing) / 2;
     return Array.from({ length: total }, (_, index) => start + index * spacing);
+  }
+
+  // v1.6.82: the moves renderYut() offers as buttons -- the server's legalMoves for my 'move' phase,
+  // held back while a throw/piece animation is still settling exactly like the buttons are.
+  function yutActionableMoves() {
+    const g = state?.game;
+    if (!actionWindowOpen(g) || g.turn !== seat || g.phase !== 'move' || yutThrowAnimating || yutPieceAnimation) return [];
+    return g.legalMoves || [];
   }
 
   function drawYutBoard() {
@@ -4745,6 +4837,26 @@
         if (pieces.length) drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
       }
     }
+    const actionableMoves = animatingIds ? [] : yutActionableMoves();
+    if (actionableMoves.length) {
+      // Destinations first (dashed), then the movable pieces themselves (solid) on top.
+      const destinations = new Set(actionableMoves
+        .filter(move => move.destination?.status === 'board' && move.destination.position !== undefined)
+        .map(move => String(move.destination.position)));
+      for (const position of destinations) {
+        const [x, y] = yutNodePosition(position === 'finishLine' ? position : Number(position));
+        drawActionableMark(x, y, 27, { dashed: true, rgb: '4,120,87', alpha: .9, width: 3 });
+      }
+      const movable = new Set(actionableMoves.flatMap(move => move.carried || [move.pieceId]));
+      for (const { position, pieces } of grouped.values()) {
+        const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
+        const offsets = yutStackOffsets(ordered.length);
+        const [x, y] = yutNodePosition(position);
+        ordered.forEach((piece, index) => {
+          if (movable.has(piece.id)) drawActionableMark(x + offsets[index], y, 23, { rgb: '4,120,87', alpha: .95, width: 3.5 });
+        });
+      }
+    }
     if (!animatingIds && yutRecentIds.size) {
       for (const { position, pieces } of grouped.values()) {
         const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
@@ -4821,7 +4933,19 @@
       }
     }
 
-    if (last) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
+    if (boardTurnActionable()) {
+      // The server's legalEdges list: exactly the lines that are still undrawn.
+      ctx.save();
+      ctx.strokeStyle = `rgba(${ACTIONABLE_RGB},.62)`;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([10, 8]);
+      for (const edgeId of state.game.legalEdges || []) {
+        const [x1,y1,x2,y2] = dotsEdgeEndpoints(edgeId);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      }
+      ctx.restore();
+    }
     if (hover && canPlace(hover.x, hover.y)) {
       const [x1,y1,x2,y2] = dotsEdgeEndpoints(hover.x);
       ctx.strokeStyle = seat === 'black' ? 'rgba(37,99,235,.72)' : 'rgba(239,68,68,.72)';
@@ -4934,6 +5058,8 @@
     ctx.moveTo(CITY_PAD_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
     ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
     ctx.stroke();
+    // v1.6.82: while I must liquidate, the tiles I own are the ones I can pick to sell.
+    const cityLiquidating = actionWindowOpen(g) && g.phase === 'liquidate' && g.liquidating === seat;
     for (const tile of g.tiles || []) {
       const [x, y] = cityCellPosition(tile.index);
       const owner = g.owners?.[tile.index];
@@ -4958,6 +5084,7 @@
         ctx.lineWidth = 4;
         ctx.strokeRect(x - 43, y - 43, 86, 86);
       }
+      if (cityLiquidating && tile.type === 'property' && owner === seat) drawActionableMark(x, y, 36, { square: true, dashed: true, rgb: '5,150,105', width: 3 });
       if (g.lastRoll?.to === tile.index) drawRecentActionRing(x, y, 46, cityRecent, { square: true });
       ctx.font = '13px system-ui, sans-serif';
       ctx.fillText(CITY_TYPE_ICON[tile.type] || '📍', x, y - 24);
@@ -5090,6 +5217,16 @@
       ctx.font = 'bold 17px system-ui, sans-serif';
       ctx.fillText(String(x + 1), cx, top - 16);
     }
+    if (boardTurnActionable()) {
+      // Legal columns come from the server; the ring sits where the disc would land (the same
+      // gravity lookup the hover preview below already uses).
+      for (const x of g.legalColumns || []) {
+        let landing = 5;
+        while (landing >= 0 && g.board[landing][x]) landing--;
+        if (landing < 0) continue;
+        drawActionableMark(left + (x + .5) * cell, top + (landing + .5) * cell, cell * .42, { dashed: true, width: 3 });
+      }
+    }
     if (hover && canPlace(hover.x, hover.y)) {
       const x = hover.x;
       const cx = left + (x + .5) * cell;
@@ -5163,6 +5300,13 @@
         if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
       }
     }
+    if (boardTurnActionable()) {
+      // Same criterion as canPlace(): an empty intersection. Black's renju-forbidden points are not
+      // pre-marked -- the server alone judges them on placement, exactly as before this marker.
+      for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+        if (!state.game.board[y][x]) drawActionableMark(PAD + x * GRID, PAD + y * GRID, 3, { rgb: '15,118,110', alpha: .62, fill: true });
+      }
+    }
     if (last) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }
@@ -5212,14 +5356,11 @@
       ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
     }
 
-    const legal = new Set((state?.game?.legalMoves || []).map(({ x, y }) => `${x},${y}`));
-    if (seat && state?.game?.status === 'playing' && state.game.turn === seat) {
-      ctx.fillStyle = 'rgba(255,255,255,.28)';
-      for (const key of legal) {
-        const [x, y] = key.split(',').map(Number);
-        ctx.beginPath();
-        ctx.arc((x + .5) * cell, (y + .5) * cell, cell * .1, 0, Math.PI * 2);
-        ctx.fill();
+    // Only the server's legalMoves list for my turn -- never "every empty square".
+    if (boardTurnActionable()) {
+      for (const { x, y } of state.game.legalMoves || []) {
+        drawActionableMark((x + .5) * cell, (y + .5) * cell, cell * .1, { rgb: '167,243,208', alpha: .72, fill: true });
+        drawActionableMark((x + .5) * cell, (y + .5) * cell, cell * .3, { rgb: '167,243,208', alpha: .7, width: 2.5 });
       }
     }
 
@@ -5239,6 +5380,7 @@
         }
       }
     }
+    if (last) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
 
     if (hover && canPlace(hover.x, hover.y)) {
       ctx.strokeStyle = '#f8fafc';

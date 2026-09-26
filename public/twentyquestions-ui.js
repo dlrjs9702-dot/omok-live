@@ -78,6 +78,16 @@
     hidden('twentyAnswerBox', !(playing && phase === 'answering' && drawer));
     hidden('twentyJudgeBox', !(playing && phase === 'judging' && drawer));
     hidden('twentyNextBtn', !(g.status === 'round-ended' && host));
+    // v1.6.82: mark the control I must use right now with the shared actionable glow -- exactly the
+    // same conditions that reveal each form/box above, so it never shows for spectators or others.
+    const actionable = window.GameActionable;
+    if (actionable) {
+      actionable.set($('twentySecretInput'), playing && phase === 'secret' && drawer);
+      actionable.set($('twentyQuestionInput'), playing && phase === 'asking' && myTurn);
+      actionable.set($('twentyGuessInput'), playing && (phase === 'asking' || phase === 'final-guesses') && myTurn);
+      actionable.set($('twentyAnswerBox'), playing && phase === 'answering' && drawer && !busy, 'area');
+      actionable.set($('twentyJudgeBox'), playing && phase === 'judging' && drawer && !busy, 'area');
+    }
     $('twentyStartBtn').disabled = busy || seatCount < 2;
     $('twentyStartBtn').textContent = seatCount < 2 ? '2명 이상 필요' : '스무고개 시작';
     $('twentyNextBtn').disabled = busy;
