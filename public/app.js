@@ -2682,14 +2682,19 @@
 
   function evaluateTurnAlert() {
     const request = myTurnAlertRequest();
+    // The first snapshot after entering a room only sets the baseline, whatever it shows. A reload
+    // briefly pauses the room (the old connection dropped) until this new one registers, so the
+    // baseline extends to the first un-paused snapshot -- otherwise my own reconnect would read as
+    // a brand-new turn.
+    const baseline = !turnAlertBaselineReady;
+    if (!state?.game?.paused) turnAlertBaselineReady = true;
     if (!request) { clearTurnAlert(); return; }
     const fresh = !seenTurnAlertKeys.has(request.key);
     if (fresh) {
       seenTurnAlertKeys.add(request.key);
       if (seenTurnAlertKeys.size > 200) seenTurnAlertKeys.delete(seenTurnAlertKeys.values().next().value);
     }
-    if (!turnAlertBaselineReady) { turnAlertBaselineReady = true; return; }
-    if (fresh && pageInBackground()) raiseTurnAlert(request);
+    if (fresh && !baseline && pageInBackground()) raiseTurnAlert(request);
   }
 
   function updateTurnNotifyBtn() {
