@@ -572,3 +572,38 @@ test('시작 바닥의 보너스피는 선이 갖고 바닥은 보충된다', ()
   }
   assert.fail('시작 바닥 보너스 분배를 찾지 못함');
 });
+
+// ---- v1.6.88: public move steps ---------------------------------------------------------------
+
+test('이동 단계(lastEvent.steps)에는 공개된 카드만 들어간다(무작위 400판)', () => {
+  let checked = 0;
+  for (let seed = 1; seed <= 400; seed += 1) {
+    const random = seeded(seed * 7919);
+    const game = gostop.create();
+    gostop.start(game, seed % 3 ? ['1', '2'] : ['1', '2', '3'], { random });
+    for (let guard = 0; guard < 400 && game.status === 'playing'; guard += 1) {
+      const seat = game.turn;
+      if (game.phase === 'play') {
+        const hand = gostop.handFor(game, seat);
+        if (!hand.length) gostop.flipOnly(game, seat);
+        else { const card = hand[Math.floor(random() * hand.length)]; gostop.play(game, seat, card.id, { bomb: card.bomb, shake: card.shake && random() < 0.5 }); }
+      } else if (game.phase === 'choose-floor') gostop.chooseFloor(game, seat, game.ctx.options[0]);
+      else if (game.phase === 'choose-flip') gostop.chooseFlip(game, seat, game.ctx.flipOptions[0]);
+      else if (game.phase === 'gukjin') gostop.chooseGukjin(game, seat, random() < 0.5);
+      else if (game.phase === 'go-stop') gostop.decide(game, seat, random() < 0.5 ? 'go' : 'stop');
+      const ev = game.lastEvent;
+      const hidden = new Set([...game.deck, ...Object.values(game.hands).flat()]);
+      const visible = new Set([...game.floor, ...Object.values(game.captured).flat(), ...Object.values(game.floorBonus).flat(), ...(ev?.revealed || []),
+        ...(game.ctx?.played || []), ...(game.ctx?.flipped ? [game.ctx.flipped] : []), ...(gostop.publicState(game).choice?.pending || [])]);
+      for (const step of ev?.steps || []) {
+        for (const id of step.cards || [step.card]) {
+          // 흔들기 공개 3장은 규칙상 공개(그중 2장은 손에 남음); 그 밖의 손패·산패는 절대 없다.
+          if (!(step.k === 'reveal' && (ev.revealed || []).includes(id))) assert.equal(hidden.has(id), false, `seed ${seed}: ${step.k} ${id} 비공개 카드`);
+          assert.ok(visible.has(id), `seed ${seed}: ${step.k} ${id} 위치 불명`);
+          checked += 1;
+        }
+      }
+    }
+  }
+  assert.ok(checked > 1000);
+});

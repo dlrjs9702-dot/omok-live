@@ -1024,3 +1024,25 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .month-1{--month:#15803d}.month-2{--month:#be185d}.month-3{--month:#db2777}.month-4{--month:#374151}.month-5{--month:#6d28d9}.month-6{--month:#c026d3}
 .month-7{--month:#b91c1c}.month-8{--month:#1e3a8a}.month-9{--month:#ca8a04}.month-10{--month:#c2410c}.month-11{--month:#0f766e}.month-12{--month:#334155}
 @media(max-width:880px){.gostopCaptured{grid-template-columns:1fr 1fr}.hwatu-hand{width:48px;height:72px}}
+
+/* v1.6.88: Go-Stop table movement. Sprites are cosmetic copies of face-up cards moving between the
+   previous and the final position; the real element is hidden until its copy lands. */
+.gostopFxLayer{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.gostopSprite{position:absolute!important;left:0;top:0;margin:0;width:46px;height:68px;transform-origin:0 0;will-change:transform;box-shadow:0 8px 18px rgba(0,0,0,.45)}
+.gostopSprite.fxBack{background:repeating-linear-gradient(45deg,#b91c1c 0 4px,#991b1b 4px 8px);border-color:#450a0a}
+.gostopSprite.fxBack>*{visibility:hidden}.gostopSprite.fxBack::before{display:none}
+.gostopSprite.fxGlow{outline:3px solid #fde047;outline-offset:1px}
+.gostopSprite.fxReveal{outline:2px solid #f9a8d4;outline-offset:1px}
+.gostopFxHidden{visibility:hidden!important}
+.fxPulse{animation:gostopFxPulse .9s ease-out 1;border-radius:9px}
+@keyframes gostopFxPulse{0%{box-shadow:0 0 0 0 rgba(253,224,71,.85);transform:scale(1.04)}100%{box-shadow:0 0 0 12px rgba(253,224,71,0);transform:scale(1)}}
+.fxBadge{position:absolute;padding:3px 12px;border-radius:999px;background:#fde047;color:#422006;font-weight:950;font-size:.95rem;box-shadow:0 4px 14px rgba(0,0,0,.4);white-space:nowrap}
+.fxScoreTag{margin-left:5px;color:#fde047;font-weight:950}
+.gostopFloorGroup.ppeokStack{padding-right:10px;background:rgba(127,29,29,.35)}
+.gostopFloorGroup.ppeokStack .hwatu+.hwatu{margin-left:-30px;box-shadow:-3px 0 6px rgba(0,0,0,.35)}
+.gostopFloorGroup.ppeokStack .hwatu:nth-child(2){transform:rotate(4deg)}.gostopFloorGroup.ppeokStack .hwatu:nth-child(3){transform:rotate(-3deg)}
+.gostopCalc{display:flex;gap:6px;flex-wrap:wrap}
+.gostopChip{padding:2px 9px;border-radius:999px;background:#1e293b;border:1px solid #334155;color:#f8fafc;font-weight:850;font-size:.84rem}
+.gostopChip.muted{color:#cbd5e1;font-weight:700}
+.gostopLoserLine{font-weight:750}
+@media (prefers-reduced-motion: reduce){.fxPulse{animation:none}.gostopFxLayer{display:none}}
