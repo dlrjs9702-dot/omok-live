@@ -60,6 +60,17 @@
     const playing = g.status === 'playing' && !g.paused;
     const phase = g.phase;
     const seatCount = Object.values(state.players || {}).filter(Boolean).length;
+    const recentApi = window.GameRecentAction;
+    const latestQuestion = (g.questions || []).at(-1);
+    const latestGuess = (g.guessHistory || []).at(-1);
+    const twentyRecent = recentApi?.observe(
+      g.pendingGuess ? `pending-guess:${g.moveCount}:${g.pendingGuess.seat}:${g.pendingGuess.text}`
+        : g.pendingQuestion ? `pending-question:${g.moveCount}:${g.pendingQuestion.seat}:${g.pendingQuestion.text}`
+          : phase === 'result' && latestGuess ? `guess:${g.moveCount}:${latestGuess.seat}:${latestGuess.text}:${latestGuess.correct}`
+            : latestQuestion ? `question:${g.moveCount}:${latestQuestion.seat}:${latestQuestion.text}:${latestQuestion.reply}`
+              : latestGuess ? `guess:${g.moveCount}:${latestGuess.seat}:${latestGuess.text}:${latestGuess.correct}` : null
+    );
+    const recentClasses = () => recentApi?.classes(twentyRecent) || '';
     hidden('twentyHostSetup', !(waiting && host));
     hidden('twentySecretForm', !(playing && phase === 'secret' && drawer));
     hidden('twentyQuestionForm', !(playing && phase === 'asking' && myTurn));
@@ -111,6 +122,11 @@
       ? `${nameFor(state, g.pendingQuestion.seat)}님: ${g.pendingQuestion.text}` : '질문 대기 중');
     setText('twentyPendingGuess', g.pendingGuess
       ? `${nameFor(state, g.pendingGuess.seat)}님: ${g.pendingGuess.text}` : '정답 대기 중');
+    for (const id of ['twentyPendingQuestion','twentyPendingGuess']) {
+      $(id).classList.remove('recentActionTarget','recentActionFresh');
+    }
+    if (g.pendingGuess) $('twentyPendingGuess').className += recentClasses();
+    else if (g.pendingQuestion) $('twentyPendingQuestion').className += recentClasses();
 
     const scoreboard = $('twentyScoreboard');
     scoreboard.replaceChildren();
@@ -129,14 +145,18 @@
     log.replaceChildren();
     for (const [index, question] of (g.questions || []).entries()) {
       const item = document.createElement('li');
+      const isLatest = index === (g.questions || []).length - 1 && !g.pendingQuestion && !g.pendingGuess && phase !== 'result';
+      item.className = isLatest ? recentClasses().trim() : '';
       item.textContent = `${index + 1}. ${nameFor(state, question.seat)}: ${question.text} → ${question.reply}`;
       log.appendChild(item);
     }
     if (!(g.questions || []).length) { const p = document.createElement('li'); p.textContent = '아직 질문이 없습니다.'; log.appendChild(p); }
     const guesses = $('twentyGuessLog');
     guesses.replaceChildren();
-    for (const entry of (g.guessHistory || [])) {
+    for (const [index, entry] of (g.guessHistory || []).entries()) {
       const p = document.createElement('p');
+      const isLatest = index === (g.guessHistory || []).length - 1 && !g.pendingGuess && (phase === 'result' || !latestQuestion);
+      p.className = isLatest ? recentClasses().trim() : '';
       p.textContent = `${nameFor(state, entry.seat)}님: ${entry.text} → ${entry.correct ? '정답' : '오답'}`;
       guesses.appendChild(p);
     }
