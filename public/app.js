@@ -474,6 +474,8 @@
   try { gameInfoCollapsedPref = localStorage.getItem(GAME_INFO_COLLAPSE_KEY); if (gameInfoCollapsedPref !== null) gameInfoCollapsedPref = gameInfoCollapsedPref === '1'; } catch {}
   let chatUnreadCount = 0;
   let chatAtBottom = true;
+  let chatRendering = false;
+  const messageListSignatures = new WeakMap();
   let chatLastSeenId = 0;
   let lastRenderedChatIds = [];
 
@@ -836,14 +838,13 @@
   }
 
   chatMessages.addEventListener('scroll', () => {
+    if (chatRendering) return;
     chatAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 40;
     if (chatAtBottom) { chatJumpBtn.classList.add('hidden'); if (chatVisible()) markChatSeen(); }
   });
   chatInput.addEventListener('focus', () => {
-    // Belt-and-suspenders for the mobile keyboard: the overlay already sizes itself with dvh,
-    // but scrolling the input into view also covers older WebKit builds that resize the layout
-    // viewport late.
-    setTimeout(() => chatInput.scrollIntoView({ block: 'end', behavior: 'smooth' }), 150);
+    // Desktop focus must not move the game page or the reader's chat history.
+    if (isMobileLayout()) setTimeout(() => chatInput.scrollIntoView({ block: 'end', behavior: 'smooth' }), 150);
   });
   chatJumpBtn.addEventListener('click', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2454,66 +2455,75 @@
     if (!lobbyChatMessages) return;
     const rows = lobbyState?.messages || [];
     lobbyConnectedCount.textContent = `대기 ${lobbyState?.connectedCount || 0}명`;
-    lobbyChatMessages.innerHTML = '';
-    if (!rows.length) {
-      const empty = document.createElement('div');
-      empty.className = 'chatEmpty';
-      empty.textContent = '아직 대기방 메시지가 없습니다.';
-      lobbyChatMessages.appendChild(empty);
-      return;
-    }
-    for (const row of rows) {
-      const item = document.createElement('div');
-      item.className = 'chatMessage';
-      const head = document.createElement('div');
-      head.className = 'chatMessageHead';
-      const who = document.createElement('strong');
-      who.textContent = row.label || '게스트';
-      const time = document.createElement('time');
-      const d = new Date(row.at);
-      time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-      head.append(who, time);
-      const text = document.createElement('div');
-      text.className = 'chatMessageText';
-      text.textContent = row.text;
-      item.append(head, text);
-      lobbyChatMessages.appendChild(item);
-    }
-    lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+    const wasAtBottom = lobbyChatMessages.scrollHeight - lobbyChatMessages.scrollTop - lobbyChatMessages.clientHeight < 40;
+    const oldScrollTop = lobbyChatMessages.scrollTop;
+    const anchor = firstVisibleMessage(lobbyChatMessages);
+    const changed = fillMessageList(lobbyChatMessages, rows, '아직 대기방 메시지가 없습니다.', sessionLabel);
+    if (!changed) return;
+    if (wasAtBottom) lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+    else restoreMessagePosition(lobbyChatMessages, anchor, oldScrollTop);
   }
 
-  function buildChatMessageEl(row) {
+  function buildChatMessageEl(row, previousRow, ownLabel) {
     const item = document.createElement('div');
     item.className = `chatMessage ${row.type === 'system' ? 'system' : ''}`;
+    item.dataset.messageId = String(row.id);
     if (row.type === 'system') {
       item.textContent = row.text;
     } else {
-      const head = document.createElement('div');
-      head.className = 'chatMessageHead';
-      const who = document.createElement('strong');
-      who.textContent = row.label || '게스트';
+      const mine = Boolean(ownLabel && row.label === ownLabel);
+      item.classList.toggle('mine', mine);
+      const sameSender = previousRow && previousRow.type !== 'system' && previousRow.label === row.label
+        && Math.abs(new Date(row.at) - new Date(previousRow.at)) < 5 * 60 * 1000;
+      if (!mine && !sameSender) {
+        const head = document.createElement('div');
+        head.className = 'chatMessageHead';
+        const who = document.createElement('strong');
+        who.textContent = row.label || '게스트';
+        head.appendChild(who);
+        item.appendChild(head);
+      }
+      const body = document.createElement('div');
+      body.className = 'chatMessageBody';
       const time = document.createElement('time');
       const d = new Date(row.at);
       time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-      head.append(who, time);
       const text = document.createElement('div');
       text.className = 'chatMessageText';
       text.textContent = row.text;
-      item.append(head, text);
+      body.append(text, time);
+      item.appendChild(body);
+      item.setAttribute('aria-label', `${row.label || '게스트'}: ${row.text}`);
     }
     return item;
   }
 
-  function fillMessageList(container, rows, emptyText) {
+  function fillMessageList(container, rows, emptyText, ownLabel = '') {
+    const signature = JSON.stringify([ownLabel, rows.map(row => [row.id, row.type, row.label, row.text, row.at])]);
+    if (messageListSignatures.get(container) === signature) return false;
+    messageListSignatures.set(container, signature);
     container.innerHTML = '';
     if (!rows.length) {
       const empty = document.createElement('div');
       empty.className = 'chatEmpty';
       empty.textContent = emptyText;
       container.appendChild(empty);
-      return;
+      return true;
     }
-    for (const row of rows) container.appendChild(buildChatMessageEl(row));
+    for (let i = 0; i < rows.length; i++) container.appendChild(buildChatMessageEl(rows[i], rows[i - 1], ownLabel));
+    return true;
+  }
+
+  function firstVisibleMessage(container) {
+    const top = container.getBoundingClientRect().top;
+    const item = [...container.children].find(child => child.getBoundingClientRect().bottom > top);
+    return item?.dataset.messageId ? { id: item.dataset.messageId, offset: item.getBoundingClientRect().top - top } : null;
+  }
+
+  function restoreMessagePosition(container, anchor, oldScrollTop) {
+    container.scrollTop = oldScrollTop;
+    const item = anchor && [...container.children].find(child => child.dataset.messageId === anchor.id);
+    if (item) container.scrollTop += item.getBoundingClientRect().top - container.getBoundingClientRect().top - anchor.offset;
   }
 
   // Liar hint phases stay private, and the current Twenty Questions drawer cannot use room chat
@@ -2552,14 +2562,20 @@
     chatLastSeenId = Math.max(chatLastSeenId, newestId);
 
     const wasAtBottom = chatAtBottom;
-    fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.');
+    const oldScrollTop = chatMessages.scrollTop;
+    const anchor = wasAtBottom ? null : firstVisibleMessage(chatMessages);
+    chatRendering = true;
+    const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.label || sessionLabel);
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     lastRenderedChatIds = chatRows.map(row => row.id);
 
-    if (wasAtBottom) {
+    if (chatChanged && wasAtBottom) {
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    } else if (chatChanged) {
+      restoreMessagePosition(chatMessages, anchor, oldScrollTop);
     }
     // Otherwise leave scrollTop untouched — a reader scrolled up in history is never yanked back down.
+    chatRendering = false;
 
     if (hasNewChat) {
       if (chatVisible() && wasAtBottom) {
