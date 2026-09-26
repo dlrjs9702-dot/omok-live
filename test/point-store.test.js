@@ -79,6 +79,19 @@ async function exercise(t, makeStore) {
     assert.equal((await store.getAccount(B, KST_NEXT)).balance, 0);
   });
 
+  await t.test('정산 기록에 엔진 결과 요약이 함께 남고, 재처리는 같은 기록을 돌려준다', async () => {
+    const summary = { kind: 'win', winner: '1', score: 10, losers: [{ seat: '2', baks: ['pibak'], multiplier: 8, amount: 8_000 }] };
+    const plan = { settlementId: 'room-s:1', matchId: 'room-s:1', gameType: 'gostop', summary, transfers: [{ from: C, to: A, amount: 8_000, key: '2>1' }] };
+    const first = await store.settle(plan);
+    const again = await store.settle(plan);
+    assert.deepEqual([first.applied, again.applied], [true, false]);
+    assert.deepEqual(first.summary, summary);
+    assert.deepEqual(again.summary, summary);
+    assert.deepEqual(again.transfers.map(item => item.paid), first.transfers.map(item => item.paid));
+    await assert.rejects(() => store.settle({ ...plan, settlementId: 'room-s:2', summary: 'text' }));
+    await assert.rejects(() => store.settle({ ...plan, settlementId: 'room-s:3', matchId: 'other', match: { id: 'room-s:3', gameType: 'gostop', outcomes: [{ id: 'x', result: 'win' }, { id: 'y', result: 'loss' }] } }));
+  });
+
   await t.test('잘못된 계정·금액·자기 송금은 거부한다', async () => {
     await assert.rejects(() => store.ensureAccount('admin:session-token'));
     await assert.rejects(() => store.settle({ settlementId: 'x', gameType: 'gostop', transfers: [{ from: A, to: A, amount: 1 }] }));
@@ -104,6 +117,52 @@ test('PostgreSQL 포인트 저장소', { skip: !process.env.POINTS_TEST_DATABASE
   const admin = new Pool({ connectionString: url });
   await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts');
   await admin.end();
+  const { PostgresMatchStore } = require('../lib/match-records');
+  const matches = new PostgresMatchStore(url);
+  await matches.pool.query('DROP TABLE IF EXISTS game_match_history');
+  await matches.init();
   const store = await exercise(t, async () => { const s = new PostgresPointStore(url); await s.init(); await s.init(); return s; });
+
+  const match = id => ({ id, gameType: 'gostop', at: new Date().toISOString(), outcomes: [{ id: 'p-a', result: 'win' }, { id: 'p-c', result: 'loss' }] });
+  const snapshot = async () => ({
+    balances: (await store.pool.query('SELECT user_id, balance FROM point_accounts ORDER BY user_id')).rows.map(row => [row.user_id, Number(row.balance)]),
+    ledger: Number((await store.pool.query('SELECT count(*) FROM point_ledger')).rows[0].count),
+    settlements: Number((await store.pool.query('SELECT count(*) FROM point_settlements')).rows[0].count),
+    matches: Number((await store.pool.query('SELECT count(*) FROM game_match_history')).rows[0].count),
+  });
+
+  await t.test('PostgreSQL: 원장·정산·전적이 한 트랜잭션에서 함께 커밋된다', async () => {
+    const before = await snapshot();
+    const plan = { settlementId: 'room-m:1', matchId: 'room-m:1', gameType: 'gostop', match: match('room-m:1'), transfers: [{ from: C, to: A, amount: 1_000, key: '2>1' }] };
+    const outcomes = await Promise.all([store.settle(plan), store.settle(plan)]);
+    assert.equal(outcomes.filter(item => item.applied).length, 1);
+    const after = await snapshot();
+    assert.deepEqual([after.ledger - before.ledger, after.settlements - before.settlements, after.matches - before.matches], [2, 1, 1]);
+    assert.equal((await matches.recordMatch(match('room-m:1'))), false, '전적 저장소 재기록은 중복 없음');
+  });
+
+  await t.test('PostgreSQL: 전적 기록이 실패하면 원장·정산·잔액이 모두 롤백되고, 재시도는 1회만 반영된다', async () => {
+    const before = await snapshot();
+    const connect = store.pool.connect.bind(store.pool);
+    store.pool.connect = async () => {
+      const client = await connect();
+      const query = client.query.bind(client);
+      client.query = (text, ...rest) => (typeof text === 'string' && text.includes('INSERT INTO game_match_history')
+        ? Promise.reject(new Error('injected failure')) : query(text, ...rest));
+      const release = client.release.bind(client);
+      client.release = (...args) => { client.query = query; return release(...args); };
+      return client;
+    };
+    const plan = { settlementId: 'room-f:1', matchId: 'room-f:1', gameType: 'gostop', match: match('room-f:1'), transfers: [{ from: C, to: A, amount: 2_000, key: '2>1' }] };
+    await assert.rejects(() => store.settle(plan), /injected failure/);
+    store.pool.connect = connect;
+    assert.deepEqual(await snapshot(), before, '부분 반영 없음');
+    const retried = await store.settle(plan);
+    assert.equal(retried.applied, true);
+    assert.equal((await store.settle(plan)).applied, false);
+    const after = await snapshot();
+    assert.deepEqual([after.ledger - before.ledger, after.settlements - before.settlements, after.matches - before.matches], [2, 1, 1]);
+  });
+  await matches.pool.end();
   await store.pool.end();
 });

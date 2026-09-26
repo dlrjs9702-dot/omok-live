@@ -907,7 +907,7 @@ function prepareNextRound(room) {
 async function recordFinishedMatch(room) {
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
-  await settleGostopIfNeeded(room);
+  await settleGostopIfNeeded(room, result);
   room.recordedMatches ||= new Set();
   if (room.recordedMatches.has(result.id)) return false;
   await matchStore.recordMatch(result);
@@ -941,10 +941,46 @@ function pointAccountForSeat(room, seat) {
 // Go-Stop settles once per match (idempotent by settlement id) *before* the match record is saved,
 // so a stored result can never exist without its point transfers; a failure leaves the match
 // unrecorded and every later record attempt retries the very same settlement.
-async function settleGostopIfNeeded(room) {
-  if (!isGostop(room)) return;
+// Points move exactly once per hand: the settlement id is claimed inside the store's transaction,
+// concurrent finishes in this process share one in-flight promise, and a failed attempt (e.g. a
+// database outage) is retried in the background with the same id until it lands.
+const SETTLEMENT_RETRY_MS = [2_000, 5_000, 15_000, 60_000, 300_000];
+
+function settleGostopIfNeeded(room, match = null) {
+  if (!isGostop(room)) return Promise.resolve();
   const game = room.game;
-  if (!['finished', 'draw'].includes(game.status) || game.settlement?.status === 'done') return;
+  if (!['finished', 'draw'].includes(game.status) || game.settlement?.status === 'done') return Promise.resolve();
+  const settlementId = `gostop:${room.id}:${game.round}`;
+  if (room.settling?.id === settlementId) return room.settling.promise;
+  const promise = applyGostopSettlement(room, match || buildMatchResult(room, nowIso())).then(() => {
+    clearTimeout(room.settlementRetry); room.settlementRetry = null; room.settlementAttempts = 0;
+  }, (error) => {
+    if (game.settlement?.status !== 'done') game.settlement = { status: 'pending', kind: game.result?.kind || null, transfers: [] };
+    scheduleSettlementRetry(room, settlementId);
+    throw error;
+  }).finally(() => { if (room.settling?.promise === promise) room.settling = null; });
+  room.settling = { id: settlementId, promise };
+  return promise;
+}
+
+function scheduleSettlementRetry(room, settlementId) {
+  if (room.settlementRetry) return;
+  const attempt = room.settlementAttempts || 0;
+  room.settlementAttempts = attempt + 1;
+  const delay = SETTLEMENT_RETRY_MS[Math.min(attempt, SETTLEMENT_RETRY_MS.length - 1)];
+  room.settlementRetry = setTimeout(() => {
+    room.settlementRetry = null;
+    // A new hand cannot start before this one is recorded (next-round records first), so the round
+    // only differs if the room was reset some other way. A closed room still settles its last hand.
+    if (!isGostop(room) || `gostop:${room.id}:${room.game.round}` !== settlementId) return;
+    recordFinishedMatch(room).then(() => { if (rooms.get(room.id) === room) broadcast(room); })
+      .catch(error => console.error('포인트 정산 재시도 실패:', error.message));
+  }, delay);
+  room.settlementRetry.unref?.();
+}
+
+async function applyGostopSettlement(room, match) {
+  const game = room.game;
   if (game.status === 'draw' || !game.result) {
     game.settlement = { status: 'done', kind: 'nagari', transfers: [] };
     return;
@@ -956,8 +992,9 @@ async function settleGostopIfNeeded(room) {
     : game.result.losers.map(item => ({ fromSeat: item.seat, toSeat: game.result.winner, amount: item.amount }));
   const usable = plan.filter(item => validUserId(seatOf[item.fromSeat]) && validUserId(seatOf[item.toSeat]) && seatOf[item.fromSeat] !== seatOf[item.toSeat]);
   const outcome = await pointStore.settle({
-    settlementId: `gostop:${room.id}:${game.round}`, matchId: `${room.id}:${game.round}`, gameType: 'gostop',
+    settlementId: `gostop:${room.id}:${game.round}`, matchId: match?.id || `${room.id}:${game.round}`, gameType: 'gostop',
     transfers: usable.map(item => ({ from: seatOf[item.fromSeat], to: seatOf[item.toSeat], amount: item.amount, key: `${item.fromSeat}>${item.toSeat}` })),
+    summary: game.result, match,
   });
   game.settlement = {
     status: 'done', kind: game.result.kind,
@@ -1833,7 +1870,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.86', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.87', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2513,7 +2550,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.86 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.87 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

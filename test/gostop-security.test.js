@@ -28,7 +28,7 @@ test('정산 금액·배수는 서버 엔진이 계산하고 클라이언트 입
   assert.doesNotMatch(actions, /body\.(amount|score|multiplier|balance|points(?!PerScore))/);
   assert.match(actions, /body\.cardId/);
   assert.match(server, /settlementId: `gostop:\$\{room\.id\}:\$\{game\.round\}`/);
-  assert.match(server, /await settleGostopIfNeeded\(room\);/);
+  assert.match(server, /await settleGostopIfNeeded\(room, result\);/);
   // Points: no transfer endpoint exists.
   assert.doesNotMatch(server, /\/api\/points\/(transfer|send|gift|buy|withdraw)/);
 });
