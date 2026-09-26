@@ -108,6 +108,7 @@
   const blackPlayer = document.getElementById('blackPlayer');
   const whitePlayer = document.getElementById('whitePlayer');
   const roleChooser = document.getElementById('roleChooser');
+  const turnNotifyBtn = document.getElementById('turnNotifyBtn');
   const chooseBlackBtn = document.getElementById('chooseBlackBtn');
   const chooseWhiteBtn = document.getElementById('chooseWhiteBtn');
   const chooseSpectatorBtn = document.getElementById('chooseSpectatorBtn');
@@ -2270,7 +2271,8 @@
     state = null;
     lastResultEffectKey = null;
     clearResultEffect();
-    document.title = '게임센터';
+    resetTurnAlertTracking();
+    setBaseDocumentTitle('게임센터');
     showView('lobby');
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
@@ -2283,6 +2285,7 @@
   function enterRoomState(next) {
     stopPresenceRefresh();
     stopLobbyStream();
+    resetTurnAlertTracking(); // the first snapshot of a (re)entered room is only a baseline
     state = next;
     lastResultEffectKey = null;
     resetRecentActionTracking();
@@ -2483,7 +2486,7 @@
   // Phases where everyone may act at once (votes, secret setup, guesses in pictionary, the Halli
   // Galli bell) deliberately have no actor. Pure function of current state, so a refresh, reconnect
   // or spectator join shows the right seat immediately; finished/waiting states show nothing.
-  function currentActorSeats() {
+  function currentActorSeats({ holdAnimations = true } = {}) {
     const g = state?.game;
     const none = { seats: new Set(), paused: false };
     if (!g || g.status !== 'playing') return none;
@@ -2496,8 +2499,8 @@
       case 'yut':
         // Keep the mover highlighted until its throw/hop animation has visibly settled, so a
         // back-do auto-pass or a finished move doesn't jump the highlight ahead of the board.
-        if (yutPieceAnimation && g.lastMove?.color) seats = one(g.lastMove.color);
-        else if (yutThrowAnimating && g.lastThrow?.color) seats = one(g.lastThrow.color);
+        if (holdAnimations && yutPieceAnimation && g.lastMove?.color) seats = one(g.lastMove.color);
+        else if (holdAnimations && yutThrowAnimating && g.lastThrow?.color) seats = one(g.lastThrow.color);
         else seats = one(g.turn);
         break;
       case 'cityking':
@@ -2546,6 +2549,178 @@
       // A paused match keeps a faint, glow-less marker so nobody reads it as "move now".
       card.classList.toggle('currentActorPaused', on && paused);
     }
+  }
+
+  // v1.6.85: background "my turn" alert. When a step that needs *my* action begins while this tab
+  // is not being looked at, the tab title gets a short prefix and -- only if the player switched it
+  // on themselves -- one system notification. Everything is keyed on the server state that defines
+  // the step (never chat, timers or presence), so a re-sent snapshot never alerts twice; the first
+  // snapshot after entering a room is only a baseline, so a reconnect never looks like a new turn.
+  const TURN_ALERT_PREFIX = '● 내 차례! | ';
+  const TURN_NOTIFY_KEY = 'turnNotifyPref';
+  let baseDocumentTitle = document.title || '게임센터';
+  let turnAlertActive = false;
+  let turnAlertBaselineReady = false;
+  const seenTurnAlertKeys = new Set();
+  let turnNotification = null;
+  let turnNotifyPref = false;
+  try { turnNotifyPref = localStorage.getItem(TURN_NOTIFY_KEY) === '1'; } catch {}
+
+  function applyDocumentTitle() {
+    const next = turnAlertActive ? `${TURN_ALERT_PREFIX}${baseDocumentTitle}` : baseDocumentTitle;
+    if (document.title !== next) document.title = next;
+  }
+
+  function setBaseDocumentTitle(title) {
+    baseDocumentTitle = title;
+    applyDocumentTitle();
+  }
+
+  function pageInBackground() {
+    if (document.visibilityState === 'hidden') return true;
+    if (typeof document.hasFocus !== 'function' || document.hasFocus()) return false;
+    // Focus inside our own chat window / game-info PiP still counts as looking at the game.
+    for (const win of [chatPipWindow, gameInfoPipWindow]) {
+      try { if (win && !win.closed && win.document?.hasFocus?.()) return false; } catch {}
+    }
+    return true;
+  }
+
+  // Short, public wording only -- never a secret word, hidden number or role.
+  function turnAlertVerb(type, g) {
+    switch (type) {
+      case 'omok': case 'omok2v2': case 'othello': case 'connect4': return '착수할';
+      case 'dots': return '선을 그을';
+      case 'bingo': return '숫자를 고를';
+      case 'baseball': return g.status === 'setup' ? '비밀 숫자를 정할' : '추측할';
+      case 'yut': return g.phase === 'move' ? '말을 움직일' : '윷을 던질';
+      case 'cityking': return g.phase === 'liquidate' ? '자산을 정리할' : g.phase === 'roll' ? '주사위를 굴릴' : '행동할';
+      case 'davinci': return g.phase === 'reveal-own' ? '타일을 공개할' : '추측할';
+      case 'halligalli': return '카드를 뒤집을';
+      case 'oldmaid': return '카드를 뽑을';
+      case 'pictionary': return '그림을 그릴';
+      case 'marathon': return g.phase === 'roll' ? '주사위를 굴릴' : '미션을 풀';
+      case 'liar': return ['vote', 'revote'].includes(g.phase) ? '투표할' : ['hint1', 'hint2', 'extraHint'].includes(g.phase) ? '힌트를 낼' : '행동할';
+      case 'twentyquestions':
+        return { secret: '정답을 정할', asking: '질문할', answering: '답변할', judging: '판정할', 'final-guesses': '최종 정답을 낼' }[g.phase] || '행동할';
+      default: return '행동할';
+    }
+  }
+
+  // The server fields that advance exactly when a new step starts, per game. Deliberately not
+  // e.g. Halli Galli's revision (other players' bell rings bump it during my own flip turn).
+  function turnAlertSequence(type, g) {
+    switch (type) {
+      case 'yut': return [g.moveCount, g.phase, g.lastThrow?.at];
+      case 'cityking': return [g.turnCount, g.phase, g.lastRoll?.at, g.liquidating];
+      case 'halligalli': return [g.flipId];
+      case 'liar': return [g.phaseId];
+      case 'marathon': return [g.phaseId, g.moveCount];
+      case 'pictionary': return [g.roundNumber, g.phase];
+      case 'twentyquestions': return [g.roundNumber, g.moveCount, g.phase];
+      case 'baseball': return [g.status, g.moveCount];
+      default: return [g.moveCount, g.phase];
+    }
+  }
+
+  // The step waiting on me right now, or null. Same actor rules as the v1.6.84 seat highlight (but
+  // from settled server state: a hidden tab's animations are paused, and must not hold an alert
+  // back), plus the simultaneous steps that still wait on me personally (a vote, a secret number).
+  function myTurnAlertRequest() {
+    const g = state?.game;
+    if (!state || !seat || !g || g.paused) return null;
+    const type = state.gameType;
+    let needed = false;
+    if (type === 'baseball' && g.status === 'setup') needed = !g.ready?.[seat];
+    else if (g.status !== 'playing') needed = false;
+    else if (type === 'liar' && ['vote', 'revote'].includes(g.phase)) needed = !g.myVoted && (g.voteTargets || []).some(target => target !== seat);
+    else if (type === 'liar' && g.phase === 'guess') needed = Boolean(g.canGuess);
+    else needed = currentActorSeats({ holdAnimations: false }).seats.has(String(seat));
+    if (!needed) return null;
+    const key = [type, g.round ?? '', ...turnAlertSequence(type, g).map(value => value ?? ''), seat].join('|');
+    return { key, body: `${state.gameName || gameName(type)}에서 ${turnAlertVerb(type, g)} 차례입니다.` };
+  }
+
+  function notificationsSupported() {
+    return typeof window.Notification === 'function';
+  }
+
+  function closeTurnNotification() {
+    if (!turnNotification) return;
+    try { turnNotification.close(); } catch {}
+    turnNotification = null;
+  }
+
+  function clearTurnAlert() {
+    closeTurnNotification();
+    if (!turnAlertActive) return;
+    turnAlertActive = false;
+    applyDocumentTitle();
+  }
+
+  function resetTurnAlertTracking() {
+    turnAlertBaselineReady = false;
+    seenTurnAlertKeys.clear();
+    clearTurnAlert();
+  }
+
+  function raiseTurnAlert(request) {
+    turnAlertActive = true;
+    applyDocumentTitle();
+    if (!turnNotifyPref || !notificationsSupported() || Notification.permission !== 'granted') return;
+    closeTurnNotification();
+    try {
+      // One tag, so the OS replaces rather than stacks; clicking only refocuses this same tab.
+      const notification = new Notification('게임센터 · 내 차례', { body: request.body, tag: 'gamecenter-my-turn' });
+      notification.onclick = () => {
+        try { window.focus(); } catch {}
+        notification.close();
+      };
+      turnNotification = notification;
+    } catch {}
+  }
+
+  function evaluateTurnAlert() {
+    const request = myTurnAlertRequest();
+    if (!request) { clearTurnAlert(); return; }
+    const fresh = !seenTurnAlertKeys.has(request.key);
+    if (fresh) {
+      seenTurnAlertKeys.add(request.key);
+      if (seenTurnAlertKeys.size > 200) seenTurnAlertKeys.delete(seenTurnAlertKeys.values().next().value);
+    }
+    if (!turnAlertBaselineReady) { turnAlertBaselineReady = true; return; }
+    if (fresh && pageInBackground()) raiseTurnAlert(request);
+  }
+
+  function updateTurnNotifyBtn() {
+    if (!turnNotifyBtn) return;
+    const supported = notificationsSupported();
+    turnNotifyBtn.classList.toggle('hidden', !supported);
+    if (!supported) return;
+    const denied = Notification.permission === 'denied';
+    const on = turnNotifyPref && Notification.permission === 'granted';
+    turnNotifyBtn.textContent = denied ? '내 차례 알림 · 차단됨' : on ? '내 차례 알림 · 켜짐' : '내 차례 알림 · 꺼짐';
+    turnNotifyBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    turnNotifyBtn.classList.toggle('turnNotifyOn', on);
+    turnNotifyBtn.title = denied ? '브라우저 사이트 설정에서 알림을 허용하면 사용할 수 있습니다.' : '다른 탭을 보는 중 내 차례가 되면 시스템 알림을 보냅니다.';
+  }
+
+  async function toggleTurnNotify() {
+    if (!notificationsSupported()) return;
+    let next = !(turnNotifyPref && Notification.permission === 'granted');
+    // The permission prompt only ever comes from this explicit click.
+    if (next && Notification.permission === 'default') {
+      let result = 'default';
+      try { result = await Notification.requestPermission(); } catch {}
+      if (result !== 'granted') next = false;
+    }
+    if (next && Notification.permission === 'denied') {
+      next = false;
+      showToast('브라우저에서 이 사이트의 알림이 차단되어 있습니다.', 3500);
+    }
+    turnNotifyPref = next;
+    try { localStorage.setItem(TURN_NOTIFY_KEY, next ? '1' : '0'); } catch {}
+    updateTurnNotifyBtn();
   }
 
   function setPlayerCard(el, color, player) {
@@ -2904,7 +3079,7 @@
     roomIdentityLabel.textContent = state.title ? `${gameLabel} · ${identityText()}` : identityText();
     roomGameLogo.textContent = roomLabel;
     rulesText.textContent = state.rules || '';
-    document.title = `${roomLabel} · 게임센터`;
+    setBaseDocumentTitle(`${roomLabel} · 게임센터`);
     newRoomBtn.classList.toggle('hidden', !isHost);
     hostRoomCodeBox.classList.toggle('hidden', !isHost);
     hostRoomCode.textContent = state.me?.roomCode || '----';
@@ -3007,6 +3182,7 @@
     renderChat();
     renderRoleChooser();
     renderCurrentActor();
+    evaluateTurnAlert();
 
     const finished = ['finished', 'draw'].includes(g.status);
     const outcome = resultOutcome(g, seat, state.gameType);
@@ -6166,6 +6342,13 @@
     if (!p || !canPlace(p.x, p.y)) return;
     roomAction('move', state?.gameType === 'connect4' ? { x: p.x } : p);
   });
+
+  // v1.6.85: coming back to this tab (or its window regaining focus) ends a pending turn alert.
+  const endTurnAlertIfLooking = () => { if (!pageInBackground()) clearTurnAlert(); };
+  document.addEventListener('visibilitychange', endTurnAlertIfLooking);
+  window.addEventListener('focus', endTurnAlertIfLooking);
+  turnNotifyBtn?.addEventListener('click', () => { toggleTurnNotify(); });
+  updateTurnNotifyBtn();
 
   window.TwentyQuestionsUI.init(roomAction);
   selectGame('omok');
