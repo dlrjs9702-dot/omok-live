@@ -801,7 +801,7 @@ function publicRoom(room) {
   };
 }
 
-// v1.6.85: every room snapshot carries a strictly increasing sequence number. The server is
+// v1.6.84: every room snapshot carries a strictly increasing sequence number. The server is
 // single-threaded, so a snapshot built later always reflects at least every mutation an earlier
 // one did; the client uses it to drop a stale HTTP response that arrives after a newer SSE push
 // (seen live as a spectator's screen freezing on the state from before the players sat down).
@@ -1833,7 +1833,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.85', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.86', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2513,7 +2513,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.85 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.86 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

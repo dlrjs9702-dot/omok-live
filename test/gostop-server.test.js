@@ -129,8 +129,19 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/room/gostop-play', mine.session, { cardId: otherHand[0] })).status, 409);
   assert.equal((await req('/api/room/gostop-play', c.session, { cardId: handA[0] })).status, 403);
 
+  // 5.5) 재접속: 게임 중 입장파일 재발급으로 세션이 끊겨도 다시 들어오면 손패·진행 상태가 그대로.
+  const beforeReconnect = await view(a.session);
+  a.session = await enter((await req(`/api/admin/keys/${a.keyId}/reissue`, admin, {})).data.html);
+  const afterReconnect = await view(a.session);
+  assert.equal(afterReconnect.me.seat, '1');
+  assert.deepEqual(afterReconnect.me.myGostopHand, beforeReconnect.me.myGostopHand);
+  for (const key of ['floor', 'turn', 'phase', 'deckCount', 'nagariStreak', 'pointsPerScore']) assert.deepEqual(afterReconnect.game[key], beforeReconnect.game[key], key);
+  assert.deepEqual(afterReconnect.game.seats, beforeReconnect.game.seats);
+  // 끊긴 동안 일시정지됐을 수 있으니 재접속 반영(일시정지 해제)까지 기다린다.
+  for (let i = 0; i < 20 && (await view(a.session)).game.paused; i += 1) await new Promise(resolve => setTimeout(resolve, 100));
+
   // 6) 끝까지 진행(무작위 합법 행동) → 정산 1회, 포인트 총량 보존.
-  const sessionOf = { 1: a.session, 2: b.session };
+  const sessionOf = { get 1() { return a.session; }, 2: b.session };
   let state = await view(a.session);
   for (let step = 0; step < 200 && state.game.status === 'playing'; step += 1) {
     const g = state.game;
