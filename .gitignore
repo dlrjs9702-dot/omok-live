@@ -1,4 +1,6 @@
 node_modules/
+playwright-report/
+test-results/
 data/games.json
 data/games.json.tmp
 data/announcements.json
