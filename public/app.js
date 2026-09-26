@@ -2431,6 +2431,12 @@
     }
   }
 
+  // v1.6.84: a room snapshot older than the one on screen (by the server's stateSeq) is dropped --
+  // e.g. an action's HTTP response that lands after the SSE push of a later change.
+  function isStaleRoomState(next) {
+    return Boolean(state && next && Number.isFinite(state.stateSeq) && Number.isFinite(next.stateSeq) && next.stateSeq < state.stateSeq);
+  }
+
   function handleSseBlock(block) {
     if (!block || block.startsWith(':')) return;
     let event = 'message';
@@ -2443,6 +2449,7 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'roomState') {
+      if (isStaleRoomState(parsed)) return;
       state = parsed;
       seat = state.me?.seat || null;
       isHost = Boolean(state.me?.isHost);
@@ -5757,7 +5764,7 @@
   async function roomAction(action, payload = {}) {
     try {
       const data = await api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify(payload) });
-      if (data.state) {
+      if (data.state && !isStaleRoomState(data.state)) {
         state = data.state;
         renderRoom();
       }
@@ -5779,7 +5786,7 @@
     button.disabled = true;
     try {
       const data = await api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify({ [name]: value }) });
-      if (data.state) { state = data.state; renderRoom(); }
+      if (data.state && !isStaleRoomState(data.state)) { state = data.state; renderRoom(); }
       input.value = '';
     } catch (err) { showToast(err.message, 4000); }
     finally { button.disabled = false; }
@@ -6068,7 +6075,7 @@
     button.disabled = true;
     try {
       const data = await api('/api/room/pictionary-guess', { method: 'POST', body: JSON.stringify({ guess }) });
-      if (data.state) { state = data.state; renderRoom(); }
+      if (data.state && !isStaleRoomState(data.state)) { state = data.state; renderRoom(); }
       pictionaryGuessInput.value = '';
       showToast(state.game.correctGuessers.includes(seat) ? '정답입니다!' : '오답입니다. 다시 시도해 보세요.', 2200);
     } catch (err) { showToast(err.message, 2800); }
