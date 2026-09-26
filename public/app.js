@@ -3770,12 +3770,12 @@
     liarHintLog.replaceChildren();
     const liarHints = g.hints || [];
     const latestHint = liarHints.at(-1);
-    const liarRecent = observeRecentAction(latestHint
-      ? `hint:${liarHints.length}:${latestHint.stage}:${latestHint.seat}:${latestHint.text}`
-      : g.lastResult ? `result:${g.round}:${g.lastResult.reason || g.lastResult.winningSide || ''}` : null);
+    const liarRecent = observeRecentAction(g.lastResult
+      ? `result:${g.round}:${g.lastResult.reason || g.lastResult.winningSide || ''}`
+      : latestHint ? `hint:${liarHints.length}:${latestHint.stage}:${latestHint.seat}:${latestHint.text}` : null);
     for (const [hintIndex, hint] of liarHints.entries()) {
       const row = document.createElement('div');
-      row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}${hintIndex === liarHints.length - 1 ? recentActionClasses(liarRecent) : ''}`;
+      row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}${!g.lastResult && hintIndex === liarHints.length - 1 ? recentActionClasses(liarRecent) : ''}`;
       const who = document.createElement('strong');
       const stage = hint.stage === 'hint1' ? '1차' : hint.stage === 'hint2' ? '2차' : '추가';
       who.textContent = `${stage} · ${state.players[hint.seat]?.label || hint.seat + '번'}`;
@@ -3819,6 +3819,8 @@
     // happened) -- so this box would otherwise just stay empty with no explanation.
     const resignedFinish = g.status === 'finished' && g.endReason === 'resign' && !result;
     liarResult.classList.toggle('hidden', !result && !resignedFinish);
+    liarResult.classList.remove('recentActionTarget', 'recentActionFresh');
+    if (result) liarResult.className += recentActionClasses(liarRecent);
     liarResult.replaceChildren();
     if (resignedFinish) {
       const title = document.createElement('strong');
