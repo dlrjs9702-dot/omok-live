@@ -351,6 +351,11 @@
   let yutMoveTrackingStarted = false;
   let yutPieceAnimation = null; // { pieceIds: Set<string>, x, y } while a move is animating, else null
   let yutMoveAnimationGen = 0;
+  // v1.6.83: direct on-board piece selection. yutMovePending blocks every further move request
+  // (board click, double click, fallback button) from the moment one is sent until the server
+  // answers; yutHoverTargetKey only brightens the pointed-at/focused target and never gates input.
+  let yutMovePending = false;
+  let yutHoverTargetKey = null;
   let state = null;
   let seat = null;
   let isHost = false;
@@ -1149,6 +1154,10 @@
       return;
     }
     let segmentIndex = 0;
+    // v1.6.83: claim the in-transit guard immediately (at the move's true starting node) instead of
+    // on the first animation frame, so there is no gap in which the board is selectable again.
+    const [startX, startY] = yutNodePosition(path[0]);
+    yutPieceAnimation = { pieceIds: idSet, x: startX, y: startY };
     const runSegment = () => {
       // A newer move animation superseded this one (e.g. a fast bonus-throw chain) -- stop quietly
       // rather than fight it for the same canvas; the newer animation already reflects reality.
@@ -2986,6 +2995,7 @@
       yutMoveTrackingStarted = false;
       yutPieceAnimation = null;
       yutMoveAnimationGen += 1;
+      yutHoverTargetKey = null;
     }
     bingoPanel.classList.toggle('hidden', !bingo);
     bingoSetupRow.classList.toggle('hidden', !bingo);
@@ -3240,7 +3250,10 @@
     for (const move of moves) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'yutPieceChoice' + actionableClasses(actionWindowOpen(g));
+      // v1.6.83: the board itself is now the primary control; these stay as a quieter fallback that
+      // shares the exact same request path (and duplicate-send guard) as clicking the piece.
+      button.className = 'yutPieceChoice';
+      button.disabled = yutMovePending;
       const number = Number(String(move.pieceId).split('-').at(-1));
       const carriedNumbers = (move.carried || [move.pieceId]).map(id => Number(String(id).split('-').at(-1))).sort((a, b) => a - b);
       const pieceLabel = carriedNumbers.length > 1 ? `${carriedNumbers.join('·')}번 말` : `${number}번 말`;
@@ -3249,7 +3262,17 @@
         : move.destination?.position === 'finishLine' ? ' · 완주 직전 칸'
         : '';
       button.textContent = `${pieceLabel} · ${moveLabel}${statusNote}`;
-      button.addEventListener('click', () => roomAction('move-yut', { pieceId: move.pieceId }));
+      button.addEventListener('click', () => requestYutMove(move.pieceId));
+      const linkBoard = on => {
+        const key = on ? yutTargetForPiece(move.pieceId)?.key || null : null;
+        if (key === yutHoverTargetKey) return;
+        yutHoverTargetKey = key;
+        if (state?.gameType === 'yut') drawYutBoard();
+      };
+      button.addEventListener('pointerenter', () => linkBoard(true));
+      button.addEventListener('pointerleave', () => linkBoard(false));
+      button.addEventListener('focus', () => linkBoard(true));
+      button.addEventListener('blur', () => linkBoard(false));
       yutMoveChoices.appendChild(button);
     }
     if (g.phase === 'move' && !moves.length) {
@@ -4729,6 +4752,83 @@
     return g.legalMoves || [];
   }
 
+  const YUT_PIECE_NUMBER = id => Number(String(id).split('-').at(-1));
+  const YUT_HOME_TOKEN_NODE = 0; // the start corner: board pieces never rest there (laps end on finishLine)
+  const YUT_TARGET_RADIUS = 26;
+
+  // v1.6.83: every legal move as ONE on-board selection target, laid out with the very same
+  // yutNodePosition()/yutStackOffsets() geometry drawPieceStack() paints with, so what is drawn and
+  // what is clickable can never drift apart. A stacked group is a single capsule (the server moves
+  // it as one unit via `carried`); home pieces are interchangeable, so they share one start-corner
+  // token that sends the lowest-numbered waiting piece -- the same move its fallback button sends.
+  function yutSelectableTargets() {
+    const g = state?.game;
+    const moves = yutMovePending ? [] : yutActionableMoves();
+    if (!moves.length) return [];
+    const mine = g.pieces?.[seat] || [];
+    const targets = [];
+    let homeTarget = null;
+    for (const move of moves) {
+      const piece = mine.find(item => item.id === move.pieceId);
+      if (!piece || piece.status === 'finished') continue;
+      const finishing = move.destination?.status === 'finished';
+      const dest = finishing ? 'finishLine' : move.destination?.position;
+      if (piece.status === 'home') {
+        const waiting = mine.filter(item => item.status === 'home').length;
+        if (!homeTarget || YUT_PIECE_NUMBER(move.pieceId) < YUT_PIECE_NUMBER(homeTarget.move.pieceId)) {
+          const [x, y] = yutNodePosition(YUT_HOME_TOKEN_NODE);
+          homeTarget = { key: 'home', kind: 'home', move, x1: x, x2: x, y, numbers: [YUT_PIECE_NUMBER(move.pieceId)], waiting, dest, finishing };
+        }
+        continue;
+      }
+      const group = mine.filter(item => item.status === 'board' && item.position === piece.position)
+        .sort((a, b) => YUT_PIECE_NUMBER(a.id) - YUT_PIECE_NUMBER(b.id));
+      const offsets = yutStackOffsets(group.length);
+      const [x, y] = yutNodePosition(piece.position);
+      const numbers = (move.carried || [move.pieceId]).map(YUT_PIECE_NUMBER).sort((a, b) => a - b);
+      targets.push({ key: `board:${piece.position}`, kind: 'board', move, x1: x + offsets[0], x2: x + offsets[offsets.length - 1], y, numbers, dest, finishing });
+    }
+    if (homeTarget) targets.push(homeTarget);
+    return targets;
+  }
+
+  function yutTargetForPiece(pieceId) {
+    return yutSelectableTargets().find(target => target.move.pieceId === pieceId || (target.move.carried || []).includes(pieceId)) || null;
+  }
+
+  function yutTargetAt(px, py) {
+    // Distance to the capsule's centre segment: any part of a stacked group hits the same move.
+    let best = null;
+    for (const target of yutSelectableTargets()) {
+      const cx = Math.max(target.x1, Math.min(target.x2, px));
+      const distance = Math.hypot(px - cx, py - target.y);
+      if (distance <= YUT_TARGET_RADIUS && (!best || distance < best.distance)) best = { target, distance };
+    }
+    return best?.target || null;
+  }
+
+  function yutCapsule(x1, x2, y, r) {
+    ctx.beginPath();
+    ctx.arc(x1, y, r, Math.PI / 2, Math.PI * 1.5);
+    ctx.arc(x2, y, r, Math.PI * 1.5, Math.PI / 2);
+    ctx.closePath();
+  }
+
+  async function requestYutMove(pieceId) {
+    if (yutMovePending || !yutTargetForPiece(pieceId)) return;
+    yutMovePending = true;
+    yutHoverTargetKey = null;
+    canvas.style.cursor = '';
+    renderYut();
+    drawYutBoard();
+    try {
+      await roomAction('move-yut', { pieceId });
+    } finally {
+      yutMovePending = false;
+      if (state?.gameType === 'yut') { renderYut(); drawYutBoard(); }
+    }
+  }
+
   function drawYutBoard() {
     const g = state.game;
     const yutRecent = observeRecentAction(g.lastMove
@@ -4837,24 +4937,95 @@
         if (pieces.length) drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
       }
     }
-    const actionableMoves = animatingIds ? [] : yutActionableMoves();
-    if (actionableMoves.length) {
-      // Destinations first (dashed), then the movable pieces themselves (solid) on top.
-      const destinations = new Set(actionableMoves
-        .filter(move => move.destination?.status === 'board' && move.destination.position !== undefined)
-        .map(move => String(move.destination.position)));
-      for (const position of destinations) {
-        const [x, y] = yutNodePosition(position === 'finishLine' ? position : Number(position));
-        drawActionableMark(x, y, 27, { dashed: true, rgb: '4,120,87', alpha: .9, width: 3 });
-      }
-      const movable = new Set(actionableMoves.flatMap(move => move.carried || [move.pieceId]));
-      for (const { position, pieces } of grouped.values()) {
-        const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
-        const offsets = yutStackOffsets(ordered.length);
-        const [x, y] = yutNodePosition(position);
-        ordered.forEach((piece, index) => {
-          if (movable.has(piece.id)) drawActionableMark(x + offsets[index], y, 23, { rgb: '4,120,87', alpha: .95, width: 3.5 });
+    // v1.6.83: selectable targets (mint, the v1.6.82 actionable colour). Destinations are dashed
+    // rings carrying the moving piece number(s); the targets themselves are solid capsules drawn
+    // OUTSIDE the piece, so the amber recent-move ring drawn next stays visible just inside it.
+    const selectable = animatingIds ? [] : yutSelectableTargets();
+    if (selectable.length) {
+      const hovered = selectable.find(target => target.key === yutHoverTargetKey) || null;
+      const mint = alpha => `rgba(4,120,87,${alpha})`;
+      if (hovered?.move.destination?.path?.length > 1) {
+        // Only while pointing at / focusing a target: its real server path, lightly traced.
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16,185,129,.55)';
+        ctx.lineWidth = 5;
+        ctx.setLineDash([2, 9]);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        hovered.move.destination.path.forEach((node, index) => {
+          const [x, y] = yutNodePosition(node === 'finished' ? 'finishLine' : node);
+          if (index) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         });
+        ctx.stroke();
+        ctx.restore();
+      }
+      const byDestination = new Map();
+      for (const target of selectable) {
+        if (target.dest === undefined || target.dest === null) continue;
+        const key = String(target.dest);
+        if (!byDestination.has(key)) byDestination.set(key, []);
+        byDestination.get(key).push(target);
+      }
+      for (const [dest, targets] of byDestination) {
+        const [x, y] = yutNodePosition(dest === 'finishLine' ? dest : Number(dest));
+        const emphasised = hovered && targets.includes(hovered);
+        drawActionableMark(x, y, 27, { dashed: !emphasised, rgb: '4,120,87', alpha: emphasised ? 1 : .9, width: emphasised ? 4.5 : 3 });
+        const label = targets.map(target => `${target.numbers.join('·')}${target.finishing ? ' 완주' : ''}`).join(' / ');
+        ctx.save();
+        ctx.font = '900 12px system-ui, sans-serif';
+        const width = ctx.measureText(label).width + 12;
+        const lx = Math.min(720 - width - 2, x + 16);
+        const ly = y - 38;
+        ctx.fillStyle = emphasised ? mint(1) : mint(.88);
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(lx, ly, width, 18, 9);
+        else ctx.rect(lx, ly, width, 18);
+        ctx.fill();
+        ctx.fillStyle = '#ecfdf5';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, lx + 6, ly + 9.5);
+        ctx.restore();
+      }
+      for (const target of selectable) {
+        const emphasised = target === hovered;
+        if (target.kind === 'home') {
+          // The waiting pieces' token, drawn on the (never occupied) start corner only while entering
+          // a new piece is actually legal; a small count shows how many are still at home.
+          ctx.save();
+          ctx.shadowColor = 'rgba(36,20,8,.32)';
+          ctx.shadowBlur = 5;
+          ctx.fillStyle = seat === 'black' ? '#2563eb' : '#ef4444';
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(target.x1, target.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#fff';
+          ctx.font = '950 15px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(target.numbers[0]), target.x1, target.y + 5);
+          if (target.waiting > 1) {
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.arc(target.x1 + 16, target.y - 16, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '900 11px system-ui, sans-serif';
+            ctx.fillText(`×${target.waiting}`, target.x1 + 16, target.y - 12);
+          }
+          ctx.restore();
+        }
+        ctx.save();
+        if (emphasised) {
+          ctx.fillStyle = 'rgba(52,211,153,.2)';
+          yutCapsule(target.x1, target.x2, target.y, YUT_TARGET_RADIUS + 2);
+          ctx.fill();
+        }
+        ctx.strokeStyle = emphasised ? mint(1) : mint(.95);
+        ctx.lineWidth = emphasised ? 5 : 3.5;
+        ctx.shadowColor = 'rgba(52,211,153,.55)';
+        ctx.shadowBlur = emphasised ? 10 : 6;
+        yutCapsule(target.x1, target.x2, target.y, emphasised ? YUT_TARGET_RADIUS + 2 : YUT_TARGET_RADIUS);
+        ctx.stroke();
+        ctx.restore();
       }
     }
     if (!animatingIds && yutRecentIds.size) {
@@ -5440,10 +5611,17 @@
     ctx.restore();
   }
 
-  function canvasPoint(ev) {
+  // Client (CSS) pixels -> the canvas's own drawing coordinates, whatever size it is displayed at.
+  function canvasPixel(ev) {
     const rect = canvas.getBoundingClientRect();
-    const px = (ev.clientX - rect.left) * (canvas.width / rect.width);
-    const py = (ev.clientY - rect.top) * (canvas.height / rect.height);
+    return {
+      px: (ev.clientX - rect.left) * (canvas.width / rect.width),
+      py: (ev.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }
+
+  function canvasPoint(ev) {
+    const { px, py } = canvasPixel(ev);
     if (state?.gameType === 'yut' || state?.gameType === 'cityking') return null;
     if (state?.gameType === 'dots') {
       let best = null;
@@ -5869,11 +6047,33 @@
   sideNextRoundBtn.addEventListener('click', () => roomAction('next-round'));
 
   canvas.addEventListener('pointermove', (ev) => {
+    if (state?.gameType === 'yut') {
+      const { px, py } = canvasPixel(ev);
+      const key = yutTargetAt(px, py)?.key || null;
+      canvas.style.cursor = key ? 'pointer' : '';
+      if (key !== yutHoverTargetKey) { yutHoverTargetKey = key; drawYutBoard(); }
+      return;
+    }
+    canvas.style.cursor = '';
     hover = canvasPoint(ev);
     drawBoard();
   });
-  canvas.addEventListener('pointerleave', () => { hover = null; drawBoard(); });
+  canvas.addEventListener('pointerleave', () => {
+    hover = null;
+    canvas.style.cursor = '';
+    if (state?.gameType === 'yut') {
+      if (yutHoverTargetKey !== null) { yutHoverTargetKey = null; drawYutBoard(); }
+      return;
+    }
+    drawBoard();
+  });
   canvas.addEventListener('pointerup', (ev) => {
+    if (state?.gameType === 'yut') {
+      const { px, py } = canvasPixel(ev);
+      const target = yutTargetAt(px, py);
+      if (target) requestYutMove(target.move.pieceId);
+      return;
+    }
     if (state?.gameType === 'cityking') { selectCityTileFromPointer(ev); return; }
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
