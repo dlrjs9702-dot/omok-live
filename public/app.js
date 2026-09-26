@@ -3235,6 +3235,9 @@
     else if (g.pendingSteps < 0) yutHint.textContent = `${g.lastThrow?.name || ''} · 한 칸 뒤로 물릴 말을 선택하세요.`;
     else yutHint.textContent = `${g.lastThrow?.name || ''} · ${g.pendingSteps || 0}칸 이동할 말을 선택하세요.`;
 
+    // Buttons are rebuilt below without firing pointerleave/blur, so drop a hover link that came
+    // from one of them unless the pointer/focus is still on the board or the list itself.
+    if (yutHoverTargetKey !== null && !canvas.matches(':hover') && !yutMoveChoices.matches(':hover') && !yutMoveChoices.contains(document.activeElement)) yutHoverTargetKey = null;
     yutMoveChoices.replaceChildren();
     // v1.6.57: hold off on offering move choices until the throw animation (and any still-playing
     // piece-move animation from a prior bonus throw) has fully settled -- otherwise a fast click
@@ -4941,6 +4944,7 @@
     // rings carrying the moving piece number(s); the targets themselves are solid capsules drawn
     // OUTSIDE the piece, so the amber recent-move ring drawn next stays visible just inside it.
     const selectable = animatingIds ? [] : yutSelectableTargets();
+    if (!selectable.length && canvas.style.cursor) canvas.style.cursor = '';
     if (selectable.length) {
       const hovered = selectable.find(target => target.key === yutHoverTargetKey) || null;
       const mint = alpha => `rgba(4,120,87,${alpha})`;
