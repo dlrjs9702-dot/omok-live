@@ -4621,6 +4621,10 @@
 
   function drawYutBoard() {
     const g = state.game;
+    const yutRecent = observeRecentAction(g.lastMove
+      ? `move:${g.lastMove.at || ''}:${(g.lastMove.pieceIds || []).join(',')}`
+      : null);
+    const yutRecentIds = new Set(g.lastMove?.pieceIds || []);
     const bg = ctx.createLinearGradient(0, 0, 720, 720);
     bg.addColorStop(0, '#f3d79c');
     bg.addColorStop(1, '#c99549');
@@ -4723,6 +4727,16 @@
         if (pieces.length) drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
       }
     }
+    if (!animatingIds && yutRecentIds.size) {
+      for (const { position, pieces } of grouped.values()) {
+        const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
+        const offsets = yutStackOffsets(ordered.length);
+        const [x, y] = yutNodePosition(position);
+        ordered.forEach((piece, index) => {
+          if (yutRecentIds.has(piece.id)) drawRecentActionRing(x + offsets[index], y, 22, yutRecent);
+        });
+      }
+    }
     const home = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'home').length;
     const done = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'finished').length;
     ctx.textAlign = 'left';
@@ -4769,6 +4783,9 @@
     }
 
     const lastEdge = g.lastMove?.edgeId;
+    const dotsRecent = observeRecentAction(g.lastMove
+      ? `edge:${g.moveCount}:${g.lastMove.at || ''}:${lastEdge}`
+      : null);
     for (let edgeId = 0; edgeId < 40; edgeId += 1) {
       const owner = edgeId < 20
         ? g.edges?.h?.[Math.floor(edgeId / 4)]?.[edgeId % 4]
@@ -4779,12 +4796,14 @@
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
       if (edgeId === lastEdge) {
-        ctx.strokeStyle = 'rgba(255,255,255,.8)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = `rgba(255,255,255,${0.72 + dotsRecent.strength * 0.25})`;
+        ctx.lineWidth = 3 + dotsRecent.strength * 3;
         ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        scheduleRecentActionCanvas(dotsRecent);
       }
     }
 
+    if (last) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
     if (hover && canPlace(hover.x, hover.y)) {
       const [x1,y1,x2,y2] = dotsEdgeEndpoints(hover.x);
       ctx.strokeStyle = seat === 'black' ? 'rgba(37,99,235,.72)' : 'rgba(239,68,68,.72)';
@@ -4845,6 +4864,9 @@
 
   function drawCityBoard() {
     const g = state.game;
+    const cityRecent = observeRecentAction(g.lastRoll
+      ? `roll:${g.lastRoll.at || ''}:${g.lastRoll.seat}:${g.lastRoll.from}:${g.lastRoll.to}`
+      : null);
     if (canvas.width !== CITY_CANVAS_W || canvas.height !== CITY_CANVAS_H) {
       canvas.width = CITY_CANVAS_W;
       canvas.height = CITY_CANVAS_H;
@@ -4918,6 +4940,7 @@
         ctx.lineWidth = 4;
         ctx.strokeRect(x - 43, y - 43, 86, 86);
       }
+      if (g.lastRoll?.to === tile.index) drawRecentActionRing(x, y, 46, cityRecent, { square: true });
       ctx.font = '13px system-ui, sans-serif';
       ctx.fillText(CITY_TYPE_ICON[tile.type] || '📍', x, y - 24);
       ctx.fillStyle = '#172033';
@@ -4995,6 +5018,9 @@
 
     const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = g.lastMove;
+    const connectRecent = observeRecentAction(last
+      ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
     for (let y = 0; y < 6; y++) {
       for (let x = 0; x < 7; x++) {
         const cx = left + (x + .5) * cell;
@@ -5029,6 +5055,7 @@
             ctx.fillStyle = color === 'black' ? '#ffffff' : '#6b3e03';
             ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
           }
+          if (last?.x === x && last?.y === y) drawRecentActionRing(cx, cy, radius * .9, connectRecent);
         }
         ctx.restore();
       }
@@ -5109,12 +5136,16 @@
     if (!state) return;
     const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
+    const omokRecent = observeRecentAction(last
+      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
         if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
       }
     }
+    if (last) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }
 
@@ -5175,10 +5206,19 @@
     }
 
     const last = state?.game?.lastMove;
+    const othelloRecent = observeRecentAction(last
+      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
+    const flippedCells = new Set((last?.flippedCells || []).map(cell => `${cell.x},${cell.y}`));
     for (let y = 0; y < 8; y += 1) {
       for (let x = 0; x < 8; x += 1) {
         const color = state?.game?.board?.[y]?.[x];
-        if (color) drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
+        if (color) {
+          drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
+          if (othelloRecent.fresh && flippedCells.has(`${x},${y}`)) {
+            drawRecentActionRing((x + .5) * cell, (y + .5) * cell, cell * .34, othelloRecent, { secondary: true });
+          }
+        }
       }
     }
 
