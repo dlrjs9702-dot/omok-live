@@ -206,6 +206,32 @@
   let halliClockOffset = 0;
   const davinciPanel = document.getElementById('davinciPanel');
   const gostopPanel = document.getElementById('gostopPanel');
+  const rpgPanel = document.getElementById('rpgPanel');
+  const rpgStage = document.getElementById('rpgStage');
+  // 잿빛 원정: the 3D client is an ES module loaded only when an RPG room is shown, and fully
+  // unmounted (frame loop, WebGL resources, key listeners) as soon as it is not.
+  const rpgBridge = { controller: null, loading: null, latest: null, generation: 0 };
+  function rpgRender(roomState) {
+    rpgBridge.latest = roomState;
+    if (rpgBridge.controller) { rpgBridge.controller.update(roomState); return; }
+    if (rpgBridge.loading) return;
+    const generation = ++rpgBridge.generation;
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.6.89').then((mod) => {
+      rpgBridge.loading = null;
+      if (generation !== rpgBridge.generation || !isRpgGame()) return;
+      rpgBridge.controller = mod.mount(rpgStage, {
+        post: (action, payload) => roomAction(action, payload),
+        fast: (action, payload) => api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify(payload) }).catch(() => null),
+      });
+      rpgBridge.controller.update(rpgBridge.latest);
+    }).catch((error) => { rpgBridge.loading = null; console.error(error); showToast('3D 화면을 불러오지 못했습니다. 새로고침해 주세요.', 4000); });
+  }
+  function rpgUnmount() {
+    rpgBridge.generation += 1;
+    rpgBridge.loading = null;
+    if (rpgBridge.controller) { rpgBridge.controller.unmount(); rpgBridge.controller = null; }
+  }
+  window.RpgDebug = () => rpgBridge.controller?.debug() || null;
   const gostopStakeChoices = document.getElementById('gostopStakeChoices');
   const pointWallet = document.getElementById('pointWallet');
   const pointBalanceText = document.getElementById('pointBalanceText');
@@ -1374,7 +1400,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고'
+      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고' : type === 'rpg' ? '잿빛 원정'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -1391,11 +1417,12 @@
   function isOldMaidGame() { return state?.gameType === 'oldmaid'; }
   function isDavinciGame() { return state?.gameType === 'davinci'; }
   function isGostopGame() { return state?.gameType === 'gostop'; }
+  function isRpgGame() { return state?.gameType === 'rpg'; }
   function isHalliGame() { return state?.gameType === 'halligalli'; }
   function isCityKingGame() { return state?.gameType === 'cityking'; }
   function isMarathonGame() { return state?.gameType === 'marathon'; }
   function isTwentyGame() { return state?.gameType === 'twentyquestions'; }
-  function isNumberedSeatGame() { return isGostopGame() || isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame() || isDavinciGame() || isHalliGame(); }
+  function isNumberedSeatGame() { return isRpgGame() || isGostopGame() || isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame() || isDavinciGame() || isHalliGame(); }
   // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
   // seats; individual/3v3/2v2v2 use all 6) -- mirrors server.js's marathonSeatSlots().
   function marathonSeatSlots() {
@@ -1463,6 +1490,7 @@
     "halligalli": "2~6명이 순서대로 카드를 공개합니다. 공개된 카드 맨 위의 한 과일 합이 정확히 5개면 종을 먼저 치세요. 맞히면 공개 카드를 전부 가져오고, 틀리면 다른 참가자에게 카드 한 장씩 줍니다. 카드가 없어도 자기 차례 전 종으로 카드를 얻으면 생존합니다. 방장이 정한 5분 또는 10분이 끝나면 뒷면 카드가 가장 많은 사람이 승리하며 공동 승리할 수 있습니다.",
     "davinci": "2~4명 개인전. 타일 색은 모두 볼 수 있고 숫자는 본인 것만 볼 수 있습니다. 0~11의 흑·백 타일을 숫자 오름차순, 같은 숫자는 흑·백 순으로 정렬합니다. 차례마다 한 장을 뽑고 상대 타일 숫자를 추측합니다. 맞히면 계속 추측하거나 멈추고, 틀리면 뽑은 타일을 공개합니다. 더미가 비면 틀렸을 때 자기 타일을 공개합니다. 마지막 생존자가 승리합니다.",
     "gostop": "2명은 맞고(각 10장·바닥 8장), 3명은 고스톱(각 7장·바닥 6장)입니다. 넷마블 대박맞고 계열 대박모드로 맞고 7점·고스톱 3점부터 고/스톱을 고르며 1고 +1점 ×2, 2고 +2점 ×4 … 7고 ×128입니다. 광·열끗·고도리·띠·홍단·청단·초단·피 점수와 9월 국진(열끗/쌍피 선택), 쪽·따닥·판쓸이·뻑·자뻑·흔들기·폭탄·콩알탄·보너스피, 총통·3뻑 10점 승리, 피박·광박·멍박·고박, 나가리(다음 판 ×2)를 적용합니다. 방장이 정한 점당 10/50/100P로 게임센터 포인트만 정산하며 실제 돈과는 관계없습니다.",
+    "rpg": "1~4인 협동 3D 로그라이크 액션 RPG입니다. 수호자·사냥꾼·비술사 중 하나를 골라 방향키로 직접 움직이고 Space로 기본 공격, Q/W/E/R로 스킬, Shift로 대시합니다. 방의 몬스터를 모두 물리치면 레벨업 스킬·능력치·아이템을 고르고 다음 방으로 갑니다. 여덟 번째 방의 보스를 쓰러뜨리면 원정 성공이며, 한 판이 끝나면 성장은 초기화됩니다.",
     "marathon": "2~6인 개인전 또는 4인 2대2·6인 3대3·6인 2대2대2 팀전. 주사위 1개를 굴려 이동하고, 도착한 칸마다(같은 칸 재방문 포함) 타이핑·기억력·반응·계산 미션이 매번 새로 나옵니다. 제한시간 안에 맞히면 그 자리에 머물고, 못 맞히면 2칸 뒤로 물러나며 그 자리에서 새 미션이 바로 이어집니다. 30칸 이상 도달하면 즉시 승리합니다. 팀전은 말 하나를 공유하며 팀원끼리 주사위를 돌아가며 굴리고 미션은 팀원 누구나 제출할 수 있습니다."
 });
   function showGameRule(type) {
@@ -1470,7 +1498,7 @@
   }
 
   function selectGame(type) {
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci', 'halligalli', 'gostop'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci', 'halligalli', 'gostop', 'rpg'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
@@ -2297,6 +2325,7 @@
   }
 
   function enterLobby() {
+    rpgUnmount();
     stopStream();
     // Closing both windows here (rather than leaving either to linger) mirrors the same reasoning
     // as before: whichever panel is currently popped out -- chat's separate window, 게임 진행's
@@ -2495,13 +2524,15 @@
       seat = state.me?.seat || null;
       isHost = Boolean(state.me?.isHost);
       renderRoom();
+    } else if (event === 'rpgTick') {
+      if (isRpgGame()) rpgBridge.controller?.tick(parsed);
     } else if (event === 'sessionExpired') {
       expireSession(parsed.message);
     }
   }
 
   function choiceKo(choice) {
-    if ((isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(choice)) return `${choice}번`;
+    if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -2511,7 +2542,7 @@
 
   function seatKo(value) {
     if (isMarathonGame() && numberedSeats().includes(value)) return marathonGroupLabel(state.game.mode === 'team' ? marathonGroupForSeat(value) : value, state.game);
-    if ((isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(value)) return `${value}번`;
+    if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
     if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
@@ -2977,7 +3008,7 @@
       const marathonRoller = marathon && state.game.status === 'playing' && state.game.currentRoller === number;
       const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : halli ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
       const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
-      card.className = `teamPlayer ${(gostop || bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
@@ -2988,6 +3019,7 @@
         : halli ? `${number}번${eliminated ? ' · 탈락' : currentTurn && state.game.status === 'playing' ? ' · 뒤집을 차례' : ''}`
         : davinci ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 추측 차례' : ''}`
         : gostop ? `${number}번${state.game.status === 'playing' && state.game.turn === number ? ' · 차례' : ''}`
+        : isRpgGame() ? `${number}번${state.game.classes?.[number] ? ` · ${state.game.classInfo?.[state.game.classes[number]]?.name || ''}` : ''}`
         : city ? `${number}번${eliminated ? ' · 파산' : currentTurn && state.game.status === 'playing' ? ' · 현재 차례' : ''}`
         : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroup}팀` : ''}${marathonRoller ? ' · 굴릴 차례' : ''}`
         : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
@@ -3027,7 +3059,7 @@
     teamRoleButtons.classList.toggle('hidden', !numbered);
     roleChooser.classList.toggle('hidden', !selecting);
     if (numbered) {
-      roleChooser.querySelector('small').textContent = isGostopGame() ? '2~3명이 자리를 선택합니다. 2명은 맞고, 3명은 고스톱이며 방장이 점당 포인트를 정하고 시작합니다.' : twenty ? '2~8명이 자리를 선택합니다. 방장이 개인전/협동전과 1~10라운드를 정한 후 시작합니다.' : pictionary
+      roleChooser.querySelector('small').textContent = isRpgGame() ? '1~4명이 자리를 선택하고 역할(수호자·사냥꾼·비술사)을 고르면 방장이 원정을 시작합니다.' : isGostopGame() ? '2~3명이 자리를 선택합니다. 2명은 맞고, 3명은 고스톱이며 방장이 점당 포인트를 정하고 시작합니다.' : twenty ? '2~8명이 자리를 선택합니다. 방장이 개인전/협동전과 1~10라운드를 정한 후 시작합니다.' : pictionary
         ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
         : halli ? '2~6명이 자리를 선택합니다. 방장이 5분 또는 10분을 정하고 시작합니다.'
@@ -3043,7 +3075,7 @@
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (isGostopGame() || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
+        button.textContent = (isRpgGame() || isGostopGame() || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
           : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroupForSeat(number)}팀` : ''}`
           : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
@@ -3170,7 +3202,12 @@
     const pauseStatusText = g.status === 'playing' && g.paused
       ? `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 응답 대기`
       : null;
-    if (isGostopGame()) {
+    if (isRpgGame()) {
+      const roomInfo = g.room ? `${g.roomIndex + 1}/${g.roomCount} ${g.room.label}` : '';
+      statusText.textContent = g.status === 'selecting' ? '잿빛 원정 · 역할 선택 · 방장 시작 대기'
+        : g.status === 'finished' ? (g.result?.kind === 'clear' ? '잿빛 원정 성공' : '잿빛 원정 종료')
+        : g.phase === 'intermission' ? `잿빛 원정 · ${roomInfo} · 성장 정비` : `잿빛 원정 · ${roomInfo} 전투 중`;
+    } else if (isGostopGame()) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '고스톱 · 맞고 · 방장 시작 대기' : g.status === 'draw' ? '나가리' : g.status === 'finished' ? `${g.mode === 'matgo' ? '맞고' : '고스톱'} 종료`
         : `${state.players[g.turn]?.label || '참가자'}님 · ${g.phase === 'go-stop' ? '고/스톱 선택' : g.phase === 'gukjin' ? '국진 선택' : g.phase?.startsWith('choose') ? '먹을 패 선택' : '패를 낼 차례'}`);
     } else if (halli) {
@@ -3273,7 +3310,8 @@
     const city = state.gameType === 'cityking';
     const marathon = isMarathonGame();
     const gostop = isGostopGame();
-    canvasWrap.classList.toggle('hidden', gostop || baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci || halli);
+    const rpg = isRpgGame();
+    canvasWrap.classList.toggle('hidden', rpg || gostop || baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci || halli);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     canvasWrap.classList.toggle('actionableBoard', boardTurnActionable());
@@ -3339,6 +3377,8 @@
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
     if (gostop) window.GostopUI.render(state);
+    rpgPanel.classList.toggle('hidden', !rpg);
+    if (rpg) rpgRender(state); else rpgUnmount();
     davinciPanel.classList.toggle('hidden', !davinci);
     davinciStartBtn.classList.toggle('hidden', !davinci || g.status !== 'selecting');
     if (davinci) renderDavinci();
@@ -3353,7 +3393,7 @@
     marathonAnswerForm.classList.toggle('hidden', !marathon);
     if (marathon) renderMarathon();
     else if (marathonMemoryHideTimer) { clearTimeout(marathonMemoryHideTimer); marathonMemoryHideTimer = null; marathonMemoryHideKey = null; }
-    if (gostop || pictionary || liar || oldmaid || marathon || twenty || davinci || halli) {
+    if (rpg || gostop || pictionary || liar || oldmaid || marathon || twenty || davinci || halli) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -5028,7 +5068,7 @@
   }
 
   function drawBoard() {
-    if (state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'marathon' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return;
+    if (state?.gameType === 'rpg' || state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'marathon' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
@@ -5977,7 +6017,7 @@
   }
 
   function canPlace(x, y) {
-    if (state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'twentyquestions' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return false;
+    if (state?.gameType === 'rpg' || state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'yut' || state?.gameType === 'cityking' || state?.gameType === 'bingo' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'twentyquestions' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return false;
     if (!state || !seat || state.game.status !== 'playing') return false;
     if (state.game.paused) return false;
     if (isTeamGame() ? state.game.nextSeat !== seat : state.game.turn !== seat) return false;

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.88" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.89" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -94,6 +94,7 @@
                   <option value="davinci">다빈치 코드</option>
                   <option value="halligalli">할리갈리</option>
                   <option value="gostop">고스톱 · 맞고</option>
+                  <option value="rpg">잿빛 원정</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
@@ -142,6 +143,7 @@
             </div>
             <div class="gameOption" data-game-option="gostop">
               <button type="button" class="gameChoice" data-game="gostop"><strong>고스톱 · 맞고</strong></button>
+              <button type="button" class="gameChoice" data-game="rpg"><strong>잿빛 원정</strong></button>
             </div>
           </div>
           </details>
@@ -357,6 +359,9 @@
               <div><strong>현재 빙고</strong><p id="bingoLineSummary">-</p></div>
             </div>
             <div id="bingoBoard" class="bingoBoard" aria-live="polite"></div>
+          </section>
+          <section id="rpgPanel" class="rpgPanelRoot hidden" aria-label="잿빛 원정">
+            <div id="rpgStage" class="rpgStage"></div>
           </section>
           <section id="gostopPanel" class="gostopPanel hidden" aria-label="고스톱 · 맞고">
             <div class="gostopHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
@@ -834,9 +839,9 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.88"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.88"></script>
-  <script src="/gostop-ui.js?v=1.6.88"></script>
-  <script src="/app.js?v=1.6.88"></script>
+  <script src="/session-lock.js?v=1.6.89"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.89"></script>
+  <script src="/gostop-ui.js?v=1.6.89"></script>
+  <script src="/app.js?v=1.6.89"></script>
 </body>
 </html>
