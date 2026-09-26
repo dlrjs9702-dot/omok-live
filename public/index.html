@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.84" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.85" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -249,6 +249,7 @@
           <small id="roomIdentityLabel" class="smallMuted"></small>
         </div>
         <div class="topActions">
+          <button id="turnNotifyBtn" class="ghost turnNotifyBtn hidden" type="button" aria-pressed="false">내 차례 알림 · 꺼짐</button>
           <button id="leaveRoomBtn" class="ghost">로비로 돌아가기</button>
           <button id="newRoomBtn" class="ghost hidden">새 방</button>
           <button id="roomLogoutBtn" class="ghost">접속 종료</button>
@@ -802,8 +803,8 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.84"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.84"></script>
-  <script src="/app.js?v=1.6.84"></script>
+  <script src="/session-lock.js?v=1.6.85"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.85"></script>
+  <script src="/app.js?v=1.6.85"></script>
 </body>
 </html>
