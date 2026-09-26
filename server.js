@@ -249,6 +249,8 @@ function createSession({ role, label, guestKeyId = null }) {
   };
   sessions.set(token, session);
   if (guestKeyId) activeGuestSessions.set(guestKeyId, token);
+  // Warm the point balance cache (and create a first-time account) without blocking the login.
+  pointStore?.ensureAccount(pointAccountForSession(session)).catch(error => console.error('포인트 계정 확인 실패:', error.message));
   return session;
 }
 
@@ -540,6 +542,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     social: createRoomSocial(),
     game: gameEngine.create(gameEngine.id === 'baseball' ? { digitCount: options.digitCount } : undefined),
   };
+  if (gameEngine.id === 'gostop' && options.pointsPerScore) gameEngine.setStake(room.game, options.pointsPerScore);
   appendSystemMessage(room, `${hostSession.label || '방장'}님이 ${room.title || gameEngine.name + ' 방'}을 만들었습니다.`);
   return room;
 }
@@ -2318,7 +2321,12 @@ async function requestHandler(req, res) {
       appendSystemMessage(previous, session.label + '님이 새 방을 만들었습니다.');
       broadcast(previous);
     }
-    const room = makeRoom(session, gameType, visibility, { title, digitCount });
+    let pointsPerScore = 100;
+    if (gameType === 'gostop' && body.pointsPerScore !== undefined) {
+      pointsPerScore = Number(body.pointsPerScore);
+      if (!getGame('gostop').STAKES.includes(pointsPerScore)) return sendError(res, 400, 'BAD_STAKE', '점당 포인트는 10P, 50P, 100P 중에서 선택해 주세요.');
+    }
+    const room = makeRoom(session, gameType, visibility, { title, digitCount, pointsPerScore });
     rooms.set(room.id, room);
     session.currentRoomId = room.id;
     registerParticipant(room, session);
