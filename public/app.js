@@ -377,6 +377,76 @@
   let lastResultEffectKey = null;
   let actionTimerClockOffset = 0;
 
+  // v1.6.80: one shared visual language for "what just changed?" across every game.
+  // The first render after entering/reconnecting keeps the persistent marker but deliberately skips
+  // the pulse, so stale server state never masquerades as a brand-new action.
+  const RECENT_ACTION_FLASH_MS = 720;
+  let recentActionContextKey = null;
+  let recentActionKey = null;
+  let recentActionStartedAt = 0;
+  let recentActionFrame = null;
+
+  function resetRecentActionTracking() {
+    recentActionContextKey = null;
+    recentActionKey = null;
+    recentActionStartedAt = 0;
+    if (recentActionFrame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(recentActionFrame);
+    recentActionFrame = null;
+  }
+
+  function observeRecentAction(key) {
+    const game = state?.game;
+    const context = `${state?.gameType || ''}:${game?.round ?? game?.roundNumber ?? 0}`;
+    const normalized = key === null || key === undefined || key === '' ? null : `${context}:${String(key)}`;
+    const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    if (context !== recentActionContextKey) {
+      recentActionContextKey = context;
+      recentActionKey = normalized;
+      recentActionStartedAt = 0;
+    } else if (normalized && normalized !== recentActionKey) {
+      recentActionKey = normalized;
+      recentActionStartedAt = now;
+    }
+    const elapsed = recentActionStartedAt ? now - recentActionStartedAt : Infinity;
+    const strength = Math.max(0, Math.min(1, 1 - elapsed / RECENT_ACTION_FLASH_MS));
+    return { fresh: strength > 0, strength };
+  }
+
+  function recentActionClasses(recent, role = 'target') {
+    if (!recent) return '';
+    const base = role === 'actor' ? ' recentActionActor' : role === 'source' ? ' recentActionSource' : ' recentActionTarget';
+    return `${base}${recent.fresh ? ' recentActionFresh' : ''}`;
+  }
+
+  function scheduleRecentActionCanvas(recent, redraw = drawBoard) {
+    if (!recent?.fresh || recentActionFrame || typeof requestAnimationFrame !== 'function') return;
+    recentActionFrame = requestAnimationFrame(() => {
+      recentActionFrame = null;
+      if (state) redraw();
+    });
+  }
+
+  function drawRecentActionRing(x, y, radius, recent, { secondary = false, square = false } = {}) {
+    if (!recent) return;
+    const pulse = recent.strength || 0;
+    ctx.save();
+    ctx.strokeStyle = secondary
+      ? `rgba(255,255,255,${0.36 + pulse * 0.34})`
+      : `rgba(250,204,21,${0.7 + pulse * 0.25})`;
+    ctx.lineWidth = secondary ? 2 + pulse * 2 : 3 + pulse * 3;
+    ctx.setLineDash(secondary ? [5, 4] : []);
+    if (square) ctx.strokeRect(x - radius, y - radius, radius * 2, radius * 2);
+    else {
+      ctx.beginPath();
+      ctx.arc(x, y, radius + pulse * 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    scheduleRecentActionCanvas(recent);
+  }
+
+  window.GameRecentAction = { observe: observeRecentAction, classes: recentActionClasses };
+
   // Room sidebar (chat/system/room-info) state. v1.6.72 measures the board only to keep a
   // short game from being paired with a much taller sidebar; the measured value is always capped
   // by the viewport space remaining below the room header, so tall games can never push the chat
@@ -1174,6 +1244,7 @@
     sessionLabel = '';
     state = null;
     lastResultEffectKey = null;
+    resetRecentActionTracking();
     clearResultEffect();
     showView('gate');
     if (message) showToast(message, 5000);
@@ -2146,6 +2217,7 @@
     stopLobbyStream();
     state = next;
     lastResultEffectKey = null;
+    resetRecentActionTracking();
     clearResultEffect();
     chatUnreadCount = 0;
     chatAtBottom = true;
@@ -2957,6 +3029,10 @@
     else baseballHint.textContent = g.winner ? `${seatKo(g.winner)} 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.` : '이번 판이 끝났습니다.';
     baseballHistory.replaceChildren();
     const guesses = g.guesses || [];
+    const latestGuess = guesses.at(-1);
+    const baseballRecent = observeRecentAction(latestGuess
+      ? `guess:${guesses.length}:${latestGuess.at || ''}:${latestGuess.color}:${latestGuess.guess}`
+      : null);
     if (!guesses.length) {
       const empty = document.createElement('p');
       empty.className = 'chatEmpty';
@@ -2965,7 +3041,7 @@
     }
     for (const [i, entry] of [...guesses].reverse().entries()) {
       const item = document.createElement('div');
-      item.className = 'baseballHistoryRow' + (entry.color === seat ? ' mine' : '');
+      item.className = 'baseballHistoryRow' + (entry.color === seat ? ' mine' : '') + (i === 0 ? recentActionClasses(baseballRecent) : '');
       const left = document.createElement('span');
       left.textContent = `#${guesses.length - i} ${seatKo(entry.color)} · `;
       const digits = document.createElement('strong');
@@ -3109,6 +3185,9 @@
   function renderBingo() {
     const g = state.game;
     const selected = new Set(g.selectedNumbers || []);
+    const bingoRecent = observeRecentAction(g.lastSelected
+      ? `select:${g.lastSelected.at || ''}:${g.lastSelected.seat}:${g.lastSelected.number}`
+      : null);
     const occupied = ['1','2','3','4'].filter(number => state.players[number]);
     const gridSize = Number(g.gridSize) || 5;
     const poolMax = Number(g.poolMax) || 50;
@@ -3168,7 +3247,7 @@
     for (const number of board) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = `bingoCell${selected.has(number) ? ' selected' : ''}`;
+      button.className = `bingoCell${selected.has(number) ? ' selected' : ''}${g.lastSelected?.number === number ? recentActionClasses(bingoRecent) : ''}`;
       button.textContent = String(number);
       button.disabled = !myTurn || selected.has(number);
       button.setAttribute('aria-label', `${number}번${selected.has(number) ? ' 선택됨' : ''}`);
@@ -3372,7 +3451,24 @@
 
   function redrawPictionaryCanvas() {
     pictionaryFillWhite();
-    for (const stroke of state?.game?.strokes || []) pictionaryDrawStroke(stroke);
+    const strokes = state?.game?.strokes || [];
+    for (const stroke of strokes) pictionaryDrawStroke(stroke);
+    const lastStroke = strokes.at(-1);
+    const lastPoint = lastStroke?.points?.at(-1);
+    if (lastPoint) {
+      const recent = observeRecentAction(`stroke:${strokes.length}`);
+      const x = lastPoint[0] * pictionaryCanvas.width;
+      const y = lastPoint[1] * pictionaryCanvas.height;
+      const pulse = recent.strength || 0;
+      pictionaryCtx.save();
+      pictionaryCtx.strokeStyle = `rgba(245,158,11,${0.52 + pulse * 0.4})`;
+      pictionaryCtx.lineWidth = 2 + pulse * 2.5;
+      pictionaryCtx.beginPath();
+      pictionaryCtx.arc(x, y, 7 + pulse * 5, 0, Math.PI * 2);
+      pictionaryCtx.stroke();
+      pictionaryCtx.restore();
+      scheduleRecentActionCanvas(recent, redrawPictionaryCanvas);
+    }
   }
 
   function pictionaryPoint(ev) {
@@ -3521,6 +3617,11 @@
 
     // Track: a labeled start tile plus 30 numbered tiles, each showing every group currently
     // standing on it (a tile can hold more than one group's marker at once).
+    const marathonLastAction = (g.history || []).at(-1);
+    const marathonRecent = observeRecentAction(marathonLastAction
+      ? `history:${g.history.length}:${marathonLastAction.at || ''}:${marathonLastAction.type}:${marathonLastAction.group || ''}`
+      : null);
+    const marathonRecentPosition = marathonLastAction?.group ? g.positions?.[marathonLastAction.group] : null;
     marathonTrack.replaceChildren();
     const markersFor = (pos) => (g.groupOrder || []).filter((gr) => (g.positions?.[gr] ?? 0) === pos);
     const appendMarkers = (el, pos) => {
@@ -3532,7 +3633,7 @@
       }
     };
     const startTile = document.createElement('div');
-    startTile.className = 'marathonTile marathonStartTile';
+    startTile.className = 'marathonTile marathonStartTile' + (marathonRecentPosition === 0 ? recentActionClasses(marathonRecent) : '');
     const startLabel = document.createElement('span');
     startLabel.className = 'marathonTileNum';
     startLabel.textContent = '출발';
@@ -3541,7 +3642,7 @@
     marathonTrack.appendChild(startTile);
     for (let i = 1; i <= 30; i += 1) {
       const tile = document.createElement('div');
-      tile.className = 'marathonTile' + (i === 30 ? ' marathonFinishTile' : '');
+      tile.className = 'marathonTile' + (i === 30 ? ' marathonFinishTile' : '') + (marathonRecentPosition === i ? recentActionClasses(marathonRecent) : '');
       const num = document.createElement('span');
       num.className = 'marathonTileNum';
       num.textContent = String(i);
@@ -3667,9 +3768,14 @@
     if (g.deadlineAt && !liarTimerDuplicated) liarTimer.textContent = liarCountdownText(g.deadlineAt);
 
     liarHintLog.replaceChildren();
-    for (const hint of g.hints || []) {
+    const liarHints = g.hints || [];
+    const latestHint = liarHints.at(-1);
+    const liarRecent = observeRecentAction(g.lastResult
+      ? `result:${g.round}:${g.lastResult.reason || g.lastResult.winningSide || ''}`
+      : latestHint ? `hint:${liarHints.length}:${latestHint.stage}:${latestHint.seat}:${latestHint.text}` : null);
+    for (const [hintIndex, hint] of liarHints.entries()) {
       const row = document.createElement('div');
-      row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}`;
+      row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}${!g.lastResult && hintIndex === liarHints.length - 1 ? recentActionClasses(liarRecent) : ''}`;
       const who = document.createElement('strong');
       const stage = hint.stage === 'hint1' ? '1차' : hint.stage === 'hint2' ? '2차' : '추가';
       who.textContent = `${stage} · ${state.players[hint.seat]?.label || hint.seat + '번'}`;
@@ -3713,6 +3819,8 @@
     // happened) -- so this box would otherwise just stay empty with no explanation.
     const resignedFinish = g.status === 'finished' && g.endReason === 'resign' && !result;
     liarResult.classList.toggle('hidden', !result && !resignedFinish);
+    liarResult.classList.remove('recentActionTarget', 'recentActionFresh');
+    if (result) liarResult.className += recentActionClasses(liarRecent);
     liarResult.replaceChildren();
     if (resignedFinish) {
       const title = document.createElement('strong');
@@ -3861,6 +3969,10 @@
     // priority (북 first, so a lone opponent in a 2인전 sits "across the table" from me; 동, then
     // 서) rather than by seat number, so the layout reads the same regardless of which numbers were
     // picked.
+    const latestOldMaidDraw = (g.history || []).at(-1);
+    const oldmaidRecent = observeRecentAction(latestOldMaidDraw
+      ? `draw:${g.moveCount}:${latestOldMaidDraw.actor}:${latestOldMaidDraw.target}:${latestOldMaidDraw.pairs}`
+      : null);
     const iAmSeated = Boolean(seat && rosterSeats.includes(seat));
     const rotated = oldmaidRotatedSeats(rosterSeats, iAmSeated ? seat : null);
     const opponents = iAmSeated ? rotated.slice(1) : rotated;
@@ -3874,7 +3986,9 @@
       const seatEl = document.createElement('div');
       seatEl.className = 'oldmaidSeat'
         + (g.turn === number ? ' turn' : '') + (g.target === number ? ' target' : '')
-        + (escaped ? ' escaped' : '') + (isLoser ? ' finalGlow' : '');
+        + (escaped ? ' escaped' : '') + (isLoser ? ' finalGlow' : '')
+        + (latestOldMaidDraw?.target === number ? recentActionClasses(oldmaidRecent) : '')
+        + (latestOldMaidDraw?.actor === number ? recentActionClasses(oldmaidRecent, 'actor') : '');
       seatEl.dataset.seat = number;
       seatEl.dataset.compass = COMPASS_ORDER[index] || 'north';
 
@@ -3933,6 +4047,9 @@
       oldmaidSeatsEl.appendChild(seatEl);
     });
 
+    oldmaidMyHand.classList.remove('recentActionTarget', 'recentActionActor', 'recentActionFresh');
+    if (seat && latestOldMaidDraw?.target === seat) oldmaidMyHand.className += recentActionClasses(oldmaidRecent);
+    else if (seat && latestOldMaidDraw?.actor === seat) oldmaidMyHand.className += recentActionClasses(oldmaidRecent, 'actor');
     if (seat && Array.isArray(state.me?.myOldMaidHand)) {
       oldmaidRenderMyHandFaces(state.me.myOldMaidHand);
     } else {
@@ -4173,6 +4290,13 @@
   function renderHalli() {
     const g = state.game;
     const playerName = (number) => state.players[number]?.label || `${number}번`;
+    const currentBell = g.lastBell?.flipId === g.flipId ? g.lastBell : null;
+    const halliAction = currentBell
+      ? { type: 'bell', seat: currentBell.seat, id: currentBell.flipId, at: currentBell.at || '' }
+      : g.lastFlip ? { type: 'flip', seat: g.lastFlip.seat, id: g.lastFlip.flipId, at: g.lastFlip.at || '' } : null;
+    const halliRecent = observeRecentAction(halliAction
+      ? `${halliAction.type}:${halliAction.id}:${halliAction.seat}:${halliAction.at}`
+      : null);
     halliClockOffset = Date.now() - (g.serverNow || Date.now());
     halliTimeSelect.value = String(g.durationMinutes || 5);
     halliTimeSelect.disabled = !(isHost && g.status === 'selecting');
@@ -4193,6 +4317,10 @@
     for (const owner of g.seatOrder || []) {
       const card = document.createElement('div');
       card.className = `halliCard${g.eliminated.includes(owner) ? ' eliminated' : ''}`;
+      if (!currentBell && g.lastFlip?.seat === owner) card.className += recentActionClasses(halliRecent);
+      if (currentBell?.seat === owner) card.className += recentActionClasses(halliRecent, 'actor');
+      if (currentBell?.transfers?.some(move => move.from === owner)) card.className += recentActionClasses(halliRecent, 'source');
+      if (currentBell?.transfers?.some(move => move.to === owner)) card.className += recentActionClasses(halliRecent);
       if (g.lastBell?.flipId === g.flipId && (g.lastBell.transfers || []).length) {
         if (g.lastBell.transfers.some(move => move.to === owner)) card.classList.add('receivedCards');
         if (!g.lastBell.correct && g.lastBell.seat === owner) card.classList.add('paidPenalty');
@@ -4376,6 +4504,10 @@
     const active = g.status === 'playing' && g.turn === seat;
     const focus = g.selection || null;
     const feedback = visibleDavinciGuessFeedback(g);
+    const latestDavinciGuess = (g.history || []).at(-1);
+    observeRecentAction(latestDavinciGuess
+      ? `guess:${g.history.length}:${latestDavinciGuess.seat}:${latestDavinciGuess.target}:${latestDavinciGuess.id}:${latestDavinciGuess.number}`
+      : null);
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
     const inlineTimer = !active || !desktopActionTimerOwns('davinci');
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
@@ -4399,6 +4531,7 @@
         const mine = owner === seat && state.me?.myDavinciTiles?.find(t => t.id === tile.id);
         const selected = focus?.target === owner && focus.tileId === tile.id;
         const feedbackForTile = feedback?.target === owner && feedback.tileId === tile.id;
+        const latestGuessTile = latestDavinciGuess?.target === owner && latestDavinciGuess.id === tile.id;
         const localGuessForTile = davinciGuessPending && focus?.seat === seat && selected;
         const revealPending = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
         const wasRevealed = davinciRevealStates.get(tile.id);
@@ -4406,7 +4539,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.tileId = tile.id;
-        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : '', feedbackForTile ? 'guess-result' : '', feedbackForTile && feedback.correct ? 'guess-correct' : '', feedbackForTile && !feedback.correct ? 'guess-wrong' : '', localGuessForTile ? 'guess-submitting' : ''].filter(Boolean).join(' ');
+        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : '', feedbackForTile ? 'guess-result' : '', feedbackForTile && feedback.correct ? 'guess-correct' : '', feedbackForTile && !feedback.correct ? 'guess-wrong' : '', localGuessForTile ? 'guess-submitting' : '', latestGuessTile && !feedbackForTile ? 'recentActionDavinci' : ''].filter(Boolean).join(' ');
         const value = tile.revealed ? String(tile.number) : mine ? String(mine.number) : '?';
         const valueElement = document.createElement('span');
         valueElement.className = 'davinciTileValue';
@@ -4490,6 +4623,10 @@
 
   function drawYutBoard() {
     const g = state.game;
+    const yutRecent = observeRecentAction(g.lastMove
+      ? `move:${g.lastMove.at || ''}:${(g.lastMove.pieceIds || []).join(',')}`
+      : null);
+    const yutRecentIds = new Set(g.lastMove?.pieceIds || []);
     const bg = ctx.createLinearGradient(0, 0, 720, 720);
     bg.addColorStop(0, '#f3d79c');
     bg.addColorStop(1, '#c99549');
@@ -4592,6 +4729,16 @@
         if (pieces.length) drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
       }
     }
+    if (!animatingIds && yutRecentIds.size) {
+      for (const { position, pieces } of grouped.values()) {
+        const ordered = [...pieces].sort((a, b) => Number(a.id.split('-').at(-1)) - Number(b.id.split('-').at(-1)));
+        const offsets = yutStackOffsets(ordered.length);
+        const [x, y] = yutNodePosition(position);
+        ordered.forEach((piece, index) => {
+          if (yutRecentIds.has(piece.id)) drawRecentActionRing(x + offsets[index], y, 22, yutRecent);
+        });
+      }
+    }
     const home = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'home').length;
     const done = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'finished').length;
     ctx.textAlign = 'left';
@@ -4638,6 +4785,9 @@
     }
 
     const lastEdge = g.lastMove?.edgeId;
+    const dotsRecent = observeRecentAction(g.lastMove
+      ? `edge:${g.moveCount}:${g.lastMove.at || ''}:${lastEdge}`
+      : null);
     for (let edgeId = 0; edgeId < 40; edgeId += 1) {
       const owner = edgeId < 20
         ? g.edges?.h?.[Math.floor(edgeId / 4)]?.[edgeId % 4]
@@ -4648,12 +4798,14 @@
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
       if (edgeId === lastEdge) {
-        ctx.strokeStyle = 'rgba(255,255,255,.8)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = `rgba(255,255,255,${0.72 + dotsRecent.strength * 0.25})`;
+        ctx.lineWidth = 3 + dotsRecent.strength * 3;
         ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        scheduleRecentActionCanvas(dotsRecent);
       }
     }
 
+    if (last) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
     if (hover && canPlace(hover.x, hover.y)) {
       const [x1,y1,x2,y2] = dotsEdgeEndpoints(hover.x);
       ctx.strokeStyle = seat === 'black' ? 'rgba(37,99,235,.72)' : 'rgba(239,68,68,.72)';
@@ -4714,6 +4866,9 @@
 
   function drawCityBoard() {
     const g = state.game;
+    const cityRecent = observeRecentAction(g.lastRoll
+      ? `roll:${g.lastRoll.at || ''}:${g.lastRoll.seat}:${g.lastRoll.from}:${g.lastRoll.to}`
+      : null);
     if (canvas.width !== CITY_CANVAS_W || canvas.height !== CITY_CANVAS_H) {
       canvas.width = CITY_CANVAS_W;
       canvas.height = CITY_CANVAS_H;
@@ -4787,6 +4942,7 @@
         ctx.lineWidth = 4;
         ctx.strokeRect(x - 43, y - 43, 86, 86);
       }
+      if (g.lastRoll?.to === tile.index) drawRecentActionRing(x, y, 46, cityRecent, { square: true });
       ctx.font = '13px system-ui, sans-serif';
       ctx.fillText(CITY_TYPE_ICON[tile.type] || '📍', x, y - 24);
       ctx.fillStyle = '#172033';
@@ -4864,6 +5020,9 @@
 
     const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = g.lastMove;
+    const connectRecent = observeRecentAction(last
+      ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
     for (let y = 0; y < 6; y++) {
       for (let x = 0; x < 7; x++) {
         const cx = left + (x + .5) * cell;
@@ -4898,6 +5057,7 @@
             ctx.fillStyle = color === 'black' ? '#ffffff' : '#6b3e03';
             ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
           }
+          if (last?.x === x && last?.y === y) drawRecentActionRing(cx, cy, radius * .9, connectRecent);
         }
         ctx.restore();
       }
@@ -4978,12 +5138,16 @@
     if (!state) return;
     const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
+    const omokRecent = observeRecentAction(last
+      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
         if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
       }
     }
+    if (last) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }
 
@@ -5044,10 +5208,19 @@
     }
 
     const last = state?.game?.lastMove;
+    const othelloRecent = observeRecentAction(last
+      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
+      : null);
+    const flippedCells = new Set((last?.flippedCells || []).map(cell => `${cell.x},${cell.y}`));
     for (let y = 0; y < 8; y += 1) {
       for (let x = 0; x < 8; x += 1) {
         const color = state?.game?.board?.[y]?.[x];
-        if (color) drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
+        if (color) {
+          drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
+          if (othelloRecent.fresh && flippedCells.has(`${x},${y}`)) {
+            drawRecentActionRing((x + .5) * cell, (y + .5) * cell, cell * .34, othelloRecent, { secondary: true });
+          }
+        }
       }
     }
 
