@@ -300,7 +300,7 @@
     title.textContent = `${label(state, r.winner)} 승리 · ${reasonText}`;
     box.append(title);
     const basis = document.createElement('p');
-    const parts = [`기본 ${r.base}점`];
+    const parts = [r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`];
     if (r.items?.length && !['chongtong', 'samppeok'].includes(r.reason)) parts[0] += ` (${r.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}`).join(', ')})`;
     if (r.goCount) parts.push(`${r.goCount}고 +${r.goCount}점`);
     parts.push(`점당 ${r.pointsPerScore}P`);
