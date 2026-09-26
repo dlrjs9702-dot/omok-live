@@ -938,3 +938,11 @@ input.actionableTarget{border-color:rgba(52,211,153,.9);box-shadow:0 0 0 2px rgb
   50%{box-shadow:0 0 0 3px rgba(52,211,153,.95),0 0 18px rgba(52,211,153,.46)}
 }
 @media(prefers-reduced-motion:reduce){.actionablePrimary{animation:none!important}}
+
+/* v1.6.83: the yut board is the primary move control now (click the mint-ringed piece); the move
+   list stays as a quieter fallback -- compact, no fill -- and pointing at an entry lights up the
+   same piece and destination on the board. */
+.yutMoveChoices{gap:6px}
+.yutPieceChoice{background:transparent;color:#cbd5e1;border:1px solid #334155;padding:6px 10px;font-size:.8rem;font-weight:750}
+.yutPieceChoice:hover:not(:disabled),.yutPieceChoice:focus-visible{background:rgba(16,185,129,.12);border-color:rgba(52,211,153,.7);color:#ecfdf5}
+.yutPieceChoice:disabled{opacity:.55;cursor:default}
