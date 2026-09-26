@@ -339,3 +339,10 @@ test('무작위 전체 판 시뮬레이션: 50장 보존·항상 종료·잔여 
   }
   assert.ok(finished > 0 && draws >= 0);
 });
+
+test('마지막 손패가 보너스피이고 산이 비었으면 차례가 멈추지 않고 넘어간다', () => {
+  const game = setup({ hands: { 1: ['bonus-2'], 2: [PI(6)] }, floor: ['m01-gwang'], deck: [] });
+  assert.equal(gostop.play(game, '1', 'bonus-2').legal, true);
+  assert.equal(game.turn, '2');
+  assert.equal(game.phase, 'play');
+});
