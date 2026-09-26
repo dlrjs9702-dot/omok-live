@@ -20,8 +20,9 @@ const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
 const isGostop = (room) => room.gameType === 'gostop';
+const isRpg = (room) => room.gameType === 'rpg';
 const GOSTOP_SEATS = ['1', '2', '3'];
-const isNumberedSeatGame = (room) => isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
+const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
 // seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
 function marathonSeatSlots(room) {
@@ -175,6 +176,36 @@ function sendSimpleHtml(res, status, title, message) {
     'Cache-Control': 'no-store',
   }));
   res.end(html);
+}
+
+// Third-party browser modules served from node_modules (same origin: the page CSP allows only
+// 'self' scripts). Exact allow-list, nothing else under node_modules is reachable.
+const VENDOR_FILES = {
+  '/vendor/three/three.module.js': path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.js'),
+  '/vendor/three/three.core.js': path.join(__dirname, 'node_modules', 'three', 'build', 'three.core.js'),
+};
+
+const vendorCache = new Map();
+async function serveVendor(req, res, pathname) {
+  const filePath = VENDOR_FILES[pathname];
+  if (!filePath) return false;
+  let entry = vendorCache.get(pathname);
+  if (!entry) {
+    try {
+      const raw = await fsp.readFile(filePath);
+      entry = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }) };
+      vendorCache.set(pathname, entry);
+    } catch (err) {
+      if (err.code === 'ENOENT') return false;
+      throw err;
+    }
+  }
+  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  const body = gzip ? entry.gz : entry.raw;
+  res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.js'], 'Content-Length': body.length, 'Cache-Control': 'public, max-age=86400', Vary: 'Accept-Encoding',
+    ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
+  res.end(body);
+  return true;
 }
 
 async function serveStatic(res, pathname) {
@@ -536,7 +567,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
       ? Object.fromEntries(MARATHON_SEATS.map((seat) => [seat, null]))
       : ['pictionary', 'liar', 'twentyquestions'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
-      : ['omok2v2', 'bingo'].includes(gameEngine.id)
+      : ['omok2v2', 'bingo', 'rpg'].includes(gameEngine.id)
         ? { '1': null, '2': null, '3': null, '4': null }
         : { black: null, white: null },
     social: createRoomSocial(),
@@ -623,7 +654,9 @@ function voidStalledTwentyRound(room, reason) {
 }
 
 function syncGamePause(room, allowTimeouts = true) {
-  if (room.game.status !== 'playing') {
+  // 잿빛 원정 is real time: a missing player's character simply stops (see tickRpgRooms); the run
+  // itself only waits while nobody at all is connected.
+  if (room.game.status !== 'playing' || isRpg(room)) {
     room.game.paused = false;
     room.game.disconnectedSeats = [];
     room.turnWatch = null;
@@ -864,7 +897,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -892,7 +925,7 @@ function prepareNextRound(room) {
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
-  if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -1048,7 +1081,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
+  const role = seat ? (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -1057,7 +1090,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
+  const opponent = (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -1216,11 +1249,73 @@ async function tickHalliRooms() {
   }
 }
 
+// 잿빛 원정: 20 Hz server simulation. Positions go out as a compact `rpgTick` event on the room's
+// existing SSE stream (one serialisation shared by every viewer); the ordinary roomState is only
+// re-sent when builds, choices or the phase change (metaVersion).
+function tickRpgRooms() {
+  const engine = getGame('rpg');
+  for (const room of rooms.values()) {
+    if (!isRpg(room)) continue;
+    // A press handled by the fast input path can end the run (e.g. the boss dies to an instant
+    // skill); that change is published here even though the run is no longer ticking.
+    if (room.game.status !== 'playing') {
+      if (room.rpgBroadcastVersion !== room.game.metaVersion) { room.rpgBroadcastVersion = room.game.metaVersion; touchRoom(room); broadcast(room); }
+      continue;
+    }
+    let anyConnected = false;
+    for (const seat of room.game.seatOrder) {
+      const token = room.players[seat];
+      const connected = Boolean(token && room.participants[token]?.connected && sessions.get(token)?.currentRoomId === room.id);
+      if (connected) anyConnected = true; else engine.releaseInput(room.game, seat);
+    }
+    if (!anyConnected) continue; // nobody at the table: the run waits for them
+    engine.tick(room.game);
+    if (room.rpgBroadcastVersion !== room.game.metaVersion) { room.rpgBroadcastVersion = room.game.metaVersion; touchRoom(room); broadcast(room); }
+    const set = streams.get(room.id);
+    if (!set) continue;
+    const payload = `event: rpgTick\ndata: ${JSON.stringify(engine.snapshot(room.game))}\n\n`;
+    for (const client of set) { try { client.res.write(payload); } catch {} }
+  }
+}
+
 async function handleRoomAction(req, res, action, session) {
   const room = getCurrentRoom(session);
   if (!room) return sendError(res, 404, 'NO_ROOM', '먼저 방을 만들거나 방 비밀번호를 입력해 주세요.');
   const body = await parseJson(req);
   const participant = room.participants[session.token] || registerParticipant(room, session);
+  if (action.startsWith('rpg-')) {
+    if (!isRpg(room)) return sendError(res, 400, 'WRONG_GAME', '잿빛 원정 방에서만 사용할 수 있습니다.');
+    const engine = getGame('rpg');
+    const playerSeat = findSeat(room, session.token);
+    if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 조작할 수 없습니다.');
+    // Held keys and presses: applied on the next simulation tick; no room broadcast per keystroke.
+    if (action === 'rpg-input' || action === 'rpg-act') {
+      if (!checkRateLimit(`rpg:${session.token}`, 60, 1000)) return sendError(res, 429, 'RPG_RATE_LIMIT', '입력이 너무 빠릅니다.');
+      const verdict = action === 'rpg-input'
+        ? engine.input(room.game, playerSeat, { mv: Number(body.mv) || 0, atk: body.atk === true })
+        : engine.act(room.game, playerSeat, String(body.a || ''));
+      return sendJson(res, 200, { ok: verdict.legal, ...(verdict.legal ? {} : { reason: verdict.reason }) });
+    }
+    let verdict;
+    if (action === 'rpg-class') verdict = engine.setClass(room.game, playerSeat, String(body.cls || ''));
+    else if (action === 'rpg-start') {
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 원정을 시작할 수 있습니다.');
+      verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]));
+      if (verdict.legal) {
+        for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+        appendSystemMessage(room, `잿빛 원정 시작 · ${room.game.seatOrder.length}명`);
+      }
+    } else if (action === 'rpg-pick') verdict = engine.chooseLevelUp(room.game, playerSeat, Number(body.index));
+    else if (action === 'rpg-stat') verdict = engine.allocateStat(room.game, playerSeat, String(body.stat || ''));
+    else if (action === 'rpg-item') verdict = engine.chooseItem(room.game, playerSeat, body.index === 'skip' ? 'skip' : Number(body.index));
+    else if (action === 'rpg-ready') verdict = engine.setReady(room.game, playerSeat, body.ready !== false);
+    else return sendError(res, 400, 'BAD_RPG_ACTION', '알 수 없는 원정 행동입니다.');
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_RPG_ACTION', engine.moveError(verdict.reason));
+    room.rpgBroadcastVersion = room.game.metaVersion;
+    touchRoom(room);
+    broadcast(room);
+    return sendJson(res, 200, { ok: true, state: roomView(room, session) });
+  }
   if ((action === 'next-round' || action === 'rematch') && !(await recordOrError(room, res))) return;
   // Only draw-oldmaid ever sets this: the drawn card's identity, for the drawer's own animation --
   // never broadcast (see roomView/broadcast below), so opponents and spectators never see it.
@@ -1768,6 +1863,13 @@ async function handleRoomAction(req, res, action, session) {
     }
   }
 
+  if (action === 'resign' && isRpg(room)) {
+    if (!findSeat(room, session.token) || room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '포기할 수 있는 원정이 없습니다.');
+    getGame('rpg').defeat(room.game, 'abandon');
+    appendSystemMessage(room, `${session.label || '참가자'}님이 원정을 포기했습니다.`);
+    touchRoom(room); broadcast(room);
+    return sendJson(res, 200, { ok: true, state: roomView(room, session) });
+  }
   if (action === 'resign') {
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
@@ -1870,7 +1972,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.88', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.89', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2484,7 +2586,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -2493,6 +2595,7 @@ async function requestHandler(req, res) {
 
   if (req.method === 'GET') {
     if (pathname === '/') return sendIndex(res, {});
+    if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname)) return;
   }
 
@@ -2546,11 +2649,12 @@ async function main() {
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
+  setInterval(() => { try { tickRpgRooms(); } catch (error) { console.error('잿빛 원정 진행 오류:', error); } }, 50).unref();
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.88 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.89 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
