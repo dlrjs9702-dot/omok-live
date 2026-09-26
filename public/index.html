@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.85" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.86" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -28,6 +28,10 @@
         <div>
           <span class="logo">게임센터</span>
           <small id="identityLabel" class="smallMuted"></small>
+        </div>
+        <div id="pointWallet" class="pointWallet hidden" aria-label="게임센터 포인트">
+          <strong id="pointBalanceText" class="pointBalance">-</strong>
+          <button id="attendanceBtn" type="button" class="ghost tiny">오늘 출석 +50,000P</button>
         </div>
         <button id="logoutBtn" class="ghost">접속 종료</button>
       </header>
@@ -89,6 +93,7 @@
                   <option value="twentyquestions">스무고개</option>
                   <option value="davinci">다빈치 코드</option>
                   <option value="halligalli">할리갈리</option>
+                  <option value="gostop">고스톱 · 맞고</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
@@ -135,6 +140,9 @@
             <div class="gameOption" data-game-option="halligalli">
               <button type="button" class="gameChoice" data-game="halligalli"><strong>할리갈리</strong></button>
             </div>
+            <div class="gameOption" data-game-option="gostop">
+              <button type="button" class="gameChoice" data-game="gostop"><strong>고스톱 · 맞고</strong></button>
+            </div>
           </div>
           </details>
           <details class="developmentGamesPanel" open aria-label="게임 구현중">
@@ -165,6 +173,12 @@
             <legend>숫자야구 자릿수</legend>
             <label><input type="radio" name="baseballDigitCount" value="3" checked /> 3자리</label>
             <label><input type="radio" name="baseballDigitCount" value="4" /> 4자리</label>
+          </fieldset>
+          <fieldset id="gostopStakeChoices" class="baseballDigitChoices hidden">
+            <legend>고스톱·맞고 점당 포인트</legend>
+            <label><input type="radio" name="gostopStake" value="10" /> 10P</label>
+            <label><input type="radio" name="gostopStake" value="50" /> 50P</label>
+            <label><input type="radio" name="gostopStake" value="100" checked /> 100P</label>
           </fieldset>
           <button id="createRoomBtn" class="primary big">방 만들기</button>
           <div class="divider"><span>또는 방 참가</span></div>
@@ -247,6 +261,7 @@
         <div>
           <span id="roomGameLogo" class="logo">오목</span>
           <small id="roomIdentityLabel" class="smallMuted"></small>
+          <small id="roomPointBadge" class="pointBadge hidden"></small>
         </div>
         <div class="topActions">
           <button id="turnNotifyBtn" class="ghost turnNotifyBtn hidden" type="button" aria-pressed="false">내 차례 알림 · 꺼짐</button>
@@ -342,6 +357,22 @@
               <div><strong>현재 빙고</strong><p id="bingoLineSummary">-</p></div>
             </div>
             <div id="bingoBoard" class="bingoBoard" aria-live="polite"></div>
+          </section>
+          <section id="gostopPanel" class="gostopPanel hidden" aria-label="고스톱 · 맞고">
+            <div class="gostopHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
+            <div id="gostopSetup" class="gostopSetup hidden">
+              <label for="gostopStakeSelect">점당</label>
+              <select id="gostopStakeSelect" aria-label="점당 포인트"><option value="10">10P</option><option value="50">50P</option><option value="100">100P</option></select>
+              <button id="gostopStartBtn" type="button" class="primary">시작</button>
+              <small id="gostopSetupNote"></small>
+            </div>
+            <div id="gostopOpponents" class="gostopOpponents"></div>
+            <div class="gostopTable"><div id="gostopFloor" class="gostopFloor" aria-label="바닥패"></div><div id="gostopDeck" class="gostopDeck"></div></div>
+            <div id="gostopEvent" class="gostopEvent" aria-live="polite"></div>
+            <div id="gostopMine"></div>
+            <div id="gostopActions" class="gostopActions"></div>
+            <div id="gostopHand" class="gostopHand" aria-label="내 손패"></div>
+            <div id="gostopResult" class="gostopResult hidden" aria-live="polite"></div>
           </section>
           <section id="davinciPanel" class="davinciPanel hidden" aria-label="다빈치 코드">
             <p id="davinciStatus" aria-live="polite"></p>
@@ -803,8 +834,9 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.85"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.85"></script>
-  <script src="/app.js?v=1.6.85"></script>
+  <script src="/session-lock.js?v=1.6.86"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.86"></script>
+  <script src="/gostop-ui.js?v=1.6.86"></script>
+  <script src="/app.js?v=1.6.86"></script>
 </body>
 </html>

@@ -961,3 +961,66 @@ input.actionableTarget{border-color:rgba(52,211,153,.9);box-shadow:0 0 0 2px rgb
 .turnNotifyBtn{font-size:.8rem}
 .turnNotifyBtn.turnNotifyOn{border-color:rgba(56,189,248,.8);color:#e0f2fe}
 @media(max-width:880px){.turnNotifyBtn{display:none!important}}
+
+/* v1.6.86: Game Center points (in-game only). */
+.pointWallet{display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:10px}
+.pointBalance{font-size:.92rem;color:#fef3c7;font-variant-numeric:tabular-nums}
+.pointWallet .tiny{padding:5px 9px;font-size:.78rem}
+.pointBadge{display:inline-block;margin-left:8px;color:#fde68a;font-weight:800;font-variant-numeric:tabular-nums}
+
+/* v1.6.86: Go-Stop / Matgo. Own hwatu design (no copied artwork): cream face, a month-coloured
+   top band with the month number, plant + figure glyphs, and a kind badge (광·열끗·띠·피·쌍피). */
+.gostopPanel{display:grid;gap:10px;padding:14px;border:1px solid #334155;border-radius:18px;background:#0b1324}
+.gostopHead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.gostopHead strong{font-size:1.1rem}
+.gostopHead span{color:#cbd5e1;font-size:.86rem}.gostopMyPoints{margin-left:auto;color:#fde68a!important;font-weight:800}
+.gostopSetup{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.gostopSetup select{border:1px solid #475569;border-radius:10px;background:#0f172a;color:#fff;padding:7px 10px;font-weight:800}
+.gostopSetup small{color:#94a3b8}
+.gostopOpponents{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.gostopSeat{display:grid;gap:6px;padding:9px 10px;border:1px solid #273449;border-radius:14px;background:#0f172a}
+.gostopSeat.mine{border-color:#334155;background:#101a2e}
+.gostopSeatHead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.gostopStats{color:#e2e8f0;font-weight:800;font-size:.84rem}
+.gostopEstimate{width:100%;color:#fde68a;font-weight:750}
+.gostopBacks{display:flex;align-items:center;gap:2px;flex-wrap:wrap}.gostopBacks small{margin-left:6px;color:#94a3b8}
+.gostopCaptured{display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:start}
+.gostopPile{display:grid;gap:3px;min-width:0}.gostopPile small{color:#cbd5e1;font-weight:800;font-size:.74rem}
+.gostopPileCards{display:flex;flex-wrap:wrap;gap:2px}
+.gostopItems{color:#a7f3d0;font-weight:750}
+.gostopTable{display:flex;gap:12px;align-items:flex-start;padding:10px;border-radius:14px;background:radial-gradient(circle at 50% 40%,#14532d,#0b3b22);min-height:96px}
+.gostopFloor{display:flex;flex-wrap:wrap;gap:10px;flex:1}
+.gostopFloorGroup{display:flex;gap:2px;align-items:flex-end;padding:3px;border-radius:9px;position:relative}
+.gostopFloorGroup.ppeokStack{outline:2px dashed rgba(248,113,113,.85);outline-offset:1px}
+.ppeokTag{position:absolute;bottom:-15px;left:4px;color:#fecaca;font-weight:900;font-size:.7rem;white-space:nowrap}
+.gostopFloorGroup.waitingCard{flex-direction:column;align-items:center;gap:2px}.gostopFloorGroup.waitingCard small{color:#e2e8f0;font-size:.7rem}
+.gostopDeck{display:grid;justify-items:center;gap:3px;color:#e2e8f0}.gostopDeck small{font-weight:800}
+.gostopEvent{min-height:22px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#fde68a}
+.gostopReveal{display:inline-flex;gap:2px}
+.gostopActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:10px}.gostopActions small{color:#cbd5e1;font-weight:750}
+.gostopHand{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0}
+.gostopResult{display:grid;gap:4px;padding:12px;border:1px solid #475569;border-radius:14px;background:#111c33}.gostopResult p{margin:0;color:#e2e8f0}
+.gostopResult strong{color:#fef3c7}.gostopWinLine{color:#a7f3d0!important;font-weight:900}
+
+.hwatu{position:relative;display:inline-grid;grid-template-rows:auto 1fr auto;justify-items:center;align-items:center;overflow:hidden;
+  border:1px solid #7f1d1d;border-radius:6px;background:#fff8ec;color:#1f2937;padding:0;flex:0 0 auto;box-shadow:0 2px 4px rgba(0,0,0,.35);font-family:inherit}
+.hwatu::before{content:'';position:absolute;inset:0 0 auto;height:22%;background:var(--month,#b91c1c);opacity:.9}
+.hwatu-hand{width:58px;height:86px}.hwatu-normal{width:46px;height:68px}.hwatu-mini{width:28px;height:41px;border-radius:4px}.hwatu-tiny{width:14px;height:21px;border-radius:3px}
+.hwatuMonth{position:relative;z-index:1;font-weight:950;font-size:.72rem;color:#fff;line-height:1.5}
+.hwatu-mini .hwatuMonth{font-size:.5rem}.hwatu-hand .hwatuMonth{font-size:.8rem}
+.hwatuArt{position:relative;z-index:1;font-size:1.25rem;line-height:1;letter-spacing:-.12em}
+.hwatu-hand .hwatuArt{font-size:1.55rem}.hwatu-mini .hwatuArt{font-size:.72rem}
+.hwatuBadge{position:relative;z-index:1;width:100%;text-align:center;font-weight:950;font-size:.62rem;padding:1px 0;background:#e5e7eb;color:#111827}
+.hwatu-mini .hwatuBadge{font-size:.46rem}.hwatu-hand .hwatuBadge{font-size:.7rem}
+.badge-gwang{background:#f59e0b;color:#1c1917}.badge-animal{background:#15803d;color:#fff}.badge-ribbon{background:#9ca3af;color:#111827}
+.badge-ribbon.dan-hong{background:#dc2626;color:#fff}.badge-ribbon.dan-cheong{background:#1d4ed8;color:#fff}.badge-ribbon.dan-cho{background:#a16207;color:#fff}
+.kind-pi .badge-pi{background:#e5e7eb}
+.hwatuRibbon{position:absolute;z-index:0;left:18%;right:18%;top:44%;height:14%;border-radius:3px;background:#9ca3af;transform:rotate(-8deg)}
+.hwatuRibbon.dan-hong{background:#ef4444}.hwatuRibbon.dan-cheong{background:#3b82f6}.hwatuRibbon.dan-cho{background:#ca8a04}
+.hwatu.bonus{background:#fefce8;border-color:#a16207}.hwatu.bonus::before{background:#a16207}
+.hwatu.bonus .hwatuBadge{background:#fde047;color:#422006}
+.hwatuBack{background:repeating-linear-gradient(45deg,#b91c1c 0 4px,#991b1b 4px 8px);border-color:#450a0a}.hwatuBack::before{display:none}
+.deckPile{box-shadow:2px 2px 0 #7f1d1d,4px 4px 0 #450a0a}
+button.hwatu{cursor:pointer}button.hwatu:disabled{cursor:default;opacity:.92}
+button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
+.hwatu.hasSpecial::after{content:'★';position:absolute;top:1px;right:3px;z-index:2;color:#fde047;font-size:.7rem;text-shadow:0 0 2px #000}
+.month-1{--month:#15803d}.month-2{--month:#be185d}.month-3{--month:#db2777}.month-4{--month:#374151}.month-5{--month:#6d28d9}.month-6{--month:#c026d3}
+.month-7{--month:#b91c1c}.month-8{--month:#1e3a8a}.month-9{--month:#ca8a04}.month-10{--month:#c2410c}.month-11{--month:#0f766e}.month-12{--month:#334155}
+@media(max-width:880px){.gostopCaptured{grid-template-columns:1fr 1fr}.hwatu-hand{width:48px;height:72px}}
