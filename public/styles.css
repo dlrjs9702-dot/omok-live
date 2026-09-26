@@ -611,6 +611,21 @@ html.sidePipLayout #gameInfoPanel{overflow-y:auto!important}
 html.sidePipLayout #gameInfoPanel .gameActionsPanel{overflow:visible!important}
 .sidePane{display:flex;flex-direction:column;flex:0 0 auto;min-height:0}
 .sidePane.hidden{display:none}
+/* The chat pane fills its bounded card; only the message list may scroll. */
+#chatPanel .sidePane{flex:1 1 auto;min-height:0;overflow:hidden}
+#chatPanel .chatMessages{min-height:0;min-width:0;flex:1 1 auto;overflow-y:auto;overflow-anchor:none}
+#chatPanel .chatForm{flex:0 0 auto}
+.lobbyChatMessages{overflow-anchor:none}
+.chatMessages .chatMessage:not(.system){display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:3px 2px;border:0}
+.chatMessages .chatMessage:not(.system).mine{align-items:flex-end}
+.chatMessages .chatMessageHead{margin:5px 3px 0;gap:0}
+.chatMessages .chatMessageHead strong{font-size:.73rem;font-weight:700;color:#cbd5e1}
+.chatMessages .chatMessageBody{display:flex;align-items:flex-end;gap:5px;max-width:94%;min-width:0}
+.chatMessages .chatMessage.mine .chatMessageBody{flex-direction:row-reverse}
+.chatMessages .chatMessageText{padding:7px 10px;border-radius:12px 12px 12px 3px;background:#1e293b;font-size:.81rem;line-height:1.42;min-width:0}
+.chatMessages .chatMessage.mine .chatMessageText{background:#214b83;border-radius:12px 12px 3px 12px}
+.chatMessages .chatMessageBody time{flex:0 0 auto;font-size:.62rem;color:#94a3b8;white-space:nowrap}
+.chatMessages .chatMessage.system{border-bottom:0}
 .systemMessages{flex:0 1 180px;min-height:120px;max-height:180px;overflow-y:auto}
 .chatJumpBtn{flex:0 0 auto;margin:6px 0;padding:7px 10px;border-radius:999px;background:#1d4ed8;color:#eff6ff;font-size:.74rem;font-weight:800;align-self:center}
 [data-side-pane="info"]{overflow-y:auto}

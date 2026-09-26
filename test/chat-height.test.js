@@ -66,9 +66,19 @@ test('room-social message rows already carry a chat/system type, reused as-is (n
 test('chat auto-scrolls only when the reader was already at the bottom, and never force-scrolls a reader browsing history', () => {
   const app = read('public/app.js');
   assert.match(app, /const wasAtBottom = chatAtBottom;/);
-  assert.match(app, /if \(wasAtBottom\) \{\s*chatMessages\.scrollTop = chatMessages\.scrollHeight;/);
+  assert.match(app, /if \(chatChanged && wasAtBottom\) \{\s*chatMessages\.scrollTop = chatMessages\.scrollHeight;/);
+  assert.match(app, /restoreMessagePosition\(chatMessages, anchor, oldScrollTop\)/);
   assert.match(app, /Otherwise leave scrollTop untouched/);
   assert.match(app, /chatJumpBtn/);
+});
+
+test('the bounded chat pane shrinks around its fixed input, so only messages scroll', () => {
+  const css = read('public/styles.css');
+  assert.match(css, /#chatPanel \.sidePane\{flex:1 1 auto;min-height:0;overflow:hidden\}/);
+  assert.match(css, /#chatPanel \.chatMessages\{min-height:0;[^}]*overflow-y:auto/);
+  assert.match(css, /#chatPanel \.chatForm\{flex:0 0 auto\}/);
+  const app = read('public/app.js');
+  assert.match(app, /if \(messageListSignatures\.get\(container\) === signature\) return false;/);
 });
 
 test('a floating chat button with an unread badge is always present, independent of the docked sidebar', () => {
