@@ -4,7 +4,7 @@ const gostop = require(path.join(__dirname, '..', '..', 'lib', 'games', 'gostop'
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.6.88 고스톱·맞고 화투판 시각화. Special situations are built with the real engine (explicit
+// v1.6.92 고스톱·맞고 1차 UX + 기존 화투판 시각화. Special situations are built with the real engine (explicit
 // hands/floor/deck) and fed to the real UI module inside a real game room page; the ordinary flow,
 // spectator privacy and reconnect run against the real server. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
@@ -65,7 +65,7 @@ const P2 = m => `m${String(m).padStart(2, '0')}-pi2`;
 const SCENARIOS = {
   normal: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm11-gwang'], deck: ['m12-animal'] }), '1',
     g => gostop.play(g, '1', 'm01-pi1')),
-  choose: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm01-ribbon'], deck: [P(4)] }), '1',
+  choose: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm01-ribbon', 'm11-gwang'], deck: [P(4)] }), '1',
     g => gostop.play(g, '1', 'm01-pi1')),
   ppeok: () => scenario(position({ hands: { 1: [P(6)], 2: ['m05-pi1', P(7)] }, floor: ['m05-animal', 'm11-gwang'], deck: ['m05-pi2'], turn: '2' }), '1',
     g => gostop.play(g, '2', 'm05-pi1')),
@@ -117,7 +117,7 @@ const settle = page => expect.poll(() => page.evaluate(() => window.GostopUI.fxB
 const box = (page, selector) => page.locator(selector).boundingBox();
 const inside = (pt, r, pad = 30) => pt && r && pt.x >= r.x - pad && pt.x <= r.x + r.width + pad && pt.y >= r.y - pad && pt.y <= r.y + r.height + pad;
 
-test.describe('고스톱·맞고 화투판 시각화 (v1.6.88)', () => {
+test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () => {
   test('카드 이동·특수상황·점수/배수·정산 화면 (엔진 상태 재생)', async ({ browser, request }, testInfo) => {
     test.setTimeout(180_000);
     const admin = await adminToken(request);
@@ -153,11 +153,20 @@ test.describe('고스톱·맞고 화투판 시각화 (v1.6.88)', () => {
     await shot('02-play-done');
 
     // 6) 같은 월 선택: 먹을 수 있는 바닥 카드만 강조, 낸 패는 바닥 옆에 대기.
-    from = await show(page, room, SCENARIOS.choose());
+    const chooseSc = SCENARIOS.choose();
+    from = await show(page, room, chooseSc);
     await settle(page);
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceTarget')).toHaveCount(2);
     await expect(page.locator('#gostopFloor .hwatu.actionableTarget')).toHaveCount(2);
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceMuted')).toHaveCount(1);
     await expect(page.locator('#gostopFloor .waitingCard .hwatu')).toHaveCount(1);
     expect((await entries(page, from)).some(e => e.k === 'play' && e.card === 'm01-pi1')).toBe(true);
+    // Reconnect/SSE rehydrate shape: the authoritative choice state arrives as the first render,
+    // with no previous animation context. The same targets and muted non-target must be restored.
+    await show(page, room, { viewer: chooseSc.viewer, before: chooseSc.after, after: chooseSc.after }, { animate: false });
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceTarget')).toHaveCount(2);
+    await expect(page.locator('#gostopFloor .hwatu.actionableTarget')).toHaveCount(2);
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceMuted')).toHaveCount(1);
     await shot('03-choose');
 
     // 7) 뻑: 상대 패가 뒷면에서 앞면으로 나와 같은 월 3장이 한 더미로 남는다.
@@ -243,9 +252,13 @@ test.describe('고스톱·맞고 화투판 시각화 (v1.6.88)', () => {
     const goSc = SCENARIOS.goStop();
     from = await show(page, room, goSc);
     await settle(page);
-    await expect(page.getByRole('button', { name: '고 (1고)' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '스톱' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '스톱' })).toHaveClass(/actionable/);
+    await expect(page.locator('.gostopDecisionPanel')).toBeVisible();
+    await expect(page.locator('.gostopDecisionPanel')).toContainText('지금 스톱 시 현재 기준 정산');
+    await expect(page.locator('.gostopDecisionPanel')).toContainText('이후 점수·배수는 다음 진행에 따라 달라질 수 있습니다');
+    await expect(page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '스톱 · 현재 정산' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '스톱 · 현재 정산' })).toHaveClass(/gostopStopButton/);
+    await expect(page.locator('#gostopMine .gostopScoreDetails summary')).toContainText('점 구성');
     const goGame = position({ hands: { 1: [P(5), P(6)], 2: [P(7), P(8)] }, floor: [], deck: [P(4)], captured: { 1: ['m01-gwang', 'm08-gwang', 'm11-gwang', 'm12-gwang', 'm03-gwang', P(1), 'm03-pi1'] } });
     goGame.phase = 'go-stop';
     const goScenario = scenario(goGame, '1', g => gostop.decide(g, '1', 'go'));
@@ -267,7 +280,9 @@ test.describe('고스톱·맞고 화투판 시각화 (v1.6.88)', () => {
     const [l2, l3] = endGame.result.losers;
     endView.game.settlement = { status: 'done', kind: 'win', transfers: [
       { fromSeat: '2', toSeat: '1', requested: l2.amount, paid: 6200, capped: true },
-      { fromSeat: '3', toSeat: '1', requested: l3.amount, paid: l3.amount, capped: false }] };
+      { fromSeat: '3', toSeat: '1', requested: l3.amount, paid: l3.amount, capped: false }],
+      balancesBefore: { 1: 100000, 2: 6200, 3: 100000 },
+      balances: { 1: 100000 + 6200 + l3.amount, 2: 0, 3: 100000 - l3.amount } };
     await show(page, room, { viewer: '1', before: endView, after: endView }, { animate: false });
     const result = page.locator('#gostopResult');
     await expect(result.locator('.gostopChip').first()).toHaveText(`기본 ${endGame.result.base}점`);
@@ -277,7 +292,9 @@ test.describe('고스톱·맞고 화투판 시각화 (v1.6.88)', () => {
     await expect(result.locator('.gostopLoserLine').nth(0)).toContainText('피박 ×2');
     await expect(result.locator('.gostopLoserLine').nth(0)).toContainText(`계산 ${l2.amount.toLocaleString('ko-KR')}P → 실제 6,200P`);
     await expect(result.locator('.gostopLoserLine').nth(1)).not.toContainText('피박');
-    await expect(result.locator('.gostopWinLine')).toHaveText(`나 → +${(6200 + l3.amount).toLocaleString('ko-KR')}P`);
+    await expect(result.locator('.gostopLoserLine').nth(0)).toContainText('잔액 6,200P → 0P');
+    await expect(result.locator('.gostopWinLine')).toContainText(`나 → +${(6200 + l3.amount).toLocaleString('ko-KR')}P`);
+    await expect(result.locator('.gostopWinLine')).toContainText('잔액 100,000P →');
     await result.screenshot({ path: testInfo.outputPath('09-result.png') });
     await me.context.close();
   });
