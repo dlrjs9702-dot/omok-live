@@ -31,7 +31,11 @@ const debug = page => page.evaluate(() => window.RpgDebug?.() || null);
 const mySnap = async (page, seat = '1') => (await debug(page))?.snap?.p.find(p => p.s === seat) || null;
 
 async function createRoom(host) {
-  await host.page.locator('[data-game="rpg"]').click();
+  const rpgButton = host.page.locator('[data-game="rpg"]');
+  await expect(rpgButton).toBeDisabled();
+  // 운영 로비에서는 선택을 막지만, 내부 회귀 테스트는 RPG 본체를 계속 검증한다.
+  await rpgButton.evaluate(button => { button.disabled = false; button.removeAttribute('aria-disabled'); });
+  await rpgButton.click();
   const [created] = await Promise.all([
     host.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),
     host.page.locator('#createRoomBtn').click(),
