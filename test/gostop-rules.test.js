@@ -607,3 +607,36 @@ test('이동 단계(lastEvent.steps)에는 공개된 카드만 들어간다(무�
   }
   assert.ok(checked > 1000);
 });
+
+
+// ---- v1.6.91: authoritative UX state ----------------------------------------------------------
+
+test('내 손패 legal 표시는 서버 phase/turn 판정과 같고 선택 단계에서는 모두 잠긴다', () => {
+  const game = setup({ hands: { 1: [PI(1), PI(5)], 2: [PI(6)] }, floor: ['m01-gwang', 'm01-ribbon'], deck: [PI(4)] });
+  assert.ok(gostop.handFor(game, '1').every(card => card.legal));
+  assert.ok(gostop.handFor(game, '2').every(card => !card.legal));
+  gostop.play(game, '1', PI(1));
+  assert.equal(game.phase, 'choose-floor');
+  assert.ok(gostop.handFor(game, '1').every(card => !card.legal));
+  const restored = structuredClone(game);
+  assert.deepEqual(gostop.publicState(restored).choice, gostop.publicState(game).choice, '짝패 선택 공개 상태는 재접속 후에도 동일');
+});
+
+test('고/스톱 stopPreview는 최종 정산 함수와 동일하고 3인 박을 패자별로 분리한다', () => {
+  const game = setup({ seats: ['1', '2', '3'], hands: { 1: [PI(5)], 2: [PI(6)], 3: [PI(7)] },
+    captured: { 1: [...pis(12), 'm01-gwang', 'm03-gwang', 'm08-gwang'], 2: [PI(9)], 3: [...pis(20).slice(12), 'm11-gwang', 'm12-ssangpi', 'm09-pi2'] } });
+  game.phase = 'go-stop';
+  game.turn = '1';
+  game.goCount = { 1: 1, 2: 1, 3: 0 };
+  game.shakes['1'] = 1;
+  const before = JSON.stringify(game);
+  const state = gostop.publicState(game);
+  assert.deepEqual(state.stopPreview, gostop.computeResult(game, '1', 'stop'));
+  assert.equal(JSON.stringify(game), before, '미리보기는 엔진 상태를 바꾸지 않는다');
+  const bySeat = Object.fromEntries(state.stopPreview.losers.map(item => [item.seat, item]));
+  assert.ok(bySeat['2'].baks.includes('pibak'));
+  assert.ok(bySeat['2'].baks.includes('gobak'));
+  assert.equal(bySeat['3'].baks.includes('gobak'), false);
+  assert.equal(state.seats['1'].scoreWithGo, state.seats['1'].score + 1);
+  assert.deepEqual(state.seats['1'].factors.map(item => item.key), ['go', 'shake']);
+});
