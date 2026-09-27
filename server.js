@@ -1035,6 +1035,7 @@ async function applyGostopSettlement(room, match) {
       const [fromSeat, toSeat] = String(item.key || '').split('>');
       return { fromSeat, toSeat, requested: item.requested, paid: item.paid, capped: item.capped };
     }),
+    balancesBefore: Object.fromEntries(game.seatOrder.map(seat => [seat, outcome.balancesBefore?.[seatOf[seat]] ?? null])),
     balances: Object.fromEntries(game.seatOrder.map(seat => [seat, outcome.balances?.[seatOf[seat]] ?? pointStore.cachedBalance(seatOf[seat])])),
   };
 }
