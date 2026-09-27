@@ -45,6 +45,14 @@
 
   const fmt = value => `${Number(value || 0).toLocaleString('ko-KR')}P`;
   const label = (state, seat) => state.players?.[seat]?.label || `${seat}번`;
+  const BAK_KEYS = new Set(['pibak', 'gwangbak', 'meongbak', 'gobak']);
+  const factorOrder = key => ({ go: 1, shake: 2, bomb: 3, pibak: 4, gwangbak: 4, meongbak: 4, gobak: 4, nagari: 5 }[key] || 9);
+  function factorText(item) {
+    const name = item.key === 'go' ? `${item.count}고` : (FACTOR_LABEL[item.key] || item.key);
+    const repeat = item.count > 1 && item.key !== 'go' ? ` ${item.count}회` : '';
+    return `${name}${repeat} ×${item.multiplier}`;
+  }
+  const orderedFactors = factors => [...(factors || [])].sort((a, b) => factorOrder(a.key) - factorOrder(b.key));
 
   function cardEl(id, { size = 'normal', classes = '', button = false, track = false } = {}) {
     const c = info(id);
@@ -96,7 +104,7 @@
     name.textContent = `${label(state, seat)}${mine ? ' (나)' : ''}`;
     const stats = document.createElement('span');
     stats.className = 'gostopStats';
-    const bits = [`${info2.score}점`];
+    const bits = [`${info2.scoreWithGo ?? info2.score}점`];
     if (info2.goCount) bits.push(`${info2.goCount}고`);
     if (info2.shakes) bits.push(`흔들기 ${info2.shakes}`);
     if (info2.bombs) bits.push(`폭탄 ${info2.bombs}`);
@@ -109,7 +117,7 @@
       // Always-visible compact line: "8점 · 2고 · ×4 · 예상 3,200P" (박 is only known at the end).
       const estimate = document.createElement('small');
       estimate.className = 'gostopEstimate';
-      estimate.textContent = `${info2.score + info2.goCount}점${info2.goCount ? ` · ${info2.goCount}고` : ''} · ×${info2.multiplier} · 예상 ${fmt(info2.estimate)}`;
+      estimate.textContent = `${info2.scoreWithGo ?? info2.score}점${info2.goCount ? ` · ${info2.goCount}고` : ''} · ×${info2.multiplier} · 예상 ${fmt(info2.estimate)}`;
       head.append(estimate);
     }
     box.append(head);
@@ -140,11 +148,32 @@
       pile.append(col);
     }
     box.append(pile);
-    if (info2.items?.length) {
-      const items = document.createElement('small');
-      items.className = 'gostopItems';
-      items.textContent = info2.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}`).join(' · ');
-      box.append(items);
+    if (info2.items?.length || info2.goCount || info2.factors?.length) {
+      const detail = document.createElement('details');
+      detail.className = 'gostopScoreDetails';
+      const summary = document.createElement('summary');
+      summary.textContent = `${info2.scoreWithGo ?? info2.score}점 구성`;
+      detail.append(summary);
+      const body = document.createElement('div');
+      body.className = 'gostopScoreDetailBody';
+      for (const item of info2.items || []) {
+        const part = document.createElement('span');
+        part.textContent = `${ITEM_LABEL[item.key] || item.key} ${item.points}점`;
+        body.append(part);
+      }
+      if (info2.goCount) {
+        const part = document.createElement('span');
+        part.textContent = `${info2.goCount}고 +${info2.goCount}점`;
+        body.append(part);
+      }
+      if (info2.factors?.length) {
+        const factors = document.createElement('span');
+        factors.className = 'gostopFactorLine';
+        factors.textContent = orderedFactors(info2.factors).map(factorText).join(' · ');
+        body.append(factors);
+      }
+      detail.append(body);
+      box.append(detail);
     }
     return box;
   }
@@ -155,15 +184,20 @@
     floor.replaceChildren();
     const recent = recentSet(g);
     const fresh = recentApi?.observe(g.lastEvent ? `gostop:${g.round}:${g.lastEvent.seq}` : null);
-    const myChoice = g.choice && g.turn === state.me.seat && g.status === 'playing' ? g.choice : null;
+    const publicChoice = g.choice && g.status === 'playing' ? g.choice : null;
+    const myChoice = publicChoice && g.turn === state.me.seat ? publicChoice : null;
+    const choiceOptions = new Set(publicChoice?.options || []);
     const byMonth = new Map();
     for (const id of g.floor) { const m = info(id).month; if (!byMonth.has(m)) byMonth.set(m, []); byMonth.get(m).push(id); }
     for (const [month, ids] of [...byMonth.entries()].sort((a, b) => a[0] - b[0])) {
       const group = document.createElement('div');
       group.className = `gostopFloorGroup${g.ppeokOwner?.[month] ? ' ppeokStack' : ''}`;
       for (const id of [...ids, ...(g.floorBonus?.[month] || [])]) {
-        const option = myChoice?.options?.includes(id);
-        const el = cardEl(id, { button: Boolean(option), track: true, classes: `${recent.has(id) ? (recentApi?.classes(fresh) || '') : ''}${option ? ' actionableTarget' : ''}` });
+        const publicOption = choiceOptions.has(id);
+        const option = Boolean(myChoice && publicOption);
+        const choiceClass = publicChoice ? (publicOption ? ' gostopChoiceTarget' : ' gostopChoiceMuted') : '';
+        const actionClass = option ? ' actionableTarget' : '';
+        const el = cardEl(id, { button: option, track: true, classes: `${recent.has(id) ? (recentApi?.classes(fresh) || '') : ''}${choiceClass}${actionClass}` });
         if (option) el.addEventListener('click', () => act('gostop-choose', { cardId: id }));
         group.append(el);
       }
@@ -230,24 +264,26 @@
     const canPlay = myTurn && g.phase === 'play' && !busy && !fxRun;
     const actionable = window.GameActionable;
     for (const card of [...mine].sort((a, b) => (info(a.id).month || 99) - (info(b.id).month || 99))) {
-      const el = cardEl(card.id, { size: 'hand', button: true, track: true, classes: actionable?.classes(canPlay) || '' });
-      el.disabled = !canPlay;
+      const legal = canPlay && card.legal !== false;
+      const unavailable = myTurn && g.phase === 'play' && !legal;
+      const el = cardEl(card.id, { size: 'hand', button: true, track: true, classes: `${actionable?.classes(legal) || ''}${unavailable ? ' gostopCardUnavailable' : ''}` });
+      el.disabled = !legal;
       if (card.shake || card.bomb || card.kong) el.classList.add('hasSpecial');
       el.addEventListener('click', () => {
-        if (!canPlay) return;
+        if (!legal) return;
         if (card.shake || card.bomb || card.kong) { pendingSpecial = { cardId: card.id, options: card }; render(lastState); return; }
         act('gostop-play', { cardId: card.id });
       });
       hand.append(el);
     }
-    const button = (text, onClick, primary = false) => {
+    const button = (text, onClick, primary = false, parent = actions) => {
       const b = document.createElement('button');
       const locked = busy || Boolean(fxRun);
       b.type = 'button'; b.className = primary ? 'primary' : 'secondary';
       b.textContent = text; b.disabled = locked;
       if (actionable) actionable.set(b, !locked, primary ? 'primary' : 'target');
       b.addEventListener('click', onClick);
-      actions.append(b);
+      parent.append(b);
       return b;
     };
     if (canPlay && pendingSpecial && mine.some(card => card.id === pendingSpecial.cardId)) {
@@ -263,10 +299,41 @@
     if (canPlay && g.seats[seat]?.bombFlips > 0) button(`폭탄 뒤집기 (${g.seats[seat].bombFlips})`, () => act('gostop-flip', {}));
     if (myTurn && g.phase === 'go-stop') {
       const now = g.seats[seat];
-      const note = document.createElement('small'); note.textContent = `${now.score}점${now.goCount ? ` · ${now.goCount}고` : ''} — 고 또는 스톱을 선택하세요.`;
-      actions.append(note);
-      button(`고 (${now.goCount + 1}고)`, () => act('gostop-decide', { choice: 'go' }), true);
-      button('스톱', () => act('gostop-decide', { choice: 'stop' }), true);
+      const preview = g.stopPreview;
+      const panel = document.createElement('section');
+      panel.className = 'gostopDecisionPanel';
+      const head = document.createElement('div');
+      head.className = 'gostopDecisionHead';
+      const title = document.createElement('strong');
+      title.textContent = `현재 ${preview?.score ?? now.scoreWithGo ?? now.score}점${now.goCount ? ` · ${now.goCount}고` : ''}`;
+      const sub = document.createElement('small');
+      sub.textContent = '지금 스톱 시 현재 기준 정산';
+      head.append(title, sub);
+      panel.append(head);
+
+      if (preview?.losers?.length) {
+        const rows = document.createElement('div');
+        rows.className = 'gostopDecisionRows';
+        for (const loser of preview.losers) {
+          const row = document.createElement('div');
+          const factors = orderedFactors(loser.factors).map(factorText).join(' · ');
+          row.textContent = `${label(state, loser.seat)} · ${factors || '추가 배수 없음'} · ${fmt(loser.amount)}`;
+          rows.append(row);
+        }
+        panel.append(rows);
+      }
+      const caution = document.createElement('small');
+      caution.className = 'gostopDecisionCaution';
+      caution.textContent = '고를 선택하면 이후 점수·배수는 다음 진행에 따라 달라질 수 있습니다.';
+      panel.append(caution);
+      const choices = document.createElement('div');
+      choices.className = 'gostopDecisionButtons';
+      const go = button('고 · 계속하기', () => act('gostop-decide', { choice: 'go' }), false, choices);
+      go.classList.add('gostopGoButton');
+      const stop = button('스톱 · 현재 정산', () => act('gostop-decide', { choice: 'stop' }), true, choices);
+      stop.classList.add('gostopStopButton');
+      panel.append(choices);
+      actions.append(panel);
     }
     if (myTurn && g.phase === 'gukjin') {
       const note = document.createElement('small'); note.textContent = '9월 국진을 어디에 쓸까요?';
@@ -290,6 +357,11 @@
     const title = document.createElement('strong');
     const settled = g.settlement?.status === 'done';
     const paidOf = (from, to) => g.settlement?.transfers?.find(item => item.fromSeat === from && item.toSeat === to);
+    const balanceNote = (seat) => {
+      const before = g.settlement?.balancesBefore?.[seat];
+      const after = g.settlement?.balances?.[seat];
+      return before === null || before === undefined || after === null || after === undefined ? '' : ` · 잔액 ${fmt(before)} → ${fmt(after)}`;
+    };
     if (r.kind === 'nagari') {
       title.textContent = `나가리 · 다음 판 ×${r.nextMultiplier}`;
       box.append(title);
@@ -303,7 +375,7 @@
       for (const item of r.payments) {
         const line = document.createElement('p');
         const paid = paidOf(item.from, item.to);
-        line.textContent = `${label(state, item.from)} → ${label(state, item.to)} ${fmt(paid ? paid.paid : item.amount)}${paid?.capped ? ` (보유 포인트 한도로 ${fmt(item.amount)} 중 지급)` : ''}`;
+        line.textContent = `${label(state, item.from)} → ${label(state, item.to)} ${fmt(paid ? paid.paid : item.amount)}${paid?.capped ? ` (보유 포인트 한도로 ${fmt(item.amount)} 중 지급)` : ''}${balanceNote(item.from)}`;
         box.append(line);
       }
       if (!settled) { const wait = document.createElement('small'); wait.textContent = '포인트 정산 처리 중…'; box.append(wait); }
@@ -312,30 +384,39 @@
     const reasonText = r.reason === 'chongtong' ? '총통' : r.reason === 'samppeok' ? '3뻑' : '스톱';
     title.textContent = `${label(state, r.winner)} 승리 · ${reasonText}`;
     box.append(title);
-    // Basis chips: 기본 점수 · 고 점수 · 점당 -- then one line per loser with only that loser's factors.
-    const basis = document.createElement('div');
-    basis.className = 'gostopCalc';
-    const chip = (text, extra = '') => { const el = document.createElement('span'); el.className = `gostopChip${extra}`; el.textContent = text; basis.append(el); };
+
+    const flow = document.createElement('div');
+    flow.className = 'gostopCalc gostopSettlementFlow';
+    const chip = (text, extra = '') => {
+      const el = document.createElement('span');
+      el.className = `gostopChip${extra}`;
+      el.textContent = text;
+      flow.append(el);
+    };
     chip(r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`);
-    if (r.items?.length && !r.instant) chip(r.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}`).join(' · '), ' muted');
+    if (r.items?.length && !r.instant) chip(r.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}점`).join(' · '), ' muted');
     if (r.goCount) chip(`${r.goCount}고 +${r.goCount}점`);
+    const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key) && item.key !== 'nagari');
+    for (const item of commonFactors) chip(factorText(item));
     chip(`점당 ${r.pointsPerScore}P`);
-    box.append(basis);
+    box.append(flow);
+
     let total = 0;
     for (const loser of r.losers) {
       const line = document.createElement('p');
       line.className = 'gostopLoserLine';
-      const factors = loser.factors.map(item => `${item.key === 'go' ? `${item.count}고` : FACTOR_LABEL[item.key] || item.key}${item.count > 1 && item.key !== 'go' ? ` ${item.count}회` : ''} ×${item.multiplier}`).join(' · ');
+      const factors = orderedFactors(loser.factors).map(factorText).join(' · ');
       const paid = paidOf(loser.seat, r.winner);
       const amount = paid ? paid.paid : loser.amount;
       total += amount;
       line.textContent = `${label(state, loser.seat)} → -${fmt(amount)} · ${r.score}점${factors ? ` · ${factors}` : ''} × ${r.pointsPerScore}P = ${fmt(loser.amount)}`
-        + (paid?.capped ? ` · 계산 ${fmt(loser.amount)} → 실제 ${fmt(paid.paid)} (보유 포인트 한도 적용)` : '');
+        + (paid?.capped ? ` · 계산 ${fmt(loser.amount)} → 실제 ${fmt(paid.paid)} (보유 포인트 한도 적용)` : '')
+        + balanceNote(loser.seat);
       box.append(line);
     }
     const win = document.createElement('p');
     win.className = 'gostopWinLine';
-    win.textContent = settled ? `${label(state, r.winner)} → +${fmt(total)}` : '포인트 정산 처리 중…';
+    win.textContent = settled ? `${label(state, r.winner)} → +${fmt(total)}${balanceNote(r.winner)}` : '포인트 정산 처리 중…';
     box.append(win);
   }
 
@@ -474,10 +555,12 @@
         }
         if (run.cancelled) return;
         const tags = (ev.tags || []).filter(tag => SPECIAL_TAGS.includes(tag));
-        if (tags.length) badge(run, tags.map(tag => TAGS[tag]).join(' '), ev.seat);
+        const notices = tags.map(tag => TAGS[tag]);
+        if (ev.stolen?.length) notices.push(`피 뺏기 · ${ev.stolen.length}장`);
+        if (notices.length) badge(run, notices.join(' · '), ev.seat);
         pulseScores(run, oldItems, items);
         if ((ev.tags || []).includes('go')) pulse(anchors.stats.get(ev.seat));
-        if (tags.length) await wait(500);
+        if (notices.length) await wait(500);
       } finally {
         if (fxRun === run) { cancelFx(); if (lastState?.gameType === 'gostop') renderHand(lastState); }
       }
