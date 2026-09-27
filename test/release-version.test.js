@@ -24,4 +24,8 @@ test('릴리스 버전 문자열은 패키지·서버·캐시·공지에서 일�
     assert.ok(html.includes(`${asset}?v=${version}`), `${asset} 캐시 버전이 package.json과 다릅니다`);
   }
   assert.ok(announcements.includes(`key: 'v${version}'`), '릴리스 공지 키가 package.json과 다릅니다');
+  assert.match(announcements, /key: 'v1\.6\.90'[\s\S]*?title: '\[안내\] v1\.6\.90 잿빛 원정 임시 비활성화'/,
+    '기존 v1.6.90 공지 이력이 변경되면 안 됩니다');
+  assert.match(announcements, /key: 'v1\.6\.91'[\s\S]*?title: '\[안내\] v1\.6\.91 잿빛 원정 게임 구현중 이동'/,
+    '게임 구현중 이동은 v1.6.91 독립 공지여야 합니다');
 });
