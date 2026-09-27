@@ -136,7 +136,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.89');
+  assert.equal(health.data.version, '1.6.90');
   assert.deepEqual(health.data.games.sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'rpg', 'twentyquestions', 'yut']);
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
