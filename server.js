@@ -1475,6 +1475,7 @@ async function handleRoomAction(req, res, action, session) {
     if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
       return sendError(res, 409, 'ROLE_TAKEN', isNumberedSeatGame(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
+    if (isGostop(room) && choice !== 'spectator') await pointStore.ensureAccount(pointAccountForSession(session));
     const oldSeat = findSeat(room, session.token);
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
     if (choice === 'spectator') participant.choice = 'spectator';
