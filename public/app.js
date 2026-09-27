@@ -216,7 +216,7 @@
     if (rpgBridge.controller) { rpgBridge.controller.update(roomState); return; }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.6.89').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.6.90').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
