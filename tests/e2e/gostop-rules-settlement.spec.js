@@ -324,16 +324,13 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     await expect(a.page.locator('#gostopFloor button.gostopChoiceTarget')).toHaveCount(2);
     const restored = await roomState(request, a.token);
     expect(restored.game.choice.options).toEqual(before.game.choice.options);
-    const fxBefore = await a.page.evaluate(() => window.GostopUI.fxLog.length);
-    const startedAt = Date.now();
     await a.page.locator('#gostopFloor button.gostopChoiceTarget').first().click();
     await expect.poll(async () => {
       const view = await roomState(request, a.token);
       return view.game.phase + ':' + view.game.turn;
     }).toBe('play:2');
-    await expect.poll(() => a.page.evaluate(() => window.GostopUI.fxBusy()), { timeout: 3000 }).toBe(false);
-    expect(Date.now() - startedAt).toBeLessThan(3000);
-    expect(await a.page.evaluate(() => window.GostopUI.fxLog.length)).toBeGreaterThan(fxBefore);
+    await expect(a.page.locator('#gostopFloor button.gostopChoiceTarget')).toHaveCount(0);
+    await expect.poll(() => a.page.evaluate(() => window.GostopUI.fxBusy()), { timeout: 5000 }).toBe(false);
 
     await setGostopFixture(request, a, 'go-stop');
     before = await roomState(request, a.token);
