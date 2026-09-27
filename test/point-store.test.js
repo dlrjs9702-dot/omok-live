@@ -61,7 +61,12 @@ async function exercise(t, makeStore) {
     assert.equal(outcomes.filter(item => item.applied).length, 1);
     const applied = outcomes.find(item => item.applied);
     assert.deepEqual(applied.transfers.map(item => [item.requested, item.paid, item.capped]), [[150_000, 100_000, true], [20_000, 20_000, false]]);
-    assert.equal((await store.settle(plan)).applied, false);
+    assert.deepEqual(applied.balancesBefore, { [B]: 100_000, [A]: INITIAL_GRANT + 2 * DAILY_ATTENDANCE, [C]: 100_000 });
+    assert.deepEqual(applied.balances, { [B]: 0, [A]: INITIAL_GRANT + 2 * DAILY_ATTENDANCE + 120_000, [C]: 80_000 });
+    const duplicate = await store.settle(plan);
+    assert.equal(duplicate.applied, false);
+    assert.deepEqual(duplicate.balancesBefore, applied.balancesBefore);
+    assert.deepEqual(duplicate.balances, applied.balances);
     const balances = await Promise.all([A, B, C].map(id => store.getAccount(id, KST_NEXT)));
     assert.deepEqual(balances.map(item => item.balance), [INITIAL_GRANT + 2 * DAILY_ATTENDANCE + 120_000, 0, 80_000]);
     for (const id of [A, B, C]) {
