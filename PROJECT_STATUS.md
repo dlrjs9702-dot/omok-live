@@ -52,6 +52,7 @@
 - 로비의 「잿빛 원정」을 일반 게임 목록에서 제거하고 「게임 구현중」 패널로 옮겼다. 해당 버튼은 disabled 처리해 현재 운영 화면에서 클릭·선택할 수 없게 했다. RPG 서버 엔진과 내부 API는 삭제하지 않아 자동 회귀 검증과 로컬 개발은 계속 가능하다.
 - PR #37에서 이미 적용된 UI 이동을 별도 릴리스로 식별하기 위한 교정이다. v1.6.90 공지·기술 기록은 원래의 「임시 비활성화」 상태로 복원하고, 이번 사용자 표시 변경만 v1.6.91로 기록한다.
 - 게임 옵션 래퍼가 하나 늘어 `data-game-option` 총수가 17개가 된 상태를 테스트가 기대하도록 유지한다. RPG 엔진·Three.js 클라이언트·데이터는 변경하지 않는다.
+- 검증: GitHub Actions Playwright E2E run #152에서 `npm test` 446 통과(환경상 PostgreSQL 1건 skip), Chromium Playwright 25 통과·20 skip. PR diff에 trailing whitespace/conflict marker 없음. 실제 사람 PC 실기는 미수행.
 
 ### v1.6.90 잿빛 원정 임시 비활성화
 
