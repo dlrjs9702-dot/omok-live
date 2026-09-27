@@ -55,7 +55,7 @@
 
 - 고스톱 좌석 선택 전 포인트 계정 생성 대기 후 게임 상태와 해당 좌석을 다시 검사한다. 두 참가자가 같은 빈 자리를 동시에 요청해도 한 명만 착석하고 먼저 성공한 좌석이 유지된다.
 - 대국 종료 상태를 SSE로 받은 착석자도 자신의 포인트 잔액과 최근 고스톱 정산을 다시 불러온다. 같은 상태의 반복 SSE는 다시 요청하지 않으며 다음 판 또는 정산 완료 상태 변화는 새로 확인한다. 원장은 본인 API만 조회한다.
-- 자동 검증: 동시 착석 서버 회귀 및 두 브라우저의 종료 SSE 포인트 갱신 회귀를 추가했다. 변경 JavaScript `node --check`·`git diff --check`, 전체 `npm test` 449개 중 448 pass·1 skip(환경상 PostgreSQL)·0 fail 통과. Chromium Playwright 및 GitHub Actions 결과는 PR 검증 후 기록한다. 실제 사람 PC 다인 플레이 검증: 미실시.
+- 자동 검증: 동시 착석 서버 회귀는 기존 코드에서 동시 200/200으로 실패하고 수정 코드에서 200/409 및 선착석 유지로 통과했다. 두 브라우저의 종료 SSE 상대 포인트 갱신도 통과했다. 변경 JavaScript `node --check`·`git diff --check`, 전체 `npm test` 449개 중 448 pass·1 skip(환경상 PostgreSQL)·0 fail 통과. GitHub Actions #257의 전체 Chromium Playwright는 28 pass·1 flaky·23 skip으로 성공했다. flaky 1건은 범위 밖 기존 윷놀이 판 위 말 커서 검사가 첫 시도에서 `auto`를 받고 재시도에 통과한 것으로, 윷놀이 로직은 수정하지 않았다. 실제 사람 PC 다인 플레이 검증: 미실시.
 
 ### v1.6.93 고스톱·맞고 2차 UX·복구 개선
 
