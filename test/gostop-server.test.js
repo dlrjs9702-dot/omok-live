@@ -16,8 +16,8 @@ async function freePort() {
   });
 }
 
-async function startServer(dataDir, port) {
-  const proc = spawn(process.execPath, ['server.js'], {
+async function startServer(dataDir, port, preload) {
+  const proc = spawn(process.execPath, [...(preload ? ['--require', preload] : []), 'server.js'], {
     cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir, DATABASE_URL: '', ADMIN_PASSWORD: 'gostop-test', NODE_ENV: 'test' },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -43,7 +43,13 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gostop-server-'));
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
-  let proc = await startServer(dataDir, port);
+  // Delay the account promise in this child process so both seat requests can
+  // reach the same vacancy before either one resumes. Production has no hook.
+  const preload = path.join(dataDir, 'slow-account.js');
+  await fs.writeFile(preload, `const { JsonPointStore } = require(${JSON.stringify(path.resolve(__dirname, '..', 'lib/point-store.js'))});\n`
+    + 'const original = JsonPointStore.prototype.ensureAccount;\n'
+    + 'JsonPointStore.prototype.ensureAccount = async function (...args) { await new Promise(resolve => setTimeout(resolve, 100)); return original.apply(this, args); };\n');
+  let proc = await startServer(dataDir, port, preload);
   t.after(async () => { await stopServer(proc); await fs.rm(dataDir, { recursive: true, force: true }); });
 
   let ipCounter = 0;
@@ -200,6 +206,22 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/points', a.session, undefined, 'GET')).data.balance, balanceA);
   assert.equal((await req('/api/points', b.session, undefined, 'GET')).data.balance, balanceB);
 
+  // A new guest's account creation yields while two players choose the same vacant seat.
+  // Exactly one request may succeed, and the winner must still own the seat afterward.
+  const first = await makeGuest('경합1');
+  const second = await makeGuest('경합2');
+  const raceRoom = await req('/api/rooms', a.session, { gameType: 'gostop' });
+  assert.equal(raceRoom.status, 201);
+  const raceCode = raceRoom.data.state.me.roomCode;
+  for (const contender of [first, second]) assert.equal((await req('/api/rooms/join', contender.session, { code: raceCode })).status, 200);
+  const attempts = await Promise.all([first, second].map(contender => req('/api/room/choose-role', contender.session, { choice: '1' })));
+  assert.deepEqual(attempts.map(item => item.status).sort(), [200, 409]);
+  assert.equal(attempts.find(item => item.status === 409).data.error, 'ROLE_TAKEN');
+  const winner = attempts[0].status === 200 ? first : second;
+  const loser = winner === first ? second : first;
+  assert.equal((await req('/api/room', winner.session, undefined, 'GET')).data.state.me.seat, '1');
+  assert.equal((await req('/api/room', loser.session, undefined, 'GET')).data.state.me.seat, null);
+
   // 7) 재시작 후 잔액 유지 + 0P 사용자는 시작 불가(관전은 가능).
   await stopServer(proc);
   const file = path.join(dataDir, 'points.json');
@@ -207,7 +229,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal(saved.accounts[`guest:${a.keyId}`].balance, balanceA);
   saved.accounts[`guest:${b.keyId}`].balance = 0; // simulate a player who lost everything
   await fs.writeFile(file, JSON.stringify(saved));
-  proc = await startServer(dataDir, port);
+  proc = await startServer(dataDir, port, preload);
   const admin2 = (await req('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
   const reenter = async keyId => enter((await req(`/api/admin/keys/${keyId}/reissue`, admin2, {})).data.html);
   a.session = await reenter(a.keyId); b.session = await reenter(b.keyId);
@@ -222,4 +244,6 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal(blocked.status, 409);
   assert.equal(blocked.data.error, 'NO_POINTS');
   assert.match(blocked.data.message, /0P/);
+
+
 });

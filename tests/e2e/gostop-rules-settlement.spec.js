@@ -265,6 +265,12 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     expect(pw.recentGostopSettlements).toEqual([]);
     expect(JSON.stringify(pa.recentGostopSettlements)).not.toContain('guest:');
 
+    // The other player did not send the finish request; their open page must refresh from SSE.
+    await expect(b.page.locator('#pointBalanceText')).toHaveText(`보유 ${pb.balance.toLocaleString('ko-KR')}P`);
+    await b.page.locator('#gostopPointHistory summary').click();
+    await expect(b.page.locator('#gostopPointHistoryList')).toContainText(
+      `${pb.recentGostopSettlements[0].delta.toLocaleString('ko-KR')}P`);
+
     await reopen(a);
     await a.page.locator('#gostopPointHistory summary').click();
     await expect(a.page.locator('#gostopPointHistoryList')).toContainText('맞고');

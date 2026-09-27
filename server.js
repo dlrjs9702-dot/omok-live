@@ -1472,10 +1472,13 @@ async function handleRoomAction(req, res, action, session) {
     const valid = isNumberedSeatGame(room) ? [...seatsFor(room), 'spectator'] : ['black', 'white', 'spectator'];
     const choice = valid.includes(body.choice) ? body.choice : null;
     if (!choice) return sendError(res, 400, 'BAD_ROLE', isNumberedSeatGame(room) ? `1~${seatsFor(room).length}번 자리 또는 관전을 선택해 주세요.` : '흑, 백, 관전 중에서 선택해 주세요.');
+    if (isGostop(room) && choice !== 'spectator') await pointStore.ensureAccount(pointAccountForSession(session));
+    // Account creation yields to other requests. Recheck the room after it completes so a
+    // competing seat choice (or a started hand) cannot be overwritten by this request.
+    if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
     if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
       return sendError(res, 409, 'ROLE_TAKEN', isNumberedSeatGame(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
-    if (isGostop(room) && choice !== 'spectator') await pointStore.ensureAccount(pointAccountForSession(session));
     const oldSeat = findSeat(room, session.token);
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
     if (choice === 'spectator') participant.choice = 'spectator';
@@ -2020,7 +2023,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.93', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.94', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2717,7 +2720,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.93 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.94 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
