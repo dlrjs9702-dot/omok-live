@@ -104,11 +104,21 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/room/set-gostop-stake', a.session, { pointsPerScore: 30 })).status, 409);
   assert.equal((await req('/api/room/set-gostop-stake', a.session, { pointsPerScore: 50 })).status, 200);
   assert.equal((await req('/api/room/start-gostop', b.session, {})).status, 403);
-  const started = await req('/api/room/start-gostop', a.session, {});
+  let started = await req('/api/room/start-gostop', a.session, {});
   assert.equal(started.status, 200);
+  // 총통은 공개 선언과 즉시 정산이 정상 규칙이다. 비공개 손패 검증은 실제 진행 중인 판에서 해야
+  // 공개된 총통 4장을 "손패 유출"로 오인하지 않으므로, 드물게 총통이 나오면 다음 판으로 넘긴다.
+  for (let retry = 0; started.data.state.game.status !== 'playing' && retry < 8; retry += 1) {
+    assert.equal(started.data.state.game.result?.reason, 'chongtong');
+    assert.equal((await req('/api/room/next-round', a.session, {})).status, 200);
+    started = await req('/api/room/start-gostop', a.session, {});
+    assert.equal(started.status, 200);
+  }
   const g0 = started.data.state.game;
+  assert.equal(g0.status, 'playing', '총통이 아닌 진행 가능한 판을 준비하지 못함');
   assert.equal(g0.mode, 'matgo');
   assert.equal(g0.pointsPerScore, 50);
+  const playStartBalanceA = (await req('/api/points', a.session, undefined, 'GET')).data.balance;
 
   // 4) 비공개 손패: 각자 자기 패만, 관전자는 아무 손패도 받지 않는다.
   const view = async session => (await req('/api/room', session, undefined, 'GET')).data.state;
@@ -166,12 +176,12 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal(state.game.settlement.status, 'done');
   if (state.game.status === 'finished') {
     const paid = state.game.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
-    assert.equal(Math.abs(balanceA - 150_000), paid);
+    assert.equal(Math.abs(balanceA - playStartBalanceA), paid);
     assert.equal(state.game.result.losers[0].amount, state.game.settlement.transfers[0].requested);
     assert.ok(state.me.pointBalance === balanceA);
   } else {
     assert.equal(state.game.result.kind, 'nagari');
-    assert.equal(balanceA, 150_000);
+    assert.equal(balanceA, playStartBalanceA);
   }
   // 재수신·다음 판 준비가 반복돼도 재정산 없음.
   await view(a.session); await view(b.session);
