@@ -623,7 +623,7 @@ test('내 손패 legal 표시는 서버 phase/turn 판정과 같고 선택 단�
 });
 
 test('고/스톱 stopPreview는 최종 정산 함수와 동일하고 3인 박을 패자별로 분리한다', () => {
-  const game = setup({ seats: ['1', '2', '3'], hands: { 1: [PI(5)], 2: [PI(6)], 3: [PI(7)] },
+  const game = setup({ seats: ['1', '2', '3'], hands: { 1: ['m09-ribbon'], 2: ['m10-ribbon'], 3: ['m12-ribbon'] },
     captured: { 1: [...pis(12), 'm01-gwang', 'm03-gwang', 'm08-gwang'], 2: [PI(9)], 3: [...pis(20).slice(12), 'm11-gwang', 'm12-ssangpi', 'm09-pi2'] } });
   game.phase = 'go-stop';
   game.turn = '1';
