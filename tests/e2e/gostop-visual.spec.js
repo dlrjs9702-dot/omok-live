@@ -153,13 +153,20 @@ test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () 
     await shot('02-play-done');
 
     // 6) 같은 월 선택: 먹을 수 있는 바닥 카드만 강조, 낸 패는 바닥 옆에 대기.
-    from = await show(page, room, SCENARIOS.choose());
+    const chooseSc = SCENARIOS.choose();
+    from = await show(page, room, chooseSc);
     await settle(page);
     await expect(page.locator('#gostopFloor .hwatu.gostopChoiceTarget')).toHaveCount(2);
     await expect(page.locator('#gostopFloor .hwatu.actionableTarget')).toHaveCount(2);
     await expect(page.locator('#gostopFloor .hwatu.gostopChoiceMuted')).toHaveCount(1);
     await expect(page.locator('#gostopFloor .waitingCard .hwatu')).toHaveCount(1);
     expect((await entries(page, from)).some(e => e.k === 'play' && e.card === 'm01-pi1')).toBe(true);
+    // Reconnect/SSE rehydrate shape: the authoritative choice state arrives as the first render,
+    // with no previous animation context. The same targets and muted non-target must be restored.
+    await show(page, room, { viewer: chooseSc.viewer, before: chooseSc.after, after: chooseSc.after }, { animate: false });
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceTarget')).toHaveCount(2);
+    await expect(page.locator('#gostopFloor .hwatu.actionableTarget')).toHaveCount(2);
+    await expect(page.locator('#gostopFloor .hwatu.gostopChoiceMuted')).toHaveCount(1);
     await shot('03-choose');
 
     // 7) 뻑: 상대 패가 뒷면에서 앞면으로 나와 같은 월 3장이 한 더미로 남는다.
