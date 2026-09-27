@@ -85,7 +85,7 @@ async function exercise(t, makeStore) {
   });
 
   await t.test('정산 기록에 엔진 결과 요약이 함께 남고, 재처리는 같은 기록을 돌려준다', async () => {
-    const summary = { kind: 'win', winner: '1', score: 10, losers: [{ seat: '2', baks: ['pibak'], multiplier: 8, amount: 8_000 }] };
+    const summary = { kind: 'win', mode: 'matgo', winner: '1', score: 10, losers: [{ seat: '2', baks: ['pibak'], multiplier: 8, amount: 8_000 }] };
     const plan = { settlementId: 'room-s:1', matchId: 'room-s:1', gameType: 'gostop', summary, transfers: [{ from: C, to: A, amount: 8_000, key: '2>1' }] };
     const first = await store.settle(plan);
     const again = await store.settle(plan);
@@ -93,6 +93,14 @@ async function exercise(t, makeStore) {
     assert.deepEqual(first.summary, summary);
     assert.deepEqual(again.summary, summary);
     assert.deepEqual(again.transfers.map(item => item.paid), first.transfers.map(item => item.paid));
+    const recentA = await store.recentSettlements(A, 'gostop', 10);
+    const recentC = await store.recentSettlements(C, 'gostop', 10);
+    const own = recentA.find(item => item.settlementId === 'room-s:1');
+    assert.deepEqual([own.mode, own.delta, own.balanceAfter], ['matgo', 8_000, first.balances[A]]);
+    assert.equal(recentC.find(item => item.settlementId === 'room-s:1').delta, -8_000);
+    assert.equal((await store.recentSettlements(B, 'gostop', 10)).some(item => item.settlementId === 'room-s:1'), false);
+    const aggregated = recentA.find(item => item.settlementId === 'room1:1');
+    assert.equal(aggregated.delta, 120_000, '3인 승자의 여러 지급 원장도 한 판으로 합친다');
     await assert.rejects(() => store.settle({ ...plan, settlementId: 'room-s:2', summary: 'text' }));
     await assert.rejects(() => store.settle({ ...plan, settlementId: 'room-s:3', matchId: 'other', match: { id: 'room-s:3', gameType: 'gostop', outcomes: [{ id: 'x', result: 'win' }, { id: 'y', result: 'loss' }] } }));
   });
