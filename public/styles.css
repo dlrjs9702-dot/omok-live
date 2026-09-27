@@ -1047,7 +1047,7 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .gostopLoserLine{font-weight:750}
 @media (prefers-reduced-motion: reduce){.fxPulse{animation:none}.gostopFxLayer{display:none}}
 
-/* v1.6.91: Go-Stop / Matgo decision clarity. Server-authoritative playable/choice state stays visible
+/* v1.6.92: Go-Stop / Matgo decision clarity. Server-authoritative playable/choice state stays visible
    without dimming the whole table; score details remain collapsed until requested. */
 .gostopCardUnavailable{opacity:.48;filter:saturate(.55);box-shadow:none!important}
 .gostopChoiceTarget{outline:3px solid rgba(52,211,153,.95);outline-offset:2px;box-shadow:0 0 0 2px rgba(15,118,110,.35),0 0 18px rgba(52,211,153,.48)!important;transform:translateY(-3px);z-index:2}
