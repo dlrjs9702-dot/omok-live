@@ -14,12 +14,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
+      - name: Static checks
+        shell: bash
+        run: |
+          if [[ -n "${GITHUB_BASE_REF}" ]]; then
+            RANGE="origin/${GITHUB_BASE_REF}...HEAD"
+          else
+            RANGE="HEAD^..HEAD"
+          fi
+          git diff --check "${RANGE}"
+          git diff --name-only --diff-filter=ACMR "${RANGE}" -- '*.js' | while read -r file; do
+            [[ -z "${file}" ]] || node --check "${file}"
+          done
 
       - name: Install dependencies
         run: npm ci
