@@ -26,6 +26,11 @@ test('all thirteen games expose one shared rules selector with the original full
   assert.match(app, /gameRulesSelect\.addEventListener\('change', \(\) => showGameRule\(gameRulesSelect\.value\)\)/);
   assert.match(app, /gameRulesSelect\.value = resolvedType;/);
   assert.match(html, /id="gameRulesDisclosure" class="helpDisclosure"/);
+  const devPanel = html.match(/<details class="developmentGamesPanel"[\s\S]*?<\/details>/)?.[0] || '';
+  assert.match(devPanel, /data-game-option="rpg"/);
+  assert.match(devPanel, /data-game="rpg" disabled/);
+  const normalPicker = html.slice(html.indexOf('id="gamePicker"'), html.indexOf('<details class="developmentGamesPanel"'));
+  assert.doesNotMatch(normalPicker, /data-game-option="rpg"/);
 });
 
 test('announcement rows are compact with inline controls and game choice heights are condensed', () => {
