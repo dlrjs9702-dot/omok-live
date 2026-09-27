@@ -846,13 +846,25 @@ function roomView(room, session) {
   const seat = findSeat(room, session.token);
   const isHost = isRoomHost(room, session);
   roomViewSeq += 1;
+  const base = publicRoom(room);
+  let gameView = isHalli(room) ? { ...getGame('halligalli').publicState(room.game), serverNow: nowMs() }
+    : isLiar(room) ? getGame('liar').publicState(room.game, seat)
+    : isMarathon(room) ? getGame('marathon').publicState(room.game, seat)
+    : base.game;
+  if (isGostop(room) && room.game.status === 'selecting') {
+    gameView = {
+      ...gameView,
+      lobbyPoints: Object.fromEntries(seatsFor(room).filter(seatNumber => room.players[seatNumber]).map((seatNumber) => {
+        const userId = pointAccountForSeat(room, seatNumber);
+        const balance = userId ? (pointStore?.cachedBalance(userId) ?? null) : null;
+        return [seatNumber, { balance, eligible: balance === null ? null : balance > 0 }];
+      })),
+    };
+  }
   return {
-    ...publicRoom(room),
+    ...base,
     stateSeq: roomViewSeq,
-    game: isHalli(room) ? { ...getGame('halligalli').publicState(room.game), serverNow: nowMs() }
-      : isLiar(room) ? getGame('liar').publicState(room.game, seat)
-      : isMarathon(room) ? getGame('marathon').publicState(room.game, seat)
-      : publicRoom(room).game,
+    game: gameView,
     me: {
       label: session.label,
       isHost,
@@ -1027,7 +1039,7 @@ async function applyGostopSettlement(room, match) {
   const outcome = await pointStore.settle({
     settlementId: `gostop:${room.id}:${game.round}`, matchId: match?.id || `${room.id}:${game.round}`, gameType: 'gostop',
     transfers: usable.map(item => ({ from: seatOf[item.fromSeat], to: seatOf[item.toSeat], amount: item.amount, key: `${item.fromSeat}>${item.toSeat}` })),
-    summary: game.result, match,
+    summary: { ...game.result, mode: game.mode }, match,
   });
   game.settlement = {
     status: 'done', kind: game.result.kind,
@@ -1973,7 +1985,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.92', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.93', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2039,8 +2051,10 @@ async function requestHandler(req, res) {
   if (pathname === '/api/points' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    const account = await pointStore.getAccount(pointAccountForSession(session));
-    return sendJson(res, 200, { ok: true, ...account, attendanceAmount: 50_000 });
+    const userId = pointAccountForSession(session);
+    const account = await pointStore.getAccount(userId);
+    const recentGostopSettlements = await pointStore.recentSettlements(userId, 'gostop', 5);
+    return sendJson(res, 200, { ok: true, ...account, attendanceAmount: 50_000, recentGostopSettlements });
   }
 
   if (pathname === '/api/points/attendance' && req.method === 'POST') {
@@ -2655,7 +2669,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.92 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.93 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
