@@ -21,7 +21,6 @@ const isCityKing = (room) => room.gameType === 'cityking';
 const isMarathon = (room) => room.gameType === 'marathon';
 const isGostop = (room) => room.gameType === 'gostop';
 const isRpg = (room) => room.gameType === 'rpg';
-const TEMPORARILY_DISABLED_GAMES = new Set(['rpg']);
 const GOSTOP_SEATS = ['1', '2', '3'];
 const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
 // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
@@ -2439,7 +2438,6 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const gameType = String(body.gameType || 'omok').toLowerCase();
     if (!hasGame(gameType)) return sendError(res, 400, 'BAD_GAME_TYPE', '지원하지 않는 게임입니다.');
-    if (TEMPORARILY_DISABLED_GAMES.has(gameType)) return sendError(res, 409, 'GAME_DISABLED', '잿빛 원정은 현재 로컬 개발 중이라 잠시 이용할 수 없습니다.');
     const visibility = body.visibility === undefined ? 'private' : body.visibility;
     if (visibility !== 'public' && visibility !== 'private') {
       return sendError(res, 400, 'BAD_VISIBILITY', '공개방 또는 비공개방을 선택해 주세요.');
