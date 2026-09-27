@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.92" />
+  <link rel="stylesheet" href="/styles.css?v=1.6.93" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -372,7 +372,12 @@
               <select id="gostopStakeSelect" aria-label="점당 포인트"><option value="10">10P</option><option value="50">50P</option><option value="100">100P</option></select>
               <button id="gostopStartBtn" type="button" class="primary">시작</button>
               <small id="gostopSetupNote"></small>
+              <div id="gostopSetupPlayers" class="gostopSetupPlayers" aria-live="polite"></div>
             </div>
+            <details id="gostopPointHistory" class="gostopPointHistory">
+              <summary>최근 고스톱·맞고 포인트 정산</summary>
+              <div id="gostopPointHistoryList" class="gostopPointHistoryList"></div>
+            </details>
             <div id="gostopOpponents" class="gostopOpponents"></div>
             <div class="gostopTable"><div id="gostopFloor" class="gostopFloor" aria-label="바닥패"></div><div id="gostopDeck" class="gostopDeck"></div></div>
             <div id="gostopEvent" class="gostopEvent" aria-live="polite"></div>
@@ -841,9 +846,9 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.92"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.92"></script>
-  <script src="/gostop-ui.js?v=1.6.92"></script>
-  <script src="/app.js?v=1.6.92"></script>
+  <script src="/session-lock.js?v=1.6.93"></script>
+  <script src="/twentyquestions-ui.js?v=1.6.93"></script>
+  <script src="/gostop-ui.js?v=1.6.93"></script>
+  <script src="/app.js?v=1.6.93"></script>
 </body>
 </html>

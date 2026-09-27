@@ -103,6 +103,10 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/room/set-gostop-stake', b.session, { pointsPerScore: 50 })).status, 403);
   assert.equal((await req('/api/room/set-gostop-stake', a.session, { pointsPerScore: 30 })).status, 409);
   assert.equal((await req('/api/room/set-gostop-stake', a.session, { pointsPerScore: 50 })).status, 200);
+  await req('/api/points', b.session, undefined, 'GET');
+  const pregame = (await req('/api/room', a.session, undefined, 'GET')).data.state;
+  assert.deepEqual(pregame.game.lobbyPoints['1'], { balance: 150_000, eligible: true });
+  assert.deepEqual(pregame.game.lobbyPoints['2'], { balance: 100_000, eligible: true });
   assert.equal((await req('/api/room/start-gostop', b.session, {})).status, 403);
   let started = await req('/api/room/start-gostop', a.session, {});
   assert.equal(started.status, 200);
@@ -170,11 +174,18 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
     state = await view(a.session);
   }
   assert.notEqual(state.game.status, 'playing');
-  const balanceA = (await req('/api/points', a.session, undefined, 'GET')).data.balance;
-  const balanceB = (await req('/api/points', b.session, undefined, 'GET')).data.balance;
+  const accountA = (await req('/api/points', a.session, undefined, 'GET')).data;
+  const accountB = (await req('/api/points', b.session, undefined, 'GET')).data;
+  const accountC = (await req('/api/points', c.session, undefined, 'GET')).data;
+  const balanceA = accountA.balance;
+  const balanceB = accountB.balance;
   assert.equal(balanceA + balanceB, 250_000, '포인트 총량 보존');
+  assert.deepEqual(accountC.recentGostopSettlements, [], '관전자의 포인트 내역에는 다른 참가자의 정산이 섞이지 않는다');
   assert.equal(state.game.settlement.status, 'done');
   if (state.game.status === 'finished') {
+    assert.equal(accountA.recentGostopSettlements[0]?.mode, 'matgo');
+    assert.ok(accountA.recentGostopSettlements[0]?.delta !== 0);
+    assert.equal(accountA.recentGostopSettlements[0]?.delta, -accountB.recentGostopSettlements[0]?.delta);
     const paid = state.game.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
     assert.equal(Math.abs(balanceA - playStartBalanceA), paid);
     assert.equal(state.game.result.losers[0].amount, state.game.settlement.transfers[0].requested);
@@ -205,6 +216,8 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal((await req('/api/rooms/join', b.session, { code: room2.data.state.me.roomCode })).status, 200);
   await req('/api/room/choose-role', a.session, { choice: '1' });
   await req('/api/room/choose-role', b.session, { choice: '2' });
+  const zeroPregame = (await req('/api/room', a.session, undefined, 'GET')).data.state;
+  assert.deepEqual(zeroPregame.game.lobbyPoints['2'], { balance: 0, eligible: false });
   const blocked = await req('/api/room/start-gostop', a.session, {});
   assert.equal(blocked.status, 409);
   assert.equal(blocked.data.error, 'NO_POINTS');

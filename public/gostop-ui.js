@@ -27,6 +27,7 @@
 
   let submit = null;
   let busy = false;
+  let pointAccount = null;
   let pendingSpecial = null; // { cardId, options } while the play-style prompt is open
   let lastState = null;
   let elementsById = new Map(); // public card id -> its element in the current render (no DOM attribute)
@@ -138,8 +139,10 @@
       const col = document.createElement('div');
       col.className = `gostopPile pile-${kind}`;
       const cap = document.createElement('small');
-      const count = kind === 'pi' ? info2.counts.pi : groups[kind].length;
-      cap.textContent = `${title} ${count}`;
+      const actualCards = groups[kind].length;
+      const count = kind === 'pi' ? info2.counts.pi : actualCards;
+      cap.textContent = kind === 'pi' && count !== actualCards ? `${title} ${count} · 카드 ${actualCards}장` : `${title} ${count}`;
+      if (kind === 'pi') cap.title = '피 숫자는 점수 계산상 개수입니다. 쌍피·쓰리피는 2피·3피로 계산됩니다.';
       col.append(cap);
       const row = document.createElement('div'); row.className = 'gostopPileCards';
       for (const id of groups[kind]) row.append(cardEl(id, { size: 'mini', track: true, classes: recent.has(id) && g.lastEvent?.seat === seat ? ' recentActionTarget' : '' }));
@@ -430,13 +433,52 @@
     const select = $('gostopStakeSelect');
     select.value = String(g.pointsPerScore);
     select.disabled = !host || busy;
-    const seated = ['1', '2', '3'].filter(seat => state.players?.[seat]).length;
+    const seats = ['1', '2', '3'].filter(seat => state.players?.[seat]);
+    const seated = seats.length;
+    const lobbyPoints = g.lobbyPoints || {};
+    const blocked = seats.some(seat => lobbyPoints[seat]?.eligible === false);
     const start = $('gostopStartBtn');
     start.classList.toggle('hidden', !host);
-    start.disabled = busy || seated < 2;
+    start.disabled = busy || seated < 2 || blocked;
     start.textContent = seated === 3 ? '고스톱 시작 (3인)' : seated === 2 ? '맞고 시작 (2인)' : '2~3명 필요';
-    window.GameActionable?.set(start, host && seated >= 2 && !busy, 'primary');
-    $('gostopSetupNote').textContent = `2명 맞고 · 3명 고스톱 · 점당 ${g.pointsPerScore}P${g.nagariStreak ? ` · 나가리 ×${g.nagariMultiplier} 이월` : ''}`;
+    window.GameActionable?.set(start, host && seated >= 2 && !blocked && !busy, 'primary');
+    const mode = seated === 3 ? '고스톱' : seated === 2 ? '맞고' : '2명 맞고 · 3명 고스톱';
+    $('gostopSetupNote').textContent = `${mode} · 점당 ${g.pointsPerScore}P${g.nagariStreak ? ` · 나가리 ×${g.nagariMultiplier} 이월` : ''} · 실제 손실은 보유 포인트 한도 내에서 정산`;
+    const players = $('gostopSetupPlayers');
+    players.replaceChildren();
+    for (const seat of seats) {
+      const point = lobbyPoints[seat];
+      const row = document.createElement('div');
+      row.className = `gostopSetupPlayer${point?.eligible === false ? ' blocked' : ''}`;
+      const balance = point?.balance === null || point?.balance === undefined ? '보유 포인트 확인 중' : `보유 ${fmt(point.balance)}`;
+      const eligibility = point?.eligible === false ? '참가 불가 · 0P' : point?.eligible === true ? '참가 가능' : '참가 여부 확인 중';
+      row.textContent = `${seat}번 · ${label(state, seat)} · ${balance} · ${eligibility}`;
+      players.append(row);
+    }
+  }
+
+  function renderPointHistory() {
+    const list = $('gostopPointHistoryList');
+    if (!list) return;
+    list.replaceChildren();
+    const entries = pointAccount?.recentGostopSettlements || [];
+    if (!pointAccount) {
+      list.textContent = '포인트 정산 내역을 불러오는 중입니다.';
+      return;
+    }
+    if (!entries.length) {
+      list.textContent = '최근 고스톱·맞고 정산 내역이 없습니다.';
+      return;
+    }
+    for (const entry of entries) {
+      const row = document.createElement('div');
+      row.className = `gostopPointHistoryRow ${entry.delta >= 0 ? 'gain' : 'loss'}`;
+      const mode = entry.mode === 'matgo' ? '맞고' : entry.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
+      const sign = entry.delta > 0 ? '+' : '';
+      const at = entry.at ? new Date(entry.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      row.textContent = `${mode} · ${sign}${fmt(entry.delta)} · 잔액 ${fmt(entry.balanceAfter)}${at ? ` · ${at}` : ''}`;
+      list.append(row);
+    }
   }
 
   function render(state) {
@@ -452,6 +494,7 @@
     $('gostopMeta').textContent = g.status === 'selecting' ? '' : `점당 ${g.pointsPerScore}P${g.nagariStreak ? ` · 나가리 ×${g.nagariMultiplier}` : ''} · ${g.mode === 'matgo' ? '7점' : '3점'}부터 고/스톱`;
     $('gostopMyPoints').textContent = state.me?.pointBalance === null || state.me?.pointBalance === undefined ? '' : `내 포인트 ${fmt(state.me.pointBalance)}`;
     renderSetup(state);
+    renderPointHistory();
     const others = $('gostopOpponents');
     others.replaceChildren();
     const mineBox = $('gostopMine');
@@ -473,7 +516,7 @@
   // listed in lastEvent.steps (every card there is face up for everyone) from where the cards were in
   // the previous render to where they are now. Final elements stay hidden until their card lands.
   // One run at a time (generation id); a newer event cancels an older run and snaps it to the end.
-  const FX = { move: 380, flip: 440, capture: 420, gap: 90, look: 200, glow: 320 };
+  const FX = { move: 300, flip: 340, capture: 300, gap: 55, look: 120, glow: 200 };
   const BASE_W = 46; const BASE_H = 68;
   const SPECIAL_TAGS = ['jjok', 'ttadak', 'sweep', 'ppeok', 'jappeok', 'ppeokEat', 'bomb', 'kong', 'shake', 'bonus'];
   let fxRun = null;
@@ -487,6 +530,7 @@
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const rectOf = el => (el?.isConnected ? el.getBoundingClientRect() : null);
   const plain = r => (r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null);
+  const fxMs = (run, ms, min = 90) => Math.max(min, Math.round(ms * (run?.pace || 1)));
 
   function snapshot() {
     const cards = new Map();
@@ -539,7 +583,8 @@
   }
 
   function runFx(state, key, steps, before, ev, oldItems, items) {
-    const run = { key, gen: ++fxGen, sprites: new Map(), temps: new Set(), hidden: new Set(), cancelled: false };
+    const pace = steps.length >= 7 ? 0.55 : steps.length >= 4 ? 0.72 : 1;
+    const run = { key, gen: ++fxGen, sprites: new Map(), temps: new Set(), hidden: new Set(), cancelled: false, pace };
     for (const step of steps) if (step.k !== 'reveal' && step.k !== 'match') for (const id of stepCards(step)) run.hidden.add(id);
     run.rehide = () => { for (const id of run.hidden) elementsById.get(id)?.classList.add('gostopFxHidden'); };
     run.rehide();
@@ -551,7 +596,7 @@
         for (let i = 0; i < steps.length; i += 1) {
           if (run.cancelled) return;
           await doStep(run, steps[i], steps[i + 1] || null, me, before);
-          await wait(FX.gap);
+          await wait(fxMs(run, FX.gap, 24));
         }
         if (run.cancelled) return;
         const tags = (ev.tags || []).filter(tag => SPECIAL_TAGS.includes(tag));
@@ -560,7 +605,7 @@
         if (notices.length) badge(run, notices.join(' · '), ev.seat);
         pulseScores(run, oldItems, items);
         if ((ev.tags || []).includes('go')) pulse(anchors.stats.get(ev.seat));
-        if (notices.length) await wait(500);
+        if (notices.length) await wait(fxMs(run, 320, 180));
       } finally {
         if (fxRun === run) { cancelFx(); if (lastState?.gameType === 'gostop') renderHand(lastState); }
       }
@@ -618,17 +663,17 @@
         const el = spriteFor(run, id, start);
         el.classList.add('fxReveal');
         log(run, 'reveal', id, start, null, step.seat);
-        return move(el, { ...start, left: start.left + (step.seat === me ? 0 : i * 26), top: start.top - 22 }, 260);
+        return move(el, { ...start, left: start.left + (step.seat === me ? 0 : i * 26), top: start.top - 22 }, fxMs(run, 240));
       });
       await Promise.all(moves);
-      await wait(520);
+      await wait(fxMs(run, 360, 180));
       for (const id of step.cards) {
         if (next?.k === 'play' && next.cards.includes(id)) continue; // the played one keeps going
         const el = run.sprites.get(id);
         if (!el) continue;
         run.sprites.delete(id);
         run.temps.add(el);
-        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).finished.then(() => el.remove(), () => {});
+        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: fxMs(run, 180), fill: 'forwards' }).finished.then(() => el.remove(), () => {});
       }
       return;
     }
@@ -643,7 +688,7 @@
         const hidden = !known && step.seat !== me;
         const el = spriteFor(run, id, start, { back: hidden });
         log(run, 'play', id, start, target, step.seat);
-        return move(el, target, FX.move, { flipAt: hidden ? 0.45 : null });
+        return move(el, target, fxMs(run, FX.move), { flipAt: hidden ? 0.45 : null });
       }));
       return;
     }
@@ -655,17 +700,17 @@
       const target = partnerAt ? near(partnerAt) : step.bonus ? { ...start, left: start.left + 58 } : (finalRect(step.card) || start);
       const el = spriteFor(run, step.card, start, { back: true });
       log(run, 'flip', step.card, start, target);
-      await move(el, target, FX.flip, { flipAt: 0.5 });
-      await wait(FX.look); // let the month be read before anything else moves
+      await move(el, target, fxMs(run, FX.flip), { flipAt: 0.5 });
+      await wait(fxMs(run, FX.look, 70)); // let the month be read before anything else moves
       return;
     }
     if (step.k === 'place') {
-      for (const id of step.cards) {
+      await Promise.all(step.cards.map(async (id) => {
         const el = run.sprites.get(id);
         const target = finalRect(id);
-        if (el && target) { log(run, 'place', id, el._at, target); await move(el, target, 220); }
+        if (el && target) { log(run, 'place', id, el._at, target); await move(el, target, fxMs(run, 180)); }
         land(run, id);
-      }
+      }));
       return;
     }
     if (step.k === 'match') {
@@ -673,7 +718,7 @@
       for (const id of step.cards) if (!run.sprites.has(id) && before.cards.get(id)) spriteFor(run, id, before.cards.get(id));
       for (const id of step.cards) run.sprites.get(id)?.classList.add('fxGlow');
       log(run, 'match', step.cards.join(','), null, null);
-      await wait(FX.glow);
+      await wait(fxMs(run, FX.glow, 100));
       return;
     }
     if (step.k === 'stack') {
@@ -684,7 +729,7 @@
         const target = finalRect(id);
         if (!el || !target) return null;
         log(run, 'stack', id, el._at, target);
-        return move(el, target, 300);
+        return move(el, target, fxMs(run, 240));
       }));
       for (const id of step.cards) land(run, id);
       pulse(elementsById.get(step.cards[0])?.closest('.gostopFloorGroup'));
@@ -699,9 +744,9 @@
         if (!start || !target) { land(run, id); return; }
         const el = spriteFor(run, id, start);
         el.classList.remove('fxGlow');
-        await wait(i * 45);
+        await wait(Math.min(90, Math.round(i * 22 * run.pace)));
         log(run, step.k, id, start, target, seat);
-        await move(el, target, step.k === 'steal' ? FX.move : FX.capture);
+        await move(el, target, fxMs(run, step.k === 'steal' ? FX.move : FX.capture));
         land(run, id);
       }));
     }
@@ -758,6 +803,11 @@
     }
   }
 
+  function setPointAccount(account) {
+    pointAccount = account || null;
+    if (lastState?.gameType === 'gostop') renderPointHistory();
+  }
+
   function init(roomAction) {
     submit = roomAction;
     $('gostopStakeSelect').addEventListener('change', event => act('set-gostop-stake', { pointsPerScore: Number(event.target.value) }));
@@ -765,5 +815,5 @@
   }
 
   // fxLog/fxBusy: read-only hooks for browser tests (public card ids and screen positions only).
-  window.GostopUI = { init, render, cardInfo: info, fxLog, fxBusy: () => Boolean(fxRun) };
+  window.GostopUI = { init, render, setPointAccount, cardInfo: info, fxLog, fxBusy: () => Boolean(fxRun) };
 })();

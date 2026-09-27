@@ -975,15 +975,25 @@ input.actionableTarget{border-color:rgba(52,211,153,.9);box-shadow:0 0 0 2px rgb
 .gostopHead span{color:#cbd5e1;font-size:.86rem}.gostopMyPoints{margin-left:auto;color:#fde68a!important;font-weight:800}
 .gostopSetup{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.gostopSetup select{border:1px solid #475569;border-radius:10px;background:#0f172a;color:#fff;padding:7px 10px;font-weight:800}
 .gostopSetup small{color:#94a3b8}
+.gostopSetupPlayers{flex:1 0 100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:5px}
+.gostopSetupPlayer{padding:6px 8px;border:1px solid #334155;border-radius:9px;background:#111c33;color:#dbeafe;font-size:.78rem;font-weight:750}
+.gostopSetupPlayer.blocked{border-color:#7f1d1d;background:#2a1118;color:#fecaca}
+.gostopPointHistory{border:1px solid #273449;border-radius:10px;background:#0f172a;padding:6px 9px}
+.gostopPointHistory summary{cursor:pointer;color:#cbd5e1;font-size:.8rem;font-weight:800}
+.gostopPointHistoryList{display:grid;gap:3px;margin-top:6px;color:#94a3b8;font-size:.76rem}
+.gostopPointHistoryRow{padding:4px 6px;border-radius:7px;background:#111c33;font-variant-numeric:tabular-nums}
+.gostopPointHistoryRow.gain{color:#a7f3d0}.gostopPointHistoryRow.loss{color:#fecaca}
 .gostopOpponents{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
 .gostopSeat{display:grid;gap:6px;padding:9px 10px;border:1px solid #273449;border-radius:14px;background:#0f172a}
 .gostopSeat.mine{border-color:#334155;background:#101a2e}
 .gostopSeatHead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.gostopStats{color:#e2e8f0;font-weight:800;font-size:.84rem}
 .gostopEstimate{width:100%;color:#fde68a;font-weight:750}
 .gostopBacks{display:flex;align-items:center;gap:2px;flex-wrap:wrap}.gostopBacks small{margin-left:6px;color:#94a3b8}
-.gostopCaptured{display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:start}
-.gostopPile{display:grid;gap:3px;min-width:0}.gostopPile small{color:#cbd5e1;font-weight:800;font-size:.74rem}
-.gostopPileCards{display:flex;flex-wrap:wrap;gap:2px}
+.gostopCaptured{display:grid;grid-template-columns:repeat(4,minmax(58px,1fr));gap:6px;align-items:start}
+.gostopPile{display:grid;gap:3px;min-width:0;padding:4px;border:1px solid rgba(71,85,105,.45);border-radius:9px;background:rgba(15,23,42,.42)}
+.gostopPile small{color:#e2e8f0;font-weight:850;font-size:.74rem;white-space:nowrap}
+.gostopPileCards{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto;overflow-y:hidden;min-height:43px;padding-bottom:2px;scrollbar-width:thin}
+.gostopPileCards .hwatu-mini{flex:0 0 28px}
 .gostopItems{color:#a7f3d0;font-weight:750}
 .gostopTable{display:flex;gap:12px;align-items:flex-start;padding:10px;border-radius:14px;background:radial-gradient(circle at 50% 40%,#14532d,#0b3b22);min-height:96px}
 .gostopFloor{display:flex;flex-wrap:wrap;gap:10px;flex:1}
@@ -1003,8 +1013,8 @@ input.actionableTarget{border-color:rgba(52,211,153,.9);box-shadow:0 0 0 2px rgb
   border:1px solid #7f1d1d;border-radius:6px;background:#fff8ec;color:#1f2937;padding:0;flex:0 0 auto;box-shadow:0 2px 4px rgba(0,0,0,.35);font-family:inherit}
 .hwatu::before{content:'';position:absolute;inset:0 0 auto;height:22%;background:var(--month,#b91c1c);opacity:.9}
 .hwatu-hand{width:58px;height:86px}.hwatu-normal{width:46px;height:68px}.hwatu-mini{width:28px;height:41px;border-radius:4px}.hwatu-tiny{width:14px;height:21px;border-radius:3px}
-.hwatuMonth{position:relative;z-index:1;font-weight:950;font-size:.72rem;color:#fff;line-height:1.5}
-.hwatu-mini .hwatuMonth{font-size:.5rem}.hwatu-hand .hwatuMonth{font-size:.8rem}
+.hwatuMonth{position:relative;z-index:1;justify-self:start;margin-left:3px;padding:0 3px;border-radius:4px;background:rgba(15,23,42,.26);font-weight:950;font-size:.72rem;color:#fff;line-height:1.45;text-shadow:0 1px 1px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
+.hwatu-mini .hwatuMonth{margin-left:1px;padding:0 2px;font-size:.5rem}.hwatu-hand .hwatuMonth{font-size:.8rem}
 .hwatuArt{position:relative;z-index:1;font-size:1.25rem;line-height:1;letter-spacing:-.12em}
 .hwatu-hand .hwatuArt{font-size:1.55rem}.hwatu-mini .hwatuArt{font-size:.72rem}
 .hwatuBadge{position:relative;z-index:1;width:100%;text-align:center;font-weight:950;font-size:.62rem;padding:1px 0;background:#e5e7eb;color:#111827}

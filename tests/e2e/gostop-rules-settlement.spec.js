@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.6.92 고스톱·맞고 1차 UX + 규칙·정산: 서로 다른 browser context의 실제 게스트 계정으로 3인 고스톱 고→스톱·패자별 정산,
+// v1.6.92~v1.6.93 고스톱·맞고 UX + 규칙·정산: 서로 다른 browser context의 실제 게스트 계정으로 3인 고스톱 고→스톱·패자별 정산,
 // 재접속 복원, 관전자 비공개, 나가리 다음 판 배수, 잔액 한도 표시를 확인한다. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
@@ -89,7 +89,13 @@ async function openRoom(host, others, request, spectators = []) {
   }).toEqual([host, ...others].map(() => true));
 }
 
-test.describe('고스톱·맞고 1차 UX·규칙·정산 (v1.6.92)', () => {
+async function setGostopFixture(request, view, fixture) {
+  const result = await api(request, '/api/test/gostop-fixture', view.token, { fixture });
+  expect(result.status, JSON.stringify(result.data)).toBe(200);
+  await expect.poll(async () => (await roomState(request, view.token)).game.phase).toBe(fixture);
+}
+
+test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
   test('3인 고스톱: 고 → 스톱, 패자별 박·정산, 재접속 복원, 관전자 비공개', async ({ browser, request }) => {
     test.setTimeout(180_000);
     const admin = await adminToken(request);
@@ -218,4 +224,138 @@ test.describe('고스톱·맞고 1차 UX·규칙·정산 (v1.6.92)', () => {
     await expect(a.page.locator('#gostopResult')).toContainText('+700P');
     for (const view of [a, b]) await view.context.close();
   });
+
+  test('v1.6.93 시작 전 판돈·참가자 포인트와 최근 정산은 본인 기준으로 표시한다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const a = await guest(browser, request, admin, '가온');
+    const b = await guest(browser, request, admin, '나온');
+    const watcher = await guest(browser, request, admin, '관전93');
+    await openRoom(a, [b], request, [watcher]);
+    await Promise.all([a, b].map(view => api(request, '/api/points', view.token, undefined, 'GET')));
+    expect((await api(request, '/api/room/set-gostop-stake', a.token, { pointsPerScore: 100 })).status).toBe(200);
+
+    await expect(a.page.locator('#gostopStartBtn')).toHaveText('맞고 시작 (2인)');
+    await expect(a.page.locator('#gostopSetupNote')).toContainText('맞고 · 점당 100P');
+    await expect(a.page.locator('#gostopSetupNote')).toContainText('실제 손실은 보유 포인트 한도 내에서 정산');
+    await expect(a.page.locator('#gostopSetupPlayers')).toContainText('가온');
+    await expect(a.page.locator('#gostopSetupPlayers')).toContainText('나온');
+    await expect(a.page.locator('#gostopSetupPlayers')).toContainText('보유 100,000P');
+    await expect(a.page.locator('#gostopSetupPlayers')).toContainText('참가 가능');
+
+    const normal = await roomState(request, a.token);
+    await a.page.evaluate((state) => {
+      state.game.lobbyPoints['2'] = { balance: 0, eligible: false };
+      window.GostopUI.render(state);
+    }, normal);
+    await expect(a.page.locator('#gostopStartBtn')).toBeDisabled();
+    await expect(a.page.locator('#gostopSetupPlayers')).toContainText('참가 불가 · 0P');
+
+    await setGostopFixture(request, a, 'go-stop');
+    await expect(a.page.getByRole('button', { name: '스톱 · 현재 정산' })).toBeVisible();
+    await a.page.getByRole('button', { name: '스톱 · 현재 정산' }).click();
+    await expect.poll(async () => (await roomState(request, a.token)).game.status).toBe('finished');
+
+    const pa = (await api(request, '/api/points', a.token, undefined, 'GET')).data;
+    const pb = (await api(request, '/api/points', b.token, undefined, 'GET')).data;
+    const pw = (await api(request, '/api/points', watcher.token, undefined, 'GET')).data;
+    expect(pa.recentGostopSettlements[0].mode).toBe('matgo');
+    expect(pa.recentGostopSettlements[0].delta).toBeGreaterThan(0);
+    expect(pb.recentGostopSettlements[0].delta).toBeLessThan(0);
+    expect(pa.recentGostopSettlements[0].delta).toBe(-pb.recentGostopSettlements[0].delta);
+    expect(pw.recentGostopSettlements).toEqual([]);
+    expect(JSON.stringify(pa.recentGostopSettlements)).not.toContain('guest:');
+
+    await reopen(a);
+    await a.page.locator('#gostopPointHistory summary').click();
+    await expect(a.page.locator('#gostopPointHistoryList')).toContainText('맞고');
+    await expect(a.page.locator('#gostopPointHistoryList')).toContainText('+' + pa.recentGostopSettlements[0].delta.toLocaleString('ko-KR') + 'P');
+    for (const view of [a, b, watcher]) await view.context.close();
+  });
+
+  test('v1.6.93 획득패 4분류·피 계산 장수와 공개 카드 1~12월을 카드 자체에서 확인한다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const a = await guest(browser, request, admin, '월표시A');
+    const b = await guest(browser, request, admin, '월표시B');
+    await openRoom(a, [b], request);
+    await setGostopFixture(request, a, 'go-stop');
+    const state = await roomState(request, a.token);
+
+    await a.page.evaluate((view) => {
+      view.game.status = 'playing';
+      view.game.phase = 'play';
+      view.game.turn = '2';
+      view.game.floor = [
+        'm01-pi1','m02-pi1','m03-gwang','m03-ribbon','m04-pi1','m05-pi1','m06-pi1',
+        'm07-pi1','m08-pi1','m09-pi1','m10-pi1','m11-pi1','m12-ribbon'
+      ];
+      view.game.floorBonus = {};
+      view.game.choice = null;
+      view.game.lastEvent = null;
+      view.game.seats['1'].captured = ['m01-gwang','m02-animal','m01-ribbon','m11-ssangpi','m12-ssangpi','bonus-3'];
+      view.game.seats['1'].counts.pi = 7;
+      view.game.seats['2'].handCount = 4;
+      view.me.myGostopHand = [{ id: 'm10-pi2', legal: false, shake: false, bomb: false, kong: false }];
+      window.GostopUI.render(view);
+    }, state);
+
+    const months = await a.page.locator('#gostopFloor .hwatuMonth').allTextContents();
+    for (let month = 1; month <= 12; month += 1) expect(months).toContain(month + '월');
+    await expect(a.page.locator('#gostopFloor .month-3 .hwatuMonth')).toHaveCount(2);
+    await expect(a.page.locator('#gostopMine .pile-gwang > small')).toHaveText('광 1');
+    await expect(a.page.locator('#gostopMine .pile-animal > small')).toHaveText('열끗 1');
+    await expect(a.page.locator('#gostopMine .pile-ribbon > small')).toHaveText('띠 1');
+    await expect(a.page.locator('#gostopMine .pile-pi > small')).toHaveText('피 7 · 카드 3장');
+    await expect(a.page.locator('#gostopMine .pile-pi .hwatu')).toHaveCount(3);
+    expect(await a.page.locator('#gostopOpponents .hwatuBack .hwatuMonth').count()).toBe(0);
+    expect(await a.page.locator('#gostopOpponents .hwatuBack').evaluateAll(els => els.some(el => /월/.test(el.textContent || '')))).toBe(false);
+    for (const view of [a, b]) await view.context.close();
+  });
+
+  test('v1.6.93 짝패·고/스톱·국진 선택은 재접속 뒤 서버 상태 그대로 복구되고 실제 선택으로 이어진다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const a = await guest(browser, request, admin, '복구A');
+    const b = await guest(browser, request, admin, '복구B');
+    await openRoom(a, [b], request);
+
+    await setGostopFixture(request, a, 'choose-floor');
+    let before = await roomState(request, a.token);
+    expect(before.game.choice.options).toHaveLength(2);
+    await reopen(a);
+    await expect(a.page.locator('#gostopFloor button.gostopChoiceTarget')).toHaveCount(2);
+    const restored = await roomState(request, a.token);
+    expect(restored.game.choice.options).toEqual(before.game.choice.options);
+    await a.page.locator('#gostopFloor button.gostopChoiceTarget').first().click();
+    await expect.poll(async () => {
+      const view = await roomState(request, a.token);
+      return view.game.phase + ':' + view.game.turn;
+    }).toBe('play:2');
+    await expect(a.page.locator('#gostopFloor button.gostopChoiceTarget')).toHaveCount(0);
+    await expect.poll(() => a.page.evaluate(() => window.GostopUI.fxBusy()), { timeout: 5000 }).toBe(false);
+
+    await setGostopFixture(request, a, 'go-stop');
+    before = await roomState(request, a.token);
+    const score = before.game.stopPreview.score;
+    await reopen(a);
+    await expect(a.page.locator('.gostopDecisionPanel')).toContainText('현재 ' + score + '점');
+    await expect(a.page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
+    await expect(a.page.getByRole('button', { name: '스톱 · 현재 정산' })).toBeVisible();
+    await a.page.getByRole('button', { name: '고 · 계속하기' }).click();
+    await expect.poll(async () => {
+      const view = await roomState(request, a.token);
+      return [view.game.phase, view.game.turn, view.game.seats['1'].goCount];
+    }).toEqual(['play', '2', 1]);
+
+    await setGostopFixture(request, a, 'gukjin');
+    await reopen(a);
+    await expect(a.page.getByRole('button', { name: '열끗으로' })).toBeVisible();
+    await expect(a.page.getByRole('button', { name: '쌍피로' })).toBeVisible();
+    await a.page.getByRole('button', { name: '쌍피로' }).click();
+    await expect.poll(async () => {
+      const view = await roomState(request, a.token);
+      return [view.game.phase, view.game.turn, view.game.seats['1'].gukjin];
+    }).toEqual(['play', '2', 'pi']);
+
+    for (const view of [a, b]) await view.context.close();
+  });
+
 });

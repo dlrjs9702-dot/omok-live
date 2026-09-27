@@ -2307,6 +2307,7 @@
     attendanceBtn.textContent = claimed ? '오늘 출석 완료' : `오늘 출석 +${Number(account.attendanceAmount || 50000).toLocaleString('ko-KR')}P`;
     attendanceBtn.disabled = claimed;
     window.GameActionable?.set(attendanceBtn, !claimed);
+    window.GostopUI?.setPointAccount?.(account);
   }
   async function loadPoints() {
     const ticket = ++pointsRequest;
@@ -2371,6 +2372,7 @@
     showView('room');
     inviteTargetList.replaceChildren();
     renderRoom();
+    if (state?.gameType === 'gostop') loadPoints();
     scheduleRoomSideHeightSync();
     startStream();
     if (isHost && state.game.status === 'selecting') loadInviteTargets().catch(() => {});
@@ -6038,6 +6040,7 @@
       if (data.state && !isStaleRoomState(data.state)) {
         state = data.state;
         renderRoom();
+        if (state.gameType === 'gostop' && ['finished', 'draw'].includes(state.game.status)) loadPoints();
       }
       return data;
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }

@@ -14,6 +14,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Static checks
+        run: |
+          git diff --check origin/main...HEAD
+          node --check server.js
+          node --check public/app.js
+          node --check public/gostop-ui.js
+          node --check lib/point-store.js
+          node --check lib/release-announcements.js
+          node --check test/point-store.test.js
+          node --check test/gostop-server.test.js
+          node --check tests/e2e/gostop-rules-settlement.spec.js
 
       - name: Setup Node
         uses: actions/setup-node@v4
