@@ -265,7 +265,7 @@
     const actionable = window.GameActionable;
     for (const card of [...mine].sort((a, b) => (info(a.id).month || 99) - (info(b.id).month || 99))) {
       const legal = canPlay && card.legal !== false;
-      const unavailable = myTurn && g.phase === 'play' && !legal;
+      const unavailable = myTurn && !legal;
       const el = cardEl(card.id, { size: 'hand', button: true, track: true, classes: `${actionable?.classes(legal) || ''}${unavailable ? ' gostopCardUnavailable' : ''}` });
       el.disabled = !legal;
       if (card.shake || card.bomb || card.kong) el.classList.add('hasSpecial');
@@ -396,7 +396,7 @@
     chip(r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`);
     if (r.items?.length && !r.instant) chip(r.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}점`).join(' · '), ' muted');
     if (r.goCount) chip(`${r.goCount}고 +${r.goCount}점`);
-    const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key) && item.key !== 'nagari');
+    const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key));
     for (const item of commonFactors) chip(factorText(item));
     chip(`점당 ${r.pointsPerScore}P`);
     box.append(flow);
