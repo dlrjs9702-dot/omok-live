@@ -114,14 +114,14 @@ test.describe('고스톱·맞고 1차 UX·규칙·정산 (v1.6.91)', () => {
         const seat = state.game.turn;
         const decider = viewOf[seat];
         // 고/스톱 버튼은 결정할 사람에게만.
-        await expect(decider.page.getByRole('button', { name: /^고 \(1고\)$/ })).toBeVisible();
-        for (const view of [...players.filter(view => view !== decider), watcher]) await expect(view.page.getByRole('button', { name: /^고 \(/ })).toHaveCount(0);
+        await expect(decider.page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
+        for (const view of [...players.filter(view => view !== decider), watcher]) await expect(view.page.getByRole('button', { name: '고 · 계속하기' })).toHaveCount(0);
         // 재접속(새로고침) 중에도 결정 단계와 내 손패가 복원된다.
         const handBefore = (await roomState(request, decider.token)).me.myGostopHand.map(card => card.id);
         await reopen(decider);
-        await expect(decider.page.getByRole('button', { name: /^고 \(1고\)$/ })).toBeVisible();
+        await expect(decider.page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
         await expect(decider.page.locator('#gostopHand .hwatu')).toHaveCount(handBefore.length);
-        await decider.page.getByRole('button', { name: /^고 \(1고\)$/ }).click();
+        await decider.page.getByRole('button', { name: '고 · 계속하기' }).click();
         await expect.poll(async () => (await roomState(request, a.token)).game.seats[seat].goCount).toBe(1);
         await expect(watcher.page.locator('#gostopOpponents')).toContainText('1고');
         // 관전자 DOM에는 공개 카드(바닥·먹은 패)만 앞면으로 있다.
