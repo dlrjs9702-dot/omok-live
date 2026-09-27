@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.6.87 고스톱·맞고 규칙·정산: 서로 다른 browser context의 실제 게스트 계정으로 3인 고스톱 고→스톱·패자별 정산,
+// v1.6.92 고스톱·맞고 1차 UX + 규칙·정산: 서로 다른 browser context의 실제 게스트 계정으로 3인 고스톱 고→스톱·패자별 정산,
 // 재접속 복원, 관전자 비공개, 나가리 다음 판 배수, 잔액 한도 표시를 확인한다. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
@@ -89,7 +89,7 @@ async function openRoom(host, others, request, spectators = []) {
   }).toEqual([host, ...others].map(() => true));
 }
 
-test.describe('고스톱·맞고 규칙·정산 (v1.6.87)', () => {
+test.describe('고스톱·맞고 1차 UX·규칙·정산 (v1.6.92)', () => {
   test('3인 고스톱: 고 → 스톱, 패자별 박·정산, 재접속 복원, 관전자 비공개', async ({ browser, request }) => {
     test.setTimeout(180_000);
     const admin = await adminToken(request);
@@ -114,14 +114,14 @@ test.describe('고스톱·맞고 규칙·정산 (v1.6.87)', () => {
         const seat = state.game.turn;
         const decider = viewOf[seat];
         // 고/스톱 버튼은 결정할 사람에게만.
-        await expect(decider.page.getByRole('button', { name: /^고 \(1고\)$/ })).toBeVisible();
-        for (const view of [...players.filter(view => view !== decider), watcher]) await expect(view.page.getByRole('button', { name: /^고 \(/ })).toHaveCount(0);
+        await expect(decider.page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
+        for (const view of [...players.filter(view => view !== decider), watcher]) await expect(view.page.getByRole('button', { name: '고 · 계속하기' })).toHaveCount(0);
         // 재접속(새로고침) 중에도 결정 단계와 내 손패가 복원된다.
         const handBefore = (await roomState(request, decider.token)).me.myGostopHand.map(card => card.id);
         await reopen(decider);
-        await expect(decider.page.getByRole('button', { name: /^고 \(1고\)$/ })).toBeVisible();
+        await expect(decider.page.getByRole('button', { name: '고 · 계속하기' })).toBeVisible();
         await expect(decider.page.locator('#gostopHand .hwatu')).toHaveCount(handBefore.length);
-        await decider.page.getByRole('button', { name: /^고 \(1고\)$/ }).click();
+        await decider.page.getByRole('button', { name: '고 · 계속하기' }).click();
         await expect.poll(async () => (await roomState(request, a.token)).game.seats[seat].goCount).toBe(1);
         await expect(watcher.page.locator('#gostopOpponents')).toContainText('1고');
         // 관전자 DOM에는 공개 카드(바닥·먹은 패)만 앞면으로 있다.
@@ -134,7 +134,7 @@ test.describe('고스톱·맞고 규칙·정산 (v1.6.87)', () => {
         state = await playUntil(request, tokenOf, g => g.phase === 'go-stop');
         if (state.game.phase === 'go-stop' && state.game.status === 'playing') {
           const next = viewOf[state.game.turn];
-          await next.page.getByRole('button', { name: '스톱' }).click();
+          await next.page.getByRole('button', { name: '스톱 · 현재 정산' }).click();
         }
         await expect.poll(async () => (await roomState(request, a.token)).game.status, { timeout: 20_000 }).not.toBe('playing');
         decided = await roomState(request, a.token);
@@ -208,7 +208,8 @@ test.describe('고스톱·맞고 규칙·정산 (v1.6.87)', () => {
       Object.assign(state.game, { status: 'finished', phase: 'done', winner: '1',
         result: { kind: 'win', winner: '1', reason: 'stop', base: 8, goCount: 0, score: 8, items: [{ key: 'pi', points: 8 }], pointsPerScore: 100,
           losers: [{ seat: '2', baks: ['pibak'], factors: [{ key: 'pibak', multiplier: 2, count: 1 }], multiplier: 2, amount: 1600, score: 8, pointsPerScore: 100 }] },
-        settlement: { status: 'done', kind: 'win', transfers: [{ fromSeat: '2', toSeat: '1', requested: 1600, paid: 700, capped: true }] } });
+        settlement: { status: 'done', kind: 'win', transfers: [{ fromSeat: '2', toSeat: '1', requested: 1600, paid: 700, capped: true }],
+          balancesBefore: { 1: 100000, 2: 700 }, balances: { 1: 100700, 2: 0 } } });
       window.GostopUI.render(state);
     }, current);
     await expect(a.page.locator('#gostopResult')).toContainText('보유 포인트 한도 적용');
