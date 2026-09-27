@@ -2522,10 +2522,16 @@
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'roomState') {
       if (isStaleRoomState(parsed)) return;
+      const settledGostop = parsed.gameType === 'gostop' && parsed.me?.seat
+        && ['finished', 'draw'].includes(parsed.game?.status)
+        && (state?.gameType !== 'gostop' || state.game?.status !== parsed.game.status
+          || state.game?.round !== parsed.game.round
+          || state.game?.settlement?.status !== parsed.game?.settlement?.status);
       state = parsed;
       seat = state.me?.seat || null;
       isHost = Boolean(state.me?.isHost);
       renderRoom();
+      if (settledGostop) loadPoints();
     } else if (event === 'rpgTick') {
       if (isRpgGame()) rpgBridge.controller?.tick(parsed);
     } else if (event === 'sessionExpired') {
