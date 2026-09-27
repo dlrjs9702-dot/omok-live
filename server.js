@@ -983,6 +983,40 @@ function pointAccountForSeat(room, seat) {
   return pointAccountForParticipant(token && room.participants[token]);
 }
 
+function setGostopTestFixture(room, fixture) {
+  if (process.env.NODE_ENV !== 'test' || !isGostop(room) || !['choose-floor', 'go-stop', 'gukjin'].includes(fixture)) return false;
+  const game = getGame('gostop').create();
+  const seats = ['1', '2'];
+  const zeros = () => Object.fromEntries(seats.map(seat => [seat, 0]));
+  Object.assign(game, {
+    status: 'playing', round: Number(room.game.round || 1), mode: 'matgo',
+    pointsPerScore: room.game.pointsPerScore || 100, seatOrder: seats, firstSeat: '1', turn: '1', phase: 'play',
+    deck: ['m05-pi1', 'm05-pi2'], hands: { 1: ['m07-pi1'], 2: ['m08-pi1'] }, floor: ['m06-pi1'],
+    floorBonus: {}, captured: { 1: [], 2: [] }, goCount: zeros(), lastGoScore: zeros(), shakes: zeros(),
+    bombs: zeros(), bombFlips: zeros(), ppeok: zeros(), ppeokOwner: {}, gukjin: { 1: null, 2: null },
+    ctx: null, lastEvent: null, eventSeq: 0, moveCount: 0, winner: null, result: null, endReason: null, settlement: null,
+  });
+  if (fixture === 'choose-floor') {
+    game.phase = 'choose-floor';
+    game.floor = ['m03-gwang', 'm03-ribbon', 'm06-pi1'];
+    game.ctx = {
+      seat: '1', month: 3, played: ['m03-pi1'], held: [], placed: false, wasPair: true, captured: [], steal: 0,
+      tags: [], revealed: [], bonusFlipped: [], flipped: null, steps: [{ k: 'play', seat: '1', cards: ['m03-pi1'] }],
+      turnId: 1, options: ['m03-gwang', 'm03-ribbon'],
+    };
+    game.moveCount = 1;
+  } else if (fixture === 'go-stop') {
+    game.phase = 'go-stop';
+    game.captured['1'] = ['m01-gwang', 'm03-gwang', 'm08-gwang', 'm11-gwang', 'm12-gwang'];
+  } else {
+    game.phase = 'gukjin';
+    game.captured['1'] = ['m09-animal'];
+    game.ctx = { seat: '1' };
+  }
+  room.game = game;
+  return true;
+}
+
 // Go-Stop settles once per match (idempotent by settlement id) *before* the match record is saved,
 // so a stored result can never exist without its point transfers; a failure leaves the match
 // unrecorded and every later record attempt retries the very same settlement.
@@ -2065,6 +2099,19 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (room) broadcast(room);
     return sendJson(res, 200, { ok: true, ...result });
+  }
+
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/gostop-fixture' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const room = getCurrentRoom(session);
+    if (!room || !isGostop(room)) return sendError(res, 404, 'NO_GOSTOP_ROOM', '고스톱 테스트 방이 아닙니다.');
+    if (findSeat(room, session.token) !== '1') return sendError(res, 403, 'TEST_SEAT', '테스트 fixture는 1번 자리에서만 설정합니다.');
+    const body = await parseJson(req);
+    if (!setGostopTestFixture(room, String(body.fixture || ''))) return sendError(res, 400, 'BAD_GOSTOP_FIXTURE', '알 수 없는 고스톱 테스트 fixture입니다.');
+    touchRoom(room);
+    broadcast(room);
+    return sendJson(res, 200, { ok: true, state: roomView(room, session) });
   }
 
   if (pathname === '/api/session' && req.method === 'GET') {
