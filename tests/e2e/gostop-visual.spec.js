@@ -65,7 +65,7 @@ const P2 = m => `m${String(m).padStart(2, '0')}-pi2`;
 const SCENARIOS = {
   normal: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm11-gwang'], deck: ['m12-animal'] }), '1',
     g => gostop.play(g, '1', 'm01-pi1')),
-  choose: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm01-ribbon'], deck: [P(4)] }), '1',
+  choose: () => scenario(position({ hands: { 1: ['m01-pi1', P(5)], 2: [P(6)] }, floor: ['m01-gwang', 'm01-ribbon', 'm11-gwang'], deck: [P(4)] }), '1',
     g => gostop.play(g, '1', 'm01-pi1')),
   ppeok: () => scenario(position({ hands: { 1: [P(6)], 2: ['m05-pi1', P(7)] }, floor: ['m05-animal', 'm11-gwang'], deck: ['m05-pi2'], turn: '2' }), '1',
     g => gostop.play(g, '2', 'm05-pi1')),
