@@ -133,7 +133,7 @@ test('3인 고스톱 서버 정산: 패자별 독립 한도·승자는 실제 �
   t.diagnostic(`결과 ${g.status}/${g.result?.kind} · 동시 스톱 ${concurrentStops} · 정산 ${JSON.stringify(g.settlement.transfers)}`);
   assert.equal(g.settlement.status, 'done');
   if (g.status === 'finished' && g.result.kind === 'win') {
-    const before = { 1: 700, 2: 300, 3: 100_000 };
+    const before = g.settlement.balancesBefore;
     let received = 0;
     for (const loser of g.result.losers) {
       const transfer = g.settlement.transfers.find(item => item.fromSeat === loser.seat);

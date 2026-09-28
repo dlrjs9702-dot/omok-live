@@ -17,6 +17,7 @@
   const TAGS = {
     jjok: '쪽!', ttadak: '따닥!', sweep: '판쓸이!', ppeok: '뻑!', jappeok: '자뻑!', ppeokEat: '뻑 먹기!', shake: '흔들기!',
     bomb: '폭탄!', kong: '콩알탄!', bonus: '보너스피', go: '고!', stop: '스톱!', chongtong: '총통!', samppeok: '3뻑!',
+    firstPpeok: '첫뻑 보너스!', secondPpeok: '2연뻑 보너스!',
     nagari: '나가리', bombFlip: '폭탄 뒤집기', gukjin: '국진 선택', deal: '패를 나눴습니다',
   };
   const ITEM_LABEL = {

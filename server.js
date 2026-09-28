@@ -950,6 +950,7 @@ function prepareNextRound(room) {
 // The game engine, never the client, supplies the final result. An individual match
 // (including a three-round liar match) has one stable id across retries and reconnects.
 async function recordFinishedMatch(room) {
+  if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
   await settleGostopIfNeeded(room, result);
@@ -984,16 +985,18 @@ function pointAccountForSeat(room, seat) {
 }
 
 function setGostopTestFixture(room, fixture) {
-  if (process.env.NODE_ENV !== 'test' || !isGostop(room) || !['choose-floor', 'go-stop', 'gukjin'].includes(fixture)) return false;
+  if (process.env.NODE_ENV !== 'test' || !isGostop(room) || !['choose-floor', 'go-stop', 'gukjin', 'first-ppeok', 'go-bak'].includes(fixture)) return false;
   const game = getGame('gostop').create();
-  const seats = ['1', '2'];
+  const seats = ['first-ppeok', 'go-bak'].includes(fixture) ? ['1', '2', '3'].filter(seat => room.players[seat]) : ['1', '2'];
   const zeros = () => Object.fromEntries(seats.map(seat => [seat, 0]));
   Object.assign(game, {
-    status: 'playing', round: Number(room.game.round || 1), mode: 'matgo',
+    status: 'playing', round: Number(room.game.round || 1), mode: 'matgo', nagariStreak: room.game.nagariStreak || 0,
     pointsPerScore: room.game.pointsPerScore || 100, seatOrder: seats, firstSeat: '1', turn: '1', phase: 'play',
     deck: ['m05-pi1', 'm05-pi2'], hands: { 1: ['m07-pi1'], 2: ['m08-pi1'] }, floor: ['m06-pi1'],
     floorBonus: {}, captured: { 1: [], 2: [] }, goCount: zeros(), lastGoScore: zeros(), shakes: zeros(),
-    bombs: zeros(), bombFlips: zeros(), ppeok: zeros(), ppeokOwner: {}, gukjin: { 1: null, 2: null },
+    bombs: zeros(), bombFlips: zeros(), ppeok: zeros(), ppeokOwner: {}, turnsTaken: zeros(),
+    firstPpeok: Object.fromEntries(seats.map(seat => [seat, false])), bonusAwards: [],
+    gukjin: Object.fromEntries(seats.map(seat => [seat, null])),
     ctx: null, lastEvent: null, eventSeq: 0, moveCount: 0, winner: null, result: null, endReason: null, settlement: null,
   });
   if (fixture === 'choose-floor') {
@@ -1008,6 +1011,22 @@ function setGostopTestFixture(room, fixture) {
   } else if (fixture === 'go-stop') {
     game.phase = 'go-stop';
     game.captured['1'] = ['m01-gwang', 'm03-gwang', 'm08-gwang', 'm11-gwang', 'm12-gwang'];
+  } else if (fixture === 'first-ppeok') {
+    game.mode = seats.length === 3 ? 'gostop' : 'matgo';
+    game.hands = { 1: ['m05-pi1', 'm06-pi1', 'm05-ribbon', 'm04-pi2'], 2: ['m08-pi1', 'm09-pi1'],
+      ...(seats.length === 3 ? { 3: ['m10-pi1', 'm11-pi1'] } : {}) };
+    game.floor = ['m05-animal', 'm06-animal', 'm01-gwang'];
+    game.deck = ['m05-pi2', 'm02-pi1', ...(seats.length === 3 ? ['m03-pi1'] : []), 'm06-pi2', 'm02-pi2', 'm12-animal'];
+    game.captured = { 1: [], 2: ['m04-pi1', 'm07-pi1'], ...(seats.length === 3 ? { 3: ['m10-pi2', 'm11-pi2'] } : {}) };
+  } else if (fixture === 'go-bak') {
+    game.mode = seats.length === 3 ? 'gostop' : 'matgo';
+    game.phase = 'go-stop';
+    game.hands = { 1: ['m04-pi1'], 2: ['m03-ribbon', 'm05-pi1'], ...(seats.length === 3 ? { 3: ['m06-pi1'] } : {}) };
+    game.floor = ['m03-pi1', 'm08-pi1'];
+    game.deck = ['m07-pi1'];
+    game.captured = { 1: ['m01-gwang', 'm03-gwang', 'm08-gwang', ...(seats.length === 2 ? ['m11-gwang', 'm12-gwang'] : [])],
+      2: seats.length === 2 ? ['m01-ribbon', 'm02-ribbon', 'm04-ribbon', 'm05-ribbon', 'm06-ribbon', 'm07-ribbon', 'm09-ribbon', 'm10-ribbon']
+        : ['m01-ribbon', 'm02-ribbon'], ...(seats.length === 3 ? { 3: [] } : {}) };
   } else {
     game.phase = 'gukjin';
     game.captured['1'] = ['m09-animal'];
@@ -1020,10 +1039,42 @@ function setGostopTestFixture(room, fixture) {
 // Go-Stop settles once per match (idempotent by settlement id) *before* the match record is saved,
 // so a stored result can never exist without its point transfers; a failure leaves the match
 // unrecorded and every later record attempt retries the very same settlement.
-// Points move exactly once per hand: the settlement id is claimed inside the store's transaction,
+// Final points move once per hand; first/second 뻑 bonuses use separate idempotent event ids.
+// The settlement id is claimed inside the store's transaction,
 // concurrent finishes in this process share one in-flight promise, and a failed attempt (e.g. a
 // database outage) is retried in the background with the same id until it lands.
 const SETTLEMENT_RETRY_MS = [2_000, 5_000, 15_000, 60_000, 300_000];
+
+// First/second consecutive 뻑 pay during the hand, even if the hand later ends in 나가리.
+// Each event has its own stable id; concurrent requests share the in-flight write and retries
+// replay the same settlement. The per-hand final settlement keeps its separate id.
+async function settleGostopBonuses(room) {
+  if (room.bonusSettling) return room.bonusSettling;
+  const game = room.game;
+  if (!game.bonusAwards?.some(award => !award.settled)) return;
+  const promise = (async () => {
+    for (const award of game.bonusAwards) {
+      if (award.settled) continue;
+      const receiver = pointAccountForSeat(room, award.seat);
+      const others = game.seatOrder.filter(seat => seat !== award.seat)
+        .map(seat => ({ seat, id: pointAccountForSeat(room, seat) }));
+      if (!validUserId(receiver) || others.some(other => !validUserId(other.id) || other.id === receiver)) {
+        throw new Error('뻑 보너스의 포인트 계정이 유효하지 않습니다.');
+      }
+      const amount = (game.mode === 'matgo' ? 7 : 3) * game.pointsPerScore * award.multiplier * 2 ** game.nagariStreak;
+      const outcome = await pointStore.settle({
+        settlementId: `gostop:${room.id}:${game.round}:ppeok:${award.seat}:${award.turn}`,
+        matchId: `${room.id}:${game.round}`, gameType: 'gostop',
+        transfers: others.map(other => ({ from: other.id, to: receiver, amount, key: `${other.seat}>${award.seat}` })),
+        summary: { kind: 'bonus', mode: game.mode, reason: award.kind, seat: award.seat, pointsPerScore: game.pointsPerScore },
+      });
+      award.paid = outcome.transfers.reduce((sum, item) => sum + item.paid, 0);
+      award.settled = true;
+    }
+  })();
+  room.bonusSettling = promise;
+  try { await promise; } finally { if (room.bonusSettling === promise) room.bonusSettling = null; }
+}
 
 function settleGostopIfNeeded(room, match = null) {
   if (!isGostop(room)) return Promise.resolve();
@@ -1455,6 +1506,8 @@ async function handleRoomAction(req, res, action, session) {
       }
     } else {
       if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
+      try { await settleGostopBonuses(room); }
+      catch (error) { console.error('뻑 보너스 재시도 실패:', error); return sendError(res, 503, 'BONUS_SETTLEMENT_FAILED', '포인트 처리 중입니다. 잠시 후 다시 시도해 주세요.'); }
       syncGamePause(room);
       if (room.game.paused) return sendError(res, 409, 'GAME_PAUSED', '응답이 없는 참가자가 있어 일시정지 중입니다.');
       if (action === 'gostop-play') verdict = engine.play(room.game, playerSeat, String(body.cardId || ''), { shake: body.shake === true, bomb: body.bomb === true, kong: body.kong === true });
@@ -1465,6 +1518,12 @@ async function handleRoomAction(req, res, action, session) {
       else return sendError(res, 400, 'BAD_GOSTOP_ACTION', '알 수 없는 고스톱 행동입니다.');
     }
     if (!verdict.legal) return sendError(res, 409, 'INVALID_GOSTOP_ACTION', engine.moveError(verdict.reason));
+    try { await settleGostopBonuses(room); }
+    catch (error) {
+      console.error('뻑 보너스 정산 실패:', error);
+      touchRoom(room); broadcast(room);
+      return sendError(res, 503, 'BONUS_SETTLEMENT_FAILED', '포인트 처리 중입니다. 잠시 후 다시 시도해 주세요.');
+    }
   }
 
   if (action === 'choose-role') {
@@ -2023,7 +2082,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.94', time: nowIso() });
+    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.95', time: nowIso() });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2720,7 +2779,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.94 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.95 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

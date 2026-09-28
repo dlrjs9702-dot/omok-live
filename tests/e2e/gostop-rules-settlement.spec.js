@@ -171,7 +171,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     for (const view of [...players, watcher]) await view.context.close();
   });
 
-  test('맞고 나가리: 포인트 이동 없음·다음 판 ×2 표시·배수 이월, 잔액 한도 결과 표시', async ({ browser, request }) => {
+  test('맞고 나가리: 승패 정산 없음·기지급 뻑 보너스 유지·다음 판 ×2·잔액 한도 표시', async ({ browser, request }) => {
     test.setTimeout(240_000);
     const admin = await adminToken(request);
     const a = await guest(browser, request, admin, '가람');
@@ -199,7 +199,9 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     test.skip(!nagari, '15판 안에 나가리가 나오지 않음(무작위 분배)');
     await expect(a.page.locator('#gostopResult')).toContainText('나가리');
     await expect(a.page.locator('#gostopResult')).toContainText('다음 판 ×2');
-    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual(before);
+    const bonusNetA = (nagari.game.bonusAwards || []).reduce((sum, award) =>
+      sum + (award.seat === '1' ? award.paid : -award.paid), 0);
+    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual([before[0] + bonusNetA, before[1] - bonusNetA]);
     // 재접속만으로는 배수가 초기화되지 않는다.
     await reopen(b);
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();

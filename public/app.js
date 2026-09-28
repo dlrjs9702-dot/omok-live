@@ -2522,11 +2522,13 @@
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'roomState') {
       if (isStaleRoomState(parsed)) return;
-      const settledGostop = parsed.gameType === 'gostop' && parsed.me?.seat
-        && ['finished', 'draw'].includes(parsed.game?.status)
-        && (state?.gameType !== 'gostop' || state.game?.status !== parsed.game.status
+      const settledGostop = parsed.gameType === 'gostop' && parsed.me?.seat && (
+        (parsed.game?.bonusAwards?.some(award => award.settled)
+          && JSON.stringify(state?.game?.bonusAwards) !== JSON.stringify(parsed.game.bonusAwards))
+        || (['finished', 'draw'].includes(parsed.game?.status)
+          && (state?.gameType !== 'gostop' || state.game?.status !== parsed.game.status
           || state.game?.round !== parsed.game.round
-          || state.game?.settlement?.status !== parsed.game?.settlement?.status);
+          || state.game?.settlement?.status !== parsed.game?.settlement?.status)));
       state = parsed;
       seat = state.me?.seat || null;
       isHost = Boolean(state.me?.isHost);
@@ -6046,7 +6048,8 @@
       if (data.state && !isStaleRoomState(data.state)) {
         state = data.state;
         renderRoom();
-        if (state.gameType === 'gostop' && ['finished', 'draw'].includes(state.game.status)) loadPoints();
+        if (state.gameType === 'gostop' && (['finished', 'draw'].includes(state.game.status)
+          || state.game.bonusAwards?.some(award => award.settled))) loadPoints();
       }
       return data;
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }
