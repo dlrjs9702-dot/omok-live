@@ -2522,11 +2522,7 @@
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'roomState') {
       if (isStaleRoomState(parsed)) return;
-      const settledGostop = parsed.gameType === 'gostop' && parsed.me?.seat
-        && ['finished', 'draw'].includes(parsed.game?.status)
-        && (state?.gameType !== 'gostop' || state.game?.status !== parsed.game.status
-          || state.game?.round !== parsed.game.round
-          || state.game?.settlement?.status !== parsed.game?.settlement?.status);
+      const settledGostop = needsGostopPoints(parsed, state);
       state = parsed;
       seat = state.me?.seat || null;
       isHost = Boolean(state.me?.isHost);
@@ -2537,6 +2533,18 @@
     } else if (event === 'sessionExpired') {
       expireSession(parsed.message);
     }
+  }
+
+  function needsGostopPoints(next, previous) {
+    if (next?.gameType !== 'gostop' || !next.me?.seat) return false;
+    const settled = game => (game?.bonusAwards || []).filter(award => award.settled)
+      .map(award => `${award.turn}:${award.paid}`).join('|');
+    const nextBonus = settled(next.game);
+    if (nextBonus && nextBonus !== settled(previous?.game)) return true;
+    return ['finished', 'draw'].includes(next.game?.status)
+      && (previous?.gameType !== 'gostop' || previous.game?.status !== next.game.status
+        || previous.game?.round !== next.game.round
+        || previous.game?.settlement?.status !== next.game?.settlement?.status);
   }
 
   function choiceKo(choice) {
@@ -6044,9 +6052,10 @@
     try {
       const data = await api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify(payload) });
       if (data.state && !isStaleRoomState(data.state)) {
+        const settledGostop = needsGostopPoints(data.state, state);
         state = data.state;
         renderRoom();
-        if (state.gameType === 'gostop' && ['finished', 'draw'].includes(state.game.status)) loadPoints();
+        if (settledGostop) loadPoints();
       }
       return data;
     } catch (err) { showToast(err.message, err.data?.forbidden ? 4300 : 2800); }

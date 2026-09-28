@@ -171,7 +171,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     for (const view of [...players, watcher]) await view.context.close();
   });
 
-  test('맞고 나가리: 포인트 이동 없음·다음 판 ×2 표시·배수 이월, 잔액 한도 결과 표시', async ({ browser, request }) => {
+  test('맞고 나가리: 승패 정산 없음·기지급 뻑 보너스 유지·다음 판 ×2·잔액 한도 표시', async ({ browser, request }) => {
     test.setTimeout(240_000);
     const admin = await adminToken(request);
     const a = await guest(browser, request, admin, '가람');
@@ -199,7 +199,9 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     test.skip(!nagari, '15판 안에 나가리가 나오지 않음(무작위 분배)');
     await expect(a.page.locator('#gostopResult')).toContainText('나가리');
     await expect(a.page.locator('#gostopResult')).toContainText('다음 판 ×2');
-    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual(before);
+    const bonusNetA = (nagari.game.bonusAwards || []).reduce((sum, award) =>
+      sum + (award.seat === '1' ? award.paid : -award.paid), 0);
+    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual([before[0] + bonusNetA, before[1] - bonusNetA]);
     // 재접속만으로는 배수가 초기화되지 않는다.
     await reopen(b);
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
@@ -275,6 +277,24 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     await a.page.locator('#gostopPointHistory summary').click();
     await expect(a.page.locator('#gostopPointHistoryList')).toContainText('맞고');
     await expect(a.page.locator('#gostopPointHistoryList')).toContainText('+' + pa.recentGostopSettlements[0].delta.toLocaleString('ko-KR') + 'P');
+    for (const view of [a, b, watcher]) await view.context.close();
+  });
+
+  test('v1.6.95 첫뻑 즉시 지급은 상대·본인 SSE 화면과 본인 원장에 반영된다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const a = await guest(browser, request, admin, '첫뻑A');
+    const b = await guest(browser, request, admin, '첫뻑B');
+    const watcher = await guest(browser, request, admin, '첫뻑관전');
+    await openRoom(a, [b], request, [watcher]);
+    const fixture = await api(request, '/api/test/gostop-fixture', a.token, { fixture: 'first-ppeok' });
+    expect(fixture.status).toBe(200);
+    expect((await api(request, '/api/room/gostop-play', a.token, { cardId: 'm05-pi1' })).status).toBe(200);
+    await expect(b.page.locator('#pointBalanceText')).toHaveText('보유 99,300P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,700P');
+    await expect(watcher.page.locator('#gostopEvent')).toContainText('첫뻑 보너스');
+    expect((await api(request, '/api/points', watcher.token, undefined, 'GET')).data.recentGostopSettlements).toEqual([]);
+    await b.page.locator('#gostopPointHistory summary').click();
+    await expect(b.page.locator('#gostopPointHistoryList')).toContainText('-700P');
     for (const view of [a, b, watcher]) await view.context.close();
   });
 

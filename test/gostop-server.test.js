@@ -185,6 +185,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   const accountC = (await req('/api/points', c.session, undefined, 'GET')).data;
   const balanceA = accountA.balance;
   const balanceB = accountB.balance;
+  const bonusNetA = (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.seat === '1' ? award.paid : -award.paid), 0);
   assert.equal(balanceA + balanceB, 250_000, '포인트 총량 보존');
   assert.deepEqual(accountC.recentGostopSettlements, [], '관전자의 포인트 내역에는 다른 참가자의 정산이 섞이지 않는다');
   assert.equal(state.game.settlement.status, 'done');
@@ -193,12 +194,12 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
     assert.ok(accountA.recentGostopSettlements[0]?.delta !== 0);
     assert.equal(accountA.recentGostopSettlements[0]?.delta, -accountB.recentGostopSettlements[0]?.delta);
     const paid = state.game.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
-    assert.equal(Math.abs(balanceA - playStartBalanceA), paid);
+    assert.equal(Math.abs(balanceA - playStartBalanceA - bonusNetA), paid);
     assert.equal(state.game.result.losers[0].amount, state.game.settlement.transfers[0].requested);
     assert.ok(state.me.pointBalance === balanceA);
   } else {
     assert.equal(state.game.result.kind, 'nagari');
-    assert.equal(balanceA, playStartBalanceA);
+    assert.equal(balanceA, playStartBalanceA + bonusNetA);
   }
   // 재수신·다음 판 준비가 반복돼도 재정산 없음.
   await view(a.session); await view(b.session);

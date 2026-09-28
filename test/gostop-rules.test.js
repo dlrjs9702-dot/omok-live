@@ -227,7 +227,7 @@ test('따닥은 바닥 2장 + 낸 패 + 뒤집은 넷째 패일 때만 성립한
   // 바닥 1장 + 뒤집은 같은 월 → 뻑이지 따닥이 아니다.
   const ppeok = setup({ hands: { 1: ['m06-pi1', PI(5)], 2: [PI(7)] }, floor: ['m06-animal'], deck: ['m06-pi2'] });
   gostop.play(ppeok, '1', 'm06-pi1');
-  assert.deepEqual(ppeok.lastEvent.tags, ['ppeok']);
+  assert.deepEqual(ppeok.lastEvent.tags, ['ppeok', 'firstPpeok']);
   // 서로 다른 월을 연달아 먹은 것은 따닥이 아니다.
   const normal = setup({ hands: { 1: ['m06-pi1', PI(5)], 2: [PI(8)] }, floor: ['m06-animal', 'm07-animal', 'm11-gwang'], deck: ['m07-pi1'], captured: { 2: [PI(4)] } });
   gostop.play(normal, '1', 'm06-pi1');
@@ -278,6 +278,40 @@ test('뻑: 여러 뻑 더미가 따로 보존되고, 남의 뻑 먹기 1장·자
   assert.equal(game.lastEvent.stolen.length, 1);
   assert.deepEqual(gostop.publicState(game).ppeokOwner, { 6: '1' });
   assert.equal(game.floor.filter(id => id.startsWith('m06')).length, 3);
+});
+
+test('첫뻑과 2연뻑은 각자의 첫 두 차례에만 기록되며 이후 뻑에는 보너스가 없다', () => {
+  const game = setup({ hands: { 1: ['m05-pi1', 'm06-pi1', 'm07-pi1', PI(8)], 2: [PI(9), PI(10), 'm11-pi1'] },
+    floor: ['m05-animal', 'm06-animal', 'm07-animal', 'm01-gwang'],
+    deck: ['m05-pi2', 'm02-pi1', 'm06-pi2', 'm02-pi2', 'm07-pi2', 'm03-pi1'],
+  });
+  gostop.play(game, '1', 'm05-pi1');
+  gostop.play(game, '2', PI(9));
+  gostop.play(game, '1', 'm06-pi1');
+  assert.deepEqual(game.bonusAwards.map(award => [award.kind, award.turn, award.multiplier]),
+    [['firstPpeok', 1, 1], ['secondPpeok', 3, 2]]);
+  gostop.play(game, '2', PI(10));
+  gostop.play(game, '1', 'm07-pi1');
+  assert.equal(game.ppeok['1'], 3);
+  assert.equal(game.status, 'finished');
+  assert.equal(game.result.reason, 'samppeok');
+  assert.equal(game.bonusAwards.length, 2, '세 번째 뻑은 별도 보너스가 없다');
+});
+
+test('마지막 패의 뻑은 세 장을 획득하고, 막판 쪽은 획득하되 피는 뺏지 않는다', () => {
+  const cases = [
+    { name: '마지막 뻑', floor: ['m05-animal', 'm01-gwang'], hand: 'm05-pi1', deck: 'm05-pi2', captured: ['m05-animal', 'm05-pi1', 'm05-pi2'], absent: 'ppeok' },
+    { name: '막판 쪽', floor: ['m01-gwang'], hand: 'm05-pi1', deck: 'm05-pi2', captured: ['m05-pi1', 'm05-pi2'], absent: null },
+  ];
+  for (const item of cases) {
+    const game = setup({ hands: { 1: [item.hand], 2: [PI(8)] }, floor: item.floor,
+      deck: [item.deck], captured: { 2: [PI(4), PI(7)] } });
+    gostop.play(game, '1', item.hand);
+    assert.ok(has(game.captured['1'], item.captured), item.name);
+    assert.deepEqual(game.lastEvent.stolen, [], `${item.name}: 마지막 차례 피뺏기 없음`);
+    if (item.absent) assert.equal(game.ppeok['1'], 0, `${item.name}: 뻑으로 기록하지 않는다`);
+    else assert.ok(game.lastEvent.tags.includes('jjok'), item.name);
+  }
 });
 
 test('뻑 먹기는 산패로도 되고, 뻑에 묻힌 보너스피는 먹는 사람에게 간다', () => {
@@ -362,7 +396,7 @@ test('콩알탄: 손 2장 + 바닥 2장, 4장 획득·피 1장·빈 차례 1회,
   assert.deepEqual([game.bombs['1'], game.bombFlips['1'], game.lastEvent.stolen.length], [0, 1, 1]);
 });
 
-test('총통: 시작 손패 기준 즉시 10점(고·박 없음), 진행 중 4장은 총통이 아니다', () => {
+test('총통: 시작 손패 또는 보너스피 교체로 진행 중 4장 완성 시 즉시 10점(고·박 없음)', () => {
   let found = null;
   for (let seed = 1; seed < 5000 && !found; seed += 1) {
     const game = gostop.create();
@@ -376,11 +410,12 @@ test('총통: 시작 손패 기준 즉시 10점(고·박 없음), 진행 중 4�
     assert.deepEqual(loser.baks, []);
     assert.equal(loser.amount, 10 * 2 * 100, '나가리 ×2만 적용');
   }
-  // 진행 중 보너스피 교체로 같은 월 4장이 모여도 게임은 계속된다.
+  // 진행 중 보너스피 교체로 같은 월 4장이 모이면 같은 10점 즉시 승리다.
   const game = setup({ hands: { 1: ['bonus-2', 'm04-animal', 'm04-ribbon', 'm04-pi1'], 2: [PI(6)] }, floor: [], deck: ['m04-pi2', PI(7)] });
   gostop.play(game, '1', 'bonus-2');
   assert.equal(game.hands['1'].filter(id => id.startsWith('m04')).length, 4);
-  assert.equal(game.status, 'playing');
+  assert.deepEqual([game.status, game.result.reason, game.result.base], ['finished', 'chongtong', 10]);
+  assert.deepEqual(game.lastEvent.revealed.sort(), ['m04-animal', 'm04-ribbon', 'm04-pi1', 'm04-pi2'].sort());
 });
 
 // ---- 16~17. 고/스톱·고 배수 -----------------------------------------------------------------

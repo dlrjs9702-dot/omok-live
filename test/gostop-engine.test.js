@@ -262,10 +262,10 @@ test('나가리: 포인트 이동 없이 다음 판 ×2 누적, 다른 구성이
   assert.equal(game.nagariStreak, 1);
   gostop.reset(game);
   assert.equal(game.nagariStreak, 1);
-  gostop.start(game, ['1', '2'], { signature: game.nagariSignature });
+  gostop.start(game, ['1', '2'], { signature: game.nagariSignature, random: seeded(7) });
   assert.equal(game.nagariStreak, 1);
   gostop.reset(game);
-  gostop.start(game, ['1', '2'], { signature: 'someone-else' });
+  gostop.start(game, ['1', '2'], { signature: 'someone-else', random: seeded(7) });
   assert.equal(game.nagariStreak, 0);
   const pay = scoring.payment({ score: 7, goCount: 0, shakes: 0, bombs: 0, nagari: 2, bakList: [], pointsPerScore: 100 });
   assert.equal(pay.amount, 7 * 4 * 100);
