@@ -1186,7 +1186,6 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .davinciPickNumber.black{background:linear-gradient(160deg,#3a414b,#16191e);border:1px solid #475569;color:#fff}
 .davinciPickNumber.white{background:linear-gradient(160deg,#fffef9,#e7e0cf);border:1px solid #b9ad8c;color:#1f2328}
 .davinciPickNumber:hover{transform:translateY(-2px);outline:2px solid #34d399}
-.davinciPickNumber.unlikely{opacity:.32;text-decoration:line-through}
 .davinciPickerClose{justify-self:end;min-height:30px;padding:4px 10px;font-size:.78rem}
 @keyframes davinciDrawIn{0%{transform:translate(-4.5rem,.4rem) rotateY(180deg) scale(.85);opacity:.4}100%{transform:none;opacity:1}}
 @keyframes davinciPlaced{0%{transform:translateY(-1.4rem) scale(1.08);opacity:0}100%{transform:none;opacity:1}}

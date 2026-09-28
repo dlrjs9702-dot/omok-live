@@ -5021,30 +5021,9 @@
     return center;
   }
 
-  // Numbers a player could still name for the chosen tile: each colour holds 0~11 once, and a
-  // rack is sorted (smaller left; same number black before white). Only tiles I can already see
-  // are used, so this is the deduction a player makes looking at the table -- shown as a dimmed
-  // hint, never blocked.
-  function davinciImpossibleNumbers(g, owner, tileId) {
-    const tiles = g.hands?.[owner] || [];
-    const index = tiles.findIndex(tile => tile.id === tileId);
-    const target = tiles[index];
-    if (!target) return new Map();
-    const reasons = new Map();
-    const seen = [...Object.values(g.hands || {}).flat().filter(tile => tile.revealed), ...(state.me?.myDavinciTiles || []), ...(state.me?.myDavinciDrawn ? [state.me.myDavinciDrawn] : [])];
-    for (const tile of seen) if (tile.color === target.color && Number.isInteger(tile.number)) reasons.set(tile.number, '이미 보이는 숫자');
-    const key = (number, color) => number * 2 + (color === 'white' ? 1 : 0);
-    for (let n = 0; n <= 11; n += 1) {
-      const k = key(n, target.color);
-      const outOfOrder = tiles.some((tile, j) => tile.revealed && j !== index && (j < index ? k <= key(tile.number, tile.color) : k >= key(tile.number, tile.color)));
-      if (outOfOrder && !reasons.has(n)) reasons.set(n, '정렬 순서상 불가능');
-    }
-    for (const h of g.history || []) if (h.target === owner && h.id === tileId && !h.correct) reasons.set(h.number, '이미 틀린 숫자');
-    return reasons;
-  }
-
   // One-click guessing: a number pad opens beside the chosen tile; picking a number submits it
-  // through the same guess path as the fallback select + button below.
+  // through the same guess path as the fallback select + button below. Every number 0~11 is
+  // drawn identically -- the pad never narrows the candidates; deducing them is the player's job.
   function renderDavinciPicker(g, focus, active) {
     davinciHands.querySelector('.davinciPicker')?.remove();
     const selectionKey = focus ? `${g.revision}:${focus.target}:${focus.tileId}` : null;
@@ -5059,14 +5038,13 @@
     picker.append(title);
     const grid = document.createElement('div');
     grid.className = 'davinciPickerGrid';
-    const impossible = davinciImpossibleNumbers(g, focus.target, focus.tileId);
     for (let n = 0; n <= 11; n += 1) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = `davinciPickNumber ${targetTile.color}${impossible.has(n) ? ' unlikely' : ''}${[6, 9].includes(n) ? ' underline-num' : ''}`;
+      button.className = `davinciPickNumber ${targetTile.color}${[6, 9].includes(n) ? ' underline-num' : ''}`;
       button.textContent = String(n);
-      button.title = impossible.has(n) ? `${n} · ${impossible.get(n)}` : `${n}(으)로 추측`;
-      button.setAttribute('aria-label', `${n}${impossible.has(n) ? ` (${impossible.get(n)})` : ''}로 추측`);
+      button.title = `${n}(으)로 추측`;
+      button.setAttribute('aria-label', `${n}(으)로 추측`);
       button.addEventListener('click', () => { davinciNumber.value = String(n); davinciGuessBtn.click(); });
       grid.append(button);
     }

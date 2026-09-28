@@ -88,11 +88,31 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   await actor.page.locator(`#davinciHands .davinciHand[data-owner="${targetSeat}"] .davinciTile[data-tile-id="${hidden.id}"]`).click();
   await expect(actor.page.locator('.davinciPicker')).toBeVisible();
   for (const view of others) await expect(view.page.locator('.davinciPicker')).toHaveCount(0);
-  // Numbers of the same colour I can already see are dimmed (my own tiles, my drawn tile).
-  const myTiles = (await roomState(request, actor.token)).me.myDavinciTiles;
-  for (const tile of [...myTiles, drawn].filter(t => t.color === hidden.color)) {
-    await expect(actor.page.locator('.davinciPickNumber').nth(tile.number)).toHaveClass(/unlikely/);
+  // v1.6.97: the pad never narrows candidates. All 12 numbers look and behave the same, and the
+  // pad is identical whichever hidden tile is chosen (its real value, position and neighbours
+  // must not change anything).
+  const padSignature = () => actor.page.locator('.davinciPickNumber').evaluateAll(buttons => buttons.map(button => {
+    const style = getComputedStyle(button);
+    return [button.textContent, button.className.replace(' underline-num', ''), button.disabled, button.getAttribute('aria-disabled'),
+      button.hidden, button.tabIndex, button.title.replace(/^\d+/, ''), style.opacity, style.cursor, style.pointerEvents, style.visibility, style.filter].join('|');
+  }));
+  const signatures = new Map();
+  for (const owner of others.map(view => String(views.indexOf(view) + 1))) {
+    const tiles = (await roomState(request, views[Number(owner) - 1].token)).me.myDavinciTiles.filter(tile => !tile.revealed);
+    for (const tile of tiles) {
+      await actor.page.locator(`#davinciHands .davinciHand[data-owner="${owner}"] .davinciTile[data-tile-id="${tile.id}"]`).click();
+      await expect(actor.page.locator('.davinciPicker')).toBeVisible();
+      await expect(actor.page.locator('.davinciPickNumber')).toHaveCount(12);
+      await expect(actor.page.locator('.davinciPickNumber')).toHaveText([...Array(12).keys()].map(String));
+      for (const button of await actor.page.locator('.davinciPickNumber').all()) await expect(button).toBeEnabled();
+      const signature = (await padSignature()).map(entry => entry.replace(/^\d+\|/, ''));
+      expect(new Set(signature).size, `${owner}번 ${tile.id} 숫자판 버튼이 모두 같은 상태`).toBe(1);
+      signatures.set(tile.color, [...(signatures.get(tile.color) || []), signature.join('/')]);
+    }
   }
+  for (const list of signatures.values()) expect(new Set(list).size, '어떤 타일을 골라도 같은 숫자판').toBe(1);
+  await actor.page.locator(`#davinciHands .davinciHand[data-owner="${targetSeat}"] .davinciTile[data-tile-id="${hidden.id}"]`).click();
+  await expect(actor.page.locator('.davinciPicker')).toBeVisible();
   await actor.page.screenshot({ path: testInfo.outputPath('02-picker.png') });
   await actor.page.keyboard.press('Escape');
   await expect(actor.page.locator('.davinciPicker')).toHaveCount(0);
@@ -100,7 +120,9 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   const other = targetTiles.find(tile => !tile.revealed && tile.id !== hidden.id);
   await actor.page.locator(`#davinciHands .davinciHand[data-owner="${targetSeat}"] .davinciTile[data-tile-id="${other.id}"]`).click();
   await expect(actor.page.locator('.davinciPicker')).toBeVisible();
-  const wrong = [...Array(12).keys()].find(n => n !== other.number);
+  // A logically impossible number (same colour as one in my own rack) is still an ordinary wrong guess.
+  const myTiles = (await roomState(request, actor.token)).me.myDavinciTiles;
+  const wrong = [...myTiles, drawn].find(tile => tile.color === other.color)?.number ?? [...Array(12).keys()].find(n => n !== other.number);
   const historyBefore = (await roomState(request, a.token)).game.history.length;
   await actor.page.locator('.davinciPickNumber').nth(wrong).click();
   await expect.poll(async () => (await roomState(request, a.token)).game.history.length).toBe(historyBefore + 1);
@@ -113,6 +135,22 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   // A wrong guess reveals the drawn tile into the guesser's rack for everyone to see.
   for (const view of views) await expect(view.page.locator(`#davinciHands .davinciHand[data-owner="${turn}"] .davinciTile.revealed`)).toHaveCount(1);
   await b.page.locator('#davinciPanel').screenshot({ path: testInfo.outputPath('03-memo.png') });
+  await expect.poll(async () => (await roomState(request, a.token)).game.turn, { message: '오답 뒤 차례가 넘어감' }).not.toBe(turn);
+
+  // Correct guess by the next player through the same pad: the tile is revealed and they may continue.
+  const nextTurn = (await roomState(request, a.token)).game.turn;
+  const guesser = views[Number(nextTurn) - 1];
+  const victim = views.find(view => view !== guesser);
+  const victimSeat = String(views.indexOf(victim) + 1);
+  const answer = (await roomState(request, victim.token)).me.myDavinciTiles.find(tile => !tile.revealed);
+  await guesser.page.locator(`#davinciHands .davinciHand[data-owner="${victimSeat}"] .davinciTile[data-tile-id="${answer.id}"]`).click();
+  await expect(guesser.page.locator('.davinciPicker')).toBeVisible();
+  await guesser.page.locator('.davinciPickNumber').nth(answer.number).click();
+  await expect.poll(async () => (await roomState(request, a.token)).game.history.at(-1)).toMatchObject({ seat: nextTurn, id: answer.id, number: answer.number, correct: true });
+  for (const view of views) await expect(view.page.locator(`#davinciHands .davinciTile[data-tile-id="${answer.id}"] .davinciTileValue`)).toHaveText(String(answer.number));
+  state = await roomState(request, a.token);
+  expect(state.game.turn).toBe(nextTurn);
+  expect(state.game.phase).toBe('continue');
   expect([...a.errors, ...b.errors, ...c.errors]).toEqual([]);
   for (const view of views) await view.context.close();
 });
