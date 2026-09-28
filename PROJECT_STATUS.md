@@ -63,7 +63,7 @@
 - 윈조이의 공개 [맞고](https://static.winjoygame.com/v1/gostop_guide/dbmatgo/9.html)·[고스톱](https://static.winjoygame.com/v1/gostop_guide/gostop/9.html) 게임방법의 추가규칙에 근거해 첫뻑(기본점수), 첫 차례와 두 번째 차례의 2연뻑(기본점수 두 배) 보너스를 적용한다. 맞고 기본점수 7점·3인 3점, 점당 P와 이월 나가리 배수를 사용하며 상대마다 보유 잔액 한도에서 즉시 지급한다. 포인트 저장소의 기존 원자적 정산을 이벤트별 고유 ID로 호출해 중복 행동·동시 요청·재시도 시 중복 지급하지 않는다. 대국 종료 정산은 별도의 판 ID를 유지한다.
 - 마지막 손패에서 뻑이 될 조합은 세 장을 정상 획득하고 뻑 횟수에 세지 않는다. 마지막 쪽은 두 장을 획득하되 피는 뺏지 않는다. 진행 중 손패 보너스피 교체로 같은 월 네 장을 완성하면 기존 총통 10점 즉시 승리를 적용한다. 사용자가 앞서 확정한 시작 손패 총통 규칙과 3뻑 판정, 나머지 점수표는 유지한다.
 - 2·3인 서버 회귀에서 첫뻑→2연뻑→자뻑 피뺏기와 즉시 지급→나가리(기지급 보너스 유지)→다음 판 고→패자별 고박·나가리 배수→최종 정산·잔액 보존·중복 방지를 실제 JSON 포인트 저장소까지 검사한다. PostgreSQL은 같은 `pointStore.settle()` 경로를 사용한다. 테스트용 배치는 `NODE_ENV=test`에서만 허용된다.
-- 검증: 변경 JavaScript `node --check`·`git diff --check`와 전체 `npm test` 453개 중 452 pass·1 skip·0 fail. 로컬 Playwright는 Chromium 실행 파일 부재로 실행되지 않았고 설치 다운로드가 손상된 ZIP을 반환했다. GitHub Actions의 브라우저 검증 결과는 PR의 최종 HEAD 기준으로 확인한다. 실제 사람 PC 다인 플레이 검증: 미실시.
+- 검증: 변경 JavaScript `node --check`·`git diff --check`와 전체 `npm test` 453개 중 452 pass·1 skip·0 fail. PR #44 기능 HEAD `0ac7e25`의 [GitHub Actions #265](https://github.com/dlrjs9702-dot/omok-live/actions/runs/36364280218)에서 Static checks, Node tests(452 pass·1 skip), Chromium Playwright(30 pass·24 skip·0 fail) 모두 성공했다. 새 첫뻑 SSE 화면·본인 정산 테스트를 포함한다. 로컬 Playwright는 Chromium 실행 파일 부재 및 다운로드 ZIP 손상으로 실행할 수 없어 Actions 결과를 사용했다. 실제 사람 PC 다인 플레이 검증: 미실시.
 
 ### v1.6.93 고스톱·맞고 2차 UX·복구 개선
 
