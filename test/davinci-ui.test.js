@@ -27,3 +27,16 @@ test('다빈치 코드 UI는 공개 선택 상태와 카드 자세를 분리해 
   assert.match(css, /@keyframes davinciGuessCorrect/);
   assert.match(css, /@keyframes davinciGuessWrong/);
 });
+
+test('다빈치 코드 테이블(v1.6.96): 자체 테이블 이미지·내 자리 아래·중앙 더미·숫자판·추리 메모', () => {
+  assert.ok(fs.existsSync(path.join(root, 'public', 'assets', 'davinci', 'table.svg')));
+  assert.match(css, /url\('\/assets\/davinci\/table\.svg'\)/);
+  for (const name of ['renderDavinciCenter', 'davinciImpossibleNumbers', 'renderDavinciPicker']) assert.match(app, new RegExp(`function ${name}\\(`));
+  for (const selector of ['.davinciTable', '.davinciRack', '.davinciPile', '.davinciPicker', '.davinciPickNumber.unlikely', '.davinciMemo', '.davinciDrawnTile.draw-in']) assert.ok(css.includes(selector), selector);
+  // The drawn tile's number is only ever shown to the drawer; the pile never shows colours
+  // (they are not public) -- a neutral back only.
+  assert.match(app, /const mineDrawn = g\.turn === seat \? state\.me\?\.myDavinciDrawn : null;/);
+  assert.match(app, /back\.className = 'davinciPileTile';/);
+  // The number pad submits through the existing guess path (same request as the fallback button).
+  assert.match(app, /davinciNumber\.value = String\(n\); davinciGuessBtn\.click\(\);/);
+});

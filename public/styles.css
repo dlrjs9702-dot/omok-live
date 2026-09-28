@@ -1140,3 +1140,55 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .rpgFloat.hurt{color:#f87171}.rpgFloat.hurt.me{font-size:18px}.rpgFloat.heal{color:#4ade80}.rpgFloat.level{color:#fde047;font-size:20px}.rpgFloat.item{font-size:15px}
 @keyframes rpgFloatUp{0%{opacity:0;margin-top:6px}15%{opacity:1}100%{opacity:0;margin-top:-34px}}
 @media (prefers-reduced-motion: reduce){.rpgFloat{animation-duration:.01s}.rpgCard:hover{transform:none}}
+
+/* v1.6.96: 다빈치 코드 테이블 -- my rack at the bottom, opponents around a felt table (self-made
+   SVG), upright tiles on wooden racks, a draw pile in the middle and a number pad by the tile. */
+.davinciHands.davinciTable{display:grid;grid-template-columns:minmax(0,1fr) minmax(7rem,.45fr) minmax(0,1fr);grid-template-areas:"top top top" "left center right" "bottom bottom bottom";align-items:center;gap:1rem .6rem;min-height:31rem;padding:1.6rem 1.2rem 1.4rem;border-radius:28px;background:#1f5c3c url('/assets/davinci/table.svg') center/100% 100% no-repeat;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),0 1rem 2.2rem rgba(0,0,0,.45)}
+.davinciHands.davinciTable.seats-0{display:none}
+.davinciHands.davinciTable.seats-2{grid-template-areas:"top top top" ". center ." "bottom bottom bottom"}
+.davinciTable .davinciHand{display:grid;gap:.35rem;justify-items:center;align-self:center;min-width:0;padding:.45rem .7rem .35rem;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(6,20,13,.32);box-shadow:none}
+.davinciTable .davinciHand.pos-top{grid-area:top;justify-self:center}
+.davinciTable .davinciHand.pos-left{grid-area:left;justify-self:start}
+.davinciTable .davinciHand.pos-right{grid-area:right;justify-self:end}
+.davinciTable .davinciHand.pos-bottom{grid-area:bottom;justify-self:center;background:rgba(6,20,13,.45)}
+.davinciTable .davinciHand > strong{width:auto;justify-content:center;color:#ecfdf5;font-size:.84rem;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.davinciTable .davinciHand.is-active-turn{border-color:#60a5fa;background:rgba(30,64,175,.32);box-shadow:0 0 0 1px rgba(96,165,250,.45),0 0 18px rgba(96,165,250,.28)}
+.davinciTable .davinciHand.is-target-owner{border-color:#fbbf24;background:rgba(120,53,15,.35)}
+.davinciRack{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:.4rem;min-height:5.6rem;padding:1.1rem .5rem .9rem}
+.davinciTable .davinciHand.pos-left,.davinciTable .davinciHand.pos-right{max-width:100%}
+.davinciTable .pos-left .davinciRack,.davinciTable .pos-right .davinciRack{gap:.3rem;padding-left:.3rem;padding-right:.3rem}
+.davinciTable .davinciHand.pos-left,.davinciTable .davinciHand.pos-right{padding-left:.4rem;padding-right:.4rem}
+.davinciTable .pos-left .davinciTile,.davinciTable .pos-right .davinciTile{flex-basis:2.55rem;width:2.55rem;height:3.85rem;font-size:1.2rem}
+.davinciRack::after{content:'';position:absolute;z-index:0;left:0;right:0;bottom:.15rem;height:.95rem;border-radius:.35rem .35rem .5rem .5rem;background:linear-gradient(180deg,#a8703f,#6b4226 60%,#4a2c17);box-shadow:0 .35rem .6rem rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.25)}
+.davinciTable .davinciTile{z-index:1;flex:0 0 3.3rem;width:3.3rem;height:4.85rem;border-radius:.5rem;font-size:1.55rem;font-weight:950;box-shadow:0 .32rem 0 rgba(0,0,0,.38),0 .55rem .9rem rgba(0,0,0,.35)}
+.davinciTable .davinciTile.black{background:linear-gradient(160deg,#3a414b,#16191e 70%);border:1px solid #0b0d10;color:#f8fafc}
+.davinciTable .davinciTile.white{background:linear-gradient(160deg,#fffef9,#e7e0cf 70%);border:1px solid #b9ad8c;color:#1f2328}
+.davinciTable .davinciTile.tile-back .davinciTileValue{opacity:0}
+.davinciTable .davinciTile.underline-num .davinciTileValue,.davinciPickNumber.underline-num{text-decoration:underline;text-decoration-thickness:.12em;text-underline-offset:.12em}
+.davinciTable .davinciTile.revealed{transform:perspective(420px) rotateX(42deg) translateY(.45rem) scaleY(.9);opacity:1;filter:none;box-shadow:0 .1rem .2rem rgba(0,0,0,.35)}
+.davinciTable .davinciTile.revealed .davinciTileValue{font-size:1.7rem}
+.davinciTable .davinciTile.placed-now{animation:davinciPlaced .45s cubic-bezier(.2,.8,.2,1) both}
+.davinciMemo{position:absolute;z-index:3;left:50%;top:-1.25rem;transform:translateX(-50%);padding:0 .35rem;border-radius:999px;background:rgba(127,29,29,.9);color:#fee2e2;font-size:.62rem;font-weight:900;line-height:1.1rem;letter-spacing:-.02em;white-space:nowrap;pointer-events:none}
+.davinciCenter{grid-area:center;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1rem;min-height:7rem}
+.davinciPile{position:relative;width:4.4rem;height:5.8rem}
+.davinciPileTile{position:absolute;left:calc(var(--i) * .1rem);top:calc(var(--i) * -.28rem);width:3.2rem;height:4.7rem;border-radius:.45rem;box-shadow:0 .25rem 0 rgba(0,0,0,.35),0 .4rem .7rem rgba(0,0,0,.3)}
+.davinciPileTile{background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 .2rem,transparent .2rem .45rem),linear-gradient(160deg,#6b7280,#374151 70%);border:1px solid #1f2937}
+.davinciPileCount{position:absolute;left:50%;bottom:-1.3rem;transform:translateX(-50%);white-space:nowrap;color:#ecfdf5;font-weight:900;font-size:.78rem;text-shadow:0 1px 2px #000}
+.davinciDrawnSlot{display:grid;justify-items:center;gap:.35rem}
+.davinciDrawnSlot small{color:#fef3c7;font-weight:800;font-size:.74rem;text-shadow:0 1px 2px #000;text-align:center;max-width:9rem}
+.davinciTable .davinciDrawnTile{flex-basis:3.3rem;width:3.3rem;height:4.85rem;font-size:1.5rem}
+.davinciDrawnTile.draw-in{animation:davinciDrawIn .5s cubic-bezier(.2,.8,.2,1) both!important}
+.davinciCenterNote{flex-basis:100%;margin:0;text-align:center;color:#bbf7d0;font-weight:900;text-shadow:0 1px 2px #000}
+.davinciPicker{position:absolute;z-index:20;display:grid;gap:.45rem;width:17.5rem;padding:.7rem .75rem;border:1px solid #fbbf24;border-radius:16px;background:rgba(15,23,42,.97);box-shadow:0 1rem 2rem rgba(0,0,0,.55)}
+.davinciPicker strong{color:#fef3c7;font-size:.86rem}
+.davinciPickerGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:.35rem}
+.davinciPickNumber{min-height:2.55rem;padding:0;border-radius:.42rem;font-size:1.15rem;font-weight:950;cursor:pointer;box-shadow:0 .2rem 0 rgba(0,0,0,.4)}
+.davinciPickNumber.black{background:linear-gradient(160deg,#3a414b,#16191e);border:1px solid #475569;color:#fff}
+.davinciPickNumber.white{background:linear-gradient(160deg,#fffef9,#e7e0cf);border:1px solid #b9ad8c;color:#1f2328}
+.davinciPickNumber:hover{transform:translateY(-2px);outline:2px solid #34d399}
+.davinciPickNumber.unlikely{opacity:.32;text-decoration:line-through}
+.davinciPickerClose{justify-self:end;min-height:30px;padding:4px 10px;font-size:.78rem}
+@keyframes davinciDrawIn{0%{transform:translate(-4.5rem,.4rem) rotateY(180deg) scale(.85);opacity:.4}100%{transform:none;opacity:1}}
+@keyframes davinciPlaced{0%{transform:translateY(-1.4rem) scale(1.08);opacity:0}100%{transform:none;opacity:1}}
+@media(max-width:760px){.davinciHands.davinciTable{grid-template-columns:1fr;grid-template-areas:"top" "left" "center" "right" "bottom";padding:1rem .6rem}.davinciTable .davinciHand.pos-left,.davinciTable .davinciHand.pos-right{justify-self:center}.davinciTable .davinciTile{flex-basis:2.6rem;width:2.6rem;height:3.9rem;font-size:1.2rem}}
+@media(prefers-reduced-motion:reduce){.davinciDrawnTile.draw-in,.davinciTable .davinciTile.placed-now{animation:none!important}}
