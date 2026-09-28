@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.6.98 Render 직접 입장 준비
+
+- Render의 `RENDER_EXTERNAL_URL`을 입장파일 발급 주소로 우선 사용한다. 과거 `PUBLIC_BASE_URL` 또는 Worker Host가 남아 있어도 Render에서 신규 발급한 HTML은 Render의 `/guest-entry`를 향한다. 기존 HTML의 토큰·키·계정 구조는 바꾸지 않는다.
+- 공개 `/health`는 `{ok,version}`만 반환한다. Render 서비스의 별도 healthCheckPath는 설정되지 않았다. 관리자 로그인·게스트 세션·권한·rate limit·보안 헤더·게임 로직은 변경하지 않았다.
+- 기존 Worker HTML을 그대로 사용하려면 Worker의 `POST /guest-entry`에만 307을 먼저 적용해야 한다. Worker 원본/권한이 코드 저장소에 없으므로 `ops/cloudflare-guest-entry-cutover.md`에 삽입 지점·코드·검증·기존 활성 세션 보호 조건을 기록했다. Worker 배포와 실제 리다이렉트 검증은 별도 완료 항목이다.
+- 단위/통합 테스트에서 기존 토큰으로 동일 키 ID·닉네임·출석·포인트·전적 조회가 이어지고, 신규 파일은 Render URL을 사용함을 확인했다. 실제 Worker 307, 운영 DB 정산 이력, 사람 다인 실기는 이 코드 테스트로 검증되지 않는다.
+
 ## 현재 미릴리스 UI 보완 작업
 
 - 게임방 오른쪽 조작 패널을 15개 게임에서 점검했다. 조작 영역에는 별도 내부 스크롤을 두지 않고 자연스럽게 아래로 확장해, 작은 화면이나 긴 설정 UI에서도 버튼·시스템 안내가 잘리지 않게 했다. 게임 진행 컬럼은 측정된 보드/뷰포트 높이를 최소 높이로만 사용하며, 실제 조작 내용이 길면 페이지가 함께 늘어난다.

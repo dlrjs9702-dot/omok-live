@@ -32,7 +32,7 @@ test.describe('게임센터 입장과 로비', () => {
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
     expect(body.ok).toBe(true);
-    expect(body.games).toContain('omok');
+    expect(Object.keys(body).sort()).toEqual(['ok', 'version']);
     expect(body.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });

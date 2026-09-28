@@ -83,14 +83,14 @@ async function getFreePort() {
   });
 }
 
-async function startServer(t) {
+async function startServer(t, envOverrides = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'entry-reissue-server-'));
   const port = await getFreePort();
   const base = `http://127.0.0.1:${port}`;
   const proc = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir,
-      DATABASE_URL: '', ADMIN_PASSWORD: 'test-reissue-password', NODE_ENV: 'test' },
+      DATABASE_URL: '', ADMIN_PASSWORD: 'test-reissue-password', NODE_ENV: 'test', ...envOverrides },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -132,6 +132,40 @@ async function startServer(t) {
   }
   return { req, enter };
 }
+
+test('old entry token authenticates on Render destination with the same account and records identity', { timeout: 25000 }, async t => {
+  const { req, enter } = await startServer(t, {
+    RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
+    PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
+  });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.6.98' });
+  const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
+  const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
+  assert.equal(issued.status, 201);
+  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/guest-entry"/);
+  const oldHtml = issued.data.html.replace('https://omok-live.onrender.com/guest-entry',
+    'https://silent-lake-9bcf.dlrjs9702.workers.dev/guest-entry');
+  const first = await enter(oldHtml);
+  assert.equal(first.status, 200);
+  const firstSession = first.html.match(/data-session="([^"]+)"/)?.[1];
+  assert.equal((await req('/api/points', 'GET')).status, 401);
+  assert.equal((await req('/api/admin/keys', 'GET', firstSession)).status, 403);
+  assert.equal((await req('/api/points/attendance', 'POST', firstSession)).status, 200);
+  const beforePoints = (await req('/api/points', 'GET', firstSession)).data;
+  const beforeRecords = (await req('/api/records/me', 'GET', firstSession)).data;
+  assert.equal(beforePoints.attendance.claimed, true);
+  assert.equal(beforeRecords.player.id, issued.data.key.id);
+  await req('/api/logout', 'POST', firstSession);
+  // The Worker redirect forwards this exact token; no new key is issued.
+  const second = await enter(issued.data.html);
+  assert.equal(second.status, 200);
+  const secondSession = second.html.match(/data-session="([^"]+)"/)?.[1];
+  const afterPoints = (await req('/api/points', 'GET', secondSession)).data;
+  assert.equal(afterPoints.balance, beforePoints.balance);
+  assert.deepEqual(afterPoints.attendance, beforePoints.attendance);
+  assert.deepEqual((await req('/api/records/me', 'GET', secondSession)).data, beforeRecords);
+  assert.equal((await req('/api/admin/keys', 'GET', admin)).data.keys.length, 1);
+});
 
 test('only administrator can reissue: old entry and active session are invalidated, replacement works', { timeout: 25000 }, async t => {
   const { req, enter } = await startServer(t);
@@ -189,5 +223,5 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);
-  assert.match(html, /app\.js\?v=1\.6\.97/);
+  assert.match(html, /app\.js\?v=1\.6\.98/);
 });
