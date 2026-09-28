@@ -253,6 +253,8 @@
   let davinciGuessFeedbackTimer = null;
   const davinciRevealStates = new Map();
   let davinciRevealRound = null;
+  let davinciPickerClosedFor = null; // selection key whose number pad I closed with Esc/취소
+  let davinciLastDrawKey = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
@@ -4972,6 +4974,132 @@
     davinciHands.prepend(svg);
   }
 
+  // v1.6.96: the middle of the table -- the face-down draw pile (count) and this turn's drawn
+  // tile beside it. Everyone sees the drawn tile's colour (public); only the drawer sees its number.
+  function renderDavinciCenter(g) {
+    const center = document.createElement('div');
+    center.className = 'davinciCenter';
+    const pile = document.createElement('div');
+    pile.className = 'davinciPile';
+    const stack = Math.min(6, g.pileCount || 0);
+    for (let i = 0; i < stack; i += 1) {
+      const back = document.createElement('span');
+      back.className = 'davinciPileTile'; // colour of pile tiles is not public: a neutral back
+      back.style.setProperty('--i', String(i));
+      pile.append(back);
+    }
+    const count = document.createElement('small');
+    count.className = 'davinciPileCount';
+    count.textContent = g.pileCount ? `더미 ${g.pileCount}장` : '더미 없음';
+    pile.append(count);
+    pile.setAttribute('aria-label', `뽑을 타일 더미 ${g.pileCount || 0}장`);
+    center.append(pile);
+    if (g.status === 'playing' && g.drawn && g.turn) {
+      const mineDrawn = g.turn === seat ? state.me?.myDavinciDrawn : null;
+      const slot = document.createElement('div');
+      slot.className = 'davinciDrawnSlot';
+      const drawKey = `${g.round}:${g.turn}:${g.pileCount}`;
+      const tile = document.createElement('span');
+      tile.className = `davinciTile ${g.drawn.color} unrevealed ${mineDrawn ? 'known-private' : 'tile-back'} davinciDrawnTile${drawKey !== davinciLastDrawKey ? ' draw-in' : ''}`;
+      davinciLastDrawKey = drawKey;
+      const value = document.createElement('span');
+      value.className = 'davinciTileValue';
+      value.textContent = mineDrawn ? String(mineDrawn.number) : '?';
+      tile.append(value);
+      tile.setAttribute('aria-label', mineDrawn ? `이번에 뽑은 내 비공개 타일 ${mineDrawn.number}` : `${state.players[g.turn]?.label || g.turn + '번'}님이 뽑은 ${g.drawn.color === 'black' ? '흑' : '백'} 타일`);
+      const caption = document.createElement('small');
+      caption.textContent = mineDrawn ? '내가 뽑은 타일 · 틀리면 공개됩니다' : `${state.players[g.turn]?.label || g.turn + '번'}님이 뽑은 타일`;
+      slot.append(tile, caption);
+      center.append(slot);
+    } else davinciLastDrawKey = null;
+    if (g.status === 'playing' && g.phase === 'continue') {
+      const note = document.createElement('p');
+      note.className = 'davinciCenterNote';
+      note.textContent = g.turn === seat ? '정답! 계속 추리하거나 멈추세요' : `${state.players[g.turn]?.label || g.turn + '번'}님 정답 · 계속할지 고르는 중`;
+      center.append(note);
+    }
+    return center;
+  }
+
+  // Numbers a player could still name for the chosen tile: each colour holds 0~11 once, and a
+  // rack is sorted (smaller left; same number black before white). Only tiles I can already see
+  // are used, so this is the deduction a player makes looking at the table -- shown as a dimmed
+  // hint, never blocked.
+  function davinciImpossibleNumbers(g, owner, tileId) {
+    const tiles = g.hands?.[owner] || [];
+    const index = tiles.findIndex(tile => tile.id === tileId);
+    const target = tiles[index];
+    if (!target) return new Map();
+    const reasons = new Map();
+    const seen = [...Object.values(g.hands || {}).flat().filter(tile => tile.revealed), ...(state.me?.myDavinciTiles || []), ...(state.me?.myDavinciDrawn ? [state.me.myDavinciDrawn] : [])];
+    for (const tile of seen) if (tile.color === target.color && Number.isInteger(tile.number)) reasons.set(tile.number, '이미 보이는 숫자');
+    const key = (number, color) => number * 2 + (color === 'white' ? 1 : 0);
+    for (let n = 0; n <= 11; n += 1) {
+      const k = key(n, target.color);
+      const outOfOrder = tiles.some((tile, j) => tile.revealed && j !== index && (j < index ? k <= key(tile.number, tile.color) : k >= key(tile.number, tile.color)));
+      if (outOfOrder && !reasons.has(n)) reasons.set(n, '정렬 순서상 불가능');
+    }
+    for (const h of g.history || []) if (h.target === owner && h.id === tileId && !h.correct) reasons.set(h.number, '이미 틀린 숫자');
+    return reasons;
+  }
+
+  // One-click guessing: a number pad opens beside the chosen tile; picking a number submits it
+  // through the same guess path as the fallback select + button below.
+  function renderDavinciPicker(g, focus, active) {
+    davinciHands.querySelector('.davinciPicker')?.remove();
+    const selectionKey = focus ? `${g.revision}:${focus.target}:${focus.tileId}` : null;
+    const targetTile = focus && g.hands?.[focus.target]?.find(tile => tile.id === focus.tileId && !tile.revealed);
+    if (!active || !targetTile || focus.seat !== seat || !['guess', 'continue'].includes(g.phase) || davinciGuessPending || davinciSelectionPending || g.paused || davinciPickerClosedFor === selectionKey) return;
+    const picker = document.createElement('div');
+    picker.className = `davinciPicker ${targetTile.color}`;
+    picker.setAttribute('role', 'group');
+    picker.setAttribute('aria-label', '추측할 숫자 선택');
+    const title = document.createElement('strong');
+    title.textContent = `${state.players[focus.target]?.label || focus.target + '번'}님의 ${targetTile.color === 'black' ? '흑' : '백'} 타일은?`;
+    picker.append(title);
+    const grid = document.createElement('div');
+    grid.className = 'davinciPickerGrid';
+    const impossible = davinciImpossibleNumbers(g, focus.target, focus.tileId);
+    for (let n = 0; n <= 11; n += 1) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `davinciPickNumber ${targetTile.color}${impossible.has(n) ? ' unlikely' : ''}${[6, 9].includes(n) ? ' underline-num' : ''}`;
+      button.textContent = String(n);
+      button.title = impossible.has(n) ? `${n} · ${impossible.get(n)}` : `${n}(으)로 추측`;
+      button.setAttribute('aria-label', `${n}${impossible.has(n) ? ` (${impossible.get(n)})` : ''}로 추측`);
+      button.addEventListener('click', () => { davinciNumber.value = String(n); davinciGuessBtn.click(); });
+      grid.append(button);
+    }
+    picker.append(grid);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'davinciPickerClose secondary';
+    close.textContent = '닫기 (Esc)';
+    close.addEventListener('click', () => { davinciPickerClosedFor = selectionKey; renderDavinci(); });
+    picker.append(close);
+    davinciHands.append(picker);
+    const place = () => {
+      const tileEl = [...davinciHands.querySelectorAll('.davinciTile')].find(el => el.dataset.tileId === focus.tileId);
+      if (!tileEl || !picker.isConnected) return;
+      const bounds = davinciHands.getBoundingClientRect();
+      const rect = tileEl.getBoundingClientRect();
+      const width = picker.offsetWidth || 260; const height = picker.offsetHeight || 150;
+      // Open toward the middle of the table so the pad never covers my own rack at the bottom.
+      const hand = tileEl.closest('.davinciHand')?.getBoundingClientRect() || rect;
+      const side = tileEl.closest('.pos-left') ? 'left' : tileEl.closest('.pos-right') ? 'right' : '';
+      let left = side === 'left' ? hand.right - bounds.left + 10
+        : side === 'right' ? hand.left - bounds.left - width - 10
+          : rect.left - bounds.left + rect.width / 2 - width / 2;
+      let top = side ? rect.top - bounds.top + rect.height / 2 - height / 2 : rect.bottom - bounds.top + 10;
+      if (!side && top + height > bounds.height - 6) top = rect.top - bounds.top - height - 10;
+      left = Math.max(6, Math.min(bounds.width - width - 6, left));
+      top = Math.max(6, Math.min(bounds.height - height - 6, top));
+      picker.style.left = `${Math.round(left)}px`;
+      picker.style.top = `${Math.round(top)}px`;
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(place); else place();
+  }
+
   async function selectDavinciTarget(owner, tileId) {
     const g = state?.game;
     if (!g || g.status !== 'playing' || g.turn !== seat || !['guess', 'continue'].includes(g.phase) || davinciSelectionPending || davinciGuessPending) return;
@@ -5005,20 +5133,36 @@
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
     davinciStatus.textContent = g.status === 'selecting' ? '2~4명이 자리를 선택하면 방장이 시작합니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
-      : `${g.turn}번 차례 · ${g.phase === 'reveal-own' ? '공개할 내 타일을 선택하세요' : '상대 타일을 선택해 숫자를 추측하세요'}${inlineTimerText} · 더미 ${g.pileCount}장`;
+      : `${g.turn === seat ? '내 차례' : `${state.players[g.turn]?.label || g.turn + '번'}님 차례`} · ${g.phase === 'reveal-own' ? (g.turn === seat ? '틀렸어요 · 공개할 내 타일을 고르세요' : '틀려서 자기 타일을 공개하는 중') : g.turn === seat ? '상대 타일을 누르고 숫자를 고르세요' : '상대 타일을 추리하는 중'}${inlineTimerText} · 더미 ${g.pileCount}장`;
     davinciHands.replaceChildren();
-    for (const [owner, tiles] of Object.entries(g.hands || {})) {
+    // v1.6.96: a table seen from my chair -- my rack at the bottom, opponents around it, the draw
+    // pile and this turn's drawn tile in the middle. Only public fields (colour, revealed numbers,
+    // guess history) and my own tiles are drawn; nothing new is sent by the server.
+    const tableSeats = (g.seatOrder?.length ? g.seatOrder : Object.keys(g.hands || {})).filter(owner => g.hands?.[owner]);
+    const anchor = seat && g.hands?.[seat] ? seat : tableSeats[0];
+    const around = tableSeats.length ? [...tableSeats.slice(tableSeats.indexOf(anchor) + 1), ...tableSeats.slice(0, Math.max(0, tableSeats.indexOf(anchor)))] : [];
+    const layoutFor = { 0: [], 1: ['top'], 2: ['left', 'right'], 3: ['left', 'top', 'right'] }[around.length] || around.map(() => 'top');
+    const positions = new Map([[anchor, 'bottom'], ...around.map((owner, i) => [owner, layoutFor[i]])]);
+    davinciHands.className = `davinciHands davinciTable seats-${tableSeats.length}`;
+    const missesFor = (owner, id) => [...new Set((g.history || []).filter(h => h.target === owner && h.id === id && !h.correct).map(h => h.number))];
+    const firstRender = davinciRevealStates.size === 0;
+    for (const owner of tableSeats) {
+      const tiles = g.hands[owner];
       const group = document.createElement('div');
       const isTurn = g.status === 'playing' && g.turn === owner;
       const isTargetOwner = focus?.target === owner;
       const isTargeting = focus?.seat === owner;
-      group.className = `davinciHand${isTurn ? ' is-active-turn' : ''}${isTargetOwner ? ' is-target-owner' : ''}${isTargeting ? ' is-targeting' : ''}${owner === seat ? ' is-my-hand' : ''}`;
+      group.className = `davinciHand pos-${positions.get(owner) || 'top'}${isTurn ? ' is-active-turn' : ''}${isTargetOwner ? ' is-target-owner' : ''}${isTargeting ? ' is-targeting' : ''}${owner === seat ? ' is-my-hand' : ''}`;
       group.dataset.owner = owner;
       const ownerLabel = state.players[owner]?.label || owner + '번';
       const label = document.createElement('strong');
-      label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}`;
+      const hiddenLeft = tiles.filter(tile => !tile.revealed).length;
+      label.textContent = `${ownerLabel}${owner === seat ? ' (나)' : ''}${g.status === 'playing' ? ` · 남은 비공개 ${hiddenLeft}장` : ''}${hiddenLeft === 0 && g.status !== 'selecting' ? ' · 탈락' : ''}`;
       group.setAttribute('aria-label', `${ownerLabel}의 타일${isTargeting ? ' · 현재 추리 중' : ''}${isTargetOwner ? ' · 현재 추리 대상' : ''}`);
       group.append(label);
+      const rack = document.createElement('div');
+      rack.className = 'davinciRack';
+      group.append(rack);
       for (const tile of tiles) {
         const mine = owner === seat && state.me?.myDavinciTiles?.find(t => t.id === tile.id);
         const selected = focus?.target === owner && focus.tileId === tile.id;
@@ -5028,11 +5172,12 @@
         const revealPending = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
         const wasRevealed = davinciRevealStates.get(tile.id);
         const revealingNow = tile.revealed && wasRevealed === false && !feedbackForTile;
+        const placedNow = !firstRender && wasRevealed === undefined;
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.tileId = tile.id;
-        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : '', feedbackForTile ? 'guess-result' : '', feedbackForTile && feedback.correct ? 'guess-correct' : '', feedbackForTile && !feedback.correct ? 'guess-wrong' : '', localGuessForTile ? 'guess-submitting' : '', latestGuessTile && !feedbackForTile ? 'recentActionDavinci' : ''].filter(Boolean).join(' ');
         const value = tile.revealed ? String(tile.number) : mine ? String(mine.number) : '?';
+        button.className = ['davinciTile', tile.color, tile.revealed ? 'revealed' : 'unrevealed', !tile.revealed && mine ? 'known-private' : '', !tile.revealed && !mine ? 'tile-back' : '', ['6', '9'].includes(value) ? 'underline-num' : '', selected ? 'selected-target' : '', revealPending ? 'pending-reveal' : '', revealingNow ? 'reveal-now' : '', placedNow ? 'placed-now' : '', feedbackForTile ? 'guess-result' : '', feedbackForTile && feedback.correct ? 'guess-correct' : '', feedbackForTile && !feedback.correct ? 'guess-wrong' : '', localGuessForTile ? 'guess-submitting' : '', latestGuessTile && !feedbackForTile ? 'recentActionDavinci' : ''].filter(Boolean).join(' ');
         const valueElement = document.createElement('span');
         valueElement.className = 'davinciTileValue';
         valueElement.textContent = value;
@@ -5045,9 +5190,18 @@
           guessElement.setAttribute('aria-hidden', 'true');
           button.append(guessElement);
         }
+        // Deduction memo: numbers already guessed wrong on this hidden tile (public history).
+        const misses = tile.revealed ? [] : missesFor(owner, tile.id);
+        if (misses.length) {
+          const memo = document.createElement('span');
+          memo.className = 'davinciMemo';
+          memo.textContent = misses.slice(-4).map(n => `✗${n}`).join(' ');
+          memo.setAttribute('aria-hidden', 'true');
+          button.append(memo);
+        }
         const stateText = tile.revealed ? '공개 완료' : mine ? '비공개 · 내 화면에서 숫자 확인' : '비공개';
         const feedbackText = feedbackForTile ? ` · 추측 숫자 ${feedback.number} · ${feedback.correct ? '정답' : '오답'}` : localGuessForTile ? ` · 추측 숫자 ${davinciGuessPendingNumber} 제출 중` : '';
-        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${value} · ${stateText}${selected ? ' · 현재 추리 대상' : ''}${feedbackText}`);
+        button.setAttribute('aria-label', `${owner}번 ${tile.color === 'black' ? '흑' : '백'} 타일 ${value} · ${stateText}${selected ? ' · 현재 추리 대상' : ''}${misses.length ? ` · 틀린 추측 ${misses.join(', ')}` : ''}${feedbackText}`);
         const canReveal = active && g.phase === 'reveal-own' && owner === seat && !tile.revealed;
         const canSelect = active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && owner !== seat && !tile.revealed;
         button.disabled = !(canReveal || canSelect);
@@ -5056,24 +5210,17 @@
         if ((canReveal || canSelect) && !selected && !feedbackForTile && !localGuessForTile && !g.paused) button.classList.add('actionableTarget');
         button.addEventListener('click', () => {
           if (g.phase === 'reveal-own') roomAction('reveal-davinci', { tileId: tile.id, expectedRevision: g.revision });
-          else selectDavinciTarget(owner, tile.id);
+          else { davinciPickerClosedFor = null; selectDavinciTarget(owner, tile.id); }
         });
-        group.append(button);
+        rack.append(button);
         davinciRevealStates.set(tile.id, tile.revealed);
       }
       davinciHands.append(group);
     }
+    davinciHands.append(renderDavinciCenter(g));
     davinciPrivate.replaceChildren();
-    if (state.me?.myDavinciDrawn) {
-      const drawnLabel = document.createElement('span');
-      drawnLabel.className = 'davinciPrivateLabel';
-      drawnLabel.textContent = '이번에 뽑은 타일';
-      const drawnTile = document.createElement('span');
-      drawnTile.className = `davinciTile ${state.me.myDavinciDrawn.color} unrevealed known-private davinciDrawnTile`;
-      drawnTile.textContent = String(state.me.myDavinciDrawn.number);
-      drawnTile.setAttribute('aria-label', '이번에 뽑은 비공개 타일');
-      davinciPrivate.append(drawnLabel, drawnTile);
-    }
+    davinciPrivate.classList.add('hidden');
+    renderDavinciPicker(g, focus, active);
     const selectedTarget = focus?.seat === seat && g.hands[focus.target]?.some(tile => tile.id === focus.tileId && !tile.revealed);
     davinciGuessBtn.disabled = !(active && !davinciSelectionPending && !davinciGuessPending && ['guess', 'continue'].includes(g.phase) && selectedTarget);
     davinciStopBtn.classList.toggle('hidden', !(active && g.phase === 'continue'));
@@ -6259,6 +6406,12 @@
     }
   });
   davinciStopBtn.addEventListener('click', () => roomAction('stop-davinci', { expectedRevision: state.game.revision }));
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !isDavinciGame() || !davinciHands.querySelector('.davinciPicker')) return;
+    const g = state.game;
+    davinciPickerClosedFor = g.selection ? `${g.revision}:${g.selection.target}:${g.selection.tileId}` : null;
+    renderDavinci();
+  });
   setInterval(() => {
     if (state?.gameType === 'davinci' && state.game?.status === 'playing' && !davinciPanel.classList.contains('hidden')) {
       const timer = Math.max(0, Math.ceil((state.game.deadlineAt - Date.now()) / 1000));
