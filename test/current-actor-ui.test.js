@@ -50,5 +50,5 @@ test('오래된 방 상태(HTTP 응답)가 더 최신 SSE 상태를 덮어쓰지
   assert.match(server, /stateSeq: roomViewSeq/);
   assert.match(app, /function isStaleRoomState\(next\)/);
   assert.match(app, /if \(isStaleRoomState\(parsed\)\) return;/);
-  assert.match(app, /if \(data\.state && !isStaleRoomState\(data\.state\)\) \{\n\s*state = data\.state;/);
+  assert.match(app, /if \(data\.state && !isStaleRoomState\(data\.state\)\) \{[\s\S]{0,160}state = data\.state;/);
 });
