@@ -90,3 +90,40 @@ test('다빈치 코드: 오답 피드백은 추측 숫자만 공개하고 만료
   assert.equal(engine.expireFeedback(game, 2100), true);
   assert.equal(engine.publicState(game).lastGuess, null);
 });
+
+test('다빈치 코드: 논리적으로 불가능한 숫자도 거부하지 않고 일반 오답으로 처리한다', () => {
+  const game = engine.create();
+  engine.start(game, ['1', '2'], 1000);
+  const actor = game.turn;
+  const target = actor === '1' ? '2' : '1';
+  const t = (color, number, revealed = false) => ({ id: `${color}${number}`, color, number, revealed });
+  // Actor holds black 7; target's hidden black 4 sits between a revealed black 2 and black 9.
+  game.hands[actor] = [t('white', 1), t('black', 7), t('white', 10)];
+  game.hands[target] = [t('black', 2, true), t('black', 4), t('black', 9, true)];
+  game.drawn = t('white', 5);
+  game.pile = game.pile.filter(tile => !['black2', 'black4', 'black9', 'black7', 'white1', 'white10', 'white5'].includes(tile.id));
+  // 7 is visible to the actor (own rack) and 11 is out of sort order -- both are ordinary wrong guesses.
+  const wrong = engine.guess(game, actor, target, 'black4', 7, game.revision, 1100);
+  assert.equal(wrong.legal, true);
+  assert.equal(wrong.correct, false);
+  assert.deepEqual(game.history.at(-1), { seat: actor, target, id: 'black4', number: 7, correct: false });
+  assert.equal(game.hands[actor].find(tile => tile.id === 'white5')?.revealed, true, '오답 규칙: 뽑은 타일 공개');
+  assert.notEqual(game.turn, actor, '오답 규칙: 차례 넘김');
+  // Next player guesses the actor's hidden tile with 11 (after white 10: impossible) -- still legal.
+  engine.expireFeedback?.(game, 5000);
+  const next = game.turn;
+  const outOfOrder = engine.guess(game, next, actor, 'white1', 11, game.revision, 6000);
+  assert.equal(outOfOrder.legal, true);
+  assert.equal(outOfOrder.correct, false);
+  // Only a real game-state problem is rejected: out of range, revealed tile, own tile.
+  engine.expireFeedback?.(game, 9000);
+  const who = game.turn;
+  const other = who === '1' ? '2' : '1';
+  assert.equal(engine.guess(game, who, other, game.hands[other].find(tile => tile.revealed).id, 0, game.revision, 9100).legal, false);
+  assert.equal(engine.guess(game, who, other, game.hands[other].find(tile => !tile.revealed).id, 12, game.revision, 9100).legal, false);
+  // Correct guess still reveals the tile as before.
+  const hidden = game.hands[other].find(tile => !tile.revealed);
+  const right = engine.guess(game, who, other, hidden.id, hidden.number, game.revision, 9200);
+  assert.equal(right.correct, true);
+  assert.equal(hidden.revealed, true);
+});
