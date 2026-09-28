@@ -67,7 +67,6 @@ test('잿빛 원정 서버: 역할·시작 권한·관전자 차단·실시간 �
   const [a, b, w] = [await guest('가'), await guest('나'), await guest('관')];
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.ok(health.data.games.includes('rpg'));
   const created = await req('/api/rooms', a, { gameType: 'rpg' });
   assert.equal(created.status, 201);
   const code = created.data.state.me.roomCode;

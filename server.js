@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const crypto = require('crypto');
-const { getGame, hasGame, listGames } = require('./lib/games');
+const { getGame, hasGame } = require('./lib/games');
 const { buildActionTimer, currentTurnSeat } = require('./lib/action-timer');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -115,6 +115,10 @@ function clientIp(req) {
 }
 
 function publicBaseUrl(req) {
+  // Render's own public URL is authoritative even when an older PUBLIC_BASE_URL
+  // still points at the Worker. Never derive an entry file's target from a
+  // forwarded Host in production.
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '');
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
   const proto = String(req.headers['x-forwarded-proto'] || (IS_PRODUCTION ? 'https' : 'http')).split(',')[0].trim();
   const host = req.headers.host || `localhost:${PORT}`;
@@ -2082,7 +2086,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size, sessions: sessions.size, games: listGames().map((g) => g.id), version: '1.6.97', time: nowIso() });
+    return sendJson(res, 200, { ok: true, version: '1.6.98' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2779,7 +2783,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.97 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.98 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -136,8 +136,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.6.97');
-  assert.deepEqual(health.data.games.sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'marathon', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pictionary', 'rpg', 'twentyquestions', 'yut']);
+  assert.equal(health.data.version, '1.6.98');
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);
@@ -200,5 +199,5 @@ test('Connect Four game selection and separate canvas hit detection are present 
   assert.match(js, /function connect4Layout\(/);
   assert.match(js, /state\.gameType === 'connect4'/);
   assert.match(js, /legalColumns/);
-  assert.match(html, /app\.js\?v=1\.6\.97/);
+  assert.match(html, /app\.js\?v=1\.6\.98/);
 });
