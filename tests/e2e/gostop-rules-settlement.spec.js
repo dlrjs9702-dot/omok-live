@@ -280,6 +280,24 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     for (const view of [a, b, watcher]) await view.context.close();
   });
 
+  test('v1.6.95 첫뻑 즉시 지급은 상대·본인 SSE 화면과 본인 원장에 반영된다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const a = await guest(browser, request, admin, '첫뻑A');
+    const b = await guest(browser, request, admin, '첫뻑B');
+    const watcher = await guest(browser, request, admin, '첫뻑관전');
+    await openRoom(a, [b], request, [watcher]);
+    const fixture = await api(request, '/api/test/gostop-fixture', a.token, { fixture: 'first-ppeok' });
+    expect(fixture.status).toBe(200);
+    expect((await api(request, '/api/room/gostop-play', a.token, { cardId: 'm05-pi1' })).status).toBe(200);
+    await expect(b.page.locator('#pointBalanceText')).toHaveText('보유 99,300P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,700P');
+    await expect(watcher.page.locator('#gostopEvent')).toContainText('첫뻑 보너스');
+    expect((await api(request, '/api/points', watcher.token, undefined, 'GET')).data.recentGostopSettlements).toEqual([]);
+    await b.page.locator('#gostopPointHistory summary').click();
+    await expect(b.page.locator('#gostopPointHistoryList')).toContainText('-700P');
+    for (const view of [a, b, watcher]) await view.context.close();
+  });
+
   test('v1.6.93 획득패 4분류·피 계산 장수와 공개 카드 1~12월을 카드 자체에서 확인한다', async ({ browser, request }) => {
     const admin = await adminToken(request);
     const a = await guest(browser, request, admin, '월표시A');
