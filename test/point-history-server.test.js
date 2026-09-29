@@ -87,7 +87,7 @@ test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽
     assert.equal((await api('/api/room/gostop-play', a, { cardId: 'm05-pi1' })).status, 200);
     const mine = (await api('/api/points/history', a)).data;
     const theirs = (await api('/api/points/history', b)).data;
-    assert.deepEqual([mine.items[0].reason, mine.items[0].gameType, mine.items[0].mode, mine.items[0].detail, mine.items[0].delta], ['game_win', 'gostop', 'matgo', 'firstPpeok', 700]);
+    assert.deepEqual([mine.items[0].reason, mine.items[0].gameType, mine.items[0].mode, mine.items[0].detail, mine.items[0].delta], ['game_win', 'gostop', 'matgo', 'firstPpeok', 630]); // v1.7.3: 700P 이동 중 10% 소각
     assert.deepEqual([theirs.items[0].reason, theirs.items[0].delta, theirs.items[0].balanceBefore, theirs.items[0].balanceAfter], ['game_loss', -700, 100_000, 99_300]);
     assert.equal(theirs.items.some(item => item.reason === 'daily_attendance'), false, 'B는 A의 출석 내역이 없다');
     assert.equal(mine.items[0].balanceAfter, (await api('/api/points', a)).data.balance);

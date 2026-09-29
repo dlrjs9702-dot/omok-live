@@ -138,7 +138,7 @@ test('old entry token authenticates on Render destination with the same account 
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
   });
-  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.7.2' });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.7.3' });
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
   assert.equal(issued.status, 201);
@@ -219,9 +219,9 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   const app = await fs.readFile(path.join(__dirname, '..', 'public/app.js'), 'utf8');
   const html = await fs.readFile(path.join(__dirname, '..', 'public/index.html'), 'utf8');
   assert.match(app, /reissueBtn\.textContent = '재발급'/);
-  assert.match(app, /actions\.append\(detailBtn, memoBtn, reissueBtn, revokeBtn\)/);
+  assert.match(app, /actions\.append\(detailBtn, memoBtn, reissueBtn, grantBtn, revokeBtn\)/); // v1.7.3: 재발급 옆 포인트 지급
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);
-  assert.match(html, /app\.js\?v=1.7.2/);
+  assert.match(html, /app\.js\?v=1.7.3/);
 });

@@ -1201,3 +1201,11 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 @media(prefers-reduced-motion:reduce){.davinciDrawnTile.draw-in,.davinciTable .davinciTile.placed-now{animation:none!important}}
 
 .srOnly{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* v1.7.3: 관리자 포인트 지급 */
+.pointGrantEdit{display:grid;gap:8px}
+.pointGrantEdit label{font-weight:800;font-size:.86rem;color:#cbd5e1}
+.pointGrantEdit input,.pointGrantEdit select{border-radius:10px}
+.pointGrantQuick{display:flex;flex-wrap:wrap;gap:6px}
+.pointGrantConfirm{margin:4px 0 0;padding:12px;border-radius:12px;background:#1e293b;font-weight:800}
+.pointGrantError{min-height:1.2em;margin:6px 0 0;color:#fca5a5;font-size:.86rem}

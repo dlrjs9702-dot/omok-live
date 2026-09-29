@@ -185,16 +185,22 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   const accountC = (await req('/api/points', c.session, undefined, 'GET')).data;
   const balanceA = accountA.balance;
   const balanceB = accountB.balance;
-  const bonusNetA = (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.seat === '1' ? award.paid : -award.paid), 0);
-  assert.equal(balanceA + balanceB, 250_000, '포인트 총량 보존');
+  // v1.7.3: 받는 쪽은 실제 이동액의 90%(credited), 내는 쪽은 100%(paid). 차이는 소각된다.
+  const bonusNetA = (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.seat === '1' ? (award.credited ?? award.paid) : -award.paid), 0);
+  const burned = (state.game.settlement.transfers || []).reduce((sum, item) => sum + (item.burned || 0), 0)
+    + (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
+  assert.equal(balanceA + balanceB, 250_000 - burned, '포인트 총량 = 초기 - 소각');
   assert.deepEqual(accountC.recentGostopSettlements, [], '관전자의 포인트 내역에는 다른 참가자의 정산이 섞이지 않는다');
   assert.equal(state.game.settlement.status, 'done');
   if (state.game.status === 'finished') {
     assert.equal(accountA.recentGostopSettlements[0]?.mode, 'matgo');
     assert.ok(accountA.recentGostopSettlements[0]?.delta !== 0);
-    assert.equal(accountA.recentGostopSettlements[0]?.delta, -accountB.recentGostopSettlements[0]?.delta);
-    const paid = state.game.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
-    assert.equal(Math.abs(balanceA - playStartBalanceA - bonusNetA), paid);
+    const [deltaA, deltaB] = [accountA.recentGostopSettlements[0]?.delta, accountB.recentGostopSettlements[0]?.delta];
+    assert.equal(Math.max(deltaA, deltaB), Math.floor(Math.abs(Math.min(deltaA, deltaB)) * 90 / 100), '승자 +90% · 패자 -100%');
+    const transfers = state.game.settlement.transfers;
+    const expectedA = transfers.filter(item => item.toSeat === '1').reduce((sum, item) => sum + item.credited, 0)
+      - transfers.filter(item => item.fromSeat === '1').reduce((sum, item) => sum + item.paid, 0);
+    assert.equal(balanceA - playStartBalanceA - bonusNetA, expectedA);
     assert.equal(state.game.result.losers[0].amount, state.game.settlement.transfers[0].requested);
     assert.ok(state.me.pointBalance === balanceA);
   } else {

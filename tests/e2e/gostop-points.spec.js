@@ -172,7 +172,10 @@ test.describe('포인트와 고스톱·맞고', () => {
     const g = settledRound.game;
     expect(g.settlement.status).toBe('done');
     const [balanceA, balanceB] = await Promise.all([a, b].map(async view => (await api(request, '/api/points', view.token, undefined, 'GET')).data.balance));
-    expect(balanceA + balanceB).toBe(250_000);
+    // v1.7.3: 실제 이동액의 10%는 소각(승자 90%), 뻑 보너스도 같다.
+    const burned = g.settlement.transfers.reduce((sum, item) => sum + (item.burned || 0), 0)
+      + (g.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
+    expect(balanceA + balanceB).toBe(250_000 - burned);
     const paid = g.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
     expect(paid).toBeGreaterThan(0);
     await expect(a.page.locator('#gostopResult')).toContainText(`${paid.toLocaleString('ko-KR')}P`);
