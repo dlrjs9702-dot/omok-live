@@ -1985,7 +1985,13 @@
       revokeBtn.className = 'danger tiny compactAction';
       revokeBtn.textContent = '권한 취소';
       revokeBtn.addEventListener('click', () => revokeKey(key.id, key.label));
-      actions.append(detailBtn, memoBtn, reissueBtn, revokeBtn);
+      const grantBtn = document.createElement('button');
+      grantBtn.className = 'secondary tiny compactAction';
+      grantBtn.type = 'button';
+      grantBtn.textContent = '포인트 지급';
+      grantBtn.setAttribute('aria-label', `${key.label} 포인트 지급`);
+      grantBtn.addEventListener('click', () => openPointGrant(key));
+      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, revokeBtn);
 
       const detail = document.createElement('div');
       detail.className = 'keyDetail hidden';
@@ -2321,6 +2327,8 @@
     if (pointHistoryOpen && pointHistoryLatestBalance !== Number(account.balance)) loadPointHistory({ reset: true });
   }
 
+  const ADMIN_GRANT_CATEGORY_LABELS = { event: '이벤트', reward: '보상', correction: '운영 보정', other: '기타' };
+
   // v1.7.0: lobby point history (read-only view of the server ledger; never computes balances).
   const POINT_HISTORY_PAGE = 30;
   let pointHistoryOpen = false;
@@ -2346,6 +2354,14 @@
         return `${game} ${bonus ? '뻑 보너스 정산' : item.detail === 'forfeit' ? '기권 정산' : '정산'}`;
       }
       return '게임 정산';
+    }
+    // v1.7.3 common entry fee, its payout/refund, and operator grants.
+    if (item.reason === 'game_entry') return `${gameName(item.gameType)} 참가`;
+    if (item.reason === 'game_reward') return `${gameName(item.gameType)} 승리 보상`;
+    if (item.reason === 'game_refund') return `${gameName(item.gameType)} 무효 환불`;
+    if (item.reason === 'admin_grant') {
+      const category = ADMIN_GRANT_CATEGORY_LABELS[item.detail] || '기타';
+      return `관리자 지급 · ${category}${item.detail === 'other' && item.memo ? ` (${item.memo})` : ''}`;
     }
     return '기타 시스템 조정';
   }
@@ -3293,7 +3309,15 @@
     roomGameLogo.textContent = roomLabel;
     const myPoints = state.me?.pointBalance;
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
-    if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
+    if (myPoints !== null && myPoints !== undefined) {
+      // v1.7.3: the room's point rule next to my balance (server-provided, never computed here).
+      const rule = state.points?.policy === 'entry' ? ` · 참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P`
+        : state.points?.policy === 'settlement' ? ` · 정산 ${state.points.burnPercent}% 소각` : '';
+      roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P${rule}`;
+      roomPointBadge.title = state.points?.policy === 'entry'
+        ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전은 무료입니다.`
+        : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';
+    }
     rulesText.textContent = state.rules || '';
     setBaseDocumentTitle(`${roomLabel} · 게임센터`);
     newRoomBtn.classList.toggle('hidden', !isHost);
