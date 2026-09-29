@@ -2432,6 +2432,7 @@
     clearResultEffect();
     resetTurnAlertTracking();
     setBaseDocumentTitle('게임센터');
+    lobbyChatAnnouncer.reset();
     showView('lobby');
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
@@ -2454,6 +2455,7 @@
     chatAtBottom = true;
     chatLastSeenId = 0;
     lastRenderedChatIds = [];
+    roomChatAnnouncer.reset();
     chatOverlayOpen = false;
     gameInfoOverlayOpen = false;
     gameInfoActiveTab = 'system';
@@ -2544,6 +2546,8 @@
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
+      // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.
+      lobbyChatAnnouncer.update(lobbyState.messages || [], sessionLabel);
       renderLobbyChat();
       renderPublicRooms();
       renderLobbyInvitations();
@@ -3001,6 +3005,28 @@
     return item;
   }
 
+  // v1.7.2: the message lists are rebuilt on every change, so they are not live regions themselves (a
+  // screen reader would re-read the whole history). A separate hidden status region announces only the
+  // messages that arrived since the last render; the first render of a list only records what exists.
+  function createChatAnnouncer(region) {
+    let lastId = null;
+    return {
+      reset() { lastId = null; region.replaceChildren(); },
+      update(rows, ownLabel) {
+        const ids = rows.map(row => Number(row.id)).filter(Number.isFinite);
+        const newest = ids.length ? Math.max(...ids) : 0;
+        if (lastId === null || newest < lastId) { lastId = newest; return; }
+        const fresh = rows.filter(row => Number(row.id) > lastId && row.type !== 'system' && !(ownLabel && row.label === ownLabel));
+        lastId = newest;
+        if (!fresh.length) return;
+        const text = fresh.slice(-3).map(row => `${row.label || '게스트'}: ${row.text}`).join('. ');
+        region.replaceChildren(document.createTextNode(fresh.length > 3 ? `새 메시지 ${fresh.length}건. ${text}` : text));
+      },
+    };
+  }
+  const lobbyChatAnnouncer = createChatAnnouncer(document.getElementById('lobbyChatAnnounce'));
+  const roomChatAnnouncer = createChatAnnouncer(document.getElementById('chatAnnounce'));
+
   function fillMessageList(container, rows, emptyText, ownLabel = '') {
     const signature = JSON.stringify([ownLabel, rows.map(row => [row.id, row.type, row.label, row.text, row.at])]);
     if (messageListSignatures.get(container) === signature) return false;
@@ -3068,6 +3094,7 @@
     const oldScrollTop = chatMessages.scrollTop;
     const anchor = wasAtBottom ? null : firstVisibleMessage(chatMessages);
     chatRendering = true;
+    roomChatAnnouncer.update(chatRows, state?.me?.label || sessionLabel);
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.label || sessionLabel);
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     lastRenderedChatIds = chatRows.map(row => row.id);

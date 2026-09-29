@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.2 채팅 낭독 개선
+
+- 배경: v1.7.1 PR #51 리뷰(Codex, P2)에서 `#lobbyChatMessages`의 `role="log" aria-live="polite"`가 문제로 지적됐다. `fillMessageList()`가 변경 때마다 목록을 비우고 최대 50개를 다시 넣으므로 화면 낭독기가 새 메시지 한 건에 전체 기록을 다시 읽고, 첫 SSE 수신에서도 과거 기록을 읽을 수 있다. 같은 `fillMessageList`를 쓰는 방 채팅(`#chatMessages`)에도 같은 `aria-live`가 있었다.
+- 수정(별도 라이브 영역 방식): 두 목록에서 라이브 속성을 제거하고(`role="group"`+`aria-label`), 숨김 `role="status" aria-live="polite" aria-atomic` 영역(`#lobbyChatAnnounce`, `#chatAnnounce`, `.srOnly`)이 새로 온 메시지만 알린다. `createChatAnnouncer()`가 마지막 메시지 id를 기억하고, 첫 스냅샷은 알리지 않고 기준만 잡는다(로비는 입장 후 첫 SSE 스냅샷, 방은 입장 시 첫 상태). 내 메시지·시스템 메시지는 알리지 않고, 한 번에 4건 이상이면 「새 메시지 N건」과 최근 3건만 알린다. 서버 재시작 등으로 id가 줄면 기준을 다시 잡는다.
+- 범위 밖: 목록 렌더링(`fillMessageList`)은 그대로다. 방의 시스템 메시지 목록(`#systemMessages`)의 `aria-live`는 이번 패치에서 건드리지 않았다.
+- 검증: `tests/e2e/chat-announce.spec.js` 2개(로비: 첫 기록 미낭독·새 메시지 한 건·내 메시지 제외, 방: 상대 메시지 낭독), `npm test`. 실제 화면 낭독기(NVDA·VoiceOver) 실측은 하지 않았다.
+
 ## v1.7.1 화면 접근성 기본 보완
 
 - 사용자 지시(2026-09-29): DESIGN.md 접근성 최소 기준에 맞춰 지난 web-design-guidelines 검사 결과 중 6개만 수정. 게임 규칙·서버 동작 변경 없음.
