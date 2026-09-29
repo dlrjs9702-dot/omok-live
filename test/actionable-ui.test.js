@@ -43,7 +43,8 @@ test('v1.6.80 점과 상자 회귀: 오델로 전용 변수를 참조하지 않�
   const dots = functionBody(app, 'drawDotsBoard');
   assert.doesNotMatch(dots, /othelloRecent/);
   assert.doesNotMatch(dots, /\bif \(last\)/);
-  assert.match(functionBody(app, 'drawOthelloBoard'), /if \(last\) drawRecentActionRing\(/);
+  // v1.7.9: the ring waits until the placed disc has landed (motion >= 1).
+  assert.match(functionBody(app, 'drawOthelloBoard'), /if \(last(?: && motion >= 1)?\) drawRecentActionRing\(/);
 });
 
 test('행동 가능 CSS는 최근 행동 표시와 다른 속성·색을 쓰고 감소된 모션을 존중한다', () => {

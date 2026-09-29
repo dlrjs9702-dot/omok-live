@@ -6200,68 +6200,213 @@
     return { cell, left: (canvas.width - cell * 7) / 2, top: 103 };
   }
 
+  // v1.7.9 강한 실물감: the newest piece moves like a real one (a stone set down, a disc flipped, a
+  // disc falling behind the Connect Four grid). Keyed like the recent-action ring; the first snapshot
+  // after entering a room is only a baseline, so a refresh or reconnect never replays an old move.
+  let pieceMotionKey = null;
+  let pieceMotionStart = 0;
+  let pieceMotionFrame = null;
+  function pieceMotion(key, duration) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    // An empty board is a seen state too, so the very first move of a game still animates.
+    if (!key) { pieceMotionKey = ''; return 1; }
+    if (key !== pieceMotionKey) {
+      pieceMotionStart = pieceMotionKey === null ? now - duration : now;
+      pieceMotionKey = key;
+    }
+    if (reducedMotionActive()) return 1;
+    const t = Math.min(1, (now - pieceMotionStart) / duration);
+    if (t < 1 && !pieceMotionFrame && typeof requestAnimationFrame === 'function') {
+      pieceMotionFrame = requestAnimationFrame(() => { pieceMotionFrame = null; if (state) drawBoard(); });
+    }
+    return t;
+  }
+  const easeOutCubic = t => 1 - (1 - t) ** 3;
+  function easeOutBounce(t) {
+    if (t < 1 / 2.75) return 7.5625 * t * t;
+    if (t < 2 / 2.75) return 7.5625 * (t -= 1.5 / 2.75) * t + .75;
+    if (t < 2.5 / 2.75) return 7.5625 * (t -= 2.25 / 2.75) * t + .9375;
+    return 7.5625 * (t -= 2.625 / 2.75) * t + .984375;
+  }
+
+  // Deterministic pseudo-random so textures never flicker between frames.
+  function seededRandom(seed) {
+    let value = seed >>> 0;
+    return () => { value = (value * 1664525 + 1013904223) >>> 0; return value / 4294967296; };
+  }
+  const boardTextureCache = new Map();
+  function boardTexture(kind, width, height, paint) {
+    const key = `${kind}:${width}x${height}`;
+    if (!boardTextureCache.has(key)) {
+      const layer = document.createElement('canvas');
+      layer.width = width;
+      layer.height = height;
+      paint(layer.getContext('2d'), width, height);
+      boardTextureCache.set(key, layer);
+    }
+    return boardTextureCache.get(key);
+  }
+
+  // Kaya go board: warm straight-grain wood, darker growth lines, a bevelled rim.
+  function paintKayaWood(c, w, h) {
+    const base = c.createLinearGradient(0, 0, w, h);
+    base.addColorStop(0, '#eccb8c');
+    base.addColorStop(.5, '#dfb772');
+    base.addColorStop(1, '#d1a45a');
+    c.fillStyle = base;
+    c.fillRect(0, 0, w, h);
+    const rand = seededRandom(1979);
+    for (let i = 0; i < 90; i += 1) {
+      const y = rand() * h;
+      const wave = 2 + rand() * 6;
+      c.strokeStyle = `rgba(${rand() < .5 ? '120,78,32' : '160,108,48'},${.05 + rand() * .1})`;
+      c.lineWidth = .6 + rand() * 1.8;
+      c.beginPath();
+      c.moveTo(0, y);
+      for (let x = 0; x <= w; x += 40) c.lineTo(x, y + Math.sin((x / w) * Math.PI * (1 + rand())) * wave);
+      c.stroke();
+    }
+    const light = c.createRadialGradient(w * .3, h * .25, w * .05, w * .5, h * .5, w * .75);
+    light.addColorStop(0, 'rgba(255,245,220,.22)');
+    light.addColorStop(1, 'rgba(90,55,20,.18)');
+    c.fillStyle = light;
+    c.fillRect(0, 0, w, h);
+    const rim = 14;
+    for (const [x, y, rw, rh, dir] of [[0, 0, w, rim, 'top'], [0, h - rim, w, rim, 'bottom'], [0, 0, rim, h, 'left'], [w - rim, 0, rim, h, 'right']]) {
+      const g = dir === 'top' || dir === 'bottom' ? c.createLinearGradient(0, y, 0, y + rh) : c.createLinearGradient(x, 0, x + rw, 0);
+      const outer = dir === 'top' || dir === 'left' ? 'rgba(255,240,210,.35)' : 'rgba(70,40,10,.4)';
+      g.addColorStop(dir === 'top' || dir === 'left' ? 0 : 1, outer);
+      g.addColorStop(dir === 'top' || dir === 'left' ? 1 : 0, 'rgba(0,0,0,0)');
+      c.fillStyle = g;
+      c.fillRect(x, y, rw, rh);
+    }
+  }
+
+  // Othello board: green baize with a fine nap and a darker edge.
+  function paintBaize(c, w, h) {
+    c.fillStyle = '#1b7446';
+    c.fillRect(0, 0, w, h);
+    const rand = seededRandom(1971);
+    for (let i = 0; i < 9000; i += 1) {
+      c.fillStyle = rand() < .5 ? `rgba(0,40,20,${rand() * .16})` : `rgba(140,220,170,${rand() * .07})`;
+      c.fillRect(rand() * w, rand() * h, 1.4, 1.4);
+    }
+    const vignette = c.createRadialGradient(w / 2, h / 2, w * .3, w / 2, h / 2, w * .75);
+    vignette.addColorStop(0, 'rgba(255,255,255,.04)');
+    vignette.addColorStop(1, 'rgba(0,20,10,.35)');
+    c.fillStyle = vignette;
+    c.fillRect(0, 0, w, h);
+  }
+
   function drawConnect4Board() {
     const w = canvas.width;
     const h = canvas.height;
     const { cell, left, top } = connect4Layout();
     const g = state.game;
-    const surface = ctx.createLinearGradient(0, 0, w, h);
-    surface.addColorStop(0, '#101d34');
-    surface.addColorStop(1, '#071224');
+    const surface = ctx.createLinearGradient(0, 0, 0, h);
+    surface.addColorStop(0, '#15233d');
+    surface.addColorStop(1, '#070f1f');
     ctx.fillStyle = surface;
     ctx.fillRect(0, 0, w, h);
+    const radius = cell * .40;
+    const gridW = cell * 7;
+    const gridH = cell * 6;
 
-    const boardGradient = ctx.createLinearGradient(left, top, left + 7 * cell, top + 6 * cell);
-    boardGradient.addColorStop(0, '#3577ee');
-    boardGradient.addColorStop(1, '#1742a0');
-    ctx.fillStyle = boardGradient;
-    ctx.fillRect(left, top, cell * 7, cell * 6);
-    ctx.strokeStyle = '#80aaff';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(left + 1.5, top + 1.5, cell * 7 - 3, cell * 6 - 3);
-
-    const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
+    // Behind the grid: the dark slot, then the discs (so the plastic frame overlaps their rims).
+    ctx.fillStyle = '#0a1830';
+    ctx.fillRect(left, top, gridW, gridH);
     const last = g.lastMove;
-    const connectRecent = observeRecentAction(last
-      ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}`
-      : null);
+    const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
+    const connectRecent = observeRecentAction(last ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
+    const fall = last ? pieceMotion(`c4:${g.moveCount}:${last.at || ''}`, 260 + 70 * last.y) : 1;
+    const drawDisc = (cx, cy, color) => {
+      ctx.save();
+      const disc = ctx.createRadialGradient(cx - radius * .35, cy - radius * .38, 2, cx, cy, radius);
+      if (color === 'black') { disc.addColorStop(0, '#ff9aa6'); disc.addColorStop(.45, '#e11d48'); disc.addColorStop(1, '#881337'); }
+      else { disc.addColorStop(0, '#fff6b8'); disc.addColorStop(.48, '#facc15'); disc.addColorStop(1, '#b7791f'); }
+      ctx.fillStyle = disc;
+      ctx.beginPath(); ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2); ctx.fill();
+      // Moulded ring on the face, like the real plastic checkers.
+      ctx.strokeStyle = color === 'black' ? 'rgba(80,0,20,.45)' : 'rgba(120,80,0,.4)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, radius * .62, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    };
     for (let y = 0; y < 6; y++) {
       for (let x = 0; x < 7; x++) {
+        const color = g.board[y][x];
+        if (!color) continue;
+        const cx = left + (x + .5) * cell;
+        let cy = top + (y + .5) * cell;
+        if (last?.x === x && last?.y === y && fall < 1) {
+          const from = top - cell * .9;
+          cy = from + (cy - from) * easeOutBounce(fall);
+        }
+        drawDisc(cx, cy, color);
+      }
+    }
+
+    // The blue plastic frame with round holes, drawn over the discs.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left - 14, top - 14, gridW + 28, gridH + 28);
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 7; x++) {
+      const cx = left + (x + .5) * cell;
+      const cy = top + (y + .5) * cell;
+      ctx.moveTo(cx + radius, cy);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    }
+    const plastic = ctx.createLinearGradient(left, top - 14, left + gridW, top + gridH + 14);
+    plastic.addColorStop(0, '#3b82f6');
+    plastic.addColorStop(.5, '#1d4ed8');
+    plastic.addColorStop(1, '#1e3a8a');
+    ctx.fillStyle = plastic;
+    ctx.shadowColor = 'rgba(0,0,0,.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    ctx.fill('evenodd');
+    ctx.restore();
+    ctx.save();
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 7; x++) {
+      const cx = left + (x + .5) * cell;
+      const cy = top + (y + .5) * cell;
+      // Inner bevel of each hole: light top-left, shadow bottom-right.
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(15,23,60,.55)';
+      ctx.beginPath(); ctx.arc(cx, cy, radius - 1, Math.PI * .1, Math.PI * 1.1); ctx.stroke();
+      ctx.strokeStyle = 'rgba(147,197,253,.55)';
+      ctx.beginPath(); ctx.arc(cx, cy, radius - 1, Math.PI * 1.1, Math.PI * 2.1); ctx.stroke();
+    }
+    const gloss = ctx.createLinearGradient(0, top - 14, 0, top + gridH * .45);
+    gloss.addColorStop(0, 'rgba(255,255,255,.18)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gloss;
+    ctx.fillRect(left - 14, top - 14, gridW + 28, 18);
+    // Feet of the stand.
+    ctx.fillStyle = '#1e3a8a';
+    for (const fx of [left - 30, left + gridW + 2]) {
+      ctx.beginPath();
+      ctx.moveTo(fx, top + gridH + 14); ctx.lineTo(fx + 28, top + gridH + 14);
+      ctx.lineTo(fx + 40, h - 6); ctx.lineTo(fx - 12, h - 6); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < 7; x++) {
+        if (!g.board[y][x]) continue;
         const cx = left + (x + .5) * cell;
         const cy = top + (y + .5) * cell;
-        const radius = cell * .40;
-        const color = g.board[y][x];
-        ctx.save();
-        ctx.fillStyle = '#0b1c38';
-        ctx.beginPath(); ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2); ctx.fill();
-        if (color) {
-          ctx.shadowColor = 'rgba(0,0,0,.36)';
-          ctx.shadowBlur = 7;
-          ctx.shadowOffsetY = 3;
-          const disc = ctx.createRadialGradient(cx - radius * .35, cy - radius * .36, 2, cx, cy, radius);
-          if (color === 'black') {
-            disc.addColorStop(0, '#ffa1ab');
-            disc.addColorStop(.45, '#f43f5e');
-            disc.addColorStop(1, '#9f1239');
-          } else {
-            disc.addColorStop(0, '#fff5b0');
-            disc.addColorStop(.48, '#facc15');
-            disc.addColorStop(1, '#ca8a04');
-          }
-          ctx.fillStyle = disc;
-          ctx.beginPath(); ctx.arc(cx, cy, radius - 2, 0, Math.PI * 2); ctx.fill();
-          ctx.shadowBlur = 0;
-          if (winners.has(`${x},${y}`)) {
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 5;
-            ctx.beginPath(); ctx.arc(cx, cy, radius * .77, 0, Math.PI * 2); ctx.stroke();
-          } else if (last?.x === x && last?.y === y) {
-            ctx.fillStyle = color === 'black' ? '#ffffff' : '#6b3e03';
-            ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
-          }
-          if (last?.x === x && last?.y === y) drawRecentActionRing(cx, cy, radius * .9, connectRecent);
+        const isLast = last?.x === x && last?.y === y;
+        if (isLast && fall < 1) continue;
+        if (winners.has(`${x},${y}`)) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.arc(cx, cy, radius * .77, 0, Math.PI * 2); ctx.stroke();
+        } else if (isLast) {
+          ctx.fillStyle = g.board[y][x] === 'black' ? '#ffffff' : '#6b3e03';
+          ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.restore();
+        if (isLast) drawRecentActionRing(cx, cy, radius * .9, connectRecent);
       }
     }
 
@@ -6274,11 +6419,10 @@
       const cx = left + (x + .5) * cell;
       ctx.fillStyle = '#9eb8e8';
       ctx.font = 'bold 17px system-ui, sans-serif';
-      ctx.fillText(String(x + 1), cx, top - 16);
+      ctx.fillText(String(x + 1), cx, top - 30);
     }
     if (boardTurnActionable()) {
-      // Legal columns come from the server; the ring sits where the disc would land (the same
-      // gravity lookup the hover preview below already uses).
+      // Legal columns come from the server; the ring sits where the disc would land.
       for (const x of g.legalColumns || []) {
         let landing = 5;
         while (landing >= 0 && g.board[landing][x]) landing--;
@@ -6292,8 +6436,8 @@
       let landing = 5;
       while (landing >= 0 && g.board[landing][x]) landing--;
       ctx.save();
-      ctx.fillStyle = seat === 'black' ? 'rgba(244,63,94,.75)' : 'rgba(250,204,21,.78)';
-      ctx.beginPath(); ctx.arc(cx, top - 55, cell * .25, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = seat === 'black' ? 'rgba(244,63,94,.85)' : 'rgba(250,204,21,.88)';
+      ctx.beginPath(); ctx.arc(cx, top - 58, cell * .3, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.strokeRect(left + x * cell + 3, top + 3, cell - 6, 6 * cell - 6);
@@ -6308,55 +6452,32 @@
   function drawOmokBoard() {
     const w = canvas.width;
     const h = canvas.height;
-    const gradient = ctx.createLinearGradient(0, 0, w, h);
-    gradient.addColorStop(0, '#e6c17d');
-    gradient.addColorStop(.5, '#d6ab5d');
-    gradient.addColorStop(1, '#c79749');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(boardTexture('kaya', w, h, paintKayaWood), 0, 0);
 
-    ctx.save();
-    ctx.globalAlpha = .08;
-    ctx.strokeStyle = '#6b4b21';
-    for (let y = 16; y < h; y += 29) {
-      ctx.beginPath();
-      ctx.moveTo(0, y + Math.sin(y) * 4);
-      ctx.bezierCurveTo(w * .3, y - 6, w * .65, y + 8, w, y - 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = '#5e4527';
-    ctx.lineWidth = 1.55;
+    ctx.strokeStyle = 'rgba(50,30,10,.82)';
+    ctx.lineWidth = 1.4;
     for (let i = 0; i < SIZE; i++) {
       const p = PAD + i * GRID;
-      ctx.beginPath();
-      ctx.moveTo(PAD, p);
-      ctx.lineTo(w - PAD, p);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p, PAD);
-      ctx.lineTo(p, h - PAD);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PAD, p); ctx.lineTo(w - PAD, p); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p, PAD); ctx.lineTo(p, h - PAD); ctx.stroke();
     }
-
-    ctx.fillStyle = '#51391d';
+    ctx.lineWidth = 2.4;
+    ctx.strokeRect(PAD, PAD, w - PAD * 2, h - PAD * 2);
+    ctx.fillStyle = '#3b2610';
     for (const [x, y] of [[3,3],[11,3],[7,7],[3,11],[11,11]]) {
-      ctx.beginPath();
-      ctx.arc(PAD + x * GRID, PAD + y * GRID, 5.4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(PAD + x * GRID, PAD + y * GRID, 5, 0, Math.PI * 2); ctx.fill();
     }
 
     if (!state) return;
     const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
-    const omokRecent = observeRecentAction(last
-      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
-      : null);
+    const omokRecent = observeRecentAction(last ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
+    const setDown = last ? pieceMotion(`omok:${state.game.moveCount}:${last.at || ''}`, 300) : 1;
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
-        if (color) drawStone(x, y, color, winning.has(`${x},${y}`), last?.x === x && last?.y === y);
+        const isLast = last?.x === x && last?.y === y;
+        if (color) drawStone(x, y, color, winning.has(`${x},${y}`), isLast, isLast ? setDown : 1);
       }
     }
     if (boardTurnActionable()) {
@@ -6366,53 +6487,55 @@
         if (!state.game.board[y][x]) drawActionableMark(PAD + x * GRID, PAD + y * GRID, 3, { rgb: '15,118,110', alpha: .62, fill: true });
       }
     }
-    if (last) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
+    if (last && setDown >= 1) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }
 
-  function drawOthelloDisc(x, y, color, last) {
+  // A two-sided disc: the face colour on top and a sliver of the other side at the rim.
+  function drawOthelloDisc(x, y, color, last, { flip = 1, drop = 1 } = {}) {
     const cell = canvas.width / 8;
     const cx = (x + .5) * cell;
     const cy = (y + .5) * cell;
     const r = cell * .38;
+    // Flipping: the disc turns edge-on and back; the face changes colour at the half-way point.
+    const angle = flip < 1 ? Math.PI * easeOutCubic(flip) : Math.PI;
+    const squash = Math.max(.06, Math.abs(Math.cos(angle)));
+    const face = flip < 1 && flip < .5 ? (color === 'black' ? 'white' : 'black') : color;
+    const lift = (flip < 1 ? Math.sin(angle) * cell * .12 : 0) + (1 - easeOutCubic(drop)) * cell * .3;
+    const scale = 1 + (1 - easeOutCubic(drop)) * .25;
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.28)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    const gradient = ctx.createRadialGradient(cx-r*.3, cy-r*.35, r*.08, cx, cy, r);
-    if (color === 'black') {
-      gradient.addColorStop(0, '#505050');
-      gradient.addColorStop(.45, '#181818');
-      gradient.addColorStop(1, '#020202');
-    } else {
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(.6, '#eeeeee');
-      gradient.addColorStop(1, '#bfc5c9');
-    }
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(cx + 2, cy + 4, r * squash * scale, r * scale * .96, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.translate(cx, cy - lift);
+    ctx.scale(squash * scale, scale);
+    ctx.fillStyle = face === 'black' ? '#e8e8e8' : '#1a1a1a';
+    ctx.beginPath(); ctx.arc(0, 3, r, 0, Math.PI * 2); ctx.fill();
+    const gradient = ctx.createRadialGradient(-r * .3, -r * .35, r * .08, 0, 0, r);
+    if (face === 'black') { gradient.addColorStop(0, '#5a5a5a'); gradient.addColorStop(.45, '#1c1c1c'); gradient.addColorStop(1, '#030303'); }
+    else { gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(.6, '#f1f1ee'); gradient.addColorStop(1, '#c4c8cb'); }
     ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-    if (last) {
+    if (last && flip >= 1 && drop >= 1) {
       ctx.fillStyle = color === 'black' ? '#f8fafc' : '#ef4444';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   function drawOthelloBoard() {
     const w = canvas.width;
     const cell = w / 8;
-    ctx.fillStyle = '#18794e';
-    ctx.fillRect(0, 0, w, w);
-    ctx.strokeStyle = 'rgba(4,38,24,.85)';
-    ctx.lineWidth = 2;
+    ctx.drawImage(boardTexture('baize', w, w, paintBaize), 0, 0);
+    ctx.strokeStyle = 'rgba(3,30,16,.9)';
+    ctx.lineWidth = 2.5;
     for (let i = 0; i <= 8; i += 1) {
       const p = i * cell;
       ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, w); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(3,30,16,.95)';
+    for (const [x, y] of [[2, 2], [6, 2], [2, 6], [6, 6]]) {
+      ctx.beginPath(); ctx.arc(x * cell, y * cell, 5, 0, Math.PI * 2); ctx.fill();
     }
 
     // Only the server's legalMoves list for my turn -- never "every empty square".
@@ -6424,22 +6547,29 @@
     }
 
     const last = state?.game?.lastMove;
-    const othelloRecent = observeRecentAction(last
-      ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}`
-      : null);
-    const flippedCells = new Set((last?.flippedCells || []).map(cell => `${cell.x},${cell.y}`));
+    const othelloRecent = observeRecentAction(last ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
+    const flippedCells = new Set((last?.flippedCells || []).map(item => `${item.x},${item.y}`));
+    // The placed disc lands first, then its captured neighbours turn over one after another.
+    const flipCount = flippedCells.size;
+    const motion = last ? pieceMotion(`oth:${state.game.moveCount}:${last.at || ''}`, 260 + 110 * flipCount + 320) : 1;
+    const elapsedMs = motion * (260 + 110 * flipCount + 320);
+    const flipOrder = [...flippedCells];
     for (let y = 0; y < 8; y += 1) {
       for (let x = 0; x < 8; x += 1) {
         const color = state?.game?.board?.[y]?.[x];
-        if (color) {
-          drawOthelloDisc(x, y, color, last?.x === x && last?.y === y);
-          if (othelloRecent.fresh && flippedCells.has(`${x},${y}`)) {
-            drawRecentActionRing((x + .5) * cell, (y + .5) * cell, cell * .34, othelloRecent, { secondary: true });
-          }
+        if (!color) continue;
+        const key = `${x},${y}`;
+        const isLast = last?.x === x && last?.y === y;
+        const order = flipOrder.indexOf(key);
+        const drop = isLast ? Math.min(1, elapsedMs / 260) : 1;
+        const flip = order >= 0 && motion < 1 ? Math.max(0, Math.min(1, (elapsedMs - 200 - order * 110) / 320)) : 1;
+        drawOthelloDisc(x, y, color, isLast, { flip, drop });
+        if (othelloRecent.fresh && flippedCells.has(key) && flip >= 1) {
+          drawRecentActionRing((x + .5) * cell, (y + .5) * cell, cell * .34, othelloRecent, { secondary: true });
         }
       }
     }
-    if (last) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
+    if (last && motion >= 1) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
 
     if (hover && canPlace(hover.x, hover.y)) {
       ctx.strokeStyle = '#f8fafc';
@@ -6448,40 +6578,42 @@
     }
   }
 
-  function drawStone(x, y, color, winning, last) {
+  // Go stones: slate-black with a soft sheen, clamshell-white with faint growth lines. The newest
+  // stone is set down from just above the board (bigger, higher shadow) and settles.
+  function drawStone(x, y, color, winning, last, setDown = 1) {
     const cx = PAD + x * GRID;
     const cy = PAD + y * GRID;
-    const r = GRID * .42;
+    const r = GRID * .44;
+    const rise = 1 - easeOutCubic(setDown);
+    const scale = 1 + rise * .3;
+    const lift = rise * GRID * .45;
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.28)';
-    ctx.shadowBlur = 9;
-    ctx.shadowOffsetY = 4;
-    const g = ctx.createRadialGradient(cx-r*.35, cy-r*.38, r*.1, cx, cy, r);
-    if (color === 'black') {
-      g.addColorStop(0, '#5b5b5b');
-      g.addColorStop(.38, '#252525');
-      g.addColorStop(1, '#050505');
-    } else {
-      g.addColorStop(0, '#fff');
-      g.addColorStop(.55, '#f2f2f2');
-      g.addColorStop(1, '#c9c9c9');
-    }
+    ctx.fillStyle = `rgba(40,20,0,${.32 - rise * .12})`;
+    ctx.beginPath(); ctx.ellipse(cx + 2 + lift * .3, cy + 3 + lift * .2, r * scale * (1 + rise * .15), r * scale * .92, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.translate(cx, cy - lift);
+    ctx.scale(scale, scale);
+    const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .08, 0, 0, r);
+    if (color === 'black') { g.addColorStop(0, '#6e6e6e'); g.addColorStop(.35, '#2b2b2b'); g.addColorStop(1, '#070707'); }
+    else { g.addColorStop(0, '#ffffff'); g.addColorStop(.55, '#f3f1ea'); g.addColorStop(1, '#c9c4b8'); }
     ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    if (color === 'white') {
+      ctx.strokeStyle = 'rgba(150,140,120,.13)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 4; i += 1) { ctx.beginPath(); ctx.arc(0, r * 1.6, r * (1.1 + i * .16), Math.PI * 1.28, Math.PI * 1.72); ctx.stroke(); }
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,.1)';
+      ctx.beginPath(); ctx.ellipse(-r * .3, -r * .38, r * .38, r * .2, -.6, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
+    if (setDown < 1) return;
     if (winning) {
       ctx.strokeStyle = color === 'black' ? '#ffd85a' : '#ef4444';
       ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * .72, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, Math.PI * 2); ctx.stroke();
     } else if (last) {
       ctx.fillStyle = color === 'black' ? '#f8fafc' : '#ef4444';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 5.2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 5.2, 0, Math.PI * 2); ctx.fill();
     }
   }
 
