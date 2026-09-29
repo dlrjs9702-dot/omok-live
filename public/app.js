@@ -1368,6 +1368,12 @@
       if (!info.authenticated) return expireSession('입장 세션이 만료되었습니다.');
       sessionRole = info.role;
       sessionLabel = info.label;
+      if (info.features?.rpg) {
+        const rpgButton = document.querySelector('.gameChoice[data-game="rpg"]');
+        rpgButton.disabled = false;
+        rpgButton.removeAttribute('aria-disabled');
+        rpgButton.removeAttribute('title');
+      }
       identityLabel.textContent = identityText();
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');

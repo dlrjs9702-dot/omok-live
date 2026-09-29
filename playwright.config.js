@@ -58,6 +58,7 @@ module.exports = defineConfig({
         ADMIN_PASSWORD: adminPassword,
         DATA_DIR: dataDir,
         DATABASE_URL: '',
+        RPG_ENABLED: '1',
       },
     },
   } : {}),

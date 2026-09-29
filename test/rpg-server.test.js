@@ -18,10 +18,10 @@ async function freePort() {
   });
 }
 
-async function startServer(dataDir, port) {
+async function startServer(dataDir, port, rpgEnabled = true) {
   const proc = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir, DATABASE_URL: '', ADMIN_PASSWORD: 'gostop-test', NODE_ENV: 'test' },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir, DATABASE_URL: '', ADMIN_PASSWORD: 'gostop-test', NODE_ENV: 'test', RPG_ENABLED: rpgEnabled ? '1' : '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -135,4 +135,27 @@ test('잿빛 원정 서버: 역할·시작 권한·관전자 차단·실시간 �
   assert.equal((await fetch(base + '/vendor/three/package.json')).status, 404);
   assert.equal((await fetch(base + '/vendor/../node_modules/pg/package.json')).status, 404);
   assert.equal((await fetch(base + '/rpg/rpg-client.js')).status, 200);
+});
+
+test('잿빛 원정 스위치: 꺼짐이면 방 생성 403·features.rpg false·다른 게임 정상, 켜짐이면 true', { timeout: 30_000 }, async (t) => {
+  for (const enabled of [false, true]) {
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rpg-switch-'));
+    const port = await freePort();
+    const base = `http://127.0.0.1:${port}`;
+    const proc = await startServer(dataDir, port, enabled);
+    t.after(async () => { await stopServer(proc); await fs.rm(dataDir, { recursive: true, force: true }); });
+    const call = async (route, token, body, method = 'POST') => {
+      const headers = { 'X-Forwarded-For': '10.83.0.1' };
+      if (token) headers['X-Session-Token'] = token;
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const res = await fetch(base + route, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+      return { status: res.status, data: await res.json().catch(() => ({})) };
+    };
+    const admin = (await call('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
+    assert.equal((await call('/api/session', admin, undefined, 'GET')).data.features.rpg, enabled);
+    const rpg = await call('/api/rooms', admin, { gameType: 'rpg' });
+    if (enabled) assert.equal(rpg.status, 201);
+    else assert.deepEqual([rpg.status, rpg.data.error], [403, 'GAME_DISABLED']);
+    assert.equal((await call('/api/rooms', admin, { gameType: 'omok' })).status, 201);
+  }
 });

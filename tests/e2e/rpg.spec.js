@@ -32,9 +32,7 @@ const mySnap = async (page, seat = '1') => (await debug(page))?.snap?.p.find(p =
 
 async function createRoom(host) {
   const rpgButton = host.page.locator('[data-game="rpg"]');
-  await expect(rpgButton).toBeDisabled();
-  // 운영 로비에서는 선택을 막지만, 내부 회귀 테스트는 RPG 본체를 계속 검증한다.
-  await rpgButton.evaluate(button => { button.disabled = false; button.removeAttribute('aria-disabled'); });
+  await expect(rpgButton).toBeEnabled();
   await rpgButton.click();
   const [created] = await Promise.all([
     host.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),

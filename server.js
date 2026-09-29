@@ -66,6 +66,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const RPG_ENABLED = process.env.RPG_ENABLED === '1'; // 잿빛 원정 기능 스위치: 기본 꺼짐, 로컬 개발에서만 켠다.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : 'dev-admin');
 const MAX_BODY = 48 * 1024;
 const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 60)) * 60 * 1000;
@@ -2540,7 +2541,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/session' && req.method === 'GET') {
     const session = getSession(req);
     if (!session) return sendJson(res, 200, { authenticated: false });
-    return sendJson(res, 200, { authenticated: true, role: session.role, label: session.label, hasRoom: Boolean(getCurrentRoom(session)) });
+    return sendJson(res, 200, { authenticated: true, role: session.role, label: session.label, hasRoom: Boolean(getCurrentRoom(session)), features: { rpg: RPG_ENABLED } });
   }
 
   if (pathname === '/api/session/heartbeat' && req.method === 'POST') {
@@ -2949,6 +2950,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const gameType = String(body.gameType || 'omok').toLowerCase();
     if (!hasGame(gameType)) return sendError(res, 400, 'BAD_GAME_TYPE', '지원하지 않는 게임입니다.');
+    if (gameType === 'rpg' && !RPG_ENABLED) return sendError(res, 403, 'GAME_DISABLED', '잿빛 원정은 현재 개발 중이라 이용할 수 없습니다.');
     const visibility = body.visibility === undefined ? 'private' : body.visibility;
     if (visibility !== 'public' && visibility !== 'private') {
       return sendError(res, 400, 'BAD_VISIBILITY', '공개방 또는 비공개방을 선택해 주세요.');
@@ -3175,7 +3177,10 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.6 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => {
+    console.log(`게임 서버 v1.7.6 실행: http://${HOST}:${PORT}`);
+    console.log(RPG_ENABLED ? '잿빛 원정: 활성(RPG_ENABLED=1)' : '잿빛 원정: 비활성');
+  });
 }
 
 main().catch((err) => {
