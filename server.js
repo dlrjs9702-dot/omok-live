@@ -648,6 +648,7 @@ function registerParticipant(room, session) {
   p.label = session.label;
   p.connected = true;
   p.rejoinable = false;
+  p.rejoinOnlyWhilePlaying = false;
   p.lastSeen = nowIso();
   if (room.hostIdentity === sessionIdentity(session)) room.hostSessionToken = session.token;
   if (room.game.status !== 'selecting' && !findSeat(room, session.token)) p.choice = 'spectator';
@@ -744,10 +745,10 @@ function syncGamePause(room, allowTimeouts = true) {
     // Drawer disconnects use the dedicated reconnect grace clock above; don't also run the generic
     // turn clock or the round could expire twice for the same outage.
     // v1.6.99: a turn player who drops still gets the full reconnect grace, but coming back to
-    // the same phase continues the time already used instead of a fresh 60 seconds.
+    // the same phase keeps the original deadline instead of a fresh 60 seconds.
     const base = `${room.game.phase}:${turnSeat}`;
     const previous = room.turnWatch;
-    const keptTime = previous?.key === `${base}:idle` ? { base, elapsed: now - previous.since }
+    const keptTime = previous?.key === `${base}:idle` ? { base, since: previous.since }
       : (previous?.resume?.base === base ? previous.resume : null);
     if (turnSeat === drawerSeat && drawerDisconnected) {
       // No turn clock runs here (the drawer grace above does); only the used time is remembered.
@@ -758,7 +759,7 @@ function syncGamePause(room, allowTimeouts = true) {
     const turnDisconnected = disconnected.includes(turnSeat);
     const watchKey = `${base}:${turnDisconnected ? 'disconnected' : 'idle'}`;
     if (!room.turnWatch || room.turnWatch.key !== watchKey) {
-      const since = !turnDisconnected && previous?.resume?.base === base ? now - previous.resume.elapsed : now;
+      const since = !turnDisconnected && previous?.resume?.base === base ? previous.resume.since : now;
       room.turnWatch = { key: watchKey, seat: turnSeat, since, resume: turnDisconnected ? keptTime : null };
       return { stateChanged: false, gameFinished: false };
     }
@@ -792,9 +793,13 @@ function syncGamePause(room, allowTimeouts = true) {
   if (isPictionary(room) || isLiar(room) || isMarathon(room)) {
     room.turnWatch = null;
   } else if (disconnected.length > 0) {
-    // v1.6.99: the turn clock is frozen while the room is paused for a dropped player (a refresh
-    // included) and resumes with the time already used, instead of restarting at 60 seconds.
-    if (room.turnWatch && !room.turnWatch.pausedAt) room.turnWatch.pausedAt = Date.now();
+    // v1.6.99: while the room is paused for someone else's dropped connection (a refresh included)
+    // the turn player cannot act, so their clock is frozen and later resumes where it was instead
+    // of restarting at 60 seconds. A turn player who dropped themselves keeps their deadline.
+    const turnSeat = currentTurnSeat(room);
+    if (room.turnWatch && room.turnWatch.seat === turnSeat && !room.turnWatch.pausedAt && !disconnected.includes(turnSeat)) {
+      room.turnWatch.pausedAt = Date.now();
+    }
   } else {
     const turnSeat = currentTurnSeat(room);
     if (room.turnWatch?.pausedAt) {
@@ -994,10 +999,11 @@ function prepareNextRound(room) {
   room.game.disconnectedAtEnd = [];
   if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     // v1.6.99: a seat whose player left the room (not a dropped connection that may still come
-    // back) is freed, so the next round is not blocked by an empty chair.
+    // back) is freed, so the next round is not blocked by an empty chair. An explicit 접속 종료
+    // only held the seat while that match was in progress.
     for (const [seatId, token] of Object.entries(room.players)) {
       const person = token && room.participants[token];
-      if (token && (!person || (!person.connected && !person.rejoinable))) room.players[seatId] = null;
+      if (token && (!person || (!person.connected && (!person.rejoinable || person.rejoinOnlyWhilePlaying)))) room.players[seatId] = null;
     }
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
@@ -2143,7 +2149,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.6.98' });
+    return sendJson(res, 200, { ok: true, version: '1.6.99' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2850,7 +2856,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.98 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.99 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
