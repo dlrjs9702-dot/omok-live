@@ -1252,7 +1252,19 @@ async function chargeRoomEntry(room) {
   const n = (room.pointRound || 0) + 1;
   room.pointRound = n;
   const entryId = `game-entry:${room.id}:${n}`;
-  const outcome = await pointStore.chargeEntry({ entryId, gameType: room.gameType, matchId: `${room.id}:${room.game.round}`, participants: ids, fee: ENTRY_FEE });
+  // v1.7.6: an error can arrive after the database already committed (a dropped connection at COMMIT),
+  // so the id is remembered: it is never treated as an orphan while this call is in flight, and the
+  // caller can settle it (refund) before letting the start be retried.
+  inflightEntryIds.add(entryId);
+  let outcome;
+  try {
+    outcome = await pointStore.chargeEntry({ entryId, gameType: room.gameType, matchId: `${room.id}:${room.game.round}`, participants: ids, fee: ENTRY_FEE });
+  } catch (error) {
+    error.entryId = entryId;
+    throw error;
+  } finally {
+    inflightEntryIds.delete(entryId);
+  }
   if (outcome.insufficient) {
     const short = new Set(outcome.insufficient);
     return { ok: false, short: players.filter(player => short.has(player.id)).map(player => player.label) };
@@ -1301,22 +1313,95 @@ function scheduleEntryRetry(room, entryId) {
 }
 
 // The system could not finish this game (the room expired mid-game): every entry fee goes back.
+// A failed refund is retried in the background (same ids, so it can only ever apply once).
 async function refundRoomEntry(room, reason) {
   const entry = room.entry;
   if (!entry || entry.status !== 'charged') return;
-  const outcome = await pointStore.refundEntry({ refundId: `game-refund:${room.id}:${entry.n}`, entryId: entry.id, reason });
+  let outcome;
+  try {
+    outcome = await pointStore.refundEntry({ refundId: `game-refund:${room.id}:${entry.n}`, entryId: entry.id, reason });
+  } catch (error) {
+    scheduleRefundRetry(room, entry.id, reason);
+    throw error;
+  }
+  clearTimeout(room.refundRetry); room.refundRetry = null;
   if (outcome.kind === 'refund' || outcome.closed?.startsWith?.('game-refund:')) entry.status = 'refunded';
+  else if (outcome.closed) entry.status = 'settled';
+  if (outcome.applied) notifyPointsChanged(outcome.participants || entry.participants || []);
 }
 
-// A server restart loses every in-memory game: entries that were charged but never paid out or
-// refunded belong to games that can no longer finish, so they are refunded once at startup.
-async function refundOrphanEntries() {
+function scheduleRefundRetry(room, entryId, reason) {
+  if (room.refundRetry) return;
+  const attempt = room.refundAttempts || 0;
+  room.refundAttempts = attempt + 1;
+  room.refundRetry = setTimeout(() => {
+    room.refundRetry = null;
+    if (room.entry?.id !== entryId) return;
+    refundRoomEntry(room, reason).catch(error => console.error('참가 포인트 환불 재시도 실패:', error.message));
+  }, ENTRY_RETRY_MS[Math.min(attempt, ENTRY_RETRY_MS.length - 1)]);
+  room.refundRetry.unref?.();
+}
+
+// Entries a live process is still responsible for: the current entry of every room, entries of expired
+// rooms whose payout/refund is still being retried, and charges that have not returned yet.
+const inflightEntryIds = new Set();
+const expiredEntries = new Set();
+function liveEntryIds() {
+  const ids = new Set(inflightEntryIds);
+  for (const room of rooms.values()) if (room.entry?.status === 'charged') ids.add(room.entry.id);
+  for (const entry of [...expiredEntries]) {
+    if (entry.status === 'charged') ids.add(entry.id);
+    else expiredEntries.delete(entry);
+  }
+  return ids;
+}
+
+// Refunds every open entry that no live room owns: games a restart cut off, and a charge whose
+// database commit succeeded although the request failed. The ids are shared with the normal refund,
+// so a second run (or a late retry) finds it closed and does nothing.
+async function refundOrphanEntries(reason = 'server-restart') {
   let refunded = 0;
   for (const entryId of await pointStore.openEntries()) {
-    const outcome = await pointStore.refundEntry({ refundId: entryId.replace(/^game-entry:/, 'game-refund:'), entryId, reason: 'server-restart' });
-    if (outcome.applied) refunded += 1;
+    if (liveEntryIds().has(entryId)) continue;
+    const outcome = await pointStore.refundEntry({ refundId: entryId.replace(/^game-entry:/, 'game-refund:'), entryId, reason });
+    if (outcome.applied) { refunded += 1; notifyPointsChanged(outcome.participants || []); }
   }
   return refunded;
+}
+
+// A failed start: settle the (possibly committed) charge right away, best effort. Anything this misses
+// is caught by the periodic orphan sweep.
+async function reclaimFailedEntry(entryId) {
+  if (!entryId) return;
+  try {
+    const outcome = await pointStore.refundEntry({ refundId: entryId.replace(/^game-entry:/, 'game-refund:'), entryId, reason: 'charge-error' });
+    if (outcome.applied) notifyPointsChanged(outcome.participants || []);
+  } catch (error) { console.error('참가 포인트 오류 복구 지연(정기 정리에서 처리):', error.message); }
+}
+
+// Tell the affected online players their balance changed (lobby SSE event / room broadcast); the
+// client re-reads /api/points only on this event, never on every update.
+function notifyPointsChanged(userIds) {
+  const wanted = new Set(userIds.filter(validUserId));
+  if (!wanted.size) return;
+  for (const entry of [...lobbyStreams]) {
+    const session = sessions.get(entry.sessionToken);
+    if (!session || !wanted.has(pointAccountForSession(session))) continue;
+    try { sseWrite(entry.res, 'pointsChanged', {}); } catch { lobbyStreams.delete(entry); }
+  }
+  const roomIds = new Set();
+  for (const session of sessions.values()) if (session.currentRoomId && wanted.has(pointAccountForSession(session))) roomIds.add(session.currentRoomId);
+  for (const id of roomIds) { const room = rooms.get(id); if (room) broadcast(room); }
+}
+
+// v1.7.3: a finished game still pays out; one that never finished is refunded. v1.7.6: the entry stays
+// owned by this process (not an orphan) until that succeeds, and both paths retry in the background.
+function expireRoom(room) {
+  rooms.delete(room.id);
+  if (room.entry?.status !== 'charged') return Promise.resolve();
+  expiredEntries.add(room.entry);
+  return (['finished', 'draw'].includes(room.game.status) ? settleEntryIfNeeded(room) : refundRoomEntry(room, 'room-expired'))
+    .catch(error => console.error('참가 포인트 정리 실패:', error.message));
 }
 
 async function recordPlayers() {
@@ -2259,7 +2344,7 @@ async function handleRoomAction(req, res, action, session) {
     const pending = chargeRoomEntry(room);
     room.entryPending = pending;
     try { charged = await pending; }
-    catch (error) { console.error('참가 포인트 차감 실패:', error); charged = { ok: false, error: true }; }
+    catch (error) { console.error('참가 포인트 차감 실패:', error); charged = { ok: false, error: true }; await reclaimFailedEntry(error?.entryId); }
     finally { if (room.entryPending === pending) room.entryPending = null; }
     if (!charged.ok) {
       restoreEntrySnapshot(room, entryBefore);
@@ -2287,7 +2372,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.5' });
+    return sendJson(res, 200, { ok: true, version: '1.7.6' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2400,6 +2485,43 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const result = await pointStore.testSpendTo(pointAccountForSession(session), Number(body.balance));
     return sendJson(res, 200, { ok: true, ...result });
+  }
+
+  // Test-only fault injection for the v1.7.6 recovery paths: the next `chargeAfterCommit` charges commit and
+  // then fail (a dropped connection at COMMIT); the next `refundFail` refunds throw.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-fault' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    if (!pointStore.faults) {
+      pointStore.faults = { chargeAfterCommit: 0, refundFail: 0 };
+      const charge = pointStore.chargeEntry.bind(pointStore);
+      const refund = pointStore.refundEntry.bind(pointStore);
+      pointStore.chargeEntry = async (raw) => {
+        const result = await charge(raw);
+        if (pointStore.faults.chargeAfterCommit > 0 && result.applied) { pointStore.faults.chargeAfterCommit -= 1; throw new Error('injected: connection lost after COMMIT'); }
+        return result;
+      };
+      pointStore.refundEntry = async (raw) => {
+        if (pointStore.faults.refundFail > 0) { pointStore.faults.refundFail -= 1; throw new Error('injected: refund failure'); }
+        return refund(raw);
+      };
+    }
+    Object.assign(pointStore.faults, { chargeAfterCommit: Number(body.chargeAfterCommit) || 0, refundFail: Number(body.refundFail) || 0 });
+    return sendJson(res, 200, { ok: true, faults: pointStore.faults });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/expire-room' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const room = getCurrentRoom(session);
+    if (!room) return sendError(res, 404, 'NO_ROOM', '방이 없습니다.');
+    expireRoom(room);
+    return sendJson(res, 200, { ok: true });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-sweep' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    return sendJson(res, 200, { ok: true, refunded: await refundOrphanEntries('orphan-sweep') });
   }
 
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/gostop-fixture' && req.method === 'POST') {
@@ -2617,11 +2739,12 @@ async function requestHandler(req, res) {
     const key = (await accessStore.list()).find(item => item.id === grantMatch[1] && !item.revokedAt);
     if (!key) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 계정을 찾을 수 없습니다.');
     // Only well-formed grants count toward the limit (a typo does not lock the operator out).
-    if (!checkRateLimit('grant:' + key.id, 20, 60 * 1000)) {
+    if (!checkRateLimit('grant:all', 20, 60 * 1000)) { // one bucket for the whole operation, not per target account
       return sendError(res, 429, 'GRANT_RATE_LIMIT', '포인트 지급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
     }
     const outcome = await pointStore.adminGrant({ grantId: `admin-grant:${requestId}`, userId: `guest:${key.id}`, amount, category: body.category, memo: body.category === 'other' ? body.memo : '' });
     if (outcome.userId && outcome.userId !== `guest:${key.id}`) return sendError(res, 409, 'GRANT_ID_REUSED', '이미 다른 지급에 사용된 요청입니다. 다시 열어 주세요.');
+    if (outcome.applied) notifyPointsChanged([`guest:${key.id}`]);
     return sendJson(res, 200, { ok: true, applied: outcome.applied, label: key.label, amount: outcome.amount,
       balanceBefore: outcome.balanceBefore, balanceAfter: outcome.balanceAfter, category: outcome.summary?.category || body.category });
   }
@@ -3035,12 +3158,7 @@ async function main() {
     for (const [id, room] of rooms) {
       const age = now - new Date(room.updatedAt).getTime();
       if (age > ROOM_TTL_MS && !streams.has(id)) {
-        rooms.delete(id);
-        // v1.7.3: a finished game still pays out; one that never finished is refunded.
-        if (room.entry?.status === 'charged') {
-          (['finished', 'draw'].includes(room.game.status) ? settleEntryIfNeeded(room) : refundRoomEntry(room, 'room-expired'))
-            .catch(error => console.error('참가 포인트 정리 실패:', error.message));
-        }
+        expireRoom(room);
       }
     }
     for (const [key, row] of rateLimits) {
@@ -3049,6 +3167,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
+  setInterval(() => refundOrphanEntries('orphan-sweep').catch(error => console.error('참가 포인트 정기 정리 실패:', error.message)), 60_000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
   setInterval(() => { try { tickRpgRooms(); } catch (error) { console.error('잿빛 원정 진행 오류:', error); } }, 50).unref();
@@ -3056,7 +3175,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.5 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.6 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

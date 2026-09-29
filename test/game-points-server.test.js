@@ -66,7 +66,7 @@ async function boot(t, dataDir) {
   }
   const balance = async person => (await req('/api/points', person.session)).data.balance;
   const room = async person => (await req('/api/room', person.session)).data.state;
-  return { req, enter, guest, balance, room, admin, stop, logs: () => logs };
+  return { req, enter, guest, balance, room, admin, stop, base, logs: () => logs };
 }
 
 async function openRoom(fx, gameType, host, others) {
@@ -246,4 +246,106 @@ test('관리자 포인트 지급 API: 10,000P 단위·사유 필수·관리자�
   // 권한 취소된 계정에는 지급하지 않는다.
   assert.equal((await fx.req(`/api/admin/keys/${intruder.id}/revoke`, fx.admin, {})).status, 200);
   assert.equal((await grant(fx.admin, { amount: 10_000 }, intruder.id)).status, 404);
+});
+
+// ---- v1.7.6 recovery paths (PR #53 review follow-up) ------------------------------------------
+async function connect4Pair(fx) {
+  const [a, b] = [await fx.guest('가'), await fx.guest('나')];
+  await openRoom(fx, 'connect4', a, [b]);
+  assert.equal((await fx.req('/api/room/choose-role', a.session, { choice: 'black' })).status, 200);
+  return [a, b];
+}
+const reasons = async (fx, person) => (await fx.req('/api/points/history?limit=10', person.session)).data.items.map(item => item.reason);
+
+test('참가비 COMMIT 직후 오류: 재시도해도 이중 차감되지 않는다(즉시 복구, 복구 실패 시 정기 정리)', { timeout: 60000 }, async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const [a, b] = await connect4Pair(fx);
+
+  // 1) 저장은 됐는데 응답이 실패: 시작은 취소되고 같은 참가비를 바로 환불한다.
+  assert.equal((await fx.req('/api/test/points-fault', a.session, { chargeAfterCommit: 1 })).status, 200);
+  const failed = await fx.req('/api/room/choose-role', b.session, { choice: 'white' });
+  assert.equal(failed.status, 503);
+  assert.equal(failed.data.error, 'POINTS_UNAVAILABLE');
+  assert.equal((await fx.room(a)).game.status, 'selecting');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '차감이 남지 않는다');
+  assert.deepEqual((await reasons(fx, b)).slice(0, 2), ['game_refund', 'game_entry']);
+  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200, '재시도 성공');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000], '재시도는 1,000P 한 번만');
+  assert.equal((await fx.req('/api/test/points-sweep', a.session, {})).data.refunded, 0, '진행 중인 판의 참가비는 정리 대상이 아니다');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000]);
+});
+
+test('참가비 오류 뒤 즉시 환불도 실패하면 잔액이 묶이지만 정기 정리가 한 번만 환불한다', { timeout: 60000 }, async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const [a, b] = await connect4Pair(fx);
+  assert.equal((await fx.req('/api/test/points-fault', a.session, { chargeAfterCommit: 1, refundFail: 1 })).status, 200);
+  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 503);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000], '복구가 실패한 동안 묶여 있다');
+  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [98_000, 98_000], '새 참가비(다른 id)는 별개');
+  assert.equal((await fx.req('/api/test/points-sweep', a.session, {})).data.refunded, 1, '고아 참가비만 환불');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000], '최종적으로 참가비는 한 번');
+  assert.equal((await fx.req('/api/test/points-sweep', a.session, {})).data.refunded, 0, '반복 정리는 추가로 주지 않는다');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000]);
+});
+
+test('만료된 방의 환불이 DB 오류로 실패해도 재시도로 한 번 환불된다(그동안 고아 정리가 끼어들지 않는다)', { timeout: 60000 }, async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const [a, b] = await connect4Pair(fx);
+  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000]);
+  assert.equal((await fx.req('/api/test/points-fault', a.session, { refundFail: 1 })).status, 200);
+  assert.equal((await fx.req('/api/test/expire-room', a.session, {})).status, 200);
+  await sleep(300);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000], '첫 환불은 실패');
+  assert.equal((await fx.req('/api/test/points-sweep', a.session, {})).data.refunded, 0, '재시도 중인 참가비는 고아가 아니다');
+  for (let i = 0; i < 40 && await fx.balance(a) !== 100_000; i += 1) await sleep(250);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '재시도로 환불');
+  await sleep(300);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '한 번만');
+  assert.equal((await reasons(fx, a)).filter(reason => reason === 'game_refund').length, 1);
+});
+
+test('관리자 지급: 접속 중인 대상에게 pointsChanged가 가고, 제한은 대상이 달라도 전체 분당 20회', { timeout: 60000 }, async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const people = [await fx.guest('하나'), await fx.guest('둘'), await fx.guest('셋')];
+  const grant = (person, extra = {}) => fx.req(`/api/admin/keys/${person.id}/points`, fx.admin, { requestId: crypto.randomUUID(), category: 'event', amount: 10_000, ...extra });
+
+  // 대상의 로비 SSE에 pointsChanged가 도착한다(다른 사람에게는 가지 않는다).
+  const listen = async (person) => {
+    const controller = new AbortController();
+    const seen = { text: '' };
+    const res = await fetch(fx.base + '/api/lobby/events', { headers: { 'X-Session-Token': person.session }, signal: controller.signal });
+    (async () => { try { for await (const chunk of res.body) seen.text += Buffer.from(chunk).toString(); } catch {} })();
+    t.after(() => controller.abort());
+    return seen;
+  };
+  const [target, other] = [await listen(people[0]), await listen(people[1])];
+  await sleep(300);
+  assert.equal(target.text.includes('pointsChanged'), false);
+  assert.equal((await grant(people[0])).status, 200);
+  for (let i = 0; i < 30 && !target.text.includes('event: pointsChanged'); i += 1) await sleep(100);
+  assert.ok(target.text.includes('event: pointsChanged'), '대상에게 갱신 이벤트');
+  await sleep(200);
+  assert.equal(other.text.includes('event: pointsChanged'), false, '다른 사용자에게는 보내지 않는다');
+  // 같은 요청 id 재전송은 지급도 이벤트도 다시 만들지 않는다.
+  const same = crypto.randomUUID();
+  assert.equal((await grant(people[2], { requestId: same })).data.applied, true);
+  const before = target.text.length;
+  assert.equal((await grant(people[0], { requestId: same })).status, 409);
+
+  // 전체 20회: 이미 성공 2건 + 여기서 18건 = 20건, 대상이 달라도 21번째는 429.
+  for (let i = 0; i < 17; i += 1) assert.equal((await grant(people[i % 3])).status, 200, `${i}`);
+  const limited = await grant(people[1]);
+  assert.equal(limited.status, 429);
+  assert.equal(limited.data.error, 'GRANT_RATE_LIMIT');
+  assert.ok(before <= target.text.length);
 });

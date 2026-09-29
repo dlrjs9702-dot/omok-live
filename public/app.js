@@ -2655,6 +2655,8 @@
       renderLobbyChat();
       renderPublicRooms();
       renderLobbyInvitations();
+    } else if (event === 'pointsChanged') {
+      loadPoints(); // the server changed my balance (operator grant, refund): re-read it once
     } else if (event === 'announcements') {
       announcements = Array.isArray(parsed.items) ? parsed.items : [];
       renderAnnouncements();

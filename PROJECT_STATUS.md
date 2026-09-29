@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.6 포인트 처리 안정화 (PR #53 후속)
+
+- 배경: PR #53(v1.7.3)이 병합된 뒤(07:29) 달린 Codex 리뷰 P1 1건·P2 3건. 4건 모두 코드로 확인해 유효 판정.
+- P1 참가비 이중 차감: `chargeEntry`가 COMMIT 뒤 오류(연결 끊김)를 내면 차감은 저장됐는데 게임만 되돌아가고, 재시작이 `pointRound`를 올린 새 id로 다시 차감했다(첫 차감은 다음 서버 재시작까지 묶임). 수정: ① 오류가 난 참가비 id를 예외에 실어 바로 같은 id로 환불을 시도(`reclaimFailedEntry`, 환불은 id 기준 1회만 적용) ② 실패에 대비해 60초마다 어느 방에도 속하지 않은 열린 참가비를 환불(`refundOrphanEntries`, 기동 시 정리와 같은 함수). 진행 중인 방의 참가비·처리 중인 charge·만료 방의 재시도 중인 참가비는 「살아 있는」 것으로 보아(`liveEntryIds`) 건드리지 않는다.
+- P2 지급 반영: 지급·환불이 실제로 적용되면 대상의 로비 SSE에 `pointsChanged`를 보내고(방에 있으면 방 브로드캐스트), 클라이언트는 이 이벤트가 올 때만 `loadPoints()`를 호출한다(열린 포인트 내역도 잔액이 달라졌을 때 다시 조회). 매 SSE마다 조회하는 구조는 아니다.
+- P2 지급 제한: 키를 `grant:all` 하나로 바꿔 대상 계정과 무관하게 분당 20회.
+- P2 만료 방 환불: `expireRoom`이 참가비를 「소유」한 채 환불/정산을 시작하고, 환불 실패 시 정산과 같은 백오프(2·5·15·60·300초)로 재시도한다(`scheduleRefundRetry`). 이미 결과로 닫힌 참가비는 `settled`로 처리해 무한 재시도하지 않는다.
+- 테스트 전용 훅(NODE_ENV=test): `/api/test/points-fault`(COMMIT 뒤 오류·환불 실패 주입), `/api/test/expire-room`, `/api/test/points-sweep`. 검증: `test/game-points-server.test.js`에 4건(COMMIT 후 오류 재시도 1회 차감, 즉시 복구까지 실패 시 정기 정리 1회 환불, 만료 환불 실패 후 재시도 1회 환불·정리 미개입, 지급 이벤트·전체 20회 제한), `tests/e2e/point-grant-live.spec.js`(로비 열린 내역·잔액 즉시 갱신, `/api/points` 1회). 복구 호출·제한 키를 되돌리면 새 테스트 3건이 실패함을 확인.
+- 남은 위험: COMMIT 응답이 늦게 반영되는 극히 드문 경합은 첫 시도의 환불이 「없음」으로 끝나도 다음 60초 정리가 회수한다. 화면·규칙 변경 없음.
+
 ## v1.7.5 할리갈리 자동 진행 시간·스무고개 기록 UI
 
 - 사용자 지시(2026-09-29, IDEAS 「사용성·게임 확장 검토」): ① 할리갈리 무응답 자동 뒤집기가 너무 빠르다 → 기본 5초. ② 스무고개 질문·답변이 따로 쌓여 헷갈린다 → 답변 대기 질문 고정, Q+A 묶음, 최신순.
