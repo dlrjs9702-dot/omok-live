@@ -235,6 +235,7 @@
   const gostopStakeChoices = document.getElementById('gostopStakeChoices');
   const pointWallet = document.getElementById('pointWallet');
   const pointBalanceText = document.getElementById('pointBalanceText');
+  const roomPointRule = document.getElementById('roomPointRule');
   const attendanceBtn = document.getElementById('attendanceBtn');
   const pointHistoryBtn = document.getElementById('pointHistoryBtn');
   const pointHistoryPanel = document.getElementById('pointHistoryPanel');
@@ -2130,6 +2131,93 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  // v1.7.3 operator point grant: pick an amount (10,000P units) and a reason, then confirm the exact
+  // "who / how much" sentence. One request id per confirmation, so a double click or a retry of the
+  // same confirmation grants once; the server re-validates everything.
+  const pointGrantDialog = document.getElementById('pointGrantDialog');
+  const pointGrantTarget = document.getElementById('pointGrantTarget');
+  const pointGrantEdit = document.getElementById('pointGrantEdit');
+  const pointGrantAmount = document.getElementById('pointGrantAmount');
+  const pointGrantCategory = document.getElementById('pointGrantCategory');
+  const pointGrantMemo = document.getElementById('pointGrantMemo');
+  const pointGrantConfirm = document.getElementById('pointGrantConfirm');
+  const pointGrantError = document.getElementById('pointGrantError');
+  const pointGrantCancelBtn = document.getElementById('pointGrantCancelBtn');
+  const pointGrantNextBtn = document.getElementById('pointGrantNextBtn');
+  let pointGrant = null;
+  function newGrantRequestId() {
+    if (window.crypto?.randomUUID) return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  function setPointGrantStep(step) {
+    pointGrant.step = step;
+    pointGrantEdit.classList.toggle('hidden', step !== 'edit');
+    pointGrantConfirm.classList.toggle('hidden', step === 'edit');
+    pointGrantNextBtn.textContent = step === 'edit' ? '다음' : '지급 확정';
+    pointGrantCancelBtn.textContent = step === 'edit' ? '취소' : '수정';
+  }
+  function openPointGrant(key) {
+    pointGrant = { key, step: 'edit', requestId: null, busy: false };
+    pointGrantTarget.textContent = `대상 계정: ${key.label}`;
+    pointGrantAmount.value = '10000';
+    pointGrantCategory.value = 'event';
+    pointGrantMemo.value = '';
+    pointGrantMemo.classList.add('hidden');
+    pointGrantError.textContent = '';
+    pointGrantNextBtn.disabled = false;
+    setPointGrantStep('edit');
+    pointGrantDialog.showModal();
+    pointGrantAmount.focus();
+  }
+  for (const button of pointGrantDialog.querySelectorAll('[data-grant-amount]')) {
+    button.addEventListener('click', () => { pointGrantAmount.value = button.dataset.grantAmount; pointGrantError.textContent = ''; });
+  }
+  pointGrantCategory.addEventListener('change', () => pointGrantMemo.classList.toggle('hidden', pointGrantCategory.value !== 'other'));
+  pointGrantCancelBtn.addEventListener('click', () => {
+    if (!pointGrant || pointGrant.busy) return;
+    if (pointGrant.step === 'confirm') return setPointGrantStep('edit');
+    pointGrantDialog.close();
+  });
+  pointGrantNextBtn.addEventListener('click', async () => {
+    if (!pointGrant || pointGrant.busy) return;
+    const amount = Number(pointGrantAmount.value);
+    if (pointGrant.step === 'edit') {
+      if (!Number.isSafeInteger(amount) || amount <= 0 || amount % 10000 !== 0) {
+        pointGrantError.textContent = '지급액은 10,000P 단위의 양수로 입력해 주세요.';
+        return;
+      }
+      const category = pointGrantCategory.selectedOptions[0]?.textContent || '';
+      const memo = pointGrantCategory.value === 'other' && pointGrantMemo.value.trim() ? ` (${pointGrantMemo.value.trim().slice(0, 40)})` : '';
+      pointGrant.requestId = newGrantRequestId(); // one id per confirmation
+      pointGrant.amount = amount;
+      pointGrantConfirm.textContent = `${pointGrant.key.label}에게 ${amount.toLocaleString('ko-KR')}P를 지급합니다. · 사유: ${category}${memo}`;
+      pointGrantError.textContent = '';
+      return setPointGrantStep('confirm');
+    }
+    pointGrant.busy = true;
+    pointGrantNextBtn.disabled = true;
+    pointGrantCancelBtn.disabled = true;
+    try {
+      const data = await api(`/api/admin/keys/${pointGrant.key.id}/points`, { method: 'POST', body: JSON.stringify({
+        amount: pointGrant.amount, category: pointGrantCategory.value, memo: pointGrantMemo.value, requestId: pointGrant.requestId,
+      }) });
+      pointGrantDialog.close();
+      showToast(data.applied
+        ? `${data.label}에게 ${Number(data.amount).toLocaleString('ko-KR')}P 지급 완료 · ${Number(data.balanceBefore).toLocaleString('ko-KR')}P → ${Number(data.balanceAfter).toLocaleString('ko-KR')}P`
+        : '이미 처리된 지급 요청입니다. 중복 지급되지 않았습니다.', 5000);
+    } catch (err) {
+      pointGrantError.textContent = err.message;
+    } finally {
+      if (pointGrant) pointGrant.busy = false;
+      pointGrantNextBtn.disabled = false;
+      pointGrantCancelBtn.disabled = false;
+    }
+  });
+  pointGrantDialog.addEventListener('cancel', (event) => { if (pointGrant?.busy) event.preventDefault(); });
+
   async function reissueKey(id, label) {
     if (!confirm(`${label} 입장파일을 재발급할까요?\n기존 HTML 파일은 즉시 무효화되고, 현재 접속 중이라면 로그아웃됩니다.\n새 파일을 저장하고 사용자에게 전달해 주세요.`)) return;
     try {
@@ -3309,15 +3397,15 @@
     roomGameLogo.textContent = roomLabel;
     const myPoints = state.me?.pointBalance;
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
-    if (myPoints !== null && myPoints !== undefined) {
-      // v1.7.3: the room's point rule next to my balance (server-provided, never computed here).
-      const rule = state.points?.policy === 'entry' ? ` · 참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P`
-        : state.points?.policy === 'settlement' ? ` · 정산 ${state.points.burnPercent}% 소각` : '';
-      roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P${rule}`;
-      roomPointBadge.title = state.points?.policy === 'entry'
-        ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전은 무료입니다.`
-        : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';
-    }
+    if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
+    // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
+    const pointRule = state.points?.policy === 'entry' ? `참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
+      : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각` : '';
+    roomPointRule.classList.toggle('hidden', !pointRule);
+    roomPointRule.textContent = pointRule;
+    roomPointRule.title = state.points?.policy === 'entry'
+      ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전과 같은 판 재접속은 차감하지 않습니다.`
+      : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';
     rulesText.textContent = state.rules || '';
     setBaseDocumentTitle(`${roomLabel} · 게임센터`);
     newRoomBtn.classList.toggle('hidden', !isHost);

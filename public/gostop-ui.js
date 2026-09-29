@@ -379,7 +379,8 @@
       for (const item of r.payments) {
         const line = document.createElement('p');
         const paid = paidOf(item.from, item.to);
-        line.textContent = `${label(state, item.from)} → ${label(state, item.to)} ${fmt(paid ? paid.paid : item.amount)}${paid?.capped ? ` (보유 포인트 한도로 ${fmt(item.amount)} 중 지급)` : ''}${balanceNote(item.from)}`;
+        line.textContent = `${label(state, item.from)} → ${label(state, item.to)} ${fmt(paid ? paid.paid : item.amount)}${paid?.capped ? ` (보유 포인트 한도로 ${fmt(item.amount)} 중 지급)` : ''}`
+          + (paid?.burned ? ` · 수령 ${fmt(paid.credited)} · ${fmt(paid.burned)} 소각` : '') + balanceNote(item.from);
         box.append(line);
       }
       if (!settled) { const wait = document.createElement('small'); wait.textContent = '포인트 정산 처리 중…'; box.append(wait); }
@@ -406,6 +407,8 @@
     box.append(flow);
 
     let total = 0;
+    let credited = 0;
+    let burned = 0;
     for (const loser of r.losers) {
       const line = document.createElement('p');
       line.className = 'gostopLoserLine';
@@ -413,6 +416,8 @@
       const paid = paidOf(loser.seat, r.winner);
       const amount = paid ? paid.paid : loser.amount;
       total += amount;
+      credited += paid ? (paid.credited ?? paid.paid) : amount;
+      burned += paid?.burned || 0;
       line.textContent = `${label(state, loser.seat)} → -${fmt(amount)} · ${r.score}점${factors ? ` · ${factors}` : ''} × ${r.pointsPerScore}P = ${fmt(loser.amount)}`
         + (paid?.capped ? ` · 계산 ${fmt(loser.amount)} → 실제 ${fmt(paid.paid)} (보유 포인트 한도 적용)` : '')
         + balanceNote(loser.seat);
@@ -420,7 +425,10 @@
     }
     const win = document.createElement('p');
     win.className = 'gostopWinLine';
-    win.textContent = settled ? `${label(state, r.winner)} → +${fmt(total)}${balanceNote(r.winner)}` : '포인트 정산 처리 중…';
+    // v1.7.3: the winner receives the real transfer minus the burned share (10%, rounded down).
+    win.textContent = settled
+      ? `${label(state, r.winner)} → +${fmt(credited)}${burned ? ` (이동 ${fmt(total)} 중 ${g.settlement.burnPercent || 10}% ${fmt(burned)} 소각)` : ''}${balanceNote(r.winner)}`
+      : '포인트 정산 처리 중…';
     box.append(win);
   }
 

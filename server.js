@@ -2287,7 +2287,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.2' });
+    return sendJson(res, 200, { ok: true, version: '1.7.3' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2389,6 +2389,16 @@ async function requestHandler(req, res) {
     const result = await pointStore.claimAttendance(pointAccountForSession(session));
     const room = getCurrentRoom(session);
     if (room) broadcast(room);
+    return sendJson(res, 200, { ok: true, ...result });
+  }
+
+  // Test-only (NODE_ENV=test): spend a player's points down to a target through the ledger, so the
+  // insufficient-entry path can be exercised. Never registered in production.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-spend' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const result = await pointStore.testSpendTo(pointAccountForSession(session), Number(body.balance));
     return sendJson(res, 200, { ok: true, ...result });
   }
 
@@ -2597,9 +2607,6 @@ async function requestHandler(req, res) {
   const grantMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/points$/i);
   if (grantMatch && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
-    if (!checkRateLimit('grant:' + grantMatch[1], 10, 60 * 1000)) {
-      return sendError(res, 429, 'GRANT_RATE_LIMIT', '포인트 지급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
-    }
     const body = await parseJson(req);
     const requestId = String(body.requestId || '');
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) return sendError(res, 400, 'BAD_REQUEST_ID', '지급 요청을 다시 열어 주세요.');
@@ -2609,6 +2616,10 @@ async function requestHandler(req, res) {
     if (!ADMIN_GRANT_CATEGORIES.includes(body.category)) return sendError(res, 400, 'BAD_CATEGORY', '지급 사유를 선택해 주세요.');
     const key = (await accessStore.list()).find(item => item.id === grantMatch[1] && !item.revokedAt);
     if (!key) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 계정을 찾을 수 없습니다.');
+    // Only well-formed grants count toward the limit (a typo does not lock the operator out).
+    if (!checkRateLimit('grant:' + key.id, 20, 60 * 1000)) {
+      return sendError(res, 429, 'GRANT_RATE_LIMIT', '포인트 지급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
     const outcome = await pointStore.adminGrant({ grantId: `admin-grant:${requestId}`, userId: `guest:${key.id}`, amount, category: body.category, memo: body.category === 'other' ? body.memo : '' });
     if (outcome.userId && outcome.userId !== `guest:${key.id}`) return sendError(res, 409, 'GRANT_ID_REUSED', '이미 다른 지급에 사용된 요청입니다. 다시 열어 주세요.');
     return sendJson(res, 200, { ok: true, applied: outcome.applied, label: key.label, amount: outcome.amount,
@@ -3045,7 +3056,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.2 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.3 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

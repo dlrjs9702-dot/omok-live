@@ -152,8 +152,12 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     const g = decided.game;
     expect(g.settlement.status).toBe('done');
     const end = await Promise.all(players.map(view => balance(request, view.token)));
-    expect(end.reduce((x, y) => x + y, 0)).toBe(startBalances.reduce((x, y) => x + y, 0));
+    // v1.7.3: 실제 이동액의 10%는 소각되므로 총량은 줄기만 한다(포인트가 새로 생기지 않음).
+    expect(end.reduce((x, y) => x + y, 0)).toBeLessThanOrEqual(startBalances.reduce((x, y) => x + y, 0));
     if (g.result.kind === 'win') {
+      const credited = g.settlement.transfers.reduce((sum, item) => sum + item.credited, 0);
+      expect(g.settlement.balances[g.result.winner] - g.settlement.balancesBefore[g.result.winner]).toBe(credited);
+      for (const item of g.settlement.transfers) expect(item.credited).toBe(Math.floor(item.paid * 90 / 100));
       expect(g.result.losers).toHaveLength(2);
       for (const loser of g.result.losers) {
         const transfer = g.settlement.transfers.find(item => item.fromSeat === loser.seat);
@@ -199,9 +203,14 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     test.skip(!nagari, '15판 안에 나가리가 나오지 않음(무작위 분배)');
     await expect(a.page.locator('#gostopResult')).toContainText('나가리');
     await expect(a.page.locator('#gostopResult')).toContainText('다음 판 ×2');
-    const bonusNetA = (nagari.game.bonusAwards || []).reduce((sum, award) =>
-      sum + (award.seat === '1' ? award.paid : -award.paid), 0);
-    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual([before[0] + bonusNetA, before[1] - bonusNetA]);
+    // v1.7.3: 받는 사람은 이동액의 90%, 내는 사람은 100%.
+    const net = { 1: 0, 2: 0 };
+    for (const award of nagari.game.bonusAwards || []) {
+      const payer = award.seat === '1' ? '2' : '1';
+      net[award.seat] += award.credited ?? award.paid;
+      net[payer] -= award.paid;
+    }
+    expect(await Promise.all([a, b].map(view => balance(request, view.token)))).toEqual([before[0] + net[1], before[1] + net[2]]);
     // 재접속만으로는 배수가 초기화되지 않는다.
     await reopen(b);
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
@@ -263,7 +272,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     expect(pa.recentGostopSettlements[0].mode).toBe('matgo');
     expect(pa.recentGostopSettlements[0].delta).toBeGreaterThan(0);
     expect(pb.recentGostopSettlements[0].delta).toBeLessThan(0);
-    expect(pa.recentGostopSettlements[0].delta).toBe(-pb.recentGostopSettlements[0].delta);
+    expect(pa.recentGostopSettlements[0].delta).toBe(Math.floor(-pb.recentGostopSettlements[0].delta * 90 / 100)); // v1.7.3: 승자 90%
     expect(pw.recentGostopSettlements).toEqual([]);
     expect(JSON.stringify(pa.recentGostopSettlements)).not.toContain('guest:');
 
@@ -290,7 +299,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     expect(fixture.status).toBe(200);
     expect((await api(request, '/api/room/gostop-play', a.token, { cardId: 'm05-pi1' })).status).toBe(200);
     await expect(b.page.locator('#pointBalanceText')).toHaveText('보유 99,300P');
-    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,700P');
+    await expect(a.page.locator('#pointBalanceText')).toHaveText('보유 100,630P'); // v1.7.3: 700P 중 10% 소각
     await expect(watcher.page.locator('#gostopEvent')).toContainText('첫뻑 보너스');
     expect((await api(request, '/api/points', watcher.token, undefined, 'GET')).data.recentGostopSettlements).toEqual([]);
     await b.page.locator('#gostopPointHistory summary').click();
