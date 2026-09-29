@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.1 화면 접근성 기본 보완
+
+- 사용자 지시(2026-09-29): DESIGN.md 접근성 최소 기준에 맞춰 지난 web-design-guidelines 검사 결과 중 6개만 수정. 게임 규칙·서버 동작 변경 없음.
+- `public/index.html`: `<meta name="color-scheme" content="dark">` 추가(네이티브 선택 상자·스크롤바 어둡게), `theme-color`를 배경 `#0b1220`에 맞춤, `#lobbyChatMessages`에 `role="log" aria-live="polite"`(방 채팅과 동일), `#roomPasswordInput`에 `spellcheck="false" autocapitalize="off"`, `#guestLabelInput`에 `spellcheck="false"`.
+- `public/styles.css`: `.emptyState`·`.participantEmpty,.chatEmpty` 글자색 `#64748b`(대비 약 3.8:1) → `#94a3b8`(약 7:1). `.keyMemoInput`·`.noticeForm input/textarea`에 `:focus-visible` 시 `2px #60a5fa` 외곽선 추가(기존 `outline:none` + 테두리색만 변경 보완).
+- 보류: 도둑잡기 애니메이션의 `prefers-reduced-motion` 차단은 v1.6.51 결정(인앱 「연출 효과」 체크박스가 기기 설정보다 우선)과 충돌해 사용자 확인 후 제외. 반복 버튼 `aria-label`, `<time datetime>`, 역할 없는 `div`의 `aria-label`은 이번 범위 밖.
+- 후속: `DESIGN.md` 접근성 기준의 애니메이션 줄을 "기기 동작 줄이기 설정 존중, 게임 연출 효과는 v1.6.51 결정에 따라 「연출 효과」(effectsOff) 우선"으로 정정. 공지 `publishedAt`은 목록에서 미래 시각을 숨기지 않고 릴리스 공지는 버전 순 정렬(`lib/announcement-store.js` `compareAnnouncements`)이라 변경하지 않음.
+- 검증: 변경 JS `node --check`, `git diff --check`, 전체 `npm test`(470개 중 469 통과·1 건너뜀; 로컬 `node_modules`에 `three`가 없어 `npm ci` 후 재실행), Playwright로 로컬 서버 로비 확인(빈 상태 글자 `rgb(148,163,184)`, 선택 상자 어두운 배경, 대기방 채팅 `role/aria-live`, 입력 속성 반영, 공지 목록 최상단 v1.7.1) 및 스크린샷 확인. 운영 실기는 미수행.
+
 ## v1.7.0 로비 포인트 내역
 
 - 사용자 지시(2026-09-29): 로비에서 본인의 포인트 사용·획득·정산 이력을 확인한다. 기존 원장(`point_ledger`/JSON `ledger`)을 그대로 읽으며 적립·정산 규칙, 잔액, 원장 행은 바꾸지 않는다.
