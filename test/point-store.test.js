@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, INITIAL_GRANT, DAILY_ATTENDANCE } = require('../lib/point-store');
+const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, INITIAL_GRANT, DAILY_ATTENDANCE } = require('../lib/point-store');
 
 const A = 'guest:11111111-1111-4111-8111-111111111111';
 const B = 'guest:22222222-2222-4222-8222-222222222222';
@@ -110,6 +110,43 @@ async function exercise(t, makeStore) {
     await assert.rejects(() => store.settle({ settlementId: 'x', gameType: 'gostop', transfers: [{ from: A, to: A, amount: 1 }] }));
     await assert.rejects(() => store.settle({ settlementId: 'y', gameType: 'gostop', transfers: [{ from: A, to: B, amount: -5 }] }));
   });
+  await t.test('포인트 내역: 최신순·페이지 이어보기·본인 것만·조회는 읽기 전용', async () => {
+    const before = JSON.stringify(await store.ledger(A, 1000));
+    const balance = (await store.getAccount(A, KST_NEXT)).balance;
+    const all = [];
+    let cursor;
+    let pages = 0;
+    do {
+      const page = await store.history(A, { limit: 2, before: cursor });
+      assert.ok(page.items.length <= 2);
+      all.push(...page.items);
+      cursor = page.hasMore ? page.nextBefore : undefined;
+      pages += 1;
+    } while (cursor && pages < 50);
+    const ledger = await store.ledger(A, 1000);
+    assert.equal(all.length, ledger.length, '모든 원장 행을 빠짐없이 한 번씩');
+    assert.deepEqual(all.map(item => item.delta), ledger.map(row => row.delta), '최신순');
+    for (let i = 0; i < all.length - 1; i += 1) {
+      assert.ok(all[i].seq > all[i + 1].seq);
+      assert.equal(all[i].balanceBefore, all[i + 1].balanceAfter, '전후 잔액이 이어진다');
+    }
+    assert.equal(all[0].balanceAfter, balance, '최신 balanceAfter는 현재 잔액');
+    assert.equal(all.at(-1).reason, 'initial_grant');
+    assert.ok(all.some(item => item.reason === 'daily_attendance') && all.some(item => item.reason === 'game_win'));
+    const gostop = all.find(item => item.reason === 'game_win' && item.mode === 'matgo');
+    assert.equal(gostop.gameType, 'gostop');
+    assert.deepEqual(Object.keys(all[0]).sort(), ['at', 'balanceAfter', 'balanceBefore', 'delta', 'detail', 'gameType', 'mode', 'reason', 'seq']);
+    assert.equal(JSON.stringify(all).includes(B), false, '다른 사용자 식별자 미포함');
+    assert.equal((await store.history(A)).items.length, Math.min(ledger.length, HISTORY_DEFAULT_LIMIT));
+    assert.equal((await store.history(A, { limit: 100000 })).items.length, Math.min(ledger.length, HISTORY_MAX_LIMIT));
+    await assert.rejects(() => store.history(A, { before: 'abc' }), TypeError);
+    await assert.rejects(() => store.history('guest:not-real'), TypeError);
+    assert.equal(JSON.stringify(await store.ledger(A, 1000)), before, '조회로 원장이 바뀌지 않는다');
+    assert.equal((await store.getAccount(A, KST_NEXT)).balance, balance);
+    const bOnly = await store.history(B, { limit: 50 });
+    assert.equal(bOnly.items.every(item => item.reason !== 'daily_attendance'), true, 'B는 A의 출석 내역을 보지 못한다');
+  });
+
   return store;
 }
 

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.6.99" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.0" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -32,9 +32,20 @@
         <div id="pointWallet" class="pointWallet hidden" aria-label="게임센터 포인트">
           <strong id="pointBalanceText" class="pointBalance">-</strong>
           <button id="attendanceBtn" type="button" class="ghost tiny">오늘 출석 +50,000P</button>
+          <button id="pointHistoryBtn" type="button" class="ghost tiny" aria-expanded="false" aria-controls="pointHistoryPanel">포인트 내역</button>
         </div>
         <button id="logoutBtn" class="ghost">접속 종료</button>
       </header>
+
+      <section id="pointHistoryPanel" class="card pointHistoryPanel hidden" aria-label="포인트 내역">
+        <div class="pointHistoryHead">
+          <strong>포인트 내역</strong>
+          <button id="pointHistoryClose" type="button" class="ghost tiny">닫기</button>
+        </div>
+        <div id="pointHistoryList" class="pointHistoryList" role="list"></div>
+        <p id="pointHistoryStatus" class="smallMuted" role="status"></p>
+        <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
+      </section>
 
       <div id="lobbyHighlights" class="lobbyHighlights">
       <section id="announcementsCard" class="card noticeCard" aria-label="공지사항">
@@ -846,9 +857,9 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.6.99"></script>
-  <script src="/twentyquestions-ui.js?v=1.6.99"></script>
-  <script src="/gostop-ui.js?v=1.6.99"></script>
-  <script src="/app.js?v=1.6.99"></script>
+  <script src="/session-lock.js?v=1.7.0"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.0"></script>
+  <script src="/gostop-ui.js?v=1.7.0"></script>
+  <script src="/app.js?v=1.7.0"></script>
 </body>
 </html>

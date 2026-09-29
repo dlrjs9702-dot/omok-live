@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.0 로비 포인트 내역
+
+- 사용자 지시(2026-09-29): 로비에서 본인의 포인트 사용·획득·정산 이력을 확인한다. 기존 원장(`point_ledger`/JSON `ledger`)을 그대로 읽으며 적립·정산 규칙, 잔액, 원장 행은 바꾸지 않는다.
+- 원장 구조(분석): 행마다 전·후 잔액, 증감, 사유(`initial_grant`·`daily_attendance`·`game_win`·`game_loss`), 게임, 정산 id, 멱등 키가 있다. 정산 요약(`summary`)은 `point_settlements.result`에 있어 맞고/고스톱·뻑 보너스·기권을 구분한다.
+- API: `GET /api/points/history?limit=&before=`. 계정은 세션(`pointAccountForSession`)에서만 정해지고 query·body의 계정 값은 읽지 않는다. `limit` 기본 30·최대 50, `before`는 `nextBefore` 커서(원장 순번)이며 비정상 값은 400. 응답 항목은 시각·증감·전후 잔액·사유·게임·모드·세부만 담고 내부 id·멱등 키·계정 키는 없다. 분당 60회 제한.
+- 저장소: `history()`를 JSON·PostgreSQL 양쪽에 추가(읽기 전용). 한 정산의 행은 `created_at`이 같아 페이지 정렬이 불안정하므로 `point_ledger.seq bigserial` 열과 `(user_id, seq DESC)` 인덱스를 `IF NOT EXISTS`로 추가(기존 행 자동 채움, 삭제·재작성 없음). 기존 DB에서 실제 실행해 확인.
+- 화면: 로비 포인트 지갑에 「포인트 내역」 버튼, 누르면 상단바 아래 패널이 열림. 한 줄에 `오늘 09:12 출석체크 +50,000P` / `100,000P → 150,000P`, 이전 날짜는 `월/일 시각`(Asia/Seoul). 사유는 신규 계정 지급·출석체크·맞고/고스톱 정산(뻑 보너스·기권 구분)·기타 시스템 조정으로 변환. 30건씩 「더 보기」.
+- 갱신: 별도 SSE/폴링 없이 기존 `loadPoints()`가 받은 서버 잔액이 화면의 최신 `balanceAfter`와 다를 때만 첫 페이지를 다시 조회한다(출석·로비 복귀 시). 클라이언트는 잔액을 계산하지 않는다. v1.6.95의 `/api/points` 재조회 조건은 손대지 않았다.
+- 검증: `test/point-store.test.js`(JSON·PostgreSQL 공통 내역 테스트), `test/point-history-server.test.js`(실서버: 신규+출석, 맞고 뻑 보너스 정산, 타 사용자 격리·파라미터 무시, 페이지·limit·잘못된 커서, 조회 후 파일 불변), `tests/e2e/point-history.spec.js`(열기·출석 후 갱신·닫기/다시 열기·`/api/points` 무반복, 더 보기는 서버 응답을 흉내 낸 화면 검증). 제외 범위(전 게임 참가 포인트 등)는 구현하지 않았다.
+
 ## v1.6.99 새로고침·재접속 복구 안정화
 
 - 사용자 지시(2026-09-29): 중단 후 재개가 원활하지 않다는 민원. 새로고침·일시 끊김·같은 입장키 재접속·SSE 재연결 뒤 판 상태·선택 대기·타이머·참가자/관전자·재대결 복구를 공통 흐름부터 점검했다. 게임 규칙·포인트·시간 제한 규칙·UI·입장 경로는 바꾸지 않았다.
