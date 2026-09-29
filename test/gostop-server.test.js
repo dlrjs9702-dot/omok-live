@@ -129,6 +129,8 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   assert.equal(g0.mode, 'matgo');
   assert.equal(g0.pointsPerScore, 50);
   const playStartBalanceA = (await req('/api/points', a.session, undefined, 'GET')).data.balance;
+  // 총통 재분배로 앞선 판이 이미 정산됐을 수 있으므로(그 소각액은 이미 잔액에 반영), 총량 기준은 실제로 진행한 판의 시작 합계다.
+  const playStartTotal = playStartBalanceA + (await req('/api/points', b.session, undefined, 'GET')).data.balance;
 
   // 4) 비공개 손패: 각자 자기 패만, 관전자는 아무 손패도 받지 않는다.
   const view = async session => (await req('/api/room', session, undefined, 'GET')).data.state;
@@ -189,7 +191,7 @@ test('포인트·출석·고스톱 서버 흐름: 정산 1회·비공개 손패�
   const bonusNetA = (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.seat === '1' ? (award.credited ?? award.paid) : -award.paid), 0);
   const burned = (state.game.settlement.transfers || []).reduce((sum, item) => sum + (item.burned || 0), 0)
     + (state.game.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
-  assert.equal(balanceA + balanceB, 250_000 - burned, '포인트 총량 = 초기 - 소각');
+  assert.equal(balanceA + balanceB, playStartTotal - burned, '포인트 총량 = 판 시작 합계 - 소각');
   assert.deepEqual(accountC.recentGostopSettlements, [], '관전자의 포인트 내역에는 다른 참가자의 정산이 섞이지 않는다');
   assert.equal(state.game.settlement.status, 'done');
   if (state.game.status === 'finished') {
