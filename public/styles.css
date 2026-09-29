@@ -1209,3 +1209,54 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .pointGrantQuick{display:flex;flex-wrap:wrap;gap:6px}
 .pointGrantConfirm{margin:4px 0 0;padding:12px;border-radius:12px;background:#1e293b;font-weight:800}
 .pointGrantError{min-height:1.2em;margin:6px 0 0;color:#fca5a5;font-size:.86rem}
+
+/* v1.7.4: 게임센터 자체 벡터 화투(public/hwatu-art.js) — 그림이 카드 전체를 채우고, 월 숫자와 종류는
+   작은 칩으로 위·아래에 얹는다. 뒷면은 전통 화투처럼 붉은 바탕. */
+.hwatu.hasArt{display:inline-block;background:#f1e6cf;border:1px solid #3b2a1a;border-radius:6px;box-shadow:0 1px 0 rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.35)}
+.hwatu.hasArt::before{display:none}
+.hwatu.hasArt .hwatuArt{position:absolute;inset:0;display:block;font-size:0;letter-spacing:0}
+.hwatuSvg{display:block;width:100%;height:100%}
+.hwatu.hasArt .hwatuMonth{position:absolute;left:2px;top:2px;z-index:2;margin:0;padding:0 3px;border-radius:4px;background:rgba(15,23,42,.72);font-size:.6rem;line-height:1.35}
+.hwatu.hasArt .hwatuBadge{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:0;background:rgba(15,23,42,.7);color:#f8fafc;font-size:.54rem;line-height:1.4}
+.hwatu-hand.hasArt .hwatuMonth{font-size:.68rem}.hwatu-hand.hasArt .hwatuBadge{font-size:.6rem}
+.hwatu-mini.hasArt{border-radius:4px}.hwatu-mini.hasArt .hwatuMonth{left:1px;top:1px;padding:0 1px;font-size:.44rem}.hwatu-mini.hasArt .hwatuBadge{font-size:.42rem}
+.hwatu-tiny.hasArt .hwatuMonth,.hwatu-tiny.hasArt .hwatuBadge{display:none}
+.hwatu.hasArt.bonus{border-color:#a16207}.hwatu.hasArt.bonus .hwatuBadge{background:rgba(66,32,6,.78);color:#fde68a}
+.hwatuBack{background:#b91c1c;border:1px solid #450a0a;border-radius:6px;box-shadow:inset 0 0 0 3px #991b1b,inset 0 0 0 4px #fecaca}
+/* 연출 카드: 겉은 이동, 안은 기울기·3D 뒤집기·충격 */
+.gostopSprite{border-radius:6px;background:none;overflow:visible;perspective:520px}
+.gostopSprite .fxInner{position:absolute;inset:0;transform-style:preserve-3d;transform-origin:50% 55%}
+.gostopSprite .fxInner.isBack{transform:rotateY(180deg)}
+.gostopSprite .fxFace{position:absolute!important;inset:0;width:46px;height:68px;margin:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.gostopSprite .fxRear{transform:rotateY(180deg)}
+.gostopSprite.fxGlow{outline:3px solid #fde047;outline-offset:1px;border-radius:7px}
+.gostopSprite.fxReveal{outline:2px solid #60a5fa;outline-offset:1px}
+.gostopSprite.fxSweep,.gostopSprite.fxSteal{box-shadow:0 12px 22px rgba(0,0,0,.5)}
+.fxRing{position:absolute;width:64px;height:64px;border:3px solid #fde047;border-radius:50%;pointer-events:none}
+.fxFloor{position:absolute;pointer-events:none;border-radius:14px}
+.fxFloor-ppeok{border:3px solid #ef4444;background:rgba(127,29,29,.25)}
+.fxFloor-jjok{border:3px solid #60a5fa}
+.fxFloor-ttadak{border:3px solid #16a34a;background:rgba(22,163,74,.12)}
+.fxFloor-sweep{background:rgba(250,204,21,.55);border-radius:10px}
+.fxFloor-bomb{background:rgba(239,68,68,.35);border-radius:50%}
+.fxFloor-kong{background:rgba(251,191,36,.3);border-radius:50%;transform-origin:50% 50%}
+.fxBadge.fx-ppeok{background:#7f1d1d;color:#fecaca;border:2px solid #ef4444;font-size:1.15rem}
+.fxBadge.fx-jappeok{background:#ef4444;color:#fff;font-size:1.05rem}
+.fxBadge.fx-eat{background:#fecaca;color:#7f1d1d}
+.fxBadge.fx-jjok{background:#2563eb;color:#fff}
+.fxBadge.fx-ttadak{background:#16a34a;color:#fff}
+.fxBadge.fx-sweep{background:#facc15;color:#422006;font-size:1.1rem}
+.fxBadge.fx-bomb{background:#ef4444;color:#fde68a;font-size:1.2rem;border:2px solid #fde68a}
+.fxBadge.fx-kong{background:#1e293b;color:#fde68a;border:2px solid #fbbf24}
+.fxBadge.fx-shake{background:#0f172a;color:#93c5fd;border:2px solid #60a5fa}
+.fxBadge.fx-go{background:#60a5fa;color:#0f172a;font-size:1.25rem;border:2px solid #fff}
+.fxBadge.fx-stop{background:#f8fafc;color:#7f1d1d;border:3px solid #ef4444;font-size:1.2rem}
+.fxBadge.fx-grand{background:#fbbf24;color:#422006;font-size:1.3rem;border:2px solid #fff}
+.fxBadge.fx-bonus,.fxBadge.fx-bonusPoint{background:#fde68a;color:#422006}
+.fxBadge.fx-steal{background:#0f172a;color:#f8fafc;border:2px solid #cbd5e1}
+/* 정산: 점수 → 고/특수 배수 → 박 → 포인트 순으로 차례대로 드러난다 */
+.gostopResult.staged .gostopSettlementFlow .gostopChip,.gostopResult.staged .gostopLoserLine,.gostopResult.staged .gostopWinLine{animation:gostopStageIn .32s ease-out both;animation-delay:calc(var(--stage,0) * 120ms)}
+.gostopResult.staged .gostopWinLine{animation-name:gostopStageWin}
+@keyframes gostopStageIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes gostopStageWin{0%{opacity:0;transform:scale(.9)}60%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.gostopResult.staged .gostopSettlementFlow .gostopChip,.gostopResult.staged .gostopLoserLine,.gostopResult.staged .gostopWinLine{animation:none}}
