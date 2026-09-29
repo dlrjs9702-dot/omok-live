@@ -1339,6 +1339,7 @@
   }
 
   function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
+    try { sessionStorage.removeItem('gameCenterGuestSession'); } catch {} // see session-lock.js
     stopStream();
     stopLobbyStream();
     stopPresenceRefresh();
