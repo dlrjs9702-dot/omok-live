@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.5 할리갈리 자동 진행 시간·스무고개 기록 UI
+
+- 사용자 지시(2026-09-29, IDEAS 「사용성·게임 확장 검토」): ① 할리갈리 무응답 자동 뒤집기가 너무 빠르다 → 기본 5초. ② 스무고개 질문·답변이 따로 쌓여 헷갈린다 → 답변 대기 질문 고정, Q+A 묶음, 최신순.
+- 할리갈리: `lib/games/halligalli.js`의 자동 뒤집기 마감을 상수 `AUTO_FLIP_MS = 5000`으로 두고(시작·매 차례 `deadlineAt = now + AUTO_FLIP_MS`, 이전에는 두 곳에 `3000`) 서버 tick이 그대로 강제한다. 직접 뒤집으면 다음 차례가 새 마감을 받으므로 중복되지 않는다. 접속 끊김(60초 뒤 탈락)·종 잠금 0.3초·오판·승패 규칙은 변경 없음. 클라이언트에는 차례별 자동 뒤집기 카운트다운이 원래 없고(표시 중인 「남은 시간」은 게임 전체 시계) 이번에도 추가하지 않았다.
+- 스무고개: 서버 데이터(`game.questions`, 답변 완료 순서로 쌓임, `pendingQuestion`)는 그대로이고 `public/twentyquestions-ui.js`·`index.html`·`styles.css`만 바꿨다. 현재 답변 대기 질문은 기록 위 「현재 답변 대기」 카드(전원에게 공개)에 고정하고, 출제자 답변 버튼(예/아니오/비슷함/애매함)을 이 카드 안으로 옮겼다(기존 id·핸들러 유지, 출제자에게만 표시). 답변 완료된 질문은 `li` 하나에 Q줄+A줄을 묶어 최신순으로 표시한다. Q/A는 글자 표식(Q 외곽선 알약·A 파란 알약), 배경·테두리, A 들여쓰기+왼쪽 굵은 선으로 구분해 색만 의존하지 않는다(DESIGN.md 색 표 안). 최신 5개만 펼치고 나머지는 「이전 질문 N개 펼치기」(`details`, 라운드가 바뀌면 접힘)에 둬 v1.6.x의 「중첩 스크롤바 없음」 결정(`chat-height.test.js`)을 지키면서 목록 길이를 제한한다. 기록 목록의 `aria-live`는 제거했고 대기 카드가 `role="status"`로 알린다. 정답 제출 기록은 그대로.
+- 검증: `test/halligalli.test.js`(5초 마감·직접 뒤집기 중복 없음·끊김 진행/탈락·종 판정, 기존 3초 고정 테스트를 5초로 갱신), `test/halligalli-autoflip-server.test.js`(실서버 시계 5초, 공개 `deadlineAt` 일치, 3.6초까지 무동작·5.5초 뒤 자동 뒤집기), `tests/e2e/twenty-qa-log.spec.js`(대기 카드 고정·출제자만 버튼·Q+A 묶음·4가지 답변·최신순·5개 초과 접기·관전자 동일·새로고침 복구·자체 스크롤 없음).
+
 ## v1.7.4 고스톱·맞고 자체 화투·실물감 연출
 
 - 사용자 확정(IDEAS 「고스톱·맞고 실물감 연출·화투 디자인 후속 아이디어」, 2026-09-29 구현 지시). 게임 규칙·포인트 정산·비공개 손패 전송 범위는 바꾸지 않았다. 소리 없음, PC 우선.

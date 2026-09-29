@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.4" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.5" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -504,7 +504,20 @@
             <p id="twentyRoundResult" class="twentyResult hidden" role="status"></p>
             <p id="twentyFinalResult" class="twentyResult hidden" role="status"></p>
             <h4>누적 점수</h4><div id="twentyScoreboard" class="twentyScoreboard"></div>
-            <h4>공식 질문 · 최대 20개</h4><ol id="twentyQuestionLog" class="twentyQuestionLog" aria-live="polite"></ol>
+            <h4>공식 질문 · 최대 20개</h4>
+            <section id="twentyPendingCard" class="twentyPending hidden" role="status" aria-label="현재 답변 대기 질문">
+              <span class="twentyPendingLabel">현재 답변 대기</span>
+              <p id="twentyPendingQuestion" class="twentyQ"></p>
+              <div id="twentyAnswerBox" class="twentyJudgeBox hidden">
+                <small class="twentyAnswerHint">출제자님, 이 질문에 답해 주세요.</small>
+                <div id="twentyAnswerButtons" class="twentyAnswerButtons"><button type="button" class="secondary" data-twenty-answer="예">예</button><button type="button" class="secondary" data-twenty-answer="아니오">아니오</button><button type="button" class="secondary" data-twenty-answer="비슷함">비슷함</button><button type="button" class="secondary" data-twenty-answer="애매함">애매함</button></div>
+              </div>
+            </section>
+            <ol id="twentyQuestionLog" class="twentyQuestionLog" aria-label="답변 완료 질문 · 최신순"></ol>
+            <details id="twentyOlderLogBox" class="twentyOlderLog hidden">
+              <summary id="twentyOlderSummary"></summary>
+              <ol id="twentyOlderLog" class="twentyQuestionLog" aria-label="이전 질문 기록"></ol>
+            </details>
             <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog" aria-live="polite"></div>
           </section>
 
@@ -760,10 +773,6 @@
                 <input id="twentyGuessInput" type="text" maxlength="100" autocomplete="off" required placeholder="내가 생각한 정답" />
                 <button type="submit" class="secondary">정답 제출</button>
               </form>
-              <div id="twentyAnswerBox" class="twentyJudgeBox hidden">
-                <strong>도전자의 질문</strong><p id="twentyPendingQuestion">질문 대기 중</p>
-                <div id="twentyAnswerButtons" class="twentyAnswerButtons"><button type="button" class="secondary" data-twenty-answer="예">예</button><button type="button" class="secondary" data-twenty-answer="아니오">아니오</button><button type="button" class="secondary" data-twenty-answer="비슷함">비슷함</button><button type="button" class="secondary" data-twenty-answer="애매함">애매함</button></div>
-              </div>
               <div id="twentyJudgeBox" class="twentyJudgeBox hidden">
                 <strong>정답 판정 · 출제자 전용</strong><p id="twentyPendingGuess">정답 대기 중</p>
                 <div class="twentyAnswerButtons"><button id="twentyJudgeCorrect" type="button" class="primary">정답</button><button id="twentyJudgeWrong" type="button" class="secondary">오답</button></div>
@@ -879,10 +888,10 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.4"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.4"></script>
-  <script src="/hwatu-art.js?v=1.7.4"></script>
-  <script src="/gostop-ui.js?v=1.7.4"></script>
-  <script src="/app.js?v=1.7.4"></script>
+  <script src="/session-lock.js?v=1.7.5"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.5"></script>
+  <script src="/hwatu-art.js?v=1.7.5"></script>
+  <script src="/gostop-ui.js?v=1.7.5"></script>
+  <script src="/app.js?v=1.7.5"></script>
 </body>
 </html>

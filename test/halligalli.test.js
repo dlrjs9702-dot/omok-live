@@ -66,17 +66,66 @@ test('할리갈리 자동 뒤집기·접속 끊김 60초·시간 종료 공동 �
   const game = h.create();
   h.start(game, ['1','2','3'], 1000);
   const initialTurn = game.turn;
-  assert.equal(h.tick(game, 3999), false);
-  assert.equal(h.tick(game, 4000), true);
+  assert.equal(h.tick(game, 5999), false);
+  assert.equal(h.tick(game, 6000), true); // v1.7.5: 자동 뒤집기 5초
   assert.equal(game.flipId, 1);
   assert.notEqual(game.turn, initialTurn);
-  h.disconnect(game, initialTurn, 5000);
-  assert.equal(h.tick(game, 64999), true); // another automatic flip may also have occurred
+  h.disconnect(game, initialTurn, 7000);
+  assert.equal(h.tick(game, 66999), true); // another automatic flip may also have occurred
   assert.equal(game.eliminated.includes(initialTurn), false);
-  assert.equal(h.tick(game, 65000), true);
+  assert.equal(h.tick(game, 67000), true);
   assert.equal(game.eliminated.includes(initialTurn), true);
   const tie = h.create();
   h.start(tie, ['1','2'], 1000);
   assert.equal(h.tick(tie, tie.endsAt), true);
   assert.deepEqual(new Set(tie.winner), new Set(['1','2']));
+});
+
+// v1.7.5: 무응답 자동 뒤집기는 서버 마감(deadlineAt) 5초. 직접 뒤집으면 마감이 새로 5초로 잡힌다.
+test('할리갈리 무응답 자동 뒤집기: 마감은 정확히 5초이고 직접 뒤집으면 중복되지 않는다', () => {
+  assert.equal(h.AUTO_FLIP_MS, 5000);
+  const game = h.create();
+  h.start(game, ['1', '2', '3'], 10_000);
+  const first = game.turn;
+  assert.equal(game.deadlineAt, 15_000, '시작 직후 마감 = 5초 뒤');
+  assert.equal(h.tick(game, 14_999), false, '5초 전에는 자동으로 뒤집지 않는다');
+  assert.equal(game.moveCount, 0);
+  // 마감 시각에 서버가 대신 뒤집고 다음 사람에게 새 5초를 준다.
+  assert.equal(h.tick(game, 15_000), true);
+  assert.equal(game.moveCount, 1);
+  assert.equal(game.lastFlip.seat, first);
+  assert.notEqual(game.turn, first);
+  assert.equal(game.deadlineAt, 20_000);
+  // 5초 전에 직접 뒤집기: 옛 마감 시각이 되어도 다시 뒤집지 않는다.
+  const second = game.turn;
+  assert.equal(h.flip(game, second, 17_000).legal, true);
+  assert.equal(game.moveCount, 2);
+  assert.equal(game.deadlineAt, 22_000);
+  assert.equal(h.tick(game, 20_000), false);
+  assert.equal(game.moveCount, 2);
+  assert.equal(h.tick(game, 22_000), true);
+  assert.equal(game.moveCount, 3);
+});
+
+test('할리갈리 접속 끊김: 끊긴 참가자 차례도 5초마다 진행되고 60초 뒤 탈락하며 종 판정은 그대로다', () => {
+  const game = h.create();
+  h.start(game, ['1', '2', '3'], 0);
+  game.turn = '1';
+  game.deadlineAt = 5000;
+  h.disconnect(game, '1', 0);
+  assert.equal(h.tick(game, 5000), true);
+  assert.equal(game.moveCount, 1, '끊긴 사람의 차례도 자동으로 넘어간다');
+  assert.equal(game.lastFlip.seat, '1');
+  assert.equal(game.deadlineAt, 10_000);
+  // 60초가 지나면 탈락 처리되고 진행 중인 판은 남은 사람으로 이어진다.
+  game.deadlineAt = 1_000_000;
+  h.tick(game, 60_000);
+  assert.deepEqual(game.eliminated, ['1']);
+  assert.equal(game.status, 'playing');
+  // 종 잠금·판정 규칙은 그대로.
+  game.faces['2'] = [{ fruit: '딸기', count: 2 }];
+  game.faces['3'] = [{ fruit: '딸기', count: 3 }];
+  game.flipId = 5; game.lockUntil = 61_000; game.ringSeats = []; game.bellSettledFlip = null;
+  assert.equal(h.ring(game, '2', 5, 60_999).ignored, 'locked');
+  assert.equal(h.ring(game, '2', 5, 61_000).correct, true);
 });

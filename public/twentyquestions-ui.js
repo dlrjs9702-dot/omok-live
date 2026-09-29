@@ -7,6 +7,30 @@
   const hidden = (id, yes) => $(id).classList.toggle('hidden', Boolean(yes));
   const nameFor = (state, seat) => state.players?.[seat]?.label || `${seat}번`; 
   const setText = (id, text) => { $(id).textContent = text; };
+  const VISIBLE_PAIRS = 5;
+  const textSpan = text => { const span = document.createElement('span'); span.className = 'twentyText'; span.textContent = text; return span; };
+  const tag = letter => { const span = document.createElement('span'); span.className = `twentyTag twentyTag${letter}`; span.textContent = letter; return span; };
+  // One question and its answer are a single list item so they always read as a pair.
+  function buildQuestionPair(state, question, number) {
+    const item = document.createElement('li');
+    item.className = 'twentyPair';
+    item.dataset.questionNumber = String(number);
+    const q = document.createElement('p');
+    q.className = 'twentyQ';
+    const meta = document.createElement('small');
+    meta.className = 'twentyPairNo';
+    meta.textContent = `${number}번째`;
+    q.append(tag('Q'), textSpan(`${nameFor(state, question.seat)}님: ${question.text}`), meta);
+    const a = document.createElement('p');
+    a.className = 'twentyA';
+    a.dataset.reply = question.reply;
+    const reply = document.createElement('strong');
+    reply.className = 'twentyText';
+    reply.textContent = question.reply;
+    a.append(tag('A'), reply);
+    item.append(q, a);
+    return item;
+  }
 
   function init(roomAction) {
     if (submit) return;
@@ -42,6 +66,10 @@
     });
     $('twentyJudgeCorrect').addEventListener('click', () => handle('twenty-judge', { correct: true }));
     $('twentyJudgeWrong').addEventListener('click', () => handle('twenty-judge', { correct: false }));
+    $('twentyOlderLogBox').addEventListener('toggle', () => {
+      const count = $('twentyOlderLog').childElementCount;
+      setText('twentyOlderSummary', `이전 질문 ${count}개 ${$('twentyOlderLogBox').open ? '접기' : '펼치기'}`);
+    });
     $('twentyRecommendations').addEventListener('click', ev => {
       const button = ev.target.closest('[data-round-count]');
       if (button) $('twentyRoundsSelect').value = button.dataset.roundCount;
@@ -128,15 +156,16 @@
       : phaseText[phase] || '진행 중');
     setText('twentyMySecret', drawer && state.me?.myTwentySecret && playing
       ? `내 정답: ${state.me.myTwentySecret} (다른 참가자에게는 비공개)` : '정답은 라운드 종료 전까지 출제자에게만 공개됩니다.');
-    setText('twentyPendingQuestion', g.pendingQuestion
-      ? `${nameFor(state, g.pendingQuestion.seat)}님: ${g.pendingQuestion.text}` : '질문 대기 중');
+    hidden('twentyPendingCard', !g.pendingQuestion);
+    $('twentyPendingQuestion').replaceChildren(...(g.pendingQuestion
+      ? [tag('Q'), textSpan(`${nameFor(state, g.pendingQuestion.seat)}님: ${g.pendingQuestion.text}`)] : []));
     setText('twentyPendingGuess', g.pendingGuess
       ? `${nameFor(state, g.pendingGuess.seat)}님: ${g.pendingGuess.text}` : '정답 대기 중');
     for (const id of ['twentyPendingQuestion','twentyPendingGuess']) {
       $(id).classList.remove('recentActionTarget','recentActionFresh');
     }
-    if (g.pendingGuess) $('twentyPendingGuess').className += recentClasses();
-    else if (g.pendingQuestion) $('twentyPendingQuestion').className += recentClasses();
+    const pendingTarget = g.pendingGuess ? 'twentyPendingGuess' : g.pendingQuestion ? 'twentyPendingQuestion' : null;
+    if (pendingTarget) $(pendingTarget).classList.add(...recentClasses().split(/\s+/).filter(Boolean));
 
     const scoreboard = $('twentyScoreboard');
     scoreboard.replaceChildren();
@@ -151,16 +180,29 @@
       line.append(label, score);
       scoreboard.appendChild(line);
     }
+    // Answered questions come from the server in the order they were answered; show them as Q+A pairs,
+    // newest first. The five newest stay visible, older ones fold into a details block so the room
+    // never grows a nested scrollbar or a page-long list (there are at most 20 in a round).
+    const questions = g.questions || [];
+    const round = `${g.roundNumber || 0}`;
     const log = $('twentyQuestionLog');
+    const older = $('twentyOlderLog');
     log.replaceChildren();
-    for (const [index, question] of (g.questions || []).entries()) {
-      const item = document.createElement('li');
-      const isLatest = index === (g.questions || []).length - 1 && !g.pendingQuestion && !g.pendingGuess && phase !== 'result';
-      item.className = isLatest ? recentClasses().trim() : '';
-      item.textContent = `${index + 1}. ${nameFor(state, question.seat)}: ${question.text} → ${question.reply}`;
-      log.appendChild(item);
-    }
-    if (!(g.questions || []).length) { const p = document.createElement('li'); p.textContent = '아직 질문이 없습니다.'; log.appendChild(p); }
+    older.replaceChildren();
+    const newestFirst = questions.map((question, index) => ({ question, number: index + 1 })).reverse();
+    newestFirst.forEach((entry, position) => {
+      const item = buildQuestionPair(state, entry.question, entry.number);
+      if (position === 0 && !g.pendingQuestion && !g.pendingGuess && phase !== 'result') {
+        item.classList.add(...recentClasses().split(/\s+/).filter(Boolean));
+      }
+      (position < VISIBLE_PAIRS ? log : older).appendChild(item);
+    });
+    if (!questions.length) { const p = document.createElement('li'); p.className = 'twentyEmpty'; p.textContent = '아직 질문이 없습니다.'; log.appendChild(p); }
+    const olderBox = $('twentyOlderLogBox');
+    const olderCount = Math.max(0, questions.length - VISIBLE_PAIRS);
+    olderBox.classList.toggle('hidden', !olderCount);
+    if (olderBox.dataset.round !== round) { olderBox.dataset.round = round; olderBox.open = false; }
+    setText('twentyOlderSummary', `이전 질문 ${olderCount}개 ${olderBox.open ? '접기' : '펼치기'}`);
     const guesses = $('twentyGuessLog');
     guesses.replaceChildren();
     for (const [index, entry] of (g.guessHistory || []).entries()) {
