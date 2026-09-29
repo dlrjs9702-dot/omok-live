@@ -191,6 +191,13 @@
   const pictionaryGuessForm = document.getElementById('pictionaryGuessForm');
   const pictionaryGuessInput = document.getElementById('pictionaryGuessInput');
   const pictionaryScoreboard = document.getElementById('pictionaryScoreboard');
+  const pictionaryConfig = document.getElementById('pictionaryConfig');
+  const pictionaryShowCategory = document.getElementById('pictionaryShowCategory');
+  const pictionaryHints = document.getElementById('pictionaryHints');
+  const pictionaryPenBtn = document.getElementById('pictionaryPenBtn');
+  const pictionaryUndoBtn = document.getElementById('pictionaryUndoBtn');
+  const pictionaryGuessLog = document.getElementById('pictionaryGuessLog');
+  const pictionaryRuleNote = document.querySelector('.pictionaryRuleNote');
   const halliPanel = document.getElementById('halliPanel');
   const halliStatus = document.getElementById('halliStatus');
   const halliCards = document.getElementById('halliCards');
@@ -1493,7 +1500,7 @@
     "cityking": "독자 규칙의 도시 보드게임입니다. 주사위를 굴려 도시를 매입하고 상대가 소유한 도시에는 통행료를 냅니다. 자기 소유 도시에 도착하면 매입가의 50%로 별장·빌딩·호텔을 방문당 한 단계 건설할 수 있습니다. 통행료는 기본·2배·3배·5배이며, 건설비는 순자산에 포함됩니다. 출발 보너스와 이벤트를 활용해 상대를 파산시키거나 50턴 뒤 순자산이 높은 쪽이 승리합니다.",
     "othello": "8×8 판에서 흑이 먼저 둡니다. 상대 돌을 양쪽에서 감싸면 가운데 돌을 내 색으로 뒤집습니다. 둘 곳이 없으면 자동 패스하며, 양쪽 모두 둘 수 없으면 종료되고 돌이 많은 쪽이 이깁니다.",
     "baseball": "방장이 방 생성 때 3자리 또는 4자리 숫자야구를 정합니다. 첫 자리는 0이 아니고 숫자는 서로 달라야 합니다. 숫자와 자리가 같으면 스트라이크, 숫자만 같으면 볼, 모두 다르면 아웃입니다. 선택한 자릿수만큼 스트라이크를 먼저 맞히면 승리합니다. 상대의 비밀 숫자는 보이지 않습니다.",
-    "pictionary": "2~8명이 참여합니다. 라운드마다 한 명이 출제자가 되어 서버가 정한 제시어를 90초 동안 그림으로 표현하고 나머지는 정답을 맞힙니다. 정답자는 100점, 출제자는 정답자 1명당 50점을 얻습니다. 전원이 한 번씩 출제자를 맡으면 총점이 가장 높은 사람이 승리하며, 제시어는 출제자에게만 보입니다.",
+    "pictionary": "개인전 2~8명, 팀전 4·6·8명(홀수 자리 A팀·짝수 자리 B팀). 출제자만 보는 제시어를 그림으로 표현하고, 나머지는 전용 입력창으로 맞힙니다. 방장이 난이도·제한시간(60/90/120초)·카테고리 공개를 정합니다. 시간이 50% 남으면 글자 수, 25% 남으면 초성 힌트가 열리고, 첫 정답 뒤 10초 동안 더 맞힐 수 있습니다. 점수는 빨리 맞힐수록 높고(1~100점, 첫 정답 +20점), 출제자는 정답자 점수의 25%를 받습니다. 팀전에서 상대 팀 그림을 맞히면 절반만 받습니다. 글자·숫자를 그리는 것은 금지입니다.",
     "twentyquestions": "2~8인 개인전·협동전. 1~10라운드 및 출제 횟수 추천 선택. 무작위 카테고리를 보고 출제자가 비밀 정답을 정합니다. 도전자는 순서대로 질문 20개 또는 질문 대신 정답을 제출하고, 출제자는 예·아니오·비슷함·애매함으로 답하며 정답을 직접 판정합니다. 오답이면 다음 사람 차례이며 질문 20개 후 모두 최종 정답 기회 1회씩 받습니다. 개인전 정답자는 +1점, 협동전 성공 시 도전자 전원 +1점, 전원 실패 시 출제자 +1점. 최종 최고점 공동 우승 가능.",
     "liar": "3~8명이 참여합니다. 시민은 제시어를 알고 라이어 1명은 모릅니다. 전원이 순서대로 힌트를 두 번 말한 뒤 비밀 투표하며, 동률이면 후보만 추가 힌트 후 한 번 재투표합니다. 라이어가 지목되면 30초 안에 제시어를 맞힐 마지막 기회를 얻습니다.",
     "oldmaid": "2~4명이 53장(조커 1장 포함)을 나누고 같은 계급의 카드 두 장씩 자동으로 버립니다. 내 차례에는 다음 활성 참가자의 카드 뒷면 중 한 장을 선택해 뽑습니다. 자기 손패는 카드 섞기로 순서를 바꿀 수 있습니다. 짝이 생기면 자동으로 버리며 마지막 조커 보유자가 패배합니다.",
@@ -3253,7 +3260,7 @@
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
-        ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
+        ? `${number}번${state.game.mode === 'team' ? ` · ${Number(number) % 2 ? 'A' : 'B'}팀` : ''}${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
         : liar ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 발언 차례' : ''}`
         : oldmaid ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 뽑기 차례' : ''}`
         : bingo ? `${number}번${currentTurn && state.game.status === 'playing' ? ' · 현재 턴' : ''}`
@@ -3301,7 +3308,7 @@
     roleChooser.classList.toggle('hidden', !selecting);
     if (numbered) {
       roleChooser.querySelector('small').textContent = isRpgGame() ? '1~4명이 자리를 선택하고 역할(수호자·사냥꾼·비술사)을 고르면 방장이 원정을 시작합니다.' : isGostopGame() ? '2~3명이 자리를 선택합니다. 2명은 맞고, 3명은 고스톱이며 방장이 점당 포인트를 정하고 시작합니다.' : twenty ? '2~8명이 자리를 선택합니다. 방장이 개인전/협동전과 1~10라운드를 정한 후 시작합니다.' : pictionary
-        ? '2~8명이 자리를 선택할 수 있습니다. 방장이 그림 맞히기를 시작합니다.'
+        ? (state.game.mode === 'team' ? '팀전: 홀수 자리는 A팀, 짝수 자리는 B팀입니다. 4·6·8명이 두 팀 같은 인원으로 앉아야 시작합니다.' : '2~8명이 자리를 선택할 수 있습니다. 방장이 설정을 정하고 그림 맞히기를 시작합니다.')
         : liar ? '3~8명이 자리를 선택할 수 있습니다. 방장이 1판/3판을 정하고 시작합니다.'
         : halli ? '2~6명이 자리를 선택합니다. 방장이 5분 또는 10분을 정하고 시작합니다.'
         : davinci ? '2~4명이 자리를 선택합니다. 방장이 시작하면 숫자 타일을 나눠 받습니다.'
@@ -3316,7 +3323,8 @@
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
-        button.textContent = (isRpgGame() || isGostopGame() || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
+        button.textContent = pictionary && state.game.mode === 'team' ? `${number}번 · ${Number(number) % 2 ? 'A' : 'B'}팀`
+          : (isRpgGame() || isGostopGame() || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
           : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroupForSeat(number)}팀` : ''}`
           : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
@@ -4230,30 +4238,84 @@
     return `${remain}초`;
   }
 
+  const PICTIONARY_DIFFICULTY_KO = { easy: '쉬움', normal: '보통', hard: '어려움' };
+  function pictionaryName(s) { return state.players[s]?.label || `${s}번`; }
+  function pictionaryTeamTag(g, s) { return g.mode === 'team' ? ` · ${Number(s) % 2 ? 'A' : 'B'}팀` : ''; }
+
+  function renderPictionaryConfig(g) {
+    const selecting = g.status === 'selecting';
+    pictionaryConfig.classList.toggle('hidden', !selecting);
+    if (!selecting) return;
+    for (const radio of pictionaryConfig.querySelectorAll('[data-pictionary-mode]')) { radio.checked = radio.value === g.mode; radio.disabled = !isHost; }
+    for (const radio of pictionaryConfig.querySelectorAll('[data-pictionary-difficulty]')) { radio.checked = radio.value === g.difficulty; radio.disabled = !isHost; }
+    for (const radio of pictionaryConfig.querySelectorAll('[data-pictionary-seconds]')) { radio.checked = Number(radio.value) === g.roundSeconds; radio.disabled = !isHost; }
+    pictionaryShowCategory.checked = g.showCategory !== false;
+    pictionaryShowCategory.disabled = !isHost;
+  }
+
   function renderPictionary() {
     const g = state.game;
     const isDrawer = Boolean(seat && seat === g.drawerSeat);
+    renderPictionaryConfig(g);
     pictionaryStartBtn.classList.toggle('hidden', !(isHost && g.status === 'selecting'));
     pictionaryStartBtn.disabled = g.status !== 'selecting';
+    const settings = `${g.mode === 'team' ? '팀전' : '개인전'} · ${PICTIONARY_DIFFICULTY_KO[g.difficulty] || '보통'} · ${g.roundSeconds || 90}초`;
     pictionaryDrawerLabel.textContent = g.status === 'selecting'
-      ? '참가자가 모이면 방장이 시작합니다'
+      ? `${settings} · 참가자가 모이면 방장이 시작합니다`
       : g.status === 'finished'
         ? (Array.isArray(g.winner) && g.winner.length
-          ? `최종 승리: ${g.winner.map(s => state.players[s]?.label || `${s}번`).join(', ')}`
+          ? (g.mode === 'team' && g.teamTotals
+            ? `최종 · A팀 ${g.teamTotals.A}점 : B팀 ${g.teamTotals.B}점 · ${g.teamTotals.A === g.teamTotals.B ? '공동 승리' : `${g.teamTotals.A > g.teamTotals.B ? 'A' : 'B'}팀 승리`}`
+            : `최종 승리: ${g.winner.map(pictionaryName).join(', ')}`)
           : '그림 맞히기 종료')
-        : `출제자 · ${state.players[g.drawerSeat]?.label || (g.drawerSeat ? g.drawerSeat + '번' : '-')}${isDrawer ? ' (나)' : ''}`;
+        : g.phase === 'reveal'
+          ? `${g.roundNumber}/${g.totalRounds}라운드 결과`
+          : `${g.roundNumber}/${g.totalRounds}라운드 · ${isDrawer ? '내가 그리는 중' : `${pictionaryName(g.drawerSeat)}${pictionaryTeamTag(g, g.drawerSeat)} 님이 그리는 중`}`;
     const timerEndsAt = g.phase === 'drawing' ? g.roundEndsAt : g.phase === 'reveal' ? g.revealEndsAt : null;
-    const pictionaryTimerDuplicated = g.phase === 'drawing' && desktopActionTimerOwns('pictionary');
+    const pictionaryTimerDuplicated = g.phase === 'drawing' && !g.firstCorrectAt && desktopActionTimerOwns('pictionary');
     pictionaryTimer.classList.toggle('hidden', !timerEndsAt || pictionaryTimerDuplicated);
-    if (timerEndsAt && !pictionaryTimerDuplicated) pictionaryTimer.textContent = g.phase === 'reveal' ? `결과 공개 · ${pictionaryCountdownText(timerEndsAt)}` : pictionaryCountdownText(timerEndsAt);
+    pictionaryTimer.classList.toggle('overtime', Boolean(g.phase === 'drawing' && g.firstCorrectAt));
+    if (timerEndsAt && !pictionaryTimerDuplicated) {
+      pictionaryTimer.textContent = g.phase === 'reveal' ? `다음 라운드 · ${pictionaryCountdownText(timerEndsAt)}`
+        : g.firstCorrectAt ? `추가 정답시간 ${pictionaryCountdownText(timerEndsAt)}` : pictionaryCountdownText(timerEndsAt);
+    }
+
+    // Category and hints are public; the word itself stays with the drawer until the round ends.
+    const hintParts = [];
+    if (g.phase === 'drawing') {
+      if (g.category) hintParts.push(['카테고리', g.category]);
+      if (g.hints?.length) hintParts.push(['글자 수', `${g.hints.length}글자`]);
+      if (g.hints?.choseong) hintParts.push(['초성', g.hints.choseong]);
+    }
+    pictionaryHints.replaceChildren(...hintParts.map(([label, value]) => {
+      const chip = document.createElement('span');
+      chip.className = 'pictionaryHintChip';
+      const small = document.createElement('small');
+      small.textContent = label;
+      const strong = document.createElement('strong');
+      strong.textContent = value;
+      chip.append(small, strong);
+      return chip;
+    }));
+    pictionaryHints.classList.toggle('hidden', !hintParts.length);
 
     pictionaryWordBox.classList.toggle('hidden', !(isDrawer && g.phase === 'drawing' && state.me?.myWord));
     if (state.me?.myWord) pictionaryWord.textContent = state.me.myWord;
 
     if (g.phase === 'reveal' && g.lastRound) {
+      const r = g.lastRound;
+      const lines = [`정답 「${r.word}」${r.category ? ` · ${r.category}` : ''}`];
+      lines.push(r.awards?.length
+        ? r.awards.map((a, i) => `${i + 1}. ${pictionaryName(a.seat)} +${a.points}${a.first ? ' (첫 정답)' : ''}${a.crossTeam ? ' (상대 팀)' : ''}`).join('  ')
+        : '아무도 맞히지 못했습니다');
+      lines.push(`출제자 ${pictionaryName(r.drawerSeat)} +${r.drawerBonus || 0}`);
+      if (r.teamTotals) lines.push(`누적 A팀 ${r.teamTotals.A} : B팀 ${r.teamTotals.B}`);
+      pictionaryRoundResult.replaceChildren(...lines.map((text, i) => {
+        const line = document.createElement(i === 0 ? 'strong' : 'span');
+        line.textContent = text;
+        return line;
+      }));
       pictionaryRoundResult.classList.remove('hidden');
-      const guessers = g.lastRound.correctGuessers.map(s => state.players[s]?.label || `${s}번`);
-      pictionaryRoundResult.textContent = `정답은 "${g.lastRound.word}" · ${guessers.length ? guessers.join(', ') + '님 정답' : '아무도 맞히지 못했습니다'}`;
     } else {
       pictionaryRoundResult.classList.add('hidden');
     }
@@ -4261,6 +4323,8 @@
     const canDraw = pictionaryCanDraw();
     setActionable(pictionaryCanvas.parentElement, canDraw && !g.paused, 'area');
     pictionaryDrawTools.classList.toggle('hidden', !canDraw);
+    pictionaryRuleNote.classList.toggle('hidden', !canDraw);
+    pictionaryUndoBtn.disabled = !(g.strokes || []).length;
     pictionaryCanvas.classList.toggle('drawable', canDraw);
 
     const alreadyGuessed = (g.correctGuessers || []).includes(seat);
@@ -4269,14 +4333,33 @@
     pictionaryGuessInput.disabled = !canGuess;
     setActionable(pictionaryGuessInput, canGuess && !g.paused);
 
+    // Wrong guesses stay short and newest-first; correct answers only mark who got it, never the word.
+    const log = g.phase === 'drawing' ? [...(g.guessLog || [])].reverse().slice(0, 8) : [];
+    pictionaryGuessLog.replaceChildren(...log.map(entry => {
+      const item = document.createElement('li');
+      item.textContent = `${pictionaryName(entry.seat)}: ${entry.text}`;
+      return item;
+    }));
+    pictionaryGuessLog.classList.toggle('hidden', !log.length);
+
     pictionaryScoreboard.replaceChildren();
     const seats = g.seatOrder.length ? g.seatOrder : numberedSeats().filter(n => state.players[n]);
+    if (g.mode === 'team' && g.teamTotals) {
+      const totals = document.createElement('div');
+      totals.className = 'pictionaryScoreRow pictionaryTeamTotals';
+      const a = document.createElement('span'); a.textContent = `A팀 ${g.teamTotals.A}점`;
+      const b = document.createElement('strong'); b.textContent = `B팀 ${g.teamTotals.B}점`;
+      totals.append(a, b);
+      pictionaryScoreboard.appendChild(totals);
+    }
     const ranked = [...seats].sort((a, b) => (g.scores?.[b] || 0) - (g.scores?.[a] || 0));
+    const awards = Object.fromEntries((g.roundAwards || []).map(a => [a.seat, a]));
     for (const s of ranked) {
       const row = document.createElement('div');
-      row.className = `pictionaryScoreRow${s === g.drawerSeat && g.status === 'playing' ? ' isDrawer' : ''}${s === seat ? ' isMe' : ''}`;
+      const drawing = s === g.drawerSeat && g.status === 'playing';
+      row.className = `pictionaryScoreRow${drawing ? ' isDrawer' : ''}${s === seat ? ' isMe' : ''}${awards[s] ? ' isCorrect' : ''}`;
       const name = document.createElement('span');
-      name.textContent = `${state.players[s]?.label || s + '번'}${s === g.drawerSeat && g.status === 'playing' ? ' ✏️' : ''}${(g.correctGuessers || []).includes(s) ? ' ✅' : ''}`;
+      name.textContent = `${pictionaryName(s)}${pictionaryTeamTag(g, s)}${drawing ? ' · 그리는 중' : awards[s] ? ` · 정답 +${awards[s].points}` : ''}`;
       const score = document.createElement('strong');
       score.textContent = `${g.scores?.[s] || 0}점`;
       row.append(name, score);
@@ -6709,9 +6792,22 @@
 
   pictionaryStartBtn.addEventListener('click', () => roomAction('start-pictionary'));
   pictionaryClearBtn.addEventListener('click', () => { redrawPictionaryCanvas(); roomAction('pictionary-clear'); });
-  pictionaryEraserBtn.addEventListener('click', () => {
-    pictionaryTool = pictionaryTool === 'eraser' ? 'pen' : 'eraser';
-    pictionaryEraserBtn.classList.toggle('selected', pictionaryTool === 'eraser');
+  function setPictionaryTool(tool) {
+    pictionaryTool = tool;
+    for (const [button, value] of [[pictionaryPenBtn, 'pen'], [pictionaryEraserBtn, 'eraser']]) {
+      button.classList.toggle('selected', tool === value);
+      button.setAttribute('aria-pressed', String(tool === value));
+    }
+  }
+  pictionaryPenBtn.addEventListener('click', () => setPictionaryTool('pen'));
+  pictionaryEraserBtn.addEventListener('click', () => setPictionaryTool(pictionaryTool === 'eraser' ? 'pen' : 'eraser'));
+  pictionaryUndoBtn.addEventListener('click', () => roomAction('pictionary-undo'));
+  pictionaryConfig.addEventListener('change', (event) => {
+    const input = event.target;
+    if (input.matches('[data-pictionary-mode]')) roomAction('set-pictionary-config', { mode: input.value });
+    else if (input.matches('[data-pictionary-difficulty]')) roomAction('set-pictionary-config', { difficulty: input.value });
+    else if (input.matches('[data-pictionary-seconds]')) roomAction('set-pictionary-config', { roundSeconds: Number(input.value) });
+    else if (input === pictionaryShowCategory) roomAction('set-pictionary-config', { showCategory: input.checked });
   });
   pictionaryCanvas.addEventListener('pointerdown', pictionaryPointerDown);
   pictionaryCanvas.addEventListener('pointermove', pictionaryPointerMove);
@@ -6727,8 +6823,9 @@
     try {
       const data = await api('/api/room/pictionary-guess', { method: 'POST', body: JSON.stringify({ guess }) });
       if (data.state && !isStaleRoomState(data.state)) { state = data.state; renderRoom(); }
-      pictionaryGuessInput.value = '';
-      showToast(state.game.correctGuessers.includes(seat) ? '정답입니다!' : '오답입니다. 다시 시도해 보세요.', 2200);
+      // Keep whatever the player typed while this guess was in flight.
+      if (pictionaryGuessInput.value.trim() === guess) pictionaryGuessInput.value = '';
+      showToast(state.game.correctGuessers.includes(seat) ? '정답입니다!' : data.pictionaryClose ? '정답에 가깝습니다!' : '오답입니다. 다시 시도해 보세요.', 2200);
     } catch (err) { showToast(err.message, 2800); }
     finally { button.disabled = false; }
   });
