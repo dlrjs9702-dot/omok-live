@@ -372,3 +372,84 @@ test.describe('고스톱·맞고 1차 UX 및 화투판 시각화 (v1.6.92)', () 
     for (const v of [a, b, w]) await v.context.close();
   });
 });
+
+test.describe('고스톱·맞고 자체 화투·실물감 연출 (v1.7.4)', () => {
+  test('48장+보너스 자체 벡터 화투, 3D 뒤집기·붙기 충격, 특수상황별 전용 연출, 정산 단계 강조', async ({ browser, request }, testInfo) => {
+    test.setTimeout(180_000);
+    const admin = await adminToken(request);
+    const me = await guest(browser, request, admin, '나');
+    await me.page.locator('[data-game="gostop"]').click();
+    await me.page.locator('#createRoomBtn').click();
+    const room = await openHarness(me.page, me.token);
+    const page = me.page;
+    const shot = async name => page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
+
+    // 1) 50장 모두 외부 파일 없이 자체 SVG로 그려지고, 월·종류 글자와 접근성 이름은 그대로다.
+    const cards = await page.evaluate(() => window.HwatuArt.ids.map(id => ({ id, svg: window.HwatuArt.svg(id) })));
+    expect(cards).toHaveLength(50);
+    for (const card of cards) {
+      expect(card.svg, card.id).toMatch(/^<svg class="hwatuSvg" viewBox="0 0 60 90"/);
+      expect(card.svg, card.id).not.toMatch(/<image|href=|url\(/); // 외부 이미지·참조 없음
+    }
+    expect(new Set(cards.map(card => card.svg)).size).toBeGreaterThan(30); // 월·종류별로 서로 다른 그림
+    const { CARDS } = require(path.join(__dirname, '..', '..', 'lib', 'games', 'gostop', 'cards.js'));
+    expect(CARDS.map(card => card.id).sort()).toEqual(cards.map(card => card.id).sort(), '엔진의 모든 카드에 그림이 있다');
+
+    // 2) 일반 흐름: 손패를 탁 내면 충격 링, 산패는 뒷면에서 3D로 뒤집힌 뒤 같은 월에 붙는다.
+    let from = await show(page, room, SCENARIOS.normal());
+    await expect(page.locator('#gostopFloor .hwatu.hasArt').first()).toBeVisible();
+    await expect(page.locator('#gostopFxLayer .gostopSprite .fxInner')).not.toHaveCount(0);
+    await page.waitForTimeout(180); await shot('10-play-lift');
+    await page.waitForTimeout(260); await shot('11-deck-flip');
+    await settle(page);
+    let log = await entries(page, from);
+    const kinds = log.map(e => e.k);
+    expect(kinds).toContain('impact');
+    expect(kinds.indexOf('turn')).toBeGreaterThan(kinds.indexOf('play')); // 산패 3D 뒤집기는 손패 뒤
+    expect(kinds.indexOf('turn')).toBeLessThan(kinds.lastIndexOf('capture'));
+    await expect(page.locator('#gostopFxLayer .gostopSprite')).toHaveCount(0);
+
+    // 3) 특수상황은 서로 다른 전용 연출(색·움직임·바닥 효과)로 구별된다.
+    const specials = [['ppeok', 'ppeok', 'ppeok'], ['bomb', 'bomb', 'bomb'], ['sweep', 'sweep', 'sweep'], ['shake', 'shake', null],
+      ['jjok', 'jjok', 'jjok'], ['ttadak', 'ttadak', 'ttadak'], ['kong', 'kong', 'kong']];
+    for (const [name, fx, floorFx] of specials) {
+      from = await show(page, room, SCENARIOS[name]());
+      await expect(page.locator(`#gostopFxLayer .fxBadge.fx-${fx}`), name).toBeAttached({ timeout: 6000 });
+      await shot(`2x-special-${name}`);
+      await settle(page);
+      const special = (await entries(page, from)).filter(e => e.k === 'special');
+      expect(special.map(e => e.fx), name).toContain(fx);
+      if (floorFx) expect(special.find(e => e.fx === fx).floor, name).toBe(floorFx);
+    }
+    const colours = await page.evaluate(() => {
+      const layer = document.getElementById('gostopFxLayer');
+      return ['ppeok', 'bomb', 'sweep', 'jjok', 'ttadak', 'go', 'stop'].map(kind => {
+        const el = document.createElement('div'); el.className = `fxBadge fx-${kind}`; layer.append(el);
+        const colour = getComputedStyle(el).backgroundColor; el.remove(); return colour;
+      });
+    });
+    expect(new Set(colours).size).toBeGreaterThanOrEqual(6); // 뻑·폭탄·판쓸이·쪽·따닥·고·스톱이 한눈에 다르다
+
+    // 4) 정산은 점수 → 배수 → 박 → 포인트 순서로 한 번만 단계적으로 드러난다(다시 그려도 반복하지 않음).
+    const g = SCENARIOS.goStop().after.game;
+    await page.evaluate(({ base, game }) => {
+      Object.assign(game, { status: 'finished', phase: 'done', winner: '1',
+        result: { kind: 'win', winner: '1', reason: 'stop', base: 8, goCount: 1, score: 9, items: [{ key: 'pi', points: 8 }], pointsPerScore: 100,
+          losers: [{ seat: '2', baks: ['pibak'], factors: [{ key: 'go', multiplier: 2, count: 1 }, { key: 'pibak', multiplier: 2, count: 1 }], multiplier: 4, amount: 3600, score: 9, pointsPerScore: 100 }] },
+        settlement: { status: 'done', kind: 'win', burnPercent: 10, transfers: [{ fromSeat: '2', toSeat: '1', requested: 3600, paid: 3600, capped: false, credited: 3240, burned: 360 }],
+          balancesBefore: { 1: 100000, 2: 100000 }, balances: { 1: 103240, 2: 96400 } } });
+      const state = { ...base, gameType: 'gostop', game, players: { 1: { label: '나' }, 2: { label: '상대' } }, me: { ...base.me, seat: '1', myGostopHand: [] } };
+      window.__gostopRender(state);
+      window.__lastResultState = state;
+    }, { base: room, game: g });
+    await expect(page.locator('#gostopResult')).toHaveClass(/staged/);
+    const stages = await page.locator('#gostopResult .gostopChip, #gostopResult .gostopLoserLine, #gostopResult .gostopWinLine').evaluateAll(els => els.map(el => Number(el.style.getPropertyValue('--stage'))));
+    expect(stages).toEqual([...stages].sort((a, b) => a - b));
+    await expect(page.locator('#gostopResult .gostopWinLine')).toContainText('+3,240P');
+    await expect(page.locator('#gostopResult .gostopWinLine')).toContainText('360P 소각');
+    await page.waitForTimeout(700); await shot('30-settlement');
+    await page.evaluate(() => window.__gostopRender(window.__lastResultState));
+    await expect(page.locator('#gostopResult')).not.toHaveClass(/staged/);
+    await me.context.close();
+  });
+});

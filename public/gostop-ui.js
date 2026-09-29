@@ -31,6 +31,7 @@
   let pointAccount = null;
   let pendingSpecial = null; // { cardId, options } while the play-style prompt is open
   let lastState = null;
+  let stagedResultKey = null;
   let elementsById = new Map(); // public card id -> its element in the current render (no DOM attribute)
   let anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
 
@@ -67,10 +68,13 @@
     el.innerHTML = '';
     const top = document.createElement('span'); top.className = 'hwatuMonth'; top.textContent = monthText;
     const art = document.createElement('span'); art.className = 'hwatuArt';
-    art.textContent = c.bonus ? figure : `${PLANTS[c.month]}${figure ? figure : ''}`;
+    // v1.7.4: the game center's own vector hwatu (public/hwatu-art.js); emoji only as a fallback.
+    const vector = window.HwatuArt?.svg(id);
+    if (vector) { art.innerHTML = vector; el.classList.add('hasArt'); }
+    else art.textContent = c.bonus ? figure : `${PLANTS[c.month]}${figure ? figure : ''}`;
     const tag = document.createElement('span'); tag.className = `hwatuBadge badge-${c.kind}${c.dan ? ` dan-${c.dan}` : ''}`; tag.textContent = badge;
-    el.append(top, art, tag);
-    if (c.kind === 'ribbon') { const band = document.createElement('span'); band.className = `hwatuRibbon${c.dan ? ` dan-${c.dan}` : ''}`; el.append(band); }
+    el.append(art, top, tag);
+    if (c.kind === 'ribbon' && !vector) { const band = document.createElement('span'); band.className = `hwatuRibbon${c.dan ? ` dan-${c.dan}` : ''}`; el.append(band); }
     el.setAttribute('aria-label', `${monthText}${c.bonus ? '' : ` ${MONTHS[c.month]}`} ${badge}`);
     if (track) elementsById.set(id, el);
     return el;
@@ -356,8 +360,15 @@
     const box = $('gostopResult');
     box.replaceChildren();
     const r = g.result;
+    box.classList.remove('staged');
     if (!r || !['finished', 'draw'].includes(g.status)) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
+    // v1.7.4: the first time this result is shown (and once it is settled), its lines appear in order.
+    const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`;
+    if (stageKey !== stagedResultKey && g.settlement?.status === 'done') {
+      stagedResultKey = stageKey;
+      if (!reducedMotion()) box.classList.add('staged');
+    }
     const title = document.createElement('strong');
     const settled = g.settlement?.status === 'done';
     const paidOf = (from, to) => g.settlement?.transfers?.find(item => item.fromSeat === from && item.toSeat === to);
@@ -423,8 +434,11 @@
         + balanceNote(loser.seat);
       box.append(line);
     }
+    let stage = 0;
+    for (const el of [...flow.children, ...box.querySelectorAll('.gostopLoserLine')]) el.style.setProperty('--stage', String(stage++));
     const win = document.createElement('p');
     win.className = 'gostopWinLine';
+    win.style.setProperty('--stage', String(stage));
     // v1.7.3: the winner receives the real transfer minus the burned share (10%, rounded down).
     win.textContent = settled
       ? `${label(state, r.winner)} → +${fmt(credited)}${burned ? ` (이동 ${fmt(total)} 중 ${g.settlement.burnPercent || 10}% ${fmt(burned)} 소각)` : ''}${balanceNote(r.winner)}`
@@ -525,9 +539,13 @@
   // listed in lastEvent.steps (every card there is face up for everyone) from where the cards were in
   // the previous render to where they are now. Final elements stay hidden until their card lands.
   // One run at a time (generation id); a newer event cancels an older run and snaps it to the end.
-  const FX = { move: 300, flip: 340, capture: 300, gap: 55, look: 120, glow: 200 };
+  const FX = { move: 320, flip: 380, capture: 320, gap: 55, look: 130, glow: 200, impact: 170 };
   const BASE_W = 46; const BASE_H = 68;
-  const SPECIAL_TAGS = ['jjok', 'ttadak', 'sweep', 'ppeok', 'jappeok', 'ppeokEat', 'bomb', 'kong', 'shake', 'bonus'];
+  const SPECIAL_TAGS = ['jjok', 'ttadak', 'sweep', 'ppeok', 'jappeok', 'ppeokEat', 'bomb', 'kong', 'shake', 'bonus', 'firstPpeok', 'secondPpeok', 'chongtong', 'samppeok'];
+  // v1.7.4: each special gets its own short look (colour, motion and a floor effect) so 뻑·자뻑·쪽·따닥·판쓸이·
+  // 폭탄·콩알탄·흔들기·고·스톱 read differently at a glance. Kept under ~0.7s; nothing blocks input.
+  const SPECIAL_FX = { ppeok: 'ppeok', jappeok: 'jappeok', ppeokEat: 'eat', jjok: 'jjok', ttadak: 'ttadak', sweep: 'sweep', bomb: 'bomb', kong: 'kong',
+    shake: 'shake', bonus: 'bonus', firstPpeok: 'bonusPoint', secondPpeok: 'bonusPoint', chongtong: 'grand', samppeok: 'grand', go: 'go', stop: 'stop' };
   let fxRun = null;
   let fxGen = 0;
   let seenEventKey; // undefined until the first table of this room is shown (that one never animates)
@@ -593,7 +611,7 @@
 
   function runFx(state, key, steps, before, ev, oldItems, items) {
     const pace = steps.length >= 7 ? 0.55 : steps.length >= 4 ? 0.72 : 1;
-    const run = { key, gen: ++fxGen, sprites: new Map(), temps: new Set(), hidden: new Set(), cancelled: false, pace };
+    const run = { key, gen: ++fxGen, sprites: new Map(), temps: new Set(), labels: new Set(), hidden: new Set(), cancelled: false, pace };
     for (const step of steps) if (step.k !== 'reveal' && step.k !== 'match') for (const id of stepCards(step)) run.hidden.add(id);
     run.rehide = () => { for (const id of run.hidden) elementsById.get(id)?.classList.add('gostopFxHidden'); };
     run.rehide();
@@ -608,15 +626,16 @@
           await wait(fxMs(run, FX.gap, 24));
         }
         if (run.cancelled) return;
-        const tags = (ev.tags || []).filter(tag => SPECIAL_TAGS.includes(tag));
-        const notices = tags.map(tag => TAGS[tag]);
-        if (ev.stolen?.length) notices.push(`피 뺏기 · ${ev.stolen.length}장`);
-        if (notices.length) badge(run, notices.join(' · '), ev.seat);
+        const tags = (ev.tags || []).filter(tag => SPECIAL_TAGS.includes(tag) || tag === 'go' || tag === 'stop');
+        const shown = tags.slice(0, 3).map((tag, i) => specialFx(run, tag, i, ev, state));
+        if (ev.stolen?.length) badge(run, `피 뺏기 · ${ev.stolen.length}장`, ev.seat, 'steal', shown.length);
         pulseScores(run, oldItems, items);
         if ((ev.tags || []).includes('go')) pulse(anchors.stats.get(ev.seat));
-        if (notices.length) await wait(fxMs(run, 320, 180));
+        if (shown.length || ev.stolen?.length) await wait(fxMs(run, 360, 180));
       } finally {
-        if (fxRun === run) { cancelFx(); if (lastState?.gameType === 'gostop') renderHand(lastState); }
+        // A run that finished normally leaves its labels and table effects to fade out on their own;
+        // only a newer event (cancelFx) clears them early.
+        if (fxRun === run) { for (const el of run.labels) run.temps.delete(el); cancelFx(); if (lastState?.gameType === 'gostop') renderHand(lastState); }
       }
     })();
   }
@@ -626,12 +645,21 @@
     if (fxLog.length > 200) fxLog.splice(0, fxLog.length - 200);
   }
 
+  // v1.7.4: a sprite is two layers -- the outer one only travels (translate/scale, as in v1.6.88), the
+  // inner one carries the card's own motion: tilt, the 3D turn from back to face, and the landing hit.
   function spriteFor(run, id, at, { back = false } = {}) {
     let el = run.sprites.get(id);
     if (el) return el;
-    el = cardEl(id, { size: 'normal' });
-    el.classList.add('gostopSprite');
-    if (back) el.classList.add('fxBack');
+    el = document.createElement('div');
+    el.className = 'gostopSprite';
+    const inner = document.createElement('div');
+    inner.className = `fxInner${back ? ' isBack' : ''}`;
+    const front = cardEl(id, { size: 'normal', classes: ' fxFace fxFront' });
+    const rear = backEl('normal');
+    rear.classList.add('fxFace', 'fxRear');
+    inner.append(front, rear);
+    el.append(inner);
+    el._inner = inner;
     el._at = at;
     el.style.transform = tf(at);
     layer().append(el);
@@ -639,13 +667,50 @@
     return el;
   }
 
-  function move(el, to, ms, { flipAt = null } = {}) {
+  // Travel along a slight arc (lift at the middle) instead of a straight slide.
+  function move(el, to, ms, { flipAt = null, arc = 0.18, tilt = 0 } = {}) {
     const from = el._at;
     el._at = to;
     el.style.transform = tf(to);
-    if (flipAt !== null) setTimeout(() => el.classList.remove('fxBack'), ms * flipAt);
+    if (flipAt !== null) turnOver(el, ms);
     if (!from) return Promise.resolve();
-    return el.animate([{ transform: tf(from) }, { transform: tf(to) }], { duration: ms, easing: 'cubic-bezier(.2,.7,.2,1)' }).finished.catch(() => {});
+    const lift = Math.min(46, Math.hypot(to.left - from.left, to.top - from.top) * arc);
+    const mid = { left: (from.left + to.left) / 2, top: (from.top + to.top) / 2 - lift, width: (from.width + to.width) / 2 * 1.06, height: (from.height + to.height) / 2 * 1.06 };
+    if (tilt && flipAt === null) el._inner?.animate([{ transform: `${turned(el)} rotate(0deg)` }, { transform: `${turned(el)} rotate(${tilt}deg)`, offset: 0.55 }, { transform: `${turned(el)} rotate(0deg)` }], { duration: ms, easing: 'ease-out' });
+    return el.animate([{ transform: tf(from) }, { transform: tf(mid), offset: 0.5 }, { transform: tf(to) }], { duration: ms, easing: 'cubic-bezier(.25,.75,.2,1)' }).finished.catch(() => {});
+  }
+
+  const turned = el => (el._inner?.classList.contains('isBack') ? 'rotateY(180deg)' : 'rotateY(0deg)');
+  // 산패·상대 패 뒤집기: a real 3D half turn from the back face to the front face.
+  function turnOver(el, ms) {
+    const inner = el._inner;
+    if (!inner || !inner.classList.contains('isBack')) return Promise.resolve();
+    inner.classList.remove('isBack');
+    if (fxRun) log(fxRun, 'turn', null, null, el._at);
+    return inner.animate([
+      { transform: 'rotateY(180deg) scale(1)' },
+      { transform: 'rotateY(90deg) scale(1.16)', offset: 0.5 },
+      { transform: 'rotateY(0deg) scale(1)' },
+    ], { duration: Math.max(160, ms), easing: 'cubic-bezier(.3,.6,.3,1)' }).finished.catch(() => {});
+  }
+
+  // 탁: the landing card dips and the card it lands on jolts, with a short ring on the floor.
+  function impact(run, el, partner = null) {
+    el?._inner?.animate([{ transform: 'scale(1.12) rotate(-3deg)' }, { transform: 'scale(.96) rotate(1deg)', offset: 0.55 }, { transform: 'scale(1) rotate(0deg)' }],
+      { duration: fxMs(run, FX.impact, 90), easing: 'ease-out' });
+    partner?._inner?.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(2px,1px) rotate(2deg)', offset: 0.4 }, { transform: 'translate(0,0)' }],
+      { duration: fxMs(run, FX.impact, 90) });
+    const at = el?._at;
+    if (!at) return;
+    log(run, 'impact', null, null, at);
+    const ring = document.createElement('div');
+    ring.className = 'fxRing';
+    ring.style.left = `${at.left + at.width / 2}px`;
+    ring.style.top = `${at.top + at.height / 2}px`;
+    layer().append(ring);
+    run.temps.add(ring);
+    ring.animate([{ opacity: 0.85, transform: 'translate(-50%,-50%) scale(.4)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(1.6)' }], { duration: fxMs(run, 360, 160), easing: 'ease-out', fill: 'forwards' })
+      .finished.then(() => ring.remove(), () => {});
   }
 
   function land(run, id) {
@@ -672,7 +737,8 @@
         const el = spriteFor(run, id, start);
         el.classList.add('fxReveal');
         log(run, 'reveal', id, start, null, step.seat);
-        return move(el, { ...start, left: start.left + (step.seat === me ? 0 : i * 26), top: start.top - 22 }, fxMs(run, 240));
+        return move(el, { ...start, left: start.left + (step.seat === me ? 0 : i * 26), top: start.top - 22 }, fxMs(run, 240))
+          .then(() => el._inner?.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-9deg)' }, { transform: 'rotate(8deg)' }, { transform: 'rotate(-5deg)' }, { transform: 'rotate(0)' }], { duration: fxMs(run, 320, 160) }).finished.catch(() => {}));
       });
       await Promise.all(moves);
       await wait(fxMs(run, 360, 180));
@@ -697,7 +763,9 @@
         const hidden = !known && step.seat !== me;
         const el = spriteFor(run, id, start, { back: hidden });
         log(run, 'play', id, start, target, step.seat);
-        return move(el, target, fxMs(run, FX.move), { flipAt: hidden ? 0.45 : null });
+        // 손패를 탁 내기: a quick lift and tilt, then it snaps down onto its partner (or the floor).
+        return move(el, target, fxMs(run, FX.move), { flipAt: hidden ? 0.45 : null, arc: 0.26, tilt: i % 2 ? 7 : -7 })
+          .then(() => impact(run, el, partner ? run.sprites.get(partner) : null));
       }));
       return;
     }
@@ -709,8 +777,12 @@
       const target = partnerAt ? near(partnerAt) : step.bonus ? { ...start, left: start.left + 58 } : (finalRect(step.card) || start);
       const el = spriteFor(run, step.card, start, { back: true });
       log(run, 'flip', step.card, start, target);
-      await move(el, target, fxMs(run, FX.flip), { flipAt: 0.5 });
+      // 산패 뒤집기: the top card lifts off the pile and turns over in 3D, then travels to its place.
+      const lifted = { ...start, left: start.left + 6, top: start.top - 14 };
+      await Promise.all([move(el, lifted, fxMs(run, FX.flip * 0.55, 110), { arc: 0 }), turnOver(el, fxMs(run, FX.flip * 0.55, 110))]);
       await wait(fxMs(run, FX.look, 70)); // let the month be read before anything else moves
+      await move(el, target, fxMs(run, FX.flip * 0.6, 120), { arc: 0.2 });
+      if (partner) impact(run, el, run.sprites.get(partner));
       return;
     }
     if (step.k === 'place') {
@@ -727,6 +799,12 @@
       for (const id of step.cards) if (!run.sprites.has(id) && before.cards.get(id)) spriteFor(run, id, before.cards.get(id));
       for (const id of step.cards) run.sprites.get(id)?.classList.add('fxGlow');
       log(run, 'match', step.cards.join(','), null, null);
+      // 같은 월끼리 붙기: the pair tightens into one stack for a moment before it is taken.
+      const anchor = run.sprites.get(step.cards[0])?._at;
+      await Promise.all(step.cards.slice(1).map((id, i) => {
+        const el = run.sprites.get(id);
+        return anchor && el ? move(el, { ...anchor, left: anchor.left + 5 + i * 4, top: anchor.top + 2 }, fxMs(run, 130, 70), { arc: 0 }) : null;
+      }));
       await wait(fxMs(run, FX.glow, 100));
       return;
     }
@@ -755,7 +833,9 @@
         el.classList.remove('fxGlow');
         await wait(Math.min(90, Math.round(i * 22 * run.pace)));
         log(run, step.k, id, start, target, seat);
-        await move(el, target, fxMs(run, step.k === 'steal' ? FX.move : FX.capture));
+        // 획득패 쓸어오기: a swept arc with a little spin; 피 뺏기 flies across with a bigger turn.
+        el.classList.add(step.k === 'steal' ? 'fxSteal' : 'fxSweep');
+        await move(el, target, fxMs(run, step.k === 'steal' ? FX.move : FX.capture), { arc: step.k === 'steal' ? 0.32 : 0.14, tilt: step.k === 'steal' ? 18 : (i % 2 ? 9 : -9) });
         land(run, id);
       }));
     }
@@ -788,18 +868,65 @@
     }
   }
 
-  function badge(run, text, seat) {
+  // Entry motion of each special's label: a stamp, a pop, a shake, a double tap...
+  const BADGE_IN = {
+    ppeok: [{ transform: 'translate(-50%,0) scale(1.6) rotate(-8deg)', opacity: 0 }, { transform: 'translate(-50%,0) scale(.92) rotate(3deg)', opacity: 1, offset: 0.6 }, { transform: 'translate(-50%,0) scale(1) rotate(0)', opacity: 1 }],
+    jappeok: [{ transform: 'translate(-50%,-18px) scale(.8)', opacity: 0 }, { transform: 'translate(-50%,4px) scale(1.08)', opacity: 1, offset: 0.6 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    jjok: [{ transform: 'translate(-50%,0) scale(.3)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1.25)', opacity: 1, offset: 0.5 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    ttadak: [{ transform: 'translate(-50%,0) scale(.6)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1.15)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,0) scale(.95)', opacity: 1, offset: 0.5 }, { transform: 'translate(-50%,0) scale(1.15)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    sweep: [{ transform: 'translate(-160%,0) skewX(-18deg)', opacity: 0 }, { transform: 'translate(-40%,0) skewX(-6deg)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%,0) skewX(0)', opacity: 1 }],
+    bomb: [{ transform: 'translate(-50%,0) scale(.2)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1.45)', opacity: 1, offset: 0.45 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    kong: [{ transform: 'translate(-50%,6px) scale(.5)', opacity: 0 }, { transform: 'translate(-50%,-4px) scale(1.12)', opacity: 1, offset: 0.55 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    shake: [{ transform: 'translate(-50%,0) rotate(0)', opacity: 0 }, { transform: 'translate(-50%,0) rotate(-7deg)', opacity: 1, offset: 0.25 }, { transform: 'translate(-50%,0) rotate(7deg)', opacity: 1, offset: 0.5 }, { transform: 'translate(-50%,0) rotate(-4deg)', opacity: 1, offset: 0.75 }, { transform: 'translate(-50%,0) rotate(0)', opacity: 1 }],
+    go: [{ transform: 'translate(-50%,10px) scale(.7)', opacity: 0 }, { transform: 'translate(-50%,-6px) scale(1.2)', opacity: 1, offset: 0.5 }, { transform: 'translate(-50%,0) scale(1)', opacity: 1 }],
+    stop: [{ transform: 'translate(-50%,0) scale(1.8) rotate(10deg)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1) rotate(-4deg)', opacity: 1 }],
+    grand: [{ transform: 'translate(-50%,0) scale(.4) rotate(-14deg)', opacity: 0 }, { transform: 'translate(-50%,0) scale(1.3) rotate(4deg)', opacity: 1, offset: 0.6 }, { transform: 'translate(-50%,0) scale(1) rotate(0)', opacity: 1 }],
+  };
+  function badge(run, text, seat, kind = 'plain', row = 0) {
     const anchor = plain(rectOf($('gostopFloor')));
     if (!anchor) return;
     const el = document.createElement('div');
-    el.className = 'fxBadge';
+    el.className = `fxBadge fx-${kind}`;
     el.textContent = text;
     el.style.left = `${anchor.left + anchor.width / 2}px`;
-    el.style.top = `${anchor.top + 8}px`;
+    el.style.top = `${anchor.top + 8 + row * 34}px`;
     layer().append(el);
     run.temps.add(el);
-    el.animate([{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: 180, fill: 'forwards' });
-    setTimeout(() => el.remove(), 1100);
+    run.labels.add(el);
+    el.animate(BADGE_IN[kind] || [{ opacity: 0, transform: 'translate(-50%, 6px) scale(.9)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }], { duration: kind === 'ttadak' || kind === 'shake' ? 420 : 260, easing: 'ease-out', fill: 'forwards' });
+    setTimeout(() => el.remove(), 1150);
+  }
+
+  // A short effect on the table itself for the specials that change the table.
+  function floorFx(run, kind) {
+    const floor = $('gostopFloor');
+    const r = plain(rectOf(floor));
+    if (!r) return;
+    const el = document.createElement('div');
+    el.className = `fxFloor fxFloor-${kind}`;
+    Object.assign(el.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    layer().append(el);
+    run.temps.add(el);
+    run.labels.add(el);
+    const ms = kind === 'sweep' ? 520 : kind === 'bomb' ? 480 : 360;
+    if (kind === 'sweep') el.style.width = `${Math.round(r.width * 0.28)}px`; // one solid bar wiping across the table
+    el.animate(kind === 'sweep'
+      ? [{ transform: `translateX(${-r.width * 0.3}px) skewX(-16deg)`, opacity: 0.2 }, { transform: `translateX(${r.width * 0.85}px) skewX(-16deg)`, opacity: 0.9, offset: 0.8 }, { transform: `translateX(${r.width}px) skewX(-16deg)`, opacity: 0 }]
+      : [{ opacity: 0.95, transform: 'scale(.85)' }, { opacity: 0, transform: 'scale(1.08)' }], { duration: ms, easing: 'ease-out', fill: 'forwards' })
+      .finished.then(() => el.remove(), () => {});
+    if (kind === 'bomb' || kind === 'ppeok') {
+      floor.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-4px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'translate(-2px,1px)' }, { transform: 'translate(0,0)' }], { duration: kind === 'bomb' ? 300 : 220 });
+    }
+  }
+
+  function specialFx(run, tag, row, ev, state) {
+    const kind = SPECIAL_FX[tag] || 'plain';
+    const goCount = tag === 'go' ? state.game.seats?.[ev.seat]?.goCount : null;
+    badge(run, tag === 'go' && goCount ? `${goCount}고!` : TAGS[tag] || tag, ev.seat, kind, row);
+    const floor = ['ppeok', 'sweep', 'bomb', 'kong', 'jjok', 'ttadak', 'grand'].includes(kind) ? (kind === 'grand' ? 'bomb' : kind) : null;
+    if (floor) floorFx(run, floor);
+    fxLog.push({ run: run.gen, k: 'special', card: tag, fx: kind, floor, seat: ev.seat || null });
+    return kind;
   }
 
   async function act(action, payload) {
