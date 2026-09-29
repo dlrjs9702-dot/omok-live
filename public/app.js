@@ -236,6 +236,12 @@
   const pointWallet = document.getElementById('pointWallet');
   const pointBalanceText = document.getElementById('pointBalanceText');
   const attendanceBtn = document.getElementById('attendanceBtn');
+  const pointHistoryBtn = document.getElementById('pointHistoryBtn');
+  const pointHistoryPanel = document.getElementById('pointHistoryPanel');
+  const pointHistoryList = document.getElementById('pointHistoryList');
+  const pointHistoryStatus = document.getElementById('pointHistoryStatus');
+  const pointHistoryMore = document.getElementById('pointHistoryMore');
+  const pointHistoryClose = document.getElementById('pointHistoryClose');
   const roomPointBadge = document.getElementById('roomPointBadge');
   const davinciStartBtn = document.getElementById('davinciStartBtn');
   const davinciStatus = document.getElementById('davinciStatus');
@@ -2311,6 +2317,89 @@
     attendanceBtn.disabled = claimed;
     window.GameActionable?.set(attendanceBtn, !claimed);
     window.GostopUI?.setPointAccount?.(account);
+    // The history is refetched only when the server balance really differs from the newest row shown.
+    if (pointHistoryOpen && pointHistoryLatestBalance !== Number(account.balance)) loadPointHistory({ reset: true });
+  }
+
+  // v1.7.0: lobby point history (read-only view of the server ledger; never computes balances).
+  const POINT_HISTORY_PAGE = 30;
+  let pointHistoryOpen = false;
+  let pointHistoryCursor = null;
+  let pointHistoryLatestBalance = null;
+  let pointHistoryRequest = 0;
+  const seoulDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const seoulClock = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false });
+  const seoulDate = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' });
+  function pointHistoryTime(iso) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    const clock = seoulClock.format(date);
+    return seoulDay.format(date) === seoulDay.format(new Date()) ? `오늘 ${clock}` : `${seoulDate.format(date)} ${clock}`;
+  }
+  function pointHistoryTitle(item) {
+    if (item.reason === 'initial_grant') return '신규 계정 지급';
+    if (item.reason === 'daily_attendance') return '출석체크';
+    if (item.reason === 'game_win' || item.reason === 'game_loss') {
+      if (item.gameType === 'gostop') {
+        const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
+        const bonus = item.detail === 'firstPpeok' || item.detail === 'secondPpeok';
+        return `${game} ${bonus ? '뻑 보너스 정산' : item.detail === 'forfeit' ? '기권 정산' : '정산'}`;
+      }
+      return '게임 정산';
+    }
+    return '기타 시스템 조정';
+  }
+  function pointHistoryRow(item) {
+    const row = document.createElement('div');
+    row.className = 'pointHistoryRow';
+    row.setAttribute('role', 'listitem');
+    const top = document.createElement('div');
+    top.className = 'top';
+    const title = document.createElement('span');
+    const when = document.createElement('span');
+    when.className = 'when';
+    when.textContent = pointHistoryTime(item.at);
+    title.append(when, pointHistoryTitle(item));
+    const delta = document.createElement('span');
+    delta.className = `delta ${item.delta >= 0 ? 'gain' : 'loss'}`;
+    delta.textContent = `${item.delta >= 0 ? '+' : '-'}${Math.abs(item.delta).toLocaleString('ko-KR')}P`;
+    top.append(title, delta);
+    const balances = document.createElement('div');
+    balances.className = 'balances';
+    balances.textContent = `${Number(item.balanceBefore).toLocaleString('ko-KR')}P → ${Number(item.balanceAfter).toLocaleString('ko-KR')}P`;
+    row.append(top, balances);
+    return row;
+  }
+  async function loadPointHistory({ reset = false } = {}) {
+    if (!reset && pointHistoryCursor === null) return;
+    const ticket = ++pointHistoryRequest;
+    pointHistoryMore.disabled = true;
+    pointHistoryStatus.textContent = '불러오는 중…';
+    try {
+      const query = new URLSearchParams({ limit: String(POINT_HISTORY_PAGE) });
+      if (!reset) query.set('before', String(pointHistoryCursor));
+      const page = await api(`/api/points/history?${query}`);
+      if (ticket !== pointHistoryRequest) return;
+      if (reset) {
+        pointHistoryList.replaceChildren();
+        pointHistoryLatestBalance = page.items.length ? page.items[0].balanceAfter : null;
+      }
+      for (const item of page.items) pointHistoryList.appendChild(pointHistoryRow(item));
+      pointHistoryCursor = page.hasMore ? page.nextBefore : null;
+      pointHistoryMore.classList.toggle('hidden', !page.hasMore);
+      pointHistoryStatus.textContent = pointHistoryList.childElementCount ? '' : '아직 포인트 내역이 없습니다.';
+    } catch (error) {
+      if (ticket === pointHistoryRequest) pointHistoryStatus.textContent = `내역을 불러오지 못했습니다 · ${error.message}`;
+    } finally {
+      if (ticket === pointHistoryRequest) pointHistoryMore.disabled = false;
+    }
+  }
+  function setPointHistoryOpen(open) {
+    pointHistoryOpen = open;
+    pointHistoryPanel.classList.toggle('hidden', !open);
+    pointHistoryBtn.setAttribute('aria-expanded', String(open));
+    if (open) loadPointHistory({ reset: true });
+    else pointHistoryRequest += 1;
   }
   async function loadPoints() {
     const ticket = ++pointsRequest;
@@ -6598,6 +6687,9 @@
   window.TwentyQuestionsUI.init(roomAction);
   window.GostopUI.init(roomAction);
   attendanceBtn.addEventListener('click', claimAttendance);
+  pointHistoryBtn.addEventListener('click', () => setPointHistoryOpen(!pointHistoryOpen));
+  pointHistoryClose.addEventListener('click', () => { setPointHistoryOpen(false); pointHistoryBtn.focus(); });
+  pointHistoryMore.addEventListener('click', () => loadPointHistory());
   selectGame('omok');
   drawBoard();
   loadSession();

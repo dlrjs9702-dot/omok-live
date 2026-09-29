@@ -2149,7 +2149,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.6.99' });
+    return sendJson(res, 200, { ok: true, version: '1.7.0' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2224,6 +2224,24 @@ async function requestHandler(req, res) {
     const account = await pointStore.getAccount(userId);
     const recentGostopSettlements = await pointStore.recentSettlements(userId, 'gostop', 5);
     return sendJson(res, 200, { ok: true, ...account, attendanceAmount: 50_000, recentGostopSettlements });
+  }
+
+  // v1.7.0: the caller's own ledger, read-only. The account always comes from the session; nothing in the
+  // query string or body can select another user. Balance and ledger are never written here.
+  if (pathname === '/api/points/history' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const userId = pointAccountForSession(session);
+    if (!checkRateLimit(`pointhistory:${userId}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    let page;
+    try {
+      page = await pointStore.history(userId, { limit: url.searchParams.get('limit'), before: url.searchParams.get('before') });
+    } catch (error) {
+      if (error instanceof TypeError) return sendError(res, 400, 'BAD_CURSOR', '조회 위치가 올바르지 않습니다.');
+      throw error;
+    }
+    const balance = pointStore.cachedBalance(userId);
+    return sendJson(res, 200, { ok: true, balance, ...page });
   }
 
   if (pathname === '/api/points/attendance' && req.method === 'POST') {
@@ -2856,7 +2874,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.6.99 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.0 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
