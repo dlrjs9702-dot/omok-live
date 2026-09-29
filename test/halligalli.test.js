@@ -123,6 +123,7 @@ test('할리갈리 접속 끊김: 끊긴 참가자 차례도 5초마다 진행�
   assert.deepEqual(game.eliminated, ['1']);
   assert.equal(game.status, 'playing');
   // 종 잠금·판정 규칙은 그대로.
+  game.faces['1'] = [];
   game.faces['2'] = [{ fruit: '딸기', count: 2 }];
   game.faces['3'] = [{ fruit: '딸기', count: 3 }];
   game.flipId = 5; game.lockUntil = 61_000; game.ringSeats = []; game.bellSettledFlip = null;
