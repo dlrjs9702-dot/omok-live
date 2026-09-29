@@ -72,6 +72,9 @@ const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 
 const SESSION_MAX_MS = Math.max(1, Number(process.env.SESSION_MAX_HOURS || 8)) * 60 * 60 * 1000;
 const ROOM_TTL_MS = Math.max(2, Number(process.env.ROOM_TTL_HOURS || 12)) * 60 * 60 * 1000;
 const GUEST_LOCK_TTL_MS = Math.max(30, Number(process.env.GUEST_LOCK_TTL_SECONDS || 90)) * 1000;
+// v1.6.99: a page's pagehide release is deferred this long, so a browser refresh can resume the
+// same session (the tab keeps its token in sessionStorage) instead of dropping back to the gate.
+const SESSION_RELEASE_GRACE_MS = Math.max(1000, Number(process.env.SESSION_RELEASE_GRACE_MS || 10000));
 // Overridable only so tests don't have to wait a real minute; production always gets the 60s/5s
 // defaults below.
 const AFK_TIMEOUT_MS = Math.max(200, Number(process.env.AFK_TIMEOUT_MS) || 60_000);
@@ -313,7 +316,7 @@ function isRoomHost(room, session) {
     || (!room.hostIdentity && participantIdentity(oldHost) === identity);
 }
 
-function releaseSessionToken(token, { message = null } = {}) {
+function releaseSessionToken(token, { message = null, voluntary = false } = {}) {
   const session = sessions.get(token);
   if (!session) return false;
   sessions.delete(token);
@@ -352,12 +355,43 @@ function releaseSessionToken(token, { message = null } = {}) {
     const p = room.participants[token];
     if (!p) continue;
     p.connected = false;
-    p.rejoinable = Boolean(findSeat(room, token) && (room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended')));
+    // v1.6.99: a refresh, dropped page or expired session -- seated or spectating, in any game
+    // state -- as long as they had not left the room themselves; their next entry with the same key
+    // puts them back where they were. An explicit 접속 종료 keeps the old rule (only a seat in a
+    // match still in progress is held for them).
+    p.rejoinable = session.currentRoomId === room.id && (!voluntary
+      || Boolean(findSeat(room, token) && (room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))));
+    p.rejoinOnlyWhilePlaying = voluntary;
     syncGamePause(room);
     broadcast(room);
   }
   if (lobbyChanged || session.currentRoomId || cancelledInvitation) broadcastLobby();
   return true;
+}
+
+// A page asked to release this session (pagehide) and nothing has used it since: a refresh that
+// resumed it would have sent a heartbeat or request, touching lastSeen/leaseSeenAt.
+function releaseStillPending(session) {
+  const requested = session.releaseRequestedAt;
+  return Boolean(requested && Math.max(session.lastSeen || 0, session.leaseSeenAt || 0) <= requested && !sessionHasLiveStream(session.token));
+}
+
+function sessionHasLiveStream(token) {
+  for (const set of streams.values()) for (const entry of set) if (entry.sessionToken === token) return true;
+  for (const entry of lobbyStreams) if (entry.sessionToken === token) return true;
+  return false;
+}
+
+function requestSessionRelease(token) {
+  const session = sessions.get(token);
+  if (!session) return;
+  // Admin sessions are not kept in the page across reloads, so there is nothing to resume.
+  if (session.role !== 'guest') { releaseSessionToken(token); return; }
+  session.releaseRequestedAt = nowMs();
+  setTimeout(() => {
+    const current = sessions.get(token);
+    if (current && releaseStillPending(current)) releaseSessionToken(token);
+  }, SESSION_RELEASE_GRACE_MS).unref?.();
 }
 
 function guestKeyInUse(guestKeyId) {
@@ -371,6 +405,7 @@ function guestKeyInUse(guestKeyId) {
   const now = nowMs();
   const leaseSeenAt = session.leaseSeenAt || session.lastSeen || session.createdAt;
   if (
+    releaseStillPending(session) ||
     now - session.createdAt > SESSION_MAX_MS ||
     now - session.lastSeen > SESSION_IDLE_MS ||
     now - leaseSeenAt > GUEST_LOCK_TTL_MS
@@ -595,7 +630,7 @@ function registerParticipant(room, session) {
       const oldSeat = findSeat(room, oldToken);
       const isReconnectingHost = room.hostIdentity === sessionIdentity(session)
         || room.hostSessionToken === oldToken;
-      if (!isReconnectingHost && (!oldSeat || !old.rejoinable)) continue;
+      if (!isReconnectingHost && !old.rejoinable) continue;
       if (oldSeat) {
         room.players[oldSeat] = session.token;
         reclaimedSeat = oldSeat;
@@ -708,15 +743,23 @@ function syncGamePause(room, allowTimeouts = true) {
 
     // Drawer disconnects use the dedicated reconnect grace clock above; don't also run the generic
     // turn clock or the round could expire twice for the same outage.
+    // v1.6.99: a turn player who drops still gets the full reconnect grace, but coming back to
+    // the same phase continues the time already used instead of a fresh 60 seconds.
+    const base = `${room.game.phase}:${turnSeat}`;
+    const previous = room.turnWatch;
+    const keptTime = previous?.key === `${base}:idle` ? { base, elapsed: now - previous.since }
+      : (previous?.resume?.base === base ? previous.resume : null);
     if (turnSeat === drawerSeat && drawerDisconnected) {
-      room.turnWatch = null;
+      // No turn clock runs here (the drawer grace above does); only the used time is remembered.
+      room.turnWatch = keptTime ? { key: `${base}:drawer-away`, seat: turnSeat, since: null, resume: keptTime } : null;
       return { stateChanged: false, gameFinished: false };
     }
 
     const turnDisconnected = disconnected.includes(turnSeat);
-    const watchKey = `${room.game.phase}:${turnSeat}:${turnDisconnected ? 'disconnected' : 'idle'}`;
+    const watchKey = `${base}:${turnDisconnected ? 'disconnected' : 'idle'}`;
     if (!room.turnWatch || room.turnWatch.key !== watchKey) {
-      room.turnWatch = { key: watchKey, seat: turnSeat, since: now };
+      const since = !turnDisconnected && previous?.resume?.base === base ? now - previous.resume.elapsed : now;
+      room.turnWatch = { key: watchKey, seat: turnSeat, since, resume: turnDisconnected ? keptTime : null };
       return { stateChanged: false, gameFinished: false };
     }
     if (!allowTimeouts || now - room.turnWatch.since < AFK_TIMEOUT_MS) {
@@ -746,10 +789,18 @@ function syncGamePause(room, allowTimeouts = true) {
 
   // Existing behavior for all other games: a real disconnect immediately pauses the room, while
   // a connected player sitting on their own turn for 60s is folded into the same pause signal.
-  if (isPictionary(room) || isLiar(room) || isMarathon(room) || disconnected.length > 0) {
+  if (isPictionary(room) || isLiar(room) || isMarathon(room)) {
     room.turnWatch = null;
+  } else if (disconnected.length > 0) {
+    // v1.6.99: the turn clock is frozen while the room is paused for a dropped player (a refresh
+    // included) and resumes with the time already used, instead of restarting at 60 seconds.
+    if (room.turnWatch && !room.turnWatch.pausedAt) room.turnWatch.pausedAt = Date.now();
   } else {
     const turnSeat = currentTurnSeat(room);
+    if (room.turnWatch?.pausedAt) {
+      room.turnWatch.since += Date.now() - room.turnWatch.pausedAt;
+      room.turnWatch.pausedAt = null;
+    }
     if (!turnSeat) {
       room.turnWatch = null;
     } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
@@ -942,6 +993,12 @@ function prepareNextRound(room) {
   room.game.endReason = null;
   room.game.disconnectedAtEnd = [];
   if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+    // v1.6.99: a seat whose player left the room (not a dropped connection that may still come
+    // back) is freed, so the next round is not blocked by an empty chair.
+    for (const [seatId, token] of Object.entries(room.players)) {
+      const person = token && room.participants[token];
+      if (token && (!person || (!person.connected && !person.rejoinable))) room.players[seatId] = null;
+    }
     for (const p of Object.values(room.participants)) {
       if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
     }
@@ -2122,15 +2179,20 @@ async function requestHandler(req, res) {
       break;
     }
     if (!session.currentRoomId) {
+      // v1.6.99: any room this key was still in when its session ended -- a seat in a waiting,
+      // playing or finished game, or a spectator -- most recent first.
+      let latest = null;
       for (const room of rooms.values()) {
-        if (!(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
-        const previous = Object.entries(room.participants).find(([oldToken, p]) =>
-          participantIdentity(p) === identity && p.rejoinable && !p.connected && !sessions.has(oldToken) && findSeat(room, oldToken));
-        if (!previous) continue;
-        session.currentRoomId = room.id;
-        registerParticipant(room, session);
-        broadcast(room);
-        break;
+        for (const [oldToken, p] of Object.entries(room.participants)) {
+          if (participantIdentity(p) !== identity || !p.rejoinable || p.connected || sessions.has(oldToken)) continue;
+          if (p.rejoinOnlyWhilePlaying && !(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
+          if (!latest || String(p.lastSeen || '') > String(latest.lastSeen || '')) latest = { room, lastSeen: p.lastSeen };
+        }
+      }
+      if (latest) {
+        session.currentRoomId = latest.room.id;
+        registerParticipant(latest.room, session);
+        broadcast(latest.room);
       }
     }
     return sendIndex(res, { sessionToken: session.token, role: 'guest', label: session.label });
@@ -2197,13 +2259,13 @@ async function requestHandler(req, res) {
   if (pathname === '/api/session/release' && req.method === 'POST') {
     const body = await parseJson(req);
     const token = String(body.sessionToken || '');
-    if (token) releaseSessionToken(token);
+    if (token) requestSessionRelease(token);
     return sendJson(res, 200, { ok: true });
   }
 
   if (pathname === '/api/logout' && req.method === 'POST') {
     const session = getSession(req, { touch: false });
-    if (session) releaseSessionToken(session.token);
+    if (session) releaseSessionToken(session.token, { voluntary: true });
     return sendJson(res, 200, { ok: true });
   }
 
@@ -2634,6 +2696,11 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     session.currentRoomId = null;
     if (room?.participants[session.token]) {
+      const leftSeat = findSeat(room, session.token);
+      if (leftSeat && room.game.status === 'selecting') {
+        room.players[leftSeat] = null;
+        room.participants[session.token].choice = null;
+      }
       room.participants[session.token].rejoinable = false;
       room.participants[session.token].connected = false;
       room.participants[session.token].lastSeen = nowIso();
