@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.8 게임 진행 상황 표시(가시성)
+
+- 근거: 사용자 지시(2026-09-30) — 각 게임에서 플레이어가 지금 누가 무엇을 하는지 인식하고 실제로 마주 앉아 하는 느낌을 받게 한다. 비공개 `IDEAS.md` 「게임별 가시성 점검·개선」.
+- 점검 결과: 상단 `#statusText`가 오목·오델로·사목·점과 상자·윷놀이·랜드킹에서는 「흑 차례」처럼 자리만 표시(이름 없음), 스무고개는 내부 단계 코드(`asking` 등)를 그대로 표시, 할리갈리·다빈치는 연결 끊김 일시정지 문구가 빠져 있었다. 직전 행동은 오른쪽 시스템 탭에만 있었고, 오목 계열·숫자야구·할리갈리·다빈치·라이어는 시스템 메시지도 없었다.
+- 변경(`public/app.js`): `actorName()`으로 차례 문구에 참가자 이름(본인은 「(나)」)을 넣고, 스무고개는 단계별 한글 문구(`twentyHeadline`), 할리갈리·다빈치에 일시정지 문구를 적용. 행동 주체가 나이면(기존 `currentActorSeats` 기준) 상단 문구 앞에 「내 차례 · 」와 노란색(`selfActHeadline`). 상단 아래 `#recentActionLine`(「방금 …」)은 모두가 이미 받는 공개 필드로만 만든다 — 오목·오델로·사목·점과 상자·숫자야구 `lastMove`, 할리갈리 `lastFlip`/`lastBell`, 다빈치 `lastGuess`/`history`, 라이어 `hints`. 행동마다 서버가 시스템 메시지를 남기는 빙고·윷놀이·랜드킹·도둑잡기·마라톤·스무고개·그림 맞히기는 최신 시스템 메시지를 쓴다. 고스톱(자체 연출 `lastEvent`)과 잿빛 원정은 제외.
+- 시스템 메시지를 새로 추가하지 않은 이유: 채팅과 합쳐 방마다 100개로 제한(`lib/room-social.js`)되어 오목처럼 수가 많은 게임에서 채팅을 밀어낸다.
+- 검증: `tests/e2e/game-visibility.spec.js`(오목 관전자 이름 차례·방금 한 줄·차례인 사람만 강조, 스무고개 한글 단계·이름·방금). 기존 `test/current-actor-ui.test.js`의 `myTurn` 금지 규칙에 맞춰 클래스 이름을 정했다. 참고: `tests/e2e/chat-announce.spec.js`의 채팅 알림 테스트는 이번 변경 없이 `main`에서도 반복 실행 때 실패하는 기존 불안정 테스트다.
+
 ## v1.7.7 그림 맞히기 v2
 
 - 근거: 비공개 `IDEAS.md` 「게임별 확정 규칙 > 그림 맞히기」 v2 확정안(2026-09-29~30). 기존 고정 90초·정답 100점·출제자 50점 규칙을 대체.

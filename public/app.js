@@ -99,6 +99,7 @@
   const myActionTimerResult = document.getElementById('myActionTimerResult');
   const statusText = document.getElementById('statusText');
   const seatLabel = document.getElementById('seatLabel');
+  const recentActionLine = document.getElementById('recentActionLine');
   const standardPlayers = document.getElementById('standardPlayers');
   const teamPlayers = document.getElementById('teamPlayers');
   const standardRoleButtons = document.getElementById('standardRoleButtons');
@@ -2845,6 +2846,79 @@
     }
   }
 
+  // v1.7.8: who is acting, by name, so a spectator reads the table the way a person sitting at it would.
+  function actorName(value) {
+    const label = state?.players?.[value]?.label;
+    return label ? `${label}님${value === seat ? '(나)' : ''}` : seatKo(value);
+  }
+
+  function twentyHeadline(g) {
+    switch (g.phase) {
+      case 'secret': return `${actorName(g.drawerSeat)} 정답 정하는 중`;
+      case 'asking': return `${actorName(g.turnSeat)} 질문 차례`;
+      case 'answering': return `${actorName(g.drawerSeat)} 답변 중`;
+      case 'judging': return `${actorName(g.drawerSeat)} 정답 판정 중`;
+      case 'final-guesses': return `${actorName(g.turnSeat)} 최종 정답 차례`;
+      default: return '준비';
+    }
+  }
+
+  // One short public sentence for the last thing that happened. Built only from fields every viewer
+  // already receives (board moves, public guesses, hints, flips), or the latest server system line.
+  const NARRATED_BY_SYSTEM = ['bingo', 'yut', 'cityking', 'oldmaid', 'marathon', 'twentyquestions', 'pictionary'];
+  function recentNarration() {
+    const g = state?.game;
+    if (!g || !['playing', 'finished', 'draw', 'setup', 'round-ended'].includes(g.status)) return '';
+    const type = state.gameType;
+    const m = g.lastMove;
+    switch (type) {
+      case 'omok': case 'omok2v2':
+        return m ? `${actorName(m.color)}이 돌을 놓았습니다` : '';
+      case 'othello':
+        return m ? `${actorName(m.color)}이 두어 ${m.flipped || 0}개를 뒤집었습니다` : '';
+      case 'connect4':
+        return m ? `${actorName(m.color)}이 ${m.x + 1}열에 넣었습니다` : '';
+      case 'dots':
+        return m ? `${actorName(m.color)}이 선을 그었습니다${m.claimed?.length ? ` · 상자 ${m.claimed.length}개 완성` : ''}` : '';
+      case 'baseball':
+        return m ? `${actorName(m.color)}의 추측 ${m.guess} → ${m.strikes}S ${m.balls}B` : '';
+      case 'halligalli': {
+        const bell = g.lastBell && g.lastBell.flipId === g.flipId ? g.lastBell : null;
+        if (bell) return `${actorName(bell.seat)}이 종을 쳤습니다 · ${bell.correct ? `성공, 카드 ${bell.totalTransferred || 0}장 획득` : '실패, 벌칙 카드'}`;
+        return g.lastFlip ? `${actorName(g.lastFlip.seat)}이 카드를 뒤집었습니다` : '';
+      }
+      case 'davinci': {
+        const guess = g.lastGuess || g.history?.at(-1);
+        return guess ? `${actorName(guess.seat)}이 ${actorName(guess.target)}의 타일을 ${guess.number}(으)로 추측 · ${guess.correct ? '정답' : '오답'}` : '';
+      }
+      case 'liar': {
+        const hint = g.hints?.at(-1);
+        return hint ? `${actorName(hint.seat)}의 힌트 · ${hint.timedOut ? '시간 초과' : `"${hint.text}"`}` : '';
+      }
+      default: {
+        if (!NARRATED_BY_SYSTEM.includes(type)) return '';
+        const row = (state.chat?.messages || []).filter(message => message.type === 'system').at(-1);
+        return row?.text || '';
+      }
+    }
+  }
+
+  function renderHeadlineContext() {
+    const g = state?.game;
+    const mine = Boolean(seat && g?.status === 'playing' && !g.paused && currentActorSeats().seats.has(String(seat)));
+    statusText.classList.toggle('selfActHeadline', mine);
+    if (mine && !statusText.textContent.startsWith('내 차례')) statusText.textContent = `내 차례 · ${statusText.textContent}`;
+    const text = recentNarration();
+    recentActionLine.classList.toggle('hidden', !text);
+    if (text) {
+      const label = document.createElement('strong');
+      label.textContent = '방금';
+      recentActionLine.replaceChildren(label, document.createTextNode(text));
+    } else {
+      recentActionLine.replaceChildren();
+    }
+  }
+
   // v1.6.85: background "my turn" alert. When a step that needs *my* action begins while this tab
   // is not being looked at, the tab title gets a short prefix and -- only if the player switched it
   // on themselves -- one system notification. Everything is keyed on the server state that defines
@@ -3468,11 +3542,11 @@
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '고스톱 · 맞고 · 방장 시작 대기' : g.status === 'draw' ? '나가리' : g.status === 'finished' ? `${g.mode === 'matgo' ? '맞고' : '고스톱'} 종료`
         : `${state.players[g.turn]?.label || '참가자'}님 · ${g.phase === 'go-stop' ? '고/스톱 선택' : g.phase === 'gukjin' ? '국진 선택' : g.phase?.startsWith('choose') ? '먹을 패 선택' : '패를 낼 차례'}`);
     } else if (halli) {
-      statusText.textContent = g.status === 'selecting' ? '할리갈리 · 방장 시작 대기' : g.status === 'finished' ? '할리갈리 종료' : `${state.players[g.turn]?.label || '참가자'}님 카드 뒤집기 차례`;
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '할리갈리 · 방장 시작 대기' : g.status === 'finished' ? '할리갈리 종료' : `${actorName(g.turn)} 카드 뒤집기 차례`);
     } else if (davinci) {
-      statusText.textContent = g.status === 'selecting' ? '다빈치 코드 · 방장 시작 대기' : g.status === 'finished' ? '다빈치 코드 종료' : `${state.players[g.turn]?.label || '참가자'}님 · ${g.phase === 'reveal-own' ? '내 타일 공개' : '숫자 추측'}`;
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '다빈치 코드 · 방장 시작 대기' : g.status === 'finished' ? '다빈치 코드 종료' : `${actorName(g.turn)} · ${g.phase === 'reveal-own' ? '자기 타일 공개' : '숫자 추측'}`);
     } else if (twenty) {
-      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '스무고개 · 방장 시작 대기' : g.status === 'round-ended' ? '라운드 결과 · 다음 라운드 대기' : g.status === 'finished' ? '스무고개 종료' : `스무고개 · ${g.category || '카테고리 선택'} · ${g.phase || '준비'}`);
+      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '스무고개 · 방장 시작 대기' : g.status === 'round-ended' ? '라운드 결과 · 다음 라운드 대기' : g.status === 'finished' ? '스무고개 종료' : `스무고개 · ${g.category || '카테고리 선택'} · ${twentyHeadline(g)}`);
     } else if (isMarathonGame()) {
       // Marathon has its own dedicated status line (marathonStatus, set inside renderMarathon())
       // since its turn model (roll vs. mission phase, individual seats vs. team groups) doesn't
@@ -3505,10 +3579,10 @@
     else if (g.status === 'playing') {
       statusText.textContent = pauseStatusText || (team ? `${seatKo(g.nextSeat)} · ${state.players[g.nextSeat]?.label || '플레이어'}님 차례`
         : state.gameType === 'yut'
-          ? `${seatKo(g.turn)} · ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`
+          ? `${seatKo(g.turn)} · ${actorName(g.turn)} ${g.phase === 'move' ? `${g.lastThrow?.name || ''}만큼 움직일 말 선택` : '윷 던질 차례'}${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`
           : state.gameType === 'cityking'
-            ? `${seatKo(g.turn)} · ${g.phase === 'buy' ? '도시 매입 여부 선택' : '주사위 굴릴 차례'}`
-          : `${seatKo(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`);
+            ? `${seatKo(g.turn)} · ${actorName(g.turn)} ${g.phase === 'buy' ? '도시 매입 여부 선택' : '주사위 굴릴 차례'}`
+          : `${seatKo(g.turn)} · ${actorName(g.turn)} 차례${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스` : ''}`);
     } else if (g.status === 'finished') statusText.textContent = `${seatKo(g.winner)} 승리`;
     else statusText.textContent = '무승부';
     if (g.status === 'finished' && g.endReason === 'disconnect') {
@@ -3517,6 +3591,7 @@
     } else if (g.status === 'finished' && g.endReason === 'resign') {
       statusText.textContent += ' · 기권으로 종료';
     }
+    renderHeadlineContext();
     updatePauseDialog();
 
     if (numbered) renderTeamPlayers();
