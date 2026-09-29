@@ -1260,3 +1260,25 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 @keyframes gostopStageIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes gostopStageWin{0%{opacity:0;transform:scale(.9)}60%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.gostopResult.staged .gostopSettlementFlow .gostopChip,.gostopResult.staged .gostopLoserLine,.gostopResult.staged .gostopWinLine{animation:none}}
+
+/* v1.7.5 스무고개 질문·답변 묶음. 색은 DESIGN.md 표 안에서만, Q/A 글자 표식·들여쓰기·테두리로 색 없이도 구분한다. */
+.twentyPending{display:grid;gap:8px;padding:12px;border:1px solid #fbbf24;border-radius:12px;background:#0f172a}
+.twentyPending.hidden{display:none!important}
+.twentyPendingLabel{color:#fde68a;font-size:.72rem;font-weight:900;letter-spacing:.08em}
+.twentyAnswerHint{color:#cbd5e1;font-size:.76rem;font-weight:800}
+.twentyQuestionLog{list-style:none}
+.twentyQuestionLog.twentyQuestionLog,.twentyOlderLog .twentyQuestionLog{padding:0}
+.twentyQuestionLog li.twentyPair{display:grid;gap:5px;padding:0;border:0}
+.twentyQ,.twentyA{display:flex;align-items:flex-start;gap:8px;margin:0;line-height:1.5;overflow-wrap:anywhere}
+.twentyQ{padding:9px 10px;border:1px solid #273449;border-radius:10px;background:#0f172a;color:#f8fafc;font-size:.84rem;font-weight:800}
+.twentyA{margin-left:18px;padding:8px 10px;border:1px solid #263246;border-left:3px solid #60a5fa;border-radius:10px;background:#0b1324;color:#f8fafc;font-size:.84rem}
+.twentyTag{flex:0 0 auto;min-width:1.5em;padding:0 5px;border-radius:999px;text-align:center;font-size:.72rem;font-weight:900;line-height:1.6}
+.twentyTagQ{border:1px solid #94a3b8;color:#cbd5e1}
+.twentyTagA{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.twentyText{flex:1 1 auto;min-width:0}
+.twentyPairNo{flex:0 0 auto;margin-left:auto;color:#94a3b8;font-size:.7rem;font-weight:800}
+.twentyEmpty{color:#94a3b8;font-size:.8rem}
+.twentyOlderLog summary{cursor:pointer;color:#93c5fd;font-size:.78rem;font-weight:800;padding:6px 2px}
+.twentyOlderLog summary:focus-visible{outline:2px solid #60a5fa;outline-offset:2px;border-radius:6px}
+.twentyOlderLog .twentyQuestionLog{display:grid;gap:9px;margin:6px 0 0}
+.twentyOlderLog.hidden{display:none!important}
