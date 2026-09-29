@@ -128,8 +128,11 @@ test('3인 고스톱 서버 정산: 패자별 독립 한도·승자는 실제 �
   assert.notEqual(state.game.status, 'playing');
   if (concurrentStops) assert.equal(concurrentStops.filter(code => code === 200).length, 1, `동시 스톱 ${concurrentStops}`);
   const balances = await Promise.all([pa, pb, pc].map(async person => (await req('/api/points', person.session, undefined, 'GET')).data.balance));
-  assert.equal(balances.reduce((sum, value) => sum + value, 0), 700 + 300 + 100_000, '포인트 총량 보존');
   const g = state.game;
+  // v1.7.3: 실제 이동액의 10%는 소각된다. 총량 = 초기 총량 - (최종 정산 + 뻑 보너스) 소각액.
+  const burned = (g.settlement.transfers || []).reduce((sum, item) => sum + (item.burned || 0), 0)
+    + (g.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
+  assert.equal(balances.reduce((sum, value) => sum + value, 0), 700 + 300 + 100_000 - burned, '포인트 총량 = 초기 - 소각');
   t.diagnostic(`결과 ${g.status}/${g.result?.kind} · 동시 스톱 ${concurrentStops} · 정산 ${JSON.stringify(g.settlement.transfers)}`);
   assert.equal(g.settlement.status, 'done');
   if (g.status === 'finished' && g.result.kind === 'win') {
@@ -140,10 +143,12 @@ test('3인 고스톱 서버 정산: 패자별 독립 한도·승자는 실제 �
       assert.equal(transfer.requested, loser.amount, '서버 계산액 그대로 요청');
       assert.equal(transfer.paid, Math.min(loser.amount, before[loser.seat]), `${loser.seat} 독립 한도`);
       assert.equal(transfer.capped, loser.amount > before[loser.seat]);
-      assert.equal(balances[Number(loser.seat) - 1], before[loser.seat] - transfer.paid);
-      received += transfer.paid;
+      assert.equal(balances[Number(loser.seat) - 1], before[loser.seat] - transfer.paid, '패자는 실제 손실액 100%');
+      assert.equal(transfer.credited, Math.floor(transfer.paid * 90 / 100), '승자 실수령 90%(내림)');
+      assert.equal(transfer.burned, transfer.paid - transfer.credited, '나머지 소각');
+      received += transfer.credited;
     }
-    assert.equal(balances[Number(g.result.winner) - 1], before[g.result.winner] + received, '승자는 실제 지불 합만');
+    assert.equal(balances[Number(g.result.winner) - 1], before[g.result.winner] + received, '승자는 실제 지불액의 90% 합만');
   }
   // 새로고침·다음 판 준비가 반복돼도 재정산 없음.
   await Promise.all([view(pa.session), view(pb.session), view(pc.session), req('/api/room/next-round', pa.session, {}), req('/api/room/next-round', pa.session, {})]);

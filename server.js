@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const crypto = require('crypto');
-const { getGame, hasGame } = require('./lib/games');
+const { getGame, hasGame, pointPolicy } = require('./lib/games');
 const { buildActionTimer, currentTurnSeat } = require('./lib/action-timer');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -40,8 +40,8 @@ const assignedSeatsFor = (room) => isNumberedSeatGame(room)
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
-const { buildMatchResult } = require('./lib/match-result');
-const { createPointStore, validUserId } = require('./lib/point-store');
+const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
+const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -874,6 +874,11 @@ function publicRoom(room) {
   const live = uniqueLiveTokens(room.id);
   const gameEngine = getGame(room.gameType) || getGame('omok');
   return {
+    // v1.7.3: the room's point rule and this game's entry state (no balances, no account ids).
+    points: { policy: pointPolicy(room.gameType), entryFee: pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
+      burnPercent: pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
+      entry: room.entry ? { n: room.entry.n, status: room.entry.status, fee: room.entry.fee, pool: room.entry.pool, players: room.entry.participants.length,
+        each: room.entry.each ?? null, winners: room.entry.winnerCount ?? null, burned: room.entry.burned ?? null } : null },
     visibility: room.visibility,
     gameType: gameEngine.id,
     gameName: gameEngine.name,
@@ -1021,6 +1026,7 @@ async function recordFinishedMatch(room) {
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
   await settleGostopIfNeeded(room, result);
+  await settleEntryIfNeeded(room);
   room.recordedMatches ||= new Set();
   if (room.recordedMatches.has(result.id)) return false;
   await matchStore.recordMatch(result);
@@ -1134,8 +1140,10 @@ async function settleGostopBonuses(room) {
         matchId: `${room.id}:${game.round}`, gameType: 'gostop',
         transfers: others.map(other => ({ from: other.id, to: receiver, amount, key: `${other.seat}>${award.seat}` })),
         summary: { kind: 'bonus', mode: game.mode, reason: award.kind, seat: award.seat, pointsPerScore: game.pointsPerScore },
+        burnPercent: SETTLEMENT_BURN_PERCENT,
       });
       award.paid = outcome.transfers.reduce((sum, item) => sum + item.paid, 0);
+      award.credited = outcome.transfers.reduce((sum, item) => sum + (item.credited ?? item.paid), 0);
       award.settled = true;
     }
   })();
@@ -1191,17 +1199,124 @@ async function applyGostopSettlement(room, match) {
   const outcome = await pointStore.settle({
     settlementId: `gostop:${room.id}:${game.round}`, matchId: match?.id || `${room.id}:${game.round}`, gameType: 'gostop',
     transfers: usable.map(item => ({ from: seatOf[item.fromSeat], to: seatOf[item.toSeat], amount: item.amount, key: `${item.fromSeat}>${item.toSeat}` })),
-    summary: { ...game.result, mode: game.mode }, match,
+    summary: { ...game.result, mode: game.mode }, match, burnPercent: SETTLEMENT_BURN_PERCENT,
   });
   game.settlement = {
-    status: 'done', kind: game.result.kind,
+    status: 'done', kind: game.result.kind, burnPercent: outcome.burnPercent ?? 0,
     transfers: (outcome.transfers || []).map(item => {
       const [fromSeat, toSeat] = String(item.key || '').split('>');
-      return { fromSeat, toSeat, requested: item.requested, paid: item.paid, capped: item.capped };
+      return { fromSeat, toSeat, requested: item.requested, paid: item.paid, capped: item.capped,
+        credited: item.credited ?? item.paid, burned: item.burned ?? 0 };
     }),
     balancesBefore: Object.fromEntries(game.seatOrder.map(seat => [seat, outcome.balancesBefore?.[seatOf[seat]] ?? null])),
     balances: Object.fromEntries(game.seatOrder.map(seat => [seat, outcome.balances?.[seatOf[seat]] ?? pointStore.cachedBalance(seatOf[seat])])),
   };
+}
+
+// ---- v1.7.3 common entry fee ----------------------------------------------------------------
+// A general game (pointPolicy 'entry') charges ENTRY_FEE from every seated player at the moment it
+// leaves the waiting state, all at once or not at all. The pool is paid to the winners when the
+// game is recorded (ENTRY_BURN_PERCENT and any uneven remainder burned), or refunded once if the
+// system could not finish the game. Every step has its own store id, so retries, duplicate
+// finishes and reconnects can never charge, pay or refund twice.
+function entrySnapshot(room) {
+  if (pointPolicy(room.gameType) !== 'entry' || room.game.status !== 'selecting') return null;
+  return {
+    game: structuredClone(room.game),
+    choices: Object.fromEntries(Object.entries(room.participants).map(([token, p]) => [token, p.choice])),
+    turnWatch: room.turnWatch ? { ...room.turnWatch } : null,
+    nextMessageId: room.social?.nextId ?? 1,
+  };
+}
+
+// The game did not really start: the waiting state comes back (seats someone just took stay).
+function restoreEntrySnapshot(room, snap) {
+  room.game = snap.game;
+  for (const [token, choice] of Object.entries(snap.choices)) {
+    if (room.participants[token] && !findSeat(room, token)) room.participants[token].choice = choice;
+  }
+  room.turnWatch = snap.turnWatch;
+  if (room.social) room.social.messages = room.social.messages.filter(message => message.id < snap.nextMessageId);
+}
+
+function entryPlayers(room) {
+  return matchSeats(room).filter(seat => room.players[seat]).map(seat => ({
+    seat, id: pointAccountForSeat(room, seat), label: room.participants[room.players[seat]]?.label || `${seat}`,
+  }));
+}
+
+async function chargeRoomEntry(room) {
+  const players = entryPlayers(room);
+  const ids = [...new Set(players.map(player => player.id))];
+  if (!players.length || players.some(player => !validUserId(player.id))) throw new Error('참가자의 포인트 계정이 유효하지 않습니다.');
+  const n = (room.pointRound || 0) + 1;
+  room.pointRound = n;
+  const entryId = `game-entry:${room.id}:${n}`;
+  const outcome = await pointStore.chargeEntry({ entryId, gameType: room.gameType, matchId: `${room.id}:${room.game.round}`, participants: ids, fee: ENTRY_FEE });
+  if (outcome.insufficient) {
+    const short = new Set(outcome.insufficient);
+    return { ok: false, short: players.filter(player => short.has(player.id)).map(player => player.label) };
+  }
+  room.entry = { id: entryId, n, round: room.game.round, fee: outcome.fee, pool: outcome.pool, participants: outcome.participants, status: 'charged' };
+  appendSystemMessage(room, `참가 포인트 ${outcome.fee.toLocaleString('ko-KR')}P씩 · 총 ${outcome.pool.toLocaleString('ko-KR')}P가 걸렸습니다. 승자가 ${100 - ENTRY_BURN_PERCENT}%를 나눠 받고 ${ENTRY_BURN_PERCENT}%는 소각됩니다.`);
+  return { ok: true };
+}
+
+const ENTRY_RETRY_MS = [2_000, 5_000, 15_000, 60_000, 300_000];
+
+function settleEntryIfNeeded(room) {
+  const entry = room.entry;
+  if (!entry || entry.status !== 'charged' || entry.round !== room.game.round || !['finished', 'draw'].includes(room.game.status)) return Promise.resolve();
+  if (room.entrySettling) return room.entrySettling;
+  const winners = winningSeats(room).map(seat => pointAccountForSeat(room, seat)).filter(validUserId);
+  const promise = pointStore.settleEntry({ resultId: `game-result:${room.id}:${entry.n}`, entryId: entry.id, winners }).then((outcome) => {
+    clearTimeout(room.entryRetry); room.entryRetry = null; room.entryAttempts = 0;
+    if (outcome.kind === 'result') {
+      Object.assign(entry, { status: 'settled', each: outcome.each, winnerCount: outcome.winners.length, burned: outcome.burned });
+      if (outcome.applied) {
+        appendSystemMessage(room, outcome.winners.length
+          ? `참가 포인트 정산 · 승자 ${outcome.winners.length}명에게 ${outcome.each.toLocaleString('ko-KR')}P씩 지급 · ${outcome.burned.toLocaleString('ko-KR')}P 소각`
+          : `참가 포인트 정산 · 승자가 없어 ${outcome.burned.toLocaleString('ko-KR')}P 소각`);
+      }
+    } else if (outcome.closed) entry.status = String(outcome.closed).startsWith('game-refund:') ? 'refunded' : 'settled';
+  }, (error) => {
+    scheduleEntryRetry(room, entry.id);
+    throw error;
+  }).finally(() => { if (room.entrySettling === promise) room.entrySettling = null; });
+  room.entrySettling = promise;
+  return promise;
+}
+
+function scheduleEntryRetry(room, entryId) {
+  if (room.entryRetry) return;
+  const attempt = room.entryAttempts || 0;
+  room.entryAttempts = attempt + 1;
+  room.entryRetry = setTimeout(() => {
+    room.entryRetry = null;
+    if (room.entry?.id !== entryId) return;
+    settleEntryIfNeeded(room).then(() => { if (rooms.get(room.id) === room) broadcast(room); })
+      .catch(error => console.error('참가 포인트 정산 재시도 실패:', error.message));
+  }, ENTRY_RETRY_MS[Math.min(attempt, ENTRY_RETRY_MS.length - 1)]);
+  room.entryRetry.unref?.();
+}
+
+// The system could not finish this game (the room expired mid-game): every entry fee goes back.
+async function refundRoomEntry(room, reason) {
+  const entry = room.entry;
+  if (!entry || entry.status !== 'charged') return;
+  const outcome = await pointStore.refundEntry({ refundId: `game-refund:${room.id}:${entry.n}`, entryId: entry.id, reason });
+  if (outcome.kind === 'refund' || outcome.closed?.startsWith?.('game-refund:')) entry.status = 'refunded';
+}
+
+// A server restart loses every in-memory game: entries that were charged but never paid out or
+// refunded belong to games that can no longer finish, so they are refunded once at startup.
+async function refundOrphanEntries() {
+  let refunded = 0;
+  for (const entryId of await pointStore.openEntries()) {
+    const outcome = await pointStore.refundEntry({ refundId: entryId.replace(/^game-entry:/, 'game-refund:'), entryId, reason: 'server-restart' });
+    if (outcome.applied) refunded += 1;
+  }
+  return refunded;
 }
 
 async function recordPlayers() {
@@ -1481,6 +1596,9 @@ async function handleRoomAction(req, res, action, session) {
     broadcast(room);
     return sendJson(res, 200, { ok: true, state: roomView(room, session) });
   }
+  // v1.7.3: while a game's entry fee is being charged, other actions on the room wait for it.
+  while (room.entryPending) await room.entryPending.catch(() => {});
+  const entryBefore = entrySnapshot(room);
   if ((action === 'next-round' || action === 'rematch') && !(await recordOrError(room, res))) return;
   // Only draw-oldmaid ever sets this: the drawn card's identity, for the drawer's own animation --
   // never broadcast (see roomView/broadcast below), so opponents and spectators never see it.
@@ -2134,6 +2252,26 @@ async function handleRoomAction(req, res, action, session) {
     appendSystemMessage(room, `${session.label || '참가자'}님이 다음 판을 열었습니다. 역할을 다시 선택해 주세요.`);
   }
 
+  // v1.7.3: this action started the game -- charge every seated player's entry fee now, or undo
+  // the start (the room goes back to waiting; seats stay) if anyone is short or points fail.
+  if (entryBefore && room.game.status !== 'selecting') {
+    let charged;
+    const pending = chargeRoomEntry(room);
+    room.entryPending = pending;
+    try { charged = await pending; }
+    catch (error) { console.error('참가 포인트 차감 실패:', error); charged = { ok: false, error: true }; }
+    finally { if (room.entryPending === pending) room.entryPending = null; }
+    if (!charged.ok) {
+      restoreEntrySnapshot(room, entryBefore);
+      const message = charged.error ? '포인트 처리 중 오류로 게임을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+        : `참가 포인트(${ENTRY_FEE.toLocaleString('ko-KR')}P)가 부족한 참가자가 있어 시작할 수 없습니다: ${charged.short.join(', ')}`;
+      appendSystemMessage(room, message);
+      touchRoom(room);
+      broadcast(room);
+      return sendError(res, charged.error ? 503 : 409, charged.error ? 'POINTS_UNAVAILABLE' : 'INSUFFICIENT_POINTS', message);
+    }
+  }
+
   if (!(await recordOrError(room, res))) return;
   touchRoom(room);
   broadcast(room);
@@ -2451,6 +2589,30 @@ async function requestHandler(req, res) {
     const fileName = safeFilename(row.label);
     const html = makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label });
     return sendJson(res, 200, { ok: true, key: row, fileName, html });
+  }
+
+  // v1.7.3: operator point grant to one account, identified by its stable key id (never a nickname).
+  // Whole amount (no burn), 10,000P units, a reason category, recorded in the point ledger. The
+  // client sends one request id per confirmation, so a double click or retry grants only once.
+  const grantMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/points$/i);
+  if (grantMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    if (!checkRateLimit('grant:' + grantMatch[1], 10, 60 * 1000)) {
+      return sendError(res, 429, 'GRANT_RATE_LIMIT', '포인트 지급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    const body = await parseJson(req);
+    const requestId = String(body.requestId || '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) return sendError(res, 400, 'BAD_REQUEST_ID', '지급 요청을 다시 열어 주세요.');
+    const amount = Number(body.amount);
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount % ADMIN_GRANT_UNIT !== 0) return sendError(res, 400, 'BAD_AMOUNT', `지급액은 ${ADMIN_GRANT_UNIT.toLocaleString('ko-KR')}P 단위의 양수만 가능합니다.`);
+    if (amount > ADMIN_GRANT_MAX) return sendError(res, 400, 'AMOUNT_TOO_LARGE', `한 번에 ${ADMIN_GRANT_MAX.toLocaleString('ko-KR')}P까지 지급할 수 있습니다.`);
+    if (!ADMIN_GRANT_CATEGORIES.includes(body.category)) return sendError(res, 400, 'BAD_CATEGORY', '지급 사유를 선택해 주세요.');
+    const key = (await accessStore.list()).find(item => item.id === grantMatch[1] && !item.revokedAt);
+    if (!key) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 계정을 찾을 수 없습니다.');
+    const outcome = await pointStore.adminGrant({ grantId: `admin-grant:${requestId}`, userId: `guest:${key.id}`, amount, category: body.category, memo: body.category === 'other' ? body.memo : '' });
+    if (outcome.userId && outcome.userId !== `guest:${key.id}`) return sendError(res, 409, 'GRANT_ID_REUSED', '이미 다른 지급에 사용된 요청입니다. 다시 열어 주세요.');
+    return sendJson(res, 200, { ok: true, applied: outcome.applied, label: key.label, amount: outcome.amount,
+      balanceBefore: outcome.balanceBefore, balanceAfter: outcome.balanceAfter, category: outcome.summary?.category || body.category });
   }
 
   // Reissue rotates the credential on its existing row. The old HTML file and
@@ -2834,6 +2996,8 @@ async function main() {
     let created = 0;
     for (const key of await accessStore.list()) if ((await pointStore.ensureAccount(`guest:${key.id}`)).created) created += 1;
     console.log(`포인트 저장소: ${DATABASE_URL ? 'PostgreSQL' : '로컬 JSON'} · 신규 계정 ${created}개`);
+    const refunded = await refundOrphanEntries();
+    if (refunded) console.log(`참가 포인트 환불: 재시작으로 끝나지 못한 게임 ${refunded}판`);
   } catch (error) {
     console.error('포인트 계정 초기화 실패:', error);
   }
@@ -2859,7 +3023,14 @@ async function main() {
     }
     for (const [id, room] of rooms) {
       const age = now - new Date(room.updatedAt).getTime();
-      if (age > ROOM_TTL_MS && !streams.has(id)) rooms.delete(id);
+      if (age > ROOM_TTL_MS && !streams.has(id)) {
+        rooms.delete(id);
+        // v1.7.3: a finished game still pays out; one that never finished is refunded.
+        if (room.entry?.status === 'charged') {
+          (['finished', 'draw'].includes(room.game.status) ? settleEntryIfNeeded(room) : refundRoomEntry(room, 'room-expired'))
+            .catch(error => console.error('참가 포인트 정리 실패:', error.message));
+        }
+      }
     }
     for (const [key, row] of rateLimits) {
       if (now - row.startedAt > 60 * 60 * 1000) rateLimits.delete(key);

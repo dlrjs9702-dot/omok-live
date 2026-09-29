@@ -83,9 +83,11 @@ for (const count of [2, 3]) test(`${count}인 첫뻑→2연뻑→자뻑: 즉시 
   assert.ok(game.lastEvent.tags.includes('jappeok'), JSON.stringify({ event: game.lastEvent, floor: game.floor }));
   assert.equal(game.lastEvent.stolen.length, (count - 1) * 2);
   const balances = await Promise.all(people.map(async token => (await api('/api/points', token, undefined, 'GET')).data));
-  assert.equal(balances[0].balance, 100_000 + perPayer * 3 * (count - 1));
+  // v1.7.3: 받는 사람은 이동액의 90%, 10%는 소각(내는 사람은 100%).
+  const moved = perPayer * 3 * (count - 1);
+  assert.equal(balances[0].balance, 100_000 + moved * 9 / 10);
   for (const item of balances.slice(1)) assert.equal(item.balance, 100_000 - perPayer * 3);
-  assert.equal(balances.reduce((sum, item) => sum + item.balance, 0), 100_000 * count);
+  assert.equal(balances.reduce((sum, item) => sum + item.balance, 0), 100_000 * count - moved / 10);
   assert.deepEqual(balances.map(item => item.recentGostopSettlements.length), Array(count).fill(2));
   assert.equal(balances[0].recentGostopSettlements[0].balanceAfter, balances[0].balance);
   assert.equal((await api('/api/room', people[0], undefined, 'GET')).data.state.game.bonusAwards.length, 2);
@@ -108,13 +110,16 @@ for (const count of [2, 3]) test(`${count}인 첫뻑→2연뻑→자뻑: 즉시 
   assert.ok(game.result.losers.find(loser => loser.seat === '1').baks.includes('gobak'));
   assert.ok(game.result.losers.every(loser => loser.factors.some(factor => factor.key === 'nagari' && factor.multiplier === 2)));
   const final = await Promise.all(people.map(async token => (await api('/api/points', token, undefined, 'GET')).data.balance));
-  assert.equal(final.reduce((sum, value) => sum + value, 0), 100_000 * count);
+  const finalBurned = game.settlement.transfers.reduce((sum, item) => sum + item.burned, 0);
+  assert.equal(final.reduce((sum, value) => sum + value, 0), 100_000 * count - moved / 10 - finalBurned, '총량 = 초기 - 소각');
   for (const item of game.settlement.transfers) {
     const from = Number(item.fromSeat) - 1;
-    assert.equal(final[from], afterDraw[from] - item.paid);
-    assert.equal(item.requested, game.result.losers.find(loser => loser.seat === item.fromSeat).amount);
+    assert.equal(final[from], afterDraw[from] - item.paid, '패자 실제 손실 100%');
+    assert.equal(item.requested, game.result.losers.find(loser => loser.seat === item.fromSeat).amount, '배수·박 계산은 그대로');
+    assert.equal(item.credited, Math.floor(item.paid * 90 / 100));
+    assert.equal(item.burned, item.paid - item.credited);
   }
-  assert.equal(final[1], afterDraw[1] + game.settlement.transfers.reduce((sum, item) => sum + item.paid, 0));
+  assert.equal(final[1], afterDraw[1] + game.settlement.transfers.reduce((sum, item) => sum + item.credited, 0), '승자 90%');
   assert.equal((await api('/api/room/next-round', people[0], {})).status, 200);
   const afterRetry = await Promise.all(people.map(async token => (await api('/api/points', token, undefined, 'GET')).data.balance));
   assert.deepEqual(afterRetry, final);
