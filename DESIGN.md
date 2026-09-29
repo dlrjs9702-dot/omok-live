@@ -57,7 +57,7 @@
 ## 접근성 최소 기준
 
 - 모든 입력·버튼은 `:focus-visible`에서 `#60a5fa` 외곽선이 보인다(`outline:none` 단독 금지).
-- 애니메이션은 `@media (prefers-reduced-motion: reduce)`에서 끈다.
+- 애니메이션은 기기의 동작 줄이기 설정을 존중한다. 단, 게임 연출 효과는 v1.6.51 결정에 따라 '연출 효과' 설정(effectsOff)을 우선한다.
 - 행마다 반복되는 같은 이름의 버튼은 `aria-label`에 대상(방 이름, 보낸 사람)을 넣는다.
 - 채팅 목록은 `role="log" aria-live="polite"`.
 
