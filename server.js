@@ -1507,7 +1507,7 @@ async function tickPictionaryRooms() {
   const engine = getGame('pictionary');
   for (const room of rooms.values()) {
     if (!isPictionary(room) || room.game.status !== 'playing') continue;
-    let changed = false;
+    let changed = engine.updateHints(room.game, now);
     if (room.game.phase === 'drawing' && room.game.roundEndsAt && now >= room.game.roundEndsAt) {
       engine.endRound(room.game);
       changed = true;
@@ -1688,6 +1688,7 @@ async function handleRoomAction(req, res, action, session) {
   // Only draw-oldmaid ever sets this: the drawn card's identity, for the drawer's own animation --
   // never broadcast (see roomView/broadcast below), so opponents and spectators never see it.
   let drawnOldMaidCard = null;
+  let pictionaryClose = false;
 
   // Twenty Questions integrated: host-only setup, private drawer secret and server-owned adjudication.
   if (action.startsWith('twenty-')) {
@@ -2071,15 +2072,25 @@ async function handleRoomAction(req, res, action, session) {
     if (verdict.finished) appendSystemMessage(room, `${room.participants[room.players[room.game.winner]]?.label || room.game.winner + '번'}님이 빙고 승리 조건을 달성했습니다!`);
   }
 
+  if (action === 'set-pictionary-config') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 설정할 수 있습니다.');
+    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 설정을 변경할 수 있습니다.');
+    const engine = getGame('pictionary');
+    const verdict = engine.configure(room.game, { mode: body.mode, difficulty: body.difficulty, roundSeconds: body.roundSeconds, showCategory: body.showCategory });
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_PICTIONARY_CONFIG', engine.moveError(verdict.reason));
+  }
+
   if (action === 'start-pictionary') {
     if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 시작할 수 있습니다.');
     if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 그림 맞히기를 시작할 수 있습니다.');
-    const seats = PICTIONARY_SEATS.filter(seat => room.players[seat]);
+    // v1.7.7: drawers rotate in the order players joined the room.
+    const joinedAt = seat => room.participants[room.players[seat]]?.joinedAt || '';
+    const seats = PICTIONARY_SEATS.filter(seat => room.players[seat]).sort((a, b) => joinedAt(a).localeCompare(joinedAt(b)));
     const engine = getGame('pictionary');
     const verdict = engine.start(room.game, seats);
     if (!verdict.legal) return sendError(res, 409, 'INVALID_PICTIONARY_START', engine.moveError(verdict.reason));
     for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
-    appendSystemMessage(room, `그림 맞히기 시작! ${room.participants[room.players[room.game.drawerSeat]]?.label || '첫 출제자'}님부터 그립니다.`);
+    appendSystemMessage(room, `그림 맞히기${room.game.mode === 'team' ? '(팀전)' : ''} 시작! ${room.participants[room.players[room.game.drawerSeat]]?.label || '첫 출제자'}님부터 그립니다.`);
   }
 
   if (action === 'pictionary-stroke') {
@@ -2103,6 +2114,15 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_CLEAR', engine.moveError(verdict.reason));
   }
 
+  if (action === 'pictionary-undo') {
+    if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 사용할 수 있습니다.');
+    const seat = findSeat(room, session.token);
+    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 그림을 되돌릴 수 없습니다.');
+    const engine = getGame('pictionary');
+    const verdict = engine.undoStroke(room.game, seat);
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_UNDO', engine.moveError(verdict.reason));
+  }
+
   if (action === 'pictionary-guess') {
     if (!isPictionary(room)) return sendError(res, 400, 'WRONG_GAME', '그림 맞히기 방에서만 사용할 수 있습니다.');
     if (!checkRateLimit(`pictionary-guess:${session.token}`, 10, 5000)) {
@@ -2113,8 +2133,11 @@ async function handleRoomAction(req, res, action, session) {
     const engine = getGame('pictionary');
     const verdict = engine.submitGuess(room.game, seat, body.guess);
     if (!verdict.legal) return sendError(res, 409, 'INVALID_GUESS', engine.moveError(verdict.reason));
+    if (verdict.close) pictionaryClose = true;
     if (verdict.correct) {
-      appendSystemMessage(room, `${session.label || '참가자'}님이 정답을 맞혔습니다!`);
+      appendSystemMessage(room, verdict.first
+        ? `${session.label || '참가자'}님이 처음으로 정답을 맞혔습니다! 10초 추가 정답시간이 시작됩니다.`
+        : `${session.label || '참가자'}님이 정답을 맞혔습니다!`);
       if (verdict.allGuessed) engine.endRound(room.game);
     }
   }
@@ -2364,6 +2387,8 @@ async function handleRoomAction(req, res, action, session) {
     ok: true,
     state: roomView(room, session),
     ...(drawnOldMaidCard ? { drawnOldMaidCard } : {}),
+    // Only the guesser who typed a near miss ever hears about it.
+    ...(pictionaryClose ? { pictionaryClose } : {}),
   });
 }
 
@@ -2372,7 +2397,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.6' });
+    return sendJson(res, 200, { ok: true, version: '1.7.7' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3102,7 +3127,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3175,7 +3200,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.6 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.7 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

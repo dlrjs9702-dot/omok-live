@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.6" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.7" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -442,17 +442,41 @@
               <span id="pictionaryDrawerLabel">출제자를 기다리는 중</span>
               <span id="pictionaryTimer" class="pictionaryTimer hidden">90초</span>
             </div>
+            <div id="pictionaryConfig" class="marathonConfigChooser hidden">
+              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
+                <label><input type="radio" name="pictionaryMode" value="individual" data-pictionary-mode checked /> 개인전</label>
+                <label><input type="radio" name="pictionaryMode" value="team" data-pictionary-mode /> 팀전</label>
+              </div>
+              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
+                <label><input type="radio" name="pictionaryDifficulty" value="easy" data-pictionary-difficulty /> 쉬움</label>
+                <label><input type="radio" name="pictionaryDifficulty" value="normal" data-pictionary-difficulty checked /> 보통</label>
+                <label><input type="radio" name="pictionaryDifficulty" value="hard" data-pictionary-difficulty /> 어려움</label>
+              </div>
+              <div class="marathonConfigRow" role="radiogroup" aria-label="문제 시간">
+                <label><input type="radio" name="pictionarySeconds" value="60" data-pictionary-seconds /> 60초</label>
+                <label><input type="radio" name="pictionarySeconds" value="90" data-pictionary-seconds checked /> 90초</label>
+                <label><input type="radio" name="pictionarySeconds" value="120" data-pictionary-seconds /> 120초</label>
+              </div>
+              <div class="marathonConfigRow">
+                <label><input type="checkbox" id="pictionaryShowCategory" checked /> 카테고리 공개</label>
+              </div>
+            </div>
+            <div id="pictionaryHints" class="pictionaryHints hidden" aria-live="polite"></div>
             <p id="pictionaryWordBox" class="pictionaryWordBox hidden">제시어 <strong id="pictionaryWord"></strong></p>
-            <p id="pictionaryRoundResult" class="pictionaryRoundResult hidden"></p>
+            <div id="pictionaryRoundResult" class="pictionaryRoundResult hidden" aria-live="polite"></div>
             <div id="pictionaryDrawTools" class="pictionaryToolbar hidden">
               <label>색상 <input id="pictionaryColor" type="color" value="#1f2937" aria-label="펜 색상" /></label>
               <label>굵기 <input id="pictionaryWidth" type="range" min="2" max="20" value="4" aria-label="펜 굵기" /></label>
-              <button id="pictionaryEraserBtn" type="button" class="ghost tiny">지우개</button>
+              <button id="pictionaryPenBtn" type="button" class="ghost tiny selected" aria-pressed="true">펜</button>
+              <button id="pictionaryEraserBtn" type="button" class="ghost tiny" aria-pressed="false">지우개</button>
+              <button id="pictionaryUndoBtn" type="button" class="ghost tiny">되돌리기</button>
               <button id="pictionaryClearBtn" type="button" class="ghost tiny">전체 지우기</button>
             </div>
             <div class="pictionaryCanvasWrap">
               <canvas id="pictionaryCanvas" width="720" height="480" aria-label="그림판"></canvas>
             </div>
+            <p class="pictionaryRuleNote">글자·숫자를 그리지 않고 그림으로만 표현합니다.</p>
+            <ol id="pictionaryGuessLog" class="pictionaryGuessLog hidden" aria-label="추측 기록"></ol>
             <div id="pictionaryScoreboard" class="pictionaryScoreboard" aria-label="참가자 점수"></div>
           </section>
 
@@ -888,10 +912,10 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.6"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.6"></script>
-  <script src="/hwatu-art.js?v=1.7.6"></script>
-  <script src="/gostop-ui.js?v=1.7.6"></script>
-  <script src="/app.js?v=1.7.6"></script>
+  <script src="/session-lock.js?v=1.7.7"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.7"></script>
+  <script src="/hwatu-art.js?v=1.7.7"></script>
+  <script src="/gostop-ui.js?v=1.7.7"></script>
+  <script src="/app.js?v=1.7.7"></script>
 </body>
 </html>
