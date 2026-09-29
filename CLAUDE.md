@@ -15,6 +15,14 @@
 - 코드 작업을 시작할 때 작업 규모에 맞는 모델 추천을 한 줄로 적고 현재 세션에서 바로 진행한다. 사용자가 모델 변경을 요구한 경우만 기다린다.
 - Windows에서 한글 파일을 PowerShell 문자열 치환(`-replace`, `Set-Content` 등)으로 수정하지 않는다. 파일 편집 도구를 사용하고 인코딩을 확인한다.
 
+### 로컬 Windows 터미널
+
+- 로컬 저장소는 다른 환경의 병합을 자동으로 받지 않는다. 작업을 시작할 때 `git fetch` 후 `git pull --ff-only`로 `main`을 원격과 맞춘다.
+- 기록 저장소는 `gh repo clone dlrjs9702-dot/gamecenter-notes`로 세션 임시 폴더에 받고, 고치기 직전에 `git pull`한다. 새 복사본에 커밋 작성자가 없으면 `omok-live`의 `user.name`·`user.email`을 그 저장소에만 설정한다. `commit-graph` 쓰기 오류는 커밋·푸시와 무관하므로 `git status -sb`로 원격 반영만 확인한다.
+- e2e에서 브라우저 실행 파일이 없다는 오류가 나면 `npx playwright install chromium` 후 다시 실행한다. 모바일 프로필의 `PC 전용 검증` 건너뜀은 정상이다.
+- 자동 모드의 PR 병합에는 `/permissions`의 `Bash(gh pr merge:*)`·`Bash(gh pr ready:*)` 허용이 필요하다. 없으면 병합 직전에 멈추고 사용자에게 추가를 요청한다.
+- 세션 대화·로컬 설정·Claude 메모리·`CLAUDE.local.md`는 다른 환경(Codex, 클라우드 Claude Code, GPT 채팅·Work)에서 보이지 않는다. 인계에 필요한 내용은 원격 브랜치와 `STATUS.md`에 남긴다.
+
 Claude 프로젝트 지침에는 `AGENTS.md`와 이 파일을 따르라는 안내 및 실제 세션 접근 제한만 둔다. 과거 「Idea Storage/아이디어 저장」 대화는 기준 기록으로 삼지 않는다.
 
 ## graphify
