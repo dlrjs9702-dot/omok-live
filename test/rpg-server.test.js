@@ -238,10 +238,10 @@ test('잿빛 원정 저장: 자동/수동 칸 분리·재시작 후 이어하기
   const resumed = await req('/api/rpg/resume', a, { slot: 'auto' });
   assert.equal(resumed.status, 201);
   assert.deepEqual([resumed.data.state.game.status, resumed.data.state.me.seat], ['playing', '1']);
-  assert.equal((await req('/api/rpg/resume', b, {})).data.error, 'RUN_ACTIVE', '이미 열린 원정을 두 번 이어받을 수 없다');
-  const code2 = resumed.data.state.me.roomCode;
-  const joined = await req('/api/rooms/join', b, { code: code2 });
-  assert.equal(joined.status, 200);
+  const htmlC = (await req('/api/admin/keys', admin2, { label: '다' })).data.html;
+  assert.equal((await req('/api/rpg/resume', await enter(htmlC), {})).status, 404, '파티가 아닌 사람에게는 저장이 보이지 않는다');
+  const joined = await req('/api/rpg/resume', b, {});
+  assert.equal(joined.status, 200, '이미 열린 원정은 파티원이 그 방으로 돌아간다');
   assert.equal(joined.data.state.me.seat, '2', '파티원은 신원으로 자기 자리를 되찾는다');
   await sleep(500);
   const after = (await readSaves(dataDir))[`${first[0].runId}:auto`].state;

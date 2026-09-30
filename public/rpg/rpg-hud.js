@@ -24,7 +24,11 @@ export function createHud(root, handlers) {
   const top = el('div', 'rpgTop');
   const rooms = el('div', 'rpgRooms');
   const roomLabel = el('div', 'rpgRoomLabel');
-  top.append(rooms, roomLabel);
+  const saveBtn = el('button', 'rpgSave hidden', '원정 저장');
+  saveBtn.type = 'button';
+  saveBtn.addEventListener('click', () => handlers.onSave?.());
+  top.append(rooms, roomLabel, saveBtn);
+  const paused = el('div', 'rpgPaused hidden', '원정 저장소에 연결할 수 없어 일시정지 중입니다 · 복구되면 자동으로 이어집니다');
   const boss = el('div', 'rpgBoss hidden');
   const bossName = el('strong'); const bossBar = el('div', 'rpgBar boss'); const bossFill = el('i'); bossBar.append(bossFill);
   const bossPhase = el('small');
@@ -43,7 +47,7 @@ export function createHud(root, handlers) {
   const floats = el('div', 'rpgFloats');
   const help = el('div', 'rpgHelp', '방향키 이동 · Space 공격 · Q/W/E/R 스킬 · Shift 대시 · 1 물약 · Tab 대상 · Esc 창 닫기');
   const notice = el('div', 'rpgNotice hidden');
-  root.append(top, boss, party, build, bottom, center, status, floats, help, notice);
+  root.append(top, boss, party, build, bottom, center, status, floats, help, notice, paused);
 
   let meta = null;
   let mySeat = null;
@@ -230,6 +234,8 @@ export function createHud(root, handlers) {
     const key = `${g.phase}:${g.metaVersion}:${mySeat}:${state.stateSeq}`;
     if (key === lastMetaKey) return;
     lastMetaKey = key;
+    saveBtn.classList.toggle('hidden', g.status !== 'playing' || !mySeat);
+    paused.classList.toggle('hidden', !state.rpgSave?.paused);
     renderRooms(g);
     renderParty(state);
     renderSkills(p);

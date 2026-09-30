@@ -22,6 +22,7 @@ export function mount(container, api) {
     onStat: stat => api.post('rpg-stat', { stat }),
     onItem: index => api.post('rpg-item', { index }),
     onReady: ready => api.post('rpg-ready', { ready }),
+    onSave: () => api.post('rpg-save', {}).then((res) => { if (res) hud.banner('원정을 저장했습니다', 'clear'); }),
     onNextRound: () => api.post('next-round', {}),
   });
   if (!scene) hud.banner('이 브라우저에서 3D(WebGL)를 사용할 수 없습니다.', 'warn');

@@ -3045,7 +3045,16 @@ async function requestHandler(req, res) {
       const runs = await rpgStore.listForIdentity(identity);
       const run = body.runId ? runs.find(r => r.runId === String(body.runId)) : runs[0];
       if (!run) return sendError(res, 404, 'NO_SAVE', '이어할 원정 저장이 없습니다.');
-      if ([...rooms.values()].some(r => r.rpgRunId === run.runId)) return sendError(res, 409, 'RUN_ACTIVE', '이미 열려 있는 원정입니다. 방 비밀번호로 입장해 주세요.');
+      const open = [...rooms.values()].find(r => r.rpgRunId === run.runId);
+      if (open) {
+        // 이미 열린 원정: 파티원이면 그 방으로 돌아가고, 아니면 이어받을 수 없다.
+        if (!Object.values(open.participants).some(x => participantIdentity(x) === identity)) return sendError(res, 409, 'RUN_ACTIVE', '이미 열려 있는 원정입니다.');
+        session.currentRoomId = open.id;
+        registerParticipant(open, session);
+        touchRoom(open);
+        broadcast(open);
+        return sendJson(res, 200, { state: roomView(open, session) });
+      }
       row = (await rpgStore.load(run.runId))[slot];
       if (!row) return sendError(res, 404, 'NO_SAVE', '선택한 저장 칸이 비어 있습니다.');
       const imported = engine.importState(row.state, row.schemaVersion);

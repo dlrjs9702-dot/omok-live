@@ -55,6 +55,31 @@ async function takeSeatAndClass(view, seat, className) {
 }
 
 test.describe('잿빛 원정', () => {
+  test('원정 저장 버튼 → 로비로 나갔다가 이어하기 버튼으로 같은 원정에 복귀', async ({ browser, request }) => {
+    test.setTimeout(120_000);
+    const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+    const me = await guest(browser, request, admin, '저');
+    await expect(me.page.locator('#rpgResume')).toBeHidden();
+    await createRoom(me);
+    await takeSeatAndClass(me, '1', '수호자');
+    await me.page.getByRole('button', { name: /원정 시작/ }).click();
+    await expect.poll(async () => (await debug(me.page))?.ticks || 0).toBeGreaterThan(5);
+    await me.page.getByRole('button', { name: '원정 저장' }).click();
+    await expect(me.page.locator('.rpgNotice', { hasText: '원정을 저장했습니다' })).toBeVisible();
+    await me.page.locator('#leaveRoomBtn').click();
+    const confirm = me.page.getByRole('button', { name: /나가기|확인/ });
+    if (await confirm.isVisible().catch(() => false)) await confirm.click();
+    await expect(me.page.locator('#lobbyView')).toBeVisible();
+    const resume = me.page.locator('#rpgResume button', { hasText: '수동 저장으로 이어하기' });
+    await expect(resume).toBeVisible();
+    await resume.click();
+    await expect(me.page.locator('#rpgPanel')).toBeVisible();
+    await expect.poll(async () => (await debug(me.page))?.ticks || 0).toBeGreaterThan(5);
+    expect((await mySnap(me.page))?.s).toBe('1');
+    expect(me.errors).toEqual([]);
+    await me.context.close();
+  });
+
   test('방향키 이동·대각선·스크롤 없음·Space/Q·채팅 입력 중 차단·포커스 해제·퇴장 시 3D 정리', async ({ browser, request }) => {
     test.setTimeout(120_000);
     const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;

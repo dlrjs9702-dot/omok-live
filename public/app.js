@@ -1373,6 +1373,8 @@
         rpgButton.disabled = false;
         rpgButton.removeAttribute('aria-disabled');
         rpgButton.removeAttribute('title');
+        rpgFeature = true;
+        refreshRpgResume();
       }
       identityLabel.textContent = identityText();
       roomIdentityLabel.textContent = identityText();
@@ -2527,8 +2529,37 @@
     await loadPoints();
   }
 
+  // 잿빛 원정 이어하기: 서버가 이 손님 신원의 저장 목록을 주면 로비에 버튼을 보여 준다.
+  let rpgFeature = false;
+  const rpgResumeBox = document.getElementById('rpgResume');
+  async function refreshRpgResume() {
+    if (!rpgFeature) return;
+    rpgResumeBox.replaceChildren();
+    try {
+      const { saves } = await api('/api/rpg/saves');
+      for (const run of saves.slice(0, 1)) {
+        for (const [slot, meta] of Object.entries(run.slots)) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = `${slot === 'manual' ? '수동 저장' : '자동 저장'}으로 이어하기 · ${new Date(meta.updatedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${meta.players}명`;
+          button.addEventListener('click', () => resumeRpg(run.runId, slot));
+          rpgResumeBox.append(button);
+        }
+      }
+    } catch { /* 저장소를 못 읽으면 이어하기만 숨긴다 */ }
+    rpgResumeBox.classList.toggle('hidden', !rpgResumeBox.children.length);
+  }
+  async function resumeRpg(runId, slot) {
+    try {
+      const data = await api('/api/rpg/resume', { method: 'POST', body: JSON.stringify({ runId, slot }) });
+      enterRoomState(data.state);
+      showToast(`원정을 이어받았습니다 · 파티원 입장 비밀번호 ${data.state.me.roomCode}`, 6000);
+    } catch (err) { showToast(err.message, 4000); }
+  }
+
   function enterLobby() {
     rpgUnmount();
+    refreshRpgResume();
     stopStream();
     // Closing both windows here (rather than leaving either to linger) mirrors the same reasoning
     // as before: whichever panel is currently popped out -- chat's separate window, 게임 진행's
