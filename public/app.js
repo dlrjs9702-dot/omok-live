@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.26').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.27').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -3188,8 +3188,10 @@
     const type = state.gameType;
     const m = g.lastMove;
     switch (type) {
-      case 'omok': case 'omok2v2':
+      case 'omok':
         return m ? `${actorName(m.color)}이 돌을 놓았습니다` : '';
+      case 'omok2v2': // v1.7.27: name the player who actually moved (the engine records `playerSeat`), not only the team colour
+        return m ? `${actorName(m.playerSeat ?? m.color)}이 돌을 놓았습니다` : '';
       case 'othello':
         return m ? `${actorName(m.color)}이 두어 ${m.flipped || 0}개를 뒤집었습니다` : '';
       case 'connect4':

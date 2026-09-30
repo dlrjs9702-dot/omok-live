@@ -18,6 +18,13 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## v1.7.27 오목 2vs2 실제 착수자 표시
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-17을 처리했다. 팀전 「방금」 줄이 `lastMove.color`(흑/백)로 이름을 찾아 팀 이름만 나왔다(수정 전 e2e로 재현: `방금흑팀이 돌을 놓았습니다`).
+
+- `public/app.js` `recentNarration`: 오목과 오목 2vs2를 나누고, 팀전은 엔진이 수마다 기록하는 `playerSeat`(`lib/games/omok2v2.js`, `lastMove`로 이미 전달됨)로 이름을 찾는다(`actorName`이 `(나)` 표시 포함). 서버·규칙 변경 없음, `playerSeat`가 없는 예전 상태는 기존 동작으로 대체.
+- 테스트: `tests/e2e/game-visibility.spec.js`에 4인 팀전 시나리오 추가(1번 → 2번 → 같은 흑팀 3번이 두면 각각 그 사람 이름, 본인에게는 `(나)`).
+
 ## v1.7.26 채팅 본인 판별을 고유 ID 기준으로
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-18을 처리했다. 클라이언트가 채팅의 「내 메시지」·연속 발신자 묶음·낭독 제외를 닉네임(label) 일치로 판단해, 같은 닉네임의 다른 사람 메시지를 내 것으로 오인하고 낭독을 건너뛰었다(수정 전 실패하는 e2e로 재현).
