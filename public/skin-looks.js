@@ -169,5 +169,35 @@
   }
   const helpers = { TAU, clamp01, rng, sphere, gloss, starPath, badge };
 
+  // ---- DOM games (bingo, baseball, cards ...): skins are pictures drawn once and used as CSS background images ----
+  const IMG = new Map();
+  function img(key, w, h, draw) { // a memoised `url(data:...)` of draw(ctx, w, h)
+    const k = `${key}:${w}x${h}`;
+    if (!IMG.has(k)) {
+      const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+      IMG.set(k, `url(${c.toDataURL('image/png')})`);
+    }
+    return IMG.get(k);
+  }
+  function style(el, props) { if (el && props) for (const [key, value] of Object.entries(props)) el.style[key] = value; return el; }
+  function unstyle(el, props) { if (el && props) for (const key of Object.keys(props)) el.style[key] = ''; return el; }
+
+  // A short effect drawn on a temporary canvas laid over `anchor` (plus `pad` px around it): draw(ctx, w, h, t), t 0..1.
+  function playFx(anchor, draw, ms = 700, pad = 40) {
+    if (!anchor || typeof draw !== 'function' || typeof document === 'undefined') return;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const box = anchor.getBoundingClientRect();
+    const c = document.createElement('canvas'); const w = Math.ceil(box.width + pad * 2); const h = Math.ceil(box.height + pad * 2);
+    c.width = w; c.height = h; c.className = 'skinFx';
+    c.style.cssText = `position:fixed;left:${box.left - pad}px;top:${box.top - pad}px;width:${w}px;height:${h}px;pointer-events:none;z-index:60`;
+    document.body.appendChild(c); const ctx = c.getContext('2d'); const start = performance.now();
+    const frame = (now) => {
+      const t = Math.min(1, (now - start) / ms); ctx.clearRect(0, 0, w, h); ctx.save(); draw(ctx, w, h, t); ctx.restore();
+      if (t < 1) requestAnimationFrame(frame); else c.remove();
+    };
+    requestAnimationFrame(frame);
+  }
+  helpers.img = img; helpers.style = style; helpers.unstyle = unstyle; helpers.playFx = playFx;
+
   return { CLASSIC, LOOKS, look, paintStone, paintPreview, define, def, DEFS, h: helpers };
 }));

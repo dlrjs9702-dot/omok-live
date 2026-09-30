@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { post, shopper, buyAndEquip, stoneContrast } = require('./skin-support');
+const { expectNoScriptError } = require('./skin-support');
 
 // v1.7.35 오목 스킨 11종: 모든 스킨의 흑·백 판독 대비, 상점 탭·등급 구역, 방 테마(방장 것)·돌 스킨이 같은 방의 모든
 // 화면에 똑같이 보이는지, 전설의 승리 연출, 프로필 배지. PC 전용.
@@ -84,5 +85,6 @@ test('오목 스킨: 상점 탭·등급 구역, 방장 테마와 각자 돌 스�
       return r > 200 && g > 170 && bl < 190;
     }, { timeout: 10000 }).toBe(true);
   }
+  for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });

@@ -100,3 +100,9 @@ async function expectSameCrop(pages, px, py, minChroma = 20) {
 }
 
 module.exports = { ...module.exports, twoPlayerRoom, cropOf, pixelOf, expectSameCrop };
+
+// A script error inside a render shows up as a toast ("... is not a function"); a room screen must never show one.
+async function expectNoScriptError(page) {
+  await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
+}
+module.exports.expectNoScriptError = expectNoScriptError;

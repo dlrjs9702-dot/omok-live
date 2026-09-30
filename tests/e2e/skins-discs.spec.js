@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { post, shopper, buyAndEquip, stoneContrast, twoPlayerRoom, expectSameCrop, pixelOf } = require('./skin-support');
+const { expectNoScriptError } = require('./skin-support');
 
 // v1.7.36 사목·오델로 스킨: 모든 스킨의 두 진영 판독 대비(4:1), 상점 탭·구역, 방장 테마와 각자 말이 같은 방의 모든 화면에
 // 같게 보이는지, 사목 전설 승리 연출. PC 전용.
@@ -52,6 +53,7 @@ test('사목 스킨: 방장 테마와 각자 칩이 모든 화면에 같고, 전
       return r > 215 && g > 200 && bl > 150;
     }, { timeout: 10000 }).toBe(true);
   }
+  for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
 
@@ -73,5 +75,6 @@ test('오델로 스킨: 방장 테마와 각자 디스크가 모든 화면에 �
   await expectSameCrop([a.page, b.page], 3.5 * cell, 3.5 * cell);
   await expectSameCrop([a.page, b.page], 4.5 * cell, 3.5 * cell);
   for (const who of [a, b]) await expect.poll(async () => (await pixelOf(who.page, 6, 6)).reduce((s, v) => s + v, 0), { timeout: 8000 }).toBeLessThan(150);
+  for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });

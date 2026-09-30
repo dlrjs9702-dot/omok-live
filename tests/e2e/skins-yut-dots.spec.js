@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { post, get, shopper, buyAndEquip, twoPlayerRoom, expectSameCrop, cropOf, pixelOf } = require('./skin-support');
+const { expectNoScriptError } = require('./skin-support');
 
 // v1.7.37 윷놀이·점과 상자 스킨: 모든 스킨에서 두 팀의 색(파랑=선공, 빨강=후공)이 그림을 지배하는지, 상점 탭·구역,
 // 방장 테마와 각자 말/선 스킨이 같은 방의 모든 화면에 같은지. PC 전용.
@@ -76,6 +77,7 @@ test('윷놀이 스킨: 상점 탭·구역, 방장 테마와 각자 말이 모�
   await a.page.waitForTimeout(2500); // 이동 애니메이션
   const [px, py] = YUT_XY[position];
   await expectSameCrop([a.page, b.page], px, py, 15);
+  for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
 
@@ -102,5 +104,6 @@ test('점과 상자 스킨: 상점 탭·구역, 방장 테마와 각자 선이 �
   await expectSameCrop([a.page, b.page], 82 + 139 * 3.5, 82 + 139 * 2, 15); // b의 선(밧줄): 가로선 id 11
   // 완성한 상자: 에너지 셀 그림이 두 화면에서 같은 색(시안)으로 그려진다.
   for (const who of [a, b]) await expect.poll(async () => (await cropOf(who.page, 82 + 139 / 2, 82 + 139 / 2, 40)).chroma, { timeout: 8000 }).toBeGreaterThan(60);
+  for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
