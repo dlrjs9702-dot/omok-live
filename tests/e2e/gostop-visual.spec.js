@@ -453,3 +453,52 @@ test.describe('고스톱·맞고 자체 화투·실물감 연출 (v1.7.4)', () =
     await me.context.close();
   });
 });
+
+// v1.7.23 (IDEAS 백로그 7): 방에 들어갈 때 이전 방의 연출 기준이 남으면, 새 방의 첫 화면이 이전 방 화면과 비교되어
+// 카드 이동이 엉뚱하게 재생된다. 입장 시 초기화되어 새 방의 첫 화면은 재생 없이 바로 보여야 한다.
+test.describe('방 이동 시 고스톱 연출 상태 초기화 (v1.7.23)', () => {
+  test('입장하면 이전 방의 기준이 지워져 새 방의 첫 화면은 재생 없이 보이고, 앱이 입장마다 초기화를 호출한다', async ({ browser, request }) => {
+    const admin = await adminToken(request);
+    const me = await guest(browser, request, admin, '방이동');
+    const page = me.page;
+    await page.locator('[data-game="gostop"]').click();
+    await page.locator('#createRoomBtn').click();
+    const room = await openHarness(page, me.token);
+
+    // 방 A: 카드 연출이 재생되고 끝난다.
+    await show(page, room, SCENARIOS.normal());
+    await settle(page);
+
+    // 연출은 렌더 뒤 비동기로 시작되므로 잠시 기다린 뒤 재생된 단계 수와 진행 여부를 본다.
+    const renderOnly = async (sc) => {
+      const from = await page.evaluate(({ base, s }) => {
+        const start = window.GostopUI.fxLog.length;
+        window.__gostopRender({ ...base, gameType: 'gostop', game: s.after.game, players: { 1: { label: '나' }, 2: { label: '상대' } },
+          me: { ...base.me, seat: s.viewer, myGostopHand: s.after.hand } });
+        return start;
+      }, { base: room, s: sc });
+      await page.waitForTimeout(400);
+      return page.evaluate(start => ({ steps: window.GostopUI.fxLog.length - start, busy: window.GostopUI.fxBusy() }), from);
+    };
+
+    // 대조: 초기화 없이 다른 방의 화면이 오면 이전 화면과 비교해 연출이 재생된다(이 위험이 초기화의 이유).
+    const stale = await renderOnly(SCENARIOS.jjok());
+    expect(stale.steps > 0 || stale.busy).toBe(true);
+    await settle(page);
+
+    // 입장 초기화 뒤: 같은 상황의 첫 화면은 재생 없이 바로 보인다.
+    await page.evaluate(() => window.GostopUI.reset());
+    const fresh = await renderOnly(SCENARIOS.normal());
+    expect(fresh).toEqual({ steps: 0, busy: false });
+
+    // 앱 연결: 방에 들어올 때마다 초기화가 호출된다(나갔다가 새 방을 만들어 확인).
+    await page.evaluate(() => { window.__resetCalls = 0; const original = window.GostopUI.reset; window.GostopUI.reset = () => { window.__resetCalls += 1; return original(); }; });
+    await page.locator('#leaveRoomBtn').click();
+    await expect(page.locator('#lobbyView')).toBeVisible();
+    await page.locator('[data-game="gostop"]').click();
+    await page.locator('#createRoomBtn').click();
+    await expect(page.locator('#gostopPanel')).toBeVisible();
+    expect(await page.evaluate(() => window.__resetCalls)).toBeGreaterThanOrEqual(1);
+    await me.context.close();
+  });
+});

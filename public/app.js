@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.22').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.23').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -2847,6 +2847,25 @@
     startPresenceRefresh();
   }
 
+  // v1.7.23 (IDEAS backlog 7): everything a game remembers between two snapshots to animate the difference (the newest
+  // piece, a dice or piece move, a card flight, a drawn tile) belongs to the room it was seen in. Entering a room clears it,
+  // so the first snapshot of that room is only a baseline and nothing from the previous room is replayed or compared.
+  function resetRoomAnimationState() {
+    pieceMotionKey = null; pieceMotionStart = 0;
+    if (pieceMotionFrame !== null) cancelAnimationFrame(pieceMotionFrame);
+    pieceMotionFrame = null;
+    yutLastThrowKey = null; yutThrowTrackingStarted = false; yutThrowAnimating = false; yutLastThrowFlags = null;
+    yutLastMoveKey = null; yutMoveTrackingStarted = false; yutPieceAnimation = null; yutMoveAnimationGen += 1; yutHoverTargetKey = null;
+    cityLastRollKey = null; cityRollTrackingStarted = false; cityAnimation = null; cityDiceAnimating = false;
+    if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
+    cityAnimationFrame = null;
+    if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
+    davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null;
+    if (marathonMemoryHideTimer) clearTimeout(marathonMemoryHideTimer);
+    marathonMemoryHideTimer = null; marathonMemoryHideKey = null;
+    window.GostopUI?.reset?.();
+  }
+
   function enterRoomState(next) {
     stopPresenceRefresh();
     stopLobbyStream();
@@ -2854,6 +2873,7 @@
     state = next;
     lastResultEffectKey = null;
     resetRecentActionTracking();
+    resetRoomAnimationState();
     clearResultEffect();
     chatUnreadCount = 0;
     chatAtBottom = true;

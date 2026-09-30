@@ -504,6 +504,19 @@
     }
   }
 
+  // v1.7.23: entering a room starts from a clean table. Nothing from the room the player just left may be compared
+  // against, replayed or treated as already staged (the first snapshot of the new room is only a baseline).
+  function reset() {
+    cancelFx();
+    lastState = null;
+    seenEventKey = undefined;
+    prevItems = null;
+    animatedTurn = { key: null, count: 0 };
+    stagedResultKey = null;
+    elementsById = new Map();
+    anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
+  }
+
   function render(state) {
     const before = lastState?.gameType === 'gostop' && state?.gameType === 'gostop' && elementsById.size ? snapshot() : null;
     lastState = state;
@@ -951,5 +964,5 @@
   }
 
   // fxLog/fxBusy: read-only hooks for browser tests (public card ids and screen positions only).
-  window.GostopUI = { init, render, setPointAccount, cardInfo: info, fxLog, fxBusy: () => Boolean(fxRun) };
+  window.GostopUI = { init, render, reset, setPointAccount, cardInfo: info, fxLog, fxBusy: () => Boolean(fxRun) };
 })();
