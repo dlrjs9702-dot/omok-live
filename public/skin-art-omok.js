@@ -71,15 +71,15 @@
 
   function planet(ctx, r, c) { // 행성석: a ringed planet; the ring is part of the silhouette
     const d = dark(c);
-    const pr = r * .74; const ring = d ? 'rgba(255,196,110,.95)' : 'rgba(110,140,205,.92)';
+    const pr = r * .74; const ring = d ? 'rgba(168,104,30,.95)' : 'rgba(110,140,205,.92)';
     const drawRing = (from, to) => {
-      ctx.save(); ctx.rotate(-.42); ctx.strokeStyle = ring; ctx.lineWidth = r * .15;
+      ctx.save(); ctx.rotate(-.42); ctx.strokeStyle = ring; ctx.lineWidth = r * .13;
       ctx.beginPath(); ctx.ellipse(0, 0, r * 1.04, r * .3, 0, from, to); ctx.stroke(); ctx.restore();
     };
     drawRing(Math.PI, TAU);
     ctx.save();
     ctx.beginPath(); ctx.arc(0, 0, pr, 0, TAU); ctx.clip();
-    ctx.fillStyle = sphere(ctx, pr, d ? ['#7382c4', '#262d5c', '#080a1e'] : ['#fff7e8', '#efdabc', '#c4a880'], .5);
+    ctx.fillStyle = sphere(ctx, pr, d ? ['#56639e', '#1c2248', '#05060f'] : ['#fff7e8', '#efdabc', '#c4a880'], .5);
     ctx.fillRect(-pr, -pr, pr * 2, pr * 2);
     ctx.strokeStyle = d ? 'rgba(170,185,255,.3)' : 'rgba(150,110,60,.3)'; ctx.lineWidth = pr * .13;
     for (const y of [-.45, -.05, .35]) { ctx.beginPath(); ctx.moveTo(-pr, y * pr + pr * .15); ctx.quadraticCurveTo(0, y * pr - pr * .15, pr, y * pr + pr * .15); ctx.stroke(); }
@@ -146,10 +146,10 @@
     for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6 - Math.PI / 6; const x = Math.cos(a) * r * 1.02; const y = Math.sin(a) * r * 1.02; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.closePath();
     ctx.fillStyle = sphere(ctx, r, d ? ['#4a6cb8', '#15234f', '#050817'] : ['#ffffff', '#e8f1ff', '#9db6df'], .5); ctx.fill();
-    ctx.strokeStyle = d ? '#5fe3ff' : '#3a7bd5'; ctx.lineWidth = r * .09; ctx.stroke();
+    ctx.strokeStyle = d ? '#2b88b0' : '#8fb0e6'; ctx.lineWidth = r * .09; ctx.stroke();
     ctx.beginPath();
     [[.14, -.74], [-.36, .08], [-.04, .08], [-.16, .76], [.38, -.16], [.05, -.16]].forEach(([x, y], i) => { if (i) ctx.lineTo(x * r, y * r); else ctx.moveTo(x * r, y * r); });
-    ctx.closePath(); ctx.fillStyle = d ? '#8af2ff' : '#ffc928'; ctx.fill();
+    ctx.closePath(); ctx.fillStyle = d ? '#3fb4d6' : '#ffc928'; ctx.fill();
     ctx.strokeStyle = d ? '#1c6f8c' : '#b57d00'; ctx.lineWidth = Math.max(1, r * .04); ctx.stroke();
   }
   function voltFx(ctx, r, t) {

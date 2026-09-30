@@ -64,8 +64,8 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   const dialog = a.page.locator('#skinShopDialog');
   await expect(dialog).toBeVisible();
   expect((await dialog.boundingBox()).width).toBeGreaterThan(lookup.width * 1.5);
-  await expect(dialog.locator('.skinCard')).toHaveCount(5);
-  await expect(dialog.locator('.skinCard canvas')).toHaveCount(5);
+  await expect(dialog.locator('.skinCard')).toHaveCount(16);
+  await expect(dialog.locator('.skinCard canvas')).toHaveCount(16);
 
   // 100,000P뿐이라 살 수 없다(버튼 비활성).
   await expect(dialog.locator('.skinCard button').first()).toBeDisabled();

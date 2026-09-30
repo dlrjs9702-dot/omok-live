@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { SKINS, TIERS, catalogView, skinById, familyOf } = require('../lib/skins');
+const { SKINS, TIERS, catalogView, skinById, familyOf, badgesOf } = require('../lib/skins');
 const SkinLooks = require('../public/skin-looks');
 
 // v1.7.30 skins: the catalog and looks (unit), then buying / equipping / sharing through the real server.
@@ -19,7 +19,12 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(TIERS.premium.price, 1_000_000);
   assert.equal(TIERS.theme.price, 1_500_000);
   assert.equal(TIERS.legend.price, 3_000_000);
-  assert.equal(SKINS.filter(s => s.tier === 'common' && s.family === 'omok').length, 5);
+  const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok').length;
+  assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 1], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 1');
+  assert.deepEqual(SKINS.filter(s => s.legacy).map(s => s.id).sort(), ['omok_common_amber', 'omok_common_bronze', 'omok_common_jade', 'omok_common_obsidian', 'omok_common_porcelain']);
+  assert.equal(SKINS.filter(s => s.tier === 'theme').every(s => s.slot === 'theme'), true);
+  assert.equal(SKINS.find(s => s.tier === 'legend').slot, 'piece');
+  assert.deepEqual(badgesOf(['omok_l1', 'omok_c1']), [{ family: 'omok', game: '오목', name: '천상 바둑' }]);
   for (const skin of SKINS) assert.equal(skin.price, TIERS[skin.tier].price);
   assert.equal(familyOf('omok'), 'omok');
   assert.equal(familyOf('omok2v2'), 'omok');
@@ -35,7 +40,7 @@ const lum = hex => {
   return .2126 * r + .7152 * g + .0722 * b;
 };
 test('스킨 모양: 모든 스킨에서 흑·백 돌의 명도 차이가 충분하고, 없는 스킨은 기본 돌로 그린다', () => {
-  for (const skin of SKINS) {
+  for (const skin of SKINS.filter(s => s.legacy)) { // S1 material skins are plain gradients; the drawn skins are measured in tests/e2e/skins.spec.js
     const black = SkinLooks.look(skin.id, 'black');
     const white = SkinLooks.look(skin.id, 'white');
     const ratio = (lum(white.stops[1]) + .05) / (lum(black.stops[1]) + .05);
@@ -100,7 +105,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
-  assert.equal(shop.data.catalog[0].skins.length, 5);
+  assert.equal(shop.data.catalog[0].skins.length, 16);
   assert.deepEqual(shop.data.owned, []);
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 

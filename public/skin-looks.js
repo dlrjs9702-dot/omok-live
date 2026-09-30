@@ -68,7 +68,7 @@
       ctx.strokeStyle = ink(.35, 'rgba(90,150,190,.5)'); ctx.lineWidth = Math.max(1, r * .05);
       ctx.beginPath(); for (let i = 0; i < 8; i += 1) { const a = i * Math.PI / 4 + .2; ctx.moveTo(Math.cos(a) * r * .32, Math.sin(a) * r * .32); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.stroke();
     } else if (name === 'blossom') { // blue-and-white porcelain: a six-petal flower
-      ctx.fillStyle = dark ? 'rgba(210,225,255,.55)' : 'rgba(44,84,170,.62)';
+      ctx.fillStyle = dark ? 'rgba(140,165,225,.42)' : 'rgba(44,84,170,.62)';
       for (let i = 0; i < 6; i += 1) {
         ctx.save(); ctx.rotate(i * Math.PI / 3);
         ctx.beginPath(); ctx.ellipse(0, -r * .36, r * .13, r * .24, 0, 0, Math.PI * 2); ctx.fill();
