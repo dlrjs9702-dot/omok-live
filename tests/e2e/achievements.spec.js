@@ -47,7 +47,7 @@ test('업적 탭: 달성 요약과 게임별 접기 목록(여러 게임 그룹�
   await expect(page.locator('#missionPanelToday')).toBeHidden();
   await expect(page.locator('#achievementSummary')).toHaveText('달성 0/66 · 받은 업적 보상 0P');
   const groups = page.locator('#achievementList .achGroup');
-  await expect(groups).toHaveCount(18); // 17개 게임 + 여러 게임
+  await expect(groups).toHaveCount(17); // 16개 게임 + 여러 게임
   await expect(groups.first()).toHaveJSProperty('open', false);
   await expect(page.locator('#achievementList .achGroup[open] summary')).toContainText('여러 게임');
   await groups.filter({ hasText: '오델로' }).locator('summary').click();
