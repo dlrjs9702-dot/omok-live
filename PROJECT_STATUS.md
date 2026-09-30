@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.33 정산 지연 중 방 화면 표시
+
+백로그 4 재대조(PR #74) 때 발견한 문제를 고쳤다. `GET /api/room`은 방 상태를 돌려주기 전에 끝난 판의 기록·정산(`recordFinishedMatch`)을 먼저 시도하고, 실패하면 503을 돌려줘 DB 장애 중 새로고침한 사람은 방 화면을 볼 수 없었다(화면은 입장 세션 확인 뒤 방이 안 열리고 오류 안내만 표시).
+
+- `server.js` `GET /api/room`: 기록 시도는 그대로 하되 실패하면 로그만 남기고 방 상태를 200으로 돌려준다. 고스톱 결과 상자는 정산 전이면 「포인트 정산 처리 중…」을 보여 주고, 정산 재시도(`scheduleSettlementRetry`)가 성공하면 방을 다시 브로드캐스트한다.
+- 다음 판 시작(`next-round`·`rematch`)과 일반 행동의 `recordOrError`(503) 차단은 그대로여서, 정산 전 다음 판은 여전히 시작되지 않는다.
+- 테스트: `test/gostop-settlement-block.test.js`에 정산 실패 중 두 참가자의 `GET /api/room`이 200·끝난 판·정산 미완료·포인트 이동 없음 확인 추가(이전 서버로는 실패).
+
 ## v1.7.32 상점 입장 버튼
 
 사용자 요청(2026-10-01, 최우선): 로비의 상점 카드(제목 「상점」 + 흰 「입장」 버튼)를 제목 없는 「상점 입장」 버튼 하나로 바꾸고, 색은 방 입장 버튼과 같은 파란색(`.secondary`, `#2563eb`)으로 했다.
