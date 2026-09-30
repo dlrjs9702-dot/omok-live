@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.27').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.28').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -3179,46 +3179,10 @@
     }
   }
 
-  // One short public sentence for the last thing that happened. Built only from fields every viewer
-  // already receives (board moves, public guesses, hints, flips), or the latest server system line.
-  const NARRATED_BY_SYSTEM = ['bingo', 'yut', 'cityking', 'oldmaid', 'marathon', 'twentyquestions', 'pictionary'];
+  // One short public sentence for the last thing that happened, built from each game's own public state
+  // (see recent-action.js; it never falls back to the room's system chat).
   function recentNarration() {
-    const g = state?.game;
-    if (!g || !['playing', 'finished', 'draw', 'setup', 'round-ended'].includes(g.status)) return '';
-    const type = state.gameType;
-    const m = g.lastMove;
-    switch (type) {
-      case 'omok':
-        return m ? `${actorName(m.color)}이 돌을 놓았습니다` : '';
-      case 'omok2v2': // v1.7.27: name the player who actually moved (the engine records `playerSeat`), not only the team colour
-        return m ? `${actorName(m.playerSeat ?? m.color)}이 돌을 놓았습니다` : '';
-      case 'othello':
-        return m ? `${actorName(m.color)}이 두어 ${m.flipped || 0}개를 뒤집었습니다` : '';
-      case 'connect4':
-        return m ? `${actorName(m.color)}이 ${m.x + 1}열에 넣었습니다` : '';
-      case 'dots':
-        return m ? `${actorName(m.color)}이 선을 그었습니다${m.claimed?.length ? ` · 상자 ${m.claimed.length}개 완성` : ''}` : '';
-      case 'baseball':
-        return m ? `${actorName(m.color)}의 추측 ${m.guess} → ${m.strikes}S ${m.balls}B` : '';
-      case 'halligalli': {
-        const bell = g.lastBell && g.lastBell.flipId === g.flipId ? g.lastBell : null;
-        if (bell) return `${actorName(bell.seat)}이 종을 쳤습니다 · ${bell.correct ? `성공, 카드 ${bell.totalTransferred || 0}장 획득` : '실패, 벌칙 카드'}`;
-        return g.lastFlip ? `${actorName(g.lastFlip.seat)}이 카드를 뒤집었습니다` : '';
-      }
-      case 'davinci': {
-        const guess = g.lastGuess || g.history?.at(-1);
-        return guess ? `${actorName(guess.seat)}이 ${actorName(guess.target)}의 타일을 ${guess.number}(으)로 추측 · ${guess.correct ? '정답' : '오답'}` : '';
-      }
-      case 'liar': {
-        const hint = g.hints?.at(-1);
-        return hint ? `${actorName(hint.seat)}의 힌트 · ${hint.timedOut ? '시간 초과' : `"${hint.text}"`}` : '';
-      }
-      default: {
-        if (!NARRATED_BY_SYSTEM.includes(type)) return '';
-        const row = (state.chat?.messages || []).filter(message => message.type === 'system').at(-1);
-        return row?.text || '';
-      }
-    }
+    return window.RecentAction.narrate(state, { actorName, marathonGroupLabel });
   }
 
   function renderHeadlineContext() {

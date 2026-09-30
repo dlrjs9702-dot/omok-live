@@ -18,6 +18,15 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## v1.7.28 「방금」 줄을 게임 상태 기준으로
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-16을 처리했다. 빙고·윷놀이·랜드킹·도둑잡기·마라톤·스무고개·그림 맞히기는 「방금」 줄을 방의 마지막 시스템 채팅으로 채워, 입장·퇴장 같은 안내가 게임 행동처럼 보였다.
+
+- **새 모듈 `public/recent-action.js`**(`window.RecentAction.narrate`, 노드에서도 `require` 가능): 기존 `recentNarration`의 게임별 문구를 그대로 옮기고 시스템 채팅 대체를 없앴다. `app.js`는 이 모듈을 호출한다. `index.html`에 스크립트를 추가했고 `test/release-version.test.js`가 캐시 버전(`?v=`)을 검사한다.
+- **게임별 기준 필드**(각 엔진 `publicState` 확인): 빙고 `lastSelected`(받침에 맞는 조사), 윷놀이 던진 직후(`phase==='move'`·`lastThrow`)/`lastPass`/`lastMove`(잡기·한 번 더), 도둑잡기 `history` 마지막 항목, 랜드킹 `lastRoll`+`lastEvent`, 마라톤 `history`(주사위·미션 성공·시간 초과·도착, 팀전은 팀 이름), 스무고개(대기 중인 질문·정답 시도, 첫 질문 차례는 「정답을 설정」, 한 종류만 있을 때 마지막 답변/시도), 그림 맞히기 `guessLog`/`roundAwards`(한 종류만 있을 때).
+- **원칙**: 어느 행동이 마지막인지 상태로 알 수 없으면(예: 스무고개의 답변과 정답 시도가 함께 있음, 그림 맞히기의 오답·정답이 섞임) 잘못된 줄 대신 아무것도 표시하지 않는다. 서버·게임 규칙 변경 없음.
+- **테스트**: `test/recent-action-narration.test.js`(12건: 모든 게임 문구, 시스템 채팅이 있어도 표시 없음, 조사, 모든 게임 종류 빈 상태 호출; 입력 필드는 실제 엔진 출력으로 확인), `tests/e2e/game-visibility.spec.js`(윷놀이 실제 플레이: 시스템 채팅이 있는데도 던지기 전에는 줄 없음, 던진 뒤 윷 결과 또는 자동 차례 넘김; 기존 스무고개 테스트가 상태 기반 문구로 통과).
+
 ## v1.7.27 오목 2vs2 실제 착수자 표시
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-17을 처리했다. 팀전 「방금」 줄이 `lastMove.color`(흑/백)로 이름을 찾아 팀 이름만 나왔다(수정 전 e2e로 재현: `방금흑팀이 돌을 놓았습니다`).
