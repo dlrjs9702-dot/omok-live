@@ -116,6 +116,11 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   await actor.page.screenshot({ path: testInfo.outputPath('02-picker.png') });
   await actor.page.keyboard.press('Escape');
   await expect(actor.page.locator('.davinciPicker')).toHaveCount(0);
+  // v1.7.25: pressing the very same tile again brings the closed pad back (it used to stay closed until something else changed).
+  await actor.page.locator(`#davinciHands .davinciHand[data-owner="${targetSeat}"] .davinciTile[data-tile-id="${hidden.id}"]`).click();
+  await expect(actor.page.locator('.davinciPicker')).toBeVisible();
+  await actor.page.keyboard.press('Escape');
+  await expect(actor.page.locator('.davinciPicker')).toHaveCount(0);
   // Choosing another hidden tile opens the pad again.
   const other = targetTiles.find(tile => !tile.revealed && tile.id !== hidden.id);
   await actor.page.locator(`#davinciHands .davinciHand[data-owner="${targetSeat}"] .davinciTile[data-tile-id="${other.id}"]`).click();

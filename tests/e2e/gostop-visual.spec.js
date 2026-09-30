@@ -502,3 +502,43 @@ test.describe('방 이동 시 고스톱 연출 상태 초기화 (v1.7.23)', () =
     await me.context.close();
   });
 });
+
+// v1.7.25 (IDEAS 백로그 13): 낸 패가 바닥과 획득 영역 사이를 불필요하게 왕복하지 않는다. 모든 엔진 시나리오의 연출 기록에서
+// 한 장의 카드는 (손→바닥 또는 산패→바닥) 뒤 (바닥→획득)으로 한 방향으로만 움직이고, 획득한 카드가 다시 움직이지 않는다.
+test.describe('고스톱 카드 이동 왕복 없음 (v1.7.25)', () => {
+  test('모든 시나리오에서 카드는 한 방향으로만 움직이고 연출 중에는 손패 입력이 잠긴다', async ({ browser, request }) => {
+    test.setTimeout(180_000);
+    const admin = await adminToken(request);
+    const me = await guest(browser, request, admin, '왕복확인');
+    await me.page.locator('[data-game="gostop"]').click();
+    await me.page.locator('#createRoomBtn').click();
+    const room = await openHarness(me.page, me.token);
+    const page = me.page;
+    const problems = [];
+    for (const [name, make] of Object.entries(SCENARIOS)) {
+      const from = await show(page, room, make());
+      await page.waitForTimeout(150);
+      // 연출이 진행 중이면 손패 카드는 눌러도 되지 않도록 잠겨 있다.
+      const busy = await page.evaluate(() => window.GostopUI.fxBusy());
+      if (busy) {
+        const enabled = await page.locator('#gostopHand button:not([disabled])').count();
+        if (enabled) problems.push(`${name}: 연출 중 손패 ${enabled}장이 눌린다`);
+      }
+      await settle(page);
+      const log = await entries(page, from);
+      const seenCapture = new Set();
+      const seenMove = new Set();
+      for (const entry of log) {
+        if (!entry.card) continue;
+        if (seenCapture.has(entry.card)) problems.push(`${name}: 획득한 ${entry.card}가 다시 움직임(${entry.k})`);
+        if (entry.k === 'capture') seenCapture.add(entry.card);
+        else if (entry.k === 'play' || entry.k === 'flip') {
+          if (seenMove.has(entry.card)) problems.push(`${name}: ${entry.card}를 두 번 냄(${entry.k})`);
+          seenMove.add(entry.card);
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+    await me.context.close();
+  });
+});

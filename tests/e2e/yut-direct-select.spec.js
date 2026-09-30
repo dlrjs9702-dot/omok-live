@@ -135,6 +135,7 @@ test.describe('윷놀이 말 직접 선택', () => {
       await clickBoard(spectatorPage, START);
 
       await expect(page.locator('#yutMoveChoices .yutPieceChoice').first()).toBeVisible();
+      await expect(page.locator('#yutMoveChoices .yutPieceChoice')).toHaveCount(1); // v1.7.25: 말 4개가 모두 집에 있어도 보조 버튼은 하나(누르면 실제로 움직이는 것만)
       // 첫 이동은 모든 말이 집에 있으므로 출발점 토큰이 유일한 대상 → 가장 낮은 번호의 말.
       const expected = thrown.legalMoves
         .filter(move => thrown.pieces.black.find(item => item.id === move.pieceId)?.status === 'home')
@@ -218,7 +219,10 @@ test.describe('윷놀이 말 직접 선택', () => {
     const snapshotOf = game => ({ ...base, game: { ...base.game, ...yut.publicState(game) } });
     async function show(game) {
       injected = snapshotOf(game);
-      const expectedButtons = game.turn === 'black' ? yut.legalMoves(game).length : 0;
+      // 집 말은 서로 같아 출발점 토큰 하나(가장 낮은 번호)만 제안한다: 집 말 이동은 여러 개여도 버튼은 하나.
+      const legal = yut.legalMoves(game);
+      const isHome = move => game.pieces.black.find(item => item.id === move.pieceId)?.status === 'home';
+      const expectedButtons = game.turn === 'black' ? legal.filter(move => !isHome(move)).length + (legal.some(isHome) ? 1 : 0) : 0;
       if (expectedButtons) await expect(page.locator('#yutMoveChoices .yutPieceChoice')).toHaveCount(expectedButtons, { timeout: 8000 });
       else await expect(page.locator('#yutMoveChoices .yutPieceChoice')).toHaveCount(0, { timeout: 8000 });
       await page.waitForTimeout(150);
