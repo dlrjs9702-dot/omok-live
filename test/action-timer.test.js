@@ -68,19 +68,6 @@ test('그림 맞히기는 출제자와 아직 못 맞힌 참가자만 같은 90�
   assert.equal(buildActionTimer(r, '3', 100).deadlineAt, 90_000);
 });
 
-test('마라톤은 미션 참여자에게만 표시하고 시간 제한 없는 주사위 단계는 표시하지 않는다', () => {
-  const r = room('marathon', {
-    phase: 'mission', mode: 'team', teamLayout: '2v2', seatOrder: ['1','2','3','4'],
-    groupOrder: ['A','B'], groups: { A: ['1','3'], B: ['2','4'] }, turnGroup: 'A',
-    mission: { group: 'A' }, deadlineAt: 15_000,
-  });
-  assert.equal(buildActionTimer(r, '1', 100).label, '우리 팀 미션');
-  assert.equal(buildActionTimer(r, '2', 100), null);
-  r.game.phase = 'roll';
-  r.game.mission = null;
-  assert.equal(buildActionTimer(r, '1', 100), null);
-});
-
 test('2대2 일반 차례는 nextSeat가 현재 행동자를 결정한다', () => {
   const r = room('omok2v2', { nextSeat: '3', paused: false }, { turnWatch: { seat: '3', since: 500 } });
   assert.equal(currentTurnSeat(r), '3');
@@ -100,7 +87,6 @@ test('PC 공통 타이머 UI는 상태 행을 사용하고 모바일 숨김·0�
   assert.match(app, /서버 처리 대기 · \$\{timer\.timeoutText\}/);
   assert.match(app, /desktopActionTimerOwns\('pictionary'\)/);
   assert.match(app, /desktopActionTimerOwns\('liar'\)/);
-  assert.match(app, /desktopActionTimerOwns\('marathon'\)/);
   assert.match(app, /desktopActionTimerOwns\('davinci'\)/);
   assert.match(css, /@media\(max-width:880px\)\{\.myActionTimer\{display:none!important\}/);
 });

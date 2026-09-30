@@ -11,7 +11,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // shared #gameActionsPanel, docked below the dice/yut stage inside <aside id="gameInfoPanel"> --
 // the same "게임 진행" panel that also holds the system/room-info tabs and .sideActions (v1.6.58
 // split chat out into its own separate #chatPanel; #gameActionsPanel never lived there). Passive
-// board content (bingo's number grid, oldmaid's seat cards, marathon's track, pictionary's drawing
+// board content (bingo's number grid, oldmaid's seat cards, pictionary's drawing
 // canvas, the actual game boards) stays where it was; only interactive controls moved. All of this
 // is a pure DOM relocation -- every element keeps its original id, so none of app.js's
 // getElementById-based render/toggle/click-wiring logic needed to change.
@@ -57,7 +57,6 @@ test('every relocated per-game control lives inside #gameActionsPanel; every boa
     'pictionaryStartBtn', 'pictionaryGuessForm',
     'oldmaidStartBtn', 'oldmaidModeChooser',
     'liarRoundsSelect', 'liarStartBtn', 'liarHintForm', 'liarGuessForm',
-    'marathonStartBtn', 'marathonConfigChooser', 'marathonRollBtn', 'marathonAnswerForm',
   ];
   for (const id of moved) {
     assert.ok(panel.includes(`id="${id}"`), `${id} should be inside #gameActionsPanel`);
@@ -71,7 +70,6 @@ test('every relocated per-game control lives inside #gameActionsPanel; every boa
     'pictionaryCanvas', 'pictionaryDrawTools', 'pictionaryScoreboard',
     'oldmaidSeats', 'oldmaidMyHand', 'oldmaidAbilityBar',
     'liarRoleBox', 'liarVoteBox', 'liarScoreboard',
-    'marathonTrack', 'marathonHistory', 'marathonMissionBox',
     'yutLastThrow', 'yutHint',
   ];
   for (const id of stayed) {
@@ -91,7 +89,6 @@ test('relocated controls keep the exact wiring app.js already had for them', () 
   assert.match(app, /cityStartBtn\.addEventListener\('click', \(\) => roomAction\('start-city'\)\)/);
   assert.match(app, /oldmaidStartBtn\.addEventListener\('click', \(\) => roomAction\('start-oldmaid'\)\)/);
   assert.match(app, /liarStartBtn\.addEventListener\('click', \(\) => roomAction\('start-liar'\)\)/);
-  assert.match(app, /marathonStartBtn\.addEventListener\('click', \(\) => roomAction\('start-marathon'\)\)/);
   assert.match(app, /pictionaryStartBtn\.addEventListener\('click', \(\) => roomAction\('start-pictionary'\)\)/);
   assert.match(app, /chooseBlackBtn\.addEventListener\('click', \(\) => roomAction\('choose-role', \{ choice: 'black' \}\)\)/);
 });
@@ -129,8 +126,6 @@ test('every relocated control has its own explicit hidden-toggle so it disappear
     ['pictionaryStartBtn', '!pictionary'], ['pictionaryGuessForm', '!pictionary'],
     ['oldmaidStartBtn', '!oldmaid'], ['oldmaidModeChooser', '!oldmaid'],
     ['liarSetupRow', '!liar'], ['liarHintForm', '!liar'], ['liarGuessForm', '!liar'],
-    ['marathonStartBtn', '!marathon'], ['marathonConfigChooser', '!marathon'],
-    ['marathonRollBtn', '!marathon'], ['marathonAnswerForm', '!marathon'],
   ];
   for (const [id, cond] of pairs) {
     const re = new RegExp(`${id}\\.classList\\.toggle\\('hidden', ${cond.replace('!', '!')}\\)`);

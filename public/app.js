@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.33').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.34').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -313,28 +313,6 @@
   const liarGuessInput = document.getElementById('liarGuessInput');
   const liarResult = document.getElementById('liarResult');
   const liarScoreboard = document.getElementById('liarScoreboard');
-  const marathonPanel = document.getElementById('marathonPanel');
-  const marathonStatus = document.getElementById('marathonStatus');
-  const marathonStartBtn = document.getElementById('marathonStartBtn');
-  const marathonConfigChooser = document.getElementById('marathonConfigChooser');
-  const marathonLayoutChooser = document.getElementById('marathonLayoutChooser');
-  const marathonModeRadios = [...document.querySelectorAll('[data-marathon-mode]')];
-  const marathonLayoutRadios = [...document.querySelectorAll('[data-marathon-layout]')];
-  const marathonDifficultyRadios = [...document.querySelectorAll('[data-marathon-difficulty]')];
-  const marathonTrack = document.getElementById('marathonTrack');
-  const marathonTurnLabel = document.getElementById('marathonTurnLabel');
-  const marathonRollBtn = document.getElementById('marathonRollBtn');
-  const marathonLastRoll = document.getElementById('marathonLastRoll');
-  const marathonMissionBox = document.getElementById('marathonMissionBox');
-  const marathonMissionType = document.getElementById('marathonMissionType');
-  const marathonMissionTimer = document.getElementById('marathonMissionTimer');
-  const marathonMissionPrompt = document.getElementById('marathonMissionPrompt');
-  const marathonAnswerForm = document.getElementById('marathonAnswerForm');
-  const marathonAnswerInput = document.getElementById('marathonAnswerInput');
-  const marathonReflexOptions = document.getElementById('marathonReflexOptions');
-  const marathonMissionFeedback = document.getElementById('marathonMissionFeedback');
-  const marathonResult = document.getElementById('marathonResult');
-  const marathonHistory = document.getElementById('marathonHistory');
   const moveCountLabel = document.getElementById('moveCountLabel');
   const resignBtn = document.getElementById('resignBtn');
   const sideResignBtn = document.getElementById('sideResignBtn');
@@ -418,8 +396,6 @@
   let state = null;
   let seat = null;
   let isHost = false;
-  let marathonMemoryHideKey = null;
-  let marathonMemoryHideTimer = null;
   let pauseDialogShownKey = null;
   let pauseDialogDismissedKey = null;
   let pauseDialogPendingKey = null;
@@ -1482,25 +1458,9 @@
   function isRpgGame() { return state?.gameType === 'rpg'; }
   function isHalliGame() { return state?.gameType === 'halligalli'; }
   function isCityKingGame() { return state?.gameType === 'cityking'; }
-  function isMarathonGame() { return state?.gameType === 'marathon'; }
   function isTwentyGame() { return state?.gameType === 'twentyquestions'; }
-  function isNumberedSeatGame() { return isRpgGame() || isGostopGame() || isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isMarathonGame() || isTwentyGame() || isDavinciGame() || isHalliGame(); }
-  // Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
-  // seats; individual/3v3/2v2v2 use all 6) -- mirrors server.js's marathonSeatSlots().
-  function marathonSeatSlots() {
-    const g = state?.game;
-    if (g?.mode === 'team' && g?.teamLayout === '2v2') return ['1','2','3','4'];
-    return ['1','2','3','4','5','6'];
-  }
-  function numberedSeats() { return isGostopGame() ? ['1','2','3'] : isHalliGame() ? ['1','2','3','4','5','6'] : isOldMaidGame() ? ['1','2','3','4'] : isMarathonGame() ? marathonSeatSlots() : (isPictionaryGame() || isLiarGame() || isTwentyGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
-  // Mirrors marathon.js's groupForSeat(): odd/even split for 2v2 and 3v3, a 1-of-3 cycle for
-  // 2v2v2. Only meaningful once the host has picked team mode; individual mode has no groups.
-  function marathonGroupForSeat(seat) {
-    const layout = state?.game?.teamLayout;
-    const n = Number(seat);
-    if (layout === '2v2v2') return ['A', 'B', 'C'][(n - 1) % 3];
-    return n % 2 ? 'A' : 'B';
-  }
+  function isNumberedSeatGame() { return isRpgGame() || isGostopGame() || isTeamGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isTwentyGame() || isDavinciGame() || isHalliGame(); }
+  function numberedSeats() { return isGostopGame() ? ['1','2','3'] : isHalliGame() ? ['1','2','3','4','5','6'] : isOldMaidGame() ? ['1','2','3','4'] : (isPictionaryGame() || isLiarGame() || isTwentyGame()) ? ['1','2','3','4','5','6','7','8'] : ['1','2','3','4']; }
   function seatColor(value) { return ['1','3'].includes(value) ? 'black' : ['2','4'].includes(value) ? 'white' : value; }
   // Winner is the same black/white color for most games; 2v2 seat numbers map to team colors.
   // Bingo uses numbered seats; pictionary's winner is an array of seats, so it never matches 'black'/'white'
@@ -1514,17 +1474,6 @@
     if (['gostop', 'bingo', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli'].includes(gameType)) {
       const winners = Array.isArray(game.winner) ? game.winner.map(String) : [String(game.winner)];
       return winners.includes(String(playerSeat)) ? 'win' : 'loss';
-    }
-    if (gameType === 'marathon') {
-      // Self-contained like every other branch here (derives the group from playerSeat + game
-      // fields only, mirroring marathon.js's own groupForSeat()) rather than relying on the
-      // myGroup field publicState() also exposes, since this function only ever receives game.
-      const n = Number(playerSeat);
-      const myGroup = game.mode === 'team'
-        ? (game.teamLayout === '2v2v2' ? ['A', 'B', 'C'][(n - 1) % 3] : (n % 2 ? 'A' : 'B'))
-        : String(playerSeat);
-      const winners = Array.isArray(game.winner) ? game.winner.map(String) : [String(game.winner)];
-      return winners.includes(myGroup) ? 'win' : 'loss';
     }
     if (!['black', 'white'].includes(game.winner)) return null;
     const color = gameType === 'omok2v2' ? seatColor(playerSeat) : playerSeat;
@@ -1552,8 +1501,7 @@
     "halligalli": "2~6명이 순서대로 카드를 공개합니다. 공개된 카드 맨 위의 한 과일 합이 정확히 5개면 종을 먼저 치세요. 맞히면 공개 카드를 전부 가져오고, 틀리면 다른 참가자에게 카드 한 장씩 줍니다. 카드가 없어도 자기 차례 전 종으로 카드를 얻으면 생존합니다. 방장이 정한 5분 또는 10분이 끝나면 뒷면 카드가 가장 많은 사람이 승리하며 공동 승리할 수 있습니다.",
     "davinci": "2~4명 개인전. 타일 색은 모두 볼 수 있고 숫자는 본인 것만 볼 수 있습니다. 0~11의 흑·백 타일을 숫자 오름차순, 같은 숫자는 흑·백 순으로 정렬합니다. 차례마다 한 장을 뽑고 상대 타일 숫자를 추측합니다. 맞히면 계속 추측하거나 멈추고, 틀리면 뽑은 타일을 공개합니다. 더미가 비면 틀렸을 때 자기 타일을 공개합니다. 마지막 생존자가 승리합니다.",
     "gostop": "2명은 맞고(각 10장·바닥 8장), 3명은 고스톱(각 7장·바닥 6장)입니다. 넷마블 대박맞고 계열 대박모드로 맞고 7점·고스톱 3점부터 고/스톱을 고르며 1고 +1점 ×2, 2고 +2점 ×4 … 7고 ×128입니다. 광·열끗·고도리·띠·홍단·청단·초단·피 점수와 9월 국진(열끗/쌍피 선택), 쪽·따닥·판쓸이·뻑·자뻑·흔들기·폭탄·콩알탄·보너스피, 총통·3뻑 10점 승리, 피박·광박·멍박·고박, 나가리(다음 판 ×2)를 적용합니다. 방장이 정한 점당 10/50/100P로 게임센터 포인트만 정산하며 실제 돈과는 관계없습니다.",
-    "rpg": "1~4인 협동 3D 로그라이크 액션 RPG입니다. 수호자·사냥꾼·비술사 중 하나를 골라 방향키로 직접 움직이고 Space로 기본 공격, Q/W/E/R로 스킬, Shift로 대시합니다. 방의 몬스터를 모두 물리치면 레벨업 스킬·능력치·아이템을 고르고 다음 방으로 갑니다. 여덟 번째 방의 보스를 쓰러뜨리면 원정 성공이며, 한 판이 끝나면 성장은 초기화됩니다.",
-    "marathon": "2~6인 개인전 또는 4인 2대2·6인 3대3·6인 2대2대2 팀전. 주사위 1개를 굴려 이동하고, 도착한 칸마다(같은 칸 재방문 포함) 타이핑·기억력·반응·계산 미션이 매번 새로 나옵니다. 제한시간 안에 맞히면 그 자리에 머물고, 못 맞히면 2칸 뒤로 물러나며 그 자리에서 새 미션이 바로 이어집니다. 30칸 이상 도달하면 즉시 승리합니다. 팀전은 말 하나를 공유하며 팀원끼리 주사위를 돌아가며 굴리고 미션은 팀원 누구나 제출할 수 있습니다."
+    "rpg": "1~4인 협동 3D 로그라이크 액션 RPG입니다. 수호자·사냥꾼·비술사 중 하나를 골라 방향키로 직접 움직이고 Space로 기본 공격, Q/W/E/R로 스킬, Shift로 대시합니다. 방의 몬스터를 모두 물리치면 레벨업 스킬·능력치·아이템을 고르고 다음 방으로 갑니다. 여덟 번째 방의 보스를 쓰러뜨리면 원정 성공이며, 한 판이 끝나면 성장은 초기화됩니다."
 });
   function showGameRule(type) {
     gameRulesText.textContent = gameRules[type] || '';
@@ -1561,7 +1509,7 @@
 
   function selectGame(type) {
     if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci', 'halligalli', 'gostop', 'rpg'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli', 'gostop', 'rpg'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
@@ -2973,8 +2921,6 @@
     cityAnimationFrame = null;
     if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
     davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null;
-    if (marathonMemoryHideTimer) clearTimeout(marathonMemoryHideTimer);
-    marathonMemoryHideTimer = null; marathonMemoryHideKey = null;
     window.GostopUI?.reset?.();
     window.TwentyQuestionsUI?.reset?.();
   }
@@ -3197,7 +3143,6 @@
   }
 
   function seatKo(value) {
-    if (isMarathonGame() && numberedSeats().includes(value)) return marathonGroupLabel(state.game.mode === 'team' ? marathonGroupForSeat(value) : value, state.game);
     if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
@@ -3245,13 +3190,6 @@
         // is made by the liar, whose seat the public state never names -- so neither is marked.
         if (['hint1', 'hint2', 'extraHint'].includes(g.phase)) seats = one(g.currentSpeaker);
         break;
-      case 'marathon':
-        if (g.phase === 'roll') seats = one(g.currentRoller);
-        else if (g.mission?.group !== undefined && g.mission?.group !== null) {
-          seats = numberedSeats().filter(number => state.players[number]
-            && String(g.mode === 'team' ? marathonGroupForSeat(number) : number) === String(g.mission.group));
-        }
-        break;
       default:
         // omok, connect4, othello, dots, baseball (turns only once playing -- secret setup is
         // simultaneous), bingo, oldmaid (the drawer), davinci (the guesser, including its own
@@ -3296,7 +3234,7 @@
   // One short public sentence for the last thing that happened, built from each game's own public state
   // (see recent-action.js; it never falls back to the room's system chat).
   function recentNarration() {
-    return window.RecentAction.narrate(state, { actorName, marathonGroupLabel });
+    return window.RecentAction.narrate(state, { actorName });
   }
 
   function renderHeadlineContext() {
@@ -3364,7 +3302,6 @@
       case 'gostop': return g.phase === 'go-stop' ? '고/스톱을 정할' : g.phase === 'gukjin' ? '국진을 정할' : g.phase?.startsWith('choose') ? '먹을 패를 고를' : '패를 낼';
       case 'oldmaid': return '카드를 뽑을';
       case 'pictionary': return '그림을 그릴';
-      case 'marathon': return g.phase === 'roll' ? '주사위를 굴릴' : '미션을 풀';
       case 'liar': return ['vote', 'revote'].includes(g.phase) ? '투표할' : ['hint1', 'hint2', 'extraHint'].includes(g.phase) ? '힌트를 낼' : '행동할';
       case 'twentyquestions':
         return { secret: '정답을 정할', asking: '질문할', answering: '답변할', judging: '판정할', 'final-guesses': '최종 정답을 낼' }[g.phase] || '행동할';
@@ -3380,7 +3317,6 @@
       case 'cityking': return [g.turnCount, g.phase, g.lastRoll?.at, g.liquidating];
       case 'halligalli': return [g.flipId];
       case 'liar': return [g.phaseId];
-      case 'marathon': return [g.phaseId, g.moveCount];
       case 'pictionary': return [g.roundNumber, g.phase];
       case 'twentyquestions': return [g.roundNumber, g.moveCount, g.phase];
       case 'baseball': return [g.status, g.moveCount];
@@ -3718,7 +3654,6 @@
     const liar = isLiarGame();
     const oldmaid = isOldMaidGame();
     const city = isCityKingGame();
-    const marathon = isMarathonGame();
     const twenty = isTwentyGame();
     const davinci = isDavinciGame();
     const halli = isHalliGame();
@@ -3730,11 +3665,9 @@
       const player = state.players[number];
       const card = document.createElement('div');
       const color = seatColor(number);
-      const marathonGroup = marathon ? (state.game.mode === 'team' ? marathonGroupForSeat(number) : number) : null;
-      const marathonRoller = marathon && state.game.status === 'playing' && state.game.currentRoller === number;
-      const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : halli ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : marathon ? marathonRoller : state.game.nextSeat === number;
+      const currentTurn = twenty ? (state.game.turnSeat === number || (state.game.drawerSeat === number && ['secret','answering','judging'].includes(state.game.phase))) : pictionary ? state.game.drawerSeat === number : liar ? state.game.currentSpeaker === number : oldmaid ? state.game.turn === number : davinci ? state.game.turn === number : halli ? state.game.turn === number : bingo ? state.game.turn === number : city ? state.game.turn === number : state.game.nextSeat === number;
       const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
-      card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || marathon || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
+      card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
@@ -3747,12 +3680,10 @@
         : gostop ? `${number}번${state.game.status === 'playing' && state.game.turn === number ? ' · 차례' : ''}`
         : isRpgGame() ? `${number}번${state.game.classes?.[number] ? ` · ${state.game.classInfo?.[state.game.classes[number]]?.name || ''}` : ''}`
         : city ? `${number}번${eliminated ? ' · 파산' : currentTurn && state.game.status === 'playing' ? ' · 현재 차례' : ''}`
-        : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroup}팀` : ''}${marathonRoller ? ' · 굴릴 차례' : ''}`
         : `${number}번 · ${color === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
       const name = document.createElement('small');
-      const marathonPos = marathon && state.game.status === 'playing' ? (state.game.positions?.[marathonGroup] ?? 0) : null;
       name.textContent = player
-        ? `${player.label}${gostop && state.game.seats?.[number] ? ` · 손패 ${state.game.seats[number].handCount}장 · ${state.game.seats[number].score}점` : ''}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : halli ? ` · 뒷면 ${state.game.pileCounts?.[number] ?? 0}장` : davinci ? ` · 타일 ${state.game.hands?.[number]?.length ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : marathon && marathonPos !== null ? ` · ${marathonPos}칸` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
+        ? `${player.label}${gostop && state.game.seats?.[number] ? ` · 손패 ${state.game.seats[number].handCount}장 · ${state.game.seats[number].score}점` : ''}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : halli ? ` · 뒷면 ${state.game.pileCounts?.[number] ?? 0}장` : davinci ? ` · 타일 ${state.game.hands?.[number]?.length ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
       teamPlayers.appendChild(card);
@@ -3772,7 +3703,6 @@
     const pictionary = isPictionaryGame();
     const liar = isLiarGame();
     const oldmaid = isOldMaidGame();
-    const marathon = isMarathonGame();
     const twenty = isTwentyGame();
     const davinci = isDavinciGame();
     const halli = isHalliGame();
@@ -3794,16 +3724,12 @@
         : bingo
         ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 승리 줄 수를 정하고 시작합니다.'
         : city ? '2~4명이 1~4번 자리를 선택할 수 있습니다. 방장이 랜드킹을 시작합니다.'
-        : marathon ? (state.game.mode === 'team'
-            ? `팀전(${state.game.teamLayout || '2v2'})입니다. 아래 자리 번호에 표시된 팀대로 정확한 인원이 자리를 선택해야 합니다.`
-            : '2~6명이 자리를 선택할 수 있습니다. 방장이 설정을 정하고 마라톤을 시작합니다.')
         : '1·3번은 흑팀, 2·4번은 백팀입니다. 네 명이 모두 자리를 정하면 1→2→3→4 순서로 시작합니다.';
       for (const button of teamSeatButtons) {
         const number = button.dataset.teamSeat;
         button.classList.toggle('hidden', !seats.includes(number));
         button.textContent = pictionary && state.game.mode === 'team' ? `${number}번 · ${Number(number) % 2 ? 'A' : 'B'}팀`
           : (isRpgGame() || isGostopGame() || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli) ? `${number}번 자리`
-          : marathon ? `${number}번${state.game.mode === 'team' ? ` · ${marathonGroupForSeat(number)}팀` : ''}`
           : `${number}번 · ${seatColor(number) === 'black' ? '⚫ 흑팀' : '⚪ 백팀'}`;
         button.disabled = Boolean(state.players[number] && seat !== number);
         button.classList.toggle('selected', choice === number);
@@ -3951,15 +3877,6 @@
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '다빈치 코드 · 방장 시작 대기' : g.status === 'finished' ? '다빈치 코드 종료' : `${actorName(g.turn)} · ${g.phase === 'reveal-own' ? '자기 타일 공개' : '숫자 추측'}`);
     } else if (twenty) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '스무고개 · 방장 시작 대기' : g.status === 'round-ended' ? '라운드 결과 · 다음 라운드 대기' : g.status === 'finished' ? '스무고개 종료' : `스무고개 · ${g.category || '카테고리 선택'} · ${twentyHeadline(g)}`);
-    } else if (isMarathonGame()) {
-      // Marathon has its own dedicated status line (marathonStatus, set inside renderMarathon())
-      // since its turn model (roll vs. mission phase, individual seats vs. team groups) doesn't
-      // fit this shared ternary chain -- this shared header just needs to not show stale/wrong
-      // text borrowed from some other game's fields (g.turn etc. don't exist on marathon's state).
-      statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '마라톤 자리 선택 · 방장 시작'
-        : g.status === 'finished' ? '마라톤 종료'
-        : g.phase === 'roll' ? `${marathonGroupLabel(g.turnGroup, g)} 주사위 차례`
-        : `${marathonGroupLabel(g.turnGroup, g)} 미션 진행 중`);
     } else if (oldmaid) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '도둑잡기 자리 선택 · 방장 시작'
         : g.status === 'finished' ? (g.endReason === 'resign' ? '도둑잡기 종료' : `${state.players[g.loser]?.label || '조커 보유자'}님 패배`)
@@ -4044,10 +3961,9 @@
     const yut = state.gameType === 'yut';
     const bingo = state.gameType === 'bingo';
     const city = state.gameType === 'cityking';
-    const marathon = isMarathonGame();
     const gostop = isGostopGame();
     const rpg = isRpgGame();
-    canvasWrap.classList.toggle('hidden', rpg || gostop || baseball || bingo || pictionary || liar || oldmaid || marathon || twenty || davinci || halli);
+    canvasWrap.classList.toggle('hidden', rpg || gostop || baseball || bingo || pictionary || liar || oldmaid || twenty || davinci || halli);
     canvasWrap.classList.toggle('connectFour', state.gameType === 'connect4');
     canvasWrap.classList.toggle('yutBoard', yut);
     canvasWrap.classList.toggle('actionableBoard', boardTurnActionable());
@@ -4122,14 +4038,7 @@
     oldmaidStartBtn.classList.toggle('hidden', !oldmaid);
     oldmaidModeChooser.classList.toggle('hidden', !oldmaid);
     if (oldmaid) renderOldMaid();
-    marathonPanel.classList.toggle('hidden', !marathon);
-    marathonStartBtn.classList.toggle('hidden', !marathon);
-    marathonConfigChooser.classList.toggle('hidden', !marathon);
-    marathonRollBtn.classList.toggle('hidden', !marathon);
-    marathonAnswerForm.classList.toggle('hidden', !marathon);
-    if (marathon) renderMarathon();
-    else if (marathonMemoryHideTimer) { clearTimeout(marathonMemoryHideTimer); marathonMemoryHideTimer = null; marathonMemoryHideKey = null; }
-    if (rpg || gostop || pictionary || liar || oldmaid || marathon || twenty || davinci || halli) {
+    if (rpg || gostop || pictionary || liar || oldmaid || twenty || davinci || halli) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
       boardOverlay.classList.add('hidden');
@@ -4867,179 +4776,6 @@
   function liarCountdownText(endsAt) {
     if (!endsAt) return '';
     return `${Math.max(0, Math.ceil((Number(endsAt) - Date.now()) / 1000))}초`;
-  }
-
-  const MARATHON_MISSION_TYPE_KO = { typing: '타이핑', memory: '기억력', reflex: '반응', calculation: '계산' };
-  function marathonGroupLabel(group, g) {
-    if (!group) return '-';
-    return (g?.mode === 'team') ? `${group}팀` : `${group}번`;
-  }
-  // Deterministic color slot per group, purely for the track markers -- seat numbers 1-6 map to
-  // slots 0-5 directly, team letters A/B/C map the same way regardless of which seats compose them.
-  function marathonColorSlot(group) {
-    const idx = ['A', '1', 'B', '2', 'C', '3', '4', '5', '6'].indexOf(group);
-    return idx >= 0 ? idx % 6 : 0;
-  }
-  function marathonMissionRevealEndsAt(g) {
-    if (!g.mission || g.mission.type !== 'memory' || !g.deadlineAt || !g.mission.revealMs) return null;
-    return (g.deadlineAt - g.mission.timeLimitMs) + g.mission.revealMs;
-  }
-
-  function renderMarathon() {
-    const g = state.game;
-    // Before start, g.seatOrder is still empty (the engine only fills it in start()) -- the seats
-    // actually chosen so far live in state.players, same as every other host-started numbered-seat
-    // game checks for its own start-button enable condition.
-    const seatCount = g.status === 'selecting'
-      ? numberedSeats().filter((number) => state.players[number]).length
-      : (g.seatOrder || []).length;
-    const layoutOk = g.mode !== 'team' || (g.teamLayout && seatCount === (g.teamLayout === '2v2' ? 4 : 6));
-    const individualOk = g.mode !== 'team' ? (seatCount >= 2 && seatCount <= 6) : true;
-    marathonStatus.textContent = g.status === 'selecting'
-      ? `참가자 ${seatCount}명 · ${g.mode === 'team' ? `팀전(${g.teamLayout || '구성 필요'})` : '개인전'} · 난이도 ${{easy:'쉬움',normal:'보통',hard:'어려움'}[g.difficulty] || g.difficulty}`
-      : g.status === 'finished' ? `종료 · ${marathonGroupLabel(Array.isArray(g.winner) ? g.winner[0] : g.winner, g)} 승리`
-      : g.phase === 'roll' ? `${marathonGroupLabel(g.turnGroup, g)} 차례 · 주사위를 굴려주세요`
-      : `${marathonGroupLabel(g.turnGroup, g)} 미션 진행 중`;
-    marathonStartBtn.classList.toggle('hidden', g.status !== 'selecting');
-    marathonStartBtn.disabled = !(isHost && g.status === 'selecting' && layoutOk && individualOk);
-
-    marathonConfigChooser.classList.toggle('hidden', g.status !== 'selecting');
-    for (const radio of marathonModeRadios) { radio.checked = radio.value === (g.mode || 'individual'); radio.disabled = !isHost; }
-    marathonLayoutChooser.classList.toggle('hidden', g.mode !== 'team');
-    for (const radio of marathonLayoutRadios) { radio.checked = radio.value === (g.teamLayout || '2v2'); radio.disabled = !isHost; }
-    for (const radio of marathonDifficultyRadios) { radio.checked = radio.value === (g.difficulty || 'normal'); radio.disabled = !isHost; }
-
-    // Track: a labeled start tile plus 30 numbered tiles, each showing every group currently
-    // standing on it (a tile can hold more than one group's marker at once).
-    const marathonLastAction = (g.history || []).at(-1);
-    const marathonRecent = observeRecentAction(marathonLastAction
-      ? `history:${g.history.length}:${marathonLastAction.at || ''}:${marathonLastAction.type}:${marathonLastAction.group || ''}`
-      : null);
-    const marathonRecentPosition = marathonLastAction?.group ? g.positions?.[marathonLastAction.group] : null;
-    marathonTrack.replaceChildren();
-    const markersFor = (pos) => (g.groupOrder || []).filter((gr) => (g.positions?.[gr] ?? 0) === pos);
-    const appendMarkers = (el, pos) => {
-      for (const gr of markersFor(pos)) {
-        const dot = document.createElement('span');
-        dot.className = `marathonMarker marathonMarker-${marathonColorSlot(gr)}`;
-        dot.textContent = marathonGroupLabel(gr, g);
-        el.appendChild(dot);
-      }
-    };
-    const startTile = document.createElement('div');
-    startTile.className = 'marathonTile marathonStartTile' + (marathonRecentPosition === 0 ? recentActionClasses(marathonRecent) : '');
-    const startLabel = document.createElement('span');
-    startLabel.className = 'marathonTileNum';
-    startLabel.textContent = '출발';
-    startTile.appendChild(startLabel);
-    appendMarkers(startTile, 0);
-    marathonTrack.appendChild(startTile);
-    for (let i = 1; i <= 30; i += 1) {
-      const tile = document.createElement('div');
-      tile.className = 'marathonTile' + (i === 30 ? ' marathonFinishTile' : '') + (marathonRecentPosition === i ? recentActionClasses(marathonRecent) : '');
-      const num = document.createElement('span');
-      num.className = 'marathonTileNum';
-      num.textContent = String(i);
-      tile.appendChild(num);
-      appendMarkers(tile, i);
-      marathonTrack.appendChild(tile);
-    }
-
-    // Dice
-    marathonRollBtn.classList.toggle('hidden', g.status !== 'playing');
-    const canRoll = Boolean(seat && g.status === 'playing' && g.phase === 'roll' && g.myTurn && g.currentRoller === seat);
-    marathonRollBtn.disabled = !canRoll;
-    setActionable(marathonRollBtn, canRoll && !g.paused, 'primary');
-    marathonTurnLabel.textContent = g.status !== 'playing' ? ''
-      : g.phase === 'roll' ? `${marathonGroupLabel(g.turnGroup, g)} 차례${canRoll ? ' · 내 차례!' : ''}`
-      : `${marathonGroupLabel(g.turnGroup, g)} 미션 진행 중`;
-    const lastRoll = [...(g.history || [])].reverse().find((entry) => entry.type === 'roll');
-    marathonLastRoll.textContent = lastRoll ? `마지막 굴림: ${marathonGroupLabel(lastRoll.group, g)} · 🎲${lastRoll.roll} · ${lastRoll.position}칸` : '';
-
-    // Mission
-    const missionActive = g.status === 'playing' && g.phase === 'mission' && g.mission;
-    marathonMissionBox.classList.toggle('hidden', !missionActive);
-    marathonMissionFeedback.classList.add('hidden');
-    if (missionActive) {
-      const mission = g.mission;
-      const canAnswer = Boolean(seat && g.myGroup && g.myGroup === mission.group);
-      marathonMissionType.textContent = `${MARATHON_MISSION_TYPE_KO[mission.type] || mission.type} 미션 · ${marathonGroupLabel(mission.group, g)}${canAnswer ? ' · 우리 차례' : ''}`;
-      marathonMissionTimer.classList.toggle('hidden', desktopActionTimerOwns('marathon'));
-      marathonMissionTimer.textContent = g.deadlineAt ? liarCountdownText(g.deadlineAt) : '';
-
-      if (mission.type === 'memory') {
-        const revealEndsAt = marathonMissionRevealEndsAt(g);
-        const stillRevealing = revealEndsAt && Date.now() < revealEndsAt;
-        marathonMissionPrompt.textContent = stillRevealing ? `잘 기억하세요: ${mission.prompt}` : '순서대로 숫자를 입력하세요';
-        if (stillRevealing && marathonMemoryHideKey !== g.phaseId) {
-          marathonMemoryHideKey = g.phaseId;
-          if (marathonMemoryHideTimer) clearTimeout(marathonMemoryHideTimer);
-          marathonMemoryHideTimer = setTimeout(renderMarathon, Math.max(50, revealEndsAt - Date.now()));
-        }
-      } else if (mission.type === 'calculation') {
-        marathonMissionPrompt.textContent = `${mission.prompt} = ?`;
-      } else if (mission.type === 'typing') {
-        marathonMissionPrompt.textContent = `다음 문장을 그대로 입력하세요: "${mission.prompt}"`;
-      } else {
-        marathonMissionPrompt.textContent = `화면에 표시된 것과 같은 버튼을 누르세요: ${mission.prompt}`;
-      }
-
-      const isReflex = mission.type === 'reflex';
-      marathonAnswerForm.classList.toggle('hidden', !canAnswer || isReflex);
-      marathonAnswerInput.disabled = !canAnswer;
-      setActionable(marathonAnswerInput, canAnswer && actionWindowOpen(g));
-      marathonReflexOptions.classList.toggle('hidden', !canAnswer || !isReflex);
-      marathonReflexOptions.replaceChildren();
-      if (canAnswer && isReflex) {
-        for (const option of mission.options || []) {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'secondary marathonReflexBtn' + actionableClasses(actionWindowOpen(g));
-          button.textContent = option;
-          button.addEventListener('click', () => marathonSubmitAnswer(option));
-          marathonReflexOptions.appendChild(button);
-        }
-      }
-    } else {
-      marathonAnswerForm.classList.add('hidden');
-      marathonReflexOptions.classList.add('hidden');
-    }
-
-    marathonResult.classList.toggle('hidden', g.status !== 'finished');
-    if (g.status === 'finished') {
-      const winners = Array.isArray(g.winner) ? g.winner : [g.winner];
-      marathonResult.textContent = `🏁 ${winners.map((w) => marathonGroupLabel(w, g)).join(', ')} 승리! 30칸을 먼저 통과했습니다.`;
-    }
-
-    marathonHistory.replaceChildren();
-    for (const entry of [...(g.history || [])].reverse()) {
-      const line = document.createElement('p');
-      if (entry.type === 'roll') line.textContent = `${marathonGroupLabel(entry.group, g)} · 주사위 ${entry.roll} · ${entry.position}칸 도착`;
-      else if (entry.type === 'mission-success') line.textContent = `${marathonGroupLabel(entry.group, g)} · ${MARATHON_MISSION_TYPE_KO[entry.missionType] || entry.missionType} 미션 성공`;
-      else if (entry.type === 'mission-timeout') line.textContent = `${marathonGroupLabel(entry.group, g)} · ${MARATHON_MISSION_TYPE_KO[entry.missionType] || entry.missionType} 미션 시간 초과 · 2칸 후퇴`;
-      else if (entry.type === 'finish') line.textContent = `🏁 ${marathonGroupLabel(entry.group, g)} 결승선 통과!`;
-      else continue;
-      marathonHistory.appendChild(line);
-    }
-    if (!(g.history || []).length) marathonHistory.textContent = '아직 진행된 기록이 없습니다.';
-  }
-
-  async function marathonSubmitAnswer(answer) {
-    if (!state?.game || state.game.phase !== 'mission') return;
-    const phaseId = state.game.phaseId;
-    const attemptsBefore = state.game.mission?.attempts ?? 0;
-    await roomAction('answer-marathon', { answer, expectedPhaseId: phaseId });
-    if (state?.gameType !== 'marathon') return;
-    const g = state.game;
-    // Same phaseId with more attempts than before means this specific submission was wrong (the
-    // mission stayed open for retry); a phaseId/phase change means it either succeeded or the
-    // deadline moved on, and renderMarathon() already reflects that -- no feedback needed there.
-    if (g.phase === 'mission' && g.phaseId === phaseId && (g.mission?.attempts ?? 0) > attemptsBefore) {
-      marathonMissionFeedback.textContent = '오답입니다. 다시 시도해 보세요.';
-      marathonMissionFeedback.classList.remove('hidden');
-      marathonAnswerInput.value = '';
-      marathonAnswerInput.focus();
-    }
   }
 
   function renderLiar() {
@@ -6036,7 +5772,7 @@
   }
 
   function drawBoard() {
-    if (state?.gameType === 'rpg' || state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'marathon' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return;
+    if (state?.gameType === 'rpg' || state?.gameType === 'gostop' || state?.gameType === 'baseball' || state?.gameType === 'bingo' || state?.gameType === 'pictionary' || state?.gameType === 'liar' || state?.gameType === 'oldmaid' || state?.gameType === 'davinci' || state?.gameType === 'halligalli') return;
     if (state?.gameType === 'yut') return drawYutBoard();
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
@@ -7613,30 +7349,6 @@
     finally { liarGuessInput.disabled = false; }
   });
 
-  for (const radio of marathonModeRadios) {
-    radio.addEventListener('change', () => roomAction('set-marathon-config', { mode: radio.value }));
-  }
-  for (const radio of marathonLayoutRadios) {
-    radio.addEventListener('change', () => roomAction('set-marathon-config', { teamLayout: radio.value }));
-  }
-  for (const radio of marathonDifficultyRadios) {
-    radio.addEventListener('change', () => roomAction('set-marathon-config', { difficulty: radio.value }));
-  }
-  marathonStartBtn.addEventListener('click', () => roomAction('start-marathon'));
-  marathonRollBtn.addEventListener('click', async () => {
-    const expectedPhaseId = state?.game?.phaseId;
-    marathonRollBtn.disabled = true;
-    await roomAction('roll-marathon', { expectedPhaseId });
-  });
-  marathonAnswerForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const answer = marathonAnswerInput.value.trim();
-    if (!answer) return;
-    marathonAnswerInput.disabled = true;
-    try { await marathonSubmitAnswer(answer); marathonAnswerInput.value = ''; }
-    finally { marathonAnswerInput.disabled = false; }
-  });
-
   pictionaryStartBtn.addEventListener('click', () => roomAction('start-pictionary'));
   pictionaryClearBtn.addEventListener('click', () => { redrawPictionaryCanvas(); roomAction('pictionary-clear'); });
   function setPictionaryTool(tool) {
@@ -7692,11 +7404,6 @@
     if (state?.gameType !== 'liar' || liarPanel.classList.contains('hidden') || desktopActionTimerOwns('liar')) return;
     if (!state.game.deadlineAt) return;
     liarTimer.textContent = liarCountdownText(state.game.deadlineAt);
-  }, 1000);
-  setInterval(() => {
-    if (state?.gameType !== 'marathon' || marathonPanel.classList.contains('hidden') || desktopActionTimerOwns('marathon')) return;
-    if (state.game.phase !== 'mission' || !state.game.deadlineAt) return;
-    marathonMissionTimer.textContent = liarCountdownText(state.game.deadlineAt);
   }, 1000);
   copyRoomCodeBtn.addEventListener('click', copyRoomCode);
   for (const details of document.querySelectorAll('.collapsibleInfo')) {

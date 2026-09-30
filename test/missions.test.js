@@ -161,3 +161,15 @@ test('주간 미션: 같은 판은 한 번만, 무승부는 판수만, 보상 �
   const done = applyWeekMatch(finishing, match({ gameType: 'othello' }));
   assert.deepEqual(weeklyToastLines(done), ['주간 미션 완료 +9,000P · 주간 20판', '주간 미션 완료 +9,000P · 주간 10승', '주간 미션 완료 +7,000P · 주간 5종', '주간 미션 모두 완료 +5,000P']);
 });
+
+test('v1.7.34 마라톤 제거: 새로 뽑는 미션에는 없고, 이미 받은 날의 마라톤 미션은 그대로 읽히고 진행된다', () => {
+  const { RETIRED } = require('../lib/missions');
+  assert.ok(RETIRED.has('marathon_play'));
+  for (let i = 0; i < 3000; i += 1) assert.ok(!pickMissions(`guest:k${i}`, '2026-10-01').includes('marathon_play'), `seed ${i}`);
+  const doc = newDay('guest:old', '2026-10-01');
+  doc.ids = ['play3', 'win1', 'marathon_play']; // a day dealt before the removal
+  const view = dayView(doc);
+  assert.deepEqual(view.missions.map(m => m.id), ['play3', 'win1', 'marathon_play']);
+  const done = applyMatch(doc, { matchId: 'm1', gameType: 'marathon', won: false, clean: true, opponents: [] });
+  assert.ok(done.changed);
+});

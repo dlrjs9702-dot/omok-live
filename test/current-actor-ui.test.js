@@ -25,7 +25,6 @@ test('현재 행동 주체는 게임별 실제 담당 필드로 계산하고 동
   assert.match(actor, /\['asking', 'final-guesses'\]\.includes\(g\.phase\)\) seats = one\(g\.turnSeat\)/);
   assert.match(actor, /g\.phase === 'drawing'\) seats = one\(g\.drawerSeat\)/);
   assert.match(actor, /\['hint1', 'hint2', 'extraHint'\]\.includes\(g\.phase\)\) seats = one\(g\.currentSpeaker\)/);
-  assert.match(actor, /g\.currentRoller/);
   assert.match(actor, /yutPieceAnimation && g\.lastMove\?\.color/);
   assert.doesNotMatch(actor, /liarSeat|canGuess|eliminated/);
   assert.match(actor, /paused: Boolean\(g\.paused\)/);

@@ -8,7 +8,7 @@ const { buildActionTimer, currentTurnSeat } = require('./lib/action-timer');
 const TEAM_SEATS = ['1', '2', '3', '4'];
 const PICTIONARY_SEATS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const OLDMAID_SEATS = ['1', '2', '3', '4'];
-const MARATHON_SEATS = ['1', '2', '3', '4', '5', '6'];
+const HALLI_SEATS = ['1', '2', '3', '4', '5', '6'];
 const isTeam = (room) => room.gameType === 'omok2v2';
 const isBingo = (room) => room.gameType === 'bingo';
 const isPictionary = (room) => room.gameType === 'pictionary';
@@ -18,19 +18,11 @@ const isHalli = (room) => room.gameType === 'halligalli';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
-const isMarathon = (room) => room.gameType === 'marathon';
 const isGostop = (room) => room.gameType === 'gostop';
 const isRpg = (room) => room.gameType === 'rpg';
 const GOSTOP_SEATS = ['1', '2', '3'];
-const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
-// Marathon's own selectable seat count depends on its pre-start team layout (2v2 needs exactly 4
-// seats; individual/3v3/2v2v2 use all 6), so its own room state decides how many seat buttons show.
-function marathonSeatSlots(room) {
-  const g = room.game;
-  if (g?.mode === 'team' && g?.teamLayout === '2v2') return MARATHON_SEATS.slice(0, 4);
-  return MARATHON_SEATS;
-}
-const seatsFor = (room) => isGostop(room) ? GOSTOP_SEATS : isHalli(room) ? MARATHON_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : isMarathon(room) ? marathonSeatSlots(room) : TEAM_SEATS;
+const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
+const seatsFor = (room) => isGostop(room) ? GOSTOP_SEATS : isHalli(room) ? HALLI_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -640,10 +632,10 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: gameEngine.id === 'gostop'
       ? Object.fromEntries(GOSTOP_SEATS.map((seat) => [seat, null]))
-      : ['oldmaid', 'marathon', 'davinci'].includes(gameEngine.id)
+      : ['oldmaid', 'davinci'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
       : gameEngine.id === 'halligalli'
-      ? Object.fromEntries(MARATHON_SEATS.map((seat) => [seat, null]))
+      ? Object.fromEntries(HALLI_SEATS.map((seat) => [seat, null]))
       : ['pictionary', 'liar', 'twentyquestions'].includes(gameEngine.id)
       ? Object.fromEntries(PICTIONARY_SEATS.map((seat) => [seat, null]))
       : ['omok2v2', 'bingo', 'rpg'].includes(gameEngine.id)
@@ -830,7 +822,7 @@ function syncGamePause(room, allowTimeouts = true) {
 
   // Existing behavior for all other games: a real disconnect immediately pauses the room, while
   // a connected player sitting on their own turn for 60s is folded into the same pause signal.
-  if (isPictionary(room) || isLiar(room) || isMarathon(room)) {
+  if (isPictionary(room) || isLiar(room)) {
     room.turnWatch = null;
   } else if (disconnected.length > 0) {
     // v1.6.99: while the room is paused for someone else's dropped connection (a refresh included)
@@ -863,7 +855,7 @@ function syncGamePause(room, allowTimeouts = true) {
 // broadcasts them. It also records a Twenty Questions match if a final drawer timeout ends it.
 async function tickIdleRooms() {
   for (const room of rooms.values()) {
-    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isMarathon(room) || isDavinci(room) || isHalli(room)) continue;
+    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isDavinci(room) || isHalli(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
     if (pauseResult?.gameFinished) {
@@ -960,7 +952,6 @@ function roomView(room, session) {
   const base = publicRoom(room);
   let gameView = isHalli(room) ? { ...getGame('halligalli').publicState(room.game), serverNow: nowMs() }
     : isLiar(room) ? getGame('liar').publicState(room.game, seat)
-    : isMarathon(room) ? getGame('marathon').publicState(room.game, seat)
     : base.game;
   if (isGostop(room) && room.game.status === 'selecting') {
     gameView = {
@@ -1021,7 +1012,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -1050,7 +1041,7 @@ function prepareNextRound(room) {
   room.game.endReason = null;
   room.game.resignedSeat = null;
   room.game.disconnectedAtEnd = [];
-  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     // v1.6.99: a seat whose player left the room (not a dropped connection that may still come
     // back) is freed, so the next round is not blocked by an empty chair. An explicit 접속 종료
     // only held the seat while that match was in progress.
@@ -1642,24 +1633,6 @@ async function tickPictionaryRooms() {
 }
 
 
-// Server-authoritative mission-deadline timer for marathon. A mission that nobody answers in
-// time must still fail (penalty + chained re-draw) without any client request arriving, exactly
-// like liar's hint/vote/guess deadlines below.
-async function tickMarathonRooms() {
-  const now = nowMs();
-  const engine = getGame('marathon');
-  for (const room of rooms.values()) {
-    if (!isMarathon(room) || room.game.status !== 'playing') continue;
-    if (!engine.tick(room.game, now)) continue;
-    if (['finished', 'draw'].includes(room.game.status)) {
-      try { await recordFinishedMatch(room); }
-      catch (error) { console.error('마라톤 전적 저장 실패:', error); continue; }
-    }
-    touchRoom(room);
-    broadcast(room);
-  }
-}
-
 // Server-authoritative phase timers for liar game. Deadlines are stored on the game,
 // so reload/reconnect never resets hint, vote, reveal or final-guess time limits.
 async function tickLiarRooms() {
@@ -2099,48 +2072,6 @@ async function handleRoomAction(req, res, action, session) {
     }
   }
 
-  if (action === 'set-marathon-config') {
-    if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 설정할 수 있습니다.');
-    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 설정을 변경할 수 있습니다.');
-    const engine = getGame('marathon');
-    const verdict = engine.configure(room.game, { mode: body.mode, teamLayout: body.teamLayout, difficulty: body.difficulty });
-    if (!verdict.legal) return sendError(res, 409, 'INVALID_MARATHON_CONFIG', engine.moveError(verdict.reason));
-  }
-
-  if (action === 'start-marathon') {
-    if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 시작할 수 있습니다.');
-    if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 마라톤을 시작할 수 있습니다.');
-    const seats = seatsFor(room).filter(n => room.players[n]);
-    const engine = getGame('marathon');
-    const verdict = engine.start(room.game, seats);
-    if (!verdict.legal) return sendError(res, 409, 'INVALID_MARATHON_START', engine.moveError(verdict.reason));
-    for (const p of Object.values(room.participants)) if (!findSeat(room, p.sessionToken)) p.choice = 'spectator';
-    appendSystemMessage(room, room.game.mode === 'team'
-      ? `마라톤(팀전 · ${room.game.teamLayout}) 시작! 30칸을 먼저 통과한 팀이 승리합니다.`
-      : '마라톤(개인전) 시작! 30칸을 먼저 통과한 참가자가 승리합니다.');
-  }
-
-  if (action === 'roll-marathon') {
-    if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 주사위를 굴릴 수 있습니다.');
-    const seat = findSeat(room, session.token);
-    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 주사위를 굴릴 수 없습니다.');
-    const engine = getGame('marathon');
-    const verdict = engine.rollDice(room.game, seat, Number(body.expectedPhaseId));
-    if (!verdict.legal) return sendError(res, 409, 'INVALID_MARATHON_ROLL', engine.moveError(verdict.reason));
-    appendSystemMessage(room, `${session.label || '플레이어'}님이 주사위를 굴려 ${verdict.roll}칸 전진했습니다 (현재 ${verdict.position}칸).`);
-    if (verdict.finished) appendSystemMessage(room, `${session.label || '참가자'}님이 결승선을 통과했습니다!`);
-  }
-
-  if (action === 'answer-marathon') {
-    if (!isMarathon(room)) return sendError(res, 400, 'WRONG_GAME', '마라톤 방에서만 미션에 답할 수 있습니다.');
-    const seat = findSeat(room, session.token);
-    if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 미션에 답할 수 없습니다.');
-    const engine = getGame('marathon');
-    const verdict = engine.submitAnswer(room.game, seat, body.answer, Number(body.expectedPhaseId));
-    if (!verdict.legal) return sendError(res, 409, 'INVALID_MARATHON_ANSWER', engine.moveError(verdict.reason));
-    if (verdict.correct) appendSystemMessage(room, `${session.label || '플레이어'}님이 미션에 성공했습니다!`);
-  }
-
   if (action === 'set-bingo-target') {
     if (!isBingo(room)) return sendError(res, 400, 'WRONG_GAME', '빙고 방에서만 설정할 수 있습니다.');
     if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 승리 조건을 변경할 수 있습니다.');
@@ -2393,24 +2324,15 @@ async function handleRoomAction(req, res, action, session) {
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
     room.game.resignedSeat = seat; // server-only: lets the mission rules tell a resignation from a clean finish
-    // Bingo/pictionary/liar/oldmaid/marathon are free-for-all games with no black/white side for a
+    // Bingo/pictionary/liar/oldmaid are free-for-all games with no black/white side for a
     // resign to flip. Ending immediately and crediting every other seated player as the winner
     // mirrors exactly what already happens when a required player disconnects and someone calls
     // end-game -- just self-triggered instead of waiting on someone else to notice and act.
-    // Marathon's team modes share one piece per team, so the whole team loses together here too,
-    // matching the same rule already used for a disconnected teammate (confirmed by the user) --
-    // including collapsing to a lone scalar group id when exactly one team remains, since
-    // marathon's own natural win condition (game.winner = group) and its disconnect/end-game path
-    // both always hand the client a single group id in that case, never a 1-item array.
     // Bingo/pictionary/liar/oldmaid stay an array (never collapsed to a lone scalar the way
     // end-game's disconnect path does for them): pictionary/liar/oldmaid's own result displays
     // already only ever expect an array (their natural win conditions never produce a scalar), so
     // resign matches that rather than handing them a shape they don't render.
-    if (isMarathon(room) && room.game.mode === 'team') {
-      const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].includes(seat));
-      room.game.winner = winningGroups.length === 1 ? winningGroups[0] : winningGroups;
-      room.game.endReason = 'resign';
-    } else if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+    if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
       if (isGostop(room)) getGame('gostop').forfeitResult(room.game, [seat], 'resign');
@@ -2443,19 +2365,10 @@ async function handleRoomAction(req, res, action, session) {
     room.game.status = 'finished';
     // 2-seat games (and anywhere else exactly one seat is left) keep the plain single-value
     // winner every other ending path on that game already uses; only a 3+ seat free-for-all with
-    // more than one seat still connected needs the array form. Marathon's team modes (2v2, 3v3,
-    // 2v2v2) share one piece per team rather than per seat, so -- like omok2v2 -- the win/loss is
-    // decided per TEAM, not per individual disconnected seat: every group with no disconnected
-    // member wins (this also naturally covers 2v2v2's three-way case, where more than one team
-    // can still be fully connected).
+    // more than one seat still connected needs the array form. omok2v2 decides it per team colour.
     room.game.winner = isTeam(room)
       ? (teamColor(disconnectedSeats[0]) === 'black' ? 'white' : 'black')
-      : (isMarathon(room) && room.game.mode === 'team')
-        ? (() => {
-            const winningGroups = room.game.groupOrder.filter(g => !room.game.groups[g].some(seat => disconnectedSeats.includes(seat)));
-            return winningGroups.length === 1 ? winningGroups[0] : winningGroups;
-          })()
-        : connectedSeats.length === 1 ? connectedSeats[0] : connectedSeats;
+      : connectedSeats.length === 1 ? connectedSeats[0] : connectedSeats;
     room.game.winningLine = null;
     room.game.endReason = 'disconnect';
     room.game.disconnectedAtEnd = disconnectedSeats;
@@ -2513,7 +2426,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.33' });
+    return sendJson(res, 200, { ok: true, version: '1.7.34' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3404,7 +3317,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3475,9 +3388,8 @@ async function main() {
   setInterval(() => { try { tickRpgRooms(); } catch (error) { console.error('잿빛 원정 진행 오류:', error); } }, 50).unref();
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
-  setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.33 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.34 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

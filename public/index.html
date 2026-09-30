@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.33" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.34" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -107,7 +107,6 @@
                   <option value="pictionary">그림 맞히기</option>
                   <option value="liar">라이어게임</option>
                   <option value="oldmaid">도둑잡기</option>
-                  <option value="marathon">마라톤</option>
                   <option value="twentyquestions">스무고개</option>
                   <option value="davinci">다빈치 코드</option>
                   <option value="halligalli">할리갈리</option>
@@ -169,9 +168,6 @@
             <div class="gamePicker developmentGamePicker">
               <div class="gameOption" data-game-option="cityking">
                 <button type="button" class="gameChoice" data-game="cityking"><strong>랜드킹</strong></button>
-              </div>
-              <div class="gameOption" data-game-option="marathon">
-                <button type="button" class="gameChoice" data-game="marathon"><strong>마라톤</strong></button>
               </div>
               <div class="gameOption" data-game-option="rpg">
                 <button type="button" class="gameChoice" data-game="rpg"><strong>잿빛 원정</strong></button>
@@ -453,22 +449,22 @@
               <span id="pictionaryDrawerLabel">출제자를 기다리는 중</span>
               <span id="pictionaryTimer" class="pictionaryTimer hidden">90초</span>
             </div>
-            <div id="pictionaryConfig" class="marathonConfigChooser hidden">
-              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
+            <div id="pictionaryConfig" class="gameConfigChooser hidden">
+              <div class="gameConfigRow" role="radiogroup" aria-label="진행 방식">
                 <label><input type="radio" name="pictionaryMode" value="individual" data-pictionary-mode checked /> 개인전</label>
                 <label><input type="radio" name="pictionaryMode" value="team" data-pictionary-mode /> 팀전</label>
               </div>
-              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
+              <div class="gameConfigRow" role="radiogroup" aria-label="난이도">
                 <label><input type="radio" name="pictionaryDifficulty" value="easy" data-pictionary-difficulty /> 쉬움</label>
                 <label><input type="radio" name="pictionaryDifficulty" value="normal" data-pictionary-difficulty checked /> 보통</label>
                 <label><input type="radio" name="pictionaryDifficulty" value="hard" data-pictionary-difficulty /> 어려움</label>
               </div>
-              <div class="marathonConfigRow" role="radiogroup" aria-label="문제 시간">
+              <div class="gameConfigRow" role="radiogroup" aria-label="문제 시간">
                 <label><input type="radio" name="pictionarySeconds" value="60" data-pictionary-seconds /> 60초</label>
                 <label><input type="radio" name="pictionarySeconds" value="90" data-pictionary-seconds checked /> 90초</label>
                 <label><input type="radio" name="pictionarySeconds" value="120" data-pictionary-seconds /> 120초</label>
               </div>
-              <div class="marathonConfigRow">
+              <div class="gameConfigRow">
                 <label><input type="checkbox" id="pictionaryShowCategory" checked /> 카테고리 공개</label>
               </div>
             </div>
@@ -554,28 +550,6 @@
               <ol id="twentyOlderLog" class="twentyQuestionLog" aria-label="이전 질문 기록"></ol>
             </details>
             <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog"></div>
-          </section>
-
-          <section id="marathonPanel" class="marathonPanel hidden" aria-label="마라톤">
-            <div class="marathonHeader">
-              <strong id="marathonStatus">참가자를 기다리는 중</strong>
-            </div>
-            <div id="marathonTrack" class="marathonTrack" aria-label="30칸 트랙"></div>
-            <div class="marathonDiceRow">
-              <span id="marathonTurnLabel" class="marathonTurnLabel">차례를 기다리는 중</span>
-              <span id="marathonLastRoll" class="marathonLastRoll"></span>
-            </div>
-            <div id="marathonMissionBox" class="marathonMissionBox hidden">
-              <div class="marathonMissionHead">
-                <strong id="marathonMissionType"></strong>
-                <span id="marathonMissionTimer" class="marathonMissionTimer"></span>
-              </div>
-              <p id="marathonMissionPrompt" class="marathonMissionPrompt"></p>
-              <div id="marathonReflexOptions" class="marathonReflexOptions hidden"></div>
-              <p id="marathonMissionFeedback" class="marathonMissionFeedback hidden" aria-live="polite"></p>
-            </div>
-            <p id="marathonResult" class="marathonResult hidden" aria-live="polite"></p>
-            <h3>최근 진행</h3><div id="marathonHistory" class="marathonHistory" aria-live="polite"></div>
           </section>
 
           <div class="mobileActions">
@@ -814,31 +788,6 @@
               <button id="twentyNextBtn" type="button" class="primary hidden">다음 라운드 시작</button>
             </section>
 
-            <div class="marathonStartRow">
-              <button type="button" id="marathonStartBtn" class="primary">마라톤 시작</button>
-            </div>
-            <div id="marathonConfigChooser" class="marathonConfigChooser hidden">
-              <div class="marathonConfigRow" role="radiogroup" aria-label="진행 방식">
-                <label><input type="radio" name="marathonMode" value="individual" data-marathon-mode checked /> 개인전</label>
-                <label><input type="radio" name="marathonMode" value="team" data-marathon-mode /> 팀전</label>
-              </div>
-              <div id="marathonLayoutChooser" class="marathonConfigRow hidden" role="radiogroup" aria-label="팀 구성">
-                <label><input type="radio" name="marathonLayout" value="2v2" data-marathon-layout checked /> 2대2 (4인)</label>
-                <label><input type="radio" name="marathonLayout" value="3v3" data-marathon-layout /> 3대3 (6인)</label>
-                <label><input type="radio" name="marathonLayout" value="2v2v2" data-marathon-layout /> 2대2대2 (6인)</label>
-              </div>
-              <div class="marathonConfigRow" role="radiogroup" aria-label="난이도">
-                <label><input type="radio" name="marathonDifficulty" value="easy" data-marathon-difficulty /> 쉬움</label>
-                <label><input type="radio" name="marathonDifficulty" value="normal" data-marathon-difficulty checked /> 보통</label>
-                <label><input type="radio" name="marathonDifficulty" value="hard" data-marathon-difficulty /> 어려움</label>
-              </div>
-              <small>팀전은 선택한 팀 구성과 정확히 같은 인원이 자리를 선택해야 시작할 수 있습니다.</small>
-            </div>
-            <button type="button" id="marathonRollBtn" class="primary big" disabled>주사위 굴리기</button>
-            <form id="marathonAnswerForm" class="marathonAnswerForm hidden" autocomplete="off">
-              <input id="marathonAnswerInput" type="text" maxlength="60" placeholder="정답 입력" aria-label="마라톤 미션 정답" />
-              <button type="submit" class="primary">제출</button>
-            </form>
           </section>
 
           <section class="sidePane" data-side-pane="system" aria-label="시스템 알림">
@@ -964,12 +913,12 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.33"></script>
-  <script src="/recent-action.js?v=1.7.33"></script>
-  <script src="/skin-looks.js?v=1.7.33"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.33"></script>
-  <script src="/hwatu-art.js?v=1.7.33"></script>
-  <script src="/gostop-ui.js?v=1.7.33"></script>
-  <script src="/app.js?v=1.7.33"></script>
+  <script src="/session-lock.js?v=1.7.34"></script>
+  <script src="/recent-action.js?v=1.7.34"></script>
+  <script src="/skin-looks.js?v=1.7.34"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.34"></script>
+  <script src="/hwatu-art.js?v=1.7.34"></script>
+  <script src="/gostop-ui.js?v=1.7.34"></script>
+  <script src="/app.js?v=1.7.34"></script>
 </body>
 </html>
