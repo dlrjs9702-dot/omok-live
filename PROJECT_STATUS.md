@@ -18,6 +18,16 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## [test] PostgreSQL 저장소 테스트 자동 실행 (PGlite)
+
+코드·버전·공지·배포 대상이 아닌 테스트 인프라 변경이다. 지금까지 PostgreSQL 경로 테스트는 `POINTS_TEST_DATABASE_URL`이 없으면 건너뛰어, 로컬·CI에서 한 번도 실행되지 않았다(v1.7.15~v1.7.18에서 추가한 이벤트·미션·업적·주간 PostgreSQL 코드 포함).
+
+- **`test-support/pg-database.js`**: 환경 변수가 있으면 그 실제 서버를 쓰고, 없으면 PGlite(WebAssembly로 컴파일한 실제 PostgreSQL)를 프로세스 안에서 띄워 로컬 소켓으로 노출한다. 호출마다 독립 DB를 만들어, 병렬로 도는 테스트 파일이 같은 테이블을 서로 지우지 않는다. `test/` 밖에 둔 이유: Node 기본 탐색이 `test/` 안의 모든 `.js`를 테스트로 실행하기 때문.
+- **의존성**: 개발 전용 `@electric-sql/pglite@0.5.8`·`@electric-sql/pglite-socket@0.2.11`(정확한 버전 고정). Render 빌드는 개발 의존성을 설치하지 않으므로(`audited 16 packages` 관찰) 운영 서버에는 영향이 없고, CI(`npm ci`)는 설치한다.
+- **테스트 수정**: `test/game-points-store.test.js`·`test/point-store.test.js`의 PostgreSQL 테스트가 자동 실행되도록 바꾸고, 시작 때 지우는 테이블 목록에 빠져 있던 `mission_days`를 추가했다(같은 DB를 재사용하면 이전 실행의 미션 기록이 남아 실패했음).
+- **결과**: `npm test` 582개 중 582 통과·건너뜀 0(이전 562개 중 2 건너뜀, PostgreSQL 20개가 실제 실행됨, 약 20초). 이벤트 수령·일일/주간 미션·업적 시나리오의 PostgreSQL 경로가 실제 PostgreSQL 의미 체계에서 통과했다.
+- **한계**: PGlite는 단일 프로세스라 여러 연결이 실제로 동시에 행 잠금을 다투는 경합은 재현하지 못한다(SQL·스키마·논리 검증). 운영 DB 이전·스킨 같은 PostgreSQL 변경 전에 리허설 용도로도 쓸 수 있다.
+
 ## [test] 불안정 테스트 정리 (IDEAS 백로그 28)
 
 코드·버전·공지·배포 대상이 아닌 테스트 인프라 정리다.

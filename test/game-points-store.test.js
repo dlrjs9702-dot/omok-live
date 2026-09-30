@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { JsonPointStore, PostgresPointStore, entryPayout, creditAfterBurn } = require('../lib/point-store');
+const { testDatabase } = require('../test-support/pg-database');
 
 // v1.7.3 common game points: entry fee, 80/20 payout, refund, admin grant, 10% settlement burn.
 const A = 'guest:00000000-0000-4000-8000-00000000000a';
@@ -272,11 +273,13 @@ test('JSON 포인트 저장소: 참가 포인트·정산 소각·관리자 지�
   assert.deepEqual(await reloaded.openEntries(), []);
 });
 
-test('PostgreSQL 포인트 저장소: 참가 포인트·정산 소각·관리자 지급', { skip: !process.env.POINTS_TEST_DATABASE_URL && 'POINTS_TEST_DATABASE_URL 미설정' }, async (t) => {
-  const url = process.env.POINTS_TEST_DATABASE_URL;
+test('PostgreSQL 포인트 저장소: 참가 포인트·정산 소각·관리자 지급', async (t) => {
+  const database = await testDatabase(); // POINTS_TEST_DATABASE_URL이 없으면 PGlite를 자동으로 띄운다
+  t.after(() => database.stop());
+  const url = database.url;
   const { Pool } = require('pg');
   const admin = new Pool({ connectionString: url });
-  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts');
+  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts, mission_days');
   await admin.end();
   const store = await exercise(t, async () => { const s = new PostgresPointStore(url); await s.init(); return s; });
   const sum = await store.pool.query('SELECT sum(delta) AS total, count(*) AS rows FROM point_ledger');

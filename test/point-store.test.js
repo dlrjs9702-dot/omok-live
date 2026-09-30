@@ -6,6 +6,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, INITIAL_GRANT, DAILY_ATTENDANCE } = require('../lib/point-store');
+const { testDatabase } = require('../test-support/pg-database');
 
 const A = 'guest:11111111-1111-4111-8111-111111111111';
 const B = 'guest:22222222-2222-4222-8222-222222222222';
@@ -161,11 +162,13 @@ test('JSON 포인트 저장소', async (t) => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-test('PostgreSQL 포인트 저장소', { skip: !process.env.POINTS_TEST_DATABASE_URL && 'POINTS_TEST_DATABASE_URL 미설정' }, async (t) => {
-  const url = process.env.POINTS_TEST_DATABASE_URL;
+test('PostgreSQL 포인트 저장소', async (t) => {
+  const database = await testDatabase(); // POINTS_TEST_DATABASE_URL이 없으면 PGlite를 자동으로 띄운다
+  t.after(() => database.stop());
+  const url = database.url;
   const { Pool } = require('pg');
   const admin = new Pool({ connectionString: url });
-  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts');
+  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts, mission_days');
   await admin.end();
   const { PostgresMatchStore } = require('../lib/match-records');
   const matches = new PostgresMatchStore(url);
