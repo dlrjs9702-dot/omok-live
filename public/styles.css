@@ -380,6 +380,24 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 /* v1.6.30: compact lobby statistics and read-only participant record dialog. */
 .lobbyHighlights{display:grid;grid-template-columns:minmax(0,65fr) minmax(250px,35fr);gap:12px;align-items:start;margin-bottom:12px}
 .lobbyHighlights .noticeCard{margin:0;min-width:0}
+.lobbySide{display:grid;gap:12px;min-width:0;align-content:start}
+.skinShopCard{min-width:0;padding:12px 14px;display:grid;gap:8px}
+.skinShopCard .skinShopEnter{width:100%;padding:12px 16px;font-size:1.05rem;font-weight:800;border-radius:12px}
+/* v1.7.30 skin shop: a large modal like the player lookup */
+.recordsDialog.skinShopDialog{width:min(94vw,980px);max-height:90vh}
+.skinShopDialog .recordsDialogHead{gap:12px}
+.skinShopDialog .recordsDialogHead h2{flex:1}
+.skinShopBalance{font-weight:800;color:#fde68a;font-size:.95rem}
+.skinShopStatus{min-height:1.2em;margin:6px 0;font-size:.85rem;color:#fca5a5}
+.skinShopBody{display:grid;gap:18px}
+.skinFamily h3{margin:0 0 10px;font-size:1.02rem;color:#e2e8f0}
+.skinGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.skinCard{display:grid;gap:8px;padding:12px;border:1px solid #273449;border-radius:12px;background:#0f172a}
+.skinCard.equipped{border-color:#60a5fa;box-shadow:0 0 0 1px #60a5fa66}
+.skinCard canvas{width:100%;height:auto;border-radius:8px;display:block}
+.skinCard .skinName{font-weight:800;font-size:.95rem}
+.skinCard .skinMeta{font-size:.78rem;color:#94a3b8;display:flex;justify-content:space-between}
+.skinCard button{width:100%}
 .myRecordsCard{min-width:0;padding:12px 14px;display:grid;gap:8px}
 .recordsHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .recordsHead h2,.recordsDialogHead h2{margin:0;font-size:1rem}

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.29" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.30" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -71,6 +71,7 @@
           </form>
         </div>
       </section>
+      <div class="lobbySide">
       <section id="myRecordsCard" class="card myRecordsCard" aria-label="내 전적">
         <div class="recordsHead"><h2>내 전적</h2><button id="otherRecordsBtn" class="ghost tiny" type="button">다른 플레이어 조회</button></div>
         <strong id="myRecordsName">전적을 불러오는 중</strong>
@@ -79,6 +80,10 @@
         <select id="myRecordsGame"><option value="all">전체 게임</option></select>
         <p id="myRecordsDetail" class="recordsDetail">아직 기록된 대국이 없습니다.</p>
       </section>
+      <section id="skinShopCard" class="card skinShopCard" aria-label="상점">
+        <div class="recordsHead"><h2>상점</h2><button id="skinShopBtn" class="primary skinShopEnter" type="button" aria-haspopup="dialog" aria-controls="skinShopDialog">입장</button></div>
+      </section>
+      </div>
       </div>
 
       <section class="lobbyTopGrid">
@@ -888,6 +893,11 @@
     <section id="recordsProfile" aria-live="polite"><strong id="recordsProfileName">플레이어를 선택하세요.</strong><p id="recordsProfileSummary" class="recordsSummary"></p><label for="recordsProfileGame">게임별 전적</label><select id="recordsProfileGame"><option value="all">전체 게임</option></select><p id="recordsProfileDetail" class="recordsDetail"></p></section>
     <section id="recordsHeadToHead" class="recordsHeadToHead hidden" aria-live="polite"><h3>나와의 상대 전적</h3><p id="h2hSummary" class="recordsSummary"></p><label for="h2hGame">게임별 상대 전적</label><select id="h2hGame"><option value="all">전체 게임</option></select><p id="h2hDetail" class="recordsDetail"></p></section>
   </dialog>
+  <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
+    <div class="recordsDialogHead"><h2 id="skinShopTitle">상점</h2><span id="skinShopBalance" class="skinShopBalance"></span><button id="skinShopCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+    <div id="skinShopBody" class="skinShopBody"></div>
+  </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="missionTabs" role="tablist" aria-label="미션 종류">
@@ -954,11 +964,12 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.29"></script>
-  <script src="/recent-action.js?v=1.7.29"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.29"></script>
-  <script src="/hwatu-art.js?v=1.7.29"></script>
-  <script src="/gostop-ui.js?v=1.7.29"></script>
-  <script src="/app.js?v=1.7.29"></script>
+  <script src="/session-lock.js?v=1.7.30"></script>
+  <script src="/recent-action.js?v=1.7.30"></script>
+  <script src="/skin-looks.js?v=1.7.30"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.30"></script>
+  <script src="/hwatu-art.js?v=1.7.30"></script>
+  <script src="/gostop-ui.js?v=1.7.30"></script>
+  <script src="/app.js?v=1.7.30"></script>
 </body>
 </html>

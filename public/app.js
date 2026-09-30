@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.29').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.30').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -2711,6 +2711,109 @@
 
   missionBtn.addEventListener('click', () => { missionDialog.showModal(); selectMissionTab('today'); });
   document.getElementById('missionCloseBtn').addEventListener('click', () => missionDialog.close());
+
+  // v1.7.30 skin shop: a large modal like the player lookup. The server owns the catalog, prices, ownership and the
+  // balance; this only lists them and sends "buy X" / "equip X". A purchase takes two clicks (the second one says
+  // the price) so a stray click never spends points.
+  const skinShopDialog = document.getElementById('skinShopDialog');
+  const skinShopBody = document.getElementById('skinShopBody');
+  const skinShopBalance = document.getElementById('skinShopBalance');
+  const skinShopStatus = document.getElementById('skinShopStatus');
+  let skinShop = null; // { catalog, owned: Set, equipped, balance }
+  let skinBuyArmed = null;
+  let skinBuyTimer = 0;
+  const skinPrice = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+
+  function renderSkinShop() {
+    skinShopBody.textContent = '';
+    if (!skinShop) return;
+    skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
+    for (const family of skinShop.catalog) {
+      const section = document.createElement('section');
+      section.className = 'skinFamily';
+      const heading = document.createElement('h3');
+      heading.textContent = family.name;
+      const grid = document.createElement('div');
+      grid.className = 'skinGrid';
+      for (const skin of family.skins) {
+        const owned = skinShop.owned.has(skin.id);
+        const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
+        const card = document.createElement('div');
+        card.className = `skinCard${equipped ? ' equipped' : ''}`;
+        const preview = document.createElement('canvas');
+        preview.width = 260; preview.height = 130;
+        preview.setAttribute('role', 'img');
+        preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+        window.SkinLooks?.paintPreview(preview, skin.id);
+        const name = document.createElement('span');
+        name.className = 'skinName';
+        name.textContent = skin.name;
+        const meta = document.createElement('span');
+        meta.className = 'skinMeta';
+        const tier = document.createElement('span'); tier.textContent = skin.tierLabel;
+        const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
+        meta.append(tier, price);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.skin = skin.id;
+        if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
+        else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
+        else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
+        else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
+        card.append(preview, name, meta, button);
+        grid.append(card);
+      }
+      section.append(heading, grid);
+      skinShopBody.append(section);
+    }
+  }
+
+  async function loadSkinShop() {
+    skinShopStatus.textContent = '';
+    try {
+      const data = await api('/api/skins');
+      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, balance: data.balance };
+      renderSkinShop();
+    } catch (error) {
+      if (skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;
+    }
+  }
+
+  skinShopBody.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button || !skinShop) return;
+    const { action, skin: skinId } = button.dataset;
+    skinShopStatus.textContent = '';
+    try {
+      if (action === 'buy') {
+        if (skinBuyArmed !== skinId) { // first click: ask again, forget the ask after a few seconds
+          skinBuyArmed = skinId;
+          clearTimeout(skinBuyTimer);
+          skinBuyTimer = setTimeout(() => { skinBuyArmed = null; renderSkinShop(); }, 4000);
+          renderSkinShop();
+          return;
+        }
+        skinBuyArmed = null;
+        const data = await api('/api/skins/buy', { method: 'POST', body: JSON.stringify({ skinId }) });
+        skinShop.owned.add(skinId);
+        skinShop.balance = data.balance;
+        skinShopStatus.textContent = '';
+      } else if (action === 'equip') {
+        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId }) });
+        skinShop.equipped = data.equipped;
+      } else if (action === 'unequip') {
+        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
+        skinShop.equipped = data.equipped;
+      }
+      renderSkinShop();
+    } catch (error) {
+      skinBuyArmed = null;
+      skinShopStatus.textContent = error.message;
+      loadSkinShop();
+    }
+  });
+  document.getElementById('skinShopBtn').addEventListener('click', () => { skinBuyArmed = null; skinShopDialog.showModal(); loadSkinShop(); });
+  document.getElementById('skinShopCloseBtn').addEventListener('click', () => skinShopDialog.close());
 
   // v1.7.15 point-reward events: the server says which events are open and which this account already
   // claimed; the modal is built from that data (nothing about a specific event is written in the page).
@@ -7108,6 +7211,13 @@
 
   // Go stones: slate-black with a soft sheen, clamshell-white with faint growth lines. The newest
   // stone is set down from just above the board (bigger, higher shadow) and settles.
+  // The skin of whoever placed the stone at (x, y): the player of that color, or in 2vs2 the seat that played it.
+  function stoneSkin(x, y, color) {
+    if (!state?.players) return null;
+    const seat = state.gameType === 'omok2v2' ? state.game?.stoneSeats?.[`${x},${y}`] : color;
+    return state.players[seat]?.skin || null;
+  }
+
   function drawStone(x, y, color, winning, last, setDown = 1) {
     const cx = PAD + x * GRID;
     const cy = PAD + y * GRID;
@@ -7120,19 +7230,7 @@
     ctx.beginPath(); ctx.ellipse(cx + 2 + lift * .3, cy + 3 + lift * .2, r * scale * (1 + rise * .15), r * scale * .92, 0, 0, Math.PI * 2); ctx.fill();
     ctx.translate(cx, cy - lift);
     ctx.scale(scale, scale);
-    const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .08, 0, 0, r);
-    if (color === 'black') { g.addColorStop(0, '#6e6e6e'); g.addColorStop(.35, '#2b2b2b'); g.addColorStop(1, '#070707'); }
-    else { g.addColorStop(0, '#ffffff'); g.addColorStop(.55, '#f3f1ea'); g.addColorStop(1, '#c9c4b8'); }
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-    if (color === 'white') {
-      ctx.strokeStyle = 'rgba(150,140,120,.13)';
-      ctx.lineWidth = 1;
-      for (let i = 1; i <= 4; i += 1) { ctx.beginPath(); ctx.arc(0, r * 1.6, r * (1.1 + i * .16), Math.PI * 1.28, Math.PI * 1.72); ctx.stroke(); }
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,.1)';
-      ctx.beginPath(); ctx.ellipse(-r * .3, -r * .38, r * .38, r * .2, -.6, 0, Math.PI * 2); ctx.fill();
-    }
+    window.SkinLooks.paintStone(ctx, r, stoneSkin(x, y, color), color); // no skin = the classic slate and shell
     ctx.restore();
     if (setDown < 1) return;
     if (winning) {

@@ -93,6 +93,10 @@ test('team engine reuses regular omok with strict 1-2-3-4 turns and team victori
   assert.equal(game.status, 'finished');
   assert.equal(game.winner, 'black');
   assert.equal(team.publicState(game).lastMove.playerSeat, '1');
+  // v1.7.30: every stone's acting seat is public, so each viewer draws it with that player's skin.
+  const seats = team.publicState(game).stoneSeats;
+  assert.deepEqual([seats['0,0'], seats['14,14'], seats['1,0'], seats['14,13'], seats['4,0']], ['1', '2', '3', '4', '1']);
+  assert.equal(Object.keys(seats).length, moves.length);
   team.reset(game);
   assert.equal(game.status, 'selecting');
   assert.equal(game.nextSeat, null);
@@ -207,5 +211,5 @@ test('team and Bingo modes share numbered seats without changing team turn contr
   assert.match(app, /state\.game\.nextSeat !== seat/);
   assert.match(html, /data-game="bingo"/);
   assert.match(app, /teamRoleButtons\.classList\.toggle\('hidden', !numbered\)/);
-  assert.match(html, /v=1.7.29/);
+  assert.match(html, /v=1.7.30/);
 });
