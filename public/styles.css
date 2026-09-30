@@ -1326,3 +1326,32 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .marathonStartTile .marathonTileNum,.marathonFinishTile .marathonTileNum{background:#111827;border-radius:6px;padding:1px 5px}
 .marathonMarker{position:relative;border-radius:3px;padding:3px 6px 2px;background:#f8fafc!important;color:#111827;border-top:4px solid var(--bib,#60a5fa);box-shadow:0 2px 4px rgba(0,0,0,.45)}
 .marathonMarker-0{--bib:#2563eb}.marathonMarker-1{--bib:#dc2626}.marathonMarker-2{--bib:#ca8a04}.marathonMarker-3{--bib:#16a34a}.marathonMarker-4{--bib:#9333ea}.marathonMarker-5{--bib:#ea580c}
+/* v1.7.12 실물감: 도둑잡기 트럼프·펠트 탁자, 숫자야구 전광판, 라이어 카드·말풍선, 스무고개 칠판, 그림 맞히기 스케치북 */
+.oldmaidPanel{background:#1d6b42 radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.08),rgba(0,0,0,.35) 75%);border-color:#0f3d25;box-shadow:inset 0 0 0 6px #5b3a1e,inset 0 0 0 8px #3b2412}
+.oldmaidFace{position:relative;background:#fffdf7;border:1px solid #cfc6b0;box-shadow:0 2px 4px rgba(0,0,0,.35);font-family:Georgia,"Times New Roman",serif}
+.oldmaidFace .omIndex{position:absolute;top:3px;left:4px;font-size:.66rem;line-height:1;font-weight:900;text-align:center}
+.oldmaidFace .omIndex.omIndexBottom{top:auto;left:auto;bottom:3px;right:4px;transform:rotate(180deg)}
+.oldmaidFace .omPip{font-size:1.45rem;line-height:1}
+.oldmaidFace.joker .omPip{font-size:1.25rem}
+.oldmaidBack{border:2px solid #fff;background:repeating-linear-gradient(45deg,#b91c1c 0 3px,#7f1d1d 3px 6px),#b91c1c;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.oldmaidBack::after{border-color:rgba(255,255,255,.75)}
+.oldmaidMyHand .oldmaidFace{margin-left:-14px;transition:transform .15s ease}
+.oldmaidMyHand .oldmaidFace:first-child{margin-left:0}
+.oldmaidMyHand .oldmaidFace:hover{transform:translateY(-8px);z-index:2}
+.baseballHistory{padding:10px;border-radius:12px;background:#0b1f14;box-shadow:inset 0 0 0 3px #1f2937,inset 0 0 18px rgba(0,0,0,.6)}
+.baseballHistoryRow{background:#07140d;border-color:#16351f;font-family:"Consolas","Courier New",monospace;color:#fde68a}
+.baseballHistoryRow strong{color:#fbbf24;letter-spacing:.2em;text-shadow:0 0 6px rgba(251,191,36,.55)}
+.baseballHistoryRow .result{display:flex;gap:10px;align-items:center}
+.sbo{display:inline-flex;align-items:center;gap:3px;font-weight:900;font-size:.72rem;color:#e5e7eb}
+.sbo i{width:11px;height:11px;border-radius:50%;background:#1f2a22;box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.sbo-strike i.on{background:#facc15;box-shadow:0 0 8px #facc15}
+.sbo-ball i.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
+.sbo-out i.on{background:#ef4444;box-shadow:0 0 8px #ef4444}
+.liarRoleBox{background:#fffdf6;color:#1f2937;border:1px solid #d6c9a6;border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.4);transform:rotate(-1deg)}
+.liarHintRow{position:relative;background:#f8fafc;color:#111827;border:0;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.liarHintRow::before{content:"";position:absolute;left:18px;bottom:-7px;border:7px solid transparent;border-top-color:#f8fafc;border-bottom:0}
+.twentyPanel{background:#1f3b2c radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.06),transparent 60%);border:10px solid #6b4423;border-radius:14px;box-shadow:inset 0 0 30px rgba(0,0,0,.45)}
+.pictionaryCanvasWrap{background:#fffdf6;box-shadow:0 10px 24px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.12);margin-top:12px;overflow:visible}
+.pictionaryCanvasWrap::before{content:"";position:absolute;left:4%;right:4%;top:-10px;height:18px;background:repeating-linear-gradient(90deg,transparent 0 10px,#9ca3af 10px 13px,#e5e7eb 13px 16px,transparent 16px 26px);pointer-events:none;z-index:1}
+.pictionaryCanvasWrap canvas{border-radius:16px}
+.liarHintRow strong{color:#1d4ed8}
