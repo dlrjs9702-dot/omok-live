@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.7.30 스킨 상점: 로비의 「스킨 상점」 카드(내 전적 카드 아래)에서 큰 별도 창을 열고, 두 번 눌러 구매·장착하면
+// v1.7.30 스킨 상점: 로비의 「상점」 카드(내 전적 카드 아래)에서 큰 별도 창을 열고, 두 번 눌러 구매·장착하면
 // 방 안의 내 돌이 그 스킨으로 그려지고 상대 화면에서도 똑같이 보인다. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
