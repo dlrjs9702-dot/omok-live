@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.34 마라톤 제거
+
+`IDEAS.md` 「마라톤 게임 제거」(사용자 2026-10-01, "포기할거야")를 처리했다. 구현중이던 마라톤을 게임센터에서 없앤다.
+
+- **제거**: 서버(방 생성·엔진 등록)·`lib/games` 엔진 파일·화면(게임 선택·규칙 설명·보드)·CSS·마라톤 전용 테스트. 「게임 구현중」 목록은 잿빛 원정만 남는다.
+- **이름 정리**: 마라톤과 공유하던 할리갈리 좌석 상수는 `HALLI_SEATS`, 그림 맞히기 설정 클래스는 `gameConfigChooser`/`gameConfigRow`.
+- **기록은 보존**: 지난 전적·포인트 원장은 삭제하지 않고 과거 전적의 게임 이름 표시를 유지한다. 업적 목록에서 제외(총 66개). 오늘의 미션은 새 추첨에서만 제외하고(`RETIRED`) 이미 저장된 `marathon_play`는 계속 읽힌다.
+- **검증**: `npm test`, `npm run test:e2e`(실행 결과는 PR 본문·STATUS).
+
 ## v1.7.33 정산 지연 중 방 화면 표시
 
 백로그 4 재대조(PR #74) 때 발견한 문제를 고쳤다. `GET /api/room`은 방 상태를 돌려주기 전에 끝난 판의 기록·정산(`recordFinishedMatch`)을 먼저 시도하고, 실패하면 503을 돌려줘 DB 장애 중 새로고침한 사람은 방 화면을 볼 수 없었다(화면은 입장 세션 확인 뒤 방이 안 열리고 오류 안내만 표시).
