@@ -1,0 +1,119 @@
+const { test, expect } = require('@playwright/test');
+
+const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
+
+// v1.7.15 포인트 이벤트: 로비 진입 시 서버가 준 이벤트로 중앙 모달이 자동으로 뜨고, 닫아도 지급되지 않으며,
+// 받기 버튼을 누르면 서버 응답 뒤에만 폭죽·+100,000P가 나오고 잔액·내역이 갱신된다. PC 전용.
+test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
+
+let ipCounter = 0;
+const uniqueIp = () => `100.68.${process.pid % 250}.${(++ipCounter + Math.floor(Math.random() * 200)) % 250 + 1}`;
+let eventCounter = 0;
+
+// 새 입장 파일·전용 이벤트를 만들고(다른 테스트의 로비에는 보이지 않는다) 로비까지 들어간다.
+async function enterLobby({ browser, request }) {
+  const login = await request.post('/api/admin/login', { headers: { 'X-Forwarded-For': uniqueIp() }, data: { password: adminPassword } });
+  const admin = (await login.json()).sessionToken;
+  const issued = await (await request.post('/api/admin/keys', { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { label: '이벤트' } })).json();
+  const now = Date.now();
+  const event = {
+    id: `e2e_event_${process.pid}_${Date.now()}_${++eventCounter}`, title: '관리자 연가 기념 이벤트', headline: '오늘은 관리자가 연가입니다!',
+    message: '연가 기념으로 모든 이용자에게 100,000P를 드립니다.', rewardPoints: 100_000,
+    startAt: new Date(now - 3_600_000).toISOString(), endAt: new Date(now + 3_600_000).toISOString(),
+    buttonLabel: '100,000P 받기', note: '오늘 하루 · 계정당 1회', successMessage: '연가 기념 포인트를 받았습니다!', active: true,
+  };
+  const registered = await request.post('/api/test/events', {
+    headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { event, audienceKeyId: issued.key.id },
+  });
+  expect(registered.status()).toBe(200);
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
+  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+  return { context, page, event };
+}
+
+test('미수령 사용자는 로비 진입 시 이벤트 모달이 자동으로 뜨고, 닫아도 지급되지 않는다', async ({ browser, request }) => {
+  const { context, page, event } = await enterLobby({ browser, request });
+  const dialog = page.locator('#eventDialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#eventDialogTitle')).toHaveText('🎉 관리자 연가 기념 이벤트 🎉');
+  await expect(page.locator('#eventDialogHeadline')).toHaveText('오늘은 관리자가 연가입니다!');
+  await expect(page.locator('#eventDialogMessage')).toContainText('모든 이용자에게 100,000P를 드립니다.');
+  await expect(page.locator('#eventDialogReward')).toHaveText('+100,000P');
+  await expect(page.locator('#eventDialogNote')).toHaveText('오늘 하루 · 계정당 1회');
+  await expect(page.locator('#eventDialogClaimBtn')).toHaveText('100,000P 받기');
+
+  await page.locator('#eventDialogCloseBtn').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P'); // 닫기 ≠ 수령
+  await expect(page.locator('#resultEffect')).toBeHidden();
+
+  // 아직 미수령이므로 다시 들어오면(새로고침) 서버 기준으로 다시 뜬다.
+  await page.reload();
+  await expect(dialog).toBeVisible();
+  expect(event.rewardPoints).toBe(100_000);
+  await context.close();
+});
+
+test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔액·내역 갱신, 재입장 시 모달 없음', async ({ browser, request }) => {
+  const { context, page, event } = await enterLobby({ browser, request });
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  const claims = [];
+  page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith(`/api/events/${event.id}/claim`)) claims.push(req.url()); });
+
+  await page.locator('#eventDialogClaimBtn').dblclick(); // 버튼 연타
+  const effect = page.locator('#resultEffect');
+  await expect(effect).toBeVisible();
+  await expect(page.locator('#eventDialog')).toBeHidden();
+  await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
+  await expect(page.locator('#resultMessage')).toHaveText('연가 기념 포인트를 받았습니다!');
+  await expect(page.locator('#resultParticles b')).toHaveCount(6); // 여러 곳의 폭죽
+  expect(await page.locator('#resultParticles b span').count()).toBeGreaterThanOrEqual(60);
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  expect(claims.length).toBe(1);
+
+  await expect(effect).toBeHidden({ timeout: 6000 }); // 약 3초 뒤 사라진다
+  await page.locator('#pointHistoryBtn').click(); // 연출이 끝난 뒤 로비 조작 가능
+  const first = page.locator('.pointHistoryRow').first();
+  await expect(first).toContainText('관리자 연가 기념 이벤트');
+  await expect(first).toContainText('+100,000P');
+  await expect(first).toContainText('100,000P → 200,000P');
+
+  const eventsChecked = page.waitForResponse(res => new URL(res.url()).pathname === '/api/events');
+  await page.reload();
+  await eventsChecked;
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await expect(page.locator('#eventDialog')).toBeHidden(); // 수령 완료: 자동 모달 없음
+  await context.close();
+});
+
+test('동작 줄이기: 폭죽 없이도 +100,000P와 문구는 보이고 지급은 같다', async ({ browser, request }) => {
+  const { context, page } = await enterLobby({ browser, request });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.locator('#eventDialogClaimBtn').click();
+  await expect(page.locator('#resultTitle')).toBeVisible();
+  await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
+  await expect(page.locator('#resultMessage')).toBeVisible();
+  await expect(page.locator('#resultParticles')).toBeHidden(); // 대량 파티클 생략
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await context.close();
+});
+
+test('서버 오류면 성공 연출 없이 오류를 알리고 다시 시도할 수 있다', async ({ browser, request }) => {
+  const { context, page } = await enterLobby({ browser, request });
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  await page.route('**/api/events/*/claim', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'SERVER_ERROR', message: '서버 오류가 발생했습니다.' }) }));
+  await page.locator('#eventDialogClaimBtn').click();
+  await expect(page.locator('#eventDialogError')).toHaveText('서버 오류가 발생했습니다.');
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  await expect(page.locator('#eventDialogClaimBtn')).toBeEnabled();
+  await expect(page.locator('#resultEffect')).toBeHidden(); // 폭죽은 실제 성공 응답 뒤에만
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+
+  await page.unroute('**/api/events/*/claim'); // 복구되면 같은 창에서 정상 수령
+  await page.locator('#eventDialogClaimBtn').click();
+  await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await context.close();
+});

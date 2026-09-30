@@ -1275,12 +1275,14 @@
   function clearResultEffect() {
     clearTimeout(resultEffectTimer);
     resultEffect.classList.add('hidden');
-    resultEffect.classList.remove('win', 'loss', 'playing');
+    resultEffect.classList.remove('win', 'loss', 'playing', 'reward');
     document.body.classList.remove('resultWinActive', 'resultLossActive');
   }
 
+  const CELEBRATION_COLORS = ['#facc15', '#f97316', '#22d3ee', '#a78bfa', '#f472b6', '#ffffff'];
+
   function fillVictoryParticles() {
-    const colors = ['#facc15', '#f97316', '#22d3ee', '#a78bfa', '#f472b6', '#ffffff'];
+    const colors = CELEBRATION_COLORS;
     resultParticles.replaceChildren();
     for (let i = 0; i < 42; i += 1) {
       const particle = document.createElement('i');
@@ -1294,17 +1296,40 @@
     }
   }
 
-  function showResultEffect(outcome, game) {
-    const win = outcome === 'win';
+  // v1.7.15: several short firework bursts across the screen (the win confetti is filled in as well).
+  // Fixed positions and angles, so the show is the same every time and needs no randomness.
+  function fillFireworks() {
+    const bursts = [[16, 26], [84, 22], [50, 12], [24, 76], [78, 74], [50, 88]]; // around the centered card
+    bursts.forEach(([x, y], index) => {
+      const burst = document.createElement('b');
+      burst.style.setProperty('--bx', `${x}%`);
+      burst.style.setProperty('--by', `${y}%`);
+      burst.style.setProperty('--delay', `${index * 0.32}s`);
+      for (let i = 0; i < 18; i += 1) {
+        const spark = document.createElement('span');
+        const angle = (Math.PI * 2 * i) / 18 + index * 0.2;
+        const distance = 90 + (i % 3) * 40;
+        spark.style.setProperty('--dx', `${Math.round(Math.cos(angle) * distance)}px`);
+        spark.style.setProperty('--dy', `${Math.round(Math.sin(angle) * distance)}px`);
+        spark.style.setProperty('--color', CELEBRATION_COLORS[(i + index) % CELEBRATION_COLORS.length]);
+        burst.appendChild(spark);
+      }
+      resultParticles.appendChild(burst);
+    });
+  }
+
+  function playResultEffect({ win, icon, title, message, duration, reward = false }) {
     clearTimeout(resultEffectTimer);
-    resultEffect.classList.remove('hidden', 'win', 'loss', 'playing');
-    resultEffect.classList.add(outcome);
-    resultIcon.textContent = win ? '🏆' : '😏';
-    resultTitle.textContent = win ? '화려한 승리!' : '이번 판은 패배…';
-    resultMessage.textContent = resultCopy(outcome, game);
+    resultEffect.classList.remove('hidden', 'win', 'loss', 'playing', 'reward');
+    resultEffect.classList.add(win ? 'win' : 'loss');
+    resultEffect.classList.toggle('reward', reward);
+    resultIcon.textContent = icon;
+    resultTitle.textContent = title;
+    resultMessage.textContent = message;
     resultParticles.replaceChildren();
     if (win) fillVictoryParticles();
-    document.body.classList.toggle('resultWinActive', win);
+    if (reward) fillFireworks();
+    document.body.classList.toggle('resultWinActive', win && !reward);
     document.body.classList.toggle('resultLossActive', !win);
     // Re-run the entrance animation even if the previous round ended moments ago.
     void resultEffect.offsetWidth;
@@ -1312,7 +1337,17 @@
     resultEffectTimer = setTimeout(() => {
       resultEffect.classList.remove('playing');
       clearResultEffect();
-    }, win ? 5000 : 4600);
+    }, duration);
+  }
+
+  function showResultEffect(outcome, game) {
+    const win = outcome === 'win';
+    playResultEffect({ win, icon: win ? '🏆' : '😏', title: win ? '화려한 승리!' : '이번 판은 패배…', message: resultCopy(outcome, game), duration: win ? 5000 : 4600 });
+  }
+
+  // Only ever called after the server confirmed a payout.
+  function showRewardEffect(amount, message) {
+    playResultEffect({ win: true, reward: true, icon: '🎉', title: `+${Number(amount).toLocaleString('ko-KR')}P`, message, duration: 3200 });
   }
 
   function setResultBoardOverlay(outcome, game) {
@@ -2459,6 +2494,7 @@
       const category = ADMIN_GRANT_CATEGORY_LABELS[item.detail] || '기타';
       return `관리자 지급 · ${category}${item.detail === 'other' && item.memo ? ` (${item.memo})` : ''}`;
     }
+    if (item.reason === 'event_reward') return item.memo || '이벤트 보상';
     return '기타 시스템 조정';
   }
   function pointHistoryRow(item) {
@@ -2529,6 +2565,69 @@
     await loadPoints();
   }
 
+  // v1.7.15 point-reward events: the server says which events are open and which this account already
+  // claimed; the modal is built from that data (nothing about a specific event is written in the page).
+  // Closing the modal never claims. It is not shown again during this page session, only on the next
+  // entry, and the server (not this Set) decides what is still claimable.
+  const eventDialog = document.getElementById('eventDialog');
+  const eventDialogTitle = document.getElementById('eventDialogTitle');
+  const eventDialogHeadline = document.getElementById('eventDialogHeadline');
+  const eventDialogMessage = document.getElementById('eventDialogMessage');
+  const eventDialogReward = document.getElementById('eventDialogReward');
+  const eventDialogNote = document.getElementById('eventDialogNote');
+  const eventDialogError = document.getElementById('eventDialogError');
+  const eventDialogClaimBtn = document.getElementById('eventDialogClaimBtn');
+  const eventPrompted = new Set();
+  let eventCurrent = null;
+  let eventClaiming = false;
+
+  async function checkEvents() {
+    try {
+      const { events } = await api('/api/events');
+      const next = events.find(event => !event.claimed && !eventPrompted.has(`${sessionToken}:${event.id}`));
+      if (next && !eventDialog.open) openEventDialog(next);
+    } catch {}
+  }
+
+  function openEventDialog(event) {
+    eventCurrent = event;
+    eventPrompted.add(`${sessionToken}:${event.id}`);
+    eventDialogTitle.textContent = `🎉 ${event.title} 🎉`;
+    eventDialogHeadline.textContent = event.headline;
+    eventDialogMessage.textContent = event.message;
+    eventDialogReward.textContent = `+${Number(event.rewardPoints).toLocaleString('ko-KR')}P`;
+    eventDialogNote.textContent = event.note;
+    eventDialogClaimBtn.textContent = event.buttonLabel;
+    eventDialogClaimBtn.disabled = false;
+    eventDialogError.textContent = '';
+    eventDialog.showModal();
+  }
+
+  async function claimEventReward() {
+    if (!eventCurrent || eventClaiming) return;
+    eventClaiming = true;
+    eventDialogClaimBtn.disabled = true;
+    eventDialogError.textContent = '';
+    try {
+      const result = await api(`/api/events/${encodeURIComponent(eventCurrent.id)}/claim`, { method: 'POST', body: '{}' });
+      eventDialog.close();
+      await loadPoints();
+      if (result.granted) showRewardEffect(result.amount, result.successMessage);
+      else showToast('이미 받은 이벤트입니다.');
+    } catch (err) {
+      if (err.status === 401) { eventDialog.close(); return; }
+      eventDialogError.textContent = err.message;
+      // Not open / already over: nothing more to try. A network or server error may be retried.
+      eventDialogClaimBtn.disabled = err.status === 404 || err.status === 409;
+    } finally {
+      eventClaiming = false;
+    }
+  }
+
+  eventDialogClaimBtn.addEventListener('click', claimEventReward);
+  document.getElementById('eventDialogCloseBtn').addEventListener('click', () => eventDialog.close());
+  eventDialog.addEventListener('close', () => { eventCurrent = null; });
+
   function enterLobby() {
     rpgUnmount();
     stopStream();
@@ -2550,6 +2649,7 @@
     loadAnnouncements().catch(err => showToast(err.message, 3500));
     loadMyRecords();
     loadPoints();
+    checkEvents();
     loadPublicRooms().catch(err => showToast(err.message, 3500));
     startLobbyStream();
     startPresenceRefresh();

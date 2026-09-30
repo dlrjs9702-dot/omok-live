@@ -11,6 +11,21 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.15 공통 이벤트 보상 시스템 + 관리자 연가 기념 이벤트
+
+사용자 지시(2026-09-30)로 기간 한정 포인트 이벤트를 정의 하나로 추가할 수 있는 공통 구조를 만들고, 첫 이벤트 `admin_leave_2026_09_30`(관리자 연가 기념, +100,000P, 계정당 1회, Asia/Seoul 2026-09-30 00:00 ~ 2026-10-01 00:00)를 활성화했다.
+
+- **이벤트 정의** `lib/point-events.js`의 `EVENTS`: `id`, `title`, `headline`, `message`, `rewardPoints`, `startAt`, `endAt`, `buttonLabel`, `note`, `successMessage`, `active`. 시작 시점에 검증(id 형식·중복·금액 범위·시간대 표기·문구 길이)해 오타가 잘못된 포인트 지급으로 이어지지 않게 한다. 종료된 이벤트도 목록에 남겨 두며, 종료 후에는 조회·수령이 모두 막히고 이미 지급된 포인트·원장은 그대로다. 관리자 편집 UI·DB 기반 관리는 만들지 않았다.
+- **API**: `GET /api/events`(지금 열려 있는 이벤트와 본인 수령 여부, 서버 시계 기준), `POST /api/events/:eventId/claim`(클라이언트는 이벤트 id만 보낸다. 금액·계정·시간은 서버가 결정). 미수령 성공은 `granted:true`, 이미 받은 계정은 200 `granted:false`(추가 지급 없음), 없음/꺼짐 404 `EVENT_NOT_FOUND`, 시작 전 409 `EVENT_NOT_STARTED`, 종료 409 `EVENT_ENDED`, 인증 없음 401. 조회·수령은 계정별 분당 제한이 있다.
+- **중복 방지·원자성** `point-store.claimEvent`: 수령 키 `event:<eventId>:<계정>`을 정산 id이자 원장 멱등 키로 쓴다. JSON 저장소는 한 번의 영속 변경으로 수령 기록·원장·잔액을 함께 쓰고, PostgreSQL은 한 트랜잭션에서 유일한 정산 행(`ON CONFLICT DO NOTHING`)과 유일한 `idempotency_key`로 보장한다(동시 요청은 유일 행에서 대기한 뒤 저장된 결과를 받는다). 수령 여부는 서버 데이터만 기준이며 localStorage·쿠키는 쓰지 않는다.
+- **원장·내역**: 사유 `event_reward`, 변동 전·후 잔액, 이벤트 id는 키·정산 기록에 남고 포인트 내역에는 이벤트 이름과 `+100,000P`로 표시된다. 성공하면 `pointsChanged`로 같은 계정의 다른 탭도 잔액을 갱신한다.
+- **화면**: 인증 뒤 로비 진입(`enterLobby`)에서 `GET /api/events`를 한 번 호출하고, 미수령 이벤트가 있으면 서버 데이터로 만든 중앙 `<dialog id="eventDialog">`를 연다. 닫기는 지급이 아니며 같은 페이지 세션에서는 다시 열지 않는다(새로고침·재입장 시 서버 기준으로 다시 표시). 받기는 요청 중 중복 클릭을 막고, 실제 성공 응답 뒤에만 연출한다. 오류(404/409는 재시도 불가, 그 밖은 재시도 가능)는 창 안에 표시한다.
+- **연출**: 기존 승리 연출 오버레이 `#resultEffect`·색종이 엔진을 공용 `playResultEffect`로 꺼내 재사용하고, 화면 여섯 곳의 폭죽(섬광+입자 18개, 고정 좌표·각도), 중앙 `+100,000P` 확대 안착, 문구 `연가 기념 포인트를 받았습니다!`, 약 3.2초 뒤 소멸을 더했다. 외부 라이브러리·이미지·효과음 없음. `prefers-reduced-motion`에서는 파티클·확대를 생략하고 금액·문구만 보인다.
+- **테스트 서버**: `NODE_ENV=test`에서는 실제 날짜가 걸린 등록 이벤트를 제공하지 않아 테스트 결과가 실행 날짜에 좌우되지 않는다. 테스트는 `POST /api/test/events`로 열림·예정·종료·꺼짐 이벤트를 등록하고 `audience:'self'`/`audienceKeyId`로 한 계정에만 보이게 한다(병렬 e2e 격리).
+- **테스트**: `test/point-events.test.js`(정의 검증·KST 경계), `test/event-reward-server.test.js`(실제 서버: 최초 수령·재요청·동시 12건·재시작·종료/예정/꺼짐/없음/미인증·금액 변조·계정 격리·기존 포인트 회귀), `test/game-points-store.test.js`(JSON/PostgreSQL 공통 시나리오에 이벤트 추가), `tests/e2e/event-reward.spec.js`(자동 모달·닫기·연타 1회·폭죽·잔액·내역·재입장·동작 줄이기·서버 오류).
+- **다음 이벤트 추가**: `lib/point-events.js`의 `EVENTS`에 정의 하나만 추가한다(새 테이블·API·지급 함수·모달 불필요). 같은 파일 머리 주석에 절차가 있다.
+- **알려진 한계**: PostgreSQL 경로는 로컬·CI에 DB가 없어 자동 실행하지 못했다(`POINTS_TEST_DATABASE_URL`이 있을 때만 공통 시나리오가 실행됨). 관리자 지급 구현과 같은 패턴이다. 동시에 여러 이벤트가 열려 있으면 미수령 이벤트 하나씩 로비 진입 때 표시한다. 실제 사람 PC 실기 검증은 하지 않았다.
+
 ## v1.7.14 잿빛 원정 로비 열기
 
 사용자 지시(2026-09-30)로 운영 로비의 「잿빛 원정」 선택을 연다. 로컬 장기 개발(`feature/rpg-local-development-20260927`)과는 별개로, 이미 `main`에 있는 RPG v0.1을 그대로 선택 가능하게 하는 변경이다.
