@@ -3819,7 +3819,22 @@
       left.appendChild(digits);
       const result = document.createElement('span');
       result.className = 'result';
-      result.textContent = entry.strikes === 0 && entry.balls === 0 ? '아웃' : `${entry.strikes}S ${entry.balls}B`;
+      const out = entry.strikes === 0 && entry.balls === 0;
+      result.setAttribute('aria-label', out ? '아웃' : `${entry.strikes}S ${entry.balls}B`);
+      // v1.7.12 실물감: ballpark scoreboard lamps -- S yellow, B green, O red.
+      const digitsCount = String(entry.guess).length;
+      for (const [label, lit, total, kind] of [['S', entry.strikes, digitsCount, 'strike'], ['B', entry.balls, digitsCount, 'ball'], ['O', out ? 1 : 0, 1, 'out']]) {
+        const group = document.createElement('span');
+        group.className = `sbo sbo-${kind}`;
+        group.setAttribute('aria-hidden', 'true');
+        group.append(label);
+        for (let n = 0; n < total; n += 1) {
+          const lamp = document.createElement('i');
+          if (n < lit) lamp.className = 'on';
+          group.appendChild(lamp);
+        }
+        result.appendChild(group);
+      }
       item.append(left, result);
       baseballHistory.appendChild(item);
     }
@@ -4225,7 +4240,7 @@
   function pictionaryFillWhite() {
     pictionaryCtx.save();
     pictionaryCtx.globalCompositeOperation = 'source-over';
-    pictionaryCtx.fillStyle = '#ffffff';
+    pictionaryCtx.fillStyle = '#fffdf6'; // v1.7.12: sketchbook paper tone
     pictionaryCtx.fillRect(0, 0, pictionaryCanvas.width, pictionaryCanvas.height);
     pictionaryCtx.restore();
   }
@@ -4754,7 +4769,7 @@
       const red = card.suit === '♥' || card.suit === '♦';
       const face = document.createElement('span');
       face.className = 'oldmaidCard oldmaidFace' + (card.rank === 'JOKER' ? ' joker' : red ? ' red' : '');
-      face.textContent = card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
+      fillOldmaidFace(face, card);
       face.setAttribute('aria-label', card.rank === 'JOKER' ? '조커' : `${card.suit} ${card.rank}`);
       face.dataset.cardId = card.id;
       oldmaidMyHand.appendChild(face);
@@ -5011,6 +5026,22 @@
     const red = card.suit === '♥' || card.suit === '♦';
     return card.rank === 'JOKER' ? ' joker' : red ? ' red' : '';
   }
+  // v1.7.12 실물감: a real playing-card face -- rank+suit indices in two corners and a big centre pip.
+  function fillOldmaidFace(el, card) {
+    const joker = card.rank === 'JOKER';
+    const corner = (extra) => {
+      const index = document.createElement('span');
+      index.className = `omIndex${extra}`;
+      index.setAttribute('aria-hidden', 'true');
+      index.append(joker ? 'J' : card.rank, document.createElement('br'), joker ? '★' : card.suit);
+      return index;
+    };
+    const pip = document.createElement('span');
+    pip.className = 'omPip';
+    pip.setAttribute('aria-hidden', 'true');
+    pip.textContent = joker ? '🃏' : card.suit;
+    el.replaceChildren(corner(''), pip, corner(' omIndexBottom'));
+  }
   function oldmaidCardFaceText(card) {
     return card.rank === 'JOKER' ? '🃏 조커' : `${card.suit} ${card.rank}`;
   }
@@ -5040,7 +5071,8 @@
     return new Promise((resolve) => {
       const flyer = document.createElement('span');
       flyer.className = 'oldmaidCard oldmaidFace oldmaidFlyingCard' + oldmaidCardFaceClass(card);
-      flyer.textContent = oldmaidCardFaceText(card);
+      fillOldmaidFace(flyer, card);
+      flyer.setAttribute('aria-label', oldmaidCardFaceText(card));
       flyer.style.left = `${originRect.left}px`;
       flyer.style.top = `${originRect.top}px`;
       flyer.style.width = `${originRect.width}px`;
