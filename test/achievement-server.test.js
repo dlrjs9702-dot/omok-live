@@ -7,7 +7,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-// v1.7.19 daily missions through the real server: finished matches (resigned Othello) drive progress,
+// v1.7.20 daily missions through the real server: finished matches (resigned Othello) drive progress,
 // missions and the first-win bonus pay once into the ledger, repeated requests never count a match twice,
 // and the in-room stream tells each player their progress in short lines.
 

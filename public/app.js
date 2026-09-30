@@ -2710,6 +2710,7 @@
   const eventDialogTitle = document.getElementById('eventDialogTitle');
   const eventDialogHeadline = document.getElementById('eventDialogHeadline');
   const eventDialogMessage = document.getElementById('eventDialogMessage');
+  const eventDialogTeaser = document.getElementById('eventDialogTeaser');
   const eventDialogReward = document.getElementById('eventDialogReward');
   const eventDialogNote = document.getElementById('eventDialogNote');
   const eventDialogError = document.getElementById('eventDialogError');
@@ -2736,6 +2737,8 @@
     eventDialogTitle.textContent = `🎉 ${event.title} 🎉`;
     eventDialogHeadline.textContent = event.headline;
     eventDialogMessage.textContent = event.message;
+    eventDialogTeaser.textContent = event.teaser || '';
+    eventDialogTeaser.classList.toggle('hidden', !event.teaser);
     eventDialogReward.textContent = `+${Number(event.rewardPoints).toLocaleString('ko-KR')}P`;
     eventDialogNote.textContent = event.note;
     eventDialogClaimBtn.textContent = event.buttonLabel;
