@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.23').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.24').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -6288,7 +6288,7 @@
     // claimed boxes hatched with the owner's pen and initialled.
     ctx.drawImage(boardTexture('notebook', 720, 720, paintNotebook), 0, 0);
     const lastEdge = g.lastMove?.edgeId;
-    const drawStroke = lastEdge !== undefined ? pieceMotion(`dots:${g.moveCount}:${g.lastMove?.at || ''}`, 380) : 1;
+    const drawStroke = pieceMotion(lastEdge !== undefined ? `dots:${g.moveCount}:${g.lastMove?.at || ''}` : '', 380);
     const newBoxes = new Set((g.lastMove?.claimed || []).map(([row, col]) => `${row},${col}`));
 
     for (let row = 0; row < 4; row += 1) for (let col = 0; col < 4; col += 1) {
@@ -6589,9 +6589,12 @@
   let pieceMotionKey = null;
   let pieceMotionStart = 0;
   let pieceMotionFrame = null;
+  window.PieceMotionDebug = () => pieceMotionKey; // null = nothing seen yet (next move is only a baseline); '' = empty board seen
   function pieceMotion(key, duration) {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    // An empty board is a seen state too, so the very first move of a game still animates.
+    // An empty board is a seen state too, so the very first move of a game still animates. Every caller therefore
+    // passes an empty key while there is no last move (v1.7.24: they used to skip the call, so the first move seen
+    // right after entering a room was taken as the baseline and never animated).
     if (!key) { pieceMotionKey = ''; return 1; }
     if (key !== pieceMotionKey) {
       pieceMotionStart = pieceMotionKey === null ? now - duration : now;
@@ -6845,7 +6848,7 @@
     const last = g.lastMove;
     const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
     const connectRecent = observeRecentAction(last ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
-    const fall = last ? pieceMotion(`c4:${g.moveCount}:${last.at || ''}`, 260 + 70 * last.y) : 1;
+    const fall = pieceMotion(last ? `c4:${g.moveCount}:${last.at || ''}` : '', 260 + 70 * (last?.y ?? 0));
     const drawDisc = (cx, cy, color) => {
       ctx.save();
       const disc = ctx.createRadialGradient(cx - radius * .35, cy - radius * .38, 2, cx, cy, radius);
@@ -6999,7 +7002,7 @@
     const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
     const omokRecent = observeRecentAction(last ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
-    const setDown = last ? pieceMotion(`omok:${state.game.moveCount}:${last.at || ''}`, 300) : 1;
+    const setDown = pieceMotion(last ? `omok:${state.game.moveCount}:${last.at || ''}` : '', 300);
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
@@ -7078,7 +7081,7 @@
     const flippedCells = new Set((last?.flippedCells || []).map(item => `${item.x},${item.y}`));
     // The placed disc lands first, then its captured neighbours turn over one after another.
     const flipCount = flippedCells.size;
-    const motion = last ? pieceMotion(`oth:${state.game.moveCount}:${last.at || ''}`, 260 + 110 * flipCount + 320) : 1;
+    const motion = pieceMotion(last ? `oth:${state.game.moveCount}:${last.at || ''}` : '', 260 + 110 * flipCount + 320);
     const elapsedMs = motion * (260 + 110 * flipCount + 320);
     const flipOrder = [...flippedCells];
     for (let y = 0; y < 8; y += 1) {
