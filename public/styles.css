@@ -1321,7 +1321,7 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .sbo-out i.on{background:#ef4444;box-shadow:0 0 8px #ef4444}
 .liarRoleBox{background:#fffdf6;color:#1f2937;border:1px solid #d6c9a6;border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.4);transform:rotate(-1deg)}
 .liarHintRow{position:relative;background:#f8fafc;color:#111827;border:0;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
-.liarHintRow::before{content:"";position:absolute;left:18px;bottom:-7px;border:7px solid transparent;border-top-color:#f8fafc;border-bottom:0}
+.liarHintRow::before{content:"";position:absolute;left:18px;bottom:-7px;border:7px solid transparent;border-top-color:var(--tail,#f8fafc);border-bottom:0}
 .twentyPanel{background:#1f3b2c radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.06),transparent 60%);border:10px solid #6b4423;border-radius:14px;box-shadow:inset 0 0 30px rgba(0,0,0,.45)}
 .pictionaryCanvasWrap{background:#fffdf6;box-shadow:0 10px 24px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.12);margin-top:12px;overflow:visible}
 .pictionaryCanvasWrap::before{content:"";position:absolute;left:4%;right:4%;top:-10px;height:18px;background:repeating-linear-gradient(90deg,transparent 0 10px,#9ca3af 10px 13px,#e5e7eb 13px 16px,transparent 16px 26px);pointer-events:none;z-index:1}

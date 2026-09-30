@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.39').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.40').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -4907,6 +4907,9 @@
     return `${Math.max(0, Math.ceil((Number(endsAt) - Date.now()) / 1000))}초`;
   }
 
+  let liarThemeApplied = null;
+  let liarPlayedResult = null;
+  let liarPrevHadResult = null;
   function renderLiar() {
     const g = state.game;
     const occupied = numberedSeats().filter(number => state.players[number]);
@@ -4928,6 +4931,12 @@
     liarTimer.classList.toggle('hidden', !g.deadlineAt || liarTimerDuplicated);
     if (g.deadlineAt && !liarTimerDuplicated) liarTimer.textContent = liarCountdownText(g.deadlineAt);
 
+    // v1.7.40 skins: the host's theme paints the panel; each hint bubble uses its speaker's skin; a new hint flashes.
+    const SLL = window.SkinLooks;
+    SLL.h.unstyle(liarPanel, liarThemeApplied);
+    liarThemeApplied = null;
+    const themeL = SLL.def(state.skinTheme);
+    if (themeL?.panel) { liarThemeApplied = { backgroundImage: SLL.h.img(`liar-panel:${state.skinTheme}`, 720, 520, themeL.panel), backgroundSize: 'cover', ...themeL.frame }; SLL.h.style(liarPanel, liarThemeApplied); }
     liarHintLog.replaceChildren();
     const liarHints = g.hints || [];
     const latestHint = liarHints.at(-1);
@@ -4937,13 +4946,17 @@
     for (const [hintIndex, hint] of liarHints.entries()) {
       const row = document.createElement('div');
       row.className = `liarHintRow${hint.timedOut ? ' timedOut' : ''}${!g.lastResult && hintIndex === liarHints.length - 1 ? recentActionClasses(liarRecent) : ''}`;
+      const hintSkin = SLL.def(state.players?.[hint.seat]?.skin);
+      if (hintSkin?.row) SLL.h.style(row, hintSkin.row);
       const who = document.createElement('strong');
+      if (hintSkin?.who) SLL.h.style(who, hintSkin.who);
       const stage = hint.stage === 'hint1' ? '1차' : hint.stage === 'hint2' ? '2차' : '추가';
       who.textContent = `${stage} · ${state.players[hint.seat]?.label || hint.seat + '번'}`;
       const text = document.createElement('span');
       text.textContent = hint.text;
       row.append(who, text);
       liarHintLog.appendChild(row);
+      if (hintIndex === liarHints.length - 1 && !g.lastResult && liarRecent.fresh && hintSkin?.fx) requestAnimationFrame(() => SLL.h.playFx(row, hintSkin.fx, 700, 40));
     }
     if (!(g.hints || []).length) {
       const empty = document.createElement('p'); empty.className = 'smallMuted'; empty.textContent = '아직 공개된 힌트가 없습니다.'; liarHintLog.appendChild(empty);
@@ -5010,6 +5023,11 @@
       }
     }
 
+    const liarKey = result ? `${state.me?.roomCode}:${g.round}` : null;
+    const liarSkin = result ? SLL.def(state.players?.[result.liarSeat]?.skin) : null;
+    if (liarKey && liarKey !== liarPlayedResult && liarPrevHadResult === false && liarSkin?.win) requestAnimationFrame(() => SLL.h.playFx(liarPanel, liarSkin.win, 1800, 10));
+    if (liarKey) liarPlayedResult = liarKey;
+    liarPrevHadResult = Boolean(result);
     liarScoreboard.replaceChildren();
     const seats = g.players?.length ? g.players : occupied;
     for (const s of [...seats].sort((a,b) => (g.scores?.[b] || 0) - (g.scores?.[a] || 0))) {
@@ -5784,6 +5802,7 @@
     }
   }
 
+  let davinciThemeApplied = null;
   function renderDavinci() {
     const g = state.game;
     if (davinciRevealRound !== g.round) {
@@ -5804,6 +5823,12 @@
     davinciStatus.textContent = g.status === 'selecting' ? '2~4명이 자리를 선택하면 방장이 시작합니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
       : `${g.turn === seat ? '내 차례' : `${state.players[g.turn]?.label || g.turn + '번'}님 차례`} · ${g.phase === 'reveal-own' ? (g.turn === seat ? '틀렸어요 · 공개할 내 타일을 고르세요' : '틀려서 자기 타일을 공개하는 중') : g.turn === seat ? '상대 타일을 누르고 숫자를 고르세요' : '상대 타일을 추리하는 중'}${inlineTimerText} · 더미 ${g.pileCount}장`;
+    // v1.7.40 skins: the host's theme paints the panel; a rack's tiles are decorated by their owner's skin.
+    const SLD = window.SkinLooks;
+    SLD.h.unstyle(davinciPanel, davinciThemeApplied);
+    davinciThemeApplied = null;
+    const themeD = SLD.def(state.skinTheme);
+    if (themeD?.panel) { davinciThemeApplied = { backgroundImage: SLD.h.img(`dv-panel:${state.skinTheme}`, 720, 520, themeD.panel), backgroundSize: 'cover', ...themeD.frame }; SLD.h.style(davinciPanel, davinciThemeApplied); }
     davinciHands.replaceChildren();
     // v1.6.96: a table seen from my chair -- my rack at the bottom, opponents around it, the draw
     // pile and this turn's drawn tile in the middle. Only public fields (colour, revealed numbers,
@@ -5852,6 +5877,9 @@
         valueElement.className = 'davinciTileValue';
         valueElement.textContent = value;
         button.append(valueElement);
+        const tileSkin = SLD.def(state.players?.[owner]?.skin);
+        if (tileSkin?.tile) SLD.h.style(button, tileSkin.tile(tile.color, tile.revealed));
+        if (tileSkin?.fx && (revealingNow || (feedbackForTile && feedback.correct))) requestAnimationFrame(() => SLD.h.playFx(button, tileSkin.fx, 700, 30));
         const guessNumber = feedbackForTile ? feedback.number : localGuessForTile ? davinciGuessPendingNumber : null;
         if (guessNumber !== null && guessNumber !== undefined) {
           const guessElement = document.createElement('span');
