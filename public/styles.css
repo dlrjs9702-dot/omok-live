@@ -383,6 +383,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .lobbySide{display:grid;gap:12px;min-width:0;align-content:start}
 .skinShopCard{min-width:0;padding:12px 14px;display:grid;gap:8px}
 .skinShopCard .recordsDetail{margin:0}
+.skinShopCard .skinShopEnter{width:100%;padding:12px 16px;font-size:1.05rem;font-weight:800;border-radius:12px}
 /* v1.7.30 skin shop: a large modal like the player lookup */
 .recordsDialog.skinShopDialog{width:min(94vw,980px);max-height:90vh}
 .skinShopDialog .recordsDialogHead{gap:12px}
