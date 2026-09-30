@@ -7,7 +7,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-// v1.7.17 daily missions through the real server: finished matches (resigned Othello) drive progress,
+// v1.7.18 daily missions through the real server: finished matches (resigned Othello) drive progress,
 // missions and the first-win bonus pay once into the ledger, repeated requests never count a match twice,
 // and the in-room stream tells each player their progress in short lines.
 
@@ -171,4 +171,46 @@ test('같은 판을 다시 조회·종료 요청해도 두 번 세지 않고, �
   assert.equal(second.missions.find(item => item.id === 'win3').progress, 2);
   const bonuses = (await fx.history(a)).filter(item => item.reason === 'first_win');
   assert.equal(bonuses.length, 1, '첫 승리 보너스는 하루 1회');
+});
+
+test('주간 미션(v1.7.18): 조회에 포함되고, 판이 끝나면 주 단위 진행이 오르며, 목표를 채우면 미션 3개와 보너스가 한 번씩 지급된다', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const fx = await boot(t, dir);
+  const [a, b] = [await fx.guest('주간승자'), await fx.guest('주간패자')];
+  const initial = (await fx.missions(a)).weekly;
+  assert.deepEqual(initial.missions.map(item => [item.id, item.target, item.reward, item.progress]), [['weekly_play20', 20, 9_000, 0], ['weekly_win10', 10, 9_000, 0], ['weekly_variety5', 5, 7_000, 0]]);
+  assert.deepEqual([initial.bonus.reward, initial.bonus.done, initial.total, initial.remainingReward], [5_000, false, 3, 30_000]);
+  assert.match(initial.week, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(new Date(`${initial.week}T00:00:00Z`).getUTCDay(), 1, '주는 월요일에 시작한다');
+  assert.equal(JSON.stringify(initial).includes('guest:'), false);
+
+  assert.equal((await fx.deal(a, ['win1', 'play3', 'variety2'])).status, 200); // 지급 대상 지정
+  assert.equal((await fx.deal(b, ['win1', 'play3', 'variety2'])).status, 200);
+  // 목표 직전까지 채워 두고(20판 19·10승 9·4종), 실제 판 한 번으로 모두 완료한다.
+  const preset = { played: 19, wins: 9, games: ['omok', 'yut', 'bingo', 'dots'] };
+  assert.equal((await fx.req('/api/test/weekly', a.session, preset)).status, 200);
+  assert.equal((await fx.req('/api/test/weekly', b.session, { played: 3, wins: 0, games: ['omok'] })).status, 200);
+  await startOthello(fx, a, b);
+  const eventsA = await fx.listen(a);
+  await sleep(150);
+  assert.equal((await fx.req('/api/room/resign', b.session, {})).status, 200);
+
+  const weeklyA = await waitFor(async () => { const w = (await fx.missions(a)).weekly; return w.bonus.done && w; }, '주간 미션이 완료되지 않았습니다');
+  assert.deepEqual([weeklyA.doneCount, weeklyA.remainingReward], [3, 0]);
+  const rows = (await fx.history(a)).filter(item => item.reason === 'weekly_mission');
+  assert.deepEqual(rows.map(item => [item.delta, item.memo]).sort(), [[5_000, '주간 미션 모두 완료'], [7_000, '주간 서로 다른 게임 5종 플레이'], [9_000, '주간 10승'], [9_000, '주간 20판 정상 완료']].sort());
+  const update = await waitFor(() => eventsA.find(event => event.name === 'missionUpdate' && event.data.lines.some(line => line.startsWith('주간'))), '주간 완료 알림이 오지 않았습니다');
+  assert.ok(update.data.lines.includes('주간 미션 모두 완료 +5,000P'));
+  assert.ok(update.data.lines.includes('주간 미션 완료 +9,000P · 주간 20판'));
+
+  const weeklyB = (await fx.missions(b)).weekly; // 기권 패배도 정상 종료 1판으로 센다
+  assert.deepEqual(weeklyB.missions.map(item => [item.id, item.progress]).sort(), [['weekly_play20', 4], ['weekly_variety5', 2], ['weekly_win10', 0]].sort());
+  assert.equal((await fx.history(b)).some(item => item.reason === 'weekly_mission'), false);
+
+  const balance = (await fx.req('/api/points', a.session)).data.balance;
+  await Promise.all([1, 2, 3].map(() => fx.req('/api/room', a.session)));
+  await Promise.all([1, 2, 3].map(() => fx.missions(a)));
+  assert.equal((await fx.req('/api/points', a.session)).data.balance, balance, '반복 조회는 잔액을 바꾸지 않는다');
+  assert.equal((await fx.history(a)).filter(item => item.reason === 'weekly_mission').length, 4, '같은 주 지급은 미션 3개 + 보너스, 각 1회');
 });

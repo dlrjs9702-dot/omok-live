@@ -39,7 +39,7 @@ async function guestByApi(request, label) {
   return (await entry.text()).match(/data-session="([^"]+)"/)[1];
 }
 
-test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 주간·이벤트 탭은 준비 중', async ({ browser, request }) => {
+test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 이벤트 탭은 준비 중', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '미션창');
   const button = page.locator('#missionBtn');
   await expect(button).toBeVisible();
@@ -49,8 +49,8 @@ test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보
   const dialog = page.locator('#missionDialog');
   await expect(dialog).toBeVisible();
   await expect(page.locator('#missionTabToday')).toHaveAttribute('aria-selected', 'true');
-  for (const name of ['주간', '이벤트']) await expect(dialog.getByRole('tab', { name })).toBeDisabled();
-  await expect(dialog.getByRole('tab', { name: '업적' })).toBeEnabled();
+  await expect(dialog.getByRole('tab', { name: '이벤트' })).toBeDisabled();
+  for (const name of ['주간', '업적']) await expect(dialog.getByRole('tab', { name })).toBeEnabled();
   const rows = page.locator('#missionList .missionRow');
   await expect(rows).toHaveCount(4); // 미션 3개 + 첫 승리 보너스
   await expect(page.locator('#missionList .missionRow[role="listitem"]')).toHaveCount(4);
@@ -106,5 +106,31 @@ test('게임방: 판이 끝나면 짧은 토스트(진행도·미션 완료·첫
   await expect(rows.nth(2)).toContainText('오늘 1승');
   await expect(rows.nth(3)).toContainText('오늘 받았습니다');
   await expect(page.locator('#missionSummary')).toContainText('오늘 더 받을 수 있는 포인트');
+  await context.close();
+});
+
+test('주간 탭: 초기화 안내, 미션 3개(20판·10승·5종)와 모두 완료 보너스, 오늘 탭으로 돌아올 수 있다', async ({ browser, request }) => {
+  const { context, page } = await guestInBrowser(browser, request, '주간탭');
+  await page.locator('#missionBtn').click();
+  await page.getByRole('tab', { name: '주간' }).click();
+  await expect(page.getByRole('tab', { name: '주간' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#missionPanelToday')).toBeHidden();
+  await expect(page.locator('#weeklySummary')).toHaveText(/^\d+월 \d+일\(월\) 0시에 새로 시작 · 이번 주 더 받을 수 있는 포인트 30,000P$/);
+  const rows = page.locator('#weeklyList .missionRow');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(0)).toContainText('주간 20판 정상 완료');
+  await expect(rows.nth(0).locator('.count')).toHaveText('0/20');
+  await expect(rows.nth(0).locator('.reward')).toHaveText('+9,000P');
+  await expect(rows.nth(1)).toContainText('주간 10승');
+  await expect(rows.nth(2)).toContainText('주간 서로 다른 게임 5종 플레이');
+  await expect(rows.nth(2).locator('.count')).toHaveText('0/5');
+  await expect(rows.nth(3)).toContainText('주간 미션 모두 완료');
+  await expect(rows.nth(3).locator('.reward')).toHaveText('+5,000P');
+  await expect(rows.nth(3).locator('.count')).toHaveText('0/3');
+  await expect(page.locator('#weeklyList [role="progressbar"]')).toHaveCount(4);
+
+  await page.getByRole('tab', { name: '오늘' }).click();
+  await expect(page.locator('#missionPanelToday')).toBeVisible();
+  await expect(page.locator('#missionPanelWeekly')).toBeHidden();
   await context.close();
 });

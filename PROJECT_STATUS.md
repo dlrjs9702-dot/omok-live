@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.18 주간 미션
+
+`IDEAS.md`의 「포인트 획득 경로 확장」 확정안 ③ 주간 미션을 구현했다. v1.7.16 오늘의 미션의 진행·지급 구조(`lib/missions.js`, `recordMissionMatch`, `mission_days`)를 그대로 확장해 같은 판·같은 원자적 쓰기로 처리한다.
+
+- **규칙**: 월요일 00:00 ~ 다음 월요일 00:00(Asia/Seoul, `weekStart`는 Asia/Seoul 달력 날짜의 월요일). 모두에게 같은 3개 — 주간 20판 정상 완료 +9,000P, 주간 10승 +9,000P, 주간 서로 다른 게임 5종 플레이 +7,000P — 와 세 개 모두 완료 시 보너스 +5,000P, 총 30,000P(확정안의 20,000~30,000P 상한). 합계만 세므로 하루도 빠짐없이 접속해야 하는 조건이 없고 주말에 몰아서 해도 달성된다. 같은 정상 종료 판(일일 미션과 동일 기준: 접속 끊김 종료 제외, 무승부는 판수만)을 센다.
+- **저장·지급**: 주간 문서는 일일 문서와 같은 `mission_days` 테이블·JSON `missions` 맵에 키 `w:<월요일 날짜>`로 저장(새 테이블 없음). 한 판의 일일·주간 진행과 모든 보상을 한 번의 원자적 쓰기로 기록한다. 원장 사유 `weekly_mission`, 멱등 키 `weekly:<월요일>:<미션>:<계정>`(주가 바뀌면 새 키). 같은 판·같은 미션은 한 번만 지급된다. 문서는 8일 동안 보관.
+- **화면**: 미션 창 「주간」 탭 활성화(초기화 안내 `N월 D일(월) 0시에 새로 시작`, 이번 주 남은 보상, 미션 3개와 모두 완료 보너스 행 `n/3`). `GET /api/missions` 응답에 `weekly`가 함께 온다. 방 안에는 진행 줄 대신 **완료·보너스만** 짧게 알린다(`주간 미션 완료 +9,000P · 주간 20판`). 내역은 「주간 미션 · 제목」.
+- **테스트 서버**: `POST /api/test/weekly`(NODE_ENV=test)로 이번 주 카운터를 지정해 실제 판 한 번으로 목표를 채운다.
+- **테스트**: `test/missions.test.js`(주 경계·20판 몰아치기 지급 순서·중복 판·키 유일성·토스트), `test/game-points-store.test.js`(JSON/PostgreSQL 공통: 동시 3건 1회, 일요일 23:00/월요일 00:00 경계, 새 주 재지급), `test/mission-server.test.js`(실제 서버: 조회·완료 지급 4행·방 안 알림·반복 조회 무지급), `tests/e2e/missions.spec.js`(주간 탭).
+- **알려진 한계**: PostgreSQL 경로는 로컬·CI에 DB가 없어 자동 실행하지 못했다(`POINTS_TEST_DATABASE_URL`이 있으면 공통 시나리오 실행). 주간 미션은 고정 3개라 매주 같다(일일 미션처럼 무작위 풀이 아님). 실제 사람 PC 실기 검증은 하지 않았다.
+
 ## v1.7.17 게임별 업적
 
 `IDEAS.md`의 「포인트 획득 경로 확장」 확정안 ② 게임별 업적을 구현했다. 새 승패 규칙을 만들지 않고 계정의 **기존 전적**(`matchStore.stats`)을 그대로 읽어 판정한다.
