@@ -50,11 +50,32 @@ test('공개 상태에는 손패·산 순서가 없고, 손패는 본인에게�
   gostop.start(game, ['1', '2', '3']);
   const view = gostop.publicState(game);
   const text = JSON.stringify(view);
-  for (const seat of ['1', '2', '3']) for (const id of game.hands[seat]) assert.equal(text.includes(id), false, `${id} 노출`);
-  for (const id of game.deck) assert.equal(text.includes(id), false);
+  // A four-of-a-kind deal (총통, about 0.5% of random deals) ends the hand at once and reveals exactly those four
+  // cards in `lastEvent.revealed`; that is the one legitimate way a dealt card becomes public. Anything else must not leak.
+  const revealed = new Set(view.lastEvent?.revealed || []);
+  for (const seat of ['1', '2', '3']) for (const id of game.hands[seat]) assert.equal(text.includes(id) && !revealed.has(id), false, `${id} 노출`);
+  for (const id of game.deck) assert.equal(text.includes(id) && !revealed.has(id), false);
   assert.equal(view.seats['2'].handCount, game.hands['2'].length);
   assert.deepEqual(gostop.handFor(game, '2').map(item => item.id), game.hands['2']);
   assert.equal(gostop.handFor(game, null), null);
+});
+
+test('총통 분배는 그 4장만 공개하고 다른 패는 노출하지 않는다', () => {
+  let found = null;
+  for (let n = 0; n < 5000 && !found; n += 1) { // 총통은 무작위 분배의 약 0.5%라 5,000번 안에 나오지 않을 확률은 사실상 0
+    const game = gostop.create();
+    gostop.start(game, ['1', '2', '3']);
+    if (gostop.publicState(game).result?.reason === 'chongtong') found = game;
+  }
+  assert.ok(found, '총통 분배를 찾지 못했습니다');
+  const view = gostop.publicState(found);
+  const text = JSON.stringify(view);
+  const revealed = view.lastEvent.revealed;
+  assert.equal(revealed.length, 4);
+  assert.equal(new Set(revealed.map(id => id.slice(0, 3))).size, 1, '같은 월 4장');
+  assert.ok(revealed.every(id => found.hands[view.result.winner].includes(id)), '공개된 4장은 이긴 사람의 손패');
+  for (const seat of ['1', '2', '3']) for (const id of found.hands[seat]) if (!revealed.includes(id)) assert.equal(text.includes(id), false, `${id} 노출`);
+  for (const id of found.deck) assert.equal(text.includes(id), false);
 });
 
 test('정상 매칭·2장 중 선택·3장 스택·산패 뒤집기', () => {
