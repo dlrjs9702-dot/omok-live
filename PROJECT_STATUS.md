@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.31 이벤트 창 표시 보완
+
+`IDEAS.md` 백로그 22의 남은 두 건(PR #70·#72 후속 리뷰 P2)을 처리했다. 지급 규칙은 바꾸지 않았다.
+
+- 미수령 우선: `checkEvents`가 서버 목록의 첫 후보를 고르던 것을, 아직 받지 않은 이벤트를 먼저 고르도록 바꿨다(이미 받은 이벤트가 목록 앞에 있으면 뒤의 미수령 이벤트가 가려졌다).
+- 방 입장 시 닫기: 방 만들기·참가 응답을 기다리는 동안에는 로비가 보이므로 그 사이 이벤트 창이 열릴 수 있었고, `enterRoomState`는 그 창을 닫지 않았다. `closeEventDialogForRoom()`이 방에 들어갈 때 창을 닫고 표시 기록을 지워, 로비로 돌아오면 다시 열린다.
+- 테스트: `tests/e2e/event-reward.spec.js` 두 건 추가(받은 이벤트가 앞에 있을 때 미수령 이벤트 표시, 방 만들기 응답 지연 중 열린 창이 방 입장 시 닫히고 로비 복귀 시 다시 열림). 수정 전 코드로는 두 건 모두 실패함을 확인.
+
 ## 백로그 4 정산 완료 전 다음 판 차단 회귀 테스트 (버전 변경 없음)
 
 `IDEAS.md` 백로그 4(고스톱·맞고 포인트 정산이 끝나야 다음 판)를 현재 `main`에서 재대조했다. `next-round`/`rematch`가 `recordOrError`→`recordFinishedMatch`→`settleGostopIfNeeded`를 먼저 기다리고, 실패하면 503으로 거절해 판을 바꾸지 않는다(정산 재시도는 `scheduleSettlementRetry`). 동작은 이미 맞아 코드는 바꾸지 않고 회귀 테스트만 추가했다. 사용자에게 보이는 변경이 없어 버전·공지는 올리지 않았다.
