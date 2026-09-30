@@ -3304,7 +3304,11 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (!room) return sendJson(res, 200, { state: null });
     registerParticipant(room, session);
-    if (!(await recordOrError(room, res))) return;
+    // v1.7.32: opening the room still tries to record a finished match (a retry), but a failure no longer hides the
+    // room. The player sees the finished board with "정산 처리 중"; starting the next round stays blocked until it is
+    // recorded (next-round/rematch keep recordOrError), and the settlement retry broadcasts once it succeeds.
+    try { await recordFinishedMatch(room); }
+    catch (error) { console.error('전적 영구 저장 실패(방 조회는 계속):', error); }
     return sendJson(res, 200, { state: roomView(room, session) });
   }
 
