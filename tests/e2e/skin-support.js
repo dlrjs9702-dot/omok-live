@@ -62,3 +62,36 @@ async function stoneContrast(page, skinId, dark = 'black', light = 'white') {
 }
 
 module.exports = { post, adminToken, shopper, grant, buyAndEquip, stoneContrast, uniqueIp };
+
+// Two shoppers in one room (a = first/black seat, b = second/white seat), both pages reloaded into the room.
+async function twoPlayerRoom(request, a, b, gameType) {
+  const created = await post(request, '/api/rooms', a.token, { gameType });
+  expect(created.status).toBe(201);
+  expect((await post(request, '/api/rooms/join', b.token, { code: created.data.state.me.roomCode })).status).toBe(200);
+  expect((await post(request, '/api/room/choose-role', a.token, { choice: 'black' })).status).toBe(200);
+  expect((await post(request, '/api/room/choose-role', b.token, { choice: 'white' })).status).toBe(200);
+  for (const who of [a, b]) { await who.page.reload(); await expect(who.page.locator('#roomView')).toBeVisible(); }
+}
+
+// Pixels of a square around (px, py) of the #board canvas: a key to compare across pages, and how many pixels carry colour.
+const cropOf = (page, px, py, half = 20) => page.evaluate(([x, y, hf]) => {
+  const d = document.getElementById('board').getContext('2d').getImageData(Math.round(x) - hf, Math.round(y) - hf, hf * 2, hf * 2).data;
+  let chroma = 0;
+  for (let i = 0; i < d.length; i += 4) if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 40) chroma += 1;
+  return { key: Array.from(d).join(','), chroma };
+}, [px, py, half]);
+
+const pixelOf = (page, px, py) => page.evaluate(([x, y]) => {
+  const d = document.getElementById('board').getContext('2d').getImageData(Math.round(x), Math.round(y), 1, 1).data; return [d[0], d[1], d[2]];
+}, [px, py]);
+
+// Poll until both pages draw the same thing around (px, py) and it carries colour (i.e. it is not the classic piece).
+async function expectSameCrop(pages, px, py, minChroma = 20) {
+  await expect.poll(async () => {
+    const crops = [];
+    for (const page of pages) crops.push(await cropOf(page, px, py));
+    return crops.every(c => c.key === crops[0].key) && crops[0].chroma > minChroma;
+  }, { timeout: 9000 }).toBe(true);
+}
+
+module.exports = { ...module.exports, twoPlayerRoom, cropOf, pixelOf, expectSameCrop };

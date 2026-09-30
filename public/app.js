@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.35').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.36').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -6707,24 +6707,42 @@
     const h = canvas.height;
     const { cell, left, top } = connect4Layout();
     const g = state.game;
-    const surface = ctx.createLinearGradient(0, 0, 0, h);
-    surface.addColorStop(0, '#15233d');
-    surface.addColorStop(1, '#070f1f');
-    ctx.fillStyle = surface;
-    ctx.fillRect(0, 0, w, h);
+    // v1.7.36: the host's room theme paints the table behind the frame and tints the frame itself.
+    const theme = window.SkinLooks.def(state.skinTheme)?.board;
+    if (theme) ctx.drawImage(boardTexture(`c4:${state.skinTheme}`, w, h, (c, tw, th) => theme.paint(c, tw, th)), 0, 0);
+    else {
+      const surface = ctx.createLinearGradient(0, 0, 0, h);
+      surface.addColorStop(0, '#15233d');
+      surface.addColorStop(1, '#070f1f');
+      ctx.fillStyle = surface;
+      ctx.fillRect(0, 0, w, h);
+    }
     const radius = cell * .40;
     const gridW = cell * 7;
     const gridH = cell * 6;
 
     // Behind the grid: the dark slot, then the discs (so the plastic frame overlaps their rims).
-    ctx.fillStyle = '#0a1830';
+    ctx.fillStyle = theme?.slot || '#0a1830';
     ctx.fillRect(left, top, gridW, gridH);
     const last = g.lastMove;
     const winners = new Set((g.winningLine || []).map(([x, y]) => `${x},${y}`));
     const connectRecent = observeRecentAction(last ? `drop:${g.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
-    const fall = pieceMotion(last ? `c4:${g.moveCount}:${last.at || ''}` : '', 260 + 70 * (last?.y ?? 0));
+    // A chip skin may add a landing effect (premium/legend) and a win effect (legend) after the fall.
+    const fallMs = 260 + 70 * (last?.y ?? 0);
+    const colorSkin = (color) => window.SkinLooks.def(state.players?.[color]?.skin);
+    const lastColor = last ? g.board[last.y]?.[last.x] : null;
+    const lastSkin = lastColor ? colorSkin(lastColor) : null;
+    const winFirst = g.winningLine?.[0];
+    const winColor = winFirst ? g.board[winFirst[1]]?.[winFirst[0]] : null;
+    const winSkin = winColor ? colorSkin(winColor) : null;
+    const extraMs = winSkin?.win ? 2200 : lastSkin?.fx ? 700 : 0;
+    const motionT = pieceMotion(last ? `c4:${g.moveCount}:${last.at || ''}` : '', fallMs + extraMs);
+    const fall = Math.min(1, motionT * (fallMs + extraMs) / fallMs);
     const drawDisc = (cx, cy, color) => {
       ctx.save();
+      if (colorSkin(color)?.stone) { // a skin draws the whole chip (it is clipped by the frame's round holes anyway)
+        ctx.translate(cx, cy); window.SkinLooks.paintStone(ctx, radius + 3, state.players[color].skin, color); ctx.restore(); return;
+      }
       const disc = ctx.createRadialGradient(cx - radius * .35, cy - radius * .38, 2, cx, cy, radius);
       if (color === 'black') { disc.addColorStop(0, '#ff9aa6'); disc.addColorStop(.45, '#e11d48'); disc.addColorStop(1, '#881337'); }
       else { disc.addColorStop(0, '#fff6b8'); disc.addColorStop(.48, '#facc15'); disc.addColorStop(1, '#b7791f'); }
@@ -6761,9 +6779,10 @@
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     }
     const plastic = ctx.createLinearGradient(left, top - 14, left + gridW, top + gridH + 14);
-    plastic.addColorStop(0, '#3b82f6');
-    plastic.addColorStop(.5, '#1d4ed8');
-    plastic.addColorStop(1, '#1e3a8a');
+    const plasticStops = theme?.plastic || ['#3b82f6', '#1d4ed8', '#1e3a8a'];
+    plastic.addColorStop(0, plasticStops[0]);
+    plastic.addColorStop(.5, plasticStops[1]);
+    plastic.addColorStop(1, plasticStops[2]);
     ctx.fillStyle = plastic;
     ctx.shadowColor = 'rgba(0,0,0,.45)';
     ctx.shadowBlur = 18;
@@ -6787,7 +6806,7 @@
     ctx.fillStyle = gloss;
     ctx.fillRect(left - 14, top - 14, gridW + 28, 18);
     // Feet of the stand.
-    ctx.fillStyle = '#1e3a8a';
+    ctx.fillStyle = theme?.feet || '#1e3a8a';
     for (const fx of [left - 30, left + gridW + 2]) {
       ctx.beginPath();
       ctx.moveTo(fx, top + gridH + 14); ctx.lineTo(fx + 28, top + gridH + 14);
@@ -6814,6 +6833,15 @@
       }
     }
 
+    theme?.overlay?.(ctx, { left, top, gridW, gridH });
+    if (lastSkin?.fx && fall >= 1 && motionT * (fallMs + extraMs) < fallMs + 700) {
+      ctx.save(); ctx.translate(left + (last.x + .5) * cell, top + (last.y + .5) * cell);
+      lastSkin.fx(ctx, radius, Math.min(1, (motionT * (fallMs + extraMs) - fallMs) / 700), lastColor); ctx.restore();
+    }
+    if (winSkin?.win) {
+      const pts = g.winningLine.map(([x, y]) => ({ x: left + (x + .5) * cell, y: top + (y + .5) * cell }));
+      ctx.save(); winSkin.win(ctx, pts, radius, motionT, winColor); ctx.restore();
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = 'bold 19px system-ui, sans-serif';
@@ -6930,6 +6958,7 @@
     const cy = (y + .5) * cell;
     const r = cell * .38;
     const { angle, squash, face } = othelloFlipPose(flip, color);
+    const skinId = state?.players?.[face]?.skin; // the face showing right now decides whose skin is drawn
     const lift = (flip < 1 ? Math.sin(angle) * cell * .12 : 0) + (1 - easeOutCubic(drop)) * cell * .3;
     const scale = 1 + (1 - easeOutCubic(drop)) * .25;
     ctx.save();
@@ -6939,11 +6968,14 @@
     ctx.scale(squash * scale, scale);
     ctx.fillStyle = face === 'black' ? '#e8e8e8' : '#1a1a1a';
     ctx.beginPath(); ctx.arc(0, 3, r, 0, Math.PI * 2); ctx.fill();
-    const gradient = ctx.createRadialGradient(-r * .3, -r * .35, r * .08, 0, 0, r);
-    if (face === 'black') { gradient.addColorStop(0, '#5a5a5a'); gradient.addColorStop(.45, '#1c1c1c'); gradient.addColorStop(1, '#030303'); }
-    else { gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(.6, '#f1f1ee'); gradient.addColorStop(1, '#c4c8cb'); }
-    ctx.fillStyle = gradient;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    if (window.SkinLooks.def(skinId)?.stone) window.SkinLooks.paintStone(ctx, r, skinId, face);
+    else {
+      const gradient = ctx.createRadialGradient(-r * .3, -r * .35, r * .08, 0, 0, r);
+      if (face === 'black') { gradient.addColorStop(0, '#5a5a5a'); gradient.addColorStop(.45, '#1c1c1c'); gradient.addColorStop(1, '#030303'); }
+      else { gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(.6, '#f1f1ee'); gradient.addColorStop(1, '#c4c8cb'); }
+      ctx.fillStyle = gradient;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
     if (last && flip >= 1 && drop >= 1) {
       ctx.fillStyle = color === 'black' ? '#f8fafc' : '#ef4444';
@@ -6954,15 +6986,16 @@
   function drawOthelloBoard() {
     const w = canvas.width;
     const cell = w / 8;
-    ctx.drawImage(boardTexture('baize', w, w, paintBaize), 0, 0);
-    ctx.strokeStyle = 'rgba(3,30,16,.9)';
+    const theme = window.SkinLooks.def(state?.skinTheme)?.board; // the host's room theme (v1.7.36)
+    ctx.drawImage(theme ? boardTexture(`oth:${state.skinTheme}`, w, w, (c, tw, th) => theme.paint(c, tw, th)) : boardTexture('baize', w, w, paintBaize), 0, 0);
+    ctx.strokeStyle = theme ? theme.line : 'rgba(3,30,16,.9)';
     ctx.lineWidth = 2.5;
     for (let i = 0; i <= 8; i += 1) {
       const p = i * cell;
       ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, w); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(3,30,16,.95)';
+    ctx.fillStyle = theme ? theme.dot : 'rgba(3,30,16,.95)';
     for (const [x, y] of [[2, 2], [6, 2], [2, 6], [6, 6]]) {
       ctx.beginPath(); ctx.arc(x * cell, y * cell, 5, 0, Math.PI * 2); ctx.fill();
     }
@@ -6980,8 +7013,13 @@
     const flippedCells = new Set((last?.flippedCells || []).map(item => `${item.x},${item.y}`));
     // The placed disc lands first, then its captured neighbours turn over one after another.
     const flipCount = flippedCells.size;
-    const motion = pieceMotion(last ? `oth:${state.game.moveCount}:${last.at || ''}` : '', 260 + 110 * flipCount + 320);
-    const elapsedMs = motion * (260 + 110 * flipCount + 320);
+    // A disc skin with an effect lets each turned disc flash once it has landed face-up (a wave along the capture).
+    const fxSkinOf = (color) => window.SkinLooks.def(state?.players?.[color]?.skin);
+    const hasFx = Boolean(last && fxSkinOf(state.game.board[last.y]?.[last.x])?.fx);
+    const baseMs = 260 + 110 * flipCount + 320;
+    const totalMs = baseMs + (hasFx ? 600 : 0);
+    const motion = pieceMotion(last ? `oth:${state.game.moveCount}:${last.at || ''}` : '', totalMs);
+    const elapsedMs = motion * totalMs;
     const flipOrder = [...flippedCells];
     for (let y = 0; y < 8; y += 1) {
       for (let x = 0; x < 8; x += 1) {
@@ -6991,8 +7029,13 @@
         const isLast = last?.x === x && last?.y === y;
         const order = flipOrder.indexOf(key);
         const drop = isLast ? Math.min(1, elapsedMs / 260) : 1;
-        const flip = order >= 0 && motion < 1 ? Math.max(0, Math.min(1, (elapsedMs - 200 - order * 110) / 320)) : 1;
+        const flip = order >= 0 && elapsedMs < baseMs ? Math.max(0, Math.min(1, (elapsedMs - 200 - order * 110) / 320)) : 1;
         drawOthelloDisc(x, y, color, isLast, { flip, drop });
+        const discFx = hasFx && (order >= 0 || isLast) ? fxSkinOf(color)?.fx : null;
+        if (discFx) {
+          const t = isLast ? (elapsedMs - 260) / 600 : (elapsedMs - 200 - order * 110 - 320) / 600;
+          if (t > 0 && t < 1) { ctx.save(); ctx.translate((x + .5) * cell, (y + .5) * cell); discFx(ctx, cell * .38, t, color); ctx.restore(); }
+        }
         if (othelloRecent.fresh && flippedCells.has(key) && flip >= 1) {
           drawRecentActionRing((x + .5) * cell, (y + .5) * cell, cell * .34, othelloRecent, { secondary: true });
         }
