@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { POOL, MISSIONS_PER_DAY, DAILY_REWARD_MIN, DAILY_REWARD_MAX, FIRST_WIN_REWARD, pickMissions, newDay, applyMatch, rewardKey, dayView, toastLines, missionById,
   WEEKLY, WEEKLY_BONUS, weekStart, weekEnd, newWeek, applyWeekMatch, weekView, weeklyToastLines } = require('../lib/missions');
 
-// v1.7.18 daily mission rules (pure): the daily draw, progress from finished matches, once-only payouts,
+// v1.7.19 daily mission rules (pure): the daily draw, progress from finished matches, once-only payouts,
 // and the first-win bonus.
 
 const A = 'guest:00000000-0000-4000-8000-00000000000a';
@@ -118,7 +118,7 @@ test('방 안 토스트 문구: 진행도와 완료·첫 승리', () => {
   assert.deepEqual(toastLines(out), ['게임 3판 2/3', '미션 완료 +3,000P · 1승', '미션 완료 +2,000P · 다른 게임 2종', '첫 승리 보너스 +5,000P']);
 });
 
-// ---- v1.7.18 weekly missions
+// ---- v1.7.19 weekly missions
 
 test('주간 경계: 월요일 00:00 ~ 다음 월요일 00:00(Asia/Seoul 날짜 기준), 일요일은 이전 주', () => {
   assert.deepEqual(['2026-09-28', '2026-09-29', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-12-31', '2027-01-03', '2027-01-04'].map(weekStart),

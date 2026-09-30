@@ -7,7 +7,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-// v1.7.18 common point-reward events through the real server: the server clock and the registered
+// v1.7.19 common point-reward events through the real server: the server clock and the registered
 // definition decide everything; the account gets each event once (concurrent requests, another tab,
 // a restart); the ledger records event_reward with the event's name; nothing in the request can pick the amount.
 

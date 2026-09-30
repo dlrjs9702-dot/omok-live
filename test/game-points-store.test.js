@@ -125,7 +125,7 @@ async function exercise(t, makeStore) {
       assert.ok(reasons.some(([reason, game]) => reason === expected[0] && game === expected[1]), JSON.stringify(expected));
     }
   });
-  await t.test('이벤트 보상(v1.7.18): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
+  await t.test('이벤트 보상(v1.7.19): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
     const eventId = 'test_event_2026';
     const claim = { eventId, userId: C, amount: 100_000, title: '  테스트\n이벤트  ' };
     const before = await balance(C);
@@ -153,7 +153,7 @@ async function exercise(t, makeStore) {
     const item = history.items.find(entry => entry.reason === 'event_reward' && entry.balanceAfter === before + 100_000);
     assert.deepEqual([item.delta, item.memo, item.balanceBefore, item.detail], [100_000, '테스트 이벤트', before, 'event']);
   });
-  await t.test('일일 미션(v1.7.18): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
+  await t.test('일일 미션(v1.7.19): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
     const E = 'guest:00000000-0000-4000-8000-00000000000e';
     const F = 'guest:00000000-0000-4000-8000-00000000000f';
     const now = Date.parse('2026-10-05T03:00:00Z'); // 2026-10-05 12:00 KST
@@ -196,7 +196,7 @@ async function exercise(t, makeStore) {
     }
     await assert.rejects(store.testSetMissions(E, ['no_such_mission'], now), RangeError);
   });
-  await t.test('업적(v1.7.18): 계정·업적 id당 1회(동시 요청 포함), 일부만 새것이면 새것만, 원장 사유와 내역 제목', async () => {
+  await t.test('업적(v1.7.19): 계정·업적 id당 1회(동시 요청 포함), 일부만 새것이면 새것만, 원장 사유와 내역 제목', async () => {
     const G = 'guest:00000000-0000-4000-8000-000000000010';
     const H = 'guest:00000000-0000-4000-8000-000000000011';
     const list = [{ id: 'othello_first_play', title: '오델로 첫 정상 완료', amount: 1_000 }, { id: 'othello_first_win', title: '오델로 첫 승리', amount: 2_000 }];
@@ -222,7 +222,7 @@ async function exercise(t, makeStore) {
     const history = (await store.history(G, { limit: 10 })).items.filter(item => item.detail === 'achievement');
     assert.ok(history.some(item => item.reason === 'achievement' && item.memo === '오델로 10승' && item.delta === 5_000));
   });
-  await t.test('주간 미션(v1.7.18): 주 단위 진행·보상 1회(동시·중복 판 포함), 모두 완료 보너스, 일요일/월요일 경계, 내역 제목', async () => {
+  await t.test('주간 미션(v1.7.19): 주 단위 진행·보상 1회(동시·중복 판 포함), 모두 완료 보너스, 일요일/월요일 경계, 내역 제목', async () => {
     const W = 'guest:00000000-0000-4000-8000-000000000020';
     const V = 'guest:00000000-0000-4000-8000-000000000021';
     const wednesday = Date.parse('2026-10-07T03:00:00Z'); // 2026-10-07(수) 12:00 KST, 주는 10-05(월) 시작

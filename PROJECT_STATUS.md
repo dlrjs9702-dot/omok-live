@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.19 이벤트 팝업 로비 확인
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 F-22를 처리했다. v1.7.15의 `checkEvents`는 `/api/events` 응답이 늦게 오면 그 사이 게임방으로 들어간 화면 위에도 이벤트 창을 열 수 있었다(e2e로 재현).
+
+- `public/app.js` `checkEvents`: 요청 시점의 로그인(`sessionToken`)과 응답 시점이 같고 로비(`#lobbyView`)가 보일 때만 창을 연다. 건너뛴 경우 표시 기록을 남기지 않아 로비로 돌아오면(`enterLobby`) 다시 확인한다. 서버·이벤트 정의·지급 로직은 바꾸지 않았다.
+- 테스트: `tests/e2e/event-reward.spec.js`에 `/api/events` 응답을 1.8초 지연시켜 그 사이 방으로 이동하는 시나리오 추가(수정 전 실패 확인, 수정 후 통과, 로비 복귀 시 다시 표시).
+- 남은 백로그: 1(잿빛 원정 SSE 백프레셔)·25·26(잿빛 원정 모바일·정비 타이머)은 다음 릴리스에서 처리한다.
+
 ## v1.7.18 주간 미션
 
 `IDEAS.md`의 「포인트 획득 경로 확장」 확정안 ③ 주간 미션을 구현했다. v1.7.16 오늘의 미션의 진행·지급 구조(`lib/missions.js`, `recordMissionMatch`, `mission_days`)를 그대로 확장해 같은 판·같은 원자적 쓰기로 처리한다.

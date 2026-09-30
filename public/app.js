@@ -2719,8 +2719,12 @@
   let eventClaiming = false;
 
   async function checkEvents() {
+    const token = sessionToken;
     try {
       const { events } = await api('/api/events');
+      // The answer can arrive late: only show it if this is still the same login and the player is still in the
+      // lobby (not already in a room). Nothing is marked as shown, so the next lobby entry asks again.
+      if (token !== sessionToken || lobbyView.classList.contains('hidden')) return;
       const next = events.find(event => !event.claimed && !eventPrompted.has(`${sessionToken}:${event.id}`));
       if (next && !eventDialog.open) openEventDialog(next);
     } catch {}
