@@ -2513,7 +2513,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.32' });
+    return sendJson(res, 200, { ok: true, version: '1.7.33' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3304,7 +3304,11 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (!room) return sendJson(res, 200, { state: null });
     registerParticipant(room, session);
-    if (!(await recordOrError(room, res))) return;
+    // v1.7.32: opening the room still tries to record a finished match (a retry), but a failure no longer hides the
+    // room. The player sees the finished board with "정산 처리 중"; starting the next round stays blocked until it is
+    // recorded (next-round/rematch keep recordOrError), and the settlement retry broadcasts once it succeeds.
+    try { await recordFinishedMatch(room); }
+    catch (error) { console.error('전적 영구 저장 실패(방 조회는 계속):', error); }
     return sendJson(res, 200, { state: roomView(room, session) });
   }
 
@@ -3473,7 +3477,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.32 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.33 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

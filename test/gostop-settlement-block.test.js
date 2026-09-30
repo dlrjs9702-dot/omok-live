@@ -75,6 +75,16 @@ test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고,
   }
   assert.deepEqual([await balance(0), await balance(1)], before);
 
+  // v1.7.32: opening the room still works during the failure (it used to answer 503 too, so a refresh showed nothing):
+  // the finished hand is shown with its settlement not done yet, and no points moved.
+  for (const person of people) {
+    const view = await api('/api/room', person, undefined, 'GET');
+    assert.equal(view.status, 200, JSON.stringify(view.data));
+    assert.deepEqual([view.data.state.game.status, view.data.state.game.round], ['finished', round]);
+    assert.notEqual(view.data.state.game.settlement?.status, 'done');
+  }
+  assert.deepEqual([await balance(0), await balance(1)], before);
+
   // Once the fault clears, the finished hand (still the same round, never replaced) settles exactly once.
   assert.equal((await api('/api/test/points-fault', admin, { settleFail: 0 })).status, 200);
   const finished = (await api('/api/room', people[0], undefined, 'GET')).data.state.game;
