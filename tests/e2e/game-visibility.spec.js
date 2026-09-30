@@ -90,6 +90,29 @@ test('오목 2vs2: 「방금」 줄에 팀 색이 아니라 실제로 착수한 
   await Promise.all(views.map(view => view.context.close()));
 });
 
+test('윷놀이: 시스템 채팅이 있어도 「방금」은 게임 상태로만 — 던지기 전에는 없고, 던진 뒤에는 윷 결과가 나온다', async ({ browser, request }) => {
+  test.setTimeout(90_000);
+  const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const [a, b] = [await guest(browser, request, admin, '파랑이'), await guest(browser, request, admin, '빨강이')];
+  await room(request, a, [b], 'yut');
+  expect((await api(request, '/api/room/choose-role', a.token, { choice: 'black' })).status).toBe(200);
+  expect((await api(request, '/api/room/choose-role', b.token, { choice: 'white' })).status).toBe(200);
+  const recent = view => view.page.locator('#recentActionLine');
+  await expect(a.page.locator('#statusText')).toContainText('파랑이님'); // 게임은 시작됐고
+  const state = (await api(request, '/api/room', a.token, undefined, 'GET')).data.state;
+  expect(state.chat.messages.some(message => message.type === 'system')).toBe(true); // 시스템 채팅(입장·시작 안내)이 실제로 있는데도
+  await expect(recent(a)).toBeHidden();
+  await expect(recent(b)).toBeHidden();
+
+  expect((await api(request, '/api/room/throw-yut', a.token, {})).status).toBe(200);
+  // 빽도가 나오고 놓인 말이 없으면 서버가 바로 차례를 넘기므로, 그 경우의 문구도 게임 상태(lastPass)에서 나온다.
+  await expect(recent(b)).toHaveText(/^방금파랑이님(의 윷 던지기 → (빽도|도|개|걸|윷|모)|이 이동할 말이 없어 차례를 넘겼습니다)$/);
+  await expect(recent(a)).toHaveText(/^방금파랑이님\(나\)(의 윷 던지기 → (빽도|도|개|걸|윷|모)|이 이동할 말이 없어 차례를 넘겼습니다)$/);
+
+  for (const view of [a, b]) expect(view.errors).toEqual([]);
+  await Promise.all([a, b].map(view => view.context.close()));
+});
+
 test('스무고개: 단계는 한글로, 행동하는 사람 이름과 함께 보인다', async ({ browser, request }) => {
   test.setTimeout(90_000);
   const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
