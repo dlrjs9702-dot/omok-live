@@ -18,6 +18,12 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## 백로그 8 종료 후 상대방 포인트 즉시 갱신 회귀 테스트 (버전 변경 없음)
+
+`IDEAS.md` 백로그 8(종료 액션을 직접 하지 않은 참가자의 포인트 즉시 갱신)을 현재 `main`에서 재대조했다. 고스톱·맞고는 `needsGostopPoints`(v1.6.94)와 `tests/e2e/gostop-points.spec.js`가 이미 검증하고, 일반 게임은 참가비·정산이 적용될 때 서버가 `notifyPointsChanged`로 그 계정의 방을 다시 브로드캐스트해 각자의 `state.me.pointBalance`(방 안 내 포인트 배지)가 갱신된다. 동작은 이미 맞아 코드는 바꾸지 않고 일반 게임의 회귀 테스트만 추가했다. 사용자에게 보이는 변경이 없어 버전·공지는 올리지 않았다.
+
+- `tests/e2e/entry-points-live-refresh.spec.js`(PC, 오목 2인): 다른 사람이 API로만 움직이는 동안 보는 사람의 화면에서 시작 시 참가비 1,000P 차감과 상대 기권 뒤 승리 정산(참가비 총액의 80%)이 새로고침 없이 배지에 나타남을 확인.
+
 ## 백로그 6 재접속 좌석 유지 회귀 테스트 (버전 변경 없음)
 
 `IDEAS.md` 백로그 6(새로고침·재접속 시 좌석 유지)을 현재 `main`에서 재대조했다. 페이지가 끊기거나 새로고침한 사람(`releaseSessionToken`의 `voluntary=false`)은 `rejoinable`이 되어 다음 판(`prepareNextRound`)에서도 좌석이 비워지지 않고, 같은 입장키로 다시 들어오면 `registerParticipant`가 같은 좌석을 돌려준다. 명시적 「접속 종료」(로그아웃)는 진행 중인 판에서만 좌석을 잡아 두며 판이 끝난 뒤 다음 판에서 비워진다(v1.6.99 결정). 동작은 이미 맞아 코드는 바꾸지 않고 회귀 테스트만 추가했다. 사용자에게 보이는 변경이 없어 버전·공지는 올리지 않았다.
