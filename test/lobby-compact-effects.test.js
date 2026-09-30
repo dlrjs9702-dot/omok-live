@@ -28,7 +28,8 @@ test('all thirteen games expose one shared rules selector with the original full
   assert.match(html, /id="gameRulesDisclosure" class="helpDisclosure"/);
   const devPanel = html.match(/<details class="developmentGamesPanel"[\s\S]*?<\/details>/)?.[0] || '';
   assert.match(devPanel, /data-game-option="rpg"/);
-  assert.match(devPanel, /data-game="rpg" disabled/);
+  assert.match(devPanel, /data-game="rpg">/);
+  assert.doesNotMatch(devPanel, /data-game="rpg"[^>]*disabled/);
   const normalPicker = html.slice(html.indexOf('id="gamePicker"'), html.indexOf('<details class="developmentGamesPanel"'));
   assert.doesNotMatch(normalPicker, /data-game-option="rpg"/);
 });
@@ -40,8 +41,8 @@ test('announcement rows are compact with inline controls and game choice heights
   assert.match(css, /\.announcementActions\{grid-column:3;grid-row:1/);
   assert.match(css, /\.announcementList\{max-height:240px/);
   assert.match(css, /\.gameOption \.gameChoice\{width:100%;min-height:34px/);
-  assert.match(html, /styles\.css\?v=1.7.13/);
-  assert.match(html, /app\.js\?v=1.7.13/);
+  assert.match(html, /styles\.css\?v=1.7.14/);
+  assert.match(html, /app\.js\?v=1.7.14/);
 });
 
 test('shared outcome drives win and loss effects for all game IDs, 2v2 teammates, Bingo seats, and excludes draws and spectators', () => {
