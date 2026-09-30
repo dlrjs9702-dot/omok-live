@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.37').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.38').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -4118,6 +4118,9 @@
     if (!twenty) drawBoard();
   }
 
+  let baseballThemeApplied = null;
+  let baseballPrevStatus = null;
+  let baseballPlayedWin = null;
   function renderBaseball() {
     const g = state.game;
     const digitCount = Number(g.digitCount) === 4 ? 4 : 3;
@@ -4149,6 +4152,11 @@
       ? '🏆 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.'
       : '패배! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.';
     else baseballHint.textContent = g.winner ? `${seatKo(g.winner)} 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.` : '이번 판이 끝났습니다.';
+    const SLB = window.SkinLooks; // v1.7.38 skins: the host's theme paints the list; each row uses its guesser's skin
+    SLB.h.unstyle(baseballHistory, baseballThemeApplied);
+    baseballThemeApplied = null;
+    const themeB = SLB.def(state.skinTheme);
+    if (themeB?.panel) { baseballThemeApplied = { backgroundImage: SLB.h.img(`bb-panel:${state.skinTheme}`, 480, 360, themeB.panel), backgroundSize: 'cover', boxShadow: 'none' }; SLB.h.style(baseballHistory, baseballThemeApplied); }
     baseballHistory.replaceChildren();
     const guesses = g.guesses || [];
     const latestGuess = guesses.at(-1);
@@ -4164,10 +4172,16 @@
     for (const [i, entry] of [...guesses].reverse().entries()) {
       const item = document.createElement('div');
       item.className = 'baseballHistoryRow' + (entry.color === seat ? ' mine' : '') + (i === 0 ? recentActionClasses(baseballRecent) : '');
+      const rowSkin = SLB.def(state.players?.[entry.color]?.skin);
+      if (rowSkin?.row) {
+        SLB.h.style(item, rowSkin.row);
+        if (entry.color === seat) item.style.boxShadow = `inset 5px 0 0 #60a5fa${rowSkin.row.boxShadow ? `, ${rowSkin.row.boxShadow}` : ''}`;
+      }
       const left = document.createElement('span');
       left.textContent = `#${guesses.length - i} ${seatKo(entry.color)} · `;
       const digits = document.createElement('strong');
       digits.textContent = entry.guess;
+      if (rowSkin?.digit) SLB.h.style(digits, rowSkin.digit);
       left.appendChild(digits);
       const result = document.createElement('span');
       result.className = 'result';
@@ -4183,13 +4197,23 @@
         for (let n = 0; n < total; n += 1) {
           const lamp = document.createElement('i');
           if (n < lit) lamp.className = 'on';
+          if (rowSkin?.lamp) {
+            const L = rowSkin.lamp; const color = n < lit ? L[kind] : L.off;
+            SLB.h.style(lamp, { backgroundColor: color, borderRadius: L.radius, boxShadow: n < lit && L.glow ? `0 0 8px ${color}` : 'inset 0 1px 2px rgba(0,0,0,.5)', ...(L.pin ? { width: '8px', height: '15px' } : {}), ...(L.ring ? { outline: '2px solid rgba(20,100,90,.5)' } : {}) });
+          }
           group.appendChild(lamp);
         }
         result.appendChild(group);
       }
       item.append(left, result);
       baseballHistory.appendChild(item);
+      if (i === 0 && baseballRecent.fresh && rowSkin?.fx) requestAnimationFrame(() => SLB.h.playFx(item, rowSkin.fx, 700, 40));
     }
+    const finishedKey = g.status === 'finished' ? `${state.me?.roomCode}:${g.round || 1}` : null;
+    const winnerSkin = g.status === 'finished' && g.winner ? SLB.def(state.players?.[g.winner]?.skin) : null;
+    if (finishedKey && finishedKey !== baseballPlayedWin && baseballPrevStatus === 'playing' && winnerSkin?.win) requestAnimationFrame(() => SLB.h.playFx(baseballHistory, winnerSkin.win, 1500, 10));
+    if (finishedKey) baseballPlayedWin = finishedKey;
+    baseballPrevStatus = g.status;
   }
 
   function yutStepsLabel(steps) {
@@ -4340,6 +4364,8 @@
   }
 
 
+  let bingoThemeApplied = { panel: null, board: null };
+  let bingoPrevLines = { key: null, lines: 0 };
   function renderBingo() {
     const g = state.game;
     const selected = new Set(g.selectedNumbers || []);
@@ -4392,6 +4418,19 @@
 
     bingoBoard.style.gridTemplateColumns = `repeat(${gridSize}, minmax(0,1fr))`;
     bingoBoard.classList.toggle('bingoGrid7', gridSize === 7);
+    // v1.7.38 skins: the host's room theme paints the panel, board and cells for everyone; a selected number leaves
+    // the viewer's own mark on their own board (the board is private), with a short effect and, for the legend, a
+    // glitter burst when one more line is completed.
+    const SL = window.SkinLooks;
+    const themeDef = SL.def(state.skinTheme);
+    SL.h.unstyle(bingoPanel, bingoThemeApplied.panel); SL.h.unstyle(bingoBoard, bingoThemeApplied.board);
+    bingoThemeApplied = { panel: null, board: null };
+    if (themeDef?.panel) {
+      bingoThemeApplied.panel = { backgroundImage: SL.h.img(`bingo-panel:${state.skinTheme}`, 720, 520, themeDef.panel), backgroundSize: 'cover' };
+      bingoThemeApplied.board = { ...themeDef.boardStyle, backgroundImage: SL.h.img(`bingo-board:${state.skinTheme}`, 480, 480, themeDef.panel), backgroundSize: 'cover' };
+      SL.h.style(bingoPanel, bingoThemeApplied.panel); SL.h.style(bingoBoard, bingoThemeApplied.board);
+    }
+    const myMark = seat ? SL.def(state.players?.[seat]?.skin) : null;
     bingoBoard.replaceChildren();
     const board = state.me?.myBingoBoard;
     if (!Array.isArray(board) || board.length !== gridSize * gridSize) {
@@ -4403,9 +4442,15 @@
     }
     const myTurn = Boolean(seat && g.status === 'playing' && g.turn === seat);
     const bingoActionable = myTurn && actionWindowOpen(g);
+    let freshCell = null;
     for (const number of board) {
       const button = document.createElement('button');
       button.type = 'button';
+      if (themeDef?.cell) SL.h.style(button, { ...themeDef.cell, boxShadow: 'none' });
+      if (selected.has(number) && myMark?.mark) {
+        SL.h.style(button, { backgroundColor: themeDef?.cell?.backgroundColor || '#fffdf6', backgroundImage: SL.h.img(`bingo-mark:${state.players[seat].skin}`, 96, 96, myMark.mark), backgroundSize: '88% 88%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', color: myMark.text.color, textShadow: myMark.text.shadow });
+      }
+      if (g.lastSelected?.number === number && bingoRecent.fresh) freshCell = button;
       button.className = `bingoCell${selected.has(number) ? ' selected' : ''}${g.lastSelected?.number === number ? recentActionClasses(bingoRecent) : ''}${actionableClasses(bingoActionable && !selected.has(number))}`;
       button.textContent = String(number);
       button.disabled = !myTurn || selected.has(number);
@@ -4416,6 +4461,11 @@
       });
       bingoBoard.appendChild(button);
     }
+    if (myMark?.fx && freshCell) requestAnimationFrame(() => SL.h.playFx(freshCell, myMark.fx, 700, 40));
+    const lineKey = `${state.me?.roomCode}:${seat}`;
+    const lines = Number(g.lineCounts?.[seat] || 0);
+    if (myMark?.win && bingoPrevLines.key === lineKey && lines > bingoPrevLines.lines) requestAnimationFrame(() => SL.h.playFx(bingoBoard, myMark.win, 1800, 10));
+    bingoPrevLines = { key: lineKey, lines };
   }
 
   function renderCityControls() {
