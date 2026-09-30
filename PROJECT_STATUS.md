@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.32 상점 입장 버튼
+
+사용자 요청(2026-10-01, 최우선): 로비의 상점 카드(제목 「상점」 + 흰 「입장」 버튼)를 제목 없는 「상점 입장」 버튼 하나로 바꾸고, 색은 방 입장 버튼과 같은 파란색(`.secondary`, `#2563eb`)으로 했다.
+
+- `public/index.html` `#skinShopCard`: 카드 배경·제목 제거, `#skinShopBtn`은 `secondary` 클래스와 「상점 입장」 문구. 위치(내 전적 카드 바로 아래, 같은 폭)와 동작(상점 창 열기)은 그대로.
+- `public/styles.css`: 버튼을 카드 폭 전체, 16px 패딩·1.1rem 850 굵기.
+- 테스트: `tests/e2e/skins.spec.js`에 제목 없음·문구 「상점 입장」·방 입장 버튼과 같은 배경색·내 전적 카드와 같은 폭 확인 추가. 로컬 화면 캡처로 모습 확인.
+
 ## v1.7.31 이벤트 창 표시 보완
 
 `IDEAS.md` 백로그 22의 남은 두 건(PR #70·#72 후속 리뷰 P2)을 처리했다. 지급 규칙은 바꾸지 않았다.
