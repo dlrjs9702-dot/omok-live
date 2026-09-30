@@ -309,7 +309,7 @@ test('Land King UI and protected action routes are wired for up to four seats', 
   assert.match(server, /roll-city\|buy-city\|skip-city/);
   assert.match(server, /start-city/);
   assert.match(server, /sell-property-city\|sell-building-city/);
-  assert.match(html, /app\.js\?v=1.7.10/);
+  assert.match(html, /app\.js\?v=1.7.11/);
   assert.match(js, /더블 추가 굴림/);
   assert.match(server, /Number\(body\.expectedMoveCount\)/);
   // Land King now joins the numbered-seat (2-4) family instead of a hardcoded black/white pair.
@@ -496,8 +496,9 @@ test("the board's center is redrawn with a status readout now that the action pa
   const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/styles.css'), 'utf8');
   assert.doesNotMatch(css, /\.cityActionPanel\{position:absolute/);
   const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public/app.js'), 'utf8');
-  assert.match(app, /ctx\.fillText\(cityTurnSummary\.textContent, cityCenterX, cityCenterY \+ 6\);/);
-  assert.match(app, /ctx\.fillText\(cityLastRoll\.textContent, cityCenterX, cityCenterY \+ 30\);/);
+  // v1.7.11: moved down under the printed logo banner; still the same reused text.
+  assert.match(app, /ctx\.fillText\(cityTurnSummary\.textContent, cityCenterX, cityCenterY \+ \d+\);/);
+  assert.match(app, /ctx\.fillText\(cityLastRoll\.textContent, cityCenterX, cityCenterY \+ \d+\);/);
 });
 
 // v1.6.37: the tile browser/sell tool is collapsed by default (declutters the roll/buy/build

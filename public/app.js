@@ -6092,11 +6092,8 @@
       canvas.width = CITY_CANVAS_W;
       canvas.height = CITY_CANVAS_H;
     }
-    const bg = ctx.createLinearGradient(0, 0, CITY_CANVAS_W, CITY_CANVAS_H);
-    bg.addColorStop(0, '#172554');
-    bg.addColorStop(1, '#0f172a');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, CITY_CANVAS_W, CITY_CANVAS_H);
+    // v1.7.11 실물감: a printed cardboard board game -- cream board on a green table, asphalt road.
+    ctx.drawImage(boardTexture('city-board', CITY_CANVAS_W, CITY_CANVAS_H, paintCityBoard), 0, 0);
     // v1.6.56: #cityActionPanel (start/roll/buy/build controls) moved off the board into the
     // sidebar's #gameActionsPanel, so this interior space is no longer a DOM overlay -- restored to
     // a canvas-drawn status readout (turn/phase + last roll), reusing #cityTurnSummary/#cityLastRoll's
@@ -6104,46 +6101,70 @@
     // render path, see its call sites) rather than recomputing the same turn/phase logic twice.
     const cityCenterX = CITY_PAD_X + 5 * CITY_STEP_X;
     const cityCenterY = CITY_PAD_Y + 3 * CITY_STEP_Y;
-    ctx.fillStyle = 'rgba(15,23,42,.55)';
-    ctx.fillRect(CITY_PAD_X + CITY_STEP_X, CITY_PAD_Y + CITY_STEP_Y, 8 * CITY_STEP_X, 4 * CITY_STEP_Y);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fde68a';
-    ctx.font = '900 20px Inter, Pretendard, sans-serif';
-    ctx.fillText('랜드킹', cityCenterX, cityCenterY - 24);
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '700 15px Inter, Pretendard, sans-serif';
-    ctx.fillText(cityTurnSummary.textContent, cityCenterX, cityCenterY + 6);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '600 13px Inter, Pretendard, sans-serif';
-    ctx.fillText(cityLastRoll.textContent, cityCenterX, cityCenterY + 30);
+    // Printed logo banner in the middle of the board, then the live turn readout under it.
+    ctx.save();
+    ctx.translate(cityCenterX, cityCenterY - 34);
+    ctx.rotate(-.06);
+    ctx.fillStyle = '#b91c1c';
+    ctx.shadowColor = 'rgba(60,20,0,.35)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.fillRect(-150, -26, 300, 52);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-144, -20, 288, 40);
+    ctx.fillStyle = '#fff7e0';
+    ctx.font = '950 30px Inter, Pretendard, sans-serif';
+    ctx.fillText('랜드킹', 0, 1);
+    ctx.restore();
+    ctx.fillStyle = '#1f2937';
+    ctx.font = '800 15px Inter, Pretendard, sans-serif';
+    ctx.fillText(cityTurnSummary.textContent, cityCenterX, cityCenterY + 18);
+    ctx.fillStyle = '#4b5563';
+    ctx.font = '700 13px Inter, Pretendard, sans-serif';
+    ctx.fillText(cityLastRoll.textContent, cityCenterX, cityCenterY + 42);
     ctx.textAlign = 'start';
     ctx.textBaseline = 'alphabetic';
 
     const CITY_TYPE_BG = { start: '#bbf7d0', property: '#dbeafe', event: '#fef3c7', tax: '#fee2e2', rest: '#e2e8f0' };
     const CITY_TYPE_ICON = { start: '🚩', property: '🏙️', event: '🎁', tax: '💰', rest: '☕' };
-    const CITY_BUILD_ICON = ['🏠', '🏡', '🏢', '🏨'];
     const CITY_PLAYER_COLORS = { '1': '#2563eb', '2': '#ef4444', '3': '#16a34a', '4': '#9333ea' };
     // A continuous walking-path strip along the top/bottom rows, drawn *behind* the tiles: each
     // tile's own box covers the strip within its footprint, so only the gaps between tiles show
     // it -- reading as one connected road through the 4 decorative filler positions per row
     // instead of isolated blank patches.
-    ctx.strokeStyle = 'rgba(148,163,184,.4)';
-    ctx.lineWidth = 10;
+    ctx.lineCap = 'butt';
+    for (const roadY of [CITY_PAD_Y, CITY_PAD_Y + 6 * CITY_STEP_Y]) {
+      ctx.strokeStyle = '#4b5563';
+      ctx.lineWidth = 26;
+      ctx.beginPath(); ctx.moveTo(CITY_PAD_X, roadY); ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, roadY); ctx.stroke();
+      ctx.save();
+      ctx.strokeStyle = '#fde68a';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([14, 12]);
+      ctx.beginPath(); ctx.moveTo(CITY_PAD_X, roadY); ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, roadY); ctx.stroke();
+      ctx.restore();
+    }
     ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(CITY_PAD_X, CITY_PAD_Y);
-    ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y);
-    ctx.moveTo(CITY_PAD_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
-    ctx.lineTo(CITY_PAD_X + 10 * CITY_STEP_X, CITY_PAD_Y + 6 * CITY_STEP_Y);
-    ctx.stroke();
     // v1.6.82: while I must liquidate, the tiles I own are the ones I can pick to sell.
     const cityLiquidating = actionWindowOpen(g) && g.phase === 'liquidate' && g.liquidating === seat;
     for (const tile of g.tiles || []) {
       const [x, y] = cityCellPosition(tile.index);
       const owner = g.owners?.[tile.index];
+      // Printed cardboard square: a soft drop shadow, the type colour, a thin inner print line.
+      ctx.save();
+      ctx.shadowColor = 'rgba(40,30,10,.35)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 3;
       ctx.fillStyle = CITY_TYPE_BG[tile.type] || '#e2e8f0';
       ctx.fillRect(x - 39, y - 39, 78, 78);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(31,41,55,.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 35.5, y - 35.5, 71, 71);
       // Ownership stripe: a solid color band across the top of the tile in the owner's color,
       // in addition to the border, so ownership reads clearly even at a glance.
       if (owner) {
@@ -6177,8 +6198,8 @@
         ctx.fillText(`${tile.price} / ${g.tolls?.[tile.index] ?? tile.toll}`, x, y + 27);
         if (owner) {
           const level = Math.max(0, Math.min(3, Number(g.developments?.[tile.index]) || 0));
-          ctx.font = '13px system-ui, sans-serif';
-          ctx.fillText(CITY_BUILD_ICON[level], x - 20, y - 29);
+          // Plastic pieces on the tile instead of emoji: green houses (별장 1, 빌딩 2), a red hotel (3).
+          drawCityBuildings(x - 22, y - 26, level);
           ctx.fillStyle = '#1d4ed8';
           ctx.font = '900 9px system-ui, sans-serif';
           ctx.fillText(`${['도시', '별장', '빌딩', '호텔'][level]} ${level}단계`, x + 8, y - 29);
@@ -6199,14 +6220,8 @@
         ctx.beginPath(); ctx.arc(x + ox, y + oy, 13, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.globalAlpha = player.eliminated ? 0.35 : 1;
-      ctx.fillStyle = CITY_PLAYER_COLORS[color] || '#64748b';
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x + ox, y + oy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = '950 10px system-ui, sans-serif';
       const initial = (state.players?.[color]?.label || `${color}번`)[0] || color;
-      ctx.fillText(initial, x + ox, y + oy + 1);
+      drawCityPawn(x + ox, y + oy, CITY_PLAYER_COLORS[color] || '#64748b', initial);
       ctx.globalAlpha = 1;
     });
     // Per-seat cash is already shown clearly in the .cityAssetCard list below the board; the
@@ -6365,6 +6380,83 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(label, x, y + 5);
+    ctx.restore();
+  }
+
+  // Land King: a cream printed board on a green table, with a thin printed border.
+  function paintCityBoard(c, w, h) {
+    c.fillStyle = '#1f5f3f';
+    c.fillRect(0, 0, w, h);
+    const rand = seededRandom(1935);
+    for (let i = 0; i < 6000; i += 1) {
+      c.fillStyle = `rgba(0,30,15,${rand() * .15})`;
+      c.fillRect(rand() * w, rand() * h, 1.5, 1.5);
+    }
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.45)';
+    c.shadowBlur = 18;
+    c.shadowOffsetY = 6;
+    c.fillStyle = '#f4ecd6';
+    c.fillRect(14, 14, w - 28, h - 28);
+    c.restore();
+    for (let i = 0; i < 3000; i += 1) {
+      c.fillStyle = `rgba(140,110,60,${rand() * .07})`;
+      c.fillRect(14 + rand() * (w - 28), 14 + rand() * (h - 28), 2, 1);
+    }
+    c.strokeStyle = 'rgba(120,53,15,.55)';
+    c.lineWidth = 3;
+    c.strokeRect(24, 24, w - 48, h - 48);
+  }
+
+  // Plastic house (green) / hotel (red) pieces standing on a Land King tile.
+  function drawCityBuildings(x, y, level) {
+    const piece = (px, py, width, height, color) => {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = 'rgba(0,0,0,.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, py + height); ctx.lineTo(px, py + height * .45); ctx.lineTo(px + width / 2, py);
+      ctx.lineTo(px + width, py + height * .45); ctx.lineTo(px + width, py + height); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.fillRect(px + 1, py + height * .5, width * .3, height * .45);
+    };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.35)';
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetY = 1;
+    if (level >= 3) piece(x - 4, y - 7, 18, 14, '#dc2626');
+    else for (let i = 0; i < level; i += 1) piece(x - 4 + i * 11, y - 5, 9, 11, '#16a34a');
+    ctx.restore();
+  }
+
+  // A turned wooden pawn seen from above-front: shadow, cone body, round head, player initial.
+  function drawCityPawn(x, y, color, initial) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(x + 1, y + 10, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+    const body = ctx.createLinearGradient(x - 9, 0, x + 9, 0);
+    body.addColorStop(0, color);
+    body.addColorStop(.4, 'rgba(255,255,255,.55)');
+    body.addColorStop(.55, color);
+    body.addColorStop(1, 'rgba(0,0,0,.45)');
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(x - 9, y + 10); ctx.lineTo(x - 4, y - 2); ctx.lineTo(x + 4, y - 2); ctx.lineTo(x + 9, y + 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = body;
+    ctx.globalAlpha *= .6;
+    ctx.fill();
+    ctx.globalAlpha /= .6;
+    const head = ctx.createRadialGradient(x - 2, y - 9, 1, x, y - 6, 8);
+    head.addColorStop(0, '#ffffff');
+    head.addColorStop(.35, color);
+    head.addColorStop(1, 'rgba(0,0,0,.6)');
+    ctx.fillStyle = head;
+    ctx.beginPath(); ctx.arc(x, y - 6, 7.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '950 9px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initial, x, y - 5.5);
     ctx.restore();
   }
 
