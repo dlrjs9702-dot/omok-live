@@ -75,6 +75,7 @@
       <section id="myRecordsCard" class="card myRecordsCard" aria-label="내 전적">
         <div class="recordsHead"><h2>내 전적</h2><button id="otherRecordsBtn" class="ghost tiny" type="button">다른 플레이어 조회</button></div>
         <strong id="myRecordsName">전적을 불러오는 중</strong>
+        <div id="myRecordsBadges" class="recordsBadges hidden"></div>
         <p id="myRecordsSummary" class="recordsSummary">0전 · 0승 0패 0무 · 승률 0%</p>
         <label for="myRecordsGame">게임별 전적</label>
         <select id="myRecordsGame"><option value="all">전체 게임</option></select>
@@ -839,7 +840,7 @@
     <div class="recordsDialogHead"><h2 id="recordsDialogTitle">플레이어 전적</h2><button id="recordsCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <form id="recordsSearchForm" class="recordsSearchForm"><label for="recordsSearchInput">닉네임 검색</label><div><input id="recordsSearchInput" type="search" maxlength="40" autocomplete="off" placeholder="닉네임 입력" /><button class="secondary" type="submit">검색</button></div></form>
     <div id="recordsSearchResults" class="recordsSearchResults" aria-live="polite"></div>
-    <section id="recordsProfile" aria-live="polite"><strong id="recordsProfileName">플레이어를 선택하세요.</strong><p id="recordsProfileSummary" class="recordsSummary"></p><label for="recordsProfileGame">게임별 전적</label><select id="recordsProfileGame"><option value="all">전체 게임</option></select><p id="recordsProfileDetail" class="recordsDetail"></p></section>
+    <section id="recordsProfile" aria-live="polite"><strong id="recordsProfileName">플레이어를 선택하세요.</strong><div id="recordsProfileBadges" class="recordsBadges hidden"></div><p id="recordsProfileSummary" class="recordsSummary"></p><label for="recordsProfileGame">게임별 전적</label><select id="recordsProfileGame"><option value="all">전체 게임</option></select><p id="recordsProfileDetail" class="recordsDetail"></p></section>
     <section id="recordsHeadToHead" class="recordsHeadToHead hidden" aria-live="polite"><h3>나와의 상대 전적</h3><p id="h2hSummary" class="recordsSummary"></p><label for="h2hGame">게임별 상대 전적</label><select id="h2hGame"><option value="all">전체 게임</option></select><p id="h2hDetail" class="recordsDetail"></p></section>
   </dialog>
   <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
@@ -916,6 +917,7 @@
   <script src="/session-lock.js?v=1.7.34"></script>
   <script src="/recent-action.js?v=1.7.34"></script>
   <script src="/skin-looks.js?v=1.7.34"></script>
+  <script src="/skin-art-omok.js?v=1.7.34"></script>
   <script src="/twentyquestions-ui.js?v=1.7.34"></script>
   <script src="/hwatu-art.js?v=1.7.34"></script>
   <script src="/gostop-ui.js?v=1.7.34"></script>
