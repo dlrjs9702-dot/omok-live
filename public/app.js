@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.36').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.37').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -387,6 +387,7 @@
   let yutLastMoveKey = null;
   let yutMoveTrackingStarted = false;
   let yutPieceAnimation = null; // { pieceIds: Set<string>, x, y } while a move is animating, else null
+  let yutTrail = []; // recent in-transit positions of the moving piece, for skins that leave a trail (v1.7.37)
   let yutMoveAnimationGen = 0;
   // v1.6.83: direct on-board piece selection. yutMovePending blocks every further move request
   // (board click, double click, fallback button) from the moment one is sent until the server
@@ -1189,6 +1190,7 @@
       return;
     }
     let segmentIndex = 0;
+    yutTrail = [];
     // v1.6.83: claim the in-transit guard immediately (at the move's true starting node) instead of
     // on the first animation frame, so there is no gap in which the board is selectable again.
     const [startX, startY] = yutNodePosition(path[0]);
@@ -1218,6 +1220,8 @@
           x: fx + (tx - fx) * eased,
           y: fy + (ty - fy) * eased - Math.sin(progress * Math.PI) * hopHeight,
         };
+        yutTrail.push({ x: yutPieceAnimation.x, y: yutPieceAnimation.y });
+        if (yutTrail.length > 14) yutTrail.shift();
         drawYutBoard();
         if (progress < 1) requestAnimationFrame(frame);
         else { segmentIndex += 1; setTimeout(runSegment, pauseDuration); }
@@ -5945,10 +5949,11 @@
       : null);
     const yutRecentIds = new Set(g.lastMove?.pieceIds || []);
     // v1.7.10 실물감: a straw mat (멍석) under a hanji 말판 drawn in ink, like a real yut board.
-    ctx.drawImage(boardTexture('yut-mat', 720, 720, paintYutMat), 0, 0);
+    const theme = window.SkinLooks.def(state.skinTheme)?.board; // the host's room theme (v1.7.37)
+    ctx.drawImage(theme ? boardTexture(`yut:${state.skinTheme}`, 720, 720, (c, tw, th) => theme.paint(c, tw, th)) : boardTexture('yut-mat', 720, 720, paintYutMat), 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(28,18,10,.78)';
+    ctx.strokeStyle = theme ? theme.ink : 'rgba(28,18,10,.78)';
     ctx.lineWidth = 5;
     const paths = [
       [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'finishLine',0],
@@ -5990,15 +5995,15 @@
         continue;
       }
       // Brush-inked stations on the paper: corners (모·뒷모·방) get a double ring.
-      ctx.fillStyle = '#f6ecd2';
-      ctx.strokeStyle = 'rgba(28,18,10,.85)';
+      ctx.fillStyle = theme ? theme.node : '#f6ecd2';
+      ctx.strokeStyle = theme ? theme.ink : 'rgba(28,18,10,.85)';
       ctx.lineWidth = 3.2;
       ctx.beginPath(); ctx.arc(x,y,corner ? 25 : 17,0,Math.PI*2); ctx.fill(); ctx.stroke();
       if (corner) {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x,y,17,0,Math.PI*2); ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(28,18,10,.7)';
+      ctx.fillStyle = theme ? theme.ink : 'rgba(28,18,10,.7)';
       ctx.beginPath(); ctx.arc(x,y,corner ? 5 : 3.5,0,Math.PI*2); ctx.fill();
     }
 
@@ -6012,7 +6017,7 @@
       const offsets = yutStackOffsets(ordered.length);
       for (const [index, piece] of ordered.entries()) {
         const px = x + offsets[index];
-        drawYutToken(px, y, fill, piece.id.split('-').at(-1));
+        drawYutToken(px, y, fill, piece.id.split('-').at(-1), color);
       }
     };
     const animatingIds = yutPieceAnimation?.pieceIds || null;
@@ -6034,7 +6039,11 @@
       // lets pieces of different colors be captured/carried mid-animation together.
       for (const color of ['black','white']) {
         const pieces = (g.pieces?.[color] || []).filter(piece => animatingIds.has(piece.id));
-        if (pieces.length) drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
+        if (pieces.length) {
+          const trailSkin = window.SkinLooks.def(state.players?.[color]?.skin);
+          if (trailSkin?.trail) { ctx.save(); trailSkin.trail(ctx, yutTrail, 18, color, pieces[0].id.split('-').at(-1)); ctx.restore(); }
+          drawPieceStack(yutPieceAnimation.x, yutPieceAnimation.y, color, pieces);
+        }
       }
     }
     // v1.6.83: selectable targets (mint, the v1.6.82 actionable colour). Destinations are dashed
@@ -6094,7 +6103,7 @@
           // The waiting pieces' token, drawn on the (never occupied) start corner only while entering
           // a new piece is actually legal; a small count shows how many are still at home.
           ctx.save();
-          drawYutToken(target.x1, target.y, seat === 'black' ? '#2563eb' : '#ef4444', String(target.numbers[0]));
+          drawYutToken(target.x1, target.y, seat === 'black' ? '#2563eb' : '#ef4444', String(target.numbers[0]), seat);
           ctx.textAlign = 'center';
           if (target.waiting > 1) {
             ctx.fillStyle = '#0f172a';
@@ -6160,9 +6169,15 @@
     const { pad, gap } = dotsLayout();
     // v1.7.10 실물감: pencil-and-paper. A notebook page, marker lines drawn stroke by stroke, and
     // claimed boxes hatched with the owner's pen and initialled.
-    ctx.drawImage(boardTexture('notebook', 720, 720, paintNotebook), 0, 0);
+    const theme = window.SkinLooks.def(state.skinTheme)?.board; // the host's room theme (v1.7.37)
+    ctx.drawImage(theme ? boardTexture(`dots:${state.skinTheme}`, 720, 720, (c, tw, th) => theme.paint(c, tw, th)) : boardTexture('notebook', 720, 720, paintNotebook), 0, 0);
     const lastEdge = g.lastMove?.edgeId;
-    const drawStroke = pieceMotion(lastEdge !== undefined ? `dots:${g.moveCount}:${g.lastMove?.at || ''}` : '', 380);
+    // A line skin may add a short effect (premium/legend) after the stroke is drawn.
+    const lastOwner = lastEdge === undefined ? null : (lastEdge < 20 ? g.edges?.h?.[Math.floor(lastEdge / 4)]?.[lastEdge % 4] : g.edges?.v?.[Math.floor((lastEdge - 20) / 5)]?.[(lastEdge - 20) % 5]);
+    const lineSkin = (owner) => window.SkinLooks.def(state.players?.[owner]?.skin);
+    const fxMs = lastOwner && lineSkin(lastOwner)?.lineFx ? 700 : 0;
+    const dotsMotion = pieceMotion(lastEdge !== undefined ? `dots:${g.moveCount}:${g.lastMove?.at || ''}` : '', 380 + fxMs);
+    const drawStroke = Math.min(1, dotsMotion * (380 + fxMs) / 380);
     const newBoxes = new Set((g.lastMove?.claimed || []).map(([row, col]) => `${row},${col}`));
 
     for (let row = 0; row < 4; row += 1) for (let col = 0; col < 4; col += 1) {
@@ -6177,6 +6192,7 @@
       ctx.save();
       ctx.globalAlpha = shade;
       ctx.beginPath(); ctx.rect(bx, by, size, size); ctx.clip();
+      if (lineSkin(owner)?.box) { ctx.restore(); ctx.save(); ctx.globalAlpha = shade; lineSkin(owner).box(ctx, bx, by, size, owner, 1); ctx.restore(); continue; }
       ctx.strokeStyle = owner === 'black' ? 'rgba(37,99,235,.38)' : 'rgba(220,38,38,.38)';
       ctx.lineWidth = 3;
       for (let d = -size; d < size * 2; d += 13) { ctx.beginPath(); ctx.moveTo(bx + d, by); ctx.lineTo(bx + d - size, by + size); ctx.stroke(); }
@@ -6213,6 +6229,13 @@
         x2 = x1 + (x2 - x1) * t;
         y2 = y1 + (y2 - y1) * t;
       }
+      if (lineSkin(owner)?.line) {
+        ctx.save(); lineSkin(owner).line(ctx, x1, y1, x2, y2, owner); ctx.restore();
+        if (edgeId === lastEdge && fxMs && drawStroke >= 1) {
+          const [ex1, ey1, ex2, ey2] = dotsEdgeEndpoints(edgeId);
+          ctx.save(); lineSkin(owner).lineFx(ctx, ex1, ey1, ex2, ey2, owner, Math.min(1, (dotsMotion * (380 + fxMs) - 380) / fxMs)); ctx.restore();
+        }
+      } else {
       // Marker ink: a solid core with a slightly darker, uneven edge.
       ctx.lineCap = 'round';
       ctx.strokeStyle = owner === 'black' ? '#1e40af' : '#b91c1c';
@@ -6221,6 +6244,7 @@
       ctx.strokeStyle = owner === 'black' ? 'rgba(96,165,250,.55)' : 'rgba(252,165,165,.55)';
       ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(x1,y1 - 1.5); ctx.lineTo(x2,y2 - 1.5); ctx.stroke();
+      }
       if (edgeId === lastEdge && drawStroke >= 1) {
         // Amber recent-move trace (white vanished on the paper page).
         ctx.strokeStyle = `rgba(250,204,21,${0.8 + dotsRecent.strength * 0.2})`;
@@ -6253,11 +6277,11 @@
       const x = pad + col * gap;
       const y = pad + row * gap;
       // A pressed pencil dot: graphite with a faint smudge.
-      ctx.fillStyle = 'rgba(55,65,81,.18)';
+      ctx.fillStyle = theme ? theme.dot[0] : 'rgba(55,65,81,.18)';
       ctx.beginPath(); ctx.arc(x + 1, y + 1, 11, 0, Math.PI * 2); ctx.fill();
       const lead = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, 9);
-      lead.addColorStop(0, '#6b7280');
-      lead.addColorStop(1, '#1f2937');
+      lead.addColorStop(0, theme ? theme.dot[1] : '#6b7280');
+      lead.addColorStop(1, theme ? theme.dot[1] : '#1f2937');
       ctx.fillStyle = lead;
       ctx.beginPath(); ctx.arc(x, y, 8.5, 0, Math.PI * 2); ctx.fill();
     }
@@ -6587,10 +6611,14 @@
   }
 
   // A lacquered wooden 말: coloured face, darker rim, a highlight and a carved number.
-  function drawYutToken(x, y, fill, label) {
+  function drawYutToken(x, y, fill, label, color) {
     ctx.save();
     ctx.fillStyle = 'rgba(30,16,4,.35)';
     ctx.beginPath(); ctx.ellipse(x + 2, y + 4, 19, 17, 0, 0, Math.PI * 2); ctx.fill();
+    const skinId = state?.players?.[color]?.skin;
+    if (window.SkinLooks.def(skinId)?.stone) { // a piece skin draws the whole figure, number plate included
+      ctx.translate(x, y); window.SkinLooks.paintStone(ctx, 19, skinId, color, label); ctx.restore(); return;
+    }
     const body = ctx.createRadialGradient(x - 6, y - 7, 2, x, y, 19);
     body.addColorStop(0, fill === '#2563eb' ? '#93c5fd' : '#fca5a5');
     body.addColorStop(.5, fill);
