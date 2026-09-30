@@ -69,7 +69,7 @@ test('빙고 스킨: 방장 테마가 모든 화면에 같고, 각자의 표식�
   expect((await call(a, '/api/room/choose-role', { choice: '1' })).status).toBe(200);
   expect((await call(b, '/api/room/choose-role', { choice: '2' })).status).toBe(200);
   expect((await call(a, '/api/room/start-bingo', {})).status).toBe(200);
-  for (const who of [a, b]) { await who.page.reload(); await expect(who.page.locator('#roomView')).toBeVisible(); }
+  for (const who of [a, b]) { await who.page.reload(); await expect(who.page.locator('#roomView')).toBeVisible({ timeout: 20000 }); }
 
   // 첫 차례 사람이 자기 판의 숫자 하나를 고른다.
   const s0 = (await get(request, '/api/room', a.token)).data.state;

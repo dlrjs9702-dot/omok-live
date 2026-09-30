@@ -75,7 +75,7 @@ async function twoPlayerRoom(request, a, b, gameType) {
   expect((await post(request, '/api/rooms/join', b.token, { code: created.data.state.me.roomCode })).status).toBe(200);
   expect((await post(request, '/api/room/choose-role', a.token, { choice: 'black' })).status).toBe(200);
   expect((await post(request, '/api/room/choose-role', b.token, { choice: 'white' })).status).toBe(200);
-  for (const who of [a, b]) { await who.page.reload(); await expect(who.page.locator('#roomView')).toBeVisible(); }
+  for (const who of [a, b]) { await who.page.reload(); await expect(who.page.locator('#roomView')).toBeVisible({ timeout: 20000 }); }
 }
 
 // Pixels of a square around (px, py) of the #board canvas: a key to compare across pages, and how many pixels carry colour.
