@@ -71,3 +71,35 @@ test('방 채팅: 기록은 라이브 영역이 아니며 상대 새 메시지�
   await expect(announce).toHaveText('손님: 한 번 더');
   for (const view of [a, b]) await view.context.close();
 });
+
+test('닉네임이 같은 두 사람: 내 메시지만 내 것으로 표시하고 상대 메시지는 낭독하며, 발신자 묶음도 ID로 구분한다', async ({ browser, request }) => {
+  const a = await enter(browser, await issueGuest(request, '똑같은이름'));
+  const b = await enter(browser, await issueGuest(request, '똑같은이름'));
+  const call = (view, route, data) => request.post(route, { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': view.token }, data });
+  const created = await (await call(a, '/api/rooms', { gameType: 'omok' })).json();
+  expect((await call(b, '/api/rooms/join', { code: created.state.me.roomCode })).status()).toBe(200);
+  await a.page.reload();
+  await expect(a.page.locator('#roomView')).toBeVisible();
+  const announce = a.page.locator('#chatAnnounce');
+  await expect(announce).toHaveText('');
+
+  expect((await call(b, '/api/room/chat', { text: '같은 이름의 상대' })).status()).toBe(200);
+  await expect(announce).toHaveText('똑같은이름: 같은 이름의 상대'); // 닉네임이 같아도 내 메시지가 아니므로 낭독된다
+  await a.page.locator('#chatInput').fill('내가 보낸 말');
+  await a.page.locator('#chatForm button').first().click();
+  const list = a.page.locator('#chatMessages');
+  await expect(list).toContainText('내가 보낸 말');
+  const rows = list.locator('.chatMessage:not(.system)');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).not.toHaveClass(/mine/); // 상대(같은 닉네임)
+  await expect(rows.nth(1)).toHaveClass(/mine/);
+  await expect(rows.nth(1).locator('.chatMessageHead')).toHaveCount(0);
+  await expect(rows.nth(0).locator('.chatMessageHead')).toHaveCount(1);
+
+  // 같은 닉네임이 번갈아 말해도 발신자 이름 줄이 서로 다른 사람으로 다시 나온다.
+  expect((await call(b, '/api/room/chat', { text: '상대 두번째' })).status()).toBe(200);
+  await expect(announce).toHaveText('똑같은이름: 상대 두번째');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(2).locator('.chatMessageHead')).toHaveCount(1);
+  for (const view of [a, b]) await view.context.close();
+});

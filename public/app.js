@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.25').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.26').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -2971,7 +2971,7 @@
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.
-      lobbyChatAnnouncer.update(lobbyState.messages || [], sessionLabel);
+      lobbyChatAnnouncer.update(lobbyState.messages || [], lobbyState.me?.chatId || '');
       renderLobbyChat();
       renderPublicRooms();
       renderLobbyInvitations();
@@ -3468,22 +3468,22 @@
     const wasAtBottom = lobbyChatMessages.scrollHeight - lobbyChatMessages.scrollTop - lobbyChatMessages.clientHeight < 40;
     const oldScrollTop = lobbyChatMessages.scrollTop;
     const anchor = firstVisibleMessage(lobbyChatMessages);
-    const changed = fillMessageList(lobbyChatMessages, rows, '아직 대기방 메시지가 없습니다.', sessionLabel);
+    const changed = fillMessageList(lobbyChatMessages, rows, '아직 대기방 메시지가 없습니다.', lobbyState.me?.chatId || '');
     if (!changed) return;
     if (wasAtBottom) lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
     else restoreMessagePosition(lobbyChatMessages, anchor, oldScrollTop);
   }
 
-  function buildChatMessageEl(row, previousRow, ownLabel) {
+  function buildChatMessageEl(row, previousRow, ownId) {
     const item = document.createElement('div');
     item.className = `chatMessage ${row.type === 'system' ? 'system' : ''}`;
     item.dataset.messageId = String(row.id);
     if (row.type === 'system') {
       item.textContent = row.text;
     } else {
-      const mine = Boolean(ownLabel && row.label === ownLabel);
+      const mine = Boolean(ownId && row.senderId === ownId);
       item.classList.toggle('mine', mine);
-      const sameSender = previousRow && previousRow.type !== 'system' && previousRow.label === row.label
+      const sameSender = previousRow && previousRow.type !== 'system' && (row.senderId ? previousRow.senderId === row.senderId : previousRow.label === row.label)
         && Math.abs(new Date(row.at) - new Date(previousRow.at)) < 5 * 60 * 1000;
       if (!mine && !sameSender) {
         const head = document.createElement('div');
@@ -3515,11 +3515,11 @@
     let lastId = null;
     return {
       reset() { lastId = null; region.replaceChildren(); },
-      update(rows, ownLabel) {
+      update(rows, ownId) {
         const ids = rows.map(row => Number(row.id)).filter(Number.isFinite);
         const newest = ids.length ? Math.max(...ids) : 0;
         if (lastId === null || newest < lastId) { lastId = newest; return; }
-        const fresh = rows.filter(row => Number(row.id) > lastId && row.type !== 'system' && !(ownLabel && row.label === ownLabel));
+        const fresh = rows.filter(row => Number(row.id) > lastId && row.type !== 'system' && !(ownId && row.senderId === ownId));
         lastId = newest;
         if (!fresh.length) return;
         const text = fresh.slice(-3).map(row => `${row.label || '게스트'}: ${row.text}`).join('. ');
@@ -3530,8 +3530,8 @@
   const lobbyChatAnnouncer = createChatAnnouncer(document.getElementById('lobbyChatAnnounce'));
   const roomChatAnnouncer = createChatAnnouncer(document.getElementById('chatAnnounce'));
 
-  function fillMessageList(container, rows, emptyText, ownLabel = '') {
-    const signature = JSON.stringify([ownLabel, rows.map(row => [row.id, row.type, row.label, row.text, row.at])]);
+  function fillMessageList(container, rows, emptyText, ownId = '') {
+    const signature = JSON.stringify([ownId, rows.map(row => [row.id, row.type, row.label, row.text, row.at, row.senderId])]);
     if (messageListSignatures.get(container) === signature) return false;
     messageListSignatures.set(container, signature);
     container.innerHTML = '';
@@ -3542,7 +3542,7 @@
       container.appendChild(empty);
       return true;
     }
-    for (let i = 0; i < rows.length; i++) container.appendChild(buildChatMessageEl(rows[i], rows[i - 1], ownLabel));
+    for (let i = 0; i < rows.length; i++) container.appendChild(buildChatMessageEl(rows[i], rows[i - 1], ownId));
     return true;
   }
 
@@ -3597,8 +3597,8 @@
     const oldScrollTop = chatMessages.scrollTop;
     const anchor = wasAtBottom ? null : firstVisibleMessage(chatMessages);
     chatRendering = true;
-    roomChatAnnouncer.update(chatRows, state?.me?.label || sessionLabel);
-    const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.label || sessionLabel);
+    roomChatAnnouncer.update(chatRows, state?.me?.chatId || '');
+    const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     lastRenderedChatIds = chatRows.map(row => row.id);
 
