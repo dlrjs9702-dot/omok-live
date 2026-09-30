@@ -49,6 +49,12 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   const card = await a.page.locator('#skinShopCard').boundingBox();
   expect(card.y).toBeGreaterThan(records.y + records.height - 1);
   expect(Math.abs(card.x - records.x)).toBeLessThan(2);
+  // v1.7.32: 제목 없이 「상점 입장」 버튼 하나, 색은 방 입장 버튼과 같은 파란색.
+  await expect(a.page.locator('#skinShopCard h2')).toHaveCount(0);
+  await expect(a.page.locator('#skinShopBtn')).toHaveText('상점 입장');
+  const joinBlue = await a.page.locator('#joinRoomForm button[type="submit"]').evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(await a.page.locator('#skinShopBtn').evaluate(el => getComputedStyle(el).backgroundColor)).toBe(joinBlue);
+  expect(Math.abs((await a.page.locator('#skinShopBtn').boundingBox()).width - records.width)).toBeLessThan(2); // 카드 폭 전체
 
   // 창은 「다른 플레이어 조회」 창보다 크다.
   await a.page.locator('#otherRecordsBtn').click();

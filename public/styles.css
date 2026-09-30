@@ -381,8 +381,9 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .lobbyHighlights{display:grid;grid-template-columns:minmax(0,65fr) minmax(250px,35fr);gap:12px;align-items:start;margin-bottom:12px}
 .lobbyHighlights .noticeCard{margin:0;min-width:0}
 .lobbySide{display:grid;gap:12px;min-width:0;align-content:start}
-.skinShopCard{min-width:0;padding:12px 14px;display:grid;gap:8px}
-.skinShopCard .skinShopEnter{width:100%;padding:12px 16px;font-size:1.05rem;font-weight:800;border-radius:12px}
+/* v1.7.32: the shop entry is one blue button (same colour as 방 입장), no card or title around it */
+.skinShopCard{min-width:0;display:grid}
+.skinShopCard .skinShopEnter{width:100%;padding:16px;font-size:1.1rem;font-weight:850;border-radius:14px}
 /* v1.7.30 skin shop: a large modal like the player lookup */
 .recordsDialog.skinShopDialog{width:min(94vw,980px);max-height:90vh}
 .skinShopDialog .recordsDialogHead{gap:12px}
