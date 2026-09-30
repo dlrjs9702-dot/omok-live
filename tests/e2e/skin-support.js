@@ -10,6 +10,11 @@ async function post(request, route, token, data) {
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
+async function get(request, route, token) {
+  const response = await request.get(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) } });
+  return { status: response.status(), data: await response.json().catch(() => ({})) };
+}
+
 async function adminToken(request) {
   return (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
 }
@@ -61,7 +66,7 @@ async function stoneContrast(page, skinId, dark = 'black', light = 'white') {
   }, [skinId, dark, light]);
 }
 
-module.exports = { post, adminToken, shopper, grant, buyAndEquip, stoneContrast, uniqueIp };
+module.exports = { post, get, adminToken, shopper, grant, buyAndEquip, stoneContrast, uniqueIp };
 
 // Two shoppers in one room (a = first/black seat, b = second/white seat), both pages reloaded into the room.
 async function twoPlayerRoom(request, a, b, gameType) {

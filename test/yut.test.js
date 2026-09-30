@@ -85,8 +85,8 @@ test('stacked Yut pieces are spread sideways so every piece number remains visib
   assert.match(js, /function yutStackOffsets\(count\)/);
   assert.match(js, /const offsets = yutStackOffsets\(ordered\.length\)/);
   // v1.7.10: each stacked piece is drawn at its own offset by drawYutToken, which paints the number.
-  assert.match(js, /drawYutToken\(px, y, fill, piece\.id\.split\('-'\)\.at\(-1\)\)/);
-  assert.match(js, /function drawYutToken\(x, y, fill, label\)[\s\S]*?ctx\.arc\(x, y, 18, 0, Math\.PI \* 2\)[\s\S]*?ctx\.fillText\(label, x, y \+ 5\)/);
+  assert.match(js, /drawYutToken\(px, y, fill, piece\.id\.split\('-'\)\.at\(-1\), color\)/);
+  assert.match(js, /function drawYutToken\(x, y, fill, label, color\)[\s\S]*?ctx\.arc\(x, y, 18, 0, Math\.PI \* 2\)[\s\S]*?ctx\.fillText\(label, x, y \+ 5\)/);
   assert.match(js, /carriedNumbers\.join\('·'\)/);
   const match = js.match(/  function yutStackOffsets\(count\) \{[\s\S]*?\n  \}/);
   assert.ok(match, 'yutStackOffsets helper missing');
@@ -179,7 +179,7 @@ test('Yut Nori UI, actions and cache version are wired without changing guest en
   assert.match(js, /roomAction\('throw-yut'\)/);
   assert.match(server, /throw-yut\|move-yut/);
   assert.match(server, /\/guest-entry/);
-  assert.match(html, /app\.js\?v=1.7.36/);
+  assert.match(html, /app\.js\?v=1.7.37/);
 });
 
 // v1.6.38: advanced CSS/JS yut-throw animation, requested in place of pre-rendered video (no video

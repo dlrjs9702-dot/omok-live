@@ -94,9 +94,9 @@
   function def(skinId) { return (skinId && DEFS[skinId]) || null; }
 
   // Paint one stone centered at (0, 0) of ctx with radius r.
-  function paintStone(ctx, r, skinId, color) {
+  function paintStone(ctx, r, skinId, color, label) {
     const drawn = def(skinId);
-    if (drawn?.stone) { drawn.stone(ctx, r, color); return; }
+    if (drawn?.stone) { drawn.stone(ctx, r, color, label); return; }
     const spec = look(skinId, color);
     const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .08, 0, 0, r);
     g.addColorStop(0, spec.stops[0]); g.addColorStop(spec.mid || .42, spec.stops[1]); g.addColorStop(1, spec.stops[2]);
@@ -159,7 +159,15 @@
     }
     ctx.closePath();
   }
-  const helpers = { TAU, clamp01, rng, sphere, gloss, starPath };
+  // A small numbered plate at the bottom of a piece (yut pieces carry their number on every skin).
+  function badge(ctx, r, label) {
+    if (label === undefined || label === null || label === '') return;
+    ctx.save(); ctx.fillStyle = '#fff7e0'; ctx.strokeStyle = 'rgba(40,24,6,.6)'; ctx.lineWidth = Math.max(1, r * .07);
+    ctx.beginPath(); ctx.arc(0, r * .58, r * .36, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a1a08'; ctx.font = `900 ${Math.round(r * .58)}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(label), 0, r * .6); ctx.restore();
+  }
+  const helpers = { TAU, clamp01, rng, sphere, gloss, starPath, badge };
 
   return { CLASSIC, LOOKS, look, paintStone, paintPreview, define, def, DEFS, h: helpers };
 }));

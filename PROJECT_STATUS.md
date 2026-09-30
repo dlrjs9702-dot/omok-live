@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.37 윷놀이·점과 상자 스킨 22종 (스킨 확장 3차)
+
+- **윷놀이**(`public/skin-art-yut.js`): 일반 병아리·장난감 자동차·꼬마 도깨비·조선 무사·미니 로봇 / 고급 유령 행렬·기사단·소형 우주선(이동 중 꼬리 효과) / 방 테마 설날 한옥마당·달나라 윷판(매트·말판 종이·선·칸 색) / 전설 사방신(말 번호 1~4가 청룡·백호·주작·현무를 고르고 각자 다른 이동 궤적을 남김). 모든 말은 팀 색(선공=파랑, 후공=빨강)이 몸통을 지배하고 번호판을 유지한다(`SkinLooks.paintStone(ctx, r, skin, color, label)`의 `label`). 이동 중 위치 기록(`yutTrail`)으로 꼬리를 그린다.
+- **점과 상자**(`public/skin-art-dots.js`): 일반 대나무·밧줄·철도 레일·쇠사슬·크레용 획 / 고급 전기 케이블·용암 균열·레이저 빔(선을 그은 뒤 짧은 효과) / 방 테마 낙서 공책·사이버 회로판(종이·점 색) / 전설 회로 지배자(회로 선+전류 효과, 완성한 상자는 에너지 셀). 선은 파랑(선공)·빨강(후공)으로 주인을 구분하고 상자 소유자 글자 규칙은 기본 그대로(전설은 셀 그림).
+- **연결**: `drawYutBoard`·`drawYutToken`·`animateYutPieceMove`, `drawDotsBoard`(선 스킨의 `line`/`lineFx`/`box`, 테마 `board`).
+- **테스트**: `tests/e2e/skins-yut-dots.spec.js`(모든 말·선 스킨의 팀 색 지배(파랑·빨강), 상점 탭·구역, 방장 테마와 각자 말/선이 두 화면에서 픽셀까지 동일, 점과 상자 전설의 에너지 셀), 공용 `skin-support.js`에 `get` 추가.
+
 ## v1.7.36 사목·오델로 스킨 22종 (스킨 확장 2차)
 
 - **사목**(`public/skin-art-connect4.js`): 일반 로켓칩·기어칩(톱니 실루엣)·눈알몬스터칩·별코인·아케이드 토큰 / 고급 플라즈마 코어·홀로 디스크·운석 코어(착지 효과) / 방 테마 80년대 오락실·우주 정거장(테이블·프레임 색·장식) / 전설 코스믹 커넥트(은하 칩·낙하 후 충격파·4목 완성선 빛줄기). 첫 선수(`black`) 칩은 어둡고 따뜻한 색, 둘째(`white`)는 밝은 색으로 진영 구분 유지(두 진영 명도 대비 3:1 이상, 기본 빨강·노랑과 같은 수준 이상).
