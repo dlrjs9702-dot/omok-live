@@ -110,6 +110,11 @@ test('기간 중 최초 수령: +100,000P 전액, 잔액·원장·내역이 서�
 
   const after = await fx.req('/api/events', me.session);
   assert.deepEqual(after.data.events.map(item => [item.id, item.claimed]), [[event.id, true]], '수령 뒤에는 claimed');
+  // v1.7.21: the page shows the popup again after claiming, and keys its "hide today" choice by this account value.
+  assert.match(after.data.account, /^guest:/);
+  assert.equal(after.data.account, listed.data.account, '같은 계정은 항상 같은 값');
+  const other = await fx.guest('다른 사람');
+  assert.notEqual((await fx.req('/api/events', other.session)).data.account, listed.data.account, '계정마다 다른 값');
 });
 
 test('이미 받은 계정의 재요청·새로고침·재시도는 정상 응답이며 추가 지급이 없다', async (t) => {

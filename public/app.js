@@ -2715,24 +2715,42 @@
   const eventDialogNote = document.getElementById('eventDialogNote');
   const eventDialogError = document.getElementById('eventDialogError');
   const eventDialogClaimBtn = document.getElementById('eventDialogClaimBtn');
+  const eventDismissBtn = document.getElementById('eventDismissBtn');
+  const eventDismissForm = document.getElementById('eventDismissForm');
+  const eventDismissInput = document.getElementById('eventDismissInput');
+  const eventDismissError = document.getElementById('eventDismissError');
   const eventPrompted = new Set();
+  const EVENT_DISMISS_PHRASE = '오늘 하루 보지 않음';
+  // v1.7.21: the popup opens on every lobby entry, claimed or not. "Hide for today" is a per-account, per-event
+  // choice kept in this browser (localStorage, keyed by the account the server names) for the current Seoul day.
+  // ponytail: not shared across browsers/devices; move it into the point store if that is ever needed.
+  const eventHideKey = (account, eventId) => `eventHide:${account}:${eventId}`;
+  let eventAccount = '';
   let eventCurrent = null;
   let eventClaiming = false;
+
+  function eventHiddenToday(account, eventId) {
+    try { return localStorage.getItem(eventHideKey(account, eventId)) === seoulDay.format(new Date()); } catch { return false; }
+  }
 
   async function checkEvents() {
     const token = sessionToken;
     try {
-      const { events } = await api('/api/events');
+      const { events, account } = await api('/api/events');
       // The answer can arrive late: only show it if this is still the same login and the player is still in the
       // lobby (not already in a room). Nothing is marked as shown, so the next lobby entry asks again.
       if (token !== sessionToken || lobbyView.classList.contains('hidden')) return;
-      const next = events.find(event => !event.claimed && !eventPrompted.has(`${sessionToken}:${event.id}`));
-      if (next && !eventDialog.open) openEventDialog(next);
+      const next = events.find(event => !eventPrompted.has(`${sessionToken}:${event.id}`) && !eventHiddenToday(account, event.id));
+      if (next && !eventDialog.open) { eventAccount = account; openEventDialog(next); }
     } catch {}
   }
 
   function openEventDialog(event) {
     eventCurrent = event;
+    eventDismissForm.classList.add('hidden');
+    eventDismissBtn.setAttribute('aria-expanded', 'false');
+    eventDismissInput.value = '';
+    eventDismissError.textContent = '';
     eventPrompted.add(`${sessionToken}:${event.id}`);
     eventDialogTitle.textContent = `🎉 ${event.title} 🎉`;
     eventDialogHeadline.textContent = event.headline;
@@ -2741,8 +2759,8 @@
     eventDialogTeaser.classList.toggle('hidden', !event.teaser);
     eventDialogReward.textContent = `+${Number(event.rewardPoints).toLocaleString('ko-KR')}P`;
     eventDialogNote.textContent = event.note;
-    eventDialogClaimBtn.textContent = event.buttonLabel;
-    eventDialogClaimBtn.disabled = false;
+    eventDialogClaimBtn.textContent = event.claimed ? '이미 받았습니다' : event.buttonLabel;
+    eventDialogClaimBtn.disabled = Boolean(event.claimed);
     eventDialogError.textContent = '';
     eventDialog.showModal();
   }
@@ -2769,6 +2787,25 @@
   }
 
   eventDialogClaimBtn.addEventListener('click', claimEventReward);
+  eventDismissBtn.addEventListener('click', () => {
+    const opening = eventDismissForm.classList.toggle('hidden') === false;
+    eventDismissBtn.setAttribute('aria-expanded', String(opening));
+    eventDismissError.textContent = '';
+    if (opening) eventDismissInput.focus();
+  });
+  eventDismissForm.addEventListener('submit', (submit) => {
+    submit.preventDefault();
+    if (!eventCurrent) return;
+    // Only the exact phrase hides it (surrounding spaces ignored, composed Hangul normalized).
+    if (eventDismissInput.value.trim().normalize('NFC') !== EVENT_DISMISS_PHRASE) {
+      eventDismissError.textContent = `"${EVENT_DISMISS_PHRASE}"을 정확히 입력해 주세요.`;
+      return;
+    }
+    try { localStorage.setItem(eventHideKey(eventAccount, eventCurrent.id), seoulDay.format(new Date())); }
+    catch { eventDismissError.textContent = '이 브라우저에서는 설정을 저장할 수 없습니다.'; return; }
+    eventDialog.close();
+    showToast('오늘은 이 이벤트 창을 다시 열지 않습니다.');
+  });
   document.getElementById('eventDialogCloseBtn').addEventListener('click', () => eventDialog.close());
   eventDialog.addEventListener('close', () => { eventCurrent = null; });
 
