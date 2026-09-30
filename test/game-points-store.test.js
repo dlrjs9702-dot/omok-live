@@ -125,7 +125,7 @@ async function exercise(t, makeStore) {
       assert.ok(reasons.some(([reason, game]) => reason === expected[0] && game === expected[1]), JSON.stringify(expected));
     }
   });
-  await t.test('이벤트 보상(v1.7.15): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
+  await t.test('이벤트 보상(v1.7.16): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
     const eventId = 'test_event_2026';
     const claim = { eventId, userId: C, amount: 100_000, title: '  테스트\n이벤트  ' };
     const before = await balance(C);
@@ -152,6 +152,49 @@ async function exercise(t, makeStore) {
     const history = await store.history(C, { limit: 5 });
     const item = history.items.find(entry => entry.reason === 'event_reward' && entry.balanceAfter === before + 100_000);
     assert.deepEqual([item.delta, item.memo, item.balanceBefore, item.detail], [100_000, '테스트 이벤트', before, 'event']);
+  });
+  await t.test('일일 미션(v1.7.16): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
+    const E = 'guest:00000000-0000-4000-8000-00000000000e';
+    const F = 'guest:00000000-0000-4000-8000-00000000000f';
+    const now = Date.parse('2026-10-05T03:00:00Z'); // 2026-10-05 12:00 KST
+    const first = await store.missions(E, now);
+    assert.deepEqual([first.date, first.missions.length, first.doneCount, first.firstWin.done], ['2026-10-05', 3, 0, false]);
+    assert.deepEqual((await store.missions(E, now)).missions.map(item => item.id), first.missions.map(item => item.id), '같은 날은 같은 미션');
+    await store.testSetMissions(E, ['win1', 'play3', 'variety2'], now);
+    const before = await balance(E);
+    const input = { userId: E, matchId: 'mission-room:1', gameType: 'othello', result: 'win', soleWinner: true, clean: true, opponents: [F] };
+    const outcomes = await Promise.all([store.recordMissionMatch(input, now), store.recordMissionMatch(input, now), store.recordMissionMatch(input, now)]);
+    assert.equal(outcomes.filter(item => item.applied).length, 1, '같은 판은 동시에 3번 들어와도 1번');
+    const applied = outcomes.find(item => item.applied);
+    assert.deepEqual(applied.rewards.map(item => [item.reason, item.id, item.amount]), [['daily_mission', 'win1', 3_000], ['first_win', 'first_win', 5_000]]);
+    assert.equal(await balance(E), before + 8_000);
+    assert.equal(applied.balance, before + 8_000);
+    assert.deepEqual([applied.view.doneCount, applied.view.firstWin.done], [1, true]);
+
+    const second = await store.recordMissionMatch({ ...input, matchId: 'mission-room:2', gameType: 'omok' }, now);
+    assert.deepEqual(second.rewards.map(item => item.id), ['variety2'], '두 번째 승리: 첫 승리 보너스는 없다');
+    assert.equal(await balance(E), before + 10_000);
+    const draw = await store.recordMissionMatch({ ...input, matchId: 'mission-room:3', gameType: 'yut', result: 'draw', soleWinner: false }, now);
+    assert.deepEqual(draw.rewards.map(item => item.id), ['play3'], '무승부도 3판 정상 종료로는 센다');
+    assert.equal(await balance(E), before + 13_000);
+
+    const rows = (await store.ledger(E, 50)).filter(row => ['daily_mission', 'first_win'].includes(row.reason));
+    assert.equal(rows.length, 4, '미션 3개 + 첫 승리 1개, 각 1행');
+    assert.ok(rows.every(row => row.idempotencyKey.includes(E) && row.idempotencyKey.includes('2026-10-05')));
+    const history = (await store.history(E, { limit: 10 })).items.filter(item => item.detail === 'mission');
+    assert.ok(history.some(item => item.reason === 'first_win' && item.memo === '첫 승리 보너스' && item.delta === 5_000));
+    assert.ok(history.some(item => item.reason === 'daily_mission' && item.memo === '아무 게임 3판 정상 종료' && item.delta === 3_000));
+
+    const tomorrow = now + 86_400_000;
+    const next = await store.missions(E, tomorrow);
+    assert.deepEqual([next.date, next.doneCount, next.firstWin.done], ['2026-10-06', 0, false], '다음 날은 새 미션·첫 승리 초기화');
+    await store.testSetMissions(E, ['win1', 'play3', 'variety2'], tomorrow);
+    const again = await store.recordMissionMatch({ ...input, matchId: 'mission-room:4' }, tomorrow);
+    assert.deepEqual(again.rewards.map(item => item.reason), ['daily_mission', 'first_win'], '다음 날 첫 승리는 다시 받는다');
+    for (const bad of [{ result: 'won' }, { matchId: '' }, { gameType: 'Bad Type' }, { userId: 'guest:nope' }]) {
+      await assert.rejects(store.recordMissionMatch({ ...input, matchId: 'bad', ...bad }, now), TypeError, JSON.stringify(bad));
+    }
+    await assert.rejects(store.testSetMissions(E, ['no_such_mission'], now), RangeError);
   });
   return store;
 }

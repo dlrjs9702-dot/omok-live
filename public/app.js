@@ -2495,6 +2495,8 @@
       return `관리자 지급 · ${category}${item.detail === 'other' && item.memo ? ` (${item.memo})` : ''}`;
     }
     if (item.reason === 'event_reward') return item.memo || '이벤트 보상';
+    if (item.reason === 'daily_mission') return `오늘의 미션 · ${item.memo || '완료'}`;
+    if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
   }
   function pointHistoryRow(item) {
@@ -2564,6 +2566,71 @@
     } catch (err) { showToast(err.message); }
     await loadPoints();
   }
+
+  // v1.7.16 daily missions: the server deals three missions per Asia/Seoul day and counts finished
+  // matches; this only shows them. The button keeps a short `미션 N/3`, the panel is a modal like the
+  // player lookup, and in a room only a short toast appears (nothing here decides progress or pay).
+  const missionBtn = document.getElementById('missionBtn');
+  const missionDialog = document.getElementById('missionDialog');
+  const missionSummary = document.getElementById('missionSummary');
+  const missionList = document.getElementById('missionList');
+  let missionRequest = 0;
+
+  function missionRow(item, { bonus = false } = {}) {
+    const row = document.createElement('div');
+    row.className = `missionRow${item.done ? ' done' : ''}`;
+    row.setAttribute('role', 'listitem');
+    const top = document.createElement('div');
+    top.className = 'top';
+    const title = document.createElement('span');
+    title.textContent = `${item.done ? '✓ ' : ''}${item.title}`;
+    const reward = document.createElement('span');
+    reward.className = 'reward';
+    reward.textContent = `+${Number(item.reward).toLocaleString('ko-KR')}P`;
+    top.append(title, reward);
+    row.appendChild(top);
+    if (!bonus) {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', String(item.target));
+      bar.setAttribute('aria-valuenow', String(item.progress));
+      bar.setAttribute('aria-label', item.title);
+      const fill = document.createElement('i');
+      fill.style.width = `${Math.round(item.progress / item.target * 100)}%`;
+      bar.appendChild(fill);
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = `${item.progress}/${item.target}`;
+      row.append(bar, count);
+    } else {
+      const note = document.createElement('span');
+      note.className = 'count';
+      note.textContent = item.done ? '오늘 받았습니다' : '오늘 첫 승리 1회 · 무승부·공동승리 제외';
+      row.appendChild(note);
+    }
+    return row;
+  }
+
+  function renderMissions(data) {
+    missionBtn.textContent = `미션 ${data.doneCount}/${data.total}`;
+    missionSummary.textContent = data.remainingReward > 0
+      ? `오늘 더 받을 수 있는 포인트 ${Number(data.remainingReward).toLocaleString('ko-KR')}P`
+      : '오늘 미션 보상을 모두 받았습니다';
+    missionList.replaceChildren(...data.missions.map(item => missionRow(item)), missionRow({ ...data.firstWin }, { bonus: true }));
+  }
+
+  async function loadMissions() {
+    const ticket = ++missionRequest;
+    try {
+      const data = await api('/api/missions');
+      if (ticket === missionRequest) renderMissions(data);
+    } catch {}
+  }
+
+  missionBtn.addEventListener('click', () => { missionDialog.showModal(); loadMissions(); });
+  document.getElementById('missionCloseBtn').addEventListener('click', () => missionDialog.close());
 
   // v1.7.15 point-reward events: the server says which events are open and which this account already
   // claimed; the modal is built from that data (nothing about a specific event is written in the page).
@@ -2649,6 +2716,7 @@
     loadAnnouncements().catch(err => showToast(err.message, 3500));
     loadMyRecords();
     loadPoints();
+    loadMissions();
     checkEvents();
     loadPublicRooms().catch(err => showToast(err.message, 3500));
     startLobbyStream();
@@ -2840,6 +2908,10 @@
       if (settledGostop) loadPoints();
     } else if (event === 'rpgTick') {
       if (isRpgGame()) rpgBridge.controller?.tick(parsed);
+    } else if (event === 'missionUpdate') {
+      // v1.7.16: the server counted this match for my missions; a few short lines, one after another.
+      if (Number.isInteger(parsed.doneCount)) missionBtn.textContent = `미션 ${parsed.doneCount}/${parsed.total}`;
+      (Array.isArray(parsed.lines) ? parsed.lines : []).slice(0, 4).forEach((line, index) => setTimeout(() => showToast(String(line), 2200), index * 2300));
     } else if (event === 'sessionExpired') {
       expireSession(parsed.message);
     }
