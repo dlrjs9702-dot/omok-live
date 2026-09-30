@@ -125,6 +125,34 @@ async function exercise(t, makeStore) {
       assert.ok(reasons.some(([reason, game]) => reason === expected[0] && game === expected[1]), JSON.stringify(expected));
     }
   });
+  await t.test('이벤트 보상(v1.7.15): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
+    const eventId = 'test_event_2026';
+    const claim = { eventId, userId: C, amount: 100_000, title: '  테스트\n이벤트  ' };
+    const before = await balance(C);
+    const outcomes = await Promise.all([store.claimEvent(claim), store.claimEvent(claim), store.claimEvent(claim)]);
+    assert.equal(outcomes.filter(item => item.applied).length, 1, '동시 3건 중 1건만 지급');
+    const applied = outcomes.find(item => item.applied);
+    assert.deepEqual([applied.balanceBefore, applied.balanceAfter, applied.eventId, applied.amount], [before, before + 100_000, eventId, 100_000]);
+    assert.equal(await balance(C), before + 100_000);
+    assert.equal((await store.claimEvent(claim)).applied, false, '재요청은 추가 지급 없음');
+    assert.equal(await balance(C), before + 100_000);
+    assert.deepEqual(await store.claimedEvents(C, [eventId, 'other_event']), [eventId]);
+    assert.deepEqual(await store.claimedEvents(D, [eventId]), [], '다른 계정은 아직 미수령');
+    const otherBefore = await balance(D);
+    assert.equal((await store.claimEvent({ ...claim, userId: D })).applied, true, '같은 이벤트도 다른 계정은 각자 1회');
+    assert.equal(await balance(D), otherBefore + 100_000);
+    assert.equal((await store.claimEvent({ ...claim, eventId: 'second_event_2026' })).applied, true, '같은 계정도 다른 이벤트는 별도');
+    for (const bad of [{ amount: 0 }, { amount: -1 }, { amount: 1.5 }, { amount: 20_000_000 }, { eventId: 'Bad Id' }, { eventId: 'x' }, { userId: 'guest:nope' }]) {
+      await assert.rejects(store.claimEvent({ ...claim, eventId: 'never_paid_event', ...bad }), e => e instanceof RangeError || e instanceof TypeError, JSON.stringify(bad));
+    }
+    const rows = (await store.ledger(C, 50)).filter(row => row.reason === 'event_reward');
+    assert.equal(rows.length, 2, '원장에는 이벤트 지급 행이 이벤트마다 1개');
+    assert.ok(rows.every(row => row.delta === 100_000 && row.idempotencyKey.includes(C)));
+    assert.ok(rows.some(row => row.idempotencyKey.includes(eventId)));
+    const history = await store.history(C, { limit: 5 });
+    const item = history.items.find(entry => entry.reason === 'event_reward' && entry.balanceAfter === before + 100_000);
+    assert.deepEqual([item.delta, item.memo, item.balanceBefore, item.detail], [100_000, '테스트 이벤트', before, 'event']);
+  });
   return store;
 }
 

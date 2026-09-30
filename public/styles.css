@@ -1367,3 +1367,22 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .halliBell{min-width:0;width:6.4rem;height:6.4rem;border-radius:50%;white-space:nowrap;padding:0;background:radial-gradient(circle at 35% 30%,#fff7d6 0 8%,#f5c542 22%,#c8901a 58%,#8a5a0c 100%);color:#3b2505;font-size:1rem;box-shadow:0 .35rem 0 #5c3a07,0 .6rem 1rem rgba(0,0,0,.45);text-shadow:0 1px 0 rgba(255,255,255,.5)}
 .halliBell:active:not(:disabled){transform:translateY(.25rem);box-shadow:0 .1rem 0 #5c3a07,0 .3rem .6rem rgba(0,0,0,.45)}
 @media(prefers-reduced-motion:reduce){.halliCard.recentActionTarget.recentActionFresh .halliFace{animation:none}}
+
+/* v1.7.15 point-reward event: centered modal built from server data, and a firework celebration that reuses the #resultEffect overlay */
+.eventDialog{width:min(92vw,480px);border:2px solid #fbbf24;text-align:center;box-shadow:0 0 0 1px rgba(250,204,21,.25),0 0 46px rgba(250,204,21,.28),0 22px 80px #0009}
+.eventDialog::backdrop{background:#020617d9}
+.eventDialogTitle{margin:0 0 8px;font-size:.84rem;font-weight:900;color:#fde68a}
+.eventDialog h2{margin:0 0 8px;font-size:1.35rem;font-weight:900}
+.eventDialog #eventDialogMessage{margin:0;color:#cbd5e1;font-size:.84rem;line-height:1.6}
+.eventDialogReward{display:block;margin:16px 0 4px;font-size:clamp(2.4rem,11vw,3.4rem);font-weight:900;line-height:1.05;letter-spacing:-.03em;color:#facc15}
+.eventDialogNote{margin:0;font-size:.76rem;color:#94a3b8}
+.eventDialog .pointGrantError:empty{display:none}
+.eventDialog .logoutDialogActions{justify-content:center}
+.eventDialog #eventDialogClaimBtn{flex:1 1 auto;min-height:48px;font-size:1rem}
+.resultParticles b{position:absolute;left:var(--bx);top:var(--by);width:0;height:0}
+.resultParticles b:before{content:"";position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle,#fff 0,rgba(253,224,71,.85) 35%,transparent 70%);opacity:0;animation:fireworkFlash .55s var(--delay) ease-out both}
+.resultParticles b span{position:absolute;left:0;top:0;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--color);box-shadow:0 0 14px var(--color),0 0 30px color-mix(in srgb,var(--color) 65%,transparent);opacity:0;animation:fireworkSpark 1.15s var(--delay) cubic-bezier(.08,.75,.25,1) both}
+.resultEffect.reward .resultTitle{font-size:clamp(2.8rem,13vw,5rem);color:#fde68a;text-shadow:0 4px 26px rgba(250,204,21,.6);animation:rewardAmountPop .9s .2s cubic-bezier(.2,1.5,.35,1) both}
+@keyframes fireworkSpark{0%{opacity:0;transform:translate(0,0) scale(.4)}10%{opacity:1}65%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 40px)) scale(.5)}}@keyframes fireworkFlash{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(5)}}
+@keyframes rewardAmountPop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.18)}100%{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.resultEffect.reward .resultTitle{animation:none!important}}

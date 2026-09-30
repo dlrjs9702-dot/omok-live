@@ -41,6 +41,7 @@ const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
+const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
@@ -108,6 +109,12 @@ let accessStore;
 let announcementStore;
 let matchStore;
 let pointStore;
+// v1.7.15 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
+// events, so its results do not depend on the day the tests run; tests register their own through
+// /api/test/events and may restrict one to a single account (eventAudience).
+const eventRegistry = process.env.NODE_ENV === 'test' ? [] : [...POINT_EVENTS];
+const eventAudience = new Map();
+function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
 
 function nowIso() { return new Date().toISOString(); }
@@ -2397,7 +2404,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.14' });
+    return sendJson(res, 200, { ok: true, version: '1.7.15' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2500,6 +2507,55 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (room) broadcast(room);
     return sendJson(res, 200, { ok: true, ...result });
+  }
+
+  // v1.7.15 common point-reward events. GET lists the events open right now for the caller and whether
+  // the caller already claimed each one; POST claims by event id only. The server clock decides whether an
+  // event is open and the registered definition decides the reward: nothing in the request can change either.
+  if (pathname === '/api/events' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const userId = pointAccountForSession(session);
+    if (!checkRateLimit(`events:${userId}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const now = Date.now();
+    const open = eventsForAccount(userId).filter(event => eventStatus(event, now) === 'open');
+    const claimed = new Set(await pointStore.claimedEvents(userId, open.map(event => event.id)));
+    return sendJson(res, 200, { ok: true, events: open.map(event => publicEvent(event, claimed.has(event.id))) });
+  }
+
+  const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
+  if (eventClaimMatch && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const userId = pointAccountForSession(session);
+    if (!checkRateLimit(`eventclaim:${userId}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const event = eventsForAccount(userId).find(item => item.id === eventClaimMatch[1]);
+    if (!event) return sendError(res, 404, 'EVENT_NOT_FOUND', '진행 중인 이벤트가 아닙니다.');
+    const status = eventStatus(event, Date.now());
+    if (status === 'inactive') return sendError(res, 404, 'EVENT_NOT_FOUND', '진행 중인 이벤트가 아닙니다.');
+    if (status === 'upcoming') return sendError(res, 409, 'EVENT_NOT_STARTED', '아직 시작하지 않은 이벤트입니다.');
+    if (status === 'ended') return sendError(res, 409, 'EVENT_ENDED', '이미 종료된 이벤트입니다.');
+    const outcome = await pointStore.claimEvent({ eventId: event.id, userId, amount: event.rewardPoints, title: event.title });
+    if (outcome.applied) notifyPointsChanged([userId]);
+    const balance = pointStore.cachedBalance(userId);
+    // An already-claimed account gets a normal answer (claimed, nothing paid), never an error.
+    return sendJson(res, 200, { ok: true, eventId: event.id, claimed: true, granted: outcome.applied, amount: outcome.applied ? outcome.amount : 0,
+      balance, title: event.title, successMessage: event.successMessage });
+  }
+
+  // Test-only (NODE_ENV=test): register an event so tests can exercise open / upcoming / ended / off
+  // states; `audience: 'self'` (or `audienceKeyId`, an issued guest key) shows it to one account only, so parallel tests do not see each other's.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/events' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    let event;
+    try { event = validateEvent(body.event); } catch (error) { return sendError(res, 400, 'BAD_EVENT', error.message); }
+    if (eventRegistry.some(item => item.id === event.id)) return sendError(res, 409, 'EVENT_EXISTS', '이미 등록된 이벤트입니다.');
+    eventRegistry.push(event);
+    if (body.audience === 'self') eventAudience.set(event.id, new Set([pointAccountForSession(session)]));
+    else if (/^[0-9a-f-]{36}$/i.test(String(body.audienceKeyId))) eventAudience.set(event.id, new Set([`guest:${body.audienceKeyId}`]));
+    return sendJson(res, 200, { ok: true, id: event.id });
   }
 
   // Test-only (NODE_ENV=test): spend a player's points down to a target through the ledger, so the
@@ -3200,7 +3256,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.14 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.15 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
