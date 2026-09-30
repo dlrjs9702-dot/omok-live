@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## 백로그 4 정산 완료 전 다음 판 차단 회귀 테스트 (버전 변경 없음)
+
+`IDEAS.md` 백로그 4(고스톱·맞고 포인트 정산이 끝나야 다음 판)를 현재 `main`에서 재대조했다. `next-round`/`rematch`가 `recordOrError`→`recordFinishedMatch`→`settleGostopIfNeeded`를 먼저 기다리고, 실패하면 503으로 거절해 판을 바꾸지 않는다(정산 재시도는 `scheduleSettlementRetry`). 동작은 이미 맞아 코드는 바꾸지 않고 회귀 테스트만 추가했다. 사용자에게 보이는 변경이 없어 버전·공지는 올리지 않았다.
+
+- 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
+- `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
+
 ## v1.7.22 잿빛 원정 운영 안전·Render 주소 보완
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 1·25·26·27번을 처리했다. 게임 규칙·밸런스는 바꾸지 않았다.

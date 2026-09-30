@@ -2699,13 +2699,18 @@ async function requestHandler(req, res) {
   }
 
   // Test-only fault injection for the v1.7.6 recovery paths: the next `chargeAfterCommit` charges commit and
-  // then fail (a dropped connection at COMMIT); the next `refundFail` refunds throw.
+  // then fail (a dropped connection at COMMIT); the next `refundFail` refunds throw; the next `settleFail` game settlements throw.
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-fault' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
     if (!pointStore.faults) {
-      pointStore.faults = { chargeAfterCommit: 0, refundFail: 0 };
+      pointStore.faults = { chargeAfterCommit: 0, refundFail: 0, settleFail: 0 };
+      const settle = pointStore.settle.bind(pointStore);
+      pointStore.settle = async (raw) => {
+        if (pointStore.faults.settleFail > 0) { pointStore.faults.settleFail -= 1; throw new Error('injected: settlement failure'); }
+        return settle(raw);
+      };
       const charge = pointStore.chargeEntry.bind(pointStore);
       const refund = pointStore.refundEntry.bind(pointStore);
       pointStore.chargeEntry = async (raw) => {
@@ -2718,7 +2723,7 @@ async function requestHandler(req, res) {
         return refund(raw);
       };
     }
-    Object.assign(pointStore.faults, { chargeAfterCommit: Number(body.chargeAfterCommit) || 0, refundFail: Number(body.refundFail) || 0 });
+    Object.assign(pointStore.faults, { chargeAfterCommit: Number(body.chargeAfterCommit) || 0, refundFail: Number(body.refundFail) || 0, settleFail: Number(body.settleFail) || 0 });
     return sendJson(res, 200, { ok: true, faults: pointStore.faults });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/expire-room' && req.method === 'POST') {
