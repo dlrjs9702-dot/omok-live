@@ -1386,3 +1386,19 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 @keyframes fireworkSpark{0%{opacity:0;transform:translate(0,0) scale(.4)}10%{opacity:1}65%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 40px)) scale(.5)}}@keyframes fireworkFlash{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(5)}}
 @keyframes rewardAmountPop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.18)}100%{opacity:1;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.resultEffect.reward .resultTitle{animation:none!important}}
+
+/* v1.7.16 daily missions: the lobby button opens a panel like the player lookup (rows, bars, rewards) */
+.missionTabs{display:flex;gap:6px;margin-bottom:12px}
+.missionTab{flex:1;padding:8px 6px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#cbd5e1;font-weight:800;font-size:.8rem}
+.missionTab[aria-selected="true"]{background:#1e293b;border-color:#60a5fa;color:#f8fafc}
+.missionTab:disabled{opacity:.45}
+.missionSummary{margin:0 0 10px;font-size:.78rem;color:#fde68a}
+.missionList{display:grid;gap:8px}
+.missionRow{display:grid;gap:6px;padding:10px;border:1px solid #273449;border-radius:12px;background:#0f172a}
+.missionRow.done{opacity:.7}
+.missionRow .top{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;font-weight:800}
+.missionRow .reward{color:#fbbf24;white-space:nowrap}
+.missionRow .bar{height:6px;border-radius:999px;background:#1e293b;overflow:hidden}
+.missionRow .bar i{display:block;height:100%;border-radius:999px;background:#2563eb}
+.missionRow.done .bar i{background:#16a34a}
+.missionRow .count{font-size:.72rem;color:#94a3b8}

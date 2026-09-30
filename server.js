@@ -41,6 +41,7 @@ const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
+const { toastLines } = require('./lib/missions');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
@@ -109,11 +110,14 @@ let accessStore;
 let announcementStore;
 let matchStore;
 let pointStore;
-// v1.7.15 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
+// v1.7.16 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
 // events, so its results do not depend on the day the tests run; tests register their own through
 // /api/test/events and may restrict one to a single account (eventAudience).
 const eventRegistry = process.env.NODE_ENV === 'test' ? [] : [...POINT_EVENTS];
 const eventAudience = new Map();
+// v1.7.16: the test server only applies missions to accounts a test dealt missions to (/api/test/missions),
+// so the exact-balance point tests are not affected by the first-win bonus and mission payouts.
+const missionTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
 
@@ -1008,6 +1012,7 @@ function prepareNextRound(room) {
   room.game.paused = false;
   room.game.disconnectedSeats = [];
   room.game.endReason = null;
+  room.game.resignedSeat = null;
   room.game.disconnectedAtEnd = [];
   if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isMarathon(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
     // v1.6.99: a seat whose player left the room (not a dropped connection that may still come
@@ -1032,13 +1037,58 @@ async function recordFinishedMatch(room) {
   if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
+  // v1.7.16: who played each seat, taken now (the room may change before the awaits below finish).
+  const seats = matchSeats(room);
+  const accounts = seats.map(seat => pointAccountForParticipant(room.participants[room.players[seat]]));
+  const resignedSeat = room.game.resignedSeat ?? null;
   await settleGostopIfNeeded(room, result);
   await settleEntryIfNeeded(room);
   room.recordedMatches ||= new Set();
-  if (room.recordedMatches.has(result.id)) return false;
-  await matchStore.recordMatch(result);
-  room.recordedMatches.add(result.id);
-  return true;
+  let recorded = false;
+  if (!room.recordedMatches.has(result.id)) {
+    await matchStore.recordMatch(result);
+    room.recordedMatches.add(result.id);
+    recorded = true;
+  }
+  await awardMissions(room, result, accounts, seats, resignedSeat); // idempotent per match, so a later call retries a failed award
+  return recorded;
+}
+
+// v1.7.16 daily missions and the first-win bonus, driven only by the match the server just recorded.
+// A game ended by a dropped connection is not a normal finish and counts for nobody; a resignation is
+// a normal result but not a clean finish for the seat that resigned (`game.resignedSeat`, server-only). Progress and payouts are written
+// per account by the point store (keyed by match id / mission id / day), never by the client.
+async function awardMissions(room, result, accounts, seats, resignedSeat) {
+  room.missionsAwarded ||= new Set();
+  if (room.missionsAwarded.has(result.id)) return;
+  if (room.game.endReason === 'disconnect') { room.missionsAwarded.add(result.id); return; }
+  const sole = result.outcomes.filter(outcome => outcome.result === 'win').length === 1;
+  try {
+    for (let i = 0; i < result.outcomes.length; i += 1) {
+      const account = accounts[i];
+      if (!account) continue;
+      if (process.env.NODE_ENV === 'test' && !missionTestAccounts.has(account)) continue;
+      const outcome = result.outcomes[i];
+      const done = await pointStore.recordMissionMatch({
+        userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
+        clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
+      });
+      if (!done.applied) continue;
+      const lines = toastLines(done);
+      if (lines.length) notifyRoomAccount(room, account, 'missionUpdate', { lines, doneCount: done.view.doneCount, total: done.view.total });
+      if (done.rewards.length) notifyPointsChanged([account]);
+    }
+    room.missionsAwarded.add(result.id);
+  } catch (error) {
+    console.error('미션 진행 기록 실패:', error);
+  }
+}
+
+function notifyRoomAccount(room, account, event, data) {
+  for (const client of [...(streams.get(room.id) || [])]) {
+    if (pointAccountForSession(sessions.get(client.sessionToken)) !== account) continue;
+    try { sseWrite(client.res, event, data); } catch {}
+  }
 }
 
 async function recordOrError(room, res) {
@@ -2284,6 +2334,7 @@ async function handleRoomAction(req, res, action, session) {
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
     room.game.status = 'finished';
+    room.game.resignedSeat = seat; // server-only: lets the mission rules tell a resignation from a clean finish
     // Bingo/pictionary/liar/oldmaid/marathon are free-for-all games with no black/white side for a
     // resign to flip. Ending immediately and crediting every other seated player as the winner
     // mirrors exactly what already happens when a required player disconnects and someone calls
@@ -2404,7 +2455,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.15' });
+    return sendJson(res, 200, { ok: true, version: '1.7.16' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2509,7 +2560,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, ...result });
   }
 
-  // v1.7.15 common point-reward events. GET lists the events open right now for the caller and whether
+  // v1.7.16 common point-reward events. GET lists the events open right now for the caller and whether
   // the caller already claimed each one; POST claims by event id only. The server clock decides whether an
   // event is open and the registered definition decides the reward: nothing in the request can change either.
   if (pathname === '/api/events' && req.method === 'GET') {
@@ -2521,6 +2572,16 @@ async function requestHandler(req, res) {
     const open = eventsForAccount(userId).filter(event => eventStatus(event, now) === 'open');
     const claimed = new Set(await pointStore.claimedEvents(userId, open.map(event => event.id)));
     return sendJson(res, 200, { ok: true, events: open.map(event => publicEvent(event, claimed.has(event.id))) });
+  }
+
+  // v1.7.16 today's missions and first-win bonus for the caller (Asia/Seoul day). Read-only apart from
+  // dealing today's three missions on first touch; progress and payouts only ever come from recorded matches.
+  if (pathname === '/api/missions' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const userId = pointAccountForSession(session);
+    if (!checkRateLimit(`missions:${userId}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    return sendJson(res, 200, { ok: true, ...(await pointStore.missions(userId)) });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -2541,6 +2602,16 @@ async function requestHandler(req, res) {
     // An already-claimed account gets a normal answer (claimed, nothing paid), never an error.
     return sendJson(res, 200, { ok: true, eventId: event.id, claimed: true, granted: outcome.applied, amount: outcome.applied ? outcome.amount : 0,
       balance, title: event.title, successMessage: event.successMessage });
+  }
+
+  // Test-only (NODE_ENV=test): deal the caller a chosen set of today's missions.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/missions' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const account = pointAccountForSession(session);
+    try { const view = await pointStore.testSetMissions(account, Array.isArray(body.ids) ? body.ids : []); missionTestAccounts.add(account); return sendJson(res, 200, { ok: true, ...view }); }
+    catch (error) { return sendError(res, 400, 'BAD_MISSIONS', error.message); }
   }
 
   // Test-only (NODE_ENV=test): register an event so tests can exercise open / upcoming / ended / off
@@ -3256,7 +3327,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.15 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.16 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
