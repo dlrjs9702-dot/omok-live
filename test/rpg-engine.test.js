@@ -417,3 +417,22 @@ test('전체 원정: 봇이 역할 조합별로 8개 방·보스까지 돌파한
     assert.ok(cleared >= 1, `${classes.join('+')} 클리어 실패`);
   }
 });
+
+test('상태 직렬화: 진행 중 JSON 왕복 후에도 같은 시드로 원본과 똑같이 진행된다(closure·객체 참조·Math.random 없음)', () => {
+  for (const [classes, seed] of [[['guardian', 'hunter'], 11], [['arcanist', 'guardian', 'hunter'], 12]]) {
+    const game = rpg.create();
+    const seats = classes.map((_, i) => String(i + 1));
+    seats.forEach((seat, i) => rpg.setClass(game, seat, classes[i]));
+    assert.equal(rpg.start(game, seats, { seed }).legal, true);
+    const botRng = seeded(seed);
+    const step = (g, rng, n) => { for (let i = 0; i < n; i += 1) { if (i % 3 === 0) for (const seat of seats) bot(g, seat, rng); rpg.tick(g); } };
+    step(game, botRng, 900); // ~45s: 전투 중 delayed·hazards·projectiles가 실제로 채워진 상태
+    const noFunctions = (v) => { if (typeof v === 'function') return false; return !v || typeof v !== 'object' || Object.values(v).every(noFunctions); };
+    assert.ok(noFunctions(game), '상태에 함수가 없어야 한다');
+    const copy = JSON.parse(JSON.stringify(game));
+    const rngA = seeded(99); const rngB = seeded(99);
+    step(game, rngA, 1200);
+    step(copy, rngB, 1200);
+    assert.deepEqual(JSON.parse(JSON.stringify(copy)), JSON.parse(JSON.stringify(game)));
+  }
+});
