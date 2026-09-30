@@ -436,3 +436,16 @@ test('상태 직렬화: 진행 중 JSON 왕복 후에도 같은 시드로 원본
     assert.deepEqual(JSON.parse(JSON.stringify(copy)), JSON.parse(JSON.stringify(game)));
   }
 });
+
+test('저장 불러오기: importState는 다른 스키마·진행 중이 아닌 상태를 거부하고 정상 저장은 그대로 복원한다', () => {
+  const { game } = startRun(['guardian', 'hunter'], 3);
+  runTicks(game, 5);
+  const saved = rpg.exportState(game);
+  assert.equal(rpg.importState(saved, rpg.SCHEMA_VERSION + 1).reason, 'schema');
+  assert.equal(rpg.importState({ ...saved, status: 'selecting' }, rpg.SCHEMA_VERSION).reason, 'bad-save');
+  assert.equal(rpg.importState(null, rpg.SCHEMA_VERSION).reason, 'bad-save');
+  const loaded = rpg.importState(saved, rpg.SCHEMA_VERSION);
+  assert.equal(loaded.legal, true);
+  assert.equal(loaded.game.time, game.time);
+  assert.deepEqual(Object.keys(loaded.game.players), Object.keys(game.players));
+});

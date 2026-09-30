@@ -40,6 +40,7 @@ const assignedSeatsFor = (room) => isNumberedSeatGame(room)
 const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
+const { createRpgStore } = require('./lib/rpg-store');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
@@ -66,6 +67,9 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const RPG_SAVE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 저장은 방(ROOM_TTL_MS)과 별개로 오래 남는다
+const RPG_AUTOSAVE_MS = Math.max(200, Number(process.env.RPG_AUTOSAVE_MS) || 15_000);
+const RPG_LEASE_MS = Math.max(RPG_AUTOSAVE_MS * 3, 60_000);
 const RPG_ENABLED = process.env.RPG_ENABLED === '1'; // 잿빛 원정 기능 스위치: 기본 꺼짐, 로컬 개발에서만 켠다.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : 'dev-admin');
 const MAX_BODY = 48 * 1024;
@@ -109,6 +113,8 @@ let accessStore;
 let announcementStore;
 let matchStore;
 let pointStore;
+let rpgStore = null;
+let rpgFault = false; // NODE_ENV=test에서만 켜지는 저장 장애 모의
 let indexTemplate = '';
 
 function nowIso() { return new Date().toISOString(); }
@@ -931,6 +937,7 @@ function roomView(room, session) {
     ...base,
     stateSeq: roomViewSeq,
     game: gameView,
+    ...(isRpg(room) ? { rpgSave: { paused: Boolean(room.rpgPaused), savedAt: room.rpgSavedAt || null } } : {}),
     me: {
       label: session.label,
       isHost,
@@ -1399,6 +1406,13 @@ function notifyPointsChanged(userIds) {
 // owned by this process (not an orphan) until that succeeds, and both paths retry in the background.
 function expireRoom(room) {
   rooms.delete(room.id);
+  if (rpgStore && isRpg(room) && room.rpgRunId) {
+    // 방은 사라져도 원정은 저장에 남는다: 마지막 상태를 자동 칸에 저장하고 이어받기 권한을 놓는다.
+    const runId = room.rpgRunId;
+    (room.game.status === 'playing' && !room.rpgPaused ? saveRpgRoom(room, 'auto') : Promise.resolve())
+      .catch(error => console.error('잿빛 원정 종료 저장 실패:', error.message))
+      .then(() => rpgStore.releaseLease(runId, room.id)).catch(() => {});
+  }
   if (room.entry?.status !== 'charged') return Promise.resolve();
   expiredEntries.add(room.entry);
   return (['finished', 'draw'].includes(room.game.status) ? settleEntryIfNeeded(room) : refundRoomEntry(room, 'room-expired'))
@@ -1615,6 +1629,49 @@ async function tickHalliRooms() {
   }
 }
 
+// 잿빛 원정 저장. 자동저장(auto)과 수동저장(manual)은 서로 다른 칸이라 덮어쓰지 않는다.
+// 저장이 실패하면(운영 DB 장애 등) JSON으로 대체하지 않고 원정을 멈춘 채 다시 시도한다.
+async function saveRpgRoom(room, slot) {
+  const engine = getGame('rpg');
+  const party = {};
+  for (const seat of room.game.seatOrder) {
+    const identity = participantIdentity(room.participants[room.players[seat]]);
+    if (identity) party[seat] = identity;
+  }
+  if (rpgFault) throw new Error('테스트 저장 장애');
+  room.rpgSaveSeq = (room.rpgSaveSeq || 0) + 1;
+  if (!(await rpgStore.acquireLease(room.rpgRunId, room.id, RPG_LEASE_MS))) throw new Error('원정이 다른 방에서 열려 있습니다.');
+  await rpgStore.save({ runId: room.rpgRunId, slot, seq: room.rpgSaveSeq, schemaVersion: engine.SCHEMA_VERSION, state: engine.exportState(room.game), party });
+  room.rpgSavedAt = nowIso();
+  return true;
+}
+
+async function saveRpgRooms() {
+  if (!rpgStore) return;
+  for (const room of [...rooms.values()]) {
+    if (!isRpg(room) || !room.rpgRunId || room.rpgSaving) continue;
+    if (room.game.status !== 'playing') {
+      // 원정이 끝났다: 이어할 저장은 지운다.
+      const runId = room.rpgRunId;
+      room.rpgRunId = null; room.rpgPaused = false;
+      rpgStore.remove(runId).catch(error => console.error('잿빛 원정 저장 삭제 실패:', error.message));
+      continue;
+    }
+    const due = !room.rpgLastSaveAt || Date.now() - room.rpgLastSaveAt >= RPG_AUTOSAVE_MS;
+    const version = `${room.game.time}:${room.game.metaVersion}`;
+    if (!due || (room.rpgSavedVersion === version && !room.rpgPaused)) continue;
+    room.rpgSaving = true;
+    try {
+      await saveRpgRoom(room, 'auto');
+      room.rpgSavedVersion = version;
+      if (room.rpgPaused) { room.rpgPaused = false; appendSystemMessage(room, '원정 저장이 복구되어 다시 진행합니다.'); broadcast(room); }
+    } catch (error) {
+      console.error('잿빛 원정 자동저장 실패:', error.message);
+      if (!room.rpgPaused) { room.rpgPaused = true; appendSystemMessage(room, '원정 저장소에 연결할 수 없어 원정을 일시정지했습니다. 복구되면 자동으로 이어집니다.'); broadcast(room); }
+    } finally { room.rpgLastSaveAt = Date.now(); room.rpgSaving = false; }
+  }
+}
+
 // 잿빛 원정: 20 Hz server simulation. Positions go out as a compact `rpgTick` event on the room's
 // existing SSE stream (one serialisation shared by every viewer); the ordinary roomState is only
 // re-sent when builds, choices or the phase change (metaVersion).
@@ -1635,6 +1692,7 @@ function tickRpgRooms() {
       if (connected) anyConnected = true; else engine.releaseInput(room.game, seat);
     }
     if (!anyConnected) continue; // nobody at the table: the run waits for them
+    if (room.rpgPaused) continue; // 저장소 장애: 저장이 되돌아올 때까지 원정을 멈춘다
     engine.tick(room.game);
     if (room.rpgBroadcastVersion !== room.game.metaVersion) { room.rpgBroadcastVersion = room.game.metaVersion; touchRoom(room); broadcast(room); }
     const set = streams.get(room.id);
@@ -1662,6 +1720,16 @@ async function handleRoomAction(req, res, action, session) {
         : engine.act(room.game, playerSeat, String(body.a || ''));
       return sendJson(res, 200, { ok: verdict.legal, ...(verdict.legal ? {} : { reason: verdict.reason }) });
     }
+    if (action === 'rpg-save') {
+      if (!rpgStore || !room.rpgRunId || room.game.status !== 'playing') return sendError(res, 409, 'NOT_SAVABLE', '진행 중인 원정만 저장할 수 있습니다.');
+      try { await saveRpgRoom(room, 'manual'); } catch (error) {
+        console.error('잿빛 원정 수동저장 실패:', error.message);
+        return sendError(res, 503, 'RPG_SAVE_FAILED', '원정 저장소에 연결할 수 없어 저장하지 못했습니다.');
+      }
+      appendSystemMessage(room, '원정을 수동 저장했습니다.');
+      touchRoom(room); broadcast(room);
+      return sendJson(res, 200, { ok: true, savedAt: room.rpgSavedAt });
+    }
     let verdict;
     if (action === 'rpg-class') verdict = engine.setClass(room.game, playerSeat, String(body.cls || ''));
     else if (action === 'rpg-start') {
@@ -1669,6 +1737,7 @@ async function handleRoomAction(req, res, action, session) {
       verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]));
       if (verdict.legal) {
         for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+        room.rpgRunId = crypto.randomUUID(); room.rpgSaveSeq = 0; room.rpgLastSaveAt = 0; room.rpgSavedVersion = null; room.rpgPaused = false;
         appendSystemMessage(room, `잿빛 원정 시작 · ${room.game.seatOrder.length}명`);
       }
     } else if (action === 'rpg-pick') verdict = engine.chooseLevelUp(room.game, playerSeat, Number(body.index));
@@ -2478,6 +2547,12 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, ...result });
   }
 
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/rpg-fault' && req.method === 'POST') {
+    const body = await parseJson(req);
+    rpgFault = body.on === true;
+    return sendJson(res, 200, { ok: true, on: rpgFault });
+  }
+
   // Test-only (NODE_ENV=test): spend a player's points down to a target through the ledger, so the
   // insufficient-entry path can be exercised. Never registered in production.
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-spend' && req.method === 'POST') {
@@ -2944,6 +3019,66 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { state: roomView(room, session) });
   }
 
+  if (pathname === '/api/rpg/saves' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!RPG_ENABLED || !rpgStore) return sendError(res, 403, 'GAME_DISABLED', '잿빛 원정은 현재 개발 중이라 이용할 수 없습니다.');
+    try {
+      const runs = await rpgStore.listForIdentity(sessionIdentity(session));
+      return sendJson(res, 200, { saves: runs.map(run => ({ runId: run.runId, updatedAt: run.updatedAt, slots: Object.fromEntries(Object.entries(run.slots).map(([slot, m]) => [slot, { updatedAt: m.updatedAt, players: Object.keys(m.party).length }])) })) });
+    } catch (error) {
+      console.error('잿빛 원정 저장 목록 실패:', error.message);
+      return sendError(res, 503, 'RPG_SAVE_FAILED', '원정 저장소에 연결할 수 없습니다.');
+    }
+  }
+
+  if (pathname === '/api/rpg/resume' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!RPG_ENABLED || !rpgStore) return sendError(res, 403, 'GAME_DISABLED', '잿빛 원정은 현재 개발 중이라 이용할 수 없습니다.');
+    const body = await parseJson(req);
+    const slot = body.slot === 'manual' ? 'manual' : 'auto';
+    const identity = sessionIdentity(session);
+    const engine = getGame('rpg');
+    let row; let room;
+    try {
+      const runs = await rpgStore.listForIdentity(identity);
+      const run = body.runId ? runs.find(r => r.runId === String(body.runId)) : runs[0];
+      if (!run) return sendError(res, 404, 'NO_SAVE', '이어할 원정 저장이 없습니다.');
+      if ([...rooms.values()].some(r => r.rpgRunId === run.runId)) return sendError(res, 409, 'RUN_ACTIVE', '이미 열려 있는 원정입니다. 방 비밀번호로 입장해 주세요.');
+      row = (await rpgStore.load(run.runId))[slot];
+      if (!row) return sendError(res, 404, 'NO_SAVE', '선택한 저장 칸이 비어 있습니다.');
+      const imported = engine.importState(row.state, row.schemaVersion);
+      if (!imported.legal) return sendError(res, 409, 'SAVE_INCOMPATIBLE', '이 저장은 현재 버전에서 이어할 수 없습니다.');
+      room = makeRoom(session, 'rpg', 'private', {});
+      if (!(await rpgStore.acquireLease(row.runId, room.id, RPG_LEASE_MS))) return sendError(res, 409, 'RUN_ACTIVE', '이미 다른 곳에서 이어받은 원정입니다.');
+      room.game = imported.game;
+      room.rpgRunId = row.runId; room.rpgSaveSeq = row.seq; room.rpgSavedVersion = null; room.rpgLastSaveAt = Date.now();
+    } catch (error) {
+      console.error('잿빛 원정 이어하기 실패:', error.message);
+      return sendError(res, 503, 'RPG_SAVE_FAILED', '원정 저장소에 연결할 수 없습니다.');
+    }
+    // 저장된 자리마다 신원으로 예약해 둔다. 입장하는 순간 기존 재접속 절차가 자리를 되찾아 준다.
+    delete room.participants[session.token];
+    for (const [seat, partyIdentity] of Object.entries(row.party)) {
+      const ghost = `resume:${row.runId}:${seat}`;
+      room.players[seat] = ghost;
+      room.participants[ghost] = { sessionToken: ghost, identity: partyIdentity, label: '파티원', role: 'guest', recordId: partyIdentity, rejoinable: true, connected: false, joinedAt: nowIso(), lastSeen: nowIso(), choice: seat };
+    }
+    const previous = getCurrentRoom(session);
+    if (previous && previous.participants[session.token]) {
+      previous.participants[session.token].connected = false;
+      appendSystemMessage(previous, session.label + '님이 원정을 이어받았습니다.');
+      broadcast(previous);
+    }
+    rooms.set(room.id, room);
+    session.currentRoomId = room.id;
+    registerParticipant(room, session);
+    touchRoom(room);
+    broadcastLobby();
+    return sendJson(res, 201, { state: roomView(room, session) });
+  }
+
   if (pathname === '/api/rooms' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3104,7 +3239,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-save|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|set-marathon-config|start-marathon|roll-marathon|answer-marathon|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3127,6 +3262,10 @@ async function main() {
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  if (RPG_ENABLED) {
+    rpgStore = await createRpgStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+    rpgStore.purge(RPG_SAVE_TTL_MS).then(n => n && console.log(`잿빛 원정 오래된 저장 ${n}개 정리`)).catch(error => console.error('잿빛 원정 저장 정리 실패:', error.message));
+  }
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
@@ -3172,6 +3311,7 @@ async function main() {
   setInterval(() => refundOrphanEntries('orphan-sweep').catch(error => console.error('참가 포인트 정기 정리 실패:', error.message)), 60_000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();
+  setInterval(() => saveRpgRooms().catch(error => console.error('잿빛 원정 저장 처리 오류:', error)), Math.min(1000, RPG_AUTOSAVE_MS)).unref();
   setInterval(() => { try { tickRpgRooms(); } catch (error) { console.error('잿빛 원정 진행 오류:', error); } }, 50).unref();
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();

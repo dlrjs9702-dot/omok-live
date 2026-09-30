@@ -18,10 +18,10 @@ async function freePort() {
   });
 }
 
-async function startServer(dataDir, port, rpgEnabled = true) {
+async function startServer(dataDir, port, rpgEnabled = true, extraEnv = {}) {
   const proc = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir, DATABASE_URL: '', ADMIN_PASSWORD: 'gostop-test', NODE_ENV: 'test', RPG_ENABLED: rpgEnabled ? '1' : '' },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dataDir, DATABASE_URL: '', ADMIN_PASSWORD: 'gostop-test', NODE_ENV: 'test', RPG_ENABLED: rpgEnabled ? '1' : '', ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -158,4 +158,93 @@ test('잿빛 원정 스위치: 꺼짐이면 방 생성 403·features.rpg false·
     else assert.deepEqual([rpg.status, rpg.data.error], [403, 'GAME_DISABLED']);
     assert.equal((await call('/api/rooms', admin, { gameType: 'omok' })).status, 201);
   }
+});
+
+function client(base, ipPrefix) {
+  let ip = 0;
+  const req = async (route, token, body, method = 'POST') => {
+    const headers = { 'X-Forwarded-For': `${ipPrefix}.${(ip = (ip % 250) + 1)}` };
+    if (token) headers['X-Session-Token'] = token;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(base + route, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    return { status: res.status, data: await res.json().catch(() => ({})) };
+  };
+  const enter = async (html) => {
+    const token = html.match(/name="token" value="([^"]+)"/)[1];
+    const res = await fetch(base + '/guest-entry', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-For': `${ipPrefix}.250` }, body: new URLSearchParams({ token }).toString() });
+    return (await res.text()).match(/data-session="([^"]+)"/)[1];
+  };
+  return { req, enter };
+}
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const readSaves = async (dataDir) => JSON.parse(await fs.readFile(path.join(dataDir, 'rpg-saves.json'), 'utf8')).saves;
+
+test('잿빛 원정 저장: 자동/수동 칸 분리·재시작 후 이어하기·저장 장애 시 일시정지', { timeout: 90_000 }, async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rpg-resume-'));
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  let proc = await startServer(dataDir, port, true, { RPG_AUTOSAVE_MS: '300' });
+  t.after(async () => { await stopServer(proc); await fs.rm(dataDir, { recursive: true, force: true }); });
+  const { req, enter } = client(base, '10.84.0');
+  const admin = (await req('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
+  const htmlA = (await req('/api/admin/keys', admin, { label: '가' })).data.html;
+  const htmlB = (await req('/api/admin/keys', admin, { label: '나' })).data.html;
+  let [a, b] = [await enter(htmlA), await enter(htmlB)];
+
+  const code = (await req('/api/rooms', a, { gameType: 'rpg' })).data.state.me.roomCode;
+  assert.equal((await req('/api/rooms/join', b, { code })).status, 200);
+  assert.equal((await req('/api/room/choose-role', a, { choice: '1' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', b, { choice: '2' })).status, 200);
+  assert.equal((await req('/api/room/rpg-class', a, { cls: 'guardian' })).status, 200);
+  assert.equal((await req('/api/room/rpg-class', b, { cls: 'hunter' })).status, 200);
+  assert.equal((await req('/api/room/rpg-start', a, {})).status, 200);
+  assert.equal((await req('/api/rpg/saves', a, undefined, 'GET')).data.saves.length, 0, '저장 전에는 이어할 원정이 없다');
+
+  await sleep(900); // 자동저장 여러 번
+  const first = (await req('/api/rpg/saves', a, undefined, 'GET')).data.saves;
+  assert.equal(first.length, 1);
+  assert.deepEqual(Object.keys(first[0].slots), ['auto']);
+
+  // 수동저장 뒤에 원정이 더 진행돼도 수동 칸은 그대로다.
+  assert.equal((await req('/api/room/rpg-save', b, {})).status, 200);
+  const manualAt = (await readSaves(dataDir))[`${first[0].runId}:manual`];
+  await sleep(1200);
+  let saves = await readSaves(dataDir);
+  assert.equal(saves[`${first[0].runId}:manual`].seq, manualAt.seq, '수동저장은 자동저장에 덮이지 않는다');
+  assert.ok(saves[`${first[0].runId}:auto`].state.time > manualAt.state.time, '자동저장은 계속 진행 상태를 따라간다');
+
+  // 저장소 장애: 원정이 일시정지하고, 복구되면 이어진다.
+  assert.equal((await req('/api/test/rpg-fault', null, { on: true })).status, 200);
+  await sleep(900);
+  assert.equal((await req('/api/room', a, undefined, 'GET')).data.state.rpgSave.paused, true);
+  const frozen = (await readSaves(dataDir))[`${first[0].runId}:auto`].state.time;
+  await sleep(600);
+  assert.equal((await readSaves(dataDir))[`${first[0].runId}:auto`].state.time, frozen, '일시정지 중에는 저장도 진행도 없다');
+  assert.equal((await req('/api/room/rpg-save', a, {})).status, 503, '장애 중 수동저장은 실패로 알린다');
+  assert.equal((await req('/api/test/rpg-fault', null, { on: false })).status, 200);
+  await sleep(900);
+  assert.equal((await req('/api/room', a, undefined, 'GET')).data.state.rpgSave.paused, false);
+  assert.ok((await readSaves(dataDir))[`${first[0].runId}:auto`].state.time > frozen);
+  await sleep(400);
+  const last = (await readSaves(dataDir))[`${first[0].runId}:auto`].state;
+
+  // 서버 재시작: 세션은 사라지지만 저장과 손님 키는 남는다.
+  await stopServer(proc);
+  proc = await startServer(dataDir, port, true, { RPG_AUTOSAVE_MS: '300' });
+  const admin2 = (await req('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
+  assert.ok(admin2);
+  [a, b] = [await enter(htmlA), await enter(htmlB)];
+  const resumed = await req('/api/rpg/resume', a, { slot: 'auto' });
+  assert.equal(resumed.status, 201);
+  assert.deepEqual([resumed.data.state.game.status, resumed.data.state.me.seat], ['playing', '1']);
+  assert.equal((await req('/api/rpg/resume', b, {})).data.error, 'RUN_ACTIVE', '이미 열린 원정을 두 번 이어받을 수 없다');
+  const code2 = resumed.data.state.me.roomCode;
+  const joined = await req('/api/rooms/join', b, { code: code2 });
+  assert.equal(joined.status, 200);
+  assert.equal(joined.data.state.me.seat, '2', '파티원은 신원으로 자기 자리를 되찾는다');
+  await sleep(500);
+  const after = (await readSaves(dataDir))[`${first[0].runId}:auto`].state;
+  assert.ok(after.time >= last.time, '저장된 시점에서 이어서 진행된다(처음부터가 아님)');
+  assert.deepEqual(Object.keys(after.players).sort(), ['1', '2']);
 });
