@@ -65,6 +65,31 @@ test('오목: 관전자는 누구 차례인지 이름으로, 방금 둔 사람�
   await Promise.all([a, b, w].map(view => view.context.close()));
 });
 
+test('오목 2vs2: 「방금」 줄에 팀 색이 아니라 실제로 착수한 플레이어 이름이 나온다', async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const names = ['일번', '이번', '삼번', '사번'];
+  const views = [];
+  for (const name of names) views.push(await guest(browser, request, admin, name));
+  const [p1, p2, p3, p4] = views;
+  await room(request, p1, [p2, p3, p4], 'omok2v2');
+  for (const [i, view] of views.entries()) expect((await api(request, '/api/room/choose-role', view.token, { choice: String(i + 1) })).status).toBe(200);
+  const recent = view => view.page.locator('#recentActionLine');
+  await expect(recent(p2)).toBeHidden();
+
+  expect((await api(request, '/api/room/move', p1.token, { x: 7, y: 7 })).status).toBe(200); // 1번(흑팀)
+  await expect(recent(p3)).toHaveText('방금일번님이 돌을 놓았습니다');
+  await expect(recent(p1)).toHaveText('방금일번님(나)이 돌을 놓았습니다');
+  expect((await api(request, '/api/room/move', p2.token, { x: 8, y: 7 })).status).toBe(200); // 2번(백팀)
+  await expect(recent(p4)).toHaveText('방금이번님이 돌을 놓았습니다');
+  await expect(recent(p2)).toHaveText('방금이번님(나)이 돌을 놓았습니다');
+  expect((await api(request, '/api/room/move', p3.token, { x: 7, y: 8 })).status).toBe(200); // 3번(흑팀, 1번과 같은 팀)
+  await expect(recent(p1)).toHaveText('방금삼번님이 돌을 놓았습니다'); // 같은 팀 색이어도 1번이 아니라 3번
+
+  for (const view of views) expect(view.errors).toEqual([]);
+  await Promise.all(views.map(view => view.context.close()));
+});
+
 test('스무고개: 단계는 한글로, 행동하는 사람 이름과 함께 보인다', async ({ browser, request }) => {
   test.setTimeout(90_000);
   const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;

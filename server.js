@@ -315,7 +315,7 @@ function sessionIdentity(session) {
   return session.guestKeyId ? `guest:${session.guestKeyId}` : `admin:${session.publicId}`;
 }
 
-// v1.7.26: the chat sender id shown to clients. Derived from the account with a per-boot secret, so it is
+// v1.7.27: the chat sender id shown to clients. Derived from the account with a per-boot secret, so it is
 // stable across rooms, the lobby and a relogin (and a nickname change) but reveals nothing about the account.
 const CHAT_ID_KEY = crypto.randomBytes(32);
 function chatIdFor(session) {
@@ -2493,7 +2493,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.26' });
+    return sendJson(res, 200, { ok: true, version: '1.7.27' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3401,7 +3401,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.26 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.27 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
