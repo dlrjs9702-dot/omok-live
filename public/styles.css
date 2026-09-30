@@ -1299,3 +1299,15 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .twentyOlderLog summary:focus-visible{outline:2px solid #60a5fa;outline-offset:2px;border-radius:6px}
 .twentyOlderLog .twentyQuestionLog{display:grid;gap:9px;margin:6px 0 0}
 .twentyOlderLog.hidden{display:none!important}
+/* v1.7.10 실물감: 빙고 인쇄 카드와 도장(마커) 잉크, 윷가락 나뭇결 */
+.bingoBoard{padding:12px;border-radius:14px;background:#fdf6e3 repeating-linear-gradient(0deg,rgba(120,90,40,.04) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 2px #d6c49a,0 10px 24px rgba(0,0,0,.35)}
+.bingoCell{background:#fffdf6;border:1.5px solid #cbb98d;color:#1f2937;font-family:Georgia,"Times New Roman",serif;box-shadow:inset 0 -2px 0 rgba(120,90,40,.12)}
+.bingoCell:hover:not(:disabled){background:#fff3cf}
+.bingoCell.selected{background:#fffdf6 radial-gradient(circle at 48% 52%,rgba(220,38,38,.9) 0 54%,rgba(185,28,28,.95) 57%,rgba(220,38,38,.35) 59%,rgba(220,38,38,0) 62%);border-color:#cbb98d;color:#fff;text-shadow:0 1px 2px rgba(90,0,0,.6)}
+.bingoCell.selected:disabled{opacity:1}
+.bingoCell.selected.recentActionFresh{animation:bingoDaub .42s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes bingoDaub{0%{background-size:10% 10%;background-position:center;background-repeat:no-repeat}100%{background-size:100% 100%}}
+@media(prefers-reduced-motion:reduce){.bingoCell.selected.recentActionFresh{animation:none}}
+.yutStick .ysFront{background:repeating-linear-gradient(180deg,rgba(150,110,50,.18) 0 2px,transparent 2px 9px),linear-gradient(180deg,#fbf0d4,#e2c98f)}
+.yutStick .ysFront::before{content:"✕\A✕\A✕";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;line-height:2.4;color:rgba(60,35,10,.75);font-weight:900}
+.yutStick .ysBack{background:repeating-linear-gradient(180deg,rgba(0,0,0,.25) 0 1px,transparent 1px 6px),linear-gradient(90deg,#2b1a0d,#5a3a20 45%,#2b1a0d)}

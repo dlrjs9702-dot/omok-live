@@ -5722,15 +5722,12 @@
       ? `move:${g.lastMove.at || ''}:${(g.lastMove.pieceIds || []).join(',')}`
       : null);
     const yutRecentIds = new Set(g.lastMove?.pieceIds || []);
-    const bg = ctx.createLinearGradient(0, 0, 720, 720);
-    bg.addColorStop(0, '#f3d79c');
-    bg.addColorStop(1, '#c99549');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 720, 720);
+    // v1.7.10 실물감: a straw mat (멍석) under a hanji 말판 drawn in ink, like a real yut board.
+    ctx.drawImage(boardTexture('yut-mat', 720, 720, paintYutMat), 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(80,48,18,.62)';
-    ctx.lineWidth = 9;
+    ctx.strokeStyle = 'rgba(28,18,10,.78)';
+    ctx.lineWidth = 5;
     const paths = [
       [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'finishLine',0],
       [5,21,22,23,24,25,15], [10,26,27,23,28,29,'finishLine'],
@@ -5770,10 +5767,17 @@
         ctx.stroke();
         continue;
       }
-      ctx.fillStyle = corner ? '#7c3f17' : '#9a5b27';
-      ctx.beginPath(); ctx.arc(x,y,corner ? 25 : 18,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#f8e7bf';
-      ctx.beginPath(); ctx.arc(x,y,corner ? 15 : 10,0,Math.PI*2); ctx.fill();
+      // Brush-inked stations on the paper: corners (모·뒷모·방) get a double ring.
+      ctx.fillStyle = '#f6ecd2';
+      ctx.strokeStyle = 'rgba(28,18,10,.85)';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath(); ctx.arc(x,y,corner ? 25 : 17,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      if (corner) {
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x,y,17,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(28,18,10,.7)';
+      ctx.beginPath(); ctx.arc(x,y,corner ? 5 : 3.5,0,Math.PI*2); ctx.fill();
     }
 
     // v1.6.57: drawPieceStack is the same per-stack rendering this loop always did, just pulled out
@@ -5786,20 +5790,7 @@
       const offsets = yutStackOffsets(ordered.length);
       for (const [index, piece] of ordered.entries()) {
         const px = x + offsets[index];
-        ctx.save();
-        ctx.shadowColor = 'rgba(36,20,8,.32)';
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetY = 2;
-        ctx.fillStyle = fill;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(px,y,18,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#fff';
-        ctx.font = '950 15px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(piece.id.split('-').at(-1), px, y + 5);
-        ctx.restore();
+        drawYutToken(px, y, fill, piece.id.split('-').at(-1));
       }
     };
     const animatingIds = yutPieceAnimation?.pieceIds || null;
@@ -5881,17 +5872,8 @@
           // The waiting pieces' token, drawn on the (never occupied) start corner only while entering
           // a new piece is actually legal; a small count shows how many are still at home.
           ctx.save();
-          ctx.shadowColor = 'rgba(36,20,8,.32)';
-          ctx.shadowBlur = 5;
-          ctx.fillStyle = seat === 'black' ? '#2563eb' : '#ef4444';
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.arc(target.x1, target.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = '#fff';
-          ctx.font = '950 15px system-ui, sans-serif';
+          drawYutToken(target.x1, target.y, seat === 'black' ? '#2563eb' : '#ef4444', String(target.numbers[0]));
           ctx.textAlign = 'center';
-          ctx.fillText(String(target.numbers[0]), target.x1, target.y + 5);
           if (target.waiting > 1) {
             ctx.fillStyle = '#0f172a';
             ctx.beginPath(); ctx.arc(target.x1 + 16, target.y - 16, 10, 0, Math.PI * 2); ctx.fill();
@@ -5954,24 +5936,38 @@
   function drawDotsBoard() {
     const g = state.game;
     const { pad, gap } = dotsLayout();
-    const background = ctx.createLinearGradient(0, 0, 720, 720);
-    background.addColorStop(0, '#e7efff');
-    background.addColorStop(1, '#a9c4ec');
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, 720, 720);
+    // v1.7.10 실물감: pencil-and-paper. A notebook page, marker lines drawn stroke by stroke, and
+    // claimed boxes hatched with the owner's pen and initialled.
+    ctx.drawImage(boardTexture('notebook', 720, 720, paintNotebook), 0, 0);
+    const lastEdge = g.lastMove?.edgeId;
+    const drawStroke = lastEdge !== undefined ? pieceMotion(`dots:${g.moveCount}:${g.lastMove?.at || ''}`, 380) : 1;
+    const newBoxes = new Set((g.lastMove?.claimed || []).map(([row, col]) => `${row},${col}`));
 
     for (let row = 0; row < 4; row += 1) for (let col = 0; col < 4; col += 1) {
       const owner = g.boxes?.[row]?.[col];
       if (!owner) continue;
-      ctx.fillStyle = owner === 'black' ? 'rgba(37,99,235,.32)' : 'rgba(239,68,68,.32)';
-      ctx.fillRect(pad + col * gap + 12, pad + row * gap + 12, gap - 24, gap - 24);
+      // A box closed by the line still being drawn is shaded only once that line is finished.
+      const shade = newBoxes.has(`${row},${col}`) ? Math.max(0, (drawStroke - .7) / .3) : 1;
+      if (shade <= 0) continue;
+      const bx = pad + col * gap + 12;
+      const by = pad + row * gap + 12;
+      const size = gap - 24;
+      ctx.save();
+      ctx.globalAlpha = shade;
+      ctx.beginPath(); ctx.rect(bx, by, size, size); ctx.clip();
+      ctx.strokeStyle = owner === 'black' ? 'rgba(37,99,235,.38)' : 'rgba(220,38,38,.38)';
+      ctx.lineWidth = 3;
+      for (let d = -size; d < size * 2; d += 13) { ctx.beginPath(); ctx.moveTo(bx + d, by); ctx.lineTo(bx + d - size, by + size); ctx.stroke(); }
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = shade;
       ctx.fillStyle = owner === 'black' ? '#1d4ed8' : '#b91c1c';
-      ctx.font = '950 30px system-ui, sans-serif';
+      ctx.font = 'italic 950 34px "Segoe Print", "Comic Sans MS", system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(owner === 'black' ? 'P' : 'R', pad + (col + .5) * gap, pad + (row + .5) * gap + 11);
+      ctx.fillText(owner === 'black' ? 'P' : 'R', pad + (col + .5) * gap, pad + (row + .5) * gap + 12);
+      ctx.restore();
     }
 
-    const lastEdge = g.lastMove?.edgeId;
     const dotsRecent = observeRecentAction(g.lastMove
       ? `edge:${g.moveCount}:${g.lastMove.at || ''}:${lastEdge}`
       : null);
@@ -5979,13 +5975,33 @@
       const owner = edgeId < 20
         ? g.edges?.h?.[Math.floor(edgeId / 4)]?.[edgeId % 4]
         : g.edges?.v?.[Math.floor((edgeId - 20) / 5)]?.[(edgeId - 20) % 5];
-      const [x1,y1,x2,y2] = dotsEdgeEndpoints(edgeId);
-      ctx.strokeStyle = owner ? (owner === 'black' ? '#2563eb' : '#ef4444') : 'rgba(71,85,105,.24)';
-      ctx.lineWidth = owner ? (edgeId === lastEdge ? 15 : 11) : 5;
+      let [x1,y1,x2,y2] = dotsEdgeEndpoints(edgeId);
+      if (!owner) {
+        // Faint pencil guide for an undrawn line.
+        ctx.save();
+        ctx.strokeStyle = 'rgba(71,85,105,.18)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 7]);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+      if (edgeId === lastEdge && drawStroke < 1) {
+        const t = easeOutCubic(drawStroke);
+        x2 = x1 + (x2 - x1) * t;
+        y2 = y1 + (y2 - y1) * t;
+      }
+      // Marker ink: a solid core with a slightly darker, uneven edge.
       ctx.lineCap = 'round';
+      ctx.strokeStyle = owner === 'black' ? '#1e40af' : '#b91c1c';
+      ctx.lineWidth = edgeId === lastEdge ? 14 : 11;
       ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-      if (edgeId === lastEdge) {
-        ctx.strokeStyle = `rgba(255,255,255,${0.72 + dotsRecent.strength * 0.25})`;
+      ctx.strokeStyle = owner === 'black' ? 'rgba(96,165,250,.55)' : 'rgba(252,165,165,.55)';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x1,y1 - 1.5); ctx.lineTo(x2,y2 - 1.5); ctx.stroke();
+      if (edgeId === lastEdge && drawStroke >= 1) {
+        // Amber recent-move trace (white vanished on the paper page).
+        ctx.strokeStyle = `rgba(250,204,21,${0.8 + dotsRecent.strength * 0.2})`;
         ctx.lineWidth = 3 + dotsRecent.strength * 3;
         ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
         scheduleRecentActionCanvas(dotsRecent);
@@ -6014,10 +6030,14 @@
     for (let row = 0; row < 5; row += 1) for (let col = 0; col < 5; col += 1) {
       const x = pad + col * gap;
       const y = pad + row * gap;
-      ctx.fillStyle = '#172554';
-      ctx.beginPath(); ctx.arc(x,y,12,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(x-3,y-3,3,0,Math.PI*2); ctx.fill();
+      // A pressed pencil dot: graphite with a faint smudge.
+      ctx.fillStyle = 'rgba(55,65,81,.18)';
+      ctx.beginPath(); ctx.arc(x + 1, y + 1, 11, 0, Math.PI * 2); ctx.fill();
+      const lead = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, 9);
+      lead.addColorStop(0, '#6b7280');
+      lead.addColorStop(1, '#1f2937');
+      ctx.fillStyle = lead;
+      ctx.beginPath(); ctx.arc(x, y, 8.5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -6296,6 +6316,73 @@
     vignette.addColorStop(1, 'rgba(0,20,10,.35)');
     c.fillStyle = vignette;
     c.fillRect(0, 0, w, h);
+  }
+
+  // Yut: a woven straw mat with a hanji sheet laid on it (the board lines are inked over it later).
+  function paintYutMat(c, w, h) {
+    c.fillStyle = '#b8914f';
+    c.fillRect(0, 0, w, h);
+    const rand = seededRandom(1592);
+    for (let y = 0; y < h; y += 6) {
+      for (let x = (y / 6) % 2 ? 0 : 12; x < w; x += 24) {
+        c.fillStyle = `rgba(${rand() < .5 ? '120,86,36' : '214,178,110'},${.25 + rand() * .3})`;
+        c.fillRect(x, y, 12, 5);
+      }
+    }
+    const inset = 26;
+    c.save();
+    c.shadowColor = 'rgba(40,24,6,.45)';
+    c.shadowBlur = 14;
+    c.shadowOffsetY = 5;
+    const paper = c.createLinearGradient(inset, inset, w - inset, h - inset);
+    paper.addColorStop(0, '#f8efd8');
+    paper.addColorStop(1, '#eadbb4');
+    c.fillStyle = paper;
+    c.fillRect(inset, inset, w - inset * 2, h - inset * 2 - 40);
+    c.restore();
+    for (let i = 0; i < 1800; i += 1) {
+      c.fillStyle = `rgba(150,120,70,${rand() * .12})`;
+      c.fillRect(inset + rand() * (w - inset * 2), inset + rand() * (h - inset * 2 - 40), 2 + rand() * 6, .8);
+    }
+  }
+
+  // A lacquered wooden 말: coloured face, darker rim, a highlight and a carved number.
+  function drawYutToken(x, y, fill, label) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(30,16,4,.35)';
+    ctx.beginPath(); ctx.ellipse(x + 2, y + 4, 19, 17, 0, 0, Math.PI * 2); ctx.fill();
+    const body = ctx.createRadialGradient(x - 6, y - 7, 2, x, y, 19);
+    body.addColorStop(0, fill === '#2563eb' ? '#93c5fd' : '#fca5a5');
+    body.addColorStop(.5, fill);
+    body.addColorStop(1, fill === '#2563eb' ? '#1e3a8a' : '#7f1d1d');
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,240,200,.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fff7e0';
+    ctx.font = '950 15px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(label, x, y + 5);
+    ctx.restore();
+  }
+
+  // Dots and Boxes: a ruled notebook page, like the pencil-and-paper game.
+  function paintNotebook(c, w, h) {
+    c.fillStyle = '#fbf8ef';
+    c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(96,165,250,.35)';
+    c.lineWidth = 1;
+    for (let y = 30; y < h; y += 30) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(w, y + .5); c.stroke(); }
+    c.strokeStyle = 'rgba(239,68,68,.45)';
+    c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(46.5, 0); c.lineTo(46.5, h); c.stroke();
+    const rand = seededRandom(1889);
+    for (let i = 0; i < 2500; i += 1) {
+      c.fillStyle = `rgba(120,110,90,${rand() * .05})`;
+      c.fillRect(rand() * w, rand() * h, 1.2, 1.2);
+    }
   }
 
   function drawConnect4Board() {
