@@ -148,6 +148,39 @@ async function exercise(t, makeStore) {
     assert.equal(bOnly.items.every(item => item.reason !== 'daily_attendance'), true, 'B는 A의 출석 내역을 보지 못한다');
   });
 
+  await t.test('스킨: 잔액 부족은 아무것도 남기지 않고, 구매는 1회만 결제되며, 미보유 장착은 거절된다 (v1.7.30)', async () => {
+    const D = 'guest:44444444-4444-4444-8444-444444444444';
+    const buy = (skinId = 'omok_common_jade', price = 500_000) => store.buySkin({ userId: D, skinId, price, title: '비취와 백옥 · 일반' });
+    await store.ensureAccount(D);
+    const start = (await store.getAccount(D)).balance;
+    const ledgerBefore = (await store.ledger(D, 1000)).length;
+    const poor = await buy();
+    assert.deepEqual([poor.applied, poor.reason], [false, 'insufficient']);
+    assert.equal((await store.getAccount(D)).balance, start, '부족하면 차감 없음');
+    assert.deepEqual((await store.skinState(D)).owned, [], '부족하면 소유 없음');
+    assert.equal((await store.ledger(D, 1000)).length, ledgerBefore, '부족하면 원장 없음');
+    assert.deepEqual(await store.equipSkin({ userId: D, game: 'omok', slot: 'piece', skinId: 'omok_common_jade' }), { ok: false, reason: 'not-owned' });
+    await assert.rejects(() => buy('BAD ID'), RangeError);
+    await assert.rejects(() => buy('omok_common_jade', 0), RangeError);
+
+    await store.adminGrant({ grantId: 'admin-grant:skin-test-1', userId: D, amount: 500_000, category: 'event', memo: '' });
+    const funded = (await store.getAccount(D)).balance;
+    const results = await Promise.all([buy(), buy(), buy()]);
+    assert.equal(results.filter(r => r.applied).length, 1, '동시에 눌러도 1회만 결제');
+    assert.equal((await store.getAccount(D)).balance, funded - 500_000);
+    assert.deepEqual((await store.skinState(D)).owned, ['omok_common_jade']);
+    const rows = (await store.ledger(D, 1000)).filter(row => row.reason === 'skin_purchase');
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].delta, -500_000);
+    assert.equal((await store.history(D)).items.find(item => item.reason === 'skin_purchase').memo, '비취와 백옥 · 일반');
+
+    const equipped = await store.equipSkin({ userId: D, game: 'omok', slot: 'piece', skinId: 'omok_common_jade' });
+    assert.deepEqual(equipped, { ok: true, equipped: { omok: { piece: 'omok_common_jade' } } });
+    assert.deepEqual((await store.skinState(D)).equipped, { omok: { piece: 'omok_common_jade' } });
+    assert.deepEqual((await store.equipSkin({ userId: D, game: 'omok', slot: 'piece', skinId: null })).equipped.omok ?? {}, {});
+    assert.deepEqual((await store.skinState(A)).owned, [], '다른 계정에는 보이지 않는다');
+  });
+
   return store;
 }
 
@@ -168,7 +201,7 @@ test('PostgreSQL 포인트 저장소', async (t) => {
   const url = database.url;
   const { Pool } = require('pg');
   const admin = new Pool({ connectionString: url });
-  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts, mission_days');
+  await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts, mission_days, skin_owned, skin_equipped');
   await admin.end();
   const { PostgresMatchStore } = require('../lib/match-records');
   const matches = new PostgresMatchStore(url);

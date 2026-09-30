@@ -42,6 +42,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
+const { skinById, familyOf, catalogView, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -111,6 +112,19 @@ let accessStore;
 let announcementStore;
 let matchStore;
 let pointStore;
+// v1.7.30 skins: each account's equipped skins, kept in memory so the (synchronous) room view can share them with
+// everyone in the room. Loaded when a session is created and replaced on every equip; the store is the truth.
+const equippedSkinCache = new Map(); // point account -> { <family>: { piece, theme } }
+async function loadEquippedSkins(account) {
+  try { equippedSkinCache.set(account, (await pointStore.skinState(account)).equipped); }
+  catch (error) { console.error('스킨 장착 정보 불러오기 실패:', error.message); }
+}
+function equippedSkin(account, family, slot) {
+  const id = account && equippedSkinCache.get(account)?.[family]?.[slot];
+  return id && skinById(id) ? id : null; // only skins the catalog knows are ever shared
+}
+// The point account behind a room identity (`guest:<key id>` or `admin:<public id>`).
+function accountOfIdentity(identity) { return typeof identity === 'string' ? (identity.startsWith('guest:') ? identity : 'admin') : null; }
 // v1.7.20 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
 // events, so its results do not depend on the day the tests run; tests register their own through
 // /api/test/events and may restrict one to a single account (eventAudience).
@@ -303,7 +317,7 @@ function createSession({ role, label, guestKeyId = null }) {
   sessions.set(token, session);
   if (guestKeyId) activeGuestSessions.set(guestKeyId, token);
   // Warm the point balance cache (and create a first-time account) without blocking the login.
-  pointStore?.ensureAccount(pointAccountForSession(session)).catch(error => console.error('포인트 계정 확인 실패:', error.message));
+  pointStore?.ensureAccount(pointAccountForSession(session)).then(() => loadEquippedSkins(pointAccountForSession(session))).catch(error => console.error('포인트 계정 확인 실패:', error.message));
   return session;
 }
 
@@ -867,7 +881,11 @@ function publicPlayer(room, color) {
   const token = room.players[color];
   if (!token) return null;
   const p = room.participants[token];
-  return { label: p?.label || '게스트', connected: Boolean(p?.connected) };
+  const player = { label: p?.label || '게스트', connected: Boolean(p?.connected) };
+  const family = familyOf(room.gameType);
+  const skin = family ? equippedSkin(pointAccountForParticipant(p), family, 'piece') : null;
+  if (skin) player.skin = skin; // v1.7.30: every viewer draws this player's pieces with the same skin
+  return player;
 }
 
 function liveSpectatorCount(room) {
@@ -922,6 +940,8 @@ function publicRoom(room) {
     },
     maxPlayers: isNumberedSeatGame(room) ? seatsFor(room).length : 2,
     game: gameEngine.publicState(room.game),
+    ...(familyOf(room.gameType) && equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme')
+      ? { skinTheme: equippedSkin(accountOfIdentity(room.hostIdentity), familyOf(room.gameType), 'theme') } : {}), // the host's room theme
   };
 }
 
@@ -2493,7 +2513,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.29' });
+    return sendJson(res, 200, { ok: true, version: '1.7.30' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2632,6 +2652,58 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`achievements:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const { view, granted } = await syncAchievements(recordIdentity(session), account);
     return sendJson(res, 200, { ok: true, ...view, granted: granted.map(item => ({ id: item.id, title: item.title, amount: item.amount })) });
+  }
+
+  // v1.7.30 skins. The catalog, prices and which slot a skin fits come only from lib/skins.js; a request names a
+  // skin id and nothing else. Buying pays the whole price from the balance once (ledger `skin_purchase`); equipping
+  // needs ownership. Equipped skins are shared with the room by the server, so everyone sees the same thing.
+  if (pathname === '/api/skins' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const state = await pointStore.skinState(account);
+    const { balance } = await pointStore.getAccount(account);
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance });
+  }
+
+  if (pathname === '/api/skins/buy' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skinbuy:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const skin = skinById(body.skinId);
+    if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
+    const result = await pointStore.buySkin({ userId: account, skinId: skin.id, price: skin.price, title: `${skin.name} · ${skin.tierLabel}` });
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 부족합니다. ${skin.price.toLocaleString('ko-KR')}P가 필요합니다.`, { balance: result.balance, price: skin.price });
+    if (result.applied) notifyPointsChanged([account]);
+    // Already owned is a normal answer (nothing charged), never an error.
+    return sendJson(res, 200, { ok: true, skinId: skin.id, purchased: result.applied, owned: true, balance: result.balance });
+  }
+
+  if (pathname === '/api/skins/equip' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skinequip:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    let game; let slot; let skinId = null;
+    if (body.skinId !== null && body.skinId !== undefined) {
+      const skin = skinById(body.skinId);
+      if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
+      ({ family: game, slot, id: skinId } = skin);
+    } else { // taking a slot's skin off: name the game and slot
+      game = String(body.game || '');
+      slot = String(body.slot || '');
+      if (!FAMILY_NAMES[game] || !SKIN_SLOTS.includes(slot)) return sendError(res, 400, 'BAD_SKIN_SLOT', '게임과 칸을 확인해 주세요.');
+    }
+    const result = await pointStore.equipSkin({ userId: account, game, slot, skinId });
+    if (!result.ok) return sendError(res, 409, 'SKIN_NOT_OWNED', '먼저 구매해야 장착할 수 있습니다.');
+    equippedSkinCache.set(account, result.equipped);
+    const room = getCurrentRoom(session);
+    if (room) broadcast(room); // the room sees the change at once
+    return sendJson(res, 200, { ok: true, equipped: result.equipped });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -3401,7 +3473,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.29 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.30 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
