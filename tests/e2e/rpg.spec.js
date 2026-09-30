@@ -163,6 +163,11 @@ test.describe('잿빛 원정', () => {
           if (seat === '1' && !uiIntermissionDone && (p.choices || p.statPoints)) {
             // Mouse only: pick a level-up card, spend a stat point, press ready.
             await expect(a.page.locator('.rpgPanel.wide')).toBeVisible();
+            // v1.7.22: the 정비 countdown keeps running on its own (the server does not re-send the state each second).
+            const secondsLeft = async () => parseInt(await a.page.locator('.rpgIntermissionLeft').first().textContent(), 10);
+            const before = await secondsLeft();
+            await a.page.waitForTimeout(2600);
+            expect(await secondsLeft()).toBeLessThan(before);
             if (p.choices) { await a.page.locator('.rpgCard').first().click(); await a.page.waitForTimeout(200); }
             while ((await api(request, '/api/room', a.token, undefined, 'GET')).data.state.game.players['1'].choices) { await a.page.locator('.rpgCard').first().click(); await a.page.waitForTimeout(200); }
             if ((await api(request, '/api/room', a.token, undefined, 'GET')).data.state.game.players['1'].statPoints) await a.page.getByRole('button', { name: '지능 올리기' }).click();

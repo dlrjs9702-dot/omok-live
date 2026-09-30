@@ -46,6 +46,7 @@ export function createHud(root, handlers) {
   root.append(top, boss, party, build, bottom, center, status, floats, help, notice);
 
   let meta = null;
+  let intermissionEndsAt = null; // v1.7.22: wall-clock end of the 정비 countdown, from the last state the server sent
   let mySeat = null;
   let panelHidden = false;
   let slotEls = {};
@@ -160,7 +161,8 @@ export function createHud(root, handlers) {
     const box = el('div', 'rpgPanel wide');
     const head = el('div', 'rpgPanelHead');
     head.append(el('h3', '', g.room.kind === 'treasure' ? '보물방 · 성장 정비' : '방 클리어 · 성장 정비'));
-    if (g.intermissionLeft !== null) head.append(el('small', '', `${g.intermissionLeft}초 뒤 자동 진행`));
+    intermissionEndsAt = g.intermissionLeft !== null ? Date.now() + g.intermissionLeft * 1000 : null;
+    if (g.intermissionLeft !== null) head.append(el('small', 'rpgIntermissionLeft', `${g.intermissionLeft}초 뒤 자동 진행`));
     const close = el('button', 'secondary', '닫기 (Esc)'); close.type = 'button'; close.addEventListener('click', () => { panelHidden = true; center.classList.add('hidden'); showReopen(); });
     head.append(close);
     box.append(head);
@@ -253,6 +255,11 @@ export function createHud(root, handlers) {
     for (const p of snap.p) {
       const pe = partyEls[p.s];
       if (pe) { pe.fill.style.width = `${Math.max(0, p.hp / p.mh) * 100}%`; pe.row.classList.toggle('down', p.st === 'down'); }
+    }
+    // The server only re-sends the state on a change, so the 정비 countdown runs off the 20 Hz tick.
+    if (intermissionEndsAt !== null && g.phase === 'intermission') {
+      const left = center.querySelector('.rpgIntermissionLeft');
+      if (left) left.textContent = `${Math.max(0, Math.ceil((intermissionEndsAt - Date.now()) / 1000))}초 뒤 자동 진행`;
     }
     const mine = snap.p.find(p => p.s === mySeat);
     if (mine) {

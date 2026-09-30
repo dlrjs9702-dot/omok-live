@@ -135,6 +135,8 @@ function publicBaseUrl(req) {
   // still points at the Worker. Never derive an entry file's target from a
   // forwarded Host in production.
   if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '');
+  // v1.7.22: Render also always provides the bare hostname; use it when the full URL variable is missing.
+  if (process.env.RENDER_EXTERNAL_HOSTNAME) return `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`;
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
   const proto = String(req.headers['x-forwarded-proto'] || (IS_PRODUCTION ? 'https' : 'http')).split(',')[0].trim();
   const host = req.headers.host || `localhost:${PORT}`;
@@ -464,6 +466,8 @@ function requireAdmin(req, res) {
   }
   return session;
 }
+
+const { writeUnlessBacklogged } = require('./lib/sse-backpressure');
 
 function sseWrite(res, event, data) {
   res.write(`event: ${event}\n`);
@@ -1718,7 +1722,9 @@ function tickRpgRooms() {
     const set = streams.get(room.id);
     if (!set) continue;
     const payload = `event: rpgTick\ndata: ${JSON.stringify(engine.snapshot(room.game))}\n\n`;
-    for (const client of set) { try { client.res.write(payload); } catch {} }
+    // v1.7.22: a client whose socket buffer is already full is skipped this tick (the next tick is a fresh full
+    // snapshot), so a stalled connection cannot make the server queue 20 writes a second.
+    for (const client of set) writeUnlessBacklogged(client.res, payload);
   }
 }
 
@@ -2477,7 +2483,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.21' });
+    return sendJson(res, 200, { ok: true, version: '1.7.22' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3380,7 +3386,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.21 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.22 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
