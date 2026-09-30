@@ -7,7 +7,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-// v1.7.18 daily missions through the real server: finished matches (resigned Othello) drive progress,
+// v1.7.19 daily missions through the real server: finished matches (resigned Othello) drive progress,
 // missions and the first-win bonus pay once into the ledger, repeated requests never count a match twice,
 // and the in-room stream tells each player their progress in short lines.
 
@@ -173,7 +173,7 @@ test('같은 판을 다시 조회·종료 요청해도 두 번 세지 않고, �
   assert.equal(bonuses.length, 1, '첫 승리 보너스는 하루 1회');
 });
 
-test('주간 미션(v1.7.18): 조회에 포함되고, 판이 끝나면 주 단위 진행이 오르며, 목표를 채우면 미션 3개와 보너스가 한 번씩 지급된다', async (t) => {
+test('주간 미션(v1.7.19): 조회에 포함되고, 판이 끝나면 주 단위 진행이 오르며, 목표를 채우면 미션 3개와 보너스가 한 번씩 지급된다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const fx = await boot(t, dir);

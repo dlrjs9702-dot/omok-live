@@ -11,7 +11,7 @@ const uniqueIp = () => `100.68.${process.pid % 250}.${(++ipCounter + Math.floor(
 let eventCounter = 0;
 
 // 새 입장 파일·전용 이벤트를 만들고(다른 테스트의 로비에는 보이지 않는다) 로비까지 들어간다.
-async function enterLobby({ browser, request }) {
+async function enterLobby({ browser, request }, { onPage } = {}) {
   const login = await request.post('/api/admin/login', { headers: { 'X-Forwarded-For': uniqueIp() }, data: { password: adminPassword } });
   const admin = (await login.json()).sessionToken;
   const issued = await (await request.post('/api/admin/keys', { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { label: '이벤트' } })).json();
@@ -29,6 +29,7 @@ async function enterLobby({ browser, request }) {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
+  await onPage?.(page); // 입장 전에 걸어 두는 네트워크 조작(응답 지연 등)
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
   return { context, page, event };
 }
@@ -115,5 +116,24 @@ test('서버 오류면 성공 연출 없이 오류를 알리고 다시 시도할
   await page.locator('#eventDialogClaimBtn').click();
   await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
   await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
+  await context.close();
+});
+
+test('이벤트 응답이 늦게 와도 이미 게임방에 들어갔다면 팝업을 띄우지 않고, 로비로 돌아오면 다시 뜬다', async ({ browser, request }) => {
+  const slowEvents = page => page.route('**/api/events', async (route) => {
+    if (route.request().method() === 'GET') await new Promise(resolve => setTimeout(resolve, 1800));
+    await route.continue();
+  });
+  const { context, page } = await enterLobby({ browser, request }, { onPage: slowEvents });
+  await expect(page.locator('#lobbyView')).toBeVisible();
+  await page.locator('#gamePicker [data-game="omok"]').click(); // 이벤트 응답(1.8초 지연)이 오기 전에 방으로 이동
+  await page.locator('#createRoomBtn').click();
+  await expect(page.locator('#roomView')).toBeVisible();
+  await page.waitForTimeout(2600); // 지연된 응답이 도착하고도 남는 시간
+  await expect(page.locator('#eventDialog')).toBeHidden(); // 게임방 위에는 뜨지 않는다
+  await expect(page.locator('#roomView')).toBeVisible();
+
+  await page.locator('#leaveRoomBtn').click(); // 로비로 돌아오면 아직 미수령이므로 다시 확인한다
+  await expect(page.locator('#eventDialog')).toBeVisible({ timeout: 6000 });
   await context.close();
 });
