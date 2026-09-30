@@ -18,6 +18,14 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## v1.7.26 채팅 본인 판별을 고유 ID 기준으로
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-18을 처리했다. 클라이언트가 채팅의 「내 메시지」·연속 발신자 묶음·낭독 제외를 닉네임(label) 일치로 판단해, 같은 닉네임의 다른 사람 메시지를 내 것으로 오인하고 낭독을 건너뛰었다(수정 전 실패하는 e2e로 재현).
+
+- **서버**: 채팅 메시지(`room-social` `pushMessage`)에 불투명 발신자 ID `senderId`를 붙이고 `publicChatMessages`가 전달한다(시스템 메시지·발신자 없는 메시지에는 없음). ID는 `HMAC-SHA256(부팅마다 새로 만드는 비밀값, 계정 식별자)`의 앞 16자리 — 로비·모든 방·재입장에서 같은 계정은 같은 ID이고 입장 파일/계정 id는 노출되지 않는다. 서버를 재시작하면 바뀌지만 채팅은 메모리 전용이라 영향이 없다. 방 상태 `me.chatId`, 로비 상태 `me.chatId`로 본인 ID를 내려 준다.
+- **클라이언트**(`public/app.js`): `buildChatMessageEl`(내 메시지·발신자 묶음)·`createChatAnnouncer`(낭독 제외)·`fillMessageList`(서명)가 `senderId`/`chatId`를 기준으로 판단한다. ID가 없는 예전 메시지는 기존처럼 닉네임으로 묶는다. 시스템 메시지·규칙·채팅 UI 구조는 그대로.
+- **테스트**: `test/chat-sender-id.test.js`(메시지 구조, 같은 닉네임 두 사람의 ID 구분·계정 정보 미노출, 다른 방에서도 같은 ID), `tests/e2e/chat-announce.spec.js`(닉네임이 같은 두 사람: 상대 메시지 낭독, 내 메시지만 `mine`, 발신자 이름 줄).
+
 ## v1.7.25 오델로 뒤집기 색 전환·윷놀이 집 말 버튼·다빈치 숫자판 재열기
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 10·11·12번을 고치고 13번을 재대조했다. 게임 규칙 변경 없음.
