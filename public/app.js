@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.24').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.25').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -4258,7 +4258,7 @@
     // could select a move before the player has even seen the throw land, which the "던지기가 끝난
     // 후에만 말 이동" requirement rules out. The server already allows the move the instant `phase`
     // flips to 'move'; this only delays the button/choice from *appearing* on screen.
-    const moves = mine && g.phase === 'move' && !yutThrowAnimating && !yutPieceAnimation ? (g.legalMoves || []) : [];
+    const moves = mine && g.phase === 'move' && !yutThrowAnimating && !yutPieceAnimation ? yutOfferedMoves(g.legalMoves || []) : [];
     const backward = g.pendingSteps < 0;
     // v1.6.41: distance-focused move-choice text (몇 칸 이동하는지가 핵심 정보) instead of the
     // destination tile number, which meant little without studying the board. The actual move
@@ -5818,7 +5818,9 @@
   async function selectDavinciTarget(owner, tileId) {
     const g = state?.game;
     if (!g || g.status !== 'playing' || g.turn !== seat || !['guess', 'continue'].includes(g.phase) || davinciSelectionPending || davinciGuessPending) return;
-    if (g.selection?.seat === seat && g.selection.target === owner && g.selection.tileId === tileId) return;
+    // Pressing the tile that is already my target: nothing to send, but the caller just cleared davinciPickerClosedFor
+    // (I had closed the number pad with Esc/닫기), so draw again to bring the pad back (v1.7.25, IDEAS backlog 12).
+    if (g.selection?.seat === seat && g.selection.target === owner && g.selection.tileId === tileId) { renderDavinci(); return; }
     davinciSelectionPending = true;
     renderDavinci();
     try {
@@ -5988,6 +5990,19 @@
   }
 
   const YUT_PIECE_NUMBER = id => Number(String(id).split('-').at(-1));
+
+  // v1.7.25 (IDEAS backlog 11): the server lists one move per waiting home piece, but home pieces are interchangeable and
+  // the board offers them as ONE start-corner token that sends the lowest-numbered waiting piece (yutSelectableTargets).
+  // The fallback buttons offer that same single home move, so no button is left that would do nothing when pressed.
+  function yutOfferedMoves(legalMoves) {
+    const mine = state?.game?.pieces?.[seat] || [];
+    const isHome = move => mine.find(piece => piece.id === move.pieceId)?.status === 'home';
+    let lowest = null;
+    for (const move of legalMoves) {
+      if (isHome(move) && (!lowest || YUT_PIECE_NUMBER(move.pieceId) < YUT_PIECE_NUMBER(lowest.pieceId))) lowest = move;
+    }
+    return legalMoves.filter(move => !isHome(move) || move === lowest);
+  }
   const YUT_HOME_TOKEN_NODE = 0; // the start corner: board pieces never rest there (laps end on finishLine)
   const YUT_TARGET_RADIUS = 26;
 
@@ -7022,15 +7037,23 @@
   }
 
   // A two-sided disc: the face colour on top and a sliver of the other side at the rim.
+  // A flipping disc turns over on an ease-out curve: it is edge-on (thinnest) when the turn is half done, and that is
+  // the moment the face colour has to change. v1.7.25: it used to change at half of the *time*, when the disc had
+  // already opened up again, so a nearly full-size disc visibly changed colour. flip: 0..1, color: the final colour.
+  function othelloFlipPose(flip, color) {
+    const angle = flip < 1 ? Math.PI * easeOutCubic(flip) : Math.PI;
+    const squash = Math.max(.06, Math.abs(Math.cos(angle)));
+    const face = angle < Math.PI / 2 ? (color === 'black' ? 'white' : 'black') : color;
+    return { angle, squash, face };
+  }
+  window.OthelloFlipPose = othelloFlipPose; // for the browser tests (pure function)
+
   function drawOthelloDisc(x, y, color, last, { flip = 1, drop = 1 } = {}) {
     const cell = canvas.width / 8;
     const cx = (x + .5) * cell;
     const cy = (y + .5) * cell;
     const r = cell * .38;
-    // Flipping: the disc turns edge-on and back; the face changes colour at the half-way point.
-    const angle = flip < 1 ? Math.PI * easeOutCubic(flip) : Math.PI;
-    const squash = Math.max(.06, Math.abs(Math.cos(angle)));
-    const face = flip < 1 && flip < .5 ? (color === 'black' ? 'white' : 'black') : color;
+    const { angle, squash, face } = othelloFlipPose(flip, color);
     const lift = (flip < 1 ? Math.sin(angle) * cell * .12 : 0) + (1 - easeOutCubic(drop)) * cell * .3;
     const scale = 1 + (1 - easeOutCubic(drop)) * .25;
     ctx.save();

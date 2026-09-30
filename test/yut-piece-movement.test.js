@@ -55,7 +55,8 @@ test('a move is only ever animated once the throw animation has fully settled', 
 
 test('move-choice buttons stay hidden until both the throw and any in-flight piece move have finished', () => {
   const app = read('public/app.js');
-  assert.match(app, /const moves = mine && g\.phase === 'move' && !yutThrowAnimating && !yutPieceAnimation \? \(g\.legalMoves \|\| \[\]\) : \[\];/);
+  // v1.7.25: the offered list is the server's legalMoves with the waiting home pieces folded into one (yutOfferedMoves).
+  assert.match(app, /const moves = mine && g\.phase === 'move' && !yutThrowAnimating && !yutPieceAnimation \? yutOfferedMoves\(g\.legalMoves \|\| \[\]\) : \[\];/);
 });
 
 test('leaving the Yut Nori screen resets the move-tracking state and cancels any in-flight piece animation', () => {
