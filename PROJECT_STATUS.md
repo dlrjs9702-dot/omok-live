@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.20 연가 이벤트 강조 문구
+
+사용자 요청(2026-09-30)으로 연가 기념 이벤트 창에 크게 한 줄(`님들은 일하심? ㅋㅋ`)을 추가했다. 이벤트별 고정 HTML이 아니라 v1.7.15 공통 이벤트 구조에 선택 필드를 더하는 방식이다.
+
+- `lib/point-events.js`: 이벤트 정의에 선택 필드 `teaser`(한 줄, 40자 이하, 없으면 표시하지 않음)를 추가하고 `publicEvent`가 전달한다. 연가 이벤트에 `teaser: '님들은 일하심? ㅋㅋ'`. 형식이 잘못되면 시작 시점에 거부.
+- 화면: `#eventDialogTeaser`를 안내문 아래에 두고 서버 데이터로 채운다(`clamp(1.55rem,6.4vw,2.1rem)` 900 굵기, 기존 노랑 `#fde68a`). 지급 규칙·금액·기간·중복 방지는 바꾸지 않았다.
+- 테스트: `test/point-events.test.js`(teaser 검증·공개 필드), `tests/e2e/event-reward.spec.js`(서버 데이터의 문구 표시, 안내문의 1.8배 이상·제목 줄 이상 크기).
+
 ## v1.7.19 이벤트 팝업 로비 확인
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 F-22를 처리했다. v1.7.15의 `checkEvents`는 `/api/events` 응답이 늦게 오면 그 사이 게임방으로 들어간 화면 위에도 이벤트 창을 열 수 있었다(e2e로 재현).

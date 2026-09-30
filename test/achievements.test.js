@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { GAMES, DEFS, evaluate, achievementView, achievementToasts, achievementById } = require('../lib/achievements');
 const { listGames } = require('../lib/games');
 
-// v1.7.19 achievement definitions (pure): what exists, what a match record meets, what the lobby shows.
+// v1.7.20 achievement definitions (pure): what exists, what a match record meets, what the lobby shows.
 
 test('업적 정의: id 형식·유일성·보상 범위(1,000~10,000P)·모든 게임 포함', () => {
   assert.equal(new Set(DEFS.map(def => def.id)).size, DEFS.length);

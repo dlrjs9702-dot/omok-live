@@ -20,7 +20,7 @@ async function enterLobby({ browser, request }, { onPage } = {}) {
     id: `e2e_event_${process.pid}_${Date.now()}_${++eventCounter}`, title: '관리자 연가 기념 이벤트', headline: '오늘은 관리자가 연가입니다!',
     message: '연가 기념으로 모든 이용자에게 100,000P를 드립니다.', rewardPoints: 100_000,
     startAt: new Date(now - 3_600_000).toISOString(), endAt: new Date(now + 3_600_000).toISOString(),
-    buttonLabel: '100,000P 받기', note: '오늘 하루 · 계정당 1회', successMessage: '연가 기념 포인트를 받았습니다!', active: true,
+    buttonLabel: '100,000P 받기', note: '오늘 하루 · 계정당 1회', successMessage: '연가 기념 포인트를 받았습니다!', teaser: '님들은 일하심? ㅋㅋ', active: true,
   };
   const registered = await request.post('/api/test/events', {
     headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { event, audienceKeyId: issued.key.id },
@@ -44,6 +44,10 @@ test('미수령 사용자는 로비 진입 시 이벤트 모달이 자동으로 
   await expect(page.locator('#eventDialogReward')).toHaveText('+100,000P');
   await expect(page.locator('#eventDialogNote')).toHaveText('오늘 하루 · 계정당 1회');
   await expect(page.locator('#eventDialogClaimBtn')).toHaveText('100,000P 받기');
+  await expect(page.locator('#eventDialogTeaser')).toHaveText('님들은 일하심? ㅋㅋ'); // 서버 이벤트 데이터의 강조 문구
+  const sizes = await page.evaluate(() => ['eventDialogMessage', 'eventDialogTeaser', 'eventDialogHeadline'].map(id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize)));
+  expect(sizes[1]).toBeGreaterThan(sizes[0] * 1.8); // 안내문보다 훨씬 크게
+  expect(sizes[1]).toBeGreaterThanOrEqual(sizes[2]); // 제목 줄보다 작지 않게
 
   await page.locator('#eventDialogCloseBtn').click();
   await expect(dialog).toBeHidden();

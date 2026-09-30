@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EVENTS, validateEvent, validateEvents, eventStatus, publicEvent } = require('../lib/point-events');
 
-// v1.7.19 common point-reward event definitions: every registered event must be valid, the server
+// v1.7.20 common point-reward event definitions: every registered event must be valid, the server
 // clock windows are exact (Asia/Seoul), and the lobby only ever sees display fields.
 
 const at = iso => Date.parse(iso);
@@ -49,4 +49,14 @@ test('로비에 보이는 값은 표시 항목과 수령 여부뿐이다', () =>
   assert.deepEqual(Object.keys(view).sort(), ['buttonLabel', 'claimed', 'endAt', 'headline', 'id', 'message', 'note', 'rewardPoints', 'startAt', 'successMessage', 'title']);
   assert.equal(view.claimed, true);
   assert.equal(publicEvent(validateEvent(base)).claimed, false);
+});
+
+test('팝업 강조 문구(teaser): 선택 항목, 연가 이벤트에는 있고 형식이 잘못되면 거부된다', () => {
+  const event = EVENTS.find(item => item.id === 'admin_leave_2026_09_30');
+  assert.equal(event.teaser, '님들은 일하심? ㅋㅋ');
+  assert.equal(publicEvent(event, false).teaser, '님들은 일하심? ㅋㅋ');
+  assert.equal('teaser' in publicEvent(validateEvent(base), false), false, '문구가 없는 이벤트에는 필드가 없다');
+  assert.equal(validateEvent({ ...base, teaser: ['  한 줄', '문구  '].join(String.fromCharCode(10)) }).teaser, '한 줄 문구');
+  for (const teaser of ['', '   ', 'x'.repeat(41), 5]) assert.throws(() => validateEvent({ ...base, teaser }), RangeError, JSON.stringify(teaser));
+  assert.equal('teaser' in validateEvent({ ...base, teaser: null }), false);
 });
