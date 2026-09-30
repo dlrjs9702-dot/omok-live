@@ -125,7 +125,7 @@ async function exercise(t, makeStore) {
       assert.ok(reasons.some(([reason, game]) => reason === expected[0] && game === expected[1]), JSON.stringify(expected));
     }
   });
-  await t.test('이벤트 보상(v1.7.17): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
+  await t.test('이벤트 보상(v1.7.18): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
     const eventId = 'test_event_2026';
     const claim = { eventId, userId: C, amount: 100_000, title: '  테스트\n이벤트  ' };
     const before = await balance(C);
@@ -153,7 +153,7 @@ async function exercise(t, makeStore) {
     const item = history.items.find(entry => entry.reason === 'event_reward' && entry.balanceAfter === before + 100_000);
     assert.deepEqual([item.delta, item.memo, item.balanceBefore, item.detail], [100_000, '테스트 이벤트', before, 'event']);
   });
-  await t.test('일일 미션(v1.7.17): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
+  await t.test('일일 미션(v1.7.18): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
     const E = 'guest:00000000-0000-4000-8000-00000000000e';
     const F = 'guest:00000000-0000-4000-8000-00000000000f';
     const now = Date.parse('2026-10-05T03:00:00Z'); // 2026-10-05 12:00 KST
@@ -196,7 +196,7 @@ async function exercise(t, makeStore) {
     }
     await assert.rejects(store.testSetMissions(E, ['no_such_mission'], now), RangeError);
   });
-  await t.test('업적(v1.7.17): 계정·업적 id당 1회(동시 요청 포함), 일부만 새것이면 새것만, 원장 사유와 내역 제목', async () => {
+  await t.test('업적(v1.7.18): 계정·업적 id당 1회(동시 요청 포함), 일부만 새것이면 새것만, 원장 사유와 내역 제목', async () => {
     const G = 'guest:00000000-0000-4000-8000-000000000010';
     const H = 'guest:00000000-0000-4000-8000-000000000011';
     const list = [{ id: 'othello_first_play', title: '오델로 첫 정상 완료', amount: 1_000 }, { id: 'othello_first_win', title: '오델로 첫 승리', amount: 2_000 }];
@@ -221,6 +221,43 @@ async function exercise(t, makeStore) {
     assert.ok(rows.every(row => row.idempotencyKey.startsWith('achievement:') && row.idempotencyKey.includes(G)));
     const history = (await store.history(G, { limit: 10 })).items.filter(item => item.detail === 'achievement');
     assert.ok(history.some(item => item.reason === 'achievement' && item.memo === '오델로 10승' && item.delta === 5_000));
+  });
+  await t.test('주간 미션(v1.7.18): 주 단위 진행·보상 1회(동시·중복 판 포함), 모두 완료 보너스, 일요일/월요일 경계, 내역 제목', async () => {
+    const W = 'guest:00000000-0000-4000-8000-000000000020';
+    const V = 'guest:00000000-0000-4000-8000-000000000021';
+    const wednesday = Date.parse('2026-10-07T03:00:00Z'); // 2026-10-07(수) 12:00 KST, 주는 10-05(월) 시작
+    const first = await store.missions(W, wednesday);
+    assert.deepEqual([first.weekly.week, first.weekly.resetsOn, first.weekly.doneCount, first.weekly.total, first.weekly.bonus.done], ['2026-10-05', '2026-10-12', 0, 3, false]);
+    await store.testSetMissions(W, ['win1', 'play3', 'variety2'], wednesday); // 일일 미션이 겹치지 않게 고정
+    const before = await balance(W);
+    await store.testSetWeekly(W, { played: 19, wins: 9, games: ['omok', 'yut', 'bingo', 'dots'] }, wednesday);
+    const input = { userId: W, matchId: 'week-room:1', gameType: 'othello', result: 'win', soleWinner: true, clean: true, opponents: [V] };
+    const outcomes = await Promise.all([store.recordMissionMatch(input, wednesday), store.recordMissionMatch(input, wednesday), store.recordMissionMatch(input, wednesday)]);
+    assert.equal(outcomes.filter(item => item.applied).length, 1, '같은 판은 동시에 3번 들어와도 1번');
+    const applied = outcomes.find(item => item.applied);
+    assert.deepEqual(applied.rewards.filter(item => item.reason === 'weekly_mission').map(item => [item.id, item.amount]).sort(),
+      [['weekly_all', 5_000], ['weekly_play20', 9_000], ['weekly_variety5', 7_000], ['weekly_win10', 9_000]]);
+    assert.deepEqual([applied.weekly.doneCount, applied.weekly.bonus.done], [3, true]);
+    const dailyRewards = applied.rewards.filter(item => item.reason !== 'weekly_mission').reduce((sum, item) => sum + item.amount, 0);
+    assert.equal(await balance(W), before + 30_000 + dailyRewards, '주간 30,000P + 같은 판의 일일 보상');
+    const rows = (await store.ledger(W, 50)).filter(row => row.reason === 'weekly_mission');
+    assert.equal(rows.length, 4, '주간 미션 3개 + 보너스, 각 1행');
+    assert.ok(rows.every(row => row.idempotencyKey.startsWith('weekly:2026-10-05:') && row.idempotencyKey.includes(W)));
+    const history = (await store.history(W, { limit: 20 })).items.filter(item => item.reason === 'weekly_mission');
+    assert.ok(history.some(item => item.memo === '주간 미션 모두 완료' && item.delta === 5_000 && item.detail === 'mission'));
+    assert.ok(history.some(item => item.memo === '주간 20판 정상 완료' && item.delta === 9_000));
+
+    const again = await store.recordMissionMatch({ ...input, matchId: 'week-room:2' }, wednesday);
+    assert.equal(again.rewards.some(item => item.reason === 'weekly_mission'), false, '완료한 주간 미션은 다시 지급되지 않는다');
+    const sunday = Date.parse('2026-10-11T14:00:00Z'); // 2026-10-11(일) 23:00 KST: 아직 같은 주
+    assert.equal((await store.missions(W, sunday)).weekly.week, '2026-10-05');
+    assert.equal((await store.missions(W, sunday)).weekly.bonus.done, true);
+    const monday = Date.parse('2026-10-11T15:00:00Z'); // 2026-10-12(월) 00:00 KST: 새 주
+    const next = (await store.missions(W, monday)).weekly;
+    assert.deepEqual([next.week, next.doneCount, next.bonus.done, next.missions.every(item => item.progress === 0)], ['2026-10-12', 0, false, true], '월요일 0시에 초기화');
+    await store.testSetWeekly(W, { played: 19, wins: 9, games: ['omok', 'yut', 'bingo', 'dots'] }, monday);
+    const newWeekOut = await store.recordMissionMatch({ ...input, matchId: 'week-room:3' }, monday);
+    assert.equal(newWeekOut.rewards.filter(item => item.reason === 'weekly_mission').length, 4, '새 주에는 다시 받을 수 있다');
   });
   return store;
 }

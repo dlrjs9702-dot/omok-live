@@ -2497,6 +2497,7 @@
     if (item.reason === 'event_reward') return item.memo || '이벤트 보상';
     if (item.reason === 'daily_mission') return `오늘의 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'achievement') return `업적 · ${item.memo || '달성'}`;
+    if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
   }
@@ -2620,6 +2621,16 @@
       ? `오늘 더 받을 수 있는 포인트 ${Number(data.remainingReward).toLocaleString('ko-KR')}P`
       : '오늘 미션 보상을 모두 받았습니다';
     missionList.replaceChildren(...data.missions.map(item => missionRow(item)), missionRow({ ...data.firstWin }, { bonus: true }));
+    if (data.weekly) renderWeekly(data.weekly);
+  }
+
+  // v1.7.18 weekly missions (Monday to Monday, Asia/Seoul): same rows as today's missions, plus the all-done bonus.
+  const weeklySummary = document.getElementById('weeklySummary');
+  const weeklyList = document.getElementById('weeklyList');
+  function renderWeekly(data) {
+    const [, month, day] = data.resetsOn.split('-').map(Number);
+    weeklySummary.textContent = `${month}월 ${day}일(월) 0시에 새로 시작 · 이번 주 더 받을 수 있는 포인트 ${Number(data.remainingReward).toLocaleString('ko-KR')}P`;
+    weeklyList.replaceChildren(...data.missions.map(item => missionRow(item)), missionRow({ title: data.bonus.title, reward: data.bonus.reward, done: data.bonus.done, progress: data.doneCount, target: data.total }));
   }
 
   async function loadMissions() {
@@ -2674,14 +2685,17 @@
     } catch {}
   }
 
+  const missionTabWeekly = document.getElementById('missionTabWeekly');
+  const missionPanelWeekly = document.getElementById('missionPanelWeekly');
   function selectMissionTab(name) {
-    const achievements = name === 'achievements';
-    missionTabToday.setAttribute('aria-selected', String(!achievements));
-    missionTabAchievements.setAttribute('aria-selected', String(achievements));
-    missionPanelToday.classList.toggle('hidden', achievements);
-    missionPanelAchievements.classList.toggle('hidden', !achievements);
-    if (achievements) loadAchievements(); else loadMissions();
+    const tabs = { today: [missionTabToday, missionPanelToday], weekly: [missionTabWeekly, missionPanelWeekly], achievements: [missionTabAchievements, missionPanelAchievements] };
+    for (const [key, [tab, panel]] of Object.entries(tabs)) {
+      tab.setAttribute('aria-selected', String(key === name));
+      panel.classList.toggle('hidden', key !== name);
+    }
+    if (name === 'achievements') loadAchievements(); else loadMissions(); // today and weekly come from the same response
   }
+  missionTabWeekly.addEventListener('click', () => selectMissionTab('weekly'));
   missionTabToday.addEventListener('click', () => selectMissionTab('today'));
   missionTabAchievements.addEventListener('click', () => selectMissionTab('achievements'));
 

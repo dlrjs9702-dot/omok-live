@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.17" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.18" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -889,13 +889,17 @@
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="missionTabs" role="tablist" aria-label="미션 종류">
       <button type="button" role="tab" class="missionTab" id="missionTabToday" aria-selected="true" aria-controls="missionPanelToday">오늘</button>
-      <button type="button" role="tab" class="missionTab" disabled aria-disabled="true" title="준비 중">주간</button>
+      <button type="button" role="tab" class="missionTab" id="missionTabWeekly" aria-selected="false" aria-controls="missionPanelWeekly">주간</button>
       <button type="button" role="tab" class="missionTab" id="missionTabAchievements" aria-selected="false" aria-controls="missionPanelAchievements">업적</button>
       <button type="button" role="tab" class="missionTab" disabled aria-disabled="true" title="준비 중">이벤트</button>
     </div>
     <section id="missionPanelToday" role="tabpanel" aria-labelledby="missionTabToday" aria-live="polite">
       <p id="missionSummary" class="missionSummary"></p>
       <div id="missionList" class="missionList"></div>
+    </section>
+    <section id="missionPanelWeekly" class="hidden" role="tabpanel" aria-labelledby="missionTabWeekly" aria-live="polite">
+      <p id="weeklySummary" class="missionSummary"></p>
+      <div id="weeklyList" class="missionList"></div>
     </section>
     <section id="missionPanelAchievements" class="hidden" role="tabpanel" aria-labelledby="missionTabAchievements" aria-live="polite">
       <p id="achievementSummary" class="missionSummary"></p>
@@ -940,10 +944,10 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.17"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.17"></script>
-  <script src="/hwatu-art.js?v=1.7.17"></script>
-  <script src="/gostop-ui.js?v=1.7.17"></script>
-  <script src="/app.js?v=1.7.17"></script>
+  <script src="/session-lock.js?v=1.7.18"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.18"></script>
+  <script src="/hwatu-art.js?v=1.7.18"></script>
+  <script src="/gostop-ui.js?v=1.7.18"></script>
+  <script src="/app.js?v=1.7.18"></script>
 </body>
 </html>
