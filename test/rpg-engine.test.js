@@ -449,3 +449,29 @@ test('저장 불러오기: importState는 다른 스키마·진행 중이 아닌
   assert.equal(loaded.game.time, game.time);
   assert.deepEqual(Object.keys(loaded.game.players), Object.keys(game.players));
 });
+
+test('활성 구역: 반경 밖 몬스터는 멈추고, 동시 적 수 상한을 넘는 소환은 미뤄진다', () => {
+  const zone = D.BALANCE.zone;
+  const original = { ...zone };
+  try {
+    const { game } = startRun(['guardian'], 21);
+    game.mobs = []; game.spawns = []; game.delayed = [];
+    const p = game.players['1'];
+    p.x = -11; p.z = 0;
+    const near = rpg.makeMob(game, 'grunt', p.x + 3, p.z);
+    const far = rpg.makeMob(game, 'grunt', 11, 0);
+    const farStart = { x: far.x, z: far.z };
+    zone.activeRadius = 10;
+    runTicks(game, 1);
+    assert.deepEqual({ x: far.x, z: far.z }, farStart, '반경 밖 몬스터는 움직이지 않는다');
+    assert.ok(Math.hypot(near.x - (p.x + 3), near.z - p.z) > 0 || near.state !== 'idle', '반경 안 몬스터는 움직인다');
+    zone.activeRadius = Infinity;
+
+    game.mobs = []; game.spawns = [];
+    zone.maxActiveMobs = 5;
+    for (let i = 0; i < 12; i += 1) game.spawns.push({ at: game.time, type: 'swarm', x: p.x + 2 + i * 0.1, z: p.z });
+    rpg.tick(game);
+    assert.equal(game.mobs.filter(m => !m.ally && m.hp > 0).length, 5, '상한까지만 소환된다');
+    assert.equal(game.spawns.length, 7, '나머지는 대기열에 남는다');
+  } finally { Object.assign(zone, original); }
+});

@@ -42,6 +42,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { createRpgStore } = require('./lib/rpg-store');
 const { createRpgTransport } = require('./lib/rpg-transport');
+const { createSampler } = require('./lib/rpg-metrics');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
@@ -115,6 +116,8 @@ let announcementStore;
 let matchStore;
 let pointStore;
 let rpgStore = null;
+const RPG_MAX_ROOMS = Math.max(1, Number(process.env.RPG_MAX_ROOMS) || 8); // 계측 전 임시값: notes/ashen-expedition.md의 측정 기록 참고
+const rpgMetrics = { tick: createSampler(1200), save: createSampler(200) };
 const rpgTransport = createRpgTransport({ maxStallMs: Number(process.env.RPG_STALL_MS) || 5000 });
 let rpgFault = false; // NODE_ENV=test에서만 켜지는 저장 장애 모의
 let indexTemplate = '';
@@ -1631,6 +1634,8 @@ async function tickHalliRooms() {
   }
 }
 
+function rpgRoomCount() { return [...rooms.values()].filter(isRpg).length; }
+
 // 잿빛 원정 저장. 자동저장(auto)과 수동저장(manual)은 서로 다른 칸이라 덮어쓰지 않는다.
 // 저장이 실패하면(운영 DB 장애 등) JSON으로 대체하지 않고 원정을 멈춘 채 다시 시도한다.
 async function saveRpgRoom(room, slot) {
@@ -1643,7 +1648,9 @@ async function saveRpgRoom(room, slot) {
   if (rpgFault) throw new Error('테스트 저장 장애');
   room.rpgSaveSeq = (room.rpgSaveSeq || 0) + 1;
   if (!(await rpgStore.acquireLease(room.rpgRunId, room.id, RPG_LEASE_MS))) throw new Error('원정이 다른 방에서 열려 있습니다.');
+  const saveStart = performance.now();
   await rpgStore.save({ runId: room.rpgRunId, slot, seq: room.rpgSaveSeq, schemaVersion: engine.SCHEMA_VERSION, state: engine.exportState(room.game), party });
+  rpgMetrics.save.add(performance.now() - saveStart);
   room.rpgSavedAt = nowIso();
   return true;
 }
@@ -1695,7 +1702,9 @@ function tickRpgRooms() {
     }
     if (!anyConnected) continue; // nobody at the table: the run waits for them
     if (room.rpgPaused) continue; // 저장소 장애: 저장이 되돌아올 때까지 원정을 멈춘다
+    const tickStart = performance.now();
     engine.tick(room.game);
+    rpgMetrics.tick.add(performance.now() - tickStart);
     if (room.rpgBroadcastVersion !== room.game.metaVersion) { room.rpgBroadcastVersion = room.game.metaVersion; touchRoom(room); broadcast(room); }
     const set = streams.get(room.id);
     if (!set) continue;
@@ -2745,6 +2754,13 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true });
   }
 
+  if (pathname === '/api/admin/rpg-metrics' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    const active = [...rooms.values()].filter(isRpg);
+    return sendJson(res, 200, { enabled: RPG_ENABLED, rooms: active.length, maxRooms: RPG_MAX_ROOMS, running: active.filter(r => r.game.status === 'playing').length,
+      tickMs: rpgMetrics.tick.summary(), saveMs: rpgMetrics.save.summary(), transport: { ...rpgTransport.stats } });
+  }
+
   if (pathname === '/api/admin/presence' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
     return sendJson(res, 200, await adminPresenceSnapshot());
@@ -3062,6 +3078,7 @@ async function requestHandler(req, res) {
       if (!row) return sendError(res, 404, 'NO_SAVE', '선택한 저장 칸이 비어 있습니다.');
       const imported = engine.importState(row.state, row.schemaVersion);
       if (!imported.legal) return sendError(res, 409, 'SAVE_INCOMPATIBLE', '이 저장은 현재 버전에서 이어할 수 없습니다.');
+      if (rpgRoomCount() >= RPG_MAX_ROOMS) return sendError(res, 503, 'RPG_BUSY', '잿빛 원정 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.');
       room = makeRoom(session, 'rpg', 'private', {});
       if (!(await rpgStore.acquireLease(row.runId, room.id, RPG_LEASE_MS))) return sendError(res, 409, 'RUN_ACTIVE', '이미 다른 곳에서 이어받은 원정입니다.');
       room.game = imported.game;
@@ -3098,6 +3115,7 @@ async function requestHandler(req, res) {
     const gameType = String(body.gameType || 'omok').toLowerCase();
     if (!hasGame(gameType)) return sendError(res, 400, 'BAD_GAME_TYPE', '지원하지 않는 게임입니다.');
     if (gameType === 'rpg' && !RPG_ENABLED) return sendError(res, 403, 'GAME_DISABLED', '잿빛 원정은 현재 개발 중이라 이용할 수 없습니다.');
+    if (gameType === 'rpg' && rpgRoomCount() >= RPG_MAX_ROOMS) return sendError(res, 503, 'RPG_BUSY', '잿빛 원정 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.');
     const visibility = body.visibility === undefined ? 'private' : body.visibility;
     if (visibility !== 'public' && visibility !== 'private') {
       return sendError(res, 400, 'BAD_VISIBILITY', '공개방 또는 비공개방을 선택해 주세요.');

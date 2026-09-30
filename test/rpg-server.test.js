@@ -248,3 +248,21 @@ test('잿빛 원정 저장: 자동/수동 칸 분리·재시작 후 이어하기
   assert.ok(after.time >= last.time, '저장된 시점에서 이어서 진행된다(처음부터가 아님)');
   assert.deepEqual(Object.keys(after.players).sort(), ['1', '2']);
 });
+
+test('잿빛 원정 용량: RPG_MAX_ROOMS 초과 방은 503 RPG_BUSY, 관리자 계측 조회', { timeout: 30_000 }, async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rpg-cap-'));
+  const port = await freePort();
+  const proc = await startServer(dataDir, port, true, { RPG_MAX_ROOMS: '1' });
+  t.after(async () => { await stopServer(proc); await fs.rm(dataDir, { recursive: true, force: true }); });
+  const { req, enter } = client(`http://127.0.0.1:${port}`, '10.85.0');
+  const admin = (await req('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
+  const [a, b] = [await enter((await req('/api/admin/keys', admin, { label: '가' })).data.html), await enter((await req('/api/admin/keys', admin, { label: '나' })).data.html)];
+  assert.equal((await req('/api/rooms', a, { gameType: 'rpg' })).status, 201);
+  const second = await req('/api/rooms', b, { gameType: 'rpg' });
+  assert.deepEqual([second.status, second.data.error], [503, 'RPG_BUSY']);
+  assert.equal((await req('/api/rooms', b, { gameType: 'omok' })).status, 201, '다른 게임은 영향 없다');
+  const metrics = await req('/api/admin/rpg-metrics', admin, undefined, 'GET');
+  assert.deepEqual([metrics.status, metrics.data.rooms, metrics.data.maxRooms], [200, 1, 1]);
+  assert.ok('tickMs' in metrics.data && 'saveMs' in metrics.data && 'transport' in metrics.data);
+  assert.equal((await req('/api/admin/rpg-metrics', a, undefined, 'GET')).status, 403, '관리자만 조회');
+});
