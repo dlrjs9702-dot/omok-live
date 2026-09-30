@@ -19,7 +19,9 @@ module.exports = defineConfig({
   },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  // One retry locally too: a test that fails once and passes on the retry is reported as "flaky" (with a trace, see
+  // `trace: 'on-first-retry'`), so an occasional infrastructure hiccup is told apart from a real failure, which fails twice.
+  retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ['list'],
