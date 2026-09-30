@@ -134,3 +134,34 @@ test('스무고개: 단계는 한글로, 행동하는 사람 이름과 함께 �
   for (const view of [a, b]) expect(view.errors).toEqual([]);
   await Promise.all([a, b].map(view => view.context.close()));
 });
+
+test('스무고개(v1.7.29): 새로 답변된 질문만 낭독 영역이 읽어 주고, 정답 기록 목록은 라이브 영역이 아니다', async ({ browser, request }) => {
+  test.setTimeout(90_000);
+  const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const [a, b] = [await guest(browser, request, admin, '출제자'), await guest(browser, request, admin, '도전자')];
+  await room(request, a, [b], 'twentyquestions');
+  expect((await api(request, '/api/room/choose-role', a.token, { choice: '1' })).status).toBe(200);
+  expect((await api(request, '/api/room/choose-role', b.token, { choice: '2' })).status).toBe(200);
+  expect((await api(request, '/api/room/twenty-start', a.token, { mode: 'individual', totalRounds: 1 })).status).toBe(200);
+  const state = (await api(request, '/api/room', a.token, undefined, 'GET')).data.state;
+  const [drawer, challenger] = state.game.drawerSeat === '1' ? [a, b] : [b, a];
+  expect((await api(request, '/api/room/twenty-secret', drawer.token, { secret: '사과' })).status).toBe(200);
+  const announce = challenger.page.locator('#twentyAnnounce');
+  await expect(challenger.page.locator('#twentyStatus')).toContainText(`${challenger.label}님 차례`);
+  await expect(announce).toHaveText(''); // 접속·첫 표시는 기록만 한다
+  await expect(challenger.page.locator('#twentyGuessLog')).not.toHaveAttribute('aria-live', /.*/);
+
+  expect((await api(request, '/api/room/twenty-question', challenger.token, { question: '과일인가요?' })).status).toBe(200);
+  expect((await api(request, '/api/room/twenty-answer', drawer.token, { reply: '예' })).status).toBe(200);
+  await expect(announce).toHaveText(`${challenger.label}님의 질문 "과일인가요?" · 답변: 예`);
+  expect((await api(request, '/api/room/twenty-question', challenger.token, { question: '빨간색인가요?' })).status).toBe(200);
+  expect((await api(request, '/api/room/twenty-answer', drawer.token, { reply: '비슷함' })).status).toBe(200);
+  await expect(announce).toHaveText(`${challenger.label}님의 질문 "빨간색인가요?" · 답변: 비슷함`); // 앞의 질문은 다시 읽지 않는다
+  await expect(announce).not.toContainText('과일인가요');
+
+  await challenger.page.reload(); // 새로고침 뒤 첫 표시는 다시 기록만 한다
+  await expect(challenger.page.locator('#twentyQuestionLog li')).toHaveCount(2);
+  await expect(announce).toHaveText('');
+  for (const view of [a, b]) expect(view.errors).toEqual([]);
+  await Promise.all([a, b].map(view => view.context.close()));
+});

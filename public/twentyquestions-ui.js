@@ -2,6 +2,7 @@
   'use strict';
   let submit = null;
   let lastState = null;
+  let announced = null; // { questions, guesses } already announced (or present when first seen) in this game
   let busy = false;
   const $ = id => document.getElementById(id);
   const hidden = (id, yes) => $(id).classList.toggle('hidden', Boolean(yes));
@@ -76,9 +77,38 @@
     });
   }
 
+  // v1.7.29: a hidden status region reads only what is new since the last render -- a question that was just
+  // answered, or a guess that was just judged -- instead of the lists being live regions that re-read everything.
+  // The first render (joining, refreshing, a new round) only records what exists.
+  function announceNew(state) {
+    const region = $('twentyAnnounce');
+    if (!region) return;
+    const g = state.game || {};
+    const questions = g.questions || [];
+    const guesses = g.guessHistory || [];
+    if (!announced || questions.length < announced.questions || guesses.length < announced.guesses) {
+      announced = { questions: questions.length, guesses: guesses.length };
+      region.replaceChildren();
+      return;
+    }
+    const lines = [
+      ...questions.slice(announced.questions).map(q => `${nameFor(state, q.seat)}님의 질문 "${q.text}" · 답변: ${q.reply}`),
+      ...guesses.slice(announced.guesses).map(guess => `${nameFor(state, guess.seat)}님의 정답 시도 "${guess.text}" · ${guess.correct ? '정답' : '오답'}`),
+    ];
+    announced = { questions: questions.length, guesses: guesses.length };
+    if (lines.length) region.replaceChildren(document.createTextNode(lines.slice(-3).join('. ')));
+  }
+
+  function reset() {
+    announced = null;
+    const region = $('twentyAnnounce');
+    if (region) region.replaceChildren();
+  }
+
   function render(state) {
     lastState = state;
     if (!state || state.gameType !== 'twentyquestions') return;
+    announceNew(state);
     const g = state.game || {};
     const seat = state.me?.seat || null;
     const host = Boolean(state.me?.isHost);
@@ -227,5 +257,5 @@
     } else hidden('twentyFinalResult', true);
   }
 
-  window.TwentyQuestionsUI = { init, render };
+  window.TwentyQuestionsUI = { init, render, reset };
 })();
