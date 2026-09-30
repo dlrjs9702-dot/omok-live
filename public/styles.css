@@ -374,7 +374,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
    behind a second nested scrollbar. */
 .side .gameActionsPanel{flex:0 0 auto;min-height:0;display:grid;gap:10px;max-height:none;overflow:visible;padding-right:2px}
 .gameActionsPanel .roleChooser,.gameActionsPanel .bingoSetupRow,.gameActionsPanel .liarSetupRow{margin-bottom:0}
-.yutActionRow,.oldmaidStartRow,.marathonStartRow{display:flex;justify-content:flex-end}
+.yutActionRow,.oldmaidStartRow{display:flex;justify-content:flex-end}
 @media(max-width:1120px){.roomInfoArea{grid-template-columns:repeat(2,minmax(0,1fr))}.gameInfoCard{grid-column:1/-1}.roomInfoArea .inviteTargetList{max-height:120px}}@media(max-width:880px){.roomInfoArea{grid-template-columns:1fr}.gameInfoCard{grid-column:auto}.roomInfoArea .inviteTargetList{max-height:150px}}@media(max-width:520px){.roomTitleField{align-items:flex-start;flex-direction:column;gap:3px}.baseballDigitChoices{flex-wrap:wrap;gap:8px 12px}.baseballDigitChoices legend{width:100%}.roomInfoArea{margin-bottom:12px}.gameInfoCard .infoList{column-gap:9px}}
 
 /* v1.6.30: compact lobby statistics and read-only participant record dialog. */
@@ -788,54 +788,14 @@ html.sidePipLayout #gameInfoPanel .gameActionsPanel{overflow:visible!important}
 .chatLockNotice{flex:0 0 auto;margin:4px 0;padding:6px 10px;border-radius:9px;background:#3f2d0b;border:1px solid #b45309;color:#fde68a;font-size:.76rem;font-weight:700;text-align:center}
 .chatLockNotice.hidden{display:none}
 
-/* v1.6.44: 마라톤 (Marathon) -- a self-contained panel like liar/oldmaid/pictionary, bypassing the
-   shared canvas board entirely. */
-.marathonPanel{margin-top:14px;padding:16px;border:1px solid #334155;border-radius:18px;background:#0b1324;display:grid;gap:12px;min-width:0}
-.marathonPanel.hidden{display:none}
-.marathonHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.marathonHeader strong{font-size:1rem;color:#e2e8f0}
-.marathonConfigChooser{display:grid;gap:8px;padding:10px 12px;border:1px solid #334155;border-radius:12px;background:#0f172a}
-.marathonConfigChooser.hidden{display:none}
-.marathonConfigRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.82rem;color:#e2e8f0}
-.marathonConfigRow.hidden{display:none}
-.marathonConfigRow label{display:flex;align-items:center;gap:5px;font-weight:800;cursor:pointer}
-.marathonConfigRow input{accent-color:#2563eb}
-.marathonConfigChooser small{color:#94a3b8;font-size:.72rem;line-height:1.4}
-.marathonTrack{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px}
-.marathonTile{position:relative;min-height:58px;border-radius:10px;border:1px solid #334155;background:#111c30;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px;gap:3px}
-.marathonStartTile{background:#14274a;border-color:#2563eb}
-.marathonFinishTile{background:#14231a;border-color:#16a34a}
-.marathonTileNum{font-size:.7rem;font-weight:800;color:#94a3b8}
-.marathonMarker{font-size:.62rem;font-weight:900;border-radius:999px;padding:2px 6px;color:#0b1324}
-.marathonMarker-0{background:#60a5fa}.marathonMarker-1{background:#f87171}.marathonMarker-2{background:#facc15}
-.marathonMarker-3{background:#4ade80}.marathonMarker-4{background:#c084fc}.marathonMarker-5{background:#fb923c}
-.marathonDiceRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.marathonTurnLabel{font-weight:800;color:#e2e8f0;font-size:.86rem}
-.marathonLastRoll{color:#94a3b8;font-size:.8rem}
-.marathonMissionBox{display:grid;gap:8px;padding:12px;border:1px solid #7c3aed;border-radius:12px;background:#1e1b3a}
-.marathonMissionBox.hidden{display:none}
-.marathonMissionHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.marathonMissionHead strong{color:#e9d5ff;font-size:.86rem}
-.marathonMissionTimer{font-weight:900;color:#fde68a}
-.marathonMissionPrompt{margin:0;font-size:1.05rem;font-weight:800;color:#f8fafc;line-height:1.5;word-break:break-word}
-.marathonAnswerForm{display:flex;gap:8px}
-.marathonAnswerForm.hidden{display:none}
-.marathonAnswerForm input{flex:1 1 auto;min-width:0;font:inherit;color:#f8fafc;background:#111827;border:1px solid #334155;border-radius:9px;padding:10px}
-.marathonReflexOptions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.marathonReflexOptions.hidden{display:none}
-.marathonReflexBtn{min-height:48px;font-weight:800}
-.marathonMissionFeedback{margin:0;font-size:.8rem;font-weight:800;color:#fca5a5}
-.marathonMissionFeedback.hidden{display:none}
-.marathonResult{padding:12px;border-radius:12px;background:#052e13;border:1px solid #16a34a;color:#bbf7d0;font-weight:800}
-.marathonResult.hidden{display:none}
-.marathonHistory{max-height:170px;overflow-y:auto;font-size:.86rem;color:#94a3b8}
-.marathonHistory p{margin:4px 0}
-@media(max-width:600px){
-  .marathonTrack{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
-  .marathonTile{min-height:48px}
-  .marathonReflexOptions{grid-template-columns:1fr 1fr}
-  .marathonAnswerForm{flex-direction:column}
-}
+/* Shared host-config chooser (radio rows), used by 그림 맞히기. Was the marathon chooser until v1.7.34. */
+.gameConfigChooser{display:grid;gap:8px;padding:10px 12px;border:1px solid #334155;border-radius:12px;background:#0f172a}
+.gameConfigChooser.hidden{display:none}
+.gameConfigRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.82rem;color:#e2e8f0}
+.gameConfigRow.hidden{display:none}
+.gameConfigRow label{display:flex;align-items:center;gap:5px;font-weight:800;cursor:pointer}
+.gameConfigRow input{accent-color:#2563eb}
+.gameConfigChooser small{color:#94a3b8;font-size:.72rem;line-height:1.4}
 
 /* Twenty Questions: scoped layout; existing game/side panel layouts unchanged. */
 .twentyPanel{padding:18px;display:grid;gap:12px;min-width:0}.twentyHeading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.twentyHeading h3,.twentyPanel h4{margin:0}.twentyCategory{background:#1e3a8a;color:#fff;padding:12px;border-radius:12px;font-weight:800}.twentyStatus,.twentyPrivate,.twentyResult{margin:0;padding:12px;border-radius:12px;background:#1f2937;color:#f1f5f9;line-height:1.5}.twentyPrivate{border:1px solid #64748b}.twentyResult{background:#14532d}.twentyScoreboard{display:grid;gap:8px}.twentyScore{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid #64748b;border-radius:10px}.twentyQuestionLog{display:grid;gap:9px;margin:0;padding:0 0 0 22px;max-height:none;overflow:visible}.twentyQuestionLog li,.twentyGuessLog p{padding:9px;border-bottom:1px solid #475569;line-height:1.5;overflow-wrap:anywhere}.twentyActionPanel{display:grid;gap:12px;padding:12px 0}.twentyHostSetup,.twentyJudgeBox{display:grid;gap:9px}.twentyAnswerButtons,.twentyRecommendations{display:flex;flex-wrap:wrap;gap:8px}.twentyAnswerButtons button{flex:1 1 100px}.twentyActionPanel input,.twentyActionPanel select{width:100%;max-width:100%;box-sizing:border-box}.twentyPanel.hidden,.twentyActionPanel.hidden,.twentyHostSetup.hidden,.twentyJudgeBox.hidden{display:none!important}
@@ -1338,13 +1298,6 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .diceCube .cf4{background-image:radial-gradient(circle at 28% 28%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 72% 28%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 28% 72%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 72% 72%,#1f2937 0 3px,transparent 3.5px)}
 .diceCube .cf5{background-image:radial-gradient(circle at 26% 26%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 74% 26%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 50% 50%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 26% 74%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 74% 74%,#1f2937 0 3px,transparent 3.5px)}
 .diceCube .cf6{background-image:radial-gradient(circle at 28% 24%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 72% 24%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 28% 50%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 72% 50%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 28% 76%,#1f2937 0 3px,transparent 3.5px),radial-gradient(circle at 72% 76%,#1f2937 0 3px,transparent 3.5px)}
-.marathonTrack{padding:8px;border-radius:14px;background:#2f7d4a}
-.marathonTile{background:#b5483a repeating-linear-gradient(90deg,transparent 0 22%,rgba(255,255,255,.75) 22% 24%,transparent 24% 76%,rgba(255,255,255,.75) 76% 78%,transparent 78%);border:1px solid #7f2a20;box-shadow:inset 0 2px 0 rgba(255,255,255,.15),0 2px 4px rgba(0,0,0,.35)}
-.marathonTileNum{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
-.marathonStartTile,.marathonFinishTile{background:#b5483a repeating-conic-gradient(#111 0 25%,#f8fafc 0 50%) 0 0/12px 12px;border-color:#111}
-.marathonStartTile .marathonTileNum,.marathonFinishTile .marathonTileNum{background:#111827;border-radius:6px;padding:1px 5px}
-.marathonMarker{position:relative;border-radius:3px;padding:3px 6px 2px;background:#f8fafc!important;color:#111827;border-top:4px solid var(--bib,#60a5fa);box-shadow:0 2px 4px rgba(0,0,0,.45)}
-.marathonMarker-0{--bib:#2563eb}.marathonMarker-1{--bib:#dc2626}.marathonMarker-2{--bib:#ca8a04}.marathonMarker-3{--bib:#16a34a}.marathonMarker-4{--bib:#9333ea}.marathonMarker-5{--bib:#ea580c}
 /* v1.7.12 실물감: 도둑잡기 트럼프·펠트 탁자, 숫자야구 전광판, 라이어 카드·말풍선, 스무고개 칠판, 그림 맞히기 스케치북 */
 .oldmaidPanel{background:#1d6b42 radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.08),rgba(0,0,0,.35) 75%);border-color:#0f3d25;box-shadow:inset 0 0 0 6px #5b3a1e,inset 0 0 0 8px #3b2412}
 .oldmaidFace{position:relative;background:#fffdf7;border:1px solid #cfc6b0;box-shadow:0 2px 4px rgba(0,0,0,.35);font-family:Georgia,"Times New Roman",serif}

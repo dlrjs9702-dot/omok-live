@@ -10,13 +10,12 @@ const { listGames } = require('../lib/games');
 const names = { black: '흑돌이님', white: '백돌이님', 1: '일번님', 2: '이번님', 3: '삼번님', A: 'A' };
 const helpers = {
   actorName: value => names[value] || `${value}번`,
-  marathonGroupLabel: (group, game) => (game?.mode === 'team' ? `${group}팀` : `${group}번`),
 };
 const line = (gameType, game, extra = {}) => narrate({ gameType, game: { status: 'playing', ...game }, ...extra }, helpers);
 const SYSTEM_CHAT = { chat: { messages: [{ id: 1, type: 'system', text: '일번님이 입장했습니다.' }, { id: 2, type: 'system', text: '게임이 시작되었습니다.' }] } };
 
 test('시스템 채팅은 더 이상 「방금」이 아니다: 게임 상태에 행동이 없으면 아무것도 표시하지 않는다', () => {
-  for (const type of ['bingo', 'yut', 'cityking', 'oldmaid', 'marathon', 'twentyquestions', 'pictionary']) {
+  for (const type of ['bingo', 'yut', 'cityking', 'oldmaid', 'twentyquestions', 'pictionary']) {
     assert.equal(line(type, {}, SYSTEM_CHAT), '', type);
   }
   assert.equal(line('yut', { phase: 'throw', lastThrow: null, lastPass: null }, SYSTEM_CHAT), '');
@@ -67,17 +66,6 @@ test('도둑잡기: 마지막으로 뽑은 사람·대상·버린 쌍·손패를
 test('랜드킹: 마지막 주사위(더블)와 그 결과 문장', () => {
   assert.equal(line('cityking', { lastRoll: { seat: '1', total: 8, double: false }, lastEvent: null }), '일번님이 주사위 8');
   assert.equal(line('cityking', { lastRoll: { seat: '2', total: 6, double: true }, lastEvent: '서울 통행료 200을 지불했습니다.' }), '이번님이 주사위 6(더블) · 서울 통행료 200을 지불했습니다.');
-});
-
-test('마라톤: 주사위·미션 성공·시간 초과·도착(팀전은 팀 이름)', () => {
-  assert.equal(line('marathon', { history: [{ type: 'roll', seat: '1', roll: 4, group: '1' }] }), '일번님이 주사위를 굴려 4가 나왔습니다');
-  assert.equal(line('marathon', { history: [{ type: 'roll', seat: '1', roll: 5, group: '1' }] }), '일번님이 주사위를 굴려 5가 나왔습니다');
-  assert.equal(line('marathon', { history: [{ type: 'roll', seat: '1', roll: 6, group: '1' }] }), '일번님이 주사위를 굴려 6이 나왔습니다');
-  assert.equal(line('marathon', { history: [{ type: 'mission-success', seat: '2', group: 'A' }] }), '이번님이 미션을 성공했습니다');
-  assert.equal(line('marathon', { mode: 'team', history: [{ type: 'mission-timeout', group: 'A' }] }), 'A팀의 미션 시간이 초과되었습니다');
-  assert.equal(line('marathon', { mode: 'team', history: [{ type: 'finish', group: 'B' }] }), 'B팀이 도착했습니다');
-  assert.equal(line('marathon', { mode: 'solo', history: [{ type: 'finish', group: '3' }] }), '3번이 도착했습니다');
-  assert.equal(line('marathon', { history: [{ type: 'other' }] }), '');
 });
 
 test('스무고개: 아직 답을 기다리는 질문·정답 시도만 이름 붙이고, 순서를 알 수 없는 기록은 표시하지 않는다', () => {

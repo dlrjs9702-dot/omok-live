@@ -12,10 +12,9 @@
   // Korean particles after a number: 0, 1, 3, 6, 7, 8 (영 일 삼 육 칠 팔, and every ...십/백) end in a consonant.
   const endsInConsonant = n => [0, 1, 3, 6, 7, 8].includes(Math.abs(Number(n)) % 10);
   const eulReul = n => (endsInConsonant(n) ? '을' : '를');
-  const iGa = n => (endsInConsonant(n) ? '이' : '가');
 
-  // state: the room state; helpers.actorName(seatOrColor) -> "이름님"(나), helpers.marathonGroupLabel(group, game).
-  function narrate(state, { actorName, marathonGroupLabel }) {
+  // state: the room state; helpers.actorName(seatOrColor) -> "이름님"(나).
+  function narrate(state, { actorName }) {
     const g = state?.game;
     if (!g || !['playing', 'finished', 'draw', 'setup', 'round-ended'].includes(g.status)) return '';
     const m = g.lastMove;
@@ -65,15 +64,6 @@
         const roll = g.lastRoll;
         if (!roll) return '';
         return `${actorName(roll.seat)}이 주사위 ${roll.total}${roll.double ? '(더블)' : ''}${g.lastEvent ? ` · ${g.lastEvent}` : ''}`;
-      }
-      case 'marathon': {
-        const entry = g.history?.at(-1);
-        if (!entry) return '';
-        if (entry.type === 'roll') return `${actorName(entry.seat)}이 주사위를 굴려 ${entry.roll}${iGa(entry.roll)} 나왔습니다`;
-        if (entry.type === 'mission-success') return `${actorName(entry.seat)}이 미션을 성공했습니다`;
-        if (entry.type === 'mission-timeout') return `${marathonGroupLabel(entry.group, g)}의 미션 시간이 초과되었습니다`;
-        if (entry.type === 'finish') return `${marathonGroupLabel(entry.group, g)}이 도착했습니다`;
-        return '';
       }
       case 'twentyquestions': {
         // Answered questions and judged guesses are kept in separate lists with no order between them: a step that is

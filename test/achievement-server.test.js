@@ -111,7 +111,7 @@ test('인증 없이는 조회할 수 없고, 새 계정은 아무 업적도 달�
   assert.equal((await fx.req('/api/achievements')).status, 401);
   const me = await fx.guest('조회');
   const view = (await fx.req('/api/achievements', me.session)).data;
-  assert.deepEqual([view.total, view.doneCount, view.earned, view.granted.length], [70, 0, 0, 0]);
+  assert.deepEqual([view.total, view.doneCount, view.earned, view.granted.length], [66, 0, 0, 0]);
   assert.ok(view.maxReward > 200_000);
   assert.equal(JSON.stringify(view).includes('guest:'), false, '계정 정보 미노출');
   assert.deepEqual(view.items.slice(0, 4).map(item => [item.id, item.progress, item.target, item.reward]),

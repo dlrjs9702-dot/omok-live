@@ -271,7 +271,7 @@ test('Twenty Questions gives a disconnected drawer 60 seconds to return, then vo
   assert.equal((await req('/api/room/twenty-secret', b, { secret: '계속 진행' })).status, 200);
 });
 
-test('liar, pictionary and marathon are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 30000 }, async t => {
+test('liar and pictionary are exempt from the AFK watch (they already run their own phase-deadline tick)', { timeout: 30000 }, async t => {
   const { req, login } = await serverFixture(t);
   const tokens = [await login(), await login(), await login()];
   const created = await req('/api/rooms', tokens[0], { gameType: 'liar' });
