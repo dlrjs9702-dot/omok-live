@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.14 잿빛 원정 로비 열기
+
+사용자 지시(2026-09-30)로 운영 로비의 「잿빛 원정」 선택을 연다. 로컬 장기 개발(`feature/rpg-local-development-20260927`)과는 별개로, 이미 `main`에 있는 RPG v0.1을 그대로 선택 가능하게 하는 변경이다.
+
+- `public/index.html`: 게임 구현중 목록의 잿빛 원정 버튼에서 `disabled`·`aria-disabled`·안내 `title`을 제거했다. 위치는 기존 게임 구현중 패널 그대로다.
+- 서버·RPG 엔진·규칙은 변경하지 않았다. `POST /api/rooms`는 이미 `rpg`를 허용하므로 별도 스위치가 없다.
+- 테스트: `test/lobby-compact-effects.test.js`는 버튼이 개발 패널에 있고 disabled가 아님을 확인하고, `tests/e2e/rpg.spec.js`는 임시 활성화 우회를 없애 버튼이 처음부터 활성인지 확인한다.
+- 버전·캐시 버스팅·공지를 v1.7.14로 동기화했다.
+- 알려진 사항: RPG 로컬 브랜치의 `RPG_ENABLED` 스위치는 아직 `main`에 없다. 병합 때 `public/index.html`의 이 버튼 줄과 `public/app.js` 활성화 조건이 겹치므로 그 시점에 조정한다.
+
 ## v1.7.13 할리갈리 실물 연출
 
 - 근거: 「강한 실물감 연출」 순차 패치 마지막 점검(사용자 지시 2026-09-30). 참고한 실물: 탁자 위 할리갈리(각자 앞의 공개 카드 더미, 가운데 금속 종).
