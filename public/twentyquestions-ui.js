@@ -4,6 +4,8 @@
   let lastState = null;
   let announced = null; // { questions, guesses } already announced (or present when first seen) in this game
   let busy = false;
+  let themeApplied = null;
+  let skinFx = { round: null, count: 0, result: false }; // skin effects play only for answers that arrive while watching
   const $ = id => document.getElementById(id);
   const hidden = (id, yes) => $(id).classList.toggle('hidden', Boolean(yes));
   const nameFor = (state, seat) => state.players?.[seat]?.label || `${seat}번`; 
@@ -15,20 +17,26 @@
   function buildQuestionPair(state, question, number) {
     const item = document.createElement('li');
     item.className = 'twentyPair';
+    const skin = window.SkinLooks?.def(state.players?.[question.seat]?.skin); // the asker's skin (v1.7.39)
+    if (skin?.pair) window.SkinLooks.h.style(item, skin.pair);
     item.dataset.questionNumber = String(number);
     const q = document.createElement('p');
     q.className = 'twentyQ';
     const meta = document.createElement('small');
     meta.className = 'twentyPairNo';
     meta.textContent = `${number}번째`;
-    q.append(tag('Q'), textSpan(`${nameFor(state, question.seat)}님: ${question.text}`), meta);
+    const tagQ = tag('Q');
+    if (skin?.tagQ) window.SkinLooks.h.style(tagQ, skin.tagQ);
+    q.append(tagQ, textSpan(`${nameFor(state, question.seat)}님: ${question.text}`), meta);
     const a = document.createElement('p');
     a.className = 'twentyA';
     a.dataset.reply = question.reply;
     const reply = document.createElement('strong');
     reply.className = 'twentyText';
     reply.textContent = question.reply;
-    a.append(tag('A'), reply);
+    const tagA = tag('A');
+    if (skin?.tagA) window.SkinLooks.h.style(tagA, skin.tagA);
+    a.append(tagA, reply);
     item.append(q, a);
     return item;
   }
@@ -189,6 +197,14 @@
     hidden('twentyPendingCard', !g.pendingQuestion);
     $('twentyPendingQuestion').replaceChildren(...(g.pendingQuestion
       ? [tag('Q'), textSpan(`${nameFor(state, g.pendingQuestion.seat)}님: ${g.pendingQuestion.text}`)] : []));
+    // v1.7.39 skins: the host's room theme paints the panel for everyone; a new answer and the final result get a short effect.
+    const SKS = window.SkinLooks;
+    if (SKS) {
+      SKS.h.unstyle($('twentyPanel'), themeApplied);
+      themeApplied = null;
+      const themeDef = SKS.def(state.skinTheme);
+      if (themeDef?.panel) { themeApplied = { backgroundImage: SKS.h.img(`tq-panel:${state.skinTheme}`, 720, 520, themeDef.panel), backgroundSize: 'cover' }; SKS.h.style($('twentyPanel'), themeApplied); }
+    }
     setText('twentyPendingGuess', g.pendingGuess
       ? `${nameFor(state, g.pendingGuess.seat)}님: ${g.pendingGuess.text}` : '정답 대기 중');
     for (const id of ['twentyPendingQuestion','twentyPendingGuess']) {
@@ -226,7 +242,19 @@
         item.classList.add(...recentClasses().split(/\s+/).filter(Boolean));
       }
       (position < VISIBLE_PAIRS ? log : older).appendChild(item);
+      if (position === 0 && skinFx.round === round && questions.length > skinFx.count) {
+        const fxDef = SKS?.def(state.players?.[entry.question.seat]?.skin);
+        if (fxDef?.fx) requestAnimationFrame(() => SKS.h.playFx(item, fxDef.fx, 700, 40));
+      }
     });
+    skinFx = { round, count: questions.length, result: skinFx.round === round ? skinFx.result : false };
+    if (phase === 'result' && !skinFx.result) {
+      skinFx.result = true;
+      const lastGuess = (g.guessHistory || []).at(-1);
+      const winDef = lastGuess?.correct ? SKS?.def(state.players?.[lastGuess.seat]?.skin) : null;
+      if (winDef?.win) requestAnimationFrame(() => SKS.h.playFx($('twentyPanel'), winDef.win, 1800, 10));
+    }
+    if (phase !== 'result') skinFx.result = false;
     if (!questions.length) { const p = document.createElement('li'); p.className = 'twentyEmpty'; p.textContent = '아직 질문이 없습니다.'; log.appendChild(p); }
     const olderBox = $('twentyOlderLogBox');
     const olderCount = Math.max(0, questions.length - VISIBLE_PAIRS);

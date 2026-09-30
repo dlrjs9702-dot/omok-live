@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.38').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.39').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -4153,10 +4153,16 @@
       : '패배! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.';
     else baseballHint.textContent = g.winner ? `${seatKo(g.winner)} 승리! 다음 판 준비를 누르면 새 숫자로 다시 시작합니다.` : '이번 판이 끝났습니다.';
     const SLB = window.SkinLooks; // v1.7.38 skins: the host's theme paints the list; each row uses its guesser's skin
-    SLB.h.unstyle(baseballHistory, baseballThemeApplied);
+    SLB.h.unstyle(baseballHistory, baseballThemeApplied?.list); SLB.h.unstyle(baseballPanel, baseballThemeApplied?.panel);
     baseballThemeApplied = null;
     const themeB = SLB.def(state.skinTheme);
-    if (themeB?.panel) { baseballThemeApplied = { backgroundImage: SLB.h.img(`bb-panel:${state.skinTheme}`, 480, 360, themeB.panel), backgroundSize: 'cover', boxShadow: 'none' }; SLB.h.style(baseballHistory, baseballThemeApplied); }
+    if (themeB?.panel) { // the whole panel (not only the list) takes the host's theme, so the room reads differently at a glance
+      baseballThemeApplied = {
+        list: { backgroundColor: 'transparent', boxShadow: 'none' },
+        panel: { backgroundImage: SLB.h.img(`bb-panel:${state.skinTheme}`, 720, 520, themeB.panel), backgroundSize: 'cover', ...themeB.frame },
+      };
+      SLB.h.style(baseballHistory, baseballThemeApplied.list); SLB.h.style(baseballPanel, baseballThemeApplied.panel);
+    }
     baseballHistory.replaceChildren();
     const guesses = g.guesses || [];
     const latestGuess = guesses.at(-1);
@@ -4642,13 +4648,28 @@
   function pictionaryFillWhite() {
     pictionaryCtx.save();
     pictionaryCtx.globalCompositeOperation = 'source-over';
-    pictionaryCtx.fillStyle = '#fffdf6'; // v1.7.12: sketchbook paper tone
-    pictionaryCtx.fillRect(0, 0, pictionaryCanvas.width, pictionaryCanvas.height);
+    const paper = window.SkinLooks.def(state?.skinTheme)?.paper; // the host's room theme paints the paper (v1.7.39)
+    if (paper) pictionaryCtx.drawImage(boardTexture(`pict:${state.skinTheme}`, pictionaryCanvas.width, pictionaryCanvas.height, (c, tw, th) => paper(c, tw, th)), 0, 0);
+    else {
+      pictionaryCtx.fillStyle = '#fffdf6'; // v1.7.12: sketchbook paper tone
+      pictionaryCtx.fillRect(0, 0, pictionaryCanvas.width, pictionaryCanvas.height);
+    }
     pictionaryCtx.restore();
   }
 
   function pictionaryDrawStroke(stroke) {
     if (!stroke.points.length) return;
+    // A drawer's tool skin paints every stroke of the round in the colour they picked (the eraser is never skinned).
+    const hand = stroke.tool === 'eraser' ? null : window.SkinLooks.def(state?.players?.[state?.game?.drawerSeat]?.skin)?.seg;
+    if (hand) {
+      const W = pictionaryCanvas.width; const H = pictionaryCanvas.height;
+      const pts = stroke.points.map(([x, y]) => [x * W, y * H]);
+      pictionaryCtx.save();
+      if (pts.length === 1) hand(pictionaryCtx, pts[0][0], pts[0][1], pts[0][0] + 0.01, pts[0][1], stroke.color, stroke.width);
+      for (let i = 1; i < pts.length; i += 1) hand(pictionaryCtx, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], stroke.color, stroke.width);
+      pictionaryCtx.restore();
+      return;
+    }
     pictionaryCtx.save();
     pictionaryCtx.lineCap = 'round';
     pictionaryCtx.lineJoin = 'round';
@@ -4745,6 +4766,8 @@
     pictionaryShowCategory.disabled = !isHost;
   }
 
+  let pictionaryThemeApplied = null;
+  let pictionaryPrevPhase = null;
   function renderPictionary() {
     const g = state.game;
     const isDrawer = Boolean(seat && seat === g.drawerSeat);
@@ -4813,6 +4836,23 @@
     }
 
     const canDraw = pictionaryCanDraw();
+    // v1.7.39 skins: the host's theme frames the paper for everyone; my own tool skin gives my cursor; a legend
+    // tool adds a short celebration when the round reveals a correct answer.
+    const SLP = window.SkinLooks; const wrap = pictionaryCanvas.parentElement;
+    SLP.h.unstyle(wrap, pictionaryThemeApplied);
+    pictionaryThemeApplied = null;
+    const themeP = SLP.def(state.skinTheme);
+    if (themeP?.paper) {
+      pictionaryThemeApplied = { ...themeP.frame.css, backgroundImage: SLP.h.img(`pict-wrap:${state.skinTheme}`, 720, 480, themeP.paper), backgroundSize: 'cover' };
+      SLP.h.style(wrap, pictionaryThemeApplied);
+    }
+    const myTool = seat ? SLP.def(state.players?.[seat]?.skin) : null;
+    pictionaryCanvas.style.cursor = canDraw && myTool?.cursor ? `${SLP.h.img(`pict-cursor:${state.players[seat].skin}`, 32, 32, (c, w) => myTool.cursor(c, w))} 4 28, crosshair` : '';
+    if (g.phase === 'reveal' && pictionaryPrevPhase === 'drawing' && g.lastRound?.awards?.length) {
+      const winTool = SLP.def(state.players?.[g.drawerSeat]?.skin);
+      if (winTool?.win) requestAnimationFrame(() => SLP.h.playFx(wrap, winTool.win, 1800, 10));
+    }
+    pictionaryPrevPhase = g.phase;
     setActionable(pictionaryCanvas.parentElement, canDraw && !g.paused, 'area');
     pictionaryDrawTools.classList.toggle('hidden', !canDraw);
     pictionaryRuleNote.classList.toggle('hidden', !canDraw);
