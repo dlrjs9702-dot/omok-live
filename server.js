@@ -2477,7 +2477,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.20' });
+    return sendJson(res, 200, { ok: true, version: '1.7.21' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2593,7 +2593,8 @@ async function requestHandler(req, res) {
     const now = Date.now();
     const open = eventsForAccount(userId).filter(event => eventStatus(event, now) === 'open');
     const claimed = new Set(await pointStore.claimedEvents(userId, open.map(event => event.id)));
-    return sendJson(res, 200, { ok: true, events: open.map(event => publicEvent(event, claimed.has(event.id))) });
+    // `account` is the caller's own point account: the page keys its per-account "hide today" choice with it.
+    return sendJson(res, 200, { ok: true, account: userId, events: open.map(event => publicEvent(event, claimed.has(event.id))) });
   }
 
   // v1.7.20 today's missions and first-win bonus for the caller (Asia/Seoul day). Read-only apart from
@@ -3379,7 +3380,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.20 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.21 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

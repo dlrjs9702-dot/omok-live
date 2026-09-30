@@ -61,7 +61,7 @@ test('미수령 사용자는 로비 진입 시 이벤트 모달이 자동으로 
   await context.close();
 });
 
-test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔액·내역 갱신, 재입장 시 모달 없음', async ({ browser, request }) => {
+test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔액·내역 갱신, 재입장 시 배너는 다시 뜨되 받기는 비활성', async ({ browser, request }) => {
   const { context, page, event } = await enterLobby({ browser, request });
   await expect(page.locator('#eventDialog')).toBeVisible();
   const claims = [];
@@ -89,7 +89,43 @@ test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔
   await page.reload();
   await eventsChecked;
   await expect(page.locator('#pointBalanceText')).toHaveText('보유 200,000P');
-  await expect(page.locator('#eventDialog')).toBeHidden(); // 수령 완료: 자동 모달 없음
+  // v1.7.21: 수령 뒤에도 입장마다 배너는 열리고, 받기 버튼만 비활성이다(재수령 불가).
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  await expect(page.locator('#eventDialogClaimBtn')).toBeDisabled();
+  await expect(page.locator('#eventDialogClaimBtn')).toHaveText('이미 받았습니다');
+  await context.close();
+});
+
+test('오늘 하루 보지 않음: 오른쪽 아래 버튼 → 문구를 정확히 입력해야만 숨겨지고, 새로고침해도 이 계정에는 다시 안 뜬다', async ({ browser, request }) => {
+  const { context, page } = await enterLobby({ browser, request });
+  const dialog = page.locator('#eventDialog');
+  await expect(dialog).toBeVisible();
+  const dismiss = page.locator('#eventDismissBtn');
+  await expect(dismiss).toHaveText('오늘 하루 보지 않음');
+  const [box, dialogBox] = await Promise.all([dismiss.boundingBox(), dialog.boundingBox()]);
+  expect(box.x + box.width).toBeGreaterThan(dialogBox.x + dialogBox.width * 0.75); // 오른쪽
+  expect(box.y).toBeGreaterThan(dialogBox.y + dialogBox.height * 0.7); // 맨 아래
+  await expect(page.locator('#eventDismissForm')).toBeHidden(); // 누르기 전에는 입력창 없음
+
+  await dismiss.click();
+  const input = page.locator('#eventDismissInput');
+  await expect(input).toBeFocused();
+  await input.fill('오늘 하루 안 봄');
+  await page.locator('#eventDismissConfirmBtn').click();
+  await expect(page.locator('#eventDismissError')).toContainText('정확히 입력');
+  await expect(dialog).toBeVisible(); // 틀리면 그대로
+
+  await input.fill('오늘 하루 보지 않음');
+  await input.press('Enter');
+  await expect(dialog).toBeHidden();
+
+  const eventsChecked = page.waitForResponse(res => new URL(res.url()).pathname === '/api/events');
+  await page.reload();
+  await eventsChecked;
+  await expect(page.locator('#lobbyView')).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(dialog).toBeHidden(); // 이 계정에서는 오늘 다시 안 뜬다
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('eventHide:')).length)).toBe(1);
   await context.close();
 });
 
