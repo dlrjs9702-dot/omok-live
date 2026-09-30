@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { SKINS, TIERS, catalogView, skinById, familyOf, badgesOf } = require('../lib/skins');
+const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf } = require('../lib/skins');
 const SkinLooks = require('../public/skin-looks');
 
 // v1.7.30 skins: the catalog and looks (unit), then buying / equipping / sharing through the real server.
@@ -28,9 +28,16 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   for (const skin of SKINS) assert.equal(skin.price, TIERS[skin.tier].price);
   assert.equal(familyOf('omok'), 'omok');
   assert.equal(familyOf('omok2v2'), 'omok');
-  assert.equal(familyOf('othello'), null, '아직 스킨이 없는 게임');
+  assert.equal(familyOf('othello'), 'othello');
+  assert.equal(familyOf('rpg'), null, '스킨 대상이 아닌 게임');
+  assert.equal(familyOf('cityking'), null);
   assert.equal(skinById('nope'), null);
-  assert.deepEqual(catalogView().map(f => f.family), ['omok']);
+  assert.deepEqual(catalogView().map(f => f.family), Object.keys(ACTIVE_FAMILIES));
+  for (const family of catalogView()) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
+    const tiers = tier => family.skins.filter(s => s.tier === tier).length;
+    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, 1], family.family);
+    assert.equal(tiers('common'), family.family === 'omok' ? 10 : 5, family.family);
+  }
 });
 
 // Relative luminance (sRGB) of the gradient's body color: a skin's black and white stone must stay far apart.
@@ -105,7 +112,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
-  assert.equal(shop.data.catalog[0].skins.length, 16);
+  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 16);
   assert.deepEqual(shop.data.owned, []);
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 
