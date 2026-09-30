@@ -179,8 +179,8 @@
     }
     return IMG.get(k);
   }
-  function style(el, props) { if (el && props) for (const [key, value] of Object.entries(props)) el.style[key] = value; return el; }
-  function unstyle(el, props) { if (el && props) for (const key of Object.keys(props)) el.style[key] = ''; return el; }
+  function style(el, props) { if (el && props) for (const [key, value] of Object.entries(props)) { if (key.startsWith('--')) el.style.setProperty(key, value); else el.style[key] = value; } return el; }
+  function unstyle(el, props) { if (el && props) for (const key of Object.keys(props)) { if (key.startsWith('--')) el.style.removeProperty(key); else el.style[key] = ''; } return el; }
 
   // A short effect drawn on a temporary canvas laid over `anchor` (plus `pad` px around it): draw(ctx, w, h, t), t 0..1.
   function playFx(anchor, draw, ms = 700, pad = 40) {
