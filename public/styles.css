@@ -1402,3 +1402,12 @@ button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-4px)}
 .missionRow .bar i{display:block;height:100%;border-radius:999px;background:#2563eb}
 .missionRow.done .bar i{background:#16a34a}
 .missionRow .count{font-size:.72rem;color:#94a3b8}
+
+/* v1.7.17 achievements tab: one collapsible group per game, rows reuse the mission row */
+.achGroup{border:1px solid #273449;border-radius:12px;background:#0b1324;padding:0}
+.achGroup+.achGroup{margin-top:8px}
+.achGroup>summary{cursor:pointer;padding:10px 12px;font-size:.78rem;font-weight:800;color:#93c5fd;list-style:none}
+.achGroup>summary::-webkit-details-marker{display:none}
+.achGroup>summary:focus-visible{outline:2px solid #60a5fa;outline-offset:2px;border-radius:12px}
+.achGroup[open]>summary{border-bottom:1px solid #273449}
+.achGroup .missionList{padding:10px}

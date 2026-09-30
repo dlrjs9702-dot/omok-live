@@ -125,7 +125,7 @@ async function exercise(t, makeStore) {
       assert.ok(reasons.some(([reason, game]) => reason === expected[0] && game === expected[1]), JSON.stringify(expected));
     }
   });
-  await t.test('이벤트 보상(v1.7.16): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
+  await t.test('이벤트 보상(v1.7.17): 계정·이벤트당 1회(동시 요청 포함), 전액 지급, 원장·내역에 이벤트 이름', async () => {
     const eventId = 'test_event_2026';
     const claim = { eventId, userId: C, amount: 100_000, title: '  테스트\n이벤트  ' };
     const before = await balance(C);
@@ -153,7 +153,7 @@ async function exercise(t, makeStore) {
     const item = history.items.find(entry => entry.reason === 'event_reward' && entry.balanceAfter === before + 100_000);
     assert.deepEqual([item.delta, item.memo, item.balanceBefore, item.detail], [100_000, '테스트 이벤트', before, 'event']);
   });
-  await t.test('일일 미션(v1.7.16): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
+  await t.test('일일 미션(v1.7.17): 진행·보상 1회(동시·중복 판 포함), 첫 승리 하루 1회, 원장 사유와 내역 제목, 날짜가 바뀌면 새 미션', async () => {
     const E = 'guest:00000000-0000-4000-8000-00000000000e';
     const F = 'guest:00000000-0000-4000-8000-00000000000f';
     const now = Date.parse('2026-10-05T03:00:00Z'); // 2026-10-05 12:00 KST
@@ -195,6 +195,32 @@ async function exercise(t, makeStore) {
       await assert.rejects(store.recordMissionMatch({ ...input, matchId: 'bad', ...bad }, now), TypeError, JSON.stringify(bad));
     }
     await assert.rejects(store.testSetMissions(E, ['no_such_mission'], now), RangeError);
+  });
+  await t.test('업적(v1.7.17): 계정·업적 id당 1회(동시 요청 포함), 일부만 새것이면 새것만, 원장 사유와 내역 제목', async () => {
+    const G = 'guest:00000000-0000-4000-8000-000000000010';
+    const H = 'guest:00000000-0000-4000-8000-000000000011';
+    const list = [{ id: 'othello_first_play', title: '오델로 첫 정상 완료', amount: 1_000 }, { id: 'othello_first_win', title: '오델로 첫 승리', amount: 2_000 }];
+    const before = await balance(G);
+    const outcomes = await Promise.all([store.grantAchievements(G, list), store.grantAchievements(G, list), store.grantAchievements(G, list)]);
+    assert.equal(outcomes.filter(item => item.granted.length).length, 1, '동시 3건 중 1건만 지급');
+    assert.deepEqual(outcomes.find(item => item.granted.length).granted.map(item => [item.id, item.amount]), [['othello_first_play', 1_000], ['othello_first_win', 2_000]]);
+    assert.equal(await balance(G), before + 3_000);
+    assert.deepEqual((await store.grantAchievements(G, list)).granted, [], '재요청은 추가 지급 없음');
+    const more = await store.grantAchievements(G, [...list, { id: 'othello_wins10', title: '오델로 10승', amount: 5_000 }]);
+    assert.deepEqual(more.granted.map(item => item.id), ['othello_wins10'], '새 업적만 지급');
+    assert.equal(more.balance, before + 8_000);
+    assert.deepEqual(await store.grantedAchievements(G, ['othello_first_play', 'othello_wins10', 'omok_first_play']), ['othello_first_play', 'othello_wins10']);
+    assert.deepEqual(await store.grantedAchievements(H, ['othello_first_play']), [], '다른 계정은 별도');
+    assert.equal((await store.grantAchievements(H, list)).granted.length, 2, '같은 업적도 다른 계정은 각자 1회');
+    for (const bad of [[{ id: 'Bad Id', title: 'x', amount: 1_000 }], [{ id: 'ok_id', title: 'x', amount: 0 }], [{ id: 'ok_id', title: 'x', amount: 60_000 }], [list[0], list[0]]]) {
+      await assert.rejects(store.grantAchievements(G, bad), e => e instanceof RangeError || e instanceof TypeError, JSON.stringify(bad));
+    }
+    await assert.rejects(store.grantAchievements('guest:nope', list), TypeError);
+    const rows = (await store.ledger(G, 50)).filter(row => row.reason === 'achievement');
+    assert.equal(rows.length, 3, '업적마다 원장 1행');
+    assert.ok(rows.every(row => row.idempotencyKey.startsWith('achievement:') && row.idempotencyKey.includes(G)));
+    const history = (await store.history(G, { limit: 10 })).items.filter(item => item.detail === 'achievement');
+    assert.ok(history.some(item => item.reason === 'achievement' && item.memo === '오델로 10승' && item.delta === 5_000));
   });
   return store;
 }

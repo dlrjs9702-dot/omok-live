@@ -2496,6 +2496,7 @@
     }
     if (item.reason === 'event_reward') return item.memo || '이벤트 보상';
     if (item.reason === 'daily_mission') return `오늘의 미션 · ${item.memo || '완료'}`;
+    if (item.reason === 'achievement') return `업적 · ${item.memo || '달성'}`;
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
   }
@@ -2629,7 +2630,62 @@
     } catch {}
   }
 
-  missionBtn.addEventListener('click', () => { missionDialog.showModal(); loadMissions(); });
+  // v1.7.17 achievements tab: one-time lifetime rewards computed by the server from the match record.
+  const achievementSummary = document.getElementById('achievementSummary');
+  const achievementList = document.getElementById('achievementList');
+  const missionTabToday = document.getElementById('missionTabToday');
+  const missionTabAchievements = document.getElementById('missionTabAchievements');
+  const missionPanelToday = document.getElementById('missionPanelToday');
+  const missionPanelAchievements = document.getElementById('missionPanelAchievements');
+  let achievementRequest = 0;
+
+  function renderAchievements(data) {
+    achievementSummary.textContent = `달성 ${data.doneCount}/${data.total} · 받은 업적 보상 ${Number(data.earned).toLocaleString('ko-KR')}P`;
+    const groups = new Map();
+    for (const item of data.items) {
+      if (!groups.has(item.group)) groups.set(item.group, { name: item.groupName, items: [] });
+      groups.get(item.group).items.push(item);
+    }
+    const nodes = [];
+    for (const [group, info] of groups) {
+      const details = document.createElement('details');
+      details.className = 'achGroup';
+      details.open = group === 'variety';
+      const summary = document.createElement('summary');
+      const done = info.items.filter(item => item.done).length;
+      summary.textContent = `${info.name}  ${done}/${info.items.length}`;
+      const rows = document.createElement('div');
+      rows.className = 'missionList';
+      rows.setAttribute('role', 'list');
+      rows.append(...info.items.map(item => missionRow(item)));
+      details.append(summary, rows);
+      nodes.push(details);
+    }
+    achievementList.replaceChildren(...nodes);
+  }
+
+  async function loadAchievements() {
+    const ticket = ++achievementRequest;
+    try {
+      const data = await api('/api/achievements');
+      if (ticket !== achievementRequest) return;
+      renderAchievements(data);
+      if (data.granted?.length) loadPoints(); // earned (and paid) just now
+    } catch {}
+  }
+
+  function selectMissionTab(name) {
+    const achievements = name === 'achievements';
+    missionTabToday.setAttribute('aria-selected', String(!achievements));
+    missionTabAchievements.setAttribute('aria-selected', String(achievements));
+    missionPanelToday.classList.toggle('hidden', achievements);
+    missionPanelAchievements.classList.toggle('hidden', !achievements);
+    if (achievements) loadAchievements(); else loadMissions();
+  }
+  missionTabToday.addEventListener('click', () => selectMissionTab('today'));
+  missionTabAchievements.addEventListener('click', () => selectMissionTab('achievements'));
+
+  missionBtn.addEventListener('click', () => { missionDialog.showModal(); selectMissionTab('today'); });
   document.getElementById('missionCloseBtn').addEventListener('click', () => missionDialog.close());
 
   // v1.7.15 point-reward events: the server says which events are open and which this account already
@@ -2911,7 +2967,7 @@
     } else if (event === 'missionUpdate') {
       // v1.7.16: the server counted this match for my missions; a few short lines, one after another.
       if (Number.isInteger(parsed.doneCount)) missionBtn.textContent = `미션 ${parsed.doneCount}/${parsed.total}`;
-      (Array.isArray(parsed.lines) ? parsed.lines : []).slice(0, 4).forEach((line, index) => setTimeout(() => showToast(String(line), 2200), index * 2300));
+      (Array.isArray(parsed.lines) ? parsed.lines : []).slice(0, 6).forEach((line, index) => setTimeout(() => showToast(String(line), 2200), index * 2300));
     } else if (event === 'sessionExpired') {
       expireSession(parsed.message);
     }

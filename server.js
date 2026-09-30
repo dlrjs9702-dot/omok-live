@@ -42,6 +42,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines } = require('./lib/missions');
+const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
@@ -110,14 +111,15 @@ let accessStore;
 let announcementStore;
 let matchStore;
 let pointStore;
-// v1.7.16 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
+// v1.7.17 point-reward events (lib/point-events.js). The test server never offers the real, date-bound
 // events, so its results do not depend on the day the tests run; tests register their own through
 // /api/test/events and may restrict one to a single account (eventAudience).
 const eventRegistry = process.env.NODE_ENV === 'test' ? [] : [...POINT_EVENTS];
 const eventAudience = new Map();
-// v1.7.16: the test server only applies missions to accounts a test dealt missions to (/api/test/missions),
-// so the exact-balance point tests are not affected by the first-win bonus and mission payouts.
-const missionTestAccounts = new Set();
+// v1.7.17/17: the test server only pays missions and achievements to accounts a test opted in
+// (/api/test/missions or /api/test/rewards), so the exact-balance point tests are not affected by the
+// first-win bonus and the other payouts.
+const rewardTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
 
@@ -1037,7 +1039,7 @@ async function recordFinishedMatch(room) {
   if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
-  // v1.7.16: who played each seat, taken now (the room may change before the awaits below finish).
+  // v1.7.17: who played each seat, taken now (the room may change before the awaits below finish).
   const seats = matchSeats(room);
   const accounts = seats.map(seat => pointAccountForParticipant(room.participants[room.players[seat]]));
   const resignedSeat = room.game.resignedSeat ?? null;
@@ -1054,7 +1056,7 @@ async function recordFinishedMatch(room) {
   return recorded;
 }
 
-// v1.7.16 daily missions and the first-win bonus, driven only by the match the server just recorded.
+// v1.7.17 daily missions and the first-win bonus, driven only by the match the server just recorded.
 // A game ended by a dropped connection is not a normal finish and counts for nobody; a resignation is
 // a normal result but not a clean finish for the seat that resigned (`game.resignedSeat`, server-only). Progress and payouts are written
 // per account by the point store (keyed by match id / mission id / day), never by the client.
@@ -1067,14 +1069,15 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
     for (let i = 0; i < result.outcomes.length; i += 1) {
       const account = accounts[i];
       if (!account) continue;
-      if (process.env.NODE_ENV === 'test' && !missionTestAccounts.has(account)) continue;
+      if (!rewardsEnabled(account)) continue;
       const outcome = result.outcomes[i];
       const done = await pointStore.recordMissionMatch({
         userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
         clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
       });
-      if (!done.applied) continue;
-      const lines = toastLines(done);
+      // v1.7.17: achievements read the match record just saved; checked even when the mission part was a repeat.
+      const earned = await syncAchievements(outcome.id, account);
+      const lines = [...(done.applied ? toastLines(done) : []), ...achievementToasts(earned.granted)];
       if (lines.length) notifyRoomAccount(room, account, 'missionUpdate', { lines, doneCount: done.view.doneCount, total: done.view.total });
       if (done.rewards.length) notifyPointsChanged([account]);
     }
@@ -1082,6 +1085,25 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
   } catch (error) {
     console.error('미션 진행 기록 실패:', error);
   }
+}
+
+function rewardsEnabled(account) { return process.env.NODE_ENV !== 'test' || rewardTestAccounts.has(account); }
+
+// v1.7.17 achievements: read the account's own match record (recordId), pay every met, not-yet-paid
+// achievement once (the point store keys each payout by account + achievement id), and return the view.
+// Also catches up achievements earned by matches played before this feature existed.
+async function syncAchievements(recordId, account) {
+  const items = evaluateAchievements(await matchStore.stats(recordId));
+  const met = items.filter(item => item.done);
+  const paid = new Set(await pointStore.grantedAchievements(account, met.map(item => item.id)));
+  let granted = [];
+  const fresh = met.filter(item => !paid.has(item.id));
+  if (fresh.length && rewardsEnabled(account)) {
+    ({ granted } = await pointStore.grantAchievements(account, fresh.map(item => ({ id: item.id, title: item.title, amount: item.reward }))));
+    if (granted.length) notifyPointsChanged([account]);
+    for (const item of granted) paid.add(item.id);
+  }
+  return { view: achievementView(items, [...paid]), granted };
 }
 
 function notifyRoomAccount(room, account, event, data) {
@@ -2455,7 +2477,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.16' });
+    return sendJson(res, 200, { ok: true, version: '1.7.17' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2560,7 +2582,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, ...result });
   }
 
-  // v1.7.16 common point-reward events. GET lists the events open right now for the caller and whether
+  // v1.7.17 common point-reward events. GET lists the events open right now for the caller and whether
   // the caller already claimed each one; POST claims by event id only. The server clock decides whether an
   // event is open and the registered definition decides the reward: nothing in the request can change either.
   if (pathname === '/api/events' && req.method === 'GET') {
@@ -2574,7 +2596,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, events: open.map(event => publicEvent(event, claimed.has(event.id))) });
   }
 
-  // v1.7.16 today's missions and first-win bonus for the caller (Asia/Seoul day). Read-only apart from
+  // v1.7.17 today's missions and first-win bonus for the caller (Asia/Seoul day). Read-only apart from
   // dealing today's three missions on first touch; progress and payouts only ever come from recorded matches.
   if (pathname === '/api/missions' && req.method === 'GET') {
     const session = requireSession(req, res);
@@ -2582,6 +2604,17 @@ async function requestHandler(req, res) {
     const userId = pointAccountForSession(session);
     if (!checkRateLimit(`missions:${userId}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     return sendJson(res, 200, { ok: true, ...(await pointStore.missions(userId)) });
+  }
+
+  // v1.7.17 the caller's achievements (one-time lifetime rewards from the existing match record). Reading
+  // also pays anything already earned but unpaid, once; nothing in the request can choose an achievement.
+  if (pathname === '/api/achievements' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`achievements:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const { view, granted } = await syncAchievements(recordIdentity(session), account);
+    return sendJson(res, 200, { ok: true, ...view, granted: granted.map(item => ({ id: item.id, title: item.title, amount: item.amount })) });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -2610,8 +2643,16 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req);
     const account = pointAccountForSession(session);
-    try { const view = await pointStore.testSetMissions(account, Array.isArray(body.ids) ? body.ids : []); missionTestAccounts.add(account); return sendJson(res, 200, { ok: true, ...view }); }
+    try { const view = await pointStore.testSetMissions(account, Array.isArray(body.ids) ? body.ids : []); rewardTestAccounts.add(account); return sendJson(res, 200, { ok: true, ...view }); }
     catch (error) { return sendError(res, 400, 'BAD_MISSIONS', error.message); }
+  }
+
+  // Test-only (NODE_ENV=test): opt the caller's account in to mission/achievement payouts.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/rewards' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    rewardTestAccounts.add(pointAccountForSession(session));
+    return sendJson(res, 200, { ok: true });
   }
 
   // Test-only (NODE_ENV=test): register an event so tests can exercise open / upcoming / ended / off
@@ -3327,7 +3368,7 @@ async function main() {
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickMarathonRooms().catch(error => console.error('마라톤 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.16 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.17 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

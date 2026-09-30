@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EVENTS, validateEvent, validateEvents, eventStatus, publicEvent } = require('../lib/point-events');
 
-// v1.7.16 common point-reward event definitions: every registered event must be valid, the server
+// v1.7.17 common point-reward event definitions: every registered event must be valid, the server
 // clock windows are exact (Asia/Seoul), and the lobby only ever sees display fields.
 
 const at = iso => Date.parse(iso);

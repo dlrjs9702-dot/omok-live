@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { POOL, MISSIONS_PER_DAY, DAILY_REWARD_MIN, DAILY_REWARD_MAX, FIRST_WIN_REWARD, pickMissions, newDay, applyMatch, rewardKey, dayView, toastLines, missionById } = require('../lib/missions');
 
-// v1.7.16 daily mission rules (pure): the daily draw, progress from finished matches, once-only payouts,
+// v1.7.17 daily mission rules (pure): the daily draw, progress from finished matches, once-only payouts,
 // and the first-win bonus.
 
 const A = 'guest:00000000-0000-4000-8000-00000000000a';

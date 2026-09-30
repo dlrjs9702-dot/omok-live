@@ -12,7 +12,7 @@ const { spawn } = require('node:child_process');
 // and the in-room stream tells each player their progress in short lines.
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const PASSWORD = 'mission-test';
+const PASSWORD = 'achievement-test';
 
 async function freePort() {
   return new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ async function boot(t, dataDir) {
   }
   let ip = 0;
   async function req(route, token, body, method = body === undefined ? 'GET' : 'POST') {
-    const headers = { 'X-Forwarded-For': `10.99.${Math.floor(++ip / 200) % 200}.${ip % 200 + 1}` };
+    const headers = { 'X-Forwarded-For': `10.98.${Math.floor(++ip / 200) % 200}.${ip % 200 + 1}` };
     if (token) headers['X-Session-Token'] = token;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const res = await fetch(base + route, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
@@ -104,71 +104,66 @@ async function waitFor(fn, message) {
   assert.fail(message);
 }
 
-test('인증 없이는 조회할 수 없고, 응답에는 계정·원장 정보가 없다', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
+test('인증 없이는 조회할 수 없고, 새 계정은 아무 업적도 달성하지 않았다', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const fx = await boot(t, dir);
-  assert.equal((await fx.req('/api/missions')).status, 401);
+  assert.equal((await fx.req('/api/achievements')).status, 401);
   const me = await fx.guest('조회');
-  const view = await fx.missions(me);
-  assert.equal(view.missions.length, 3);
-  assert.equal(new Set(view.missions.map(item => item.id)).size, 3);
-  assert.deepEqual([view.doneCount, view.total, view.firstWin.done, view.firstWin.reward], [0, 3, false, 5_000]);
-  assert.equal(JSON.stringify(view).includes('guest:'), false);
-  assert.equal(view.remainingReward, view.missions.reduce((sum, item) => sum + item.reward, 0) + 5_000);
-  const total = view.missions.reduce((sum, item) => sum + item.reward, 0);
-  assert.ok(total >= 8_000 && total <= 10_000, `하루 합계 ${total}`);
+  const view = (await fx.req('/api/achievements', me.session)).data;
+  assert.deepEqual([view.total, view.doneCount, view.earned, view.granted.length], [70, 0, 0, 0]);
+  assert.ok(view.maxReward > 200_000);
+  assert.equal(JSON.stringify(view).includes('guest:'), false, '계정 정보 미노출');
+  assert.deepEqual(view.items.slice(0, 4).map(item => [item.id, item.progress, item.target, item.reward]),
+    [['omok_first_play', 0, 1, 1_000], ['omok_first_win', 0, 1, 2_000], ['omok_wins10', 0, 10, 5_000], ['omok_plays50', 0, 50, 7_500]]);
 });
 
-test('정상 종료된 판이 진행도를 올리고 미션·첫 승리가 원장에 한 번씩 남는다(기권한 사람은 이탈 없는 완료가 아니다)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
+test('판이 끝나면 전적 기준 업적이 한 번씩 지급되고(방 안 알림·원장·내역), 다시 조회해도 추가 지급이 없다', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const fx = await boot(t, dir);
-  const [a, b] = [await fx.guest('승자'), await fx.guest('기권')];
-  assert.equal((await fx.deal(a, ['win1', 'clean1', 'play3'])).status, 200);
-  assert.equal((await fx.deal(b, ['clean1', 'win1', 'play3'])).status, 200);
+  const [a, b] = [await fx.guest('승자'), await fx.guest('패자')];
+  assert.equal((await fx.req('/api/test/rewards', a.session, {})).status, 200); // a만 지급 대상, b는 아직 아님
   await startOthello(fx, a, b);
   const eventsA = await fx.listen(a);
   await sleep(150);
+  const balanceBefore = (await fx.req('/api/points', a.session)).data.balance;
   assert.equal((await fx.req('/api/room/resign', b.session, {})).status, 200);
 
-  const viewA = await waitFor(async () => { const v = await fx.missions(a); return v.doneCount === 2 && v; }, 'A의 미션이 완료되지 않았습니다');
-  assert.deepEqual(viewA.missions.map(item => [item.id, item.done, item.progress]), [['play3', false, 1], ['win1', true, 1], ['clean1', true, 1]], '완료는 아래');
-  assert.equal(viewA.firstWin.done, true);
-  const viewB = await fx.missions(b);
-  assert.deepEqual([viewB.doneCount, viewB.firstWin.done], [0, false], '기권 패배: 이탈 없는 완료·승리 없음');
-  assert.deepEqual(viewB.missions.find(item => item.id === 'play3').progress, 1, '정상 종료 1판은 센다');
+  const update = await waitFor(() => eventsA.find(event => event.name === 'missionUpdate' && event.data.lines.some(line => line.startsWith('업적'))), '업적 알림이 오지 않았습니다');
+  assert.ok(update.data.lines.includes('업적 달성 +1,000P · 오델로 첫 정상 완료'));
+  assert.ok(update.data.lines.includes('업적 달성 +2,000P · 오델로 첫 승리'));
 
-  const rowsA = (await fx.history(a)).filter(item => ['daily_mission', 'first_win'].includes(item.reason));
-  assert.deepEqual(rowsA.map(item => [item.reason, item.delta]).sort(), [['daily_mission', 2_000], ['daily_mission', 3_000], ['first_win', 5_000]].sort());
-  assert.equal((await fx.history(b)).some(item => ['daily_mission', 'first_win'].includes(item.reason)), false);
-
-  const update = await waitFor(() => eventsA.find(event => event.name === 'missionUpdate'), '방 안 미션 알림이 오지 않았습니다');
-  assert.ok(update.data.lines.includes('게임 3판 1/3'));
-  assert.ok(update.data.lines.some(line => line.startsWith('미션 완료 +3,000P')));
-  assert.ok(update.data.lines.some(line => line.startsWith('첫 승리 보너스 +5,000P')));
-  assert.deepEqual([update.data.doneCount, update.data.total], [2, 3]);
+  const view = (await fx.req('/api/achievements', a.session)).data;
+  assert.deepEqual(view.granted, [], '이미 지급됨: 다시 조회해도 새로 지급되지 않는다');
+  assert.deepEqual(view.items.filter(item => item.done).map(item => item.id), ['othello_first_play', 'othello_first_win']);
+  assert.deepEqual([view.doneCount, view.earned], [2, 3_000]);
+  const rows = (await fx.history(a)).filter(item => item.reason === 'achievement');
+  assert.deepEqual(rows.map(item => [item.delta, item.memo]).sort(), [[1_000, '오델로 첫 정상 완료'], [2_000, '오델로 첫 승리']]);
+  const after = (await fx.req('/api/points', a.session)).data.balance;
+  await Promise.all([1, 2, 3].map(() => fx.req('/api/achievements', a.session)));
+  assert.equal((await fx.req('/api/points', a.session)).data.balance, after, '반복 조회는 잔액을 바꾸지 않는다');
+  assert.ok(after - balanceBefore >= 3_000, '업적 3,000P가 잔액에 반영');
+  assert.equal((await fx.req('/api/achievements', b.session)).data.granted.length, 0, 'b는 지급 대상이 아니라 조회해도 지급되지 않는다');
+  assert.equal((await fx.history(b)).some(item => item.reason === 'achievement'), false);
 });
 
-test('같은 판을 다시 조회·종료 요청해도 두 번 세지 않고, 재대결의 새 판은 새로 센다(첫 승리는 하루 한 번)', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-'));
+test('과거에 쌓인 전적도 대상이 되는 순간 소급되어 한 번만 지급되고, 동시에 조회해도 중복이 없다', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'achievement-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const fx = await boot(t, dir);
   const [a, b] = [await fx.guest('가'), await fx.guest('나')];
-  await fx.deal(a, ['play5', 'win3', 'variety2']);
-  await fx.deal(b, ['play5', 'win3', 'variety2']);
   await startOthello(fx, a, b);
-  await Promise.all([1, 2, 3].map(() => fx.req('/api/room/resign', b.session, {})));
-  await Promise.all([fx.req('/api/room', a.session), fx.req('/api/room', b.session), fx.req('/api/room', a.session)]);
-  const first = await waitFor(async () => { const v = await fx.missions(a); return v.firstWin.done && v; }, '첫 판이 반영되지 않았습니다');
-  assert.deepEqual(first.missions.map(item => [item.id, item.progress]), [['play5', 1], ['win3', 1], ['variety2', 1]], '한 판은 한 번만');
+  await fx.req('/api/room/resign', b.session, {}); // 이 판은 두 사람 모두 지급 대상이 아닐 때 끝난다
+  await waitFor(async () => (await fx.req('/api/room', a.session)).data.state?.game?.status === 'finished', '판이 끝나지 않았습니다');
+  assert.equal((await fx.history(b)).some(item => item.reason === 'achievement'), false);
+  const balanceB = (await fx.req('/api/points', b.session)).data.balance;
 
-  await Promise.all([fx.req('/api/room/next-round', a.session, {}), fx.req('/api/room/next-round', b.session, {})]);
-  assert.equal((await fx.req('/api/room/choose-role', a.session, { choice: 'black' })).status, 200);
-  assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
-  await fx.req('/api/room/resign', b.session, {});
-  const second = await waitFor(async () => { const v = await fx.missions(a); return v.missions.find(item => item.id === 'play5').progress === 2 && v; }, '두 번째 판이 반영되지 않았습니다');
-  assert.equal(second.missions.find(item => item.id === 'win3').progress, 2);
-  const bonuses = (await fx.history(a)).filter(item => item.reason === 'first_win');
-  assert.equal(bonuses.length, 1, '첫 승리 보너스는 하루 1회');
+  assert.equal((await fx.req('/api/test/rewards', b.session, {})).status, 200); // 이제 b가 지급 대상
+  const results = await Promise.all(Array.from({ length: 6 }, () => fx.req('/api/achievements', b.session)));
+  assert.ok(results.every(item => item.status === 200));
+  assert.equal(results.filter(item => item.data.granted.length).length, 1, '동시 6건 중 1건만 지급');
+  assert.deepEqual(results.find(item => item.data.granted.length).data.granted.map(item => [item.id, item.amount]), [['othello_first_play', 1_000]]);
+  assert.equal((await fx.req('/api/points', b.session)).data.balance, balanceB + 1_000, '패자는 첫 정상 완료만(승리 없음)');
+  assert.equal((await fx.history(b)).filter(item => item.reason === 'achievement').length, 1);
 });

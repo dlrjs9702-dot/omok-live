@@ -39,7 +39,7 @@ async function guestByApi(request, label) {
   return (await entry.text()).match(/data-session="([^"]+)"/)[1];
 }
 
-test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 다른 탭은 준비 중', async ({ browser, request }) => {
+test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 주간·이벤트 탭은 준비 중', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '미션창');
   const button = page.locator('#missionBtn');
   await expect(button).toBeVisible();
@@ -49,7 +49,8 @@ test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보
   const dialog = page.locator('#missionDialog');
   await expect(dialog).toBeVisible();
   await expect(page.locator('#missionTabToday')).toHaveAttribute('aria-selected', 'true');
-  for (const name of ['주간', '업적', '이벤트']) await expect(dialog.getByRole('tab', { name })).toBeDisabled();
+  for (const name of ['주간', '이벤트']) await expect(dialog.getByRole('tab', { name })).toBeDisabled();
+  await expect(dialog.getByRole('tab', { name: '업적' })).toBeEnabled();
   const rows = page.locator('#missionList .missionRow');
   await expect(rows).toHaveCount(4); // 미션 3개 + 첫 승리 보너스
   await expect(page.locator('#missionList .missionRow[role="listitem"]')).toHaveCount(4);
