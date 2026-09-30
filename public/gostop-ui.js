@@ -80,10 +80,20 @@
     return el;
   }
 
-  function backEl(size = 'small') {
+  // v1.7.42 skins: the hwatu faces are shared and never redrawn; a skin changes backs, frames, areas and effects.
+  const SKN = () => window.SkinLooks;
+  const skinOf = (state, seat) => SKN()?.def(state?.players?.[seat]?.skin) || null;
+  // The deck has no owner: it shows the back of the first seated player who has a skin (stable for the whole table).
+  const deckSkin = (state) => { for (const seat of state?.game?.seatOrder || []) { const d = skinOf(state, seat); if (d?.back) return d; } return null; };
+  let trayApplied = null;
+  let panelApplied = null;
+  let winPlayed = null;
+
+  function backEl(size = 'small', skin = null) {
     const el = document.createElement('div');
     el.className = `hwatu hwatu-${size} hwatuBack`;
     el.setAttribute('aria-hidden', 'true');
+    if (skin?.back) SKN().h.style(el, skin.back);
     return el;
   }
 
@@ -104,6 +114,8 @@
     const info2 = g.seats[seat];
     const box = document.createElement('div');
     box.className = `gostopSeat${mine ? ' mine' : ''}${g.turn === seat && g.status === 'playing' ? ' isTurn' : ''}`;
+    const seatSkin = skinOf(state, seat);
+    if (seatSkin?.seat) SKN().h.style(box, seatSkin.seat);
     const head = document.createElement('div');
     head.className = 'gostopSeatHead';
     const name = document.createElement('strong');
@@ -130,7 +142,7 @@
     if (!mine) {
       const hand = document.createElement('div');
       hand.className = 'gostopBacks';
-      for (let i = 0; i < info2.handCount; i += 1) hand.append(backEl('tiny'));
+      for (let i = 0; i < info2.handCount; i += 1) hand.append(backEl('tiny', seatSkin));
       anchors.backs.set(seat, hand);
       const count = document.createElement('small'); count.textContent = `손패 ${info2.handCount}장${info2.bombFlips ? ` · 폭탄 뒤집기 ${info2.bombFlips}` : ''}`;
       hand.append(count);
@@ -143,6 +155,7 @@
     for (const [kind, title] of [['gwang', '광'], ['animal', '열끗'], ['ribbon', '띠'], ['pi', '피']]) {
       const col = document.createElement('div');
       col.className = `gostopPile pile-${kind}`;
+      if (seatSkin?.pile) SKN().h.style(col, seatSkin.pile);
       const cap = document.createElement('small');
       const actualCards = groups[kind].length;
       const count = kind === 'pi' ? info2.counts.pi : actualCards;
@@ -231,7 +244,7 @@
     const deck = $('gostopDeck');
     deck.replaceChildren();
     if (g.status === 'playing' || g.deckCount) {
-      const pile = backEl('normal');
+      const pile = backEl('normal', deckSkin(state));
       pile.classList.add('deckPile');
       anchors.deck = pile;
       const n = document.createElement('small'); n.textContent = `산 ${g.deckCount}장`;
@@ -263,6 +276,9 @@
     const actions = $('gostopActions');
     hand.replaceChildren();
     actions.replaceChildren();
+    SKN().h.unstyle(hand, trayApplied);
+    trayApplied = state.me?.seat ? (skinOf(state, state.me.seat)?.tray || null) : null;
+    if (trayApplied) SKN().h.style(hand, trayApplied);
     const mine = state.me.myGostopHand;
     if (!mine) { hand.classList.add('hidden'); return; }
     hand.classList.remove('hidden');
@@ -366,6 +382,9 @@
     // v1.7.4: the first time this result is shown (and once it is settled), its lines appear in order.
     const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`;
     if (stageKey !== stagedResultKey && g.settlement?.status === 'done') {
+      const winSkin = r.kind === 'win' ? skinOf(state, r.winner) : null;
+      if (winSkin?.win && stageKey !== winPlayed) requestAnimationFrame(() => SKN().h.playFx($('gostopPanel'), winSkin.win, 1800, 10));
+      winPlayed = stageKey;
       stagedResultKey = stageKey;
       if (!reducedMotion()) box.classList.add('staged');
     }
@@ -521,6 +540,10 @@
     const before = lastState?.gameType === 'gostop' && state?.gameType === 'gostop' && elementsById.size ? snapshot() : null;
     lastState = state;
     if (!state || state.gameType !== 'gostop') { cancelFx(); seenEventKey = undefined; prevItems = null; return; }
+    SKN().h.unstyle($('gostopPanel'), panelApplied);
+    panelApplied = null;
+    const themeDef = SKN().def(state.skinTheme);
+    if (themeDef?.panel) { panelApplied = { backgroundImage: SKN().h.img(`gs-panel:${state.skinTheme}`, 720, 520, themeDef.panel), backgroundSize: 'cover', ...themeDef.frame }; SKN().h.style($('gostopPanel'), panelApplied); }
     elementsById = new Map();
     anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
     const g = state.game;
@@ -668,7 +691,7 @@
     const inner = document.createElement('div');
     inner.className = `fxInner${back ? ' isBack' : ''}`;
     const front = cardEl(id, { size: 'normal', classes: ' fxFace fxFront' });
-    const rear = backEl('normal');
+    const rear = backEl('normal', deckSkin(lastState));
     rear.classList.add('fxFace', 'fxRear');
     inner.append(front, rear);
     el.append(inner);
@@ -715,6 +738,8 @@
       { duration: fxMs(run, FX.impact, 90) });
     const at = el?._at;
     if (!at) return;
+    const throwSkin = skinOf(lastState, lastState?.game?.lastEvent?.seat);
+    if (throwSkin?.fx) SKN().h.playFx(el, throwSkin.fx, 600, 40);
     log(run, 'impact', null, null, at);
     const ring = document.createElement('div');
     ring.className = 'fxRing';
@@ -938,6 +963,8 @@
     badge(run, tag === 'go' && goCount ? `${goCount}고!` : TAGS[tag] || tag, ev.seat, kind, row);
     const floor = ['ppeok', 'sweep', 'bomb', 'kong', 'jjok', 'ttadak', 'grand'].includes(kind) ? (kind === 'grand' ? 'bomb' : kind) : null;
     if (floor) floorFx(run, floor);
+    const specialSkin = skinOf(state, ev.seat);
+    if (specialSkin?.special) SKN().h.playFx($('gostopFloor'), specialSkin.special, 700, 20);
     fxLog.push({ run: run.gen, k: 'special', card: tag, fx: kind, floor, seat: ev.seat || null });
     return kind;
   }
