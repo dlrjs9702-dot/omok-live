@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.34').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.35').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -2319,7 +2319,20 @@
     update();
   }
 
-  function renderRecords(data, select, name, summary, detail) {
+  // v1.7.35: legend skins an account owns show as badges under the name (server-provided, names only).
+  function renderBadges(box, badges) {
+    if (!box) return;
+    box.replaceChildren(...(badges || []).map((badge) => {
+      const chip = document.createElement('span');
+      chip.className = 'recordsBadge';
+      chip.textContent = `${badge.name} · ${badge.game}`;
+      return chip;
+    }));
+    box.classList.toggle('hidden', !badges?.length);
+  }
+
+  function renderRecords(data, select, name, summary, detail, badgesBox) {
+    renderBadges(badgesBox, data?.badges);
     name.textContent = data?.player?.label || '기록 없음';
     renderRecordsSection(data, select, summary, detail);
   }
@@ -2331,7 +2344,7 @@
       const data = await api('/api/records/me');
       if (token !== sessionToken) return;
       ownRecords = data;
-      renderRecords(data, myRecordsGame, myRecordsName, myRecordsSummary, myRecordsDetail);
+      renderRecords(data, myRecordsGame, myRecordsName, myRecordsSummary, myRecordsDetail, document.getElementById('myRecordsBadges'));
     } catch (error) {
       if (token === sessionToken) myRecordsDetail.textContent = `전적 조회 실패 · ${error.message}`;
     }
@@ -2361,7 +2374,7 @@
       const data = await api(`/api/records/${encodeURIComponent(playerId)}`);
       if (!recordsDialog.open) return;
       viewedRecords = data;
-      renderRecords(data, recordsProfileGame, recordsProfileName, recordsProfileSummary, recordsProfileDetail);
+      renderRecords(data, recordsProfileGame, recordsProfileName, recordsProfileSummary, recordsProfileDetail, document.getElementById('recordsProfileBadges'));
     } catch (error) {
       if (recordsDialog.open) recordsProfileName.textContent = `전적 조회 실패 · ${error.message}`;
       return;
@@ -2672,18 +2685,38 @@
   let skinBuyTimer = 0;
   const skinPrice = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
 
+  let skinShopFamily = null;
+  const SKIN_TIER_ORDER = ['common', 'premium', 'theme', 'legend'];
   function renderSkinShop() {
     skinShopBody.textContent = '';
     if (!skinShop) return;
     skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
-    for (const family of skinShop.catalog) {
+    const families = skinShop.catalog;
+    if (!families.some(f => f.family === skinShopFamily)) skinShopFamily = families[0]?.family;
+    const tabs = document.createElement('div');
+    tabs.className = 'skinTabs';
+    tabs.setAttribute('role', 'tablist');
+    for (const family of families) {
+      const tab = document.createElement('button');
+      tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(family.family === skinShopFamily));
+      tab.dataset.family = family.family;
+      tab.textContent = family.name;
+      tabs.append(tab);
+    }
+    skinShopBody.append(tabs);
+    const family = families.find(f => f.family === skinShopFamily);
+    if (!family) return;
+    for (const tierKey of SKIN_TIER_ORDER) {
+      const skins = family.skins.filter(skin => skin.tier === tierKey);
+      if (!skins.length) continue;
       const section = document.createElement('section');
       section.className = 'skinFamily';
       const heading = document.createElement('h3');
-      heading.textContent = family.name;
+      heading.textContent = skins[0].tierLabel;
       const grid = document.createElement('div');
       grid.className = 'skinGrid';
-      for (const skin of family.skins) {
+      for (const skin of skins) {
         const owned = skinShop.owned.has(skin.id);
         const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
         const card = document.createElement('div');
@@ -2728,6 +2761,8 @@
   }
 
   skinShopBody.addEventListener('click', async (event) => {
+    const tab = event.target.closest('button.skinTab');
+    if (tab && skinShop) { skinShopFamily = tab.dataset.family; skinBuyArmed = null; renderSkinShop(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !skinShop) return;
     const { action, skin: skinId } = button.dataset;
@@ -6821,9 +6856,11 @@
   function drawOmokBoard() {
     const w = canvas.width;
     const h = canvas.height;
-    ctx.drawImage(boardTexture('kaya', w, h, paintKayaWood), 0, 0);
+    // v1.7.35: the host's room theme (shared in the room state) replaces the wood board; without one, the classic kaya.
+    const theme = window.SkinLooks.def(state?.skinTheme)?.board;
+    ctx.drawImage(theme ? boardTexture(`omok:${state.skinTheme}`, w, h, (c, tw, th) => theme.paint(c, tw, th, PAD)) : boardTexture('kaya', w, h, paintKayaWood), 0, 0);
 
-    ctx.strokeStyle = 'rgba(50,30,10,.82)';
+    ctx.strokeStyle = theme ? theme.line : 'rgba(50,30,10,.82)';
     ctx.lineWidth = 1.4;
     for (let i = 0; i < SIZE; i++) {
       const p = PAD + i * GRID;
@@ -6832,7 +6869,7 @@
     }
     ctx.lineWidth = 2.4;
     ctx.strokeRect(PAD, PAD, w - PAD * 2, h - PAD * 2);
-    ctx.fillStyle = '#3b2610';
+    ctx.fillStyle = theme ? theme.star : '#3b2610';
     for (const [x, y] of [[3,3],[11,3],[7,7],[3,11],[11,11]]) {
       ctx.beginPath(); ctx.arc(PAD + x * GRID, PAD + y * GRID, 5, 0, Math.PI * 2); ctx.fill();
     }
@@ -6841,7 +6878,17 @@
     const winning = new Set((state.game.winningLine || []).map(([x, y]) => `${x},${y}`));
     const last = state.game.lastMove;
     const omokRecent = observeRecentAction(last ? `place:${state.game.moveCount}:${last.at || ''}:${last.x}:${last.y}` : null);
-    const setDown = pieceMotion(last ? `omok:${state.game.moveCount}:${last.at || ''}` : '', 300);
+    // A skin may add a short effect where the last stone landed (premium/legend) and a win effect (legend): the
+    // motion then runs longer, and the stone itself still settles in the usual 300 ms.
+    const lastColor = last ? state.game.board[last.y]?.[last.x] : null;
+    const lastSkin = last && lastColor ? window.SkinLooks.def(stoneSkin(last.x, last.y, lastColor)) : null;
+    const winPts = (state.game.winningLine || []).map(([x, y]) => ({ x: PAD + x * GRID, y: PAD + y * GRID }));
+    const winFirst = state.game.winningLine?.[0];
+    const winColor = winFirst ? state.game.board[winFirst[1]]?.[winFirst[0]] : null;
+    const winSkin = winFirst && winColor ? window.SkinLooks.def(stoneSkin(winFirst[0], winFirst[1], winColor)) : null;
+    const motionMs = winSkin?.win ? 2400 : lastSkin?.fx ? 900 : 300;
+    const motionT = pieceMotion(last ? `omok:${state.game.moveCount}:${last.at || ''}` : '', motionMs);
+    const setDown = Math.min(1, motionT * motionMs / 300);
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const color = state.game.board[y][x];
@@ -6856,6 +6903,11 @@
         if (!state.game.board[y][x]) drawActionableMark(PAD + x * GRID, PAD + y * GRID, 3, { rgb: '15,118,110', alpha: .62, fill: true });
       }
     }
+    if (lastSkin?.fx && setDown >= 1 && motionT * motionMs < 900) {
+      ctx.save(); ctx.translate(PAD + last.x * GRID, PAD + last.y * GRID);
+      lastSkin.fx(ctx, GRID * .44, Math.min(1, (motionT * motionMs - 300) / 600), lastColor); ctx.restore();
+    }
+    if (winSkin?.win) { ctx.save(); winSkin.win(ctx, winPts, GRID * .44, motionT, winColor); ctx.restore(); }
     if (last && setDown >= 1) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
   }

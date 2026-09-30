@@ -1,4 +1,4 @@
-// v1.7.30 skin looks: how each 오목 skin's two stones are painted. Purely cosmetic; the catalog, prices and ownership
+// Skin looks (v1.7.30, registry v1.7.35): how each skin is painted. Purely cosmetic; the catalog, prices and ownership
 // live on the server (lib/skins.js). Unknown or missing skin ids fall back to the classic slate-and-shell stones
 // so a board never fails to draw. Loaded before app.js (browser) and required by the tests (Node, contrast check).
 (function (root, factory) {
@@ -68,7 +68,7 @@
       ctx.strokeStyle = ink(.35, 'rgba(90,150,190,.5)'); ctx.lineWidth = Math.max(1, r * .05);
       ctx.beginPath(); for (let i = 0; i < 8; i += 1) { const a = i * Math.PI / 4 + .2; ctx.moveTo(Math.cos(a) * r * .32, Math.sin(a) * r * .32); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.stroke();
     } else if (name === 'blossom') { // blue-and-white porcelain: a six-petal flower
-      ctx.fillStyle = dark ? 'rgba(210,225,255,.55)' : 'rgba(44,84,170,.62)';
+      ctx.fillStyle = dark ? 'rgba(140,165,225,.42)' : 'rgba(44,84,170,.62)';
       for (let i = 0; i < 6; i += 1) {
         ctx.save(); ctx.rotate(i * Math.PI / 3);
         ctx.beginPath(); ctx.ellipse(0, -r * .36, r * .13, r * .24, 0, 0, Math.PI * 2); ctx.fill();
@@ -86,8 +86,17 @@
     ctx.restore();
   }
 
+  // Registry of the drawn skins (public/skin-art-*.js call define). A definition may carry: stone(ctx, r, color)
+  // (painted at 0,0), fx(ctx, r, t, color) (placement effect, t 0..1), win(ctx, points, r, t, color) (win effect),
+  // board { paint(ctx, w, h, pad), line, star, border } (a room theme), preview(ctx, w, h, skinId) (shop picture).
+  const DEFS = {};
+  function define(defs) { Object.assign(DEFS, defs); }
+  function def(skinId) { return (skinId && DEFS[skinId]) || null; }
+
   // Paint one stone centered at (0, 0) of ctx with radius r.
   function paintStone(ctx, r, skinId, color) {
+    const drawn = def(skinId);
+    if (drawn?.stone) { drawn.stone(ctx, r, color); return; }
     const spec = look(skinId, color);
     const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .08, 0, 0, r);
     g.addColorStop(0, spec.stops[0]); g.addColorStop(spec.mid || .42, spec.stops[1]); g.addColorStop(1, spec.stops[2]);
@@ -112,6 +121,7 @@
   function paintPreview(canvas, skinId) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width; const h = canvas.height;
+    if (def(skinId)?.preview) { def(skinId).preview(ctx, w, h, skinId); return; }
     const wood = ctx.createLinearGradient(0, 0, w, h);
     wood.addColorStop(0, '#d9b070'); wood.addColorStop(1, '#c39a58');
     ctx.fillStyle = wood; ctx.fillRect(0, 0, w, h);
@@ -128,5 +138,28 @@
     }
   }
 
-  return { CLASSIC, LOOKS, look, paintStone, paintPreview };
+  // Small drawing helpers shared by the skin art files. Everything is deterministic (seeded), so a redraw never flickers.
+  const TAU = Math.PI * 2;
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  function rng(seed) { let x = (seed % 2147483646) + 1; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; }
+  function sphere(ctx, r, stops, mid = .42) { // radial "lit from the upper left" fill
+    const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .08, 0, 0, r);
+    g.addColorStop(0, stops[0]); g.addColorStop(mid, stops[1]); g.addColorStop(1, stops[2]);
+    return g;
+  }
+  function gloss(ctx, r, alpha = .25) {
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.beginPath(); ctx.ellipse(-r * .3, -r * .38, r * .36, r * .19, -.6, 0, TAU); ctx.fill();
+  }
+  function starPath(ctx, cx, cy, outer, inner, points = 4, rot = -Math.PI / 2) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i += 1) {
+      const a = rot + (i * Math.PI) / points; const rad = i % 2 ? inner : outer;
+      if (i) ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad); else ctx.moveTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+    }
+    ctx.closePath();
+  }
+  const helpers = { TAU, clamp01, rng, sphere, gloss, starPath };
+
+  return { CLASSIC, LOOKS, look, paintStone, paintPreview, define, def, DEFS, h: helpers };
 }));

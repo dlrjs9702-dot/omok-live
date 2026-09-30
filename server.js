@@ -34,7 +34,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
-const { skinById, familyOf, catalogView, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
+const { skinById, familyOf, catalogView, badgesOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -1148,6 +1148,11 @@ async function recordOrError(room, res) {
 }
 
 function recordIdentity(session) { return session.guestKeyId || `admin:${session.publicId}`; }
+// v1.7.35: legend skins an account owns show as profile badges next to its records (record id -> point account).
+async function recordBadges(recordId) {
+  try { return badgesOf((await pointStore.skinState(String(recordId).startsWith('admin:') ? 'admin' : `guest:${recordId}`)).owned); }
+  catch { return []; }
+}
 
 // Points belong to the durable guest key (kept through rename and reissue), never to a session
 // token. The operator's admin logins share one account so a re-login does not reset it.
@@ -2426,7 +2431,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.34' });
+    return sendJson(res, 200, { ok: true, version: '1.7.35' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3010,7 +3015,7 @@ async function requestHandler(req, res) {
     try {
       const id = recordIdentity(session);
       const stats = await matchStore.stats(id);
-      return sendJson(res, 200, { player: { id, label: session.label }, ...stats });
+      return sendJson(res, 200, { player: { id, label: session.label }, ...stats, badges: await recordBadges(id) });
     } catch (error) {
       console.error('내 전적 조회 실패:', error);
       return sendError(res, 503, 'RECORDS_UNAVAILABLE', '전적을 불러오지 못했습니다.');
@@ -3036,7 +3041,7 @@ async function requestHandler(req, res) {
       const player = (await recordPlayers()).find(person => person.id === recordLookup[1]);
       if (!player) return sendError(res, 404, 'PLAYER_NOT_FOUND', '해당 플레이어를 찾을 수 없습니다.');
       const stats = await matchStore.stats(player.id);
-      return sendJson(res, 200, { player, ...stats });
+      return sendJson(res, 200, { player, ...stats, badges: await recordBadges(player.id) });
     } catch (error) {
       console.error('플레이어 전적 조회 실패:', error);
       return sendError(res, 503, 'RECORDS_UNAVAILABLE', '전적을 불러오지 못했습니다.');
@@ -3389,7 +3394,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.34 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.35 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
