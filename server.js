@@ -41,6 +41,7 @@ const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { createRpgStore } = require('./lib/rpg-store');
+const { createRpgTransport } = require('./lib/rpg-transport');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
@@ -114,6 +115,7 @@ let announcementStore;
 let matchStore;
 let pointStore;
 let rpgStore = null;
+const rpgTransport = createRpgTransport({ maxStallMs: Number(process.env.RPG_STALL_MS) || 5000 });
 let rpgFault = false; // NODE_ENV=test에서만 켜지는 저장 장애 모의
 let indexTemplate = '';
 
@@ -1697,8 +1699,9 @@ function tickRpgRooms() {
     if (room.rpgBroadcastVersion !== room.game.metaVersion) { room.rpgBroadcastVersion = room.game.metaVersion; touchRoom(room); broadcast(room); }
     const set = streams.get(room.id);
     if (!set) continue;
-    const payload = `event: rpgTick\ndata: ${JSON.stringify(engine.snapshot(room.game))}\n\n`;
-    for (const client of set) { try { client.res.write(payload); } catch {} }
+    const snap = engine.snapshot(room.game);
+    snap.q = (room.rpgTickSeq = (room.rpgTickSeq || 0) + 1);
+    rpgTransport.send(set, snap);
   }
 }
 

@@ -201,8 +201,11 @@ export function mount(container, api) {
     return last?.p.find(p => p.s === seat) || null;
   }
 
+  let lastSeq = 0;
   function tick(snap) {
     if (!running) return;
+    if (snap.q <= lastSeq) return; // 순서가 뒤바뀐 낡은 스냅샷
+    lastSeq = snap.q;
     stats.ticks += 1;
     snaps.push({ at: performance.now(), snap });
     while (snaps.length > 8) snaps.shift();
@@ -226,6 +229,7 @@ export function mount(container, api) {
   function update(state) {
     if (!running) return;
     const prevRoom = meta?.game.roomIndex;
+    lastSeq = 0; // roomState는 재연결·재동기화 때도 온다: 시퀀스를 새로 시작한다
     meta = state;
     hud.setMeta(state);
     if (state.game.roomIndex !== prevRoom) { local.ready = false; }
