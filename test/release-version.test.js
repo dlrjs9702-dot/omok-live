@@ -24,6 +24,11 @@ test('릴리스 버전 문자열은 패키지·서버·캐시·공지에서 일�
     assert.ok(html.includes(`${asset}?v=${version}`), `${asset} 캐시 버전이 package.json과 다릅니다`);
   }
   assert.ok(announcements.includes(`key: 'v${version}'`), '릴리스 공지 키가 package.json과 다릅니다');
+  // v1.7.22: the RPG 3D client is a module graph cached for a day, so its import URLs carry the version too
+  const appJs = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
+  const rpgClient = fs.readFileSync(path.join(root, 'public', 'rpg', 'rpg-client.js'), 'utf8');
+  assert.ok(appJs.includes(`/rpg/rpg-client.js?v=${version}`), '잿빛 원정 클라이언트 import 버전이 package.json과 다릅니다');
+  for (const mod of ['rpg-scene.js', 'rpg-hud.js']) assert.ok(rpgClient.includes(`./${mod}?v=${version}`), `${mod} import 버전이 package.json과 다릅니다`);
   assert.match(announcements, /key: 'v1\.6\.90'[\s\S]*?title: '\[안내\] v1\.6\.90 잿빛 원정 임시 비활성화'/,
     '기존 v1.6.90 공지 이력이 변경되면 안 됩니다');
   assert.match(announcements, /key: 'v1\.6\.91'[\s\S]*?title: '\[안내\] v1\.6\.91 잿빛 원정 게임 구현중 이동'/,

@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.7.22 잿빛 원정 운영 안전·Render 주소 보완
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 1·25·26·27번을 처리했다. 게임 규칙·밸런스는 바꾸지 않았다.
+
+- 1 SSE 백프레셔: `lib/sse-backpressure.js`의 `writeUnlessBacklogged`가 소켓 버퍼가 이미 찬(`writableNeedDrain`) 연결은 그 틱의 `rpgTick` 전송을 건너뛴다. 매 틱이 전체 스냅샷이라 건너뛰어도 다음 틱에서 바로 따라잡고, 멈춘 연결에 초당 20건이 쌓이지 않는다. `roomState` 등 변경 이벤트는 그대로.
+- 25 모바일 노출 제한: 마우스·트랙패드가 없는 터치 전용 기기(`(pointer: coarse)`이고 `(any-pointer: fine)` 아님)에서는 로비의 잿빛 원정 버튼을 비활성(게임 목록에는 이름만 표시한다는 결정에 따라 안내 문구는 `title`로)하고, 초대·코드로 RPG 방에 들어가면 3D를 불러오지 않고 PC 전용 안내를 보여 준다. PC·노트북(마우스 있음)은 그대로.
+- 26 정비 타이머: `intermissionLeft`는 상태가 바뀔 때만 오므로 화면이 마지막 상태에서 받은 값으로 종료 시각을 기억하고 20 Hz `rpgTick`마다 남은 초를 갱신한다(`.rpgIntermissionLeft`).
+- 27 Render 주소: `publicBaseUrl`이 `RENDER_EXTERNAL_URL`이 없으면 `RENDER_EXTERNAL_HOSTNAME`(`https://호스트`)을 쓴다. `PUBLIC_BASE_URL`보다 우선하는 기존 순서는 유지.
+- 캐시: RPG 3D 모듈(`rpg-client.js`→`rpg-scene.js`·`rpg-hud.js`)은 1일 캐시라 import URL에도 버전(`?v=1.7.22`)을 붙였고 `test/release-version.test.js`가 릴리스마다 동기화를 확인한다.
+- 테스트: `test/sse-backpressure.test.js`, `test/reissue-guest-file.test.js`(호스트 이름 단독), `test/release-version.test.js`, `tests/e2e/rpg.spec.js`(정비 숫자가 2.6초 사이 감소), `tests/e2e/rpg-touch-only.spec.js`(모바일 비활성·PC 활성).
+
 ## v1.7.21 이벤트 창 다시 보기·오늘 하루 보지 않음
 
 사용자 요청(2026-09-30): 포인트를 한 번 받으면 이벤트 창이 다시 열리지 않던 동작을 바꿔, 창은 입장(로비 진입)마다 열고 숨기기는 계정별로 사용자가 직접 정하게 했다.

@@ -138,7 +138,7 @@ test('old entry token authenticates on Render destination with the same account 
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
   });
-  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.7.21' });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.7.22' });
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
   assert.equal(issued.status, 201);
@@ -165,6 +165,18 @@ test('old entry token authenticates on Render destination with the same account 
   assert.deepEqual(afterPoints.attendance, beforePoints.attendance);
   assert.deepEqual((await req('/api/records/me', 'GET', secondSession)).data, beforeRecords);
   assert.equal((await req('/api/admin/keys', 'GET', admin)).data.keys.length, 1);
+});
+
+test('v1.7.22: RENDER_EXTERNAL_HOSTNAME alone still beats an old PUBLIC_BASE_URL for the entry-file address', { timeout: 25000 }, async t => {
+  const { req } = await startServer(t, {
+    RENDER_EXTERNAL_URL: '',
+    RENDER_EXTERNAL_HOSTNAME: 'omok-live.onrender.com',
+    PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
+  });
+  const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
+  const issued = await req('/api/admin/keys', 'POST', admin, { label: '호스트 이름만' });
+  assert.equal(issued.status, 201);
+  assert.match(issued.data.html, /action="https:\/\/omok-live\.onrender\.com\/guest-entry"/);
 });
 
 test('only administrator can reissue: old entry and active session are invalidated, replacement works', { timeout: 25000 }, async t => {
@@ -223,5 +235,5 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);
-  assert.match(html, /app\.js\?v=1.7.21/);
+  assert.match(html, /app\.js\?v=1.7.22/);
 });

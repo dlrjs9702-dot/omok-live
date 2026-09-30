@@ -219,12 +219,20 @@
   // 잿빛 원정: the 3D client is an ES module loaded only when an RPG room is shown, and fully
   // unmounted (frame loop, WebGL resources, key listeners) as soon as it is not.
   const rpgBridge = { controller: null, loading: null, latest: null, generation: 0 };
+  // v1.7.22: 잿빛 원정 is played with the keyboard (arrows, Space, Q/W/E/R, Shift); there are no touch controls yet,
+  // so a device whose only pointer is coarse (a phone or tablet without a mouse/trackpad) cannot start or play it.
+  const rpgTouchOnly = () => window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
+  const RPG_PC_ONLY = '잿빛 원정은 키보드가 필요해 PC에서만 할 수 있습니다.';
   function rpgRender(roomState) {
     rpgBridge.latest = roomState;
     if (rpgBridge.controller) { rpgBridge.controller.update(roomState); return; }
+    if (rpgTouchOnly()) { // joined an RPG room from a touch device (invite/code/list): say so instead of loading the 3D client
+      if (!rpgStage.querySelector('.rpgTouchNotice')) { const note = document.createElement('p'); note.className = 'rpgTouchNotice'; note.textContent = `${RPG_PC_ONLY} 방에서 나가 다른 게임을 골라 주세요.`; rpgStage.replaceChildren(note); }
+      return;
+    }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.6.90').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.22').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -238,6 +246,7 @@
     rpgBridge.generation += 1;
     rpgBridge.loading = null;
     if (rpgBridge.controller) { rpgBridge.controller.unmount(); rpgBridge.controller = null; }
+    if (rpgStage.querySelector('.rpgTouchNotice')) rpgStage.replaceChildren();
   }
   window.RpgDebug = () => rpgBridge.controller?.debug() || null;
   const gostopStakeChoices = document.getElementById('gostopStakeChoices');
@@ -1551,6 +1560,7 @@
   }
 
   function selectGame(type) {
+    if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'marathon', 'twentyquestions', 'davinci', 'halligalli', 'gostop', 'rpg'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
@@ -7320,6 +7330,10 @@
     if (selectedGameType === 'omok') selectGame('omok');
   });
   for (const button of gameChoiceButtons) button.addEventListener('click', () => selectGame(button.dataset.game));
+  if (rpgTouchOnly()) { // the list shows names only (v1.6.90 decision): the button is simply disabled, as it was while the game was closed
+    const rpgChoice = document.querySelector('.gameChoice[data-game="rpg"]');
+    if (rpgChoice) { rpgChoice.disabled = true; rpgChoice.setAttribute('aria-disabled', 'true'); rpgChoice.title = RPG_PC_ONLY; }
+  }
   leaveRoomBtn.addEventListener('click', leaveRoom);
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
