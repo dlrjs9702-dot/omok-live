@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.30').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.31').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -2853,7 +2853,9 @@
       // The answer can arrive late: only show it if this is still the same login and the player is still in the
       // lobby (not already in a room). Nothing is marked as shown, so the next lobby entry asks again.
       if (token !== sessionToken || lobbyView.classList.contains('hidden')) return;
-      const next = events.find(event => !eventPrompted.has(`${sessionToken}:${event.id}`) && !eventHiddenToday(account, event.id));
+      // v1.7.31: an event I have not claimed yet comes before one I already claimed, whatever order the server lists them in.
+      const candidates = events.filter(event => !eventPrompted.has(`${sessionToken}:${event.id}`) && !eventHiddenToday(account, event.id));
+      const next = candidates.find(event => !event.claimed) || candidates[0];
       if (next && !eventDialog.open) { eventAccount = account; openEventDialog(next); }
     } catch {}
   }
@@ -2921,6 +2923,13 @@
   });
   document.getElementById('eventDialogCloseBtn').addEventListener('click', () => eventDialog.close());
   eventDialog.addEventListener('close', () => { eventCurrent = null; });
+  // v1.7.31: the popup belongs to the lobby. If it opened while a room create/join request was still pending, entering
+  // the room closes it and forgets that it was shown, so it is offered again when the player returns to the lobby.
+  function closeEventDialogForRoom() {
+    if (!eventDialog.open) return;
+    if (eventCurrent) eventPrompted.delete(`${sessionToken}:${eventCurrent.id}`);
+    eventDialog.close();
+  }
 
   function enterLobby() {
     rpgUnmount();
@@ -2971,6 +2980,7 @@
   }
 
   function enterRoomState(next) {
+    closeEventDialogForRoom();
     stopPresenceRefresh();
     stopLobbyStream();
     resetTurnAlertTracking(); // the first snapshot of a (re)entered room is only a baseline

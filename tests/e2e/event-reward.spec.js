@@ -177,3 +177,42 @@ test('이벤트 응답이 늦게 와도 이미 게임방에 들어갔다면 팝�
   await expect(page.locator('#eventDialog')).toBeVisible({ timeout: 6000 });
   await context.close();
 });
+
+// v1.7.31 (IDEAS 백로그 22 남은 두 건)
+test('이미 받은 이벤트가 목록 앞에 있어도 미수령 이벤트가 먼저 열린다', async ({ browser, request }) => {
+  const { context, page, event: claimed } = await enterLobby({ browser, request });
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  await page.locator('#eventDialogClaimBtn').click(); // 첫 이벤트는 받는다
+  await expect(page.locator('#resultTitle')).toHaveText('+100,000P');
+  // 같은 계정에만 보이는 두 번째(미수령) 이벤트를 목록 뒤에 등록한다.
+  const token = await page.evaluate(() => document.body.dataset.session);
+  const login = await request.post('/api/admin/login', { headers: { 'X-Forwarded-For': uniqueIp() }, data: { password: adminPassword } });
+  const admin = (await login.json()).sessionToken;
+  const keyId = (await (await request.get('/api/events', { headers: { 'X-Session-Token': token } })).json()).account.replace(/^guest:/, '');
+  const now = Date.now();
+  const second = { ...claimed, id: `${claimed.id}_2`, title: '두 번째 이벤트', buttonLabel: '두 번째 받기', startAt: new Date(now - 3_600_000).toISOString(), endAt: new Date(now + 3_600_000).toISOString() };
+  expect((await request.post('/api/test/events', { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { event: second, audienceKeyId: keyId } })).status()).toBe(200);
+  const listed = (await (await request.get('/api/events', { headers: { 'X-Session-Token': token } })).json()).events;
+  expect(listed.map(item => [item.id, item.claimed])).toEqual([[claimed.id, true], [second.id, false]]); // 받은 것이 앞
+  await page.reload();
+  await expect(page.locator('#eventDialog')).toBeVisible();
+  await expect(page.locator('#eventDialogClaimBtn')).toHaveText('두 번째 받기'); // 미수령이 먼저
+  await context.close();
+});
+
+test('방 만들기 응답을 기다리는 사이 열린 이벤트 창은 방에 들어가면 닫히고, 로비로 돌아오면 다시 열린다', async ({ browser, request }) => {
+  const slow = async (page) => {
+    await page.route('**/api/events', async (route) => { if (route.request().method() === 'GET') await new Promise(r => setTimeout(r, 700)); await route.continue(); });
+    await page.route('**/api/rooms', async (route) => { if (route.request().method() === 'POST') await new Promise(r => setTimeout(r, 1800)); await route.continue(); });
+  };
+  const { context, page } = await enterLobby({ browser, request }, { onPage: slow });
+  await expect(page.locator('#lobbyView')).toBeVisible();
+  await page.locator('#gamePicker [data-game="omok"]').click();
+  await page.locator('#createRoomBtn').click(); // 응답은 1.8초 뒤, 이벤트 응답(0.7초)이 먼저 와서 로비 위에 창이 열린다
+  await expect(page.locator('#eventDialog')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#roomView')).toBeVisible({ timeout: 6000 });
+  await expect(page.locator('#eventDialog')).toBeHidden(); // 방에 들어가면 닫힌다
+  await page.locator('#leaveRoomBtn').click();
+  await expect(page.locator('#eventDialog')).toBeVisible({ timeout: 6000 }); // 받지 않았으니 로비에서 다시
+  await context.close();
+});
