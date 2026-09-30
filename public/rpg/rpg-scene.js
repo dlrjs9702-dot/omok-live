@@ -70,6 +70,10 @@ export function createScene(canvasHost) {
   let chest = null;
   const players = new Map();
   const mobs = new Map();
+  // 타격감 연출: 전부 화면에서만 일어난다(서버 판정과 위치는 그대로). 히트스톱은 내가 친 타격에만 걸고 연속 방지 간격을 둔다.
+  const feel = { hitStopUntil: 0, lastHitStop: -1, shake: 0, hitStops: 0, shakes: 0, predicted: 0 };
+  const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const addShake = (amount) => { if (reduceMotion) return; feel.shake = Math.min(0.32, Math.max(feel.shake, amount)); feel.shakes += 1; };
   const projectiles = new Map();
   const hazards = new Map();
   const spawns = [];
@@ -381,14 +385,18 @@ export function createScene(canvasHost) {
       let obj = mobs.get(m.i);
       if (!obj) { obj = makeMob(m.k, m); obj.userData.born = clock.now; mobs.set(m.i, obj); }
       obj.position.set(m.x, 0, m.z);
+      const kb = obj.userData.kb;
+      if (kb) { const k = 1 - (clock.now - kb.at) / 0.18; if (k > 0) { obj.position.x += kb.x * k * k; obj.position.z += kb.z * k * k; } else obj.userData.kb = null; }
       obj.rotation.y = -m.a;
       const inner = obj.getObjectByName('inner');
       const age = clock.now - obj.userData.born;
       const grow = Math.min(1, age / 0.3);
       inner.position.y = m.k === 'swarm' ? Math.sin(clock.now * 9 + m.i) * 0.2 : 0;
       obj.scale.setScalar(grow);
+      const squash = obj.userData.hitAt ? Math.max(0, 1 - (clock.now - obj.userData.hitAt) / 0.14) * (obj.userData.squash || 0.2) : 0;
+      inner.scale.set(1 + squash * 0.5, 1 - squash, 1 + squash * 0.5);
       const own = obj.userData.own;
-      const flash = obj.userData.hitAt && clock.now - obj.userData.hitAt < 0.1;
+      const flash = obj.userData.hitAt && clock.now - obj.userData.hitAt < 0.12;
       own.emissive.setHex(flash ? 0xffffff : m.fr ? 0x1e3a8a : m.bu ? 0x7c2d12 : m.st === 'w' ? (Math.floor(clock.now * 12) % 2 ? 0x7f1d1d : 0x000000) : m.sn ? 0x4d3b00 : 0x000000);
       own.color.setHex(m.fr ? 0x93c5fd : (MOB_STYLE[m.k] || MOB_STYLE.grunt).color);
       if (m.sl && !m.fr) own.color.lerp(new THREE.Color(0x7dd3fc), 0.35);
@@ -453,12 +461,27 @@ export function createScene(canvasHost) {
     });
   }
 
-  function onFx(event, localPos) {
+  function onFx(event, localPos, mySeat) {
     if (event.k === 'nova') nova(event.x, event.z, event.r, event.el);
-    else if (event.k === 'swing') { const p = localPos(event.s); if (p) swing(p.x, p.z, event.a, event.r, event.arc, event.heavy); const obj = players.get(event.s); if (obj) obj.userData.swingAt = clock.now; }
+    else if (event.k === 'swing') { const p = localPos(event.s); if (p) swing(p.x, p.z, event.a, event.r, event.arc, event.heavy); const obj = players.get(event.s); if (obj && !(clock.now - (obj.userData.predictedAt || -9) < 0.3)) obj.userData.swingAt = clock.now; }
     else if (event.k === 'chain') lightning(event.pts);
-    else if (event.k === 'dmg') { const obj = [...mobs.values()].find(o => Math.hypot(o.position.x - event.x, o.position.z - event.z) < 0.8); if (obj) obj.userData.hitAt = clock.now; if (event.c) burst(event.x, event.z, 0xfde047, 5, 1.2); }
-    else if (event.k === 'die' && event.boss) { burst(event.x, event.z, 0xf97316, 40, 2); column(event.x, event.z, 0xf97316); }
+    else if (event.k === 'dmg') {
+      const obj = [...mobs.values()].find(o => Math.hypot(o.position.x - event.x, o.position.z - event.z) < 0.8);
+      const power = Math.min(1, event.v / 120); // 큰 피해일수록 크게
+      if (obj) {
+        obj.userData.hitAt = clock.now; obj.userData.squash = 0.14 + power * 0.2 + (event.c ? 0.08 : 0);
+        if (event.a !== undefined) { const push = 0.18 + power * 0.4 + (event.c ? 0.15 : 0); obj.userData.kb = { x: Math.sin(event.a) * push, z: -Math.cos(event.a) * push, at: clock.now }; }
+      }
+      // 접촉 지점 불꽃: 속성 색, 피해량만큼 개수
+      burst(event.x, event.z, EL_COLOR[event.el] || (event.c ? 0xfde047 : 0xe2e8f0), 3 + Math.round(power * 8) + (event.c ? 4 : 0), 1);
+      if (event.s === mySeat) {
+        addShake(event.c ? 0.14 : 0.03 + power * 0.06);
+        if (clock.now - feel.lastHitStop > 0.18) { feel.lastHitStop = clock.now; feel.hitStopUntil = clock.now + (event.c ? 0.09 : 0.05); feel.hitStops += 1; }
+      }
+    }
+    else if (event.k === 'hurt' && event.s === mySeat) addShake(0.06 + Math.min(0.14, event.v / 200));
+    else if (event.k === 'die' && event.boss) { burst(event.x, event.z, 0xf97316, 40, 2); column(event.x, event.z, 0xf97316); addShake(0.3); }
+    else if (event.k === 'die') { burst(event.x, event.z, 0xf1f5f9, 10, 0.8); }
     else if (event.k === 'level') { const p = localPos(event.s); if (p) { column(p.x, p.z, 0xfde047); burst(p.x, p.z, 0xfde047, 16, 1.5); } }
     else if (event.k === 'revive') { const p = localPos(event.s); if (p) column(p.x, p.z, 0x38bdf8); }
     else if (event.k === 'item') { const p = localPos(event.s); if (p) burst(p.x, p.z, 0xc084fc, 14, 1.4); }
@@ -469,11 +492,13 @@ export function createScene(canvasHost) {
     clock.now += dt;
     if (view.room) { buildRoom(view.room); setRoomState(view.room); }
     for (const p of view.players) { const obj = players.get(p.s); p.swingAt = obj?.userData.swingAt; }
-    syncPlayers(view.players, view.me, view.classes);
-    syncMobs(view.mobs);
-    syncProjectiles(view.projectiles);
-    syncHazards(view.hazards);
-    syncSpawns(view.spawns);
+    if (clock.now >= feel.hitStopUntil) {
+      syncPlayers(view.players, view.me, view.classes);
+      syncMobs(view.mobs);
+      syncProjectiles(view.projectiles);
+      syncHazards(view.hazards);
+      syncSpawns(view.spawns);
+    }
     for (let i = effects.length - 1; i >= 0; i -= 1) {
       const e = effects[i];
       const k = (clock.now - e.born) / e.life;
@@ -482,7 +507,22 @@ export function createScene(canvasHost) {
     }
   }
 
-  function render() { renderer.render(scene, camera); }
+  // 입력 즉시 반응: 서버 응답(약 100ms)을 기다리지 않고 내 캐릭터의 공격 동작을 먼저 시작한다.
+  function predictPress(seat) {
+    const obj = players.get(seat);
+    if (!obj) return;
+    obj.userData.swingAt = clock.now; obj.userData.predictedAt = clock.now; feel.predicted += 1;
+  }
+
+  function render() {
+    if (feel.shake > 0.002) {
+      const s = feel.shake; const { x, y, z } = camera.position;
+      camera.position.set(x + (Math.random() - 0.5) * s * 2, y + (Math.random() - 0.5) * s, z + (Math.random() - 0.5) * s * 2);
+      renderer.render(scene, camera);
+      camera.position.set(x, y, z);
+      feel.shake *= 0.82;
+    } else { feel.shake = 0; renderer.render(scene, camera); }
+  }
 
   function resize(width, height) {
     renderer.setSize(width, height, false);
@@ -509,5 +549,5 @@ export function createScene(canvasHost) {
     players.clear(); mobs.clear(); projectiles.clear(); hazards.clear(); spawns.length = 0; effects.length = 0; disposables.clear(); matCache.clear();
   }
 
-  return { update, render, resize, project, onFx, dispose, stats: () => ({ players: players.size, mobs: mobs.size, projectiles: projectiles.size, hazards: hazards.size, effects: effects.length, geometries: renderer.info.memory.geometries }) };
+  return { update, render, resize, project, onFx, predictPress, dispose, stats: () => ({ hitStops: feel.hitStops, shakes: feel.shakes, predicted: feel.predicted, players: players.size, mobs: mobs.size, projectiles: projectiles.size, hazards: hazards.size, effects: effects.length, geometries: renderer.info.memory.geometries }) };
 }

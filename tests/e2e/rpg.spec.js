@@ -80,6 +80,25 @@ test.describe('잿빛 원정', () => {
     await me.context.close();
   });
 
+  test('입력은 WebSocket으로 가고, 누르는 즉시 공격 동작이 시작되며, 타격 연출(히트스톱·흔들림)이 발생한다', async ({ browser, request }) => {
+    test.setTimeout(120_000);
+    const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+    const me = await guest(browser, request, admin, '타');
+    await createRoom(me);
+    await takeSeatAndClass(me, '1', '수호자');
+    await me.page.getByRole('button', { name: /원정 시작/ }).click();
+    await expect.poll(async () => (await debug(me.page))?.net?.state).toBe('open');
+    await expect.poll(async () => (await debug(me.page))?.net?.rtt, { timeout: 6000 }).not.toBeNull();
+    await me.page.keyboard.down('Space');
+    await expect.poll(async () => (await debug(me.page)).scene.predicted).toBeGreaterThan(0);
+    // 적이 다가오면 수호자의 기본 공격이 맞는다: 접촉 불꽃·히트스톱·흔들림이 실제로 일어난다.
+    await expect.poll(async () => (await debug(me.page)).scene.hitStops, { timeout: 60_000 }).toBeGreaterThan(0);
+    expect((await debug(me.page)).scene.shakes).toBeGreaterThan(0);
+    await me.page.keyboard.up('Space');
+    expect(me.errors).toEqual([]);
+    await me.context.close();
+  });
+
   test('방향키 이동·대각선·스크롤 없음·Space/Q·채팅 입력 중 차단·포커스 해제·퇴장 시 3D 정리', async ({ browser, request }) => {
     test.setTimeout(120_000);
     const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;

@@ -222,6 +222,7 @@
       rpgBridge.controller = mod.mount(rpgStage, {
         post: (action, payload) => roomAction(action, payload),
         fast: (action, payload) => api(`/api/room/${action}`, { method: 'POST', body: JSON.stringify(payload) }).catch(() => null),
+        ws: { url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/rpg/ws`, token: sessionToken },
       });
       rpgBridge.controller.update(rpgBridge.latest);
     }).catch((error) => { rpgBridge.loading = null; console.error(error); showToast('3D 화면을 불러오지 못했습니다. 새로고침해 주세요.', 4000); });

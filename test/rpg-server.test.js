@@ -266,3 +266,59 @@ test('잿빛 원정 용량: RPG_MAX_ROOMS 초과 방은 503 RPG_BUSY, 관리자 
   assert.ok('tickMs' in metrics.data && 'saveMs' in metrics.data && 'transport' in metrics.data);
   assert.equal((await req('/api/admin/rpg-metrics', a, undefined, 'GET')).status, 403, '관리자만 조회');
 });
+
+test('잿빛 원정 WebSocket 입력: 인증·출처 검사·스킬 응답·왕복 시간(HTTP와 비교)', { timeout: 60_000 }, async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rpg-ws-'));
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const proc = await startServer(dataDir, port, true);
+  t.after(async () => { await stopServer(proc); await fs.rm(dataDir, { recursive: true, force: true }); });
+  const { req, enter } = client(base, '10.86.0');
+  const admin = (await req('/api/admin/login', null, { password: 'gostop-test' })).data.sessionToken;
+  const a = await enter((await req('/api/admin/keys', admin, { label: '가' })).data.html);
+  await req('/api/rooms', a, { gameType: 'rpg' });
+  await req('/api/room/choose-role', a, { choice: '1' });
+  await req('/api/room/rpg-class', a, { cls: 'guardian' });
+  assert.equal((await req('/api/room/rpg-start', a, {})).status, 200);
+
+  const open = (token) => new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/rpg/ws`);
+    const queue = []; const waiters = [];
+    ws.onmessage = (event) => { const msg = JSON.parse(event.data); const w = waiters.shift(); if (w) w(msg); else queue.push(msg); };
+    ws.onerror = () => reject(new Error('ws error'));
+    ws.onopen = () => { if (token) ws.send(JSON.stringify({ t: 'auth', token })); resolve({ ws, next: () => new Promise(r => { const m = queue.shift(); if (m) r(m); else waiters.push(r); }), closed: new Promise(r => { ws.onclose = () => r(true); }) }); };
+  });
+
+  // 인증하지 않은 연결은 입력을 보내도 닫힌다.
+  const anon = await open(null);
+  anon.ws.send(JSON.stringify({ t: 'in', mv: 1 }));
+  assert.equal(await anon.closed, true);
+  const forged = await open('not-a-token');
+  assert.equal(await forged.closed, true, '잘못된 토큰은 거부');
+
+  // 다른 출처의 페이지는 업그레이드 자체가 거부된다.
+  const status = await new Promise((resolve) => {
+    const r = require('node:http').request({ host: '127.0.0.1', port, path: '/api/rpg/ws', headers: { Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==', Origin: 'http://evil.example' } });
+    r.on('response', res => resolve(res.statusCode)); r.on('upgrade', () => resolve(101)); r.on('error', () => resolve(0)); r.end();
+  });
+  assert.equal(status, 403);
+
+  const good = await open(a);
+  assert.equal((await good.next()).t, 'ready');
+  good.ws.send(JSON.stringify({ t: 'in', mv: 8, atk: true }));
+  good.ws.send(JSON.stringify({ t: 'act', a: 'q' }));
+  const acted = await good.next();
+  assert.deepEqual([acted.t, acted.a, acted.ok], ['act', 'q', true]);
+  good.ws.send(JSON.stringify({ t: 'act', a: 'kill-all' }));
+  assert.equal((await good.next()).reason, 'bad-action', 'HTTP 경로와 같은 판정');
+
+  // 왕복 시간: 같은 서버에 ping 100번(WebSocket)과 입력 POST 100번(HTTP).
+  const median = xs => xs.sort((x, y) => x - y)[Math.floor(xs.length / 2)];
+  const wsTimes = [];
+  for (let i = 0; i < 100; i += 1) { const t0 = performance.now(); good.ws.send(JSON.stringify({ t: 'ping', c: i })); const pong = await good.next(); assert.equal(pong.c, i); wsTimes.push(performance.now() - t0); }
+  const httpTimes = [];
+  for (let i = 0; i < 100; i += 1) { const t0 = performance.now(); await req('/api/room/rpg-input', a, { mv: 0, atk: false }); httpTimes.push(performance.now() - t0); }
+  console.log(`왕복(로컬) WebSocket 중앙값 ${median(wsTimes).toFixed(2)}ms · HTTP POST 중앙값 ${median(httpTimes).toFixed(2)}ms`);
+  assert.ok(median(wsTimes) < 25);
+  good.ws.close();
+});

@@ -42,6 +42,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { createRpgStore } = require('./lib/rpg-store');
 const { createRpgTransport } = require('./lib/rpg-transport');
+const wsLite = require('./lib/ws-lite');
 const { createSampler } = require('./lib/rpg-metrics');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -1632,6 +1633,52 @@ async function tickHalliRooms() {
     if (room.game.status === 'finished') await recordFinishedMatch(room);
     touchRoom(room); broadcast(room);
   }
+}
+
+// 빠른 입력 경로(HTTP rpg-input/rpg-act와 WebSocket이 함께 쓴다): 이동·공격 유지 상태와 스킬 누름.
+function rpgFast(session, kind, body) {
+  if (sessions.get(session.token) !== session) return { ok: false, reason: 'no-session' };
+  const room = getCurrentRoom(session);
+  if (!room || !isRpg(room)) return { ok: false, reason: 'no-room' };
+  const seat = findSeat(room, session.token);
+  if (!seat) return { ok: false, reason: 'spectator' };
+  if (!checkRateLimit(`rpg:${session.token}`, 60, 1000)) return { ok: false, reason: 'rate' };
+  const engine = getGame('rpg');
+  const verdict = kind === 'in'
+    ? engine.input(room.game, seat, { mv: Number(body.mv) || 0, atk: body.atk === true })
+    : engine.act(room.game, seat, String(body.a || ''));
+  return verdict.legal ? { ok: true } : { ok: false, reason: verdict.reason };
+}
+
+// 잿빛 원정 입력 WebSocket: 연결을 한 번 맺고 입력을 계속 보낸다(요청마다 HTTP를 여는 비용 제거).
+// 인증은 첫 메시지의 세션 토큰으로 하고(URL에 남기지 않는다), 같은 출처의 페이지만 허용한다.
+function handleRpgSocket(req, socket) {
+  const url = new URL(req.url, 'http://localhost');
+  const reject = (status) => socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
+  if (url.pathname !== '/api/rpg/ws' || !RPG_ENABLED) return reject('404 Not Found');
+  const origin = req.headers.origin;
+  if (origin) { try { if (new URL(origin).host !== req.headers.host) return reject('403 Forbidden'); } catch { return reject('403 Forbidden'); } }
+  const conn = wsLite.accept(req, socket);
+  if (!conn) return;
+  let session = null;
+  const timer = setTimeout(() => { if (!session) conn.close(1008); }, 5000);
+  timer.unref?.();
+  conn.onClose = () => clearTimeout(timer);
+  conn.onMessage = (text) => {
+    let msg;
+    try { msg = JSON.parse(text); } catch { return conn.close(1003); }
+    if (!session) {
+      const candidate = msg.t === 'auth' ? sessions.get(String(msg.token || '')) : null;
+      if (!candidate || nowMs() - candidate.lastSeen > SESSION_IDLE_MS) return conn.close(1008);
+      session = candidate;
+      return conn.send('{"t":"ready"}');
+    }
+    session.lastSeen = nowMs();
+    if (session.guestKeyId) session.leaseSeenAt = session.lastSeen;
+    if (msg.t === 'ping') conn.send(JSON.stringify({ t: 'pong', c: msg.c }));
+    else if (msg.t === 'in') rpgFast(session, 'in', msg);
+    else if (msg.t === 'act') conn.send(JSON.stringify({ t: 'act', a: msg.a, ...rpgFast(session, 'act', msg) }));
+  };
 }
 
 function rpgRoomCount() { return [...rooms.values()].filter(isRpg).length; }
@@ -3320,6 +3367,8 @@ async function main() {
       else res.end();
     });
   });
+
+  server.on('upgrade', handleRpgSocket);
 
   setInterval(() => {
     const now = nowMs();

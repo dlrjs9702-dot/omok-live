@@ -47,7 +47,9 @@ export function createHud(root, handlers) {
   const floats = el('div', 'rpgFloats');
   const help = el('div', 'rpgHelp', '방향키 이동 · Space 공격 · Q/W/E/R 스킬 · Shift 대시 · 1 물약 · Tab 대상 · Esc 창 닫기');
   const notice = el('div', 'rpgNotice hidden');
-  root.append(top, boss, party, build, bottom, center, status, floats, help, notice, paused);
+  const hurt = el('div', 'rpgHurt');
+  root.append(hurt, top, boss, party, build, bottom, center, status, floats, help, notice, paused);
+  function flashHurt() { hurt.classList.remove('on'); void hurt.offsetWidth; hurt.classList.add('on'); }
 
   let meta = null;
   let mySeat = null;
@@ -314,5 +316,5 @@ export function createHud(root, handlers) {
 
   function dispose() { root.replaceChildren(); clearTimeout(notice._timer); }
 
-  return { setMeta, setTick, float, banner, showError, escape, dispose };
+  return { setMeta, setTick, float, banner, showError, escape, flashHurt, dispose };
 }

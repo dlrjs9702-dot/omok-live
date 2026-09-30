@@ -36,6 +36,34 @@ export function mount(container, api) {
   const local = { x: 0, z: 0, ready: false, dashUntil: 0, dvx: 0, dvz: 0, facing: 0, room: -1 };
   const stats = { frames: 0, ticks: 0 };
 
+  // ---- 입력 연결(WebSocket) ---------------------------------------------------------------
+  // 이동·공격·스킬 입력은 WebSocket 하나로 보낸다. 연결이 없거나 끊기면 예전 HTTP 요청으로 대신한다.
+  const net = { ws: null, state: 'closed', rtt: null, retry: 0, retryTimer: null, pingTimer: null };
+  function openSocket() {
+    if (!running || !api.ws || typeof WebSocket !== 'function' || net.ws) return;
+    let socket;
+    try { socket = new WebSocket(api.ws.url); } catch { return; }
+    net.ws = socket; net.state = 'connecting';
+    socket.onopen = () => socket.send(JSON.stringify({ t: 'auth', token: api.ws.token }));
+    socket.onmessage = (event) => {
+      let msg; try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.t === 'ready') { net.state = 'open'; net.retry = 0; }
+      else if (msg.t === 'pong') net.rtt = Math.round((performance.now() - msg.c) * 10) / 10;
+      else if (msg.t === 'act' && msg.ok === false && msg.reason === 'no-skill') hud.showError('비어 있는 스킬 칸입니다 · 레벨업으로 배우세요');
+    };
+    socket.onclose = () => {
+      if (net.ws === socket) { net.ws = null; net.state = 'closed'; }
+      if (running) net.retryTimer = setTimeout(openSocket, Math.min(5000, 500 * 2 ** Math.min(net.retry++, 4)));
+    };
+  }
+  function sendWs(message) {
+    if (net.state !== 'open') return false;
+    net.ws.send(JSON.stringify(message));
+    return true;
+  }
+  net.pingTimer = setInterval(() => sendWs({ t: 'ping', c: performance.now() }), 2000);
+  openSocket();
+
   // ---- input ------------------------------------------------------------------------------
 
   const typing = (target) => Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"], dialog[open]') || target?.isContentEditable || document.querySelector('dialog[open]'));
@@ -47,7 +75,7 @@ export function mount(container, api) {
     const now = performance.now();
     if (!force && now - lastSend < 45) { clearTimeout(sendTimer); sendTimer = setTimeout(() => flush(), 50); return; }
     lastSend = now; sentHeld = held; sentAttack = attack;
-    api.fast('rpg-input', { mv: held, atk: attack });
+    if (!sendWs({ t: 'in', mv: held, atk: attack })) api.fast('rpg-input', { mv: held, atk: attack });
   }
 
   function onKeyDown(event) {
@@ -55,13 +83,14 @@ export function mount(container, api) {
     if (event.code === 'Escape') { if (hud.escape()) event.preventDefault(); return; }
     const move = MOVE_KEYS[event.code];
     if (move) { event.preventDefault(); if (!(held & move)) { held |= move; flush(); } return; }
-    if (event.code === 'Space') { event.preventDefault(); if (!attack) { attack = true; flush(); } return; }
+    if (event.code === 'Space') { event.preventDefault(); if (!attack) { attack = true; scene?.predictPress(meta.me.seat); flush(); } return; }
     const press = PRESS_KEYS[event.code];
     if (press) {
       event.preventDefault();
       if (event.repeat) return;
       if (press === 'dash') predictDash();
-      api.fast('rpg-act', { a: press }).then((res) => { if (res && res.ok === false && res.reason === 'no-skill') hud.showError('비어 있는 스킬 칸입니다 · 레벨업으로 배우세요'); });
+      else if (['q', 'w', 'e', 'r'].includes(press) && myInfo()?.skills?.[press]) scene?.predictPress(meta.me.seat);
+      if (!sendWs({ t: 'act', a: press })) api.fast('rpg-act', { a: press }).then((res) => { if (res && res.ok === false && res.reason === 'no-skill') hud.showError('비어 있는 스킬 칸입니다 · 레벨업으로 배우세요'); });;
     }
   }
 
@@ -211,7 +240,8 @@ export function mount(container, api) {
     while (snaps.length > 8) snaps.shift();
     hud.setTick(snap);
     for (const event of snap.fx || []) {
-      scene?.onFx(event, positionOf);
+      scene?.onFx(event, positionOf, meta?.me?.seat);
+      if (event.k === 'hurt' && event.s === meta?.me?.seat) hud.flashHurt();
       if (!scene) continue;
       if (event.k === 'dmg') { const s = scene.project(event.x, 1.9, event.z); hud.float(s.x, s.y, String(event.v), `${event.c ? 'crit' : ''} ${event.s === meta?.me?.seat ? 'mine' : ''} el-${event.el || 'phys'}`); }
       else if (event.k === 'hurt') { const p = positionOf(event.s); if (p) { const s = scene.project(p.x, 2.2, p.z); hud.float(s.x, s.y, `-${event.v}`, `hurt ${event.s === meta?.me?.seat ? 'me' : ''}`); } }
@@ -243,6 +273,8 @@ export function mount(container, api) {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
     clearTimeout(sendTimer);
+    clearTimeout(net.retryTimer); clearInterval(net.pingTimer);
+    const socket = net.ws; net.ws = null; net.state = 'closed'; socket?.close();
     observer?.disconnect();
     window.removeEventListener('keydown', onKeyDown, { capture: true });
     window.removeEventListener('keyup', onKeyUp, { capture: true });
@@ -256,5 +288,5 @@ export function mount(container, api) {
   }
 
   // debug(): read-only view for browser tests (public game data only).
-  return { update, tick, unmount, debug: () => ({ running, frames: stats.frames, ticks: stats.ticks, held, attack, local: { ...local }, scene: scene?.stats() || null, snap: snaps[snaps.length - 1]?.snap || null }) };
+  return { update, tick, unmount, debug: () => ({ running, frames: stats.frames, ticks: stats.ticks, held, attack, net: { state: net.state, rtt: net.rtt }, local: { ...local }, scene: scene?.stats() || null, snap: snaps[snaps.length - 1]?.snap || null }) };
 }
