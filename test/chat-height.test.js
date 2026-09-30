@@ -78,7 +78,9 @@ test('the bounded chat pane shrinks around its fixed input, so only messages scr
   assert.match(css, /#chatPanel \.chatMessages\{min-height:0;[^}]*overflow-y:auto/);
   assert.match(css, /#chatPanel \.chatForm\{flex:0 0 auto\}/);
   const app = read('public/app.js');
-  assert.match(app, /if \(messageListSignatures\.get\(container\) === signature\) return false;/);
+  // An unchanged list is not redrawn, and (v1.7.29) a list that only grew at the end keeps its existing elements.
+  assert.match(app, /if \(sameStart && drawn\.keys\.length === keys\.length\) return false;/);
+  assert.match(app, /for \(let i = drawn\.keys\.length; i < rows\.length; i\+\+\) container\.appendChild\(buildChatMessageEl/);
 });
 
 test('a floating chat button with an unread badge is always present, independent of the docked sidebar', () => {

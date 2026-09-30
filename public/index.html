@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.28" />
+  <link rel="stylesheet" href="/styles.css?v=1.7.29" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -275,6 +275,10 @@
     </section>
 
     <section id="roomView" class="room hidden">
+      <!-- v1.7.29: screen-reader announcers live at the top of the room, outside the chat panel and the game panel,
+           so collapsing or hiding those (display:none) never silences them -->
+      <div id="chatAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div id="twentyAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
       <header class="topbar card">
         <div>
           <span id="roomGameLogo" class="logo">오목</span>
@@ -544,7 +548,7 @@
               <summary id="twentyOlderSummary"></summary>
               <ol id="twentyOlderLog" class="twentyQuestionLog" aria-label="이전 질문 기록"></ol>
             </details>
-            <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog" aria-live="polite"></div>
+            <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog"></div>
           </section>
 
           <section id="marathonPanel" class="marathonPanel hidden" aria-label="마라톤">
@@ -596,7 +600,6 @@
 
             <section class="sidePane" aria-label="방 채팅">
               <div id="chatMessages" class="chatMessages" role="group" aria-label="방 채팅 기록"></div>
-              <div id="chatAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
               <button type="button" id="chatJumpBtn" class="chatJumpBtn hidden">새 메시지 · 맨 아래로</button>
               <p id="chatLockNotice" class="chatLockNotice hidden" role="status">힌트 진행 중에는 채팅할 수 없습니다.</p>
               <form id="chatForm" class="chatForm">
@@ -951,11 +954,11 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.28"></script>
-  <script src="/recent-action.js?v=1.7.28"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.28"></script>
-  <script src="/hwatu-art.js?v=1.7.28"></script>
-  <script src="/gostop-ui.js?v=1.7.28"></script>
-  <script src="/app.js?v=1.7.28"></script>
+  <script src="/session-lock.js?v=1.7.29"></script>
+  <script src="/recent-action.js?v=1.7.29"></script>
+  <script src="/twentyquestions-ui.js?v=1.7.29"></script>
+  <script src="/hwatu-art.js?v=1.7.29"></script>
+  <script src="/gostop-ui.js?v=1.7.29"></script>
+  <script src="/app.js?v=1.7.29"></script>
 </body>
 </html>

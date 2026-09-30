@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.28').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.29').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -597,7 +597,7 @@
   let chatUnreadCount = 0;
   let chatAtBottom = true;
   let chatRendering = false;
-  const messageListSignatures = new WeakMap();
+  const messageListState = new WeakMap(); // container -> { ownId, keys } of what is currently drawn
   let chatLastSeenId = 0;
   let lastRenderedChatIds = [];
 
@@ -2864,6 +2864,7 @@
     if (marathonMemoryHideTimer) clearTimeout(marathonMemoryHideTimer);
     marathonMemoryHideTimer = null; marathonMemoryHideKey = null;
     window.GostopUI?.reset?.();
+    window.TwentyQuestionsUI?.reset?.();
   }
 
   function enterRoomState(next) {
@@ -3496,10 +3497,18 @@
   const lobbyChatAnnouncer = createChatAnnouncer(document.getElementById('lobbyChatAnnounce'));
   const roomChatAnnouncer = createChatAnnouncer(document.getElementById('chatAnnounce'));
 
+  // v1.7.29: when messages were only added at the end, keep every element already drawn (and the reader's place)
+  // and append just the new ones; anything else (first draw, trimmed history, edits, another viewer id) redraws.
   function fillMessageList(container, rows, emptyText, ownId = '') {
-    const signature = JSON.stringify([ownId, rows.map(row => [row.id, row.type, row.label, row.text, row.at, row.senderId])]);
-    if (messageListSignatures.get(container) === signature) return false;
-    messageListSignatures.set(container, signature);
+    const keys = rows.map(row => [row.id, row.type, row.label, row.text, row.at, row.senderId].join('\u0001'));
+    const drawn = messageListState.get(container);
+    const sameStart = Boolean(drawn && drawn.ownId === ownId && drawn.keys.length && drawn.keys.length <= keys.length && drawn.keys.every((key, index) => key === keys[index]));
+    if (sameStart && drawn.keys.length === keys.length) return false;
+    messageListState.set(container, { ownId, keys });
+    if (sameStart) {
+      for (let i = drawn.keys.length; i < rows.length; i++) container.appendChild(buildChatMessageEl(rows[i], rows[i - 1], ownId));
+      return true;
+    }
     container.innerHTML = '';
     if (!rows.length) {
       const empty = document.createElement('div');

@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { narrate } = require('../public/recent-action');
 const { listGames } = require('../lib/games');
 
-// v1.7.28: the 「방금」 line comes from each game's own public state, never from the room's system chat.
+// v1.7.29: the 「방금」 line comes from each game's own public state, never from the room's system chat.
 // States below use the field names each engine's publicState() really sends (checked against lib/games).
 
 const names = { black: '흑돌이님', white: '백돌이님', 1: '일번님', 2: '이번님', 3: '삼번님', A: 'A' };

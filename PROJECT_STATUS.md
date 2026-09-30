@@ -18,6 +18,15 @@
 - 테스트 전용 훅(`NODE_ENV=test`): `/api/test/points-fault`에 `settleFail`(다음 N번의 판 정산 실패) 추가.
 - `test/gostop-settlement-block.test.js`: 스톱으로 판이 끝난 뒤 정산이 실패하는 동안 포인트가 그대로이고 `next-round`가 계속 503이며, 복구하면 같은 판이 한 번만 정산되고 다음 판이 시작돼도 추가 정산이 없음을 확인. 가드(`recordOrError`)를 꺼 보면 이 테스트가 실패함을 확인.
 
+## v1.7.29 채팅·스무고개 화면 낭독 개선
+
+`IDEAS.md` 「안정성·UX 개선 점검 백로그」 E-19·20·21을 처리했다.
+
+- **19 채팅 낭독 영역 독립화**: `#chatAnnounce`가 접히는 채팅 패널(`.side.collapsedDocked{display:none}`) 안에 있어 패널을 접으면 함께 숨겨져 새 메시지가 읽히지 않았다(e2e로 재현). `#chatAnnounce`와 새 `#twentyAnnounce`를 `#roomView` 맨 위(패널·게임 패널 밖)로 옮겼다. 접은 상태에서 `checkVisibility()`가 참이고 새 메시지가 들어간다.
+- **20 채팅 전체 재낭독·재렌더링 방지**: `fillMessageList`가 끝에만 메시지가 추가되면 이미 그려진 요소를 그대로 두고 새 메시지만 덧붙인다(첫 표시·기록이 잘렸을 때·수정·다른 본인 ID면 기존처럼 전체 다시 그림). 읽던 위치가 유지되고 기존 스크롤 복원 로직은 그대로다. 채팅 목록은 v1.7.2 이후 라이브 영역이 아니어서 낭독은 별도 낭독 영역만 쓴다.
+- **21 스무고개 낭독**: `twentyquestions-ui.js`가 새로 답변된 질문·판정된 정답 시도만 `#twentyAnnounce`로 알리고(접속·새로고침·새 라운드의 첫 표시는 기록만), 매번 통째로 다시 그려져 전체를 다시 읽던 `#twentyGuessLog`의 `aria-live`를 제거했다. 방 이동 때는 `resetRoomAnimationState`가 `TwentyQuestionsUI.reset()`을 호출한다.
+- **테스트**: `tests/e2e/chat-announce.spec.js`(접힌 패널 낭독·낭독 영역이 패널 밖·기존 메시지 요소 유지, 수정 전 실패 확인), `tests/e2e/game-visibility.spec.js`(스무고개 새 답변만 낭독·다시 읽지 않음·새로고침 후 기록만·정답 기록 목록은 라이브 영역 아님).
+
 ## v1.7.28 「방금」 줄을 게임 상태 기준으로
 
 `IDEAS.md` 「안정성·UX 개선 점검 백로그」 D-16을 처리했다. 빙고·윷놀이·랜드킹·도둑잡기·마라톤·스무고개·그림 맞히기는 「방금」 줄을 방의 마지막 시스템 채팅으로 채워, 입장·퇴장 같은 안내가 게임 행동처럼 보였다.
