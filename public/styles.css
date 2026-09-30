@@ -502,7 +502,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
   background:repeating-linear-gradient(135deg,#1d4ed8 0 5px,#1e3a8a 5px 10px),linear-gradient(160deg,#1e3a8a,#1e40af)}
 .oldmaidBack::after{content:'';position:absolute;inset:4px;border:1px solid rgba(219,234,254,.55);border-radius:5px;pointer-events:none}
 .oldmaidBack.selectable{border-color:#facc15;box-shadow:0 0 0 2px #fde68a}
-.oldmaidBack.selected{background:#16a34a;border-color:#166534}
+.oldmaidBack.selected{background:#16a34a;border-color:#166534;background-image:none!important}
 .oldmaidBack.selected::after{border-color:rgba(255,255,255,.7)}
 .oldmaidBack:disabled{cursor:default;opacity:.68}.oldmaidHistory{max-height:170px;overflow-y:auto;font-size:.88rem;color:#94a3b8}
 .oldmaidHistory p{margin:4px 0}.oldmaidPanel h3{margin:4px 0;font-size:1rem;color:#cbd5e1}.oldmaidPanel h3 small{font-weight:400;font-size:.75rem;color:#64748b}
