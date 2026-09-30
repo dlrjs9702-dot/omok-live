@@ -87,15 +87,15 @@
     });
     if (d.fx) { ctx.save(); d.fx(ctx, w, h, .5); ctx.restore(); }
   }
-  function previewTheme(ctx, w, h, skinId) { S.def(skinId).panel(ctx, w, h); previewRow(ctx, w, h, 'baseball_c1', true); }
+  function previewTheme(ctx, w, h, skinId) { S.def(skinId).panel(ctx, w, h); ctx.globalAlpha = .55; previewRow(ctx, w, h, 'baseball_c1', true); ctx.globalAlpha = 1; }
   const piece = (def) => ({ ...def, preview: previewRow });
-  const theme = (panel, extra = {}) => ({ panel, preview: previewTheme, ...extra });
+  const theme = (panel, frame) => ({ panel, frame, preview: previewTheme });
   S.define({
     baseball_c1: piece(scoreboard), baseball_c2: piece(notebook), baseball_c3: piece(slot), baseball_c4: piece(vault), baseball_c5: piece(lab),
     baseball_p1: piece({ ...terminal, fx: (ctx, w, h, t) => { ctx.fillStyle = `rgba(93,255,138,${(1 - t) * .28})`; ctx.fillRect(40, 30, w - 80, h - 60); } }),
     baseball_p2: piece({ ...hologram, fx: (ctx, w, h, t) => { ctx.strokeStyle = `rgba(110,220,255,${(1 - t) * .9})`; ctx.lineWidth = 3; ctx.strokeRect(40 - t * 10, 30 - t * 6, w - 80 + t * 20, h - 60 + t * 12); } }),
     baseball_p3: piece({ ...safe, fx: (ctx, w, h, t) => { const R = rng(4); for (let i = 0; i < 9; i += 1) { ctx.fillStyle = `rgba(255,${190 + (R() * 50 | 0)},60,${1 - t})`; ctx.beginPath(); ctx.arc(40 + R() * (w - 80), h / 2 + (R() - .5) * 20 - t * 20, 2.4 * (1 - t) + .6, 0, TAU); ctx.fill(); } } }),
-    baseball_t1: theme(dugout), baseball_t2: theme(secretLab),
+    baseball_t1: theme(dugout, { borderColor: '#e9d9b5', boxShadow: 'inset 0 0 0 3px #6b4526, 0 0 0 2px #e9d9b5' }), baseball_t2: theme(secretLab, { borderColor: '#e0b32a', boxShadow: 'inset 0 0 0 3px #0d141d, 0 0 14px rgba(90,220,230,.4)' }),
     baseball_l1: piece(master),
   });
 }());

@@ -122,7 +122,7 @@ test('숫자야구 스킨: 방장 테마가 모든 화면에 같고, 각 행은 
     await expect.poll(() => rowBg(who, 0), { timeout: 8000 }).toBe('rgb(251, 244, 220)');
     await expect.poll(() => rowBg(who, 1), { timeout: 8000 }).toBe('rgb(17, 24, 39)');
   }
-  const themeImage = (who) => who.page.locator('#baseballHistory').evaluate(el => el.style.backgroundImage);
+  const themeImage = (who) => who.page.locator('#baseballPanel').evaluate(el => el.style.backgroundImage);
   expect((await themeImage(a)).startsWith('url("data:image/png')).toBe(true);
   expect(await themeImage(a)).toBe(await themeImage(b));
   for (const who of [a, b]) await expectNoScriptError(who.page);
