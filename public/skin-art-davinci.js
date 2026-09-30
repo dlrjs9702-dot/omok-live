@@ -10,7 +10,12 @@
   const ink = (dark, a = .35) => (dark ? `rgba(255,255,255,${a})` : `rgba(20,30,50,${a})`);
 
   // each skin: deco(ctx, dark, revealed) paints on a W x H transparent picture; hand = style of the rack
-  const tileStyle = (key, deco) => (color, revealed) => ({ backgroundImage: S.h.img(`dv:${key}:${color}:${revealed ? 1 : 0}`, W, H, (c) => edge(c, color, (ctx, dark) => deco(ctx, dark, revealed))), backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' });
+  // pal = the tile colours of this skin: { black: [top, bottom, text, border], white: [...] }. The dark tile and the light
+  // tile always stay far apart (tested: 7:1 between the two bodies, 4.5:1 for each digit on its own tile).
+  const tileStyle = (key, deco, pal) => (color, revealed) => {
+    const [a, b, text, border] = pal[color];
+    return { backgroundImage: `${S.h.img(`dv:${key}:${color}:${revealed ? 1 : 0}`, W, H, (c) => edge(c, color, (ctx, dark) => deco(ctx, dark, revealed)))}, linear-gradient(145deg,${a},${b})`, backgroundSize: '100% 100%, 100% 100%', backgroundRepeat: 'no-repeat', color: text, borderColor: border };
+  };
 
   // ---- commons ----
   const pips = (ctx, x, y, dark, n = 3) => { ctx.fillStyle = ink(dark, .55); for (let i = 0; i < n; i += 1) { ctx.beginPath(); ctx.arc(x + (i % 2) * 8, y + i * 6, 2.2, 0, TAU); ctx.fill(); } };
@@ -50,20 +55,27 @@
     const d = S.def(skinId); ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); const th = h * .78; const tw = th * .72;
     [[w * .3, 'black', '7', true], [w * .55, 'white', '3', true], [w * .8, 'black', '?', false]].forEach(([cx, color, n, rev]) => {
       const x = cx - tw / 2; const y = (h - th) / 2;
-      ctx.fillStyle = color === 'black' ? '#151b2a' : '#f4f1e8'; ctx.beginPath(); ctx.roundRect(x, y, tw, th, 8); ctx.fill();
+      const pp = d.pal[color]; const grd = ctx.createLinearGradient(x, y, x + tw, y + th); grd.addColorStop(0, pp[0]); grd.addColorStop(1, pp[1]); ctx.fillStyle = grd; ctx.beginPath(); ctx.roundRect(x, y, tw, th, 8); ctx.fill();
       ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, tw, th, 8); ctx.clip(); ctx.translate(x, y); ctx.scale(tw / W, th / H); d.deco(ctx, color, rev); ctx.restore();
-      ctx.fillStyle = color === 'black' ? '#f8fafc' : '#111827'; ctx.font = `900 ${th * .36}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, cx, h / 2 + 2);
+      ctx.fillStyle = d.pal[color][2]; ctx.font = `900 ${th * .36}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, cx, h / 2 + 2);
     });
     if (d.fx) { ctx.save(); ctx.translate(w * .55 - 44, h / 2 - 60); d.fx(ctx, 88, 120, .45); ctx.restore(); }
   }
   function previewTheme(ctx, w, h, skinId) { S.def(skinId).panel(ctx, w, h); }
-  const piece = (deco, key, fx) => ({ tile: tileStyle(key, deco), deco: (ctx, color, revealed) => edge(ctx, color, (c, dark) => deco(c, dark, revealed)), fx, preview: previewTile });
+  const piece = (deco, key, fx, pal) => ({ pal, tile: tileStyle(key, deco, pal), deco: (ctx, color, revealed) => edge(ctx, color, (c, dark) => deco(c, dark, revealed)), fx, preview: previewTile });
   const theme = (panel, frame) => ({ panel, frame, preview: previewTheme });
+  const P = (d1, d2, dt, db, l1, l2, lt, lb) => ({ black: [d1, d2, dt, db], white: [l1, l2, lt, lb] });
   S.define({
-    davinci_c1: piece(domino, 'c1'), davinci_c2: piece(lock, 'c2'), davinci_c3: piece(runes, 'c3'), davinci_c4: piece(plaque, 'c4'), davinci_c5: piece(file, 'c5'),
-    davinci_p1: piece(gears, 'p1', burst('240,193,78')), davinci_p2: piece(glass, 'p2', burst('150,220,255')), davinci_p3: piece(holoKey, 'p3', burst('110,220,255')),
+    davinci_c1: piece(domino, 'c1', null, P('#2e2e38', '#15151b', '#ffffff', '#8a8a9a', '#f9f3de', '#e7ddbe', '#1f1a10', '#c2b58a')),
+    davinci_c2: piece(lock, 'c2', null, P('#313a47', '#161a21', '#ffffff', '#9aa8ba', '#f4ecd2', '#e8dba8', '#2a2008', '#b39a52')),
+    davinci_c3: piece(runes, 'c3', null, P('#2f3a54', '#141a2c', '#ffffff', '#8fa0c8', '#eceff2', '#d2d9e0', '#1c2430', '#9aa8b8')),
+    davinci_c4: piece(plaque, 'c4', null, P('#0f4d30', '#06281a', '#ffffff', '#c9a24a', '#fcf7e8', '#ece1ba', '#221a06', '#c9a24a')),
+    davinci_c5: piece(file, 'c5', null, P('#3b2b1d', '#1b120a', '#ffffff', '#a88a66', '#f5e4b4', '#e2c986', '#2a1a06', '#b8955a')),
+    davinci_p1: piece(gears, 'p1', burst('240,193,78'), P('#4a3416', '#221608', '#fff3cf', '#e0b23e', '#f8eecb', '#e6d290', '#2a1c04', '#b8902a')),
+    davinci_p2: piece(glass, 'p2', burst('150,220,255'), P('#1d3557', '#0a1424', '#ffffff', '#78c4ee', '#f0f8ff', '#d2e5f4', '#0f2236', '#6aa8d0')),
+    davinci_p3: piece(holoKey, 'p3', burst('110,220,255'), P('#0f3b46', '#04181d', '#e6fdff', '#4fd0ff', '#ebfcff', '#c6eef7', '#053040', '#3aa8cc')),
     davinci_t1: theme(library, { borderColor: '#c9a24a', boxShadow: 'inset 0 0 0 3px #3b2412, 0 0 0 2px #c9a24a' }),
     davinci_t2: theme(vaultRoom, { borderColor: '#c8d2e1', boxShadow: 'inset 0 0 0 3px #2b323c, 0 0 14px rgba(200,210,225,.3)' }),
-    davinci_l1: piece(sealed, 'l1', sealFx),
+    davinci_l1: piece(sealed, 'l1', sealFx, P('#2b1f5e', '#0f0a2c', '#ffeaa8', '#f0c14e', '#fff8df', '#f1dca2', '#3a2a00', '#c9a24a')),
   });
 }());

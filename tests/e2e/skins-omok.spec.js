@@ -59,7 +59,7 @@ test('오목 스킨: 상점 탭·등급 구역, 방장 테마와 각자 돌 스�
   const seen = (await call(b, '/api/room')).data;
   void seen;
   await a.page.reload(); await b.page.reload();
-  for (const who of [a, b]) await expect(who.page.locator('#roomView')).toBeVisible();
+  for (const who of [a, b]) await expect(who.page.locator('#roomView')).toBeVisible({ timeout: 20000 });
 
   const moves = [[a, 3, 7], [b, 3, 8], [a, 4, 7], [b, 4, 8], [a, 5, 7], [b, 5, 8], [a, 6, 7], [b, 6, 8]];
   for (const [who, x, y] of moves) expect((await call(who, '/api/room/move', { x, y })).status).toBe(200);

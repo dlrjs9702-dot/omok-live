@@ -115,3 +115,23 @@ test('다빈치 코드 스킨: 방장 테마가 모든 화면에 같고, 각 랙
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
+
+test('다빈치 코드 스킨: 모든 타일 색에서 어두운 타일과 밝은 타일이 확실히 갈리고 숫자가 또렷하다', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '대비');
+  for (const id of ids('davinci')) {
+    const pal = await a.page.evaluate((skinId) => window.SkinLooks.def(skinId).pal, id);
+    const [dark1, dark2, darkText] = pal.black; const [light1, light2, lightText] = pal.white;
+    // 어두운 타일의 가장 밝은 쪽과 밝은 타일의 가장 어두운 쪽을 비교해도 7:1 이상
+    const lums = await a.page.evaluate(([d1, d2, l1, l2]) => {
+      const parse = (css) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = css; c.fillRect(0, 0, 1, 1); const d = c.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
+      const lin = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
+      const lum = (css) => { const [r, g, b] = parse(css); return .2126 * lin(r) + .7152 * lin(g) + .0722 * lin(b); };
+      return { dark: Math.max(lum(d1), lum(d2)), light: Math.min(lum(l1), lum(l2)) };
+    }, [dark1, dark2, light1, light2]);
+    expect((lums.light + .05) / (lums.dark + .05), `${id} 어두운/밝은 타일`).toBeGreaterThanOrEqual(7);
+    for (const [text, body, name] of [[darkText, dark1, '어두운 위쪽'], [darkText, dark2, '어두운 아래쪽'], [lightText, light1, '밝은 위쪽'], [lightText, light2, '밝은 아래쪽']]) {
+      expect(await contrastOf(a.page, text, body), `${id} ${name} 숫자`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+  await a.context.close();
+});
