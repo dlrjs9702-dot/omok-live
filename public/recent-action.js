@@ -77,6 +77,12 @@
         if (tried && !asked) return `${actorName(tried.seat)}의 정답 시도 · ${tried.correct ? '정답' : '오답'}`;
         return '';
       }
+      case 'pandemic': {
+        const verbs = { move: '말을 옮겼습니다', build: '연구소를 지었습니다', treat: '질병을 치료했습니다', cure: '치료제를 개발했습니다', event: '이벤트 카드를 썼습니다', store: '이벤트 카드를 보관했습니다', discard: '카드를 버렸습니다' };
+        const e = g.log?.findLast(e => verbs[e.kind] || e.kind === 'share');
+        if (!e) return '';
+        return e.kind === 'share' ? `${actorName(e.from)}이 ${actorName(e.to)}에게 카드를 줬습니다` : `${actorName(e.seat)}이 ${verbs[e.kind]}`;
+      }
       case 'pictionary': {
         // Wrong guesses (guessLog) and correct ones (roundAwards) are separate lists with no order between them:
         // name the last one only when just one kind exists.

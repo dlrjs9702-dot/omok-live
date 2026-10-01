@@ -160,7 +160,8 @@
   function renderHud() {
     const g = state.game; const box = $('pandemicHud'); box.replaceChildren();
     const chip = (cls, text, title) => { const c = h('span', `pdChip ${cls || ''}`, text); if (title) c.title = title; return c; };
-    box.append(chip('turn', g.status === 'playing' ? (g.turn === mySeat() ? `내 차례 · 행동 ${g.actionsLeft}번` : `${label(g.turn)}님 차례 · 행동 ${g.actionsLeft}번`) : g.status === 'finished' ? (g.winner?.length ? '모두 승리' : '함께 패배') : '시작 대기'));
+    const phase = g.pending?.next === 'intensify' ? '전염 강화 대기' : ({ actions: `행동 ${g.actionsLeft}번`, draw: '카드 획득', infect: '도시 감염' }[g.phase] || '진행 대기');
+    box.append(chip('turn', g.status === 'playing' ? `${g.turn === mySeat() ? '내 차례' : `${label(g.turn)}님 차례`} · ${phase}` : g.status === 'finished' ? (g.winner?.length ? '모두 승리' : '함께 패배') : '시작 대기'));
     const out = h('span', 'pdTrack'); out.append(h('b', '', '확산'));
     for (let i = 1; i <= 8; i += 1) out.append(h('i', `pdPip${i <= g.outbreaks ? ' on' : ''}${i === 8 ? ' last' : ''}`));
     out.title = `확산 ${g.outbreaks}/8 (8번째가 일어나면 패배)`; box.append(out);
@@ -170,6 +171,7 @@
     const cures = h('span', 'pdTrack'); cures.append(h('b', '', '치료제'));
     for (const color of ['blue', 'yellow', 'black', 'red']) { const s = g.cures?.[color]; const c = h('i', `pdCure ${s || ''}`, s === 'eradicated' ? '근절' : s ? '개발' : '—'); c.style.setProperty('--c', COLOR[color]); c.title = `${COLOR_KO[color]}: ${s === 'eradicated' ? '근절됨' : s ? '치료제 개발' : '아직'} · 남은 큐브 ${g.supply?.[color]}`; cures.append(c); }
     box.append(cures);
+    box.append(chip('', `큐브 공급 ${['blue', 'yellow', 'black', 'red'].map(c => `${COLOR_KO[c]} ${g.supply[c]}`).join(' · ')}`));
     box.append(chip('', `플레이어 더미 ${g.playerDeckCount}장 · 전염 ${g.epidemicsTotal - g.epidemicsDrawn}장 남음`, '카드 순서는 아무도 모릅니다'), chip('', `감염 더미 ${g.infectionDeckCount}장`));
     const piles = h('button', 'pdChip link', `감염 버림 ${g.infectionDiscard?.length || 0}`); piles.type = 'button'; piles.onclick = () => showPile('감염 카드 버림 더미', (state.game.infectionDiscard || []).map(cityName));
     const pp = h('button', 'pdChip link', `플레이어 버림 ${g.playerDiscard?.length || 0}`); pp.type = 'button'; pp.onclick = () => showPile('플레이어 카드 버림 더미', (state.game.playerDiscard || []).map(cardName));
@@ -233,6 +235,7 @@
     if (!mode) { focusCity(id); return; }
     const options = t.get(id);
     if (!options) return;
+    if (mode.kind === 'grant' && state.game.stations.length >= 6) { setMode({ kind: 'grant-remove', city: id, fromStored: mode.fromStored }); return; }
     if (options.length === 1) { send(options[0].act); return; }
     popup(`${cityName(id)}로 어떻게 갈까요?`, options.map((o) => [o.text, () => send(o.act)]));
     void ev;
@@ -251,8 +254,9 @@
     if (p?.type === 'discard') {
       if (p.seat === me) note(`손패가 7장을 넘었습니다. 카드 패널에서 버릴 카드를 고르세요(또는 이벤트를 쓰세요).`); else note(`${label(p.seat)}님이 카드를 버리는 중입니다.`);
     } else if (p?.type === 'window') {
-      if (g.turn === me) btn(`계속 (${p.next === 'draw' ? '다음 전염 카드' : '도시 감염 단계'})`, () => send({ type: 'continue' }), 'primary', '이벤트 카드를 쓸 수 있는 시점입니다');
-      else note(`${label(g.turn)}님이 진행 대기 중 · 이벤트 카드는 지금 쓸 수 있습니다.`);
+      const next = { draw: '다음 카드', infect: '도시 감염 단계', 'infect-card': '다음 감염 카드', intensify: '전염 강화' }[p.next];
+      if (g.turn === me) btn(`계속 (${next})`, () => send({ type: 'continue' }), 'primary', p.next === 'intensify' ? '회복력 있는 인구를 쓸 수 있습니다' : '이벤트 카드를 쓸 수 있습니다');
+      else note(`${label(g.turn)}님이 ${next} 진행 대기 중`);
     } else if (p?.type === 'forecast') {
       note(p.seat === me ? '예측: 위 6장의 순서를 정하세요.' : `${label(p.seat)}님이 예측을 하는 중입니다.`);
     } else if (p?.type === 'consent' || p?.type === 'share') {
@@ -333,7 +337,7 @@
       if (mine && mustDiscard) onClick = () => send({ type: 'discard', card });
       else if (mine && selection?.kind === 'cure') { const ok = !isEvent(card) && CITY[card].color === selection.color; picked = selection.picked.includes(card); dim = !ok; if (ok) onClick = () => { selection.picked = picked ? selection.picked.filter((x) => x !== card) : [...selection.picked, card].slice(0, selection.need); renderDock(); }; }
       else if (mine && selection?.kind === 'ops') { const ok = !isEvent(card) && legal()?.opsmove?.includes(card); dim = !ok; if (ok) onClick = () => { selection = null; setMode({ kind: 'ops', card }); renderDock(); }; }
-      else if (mine && isEvent(card)) onClick = () => useEvent({ event: evId(card), stored: false });
+      else if (mine && isEvent(card) && legal()?.events.some(e => !e.stored && e.event === evId(card))) onClick = () => useEvent({ event: evId(card), stored: false });
       row.append(cardEl(card, { onClick, picked, dim }));
     }
     if (!g.hands[dockSeat].length) row.append(h('span', 'pdSmall', '손패가 없습니다.'));
@@ -372,7 +376,7 @@
     share: (e) => `${label(e.from)}님 → ${label(e.to)}님: ${cityName(e.card)} 카드`, refuse: (e) => `${label(e.seat)}님이 거절했습니다`, draw: (e) => `${label(e.seat)}님이 ${cardName(e.card)} 카드를 뽑음`, discard: (e) => `${label(e.seat)}님이 ${cardName(e.card)} 버림`,
     epidemic: (e) => `☣ 전염! 감염률 ${e.rate}`, infect: (e) => `${cityName(e.city)} 감염${e.blocked ? ' (막힘)' : ''}`, cube: () => null, outbreak: (e) => `💥 ${cityName(e.city)} 확산! (${e.count}/8)`,
     event: (e) => `⚡ ${label(e.seat)}님이 ${EVENT[e.event]?.[0] || e.event} 사용`, store: (e) => `${label(e.seat)}님이 ${EVENT[e.event]?.[0]} 보관`, quiet: () => '조용한 하룻밤: 감염 단계를 건너뜀',
-    win: () => '🎉 네 가지 치료제를 모두 개발했습니다! 모두 승리!', lose: (e) => `💀 패배: ${{ outbreaks: '확산 8번', cubes: '질병 큐브 부족', deck: '플레이어 카드 부족' }[e.reason] || e.reason}`,
+    win: () => '🎉 네 가지 치료제를 모두 개발했습니다! 모두 승리!', lose: (e) => `💀 패배: ${{ outbreaks: '확산 8번', cubes: '질병 큐브 부족', deck: '플레이어 카드 부족', resign: '플레이 포기' }[e.reason] || e.reason}`,
   };
   function renderLog() {
     const box = $('pandemicLog'); box.replaceChildren();
@@ -418,8 +422,11 @@
   }
   function render(next) {
     if (!next || next.gameType !== 'pandemic') return;
-    const room = next.me?.roomCode || next.title || next.id;
+    const room = `${next.me?.roomCode || next.title || next.id}:${next.game.round}`;
     if (lastRoom !== room) { lastRoom = room; seenSeq = null; mode = null; selection = null; dockOpen = false; delete $('pandemicMenu').dataset.forecast; }
+    if (state && state.game.revision !== next.game.revision) { mode = null; selection = null; closeMenu(); }
+    const newDiscard = next.game.pending?.type === 'discard' && next.game.pending.seat === next.me?.seat && (state?.game.pending?.type !== 'discard' || state.game.pending.seat !== next.me.seat);
+    if (newDiscard) { dockOpen = true; dockSeat = next.me.seat; }
     state = next;
     if (!cityEls || !$('pdCities')?.children.length) buildMap();
     renderSetup();
@@ -429,7 +436,7 @@
     if (!$('pandemicActions')) { const a = h('div', 'pandemicActions'); a.id = 'pandemicActions'; $('pandemicMapWrap').after(a); }
     if (started) { if (!mySeat() || g.pending?.type !== 'discard') {} renderActions(); renderDock(); renderLog(); playEvents(); }
     else { $('pandemicActions').replaceChildren(); $('pandemicCardDock').replaceChildren(); $('pandemicLog').replaceChildren(); }
-    if (g.pending?.type === 'discard' && g.pending.seat === mySeat() && !dockOpen) { dockOpen = true; renderDock(); }
+    if (g.pending?.type === 'discard' && g.pending.seat === mySeat() && !dockOpen) { dockOpen = true; dockSeat = mySeat(); renderDock(); }
     if (!renderForecast() && $('pandemicMenu').dataset.forecast) { delete $('pandemicMenu').dataset.forecast; closeMenu(); }
     drawHighlights();
     window.PandemicUI.state = state;

@@ -2358,7 +2358,8 @@ async function handleRoomAction(req, res, action, session) {
   if (action === 'resign') {
     const seat = findSeat(room, session.token);
     if (!seat || (room.game.status !== 'playing' && !(room.gameType === 'baseball' && room.game.status === 'setup'))) return sendError(res, 409, 'NOT_PLAYING', '기권할 수 없는 상태입니다.');
-    room.game.status = 'finished';
+    if (isPandemic(room)) getGame('pandemic').forfeit(room.game);
+    else room.game.status = 'finished';
     room.game.resignedSeat = seat; // server-only: lets the mission rules tell a resignation from a clean finish
     // Bingo/pictionary/liar/oldmaid are free-for-all games with no black/white side for a
     // resign to flip. Ending immediately and crediting every other seated player as the winner
@@ -2369,7 +2370,7 @@ async function handleRoomAction(req, res, action, session) {
     // already only ever expect an array (their natural win conditions never produce a scalar), so
     // resign matches that rather than handing them a shape they don't render.
     if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) {
-      room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
+      room.game.winner = isPandemic(room) ? [] : assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
       if (isGostop(room)) getGame('gostop').forfeitResult(room.game, [seat], 'resign');
     } else {
@@ -2462,7 +2463,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.8.0' });
+    return sendJson(res, 200, { ok: true, version: '1.8.2' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3435,7 +3436,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.0 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.2 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

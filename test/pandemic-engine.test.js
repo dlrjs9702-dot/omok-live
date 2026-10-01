@@ -22,6 +22,144 @@ function fresh(seats = SEATS3, difficulty = 'standard') {
 const roles = (g, map) => { for (const [seat, role] of Object.entries(map)) g.roles[seat] = role; };
 const total = (g) => D.CITY_IDS.reduce((t, id) => t + D.COLORS.reduce((u, c) => u + g.cubes[id][c], 0), 0);
 
+test('카드 획득 중 공중 수송 동의는 남은 카드 수를 보존한다', () => {
+  const g = fresh();
+  g.hands['1'] = ['atlanta', 'chicago', 'paris', 'london', 'madrid', 'essen', 'ev:airlift'];
+  g.playerDeck = ['osaka', 'taipei', 'cairo', 'delhi'];
+  P.act(g, '1', { type: 'pass' });
+  assert.equal(g.resume.remaining, 1);
+  P.act(g, '1', { type: 'event', event: 'airlift', pawn: '2', to: 'tokyo' });
+  P.act(g, '2', { type: 'respond', accept: true });
+  assert.deepEqual(g.playerDeck, ['cairo', 'delhi'], '두 장만 획득');
+  assert.equal(g.hands['1'].length, 8);
+  P.act(g, '1', { type: 'discard', card: 'osaka' });
+  assert.equal(g.turn, '2');
+  assert.equal(g.hands['1'].length, 7);
+});
+
+test('전염 감염 뒤 강화 전에는 회복력 있는 인구만 사용하고 원래 획득을 이어간다', () => {
+  const g = fresh(); g.hands['2'] = ['ev:resilient', 'ev:quietnight'];
+  g.playerDeck = ['epidemic', 'paris', 'london'];
+  g.infectionDeck = ['tokyo', 'essen']; g.infectionDiscard = ['madrid'];
+  P.act(g, '1', { type: 'pass' });
+  assert.equal(g.pending?.next, 'intensify');
+  assert.equal(g.cubes.essen.blue, 3);
+  assert.ok(g.infectionDiscard.includes('essen'));
+  assert.equal(P.act(g, '2', { type: 'event', event: 'quietnight' }).legal, false);
+  assert.deepEqual(P.legal(g, '2').events.map(e => e.event), ['resilient']);
+  assert.equal(P.act(g, '2', { type: 'event', event: 'resilient', city: 'essen' }).legal, true);
+  assert.equal(g.pending?.next, 'intensify');
+  P.act(g, '1', { type: 'continue' });
+  assert.ok(g.removedInfection.includes('essen'));
+  assert.ok(!g.infectionDeck.includes('essen') && !g.infectionDiscard.includes('essen'));
+  P.act(g, '1', { type: 'continue' }); // event window after the completed epidemic
+  assert.deepEqual(g.hands['1'], ['paris']);
+});
+
+test('두 장을 뽑을 수 없으면 첫 카드나 전염을 처리하지 않고 즉시 패배한다', () => {
+  for (const card of ['epidemic', 'paris']) {
+    const g = fresh(); g.playerDeck = [card];
+    P.act(g, '1', { type: 'pass' });
+    assert.equal(g.endReason, 'deck');
+    assert.deepEqual(g.playerDeck, [card]);
+    assert.equal(g.epidemicsDrawn, 0);
+    assert.equal(total(g), 0);
+    assert.deepEqual(g.hands['1'], []);
+  }
+});
+
+test('감염 카드 사이 이벤트는 다음 감염만 막고 카드 획득을 재시작하지 않는다', () => {
+  const g = fresh(); g.hands['2'] = ['ev:airlift']; g.roles['2'] = 'quarantine';
+  g.pawns['2'] = 'sydney'; g.playerDeck = ['osaka', 'taipei', 'cairo'];
+  g.infectionDeck = ['paris', 'essen', 'tokyo'];
+  P.act(g, '1', { type: 'pass' });
+  P.act(g, '1', { type: 'continue' });
+  assert.equal(g.phase, 'infect');
+  assert.equal(g.pending?.next, 'infect-card');
+  assert.equal(g.cubes.paris.blue, 1);
+  P.act(g, '2', { type: 'event', event: 'airlift', pawn: '2', to: 'paris' });
+  P.act(g, '1', { type: 'continue' });
+  assert.equal(g.cubes.essen.blue, 0);
+  assert.equal(g.turn, '2');
+  assert.deepEqual(g.playerDeck, ['cairo']);
+});
+
+test('동의/예측 선택 중에는 legal도 이벤트 사용을 허용하지 않는다', () => {
+  const g = fresh(); g.hands['1'] = ['ev:forecast']; g.hands['2'] = ['ev:quietnight'];
+  P.act(g, '1', { type: 'event', event: 'forecast' });
+  assert.deepEqual(P.legal(g, '2').events, []);
+  assert.equal(P.act(g, '2', { type: 'event', event: 'quietnight' }).legal, false);
+});
+
+test('공중 수송의 거절/취소, 보관 예측은 기존 버리기 상태와 카드 소유권을 보존한다', () => {
+  for (const accept of [false, 'cancel']) {
+    const g = fresh(); g.hands['1'] = ['atlanta', 'paris', 'london', 'madrid', 'essen', 'milan', 'ev:airlift'];
+    g.playerDeck = ['osaka', 'taipei', 'cairo'];
+    P.act(g, '1', { type: 'pass' });
+    const resume = structuredClone(g.resume);
+    P.act(g, '1', { type: 'event', event: 'airlift', pawn: '2', to: 'tokyo' });
+    P.act(g, accept === 'cancel' ? '1' : '2', accept === 'cancel' ? { type: 'cancel' } : { type: 'respond', accept });
+    assert.equal(g.pending.type, 'discard'); assert.deepEqual(g.resume, resume);
+    assert.equal(g.pawns['2'], 'atlanta'); assert.ok(g.hands['1'].includes('ev:airlift'));
+  }
+  const g = fresh(); g.roles['2'] = 'contingency'; g.stored['2'] = 'forecast';
+  g.hands['1'] = D.CITY_IDS.slice(0, 7); g.playerDeck = ['osaka', 'taipei', 'cairo'];
+  P.act(g, '1', { type: 'pass' });
+  P.act(g, '2', { type: 'event', event: 'forecast', fromStored: true });
+  const order = P.privateFor(g, '2').forecast;
+  assert.equal(P.act(g, '2', { type: 'forecast-order', order: order.slice(1) }).legal, false);
+  P.act(g, '2', { type: 'forecast-order', order });
+  assert.equal(g.pending.type, 'discard'); assert.equal(g.pending.seat, '1');
+  assert.equal(g.stored['2'], null); assert.deepEqual(g.removedEvents, ['forecast']);
+  assert.ok(!g.playerDiscard.includes('ev:forecast'));
+});
+
+test('운항관리자 직항/전세기 카드와 행동은 관리자에게서 소비되고 위생병 자동 치료가 적용된다', () => {
+  const g = fresh(); roles(g, { 1: 'dispatcher', 2: 'medic' });
+  g.hands['1'] = ['tokyo', 'atlanta']; g.hands['2'] = ['paris'];
+  g.cures.red = 'cured'; g.cubes.tokyo.red = 3; g.supply.red = 21;
+  P.act(g, '1', { type: 'dispatch', pawn: '2', mode: 'direct', to: 'tokyo' });
+  P.act(g, '2', { type: 'respond', accept: true });
+  assert.deepEqual(g.hands['1'], ['atlanta']); assert.deepEqual(g.hands['2'], ['paris']);
+  assert.equal(g.actionsLeft, 3); assert.equal(g.cubes.tokyo.red, 0); assert.equal(g.cures.red, 'eradicated');
+  g.hands['1'] = ['tokyo'];
+  P.act(g, '1', { type: 'dispatch', pawn: '2', mode: 'charter', to: 'paris' });
+  P.act(g, '2', { type: 'respond', accept: true });
+  assert.deepEqual(g.playerDiscard, ['tokyo', 'tokyo']); assert.equal(g.actionsLeft, 2);
+  assert.equal(P.act(g, '1', { type: 'dispatch', pawn: '2', mode: 'opsmove', to: 'sydney' }).legal, false);
+});
+
+test('치료제 발견 즉시 머무는 위생병 자동 치료, 마지막 행동의 네 번째 치료제는 획득 없이 승리한다', () => {
+  const g = fresh(); roles(g, { 1: 'scientist', 2: 'medic' }); g.pawns['2'] = 'tokyo';
+  g.cubes.tokyo.red = 3; g.supply.red = 21;
+  g.cures = { blue: 'cured', yellow: 'cured', black: 'cured', red: null };
+  g.hands['1'] = ['tokyo', 'seoul', 'beijing', 'osaka']; g.actionsLeft = 1; g.playerDeck = [];
+  P.act(g, '1', { type: 'cure', color: 'red', cards: [...g.hands['1']] });
+  assert.equal(g.cubes.tokyo.red, 0); assert.equal(g.cures.red, 'eradicated'); assert.equal(g.endReason, 'cures');
+  assert.equal(g.resume, null); assert.equal(g.pending, null); assert.equal(g.turnNumber, 1);
+  const ended = structuredClone(g);
+  assert.equal(P.act(g, '2', { type: 'event', event: 'quietnight' }).legal, false);
+  assert.deepEqual(g, ended);
+});
+
+test('연속 전염 두 번째도 강화 전 선택을 복구하고 패배는 추가 카드·강화를 멈춘다', () => {
+  const g = fresh(); g.hands['2'] = ['ev:resilient']; g.playerDeck = ['epidemic', 'epidemic', 'paris'];
+  g.infectionDeck = ['tokyo', 'paris', 'london', 'essen'];
+  P.act(g, '1', { type: 'pass' }); assert.equal(g.pending.next, 'intensify');
+  P.act(g, '1', { type: 'continue' }); assert.equal(g.pending.next, 'draw');
+  P.act(g, '1', { type: 'continue' }); assert.equal(g.pending.next, 'intensify');
+  assert.equal(g.epidemicsDrawn, 2);
+  P.act(g, '2', { type: 'event', event: 'resilient', city: 'london' });
+  P.act(g, '1', { type: 'continue' });
+  assert.equal(g.turn, '2'); assert.deepEqual(g.playerDeck, ['paris']);
+  assert.ok(!g.infectionDeck.includes('london') && !g.infectionDiscard.includes('london'));
+  const lost = fresh(); lost.playerDeck = ['epidemic', 'paris']; lost.infectionDeck = ['tokyo']; lost.outbreaks = 7;
+  lost.cubes.tokyo.red = 3; lost.supply.red = 21;
+  P.act(lost, '1', { type: 'pass' });
+  assert.equal(lost.endReason, 'outbreaks'); assert.deepEqual(lost.playerDeck, ['paris']);
+  assert.equal(lost.resume, null); assert.equal(lost.pending, null); assert.equal(lost.turnNumber, 1);
+});
+
 test('데이터: 도시 48개(색 4×12), 연결선은 양방향이고 지도는 하나로 이어져 있다', () => {
   assert.equal(D.CITY_IDS.length, 48);
   for (const color of D.COLORS) assert.equal(D.CITY_IDS.filter((id) => D.CITIES[id].color === color).length, 12);
@@ -54,7 +192,7 @@ test('준비: 애틀랜타 연구소·말, 초기 감염 9도시 18큐브(3·3·
     assert.equal(g.playerDeck.filter((c) => c === 'epidemic').length, n);
     // 묶음마다 전염 카드가 정확히 하나: 묶음 경계(맨 위부터)를 찾아 확인한다.
     const rest = g.playerDeck.length - n; const base = Math.floor(rest / n); const extra = rest % n; let at = 0;
-    for (let i = 0; i < n; i += 1) { const size = base + (i >= n - extra ? 1 : 0) + 1; assert.equal(g.playerDeck.slice(at, at + size).filter((c) => c === 'epidemic').length, 1); at += size; }
+    for (let i = 0; i < n; i += 1) { const size = base + (i < extra ? 1 : 0) + 1; assert.equal(g.playerDeck.slice(at, at + size).filter((c) => c === 'epidemic').length, 1); at += size; }
   }
   assert.equal(P.start(P.create(), ['1']).legal, false, '1명은 시작할 수 없다');
 });
