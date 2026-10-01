@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.8.3 스킨 등록 기념 이벤트
+
+- 기준: v1.8.2 main `eb91e415493e67d5ff4c95101994f0b5142eee4c`. v1.8.1 초안 PR #104는 v1.8.0 기준이라 현재 main과 충돌하므로 그대로 병합하지 않고, 사용자 확정 기능만 현재 main 위로 이관한다.
+- 이벤트: 공통 기간 이벤트 구조에 `skin_launch_2026_10_01`을 추가. KST 2026-10-01 00:00 이상 2026-10-02 00:00 미만에 계정당 1회 200,000P를 지급한다.
+- 표시: 게임 이름 「팬데믹」은 유지하고 규칙 설명 끝에 「원작: 팬데믹(Pandemic, Z-Man Games).」를 추가한다. S1 오목 재질 스킨 판매·장착 상태는 변경하지 않는다.
+- 릴리스: v1.8.3으로 package/health/시작 로그/정적 자산 캐시 버스팅/고정 버전 테스트를 동기화하고 공지를 추가한다.
+- 검증·PR·Render 결과는 비공개 STATUS에 기록한다. 실제 사람 PC 다인 실기는 별도 요청 전에는 수행하지 않는다.
+
 ## v1.8.2 팬데믹 후속 안정화
 
 - 기준: v1.8.0 main `603e26abec7924236e68e626ef066ae159778e7b`(PR #103). 별도 팬데믹 브랜치에서 최소 보완. v1.8.1은 별도 이벤트 릴리스가 사용 중이므로 번호를 건너뛴다. 이벤트 코드·기간·PR #104는 변경하지 않는다.
