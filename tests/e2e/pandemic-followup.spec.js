@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post, get, shopper, expectNoScriptError } = require('./skin-support');
+const { post, get, expectNoScriptError } = require('./skin-support');
 const { launch } = require('../support/pandemic-server.cjs');
 
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
@@ -10,7 +10,17 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
   const request = await playwright.request.newContext({ baseURL: server.baseURL });
   const people = [];
   try {
-    for (let i = 0; i < 5; i++) people.push(await shopper(browser, request, `pd-followup-${i}`, 10000));
+    // This isolated fixture server has its own operator; don't reuse the shared server's token cache.
+    const admin = (await post(request, '/api/admin/login', null, { password: 'playwright-test-password' })).data.sessionToken;
+    for (let i = 0; i < 5; i++) {
+      const issued = (await post(request, '/api/admin/keys', admin, { label: `pd-followup-${i}` })).data;
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+      await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+      const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
+      people.push({ context, page, token });
+      expect((await post(request, '/api/test/points-credit', token, { amount: 10000 })).status).toBe(200);
+    }
     const [a, b, c, d, watcher] = people;
     const code = (await post(request, '/api/rooms', a.token, { gameType: 'pandemic' })).data.state.me.roomCode;
     for (const w of people.slice(1)) expect((await post(request, '/api/rooms/join', w.token, { code })).status).toBe(200);
