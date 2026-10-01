@@ -14,6 +14,12 @@ const helpers = {
 const line = (gameType, game, extra = {}) => narrate({ gameType, game: { status: 'playing', ...game }, ...extra }, helpers);
 const SYSTEM_CHAT = { chat: { messages: [{ id: 1, type: 'system', text: '일번님이 입장했습니다.' }, { id: 2, type: 'system', text: '게임이 시작되었습니다.' }] } };
 
+test('팬데믹 최근 행동은 다음 차례/자동 감염 뒤에도 실제 행동 주체를 유지한다', () => {
+  assert.equal(line('pandemic', { log: [{ kind: 'move', seat: '1' }, { kind: 'infect', city: 'paris' }, { kind: 'turn', seat: '2' }] }), '일번님이 말을 옮겼습니다');
+  assert.equal(line('pandemic', { log: [{ kind: 'share', from: '2', to: '1' }] }), '이번님이 일번님에게 카드를 줬습니다');
+  assert.equal(line('pandemic', { log: [{ kind: 'start' }] }), '');
+});
+
 test('시스템 채팅은 더 이상 「방금」이 아니다: 게임 상태에 행동이 없으면 아무것도 표시하지 않는다', () => {
   for (const type of ['bingo', 'yut', 'cityking', 'oldmaid', 'twentyquestions', 'pictionary']) {
     assert.equal(line(type, {}, SYSTEM_CHAT), '', type);

@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.0').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.2').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -3228,6 +3228,9 @@
       case 'pictionary':
         if (g.phase === 'drawing') seats = one(g.drawerSeat);
         break;
+      case 'pandemic':
+        seats = one(g.pending?.type === 'consent' ? g.pending.owner : g.pending?.type === 'share' ? g.pending.other : g.pending?.seat || g.turn);
+        break;
       case 'liar':
         // Only the hint phases have one public speaker. Votes are simultaneous, and the final guess
         // is made by the liar, whose seat the public state never names -- so neither is marked.
@@ -3924,7 +3927,8 @@
     } else if (halli) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '할리갈리 · 방장 시작 대기' : g.status === 'finished' ? '할리갈리 종료' : `${actorName(g.turn)} 카드 뒤집기 차례`);
     } else if (pandemic) {
-      statusText.textContent = g.status === 'selecting' ? '팬데믹 · 방장 시작 대기' : g.status === 'finished' ? (g.winner?.length ? '팬데믹 · 모두 함께 승리!' : '팬데믹 · 함께 패배') : `${actorName(g.turn)} 차례 · 행동 ${g.actionsLeft}번 남음`;
+      const phase = g.pending?.next === 'intensify' ? '전염 강화 대기' : ({ actions: `행동 ${g.actionsLeft}번 남음`, draw: '카드 획득', infect: '도시 감염' }[g.phase] || '진행 대기');
+      statusText.textContent = g.status === 'selecting' ? '팬데믹 · 방장 시작 대기' : g.status === 'finished' ? (g.winner?.length ? '팬데믹 · 모두 함께 승리!' : '팬데믹 · 함께 패배') : `${actorName(g.turn)} 차례 · ${phase}`;
     } else if (davinci) {
       statusText.textContent = pauseStatusText || (g.status === 'selecting' ? '다빈치 코드 · 방장 시작 대기' : g.status === 'finished' ? '다빈치 코드 종료' : `${actorName(g.turn)} · ${g.phase === 'reveal-own' ? '자기 타일 공개' : '숫자 추측'}`);
     } else if (twenty) {
