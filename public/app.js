@@ -232,7 +232,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.40').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.7.41').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -5063,6 +5063,9 @@
     }
   }
 
+  let oldmaidThemeApplied = null;
+  let oldmaidTrayApplied = null;
+  let oldmaidPrevStatus = null;
   function renderOldMaid() {
     const g = state.game;
     const rosterSeats = g.seatOrder?.length ? g.seatOrder : numberedSeats().filter(number => state.players[number]);
@@ -5158,6 +5161,16 @@
     const rotated = oldmaidRotatedSeats(rosterSeats, iAmSeated ? seat : null);
     const opponents = iAmSeated ? rotated.slice(1) : rotated;
     const COMPASS_ORDER = ['north', 'east', 'west'];
+    // v1.7.41 skins: the host's theme paints the panel; a seat shows its owner's card backs; my own tray uses my skin.
+    const SLO = window.SkinLooks;
+    SLO.h.unstyle(oldmaidPanel, oldmaidThemeApplied);
+    oldmaidThemeApplied = null;
+    const themeO = SLO.def(state.skinTheme);
+    if (themeO?.panel) { oldmaidThemeApplied = { backgroundImage: SLO.h.img(`om-panel:${state.skinTheme}`, 720, 520, themeO.panel), backgroundSize: 'cover', ...themeO.frame }; SLO.h.style(oldmaidPanel, oldmaidThemeApplied); }
+    const myTray = seat ? SLO.def(state.players?.[seat]?.skin) : null;
+    SLO.h.unstyle(oldmaidMyHand, oldmaidTrayApplied);
+    oldmaidTrayApplied = myTray?.tray || null;
+    if (oldmaidTrayApplied) SLO.h.style(oldmaidMyHand, oldmaidTrayApplied);
     oldmaidSeatsEl.replaceChildren();
     opponents.forEach((number, index) => {
       const count = g.counts?.[number] ?? 0;
@@ -5172,6 +5185,8 @@
         + (latestOldMaidDraw?.actor === number ? recentActionClasses(oldmaidRecent, 'actor') : '');
       seatEl.dataset.seat = number;
       seatEl.dataset.compass = COMPASS_ORDER[index] || 'north';
+      const seatSkin = SLO.def(state.players?.[number]?.skin);
+      if (seatSkin?.seat) SLO.h.style(seatEl, seatSkin.seat);
 
       const info = document.createElement('div');
       info.className = 'oldmaidSeatInfo';
@@ -5205,6 +5220,7 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'oldmaidCard oldmaidBack' + (canDraw ? ' selectable' : '');
+            if (seatSkin?.back) SLO.h.style(button, seatSkin.back);
             if (canDraw && !g.paused) button.classList.add('actionableTarget');
             button.disabled = !canDraw;
             button.setAttribute('aria-label', `${label(number)}님의 ${cardIndex + 1}번째 카드 뽑기`);
@@ -5486,6 +5502,7 @@
     }
   }
 
+  let halliThemeApplied = null;
   function renderHalli() {
     const g = state.game;
     const playerName = (number) => state.players[number]?.label || `${number}번`;
@@ -5509,7 +5526,14 @@
     halliStatus.textContent = g.status === 'selecting' ? '2~6명이 준비되면 시작할 수 있습니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
       : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · 카드를 뒤집은 직후 0.3초 동안 종 입력이 잠깁니다.`;
+    // v1.7.41 skins: the host's theme paints the panel; each player's card plot uses that player's skin frame.
+    const SLH = window.SkinLooks;
+    SLH.h.unstyle(halliPanel, halliThemeApplied);
+    halliThemeApplied = null;
+    const themeH = SLH.def(state.skinTheme);
+    if (themeH?.panel) { halliThemeApplied = { backgroundImage: SLH.h.img(`hg-panel:${state.skinTheme}`, 720, 520, themeH.panel), backgroundSize: 'cover', ...themeH.frame }; SLH.h.style(halliPanel, halliThemeApplied); }
     halliCards.replaceChildren();
+    let halliFxTarget = null;
     const fruitAssets = {
       '딸기': '/assets/halli/strawberry.svg',
       '바나나': '/assets/halli/banana.svg',
@@ -5527,8 +5551,12 @@
         if (g.lastBell.transfers.some(move => move.to === owner)) card.classList.add('receivedCards');
         if (!g.lastBell.correct && g.lastBell.seat === owner) card.classList.add('paidPenalty');
       }
+      const plotSkin = SLH.def(state.players?.[owner]?.skin);
+      if (plotSkin?.card) SLH.h.style(card, plotSkin.card);
+      if (currentBell?.seat === owner && plotSkin?.fx) halliFxTarget = { el: card, fx: plotSkin.fx };
       const name = document.createElement('strong');
       name.className = 'halliPlayerName';
+      if (plotSkin?.text) SLH.h.style(name, { color: plotSkin.text.color, textShadow: 'none' });
       name.textContent = state.players[owner]?.label || `${owner}번`;
       const face = document.createElement('div');
       const top = g.faceTops?.[owner];
@@ -5561,10 +5589,12 @@
       }
       const count = document.createElement('small');
       count.className = 'halliCardCounts';
+      if (plotSkin?.text) SLH.h.style(count, { color: plotSkin.text.color, textShadow: 'none' });
       count.textContent = `뒷면 ${g.pileCounts?.[owner] || 0}장 · 앞면 ${g.faceCounts?.[owner] || 0}장`;
       card.append(name, face, count);
       halliCards.append(card);
     }
+    if (halliFxTarget && halliRecent.fresh) requestAnimationFrame(() => SLH.h.playFx(halliFxTarget.el, halliFxTarget.fx, 800, 50));
     halliTransferDetails.replaceChildren();
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
