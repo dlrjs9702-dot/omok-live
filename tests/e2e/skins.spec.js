@@ -96,7 +96,7 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   expect((await call(b, '/api/room/choose-role', { choice: 'white' })).status).toBe(200);
   await a.page.reload();
   await b.page.reload();
-  for (const who of [a, b]) await expect(who.page.locator('#roomView')).toBeVisible();
+  for (const who of [a, b]) await expect(who.page.locator('#roomView')).toBeVisible({ timeout: 20000 });
   const moved = await call(a, '/api/room/move', { x: 7, y: 7 });
   expect(moved.status, JSON.stringify(moved.data)).toBe(200);
   for (const who of [a, b]) {

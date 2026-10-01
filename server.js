@@ -2431,7 +2431,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.7.39' });
+    return sendJson(res, 200, { ok: true, version: '1.7.40' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2690,6 +2690,16 @@ async function requestHandler(req, res) {
 
   // Test-only (NODE_ENV=test): spend a player's points down to a target through the ledger, so the
   // insufficient-entry path can be exercised. Never registered in production.
+  // Test-only: credit the caller's own account (same ledger path as the operator grant, without its rate limit), so the
+  // skin e2e specs can fund many throwaway accounts in parallel.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-credit' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const result = await pointStore.adminGrant({ grantId: `admin-grant:${crypto.randomUUID()}`, userId: pointAccountForSession(session), amount: Number(body.amount), category: 'event', memo: '' });
+    return sendJson(res, 200, { ok: true, applied: result.applied, balanceAfter: result.balanceAfter });
+  }
+
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-spend' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3394,7 +3404,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.39 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.7.40 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
