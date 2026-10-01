@@ -2690,6 +2690,16 @@ async function requestHandler(req, res) {
 
   // Test-only (NODE_ENV=test): spend a player's points down to a target through the ledger, so the
   // insufficient-entry path can be exercised. Never registered in production.
+  // Test-only: credit the caller's own account (same ledger path as the operator grant, without its rate limit), so the
+  // skin e2e specs can fund many throwaway accounts in parallel.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-credit' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const result = await pointStore.adminGrant({ grantId: `admin-grant:${crypto.randomUUID()}`, userId: pointAccountForSession(session), amount: Number(body.amount), category: 'event', memo: '' });
+    return sendJson(res, 200, { ok: true, applied: result.applied, balanceAfter: result.balanceAfter });
+  }
+
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/points-spend' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;

@@ -15,8 +15,10 @@ async function get(request, route, token) {
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
+let cachedAdmin = null; // one operator login per worker: many specs create throwaway accounts and must not exhaust the login rate limit
 async function adminToken(request) {
-  return (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  if (!cachedAdmin) cachedAdmin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  return cachedAdmin;
 }
 
 // A guest with an account in a real browser page (lobby), and the points to shop with.
@@ -36,7 +38,7 @@ async function shopper(browser, request, label, points = 0) {
 async function grant(request, person, amount) {
   for (let left = amount; left > 0; left -= 10_000_000) {
     const step = Math.min(left, 10_000_000);
-    const res = await post(request, `/api/admin/keys/${person.id}/points`, person.admin, { requestId: crypto.randomUUID(), category: 'event', amount: step });
+    const res = await post(request, '/api/test/points-credit', person.token, { amount: step });
     expect(res.status).toBe(200);
   }
 }
