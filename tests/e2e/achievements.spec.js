@@ -45,9 +45,9 @@ test('업적 탭: 달성 요약과 게임별 접기 목록(여러 게임 그룹�
   await page.getByRole('tab', { name: '업적' }).click();
   await expect(page.getByRole('tab', { name: '업적' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#missionPanelToday')).toBeHidden();
-  await expect(page.locator('#achievementSummary')).toHaveText('달성 0/66 · 받은 업적 보상 0P');
+  await expect(page.locator('#achievementSummary')).toHaveText('달성 0/70 · 받은 업적 보상 0P');
   const groups = page.locator('#achievementList .achGroup');
-  await expect(groups).toHaveCount(17); // 16개 게임 + 여러 게임
+  await expect(groups).toHaveCount(18); // 17개 게임 + 여러 게임
   await expect(groups.first()).toHaveJSProperty('open', false);
   await expect(page.locator('#achievementList .achGroup[open] summary')).toContainText('여러 게임');
   await groups.filter({ hasText: '오델로' }).locator('summary').click();
@@ -89,7 +89,7 @@ test('판이 끝나면 방 안에 업적 알림이 뜨고, 업적 탭에는 달�
   await expect(page.locator('#lobbyView')).toBeVisible();
   await page.locator('#missionBtn').click();
   await page.getByRole('tab', { name: '업적' }).click();
-  await expect(page.locator('#achievementSummary')).toHaveText('달성 2/66 · 받은 업적 보상 3,000P');
+  await expect(page.locator('#achievementSummary')).toHaveText('달성 2/70 · 받은 업적 보상 3,000P');
   const group = page.locator('#achievementList .achGroup').filter({ hasText: '오델로' });
   await group.locator('summary').click();
   await expect(group.locator('.missionRow.done')).toHaveCount(2);
