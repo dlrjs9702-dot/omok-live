@@ -15,14 +15,15 @@ const isPictionary = (room) => room.gameType === 'pictionary';
 const isTwenty = (room) => room.gameType === 'twentyquestions';
 const isDavinci = (room) => room.gameType === 'davinci';
 const isHalli = (room) => room.gameType === 'halligalli';
+const isPandemic = (room) => room.gameType === 'pandemic';
 const isLiar = (room) => room.gameType === 'liar';
 const isOldMaid = (room) => room.gameType === 'oldmaid';
 const isCityKing = (room) => room.gameType === 'cityking';
 const isGostop = (room) => room.gameType === 'gostop';
 const isRpg = (room) => room.gameType === 'rpg';
 const GOSTOP_SEATS = ['1', '2', '3'];
-const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room);
-const seatsFor = (room) => isGostop(room) ? GOSTOP_SEATS : isHalli(room) ? HALLI_SEATS : isDavinci(room) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
+const isNumberedSeatGame = (room) => isRpg(room) || isGostop(room) || isTeam(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room);
+const seatsFor = (room) => isGostop(room) ? GOSTOP_SEATS : isHalli(room) ? HALLI_SEATS : (isDavinci(room) || isPandemic(room)) ? OLDMAID_SEATS : isOldMaid(room) ? OLDMAID_SEATS : (isPictionary(room) || isLiar(room) || isTwenty(room)) ? PICTIONARY_SEATS : TEAM_SEATS;
 const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 2 ? 'black' : 'white') : null;
 // Seats actually holding a player, for any room type -- the generic set connection-drop handling
 // (pause detection, disconnect-forced ending) operates over.
@@ -632,7 +633,7 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
     participants: { [hostSession.token]: newParticipant(hostSession, false) },
     players: gameEngine.id === 'gostop'
       ? Object.fromEntries(GOSTOP_SEATS.map((seat) => [seat, null]))
-      : ['oldmaid', 'davinci'].includes(gameEngine.id)
+      : ['oldmaid', 'davinci', 'pandemic'].includes(gameEngine.id)
       ? Object.fromEntries(OLDMAID_SEATS.map((seat) => [seat, null]))
       : gameEngine.id === 'halligalli'
       ? Object.fromEntries(HALLI_SEATS.map((seat) => [seat, null]))
@@ -742,7 +743,7 @@ function syncGamePause(room, allowTimeouts = true) {
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
 
-  if (isDavinci(room) || isHalli(room)) {
+  if (isDavinci(room) || isHalli(room) || isPandemic(room)) {
     room.game.paused = false;
     room.game.disconnectedSeats = disconnected;
     room.turnWatch = null;
@@ -855,7 +856,7 @@ function syncGamePause(room, allowTimeouts = true) {
 // broadcasts them. It also records a Twenty Questions match if a final drawer timeout ends it.
 async function tickIdleRooms() {
   for (const room of rooms.values()) {
-    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isDavinci(room) || isHalli(room)) continue;
+    if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
     if (pauseResult?.gameFinished) {
@@ -983,6 +984,7 @@ function roomView(room, session) {
       myTwentySecret: isTwenty(room) ? getGame('twentyquestions').secretFor(room.game, seat) : null,
       myDavinciTiles: isDavinci(room) ? getGame('davinci').tilesFor(room.game, seat) : null,
       myDavinciDrawn: isDavinci(room) ? getGame('davinci').drawnFor(room.game, seat) : null,
+      myPandemic: isPandemic(room) && seat ? getGame('pandemic').privateFor(room.game, seat) : null,
       myOldMaidHand: isOldMaid(room) ? getGame('oldmaid').handFor(room.game, seat) : null,
       myOldMaidAbility: isOldMaid(room) && seat ? getGame('oldmaid').abilityFor(room.game, seat) : null,
       // Go-Stop: only this viewer's own hand ever leaves the server (never another player's).
@@ -1012,7 +1014,7 @@ function broadcast(room) {
 }
 
 function maybeStart(room) {
-  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) return;
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) return;
   if (isTeam(room)) {
     if (room.game.status !== 'selecting' || !TEAM_SEATS.every(seat => room.players[seat])) return;
     getGame('omok2v2').start(room.game);
@@ -1041,7 +1043,7 @@ function prepareNextRound(room) {
   room.game.endReason = null;
   room.game.resignedSeat = null;
   room.game.disconnectedAtEnd = [];
-  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+  if (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) {
     // v1.6.99: a seat whose player left the room (not a dropped connection that may still come
     // back) is freed, so the next round is not blocked by an empty chair. An explicit 접속 종료
     // only held the seat while that match was in progress.
@@ -1555,7 +1557,7 @@ function presenceForSession(session) {
   const room = getCurrentRoom(session);
   if (!room) return { status: 'lobby', game: null, role: null, opponent: null };
   const seat = findSeat(room, session.token);
-  const role = seat ? (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) ? `${seat}번`
+  const role = seat ? (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room) ? `${seat}번`
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
@@ -1564,7 +1566,7 @@ function presenceForSession(session) {
   const game = getGame(room.gameType)?.name || '게임';
   const otherSeat = seat === 'black' ? 'white' : 'black';
   const opponentToken = seat ? room.players[otherSeat] : null;
-  const opponent = (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) && seat
+  const opponent = (isRpg(room) || isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isCityKing(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) && seat
     ? seatsFor(room).filter(s => s !== seat).map(s => room.participants[room.players[s]]?.label).filter(Boolean).join(', ') || null
     : isTeam(room) && seat
       ? TEAM_SEATS.filter(s => teamColor(s) !== teamColor(seat))
@@ -1984,6 +1986,34 @@ async function handleRoomAction(req, res, action, session) {
     if (!verdict.legal) return sendError(res, 409, 'INVALID_HALLIGALLI_ACTION', engine.moveError(verdict.reason));
   }
 
+  // v1.8.0 팬데믹: 2~4인 협력. The engine holds every rule; this only checks who may call it. Hands and roles are public,
+  // the order of the two card decks never leaves the server (publicState gives counts), a Forecast shows its cards only to its player.
+  if (action === 'set-pandemic' || action === 'start-pandemic' || action === 'pandemic-act') {
+    if (!isPandemic(room)) return sendError(res, 400, 'WRONG_GAME', '팬데믹 방에서만 사용할 수 있습니다.');
+    const engine = getGame('pandemic');
+    const playerSeat = findSeat(room, session.token);
+    let verdict;
+    if (action === 'set-pandemic' || action === 'start-pandemic') {
+      if (!isRoomHost(room, session)) return sendError(res, 403, 'HOST_ONLY', '방장만 설정하고 시작할 수 있습니다.');
+      if (action === 'set-pandemic') verdict = engine.setSetup(room.game, { difficulty: String(body.difficulty || '') });
+      else {
+        if (room.game.status !== 'selecting') return sendError(res, 409, 'INVALID_PANDEMIC_ACTION', engine.moveError('started'));
+        verdict = engine.start(room.game, seatsFor(room).filter(seat => room.players[seat]));
+        if (verdict.legal) {
+          for (const person of Object.values(room.participants)) if (!findSeat(room, person.sessionToken)) person.choice = 'spectator';
+          appendSystemMessage(room, '팬데믹이 시작됐습니다. 모두 함께 네 가지 질병의 치료제를 개발하세요.');
+        }
+      }
+    } else {
+      if (!playerSeat) return sendError(res, 403, 'SPECTATOR', '관전자는 행동할 수 없습니다.');
+      const act = body.action && typeof body.action === 'object' ? body.action : null;
+      if (!act || typeof act.type !== 'string' || JSON.stringify(act).length > 2000) return sendError(res, 400, 'BAD_PANDEMIC_ACTION', engine.moveError('action'));
+      if (Number.isInteger(body.expectedRevision) && body.expectedRevision !== room.game.revision) return sendError(res, 409, 'STALE_PANDEMIC_STATE', '화면이 갱신됐습니다. 다시 시도해 주세요.');
+      verdict = engine.act(room.game, playerSeat, act);
+    }
+    if (!verdict.legal) return sendError(res, 409, 'INVALID_PANDEMIC_ACTION', engine.moveError(verdict.reason));
+  }
+
   if (action === 'start-davinci' || action === 'select-davinci' || action === 'guess-davinci' || action === 'stop-davinci' || action === 'reveal-davinci') {
     if (!isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드 방에서만 사용할 수 있습니다.');
     const engine = getGame('davinci');
@@ -2298,6 +2328,7 @@ async function handleRoomAction(req, res, action, session) {
     if (isOldMaid(room)) return sendError(res, 400, 'WRONG_GAME', '도둑잡기는 카드 뽑기를 이용해 주세요.');
     if (isDavinci(room)) return sendError(res, 400, 'WRONG_GAME', '다빈치 코드는 타일 추측 기능을 이용해 주세요.');
     if (isHalli(room)) return sendError(res, 400, 'WRONG_GAME', '할리갈리는 카드 뒤집기와 종 기능을 이용해 주세요.');
+    if (isPandemic(room)) return sendError(res, 400, 'WRONG_GAME', '팬데믹은 행동 메뉴를 이용해 주세요.');
     const seat = findSeat(room, session.token);
     if (!seat) return sendError(res, 403, 'SPECTATOR', '관전자는 돌을 둘 수 없습니다.');
     if (room.game.status !== 'playing') return sendError(res, 409, 'NOT_PLAYING', '현재 착수할 수 없습니다.');
@@ -2337,7 +2368,7 @@ async function handleRoomAction(req, res, action, session) {
     // end-game's disconnect path does for them): pictionary/liar/oldmaid's own result displays
     // already only ever expect an array (their natural win conditions never produce a scalar), so
     // resign matches that rather than handing them a shape they don't render.
-    if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isTwenty(room) || isDavinci(room) || isHalli(room)) {
+    if (isGostop(room) || isBingo(room) || isPictionary(room) || isLiar(room) || isOldMaid(room) || isTwenty(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) {
       room.game.winner = assignedSeatsFor(room).filter(s => s !== seat);
       room.game.endReason = 'resign';
       if (isGostop(room)) getGame('gostop').forfeitResult(room.game, [seat], 'resign');
@@ -3332,7 +3363,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-pandemic|start-pandemic|pandemic-act|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
