@@ -18,7 +18,7 @@ test('고스톱 공개 상태는 손패·산 순서를 포함하지 않고 손�
 });
 
 test('화면은 남의 손패를 개수만큼의 뒷면으로만 그리고 카드 값을 DOM 속성에 넣지 않는다', () => {
-  assert.match(ui, /for \(let i = 0; i < info2\.handCount; i \+= 1\) hand\.append\(backEl\('tiny'\)\)/);
+  assert.match(ui, /for \(let i = 0; i < info2\.handCount; i \+= 1\) hand\.append\(backEl\('tiny', seatSkin\)\)/);
   assert.doesNotMatch(ui, /dataset\.|data-card|setAttribute\('data-/);
   assert.match(ui, /const mine = state\.me\.myGostopHand;/);
 });

@@ -20,7 +20,7 @@ test('릴리스 버전 문자열은 패키지·서버·캐시·공지에서 일�
   assert.ok(server.includes(`version: '${version}'`), 'health 버전이 package.json과 다릅니다');
   assert.ok(server.includes(`게임 서버 v${version} 실행`), '시작 로그 버전이 package.json과 다릅니다');
 
-  for (const asset of ['styles.css', 'session-lock.js', 'recent-action.js', 'twentyquestions-ui.js', 'gostop-ui.js', 'skin-looks.js', 'skin-art-omok.js', 'skin-art-connect4.js', 'skin-art-othello.js', 'skin-art-yut.js', 'skin-art-dots.js', 'skin-art-bingo.js', 'skin-art-baseball.js', 'skin-art-pictionary.js', 'skin-art-twenty.js', 'skin-art-liar.js', 'skin-art-davinci.js', 'skin-art-oldmaid.js', 'skin-art-halli.js', 'app.js']) {
+  for (const asset of ['styles.css', 'session-lock.js', 'recent-action.js', 'twentyquestions-ui.js', 'gostop-ui.js', 'skin-looks.js', 'skin-art-omok.js', 'skin-art-connect4.js', 'skin-art-othello.js', 'skin-art-yut.js', 'skin-art-dots.js', 'skin-art-bingo.js', 'skin-art-baseball.js', 'skin-art-pictionary.js', 'skin-art-twenty.js', 'skin-art-liar.js', 'skin-art-davinci.js', 'skin-art-oldmaid.js', 'skin-art-halli.js', 'skin-art-gostop.js', 'app.js']) {
     assert.ok(html.includes(`${asset}?v=${version}`), `${asset} 캐시 버전이 package.json과 다릅니다`);
   }
   assert.ok(announcements.includes(`key: 'v${version}'`), '릴리스 공지 키가 package.json과 다릅니다');
