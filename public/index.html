@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.7.42" />
+  <link rel="stylesheet" href="/styles.css?v=1.8.0" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -110,6 +110,7 @@
                   <option value="oldmaid">도둑잡기</option>
                   <option value="twentyquestions">스무고개</option>
                   <option value="davinci">다빈치 코드</option>
+                  <option value="pandemic">팬데믹</option>
                   <option value="halligalli">할리갈리</option>
                   <option value="gostop">고스톱 · 맞고</option>
                   <option value="rpg">잿빛 원정</option>
@@ -155,6 +156,9 @@
             </div>
             <div class="gameOption" data-game-option="davinci">
               <button type="button" class="gameChoice" data-game="davinci"><strong>다빈치 코드</strong></button>
+            </div>
+            <div class="gameOption" data-game-option="pandemic">
+              <button type="button" class="gameChoice" data-game="pandemic"><strong>팬데믹</strong></button>
             </div>
             <div class="gameOption" data-game-option="halligalli">
               <button type="button" class="gameChoice" data-game="halligalli"><strong>할리갈리</strong></button>
@@ -406,6 +410,23 @@
             <div id="gostopActions" class="gostopActions"></div>
             <div id="gostopHand" class="gostopHand" aria-label="내 손패"></div>
             <div id="gostopResult" class="gostopResult hidden" aria-live="polite"></div>
+          </section>
+          <section id="pandemicPanel" class="pandemicPanel hidden" aria-label="팬데믹">
+            <div id="pandemicSetup" class="pandemicSetup hidden">
+              <label for="pandemicDifficulty">난이도</label>
+              <select id="pandemicDifficulty"><option value="intro">입문 · 전염 4장</option><option value="standard">표준 · 전염 5장</option><option value="heroic">영웅 · 전염 6장</option></select>
+              <button id="pandemicStartBtn" type="button" class="primary">팬데믹 시작</button>
+              <small id="pandemicSetupNote"></small>
+            </div>
+            <div id="pandemicHud" class="pandemicHud"></div>
+            <div id="pandemicMapWrap" class="pandemicMapWrap">
+              <svg id="pandemicMap" class="pandemicMap" viewBox="0 0 1200 620" role="img" aria-label="세계지도"></svg>
+              <svg id="pandemicMini" class="pandemicMini" viewBox="0 0 1200 620" aria-hidden="true"></svg>
+              <div id="pandemicMapHint" class="pandemicMapHint">휠로 확대·축소, 끌어서 이동</div>
+              <div id="pandemicMenu" class="pandemicMenu hidden"></div>
+              <div id="pandemicCardDock" class="pandemicCardDock"></div>
+            </div>
+            <div id="pandemicLog" class="pandemicLog" aria-live="polite"></div>
           </section>
           <section id="davinciPanel" class="davinciPanel hidden" aria-label="다빈치 코드">
             <p id="davinciStatus" aria-live="polite"></p>
@@ -914,26 +935,28 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.7.42"></script>
-  <script src="/recent-action.js?v=1.7.42"></script>
-  <script src="/skin-looks.js?v=1.7.42"></script>
-  <script src="/skin-art-omok.js?v=1.7.42"></script>
-  <script src="/skin-art-connect4.js?v=1.7.42"></script>
-  <script src="/skin-art-othello.js?v=1.7.42"></script>
-  <script src="/skin-art-yut.js?v=1.7.42"></script>
-  <script src="/skin-art-dots.js?v=1.7.42"></script>
-  <script src="/skin-art-bingo.js?v=1.7.42"></script>
-  <script src="/skin-art-baseball.js?v=1.7.42"></script>
-  <script src="/skin-art-pictionary.js?v=1.7.42"></script>
-  <script src="/skin-art-twenty.js?v=1.7.42"></script>
-  <script src="/skin-art-liar.js?v=1.7.42"></script>
-  <script src="/skin-art-davinci.js?v=1.7.42"></script>
-  <script src="/skin-art-oldmaid.js?v=1.7.42"></script>
-  <script src="/skin-art-halli.js?v=1.7.42"></script>
-  <script src="/skin-art-gostop.js?v=1.7.42"></script>
-  <script src="/twentyquestions-ui.js?v=1.7.42"></script>
-  <script src="/hwatu-art.js?v=1.7.42"></script>
-  <script src="/gostop-ui.js?v=1.7.42"></script>
-  <script src="/app.js?v=1.7.42"></script>
+  <script src="/session-lock.js?v=1.8.0"></script>
+  <script src="/recent-action.js?v=1.8.0"></script>
+  <script src="/skin-looks.js?v=1.8.0"></script>
+  <script src="/skin-art-omok.js?v=1.8.0"></script>
+  <script src="/skin-art-connect4.js?v=1.8.0"></script>
+  <script src="/skin-art-othello.js?v=1.8.0"></script>
+  <script src="/skin-art-yut.js?v=1.8.0"></script>
+  <script src="/skin-art-dots.js?v=1.8.0"></script>
+  <script src="/skin-art-bingo.js?v=1.8.0"></script>
+  <script src="/skin-art-baseball.js?v=1.8.0"></script>
+  <script src="/skin-art-pictionary.js?v=1.8.0"></script>
+  <script src="/skin-art-twenty.js?v=1.8.0"></script>
+  <script src="/skin-art-liar.js?v=1.8.0"></script>
+  <script src="/skin-art-davinci.js?v=1.8.0"></script>
+  <script src="/skin-art-oldmaid.js?v=1.8.0"></script>
+  <script src="/skin-art-halli.js?v=1.8.0"></script>
+  <script src="/skin-art-gostop.js?v=1.8.0"></script>
+  <script src="/twentyquestions-ui.js?v=1.8.0"></script>
+  <script src="/hwatu-art.js?v=1.8.0"></script>
+  <script src="/gostop-ui.js?v=1.8.0"></script>
+  <script src="/pandemic-map.js?v=1.8.0"></script>
+  <script src="/pandemic-ui.js?v=1.8.0"></script>
+  <script src="/app.js?v=1.8.0"></script>
 </body>
 </html>

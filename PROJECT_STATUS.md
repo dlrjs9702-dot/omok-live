@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.8.0 팬데믹 (협력 게임)
+- 2~4인 협력: 직업 7종, 플레이어 카드 59장(도시 48·전염 6·이벤트 5), 감염 카드 48장, 큐브 4색×24, 연구소 6개, 난이도 전염 4/5/6장, 행동 4 → 카드 2장 → 감염. 패배: 확산 8번·큐브 부족·카드 2장 못 뽑음. 승리: 치료제 4종. 승리면 모두 승, 패배면 모두 패(승자 없음, 참가 포인트 소각).
+- IDEAS에 값이 없어 **원작 기본판 표준값**을 쓴 부분: 48개 도시의 색·인구·연결선(`lib/games/pandemic-data.js`), 이벤트 5종 효과(공중 수송·정부 보조금·조용한 하룻밤·예측·회복력 있는 인구), 감염률 트랙 2·2·2·3·3·4·4.
+- 코드: 규칙 `lib/games/pandemic.js`(순수 엔진, 비공개 더미는 응답에서 제외), 서버 `server.js`(set/start/act, 좌석 1~4), 클라이언트 `public/pandemic-ui.js`·`public/pandemic-map.js`(`scripts/make-pandemic-map.js`가 서버 데이터에서 생성, `test/pandemic-map.test.js`가 일치 검사).
+- 화면: SVG 세계지도 한 장(휠 확대·끌어서 이동·미니맵), 행동 가능한 도시만 강조, 접이식 카드 창(다른 사람 손패·직업 공개).
+- 테스트: `test/pandemic-engine.test.js`(무작위 300판 불변식), `test/pandemic-server.test.js`, `tests/e2e/pandemic.spec.js`.
+- 확인 필요: 표시 이름 「팬데믹」 사용 가능 여부.
+
 ## v1.7.42 고스톱·맞고 스킨 11종 (스킨 확장 8차, 마지막 게임)
 
 - **고스톱·맞고**(`public/skin-art-gostop.js`, `gostop-ui.js`): 48장 앞면은 공용(`hwatu-art.js`) 그대로, 스킨마다 다시 그리지 않는다. 바뀌는 것: **카드 뒷면**(상대 손패의 작은 뒷면은 그 자리 주인의 스킨, 산(덱)은 앉은 사람 중 스킨이 있는 첫 사람의 것이라 모두에게 같다), **자리 프레임**과 **획득패 영역**(자리 주인 스킨), **내 손패 받침**(`#gostopHand`, 내 스킨), **패를 낼 때 효과**(낸 사람 스킨, 착지 `impact`), **특수 상황 효과**(뻑·쪽·폭탄·고·스톱 등, `specialFx`), **승리 효과**(정산이 끝난 첫 표시 때 승자 스킨), **방 테마**(`#gostopPanel`). 일반 도깨비 문양·조선 왕실 인장·호랑이 민화·복주머니·밤까치 / 고급 자개함·먹빛 도깨비·금박 왕실 / 방 테마 조선 사랑방·달빛 정자 / 전설 왕실 화투(금속 프레임 느낌의 금빛 뒷면, 붓획 투척 효과, 어보 도장 승리 연출).
