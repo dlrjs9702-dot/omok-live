@@ -18,6 +18,7 @@ const LAYOUT = {
   attendance: { angle: -2.7, radius: 8.5, kind: 'npc' },
   chat: { angle: 2.7, radius: 9, kind: 'gazebo' },
   admin: { angle: 2.3, radius: 13, kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 }, // shown to the admin only
+  climb: { angle: -2.3, radius: 13, kind: 'gate' }, // v1.9.4 상시 등반 도전: a mountain gate
 };
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
@@ -250,6 +251,18 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       }
       sign(facility.name, root, 3.4);
       solids.push({ x, z, r: 1.5 });
+    } else if (spot.kind === 'gate') { // v1.9.4: a stone gate in front of a little mountain with a flag on top
+      depth = 1.2;
+      const stone = mat(0xb8b0a4);
+      for (const px of [-1.4, 1.4]) mesh(new THREE.BoxGeometry(0.55, 2.6, 0.7), stone, px, 1.3, 0, root);
+      mesh(new THREE.BoxGeometry(3.6, 0.5, 0.85), mat(0x8a6a4a), 0, 2.85, 0, root);
+      const hill = mesh(new THREE.ConeGeometry(2.6, 4.2, 7), mat(0x7cb46a), 0, 2.1, -2.3, root); hill.rotation.y = 0.3;
+      mesh(new THREE.ConeGeometry(0.9, 0.9, 7), mat(0xf4f7fb), 0, 3.95, -2.3, root); // snow cap
+      mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), mat(0x4a3828), 0, 4.75, -2.3, root);
+      const flag = mesh(new THREE.PlaneGeometry(0.6, 0.38), mat(0xe83c46, { side: THREE.DoubleSide }), 0.3, 5.1, -2.3, root); flag.castShadow = false;
+      sign(facility.name, root, 3.6);
+      solids.push({ x: x - Math.sin(root.rotation.y) * 2.3, z: z - Math.cos(root.rotation.y) * 2.3, r: 2.4 });
+      for (const px of [-1.4, 1.4]) solids.push({ x: x + Math.cos(root.rotation.y) * px, z: z - Math.sin(root.rotation.y) * px, r: 0.45 });
     } else if (spot.kind === 'gazebo') { // a small round gazebo with a bench inside
       depth = 2.4;
       for (let k = 0; k < 6; k += 1) { const a = (k * TAU) / 6; mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8), mat(0xffffff), Math.cos(a) * 1.4, 1.1, Math.sin(a) * 1.4, root); }

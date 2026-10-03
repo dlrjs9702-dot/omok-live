@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.3').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.4').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1384,6 +1384,8 @@
     gateView.classList.toggle('hidden', name !== 'gate');
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
+    document.getElementById('climbView').classList.toggle('hidden', name !== 'climb');
+    if (name !== 'climb') window.ClimbClient?.stop();
     if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
     syncPlaza(name);
   }
@@ -1413,6 +1415,7 @@
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'chat', name: '채팅', open: () => openPlazaWindow('대기방 채팅', [document.querySelector('.lobbyChatCard')]) },
+    { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
@@ -1452,7 +1455,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.3').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.4').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1507,6 +1510,51 @@
     plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
+
+  // v1.9.4 상시 등반 도전: the window (today / this week / ranking, start or resume) and the climb screen.
+  const climbDialog = document.getElementById('climbDialog');
+  let climbInfo = null;
+  const meters = (n) => `${Number(n || 0).toLocaleString('ko-KR')}m`;
+  async function loadClimb() {
+    const status = document.getElementById('climbDialogStatus');
+    status.textContent = '';
+    try { climbInfo = await api('/api/climb'); } catch (error) { status.textContent = error.message; return; }
+    byId('climbTodayBest').textContent = meters(climbInfo.today.best);
+    byId('climbTodayPaid').textContent = `+${Number(climbInfo.today.paid).toLocaleString('ko-KR')}P`;
+    byId('climbWeekBest').textContent = meters(climbInfo.weekBest);
+    byId('climbWeekRank').textContent = climbInfo.ranking.me ? `${climbInfo.ranking.me.rank}위` : '';
+    const resume = Boolean(climbInfo.active);
+    byId('climbStartBtn').textContent = resume ? `이어서 도전 · ${meters(Math.floor(climbInfo.active.state.y))}` : '도전 시작';
+    byId('climbRestartBtn').classList.toggle('hidden', !resume);
+    const list = byId('climbRanking');
+    list.replaceChildren(...(climbInfo.ranking.top.length ? climbInfo.ranking.top.map((row) => {
+      const item = document.createElement('li');
+      item.className = `climbRankRow${row.me ? ' me' : ''}`;
+      const rank = document.createElement('b'); rank.textContent = `${row.rank}위`;
+      const name = document.createElement('span'); name.textContent = row.name || '-';
+      const best = document.createElement('strong'); best.textContent = meters(row.best);
+      item.append(rank, name, best);
+      return item;
+    }) : [Object.assign(document.createElement('li'), { className: 'climbRankEmpty', textContent: '아직 기록이 없습니다.' })]));
+  }
+  async function enterClimb(restart) {
+    climbDialog.close();
+    if (plazaDialog.open) plazaDialog.close();
+    showView('climb');
+    try { await window.ClimbClient.begin(restart); }
+    catch (error) { showView('lobby'); showToast(error.message, 3500); }
+  }
+  byId('climbBtn').addEventListener('click', () => { climbDialog.showModal(); loadClimb(); });
+  byId('climbCloseBtn').addEventListener('click', () => climbDialog.close());
+  byId('climbStartBtn').addEventListener('click', () => enterClimb(false));
+  byId('climbRestartBtn').addEventListener('click', () => enterClimb(true));
+  window.ClimbClient?.mount({
+    api, canvas: byId('climbCanvas'), hud: byId('climbHud'), endButton: byId('climbEndBtn'), leaveButton: byId('climbLeaveBtn'), status: byId('climbStatus'),
+    result: byId('climbResult'), resultTitle: byId('climbResultTitle'), resultDetail: byId('climbResultDetail'), againButton: byId('climbAgainBtn'), lobbyButton: byId('climbLobbyBtn'),
+    onExit: () => { showView('lobby'); loadPoints(); },
+  });
+  window.ClimbDebug = () => window.ClimbClient?.debug() || null;
+
   Object.defineProperty(window, '__plazaController', { get: () => plaza.controller, configurable: true }); // tests try looks on
 
   function identityText() {
@@ -2628,6 +2676,7 @@
     if (item.reason === 'daily_mission') return `오늘의 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'achievement') return `업적 · ${item.memo || '달성'}`;
     if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
+    if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
   }
