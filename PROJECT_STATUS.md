@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.3 첫 접속 성별 선택
+
+IDEAS 「첫 접속 아바타 성별 선택」(사용자 확정 2026-10-03)과 구현 지시(사용자 2026-10-04).
+
+- 저장(`lib/point-store.js` `setAvatarGender`): 계정당 한 번, 아바타 장착 칸(`avatar/gender`, PostgreSQL `skin_equipped`)에 남김. 이미 있으면 바꾸지 않고(`chosen: false`), 동시에 골라도 하나만 저장(PostgreSQL `ON CONFLICT DO NOTHING`, JSON 큐). 서버 `POST /api/avatar/gender`: 다른 값으로 다시 고르면 409.
+- 외형(`lib/skins.js` `avatarLookOf` → look.gender, `public/plaza/plaza-scene.js`): 여자 기본은 긴 머리·옆머리·치마·분홍 상의, 남자는 기존 기본. 헤어·의상 스킨이 있으면 스킨 우선. 광장 스냅샷의 look으로 다른 사람 화면에도 같은 모습.
+- 화면(`public/index.html`·`public/app.js`): 게임 아일랜드 첫 입장 때 「캐릭터 선택」 창(남자/여자 고르고 확정, Esc로 닫히지 않음, 열린 동안 이동 정지). 관리자는 묻지 않음. 테스트용 계정 도우미(`shopper`)는 기본으로 이미 골라 둔다.
+- 제외: 일반 사용자 화면의 성별 변경(불가), 외형 변경 시설.
+- 검증: `test/point-store.test.js`(JSON·PostgreSQL: 한 번만·다른 값 무시·동시 선택 하나), `tests/e2e/plaza.spec.js`(새 계정만 창, Esc 안 닫힘·이동 정지, 여자 선택 → 내 캐릭터·다른 사람 화면 반영, 409, 새로고침 뒤 다시 묻지 않음), 화면 캡처(선택 창·남녀 캐릭터).
+
 ## v1.10.2 게임 아일랜드 채팅·시점 회전·미니맵
 
 IDEAS 「게임 아일랜드 채팅 UI」(사용자 확정 2026-10-03: 오버레이 탭으로 최근·이전 대화, 투명도 조절, Enter 입력, 머리 위 말풍선, 게시판은 채팅 열람 진입점 아님, 기존 공용 대기방 채팅 서버·흐름 재사용, 근거리 전용 채팅 아님)와 사용자 지시(2026-10-04).

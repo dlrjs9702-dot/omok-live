@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.2';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.3';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -445,7 +445,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const now = performance.now(); const prev = o.target; const gap = prev ? (now - o.targetAt) / 1000 : 0;
       o.vel = p.moving && prev && gap > 0.02 && gap < 1 ? { x: (p.x - prev.x) / gap, z: (p.z - prev.z) / gap } : { x: 0, z: 0 };
       const speed = Math.hypot(o.vel.x, o.vel.z); if (speed > SPEED * 1.3) { o.vel.x *= (SPEED * 1.3) / speed; o.vel.z *= (SPEED * 1.3) / speed; }
-      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion);
+      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion); o.look = p.look || {};
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -504,6 +504,13 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     const hairCap = mesh(new THREE.SphereGeometry(0.55, 28, 16, 0, TAU, 0, Math.PI * 0.55), mat(hair), 0, 0.04, -0.03, head);
     hairCap.rotation.x = -0.25;
     const parts = { head, body, hairCap, setShirt: (color) => { torso.material = mat(color); tint(armL, color); tint(armR, color); } };
+    if (look.gender === 'female') { // v1.10.3: the chosen base body; avatar items still replace hair and clothes
+      if (!look.outfit) { parts.setShirt(0xff9fbf); mesh(new THREE.ConeGeometry(0.46, 0.42, 18, 1, true), mat(0xf26d9a, { side: THREE.DoubleSide }), 0, 0.52, 0, body); }
+      if (!look.hair) {
+        const back = mesh(new THREE.SphereGeometry(0.5, 20, 14), mat(hair), 0, -0.2, -0.26, head); back.scale.set(1.06, 1.2, 0.62);
+        for (const s of [-1, 1]) { const lock = mesh(new THREE.CapsuleGeometry(0.12, 0.42, 6, 10), mat(hair), s * 0.48, -0.32, -0.04, head); lock.rotation.z = s * 0.12; }
+      }
+    }
     for (const slot of ['outfit', 'hair', 'hat']) AVATAR_PARTS[look[slot]]?.(parts);
     for (const ex of [-0.17, 0.17]) {
       const eye = mesh(new THREE.SphereGeometry(0.065, 12, 10), mat(0x2b2220, { roughness: 0.3 }), ex, -0.02, 0.48, head); eye.scale.y = 1.35; eye.castShadow = false;
@@ -783,7 +790,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });

@@ -2666,7 +2666,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.2' });
+    return sendJson(res, 200, { ok: true, version: '1.10.3' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2860,6 +2860,20 @@ async function requestHandler(req, res) {
   }
 
   // v1.9.2 광장 칭호: the name of an owned legend skin shown under the player's name in the plaza (null takes it off).
+  // v1.10.3 첫 접속 성별 선택: once per account; a second, different choice is refused (the first one stays).
+  if (pathname === '/api/avatar/gender' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`gender:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    if (body.gender !== 'male' && body.gender !== 'female') return sendError(res, 400, 'BAD_GENDER', '남자 또는 여자를 선택해 주세요.');
+    const result = await pointStore.setAvatarGender({ userId: account, gender: body.gender });
+    equippedSkinCache.set(account, result.equipped);
+    if (!result.chosen && result.gender !== body.gender) return sendError(res, 409, 'GENDER_FIXED', '이미 선택한 성별은 바꿀 수 없습니다.');
+    return sendJson(res, 200, { ok: true, gender: result.gender, avatar: avatarLookOf(result.equipped) });
+  }
+
   if (pathname === '/api/skins/title' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3795,7 +3809,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.2 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.3 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
