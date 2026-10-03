@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.3').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.4').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -281,6 +281,7 @@
   let davinciRevealRound = null;
   let davinciPickerClosedFor = null; // selection key whose number pad I closed with Esc/취소
   let davinciLastDrawKey = null;
+  let davinciFxPlayed = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
@@ -2963,7 +2964,7 @@
     if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
     cityAnimationFrame = null;
     if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
-    davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null;
+    davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null; davinciFxPlayed = null;
     window.GostopUI?.reset?.();
     window.TwentyQuestionsUI?.reset?.();
   }
@@ -3820,6 +3821,20 @@
     const disconnected = (g?.disconnectedSeats || []);
     return disconnected.length ? `${g.round || 1}:${disconnected.slice().sort().join(',')}` : null;
   }
+
+  // v1.8.4: my seat is flagged unresponsive while I am actually here -- the first real input tells the server so,
+  // and it restarts my idle clock (lifting the pause) instead of leaving the others to wait or end the game.
+  let presentSentAt = 0;
+  function announcePresence() {
+    const g = state?.game;
+    if (!seat || !g || g.status !== 'playing' || !g.paused || !(g.disconnectedSeats || []).includes(seat)) return;
+    if (Date.now() - presentSentAt < 1500) return;
+    presentSentAt = Date.now();
+    api('/api/room/present', { method: 'POST', body: '{}' }).then((data) => {
+      if (data?.state && !isStaleRoomState(data.state)) { state = data.state; renderRoom(); }
+    }).catch(() => {});
+  }
+  for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, announcePresence, true);
 
   function updatePauseDialog() {
     const g = state?.game;
@@ -5042,7 +5057,7 @@
       }
     }
 
-    const liarKey = result ? `${state.me?.roomCode}:${g.round}` : null;
+    const liarKey = result ? `${state.me?.roomCode}:${g.round}:${result.roundNumber ?? g.roundNumber}` : null;
     const liarSkin = result ? SLL.def(state.players?.[result.liarSeat]?.skin) : null;
     if (liarKey && liarKey !== liarPlayedResult && liarPrevHadResult === false && liarSkin?.win) requestAnimationFrame(() => SLL.h.playFx(liarPanel, liarSkin.win, 1800, 10));
     if (liarKey) liarPlayedResult = liarKey;
@@ -5928,7 +5943,14 @@
         button.append(valueElement);
         const tileSkin = SLD.def(state.players?.[owner]?.skin);
         if (tileSkin?.tile) SLD.h.style(button, tileSkin.tile(tile.color, tile.revealed));
-        if (tileSkin?.fx && (revealingNow || (feedbackForTile && feedback.correct))) requestAnimationFrame(() => SLD.h.playFx(button, tileSkin.fx, 700, 30));
+        // v1.8.4: the answer effect plays once per guess (the same feedback is re-rendered several times), and is aimed
+        // at the tile that is on screen when the frame runs -- this render's button may already have been replaced.
+        const fxKey = feedbackForTile && feedback.correct ? `guess:${davinciFeedbackKey(feedback)}` : revealingNow ? `reveal:${tile.id}` : null;
+        if (tileSkin?.fx && fxKey && fxKey !== davinciFxPlayed) {
+          davinciFxPlayed = fxKey;
+          const tileId = tile.id;
+          requestAnimationFrame(() => { const live = button.isConnected ? button : davinciHands.querySelector(`[data-tile-id="${tileId}"]`); if (live) SLD.h.playFx(live, tileSkin.fx, 700, 30); });
+        }
         const guessNumber = feedbackForTile ? feedback.number : localGuessForTile ? davinciGuessPendingNumber : null;
         if (guessNumber !== null && guessNumber !== undefined) {
           const guessElement = document.createElement('span');

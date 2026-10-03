@@ -833,8 +833,16 @@ function syncGamePause(room, allowTimeouts = true) {
     if (room.turnWatch && room.turnWatch.seat === turnSeat && !room.turnWatch.pausedAt && !disconnected.includes(turnSeat)) {
       room.turnWatch.pausedAt = Date.now();
     }
+    if (room.turnWatch && room.turnWatch.seat === turnSeat && disconnected.includes(turnSeat)) room.turnWatch.away = true;
   } else {
     const turnSeat = currentTurnSeat(room);
+    // v1.8.4: a turn player who dropped after their deadline had already run out and then reconnects is back,
+    // not still idle: without a fresh clock the stale deadline would flag them again on this very sync and the
+    // room would stay paused until the others ended it (counting the returned player as the loser).
+    if (room.turnWatch?.away) {
+      if (Date.now() - room.turnWatch.since >= AFK_TIMEOUT_MS) room.turnWatch.since = Date.now();
+      room.turnWatch.away = false;
+    }
     if (room.turnWatch?.pausedAt) {
       room.turnWatch.since += Date.now() - room.turnWatch.pausedAt;
       room.turnWatch.pausedAt = null;
@@ -2388,6 +2396,21 @@ async function handleRoomAction(req, res, action, session) {
   // once, guarded by the same status check every other ending path already relies on, so a repeat
   // click, a race between two connected players, or a last-second reconnect can't double-record or
   // overturn the result).
+  // v1.8.4: a seat flagged idle (still connected, but sat on its turn past the AFK limit) tells the server it is
+  // back on its first real input. The idle clock restarts, so the pause lifts without the others having to vote.
+  if (action === 'present') {
+    const mine = findSeat(room, session.token);
+    if (!mine) return sendError(res, 403, 'SPECTATOR', '관전자입니다.');
+    const watch = room.turnWatch;
+    if (room.game.status === 'playing' && room.game.paused && watch && watch.seat === mine && !watch.pausedAt) {
+      room.turnWatch = { seat: mine, since: Date.now() };
+      syncGamePause(room, false);
+      touchRoom(room);
+      broadcast(room);
+    }
+    return sendJson(res, 200, { ok: true, state: roomView(room, session) });
+  }
+
   if (action === 'end-game') {
     if (!findSeat(room, session.token)) return sendError(res, 403, 'SPECTATOR', '관전자는 대국을 종료할 수 없습니다.');
     syncGamePause(room);
@@ -2463,7 +2486,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.8.3' });
+    return sendJson(res, 200, { ok: true, version: '1.8.4' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3364,7 +3387,7 @@ async function requestHandler(req, res) {
     return;
   }
 
-  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-pandemic|start-pandemic|pandemic-act|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|end-game|next-round|rematch)$/);
+  match = pathname.match(/^\/api\/room\/(rpg-input|rpg-act|rpg-class|rpg-start|rpg-pick|rpg-stat|rpg-item|rpg-ready|choose-role|set-gostop-stake|start-gostop|gostop-play|gostop-choose|gostop-flip|gostop-gukjin|gostop-decide|twenty-start|twenty-next|twenty-secret|twenty-question|twenty-answer|twenty-guess|twenty-judge|set-halligalli-time|start-halligalli|flip-halligalli|ring-halligalli|start-davinci|select-davinci|guess-davinci|stop-davinci|reveal-davinci|set-pandemic|start-pandemic|pandemic-act|set-oldmaid-mode|start-oldmaid|shuffle-oldmaid|draw-oldmaid|use-ability-oldmaid|set-liar-rounds|start-liar|liar-hint|liar-vote|liar-guess|set-bingo-target|set-bingo-grid|set-bingo-pool|start-bingo|select-bingo|set-pictionary-config|start-pictionary|pictionary-stroke|pictionary-clear|pictionary-undo|pictionary-guess|set-secret|guess|throw-yut|move-yut|start-city|roll-city|buy-city|skip-city|build-city|skip-build-city|sell-property-city|sell-building-city|move|resign|present|end-game|next-round|rematch)$/);
   if (match && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3436,7 +3459,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.3 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.4 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
