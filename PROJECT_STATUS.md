@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.9.8 다빈치 코드 재접속 연출 기준선·테마 테이블
+
+IDEAS 개선 백로그 B7 후속(PR #75 리뷰 P2 ①)과 PR #100 리뷰 P2(테마가 불투명 테이블에 가려짐), 사용자 지시(2026-10-04).
+
+- 재접속 연출(`public/app.js`): 방에 들어오면 `resetRoomAnimationState()`가 `davinciBaselinePending`을 켜고, 그 방의 첫 `renderDavinci()`가 이미 있는 `lastGuess`(추측 피드백·정답/전설 효과 키)와 뽑은 타일 키를 기준선으로만 심는다. 그래서 입장·새로고침 때 이전 타일 뽑기(`draw-in`)·추측 결과(`guess-result`)·효과가 다시 재생되지 않고, 이후 스냅샷의 새 행동만 연출된다. 방이 바뀌면 공개 상태 기억(`davinciRevealRound`)도 초기화.
+- 테마(`public/app.js`): 방장 테마가 있으면 패널과 함께 테이블(`#davinciHands`)에도 같은 테마 그림을 옅은 어두운 막(16~32%)과 함께 깐다(초록 펠트 대신). 테마가 없으면 기존 펠트. 타일·랙 디자인은 그대로.
+- 제외: 게임 규칙·서버 판정, 다른 게임 연출.
+- 검증: `tests/e2e/davinci-table.spec.js`(새로고침한 사람 화면에 이전 연출 클래스가 하나도 생기지 않고, 다음 추측은 연출됨 — 수정 전 코드에서는 5건 재생으로 실패 확인), `tests/e2e/skins-dom-games3.spec.js`(테이블에 테마 그림·막, 두 화면 같음).
+
 ## v1.9.7 게임 아일랜드 상단 메뉴·내 정보 정비
 
 사용자 확정(2026-10-03): 게임 아일랜드 상단에는 일반 사용자 기준 「내 정보」「접속 종료」만 두고, 관리자에게만 「관리자 창」을 추가한다. 포인트·포인트 내역·보유 스킨 장착은 「내 정보」로 통합하며, 미션·출석은 각각 미션판·출석 담당 시설에서만 접근한다. 일반 사용자의 「기존 로비」 전환 UI는 제거한다.
