@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.7.0 로비 포인트 내역. PC 전용.
+// v1.9.7 내 정보 안의 포인트 내역. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
 let ipCounter = 0;
@@ -28,11 +28,13 @@ async function enterAsGuest(browser, html) {
   return { context, page };
 }
 
-test.describe('로비 포인트 내역', () => {
+test.describe('내 정보 포인트 내역', () => {
   test('열기·신규 지급·출석 후 갱신·닫기/다시 열기, 열기만으로 /api/points 반복 조회 없음', async ({ browser, request }) => {
     const { context, page } = await enterAsGuest(browser, await issueGuestHtml(request, '내역'));
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    await page.locator('#myInfoBtn').click();
+    await expect(page.locator('#myInfoDialog')).toBeVisible();
     await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
     const panel = page.locator('#pointHistoryPanel');
     await expect(panel).toBeHidden();
@@ -57,7 +59,7 @@ test.describe('로비 포인트 내역', () => {
     expect([historyCalls, pointsCalls]).toEqual([1, 0]);
 
     // 출석 → 잔액과 내역이 함께 최신화, 최신순.
-    await page.locator('#attendanceBtn').click();
+    await page.evaluate(() => document.getElementById('attendanceBtn').click());
     await expect(page.locator('#pointBalanceText')).toHaveText('보유 150,000P');
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText('출석체크');
@@ -82,6 +84,8 @@ test.describe('로비 포인트 내역', () => {
 
   test('더 보기: 30건 단위 이어 붙이기, 감소는 −로 표시(서버 응답을 흉내 낸 화면 검증)', async ({ browser, request }) => {
     const { context, page } = await enterAsGuest(browser, await issueGuestHtml(request, '더보기'));
+    await page.locator('#myInfoBtn').click();
+    await expect(page.locator('#myInfoDialog')).toBeVisible();
     const item = (seq, delta, before) => ({ seq, at: new Date(Date.now() - seq * 60_000).toISOString(), delta, balanceBefore: before,
       balanceAfter: before + delta, reason: delta > 0 ? 'game_win' : 'game_loss', gameType: 'gostop', mode: seq % 2 ? 'matgo' : 'gostop', detail: null });
     const requests = [];
