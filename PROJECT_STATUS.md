@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.9.2 3D 광장 V2: 아바타·상점 아바타 스킨·이름표·칭호
+
+IDEAS 「3D 광장형 로비」 2차와 「아바타 스킨 상점 판매」. 품목·가격·칸은 Claude 제안(IDEAS 기록).
+
+- 카탈로그(`lib/skins.js`): `avatar` 패밀리(상점 탭 「광장 아바타」), 칸 `hair`(6)·`outfit`(5)·`hat`(5), 가격 일반 200,000 · 고급 500,000 · 전설 1,500,000P, id `avatar_<slot>_<n>`(순서 고정). `SLOTS`에 `hair`·`outfit`·`hat`·`title` 추가(저장소 `SKIN_SLOTS`도). 아바타는 프로필 배지·테마 짝 대상이 아니다. `avatarLookOf(equipped)` → `{ look, title }`.
+- 서버: 구매·장착은 기존 `/api/skins/buy`·`/api/skins/equip` 그대로(장착 응답에 `avatar`), `/api/skins/title`(보유한 게임 전설만, null은 해제)은 `avatar/title` 칸에 전설 id를 저장. `/api/skins` 응답에 `avatar`.
+- 그림: `public/skin-art-avatar.js`(상점 미리보기, 정면 캐릭터에 품목 하나), `public/plaza/plaza-scene.js` `AVATAR_PARTS`(품목별 3D 파츠), `makeTag(name, title)` 이름표(닉네임 + 《칭호》), `setAvatar({ look, name, title })`로 제자리 재생성. 망토는 걸을 때 휘날리고 후광은 떠오른다.
+- 화면: 상점 아바타 카드에 「등급 · 칸」, 탭 아래 「칭호」 구역(칭호 없음 + 보유 전설). 장착·칭호를 바꾸면 광장 캐릭터가 즉시 바뀐다(`refreshPlazaAvatar`).
+- 테스트: `test/skins.test.js`(아바타 카탈로그·가격·배지 제외·`avatarLookOf`, 구매·장착·칭호 API), `tests/e2e/plaza.spec.js`(상점 탭 16장·칸 표시·칭호 구역, 장착·칭호 변경이 광장 캐릭터에 즉시 반영).
+
 ## v1.9.1 전설 스킨 2차 2·3묶음(빙고·숫자야구·그림 맞히기·스무고개·라이어·다빈치·도둑잡기·할리갈리·고스톱)
 
 모든 공식 게임이 방 테마 2 ↔ 전설 2 짝을 갖는다. 새 전설 이름·연출은 Claude 제안(IDEAS 기록).

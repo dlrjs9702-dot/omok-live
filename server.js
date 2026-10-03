@@ -35,7 +35,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
-const { skinById, familyOf, catalogView, badgesOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
+const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -2511,7 +2511,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.9.1' });
+    return sendJson(res, 200, { ok: true, version: '1.9.2' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2662,7 +2662,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance });
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped) });
   }
 
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
@@ -2701,7 +2701,26 @@ async function requestHandler(req, res) {
     equippedSkinCache.set(account, result.equipped);
     const room = getCurrentRoom(session);
     if (room) broadcast(room); // the room sees the change at once
-    return sendJson(res, 200, { ok: true, equipped: result.equipped });
+    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
+  }
+
+  // v1.9.2 광장 칭호: the name of an owned legend skin shown under the player's name in the plaza (null takes it off).
+  if (pathname === '/api/skins/title' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skinequip:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    let skinId = null;
+    if (body.skinId !== null && body.skinId !== undefined) {
+      const skin = skinById(body.skinId);
+      if (!skin || skin.tier !== 'legend' || skin.family === 'avatar') return sendError(res, 404, 'SKIN_NOT_FOUND', '칭호로 쓸 수 있는 전설 스킨이 아닙니다.');
+      skinId = skin.id;
+    }
+    const result = await pointStore.equipSkin({ userId: account, game: 'avatar', slot: 'title', skinId });
+    if (!result.ok) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 전설 스킨만 칭호로 쓸 수 있습니다.');
+    equippedSkinCache.set(account, result.equipped);
+    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -3484,7 +3503,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.1 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.2 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
