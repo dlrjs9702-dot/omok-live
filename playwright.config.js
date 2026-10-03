@@ -29,6 +29,9 @@ module.exports = defineConfig({
   ],
   use: {
     baseURL,
+    // v1.8.8: the PC lobby opens as the 3D plaza; the older specs drive the classic lobby, so they start with it chosen
+    // (tests/e2e/plaza.spec.js switches to the plaza itself).
+    storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'gc.lobbyMode', value: 'classic' }] }] },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

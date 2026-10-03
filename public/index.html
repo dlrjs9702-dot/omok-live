@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.8.7" />
+  <link rel="stylesheet" href="/styles.css?v=1.8.8" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -36,6 +36,7 @@
           <button id="pointHistoryBtn" type="button" class="ghost tiny" aria-expanded="false" aria-controls="pointHistoryPanel">포인트 내역</button>
           <button id="missionBtn" type="button" class="ghost tiny" aria-haspopup="dialog" aria-controls="missionDialog">미션 0/3</button>
         </div>
+        <button id="lobbyModeBtn" type="button" class="ghost tiny hidden">기존 로비</button>
         <button id="logoutBtn" class="ghost">접속 종료</button>
       </header>
 
@@ -48,6 +49,9 @@
         <p id="pointHistoryStatus" class="smallMuted" role="status"></p>
         <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
       </section>
+
+      <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div></section>
 
       <div id="lobbyHighlights" class="lobbyHighlights">
       <section id="announcementsCard" class="card noticeCard" aria-label="공지사항">
@@ -875,6 +879,10 @@
     <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
     <div id="skinShopBody" class="skinShopBody"></div>
   </dialog>
+  <dialog id="plazaDialog" class="recordsDialog plazaDialog" aria-labelledby="plazaDialogTitle">
+    <div class="recordsDialogHead"><h2 id="plazaDialogTitle"></h2><button id="plazaCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div id="plazaDialogBody" class="plazaDialogBody"></div>
+  </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="missionTabs" role="tablist" aria-label="미션 종류">
@@ -941,28 +949,28 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.8.7"></script>
-  <script src="/recent-action.js?v=1.8.7"></script>
-  <script src="/skin-looks.js?v=1.8.7"></script>
-  <script src="/skin-art-omok.js?v=1.8.7"></script>
-  <script src="/skin-art-connect4.js?v=1.8.7"></script>
-  <script src="/skin-art-othello.js?v=1.8.7"></script>
-  <script src="/skin-art-yut.js?v=1.8.7"></script>
-  <script src="/skin-art-dots.js?v=1.8.7"></script>
-  <script src="/skin-art-bingo.js?v=1.8.7"></script>
-  <script src="/skin-art-baseball.js?v=1.8.7"></script>
-  <script src="/skin-art-pictionary.js?v=1.8.7"></script>
-  <script src="/skin-art-twenty.js?v=1.8.7"></script>
-  <script src="/skin-art-liar.js?v=1.8.7"></script>
-  <script src="/skin-art-davinci.js?v=1.8.7"></script>
-  <script src="/skin-art-oldmaid.js?v=1.8.7"></script>
-  <script src="/skin-art-halli.js?v=1.8.7"></script>
-  <script src="/skin-art-gostop.js?v=1.8.7"></script>
-  <script src="/twentyquestions-ui.js?v=1.8.7"></script>
-  <script src="/hwatu-art.js?v=1.8.7"></script>
-  <script src="/gostop-ui.js?v=1.8.7"></script>
-  <script src="/pandemic-map.js?v=1.8.7"></script>
-  <script src="/pandemic-ui.js?v=1.8.7"></script>
-  <script src="/app.js?v=1.8.7"></script>
+  <script src="/session-lock.js?v=1.8.8"></script>
+  <script src="/recent-action.js?v=1.8.8"></script>
+  <script src="/skin-looks.js?v=1.8.8"></script>
+  <script src="/skin-art-omok.js?v=1.8.8"></script>
+  <script src="/skin-art-connect4.js?v=1.8.8"></script>
+  <script src="/skin-art-othello.js?v=1.8.8"></script>
+  <script src="/skin-art-yut.js?v=1.8.8"></script>
+  <script src="/skin-art-dots.js?v=1.8.8"></script>
+  <script src="/skin-art-bingo.js?v=1.8.8"></script>
+  <script src="/skin-art-baseball.js?v=1.8.8"></script>
+  <script src="/skin-art-pictionary.js?v=1.8.8"></script>
+  <script src="/skin-art-twenty.js?v=1.8.8"></script>
+  <script src="/skin-art-liar.js?v=1.8.8"></script>
+  <script src="/skin-art-davinci.js?v=1.8.8"></script>
+  <script src="/skin-art-oldmaid.js?v=1.8.8"></script>
+  <script src="/skin-art-halli.js?v=1.8.8"></script>
+  <script src="/skin-art-gostop.js?v=1.8.8"></script>
+  <script src="/twentyquestions-ui.js?v=1.8.8"></script>
+  <script src="/hwatu-art.js?v=1.8.8"></script>
+  <script src="/gostop-ui.js?v=1.8.8"></script>
+  <script src="/pandemic-map.js?v=1.8.8"></script>
+  <script src="/pandemic-ui.js?v=1.8.8"></script>
+  <script src="/app.js?v=1.8.8"></script>
 </body>
 </html>
