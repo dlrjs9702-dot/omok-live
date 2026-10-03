@@ -54,7 +54,7 @@ test('등반: 끝내지 않고 나가거나 새로고침하면 기록되지 않�
   const a = await shopper(browser, request, '중단');
   const { page } = a;
   await startClimb(page);
-  await post(request, '/api/test/climb/place', a.token, { y: 900 });
+  await post(request, '/api/test/climb/place', a.token, { y: 950 }); // the nearest real step at or below 950 m (no 100 m shelves since v1.10.4)
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('#climbHud')).toHaveText(/현재 9\d\dm/, { timeout: 5000 });
   await page.locator('#climbLeaveBtn').click();
@@ -77,10 +77,10 @@ test('등반: 두 사람이 동시에 올라도 서로 막지 않고, 같은 자
   const b = await shopper(browser, request, '둘');
   await startClimb(a.page);
   await startClimb(b.page);
-  for (const who of [a, b]) await post(request, '/api/test/climb/place', who.token, { y: 120, x: 12 });
+  for (const who of [a, b]) await post(request, '/api/test/climb/place', who.token, { y: 0, x: 12 }); // the full-width ground
   for (const who of [a, b]) await who.page.keyboard.press('ArrowRight');
-  await expect.poll(() => debug(a.page).then((d) => d.others), { timeout: 5000 }).toBe(1);
-  await expect.poll(() => debug(b.page).then((d) => d.others), { timeout: 5000 }).toBe(1);
+  await expect.poll(() => debug(a.page).then((d) => d.others), { timeout: 5000 }).toBeGreaterThanOrEqual(1); // climbers of other tests may stand on the ground too
+  await expect.poll(() => debug(b.page).then((d) => d.others), { timeout: 5000 }).toBeGreaterThanOrEqual(1);
   // both walk right through the same spot: neither is pushed or stopped by the other
   for (const who of [a, b]) await who.page.keyboard.down('ArrowRight');
   await a.page.waitForTimeout(600);
