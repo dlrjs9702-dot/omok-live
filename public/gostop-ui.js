@@ -570,19 +570,20 @@
     renderEvent(state);
     renderHand(state);
     renderResult(state);
-    afterRender(state, before);
     bringTableIntoView(g);
+    afterRender(state, before);
   }
 
   // v1.8.5: when a hand starts (or this room is first shown mid-hand) the whole table is scrolled into view once,
-  // so my hand is not below the fold. Later renders never move the page.
+  // so my hand is not below the fold. Later renders never move the page. The jump is instant and happens before the
+  // card movement measures where cards are, so the animation never starts from a position the page scrolled away from.
   let viewedRound = null;
   function bringTableIntoView(g) {
     if (g.status !== 'playing' || viewedRound === g.round) return;
     viewedRound = g.round;
     const felt = $('gostopFelt');
     const r = felt.getBoundingClientRect();
-    if (r.bottom > window.innerHeight || r.top < 0) felt.scrollIntoView({ block: r.height > window.innerHeight ? 'start' : 'end', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    if (r.bottom > window.innerHeight || r.top < 0) felt.scrollIntoView({ block: r.height > window.innerHeight ? 'start' : 'end', behavior: 'auto' });
   }
 
 
