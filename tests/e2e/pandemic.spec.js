@@ -34,4 +34,5 @@ test('팬데믹: 시작 → 지도 표시 → 이동 → 다른 사람 화면 �
   expect(after.pawns[seat]).toBe(to);
   expect(after.actionsLeft).toBe(3);
   for (const w of people) await expectNoScriptError(w.page);
+  for (const w of people) await w.context.close(); // left open, three rendering pages slowed every later test in the worker
 });

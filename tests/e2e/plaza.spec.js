@@ -223,6 +223,8 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '부딪는A');
   const b = await intoPlaza(browser, request, '부딪는B');
+  // SLOW=6 reproduces a slow CI runner (CPU throttling) for this test
+  if (process.env.SLOW) for (const who of [a, b]) { const cdp = await who.context.newCDPSession(who.page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.SLOW) }); }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [aId, bId] = [await idOf(a), await idOf(b)];
   const me = (who) => who.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
