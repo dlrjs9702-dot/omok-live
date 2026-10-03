@@ -1405,6 +1405,8 @@
   const plazaDialogBody = document.getElementById('plazaDialogBody');
   const publicRoomsCardEl = document.getElementById('publicRoomsCard');
   const plaza = { controller: null, loading: null, failed: false };
+  let plazaTestClassic = false;
+  try { plazaTestClassic = Boolean(navigator.webdriver && localStorage.getItem('gc.testClassic') === '1'); } catch {}
   const plazaWide = window.matchMedia('(min-width: 881px)');
   const plazaFits = () => plazaWide.matches && !rpgTouchOnly();
   const byId = (id) => document.getElementById(id);
@@ -1440,7 +1442,7 @@
   }
   function syncPlaza(view) {
     const fits = plazaFits() && !plaza.failed;
-    const on = view === 'lobby' && fits;
+    const on = view === 'lobby' && fits && !plazaTestClassic;
     document.body.classList.toggle('plazaMode', on);
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
