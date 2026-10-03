@@ -39,13 +39,13 @@ async function guestByApi(request, label) {
   return (await entry.text()).match(/data-session="([^"]+)"/)[1];
 }
 
-test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 이벤트 탭은 진행 중 이벤트 목록', async ({ browser, request }) => {
+test('미션판 내부 동작: 오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상, 이벤트 탭', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '미션창');
   const button = page.locator('#missionBtn');
-  await expect(button).toBeVisible();
+  await expect(button).toBeHidden();
   await expect(button).toHaveText('미션 0/3');
 
-  await button.click();
+  await page.evaluate(() => document.getElementById('missionBtn').click());
   const dialog = page.locator('#missionDialog');
   await expect(dialog).toBeVisible();
   await expect(page.locator('#missionTabToday')).toHaveAttribute('aria-selected', 'true');
@@ -97,7 +97,7 @@ test('게임방: 판이 끝나면 짧은 토스트(진행도·미션 완료·첫
   await page.locator('#leaveRoomBtn').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
   await expect(page.locator('#missionBtn')).toHaveText('미션 1/3');
-  await page.locator('#missionBtn').click();
+  await page.evaluate(() => document.getElementById('missionBtn').click());
   const rows = page.locator('#missionList .missionRow');
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0)).not.toHaveClass(/done/);
@@ -111,7 +111,7 @@ test('게임방: 판이 끝나면 짧은 토스트(진행도·미션 완료·첫
 
 test('주간 탭: 초기화 안내, 미션 3개(20판·10승·5종)와 모두 완료 보너스, 오늘 탭으로 돌아올 수 있다', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '주간탭');
-  await page.locator('#missionBtn').click();
+  await page.evaluate(() => document.getElementById('missionBtn').click());
   await page.getByRole('tab', { name: '주간' }).click();
   await expect(page.getByRole('tab', { name: '주간' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#missionPanelToday')).toBeHidden();

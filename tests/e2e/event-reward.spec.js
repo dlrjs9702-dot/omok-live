@@ -79,7 +79,7 @@ test('받기: 연타해도 요청 1회, 서버 성공 뒤 폭죽·+100,000P, 잔
   expect(claims.length).toBe(1);
 
   await expect(effect).toBeHidden({ timeout: 6000 }); // 약 3초 뒤 사라진다
-  await page.locator('#pointHistoryBtn').click(); // 연출이 끝난 뒤 로비 조작 가능
+  await page.evaluate(() => document.getElementById('pointHistoryBtn').click()); // 내 정보 내부 내역 로직 확인
   const first = page.locator('.pointHistoryRow').first();
   await expect(first).toContainText('관리자 연가 기념 이벤트');
   await expect(first).toContainText('+100,000P');

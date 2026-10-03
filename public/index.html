@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.9.6" />
+  <link rel="stylesheet" href="/styles.css?v=1.9.7" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -25,30 +25,17 @@
     </section>
 
     <section id="lobbyView" class="hidden">
-      <header class="topbar card">
-        <div>
-          <span class="logo">게임센터</span>
-          <small id="identityLabel" class="smallMuted"></small>
+      <header class="topbar card islandTopbar">
+        <div class="topActions islandTopActions" aria-label="게임 아일랜드 계정 메뉴">
+          <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
+          <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
+          <button id="logoutBtn" class="ghost">접속 종료</button>
         </div>
-        <div id="pointWallet" class="pointWallet hidden" aria-label="게임센터 포인트">
-          <strong id="pointBalanceText" class="pointBalance">-</strong>
-          <button id="attendanceBtn" type="button" class="ghost tiny">오늘 출석 +50,000P</button>
-          <button id="pointHistoryBtn" type="button" class="ghost tiny" aria-expanded="false" aria-controls="pointHistoryPanel">포인트 내역</button>
-          <button id="missionBtn" type="button" class="ghost tiny" aria-haspopup="dialog" aria-controls="missionDialog">미션 0/3</button>
-        </div>
-        <button id="lobbyModeBtn" type="button" class="ghost tiny hidden">기존 로비</button>
-        <button id="logoutBtn" class="ghost">접속 종료</button>
       </header>
-
-      <section id="pointHistoryPanel" class="card pointHistoryPanel hidden" aria-label="포인트 내역">
-        <div class="pointHistoryHead">
-          <strong>포인트 내역</strong>
-          <button id="pointHistoryClose" type="button" class="ghost tiny">닫기</button>
-        </div>
-        <div id="pointHistoryList" class="pointHistoryList" role="list"></div>
-        <p id="pointHistoryStatus" class="smallMuted" role="status"></p>
-        <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
-      </section>
+      <div id="islandFacilityActions" class="hidden" aria-hidden="true">
+        <button id="attendanceBtn" type="button">오늘 출석 +50,000P</button>
+        <button id="missionBtn" type="button" aria-haspopup="dialog" aria-controls="missionDialog">미션 0/3</button>
+      </div>
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div></section>
@@ -896,6 +883,29 @@
     <section id="recordsProfile" aria-live="polite"><strong id="recordsProfileName">플레이어를 선택하세요.</strong><div id="recordsProfileBadges" class="recordsBadges hidden"></div><p id="recordsProfileSummary" class="recordsSummary"></p><label for="recordsProfileGame">게임별 전적</label><select id="recordsProfileGame"><option value="all">전체 게임</option></select><p id="recordsProfileDetail" class="recordsDetail"></p></section>
     <section id="recordsHeadToHead" class="recordsHeadToHead hidden" aria-live="polite"><h3>나와의 상대 전적</h3><p id="h2hSummary" class="recordsSummary"></p><label for="h2hGame">게임별 상대 전적</label><select id="h2hGame"><option value="all">전체 게임</option></select><p id="h2hDetail" class="recordsDetail"></p></section>
   </dialog>
+  <dialog id="myInfoDialog" class="recordsDialog myInfoDialog" aria-labelledby="myInfoTitle">
+    <div class="recordsDialogHead"><h2 id="myInfoTitle">내 정보</h2><button id="myInfoCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <small id="identityLabel" class="hidden"></small>
+    <section id="pointWallet" class="myInfoSection myInfoWallet hidden" aria-label="보유 포인트">
+      <span class="myInfoLabel">보유 포인트</span>
+      <strong id="pointBalanceText" class="pointBalance">-</strong>
+      <button id="pointHistoryBtn" type="button" class="ghost tiny" aria-expanded="false" aria-controls="pointHistoryPanel">포인트 내역</button>
+      <section id="pointHistoryPanel" class="pointHistoryPanel hidden" aria-label="포인트 내역">
+        <div class="pointHistoryHead">
+          <strong>포인트 내역</strong>
+          <button id="pointHistoryClose" type="button" class="ghost tiny">닫기</button>
+        </div>
+        <div id="pointHistoryList" class="pointHistoryList" role="list"></div>
+        <p id="pointHistoryStatus" class="smallMuted" role="status"></p>
+        <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
+      </section>
+    </section>
+    <section class="myInfoSection" aria-labelledby="myInfoSkinsTitle">
+      <div class="myInfoSectionHead"><h3 id="myInfoSkinsTitle">보유 스킨</h3></div>
+      <p id="myInfoSkinStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+      <div id="myInfoSkinBody" class="skinShopBody myInfoSkinBody"></div>
+    </section>
+  </dialog>
   <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
     <div class="recordsDialogHead"><h2 id="skinShopTitle">상점</h2><span id="skinShopBalance" class="skinShopBalance"></span><button id="skinShopCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
@@ -987,31 +997,31 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.9.6"></script>
-  <script src="/recent-action.js?v=1.9.6"></script>
-  <script src="/skin-looks.js?v=1.9.6"></script>
-  <script src="/skin-art-omok.js?v=1.9.6"></script>
-  <script src="/skin-art-connect4.js?v=1.9.6"></script>
-  <script src="/skin-art-othello.js?v=1.9.6"></script>
-  <script src="/skin-art-yut.js?v=1.9.6"></script>
-  <script src="/skin-art-dots.js?v=1.9.6"></script>
-  <script src="/skin-art-bingo.js?v=1.9.6"></script>
-  <script src="/skin-art-baseball.js?v=1.9.6"></script>
-  <script src="/skin-art-pictionary.js?v=1.9.6"></script>
-  <script src="/skin-art-twenty.js?v=1.9.6"></script>
-  <script src="/skin-art-liar.js?v=1.9.6"></script>
-  <script src="/skin-art-davinci.js?v=1.9.6"></script>
-  <script src="/skin-art-oldmaid.js?v=1.9.6"></script>
-  <script src="/skin-art-halli.js?v=1.9.6"></script>
-  <script src="/skin-art-gostop.js?v=1.9.6"></script>
-  <script src="/skin-art-avatar.js?v=1.9.6"></script>
-  <script src="/climb/climb-sim.js?v=1.9.6"></script>
-  <script src="/climb/climb-client.js?v=1.9.6"></script>
-  <script src="/twentyquestions-ui.js?v=1.9.6"></script>
-  <script src="/hwatu-art.js?v=1.9.6"></script>
-  <script src="/gostop-ui.js?v=1.9.6"></script>
-  <script src="/pandemic-map.js?v=1.9.6"></script>
-  <script src="/pandemic-ui.js?v=1.9.6"></script>
-  <script src="/app.js?v=1.9.6"></script>
+  <script src="/session-lock.js?v=1.9.7"></script>
+  <script src="/recent-action.js?v=1.9.7"></script>
+  <script src="/skin-looks.js?v=1.9.7"></script>
+  <script src="/skin-art-omok.js?v=1.9.7"></script>
+  <script src="/skin-art-connect4.js?v=1.9.7"></script>
+  <script src="/skin-art-othello.js?v=1.9.7"></script>
+  <script src="/skin-art-yut.js?v=1.9.7"></script>
+  <script src="/skin-art-dots.js?v=1.9.7"></script>
+  <script src="/skin-art-bingo.js?v=1.9.7"></script>
+  <script src="/skin-art-baseball.js?v=1.9.7"></script>
+  <script src="/skin-art-pictionary.js?v=1.9.7"></script>
+  <script src="/skin-art-twenty.js?v=1.9.7"></script>
+  <script src="/skin-art-liar.js?v=1.9.7"></script>
+  <script src="/skin-art-davinci.js?v=1.9.7"></script>
+  <script src="/skin-art-oldmaid.js?v=1.9.7"></script>
+  <script src="/skin-art-halli.js?v=1.9.7"></script>
+  <script src="/skin-art-gostop.js?v=1.9.7"></script>
+  <script src="/skin-art-avatar.js?v=1.9.7"></script>
+  <script src="/climb/climb-sim.js?v=1.9.7"></script>
+  <script src="/climb/climb-client.js?v=1.9.7"></script>
+  <script src="/twentyquestions-ui.js?v=1.9.7"></script>
+  <script src="/hwatu-art.js?v=1.9.7"></script>
+  <script src="/gostop-ui.js?v=1.9.7"></script>
+  <script src="/pandemic-map.js?v=1.9.7"></script>
+  <script src="/pandemic-ui.js?v=1.9.7"></script>
+  <script src="/app.js?v=1.9.7"></script>
 </body>
 </html>

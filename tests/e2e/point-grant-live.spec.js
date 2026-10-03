@@ -17,6 +17,7 @@ test('로비에 있는 사용자는 관리자 지급 즉시 잔액과 열린 포
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
   await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+  await page.locator('#myInfoBtn').click(); // v1.9.7: 포인트 내역은 내 정보 안
   await page.locator('#pointHistoryBtn').click();
   const rows = page.locator('.pointHistoryRow');
   await expect(rows).toHaveCount(1);

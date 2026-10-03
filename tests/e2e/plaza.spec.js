@@ -1,8 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-support');
 
-// v1.8.8 3D 광장 로비 V1: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈추며,
-// 시설 창은 기존 로비 기능 그대로(게임관에서 방 만들기). 「기존 로비」 전환은 브라우저에 기억된다. PC 전용.
+// 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
+// v1.9.7부터 일반 사용자에게 기존 로비 전환 UI는 없고, 계정 메뉴는 관리자 창(관리자만)·내 정보·접속 종료만 둔다. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 // The plaza is one shared square and each page renders 3D: these run one after another (users of another test would
 // walk into this one, and several software-rendered pages at once are slow).
@@ -13,7 +13,9 @@ const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); ret
 async function intoPlaza(browser, request, label, points = 0) {
   const who = await shopper(browser, request, label, points);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
-  await who.page.locator('#lobbyModeBtn').click(); // the specs start in the classic lobby (playwright.config.js)
+  await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
+  await who.page.reload();
+  await expect(who.page.locator('#lobbyView')).toBeVisible();
   await expect(who.page.locator('#plazaStage canvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
   return who;
@@ -81,7 +83,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await a.context.close();
 });
 
-test('광장: 게임관 창에서 방을 만들면 방으로 들어가고, 나오면 광장으로 돌아오며, 기존 로비 선택은 기억된다', async ({ browser, request }) => {
+test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일랜드 유지, 기존 로비 전환 UI 없음', async ({ browser, request }) => {
   const a = await intoPlaza(browser, request, '게임관');
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().place('games'));
@@ -97,14 +99,11 @@ test('광장: 게임관 창에서 방을 만들면 방으로 들어가고, 나�
   await expect.poll(() => state(page).then((s) => s?.running)).toBe(true);
   await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the section went back home
 
-  // 「기존 로비」 brings the classic lobby back and stays chosen after a reload.
-  await page.locator('#lobbyModeBtn').click();
-  await expect(page.locator('#plazaStage')).toBeHidden();
-  await expect(page.locator('#announcementsCard')).toBeVisible();
+  await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('#lobbyView')).toBeVisible();
-  await expect(page.locator('#plazaStage')).toBeHidden();
-  await expect(page.locator('#lobbyModeBtn')).toHaveText('광장');
+  await expect(page.locator('#plazaStage canvas')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -153,11 +152,12 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   expect(await seen(a, aId)).toBeNull(); // never myself
 
   // a walks to the shop door: b sees a's character arrive there.
-  const door = await a.page.evaluate(() => { const d = window.PlazaDebug(); d.place('shop'); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
+  // a warp, not place(): a walk-check from the spawn would stop at b when b happens to stand on the straight line (v1.9.6 collision)
+  const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.shop; await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
 
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
-  await a.page.evaluate(() => window.PlazaDebug().place('games'));
+  await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
   await a.page.keyboard.press('Space');
   await a.page.locator('#plazaDialog #createRoomBtn').click();
   await expect(a.page.locator('#roomView')).toBeVisible();
@@ -187,9 +187,9 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   expect((await post(request, '/api/test/climb/record', plain.token, { altitude: 2950, at: lastWeek })).status).toBe(200);
   expect((await post(request, '/api/test/climb/settle', null, { reopen: true })).status).toBe(200); // a retried test settles last week again
   for (const who of [...champs, plain]) {
+    await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
     await who.page.reload();
-    await who.page.locator('#lobbyModeBtn').click();
-    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true); // three 3D pages on a software renderer
   }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];
@@ -291,7 +291,8 @@ test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열�
   test.setTimeout(60000);
   const a = await shopper(browser, request, '입구');
   const { page } = a;
-  await page.locator('#lobbyModeBtn').click();
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic'));
+  await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.PlazaDebug().place('climb'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');

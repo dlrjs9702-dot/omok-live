@@ -78,6 +78,7 @@ test('관리자 포인트 지급 대화상자 → 확인 → 1회 지급, 사용
   await api(request, '/api/room/leave', target.token, {});
   await target.page.reload();
   await expect(target.page.locator('#lobbyView')).toBeVisible();
+  await target.page.locator('#myInfoBtn').click(); // v1.9.7: 포인트 내역은 내 정보 안
   await target.page.locator('#pointHistoryBtn').click();
   const rows = target.page.locator('#pointHistoryList .pointHistoryRow');
   await expect(rows.nth(0)).toContainText('오델로 승리 보상');

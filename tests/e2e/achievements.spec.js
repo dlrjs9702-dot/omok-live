@@ -41,7 +41,7 @@ async function guestByApi(request, label) {
 
 test('업적 탭: 달성 요약과 게임별 접기 목록(여러 게임 그룹은 열림), 오늘 탭으로 돌아올 수 있다', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '업적탭');
-  await page.locator('#missionBtn').click();
+  await page.evaluate(() => document.getElementById('missionBtn').click());
   await page.getByRole('tab', { name: '업적' }).click();
   await expect(page.getByRole('tab', { name: '업적' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#missionPanelToday')).toBeHidden();
@@ -87,7 +87,7 @@ test('판이 끝나면 방 안에 업적 알림이 뜨고, 업적 탭에는 달�
 
   await page.locator('#leaveRoomBtn').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
-  await page.locator('#missionBtn').click();
+  await page.evaluate(() => document.getElementById('missionBtn').click());
   await page.getByRole('tab', { name: '업적' }).click();
   await expect(page.locator('#achievementSummary')).toHaveText('달성 2/70 · 받은 업적 보상 3,000P');
   const group = page.locator('#achievementList .achGroup').filter({ hasText: '오델로' });

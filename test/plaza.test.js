@@ -28,5 +28,11 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const html = read('public/index.html');
   assert.match(html, /<section id="plazaStage" class="plazaStage hidden"/);
   assert.match(html, /<dialog id="plazaDialog" class="recordsDialog plazaDialog"/);
-  assert.match(html, /<button id="lobbyModeBtn" type="button" class="ghost tiny hidden">기존 로비<\/button>/);
+  assert.doesNotMatch(html, /id="lobbyModeBtn"/);
+  assert.match(html, /id="adminWindowBtn"[^>]*>관리자 창<\/button>/);
+  assert.match(html, /id="myInfoBtn"[^>]*>내 정보<\/button>/);
+  assert.match(html, /id="logoutBtn"[^>]*>접속 종료<\/button>/);
+  assert.match(html, /<dialog id="myInfoDialog"/);
+  assert.match(html, /id="myInfoSkinBody"/);
+  assert.match(app, /navigator\.webdriver && localStorage\.getItem\('gc\.testClassic'\) === '1'/);
 });
