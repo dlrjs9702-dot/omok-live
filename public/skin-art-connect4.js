@@ -109,6 +109,74 @@
     if (burst > 0 && burst < 1) for (const pt of pts) { ctx.strokeStyle = `rgba(255,236,170,${(1 - burst) * .9})`; ctx.lineWidth = r * .12; ctx.beginPath(); ctx.arc(pt.x, pt.y, r * (1 + 1.6 * burst), 0, TAU); ctx.stroke(); }
     ctx.restore();
   }
+  function galaxySpecial(ctx, pts, r, t) { // three in a row: a faint constellation joins them, each chip twinkles
+    const a = Math.sin(clamp01(t) * Math.PI); ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(200,180,255,${a * .7})`; ctx.lineWidth = r * .08; ctx.setLineDash([r * .16, r * .14]);
+    ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke(); ctx.setLineDash([]);
+    pts.forEach((p, i) => { const tw = Math.sin(clamp01(t * 1.4 - i * .15) * Math.PI); ctx.fillStyle = `rgba(255,246,200,${tw * .95})`; starPath(ctx, p.x, p.y - r * .95, r * .3 * tw + .1, r * .1, 4); ctx.fill(); });
+    ctx.restore();
+  }
+
+  // ---- legend 2 (v1.9.0): 픽셀 챔피언 ↔ 80년대 오락실 -- an 8-bit coin made of square pixels ----
+  const PIX = 9; // pixels across the chip
+  function pixelDisc(ctx, r, fill) { // the stepped, pixel-cut silhouette
+    const s = (r * 2) / PIX;
+    for (let j = 0; j < PIX; j += 1) for (let i = 0; i < PIX; i += 1) {
+      const x = -r + i * s; const y = -r + j * s; const cx = x + s / 2; const cy = y + s / 2;
+      if (cx * cx + cy * cy > r * r * .98) continue;
+      const col = fill(i, j, Math.hypot(cx, cy) / r); if (!col) continue;
+      ctx.fillStyle = col; ctx.fillRect(x, y, s + .5, s + .5);
+    }
+  }
+  const HEART = ['.........', '.........', '..XX.XX..', '.XXXXXXX.', '.XXXXXXX.', '..XXXXX..', '...XXX...', '....X....', '.........'];
+  const STAR = ['.........', '....X....', '....X....', '.XXXXXXX.', '..XXXXX..', '..XX.XX..', '.XX...XX.', '.........', '.........'];
+  function pixelChip(ctx, r, c) {
+    const dark = dk(c); const icon = dark ? HEART : STAR;
+    pixelDisc(ctx, r, (i, j, d) => {
+      if (d > .8) return dark ? ((i + j) % 3 ? '#5c0b3e' : '#ff3ea5') : '#ffd23f'; // a dotted neon rim / a gold rim
+      if (icon[j][i] === 'X') return dark ? '#d42a86' : '#ff9a2e';
+      return dark ? ((i + j) % 2 ? '#3a1062' : '#451470') : ((i + j) % 2 ? '#fff27a' : '#fff7a8');
+    });
+  }
+  function pixelChipFx(ctx, r, t) { // eight pixels jump out in steps, like an old sprite
+    const step = Math.floor(clamp01(t) * 6) / 6; const s = r * .22;
+    for (let k = 0; k < 8; k += 1) {
+      const a = k * TAU / 8; const d = r * (1 + 1.6 * step);
+      ctx.fillStyle = k % 2 ? `rgba(255,62,165,${1 - step})` : `rgba(80,240,255,${1 - step})`;
+      ctx.fillRect(Math.cos(a) * d - s / 2, Math.sin(a) * d - s / 2, s, s);
+    }
+  }
+  function pixelChipSpecial(ctx, pts, r, t) { // three in a row: a blinking pixel frame chases along the line
+    const s = r * .2; const blink = Math.floor(t * 10) % 2 === 0;
+    pts.forEach((p, i) => {
+      const on = clamp01(t * 2.2 - i * .3); if (on <= 0) return;
+      ctx.strokeStyle = blink ? '#50f0ff' : '#ff3ea5'; ctx.lineWidth = s * .7;
+      ctx.strokeRect(p.x - r * 1.05, p.y - r * 1.05, r * 2.1, r * 2.1);
+      ctx.fillStyle = '#ffe94a'; for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) ctx.fillRect(p.x + dx * r * 1.05 - s / 2, p.y + dy * r * 1.05 - s / 2, s, s);
+    });
+  }
+  function pixelChipWin(ctx, pts, r, t) { // a neon scan sweeps the four chips, then pixel fireworks pop over each
+    if (pts.length < 2) return;
+    ctx.save();
+    const p = clamp01(t * 1.6); const a = pts[0]; const b = pts[pts.length - 1];
+    const ex = a.x + (b.x - a.x) * p; const ey = a.y + (b.y - a.y) * p; const s = r * .26;
+    const n = Math.max(2, Math.round(Math.hypot(ex - a.x, ey - a.y) / s));
+    for (let k = 0; k <= n; k += 1) { // the line itself is laid in pixels
+      const x = a.x + (ex - a.x) * k / n; const y = a.y + (ey - a.y) * k / n;
+      ctx.fillStyle = k % 2 ? '#ff3ea5' : '#50f0ff'; ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+    const pop = clamp01((t - .45) / .55);
+    if (pop > 0 && pop < 1) pts.forEach((pt, i) => {
+      const q = Math.floor(clamp01(pop * 1.2 - i * .06) * 7) / 7;
+      for (let k = 0; k < 12; k += 1) {
+        const ang = k * TAU / 12; const d = r * (.4 + 2.2 * q);
+        ctx.fillStyle = ['#ffe94a', '#ff3ea5', '#50f0ff'][k % 3]; ctx.globalAlpha = 1 - q;
+        ctx.fillRect(pt.x + Math.cos(ang) * d - s / 2, pt.y + Math.sin(ang) * d - s / 2, s, s);
+      }
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+  }
 
   // ---- room themes: surface behind the frame, frame colours, extra decoration over the frame ----
   function arcadeSurface(ctx, w, h) {
@@ -151,12 +219,15 @@
     ctx.fillStyle = g; ctx.fill('evenodd'); ctx.restore();
   }
   const piece = (stone, fx, win) => ({ stone, fx, win, preview: previewPiece });
+  // A legend (v1.9.0, the v1.8.7 omok standard): own silhouette, drop effect, `special` (exactly three in a row), win.
+  const legend = (stone, fx, special, win) => ({ stone, fx, special, win, legend: true, preview: previewPiece });
   const theme = (paint, plastic, slot, feet, overlay) => ({ board: { paint, plastic, slot, feet, overlay }, preview: previewTheme });
   S.define({
     connect4_c1: piece(rocket), connect4_c2: piece(gearChip), connect4_c3: piece(eyeball), connect4_c4: piece(starCoin), connect4_c5: piece(token),
     connect4_p1: piece(plasma, plasmaFx), connect4_p2: piece(holo, holoFx), connect4_p3: piece(meteor, meteorFx),
     connect4_t1: theme(arcadeSurface, ['#ff3ea5', '#b5179e', '#5a0a6e'], '#12002a', '#5a0a6e', arcadeOverlay),
     connect4_t2: theme(stationSurface, ['#cbd5e1', '#8b97a8', '#4b5563'], '#05080f', '#4b5563', stationOverlay),
-    connect4_l1: piece(galaxy, galaxyFx, galaxyWin),
+    connect4_l1: legend(galaxy, galaxyFx, galaxySpecial, galaxyWin),
+    connect4_l2: legend(pixelChip, pixelChipFx, pixelChipSpecial, pixelChipWin),
   });
 }());

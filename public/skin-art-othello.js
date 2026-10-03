@@ -102,6 +102,72 @@
     ctx.strokeStyle = `rgba(255,200,100,${(1 - t) * .9})`; ctx.lineWidth = r * .12 * (1 - t) + 1; ctx.beginPath(); ctx.arc(0, 0, r * (1.02 + .9 * t), 0, TAU); ctx.stroke();
   }
 
+  // v1.9.0 legend standard: `special` plays on a corner capture or a flip of five or more (pts: the placed disc first,
+  // then the turned ones), `win(ctx, pts, r, t, size)` over the winner's discs when the game ends.
+  function eclipseSpecial(ctx, pts, r, t) { // a corona flares from the placed disc and runs over the turned ones
+    const [first, ...rest] = pts;
+    for (let k = 0; k < 3; k += 1) { const tt = clamp01(t * 1.3 - k * .18); if (tt <= 0 || tt >= 1) continue; ctx.strokeStyle = `rgba(255,${190 + k * 20},90,${(1 - tt) * .85})`; ctx.lineWidth = r * .14 * (1 - tt) + 1; ctx.beginPath(); ctx.arc(first.x, first.y, r * (1 + 2.6 * tt), 0, TAU); ctx.stroke(); }
+    rest.forEach((p, i) => { const tt = clamp01(t * 1.6 - .2 - i * .06); if (tt <= 0 || tt >= 1) return; const g = ctx.createRadialGradient(p.x, p.y, r * .5, p.x, p.y, r * 1.4); g.addColorStop(0, 'rgba(255,200,90,0)'); g.addColorStop(.6, `rgba(255,190,80,${Math.sin(tt * Math.PI) * .7})`); g.addColorStop(1, 'rgba(255,150,40,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.4, 0, TAU); ctx.fill(); });
+  }
+  function eclipseWin(ctx, pts, r, t, size) { // the moon's shadow sweeps the board, then a diamond ring flashes
+    const { w, h } = size; const cx = w / 2; const cy = h / 2;
+    const sweep = clamp01(t / .55); const flash = clamp01((t - .5) / .5);
+    ctx.save();
+    if (sweep < 1) { const x = -w * .6 + sweep * w * 2.2; const g = ctx.createRadialGradient(x, cy, w * .05, x, cy, w * .55); g.addColorStop(0, 'rgba(2,3,12,.55)'); g.addColorStop(1, 'rgba(2,3,12,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }
+    pts.forEach((p) => { const d = Math.hypot(p.x - cx, p.y - cy) / (w * .7); const tt = clamp01(sweep * 1.4 - d); if (tt > 0 && tt < 1) { ctx.strokeStyle = `rgba(255,215,140,${Math.sin(tt * Math.PI) * .9})`; ctx.lineWidth = r * .12; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.05, 0, TAU); ctx.stroke(); } });
+    if (flash > 0 && flash < 1) {
+      const R = w * .16; const a = Math.sin(flash * Math.PI);
+      ctx.strokeStyle = `rgba(255,220,150,${a})`; ctx.lineWidth = R * .08; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+      const dx = cx + R * .7; const dy = cy - R * .7; const g = ctx.createRadialGradient(dx, dy, 0, dx, dy, R * .9);
+      g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.25, `rgba(255,240,200,${a * .7})`); g.addColorStop(1, 'rgba(255,220,150,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(dx, dy, R * .9, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${a})`; starPath(ctx, dx, dy, R * .5, R * .05, 4); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- legend 2 (v1.9.0): 회중시계 ↔ 고전 응접실 -- a pocket watch with a winding crown; turning over winds it ----
+  function watch(ctx, r, c) {
+    const d = dk(c);
+    ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.roundRect(-r * .16, -r * 1.16, r * .32, r * .26, r * .06); ctx.fill(); // the crown
+    ctx.beginPath(); ctx.arc(0, -r * 1.2, r * .1, 0, TAU); ctx.fill();
+    face(ctx, r, c, ['#3a332b', '#16120d', '#050403'], ['#ffffff', '#fbf6e8', '#e2d8c0']);
+    ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = Math.max(1.4, r * .07); ctx.beginPath(); ctx.arc(0, 0, r * .93, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = d ? 'rgba(230,205,140,.75)' : 'rgba(40,30,20,.8)';
+    for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; const l = i % 3 === 0 ? .2 : .1; ctx.lineWidth = Math.max(1, r * (i % 3 === 0 ? .06 : .035)); ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .78, Math.sin(a) * r * .78); ctx.lineTo(Math.cos(a) * r * (.78 - l), Math.sin(a) * r * (.78 - l)); ctx.stroke(); }
+    ctx.lineCap = 'round'; ctx.strokeStyle = d ? '#e6c66a' : '#2a1d10';
+    ctx.lineWidth = Math.max(1.2, r * .07); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r * .3, -r * .18); ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * .045); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-r * .08, -r * .55); ctx.stroke();
+    ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(0, 0, r * .07, 0, TAU); ctx.fill();
+  }
+  function watchFx(ctx, r, t) { // the hands sweep once round while the bezel ticks in gold
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(255,215,120,${1 - t})`; ctx.lineWidth = r * .1; ctx.beginPath(); ctx.moveTo(0, 0); const a = -Math.PI / 2 + t * TAU; ctx.lineTo(Math.cos(a) * r * .7, Math.sin(a) * r * .7); ctx.stroke();
+    for (let i = 0; i < 12; i += 1) { if (i / 12 > t) break; const b = -Math.PI / 2 + i * TAU / 12; ctx.fillStyle = `rgba(255,215,120,${1 - t})`; ctx.beginPath(); ctx.arc(Math.cos(b) * r * 1.12, Math.sin(b) * r * 1.12, r * .07, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  function watchSpecial(ctx, pts, r, t) { // a chime: gold rings from the placed disc, a pendulum arc over each turned disc
+    const [first, ...rest] = pts;
+    for (let k = 0; k < 3; k += 1) { const tt = clamp01(t * 1.4 - k * .2); if (tt <= 0 || tt >= 1) continue; ctx.strokeStyle = `rgba(230,195,100,${(1 - tt) * .9})`; ctx.lineWidth = r * .1 * (1 - tt) + 1; ctx.beginPath(); ctx.arc(first.x, first.y, r * (1 + 2.2 * tt), 0, TAU); ctx.stroke(); }
+    rest.forEach((p, i) => { const tt = clamp01(t * 1.5 - .15 - i * .07); if (tt <= 0 || tt >= 1) return; const swing = Math.sin(tt * TAU) * .7; ctx.strokeStyle = `rgba(230,195,100,${Math.sin(tt * Math.PI)})`; ctx.lineWidth = r * .09; ctx.beginPath(); ctx.arc(p.x, p.y - r * 1.6, r * 1.6, Math.PI / 2 - swing - .15, Math.PI / 2 - swing + .15); ctx.stroke(); });
+  }
+  function watchWin(ctx, pts, r, t, size) { // every winning disc glints in turn, then a great clock face strikes twelve
+    const { w, h } = size; const cx = w / 2; const cy = h / 2;
+    ctx.save();
+    pts.forEach((p, i) => { const tt = clamp01(t * 1.8 - i / Math.max(1, pts.length) * .8); if (tt > 0 && tt < 1) { ctx.fillStyle = `rgba(255,236,170,${Math.sin(tt * Math.PI) * .85})`; starPath(ctx, p.x + r * .4, p.y - r * .4, r * .45, r * .08, 4); ctx.fill(); } });
+    const f = clamp01((t - .45) / .55);
+    if (f > 0 && f < 1) {
+      const R = w * .2; const a = Math.sin(f * Math.PI);
+      ctx.globalAlpha = a; ctx.strokeStyle = '#e6c66a'; ctx.lineWidth = R * .06; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+      for (let i = 0; i < 12; i += 1) { const b = i * TAU / 12; ctx.lineWidth = R * (i % 3 ? .02 : .05); ctx.beginPath(); ctx.moveTo(cx + Math.cos(b) * R * .86, cy + Math.sin(b) * R * .86); ctx.lineTo(cx + Math.cos(b) * R * .96, cy + Math.sin(b) * R * .96); ctx.stroke(); }
+      const hand = -Math.PI / 2 - (1 - Math.min(1, f * 1.6)) * TAU; ctx.lineCap = 'round';
+      ctx.lineWidth = R * .05; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(hand) * R * .8, cy + Math.sin(hand) * R * .8); ctx.stroke();
+      ctx.lineWidth = R * .07; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - R * .5); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
   // ---- room themes ----
   function parlor(ctx, w, h) { // 고전 응접실: polished walnut with a brass-lined grid
     const g = ctx.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#5a2f1a'); g.addColorStop(1, '#3a1d0e'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -130,12 +196,14 @@
     for (const [gx, gy, color] of [[1, 1, 'black'], [2, 1, 'white'], [1, 2, 'white'], [2, 2, 'black']]) { ctx.save(); ctx.translate(w * (gx + .5) / 4, h * (gy + .5) / 4); S.paintStone(ctx, r, null, color); ctx.restore(); }
   }
   const piece = (stone, fx) => ({ stone, fx, preview: previewPiece });
+  const legend = (stone, fx, special, win) => ({ stone, fx, special, win, legend: true, preview: previewPiece });
   const theme = (paint, line, dot) => ({ board: { paint, line, dot }, preview: previewTheme });
   S.define({
     othello_c1: piece(crown), othello_c2: piece(paw), othello_c3: piece(cog), othello_c4: piece(planetEmblem), othello_c5: piece(shield),
     othello_p1: piece(prism, prismFx), othello_p2: piece(sunMoon, sunMoonFx), othello_p3: piece(iceFire, iceFireFx),
     othello_t1: theme(parlor, 'rgba(201,162,74,.85)', '#c9a24a'),
     othello_t2: theme(eclipseSky, 'rgba(190,200,230,.6)', '#ffd98a'),
-    othello_l1: piece(eclipse, eclipseFx),
+    othello_l1: legend(eclipse, eclipseFx, eclipseSpecial, eclipseWin),
+    othello_l2: legend(watch, watchFx, watchSpecial, watchWin),
   });
 }());
