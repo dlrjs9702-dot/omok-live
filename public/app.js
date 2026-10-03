@@ -1418,7 +1418,8 @@
   const byId = (id) => document.getElementById(id);
   const PLAZA_FACILITIES = [
     { id: 'games', name: '게임관', open: () => openPlazaWindow('게임관', [document.querySelector('.lobbyTopGrid > .lobbyCard'), publicRoomsCardEl]) },
-    { id: 'shop', name: '상점', open: () => byId('skinShopBtn').click() },
+    { id: 'shop', name: '게임 스킨 상점', open: () => openSkinShop('game') }, // v1.10.1: two shops on the shop street
+    { id: 'avatar', name: '캐릭터 스킨 상점', open: () => openSkinShop('avatar') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
     { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
@@ -3064,12 +3065,14 @@
   const skinPrice = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
 
   let skinShopFamily = null;
+  let skinShopMode = 'all'; // v1.10.1 게임 아일랜드: 'game' (game skins) or 'avatar' (character skins) by which shop was entered
+  const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점' };
   const SKIN_TIER_ORDER = ['common', 'premium', 'theme', 'legend'];
   function renderSkinShop() {
     skinShopBody.textContent = '';
     if (!skinShop) return;
     skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
-    const families = skinShop.catalog;
+    const families = skinShop.catalog.filter(f => skinShopMode === 'all' || (skinShopMode === 'avatar') === (f.family === 'avatar'));
     if (!families.some(f => f.family === skinShopFamily)) skinShopFamily = families[0]?.family;
     const tabs = document.createElement('div');
     tabs.className = 'skinTabs';
@@ -3202,7 +3205,12 @@
       loadSkinShop();
     }
   });
-  document.getElementById('skinShopBtn').addEventListener('click', () => { skinBuyArmed = null; skinShopDialog.showModal(); loadSkinShop(); });
+  function openSkinShop(mode = 'all') {
+    skinShopMode = mode; skinBuyArmed = null;
+    document.getElementById('skinShopTitle').textContent = SKIN_SHOP_TITLES[mode];
+    skinShopDialog.showModal(); loadSkinShop();
+  }
+  document.getElementById('skinShopBtn').addEventListener('click', () => openSkinShop('all'));
   document.getElementById('skinShopCloseBtn').addEventListener('click', () => skinShopDialog.close());
 
   // v1.7.15 point-reward events: the server says which events are open and which this account already
