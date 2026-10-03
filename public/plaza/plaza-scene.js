@@ -7,6 +7,12 @@ const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second: centre to any facility in about two seconds
 const BOUND = 16.5; // walkable radius
 const REACH = 2.4; // how close to a facility's door counts as "near"
+// v1.9.6 player collision (plaza only): every character is the same circle at its feet on the ground (hair, capes and
+// halos do not make it bigger). Close to a facility's door the circle shrinks so a crowd can never block an entrance.
+const PLAYER_R = 0.45;
+const DOOR_PLAYER_R = 0.28;
+const DOOR_ZONE = 2.6;
+const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
 
 // Facility layout around the fountain (angle 0 = straight ahead of the spawn point, away from the camera).
 const LAYOUT = {
@@ -337,7 +343,22 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
+  // v1.9.6: the server moved me out of someone (it saw an overlap my screen did not): glide there, through tryMove.
+  let correction = null;
+  function correctTo(x, z) {
+    const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
+    if (d > 0.3) { me.root.position.x = x; me.root.position.z = z; correction = null; } // the server's word, at once (a short hop)
+    else if (d > 0.05) correction = { x, z };
+  }
+  function stepCorrection(dt) {
+    if (!correction) return;
+    const p = me.root.position; const k = Math.min(1, dt * 8);
+    const nx = p.x + (correction.x - p.x) * k; const nz = p.z + (correction.z - p.z) * k;
+    tryMove(nx, nz);
+    if (Math.hypot(correction.x - p.x, correction.z - p.z) < 0.05) correction = null;
+  }
   function stepOthers(dt) {
+    stepCorrection(dt);
     for (const o of others.values()) {
       const p = o.c.root.position; const t = o.target; const k = Math.min(1, dt * 9);
       const dist = Math.hypot(t.x - p.x, t.z - p.z);
@@ -423,7 +444,47 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   }
 
   // Movement with circle collisions.
+  // The radius of a character standing at (x, z): smaller near any facility's door.
+  const playerRadiusAt = (x, z) => {
+    for (const door of Object.values(doors)) if (Math.hypot(door.x - x, door.z - z) < DOOR_ZONE) return DOOR_PLAYER_R;
+    return PLAYER_R;
+  };
+  // Other players as circles where they are drawn right now (their glide toward the server's position). Kept in one
+  // function so a spatial grid can replace the plain loop if the plaza ever holds many people.
+  function otherCircles() {
+    const out = [];
+    for (const o of others.values()) {
+      const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
+      const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
+      if (t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05) out.push({ x: t.x, z: t.z, r: playerRadiusAt(t.x, t.z) });
+    }
+    return out;
+  }
+  // Move from (px, pz) toward (nx, nz) without walking into another player: a step into someone is projected onto
+  // the contact circle, which drops the part of the step that points into them and keeps the part along the contact
+  // -- so a head-on push stops and anything at an angle slides past. Nobody is pushed; only my step changes.
+  function collidePlayers(px, pz, nx, nz) {
+    const mine = playerRadiusAt(nx, nz);
+    for (const o of otherCircles()) {
+      const min = mine + o.r;
+      let dx = nx - o.x; let dz = nz - o.z; let d = Math.hypot(dx, dz);
+      if (d >= min) continue;
+      const bx = px - o.x; const bz = pz - o.z; const before = Math.hypot(bx, bz);
+      if (before < min - 0.01) { // already overlapping (lag): ease apart a little, back toward the side I came from
+        const ux = before > 1e-4 ? bx / before : (d > 1e-4 ? dx / d : 1); const uz = before > 1e-4 ? bz / before : (d > 1e-4 ? dz / d : 0);
+        const target = Math.min(min, before + SEPARATE_STEP);
+        nx = o.x + ux * target; nz = o.z + uz * target;
+        continue;
+      }
+      // the step would end past their centre (or on it): stop at the contact on my side, never on the far side
+      if (d < 1e-4 || dx * bx + dz * bz <= 0) { dx = bx; dz = bz; d = before || 1; }
+      nx = o.x + (dx / d) * min; nz = o.z + (dz / d) * min;
+    }
+    return [nx, nz];
+  }
+
   const tryMove = (nx, nz) => {
+    [nx, nz] = collidePlayers(me.root.position.x, me.root.position.z, nx, nz);
     const d = Math.hypot(nx, nz);
     if (d > BOUND) { nx *= BOUND / d; nz *= BOUND / d; }
     for (const s of solids) {
@@ -555,7 +616,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag), others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
+      teleport: (x, z) => { me.root.position.x = x; me.root.position.z = z; correction = null; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
   }
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo };
 }

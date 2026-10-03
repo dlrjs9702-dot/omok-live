@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.5').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.6').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1455,7 +1455,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.5').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.6').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1494,7 +1494,10 @@
     if (!changed && now - plazaLastSentAt < 3000) return;
     plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
     api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) })
-      .then((data) => { if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); } })
+      .then((data) => {
+        if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
+        if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
+      })
       .catch(() => {}).finally(() => { plazaSending = false; });
   }
   function showPlazaPlayers() {
@@ -1514,6 +1517,13 @@
     plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
+  // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
+  window.PlazaWarp = async (x, z) => {
+    while (plazaSending) await new Promise((resolve) => setTimeout(resolve, 20)); // no update in flight across the warp
+    plazaSending = true;
+    try { await api('/api/plaza/leave', { method: 'POST', body: '{}' }); plaza.controller?.debug().teleport(x, z); }
+    finally { plazaSending = false; plazaLastSent = null; }
+  };
 
   // v1.9.4 상시 등반 도전: the window (today / this week / ranking, start or resume) and the climb screen.
   const climbDialog = document.getElementById('climbDialog');
