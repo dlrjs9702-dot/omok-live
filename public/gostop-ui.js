@@ -384,7 +384,7 @@
     const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`;
     if (stageKey !== stagedResultKey && g.settlement?.status === 'done') {
       const winSkin = r.kind === 'win' ? skinOf(state, r.winner) : null;
-      if (winSkin?.win && stageKey !== winPlayed) requestAnimationFrame(() => SKN().h.playFx($('gostopPanel'), winSkin.win, 1800, 10));
+      if (winSkin?.win && stageKey !== winPlayed) requestAnimationFrame(() => SKN().h.playFx($('gostopPanel'), winSkin.win, winSkin.legend ? 2400 : 1800, 10));
       winPlayed = stageKey;
       stagedResultKey = stageKey;
       if (!reducedMotion()) box.classList.add('staged');
@@ -982,7 +982,7 @@
     const floor = ['ppeok', 'sweep', 'bomb', 'kong', 'jjok', 'ttadak', 'grand'].includes(kind) ? (kind === 'grand' ? 'bomb' : kind) : null;
     if (floor) floorFx(run, floor);
     const specialSkin = skinOf(state, ev.seat);
-    if (specialSkin?.special) SKN().h.playFx($('gostopFloor'), specialSkin.special, 700, 20);
+    if (specialSkin?.special) SKN().h.playFx($('gostopFloor'), specialSkin.special, specialSkin.legend ? 1300 : 700, 20); // v1.9.2: a legend's lasts longer
     fxLog.push({ run: run.gen, k: 'special', card: tag, fx: kind, floor, seat: ev.seat || null });
     return kind;
   }

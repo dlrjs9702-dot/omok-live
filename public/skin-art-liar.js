@@ -36,6 +36,44 @@
     const R = rng(7); for (let i = 0; i < 16; i += 1) { ctx.fillStyle = `rgba(255,226,140,${(1 - t) * clamp01(k * 2 - R())})`; ctx.fillRect(w * (.3 + R() * .4), h * R(), 4, 4); }
   };
 
+  // v1.9.2 legend standard: `special` when the round's liar (this skin's owner) is revealed (king.win above cracks the
+  // mask), `win` over the panel when the game ends with this player among the final winners.
+  king.legend = true; king.special = king.win;
+  king.win = (ctx, w, h, t) => { // masks rain down and a golden crown settles in the middle of the panel
+    const R = rng(13); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let i = 0; i < 18; i += 1) { const x = R() * w; const y = -30 + ((R() * h * .4 + t * h * 1.3) % (h + 40)); ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 6 + i) * .4); ctx.fillStyle = i % 2 ? '#f0c14e' : '#7a2a60'; ctx.beginPath(); ctx.ellipse(-9, 0, 9, 6, 0, 0, TAU); ctx.ellipse(9, 0, 9, 6, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+    const k = clamp01((t - .2) / .4); const cx = w / 2; const cy = h * (.2 + .25 * k); const s = Math.min(w, h) * .14;
+    ctx.fillStyle = '#ffd86b'; ctx.strokeStyle = '#7a5208'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - s, cy + s * .5); ctx.lineTo(cx - s, cy - s * .3); ctx.lineTo(cx - s * .5, cy + s * .1); ctx.lineTo(cx, cy - s * .55); ctx.lineTo(cx + s * .5, cy + s * .1); ctx.lineTo(cx + s, cy - s * .3); ctx.lineTo(cx + s, cy + s * .5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  };
+
+  // ---- legend 2 (v1.9.2): 심문관의 램프 ↔ 취조실 -- a case-file card under a swinging lamp; the reveal is a stamp ----
+  const lamp = bubble('#1b1f26', tile('lr-lamp', 80, 44, (c, w, h) => { const g = c.createRadialGradient(w * .2, 0, 2, w * .2, 0, w * .7); g.addColorStop(0, 'rgba(255,214,140,.32)'); g.addColorStop(1, 'rgba(255,214,140,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,.05)'; c.fillRect(0, h - 2, w, 1); }),
+    '#e0a84a', '#f3ead8', '#ffc36b', { borderRadius: '3px 16px 16px 16px', boxShadow: '0 0 0 1px #3a3f48 inset, 0 6px 14px rgba(0,0,0,.35)' }, '"Consolas","Courier New",monospace');
+  lamp.legend = true;
+  lamp.fx = (ctx, w, h, t) => { // the hanging lamp swings once: its cone of light sweeps across the new hint
+    const a = Math.sin(t * Math.PI * 1.5) * .6; const px = w / 2; const L = h * 1.2;
+    ctx.save(); ctx.translate(px, 0); ctx.rotate(a); const g = ctx.createLinearGradient(0, 0, 0, L); g.addColorStop(0, `rgba(255,220,150,${(1 - t) * .55})`); g.addColorStop(1, 'rgba(255,220,150,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(70, L); ctx.lineTo(-70, L); ctx.closePath(); ctx.fill(); ctx.restore();
+  };
+  lamp.special = (ctx, w, h, t) => { // the lamp snaps onto the panel and a red ruling stamp lands
+    const on = clamp01(t / .2); const cx = w / 2; const cy = h * .55;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = `rgba(0,0,0,${.45 * on})`; ctx.fillRect(0, 0, w, h);
+    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.min(w, h) * .45); g.addColorStop(0, `rgba(255,236,190,${.6 * on})`); g.addColorStop(1, 'rgba(255,236,190,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const stamp = clamp01((t - .25) / .2); if (stamp > 0) { const s = 1.6 - .6 * stamp; ctx.translate(cx, cy); ctx.rotate(-.18); ctx.scale(s, s); ctx.globalAlpha *= stamp;
+      ctx.strokeStyle = '#d42a2a'; ctx.lineWidth = 6; ctx.beginPath(); ctx.roundRect(-90, -34, 180, 68, 10); ctx.stroke();
+      ctx.fillStyle = '#d42a2a'; ctx.font = '900 40px "Malgun Gothic", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('판 결', 0, 2); }
+    ctx.restore();
+  };
+  lamp.win = (ctx, w, h, t) => { // case files fly up and a 「사건 종결」 seal closes the dossier
+    const R = rng(29); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let i = 0; i < 12; i += 1) { const x = R() * w; const y = h + 30 - t * h * (.8 + R() * .6); ctx.save(); ctx.translate(x, y); ctx.rotate((R() - .5) + t * 2); ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1.5; ctx.fillRect(-18, -12, 36, 24); ctx.strokeRect(-18, -12, 36, 24); ctx.fillStyle = '#b8952e'; ctx.fillRect(-18, -16, 14, 5); ctx.restore(); }
+    const k = clamp01((t - .3) / .3); if (k > 0) { const cx = w / 2; const cy = h / 2; ctx.globalAlpha *= k; ctx.fillStyle = 'rgba(212,42,42,.12)'; ctx.strokeStyle = '#d42a2a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 62, 0, TAU); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, 52, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#d42a2a'; ctx.font = '900 22px "Malgun Gothic", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('사건 종결', cx, cy + 1); }
+    ctx.restore();
+  };
+
   // ---- room themes ----
   function interrogation(ctx, w, h) { // 취조실: concrete wall, a hanging lamp cone and a one-way mirror edge
     ctx.fillStyle = '#20252c'; ctx.fillRect(0, 0, w, h); const R = rng(77); ctx.fillStyle = 'rgba(255,255,255,.04)'; for (let i = 0; i < 200; i += 1) ctx.fillRect(R() * w, R() * h, 2, 2);
@@ -68,5 +106,6 @@
     liar_t1: theme(interrogation, { borderColor: '#9aa4b2', boxShadow: 'inset 0 0 0 3px #20252c, 0 0 0 2px #9aa4b2' }),
     liar_t2: theme(masquerade, { borderColor: '#f0c14e', boxShadow: 'inset 0 0 0 3px #3a0f2e, 0 0 14px rgba(240,193,78,.4)' }),
     liar_l1: piece(king),
+    liar_l2: piece(lamp),
   });
 }());

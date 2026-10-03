@@ -7,7 +7,7 @@ const { expectNoScriptError } = require('./skin-support');
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
 const ids = (family, list) => list.map(i => `${family}_${i}`);
-const PIECES = ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1'];
+const PIECES = ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1', 'l2'];
 
 // WCAG contrast ratio of two CSS colours (hex or rgba(); a translucent background is blended on a dark page).
 const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
@@ -60,7 +60,7 @@ test('빙고 스킨: 방장 테마가 모든 화면에 같고, 각자의 표식�
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '빙고' }).click();
   await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'bingo' });
@@ -103,7 +103,7 @@ test('숫자야구 스킨: 방장 테마가 모든 화면에 같고, 각 행은 
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '숫자야구' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'baseball' });
@@ -127,4 +127,53 @@ test('숫자야구 스킨: 방장 테마가 모든 화면에 같고, 각 행은 
   expect(await themeImage(a)).toBe(await themeImage(b));
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
+});
+
+// v1.9.1 전설 2차: 빙고 축제 응원단(학교 축제 짝)은 내 판의 한 줄이 완성되면 그 줄 위에 특수 연출을 그린다.
+test('빙고 전설: 내 판의 줄이 완성되면 그 줄에 특수 연출', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '응원단', 6_000_000);
+  const b = await shopper(browser, request, '손님');
+  await buyAndEquip(request, a, ['bingo_t1', 'bingo_l2']);
+  const call = (who, route, data) => post(request, route, who.token, data);
+  const created = await call(a, '/api/rooms', { gameType: 'bingo' });
+  expect((await call(b, '/api/rooms/join', { code: created.data.state.me.roomCode })).status).toBe(200);
+  expect((await call(a, '/api/room/choose-role', { choice: '1' })).status).toBe(200);
+  expect((await call(b, '/api/room/choose-role', { choice: '2' })).status).toBe(200);
+  expect((await call(a, '/api/room/start-bingo', {})).status).toBe(200);
+  await a.page.reload(); await expect(a.page.locator('#bingoBoard .bingoCell').first()).toBeVisible({ timeout: 20000 });
+  await a.page.evaluate(() => { const def = window.SkinLooks.def('bingo_l2'); const special = def.special; window.__special = 0; def.special = (...args) => { window.__special += 1; return special(...args); }; });
+  const mine = (await get(request, '/api/room', a.token)).data.state.me.myBingoBoard;
+  const size = Math.round(Math.sqrt(mine.length));
+  const row = mine.slice(0, size); // a's first row
+  const others = (await get(request, '/api/room', b.token)).data.state.me.myBingoBoard.filter(n => !row.includes(n));
+  let moveCount = 0;
+  while (row.length) {
+    const s = (await get(request, '/api/room', a.token)).data.state.game;
+    if (s.status !== 'playing') break;
+    const aTurn = s.turn === '1';
+    const number = aTurn ? row.shift() : others.find(n => !(s.selectedNumbers || []).includes(n));
+    expect((await call(aTurn ? a : b, '/api/room/select-bingo', { number, expectedMoveCount: s.moveCount || moveCount })).status).toBe(200);
+    moveCount += 1;
+  }
+  await expect.poll(() => a.page.evaluate(() => window.__special), { timeout: 8000 }).toBeGreaterThan(0);
+  await expectNoScriptError(a.page);
+  for (const who of [a, b]) await who.context.close();
+});
+
+// v1.9.1: 빙고·숫자야구·그림 맞히기·스무고개 전설 여덟 종의 특수·승리 연출이 오류 없이 그림을 남긴다.
+test('전설 2차(빙고·숫자야구·그림 맞히기·스무고개): 모든 전설 연출이 그림을 남긴다', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '연출');
+  const drawn = await a.page.evaluate(() => {
+    const out = {};
+    const ink = (fn) => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; const x = c.getContext('2d'); fn(x); const d = x.getImageData(0, 0, 400, 300).data; let n = 0; for (let i = 3; i < d.length; i += 4) n += d[i] > 0 ? 1 : 0; return n; };
+    const cells = [0, 1, 2, 3, 4].map(i => ({ x: 20 + i * 70, y: 120, w: 64, h: 64 }));
+    for (const family of ['bingo', 'baseball', 'pictionary', 'twentyquestions']) for (const id of [`${family}_l1`, `${family}_l2`]) {
+      const d = window.SkinLooks.def(id);
+      out[id] = { legend: d.legend === true, special: ink((x) => d.special(x, 400, 300, .45, cells)), win: ink((x) => d.win(x, 400, 300, .55)) };
+    }
+    return out;
+  });
+  for (const [id, r] of Object.entries(drawn)) { expect(r.legend, id).toBe(true); expect(r.special, `${id} 특수`).toBeGreaterThan(50); expect(r.win, `${id} 승리`).toBeGreaterThan(50); }
+  await expectNoScriptError(a.page);
+  await a.context.close();
 });

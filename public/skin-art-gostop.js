@@ -30,6 +30,33 @@
   const royalWin = (ctx, w, h, t) => { const k = clamp01(t * 1.3); ctx.strokeStyle = `rgba(200,30,30,${Math.sin(k * Math.PI)})`; ctx.lineWidth = 8; ctx.strokeRect(w * .35, h * .3, w * .3, h * .4); ctx.fillStyle = `rgba(200,30,30,${Math.sin(k * Math.PI) * .7})`; ctx.fillRect(w * .4, h * .36, w * .2, h * .28); const R = rng(2); for (let i = 0; i < 26; i += 1) { ctx.fillStyle = `rgba(255,216,107,${(1 - t) * clamp01(k * 2 - R())})`; starPath(ctx, w * R(), h * R(), 3 + R() * 5, 1, 4); ctx.fill(); } };
   const royalSpecial = (ctx, w, h, t) => { ctx.strokeStyle = `rgba(255,216,107,${(1 - t) * .9})`; ctx.lineWidth = 6; ctx.strokeRect(6, 6, w - 12, h - 12); burst('255,216,107')(ctx, w, h, t); };
 
+  // ---- legend 2 (v1.9.2): 월광 화투 ↔ 달빛 정자 -- a moonlit back; specials ripple a moon on water, a win raises it ----
+  const moonlit = (c, w, h) => {
+    bg(c, w, h, '#0e1a44', '#040818'); rim(c, w, h, '#c8d4ff');
+    c.strokeStyle = 'rgba(200,212,255,.45)'; c.lineWidth = 1; c.strokeRect(7, 7, w - 14, h - 14);
+    const g = c.createRadialGradient(w / 2, h * .36, 2, w / 2, h * .36, 14); g.addColorStop(0, '#fffbe8'); g.addColorStop(1, '#d8dcff'); c.fillStyle = g; c.beginPath(); c.arc(w / 2, h * .36, 10, 0, TAU); c.fill();
+    c.fillStyle = '#02040e'; c.beginPath(); c.moveTo(w * .2, h * .74); c.lineTo(w / 2, h * .6); c.lineTo(w * .8, h * .74); c.lineTo(w * .74, h * .77); c.lineTo(w * .26, h * .77); c.fill(); c.fillRect(w * .3, h * .77, 2.5, h * .12); c.fillRect(w * .68, h * .77, 2.5, h * .12);
+    c.fillStyle = 'rgba(255,190,210,.8)'; for (const [x, y] of [[.2, .2], [.8, .26], [.26, .5]]) { c.beginPath(); c.arc(w * x, h * y, 1.6, 0, TAU); c.fill(); }
+  };
+  const moonFx = (ctx, w, h, t) => { // a silver ripple and two plum petals drift where the card lands
+    for (let k = 0; k < 2; k += 1) { const u = clamp01(t * 1.3 - k * .22); if (u <= 0 || u >= 1) continue; ctx.strokeStyle = `rgba(200,212,255,${1 - u})`; ctx.lineWidth = 3 * (1 - u) + 1; ctx.beginPath(); ctx.ellipse(w / 2, h / 2, 14 + u * 40, (14 + u * 40) * .5, 0, 0, TAU); ctx.stroke(); }
+    for (let i = 0; i < 3; i += 1) { ctx.fillStyle = `rgba(255,190,210,${1 - t})`; ctx.beginPath(); ctx.ellipse(w / 2 + (i - 1) * 18 + t * 12, h / 2 - 10 + t * 26, 4, 2.4, t * 3 + i, 0, TAU); ctx.fill(); }
+  };
+  const moonSpecial = (ctx, w, h, t) => { // a full moon is reflected on the floor and the reflection ripples apart
+    const cx = w / 2; const cy = h / 2; const R = Math.min(w, h) * .2; const a = Math.sin(clamp01(t) * Math.PI);
+    ctx.save(); ctx.globalAlpha = a; const g = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.6); g.addColorStop(0, 'rgba(255,251,232,.85)'); g.addColorStop(.6, 'rgba(200,212,255,.35)'); g.addColorStop(1, 'rgba(200,212,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.6, R * .9, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(230,236,255,.85)'; ctx.lineWidth = 2; for (let k = 0; k < 5; k += 1) { const y = cy - R * .5 + k * R * .25; const off = Math.sin(t * 10 + k) * R * .25 * t; ctx.beginPath(); ctx.moveTo(cx - R * .7 + off, y); ctx.lineTo(cx + R * .7 + off, y); ctx.stroke(); }
+    ctx.restore();
+  };
+  const moonWin = (ctx, w, h, t) => { // the moon rises over the pavilion and plum petals fall across the table
+    const rise = clamp01(t / .5); const R = Math.min(w, h) * .16; const cx = w * .72; const cy = h * (.75 - .5 * rise); const P = rng(8);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = 'rgba(4,8,24,.35)'; ctx.fillRect(0, 0, w, h);
+    const g = ctx.createRadialGradient(cx, cy, R * .3, cx, cy, R * 2.4); g.addColorStop(0, 'rgba(255,251,232,.95)'); g.addColorStop(.4, 'rgba(255,251,232,.9)'); g.addColorStop(.42, 'rgba(200,212,255,.35)'); g.addColorStop(1, 'rgba(200,212,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 2.4, 0, TAU); ctx.fill();
+    for (let i = 0; i < 26; i += 1) { const x = (P() * w + t * 60) % w; const y = -10 + ((P() * h + t * h * 1.1) % (h + 20)); ctx.fillStyle = 'rgba(255,190,210,.85)'; ctx.beginPath(); ctx.ellipse(x, y, 5, 3, t * 4 + i, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  };
+
   // ---- room themes ----
   function sarang(ctx, w, h) { // 조선 사랑방: hanji walls, a window lattice and a warm lamp
     ctx.fillStyle = '#3a2412'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#e9dcc0'; ctx.fillRect(w * .1, h * .12, w * .8, h * .55); ctx.strokeStyle = '#6a4a26'; ctx.lineWidth = 3; for (let x = w * .1; x <= w * .9; x += w * .8 / 8) { ctx.beginPath(); ctx.moveTo(x, h * .12); ctx.lineTo(x, h * .67); ctx.stroke(); } for (let y = h * .12; y <= h * .67; y += h * .55 / 4) { ctx.beginPath(); ctx.moveTo(w * .1, y); ctx.lineTo(w * .9, y); ctx.stroke(); }
@@ -57,6 +84,7 @@
     gostop_p3: back('p3', goldRoyal, '#ffd86b', burst('255,216,107'), { special: burst('255,216,107') }),
     gostop_t1: theme(sarang, { borderColor: '#c9a24a', boxShadow: 'inset 0 0 0 3px #3a2412, 0 0 0 2px #c9a24a' }),
     gostop_t2: theme(moonPavilion, { borderColor: '#9fb4ff', boxShadow: 'inset 0 0 0 3px #0a1438, 0 0 14px rgba(159,180,255,.4)' }),
-    gostop_l1: back('l1', royal, '#ffd86b', royalFx, { special: royalSpecial, win: royalWin }),
+    gostop_l1: back('l1', royal, '#ffd86b', royalFx, { special: royalSpecial, win: royalWin, legend: true }),
+    gostop_l2: back('l2', moonlit, '#c8d4ff', moonFx, { special: moonSpecial, win: moonWin, legend: true }),
   });
 }());

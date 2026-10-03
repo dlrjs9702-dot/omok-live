@@ -34,6 +34,46 @@
     const g = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0); g.addColorStop(0, 'rgba(255,230,150,0)'); g.addColorStop(.5, `rgba(255,236,170,${Math.sin(k * Math.PI) * .85})`); g.addColorStop(1, 'rgba(255,230,150,0)'); ctx.fillStyle = g; ctx.fillRect(w / 2 - 80, 0, 160, h);
   };
 
+  // v1.9.1 legend standard: `special` when this asker's guess is the round's right answer (door.win above opens the
+  // door), `win` over the panel when the game ends with this player among the final winners.
+  door.special = door.win;
+  door.win = (ctx, w, h, t) => { // the door stands open and a golden key turns in a beam of light
+    const k = clamp01(t / .5); const cx = w / 2; const cy = h / 2;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    const g = ctx.createLinearGradient(cx, 0, cx, h); g.addColorStop(0, `rgba(255,236,170,${.55 * k})`); g.addColorStop(1, 'rgba(255,236,170,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx - 40, 0); ctx.lineTo(cx + 40, 0); ctx.lineTo(cx + 40 + w * .25 * k, h); ctx.lineTo(cx - 40 - w * .25 * k, h); ctx.closePath(); ctx.fill();
+    ctx.translate(cx, cy); ctx.rotate((1 - k) * Math.PI); ctx.fillStyle = '#e0b254'; ctx.strokeStyle = '#6b4a14'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(-50, 0, 22, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#2b1d10'; ctx.beginPath(); ctx.arc(-50, 0, 9, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#e0b254'; ctx.fillRect(-30, -6, 90, 12); ctx.strokeRect(-30, -6, 90, 12); ctx.fillRect(40, 6, 10, 16); ctx.fillRect(54, 6, 8, 12);
+    ctx.restore();
+  };
+
+  // ---- legend 2 (v1.9.1): 골든 버저 ↔ TV 퀴즈쇼 -- a stage card with marquee bulbs; the right answer slams the buzzer ----
+  const buzzer = look('#2a0f5a', tile('tq-buzzer', 36, 44, (c, w, h) => { c.fillStyle = 'rgba(255,214,90,.55)'; for (const y of [3, h - 3]) for (let x = 6; x < w; x += 12) { c.beginPath(); c.arc(x, y, 1.8, 0, TAU); c.fill(); } }), '#ffd65a', '#fff6d6',
+    tag('#ffd65a', '#2a0f5a'), tag('#5fe3ff', '#0b1a3a'), { boxShadow: '0 0 12px rgba(255,214,90,.35), inset 0 0 0 1px rgba(255,214,90,.4)' });
+  buzzer.fx = (ctx, w, h, t) => { // the marquee bulbs blink around the new answer
+    const n = 18; for (let i = 0; i < n; i += 1) { const on = (i + Math.floor(t * 12)) % 3 === 0; const u = i / n; const x = 40 + (w - 80) * u; ctx.fillStyle = on ? `rgba(255,236,150,${1 - t})` : `rgba(255,214,90,${(1 - t) * .3})`; for (const y of [30, h - 30]) { ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); } }
+  };
+  buzzer.special = (ctx, w, h, t) => { // a big golden buzzer is slammed, a spotlight and a ring of light burst out
+    const cx = w / 2; const cy = h * .55; const press = Math.sin(clamp01(t / .25) * Math.PI) * 10; const R = Math.min(w, h) * .14;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    const sp = ctx.createRadialGradient(cx, cy, R, cx, cy, Math.max(w, h) * .6); sp.addColorStop(0, 'rgba(255,240,180,.4)'); sp.addColorStop(1, 'rgba(255,240,180,0)'); ctx.fillStyle = sp; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#3a3f4a'; ctx.beginPath(); ctx.ellipse(cx, cy + R * .45, R * 1.25, R * .45, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ffd65a'; ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(cx, cy + press, R, R * .55, 0, Math.PI, TAU); ctx.lineTo(cx + R, cy + R * .3); ctx.lineTo(cx - R, cy + R * .3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const ring = clamp01((t - .2) / .6); if (ring > 0 && ring < 1) { ctx.strokeStyle = `rgba(255,236,150,${1 - ring})`; ctx.lineWidth = 8 * (1 - ring) + 1; ctx.beginPath(); ctx.ellipse(cx, cy, R * (1.2 + ring * 3), R * (.6 + ring * 1.5), 0, 0, TAU); ctx.stroke(); }
+    ctx.restore();
+  };
+  buzzer.win = (ctx, w, h, t) => { // marquee bulbs chase round the whole panel and a trophy rises in the spotlight
+    const n = 40; const per = 2 * (w + h); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let i = 0; i < n; i += 1) { const d = (i / n) * per; const [x, y] = d < w ? [d, 8] : d < w + h ? [w - 8, d - w] : d < 2 * w + h ? [w - (d - w - h), h - 8] : [8, h - (d - 2 * w - h)]; const on = (i + Math.floor(t * 20)) % 4 < 2; ctx.fillStyle = on ? '#fff0a8' : 'rgba(255,214,90,.35)'; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill(); }
+    const rise = clamp01((t - .15) / .45); const cx = w / 2; const cy = h * (1.1 - .55 * rise); const s = Math.min(w, h) * .16;
+    ctx.fillStyle = '#ffd65a'; ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s, cy - s); ctx.quadraticCurveTo(cx + s, cy + s * .4, cx, cy + s * .5); ctx.quadraticCurveTo(cx - s, cy + s * .4, cx - s, cy - s); ctx.fill(); ctx.stroke();
+    ctx.fillRect(cx - s * .15, cy + s * .5, s * .3, s * .5); ctx.fillRect(cx - s * .55, cy + s, s * 1.1, s * .25); ctx.strokeRect(cx - s * .55, cy + s, s * 1.1, s * .25);
+    ctx.fillStyle = '#ffffff'; starPath(ctx, cx, cy - s * .35, s * .3, s * .12, 5); ctx.fill();
+    ctx.restore();
+  };
+
   // ---- room themes: panel backdrop ----
   function office(ctx, w, h) { // 탐정 사무소: dark wood and a green lamp glow
     ctx.fillStyle = '#2a1d12'; ctx.fillRect(0, 0, w, h); const R = rng(51); ctx.strokeStyle = 'rgba(0,0,0,.25)';
@@ -65,6 +105,7 @@
     twentyquestions_c1: piece(memo), twentyquestions_c2: piece(news), twentyquestions_c3: piece(radio), twentyquestions_c4: piece(specimen), twentyquestions_c5: piece(cipher),
     twentyquestions_p1: piece(crystal), twentyquestions_p2: piece(decoder), twentyquestions_p3: piece(holo),
     twentyquestions_t1: theme(office), twentyquestions_t2: theme(quizShow),
-    twentyquestions_l1: piece(door),
+    twentyquestions_l1: piece({ ...door, legend: true }),
+    twentyquestions_l2: piece({ ...buzzer, legend: true }),
   });
 }());
