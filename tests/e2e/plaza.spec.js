@@ -152,11 +152,12 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   expect(await seen(a, aId)).toBeNull(); // never myself
 
   // a walks to the shop door: b sees a's character arrive there.
-  const door = await a.page.evaluate(() => { const d = window.PlazaDebug(); d.place('shop'); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
+  // a warp, not place(): a walk-check from the spawn would stop at b when b happens to stand on the straight line (v1.9.6 collision)
+  const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.shop; await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
 
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
-  await a.page.evaluate(() => window.PlazaDebug().place('games'));
+  await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
   await a.page.keyboard.press('Space');
   await a.page.locator('#plazaDialog #createRoomBtn').click();
   await expect(a.page.locator('#roomView')).toBeVisible();
@@ -188,7 +189,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   for (const who of [...champs, plain]) {
     await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
     await who.page.reload();
-    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true); // three 3D pages on a software renderer
   }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];

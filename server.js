@@ -683,7 +683,7 @@ const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
 const PLAZA_BOUND = 18;
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
-// v1.9.7 player collision: the last word on where a plaza player stands. Smaller than the screen's circles (0.45 each,
+// v1.9.6 player collision: the last word on where a plaza player stands. Smaller than the screen's circles (0.45 each,
 // 0.28 at a door) so it only removes a real overlap (lag, a hand-made request) and never fights normal walking.
 const PLAZA_SERVER_MIN = 0.5;
 // The last position stored for a session, kept when its plaza entry drops (a lost stream, a slow client) so the next
