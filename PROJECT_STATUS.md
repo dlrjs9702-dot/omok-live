@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.8.6 고스톱·맞고 공개 화투 그림
+
+사용자 지시(2026-10-03): 화투패를 새로 그리지 말고 공개된 패를 그대로 쓴다. v1.7.4 자체 그림을 대체한다(보너스패 제외).
+
+- 그림: Wikimedia Commons 「SVG Hwatu」 48장(Louie Mantia Jr. 원작 Hanafuda → Marcus Richert 한국 화투 수정 → Spenĉjo 카드별 SVG), CC BY-SA 4.0. 내용은 그대로, 파일 이름만 카드 id로 바꿔 `public/hwatu/<id>.svg`에 둔다. 매핑: 광=Hikari·열끗=Tane·띠=Tanzaku·피=Kasu, 4월 띠·피와 6월 열끗은 한국 화투 방향인 `flipped` 판, 11월 쌍피=`November Kasu 2`(붉은 바닥), 12월 쌍피=`December Kasu`. 대응표와 출처·라이선스는 `public/hwatu/LICENSE.md`, 화면 안 출처는 고스톱 규칙 설명 끝 한 줄.
+- 보너스패 2장(2피·3피)은 세트에 없어 기존 자체 그림(`HwatuArt.svg`)을 쓴다. 카드 뒷면·스킨(뒷면·프레임·받침·영역·연출)은 그대로이고, 카드 앞면 48장은 모든 스킨이 공용한다.
+- 코드: `public/hwatu-art.js`에 `HwatuArt.html(id)`(일반 카드는 `<img class="hwatuImg">`, 보너스는 기존 SVG), `gostop-ui.js` `cardEl`이 이를 쓰고 `hasPhoto` 클래스를 단다. 카드 비율을 그림(103×168)에 맞춰 조정(기본 손패 56×91·바닥 44×72, 테이블 안 손패 80×130·바닥 72×117), 연출 기준 크기 `BASE_W/H`와 연출 카드 크기도 44×72.
+- 서버: `/hwatu/<id>.svg`만 메모리에서 gzip으로, `Cache-Control: public, max-age=604800`로 내려준다(48장 원본 약 2.7MB). 이름 형식이 아닌 경로는 열지 않는다.
+- 검증: SVG에 스크립트·외부 참조 없음 확인. `test/hwatu-art.test.js`(48장 파일·img 마크업·보너스 자체 그림·라이선스 문서·화면 출처), `test/hwatu-serve.test.js`(gzip·캐시·잘못된 경로 거부). PC 1920×1080 화면 캡처로 확인.
+
 ## v1.8.5 고스톱·맞고 대형 테이블 UI
 
 IDEAS 「고스톱·맞고 대형 테이블 UI · 확정(2026-10-01)」 구현. 게임 규칙·정산·서버 엔진은 바꾸지 않았다(화면 배치와 크기만).
