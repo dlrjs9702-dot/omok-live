@@ -382,6 +382,9 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .lobbyHighlights .noticeCard{margin:0;min-width:0}
 .lobbySide{display:grid;gap:12px;min-width:0;align-content:start}
 /* v1.7.32: the shop entry is one blue button (same colour as 방 입장), no card or title around it */
+.islandTopbar{justify-content:flex-end}.islandTopActions{margin-left:auto}
+.recordsDialog.myInfoDialog{width:min(94vw,980px);max-height:90vh}
+.myInfoSection{padding:12px 0;border-bottom:1px solid #263246}.myInfoSection:last-child{border-bottom:0;padding-bottom:0}.myInfoSectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.myInfoSectionHead h3{font-size:1rem;margin:0 0 8px}.myInfoWallet{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}.myInfoLabel{font-size:.76rem;color:#94a3b8;font-weight:800}.myInfoWallet .pointBalance{font-size:1.2rem;font-weight:900;color:#fde68a}.myInfoDialog .pointHistoryPanel{grid-column:1/-1;margin-top:2px;padding:10px 0 0;border-top:1px solid #263246}.myInfoSkinBody{margin-top:4px}
 .skinShopCard{min-width:0;display:grid}
 .skinShopCard .skinShopEnter{width:100%;padding:16px;font-size:1.1rem;font-weight:850;border-radius:14px}
 /* v1.7.30 skin shop: a large modal like the player lookup */
@@ -1549,7 +1552,7 @@ body.tableGamePlaying #teamPlayers{display:none!important}
 
 /* v1.8.8 3D 광장 로비: the square fills the lobby under the top bar; facility windows reuse the lobby sections */
 body.plazaMode .shell{width:min(1600px,calc(100% - 24px));padding-bottom:16px}
-body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage):not(#pointHistoryPanel){display:none!important}
+body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .plazaStage{position:relative;height:calc(100vh - 126px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
 .plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}
 .plazaStage canvas.plazaCanvas{display:block;width:100%;height:100%}
