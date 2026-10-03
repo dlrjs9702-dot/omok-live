@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.8.4 게임 진행 안정성 패치
+- **응답없음 복귀**: ① 차례 플레이어가 마감(60초)이 지난 뒤 끊겼다 재접속하면 새 마감을 준다(`turnWatch.away`; 낡은 마감 때문에 같은 동기화에서 다시 응답없음이 되던 문제). ② 접속은 유지한 채 마감이 지나 응답없음으로 표시된 좌석이 첫 실제 입력(pointerdown/keydown)을 하면 클라이언트가 `POST /api/room/present`를 보내 마감을 새로 시작하고 일시정지가 풀린다(그 좌석 본인만 가능, 다른 사람·관전자는 효과 없음). 기존 `end-game`·일시정지 규칙은 그대로.
+- **라이어게임**: 결과 효과 키에 `result.roundNumber`를 포함해 3판 모드 2·3번째 판에서도 한 번씩 재생.
+- **다빈치 코드**: 정답/공개 효과를 추측·타일 키당 한 번만 예약하고, 효과 시점에 화면에 붙어 있는 타일을 다시 찾아 그려 좌상단 오표시를 막음.
+- 테스트: `test/afk-timeout.test.js`(복귀 시 일시정지 해제, 수정 전 코드로 되돌려 실패 확인), `test/skin-effect-once.test.js`.
+- 후속 후보(손대지 않음): 다빈치 테마 이미지가 불투명한 `.davinciHands.davinciTable`에 가려져 차이가 작음(IDEAS PR #100 P2), 효과가 화면 안에 보이는 실제 렌더 검증은 자동화하지 않음.
+
 ## v1.8.3 스킨 등록 기념 이벤트
 
 - 기준: v1.8.2 main `eb91e415493e67d5ff4c95101994f0b5142eee4c`. v1.8.1 초안 PR #104는 v1.8.0 기준이라 현재 main과 충돌하므로 그대로 병합하지 않고, 사용자 확정 기능만 현재 main 위로 이관한다.

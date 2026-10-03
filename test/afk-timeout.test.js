@@ -106,6 +106,36 @@ test('a connected seat that sits on its own turn past the AFK timeout is paused 
   assert.equal(state.game.paused, false);
 });
 
+test('an idle-flagged seat that comes back (present) lifts the pause itself; nobody else can lift it for them', { timeout: 30000 }, async t => {
+  const { req, login } = await serverFixture(t, { AFK_TIMEOUT_MS: '600' });
+  const a = await login();
+  const b = await login();
+  assert.equal((await req('/api/rooms', a, { gameType: 'othello', visibility: 'public' })).status, 201);
+  const rid = (await req('/api/rooms/public', b, undefined, 'GET')).data.rooms[0].id;
+  assert.equal((await req('/api/rooms/public/join', b, { roomId: rid })).status, 200);
+  assert.equal((await req('/api/room/choose-role', a, { choice: 'black' })).status, 200);
+  assert.equal((await req('/api/room/choose-role', b, { choice: 'white' })).status, 200);
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  let state = (await req('/api/room', b, undefined, 'GET')).data.state;
+  assert.equal(state.game.paused, true);
+  assert.deepEqual(state.game.disconnectedSeats, ['black']);
+
+  // The waiting side announcing itself does nothing: only the flagged seat's own return counts.
+  await req('/api/room/present', b, {});
+  state = (await req('/api/room', b, undefined, 'GET')).data.state;
+  assert.equal(state.game.paused, true);
+
+  // The flagged seat is back: the pause lifts at once, the game goes on and nobody was ended as the loser.
+  const back = await req('/api/room/present', a, {});
+  assert.equal(back.status, 200);
+  assert.equal(back.data.state.game.paused, false);
+  state = (await req('/api/room', b, undefined, 'GET')).data.state;
+  assert.equal(state.game.status, 'playing');
+  assert.equal(state.game.paused, false);
+  assert.equal((await req('/api/room/move', a, { x: 2, y: 3 })).status, 200);
+});
+
 test('a free-for-all numbered-seat game (bingo) gets the same AFK pause for whichever seat is up', { timeout: 30000 }, async t => {
   const { req, login } = await serverFixture(t);
   const a = await login();
