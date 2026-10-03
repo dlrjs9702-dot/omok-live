@@ -90,6 +90,74 @@
     ctx.restore();
   }
 
+  // v1.9.0 legend standard: `special(ctx, boxes, t, color)` when one line closes two or more boxes, `win(ctx, boxes, t,
+  // color, size)` over all the winner's boxes when the game ends. A box is { x, y, size } (its top-left and side).
+  const mid = (b) => ({ x: b.x + b.size / 2, y: b.y + b.size / 2 });
+  function circuitSpecial(ctx, boxes, t, c) { // an arc of current jumps between the boxes closed together
+    const P = pal(c); const pts = boxes.map(mid); const a = Math.sin(clamp01(t) * Math.PI); const R = rng(Math.floor(t * 20));
+    ctx.save(); ctx.strokeStyle = P.neon; ctx.shadowColor = P.neon; ctx.shadowBlur = 14; ctx.lineWidth = 4; ctx.globalAlpha = a;
+    for (let i = 1; i < pts.length; i += 1) { const p = pts[i - 1]; const q = pts[i]; ctx.beginPath(); ctx.moveTo(p.x, p.y); for (let k = 1; k < 8; k += 1) { const u = k / 8; ctx.lineTo(p.x + (q.x - p.x) * u + (R() - .5) * 26, p.y + (q.y - p.y) * u + (R() - .5) * 26); } ctx.lineTo(q.x, q.y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function circuitWin(ctx, boxes, t, c, size) { // current flows through every cell of the winner, then the whole board lights up
+    const P = pal(c); const flow = clamp01(t / .6); const flash = clamp01((t - .55) / .45);
+    ctx.save();
+    boxes.forEach((b, i) => { const on = clamp01(flow * boxes.length - i); if (on <= 0) return; ctx.strokeStyle = P.neon; ctx.shadowColor = P.neon; ctx.shadowBlur = 18 * on; ctx.lineWidth = 5; ctx.strokeRect(b.x + 4, b.y + 4, b.size - 8, b.size - 8); });
+    if (flash > 0 && flash < 1) { ctx.globalAlpha = Math.sin(flash * Math.PI) * .22; ctx.fillStyle = P.neon; ctx.fillRect(0, 0, size.w, size.h); }
+    ctx.restore();
+  }
+
+  // ---- legend 2 (v1.9.0): 낙서 마법사 ↔ 낙서 공책 -- a wobbly magic crayon; closed boxes become little doodle creatures ----
+  function wobble(ctx, x1, y1, x2, y2, w, col, seed) {
+    const g = geom(x1, y1, x2, y2); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); for (let d = 0; d <= g.len; d += 6) { const off = Math.sin(d / 9 + seed) * 3.2; const x = x1 + g.ux * d + g.nx * off; const y = y1 + g.uy * d + g.ny * off; if (d) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  function magicCrayon(ctx, x1, y1, x2, y2, c) {
+    const P = pal(c); wobble(ctx, x1, y1, x2, y2, 11, P.main, 0); wobble(ctx, x1, y1 - 2, x2, y2 - 2, 3, P.light, 1.3);
+    along(x1, y1, x2, y2, 40, (x, y, g, i) => { ctx.fillStyle = i % 2 ? '#ffd23f' : '#ffffff'; ctx.strokeStyle = P.deep; ctx.lineWidth = 1.5; starPath(ctx, x + g.nx * 10, y + g.ny * 10, 6, 2.6, 5); ctx.fill(); ctx.stroke(); });
+  }
+  function magicCrayonFx(ctx, x1, y1, x2, y2, c, t) { // a little star scribbles itself along the new line
+    const P = pal(c); const x = x1 + (x2 - x1) * t; const y = y1 + (y2 - y1) * t;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(t * 8); ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = P.deep; ctx.lineWidth = 2; starPath(ctx, 0, 0, 13 * (1 - t * .4), 5.5, 5); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = `rgba(255,210,63,${1 - t})`; ctx.lineWidth = 2; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.arc(x, y, 18 + t * 10, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function doodleBox(ctx, bx, by, size, c) { // a claimed box: a small doodle creature in the owner's crayon (the letter stays)
+    const P = pal(c); const cx = bx + size / 2; const cy = by + size / 2;
+    ctx.save(); ctx.fillStyle = c === 'white' ? 'rgba(239,68,68,.16)' : 'rgba(37,99,235,.16)'; ctx.fillRect(bx, by, size, size);
+    wobble(ctx, cx - size * .32, cy + size * .3, cx + size * .32, cy + size * .3, 3, P.main, 2); // the ground line
+    ctx.strokeStyle = P.main; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.ellipse(cx, cy + size * .04, size * .3, size * .24, 0, 0, TAU); ctx.stroke();
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + s * size * .14, cy - size * .16); ctx.lineTo(cx + s * size * .22, cy - size * .36); ctx.stroke(); }
+    ctx.fillStyle = P.deep; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + s * size * .1, cy - size * .02, size * .035, 0, TAU); ctx.fill(); }
+    ctx.beginPath(); ctx.arc(cx, cy + size * .06, size * .09, .2, Math.PI - .2); ctx.stroke();
+    ctx.fillStyle = P.main; ctx.font = `italic 900 ${Math.round(size * .2)}px "Segoe Print", "Comic Sans MS", system-ui, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(c === 'white' ? 'R' : 'P', bx + size * .84, by + size * .26);
+    ctx.restore();
+  }
+  function doodleSpecial(ctx, boxes, t, c) { // two boxes at once: stars and swirls scribble out of them, with a big "×2"
+    const P = pal(c); const pts = boxes.map(mid); const a = 1 - clamp01((t - .7) / .3);
+    ctx.save(); ctx.globalAlpha = a;
+    pts.forEach((p, i) => { const R = rng(i + 7); for (let k = 0; k < 7; k += 1) { const ang = R() * TAU; const d = 20 + 60 * clamp01(t * 1.3); ctx.fillStyle = ['#ffd23f', P.light, '#ffffff'][k % 3]; ctx.strokeStyle = P.deep; ctx.lineWidth = 1.5; starPath(ctx, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, 8, 3.4, 5); ctx.fill(); ctx.stroke(); } });
+    const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length; const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    const k = Math.min(1, t * 3); ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = P.deep; ctx.lineWidth = 4;
+    ctx.font = `italic 900 ${Math.round(46 * k)}px "Segoe Print", "Comic Sans MS", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeText(`×${boxes.length}`, cx, cy); ctx.fillText(`×${boxes.length}`, cx, cy);
+    ctx.restore();
+  }
+  function doodleWin(ctx, boxes, t, c, size) { // the winner's creatures hop in turn, then a crayon crown is drawn over the page
+    const P = pal(c); const hop = clamp01(t / .6); const crown = clamp01((t - .5) / .5);
+    ctx.save();
+    boxes.forEach((b, i) => { const on = clamp01(hop * boxes.length * .6 - i * .5); if (on <= 0 || on >= 1) return; const p = mid(b); ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = P.deep; ctx.lineWidth = 2; starPath(ctx, p.x, p.y - b.size * .5 - Math.sin(on * Math.PI) * 18, 10, 4, 5); ctx.fill(); ctx.stroke(); });
+    if (crown > 0) {
+      const cx = size.w / 2; const cy = size.h / 2; const s = size.w * .16; const draw = Math.min(1, crown * 1.6);
+      const pts = [[-1, .5], [-1, -.4], [-.5, .05], [0, -.7], [.5, .05], [1, -.4], [1, .5], [-1, .5]];
+      ctx.globalAlpha = 1 - clamp01((crown - .8) / .2);
+      ctx.strokeStyle = P.main; ctx.lineWidth = 9; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.fillStyle = 'rgba(255,210,63,.7)';
+      ctx.beginPath(); const n = Math.max(2, Math.ceil(pts.length * draw)); pts.slice(0, n).forEach(([x, y], i) => (i ? ctx.lineTo(cx + x * s, cy + y * s) : ctx.moveTo(cx + x * s, cy + y * s)));
+      if (draw >= 1) ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // ---- room themes: the page, and the colour of the dots ----
   function doodle(ctx, w, h) { // 낙서 공책
     ctx.fillStyle = '#fffdf3'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = 'rgba(120,170,230,.45)'; ctx.lineWidth = 1.6;
@@ -126,6 +194,7 @@
     dots_p1: line(cable, cableFx), dots_p2: line(lava, lavaFx), dots_p3: line(laser, laserFx),
     dots_t1: theme(doodle, ['rgba(55,65,81,.22)', '#374151']),
     dots_t2: theme(pcb, ['rgba(80,255,220,.3)', '#7ffff0']),
-    dots_l1: line(circuit, circuitFx, { box: cell }),
+    dots_l1: line(circuit, circuitFx, { box: cell, legend: true, special: circuitSpecial, win: circuitWin }),
+    dots_l2: line(magicCrayon, magicCrayonFx, { box: doodleBox, legend: true, special: doodleSpecial, win: doodleWin }),
   });
 }());

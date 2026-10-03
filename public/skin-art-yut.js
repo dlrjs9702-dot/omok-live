@@ -136,6 +136,81 @@
     });
   }
 
+  // v1.9.0 legend standard: `special(ctx, pts, r, t, color, label)` when this piece catches one (pts: the catch spot),
+  // `win(ctx, pts, r, t, color, size)` when its player wins (pts: the start/finish tile).
+  const GUARD_COL = ['90,240,200', '255,255,255', '255,140,40', '120,200,255'];
+  function guardianSpecial(ctx, pts, r, t, c, label) { // the guardian's element bursts on the catch
+    const k = Math.max(0, Math.min(3, (Number(label) || 1) - 1)); const p = pts[0]; const col = GUARD_COL[k];
+    for (let i = 0; i < 3; i += 1) { const tt = clamp01(t * 1.3 - i * .2); if (tt <= 0 || tt >= 1) continue; ctx.strokeStyle = `rgba(20,25,40,${(1 - tt) * .35})`; ctx.lineWidth = r * .4 * (1 - tt) + 2; ctx.beginPath(); ctx.arc(p.x, p.y, r * (1 + 3 * tt), 0, TAU); ctx.stroke(); ctx.strokeStyle = `rgba(${col},${(1 - tt) * .9})`; ctx.lineWidth = r * .25 * (1 - tt) + 1; ctx.beginPath(); ctx.arc(p.x, p.y, r * (1 + 3 * tt), 0, TAU); ctx.stroke(); }
+    const R = rng(k + 3);
+    for (let i = 0; i < 12; i += 1) { const a = R() * TAU; const d = r * (1 + 3.2 * clamp01(t)); ctx.fillStyle = `rgba(${col},${1 - clamp01(t)})`; ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, r * .18, 0, TAU); ctx.fill(); }
+  }
+  function guardianWin(ctx, pts, r, t, c, size) { // four guardian lights circle the board and meet over the finish tile
+    const { w, h } = size; const cx = w / 2; const cy = h * .47; const p = pts[0];
+    const gather = clamp01(t / .65); const flash = clamp01((t - .6) / .4);
+    ctx.save();
+    GUARD_COL.forEach((col, i) => {
+      const a = i * TAU / 4 + gather * TAU * .75; const rad = w * .32 * (1 - gather);
+      const x = cx + (p.x - cx) * gather + Math.cos(a) * rad; const y = cy + (p.y - cy) * gather + Math.sin(a) * rad;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2); g.addColorStop(0, `rgba(${col},.95)`); g.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, TAU); ctx.fill();
+    });
+    if (flash > 0 && flash < 1) { ctx.strokeStyle = `rgba(247,214,90,${1 - flash})`; ctx.lineWidth = r * .5 * (1 - flash) + 1; ctx.beginPath(); ctx.arc(p.x, p.y, r * (1 + 8 * flash), 0, TAU); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // ---- legend 2 (v1.9.0): 옥토끼 원정대 ↔ 달나라 윷판 -- moon rabbits with long ears; a catch pounds the mortar ----
+  function rabbit(ctx, r, c, label) {
+    const T = team(c);
+    for (const s of [-1, 1]) { // the long ears are the silhouette
+      ctx.save(); ctx.translate(s * r * .34, -r * .78); ctx.rotate(s * .22);
+      ctx.fillStyle = T.main; ctx.beginPath(); ctx.ellipse(0, -r * .32, r * .2, r * .5, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffc2d6'; ctx.beginPath(); ctx.ellipse(0, -r * .3, r * .09, r * .36, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = sphere(ctx, r, [T.light, T.main, T.dark], .5); ctx.beginPath(); ctx.arc(0, 0, r * .94, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); ctx.ellipse(0, r * .2, r * .42, r * .3, 0, 0, TAU); ctx.fill();
+    for (const s of [-1, 1]) { ctx.fillStyle = '#10131a'; ctx.beginPath(); ctx.arc(s * r * .3, -r * .16, r * .1, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s * r * .3 - r * .03, -r * .2, r * .035, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#ff7aa2'; ctx.beginPath(); ctx.moveTo(-r * .07, r * .08); ctx.lineTo(r * .07, r * .08); ctx.lineTo(0, r * .17); ctx.fill();
+    ctx.strokeStyle = '#f7d65a'; ctx.lineWidth = r * .08; ctx.beginPath(); ctx.arc(0, 0, r * .9, Math.PI * .15, Math.PI * .85); ctx.stroke(); // a crescent collar
+    badge(ctx, r, label);
+  }
+  function moonDust(ctx, pts, r) { // little hops of moon dust and crescents behind the rabbit
+    pts.forEach((p, i) => { const a = (i + 1) / pts.length; ctx.fillStyle = `rgba(255,236,170,${a * .6})`; ctx.beginPath(); ctx.arc(p.x, p.y + r * .55, r * .3 * a, Math.PI * .2, Math.PI * 1.4); ctx.arc(p.x + r * .1, p.y + r * .5, r * .22 * a, Math.PI * 1.4, Math.PI * .2, true); ctx.fill(); });
+  }
+  function mortarSpecial(ctx, pts, r, t, c) { // a pestle pounds the catch spot: 쿵! rice-cake dust and stars
+    const p = pts[0]; const down = clamp01(t / .3); const after = clamp01((t - .3) / .7);
+    ctx.save();
+    const y = p.y - r * 3.4 * (1 - down * down);
+    ctx.fillStyle = '#c08a55'; ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = r * .1;
+    ctx.save(); ctx.translate(p.x, y); ctx.rotate(-.35); ctx.beginPath(); ctx.roundRect(-r * .28, -r * 1.6, r * .56, r * 1.7, r * .2); ctx.fill(); ctx.stroke(); ctx.restore();
+    if (after > 0) {
+      ctx.globalAlpha = 1 - after;
+      ctx.strokeStyle = c === 'white' ? '#b91c1c' : '#1d4ed8'; ctx.lineWidth = r * .14; ctx.beginPath(); ctx.ellipse(p.x, p.y + r * .4, r * (1 + 1.6 * after), r * (.5 + .8 * after), 0, 0, TAU); ctx.stroke(); // 쿵!
+      ctx.fillStyle = '#f7a8c8'; for (let i = 0; i < 10; i += 1) { const a = i * TAU / 10; const d = r * (1 + 2.4 * after); ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d * .55 + r * .4, r * .22, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = '#ffd86b'; for (let i = 0; i < 5; i += 1) { const a = -Math.PI / 2 + (i - 2) * .5; starPath(ctx, p.x + Math.cos(a) * r * 2.2 * after, p.y - r * .4 + Math.sin(a) * r * 2.2 * after, r * .3, r * .1, 5); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+  function fullMoonWin(ctx, pts, r, t, c, size) { // a full moon rises over the board with a rabbit pounding inside it
+    const { w, h } = size; const cx = w / 2; const rise = clamp01(t / .6); const cy = h * (.95 - .45 * rise); const R = w * .17;
+    ctx.save(); ctx.globalAlpha = Math.min(1, t * 4) * (1 - clamp01((t - .85) / .15));
+    const g = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.8); g.addColorStop(0, 'rgba(255,244,200,.55)'); g.addColorStop(1, 'rgba(255,244,200,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.8, 0, TAU); ctx.fill();
+    const night = ctx.createRadialGradient(cx, cy, R * .9, cx, cy, R * 1.7); night.addColorStop(0, 'rgba(20,30,80,.7)'); night.addColorStop(1, 'rgba(20,30,80,0)'); // a patch of night so the moon reads on any mat
+    ctx.fillStyle = night; ctx.beginPath(); ctx.arc(cx, cy, R * 1.7, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff4c8'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+    const hop = Math.abs(Math.sin(t * Math.PI * 6)) * R * .08;
+    ctx.fillStyle = 'rgba(150,130,90,.55)'; // the rabbit in the moon
+    ctx.beginPath(); ctx.ellipse(cx - R * .15, cy + R * .15 - hop, R * .28, R * .22, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - R * .22, cy - R * .2 - hop, R * .07, R * .24, -.2, 0, TAU); ctx.ellipse(cx - R * .08, cy - R * .2 - hop, R * .07, R * .24, .2, 0, TAU); ctx.fill();
+    ctx.fillRect(cx + R * .2, cy + R * .1, R * .3, R * .25);
+    const R2 = rng(5); ctx.fillStyle = '#fff';
+    for (let i = 0; i < 16; i += 1) { const a = R2() * TAU; const d = R * (1.2 + R2() * 1.4); const tw = Math.sin((t * 3 + R2()) * Math.PI); if (tw > 0) { starPath(ctx, cx + Math.cos(a) * d, cy + Math.sin(a) * d, r * .3 * tw, r * .08, 4); ctx.fill(); } }
+    ctx.restore();
+  }
+
   // ---- room themes: the mat and the paper ----
   function courtyard(ctx, w, h) { // 설날 한옥마당
     ctx.fillStyle = '#e8eef5'; ctx.fillRect(0, 0, w, h);
@@ -178,6 +253,7 @@
     yut_p1: piece(ghost, ghostTrail), yut_p2: piece(knight, knightTrail), yut_p3: piece(ship, shipTrail),
     yut_t1: theme(courtyard, 'rgba(60,30,20,.85)', '#fff3d6'),
     yut_t2: theme(moon, 'rgba(180,200,255,.9)', '#2a3566'),
-    yut_l1: piece(guardian, guardianTrail, { legend: true }),
+    yut_l1: piece(guardian, guardianTrail, { legend: true, special: guardianSpecial, win: guardianWin }),
+    yut_l2: piece(rabbit, moonDust, { legend: true, special: mortarSpecial, win: fullMoonWin }),
   });
 }());

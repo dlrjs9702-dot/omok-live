@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.9').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.0').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1339,10 +1339,14 @@
   // result follows as a small banner at the top, so the result never covers the legend effect. Same title, message
   // and duration as the full card; the rematch and score controls stay where they are.
   function legendWinOnBoard(game) {
-    const first = game?.winningLine?.[0];
-    if (!first || !['omok', 'omok2v2'].includes(state?.gameType)) return false;
-    const color = game.board?.[first[1]]?.[first[0]];
-    const def = color ? window.SkinLooks?.def(stoneSkin(first[0], first[1], color)) : null;
+    const type = state?.gameType;
+    let skin = null;
+    if (['omok', 'omok2v2', 'connect4'].includes(type)) { // the skin of the winning line's stones (v1.9.0: also 사목)
+      const first = game?.winningLine?.[0];
+      const color = first ? game.board?.[first[1]]?.[first[0]] : null;
+      if (color) skin = type === 'connect4' ? state.players?.[color]?.skin : stoneSkin(first[0], first[1], color);
+    } else if (['othello', 'yut', 'dots'].includes(type) && game?.status === 'finished' && game.winner) skin = state.players?.[game.winner]?.skin; // v1.9.0
+    const def = skin ? window.SkinLooks?.def(skin) : null;
     return Boolean(def?.legend && def.win);
   }
   function showResultEffect(outcome, game) {
@@ -1440,7 +1444,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.8.9').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.0').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -6369,6 +6373,24 @@
         }
       }
     }
+    // v1.9.0 legends: once the move has landed, a catch plays the catcher's `special` on the spot and a win the
+    // winner's `win` over the board (after the catch, if both).
+    const lm = g.lastMove;
+    const catchSkin = lm?.captured?.length ? window.SkinLooks.def(state.players?.[lm.color]?.skin) : null;
+    const yutWinSkin = g.status === 'finished' && g.winner ? window.SkinLooks.def(state.players?.[g.winner]?.skin) : null;
+    const catchMs = catchSkin?.legend && catchSkin.special ? 1400 : 0;
+    const yutWinMs = yutWinSkin?.legend && yutWinSkin.win ? 2400 : 0;
+    if (!animatingIds && lm && (catchMs || yutWinMs)) {
+      const elapsed = pieceMotion(`yutfx:${lm.at || ''}:${g.status}`, catchMs + yutWinMs) * (catchMs + yutWinMs);
+      if (catchMs && elapsed < catchMs) {
+        const [x, y] = yutNodePosition(lm.destination?.position ?? 0);
+        ctx.save(); catchSkin.special(ctx, [{ x, y }], 28, elapsed / catchMs, lm.color, String(lm.pieceIds?.[0] || '').split('-').at(-1)); ctx.restore();
+      }
+      if (yutWinMs && elapsed > catchMs && elapsed < catchMs + yutWinMs) {
+        const [x, y] = yutNodePosition(0);
+        ctx.save(); yutWinSkin.win(ctx, [{ x, y }], 28, (elapsed - catchMs) / yutWinMs, g.winner, { w: 720, h: 720 }); ctx.restore();
+      }
+    }
     // v1.6.83: selectable targets (mint, the v1.6.82 actionable colour). Destinations are dashed
     // rings carrying the moving piece number(s); the targets themselves are solid capsules drawn
     // OUTSIDE the piece, so the amber recent-move ring drawn next stays visible just inside it.
@@ -6499,8 +6521,16 @@
     const lastOwner = lastEdge === undefined ? null : (lastEdge < 20 ? g.edges?.h?.[Math.floor(lastEdge / 4)]?.[lastEdge % 4] : g.edges?.v?.[Math.floor((lastEdge - 20) / 5)]?.[(lastEdge - 20) % 5]);
     const lineSkin = (owner) => window.SkinLooks.def(state.players?.[owner]?.skin);
     const fxMs = lastOwner && lineSkin(lastOwner)?.lineFx ? 700 : 0;
-    const dotsMotion = pieceMotion(lastEdge !== undefined ? `dots:${g.moveCount}:${g.lastMove?.at || ''}` : '', 380 + fxMs);
-    const drawStroke = Math.min(1, dotsMotion * (380 + fxMs) / 380);
+    // v1.9.0 legends: one line closing two or more boxes plays the owner's `special`; the end of the game the winner's `win`.
+    const boxRect = ([row, col]) => ({ x: pad + col * gap + 12, y: pad + row * gap + 12, size: gap - 24 });
+    const claimedNow = g.lastMove?.claimed || [];
+    const dotsSpecialSkin = lastOwner && claimedNow.length >= 2 && lineSkin(lastOwner)?.legend ? lineSkin(lastOwner) : null;
+    const dotsSpecialMs = dotsSpecialSkin?.special ? 1300 : 0;
+    const dotsWinSkin = g.status === 'finished' && g.winner ? lineSkin(g.winner) : null;
+    const dotsWinMs = dotsWinSkin?.legend && dotsWinSkin.win ? 2400 : 0;
+    const dotsTotal = 380 + fxMs + dotsSpecialMs + dotsWinMs;
+    const dotsMotion = pieceMotion(lastEdge !== undefined ? `dots:${g.moveCount}:${g.lastMove?.at || ''}` : '', dotsTotal);
+    const drawStroke = Math.min(1, dotsMotion * dotsTotal / 380);
     const newBoxes = new Set((g.lastMove?.claimed || []).map(([row, col]) => `${row},${col}`));
 
     for (let row = 0; row < 4; row += 1) for (let col = 0; col < 4; col += 1) {
@@ -6556,7 +6586,8 @@
         ctx.save(); lineSkin(owner).line(ctx, x1, y1, x2, y2, owner); ctx.restore();
         if (edgeId === lastEdge && fxMs && drawStroke >= 1) {
           const [ex1, ey1, ex2, ey2] = dotsEdgeEndpoints(edgeId);
-          ctx.save(); lineSkin(owner).lineFx(ctx, ex1, ey1, ex2, ey2, owner, Math.min(1, (dotsMotion * (380 + fxMs) - 380) / fxMs)); ctx.restore();
+          const fxT = Math.min(1, (dotsMotion * dotsTotal - 380) / fxMs);
+          if (fxT < 1) { ctx.save(); lineSkin(owner).lineFx(ctx, ex1, ey1, ex2, ey2, owner, fxT); ctx.restore(); }
         }
       } else {
       // Marker ink: a solid core with a slightly darker, uneven edge.
@@ -6575,6 +6606,18 @@
         ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
         scheduleRecentActionCanvas(dotsRecent);
       }
+    }
+
+    const dotsElapsed = dotsMotion * dotsTotal;
+    if (dotsSpecialMs) {
+      const t = (dotsElapsed - 380 - fxMs) / dotsSpecialMs;
+      if (t > 0 && t < 1) { ctx.save(); dotsSpecialSkin.special(ctx, claimedNow.map(boxRect), t, lastOwner); ctx.restore(); }
+    }
+    if (dotsWinMs) {
+      const t = (dotsElapsed - dotsTotal + dotsWinMs) / dotsWinMs;
+      const mine = [];
+      for (let row = 0; row < 4; row += 1) for (let col = 0; col < 4; col += 1) if (g.boxes?.[row]?.[col] === g.winner) mine.push(boxRect([row, col]));
+      if (t > 0 && t < 1) { ctx.save(); dotsWinSkin.win(ctx, mine, t, g.winner, { w: 720, h: 720 }); ctx.restore(); }
     }
 
     if (boardTurnActionable()) {
@@ -7086,7 +7129,10 @@
     const winFirst = g.winningLine?.[0];
     const winColor = winFirst ? g.board[winFirst[1]]?.[winFirst[0]] : null;
     const winSkin = winColor ? colorSkin(winColor) : null;
-    const extraMs = winSkin?.win ? 2200 : lastSkin?.fx ? 700 : 0;
+    // v1.9.0: a legend also marks exactly three in a row (the move that threatens four) along those chips.
+    const threePts = !winFirst && lastSkin?.special && lastColor
+      ? exactLine(g.board, last.x, last.y, lastColor, 3, (x, y) => ({ x: left + (x + .5) * cell, y: top + (y + .5) * cell })) : null;
+    const extraMs = winSkin?.win ? 2200 : threePts ? 1300 : lastSkin?.fx ? 700 : 0;
     const motionT = pieceMotion(last ? `c4:${g.moveCount}:${last.at || ''}` : '', fallMs + extraMs);
     const fall = Math.min(1, motionT * (fallMs + extraMs) / fallMs);
     const drawDisc = (cx, cy, color) => {
@@ -7172,7 +7218,7 @@
         const cy = top + (y + .5) * cell;
         const isLast = last?.x === x && last?.y === y;
         if (isLast && fall < 1) continue;
-        if (winners.has(`${x},${y}`)) {
+        if (winners.has(`${x},${y}`) && !colorSkin(g.board[y][x])?.legend) { // a legend keeps its own look and win
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 5;
           ctx.beginPath(); ctx.arc(cx, cy, radius * .77, 0, Math.PI * 2); ctx.stroke();
@@ -7188,6 +7234,9 @@
     if (lastSkin?.fx && fall >= 1 && motionT * (fallMs + extraMs) < fallMs + 700) {
       ctx.save(); ctx.translate(left + (last.x + .5) * cell, top + (last.y + .5) * cell);
       lastSkin.fx(ctx, radius, Math.min(1, (motionT * (fallMs + extraMs) - fallMs) / 700), lastColor); ctx.restore();
+    }
+    if (threePts && fall >= 1 && motionT < 1) {
+      ctx.save(); lastSkin.special(ctx, threePts, radius, Math.min(1, (motionT * (fallMs + extraMs) - fallMs) / 1300), lastColor); ctx.restore();
     }
     if (winSkin?.win) {
       const pts = g.winningLine.map(([x, y]) => ({ x: left + (x + .5) * cell, y: top + (y + .5) * cell }));
@@ -7369,9 +7418,17 @@
     const flipCount = flippedCells.size;
     // A disc skin with an effect lets each turned disc flash once it has landed face-up (a wave along the capture).
     const fxSkinOf = (color) => window.SkinLooks.def(state?.players?.[color]?.skin);
-    const hasFx = Boolean(last && fxSkinOf(state.game.board[last.y]?.[last.x])?.fx);
+    const lastColor = last ? state.game.board[last.y]?.[last.x] : null;
+    const hasFx = Boolean(last && fxSkinOf(lastColor)?.fx);
     const baseMs = 260 + 110 * flipCount + 320;
-    const totalMs = baseMs + (hasFx ? 600 : 0);
+    // v1.9.0 legends: a corner or a flip of five or more plays the mover's `special`; a finished game the winner's `win`.
+    const corner = last && (last.x === 0 || last.x === 7) && (last.y === 0 || last.y === 7);
+    const specialSkin = last && (corner || flipCount >= 5) ? fxSkinOf(lastColor) : null;
+    const specialMs = specialSkin?.special ? 1300 : 0;
+    const g = state.game;
+    const winSkin = g.status === 'finished' && g.winner ? fxSkinOf(g.winner) : null;
+    const winMs = winSkin?.legend && winSkin.win ? 2400 : 0;
+    const totalMs = baseMs + (hasFx ? 600 : 0) + specialMs + winMs;
     const motion = pieceMotion(last ? `oth:${state.game.moveCount}:${last.at || ''}` : '', totalMs);
     const elapsedMs = motion * totalMs;
     const flipOrder = [...flippedCells];
@@ -7396,6 +7453,17 @@
       }
     }
     if (last && motion >= 1) drawRecentActionRing((last.x + .5) * cell, (last.y + .5) * cell, cell * .43, othelloRecent);
+    const centre = (p) => ({ x: (p.x + .5) * cell, y: (p.y + .5) * cell });
+    if (specialMs) {
+      const t = (elapsedMs - baseMs) / specialMs;
+      if (t > 0 && t < 1) { ctx.save(); specialSkin.special(ctx, [centre(last), ...(last.flippedCells || []).map(centre)], cell * .38, t, lastColor); ctx.restore(); }
+    }
+    if (winMs) {
+      const t = (elapsedMs - totalMs + winMs) / winMs;
+      const pts = [];
+      for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) if (g.board[y][x] === g.winner) pts.push(centre({ x, y }));
+      if (t > 0 && t < 1) { ctx.save(); winSkin.win(ctx, pts, cell * .38, t, { w, h: w }); ctx.restore(); }
+    }
 
     if (hover && canPlace(hover.x, hover.y)) {
       ctx.strokeStyle = '#f8fafc';
@@ -7415,6 +7483,15 @@
 
   // v1.8.7: the stones of a straight line of exactly four through (x, y), as canvas points -- the cosmetic "four in a
   // row" moment a legend marks. Read from the board the player already sees; it decides nothing.
+  // Cells of the line through (x, y) that is exactly `n` long in `color` (rows, columns, both diagonals), mapped by `toPt`.
+  function exactLine(board, x, y, color, n, toPt) {
+    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+      const line = [[x, y]];
+      for (const s of [1, -1]) for (let k = 1; k <= n; k += 1) { const nx = x + dx * k * s; const ny = y + dy * k * s; if (board[ny]?.[nx] !== color) break; line.push([nx, ny]); }
+      if (line.length === n) return line.sort((p, q) => p[0] - q[0] || p[1] - q[1]).map(([px, py]) => toPt(px, py));
+    }
+    return null;
+  }
   function omokFourLine(x, y, color) {
     const board = state?.game?.board;
     if (!board) return null;
