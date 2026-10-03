@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.2').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.3').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1442,6 +1442,7 @@
     document.body.classList.toggle('plazaMode', on);
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
+    setPlazaPresence(on);
     if (!on) {
       if (plazaDialog.open) plazaDialog.close();
       plaza.controller?.stop();
@@ -1451,7 +1452,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.2').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.3').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1475,11 +1476,37 @@
   async function refreshPlazaAvatar() {
     try { plazaAvatar = (await api('/api/skins')).avatar || null; } catch { return; }
     applyPlazaAvatar();
+    plazaLastSent = null; // others see the new look with the next pose
+  }
+
+  // v1.9.3 V3: my pose goes to the server while I am in the plaza (about 8 a second while moving, every 3 seconds
+  // standing); everyone's poses come back on the lobby stream as `plaza` snapshots and are drawn by the scene.
+  let plazaSendTimer = null; let plazaLastSent = null; let plazaLastSentAt = 0; let plazaSending = false; let plazaMyId = null;
+  let plazaPlayers = [];
+  function plazaPresenceTick() {
+    const c = plaza.controller;
+    if (!c?.pose || plazaSending || !document.body.classList.contains('plazaMode')) return;
+    const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
+    const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving;
+    if (!changed && now - plazaLastSentAt < 3000) return;
+    plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
+    api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) })
+      .then((data) => { if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); } })
+      .catch(() => {}).finally(() => { plazaSending = false; });
+  }
+  function showPlazaPlayers() { plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId)); }
+  function setPlazaPresence(on) {
+    if (on && !plazaSendTimer) { plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
+    if (!on && plazaSendTimer) {
+      clearInterval(plazaSendTimer); plazaSendTimer = null;
+      if (sessionToken) api('/api/plaza/leave', { method: 'POST', body: '{}' }).catch(() => {});
+      plaza.controller?.setOthers?.([]);
+    }
   }
   function applyPlazaAvatar() {
     plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
-  window.PlazaDebug = () => plaza.controller?.debug() || null;
+  window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   Object.defineProperty(window, '__plazaController', { get: () => plaza.controller, configurable: true }); // tests try looks on
 
   function identityText() {
@@ -3251,6 +3278,7 @@
     if (!data) return;
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
+    if (event === 'plaza') { plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.

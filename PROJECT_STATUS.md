@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.9.3 3D 광장 V3: 멀티유저 광장
+
+IDEAS 「3D 광장형 로비」 3차(다른 접속자의 위치·방향·입퇴장·재접속).
+
+- 서버(`server.js`): 메모리 `plazaPresence`(세션 → { id, name, look, title, x, z, yaw, moving, at }). `POST /api/plaza/state`는 로비에서만(방 안 409), 숫자만 받아 광장 범위(±18)로 자르고 이름·모습·칭호는 서버가 세션·장착 스킨으로 정한다(분당 900회 제한). `POST /api/plaza/leave`. 150ms 틱에서 바뀐 게 있으면 대기실 SSE로 `plaza` 스냅샷을 보내고, 방 입장·세션 종료·15초 무응답·대기실 연결 종료 때 뺀다. 대기실 연결 직후 현재 스냅샷. 재배포 때 비워지고 다음 위치 전송으로 돌아온다.
+- 클라이언트(`public/app.js`): 광장에 있는 동안 125ms마다 자세를 보고 움직임이 있으면 보내고(서있을 땐 3초마다), 아바타를 바꾸면 바로 다시 보낸다. 광장을 떠나면(방·기존 로비·접속 종료) leave. `plaza` 이벤트로 받은 목록에서 내 id를 빼고 장면에 넘긴다. `PlazaDebug().myId`.
+- 장면(`public/plaza/plaza-scene.js`): `setOthers(list)`가 접속자별 캐릭터·이름표를 만들고(모습·칭호가 바뀌면 다시 만든다) 없어진 사람은 정리, 매 프레임 목표 위치로 미끄러지듯 따라가며 같은 걷기·멈춤 애니메이션(6 이상 떨어지면 순간이동). 다른 캐릭터와는 충돌하지 않는다. 시작 위치를 조금씩 흩뜨려 겹치지 않게 한다. `pose()`.
+- 테스트: `test/skins.test.js`(위치 API: 세션 필요·범위 밖 숫자·방 안 거절·leave), `tests/e2e/plaza.spec.js`(두 사람: 서로 보임·이름표·이동 반영·방 입장 시 사라졌다 복귀·새로고침 재접속, 광장 spec은 순서대로 실행).
+
 ## v1.9.2 3D 광장 V2: 아바타·상점 아바타 스킨·이름표·칭호
 
 IDEAS 「3D 광장형 로비」 2차와 「아바타 스킨 상점 판매」. 품목·가격·칸은 Claude 제안(IDEAS 기록).

@@ -608,6 +608,35 @@ function broadcastLobby() {
   }
 }
 
+// v1.9.3 3D 광장 V3: who is walking in the plaza right now. Memory only (a redeploy clears it, the next position
+// update brings each player back). The client sends its pose about 8 times a second while moving and every few
+// seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
+const PLAZA_TICK_MS = 150;
+const PLAZA_STALE_MS = 15000;
+const PLAZA_BOUND = 18;
+const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
+let plazaDirty = false;
+function plazaSnapshot() {
+  return { players: [...plazaPresence.values()].map(({ id, name, look, title, x, z, yaw, moving }) => ({ id, name, look, title, x, z, yaw, moving })) };
+}
+function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
+function prunePlazaPresence(now = nowMs()) {
+  for (const [token, entry] of plazaPresence) {
+    const session = sessions.get(token);
+    if (!session || session.currentRoomId || now - entry.at > PLAZA_STALE_MS) dropPlazaPresence(token);
+  }
+}
+const plazaTicker = setInterval(() => {
+  prunePlazaPresence();
+  if (!plazaDirty) return;
+  plazaDirty = false;
+  const snapshot = plazaSnapshot();
+  for (const entry of [...lobbyStreams]) {
+    try { sseWrite(entry.res, 'plaza', snapshot); } catch { lobbyStreams.delete(entry); }
+  }
+}, PLAZA_TICK_MS);
+plazaTicker.unref?.();
+
 async function broadcastAnnouncements() {
   const items = await announcementStore.list();
   for (const entry of [...lobbyStreams]) {
@@ -2511,7 +2540,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.9.2' });
+    return sendJson(res, 200, { ok: true, version: '1.9.3' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2919,6 +2948,7 @@ async function requestHandler(req, res) {
     lobbyStreams.add(entry);
     broadcastLobby();
     sseWrite(res, 'announcements', { items: await announcementStore.list() });
+    sseWrite(res, 'plaza', plazaSnapshot()); // who is already in the plaza (v1.9.3)
 
     const heartbeat = setInterval(() => {
       const current = sessions.get(session.token);
@@ -2935,9 +2965,37 @@ async function requestHandler(req, res) {
     req.on('close', () => {
       clearInterval(heartbeat);
       lobbyStreams.delete(entry);
+      if (![...lobbyStreams].some(other => other.sessionToken === session.token)) dropPlazaPresence(session.token);
       broadcastLobby();
     });
     return;
+  }
+
+  // v1.9.3 광장: my pose in the plaza (only from the lobby). The look and title come from my equipped skins on the
+  // server, the name from my session; a request carries numbers only.
+  if (pathname === '/api/plaza/state' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
+    if (!checkRateLimit(`plaza:${session.token}`, 900, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const num = (value, limit) => (Number.isFinite(Number(value)) ? Math.max(-limit, Math.min(limit, Number(value))) : 0);
+    session.plazaId ||= crypto.randomUUID().slice(0, 8);
+    const account = pointAccountForSession(session);
+    const { look, title } = avatarLookOf(equippedSkinCache.get(account));
+    plazaPresence.set(session.token, {
+      id: session.plazaId, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100,
+      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
+    });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, id: session.plazaId });
+  }
+  if (pathname === '/api/plaza/leave' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    dropPlazaPresence(session.token);
+    return sendJson(res, 200, { ok: true });
   }
 
   // Public to authenticated members; only administrators may modify notices.
@@ -3503,7 +3561,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.2 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.3 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

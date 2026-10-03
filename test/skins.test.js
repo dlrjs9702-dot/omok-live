@@ -181,3 +181,17 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
   assert.equal((await fx.req('/api/skins', a.session)).data.avatar.title, '천상 바둑');
   assert.equal((await fx.req('/api/skins/title', a.session, { skinId: null })).data.avatar.title, null);
 });
+
+// v1.9.3 광장 V3: 위치는 로비에서만 받고, 숫자만 받아 광장 범위로 자르며, 이름·모습은 서버가 정한다.
+test('광장 위치: 세션 필요, 범위 밖 숫자는 잘리고, 방 안에서는 거절, 나가면 빠진다', { timeout: 60000 }, async t => {
+  const fx = await boot(t);
+  const a = await fx.guest('걷는사람');
+  assert.equal((await fx.req('/api/plaza/state', null, { x: 1, z: 1 })).status, 401);
+  const sent = await fx.req('/api/plaza/state', a.session, { x: 999, z: -999, yaw: 'nope', moving: 'yes', name: '사칭', look: { hair: 'avatar_hair_6' } });
+  assert.equal(sent.status, 200);
+  assert.match(sent.data.id, /^[0-9a-f-]{8}$/);
+  assert.equal((await fx.req('/api/plaza/leave', a.session, {})).status, 200);
+  const room = await fx.req('/api/rooms', a.session, { gameType: 'omok' });
+  assert.equal(room.status, 201);
+  assert.equal((await fx.req('/api/plaza/state', a.session, { x: 0, z: 0 })).status, 409, '방 안에서는 광장 위치를 보내지 않는다');
+});
