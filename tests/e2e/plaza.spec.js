@@ -376,6 +376,52 @@ test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 
   for (const who of [a, b]) await who.context.close();
 });
 
+// v1.10.2 시점 회전: dragging on the island turns the camera around me, ↑ then walks into the screen (the new view's
+// forward), a drag that ends over a facility does not open it, and a plain click still does.
+test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화면 기준, 끌기는 시설을 열지 않고 클릭은 연다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '돌려보기');
+  const { page } = a;
+  const box = await page.locator('#plazaStage canvas').boundingBox();
+  const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
+  expect(await page.evaluate(() => window.PlazaDebug().camYaw)).toBe(0);
+  await page.mouse.move(cx, cy); await page.mouse.down();
+  for (let k = 1; k <= 10; k += 1) await page.mouse.move(cx - k * 20, cy);
+  await page.mouse.up();
+  const yaw = await page.evaluate(() => window.PlazaDebug().camYaw);
+  expect(yaw).toBeGreaterThan(1.2); expect(yaw).toBeLessThan(2); // 200 px ≈ 1.6 rad
+  await expect(page.locator('#plazaDialog')).toBeHidden();
+  await expect(page.locator('#skinShopDialog')).toBeHidden();
+  // ↑ walks away from the camera: along (-sin yaw, -cos yaw)
+  const from = await state(page);
+  await page.keyboard.down('ArrowUp');
+  await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - from.x, now.z - from.z); }, { timeout: 10000 }).toBeGreaterThan(0.6);
+  await page.keyboard.up('ArrowUp');
+  const to = await state(page);
+  const dx = to.x - from.x; const dz = to.z - from.z; const len = Math.hypot(dx, dz);
+  expect((dx * -Math.sin(yaw) + dz * -Math.cos(yaw)) / len).toBeGreaterThan(0.9);
+  // dragging back the other way brings the usual view back
+  await page.mouse.move(cx, cy); await page.mouse.down();
+  for (let k = 1; k <= 10; k += 1) await page.mouse.move(cx + k * 20, cy);
+  await page.mouse.up();
+  expect(Math.abs(await page.evaluate(() => window.PlazaDebug().camYaw))).toBeLessThan(0.05);
+  // a plain click on the board (no drag) still opens it
+  await page.evaluate(() => window.PlazaDebug().place('board'));
+  await page.waitForTimeout(400);
+  const board = await page.evaluate(() => window.PlazaDebug().screenOf('board'));
+  await page.mouse.click(board.x, board.y);
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('게시판');
+  await page.locator('#plazaCloseBtn').click();
+  // a drag that ends on the board turns the view and does not open it
+  await page.mouse.move(board.x + 150, board.y); await page.mouse.down();
+  for (let k = 1; k <= 6; k += 1) await page.mouse.move(board.x + 150 - k * 25, board.y);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(page.locator('#plazaDialog')).toBeHidden();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
   test.setTimeout(60000);

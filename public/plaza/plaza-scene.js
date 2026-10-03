@@ -533,8 +533,24 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     return null;
   };
-  const onClick = (event) => { if (isBlocked()) return; const id = facilityAt(event); if (id) interact(id); };
-  const onMove = (event) => { renderer.domElement.style.cursor = !isBlocked() && facilityAt(event) ? 'pointer' : ''; };
+  // v1.10.2 시점 회전: dragging with the left button turns the camera around my character (a press that hardly moves
+  // stays a click on a facility). The arrow keys follow the view, so ↑ always walks into the screen.
+  let camYaw = 0; let drag = null; let dragged = false;
+  const DRAG_START = 5; const DRAG_TURN = 0.008; // pixels before a press becomes a drag, radians per pixel
+  const onDown = (event) => { if (event.button !== 0) return; drag = { x: event.clientX, y: event.clientY, id: event.pointerId }; dragged = false; };
+  const onClick = (event) => { if (dragged) { dragged = false; return; } if (isBlocked()) return; const id = facilityAt(event); if (id) interact(id); };
+  const onMove = (event) => {
+    if (drag && drag.id === event.pointerId && !isBlocked()) {
+      const dx = event.clientX - drag.x;
+      if (!dragged && Math.hypot(dx, event.clientY - drag.y) >= DRAG_START) { dragged = true; renderer.domElement.setPointerCapture?.(event.pointerId); }
+      if (dragged) { camYaw -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN; drag.lastX = event.clientX; renderer.domElement.style.cursor = 'grabbing'; return; }
+    }
+    renderer.domElement.style.cursor = !isBlocked() && facilityAt(event) ? 'pointer' : 'grab';
+  };
+  const onUp = (event) => { if (drag?.id === event.pointerId) { drag = null; renderer.domElement.style.cursor = 'grab'; } };
+  renderer.domElement.addEventListener('pointerdown', onDown);
+  renderer.domElement.addEventListener('pointerup', onUp);
+  renderer.domElement.addEventListener('pointercancel', onUp);
   renderer.domElement.addEventListener('click', onClick);
   renderer.domElement.addEventListener('pointermove', onMove);
 
@@ -630,8 +646,9 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     const p = me.root.position;
     scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : 180)) { camera.far = overview ? 600 : 180; camera.updateProjectionMatrix(); }
     if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
-    const want = new THREE.Vector3(p.x, p.y, p.z).add(OFFSET); // v1.10.0: follow the player across the island
-    const look = new THREE.Vector3(p.x, p.y + 1.3, p.z - 2.4);
+    const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
+    const want = new THREE.Vector3(p.x + sin * OFFSET.z, p.y + OFFSET.y, p.z + cos * OFFSET.z); // v1.10.0: follow the player across the island
+    const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3, p.z - cos * 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, 0.08); camLook.lerp(look, 0.1); }
     camera.position.copy(camPos); camera.lookAt(camLook);
   }
@@ -667,8 +684,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     const moving = ix !== 0 || iz !== 0;
     if (moving) {
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
-      tryMove(me.root.position.x + ix * SPEED * dt, me.root.position.z + iz * SPEED * dt);
-      me.targetYaw = Math.atan2(ix, iz);
+      const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // keys are relative to the view
+      const wx = ix * cos + iz * sin; const wz = -ix * sin + iz * cos;
+      tryMove(me.root.position.x + wx * SPEED * dt, me.root.position.z + wz * SPEED * dt);
+      me.targetYaw = Math.atan2(wx, wz);
     }
     animate(me, dt, moving);
     stepOthers(dt);
@@ -735,6 +754,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     for (const o of others.values()) disposeCharacter(o.c); others.clear();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
+    renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
     mats.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); island.dispose();
     renderer.dispose(); renderer.domElement.remove();
@@ -751,7 +771,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
