@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.0').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.1').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1413,7 +1413,7 @@
   const plaza = { controller: null, loading: null, failed: false };
   let plazaTestClassic = false;
   try { plazaTestClassic = Boolean(navigator.webdriver && localStorage.getItem('gc.testClassic') === '1'); } catch {}
-  const plazaWide = window.matchMedia('(min-width: 881px)');
+  const plazaWide = window.matchMedia('(min-width: 600px)'); // v1.10.1: a half-screen PC window stays on the island too (the classic lobby is not for regular users)
   const plazaFits = () => plazaWide.matches && !rpgTouchOnly();
   const byId = (id) => document.getElementById(id);
   const PLAZA_FACILITIES = [
@@ -1464,7 +1464,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.0').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.1').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
