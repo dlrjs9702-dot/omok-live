@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, SPAWN, PLAZA_R } from './island.js?v=1.9.7';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.0';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -31,7 +31,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfe6ff);
   scene.fog = new THREE.Fog(0xd7efff, 70, 175); // far enough that the climbing tower reads from the plaza
-  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 260);
+  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 180); // nothing is drawn past the fog
 
   scene.add(new THREE.HemisphereLight(0xfff4dc, 0x8cc970, 1.05));
   const sun = new THREE.DirectionalLight(0xfff0d2, 1.75);
@@ -522,7 +522,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
   function placeCamera(snap) {
     const p = me.root.position;
-    scene.fog.far = overview ? 2000 : 175;
+    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : 180)) { camera.far = overview ? 600 : 180; camera.updateProjectionMatrix(); }
     if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
     const want = new THREE.Vector3(p.x, p.y, p.z).add(OFFSET); // v1.10.0: follow the player across the island
     const look = new THREE.Vector3(p.x, p.y + 1.3, p.z - 2.4);
@@ -533,10 +533,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   let running = false; let raf = 0; let last = 0; let clock = 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; clock += dt;
+    const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
     step(dt);
     renderer.render(scene, camera);
-    adaptQuality(dt);
+    adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
   }
   // A slow PC steps the picture down instead of stuttering: first a lower pixel ratio, then no shadows.
   let quality = 2; let slowTime = 0; let sampled = 0;
@@ -644,7 +644,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
+      render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });

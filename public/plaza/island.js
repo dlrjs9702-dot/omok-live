@@ -208,7 +208,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   const keep = (x) => { disposables.push(x); return x; };
 
   // Terrain: one mesh with vertex colours (grass, sand by the sea, rock on the cliffs).
-  const SIZE = 250; const SEG = 170;
+  const SIZE = 250; const SEG = 125;
   const geo = keep(new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG)); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
   const grass = new THREE.Color(0x9fd67f); const grass2 = new THREE.Color(0x8cc96c); const sand = new THREE.Color(0xf1dfae);
@@ -327,15 +327,22 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     if (clearOf(x, z, 4) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 6)) trees.push({ x, z, s: 0.75 + rnd() * 0.5 });
   }
   const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const v3 = new THREE.Vector3(); const sc = new THREE.Vector3();
-  const instanced = (geometry, material, list, place) => {
-    const im = new THREE.InstancedMesh(keep(geometry), material, list.length);
-    list.forEach((item, i) => { place(item, i); im.setMatrixAt(i, m4); });
-    im.castShadow = true; im.receiveShadow = true; scene.add(im); return im;
+  // One instanced mesh per 40-unit square of the island, so whatever is off screen (or outside the shadow area around
+  // the player) is skipped as a whole instead of drawing every tree on the island every frame.
+  const instanced = (geometry, material, list, place, { shadow = true } = {}) => {
+    keep(geometry);
+    const cells = new Map();
+    for (const item of list) { const key = `${Math.floor(item.x / 40)},${Math.floor(item.z / 40)}`; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(item); }
+    for (const items of cells.values()) {
+      const im = new THREE.InstancedMesh(geometry, material, items.length);
+      items.forEach((item, i) => { place(item, i); im.setMatrixAt(i, m4); });
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
+    }
   };
   const setM = (x, y, z, s, sy = s, ry = 0) => { q.setFromAxisAngle(v3.set(0, 1, 0), ry); m4.compose(v3.set(x, y, z), q, sc.set(s, sy, s)); };
   instanced(new THREE.CylinderGeometry(0.22, 0.3, 1.4, 8), mat(0xa9774f), trees, (t) => setM(t.x, ground(t.x, t.z) + 0.7 * t.s, t.z, t.s));
-  instanced(new THREE.SphereGeometry(1.25, 14, 10), mat(0x76c267), trees, (t) => setM(t.x, ground(t.x, t.z) + 2.1 * t.s, t.z, t.s));
-  instanced(new THREE.SphereGeometry(0.85, 12, 9), mat(0x86cf74), trees, (t) => setM(t.x + 0.5 * t.s, ground(t.x, t.z) + 2.7 * t.s, t.z + 0.3 * t.s, t.s));
+  instanced(new THREE.SphereGeometry(1.25, 9, 7), mat(0x76c267), trees, (t) => setM(t.x, ground(t.x, t.z) + 2.1 * t.s, t.z, t.s));
+  instanced(new THREE.SphereGeometry(0.85, 8, 6), mat(0x86cf74), trees, (t) => setM(t.x + 0.5 * t.s, ground(t.x, t.z) + 2.7 * t.s, t.z + 0.3 * t.s, t.s));
   for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.75 * t.s });
 
   const flowers = []; const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
@@ -344,8 +351,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   }
   flowerColors.forEach((col, ci) => {
     const list = flowers.filter((f) => f.c === ci);
-    const im = instanced(new THREE.SphereGeometry(0.13, 7, 5), mat(col), list, (f) => setM(f.x, ground(f.x, f.z) + 0.16, f.z, 1));
-    im.castShadow = false;
+    instanced(new THREE.SphereGeometry(0.13, 5, 3), mat(col), list, (f) => setM(f.x, ground(f.x, f.z) + 0.16, f.z, 1), { shadow: false });
   });
   // Bushes along the walks and around the woods, and grass tufts everywhere, so open ground never looks bare.
   const bushes = [];
@@ -360,16 +366,15 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     const a = rnd() * TAU; const r = 26 + rnd() * 76; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
     if (clearOf(x, z, 1.5)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 });
   }
-  instanced(new THREE.SphereGeometry(0.9, 10, 7), mat(0x6fbf5e), bushes, (b) => setM(b.x, ground(b.x, b.z) + 0.35 * b.s, b.z, b.s, b.s * 0.75));
-  instanced(new THREE.SphereGeometry(0.6, 9, 6), mat(0x83cf6c), bushes, (b) => setM(b.x + 0.45 * b.s, ground(b.x, b.z) + 0.5 * b.s, b.z - 0.2 * b.s, b.s, b.s * 0.8));
+  instanced(new THREE.SphereGeometry(0.9, 7, 5), mat(0x6fbf5e), bushes, (b) => setM(b.x, ground(b.x, b.z) + 0.35 * b.s, b.z, b.s, b.s * 0.75));
+  instanced(new THREE.SphereGeometry(0.6, 6, 4), mat(0x83cf6c), bushes, (b) => setM(b.x + 0.45 * b.s, ground(b.x, b.z) + 0.5 * b.s, b.z - 0.2 * b.s, b.s, b.s * 0.8));
   for (const b of bushes) solids.push({ x: b.x, z: b.z, r: 0.75 * b.s });
   const tufts = [];
   for (let tries = 0; tufts.length < 1400 && tries < 9000; tries += 1) {
     const a = rnd() * TAU; const r = PLAZA_R + 5 + rnd() * 85; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
     if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
   }
-  const tuftMesh = instanced(new THREE.ConeGeometry(0.16, 0.5, 4), mat(0x7cbf5c), tufts, (t) => setM(t.x, ground(t.x, t.z) + 0.2 * t.s, t.z, t.s, t.s, t.r));
-  tuftMesh.castShadow = false;
+  instanced(new THREE.ConeGeometry(0.16, 0.5, 4), mat(0x7cbf5c), tufts, (t) => setM(t.x, ground(t.x, t.z) + 0.2 * t.s, t.z, t.s, t.s, t.r), { shadow: false });
 
   const rocks = [];
   for (let tries = 0; rocks.length < 90 && tries < 4000; tries += 1) {
@@ -393,8 +398,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     if (walkable(lx, lz) && streamDist(lx, lz) > STREAM_HALF + 1.5) lampSpots.push({ x: lx, z: lz });
   }
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 1.3, p.z, 1));
-  const bulbs = instanced(new THREE.SphereGeometry(0.24, 12, 9), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 2.72, p.z, 1));
-  bulbs.castShadow = false;
+  instanced(new THREE.SphereGeometry(0.24, 12, 9), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 2.72, p.z, 1), { shadow: false });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
