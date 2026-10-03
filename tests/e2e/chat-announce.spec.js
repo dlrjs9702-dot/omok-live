@@ -29,28 +29,31 @@ async function enter(browser, html) {
 }
 
 test('대기방 채팅: 기록은 라이브 영역이 아니며 새 메시지 한 건만 알린다(첫 기록·내 메시지 제외)', async ({ browser, request }) => {
-  const b = await enter(browser, await issueGuest(request, '상대'));
+  // The lobby chat is shared by every test and run, so this run's lines carry their own tag and the checks look
+  // only at them (another run's message may legitimately be announced in between).
+  const tag = Math.random().toString(36).slice(2, 7);
+  const b = await enter(browser, await issueGuest(request, `상대${tag}`));
   const say = text => request.post('/api/lobby/chat', { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': b.token }, data: { text } });
-  expect((await say('첫번째 기록')).status()).toBe(200);
+  expect((await say(`첫번째 기록 ${tag}`)).status()).toBe(200);
 
   // 기록이 생긴 뒤 들어온 사람: 접속 직후 스냅샷은 알리지 않는다.
-  const late = await enter(browser, await issueGuest(request, '늦은사람'));
+  const late = await enter(browser, await issueGuest(request, `늦은사람${tag}`));
   const list = late.page.locator('#lobbyChatMessages');
-  await expect(list).toContainText('첫번째 기록');
+  await expect(list).toContainText(`첫번째 기록 ${tag}`);
   await expect(list).not.toHaveAttribute('aria-live', /.*/);
   await expect(list).not.toHaveAttribute('role', 'log');
   const announce = late.page.locator('#lobbyChatAnnounce');
   await expect(announce).toHaveAttribute('aria-live', 'polite');
-  await expect(announce).toHaveText('');
+  await expect(announce).not.toContainText(`첫번째 기록 ${tag}`);
 
-  expect((await say('두번째 메시지')).status()).toBe(200);
-  await expect(announce).toHaveText('상대: 두번째 메시지');
-  await expect(announce).not.toContainText('첫번째 기록');
+  expect((await say(`두번째 메시지 ${tag}`)).status()).toBe(200);
+  await expect(announce).toHaveText(`상대${tag}: 두번째 메시지 ${tag}`);
 
-  await late.page.locator('#lobbyChatInput').fill('내가 보낸 말');
+  await late.page.locator('#lobbyChatInput').fill(`내가 보낸 말 ${tag}`);
   await late.page.locator('#lobbyChatForm button[type="submit"], #lobbyChatForm button').first().click();
-  await expect(list).toContainText('내가 보낸 말');
-  await expect(announce).toHaveText('상대: 두번째 메시지');
+  await expect(list).toContainText(`내가 보낸 말 ${tag}`);
+  await late.page.waitForTimeout(500);
+  await expect(announce).not.toContainText(`내가 보낸 말 ${tag}`);
   for (const view of [b, late]) await view.context.close();
 });
 

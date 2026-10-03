@@ -39,7 +39,7 @@ async function guestByApi(request, label) {
   return (await entry.text()).match(/data-session="([^"]+)"/)[1];
 }
 
-test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 이벤트 탭은 준비 중', async ({ browser, request }) => {
+test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보너스, 진행바·보상), 이벤트 탭은 진행 중 이벤트 목록', async ({ browser, request }) => {
   const { context, page } = await guestInBrowser(browser, request, '미션창');
   const button = page.locator('#missionBtn');
   await expect(button).toBeVisible();
@@ -49,7 +49,7 @@ test('로비: 미션 버튼과 별도 창(오늘 탭, 미션 3개+첫 승리 보
   const dialog = page.locator('#missionDialog');
   await expect(dialog).toBeVisible();
   await expect(page.locator('#missionTabToday')).toHaveAttribute('aria-selected', 'true');
-  await expect(dialog.getByRole('tab', { name: '이벤트' })).toBeDisabled();
+  await expect(dialog.getByRole('tab', { name: '이벤트' })).toBeEnabled(); // v1.8.9: lists the open events
   for (const name of ['주간', '업적']) await expect(dialog.getByRole('tab', { name })).toBeEnabled();
   const rows = page.locator('#missionList .missionRow');
   await expect(rows).toHaveCount(4); // 미션 3개 + 첫 승리 보너스

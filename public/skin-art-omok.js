@@ -294,10 +294,10 @@
     const rad = r * 1.04;
     ctx.save();
     octagon(ctx, rad);
-    ctx.fillStyle = d ? sphere(ctx, r, ['#4a2a22', '#1b0d09', '#050202'], .5) : sphere(ctx, r, ['#ffffff', '#f6efdf', '#d9cdb2'], .55);
+    ctx.fillStyle = d ? sphere(ctx, r, ['#3a1f19', '#140906', '#030101'], .5) : sphere(ctx, r, ['#ffffff', '#fbf7ec', '#ebe2cc'], .55);
     ctx.fill();
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(1.5, r * (d ? .07 : .1)); ctx.strokeStyle = d ? '#e3b54c' : '#3a2412'; octagon(ctx, rad); ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, r * (d ? .06 : .08)); ctx.strokeStyle = d ? '#e3b54c' : '#3a2412'; octagon(ctx, rad); ctx.stroke();
     ctx.lineWidth = Math.max(1, r * .045); ctx.strokeStyle = d ? 'rgba(227,181,76,.75)' : 'rgba(58,36,18,.55)'; octagon(ctx, rad * .78); ctx.stroke();
     if (d) { // gold cloud knots at the four corners
       ctx.fillStyle = '#e3b54c';
@@ -307,7 +307,7 @@
       ctx.strokeStyle = '#f6efdf'; ctx.lineWidth = Math.max(1, r * .05);
       ctx.beginPath(); ctx.moveTo(-r * .12, -r * .09); ctx.lineTo(r * .12, -r * .09); ctx.moveTo(0, -r * .15); ctx.lineTo(0, r * .15); ctx.moveTo(-r * .12, r * .09); ctx.lineTo(r * .12, r * .09); ctx.stroke();
     }
-    gloss(ctx, r, d ? .16 : .22);
+    gloss(ctx, r, d ? .1 : .22);
     ctx.restore();
   }
   function sealStoneFx(ctx, r, t) { // a red seal pressed down: a square that settles, an ink ring spreading
