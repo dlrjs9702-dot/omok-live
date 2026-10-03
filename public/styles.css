@@ -1546,3 +1546,17 @@ body.tableGamePlaying #teamPlayers{display:none!important}
 .boardOverlay.legendResult strong{font-size:1.05rem}.boardOverlay.legendResult span{margin-top:3px;font-size:.78rem}
 @keyframes legendResultIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.boardOverlay.legendResult{animation:none}}
+
+/* v1.8.8 3D 광장 로비: the square fills the lobby under the top bar; facility windows reuse the lobby sections */
+body.plazaMode .shell{width:min(1600px,calc(100% - 24px));padding-bottom:16px}
+body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage):not(#pointHistoryPanel){display:none!important}
+.plazaStage{position:relative;height:calc(100vh - 126px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
+.plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}
+.plazaStage canvas.plazaCanvas{display:block;width:100%;height:100%}
+.plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:rgba(255,250,240,.95);border:3px solid #8a6a4a;color:#4a3828;font-weight:950;font-size:1.1rem;letter-spacing:.03em;box-shadow:0 8px 24px rgba(74,56,40,.28);pointer-events:none;white-space:nowrap}
+.plazaStage .lobbyInvitations{position:absolute;z-index:2;top:14px;right:14px;width:min(380px,40%)}
+.recordsDialog.plazaDialog{width:min(1120px,94vw);max-height:90vh}
+.plazaDialogBody{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start}
+.plazaDialogBody>*{margin:0!important;min-width:0}
+.plazaDialogBody input[type=radio],.plazaDialogBody input[type=checkbox]{width:auto;padding:0}
+.plazaDialogBody label{font-size:inherit;color:inherit}

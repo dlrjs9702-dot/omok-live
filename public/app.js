@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.7').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.8').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1374,7 +1374,85 @@
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
     if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
+    syncPlaza(name);
   }
+
+  // v1.8.8 3D 광장 로비: on a PC the lobby is a small 3D square (public/plaza/plaza-scene.js) whose facilities open the
+  // existing lobby UIs in a window over it (the sections move into #plazaDialog and back on close). 「기존 로비」 switches
+  // back (remembered per browser); a touch-only device, a narrow window or no WebGL keeps the classic lobby.
+  const PLAZA_PREF_KEY = 'gc.lobbyMode';
+  const plazaStage = document.getElementById('plazaStage');
+  const plazaHint = document.getElementById('plazaHint');
+  const plazaDialog = document.getElementById('plazaDialog');
+  const plazaDialogTitle = document.getElementById('plazaDialogTitle');
+  const plazaDialogBody = document.getElementById('plazaDialogBody');
+  const lobbyModeBtn = document.getElementById('lobbyModeBtn');
+  const publicRoomsCardEl = document.getElementById('publicRoomsCard');
+  const plaza = { controller: null, loading: null, failed: false };
+  let plazaPref = 'plaza';
+  try { plazaPref = localStorage.getItem(PLAZA_PREF_KEY) || 'plaza'; } catch {}
+  const plazaWide = window.matchMedia('(min-width: 881px)');
+  const plazaFits = () => plazaWide.matches && !rpgTouchOnly();
+  const byId = (id) => document.getElementById(id);
+  const PLAZA_FACILITIES = [
+    { id: 'games', name: '게임관', open: () => openPlazaWindow('게임관', [document.querySelector('.lobbyTopGrid > .lobbyCard'), publicRoomsCardEl]) },
+    { id: 'shop', name: '상점', open: () => byId('skinShopBtn').click() },
+    { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
+    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
+    { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
+    { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
+    { id: 'chat', name: '채팅', open: () => openPlazaWindow('대기방 채팅', [document.querySelector('.lobbyChatCard')]) },
+  ];
+  const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
+  function openPlazaWindow(title, nodes) {
+    plazaDialogTitle.textContent = title;
+    for (const node of nodes) {
+      if (!node || plazaHomes.has(node)) continue;
+      const mark = document.createComment('plaza'); node.before(mark); plazaHomes.set(node, mark); plazaDialogBody.append(node);
+    }
+    if (!plazaDialog.open) plazaDialog.showModal();
+  }
+  plazaDialog.addEventListener('close', () => {
+    for (const [node, mark] of plazaHomes) mark.replaceWith(node);
+    plazaHomes.clear();
+    if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
+  });
+  document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
+  function showPlazaHint(facility) {
+    plazaHint.textContent = facility ? `SPACE · ${facility.name}` : '';
+    plazaHint.classList.toggle('hidden', !facility);
+  }
+  function syncPlaza(view) {
+    const fits = plazaFits() && !plaza.failed;
+    const on = view === 'lobby' && fits && plazaPref !== 'classic';
+    lobbyModeBtn.classList.toggle('hidden', !fits);
+    lobbyModeBtn.textContent = plazaPref === 'classic' ? '광장' : '기존 로비';
+    document.body.classList.toggle('plazaMode', on);
+    plazaStage.classList.toggle('hidden', !on);
+    (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
+    if (!on) { if (plazaDialog.open) plazaDialog.close(); plaza.controller?.stop(); return; }
+    plazaStage.focus({ preventScroll: true });
+    if (plaza.controller) { plaza.controller.start(); return; }
+    if (plaza.loading) return;
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.8.8').then((mod) => {
+      plaza.loading = null;
+      plaza.controller = mod.createPlaza(plazaStage, {
+        facilities: PLAZA_FACILITIES.map(({ id, name }) => ({ id, name })),
+        onInteract: (id) => PLAZA_FACILITIES.find((f) => f.id === id)?.open(),
+        onNear: showPlazaHint,
+        blocked: () => Boolean(document.querySelector('dialog[open]')), // any window over the square stops the character
+      });
+      if (!plaza.controller) plaza.failed = true;
+      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
+    }).catch((error) => { plaza.loading = null; plaza.failed = true; console.error(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
+  }
+  lobbyModeBtn.addEventListener('click', () => {
+    plazaPref = plazaPref === 'classic' ? 'plaza' : 'classic';
+    try { localStorage.setItem(PLAZA_PREF_KEY, plazaPref); } catch {}
+    syncPlaza('lobby');
+  });
+  plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
+  window.PlazaDebug = () => plaza.controller?.debug() || null;
 
   function identityText() {
     return sessionRole === 'admin' ? '관리자 세션' : `${sessionLabel || '게스트'} · 입장 파일 세션`;
