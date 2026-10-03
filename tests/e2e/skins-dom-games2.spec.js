@@ -4,7 +4,7 @@ const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-supp
 // v1.7.39 그림 맞히기 · 스무고개 스킨. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
-const ids = (family) => ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1'].map(i => `${family}_${i}`);
+const ids = (family) => ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1', 'l2'].map(i => `${family}_${i}`);
 
 const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
   const parse = (css) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0b1324'; c.fillRect(0, 0, 1, 1); c.fillStyle = css; c.fillRect(0, 0, 1, 1); const d = c.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
@@ -67,7 +67,7 @@ test('그림 맞히기 스킨: 방장 테마와 출제자의 도구가 모든 �
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '그림 맞히기' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'pictionary' });
@@ -100,7 +100,7 @@ test('스무고개 스킨: 방장 테마가 모든 화면에 같고, 각 질문 
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '스무고개' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'twentyquestions' });

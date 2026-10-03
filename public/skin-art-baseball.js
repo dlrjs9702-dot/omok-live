@@ -51,7 +51,7 @@
     { backgroundColor: '#111827', backgroundImage: tile('bb-master', 60, 44, (c, w, h) => { const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(212,175,55,.0)'); g.addColorStop(.5, 'rgba(212,175,55,.22)'); g.addColorStop(1, 'rgba(212,175,55,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(212,175,55,.25)'; c.strokeRect(2.5, 2.5, w - 5, h - 5); }), borderColor: '#d4af37', color: '#f5e6b0', fontFamily: 'Georgia,serif', boxShadow: '0 0 10px rgba(212,175,55,.35)' },
     { color: '#fff1bf', textShadow: '0 0 8px rgba(255,214,102,.85)', letterSpacing: '.28em' },
     { strike: '#ffd54a', ball: '#8fd3ff', out: '#ff6b6b', off: '#2a2d36', radius: '1px', glow: true, lock: true, pin: true },
-    { fx: unlockFx, win: vaultWin });
+    { fx: unlockFx, win: vaultWin, special: lockSpecial, legend: true });
   function unlockFx(ctx, w, h, t) { // a golden sweep and a few sparks across the new row
     const x = w * (.1 + .8 * t); const g = ctx.createLinearGradient(x - 40, 0, x + 40, 0); g.addColorStop(0, 'rgba(255,214,102,0)'); g.addColorStop(.5, `rgba(255,236,160,${(1 - t) * .7})`); g.addColorStop(1, 'rgba(255,214,102,0)');
     ctx.fillStyle = g; ctx.fillRect(40, 30, w - 80, h - 60); const R = rng(9);
@@ -60,6 +60,47 @@
   function vaultWin(ctx, w, h, t) { // the vault opens: two doors swing apart over the list
     const k = clamp01(t * 1.3); ctx.fillStyle = `rgba(30,36,48,${1 - k})`; ctx.fillRect(40, 40, (w - 80) / 2 * (1 - k), h - 80); ctx.fillRect(w / 2 + (w - 80) / 4 * k * 2, 40, (w - 80) / 2 * (1 - k), h - 80);
     ctx.fillStyle = `rgba(255,214,102,${Math.sin(k * Math.PI) * .7})`; ctx.fillRect(w / 2 - 6 - k * 60, 40, 12 + k * 120, h - 80);
+  }
+
+  // v1.9.1 legend standard: `special(ctx, w, h, t)` on a guess one strike short of the answer (over that row), `win`
+  // over the list when the game is won (vaultWin above for 마스터 코드).
+  function lockSpecial(ctx, w, h, t) { // one pin left: a combination dial spins at the row's end, a pin pops up
+    const cx = w - 70; const cy = h / 2; const R = Math.min(30, h * .32);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    ctx.fillStyle = '#1a1f2b'; ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.translate(cx, cy); ctx.rotate(t * TAU * 1.5); ctx.strokeStyle = '#f5e6b0'; ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * .7, Math.sin(a) * R * .7); ctx.lineTo(Math.cos(a) * R * .9, Math.sin(a) * R * .9); ctx.stroke(); }
+    ctx.restore();
+    const pop = clamp01((t - .45) / .3); if (pop > 0) { ctx.fillStyle = `rgba(255,214,90,${1 - clamp01((t - .8) / .2)})`; ctx.fillRect(cx - 4, cy - R - 6 - pop * 18, 8, 16); }
+  }
+
+  // ---- legend 2 (v1.9.1): 끝내기 홈런 ↔ 야구장 덕아웃 -- a stitched baseball row; one strike short winds up a swing ----
+  const walkoff = row(
+    { backgroundColor: '#f7f3ea', backgroundImage: tile('bb-walkoff', 64, 44, (c, w, h) => { c.strokeStyle = 'rgba(200,40,50,.75)'; c.lineWidth = 1.6; for (const y of [5, h - 5]) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); for (let x = 4; x < w; x += 8) { c.beginPath(); c.moveTo(x, y - 3); c.lineTo(x + 3, y + 3); c.stroke(); } } }), borderColor: '#c8283a', color: '#1b2a4a', fontFamily: '"Segoe UI",system-ui,sans-serif', boxShadow: '0 0 0 2px #1b2a4a inset, 0 4px 10px rgba(0,0,0,.25)', borderRadius: '22px' },
+    { color: '#0f1c3a', textShadow: '0 1px 0 #ffffff', letterSpacing: '.24em' },
+    { strike: '#c8283a', ball: '#127a3e', out: '#1b2a4a', off: '#ddd3bd', radius: '50%', glow: false, ring: true },
+    { fx: pitchFx, special: swingSpecial, win: homeRunWin, legend: true });
+  function pitchFx(ctx, w, h, t) { // a pitch flies across the new row and leaves a seam trail
+    const x = 40 + (w - 80) * t; const y = h / 2 - Math.sin(t * Math.PI) * 10;
+    for (let k = 0; k < 6; k += 1) { const u = Math.max(0, t - k * .03); ctx.fillStyle = `rgba(200,40,50,${(1 - k / 6) * (1 - t) * .6})`; ctx.beginPath(); ctx.arc(40 + (w - 80) * u, h / 2 - Math.sin(u * Math.PI) * 10, 3, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#c8283a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.fill(); ctx.stroke();
+  }
+  function swingSpecial(ctx, w, h, t) { // one strike short: a bat swings at the row's end and a crack bursts
+    const cx = w - 80; const cy = h / 2 + 6; const a = -2.4 + clamp01(t / .4) * 2.8; const L = Math.min(70, h * .9);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2); ctx.translate(cx, cy); ctx.rotate(a);
+    ctx.fillStyle = '#c08a55'; ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -3); ctx.lineTo(L, -7); ctx.arc(L, 0, 7, -Math.PI / 2, Math.PI / 2); ctx.lineTo(0, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    const crack = clamp01((t - .35) / .4); if (crack > 0 && crack < 1) { ctx.strokeStyle = `rgba(255,214,90,${1 - crack})`; ctx.lineWidth = 3; for (let i = 0; i < 8; i += 1) { const b = i * TAU / 8; ctx.beginPath(); ctx.moveTo(cx + Math.cos(b) * (14 + crack * 10), cy - 20 + Math.sin(b) * (14 + crack * 10)); ctx.lineTo(cx + Math.cos(b) * (22 + crack * 30), cy - 20 + Math.sin(b) * (22 + crack * 30)); ctx.stroke(); } }
+  }
+  function homeRunWin(ctx, w, h, t) { // the ball sails out over the list in a long arc and fireworks open where it lands
+    const fly = clamp01(t / .55); const bx = w * .12 + w * .76 * fly; const by = h * .85 - Math.sin(fly * Math.PI) * h * .7;
+    ctx.save();
+    for (let k = 1; k < 14; k += 1) { const u = Math.max(0, fly - k * .02); ctx.fillStyle = `rgba(255,255,255,${(1 - k / 14) * .55})`; ctx.beginPath(); ctx.arc(w * .12 + w * .76 * u, h * .85 - Math.sin(u * Math.PI) * h * .7, 5, 0, TAU); ctx.fill(); }
+    if (fly < 1) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#c8283a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, 10, 0, TAU); ctx.fill(); ctx.stroke(); }
+    const boom = clamp01((t - .5) / .5);
+    if (boom > 0 && boom < 1) for (const [fx, fy, col] of [[w * .88, h * .85, '255,214,90'], [w * .7, h * .3, '200,40,50'], [w * .3, h * .35, '79,168,255']]) for (let i = 0; i < 14; i += 1) { const a = i * TAU / 14; const d = 10 + boom * 70; ctx.fillStyle = `rgba(${col},${1 - boom})`; ctx.beginPath(); ctx.arc(fx + Math.cos(a) * d, fy + Math.sin(a) * d + boom * boom * 20, 3, 0, TAU); ctx.fill(); }
+    if (boom > 0) { ctx.globalAlpha = Math.sin(boom * Math.PI); ctx.fillStyle = '#c8283a'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.font = `900 ${Math.round(Math.min(w, 600) * .1)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText('HOME RUN!', w / 2, h / 2); ctx.fillText('HOME RUN!', w / 2, h / 2); }
+    ctx.restore();
   }
 
   // ---- room themes: the backdrop of the guess list ----
@@ -97,5 +138,6 @@
     baseball_p3: piece({ ...safe, fx: (ctx, w, h, t) => { const R = rng(4); for (let i = 0; i < 9; i += 1) { ctx.fillStyle = `rgba(255,${190 + (R() * 50 | 0)},60,${1 - t})`; ctx.beginPath(); ctx.arc(40 + R() * (w - 80), h / 2 + (R() - .5) * 20 - t * 20, 2.4 * (1 - t) + .6, 0, TAU); ctx.fill(); } } }),
     baseball_t1: theme(dugout, { borderColor: '#e9d9b5', boxShadow: 'inset 0 0 0 3px #6b4526, 0 0 0 2px #e9d9b5' }), baseball_t2: theme(secretLab, { borderColor: '#e0b32a', boxShadow: 'inset 0 0 0 3px #0d141d, 0 0 14px rgba(90,220,230,.4)' }),
     baseball_l1: piece(master),
+    baseball_l2: piece(walkoff),
   });
 }());

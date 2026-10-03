@@ -71,6 +71,52 @@
     ctx.strokeStyle = `rgba(255,222,100,${(1 - t) * .8})`; ctx.lineWidth = 6; ctx.strokeRect(6, 6, w - 12, h - 12);
   }
 
+  // v1.9.1 legend standard: `special(ctx, w, h, t, cells)` over the board when one more line is completed (cells: that
+  // line's cell rects inside the board, padded like playFx), `win(ctx, w, h, t)` over the board when I win the game.
+  function jackpotSpecial(ctx, w, h, t, cells) { // gold coins roll along the new line, each cell flashes gold
+    const R = rng(31);
+    cells.forEach((c, i) => {
+      const on = clamp01(t * 1.6 - i * .12); if (on <= 0 || on >= 1) return;
+      ctx.strokeStyle = `rgba(255,214,90,${Math.sin(on * Math.PI)})`; ctx.lineWidth = 5; ctx.strokeRect(c.x + 3, c.y + 3, c.w - 6, c.h - 6);
+      for (let k = 0; k < 3; k += 1) { const x = c.x + c.w / 2 + (R() - .5) * c.w; const y = c.y + c.h / 2 - on * c.h * (.4 + R() * .5); ctx.fillStyle = `rgba(255,${200 + (R() * 40 | 0)},60,${1 - on})`; ctx.beginPath(); ctx.ellipse(x, y, 5, 3.4, on * 6, 0, TAU); ctx.fill(); }
+    });
+  }
+
+  // ---- legend 2 (v1.9.1): 축제 응원단 ↔ 학교 축제 -- a pennant flag; a new line strings bunting, a win starts a cheer ----
+  function pennant(ctx, s) {
+    ctx.save(); ctx.translate(s / 2, s / 2);
+    ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = s * .05; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-s * .3, -s * .38); ctx.lineTo(-s * .3, s * .4); ctx.stroke(); // the stick
+    ctx.beginPath(); ctx.moveTo(-s * .28, -s * .36); ctx.lineTo(s * .42, -s * .12); ctx.lineTo(-s * .28, s * .12); ctx.closePath();
+    const g = ctx.createLinearGradient(0, -s * .36, 0, s * .12); g.addColorStop(0, '#ff6b9a'); g.addColorStop(.5, '#ff6b9a'); g.addColorStop(.5, '#4fa8ff'); g.addColorStop(1, '#4fa8ff');
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = s * .025; ctx.stroke();
+    ctx.fillStyle = '#ffd23f'; starPath(ctx, s * .02, -s * .12, s * .09, s * .04, 5); ctx.fill();
+    ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(-s * .3, -s * .4, s * .045, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+  function pennantFx(ctx, w, h, t) { // the flag is waved: confetti flicks up from the cell
+    const R = rng(17); for (let i = 0; i < 14; i += 1) { const a = -Math.PI / 2 + (R() - .5) * 1.8; const d = 12 + 46 * t * (.5 + R() * .6); ctx.save(); ctx.translate(w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d + 30 * t * t); ctx.rotate(R() * TAU + t * 8); ctx.fillStyle = ['#ff6b9a', '#4fa8ff', '#ffd23f', '#7be0a0'][i % 4]; ctx.globalAlpha = 1 - t; ctx.fillRect(-4, -2, 8, 4); ctx.restore(); }
+  }
+  function buntingSpecial(ctx, w, h, t, cells) { // a string of little flags is pulled across the new line and flaps
+    if (!cells.length) return; const first = cells[0]; const last = cells[cells.length - 1];
+    const ax = first.x + first.w / 2; const ay = first.y + first.h * .22; const bx = last.x + last.w / 2; const by = last.y + last.h * .22;
+    const p = clamp01(t * 2); const ex = ax + (bx - ax) * p; const ey = ay + (by - ay) * p; const fade = 1 - clamp01((t - .8) / .2);
+    ctx.save(); ctx.globalAlpha = fade; ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo((ax + ex) / 2, (ay + ey) / 2 + 14, ex, ey); ctx.stroke();
+    const n = Math.max(2, cells.length * 2); const cols = ['#ff6b9a', '#4fa8ff', '#ffd23f', '#7be0a0'];
+    for (let i = 0; i <= n * p; i += 1) { const u = i / n; const x = ax + (bx - ax) * u; const y = ay + (by - ay) * u + Math.sin(u * Math.PI) * 14 * (1 - Math.abs(.5 - u)); const flap = Math.sin(t * 20 + i) * 3;
+      ctx.fillStyle = cols[i % 4]; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.lineTo(x + flap, y + 18); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  function cheerWin(ctx, w, h, t) { // pom-poms burst at the corners, confetti rains and a BINGO banner swings in
+    const R = rng(23); ctx.save();
+    for (const [cx, cy] of [[20, 20], [w - 20, 20], [20, h - 20], [w - 20, h - 20]]) { const k = clamp01(t * 2.5); for (let i = 0; i < 16; i += 1) { const a = i * TAU / 16; ctx.strokeStyle = i % 2 ? '#ff6b9a' : '#ffd23f'; ctx.lineWidth = 4; ctx.globalAlpha = 1 - clamp01((t - .6) / .4); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * 40 * k, cy + Math.sin(a) * 40 * k); ctx.stroke(); } }
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 60; i += 1) { const x = R() * w; const y = (R() * h * .3 + t * h * 1.2) % h; ctx.save(); ctx.translate(x, y); ctx.rotate(t * 10 + i); ctx.fillStyle = ['#ff6b9a', '#4fa8ff', '#ffd23f', '#7be0a0'][i % 4]; ctx.globalAlpha = 1 - clamp01((t - .8) / .2); ctx.fillRect(-5, -2.5, 10, 5); ctx.restore(); }
+    const swing = clamp01((t - .15) / .3); if (swing > 0) { const y = h * .5; ctx.save(); ctx.translate(w / 2, y); ctx.rotate(Math.sin((1 - swing) * 6) * .2 * (1 - swing)); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+      ctx.fillStyle = '#ff6b9a'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.roundRect(-w * .32, -34, w * .64, 68, 18); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.font = `900 ${Math.round(w * .09)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BINGO!', 0, 3); ctx.restore(); }
+    ctx.restore();
+  }
+
   // ---- room themes ----
   function festival(ctx, w, h) { // 학교 축제
     const g = ctx.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#fff3c4'); g.addColorStop(1, '#ffd6e7'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -101,6 +147,7 @@
     bingo_p1: mark(laserMark, DARK, laserFx), bingo_p2: mark(fireSeal, DARK, fireFx), bingo_p3: mark(holoMark, DARK, holoFx),
     bingo_t1: theme(festival, { backgroundColor: '#fffaf0', borderColor: '#ff9fbf', color: '#3a2a4a' }, { boxShadow: 'inset 0 0 0 2px #ffb6cf,0 10px 24px rgba(0,0,0,.3)' }),
     bingo_t2: theme(casino, { backgroundColor: '#0c4d31', borderColor: '#e3b84a', color: '#f5d77a' }, { boxShadow: 'inset 0 0 0 2px #e3b84a,0 10px 24px rgba(0,0,0,.5)' }),
-    bingo_l1: mark(jackpotMark, DARK, jackpotFx, { win: jackpotWin }),
+    bingo_l1: mark(jackpotMark, DARK, jackpotFx, { legend: true, special: jackpotSpecial, win: jackpotWin }),
+    bingo_l2: mark(pennant, DARK, pennantFx, { legend: true, special: buntingSpecial, win: cheerWin }),
   });
 }());

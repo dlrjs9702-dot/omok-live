@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.0').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.1').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -282,6 +282,9 @@
   let davinciPickerClosedFor = null; // selection key whose number pad I closed with Esc/취소
   let davinciLastDrawKey = null;
   let davinciFxPlayed = null;
+  let davinciSpecialPlayed = null;
+  let halliPrevStatus = null;
+  let davinciPrevStatus = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
   const oldmaidStartBtn = document.getElementById('oldmaidStartBtn');
   const oldmaidShuffleBtn = document.getElementById('oldmaidShuffleBtn');
@@ -1346,6 +1349,10 @@
       const color = first ? game.board?.[first[1]]?.[first[0]] : null;
       if (color) skin = type === 'connect4' ? state.players?.[color]?.skin : stoneSkin(first[0], first[1], color);
     } else if (['othello', 'yut', 'dots'].includes(type) && game?.status === 'finished' && game.winner) skin = state.players?.[game.winner]?.skin; // v1.9.0
+    else if (['bingo', 'baseball', 'pictionary', 'twentyquestions', 'liar', 'davinci', 'oldmaid', 'halligalli'].includes(type) && game?.status === 'finished') { // v1.9.1: a winner's legend plays over the panel
+      const winners = [].concat(game.winners?.length ? game.winners : game.winner || []);
+      skin = winners.map((s) => state.players?.[s]?.skin).find((id) => { const d = window.SkinLooks?.def(id); return d?.legend && d.win; }) || null;
+    }
     const def = skin ? window.SkinLooks?.def(skin) : null;
     return Boolean(def?.legend && def.win);
   }
@@ -1444,7 +1451,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.0').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.1').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -3096,7 +3103,7 @@
     if (cityAnimationFrame !== null) cancelAnimationFrame(cityAnimationFrame);
     cityAnimationFrame = null;
     if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
-    davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null; davinciFxPlayed = null;
+    davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null; davinciFxPlayed = null; davinciSpecialPlayed = null; davinciPrevStatus = null;
     window.GostopUI?.reset?.();
     window.TwentyQuestionsUI?.reset?.();
   }
@@ -4385,11 +4392,14 @@
       }
       item.append(left, result);
       baseballHistory.appendChild(item);
-      if (i === 0 && baseballRecent.fresh && rowSkin?.fx) requestAnimationFrame(() => SLB.h.playFx(item, rowSkin.fx, 700, 40));
+      // v1.9.1: a legend row one strike short of the answer plays its `special` instead of the plain row effect.
+      const oneShort = rowSkin?.legend && rowSkin.special && entry.strikes === String(entry.guess).length - 1;
+      if (i === 0 && baseballRecent.fresh && oneShort) requestAnimationFrame(() => SLB.h.playFx(item, rowSkin.special, 1300, 40));
+      else if (i === 0 && baseballRecent.fresh && rowSkin?.fx) requestAnimationFrame(() => SLB.h.playFx(item, rowSkin.fx, 700, 40));
     }
     const finishedKey = g.status === 'finished' ? `${state.me?.roomCode}:${g.round || 1}` : null;
     const winnerSkin = g.status === 'finished' && g.winner ? SLB.def(state.players?.[g.winner]?.skin) : null;
-    if (finishedKey && finishedKey !== baseballPlayedWin && baseballPrevStatus === 'playing' && winnerSkin?.win) requestAnimationFrame(() => SLB.h.playFx(baseballHistory, winnerSkin.win, 1500, 10));
+    if (finishedKey && finishedKey !== baseballPlayedWin && baseballPrevStatus === 'playing' && winnerSkin?.win) requestAnimationFrame(() => SLB.h.playFx(baseballHistory, winnerSkin.win, winnerSkin.legend ? 2200 : 1500, 10));
     if (finishedKey) baseballPlayedWin = finishedKey;
     baseballPrevStatus = g.status;
   }
@@ -4642,8 +4652,33 @@
     if (myMark?.fx && freshCell) requestAnimationFrame(() => SL.h.playFx(freshCell, myMark.fx, 700, 40));
     const lineKey = `${state.me?.roomCode}:${seat}`;
     const lines = Number(g.lineCounts?.[seat] || 0);
-    if (myMark?.win && bingoPrevLines.key === lineKey && lines > bingoPrevLines.lines) requestAnimationFrame(() => SL.h.playFx(bingoBoard, myMark.win, 1800, 10));
-    bingoPrevLines = { key: lineKey, lines };
+    // v1.9.1 legends: a newly completed line plays `special` on that line's cells, my win plays `win` over the board.
+    const winners = g.status === 'finished' ? [].concat(g.winner || []) : [];
+    const iWon = Boolean(seat && winners.includes(seat));
+    if (myMark?.legend && bingoPrevLines.key === lineKey && lines > bingoPrevLines.lines) {
+      const cells = [...bingoBoard.querySelectorAll('.bingoCell')];
+      const done = (idx) => idx.every((k) => selected.has(board[k]));
+      const before = new Set(bingoPrevLines.complete || []);
+      const lineSets = bingoLineSets(gridSize).filter((idx) => done(idx) && !before.has(idx.join(',')));
+      const fresh = lineSets[0];
+      if (fresh && myMark.special && !iWon) requestAnimationFrame(() => {
+        const box = bingoBoard.getBoundingClientRect(); const pad = 10;
+        const rects = fresh.map((k) => { const r = cells[k].getBoundingClientRect(); return { x: r.left - box.left + pad, y: r.top - box.top + pad, w: r.width, h: r.height }; });
+        SL.h.playFx(bingoBoard, (ctx, w, h, t) => myMark.special(ctx, w, h, t, rects), 1500, pad);
+      });
+    }
+    const winKey = iWon ? `${lineKey}:${g.round || 1}:${g.moveCount || 0}` : null;
+    if (myMark?.win && winKey && bingoPrevLines.key === lineKey && bingoPrevLines.winKey !== winKey && bingoPrevLines.status === 'playing') requestAnimationFrame(() => SL.h.playFx(bingoBoard, myMark.win, 2200, 10));
+    bingoPrevLines = { key: lineKey, lines, winKey, status: g.status, complete: bingoLineSets(gridSize).filter((idx) => idx.every((k) => selected.has(board[k]))).map((idx) => idx.join(',')) };
+  }
+
+  // Index lists of every row, column and both diagonals of an n×n bingo board (the board array is row-major).
+  function bingoLineSets(n) {
+    const lines = [];
+    for (let r = 0; r < n; r += 1) lines.push(Array.from({ length: n }, (_, c) => r * n + c));
+    for (let c = 0; c < n; c += 1) lines.push(Array.from({ length: n }, (_, r) => r * n + c));
+    lines.push(Array.from({ length: n }, (_, i) => i * n + i), Array.from({ length: n }, (_, i) => i * n + (n - 1 - i)));
+    return lines;
   }
 
   function renderCityControls() {
@@ -4813,6 +4848,7 @@
   }
 
   let pictionaryTool = 'pen';
+  let pictionaryPrevStatus = null;
   let pictionaryDrawingActive = false;
   let pictionaryCurrentPoints = [];
   let pictionaryHasGuessedRound = null; // `${round}:${seat}` once a correct guess is submitted locally
@@ -5020,11 +5056,19 @@
     }
     const myTool = seat ? SLP.def(state.players?.[seat]?.skin) : null;
     pictionaryCanvas.style.cursor = canDraw && myTool?.cursor ? `${SLP.h.img(`pict-cursor:${state.players[seat].skin}`, 32, 32, (c, w) => myTool.cursor(c, w))} 4 28, crosshair` : '';
+    // v1.9.1: a found answer plays the drawer's legend `special` (older skins: `win`); the end of the game plays the
+    // `win` of a final winner who has a legend tool.
     if (g.phase === 'reveal' && pictionaryPrevPhase === 'drawing' && g.lastRound?.awards?.length) {
       const winTool = SLP.def(state.players?.[g.drawerSeat]?.skin);
-      if (winTool?.win) requestAnimationFrame(() => SLP.h.playFx(wrap, winTool.win, 1800, 10));
+      const roundFx = winTool?.legend ? winTool.special : winTool?.win;
+      if (roundFx) requestAnimationFrame(() => SLP.h.playFx(wrap, roundFx, 1800, 10));
+    }
+    if (g.status === 'finished' && pictionaryPrevStatus === 'playing') {
+      const finalTool = [].concat(g.winner || []).map((s) => SLP.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
+      if (finalTool) requestAnimationFrame(() => SLP.h.playFx(wrap, finalTool.win, 2400, 10));
     }
     pictionaryPrevPhase = g.phase;
+    pictionaryPrevStatus = g.status;
     setActionable(pictionaryCanvas.parentElement, canDraw && !g.paused, 'area');
     pictionaryDrawTools.classList.toggle('hidden', !canDraw);
     pictionaryRuleNote.classList.toggle('hidden', !canDraw);
@@ -5197,7 +5241,15 @@
 
     const liarKey = result ? `${state.me?.roomCode}:${g.round}:${result.roundNumber ?? g.roundNumber}` : null;
     const liarSkin = result ? SLL.def(state.players?.[result.liarSeat]?.skin) : null;
-    if (liarKey && liarKey !== liarPlayedResult && liarPrevHadResult === false && liarSkin?.win) requestAnimationFrame(() => SLL.h.playFx(liarPanel, liarSkin.win, 1800, 10));
+    // v1.9.2: the reveal plays the liar's legend `special` (older skins: `win`); the end of the game the `win` of a final
+    // winner with a legend (after the reveal).
+    const liarRevealFx = liarSkin?.legend ? liarSkin.special : liarSkin?.win;
+    const liarFresh = liarKey && liarKey !== liarPlayedResult && liarPrevHadResult === false;
+    if (liarFresh && liarRevealFx) requestAnimationFrame(() => SLL.h.playFx(liarPanel, liarRevealFx, 1800, 10));
+    if (liarFresh && g.status === 'finished') {
+      const finalSkin = [].concat(g.winner || []).map((s) => SLL.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
+      if (finalSkin) setTimeout(() => SLL.h.playFx(liarPanel, finalSkin.win, 2400, 10), liarRevealFx ? 1800 : 0);
+    }
     if (liarKey) liarPlayedResult = liarKey;
     liarPrevHadResult = Boolean(result);
     liarScoreboard.replaceChildren();
@@ -5450,9 +5502,14 @@
       if (g.status === 'finished') oldmaidSeenFinishedKey = `${g.round}:${g.loser}`;
       return;
     }
+    // v1.9.2 skins: a drawer's `fx` plays over the seat they drew from, a legend's `special` over its owner's seat when
+    // they escape, and a winner's legend `win` over the panel when the game ends.
+    const skinOf = (number) => window.SkinLooks.def(state.players?.[number]?.skin);
+    const playOn = (el, draw, ms, pad) => { if (el && draw) requestAnimationFrame(() => window.SkinLooks.h.playFx(el, draw, ms, pad)); };
     if (history.length > oldmaidLastHistoryLen) {
       for (const entry of history.slice(oldmaidLastHistoryLen)) {
         if (entry.pairs > 0) oldmaidShowPairEffect(entry.actor, entry.pairs);
+        playOn(oldmaidFindSeatEl(entry.target), skinOf(entry.actor)?.fx, 800, 40);
       }
     }
     oldmaidLastHistoryLen = history.length;
@@ -5462,12 +5519,18 @@
       if (emptied && !oldmaidSeenEscaped.has(number)) {
         oldmaidSeenEscaped.add(number);
         oldmaidShowEscapeEffect(number);
+        const escaper = skinOf(number);
+        if (escaper?.legend) playOn(oldmaidFindSeatEl(number), escaper.special, 1400, 60);
       }
     }
 
     if (g.status === 'finished') {
       const key = `${g.round}:${g.loser}`;
-      if (oldmaidSeenFinishedKey !== key) oldmaidSeenFinishedKey = key;
+      if (oldmaidSeenFinishedKey !== key) {
+        oldmaidSeenFinishedKey = key;
+        const finalSkin = [].concat(g.winner || []).map(skinOf).find((d) => d?.legend && d.win);
+        if (finalSkin) setTimeout(() => playOn(oldmaidPanel, finalSkin.win, 2400, 10), 900);
+      }
     }
   }
 
@@ -5725,7 +5788,10 @@
       }
       const plotSkin = SLH.def(state.players?.[owner]?.skin);
       if (plotSkin?.card) SLH.h.style(card, plotSkin.card);
-      if (currentBell?.seat === owner && plotSkin?.fx) halliFxTarget = { el: card, fx: plotSkin.fx };
+      // v1.9.2: a right bell that takes five or more cards plays the ringer's legend `special` instead of the bell effect.
+      const bigCatch = currentBell?.correct && (currentBell.totalTransferred || 0) >= 5 && plotSkin?.legend && plotSkin.special;
+      if (currentBell?.seat === owner && bigCatch) halliFxTarget = { el: card, fx: plotSkin.special, ms: 1400 };
+      else if (currentBell?.seat === owner && plotSkin?.fx) halliFxTarget = { el: card, fx: plotSkin.fx, ms: 800 };
       const name = document.createElement('strong');
       name.className = 'halliPlayerName';
       if (plotSkin?.text) SLH.h.style(name, { color: plotSkin.text.color, textShadow: 'none' });
@@ -5766,7 +5832,12 @@
       card.append(name, face, count);
       halliCards.append(card);
     }
-    if (halliFxTarget && halliRecent.fresh) requestAnimationFrame(() => SLH.h.playFx(halliFxTarget.el, halliFxTarget.fx, 800, 50));
+    if (halliFxTarget && halliRecent.fresh) requestAnimationFrame(() => SLH.h.playFx(halliFxTarget.el, halliFxTarget.fx, halliFxTarget.ms, 50));
+    if (g.status === 'finished' && halliPrevStatus === 'playing') { // v1.9.2: a winner's legend `win` over the panel
+      const finalSkin = [].concat(g.winner || []).map((s) => SLH.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
+      if (finalSkin) requestAnimationFrame(() => SLH.h.playFx(halliPanel, finalSkin.win, 2400, 10));
+    }
+    halliPrevStatus = g.status;
     halliTransferDetails.replaceChildren();
     halliTransferResult.classList.toggle('success', Boolean(g.lastBell?.correct));
     halliTransferResult.classList.toggle('penalty', Boolean(g.lastBell && !g.lastBell.correct));
@@ -6031,6 +6102,11 @@
     davinciThemeApplied = null;
     const themeD = SLD.def(state.skinTheme);
     if (themeD?.panel) { davinciThemeApplied = { backgroundImage: SLD.h.img(`dv-panel:${state.skinTheme}`, 720, 520, themeD.panel), backgroundSize: 'cover', ...themeD.frame }; SLD.h.style(davinciPanel, davinciThemeApplied); }
+    if (g.status === 'finished' && davinciPrevStatus === 'playing') { // v1.9.2: a winner's legend `win` over the panel
+      const finalSkin = [].concat(g.winner || []).map((s) => SLD.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
+      if (finalSkin) requestAnimationFrame(() => SLD.h.playFx(davinciPanel, finalSkin.win, 2400, 10));
+    }
+    davinciPrevStatus = g.status;
     davinciHands.replaceChildren();
     // v1.6.96: a table seen from my chair -- my rack at the bottom, opponents around it, the draw
     // pile and this turn's drawn tile in the middle. Only public fields (colour, revealed numbers,
@@ -6084,7 +6160,14 @@
         // v1.8.4: the answer effect plays once per guess (the same feedback is re-rendered several times), and is aimed
         // at the tile that is on screen when the frame runs -- this render's button may already have been replaced.
         const fxKey = feedbackForTile && feedback.correct ? `guess:${davinciFeedbackKey(feedback)}` : revealingNow ? `reveal:${tile.id}` : null;
-        if (tileSkin?.fx && fxKey && fxKey !== davinciFxPlayed) {
+        // v1.9.2: a right guess by a legend owner plays the guesser's `special` over the guessed tile (once per guess).
+        const guesserSkin = feedbackForTile && feedback.correct ? SLD.def(state.players?.[feedback.seat]?.skin) : null;
+        const specialKey = guesserSkin?.legend && guesserSkin.special ? `special:${davinciFeedbackKey(feedback)}` : null;
+        if (specialKey && specialKey !== davinciSpecialPlayed) {
+          davinciSpecialPlayed = specialKey;
+          const tileId = tile.id;
+          requestAnimationFrame(() => { const live = button.isConnected ? button : davinciHands.querySelector(`[data-tile-id="${tileId}"]`); if (live) SLD.h.playFx(live, guesserSkin.special, 1300, 60); });
+        } else if (tileSkin?.fx && fxKey && fxKey !== davinciFxPlayed) {
           davinciFxPlayed = fxKey;
           const tileId = tile.id;
           requestAnimationFrame(() => { const live = button.isConnected ? button : davinciHands.querySelector(`[data-tile-id="${tileId}"]`); if (live) SLD.h.playFx(live, tileSkin.fx, 700, 30); });

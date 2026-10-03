@@ -4,7 +4,7 @@ const { post, get, shopper, buyAndEquip, expectNoScriptError } = require('./skin
 // v1.7.41 도둑잡기 · 할리갈리 스킨(카드 게임: 앞면은 그대로, 뒷면·프레임·받침·효과만). PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
-const ids = (family) => ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1'].map(i => `${family}_${i}`);
+const ids = (family) => ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1', 'l2'].map(i => `${family}_${i}`);
 
 const contrastOf = (page, fg, bg) => page.evaluate(([f, b]) => {
   const parse = (css) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = '#0b1324'; c.fillRect(0, 0, 1, 1); c.fillStyle = css; c.fillRect(0, 0, 1, 1); const d = c.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
@@ -50,7 +50,7 @@ test('도둑잡기 스킨: 방장 테마가 모든 화면에 같고, 각 자리�
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '도둑잡기' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'oldmaid' });
@@ -87,7 +87,7 @@ test('할리갈리 스킨: 방장 테마가 모든 화면에 같고, 각 카드 
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '할리갈리' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'halligalli' });
@@ -107,4 +107,20 @@ test('할리갈리 스킨: 방장 테마가 모든 화면에 같고, 각 카드 
   expect(await panelImage(a)).toBe(await panelImage(b));
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
+});
+
+// v1.9.2 전설 2차(라이어·다빈치·도둑잡기·할리갈리·고스톱): 모든 전설의 행동·특수·승리 연출이 오류 없이 그림을 남긴다.
+test('전설 2차(카드·말하기 게임): 모든 전설 연출이 그림을 남긴다', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '연출');
+  const drawn = await a.page.evaluate(() => {
+    const out = {};
+    const ink = (fn) => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; const x = c.getContext('2d'); fn(x); const d = x.getImageData(0, 0, 400, 300).data; let n = 0; for (let i = 3; i < d.length; i += 4) n += d[i] > 0 ? 1 : 0; return n; };
+    for (const family of ['liar', 'davinci', 'oldmaid', 'halligalli', 'gostop']) for (const id of [`${family}_l1`, `${family}_l2`]) {
+      const d = window.SkinLooks.def(id);
+      out[id] = { legend: d.legend === true, fx: ink((x) => d.fx(x, 400, 300, .35)), special: ink((x) => d.special(x, 400, 300, .45)), win: ink((x) => d.win(x, 400, 300, .55)) };
+    }
+    return out;
+  });
+  for (const [id, r] of Object.entries(drawn)) { expect(r.legend, id).toBe(true); for (const k of ['fx', 'special', 'win']) expect(r[k], `${id} ${k}`).toBeGreaterThan(30); }
+  await a.context.close();
 });

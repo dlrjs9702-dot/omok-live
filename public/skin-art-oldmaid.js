@@ -28,6 +28,47 @@
   const shadowHand = (ctx, w, h, t) => { const y = h * (.85 - .5 * Math.sin(clamp01(t * 1.2) * Math.PI)); ctx.fillStyle = `rgba(10,6,20,${.85 * (1 - t * .4)})`; ctx.beginPath(); ctx.ellipse(w / 2, y, 16, 10, 0, 0, TAU); ctx.fill(); for (let i = -2; i <= 2; i += 1) { ctx.beginPath(); ctx.ellipse(w / 2 + i * 7, y - 12, 2.6, 8, i * .15, 0, TAU); ctx.fill(); } };
   const spotlight = (ctx, w, h, t) => { const g = ctx.createRadialGradient(w / 2, h / 2, 6, w / 2, h / 2, Math.max(w, h) * .7); g.addColorStop(0, `rgba(255,236,170,${Math.sin(clamp01(t * 1.2) * Math.PI) * .75})`); g.addColorStop(1, 'rgba(255,236,170,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); };
 
+  // v1.9.2 legend standard: `fx` over the seat this player draws from, `special(ctx, w, h, t)` over this player's seat
+  // when they escape (hand emptied), `win(ctx, w, h, t)` over the panel when the game ends with them among the winners.
+  const lensSpecial = (ctx, w, h, t) => { // a magnifier sweeps over the escaping seat, then the thief mask flips into a badge
+    const x = w * (.15 + .7 * clamp01(t / .6)); const y = h / 2 + Math.sin(t * 8) * 6; ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    ctx.strokeStyle = '#f0c14e'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, 22, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,236,170,.25)'; ctx.fill(); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x + 16, y + 16); ctx.lineTo(x + 34, y + 34); ctx.stroke();
+    const flip = clamp01((t - .55) / .3); if (flip > 0) { ctx.translate(w / 2, h / 2); ctx.scale(Math.cos(flip * Math.PI) || .01, 1); ctx.fillStyle = flip < .5 ? '#10142e' : '#f0c14e'; starPath(ctx, 0, 0, 20, 9, 5); ctx.fill(); }
+    ctx.restore();
+  };
+
+  // ---- legend 2 (v1.9.2): 야간 특급 승차권 ↔ 야간 특급열차 -- a night-express ticket back; escaping is arriving ----
+  const ticket = (c, w, h) => {
+    bgFill(c, w, h, '#13204a', '#070d24');
+    c.setLineDash([3, 3]); c.strokeStyle = '#e8c35a'; c.lineWidth = 1.6; c.strokeRect(5, 5, w - 10, h - 10); c.setLineDash([]); // perforation
+    c.fillStyle = '#070d24'; for (const y of [h * .3, h * .7]) { c.beginPath(); c.arc(5, y, 3, 0, TAU); c.arc(w - 5, y, 3, 0, TAU); c.fill(); } // punched notches
+    c.fillStyle = '#e8c35a'; // a little locomotive on rails
+    c.fillRect(w / 2 - 14, h / 2 - 4, 22, 10); c.fillRect(w / 2 + 4, h / 2 - 11, 8, 8); c.fillRect(w / 2 - 12, h / 2 - 9, 5, 6);
+    c.beginPath(); c.arc(w / 2 - 9, h / 2 + 8, 3.2, 0, TAU); c.arc(w / 2 + 3, h / 2 + 8, 3.2, 0, TAU); c.fill();
+    c.fillStyle = '#ffd86b'; c.beginPath(); c.arc(w / 2 + 12, h / 2 + 1, 2, 0, TAU); c.fill(); // the headlamp
+    c.strokeStyle = 'rgba(232,195,90,.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(10, h / 2 + 12); c.lineTo(w - 10, h / 2 + 12); c.stroke();
+    c.fillStyle = 'rgba(232,195,90,.8)'; starPath(c, 12, 14, 3, 1.2, 4); c.fill(); starPath(c, w - 12, h - 14, 3, 1.2, 4); c.fill();
+  };
+  const punchFx = (ctx, w, h, t) => { // the conductor's punch clicks: a gold ring snaps and a paper dot flies out
+    const cx = w / 2; const cy = h / 2; const snap = Math.sin(clamp01(t / .3) * Math.PI);
+    ctx.strokeStyle = `rgba(232,195,90,${1 - t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, 10 + snap * 8, 0, TAU); ctx.stroke();
+    ctx.fillStyle = `rgba(250,240,210,${1 - t})`; ctx.beginPath(); ctx.arc(cx + t * 40, cy - t * 30 + t * t * 40, 4, 0, TAU); ctx.fill();
+  };
+  const arriveSpecial = (ctx, w, h, t) => { // arrival: steam puffs roll out and a 「도착」 stamp lands on the seat
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    for (let i = 0; i < 6; i += 1) { const u = clamp01(t * 1.4 - i * .08); if (u <= 0) continue; ctx.fillStyle = `rgba(230,236,250,${(1 - u) * .8})`; ctx.beginPath(); ctx.arc(w * .2 + i * w * .12, h * .8 - u * h * .5, 8 + u * 16, 0, TAU); ctx.fill(); }
+    const s = clamp01((t - .3) / .2); if (s > 0) { ctx.translate(w / 2, h / 2); ctx.rotate(-.2); ctx.scale(1.5 - .5 * s, 1.5 - .5 * s); ctx.globalAlpha *= s; ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(-46, -20, 92, 40, 8); ctx.stroke(); ctx.fillStyle = '#e8c35a'; ctx.font = '900 22px "Malgun Gothic", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('도 착', 0, 1); }
+    ctx.restore();
+  };
+  const expressWin = (ctx, w, h, t) => { // the night express crosses the panel, windows lit, its headlight sweeping ahead
+    const x = -w * .9 + t * w * 2.1; const y = h * .62; ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .9) / .1);
+    const beam = ctx.createLinearGradient(x + w * .5, 0, x + w * .9, 0); beam.addColorStop(0, 'rgba(255,236,160,.55)'); beam.addColorStop(1, 'rgba(255,236,160,0)'); ctx.fillStyle = beam; ctx.beginPath(); ctx.moveTo(x + w * .5, y - 10); ctx.lineTo(x + w * .9, y - 50); ctx.lineTo(x + w * .9, y + 30); ctx.closePath(); ctx.fill();
+    for (let car = 0; car < 4; car += 1) { const cx = x + car * w * .13; ctx.fillStyle = '#1c2a5e'; ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(cx, y - 24, w * .12, 34, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ffd86b'; for (let k = 0; k < 3; k += 1) ctx.fillRect(cx + 8 + k * w * .035, y - 16, w * .022, 10); }
+    ctx.fillStyle = '#e8c35a'; ctx.fillRect(x + w * .52 - 4, y - 30, 10, 10); ctx.fillStyle = '#ffd86b'; ctx.beginPath(); ctx.arc(x + w * .52 + 8, y - 4, 5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(232,195,90,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, y + 14); ctx.lineTo(w, y + 14); ctx.stroke();
+    ctx.restore();
+  };
+
   // ---- room themes ----
   function mansion(ctx, w, h) { ctx.fillStyle = '#2b1a12'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; for (let x = 0; x < w; x += 70) ctx.strokeRect(x + 6, 14, 58, h - 28); const g = ctx.createRadialGradient(w / 2, 0, 10, w / 2, 0, w * .6); g.addColorStop(0, 'rgba(255,214,140,.35)'); g.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }
   function nightTrain(ctx, w, h) { ctx.fillStyle = '#0b1230'; ctx.fillRect(0, 0, w, h); const R = rng(19); for (let i = 0; i < 40; i += 1) { ctx.fillStyle = `rgba(255,${200 + (R() * 50 | 0)},120,${.3 + R() * .5})`; ctx.fillRect(R() * w, R() * h * .7, 18 + R() * 40, 1.6); } ctx.fillStyle = '#1a2246'; ctx.fillRect(0, h * .72, w, h * .28); ctx.fillStyle = 'rgba(255,220,150,.5)'; for (let x = 10; x < w; x += 90) ctx.fillRect(x, h * .78, 60, 40); }
@@ -46,6 +87,7 @@
     oldmaid_p1: back('p1', dossier, '#d9b86a', { fx: pulse('217,184,106') }), oldmaid_p2: back('p2', moonlight, '#b8c8ff', { fx: pulse('184,200,255') }), oldmaid_p3: back('p3', glow, '#3cf0ff', { fx: pulse('60,240,255') }),
     oldmaid_t1: theme(mansion, { borderColor: '#c9a24a', boxShadow: 'inset 0 0 0 3px #2b1a12, 0 0 0 2px #c9a24a' }),
     oldmaid_t2: theme(nightTrain, { borderColor: '#7aa0ff', boxShadow: 'inset 0 0 0 3px #0b1230, 0 0 14px rgba(122,160,255,.4)' }),
-    oldmaid_l1: back('l1', duo, '#f0c14e', { fx: shadowHand, win: spotlight }),
+    oldmaid_l1: back('l1', duo, '#f0c14e', { fx: shadowHand, win: spotlight, special: lensSpecial, legend: true }),
+    oldmaid_l2: back('l2', ticket, '#e8c35a', { fx: punchFx, win: expressWin, special: arriveSpecial, legend: true }),
   });
 }());

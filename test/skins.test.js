@@ -30,7 +30,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   const omokView = catalogView().find(f => f.family === 'omok').skins;
   const pairOf = id => omokView.find(s => s.id === id).pair;
   assert.deepEqual(['omok_l1', 'omok_t2', 'omok_l2', 'omok_t1'].map(pairOf), ['omok_t2', 'omok_l1', 'omok_t1', 'omok_l2']);
-  assert.equal(skinById('bingo_l1').pair, null, '전설이 하나인 게임은 짝이 없다');
+  assert.ok(SKINS.filter(s => s.tier === 'legend').every(s => s.pair), '모든 전설이 방 테마와 짝');
   for (const skin of SKINS) assert.equal(skin.price, TIERS[skin.tier].price);
   assert.equal(familyOf('omok'), 'omok');
   assert.equal(familyOf('omok2v2'), 'omok');
@@ -41,8 +41,8 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.deepEqual(catalogView().map(f => f.family), Object.keys(ACTIVE_FAMILIES));
   for (const family of catalogView()) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
     const tiers = tier => family.skins.filter(s => s.tier === tier).length;
-    // v1.8.7 오목, v1.9.0 사목·오델로·윷놀이·점과 상자: 테마마다 짝 전설(전설 2)
-    const twoLegends = ['omok', 'connect4', 'othello', 'yut', 'dots'].includes(family.family);
+    // v1.8.7 오목 → v1.9.2 모든 게임: 테마마다 짝 전설(전설 2)
+    const twoLegends = true; // v1.9.2: every game has two legends, one per room theme
     assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, twoLegends ? 2 : 1], family.family);
     if (twoLegends) for (const skin of family.skins.filter(s => s.tier === 'legend' || s.tier === 'theme')) assert.ok(skin.pair, `${skin.id} 짝`);
     assert.equal(tiers('common'), family.family === 'omok' ? 10 : 5, family.family);

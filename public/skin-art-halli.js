@@ -29,6 +29,47 @@
   const golden = frame('#3a2608', tile('golden', 26, 26, (c, w, h) => { c.strokeStyle = 'rgba(255,214,102,.22)'; c.strokeRect(1.5, 1.5, w - 3, h - 3); c.fillStyle = 'rgba(255,214,102,.3)'; starPath(c, w / 2, h / 2, 4, 1.6, 4); c.fill(); }), '#f0c14e', '#fff1c8', '0 0 14px rgba(240,193,78,.55), inset 0 0 0 2px #7a520f');
   golden.fx = (ctx, w, h, t) => { shock('255,214,102')(ctx, w, h, t); const R = rng(9); for (let i = 0; i < 10; i += 1) { const a = R() * TAU; const d = 20 + 70 * t * (.5 + R()); ctx.save(); ctx.translate(w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d + 16 * t * t); ctx.rotate(a + t * 5); ctx.fillStyle = `rgba(255,${190 + (R() * 50 | 0)},40,${1 - t})`; ctx.fillRect(-4, -3, 8, 6); ctx.restore(); } };
 
+  // v1.9.2 legend standard: `special(ctx, w, h, t)` over the owner's card plot when a right bell takes five or more cards,
+  // `win(ctx, w, h, t)` over the panel when the owner is among the winners.
+  golden.legend = true;
+  golden.special = (ctx, w, h, t) => { // a great golden bell swings over the plot and rings out gold notes
+    const cx = w / 2; const cy = h * .42; const swing = Math.sin(t * Math.PI * 4) * .35 * (1 - t); const s = Math.min(w, h) * .2;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2); ctx.translate(cx, cy - s); ctx.rotate(swing);
+    ctx.fillStyle = '#f0c14e'; ctx.strokeStyle = '#7a5208'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-s * .2, 0); ctx.quadraticCurveTo(-s * .25, s * .2, -s * .5, s * 1.1); ctx.lineTo(s * .5, s * 1.1); ctx.quadraticCurveTo(s * .25, s * .2, s * .2, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, s * 1.2, s * .12, 0, TAU); ctx.fill(); ctx.restore();
+    const R = rng(11); ctx.fillStyle = `rgba(255,214,102,${1 - t})`; ctx.font = `900 ${Math.round(s * .5)}px serif`;
+    for (let i = 0; i < 6; i += 1) { const a = -Math.PI / 2 + (R() - .5) * 2.4; const d = s * (1 + 2 * t); ctx.fillText(i % 2 ? '♪' : '♫', cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  };
+  golden.win = (ctx, w, h, t) => { // gold fruit rains over the panel around a golden bell
+    const R = rng(21); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let i = 0; i < 30; i += 1) { const x = R() * w; const y = -20 + ((R() * h + t * h * 1.4) % (h + 40)); ctx.fillStyle = ['#ffd86b', '#f0c14e', '#fff0a8'][i % 3]; ctx.beginPath(); ctx.arc(x, y, 7 + R() * 5, 0, TAU); ctx.fill(); ctx.fillStyle = '#5a8a2a'; ctx.fillRect(x - 1, y - 12, 2, 5); }
+    golden.special(ctx, w, h, Math.min(.79, t)); ctx.restore();
+  };
+
+  // ---- legend 2 (v1.9.2): 한여름 수박 축제 ↔ 한여름 피크닉 -- a watermelon rind frame; a big catch cracks a melon open ----
+  const melon = frame('#fff1ec', tile('melon', 40, 40, (c, w, h) => { c.fillStyle = 'rgba(40,20,20,.28)'; for (const [x, y] of [[8, 10], [26, 6], [18, 24], [32, 30], [6, 32]]) { c.beginPath(); c.ellipse(x, y, 1.8, 3, .5, 0, TAU); c.fill(); } }),
+    '#2f8f3a', '#3a1010', 'inset 0 0 0 4px #b8eaa8, 0 0 0 3px #1d6a28', { borderStyle: 'solid', borderWidth: '5px' });
+  melon.legend = true;
+  melon.fx = (ctx, w, h, t) => { // a juicy splash: red drops and a few seeds pop out of the plot
+    const R = rng(14); for (let i = 0; i < 14; i += 1) { const a = R() * TAU; const d = 16 + 60 * t * (.5 + R() * .6); const x = w / 2 + Math.cos(a) * d; const y = h / 2 + Math.sin(a) * d + 30 * t * t;
+      if (i % 4) { ctx.fillStyle = `rgba(232,60,70,${1 - t})`; ctx.beginPath(); ctx.arc(x, y, 4 * (1 - t) + 1.5, 0, TAU); ctx.fill(); } else { ctx.fillStyle = `rgba(30,20,20,${1 - t})`; ctx.beginPath(); ctx.ellipse(x, y, 2, 3.4, a, 0, TAU); ctx.fill(); } }
+  };
+  melon.special = (ctx, w, h, t) => { // a whole watermelon drops in and cracks into slices
+    const cx = w / 2; const cy = h / 2; const s = Math.min(w, h) * .22; const crack = clamp01((t - .25) / .3); const drop = clamp01(t / .25);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    if (crack <= 0) { ctx.fillStyle = '#2f8f3a'; ctx.beginPath(); ctx.ellipse(cx, cy - (1 - drop) * h * .5, s * 1.2, s, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#1d6a28'; ctx.lineWidth = 4; for (let k = -2; k <= 2; k += 1) { ctx.beginPath(); ctx.ellipse(cx + k * s * .35, cy - (1 - drop) * h * .5, s * .12, s * .95, 0, 0, TAU); ctx.stroke(); } }
+    else for (let i = 0; i < 5; i += 1) { const a = -Math.PI / 2 + (i - 2) * .55; const d = crack * s * 1.4; ctx.save(); ctx.translate(cx + Math.cos(a) * d, cy + Math.sin(a) * d * .5); ctx.rotate(a + Math.PI / 2);
+      ctx.fillStyle = '#2f8f3a'; ctx.beginPath(); ctx.arc(0, 0, s * .6, 0, Math.PI); ctx.fill(); ctx.fillStyle = '#b8eaa8'; ctx.beginPath(); ctx.arc(0, 0, s * .52, 0, Math.PI); ctx.fill(); ctx.fillStyle = '#e83c46'; ctx.beginPath(); ctx.arc(0, 0, s * .46, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = '#1e1414'; for (const [x, y] of [[-.2, .15], [0, .25], [.2, .15]]) { ctx.beginPath(); ctx.ellipse(x * s, y * s, 2, 3.5, 0, 0, TAU); ctx.fill(); } ctx.restore(); }
+    ctx.restore();
+  };
+  melon.win = (ctx, w, h, t) => { // a picnic sun rises and melon slices rain onto a checked mat
+    const R = rng(33); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    const sun = clamp01(t / .4); const sg = ctx.createRadialGradient(w * .5, h * (.5 - .3 * sun), 10, w * .5, h * (.5 - .3 * sun), w * .4); sg.addColorStop(0, 'rgba(255,236,140,.6)'); sg.addColorStop(1, 'rgba(255,236,140,0)'); ctx.fillStyle = sg; ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 18; i += 1) { const x = R() * w; const y = -30 + ((R() * h + t * h * 1.3) % (h + 60)); ctx.save(); ctx.translate(x, y); ctx.rotate(R() * TAU + t * 3); ctx.fillStyle = '#2f8f3a'; ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI); ctx.fill(); ctx.fillStyle = '#e83c46'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI); ctx.fill(); ctx.restore(); }
+    ctx.restore();
+  };
+
   // ---- room themes ----
   function fruitMarket(ctx, w, h) { const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fff0c4'); g.addColorStop(1, '#ffd8a0'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 44) { ctx.fillStyle = x % 88 ? '#e0453f' : '#ffffff'; ctx.fillRect(x, 0, 44, 26); } const R = rng(55); ctx.globalAlpha = .4; for (let i = 0; i < 26; i += 1) { ctx.fillStyle = ['#e0453f', '#f2c14e', '#7bc043', '#8e44ad'][i % 4]; ctx.beginPath(); ctx.arc(R() * w, 60 + R() * (h - 70), 8 + R() * 10, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; }
   function picnic(ctx, w, h) { ctx.fillStyle = '#7bc96f'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = 'rgba(255,255,255,.55)'; for (let y = 0; y < h; y += 40) for (let x = (y / 40) % 2 ? 0 : 40; x < w; x += 80) ctx.fillRect(x, y, 40, 40); ctx.fillStyle = '#ffe566'; ctx.beginPath(); ctx.arc(w - 50, 46, 26, 0, TAU); ctx.fill(); }
@@ -49,5 +90,6 @@
     halligalli_t1: theme(fruitMarket, { borderColor: '#e0453f', boxShadow: 'inset 0 0 0 3px #fff0c4, 0 0 0 2px #e0453f' }),
     halligalli_t2: theme(picnic, { borderColor: '#3f8f3a', boxShadow: 'inset 0 0 0 3px #7bc96f, 0 0 0 2px #3f8f3a' }),
     halligalli_l1: piece(golden),
+    halligalli_l2: piece(melon),
   });
 }());

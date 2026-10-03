@@ -247,14 +247,21 @@
         if (fxDef?.fx) requestAnimationFrame(() => SKS.h.playFx(item, fxDef.fx, 700, 40));
       }
     });
-    skinFx = { round, count: questions.length, result: skinFx.round === round ? skinFx.result : false };
+    skinFx = { round, count: questions.length, result: skinFx.round === round ? skinFx.result : false, status: skinFx.status };
     if (phase === 'result' && !skinFx.result) {
       skinFx.result = true;
       const lastGuess = (g.guessHistory || []).at(-1);
       const winDef = lastGuess?.correct ? SKS?.def(state.players?.[lastGuess.seat]?.skin) : null;
-      if (winDef?.win) requestAnimationFrame(() => SKS.h.playFx($('twentyPanel'), winDef.win, 1800, 10));
+      const roundFx = winDef?.legend ? winDef.special : winDef?.win; // v1.9.1: a legend's round effect is its `special`
+      if (roundFx) requestAnimationFrame(() => SKS.h.playFx($('twentyPanel'), roundFx, 1800, 10));
     }
     if (phase !== 'result') skinFx.result = false;
+    // v1.9.1: the end of the game plays the `win` of a final winner who has a legend.
+    if (g.status === 'finished' && skinFx.status === 'playing') {
+      const finalDef = (g.winners || []).map((n) => SKS?.def(state.players?.[n]?.skin)).find((d) => d?.legend && d.win);
+      if (finalDef) requestAnimationFrame(() => SKS.h.playFx($('twentyPanel'), finalDef.win, 2400, 10));
+    }
+    skinFx.status = g.status;
     if (!questions.length) { const p = document.createElement('li'); p.className = 'twentyEmpty'; p.textContent = '아직 질문이 없습니다.'; log.appendChild(p); }
     const olderBox = $('twentyOlderLogBox');
     const olderCount = Math.max(0, questions.length - VISIBLE_PAIRS);

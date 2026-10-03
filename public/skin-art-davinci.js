@@ -39,6 +39,53 @@
   };
   const sealFx = (ctx, w, h, t) => { const R = rng(9); for (let i = 0; i < 14; i += 1) { const a = R() * TAU; const d = 8 + 40 * t * (.5 + R()); ctx.save(); ctx.translate(w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d); ctx.rotate(a + t * 5); ctx.fillStyle = `rgba(255,214,102,${1 - t})`; ctx.fillRect(-3, -2, 6, 4); ctx.restore(); } ctx.strokeStyle = `rgba(255,226,140,${(1 - t) * .9})`; ctx.lineWidth = 3; ctx.strokeRect(w * .25 - t * 8, h * .2 - t * 8, w * .5 + t * 16, h * .6 + t * 16); };
 
+  // v1.9.2 legend standard: `special(ctx, w, h, t)` over the tile this skin's owner just guessed right, `win(ctx, w, h, t)`
+  // over the panel when the owner is among the winners.
+  const sealSpecial = (ctx, w, h, t) => { // the wax seal on the guessed tile bursts into gold shards and a ring
+    const cx = w / 2; const cy = h / 2; const R = rng(5);
+    for (let k = 0; k < 2; k += 1) { const u = clamp01(t * 1.4 - k * .2); if (u <= 0 || u >= 1) continue; ctx.strokeStyle = `rgba(240,193,78,${1 - u})`; ctx.lineWidth = 5 * (1 - u) + 1; ctx.beginPath(); ctx.arc(cx, cy, 20 + u * 60, 0, TAU); ctx.stroke(); }
+    for (let i = 0; i < 16; i += 1) { const a = R() * TAU; const d = 10 + 70 * clamp01(t) * (.5 + R() * .6); ctx.save(); ctx.translate(cx + Math.cos(a) * d, cy + Math.sin(a) * d + 30 * t * t); ctx.rotate(a + t * 7); ctx.fillStyle = i % 3 ? `rgba(240,193,78,${1 - t})` : `rgba(160,30,40,${1 - t})`; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 3); ctx.lineTo(-4, 3); ctx.fill(); ctx.restore(); }
+  };
+  const sealWin = (ctx, w, h, t) => { // an old manuscript unrolls over the panel and its golden letters light up
+    const k = clamp01(t / .45); const top = h * .2; const bh = h * .6; const bw = w * .7 * k; const x = w / 2 - bw / 2;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = '#efe0b8'; ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 3; ctx.fillRect(x, top, bw, bh); ctx.strokeRect(x, top, bw, bh);
+    for (const sx of [x, x + bw]) { ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.roundRect(sx - 8, top - 10, 16, bh + 20, 8); ctx.fill(); }
+    const lit = clamp01((t - .4) / .4); ctx.fillStyle = `rgba(201,162,74,${lit})`; for (let r = 0; r < 4; r += 1) for (let c = 0; c < 9; c += 1) { if ((r * 9 + c) / 36 > lit) break; const lx = w / 2 - w * .3 + c * w * .067; if (lx < x + 10 || lx > x + bw - 10) continue; ctx.fillRect(lx, top + bh * (.2 + r * .18), w * .045, 6); }
+    if (lit > .5) { ctx.fillStyle = '#a01e28'; ctx.beginPath(); ctx.arc(w / 2, top + bh * .9, 18, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  };
+
+  // ---- legend 2 (v1.9.2): 황금 금고 ↔ 거대 금고실 -- every tile is a little vault door; a right guess cracks it open ----
+  const vaultDoor = (ctx, dark, revealed) => {
+    const metal = dark ? 'rgba(200,210,225,.85)' : 'rgba(80,92,110,.85)';
+    ctx.strokeStyle = metal; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(4, 4, W - 8, H - 8, 10); ctx.stroke();
+    ctx.fillStyle = metal; for (const [x, y] of [[10, 10], [W - 10, 10], [10, H - 10], [W - 10, H - 10], [10, H / 2], [W - 10, H / 2]]) { ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill(); } // rivets
+    if (revealed) { ctx.fillStyle = dark ? 'rgba(240,193,78,.9)' : 'rgba(170,125,20,.9)'; ctx.fillRect(W - 14, 18, 6, 16); ctx.fillRect(W - 14, H - 34, 6, 16); return; } // open hinges
+    ctx.strokeStyle = dark ? 'rgba(240,193,78,.85)' : 'rgba(170,125,20,.85)'; ctx.lineWidth = 2.5; // the wheel at the foot
+    ctx.beginPath(); ctx.arc(W / 2, H - 15, 8, 0, TAU); ctx.stroke(); for (let i = 0; i < 4; i += 1) { const a = i * Math.PI / 2 + .4; ctx.beginPath(); ctx.moveTo(W / 2, H - 15); ctx.lineTo(W / 2 + Math.cos(a) * 11, H - 15 + Math.sin(a) * 11); ctx.stroke(); }
+  };
+  const vaultFx = (ctx, w, h, t) => { // the wheel spins and sparks fly from the rim
+    const cx = w / 2; const cy = h / 2; ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * TAU); ctx.strokeStyle = `rgba(240,193,78,${1 - t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 18, 0, TAU); ctx.stroke(); for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 24, Math.sin(a) * 24); ctx.stroke(); } ctx.restore();
+    const R = rng(8); for (let i = 0; i < 10; i += 1) { const a = R() * TAU; const d = 22 + 30 * t; ctx.fillStyle = `rgba(255,230,140,${1 - t})`; ctx.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2.5, 2.5); }
+  };
+  const vaultSpecial = (ctx, w, h, t) => { // cracked: the tile's vault door swings open on a beam of gold light
+    const cx = w / 2; const cy = h / 2; const open = clamp01(t / .5); const dw = Math.min(w, h) * .32; const dh = dw * 1.35;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, dw * 1.8); g.addColorStop(0, `rgba(255,226,140,${.85 * open})`); g.addColorStop(1, 'rgba(255,226,140,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.translate(cx - dw / 2, cy - dh / 2); ctx.scale(1 - open * .85, 1); ctx.fillStyle = '#5a6578'; ctx.strokeStyle = '#c8d2e1'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(0, 0, dw, dh, 8); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  };
+  const vaultWin = (ctx, w, h, t) => { // the great vault door rolls aside and stacks of gold bars glow behind it
+    const roll = clamp01(t / .5); const R = Math.min(w, h) * .38; const cx = w / 2 + roll * w * .62; const cy = h / 2;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let r = 0; r < 3; r += 1) for (let c = 0; c < 4 - r; c += 1) { const bx = w / 2 - 70 + c * 40 + r * 20; const by = h / 2 + 30 - r * 22; ctx.fillStyle = '#f0c14e'; ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 36, by); ctx.lineTo(bx + 30, by - 18); ctx.lineTo(bx + 6, by - 18); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    const glow = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, R * 1.4); glow.addColorStop(0, `rgba(255,226,140,${.5 * roll})`); glow.addColorStop(1, 'rgba(255,226,140,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+    ctx.translate(cx, cy); ctx.rotate(roll * Math.PI * 1.5); ctx.fillStyle = '#3d4653'; ctx.strokeStyle = '#c8d2e1'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 6; for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * .2, Math.sin(a) * R * .2); ctx.lineTo(Math.cos(a) * R * .6, Math.sin(a) * R * .6); ctx.stroke(); }
+    ctx.restore();
+  };
+
   // ---- room themes ----
   function library(ctx, w, h) { // 르네상스 서재
     ctx.fillStyle = '#3b2412'; ctx.fillRect(0, 0, w, h); const R = rng(31);
@@ -76,6 +123,7 @@
     davinci_p3: piece(holoKey, 'p3', burst('110,220,255'), P('#0f3b46', '#04181d', '#e6fdff', '#4fd0ff', '#ebfcff', '#c6eef7', '#053040', '#3aa8cc')),
     davinci_t1: theme(library, { borderColor: '#c9a24a', boxShadow: 'inset 0 0 0 3px #3b2412, 0 0 0 2px #c9a24a' }),
     davinci_t2: theme(vaultRoom, { borderColor: '#c8d2e1', boxShadow: 'inset 0 0 0 3px #2b323c, 0 0 14px rgba(200,210,225,.3)' }),
-    davinci_l1: piece(sealed, 'l1', sealFx, P('#2b1f5e', '#0f0a2c', '#ffeaa8', '#f0c14e', '#fff8df', '#f1dca2', '#3a2a00', '#c9a24a')),
+    davinci_l1: { ...piece(sealed, 'l1', sealFx, P('#2b1f5e', '#0f0a2c', '#ffeaa8', '#f0c14e', '#fff8df', '#f1dca2', '#3a2a00', '#c9a24a')), legend: true, special: sealSpecial, win: sealWin },
+    davinci_l2: { ...piece(vaultDoor, 'l2', vaultFx, P('#2c3542', '#11161d', '#ffffff', '#c8d2e1', '#f6f8fb', '#dfe5ee', '#16202c', '#8a96a8')), legend: true, special: vaultSpecial, win: vaultWin },
   });
 }());

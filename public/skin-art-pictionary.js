@@ -63,6 +63,47 @@
     ctx.strokeStyle = `rgba(255,226,138,${(1 - t) * .9})`; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8);
   }
 
+  // v1.9.1 legend standard: `special(ctx, w, h, t)` over the frame when a round's answer is found (dreamWin above for
+  // 꿈을 그리는 붓), `win(ctx, w, h, t)` when the game ends with this drawer among the final winners.
+  function dreamFinal(ctx, w, h, t) { // a crescent moon rises and draws a constellation over the whole picture
+    const R = Math.min(w, h) * .12; const rise = clamp01(t / .4); const mx = w * .82; const my = h * (.5 - .3 * rise);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = 'rgba(30,26,80,.25)'; ctx.fillRect(0, 0, w, h);
+    ctx.save(); ctx.beginPath(); ctx.arc(mx, my, R, 0, TAU); ctx.clip(); // a crescent: the disc minus an offset disc
+    ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(mx, my, R, 0, TAU); ctx.arc(mx + R * .45, my - R * .2, R * .9, 0, TAU); ctx.fill('evenodd'); ctx.restore();
+    const pts = Array.from({ length: 7 }, (_, i) => ({ x: w * (.1 + i * .11), y: h * (.3 + Math.sin(i * 1.7) * .15) })); const n = Math.floor(clamp01((t - .3) / .5) * pts.length);
+    ctx.strokeStyle = 'rgba(255,226,138,.85)'; ctx.lineWidth = 3; ctx.beginPath(); pts.slice(0, n + 1).forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+    pts.slice(0, n + 1).forEach((p) => { ctx.fillStyle = '#fff6d0'; starPath(ctx, p.x, p.y, 10, 3, 5); ctx.fill(); });
+    ctx.restore();
+  }
+
+  // ---- legend 2 (v1.9.1): 황금 팔레트 ↔ 미술교실 -- thick gouache with a dark impasto edge and gold flecks ----
+  function palette(ctx, x1, y1, x2, y2, c, w) {
+    line(ctx, x1, y1, x2, y2, w * 1.25, c, 1); // the paint itself, in the drawer's colour
+    line(ctx, x1, y1, x2, y2, w * 1.25 + 2, 'rgba(0,0,0,.22)', 1); line(ctx, x1, y1, x2, y2, w * 1.15, c, 1); // a dark impasto rim
+    const [nx, ny] = normal(x1, y1, x2, y2); line(ctx, x1 - nx * w * .25, y1 - ny * w * .25, x2 - nx * w * .25, y2 - ny * w * .25, Math.max(1, w * .22), 'rgba(255,255,255,.35)', 1); // wet highlight
+    along(x1, y1, x2, y2, 5, (x, y) => { if (hash(x, y, 21) > .86) { ctx.fillStyle = '#d4a017'; ctx.globalAlpha = .9; ctx.fillRect(x + nx * w * (.6 + hash(y, x, 2) * .3), y + ny * w * (.6 + hash(x, y, 3) * .3), 1.6, 1.6); ctx.globalAlpha = 1; } });
+  }
+  function splashSpecial(ctx, w, h, t) { // the answer is found: paint splashes burst from the corners in many colours
+    const cols = ['#e11d48', '#f59e0b', '#16a34a', '#1d4ed8', '#9333ea'];
+    for (const [cx, cy, k0] of [[0, 0, 0], [w, 0, 1], [0, h, 2], [w, h, 3]]) for (let i = 0; i < 9; i += 1) {
+      const a = Math.atan2(h / 2 - cy, w / 2 - cx) + (hash(i, k0, 1) - .5) * 1.6; const d = clamp01(t * 1.5) * Math.min(w, h) * (.18 + hash(i, k0, 2) * .3);
+      ctx.fillStyle = cols[(i + k0) % cols.length]; ctx.globalAlpha = 1 - clamp01((t - .7) / .3);
+      ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 6 + hash(i, k0, 3) * 12, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function paletteWin(ctx, w, h, t) { // a great golden palette swings in, its paint wells overflow and the frame turns gold
+    const k = clamp01(t / .4); const R = Math.min(w, h) * .28; const cx = w / 2; const cy = h / 2 + (1 - k) * h * .5;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = '#c99a2e'; ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.25, R, -.2, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fffdf6'; ctx.beginPath(); ctx.arc(cx + R * .7, cy + R * .35, R * .18, 0, TAU); ctx.fill(); // the thumb hole
+    const cols = ['#e11d48', '#f59e0b', '#16a34a', '#1d4ed8', '#9333ea', '#111111']; const spill = clamp01((t - .35) / .4);
+    cols.forEach((col, i) => { const a = Math.PI * (.95 + i * .2); const x = cx + Math.cos(a) * R * .75; const y = cy + Math.sin(a) * R * .6; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, R * (.13 + spill * .06), 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(x, y + R * .2 * spill, R * .05, R * .2 * spill, 0, 0, TAU); ctx.fill(); });
+    ctx.strokeStyle = `rgba(212,160,23,${Math.sin(clamp01((t - .4) / .6) * Math.PI)})`; ctx.lineWidth = 10; ctx.strokeRect(5, 5, w - 10, h - 10);
+    ctx.restore();
+  }
+
   // ---- cursors (32px icons, hot spot at the tip) ----
   const pencilIcon = (body, tip) => (ctx, s) => { ctx.save(); ctx.translate(s * .12, s * .88); ctx.rotate(-Math.PI / 4); ctx.fillStyle = body; ctx.fillRect(0, -s * .07, s * .7, s * .14); ctx.fillStyle = '#f2c79a'; ctx.beginPath(); ctx.moveTo(0, -s * .07); ctx.lineTo(-s * .16, 0); ctx.lineTo(0, s * .07); ctx.fill(); ctx.fillStyle = tip; ctx.beginPath(); ctx.moveTo(-s * .1, -s * .02); ctx.lineTo(-s * .16, 0); ctx.lineTo(-s * .1, s * .02); ctx.fill(); ctx.restore(); };
 
@@ -92,6 +133,7 @@
     pictionary_p3: tool(quill, { cursor: pencilIcon('#7c3aed', '#fbbf24') }),
     pictionary_t1: paper(classroomPaper, { boxShadow: '0 0 0 10px #8a5a2b, 0 0 0 13px #5a3a18, 0 10px 24px rgba(0,0,0,.45)' }, '#8a5a2b'),
     pictionary_t2: paper(nightPaper, { boxShadow: '0 0 0 10px #2a3158, 0 0 0 12px #8f9bff, 0 0 26px rgba(120,140,255,.6)' }, '#2a3158'),
-    pictionary_l1: tool(dream, { cursor: pencilIcon('#7c3aed', '#ffd54a'), win: dreamWin }),
+    pictionary_l1: tool(dream, { cursor: pencilIcon('#7c3aed', '#ffd54a'), legend: true, special: dreamWin, win: dreamFinal }),
+    pictionary_l2: tool(palette, { cursor: pencilIcon('#c99a2e', '#e11d48'), legend: true, special: splashSpecial, win: paletteWin }),
   });
 }());

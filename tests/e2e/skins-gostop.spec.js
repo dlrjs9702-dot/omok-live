@@ -4,7 +4,7 @@ const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-supp
 // v1.7.42 고스톱·맞고 스킨: 48장 앞면은 공용(다시 그리지 않음), 뒷면·프레임·받침·획득패 영역·효과·방 테마만. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
-const ids = ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1'].map(i => `gostop_${i}`);
+const ids = ['c1', 'c2', 'c3', 'c4', 'c5', 'p1', 'p2', 'p3', 'l1', 'l2'].map(i => `gostop_${i}`);
 
 test('고스톱 스킨: 모든 카드 뒷면이 밝은 카드 앞면과 헷갈리지 않는 어두운 뒷면이다', async ({ browser, request }) => {
   const a = await shopper(browser, request, '대비');
@@ -32,7 +32,7 @@ test('고스톱 스킨: 방장 테마가 모든 화면에 같고, 상대 손패 
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '고스톱·맞고' }).click();
   await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(11);
+  await expect(dialog.locator('.skinCard')).toHaveCount(12);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'gostop' });
