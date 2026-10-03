@@ -1,5 +1,5 @@
 // 오목 skins (v1.7.35): five commons that change the stone's silhouette, three premiums with a placement effect, two
-// room themes (the board itself), and the legend 「천상 바둑」 (constellation stones, ripples, a win constellation).
+// room themes (the board itself), and two legends paired with them (v1.8.7: 천상 바둑 ↔ 별빛 천문대, 왕실 기보 ↔ 조선 기원).
 // Every stone keeps its side readable: black is always the dark stone, white the light one.
 (function () {
   const S = window.SkinLooks;
@@ -191,48 +191,173 @@
     }
   }
 
-  // ---- legend (3,000,000P): 천상 바둑 ---------------------------------------------------------------------------------
-  const STARS = [[-.46, -.3], [-.05, -.56], [.4, -.36], [.5, .12], [.08, .3], [-.42, .34], [-.12, -.05]];
-  const LINKS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [1, 6], [6, 4]];
-  function celestial(ctx, r, c) {
+  // ---- legends (3,000,000P) — v1.8.7 reference implementation of the legend standard ---------------------------
+  // A legend is its own grade, not a stronger premium: (1) its own silhouette, (2) its own placement effect, (3) its own
+  // special-situation effect (here: four in a row, the moment before five), (4) its own win sequence, plus the profile
+  // badge (server). Each pairs with a room theme: 별빛 천문대 ↔ 천상 바둑, 조선 기원 ↔ 왕실 기보. The silhouette is only
+  // drawn: the stone still sits on the same intersection, is clicked and judged exactly like a round stone.
+  // Win sequences run on t 0..1 (about 2.4 s) and stay around the winning line, so the board stays readable.
+
+  // 천상 바둑: five-pointed celestial stones. Black is a deep blue-violet star with a bright rim, white a white star
+  // with a gold rim. Placement sends a star-shaped ripple; four in a row draws a faint constellation; five in a row
+  // links the stars, opens a celestial sphere with a halo and ends in a burst of starlight.
+  function starStone(ctx, r, c) {
     const d = dark(c);
-    ctx.fillStyle = sphere(ctx, r, d ? ['#5566d4', '#1b2463', '#060a26'] : ['#ffffff', '#eaedff', '#a9b3e6'], .48);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = d ? 'rgba(255,227,138,.55)' : 'rgba(180,135,30,.6)'; ctx.lineWidth = Math.max(1, r * .05);
-    for (const [a, b] of LINKS) { ctx.beginPath(); ctx.moveTo(STARS[a][0] * r, STARS[a][1] * r); ctx.lineTo(STARS[b][0] * r, STARS[b][1] * r); ctx.stroke(); }
-    ctx.fillStyle = d ? '#ffe38a' : '#d29a1f';
-    STARS.forEach(([x, y], i) => { starPath(ctx, x * r, y * r, r * (i === 6 ? .16 : .11), r * .04, 4); ctx.fill(); });
-    ctx.strokeStyle = d ? 'rgba(255,227,138,.75)' : 'rgba(190,140,30,.8)'; ctx.lineWidth = Math.max(1, r * .06);
-    ctx.beginPath(); ctx.arc(0, 0, r * .97, 0, TAU); ctx.stroke();
-    gloss(ctx, r, .14);
+    const outer = r * 1.08; const inner = r * .5;
+    ctx.save();
+    ctx.shadowColor = d ? 'rgba(110,130,240,.5)' : 'rgba(255,214,110,.75)'; ctx.shadowBlur = r * .35;
+    starPath(ctx, 0, 0, outer, inner, 5);
+    const g = ctx.createRadialGradient(-r * .2, -r * .3, r * .05, 0, 0, outer);
+    if (d) { g.addColorStop(0, '#3a2f80'); g.addColorStop(.5, '#17114a'); g.addColorStop(1, '#070520'); }
+    else { g.addColorStop(0, '#ffffff'); g.addColorStop(.6, '#f7f5ff'); g.addColorStop(1, '#e3e2f5'); }
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.2, r * (d ? .05 : .07)); // thin rims keep the two sides apart
+    ctx.strokeStyle = d ? '#b4c0ff' : '#e2b23c';
+    starPath(ctx, 0, 0, outer, inner, 5); ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * .05); ctx.strokeStyle = d ? 'rgba(140,155,255,.35)' : 'rgba(190,140,40,.35)';
+    starPath(ctx, 0, 0, outer * .62, inner * .62, 5); ctx.stroke();
+    ctx.fillStyle = d ? '#fff3c4' : '#d9a92e';
+    starPath(ctx, 0, 0, r * .2, r * .07, 4); ctx.fill();
+    ctx.restore();
   }
-  function celestialFx(ctx, r, t) {
+  function starStoneFx(ctx, r, t) { // a star-shaped ripple and four sparks
+    ctx.save(); ctx.lineJoin = 'round';
     for (let k = 0; k < 2; k += 1) {
-      const tt = clamp01(t * 1.25 - k * .22);
+      const tt = clamp01(t * 1.2 - k * .25);
       if (tt <= 0 || tt >= 1) continue;
-      ctx.strokeStyle = `rgba(255,227,138,${(1 - tt) * .85})`; ctx.lineWidth = r * .11 * (1 - tt) + 1;
-      ctx.beginPath(); ctx.arc(0, 0, r * (1.05 + 2.3 * tt), 0, TAU); ctx.stroke();
+      const s = 1.15 + 2.2 * tt;
+      ctx.strokeStyle = `rgba(255,232,150,${(1 - tt) * .9})`; ctx.lineWidth = r * .1 * (1 - tt) + 1;
+      starPath(ctx, 0, 0, r * s, r * s * .5, 5, -Math.PI / 2 + tt * .6); ctx.stroke();
     }
-    ctx.fillStyle = `rgba(255,240,180,${1 - t})`;
-    for (let i = 0; i < 4; i += 1) { const a = i * TAU / 4 + Math.PI / 4; starPath(ctx, Math.cos(a) * r * (1.2 + 1.2 * t), Math.sin(a) * r * (1.2 + 1.2 * t), r * .26 * (1 - t) + 1, r * .05, 4); ctx.fill(); }
+    ctx.fillStyle = `rgba(255,248,210,${1 - t})`;
+    for (let i = 0; i < 5; i += 1) { const a = i * TAU / 5 - Math.PI / 2; starPath(ctx, Math.cos(a) * r * (1.3 + 1.4 * t), Math.sin(a) * r * (1.3 + 1.4 * t), r * .24 * (1 - t) + 1, r * .05, 4); ctx.fill(); }
+    ctx.restore();
   }
-  function celestialWin(ctx, pts, r, t) { // the five stones join into a constellation, then a halo opens over it
+  function starStoneSpecial(ctx, pts, r, t) { // four in a row: a faint constellation and a shooting star along it
     if (pts.length < 2) return;
-    const p = clamp01(t * 1.5) * (pts.length - 1);
+    const fade = t < .8 ? 1 : (1 - t) / .2;
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(190,205,255,${.55 * fade})`; ctx.lineWidth = r * .1; ctx.setLineDash([r * .25, r * .2]);
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.setLineDash([]);
+    const u = clamp01(t / .7) * (pts.length - 1); const i = Math.min(pts.length - 2, Math.floor(u)); const f = u - i;
+    const x = pts[i].x + (pts[i + 1].x - pts[i].x) * f; const y = pts[i].y + (pts[i + 1].y - pts[i].y) * f;
+    ctx.fillStyle = `rgba(255,246,200,${fade})`; starPath(ctx, x, y, r * .5, r * .12, 4); ctx.fill();
+    ctx.restore();
+  }
+  function starStoneWin(ctx, pts, r, t) { // constellation → celestial sphere and halo → burst of starlight
+    if (pts.length < 2) return;
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (const [w, col] of [[r * .34, 'rgba(255,214,90,.22)'], [r * .12, '#ffe38a']]) {
+    const link = clamp01(t / .35) * (pts.length - 1);
+    for (const [w, col] of [[r * .36, 'rgba(255,214,90,.22)'], [r * .12, '#ffe38a']]) {
       ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i += 1) { const f = clamp01(p - (i - 1)); if (f <= 0) break; ctx.lineTo(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f); }
+      for (let i = 1; i < pts.length; i += 1) { const f = clamp01(link - (i - 1)); if (f <= 0) break; ctx.lineTo(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f); }
       ctx.stroke();
     }
-    pts.forEach((pt, i) => {
-      if (p < i) return;
-      const pulse = 1 + .18 * Math.sin(t * 14 + i);
-      ctx.fillStyle = '#fff6c8'; starPath(ctx, pt.x, pt.y - 0, r * .62 * pulse, r * .12, 4); ctx.fill();
-    });
+    pts.forEach((pt, i) => { if (link < i) return; const pulse = 1 + .15 * Math.sin(t * 14 + i); ctx.fillStyle = 'rgba(255,246,200,.9)'; starPath(ctx, pt.x, pt.y, r * .55 * pulse, r * .13, 4); ctx.fill(); });
     const mid = pts[Math.floor(pts.length / 2)];
-    const halo = clamp01((t - .35) / .65);
-    if (halo > 0 && halo < 1) { ctx.strokeStyle = `rgba(255,230,140,${(1 - halo) * .8})`; ctx.lineWidth = r * .14; ctx.beginPath(); ctx.arc(mid.x, mid.y, r * (1.5 + 5 * halo), 0, TAU); ctx.stroke(); }
+    const span = Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y) / 2 + r * 1.6;
+    const globe = clamp01((t - .3) / .4); // the celestial sphere: a ring with two tilted meridians, slowly turning
+    if (globe > 0 && t < .95) {
+      const a = Math.min(1, globe * 1.4) * (t > .8 ? (.95 - t) / .15 : 1);
+      ctx.strokeStyle = `rgba(214,198,120,${.75 * a})`; ctx.lineWidth = Math.max(1.5, r * .08);
+      ctx.beginPath(); ctx.arc(mid.x, mid.y, span, 0, TAU); ctx.stroke();
+      for (const tilt of [.35, -.35]) { ctx.beginPath(); ctx.ellipse(mid.x, mid.y, span, span * Math.abs(Math.cos(t * 3 + tilt * 4)) * .55 + 2, tilt, 0, TAU); ctx.stroke(); }
+      const halo = ctx.createRadialGradient(mid.x, mid.y, span * .2, mid.x, mid.y, span * 1.15);
+      halo.addColorStop(0, `rgba(255,240,180,${.18 * a})`); halo.addColorStop(1, 'rgba(255,240,180,0)');
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mid.x, mid.y, span * 1.15, 0, TAU); ctx.fill();
+    }
+    const burst = clamp01((t - .68) / .32); // starlight bursting outward from the line
+    if (burst > 0 && burst < 1) {
+      const R = rng(57);
+      for (let i = 0; i < 26; i += 1) {
+        const ang = R() * TAU; const dist = span * (.3 + R() * .9) * burst + r;
+        ctx.fillStyle = `rgba(${200 + (R() * 55 | 0)},${200 + (R() * 55 | 0)},255,${1 - burst})`;
+        starPath(ctx, mid.x + Math.cos(ang) * dist, mid.y + Math.sin(ang) * dist, r * (.32 + R() * .25) * (1 - burst * .5), r * .07, 4); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 왕실 기보: octagonal royal-seal stones (팔각 어보). Black is black lacquer with a gold double rim and cloud knots,
+  // white is white jade with a red seal square. Placement stamps a red seal; four in a row lays a dancheong band;
+  // five in a row draws a gold cord, raises a red sun and a white moon at its ends and scatters gold leaf.
+  function octagon(ctx, rad) {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i += 1) { const a = Math.PI / 8 + i * TAU / 8; const x = Math.cos(a) * rad; const y = Math.sin(a) * rad; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.closePath();
+  }
+  function sealStone(ctx, r, c) {
+    const d = dark(c);
+    const rad = r * 1.04;
+    ctx.save();
+    octagon(ctx, rad);
+    ctx.fillStyle = d ? sphere(ctx, r, ['#4a2a22', '#1b0d09', '#050202'], .5) : sphere(ctx, r, ['#ffffff', '#f6efdf', '#d9cdb2'], .55);
+    ctx.fill();
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(1.5, r * (d ? .07 : .1)); ctx.strokeStyle = d ? '#e3b54c' : '#3a2412'; octagon(ctx, rad); ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * .045); ctx.strokeStyle = d ? 'rgba(227,181,76,.75)' : 'rgba(58,36,18,.55)'; octagon(ctx, rad * .78); ctx.stroke();
+    if (d) { // gold cloud knots at the four corners
+      ctx.fillStyle = '#e3b54c';
+      for (let i = 0; i < 4; i += 1) { const a = Math.PI / 4 + i * TAU / 4; const x = Math.cos(a) * r * .5; const y = Math.sin(a) * r * .5; for (const [dx, dy, k] of [[0, 0, .09], [.08, -.05, .06], [-.08, -.05, .06]]) { ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, k * r, 0, TAU); ctx.fill(); } }
+    } else { // a red seal square in the middle
+      ctx.fillStyle = '#b3261e'; ctx.fillRect(-r * .22, -r * .22, r * .44, r * .44);
+      ctx.strokeStyle = '#f6efdf'; ctx.lineWidth = Math.max(1, r * .05);
+      ctx.beginPath(); ctx.moveTo(-r * .12, -r * .09); ctx.lineTo(r * .12, -r * .09); ctx.moveTo(0, -r * .15); ctx.lineTo(0, r * .15); ctx.moveTo(-r * .12, r * .09); ctx.lineTo(r * .12, r * .09); ctx.stroke();
+    }
+    gloss(ctx, r, d ? .16 : .22);
+    ctx.restore();
+  }
+  function sealStoneFx(ctx, r, t) { // a red seal pressed down: a square that settles, an ink ring spreading
+    ctx.save();
+    const press = clamp01(t / .35); const s = 1.9 - .7 * press;
+    ctx.globalAlpha = (1 - clamp01((t - .45) / .55)) * .9;
+    ctx.strokeStyle = '#c0281f'; ctx.lineWidth = r * .14;
+    ctx.strokeRect(-r * s, -r * s, r * s * 2, r * s * 2);
+    ctx.globalAlpha = (1 - t) * .7; ctx.strokeStyle = 'rgba(192,40,31,.8)'; ctx.lineWidth = r * .08;
+    ctx.beginPath(); ctx.arc(0, 0, r * (1.2 + 1.8 * t), 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
+  function sealStoneSpecial(ctx, pts, r, t) { // four in a row: a dancheong band (green, red, blue) laid along the line
+    if (pts.length < 2) return;
+    const fade = t < .75 ? 1 : (1 - t) / .25;
+    const grow = clamp01(t / .4);
+    const end = { x: pts[0].x + (pts[pts.length - 1].x - pts[0].x) * grow, y: pts[0].y + (pts[pts.length - 1].y - pts[0].y) * grow };
+    ctx.save(); ctx.lineCap = 'round'; ctx.globalAlpha = .65 * fade;
+    for (const [w, col] of [[r * 1.15, '#2f7a5a'], [r * .75, '#a8322a'], [r * .32, '#2c4f9e']]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(end.x, end.y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function sealStoneWin(ctx, pts, r, t) { // gold cord → red sun and white moon at the ends with a gold halo → gold leaf
+    if (pts.length < 2) return;
+    ctx.save(); ctx.lineCap = 'round';
+    const link = clamp01(t / .35);
+    const a = pts[0]; const b = pts[pts.length - 1];
+    const ex = a.x + (b.x - a.x) * link; const ey = a.y + (b.y - a.y) * link;
+    for (const [w, col] of [[r * .4, 'rgba(227,181,76,.3)'], [r * .14, '#e3b54c']]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(ex, ey); ctx.stroke(); }
+    const rise = clamp01((t - .3) / .35);
+    if (rise > 0) {
+      const dx = (b.x - a.x); const dy = (b.y - a.y); const len = Math.hypot(dx, dy) || 1; const nx = -dy / len; const ny = dx / len;
+      const off = r * (1.4 + .8 * rise);
+      const fadeOut = t > .9 ? (1 - t) / .1 : 1;
+      ctx.globalAlpha = rise * fadeOut;
+      ctx.fillStyle = '#d23b2a'; ctx.beginPath(); ctx.arc(a.x + nx * off, a.y + ny * off, r * .9, 0, TAU); ctx.fill(); // sun
+      ctx.fillStyle = '#f4f1e6'; ctx.beginPath(); ctx.arc(b.x + nx * off, b.y + ny * off, r * .8, 0, TAU); ctx.fill(); // moon
+      ctx.strokeStyle = '#e3b54c'; ctx.lineWidth = Math.max(1.5, r * .08);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; const span = len / 2 + r * 1.5;
+      ctx.beginPath(); ctx.ellipse(mid.x, mid.y, span, span * .45, Math.atan2(dy, dx), 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    const leaf = clamp01((t - .66) / .34);
+    if (leaf > 0 && leaf < 1) {
+      const R = rng(83); const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      for (let i = 0; i < 24; i += 1) {
+        const ang = R() * TAU; const dist = (r * 2 + R() * r * 5) * leaf; const s = r * (.18 + R() * .16);
+        ctx.save(); ctx.translate(mid.x + Math.cos(ang) * dist, mid.y + Math.sin(ang) * dist + leaf * r * 1.5); ctx.rotate(ang + leaf * 4);
+        ctx.fillStyle = `rgba(232,190,80,${1 - leaf})`; ctx.fillRect(-s, -s * .6, s * 2, s * 1.2); ctx.restore();
+      }
+    }
     ctx.restore();
   }
 
@@ -254,21 +379,56 @@
       for (let k = 1; k <= 3; k += 1) { ctx.beginPath(); ctx.arc(x0 + sx * k * 9, y0 + sy * k * 9, k * 7, 0, TAU); ctx.stroke(); }
     }
   }
+  // v1.8.7 readability: the sky stays deep blue-violet but is no longer near black, the playing area gets a soft light
+  // field, and the stars, nebula and constellations keep away from every intersection (a stone's spot) and fade inside
+  // the grid, so lines and stones are read first. Stones get a matching accent (see `accent` below).
   function paintObservatory(ctx, w, h, pad) { // 별빛 천문대: a night sky with constellations and a golden star chart
-    const sky = ctx.createLinearGradient(0, 0, w * .4, h); sky.addColorStop(0, '#0a1030'); sky.addColorStop(1, '#1c2660');
+    const sky = ctx.createLinearGradient(0, 0, w * .4, h); sky.addColorStop(0, '#1a2358'); sky.addColorStop(1, '#2c3a86');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    const glow = ctx.createRadialGradient(w / 2, h / 2, w * .05, w / 2, h / 2, w * .62); // soft light over the grid
+    glow.addColorStop(0, 'rgba(176,192,255,.34)'); glow.addColorStop(.7, 'rgba(150,170,255,.16)'); glow.addColorStop(1, 'rgba(150,170,255,0)');
+    ctx.fillStyle = glow; ctx.fillRect(pad * .6, pad * .6, w - pad * 1.2, h - pad * 1.2);
+    const grid = (w - pad * 2) / 14;
+    const inGrid = (x, y) => x > pad - grid * .5 && x < w - pad + grid * .5 && y > pad - grid * .5 && y < h - pad + grid * .5;
+    const nearPoint = (x, y) => { // within reach of an intersection (where a stone sits)
+      if (!inGrid(x, y)) return false;
+      const gx = Math.round((x - pad) / grid); const gy = Math.round((y - pad) / grid);
+      return Math.hypot(x - (pad + gx * grid), y - (pad + gy * grid)) < grid * .55;
+    };
     const R = rng(33);
-    for (let i = 0; i < 160; i += 1) { ctx.fillStyle = `rgba(255,255,255,${.25 + R() * .6})`; ctx.beginPath(); ctx.arc(R() * w, R() * h, .5 + R() * 1.3, 0, TAU); ctx.fill(); }
-    ctx.strokeStyle = 'rgba(159,180,255,.28)'; ctx.lineWidth = 1.2; ctx.fillStyle = 'rgba(200,215,255,.8)';
-    for (let g = 0; g < 4; g += 1) {
-      let x = R() * w; let y = R() * h; ctx.beginPath(); ctx.moveTo(x, y); const pts = [[x, y]];
-      for (let k = 0; k < 4; k += 1) { x += (R() - .5) * 160; y += (R() - .5) * 120; ctx.lineTo(x, y); pts.push([x, y]); }
-      ctx.stroke(); for (const [px, py] of pts) { ctx.beginPath(); ctx.arc(px, py, 2.2, 0, TAU); ctx.fill(); }
+    const nebula = ctx.createRadialGradient(w * .78, h * .22, 4, w * .78, h * .22, w * .3); // a faint nebula in a corner
+    nebula.addColorStop(0, 'rgba(206,150,255,.16)'); nebula.addColorStop(1, 'rgba(206,150,255,0)');
+    ctx.fillStyle = nebula; ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 220; i += 1) {
+      const x = R() * w; const y = R() * h; const k = .5 + R() * 1.2; const bright = .25 + R() * .55;
+      if (nearPoint(x, y) || x < 22 && y < 22) continue;
+      ctx.fillStyle = `rgba(255,255,255,${inGrid(x, y) ? bright * .45 : bright})`; ctx.beginPath(); ctx.arc(x, y, k, 0, TAU); ctx.fill();
     }
-    ctx.strokeStyle = 'rgba(216,190,110,.2)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(190,205,255,.3)'; ctx.lineWidth = 1.2; ctx.fillStyle = 'rgba(214,224,255,.85)';
+    for (const [cx, cy] of [[pad * .5, h * .3], [w - pad * .5, h * .7], [w * .3, pad * .5], [w * .7, h - pad * .5]]) { // constellations live in the frame
+      ctx.beginPath(); const pts = [];
+      for (let k = 0; k < 4; k += 1) { const x = cx + (R() - .5) * pad * .6; const y = cy + (R() - .5) * 90; pts.push([x, y]); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.stroke(); for (const [px, py] of pts) { ctx.beginPath(); ctx.arc(px, py, 2, 0, TAU); ctx.fill(); }
+    }
+    ctx.strokeStyle = 'rgba(216,190,110,.16)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(w / 2, h / 2, w * .36, 0, TAU); ctx.stroke();
-    ctx.beginPath(); ctx.arc(w / 2, h / 2, w * .22, 0, TAU); ctx.stroke();
     ctx.strokeStyle = '#d8be6e'; ctx.lineWidth = 3; ctx.strokeRect(pad * .45, pad * .45, w - pad * .9, h - pad * .9);
+  }
+  // Drawn over every stone on this board, whatever its skin: black gets a bright rim and a starlit edge, white a dark
+  // outline and a star glint, so both stand out from the night sky at least as well as on the wooden board.
+  function observatoryAccent(ctx, r, color) {
+    ctx.save();
+    if (color === 'black') {
+      ctx.strokeStyle = 'rgba(214,226,255,.95)'; ctx.lineWidth = Math.max(1.6, r * .11);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      for (const a of [-2.3, -.7, .9, 2.5]) starPath(ctx, Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02, r * .16, r * .04, 4), ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(14,18,48,.85)'; ctx.lineWidth = Math.max(1.4, r * .09);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.01, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.95)'; starPath(ctx, -r * .32, -r * .38, r * .22, r * .05, 4); ctx.fill();
+    }
+    ctx.restore();
   }
 
   // ---- shop pictures ----------------------------------------------------------------------------------------------
@@ -301,12 +461,16 @@
   }
 
   const piece = (stone, fx, win) => ({ stone, fx, win, preview: previewPiece });
-  const theme = (paint, line, star) => ({ board: { paint, line, star }, preview: previewTheme });
+  // A legend also carries `special` (four in a row) and `legend: true`, which lets the room show its win on the board
+  // first and keep the result as a small banner (app.js).
+  const legend = (stone, fx, special, win) => ({ stone, fx, special, win, legend: true, preview: previewPiece });
+  const theme = (paint, line, star, extra = {}) => ({ board: { paint, line, star, ...extra }, preview: previewTheme });
   S.define({
     omok_c1: piece(cat), omok_c2: piece(taegeuk), omok_c3: piece(gear), omok_c4: piece(planet), omok_c5: piece(dokkaebi),
     omok_p1: piece(sakura, sakuraFx), omok_p2: piece(volt, voltFx), omok_p3: piece(lava, lavaFx),
     omok_t1: theme(paintGiwon, '#2b1a10', '#8b2a1f'),
-    omok_t2: theme(paintObservatory, 'rgba(222,199,120,.85)', '#f3dc8e'),
-    omok_l1: piece(celestial, celestialFx, celestialWin),
+    omok_t2: theme(paintObservatory, 'rgba(236,216,140,.9)', '#f3dc8e', { accent: observatoryAccent, shadow: 'rgba(150,170,255,.32)' }),
+    omok_l1: legend(starStone, starStoneFx, starStoneSpecial, starStoneWin), // 천상 바둑 ↔ 별빛 천문대
+    omok_l2: legend(sealStone, sealStoneFx, sealStoneSpecial, sealStoneWin), // 왕실 기보 ↔ 조선 기원
   });
 }());
