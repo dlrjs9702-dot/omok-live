@@ -88,6 +88,21 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   await expect(jade.locator('button')).toHaveText('장착 중 · 해제');
   await dialog.getByRole('button', { name: '닫기' }).click();
 
+  // v1.9.7 내 정보: 상점과 달리 내가 보유한 스킨만 보이고 구매 버튼은 없으며 여기서 바로 장착을 바꾼다.
+  await a.page.locator('#myInfoBtn').click();
+  const myInfo = a.page.locator('#myInfoDialog');
+  await expect(myInfo).toBeVisible();
+  await expect(myInfo.locator('.skinCard')).toHaveCount(1);
+  await expect(myInfo).toContainText('비취와 백옥');
+  await expect(myInfo.getByRole('button', { name: /구매/ })).toHaveCount(0);
+  const ownedButton = myInfo.locator('.skinCard button').first();
+  await expect(ownedButton).toHaveText('장착 중 · 해제');
+  await ownedButton.click();
+  await expect(ownedButton).toHaveText('장착');
+  await ownedButton.click();
+  await expect(ownedButton).toHaveText('장착 중 · 해제');
+  await a.page.locator('#myInfoCloseBtn').click();
+
   // 방: 내가 흑, 상대가 백. 첫 착수 뒤 내 흑돌은 비취색(초록 기운), 상대 화면에서도 같다.
   const created = await call(a, '/api/rooms', { gameType: 'omok' });
   expect(created.status).toBe(201);
