@@ -224,7 +224,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
 // v1.9.6 광장 플레이어 충돌: 정면으로 막히고, 비스듬히 가면 옆으로 미끄러져 지나가며, 둘이 동시에 마주 걸어도
 // 통과·순간이동이 없고, 누가 서 있어도 시설 입구는 막히지 않는다. (등반에서는 충돌 없음: climb.spec)
 test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입구 막힘 없음', async ({ browser, request }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000); // two 3D pages of the whole island on a software renderer: about 1.8 minutes on a slow CI runner
   const a = await intoPlaza(browser, request, '부딪는A');
   const b = await intoPlaza(browser, request, '부딪는B');
   // SLOW=6 reproduces a slow CI runner (CPU throttling) for this test
