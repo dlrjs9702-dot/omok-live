@@ -40,17 +40,19 @@ export const AREAS = {
 
 // Facility spots: position and the point the front faces. `kind` picks the model in plaza-scene.
 export const SPOTS = {
-  games: { x: 0, z: -56, face: [0, -40], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b },
+  games: { x: 0, z: -58, face: [0, -40], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b },
   records: { x: -20, z: -48, face: [-6, -42], kind: 'house', wall: 0xf3e2ff, roof: 0x9b7fd6 },
   missions: { x: 13, z: -46, face: [0, -42], kind: 'board', tint: 0x8fd18a },
-  shop: { x: 44, z: -8, face: [44, 4], kind: 'shop', wall: 0xd9f0ff, roof: 0x6aa9e8 },
+  shop: { x: 42, z: -8, face: [42, 4], kind: 'shop', wall: 0xd9f0ff, roof: 0x6aa9e8 }, // 게임 스킨 상점
+  avatar: { x: 55, z: -8, face: [55, 4], kind: 'shop', wall: 0xffe4ef, roof: 0xe87a9e }, // 캐릭터 스킨 상점
   board: { x: -10, z: -6, face: [0, 0], kind: 'board' },
   attendance: { x: 10, z: -6, face: [0, 0], kind: 'npc' },
   map: { x: -11, z: 6, face: [0, 2], kind: 'mapboard' },
   chat: { x: -18, z: 27, face: [-4, 22], kind: 'gazebo' },
-  climb: { x: -58, z: -27, face: [-44, -19], kind: 'gate' },
+  climb: { x: -59, z: -28, face: [-44, -19], kind: 'tower' }, // a tall tower on the hill, seen from far away
   admin: { x: 24, z: 15, face: [14, 6], kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 },
 };
+export const RESERVED_LOTS = [{ x: 49, z: 11, face: [49, 0] }]; // the shop street's next building (외형 변경 시설, later)
 export const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
 export const SPAWN = { x: 0, z: 8 };
 
@@ -130,7 +132,7 @@ function rawLand(x, z) {
   if (cd < 0) h = -0.95 + cd * 0.45;
   return h;
 }
-const PADS = [[0, -44, 9.5], ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4).map((s) => [s.x, s.z, s.kind === 'hall' ? 9 : 4.5])]
+const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4).map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
   .map(([x, z, r]) => ({ x, z, r, h: rawLand(x, z) }));
 function land(x, z) {
   let h = rawLand(x, z);
@@ -313,7 +315,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     if (walkDist(x, z) < walkGap || streamDist(x, z) < STREAM_HALF + 2) return false;
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
     for (const s of Object.values(SPOTS)) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
-    if (x > 30 && x < 80 && z > -16 && z < 10) return false; // the shop street stays open
+    if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
     return true;
   };
   const trees = [];
@@ -372,7 +374,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   const tufts = [];
   for (let tries = 0; tufts.length < 1400 && tries < 9000; tries += 1) {
     const a = rnd() * TAU; const r = PLAZA_R + 5 + rnd() * 85; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-    if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
+    if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4 && PADS.every((p) => Math.hypot(x - p.x, z - p.z) > p.r)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
   }
   instanced(new THREE.ConeGeometry(0.16, 0.5, 4), mat(0x7cbf5c), tufts, (t) => setM(t.x, ground(t.x, t.z) + 0.2 * t.s, t.z, t.s, t.s, t.r), { shadow: false });
 

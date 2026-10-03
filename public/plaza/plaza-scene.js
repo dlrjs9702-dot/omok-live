@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.0';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.1';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -168,15 +168,17 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   // Name signs: a canvas sprite over each facility.
   const textures = [];
   const sign = (text, parent, y) => {
-    const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 112;
+    const font = '800 52px Pretendard, "Malgun Gothic", system-ui, sans-serif';
+    const probe = document.createElement('canvas').getContext('2d'); probe.font = font;
+    const canvas = document.createElement('canvas'); canvas.width = Math.max(320, Math.ceil(probe.measureText(text).width) + 80); canvas.height = 112; // long names get a wider sign
     const c = canvas.getContext('2d');
     c.fillStyle = '#fffaf0'; c.strokeStyle = '#8a6a4a'; c.lineWidth = 8;
-    c.beginPath(); c.roundRect(6, 6, 308, 100, 40); c.fill(); c.stroke();
-    c.fillStyle = '#4a3828'; c.font = '800 52px Pretendard, "Malgun Gothic", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(text, 160, 60);
+    c.beginPath(); c.roundRect(6, 6, canvas.width - 12, 100, 40); c.fill(); c.stroke();
+    c.fillStyle = '#4a3828'; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(text, canvas.width / 2, 60);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; textures.push(texture);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
-    sprite.scale.set(2.3, 0.8, 1); sprite.position.y = y;
+    sprite.scale.set((2.3 * canvas.width) / 320, 0.8, 1); sprite.position.y = y;
     parent.add(sprite);
     return sprite;
   };
@@ -204,16 +206,70 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     root.userData.facility = facility.id; scene.add(root); facilityRoots.push(root);
     const toCentre = new THREE.Vector2(Math.sin(root.rotation.y), Math.cos(root.rotation.y)); // the way the front faces
     let depth = 0;
-    if (spot.kind === 'hall' || spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
-      const w = spot.kind === 'hall' ? 8.4 : 3.2; const h = spot.kind === 'hall' ? 4.6 : 2.4; depth = spot.kind === 'hall' ? 6.4 : 2.7; // the hall is the island's big building
+    // a point in this facility's own frame (lx right, lz toward the front) in world coordinates
+    const at = (lx, lz) => ({ x: x + Math.cos(root.rotation.y) * lx + Math.sin(root.rotation.y) * lz, z: z - Math.sin(root.rotation.y) * lx + Math.cos(root.rotation.y) * lz });
+    const boxSolids = (cx, cz, w, d, r = 1.2) => { // fill a rectangle with circles that stay inside its edges
+      for (let lx = -w / 2 + r * 0.85; lx <= w / 2 - r * 0.85 + 1e-6; lx += Math.max(0.1, Math.min(1.7, w - r * 1.7))) {
+        for (let lz = -d / 2 + r * 0.85; lz <= d / 2 - r * 0.85 + 1e-6; lz += Math.max(0.1, Math.min(1.7, d - r * 1.7))) solids.push({ ...at(cx + lx, cz + lz), r });
+      }
+    };
+    if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
+      depth = 10; const w = 15; const h = 6.2;
+      const wall = mat(spot.wall); const trim = mat(0xfff6e6); const roofM = mat(spot.roof); const gold = mat(0xf6c945, { metalness: 0.5, roughness: 0.35 });
+      mesh(new THREE.BoxGeometry(w + 1.2, 0.5, depth + 2.6), mat(0xe9dcc4), 0, 0.25, 0.7, root); // terrace
+      for (let k = 0; k < 3; k += 1) mesh(new THREE.BoxGeometry(6.4 - k * 0.6, 0.17, 0.5), mat(0xefe4cf), 0, 0.085 + k * 0.17, depth / 2 + 2.2 - k * 0.45, root); // steps
+      mesh(new THREE.BoxGeometry(w, h, depth), wall, 0, 0.5 + h / 2, 0, root);
+      mesh(new THREE.BoxGeometry(w + 0.4, 0.35, depth + 0.4), trim, 0, 0.5 + h, 0, root); // cornice
+      const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.74, 2.2, 4), roofM, 0, 0.5 + h + 1.25, 0, root); roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
+      const dome = mesh(new THREE.SphereGeometry(2.6, 28, 16, 0, TAU, 0, Math.PI / 2), mat(0x7ec4e8, { roughness: 0.4 }), 0, 0.5 + h + 1.4, 0, root); dome.scale.y = 1.1;
+      mesh(new THREE.CylinderGeometry(2.7, 2.7, 0.5, 28), trim, 0, 0.5 + h + 1.3, 0, root);
+      mesh(new THREE.SphereGeometry(0.35, 14, 10), gold, 0, 0.5 + h + 4.45, 0, root);
+      for (const sx of [-1, 1]) { // side towers with flags
+        const tx = sx * (w / 2 + 0.6);
+        mesh(new THREE.CylinderGeometry(1.35, 1.5, h + 2.6, 18), trim, tx, 0.5 + (h + 2.6) / 2, -depth / 2 + 1.6, root);
+        mesh(new THREE.ConeGeometry(1.7, 2.4, 18), roofM, tx, 0.5 + h + 2.6 + 1.2, -depth / 2 + 1.6, root);
+        mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), mat(0x4a3828), tx, 0.5 + h + 5, -depth / 2 + 1.6, root);
+        const flag = mesh(new THREE.PlaneGeometry(0.9, 0.55), mat(sx < 0 ? 0x26272e : 0xfafafa, { side: THREE.DoubleSide }), tx + 0.45, 0.5 + h + 5.4, -depth / 2 + 1.6, root); flag.castShadow = false;
+        solids.push({ ...at(tx, -depth / 2 + 1.6), r: 1.6 });
+      }
+      for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) mesh(new THREE.CylinderGeometry(0.32, 0.36, h - 0.4, 14), trim, cx, 0.5 + (h - 0.4) / 2, depth / 2 + 1.25, root); // the colonnade
+      mesh(new THREE.BoxGeometry(12.4, 0.6, 1.4), trim, 0, 0.5 + h - 0.1, depth / 2 + 0.95, root);
+      const pediment = mesh(new THREE.CylinderGeometry(1.6, 1.6, 12.6, 3), roofM, 0, 0.5 + h + 0.75, depth / 2 + 0.95, root); pediment.rotation.set(0, 0, Math.PI / 2); pediment.scale.set(1, 1, 0.6);
+      const b = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0x26272e, { roughness: 0.35 }), -0.7, 0.5 + h + 1.3, depth / 2 + 1.6, root); b.scale.z = 0.5;
+      const ws = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0xfafafa, { roughness: 0.35 }), 0.7, 0.5 + h + 1.3, depth / 2 + 1.6, root); ws.scale.z = 0.5;
+      mesh(new THREE.BoxGeometry(2.2, 3.4, 0.1), mat(0x8a5a3b), 0, 0.5 + 1.7, depth / 2 + 0.03, root); // the big door
+      for (const sx of [-0.55, 0.55]) mesh(new THREE.SphereGeometry(0.1, 8, 6), gold, sx, 0.5 + 1.8, depth / 2 + 0.12, root);
+      for (const wx of [-5.6, -3.2, 3.2, 5.6]) for (const wy of [2.1, 4.4]) mesh(new THREE.BoxGeometry(1.1, 1.3, 0.08), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, 0.5 + wy, depth / 2 + 0.03, root);
+      sign(facility.name, root, 0.5 + h + 5.6);
+      boxSolids(0, 0.7, w + 1.2, depth + 2.6);
+      for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) solids.push({ ...at(cx, depth / 2 + 1.25), r: 0.4 });
+    } else if (spot.kind === 'tower') { // v1.10.1 등반 도전: a tall stone tower on the hill, a landmark from anywhere on the island
+      depth = 6.4;
+      const stone = mat(0xd8d0c2); const band = mat(0xb8ae9e); const roofM = mat(0x6f8fd8);
+      let y = 0;
+      for (const [r0, r1, hh] of [[3.2, 3.4, 4], [2.8, 3.1, 5], [2.4, 2.75, 5], [2.1, 2.35, 4]]) { // tapering stages with bands between
+        mesh(new THREE.CylinderGeometry(r0, r1, hh, 22), stone, 0, y + hh / 2, 0, root); y += hh;
+        mesh(new THREE.CylinderGeometry(r0 + 0.2, r0 + 0.2, 0.35, 22), band, 0, y, 0, root);
+        for (let k = 0; k < 4; k += 1) { const a = (k / 4) * TAU + Math.PI / 4 + y; mesh(new THREE.BoxGeometry(0.5, 0.9, 0.12), mat(0x3d4a63), Math.sin(a) * (r0 + 0.02), y - hh / 2, Math.cos(a) * (r0 + 0.02), root).rotation.y = a; }
+      }
+      const ring = mesh(new THREE.TorusGeometry(2.6, 0.12, 8, 30), band, 0, y - 1.6, 0, root); ring.rotation.x = Math.PI / 2; // the balcony rail
+      mesh(new THREE.ConeGeometry(2.7, 3.6, 22), roofM, 0, y + 1.8, 0, root);
+      mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), mat(0x4a3828), 0, y + 4.6, 0, root);
+      const flag = mesh(new THREE.PlaneGeometry(1.3, 0.8), mat(0xe83c46, { side: THREE.DoubleSide }), 0.65, y + 5.3, 0, root); flag.castShadow = false;
+      mesh(new THREE.BoxGeometry(1.4, 2.3, 0.2), mat(0x6b4a33), 0, 1.15, 3.25, root); // the door
+      const arch = mesh(new THREE.TorusGeometry(0.72, 0.12, 8, 16, Math.PI), band, 0, 2.3, 3.32, root); arch.castShadow = false;
+      sign(facility.name, root, 4.3);
+      solids.push({ x, z, r: 3.5 });
+    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
+      const w = 3.2; const h = 2.4; depth = 2.7;
       mesh(new THREE.BoxGeometry(w, h, depth), mat(spot.wall), 0, h / 2, 0, root);
       const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.82, 1.7, 4), mat(spot.roof), 0, h + 0.85, 0, root);
       roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
-      const k = spot.kind === 'hall' ? 1.8 : 1; // the hall's door and windows are scaled with it
+      const k = 1;
       mesh(new THREE.BoxGeometry(0.95 * k, 1.45 * k, 0.08), mat(0x8a5a3b), 0, 0.72 * k, depth / 2 + 0.02, root);
       mesh(new THREE.SphereGeometry(0.06 * k, 8, 6), mat(0xf6d36b), 0.3 * k, 0.75 * k, depth / 2 + 0.08, root);
-      for (const wx of spot.kind === 'hall' ? [-w * 0.36, -w * 0.18, w * 0.18, w * 0.36] : [-w * 0.3, w * 0.3]) {
-        mesh(new THREE.CircleGeometry(0.32 * (k > 1 ? 1.4 : 1), 20), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, h * 0.62, depth / 2 + 0.02, root);
+      for (const wx of [-w * 0.3, w * 0.3]) {
+        mesh(new THREE.CircleGeometry(0.32, 20), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, h * 0.62, depth / 2 + 0.02, root);
       }
       if (spot.kind === 'shop') { // a striped awning
         for (let k = 0; k < 6; k += 1) {
@@ -225,11 +281,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
         mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 2.0, 0, root);
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 1.65, 0, root);
       }
-      if (spot.kind === 'hall') { // the game hall: a big black-and-white stone pair on the roof
-        const b = mesh(new THREE.SphereGeometry(0.9, 24, 16), mat(0x26272e, { roughness: 0.35 }), -0.9, h + 1.95, 0, root); b.scale.y = 0.55;
-        const wst = mesh(new THREE.SphereGeometry(0.9, 24, 16), mat(0xfafafa, { roughness: 0.35 }), 0.9, h + 1.95, 0, root); wst.scale.y = 0.55;
-      }
-      sign(facility.name, root, h + ({ hall: 3.1, house: 2.8 }[spot.kind] || 2.25)); // above the roof ornaments
+      sign(facility.name, root, h + (spot.kind === 'house' ? 2.8 : 2.25)); // above the roof ornaments
       solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -283,7 +335,21 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       npcs.push(npc);
     }
     const reach = depth / 2 + 1.3;
-    doors[facility.id] = { x: x + toCentre.x * (Math.max(1.4, reach) + (spot.kind === 'hall' ? 0.3 : 0)), z: z + toCentre.y * (Math.max(1.4, reach) + (spot.kind === 'hall' ? 0.3 : 0)), name: facility.name };
+    const out = Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps
+    doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
+  }
+
+  // v1.10.1: the shop street's reserved lot (외형 변경 시설 comes later): a low fence around levelled ground, no entrance yet.
+  for (const lot of RESERVED_LOTS) {
+    const g = new THREE.Group(); g.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); g.rotation.y = Math.atan2(lot.face[0] - lot.x, lot.face[1] - lot.z); scene.add(g);
+    const dirt = mesh(new THREE.BoxGeometry(6.5, 0.06, 5.5), mat(0xd9c49a), 0, 0.03, 0, g); dirt.castShadow = false;
+    for (let k = 0; k <= 12; k += 1) {
+      const t = k / 12; const px = -3.4 + t * 6.8;
+      for (const pz of [-2.9, 2.9]) { if (pz > 0 && Math.abs(px) < 1.2) continue; mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.8, 6), mat(0xc58b5a), px, 0.4, pz, g); }
+    }
+    for (const pz of [-2.9, 2.9]) for (const side of [-1, 1]) { const rail = mesh(new THREE.BoxGeometry(pz > 0 ? 2.2 : 6.8, 0.08, 0.06), mat(0xc58b5a), pz > 0 ? side * 2.3 : 0, 0.62, pz, g); if (pz < 0 && side > 0) rail.visible = false; }
+    for (const [cx, cz] of [[-1.8, -1], [-1.1, -1.4], [2, 0.6]]) mesh(new THREE.BoxGeometry(0.7, 0.6, 0.7), mat(0xb98b62), cx, 0.3, cz, g);
+    solids.push({ x: lot.x, z: lot.z, r: 3.2 });
   }
 
   // The player's character: a big head on a short body.
@@ -638,7 +704,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     const screenOf = (id) => {
       const root = facilityRoots.find((r) => r.userData.facility === id);
       if (!root) return null;
-      const v = new THREE.Vector3(); new THREE.Box3().setFromObject(root).getCenter(v); v.project(camera);
+      const v = new THREE.Vector3(root.position.x, root.position.y + 1.8, root.position.z).project(camera); // low on the building: a tall tower's middle can be off screen
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };

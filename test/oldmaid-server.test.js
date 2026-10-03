@@ -118,6 +118,8 @@ test('Old Maid server protects hands, authorizes shuffles/draws and restores sta
   assert.equal(JSON.stringify(after.game).includes('"rank"'), false);
   assert.equal(after.game.history.length, 1);
   assert.equal((await req('/api/room/move', actorToken, { x: 0, y: 0 })).status, 400);
+  // A random deal can end the game with that very first draw (every pair made): there is nothing left to resign.
+  if (after.game.status !== 'playing') return;
   // Resigning (v1.6.49) now works for oldmaid too: it ends the game immediately and credits
   // every other seated player -- just the opponent here -- as the winner.
   const opponentSeat = g.turn === '1' ? '2' : '1';
