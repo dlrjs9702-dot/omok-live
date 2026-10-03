@@ -4,6 +4,9 @@ const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-supp
 // v1.8.8 3D 광장 로비 V1: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈추며,
 // 시설 창은 기존 로비 기능 그대로(게임관에서 방 만들기). 「기존 로비」 전환은 브라우저에 기억된다. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
+// The plaza is one shared square and each page renders 3D: these run one after another (users of another test would
+// walk into this one, and several software-rendered pages at once are slow).
+test.describe.configure({ mode: 'default' });
 
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
 
@@ -134,4 +137,38 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
   await a.context.close();
+});
+
+// v1.9.3 광장 V3: 다른 접속자의 위치·방향·이름표가 보이고, 방에 들어가면 사라졌다가 돌아오면 다시 보이며, 새로고침해도 다시 보인다.
+test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·퇴장·새로고침이 반영된다', async ({ browser, request }) => {
+  test.setTimeout(60000); // two 3D pages at once
+  const a = await intoPlaza(browser, request, '앨리스');
+  const b = await intoPlaza(browser, request, '밥');
+  const idOf = (who) => expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy().then(() => who.page.evaluate(() => window.PlazaDebug().myId));
+  const aId = await idOf(a); const bId = await idOf(b);
+  const seen = (who, id) => who.page.evaluate((other) => (window.PlazaDebug()?.others || []).find((o) => o.id === other) || null, id);
+  await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
+  await expect.poll(() => seen(a, bId), { timeout: 10000 }).not.toBeNull();
+  expect((await seen(b, aId)).tag).toBe(true);
+  expect(await seen(a, aId)).toBeNull(); // never myself
+
+  // a walks to the shop door: b sees a's character arrive there.
+  const door = await a.page.evaluate(() => { const d = window.PlazaDebug(); d.place('shop'); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
+  await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
+
+  // a goes into a room: gone from b's plaza; back in the lobby: there again.
+  await a.page.evaluate(() => window.PlazaDebug().place('games'));
+  await a.page.keyboard.press('Space');
+  await a.page.locator('#plazaDialog #createRoomBtn').click();
+  await expect(a.page.locator('#roomView')).toBeVisible();
+  await expect.poll(() => seen(b, aId), { timeout: 10000 }).toBeNull();
+  await a.page.locator('#leaveRoomBtn').click();
+  await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
+
+  // b reloads (a reconnect): a is still there.
+  await b.page.reload();
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
 });

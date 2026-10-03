@@ -276,7 +276,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   // The player's character: a big head on a short body.
   const ME_BASE = { shirt: 0x7cb8ff, hair: 0x4a3326, skin: 0xffe0c4 };
   let me = makeCharacter(ME_BASE);
-  me.root.position.set(0, 0, 7.4);
+  me.root.position.set((Math.random() - 0.5) * 3, 0, 7 + Math.random() * 0.8); // a little apart from whoever arrived just before
   scene.add(me.root);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
   function setAvatar({ look = {}, name = '', title = null } = {}) {
@@ -286,6 +286,43 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     if (name) { me.tag = makeTag(name, title); me.tag.position.y = 2.75; me.root.add(me.tag); }
     me.look = look; me.title = title;
   }
+
+  // v1.9.3 V3: everyone else in the plaza. The server's snapshots move a target; each frame the character glides
+  // toward it (so ~7 updates a second still look smooth) and plays the same walk/idle animation as mine.
+  const others = new Map(); // id -> { c, target: { x, z, yaw, moving }, key }
+  const OTHER_BASE = { shirt: 0x7cb8ff, hair: 0x4a3326, skin: 0xffe0c4 };
+  function setOthers(list) {
+    const seen = new Set();
+    for (const p of list || []) {
+      if (!p?.id) continue;
+      seen.add(p.id);
+      const key = JSON.stringify([p.look || {}, p.name, p.title || null]);
+      let o = others.get(p.id);
+      if (o && o.key !== key) { // a new look or title: rebuild in place
+        const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
+        o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
+        o.c.tag = makeTag(p.name || '', p.title || null); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
+      }
+      if (!o) {
+        const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
+        c.root.position.set(p.x, 0, p.z); c.root.rotation.y = p.yaw;
+        c.tag = makeTag(p.name || '', p.title || null); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
+        o = { c, key }; others.set(p.id, o);
+      }
+      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) };
+    }
+    for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
+  }
+  function stepOthers(dt) {
+    for (const o of others.values()) {
+      const p = o.c.root.position; const t = o.target; const k = Math.min(1, dt * 9);
+      const dist = Math.hypot(t.x - p.x, t.z - p.z);
+      if (dist > 6) { p.x = t.x; p.z = t.z; } else { p.x += (t.x - p.x) * k; p.z += (t.z - p.z) * k; } // a far jump (reconnect) snaps
+      o.c.targetYaw = t.yaw;
+      animate(o.c, dt, t.moving || dist > 0.05);
+    }
+  }
+  const pose = () => ({ x: me.root.position.x, z: me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() });
 
   function makeCharacter({ shirt, hair, skin, hat = null, look = {} }) {
     const root = new THREE.Group();
@@ -419,6 +456,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       me.targetYaw = Math.atan2(ix, iz);
     }
     animate(me, dt, moving);
+    stepOthers(dt);
     for (const npc of npcs) { // the keeper turns to a player who comes close and waves
       const close = near === npc.home.id;
       npc.lookAt = close ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null;
@@ -476,6 +514,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   function stop() { running = false; cancelAnimationFrame(raf); keys.clear(); }
   function dispose() {
     stop(); observer.disconnect();
+    for (const o of others.values()) disposeCharacter(o.c); others.clear();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
@@ -492,7 +531,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, tag: Boolean(me.tag) };
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, tag: Boolean(me.tag), others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag) })) };
   }
-  return { start, stop, dispose, debug, interact, setAvatar };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose };
 }
