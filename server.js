@@ -731,7 +731,8 @@ function plazaSeparate(token, x, z, prev) {
 }
 let plazaDirty = false;
 function plazaSnapshot() {
-  return { players: [...plazaPresence.values()].map(({ id, name, look, title, champion, x, z, yaw, moving }) => ({ id, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
+  // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
+  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, x, z, yaw, moving }) => ({ id, chatId, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -2665,7 +2666,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.1' });
+    return sendJson(res, 200, { ok: true, version: '1.10.2' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3112,7 +3113,7 @@ async function requestHandler(req, res) {
     const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
     plazaLastPos.set(session.token, spot);
     plazaPresence.set(session.token, {
-      id: session.plazaId, account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
     });
@@ -3794,7 +3795,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.1 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.2 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

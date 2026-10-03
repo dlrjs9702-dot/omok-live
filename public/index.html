@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.10.1" />
+  <link rel="stylesheet" href="/styles.css?v=1.10.2" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -39,7 +39,15 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div></section>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div>
+        <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
+        <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
+        <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
+          <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
+          <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
+        </section>
+        <form id="islandChatForm" class="islandChatForm hidden"><input id="islandChatInput" type="text" maxlength="300" autocomplete="off" placeholder="Enter 전송 · Esc 취소" aria-label="채팅 입력" /></form>
+      </section>
 
       <div id="lobbyHighlights" class="lobbyHighlights">
       <section id="announcementsCard" class="card noticeCard" aria-label="공지사항">
@@ -998,31 +1006,31 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.10.1"></script>
-  <script src="/recent-action.js?v=1.10.1"></script>
-  <script src="/skin-looks.js?v=1.10.1"></script>
-  <script src="/skin-art-omok.js?v=1.10.1"></script>
-  <script src="/skin-art-connect4.js?v=1.10.1"></script>
-  <script src="/skin-art-othello.js?v=1.10.1"></script>
-  <script src="/skin-art-yut.js?v=1.10.1"></script>
-  <script src="/skin-art-dots.js?v=1.10.1"></script>
-  <script src="/skin-art-bingo.js?v=1.10.1"></script>
-  <script src="/skin-art-baseball.js?v=1.10.1"></script>
-  <script src="/skin-art-pictionary.js?v=1.10.1"></script>
-  <script src="/skin-art-twenty.js?v=1.10.1"></script>
-  <script src="/skin-art-liar.js?v=1.10.1"></script>
-  <script src="/skin-art-davinci.js?v=1.10.1"></script>
-  <script src="/skin-art-oldmaid.js?v=1.10.1"></script>
-  <script src="/skin-art-halli.js?v=1.10.1"></script>
-  <script src="/skin-art-gostop.js?v=1.10.1"></script>
-  <script src="/skin-art-avatar.js?v=1.10.1"></script>
-  <script src="/climb/climb-sim.js?v=1.10.1"></script>
-  <script src="/climb/climb-client.js?v=1.10.1"></script>
-  <script src="/twentyquestions-ui.js?v=1.10.1"></script>
-  <script src="/hwatu-art.js?v=1.10.1"></script>
-  <script src="/gostop-ui.js?v=1.10.1"></script>
-  <script src="/pandemic-map.js?v=1.10.1"></script>
-  <script src="/pandemic-ui.js?v=1.10.1"></script>
-  <script src="/app.js?v=1.10.1"></script>
+  <script src="/session-lock.js?v=1.10.2"></script>
+  <script src="/recent-action.js?v=1.10.2"></script>
+  <script src="/skin-looks.js?v=1.10.2"></script>
+  <script src="/skin-art-omok.js?v=1.10.2"></script>
+  <script src="/skin-art-connect4.js?v=1.10.2"></script>
+  <script src="/skin-art-othello.js?v=1.10.2"></script>
+  <script src="/skin-art-yut.js?v=1.10.2"></script>
+  <script src="/skin-art-dots.js?v=1.10.2"></script>
+  <script src="/skin-art-bingo.js?v=1.10.2"></script>
+  <script src="/skin-art-baseball.js?v=1.10.2"></script>
+  <script src="/skin-art-pictionary.js?v=1.10.2"></script>
+  <script src="/skin-art-twenty.js?v=1.10.2"></script>
+  <script src="/skin-art-liar.js?v=1.10.2"></script>
+  <script src="/skin-art-davinci.js?v=1.10.2"></script>
+  <script src="/skin-art-oldmaid.js?v=1.10.2"></script>
+  <script src="/skin-art-halli.js?v=1.10.2"></script>
+  <script src="/skin-art-gostop.js?v=1.10.2"></script>
+  <script src="/skin-art-avatar.js?v=1.10.2"></script>
+  <script src="/climb/climb-sim.js?v=1.10.2"></script>
+  <script src="/climb/climb-client.js?v=1.10.2"></script>
+  <script src="/twentyquestions-ui.js?v=1.10.2"></script>
+  <script src="/hwatu-art.js?v=1.10.2"></script>
+  <script src="/gostop-ui.js?v=1.10.2"></script>
+  <script src="/pandemic-map.js?v=1.10.2"></script>
+  <script src="/pandemic-ui.js?v=1.10.2"></script>
+  <script src="/app.js?v=1.10.2"></script>
 </body>
 </html>
