@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.6').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.7').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -418,6 +418,7 @@
   let hover = null;
   let toastTimer = null;
   let resultEffectTimer = null;
+  let resultDelayTimer = null; // v1.8.7: a legend win plays on the board first, then the result banner
   let lastResultEffectKey = null;
   let actionTimerClockOffset = 0;
 
@@ -1266,8 +1267,9 @@
 
   function clearResultEffect() {
     clearTimeout(resultEffectTimer);
+    clearTimeout(resultDelayTimer);
     resultEffect.classList.add('hidden');
-    resultEffect.classList.remove('win', 'loss', 'playing', 'reward');
+    resultEffect.classList.remove('win', 'loss', 'playing', 'reward', 'banner');
     document.body.classList.remove('resultWinActive', 'resultLossActive');
   }
 
@@ -1310,16 +1312,17 @@
     });
   }
 
-  function playResultEffect({ win, icon, title, message, duration, reward = false }) {
+  function playResultEffect({ win, icon, title, message, duration, reward = false, banner = false }) {
     clearTimeout(resultEffectTimer);
-    resultEffect.classList.remove('hidden', 'win', 'loss', 'playing', 'reward');
+    resultEffect.classList.remove('hidden', 'win', 'loss', 'playing', 'reward', 'banner');
     resultEffect.classList.add(win ? 'win' : 'loss');
     resultEffect.classList.toggle('reward', reward);
+    resultEffect.classList.toggle('banner', banner);
     resultIcon.textContent = icon;
     resultTitle.textContent = title;
     resultMessage.textContent = message;
     resultParticles.replaceChildren();
-    if (win) fillVictoryParticles();
+    if (win && !banner) fillVictoryParticles();
     if (reward) fillFireworks();
     document.body.classList.toggle('resultWinActive', win && !reward);
     document.body.classList.toggle('resultLossActive', !win);
@@ -1332,9 +1335,22 @@
     }, duration);
   }
 
+  // v1.8.7: when the winning line is a legend skin's, its win sequence plays on the board first (about 1.6 s) and the
+  // result follows as a small banner at the top, so the result never covers the legend effect. Same title, message
+  // and duration as the full card; the rematch and score controls stay where they are.
+  function legendWinOnBoard(game) {
+    const first = game?.winningLine?.[0];
+    if (!first || !['omok', 'omok2v2'].includes(state?.gameType)) return false;
+    const color = game.board?.[first[1]]?.[first[0]];
+    const def = color ? window.SkinLooks?.def(stoneSkin(first[0], first[1], color)) : null;
+    return Boolean(def?.legend && def.win);
+  }
   function showResultEffect(outcome, game) {
     const win = outcome === 'win';
-    playResultEffect({ win, icon: win ? '🏆' : '😏', title: win ? '화려한 승리!' : '이번 판은 패배…', message: resultCopy(outcome, game), duration: win ? 5000 : 4600 });
+    const effect = { win, icon: win ? '🏆' : '😏', title: win ? '화려한 승리!' : '이번 판은 패배…', message: resultCopy(outcome, game), duration: win ? 5000 : 4600 };
+    clearTimeout(resultDelayTimer);
+    if (legendWinOnBoard(game)) { resultDelayTimer = setTimeout(() => playResultEffect({ ...effect, banner: true }), reducedMotionActive() ? 0 : 1600); return; }
+    playResultEffect(effect);
   }
 
   // Only ever called after the server confirmed a payout.
@@ -4116,6 +4132,7 @@
     oldmaidStartBtn.classList.toggle('hidden', !oldmaid);
     oldmaidModeChooser.classList.toggle('hidden', !oldmaid);
     if (oldmaid) renderOldMaid();
+    if (g.status !== 'finished') boardOverlay.classList.remove('legendResult');
     if (rpg || gostop || pictionary || liar || oldmaid || twenty || davinci || halli || pandemic) {
       boardOverlay.classList.add('hidden');
     } else if (baseball) {
@@ -4133,6 +4150,7 @@
       boardOverlay.textContent = `일시정지 · ${(g.disconnectedSeats || []).map((s) => seatKo(s)).join(', ')} 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
+      boardOverlay.classList.toggle('legendResult', legendWinOnBoard(g)); // keep the legend win sequence uncovered
       if (outcome) setResultBoardOverlay(outcome, g);
       else {
         boardOverlay.classList.remove('resultWin', 'resultLoss');
@@ -7136,7 +7154,9 @@
     const winFirst = state.game.winningLine?.[0];
     const winColor = winFirst ? state.game.board[winFirst[1]]?.[winFirst[0]] : null;
     const winSkin = winFirst && winColor ? window.SkinLooks.def(stoneSkin(winFirst[0], winFirst[1], winColor)) : null;
-    const motionMs = winSkin?.win ? 2400 : lastSkin?.fx ? 900 : 300;
+    // v1.8.7: a legend also marks four in a row (the move that threatens five) with its own effect along those stones.
+    const fourPts = !winFirst && lastSkin?.special && lastColor ? omokFourLine(last.x, last.y, lastColor) : null;
+    const motionMs = winSkin?.win ? 2400 : fourPts ? 1300 : lastSkin?.fx ? 900 : 300;
     const motionT = pieceMotion(last ? `omok:${state.game.moveCount}:${last.at || ''}` : '', motionMs);
     const setDown = Math.min(1, motionT * motionMs / 300);
     for (let y = 0; y < SIZE; y++) {
@@ -7157,6 +7177,7 @@
       ctx.save(); ctx.translate(PAD + last.x * GRID, PAD + last.y * GRID);
       lastSkin.fx(ctx, GRID * .44, Math.min(1, (motionT * motionMs - 300) / 600), lastColor); ctx.restore();
     }
+    if (fourPts && setDown >= 1 && motionT < 1) { ctx.save(); lastSkin.special(ctx, fourPts, GRID * .44, motionT, lastColor); ctx.restore(); }
     if (winSkin?.win) { ctx.save(); winSkin.win(ctx, winPts, GRID * .44, motionT, winColor); ctx.restore(); }
     if (last && setDown >= 1) drawRecentActionRing(PAD + last.x * GRID, PAD + last.y * GRID, GRID * .43, omokRecent);
     if (hover && canPlace(hover.x, hover.y)) drawGhost(hover.x, hover.y, seatColor(seat));
@@ -7281,6 +7302,19 @@
     return state.players[seat]?.skin || null;
   }
 
+  // v1.8.7: the stones of a straight line of exactly four through (x, y), as canvas points -- the cosmetic "four in a
+  // row" moment a legend marks. Read from the board the player already sees; it decides nothing.
+  function omokFourLine(x, y, color) {
+    const board = state?.game?.board;
+    if (!board) return null;
+    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+      const line = [[x, y]];
+      for (const s of [1, -1]) for (let k = 1; k < 5; k += 1) { const nx = x + dx * k * s; const ny = y + dy * k * s; if (board[ny]?.[nx] !== color) break; line.push([nx, ny]); }
+      if (line.length === 4) return line.sort((p, q) => p[0] - q[0] || p[1] - q[1]).map(([px, py]) => ({ x: PAD + px * GRID, y: PAD + py * GRID }));
+    }
+    return null;
+  }
+
   function drawStone(x, y, color, winning, last, setDown = 1) {
     const cx = PAD + x * GRID;
     const cy = PAD + y * GRID;
@@ -7288,15 +7322,22 @@
     const rise = 1 - easeOutCubic(setDown);
     const scale = 1 + rise * .3;
     const lift = rise * GRID * .45;
+    const board = window.SkinLooks.def(state?.skinTheme)?.board; // v1.8.7: a theme may light the stones for its background
     ctx.save();
-    ctx.fillStyle = `rgba(40,20,0,${.32 - rise * .12})`;
+    ctx.fillStyle = board?.shadow || `rgba(40,20,0,${.32 - rise * .12})`;
     ctx.beginPath(); ctx.ellipse(cx + 2 + lift * .3, cy + 3 + lift * .2, r * scale * (1 + rise * .15), r * scale * .92, 0, 0, Math.PI * 2); ctx.fill();
     ctx.translate(cx, cy - lift);
     ctx.scale(scale, scale);
-    window.SkinLooks.paintStone(ctx, r, stoneSkin(x, y, color), color); // no skin = the classic slate and shell
+    const skin = stoneSkin(x, y, color);
+    const legend = window.SkinLooks.def(skin)?.legend; // a legend keeps its own silhouette: no theme ring, no win ring
+    window.SkinLooks.paintStone(ctx, r, skin, color); // no skin = the classic slate and shell
+    if (board?.accent && !legend) board.accent(ctx, r, color);
     ctx.restore();
     if (setDown < 1) return;
-    if (winning) {
+    if (winning && legend) {
+      ctx.fillStyle = '#ffd85a';
+      ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2); ctx.fill();
+    } else if (winning) {
       ctx.strokeStyle = color === 'black' ? '#ffd85a' : '#ef4444';
       ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, Math.PI * 2); ctx.stroke();

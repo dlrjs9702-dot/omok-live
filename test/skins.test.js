@@ -20,11 +20,17 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(TIERS.theme.price, 1_500_000);
   assert.equal(TIERS.legend.price, 3_000_000);
   const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok').length;
-  assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 1], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 1');
+  assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 2], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 2(테마마다 하나)');
   assert.deepEqual(SKINS.filter(s => s.legacy).map(s => s.id).sort(), ['omok_common_amber', 'omok_common_bronze', 'omok_common_jade', 'omok_common_obsidian', 'omok_common_porcelain']);
   assert.equal(SKINS.filter(s => s.tier === 'theme').every(s => s.slot === 'theme'), true);
   assert.equal(SKINS.find(s => s.tier === 'legend').slot, 'piece');
   assert.deepEqual(badgesOf(['omok_l1', 'omok_c1']), [{ family: 'omok', game: '오목', name: '천상 바둑' }]);
+  assert.deepEqual(badgesOf(['omok_l1', 'omok_l2']).map(b => b.name), ['천상 바둑', '왕실 기보']);
+  // 배경 테마 ↔ 전설 짝(추천 세트): 별빛 천문대 ↔ 천상 바둑, 조선 기원 ↔ 왕실 기보. 짝은 양방향이다.
+  const omokView = catalogView().find(f => f.family === 'omok').skins;
+  const pairOf = id => omokView.find(s => s.id === id).pair;
+  assert.deepEqual(['omok_l1', 'omok_t2', 'omok_l2', 'omok_t1'].map(pairOf), ['omok_t2', 'omok_l1', 'omok_t1', 'omok_l2']);
+  assert.equal(skinById('connect4_l1').pair, null, '전설이 하나인 게임은 짝이 없다');
   for (const skin of SKINS) assert.equal(skin.price, TIERS[skin.tier].price);
   assert.equal(familyOf('omok'), 'omok');
   assert.equal(familyOf('omok2v2'), 'omok');
@@ -35,7 +41,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.deepEqual(catalogView().map(f => f.family), Object.keys(ACTIVE_FAMILIES));
   for (const family of catalogView()) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
     const tiers = tier => family.skins.filter(s => s.tier === tier).length;
-    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, 1], family.family);
+    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, family.family === 'omok' ? 2 : 1], family.family);
     assert.equal(tiers('common'), family.family === 'omok' ? 10 : 5, family.family);
   }
 });
@@ -112,7 +118,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
-  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 16);
+  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 17);
   assert.deepEqual(shop.data.owned, []);
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 
