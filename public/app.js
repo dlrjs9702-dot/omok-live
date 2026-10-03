@@ -1487,7 +1487,36 @@
     try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); } catch { return; }
     applyPlazaAvatar();
     plazaLastSent = null; // others see the new look with the next pose
+    if (sessionRole !== 'admin' && !plazaAvatar?.look?.gender && document.body.classList.contains('plazaMode')) openGenderChoice();
   }
+  // v1.10.3 첫 접속 성별 선택: the first visit to the island asks once (남자/여자); the server keeps the first answer.
+  const genderDialog = document.getElementById('genderDialog');
+  const genderConfirmBtn = document.getElementById('genderConfirmBtn');
+  let genderPick = null;
+  function openGenderChoice() {
+    if (genderDialog.open) return;
+    genderPick = null; genderConfirmBtn.disabled = true; document.getElementById('genderStatus').textContent = '';
+    genderDialog.querySelectorAll('.genderChoice').forEach((b) => b.setAttribute('aria-checked', 'false'));
+    genderDialog.showModal();
+  }
+  genderDialog.addEventListener('cancel', (event) => event.preventDefault()); // a choice is needed (Esc does not close it)
+  genderDialog.querySelectorAll('.genderChoice').forEach((button) => button.addEventListener('click', () => {
+    genderPick = button.dataset.gender; genderConfirmBtn.disabled = false;
+    genderDialog.querySelectorAll('.genderChoice').forEach((b) => b.setAttribute('aria-checked', String(b === button)));
+  }));
+  genderConfirmBtn.addEventListener('click', async () => {
+    if (!genderPick) return;
+    genderConfirmBtn.disabled = true;
+    try {
+      const data = await api('/api/avatar/gender', { method: 'POST', body: JSON.stringify({ gender: genderPick }) });
+      plazaAvatar = data.avatar || plazaAvatar; applyPlazaAvatar(); plazaLastSent = null;
+      genderDialog.close();
+      if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
+    } catch (error) {
+      document.getElementById('genderStatus').textContent = error.message; genderConfirmBtn.disabled = false;
+      if (error.status === 409) { genderDialog.close(); refreshPlazaAvatar(); }
+    }
+  });
 
   // v1.9.3 V3: my pose goes to the server while I am in the plaza (about 8 a second while moving, every 3 seconds
   // standing); everyone's poses come back on the lobby stream as `plaza` snapshots and are drawn by the scene.

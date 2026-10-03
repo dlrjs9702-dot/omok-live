@@ -425,6 +425,38 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await a.context.close();
 });
 
+// v1.10.3 첫 접속 성별 선택: a new account is asked once on its first visit to the island (the window cannot be
+// dismissed, the character waits), the choice shows on my character and on everyone else's screen, it is not asked
+// again, and the server refuses to change it.
+test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 사람 화면에 반영, 다시 묻지 않고 바꿀 수 없다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const watcher = await intoPlaza(browser, request, '구경');
+  const a = await shopper(browser, request, '새친구', 0, null);
+  const { page } = a;
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic'));
+  await page.reload();
+  await expect(page.locator('#genderDialog')).toBeVisible({ timeout: 30000 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#genderDialog')).toBeVisible(); // a choice is needed
+  await expect(page.locator('#genderConfirmBtn')).toBeDisabled();
+  const before = await state(page);
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  expect(Math.hypot((await state(page)).x - before.x, (await state(page)).z - before.z)).toBeLessThan(0.01);
+  await page.locator('.genderChoice[data-gender="female"]').click();
+  await page.locator('#genderConfirmBtn').click();
+  await expect(page.locator('#genderDialog')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.gender), { timeout: 8000 }).toBe('female');
+  const myId = await page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => watcher.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.look?.gender, myId), { timeout: 10000 }).toBe('female');
+  expect((await post(request, '/api/avatar/gender', a.token, { gender: 'male' })).status).toBe(409);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.gender), { timeout: 8000 }).toBe('female');
+  await expect(page.locator('#genderDialog')).toBeHidden();
+  for (const who of [a, watcher]) await expectNoScriptError(who.page);
+  for (const who of [a, watcher]) await who.context.close();
+});
+
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
   test.setTimeout(60000);

@@ -915,6 +915,16 @@
       <div id="myInfoSkinBody" class="skinShopBody myInfoSkinBody"></div>
     </section>
   </dialog>
+  <dialog id="genderDialog" class="recordsDialog genderDialog" aria-labelledby="genderTitle">
+    <h2 id="genderTitle">캐릭터 선택</h2>
+    <div class="genderChoices" role="radiogroup" aria-labelledby="genderTitle">
+      <button type="button" class="genderChoice" data-gender="male" role="radio" aria-checked="false"><span class="genderFace male" aria-hidden="true"></span>남자</button>
+      <button type="button" class="genderChoice" data-gender="female" role="radio" aria-checked="false"><span class="genderFace female" aria-hidden="true"></span>여자</button>
+    </div>
+    <p class="genderNote">한 번 정하면 바꿀 수 없어요.</p>
+    <p id="genderStatus" class="skinShopStatus" role="status"></p>
+    <button id="genderConfirmBtn" type="button" class="secondary" disabled>확정</button>
+  </dialog>
   <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
     <div class="recordsDialogHead"><h2 id="skinShopTitle">상점</h2><span id="skinShopBalance" class="skinShopBalance"></span><button id="skinShopCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>

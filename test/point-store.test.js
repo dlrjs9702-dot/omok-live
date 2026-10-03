@@ -179,6 +179,16 @@ async function exercise(t, makeStore) {
     assert.deepEqual((await store.skinState(D)).equipped, { omok: { piece: 'omok_common_jade' } });
     assert.deepEqual((await store.equipSkin({ userId: D, game: 'omok', slot: 'piece', skinId: null })).equipped.omok ?? {}, {});
     assert.deepEqual((await store.skinState(A)).owned, [], '다른 계정에는 보이지 않는다');
+
+    // v1.10.3 첫 접속 성별: set once; a later different choice leaves the first one
+    const first = await store.setAvatarGender({ userId: D, gender: 'female' });
+    assert.equal(first.chosen, true); assert.equal(first.gender, 'female');
+    const again = await store.setAvatarGender({ userId: D, gender: 'male' });
+    assert.equal(again.chosen, false); assert.equal(again.gender, 'female');
+    assert.equal((await store.skinState(D)).equipped.avatar.gender, 'female');
+    const [x, y] = await Promise.all([store.setAvatarGender({ userId: A, gender: 'male' }), store.setAvatarGender({ userId: A, gender: 'female' })]);
+    assert.equal([x, y].filter((r) => r.chosen).length, 1, '동시에 골라도 하나만 저장'); assert.equal(x.gender, y.gender);
+    await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
   return store;

@@ -22,7 +22,7 @@ async function adminToken(request) {
 }
 
 // A guest with an account in a real browser page (lobby), and the points to shop with.
-async function shopper(browser, request, label, points = 0) {
+async function shopper(browser, request, label, points = 0, gender = 'male') {
   const admin = await adminToken(request);
   const issued = (await post(request, '/api/admin/keys', admin, { label })).data;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -32,6 +32,8 @@ async function shopper(browser, request, label, points = 0) {
   const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
   const person = { context, page, token, id: issued.key.id, admin };
   if (points) await grant(request, person, points);
+  // v1.10.3: test accounts have already chosen their character, so the island opens without the first-visit choice
+  if (gender) await post(request, '/api/avatar/gender', token, { gender });
   return person;
 }
 
