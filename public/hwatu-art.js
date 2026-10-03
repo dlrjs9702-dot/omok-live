@@ -179,5 +179,14 @@
   }
   IDS.push('bonus-2', 'bonus-3');
 
-  window.HwatuArt = { svg, ids: IDS };
+  // v1.8.6: the 48 regular cards show the public Korean hwatu pictures (public/hwatu/<id>.svg, Wikimedia Commons
+  // "SVG Hwatu", CC BY-SA 4.0 -- see public/hwatu/LICENSE.md). The two bonus cards are not in that deck and keep the
+  // drawing above. html(id) is what the table puts inside a card; svg(id) stays the game center drawing.
+  const PUBLIC = new Set(IDS.filter(id => !id.startsWith('bonus-')));
+  function html(id) {
+    if (PUBLIC.has(id)) return `<img class="hwatuImg" src="/hwatu/${id}.svg" alt="" draggable="false" decoding="async">`;
+    return svg(id);
+  }
+
+  window.HwatuArt = { svg, html, ids: IDS, publicIds: [...PUBLIC] };
 })();

@@ -237,9 +237,34 @@ async function serveVendor(req, res, pathname) {
   return true;
 }
 
-async function serveStatic(res, pathname) {
+// v1.8.6: the public hwatu card faces (public/hwatu/*.svg, CC BY-SA 4.0) never change, so they are served gzipped
+// from memory with a long cache instead of being re-downloaded (~2.7 MB for the deck) on every page load.
+const hwatuCache = new Map();
+async function serveHwatu(req, res, relative) {
+  if (!/^hwatu\/[a-z0-9-]+\.svg$/.test(relative)) return false;
+  let entry = hwatuCache.get(relative);
+  if (!entry) {
+    try {
+      const raw = await fsp.readFile(path.join(PUBLIC_DIR, relative));
+      entry = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }) };
+    } catch (err) {
+      if (err.code === 'ENOENT') return false;
+      throw err;
+    }
+    hwatuCache.set(relative, entry);
+  }
+  const gzip = /\bgzip\b/.test(String(req?.headers?.['accept-encoding'] || ''));
+  const body = gzip ? entry.gz : entry.raw;
+  res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.svg'], 'Content-Length': body.length, 'Cache-Control': 'public, max-age=604800', Vary: 'Accept-Encoding',
+    ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
+  res.end(body);
+  return true;
+}
+
+async function serveStatic(res, pathname, req = null) {
   const relative = pathname.replace(/^\//, '');
   if (!relative || relative.includes('..')) return false;
+  if (relative.startsWith('hwatu/')) return serveHwatu(req, res, relative);
   const filePath = path.join(PUBLIC_DIR, relative);
   try {
     const stat = await fsp.stat(filePath);
@@ -2486,7 +2511,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.8.5' });
+    return sendJson(res, 200, { ok: true, version: '1.8.6' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3397,7 +3422,7 @@ async function requestHandler(req, res) {
   if (req.method === 'GET') {
     if (pathname === '/') return sendIndex(res, {});
     if (await serveVendor(req, res, pathname)) return;
-    if (await serveStatic(res, pathname)) return;
+    if (await serveStatic(res, pathname, req)) return;
   }
 
   return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
@@ -3459,7 +3484,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.5 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.8.6 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

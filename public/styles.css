@@ -1515,3 +1515,19 @@ body.tableGamePlaying #teamPlayers{display:none!important}
 .gostopFelt .gostopPile{padding:3px 4px;gap:2px}
 .gostopFelt .gostopPileCards{min-height:53px}
 .gostopFelt .gostopTable{min-height:220px}
+
+/* v1.8.6 공개 화투 그림(public/hwatu, CC BY-SA 4.0): the picture fills the card, which follows its 103×168 shape.
+   The month chip and kind badge stay on top as before. Bonus cards keep the game center drawing. */
+.hwatu-hand{width:56px;height:91px}.hwatu-normal{width:44px;height:72px}.hwatu-mini{width:26px;height:42px}.hwatu-tiny{width:14px;height:23px}
+.gostopSprite,.gostopSprite .fxFace{width:44px;height:72px}
+.gostopPileCards{min-height:44px}.gostopPileCards .hwatu-mini{flex:0 0 26px}
+.gostopFloorGroup.ppeokStack .hwatu+.hwatu{margin-left:-28px}
+.gostopFelt .hwatu-hand{width:80px;height:130px}
+.gostopFelt .hwatu-normal{width:72px;height:117px}
+.gostopFelt .hwatu-mini{width:34px;height:55px}
+.gostopFelt .hwatu-tiny{width:28px;height:45px}
+.gostopFelt .gostopPileCards{min-height:55px}.gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 34px}
+.gostopFelt .gostopFloorGroup.ppeokStack .hwatu+.hwatu{margin-left:-48px}
+.hwatu.hasPhoto{border:0;border-radius:7px;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.4)}
+.hwatu.hasPhoto .hwatuArt{position:absolute;inset:0;display:block}
+.hwatuImg{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}

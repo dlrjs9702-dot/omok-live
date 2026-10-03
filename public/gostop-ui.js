@@ -68,9 +68,10 @@
     el.innerHTML = '';
     const top = document.createElement('span'); top.className = 'hwatuMonth'; top.textContent = monthText;
     const art = document.createElement('span'); art.className = 'hwatuArt';
-    // v1.7.4: the game center's own vector hwatu (public/hwatu-art.js); emoji only as a fallback.
-    const vector = window.HwatuArt?.svg(id);
-    if (vector) { art.innerHTML = vector; el.classList.add('hasArt'); }
+    // v1.8.6: the public hwatu picture for the 48 regular cards, the game center's own drawing for the two bonus
+    // cards (public/hwatu-art.js); emoji only as a fallback.
+    const vector = window.HwatuArt?.html?.(id) ?? window.HwatuArt?.svg(id);
+    if (vector) { art.innerHTML = vector; el.classList.add('hasArt'); if (vector.startsWith('<img')) el.classList.add('hasPhoto'); }
     else art.textContent = c.bonus ? figure : `${PLANTS[c.month]}${figure ? figure : ''}`;
     const tag = document.createElement('span'); tag.className = `hwatuBadge badge-${c.kind}${c.dan ? ` dan-${c.dan}` : ''}`; tag.textContent = badge;
     el.append(art, top, tag);
@@ -593,7 +594,7 @@
   // the previous render to where they are now. Final elements stay hidden until their card lands.
   // One run at a time (generation id); a newer event cancels an older run and snaps it to the end.
   const FX = { move: 320, flip: 380, capture: 320, gap: 55, look: 130, glow: 200, impact: 170 };
-  const BASE_W = 46; const BASE_H = 68;
+  const BASE_W = 44; const BASE_H = 72; // v1.8.6: card proportions follow the public hwatu pictures (103×168)
   const SPECIAL_TAGS = ['jjok', 'ttadak', 'sweep', 'ppeok', 'jappeok', 'ppeokEat', 'bomb', 'kong', 'shake', 'bonus', 'firstPpeok', 'secondPpeok', 'chongtong', 'samppeok'];
   // v1.7.4: each special gets its own short look (colour, motion and a floor effect) so 뻑·자뻑·쪽·따닥·판쓸이·
   // 폭탄·콩알탄·흔들기·고·스톱 read differently at a glance. Kept under ~0.7s; nothing blocks input.
