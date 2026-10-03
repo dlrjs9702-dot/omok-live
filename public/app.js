@@ -1424,7 +1424,6 @@
     { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
-    { id: 'chat', name: '채팅', open: () => openPlazaWindow('대기방 채팅', [document.querySelector('.lobbyChatCard')]) },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
@@ -1470,7 +1469,7 @@
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
         onInteract: (id) => PLAZA_FACILITIES.find((f) => f.id === id)?.open(),
         onNear: showPlazaHint,
-        blocked: () => Boolean(document.querySelector('dialog[open]')), // any window over the square stops the character
+        blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       if (!plaza.controller) plaza.failed = true;
       else refreshPlazaAvatar();
@@ -3346,6 +3345,7 @@
     resetTurnAlertTracking();
     setBaseDocumentTitle('게임센터');
     lobbyChatAnnouncer.reset();
+    islandBubbleSeen = null; // the first snapshot after coming back is only a baseline (no old bubbles)
     showView('lobby');
     renderLobbyChat();
     loadAnnouncements().catch(err => showToast(err.message, 3500));
@@ -3487,6 +3487,7 @@
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.
       lobbyChatAnnouncer.update(lobbyState.messages || [], lobbyState.me?.chatId || '');
       renderLobbyChat();
+      islandChatUpdate();
       renderPublicRooms();
       renderLobbyInvitations();
     } else if (event === 'pointsChanged') {
@@ -3935,6 +3936,58 @@
       participantList.appendChild(chip);
     }
   }
+
+  // v1.10.2 게임 아일랜드 채팅: Enter opens an input over the island, the message goes through the lobby chat (same server
+  // flow and storage), every screen shows it as a bubble over its sender, and the 「채팅」 tab opens the conversation.
+  const islandChatTab = document.getElementById('islandChatTab');
+  const islandChatPanel = document.getElementById('islandChatPanel');
+  const islandChatMessages = document.getElementById('islandChatMessages');
+  const islandChatForm = document.getElementById('islandChatForm');
+  const islandChatInput = document.getElementById('islandChatInput');
+  const islandChatOpacity = document.getElementById('islandChatOpacity');
+  let islandBubbleSeen = null;
+  function islandChatUpdate() {
+    const rows = lobbyState?.messages || []; const ownId = lobbyState?.me?.chatId || '';
+    const atBottom = islandChatMessages.scrollHeight - islandChatMessages.scrollTop - islandChatMessages.clientHeight < 40;
+    if (fillMessageList(islandChatMessages, rows, '아직 메시지가 없습니다.', ownId) && atBottom) islandChatMessages.scrollTop = islandChatMessages.scrollHeight;
+    const newest = rows.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0);
+    if (islandBubbleSeen === null) { islandBubbleSeen = newest; return; } // the first snapshot is only a baseline
+    for (const row of rows) {
+      if (!(Number(row.id) > islandBubbleSeen) || row.type === 'system') continue;
+      const who = row.senderId && row.senderId === ownId ? 'me' : plazaPlayers.find((p) => p.chatId && p.chatId === row.senderId)?.id;
+      if (who) plaza.controller?.speak?.(who, row.text);
+      if (islandChatPanel.classList.contains('hidden') && who !== 'me') islandChatTab.classList.add('unread');
+    }
+    islandBubbleSeen = Math.max(islandBubbleSeen, newest);
+  }
+  function setIslandChatPanel(open) {
+    islandChatPanel.classList.toggle('hidden', !open);
+    islandChatTab.setAttribute('aria-expanded', String(open));
+    if (open) { islandChatTab.classList.remove('unread'); islandChatMessages.scrollTop = islandChatMessages.scrollHeight; }
+  }
+  islandChatTab.addEventListener('click', () => { setIslandChatPanel(islandChatPanel.classList.contains('hidden')); plazaStage.focus({ preventScroll: true }); });
+  document.getElementById('islandChatClose').addEventListener('click', () => { setIslandChatPanel(false); plazaStage.focus({ preventScroll: true }); });
+  const applyIslandChatAlpha = (value) => islandChatPanel.style.setProperty('--island-chat-alpha', String(Math.max(25, Math.min(100, Number(value) || 80)) / 100));
+  try { const saved = localStorage.getItem('gc.islandChatAlpha'); if (saved) islandChatOpacity.value = saved; } catch {}
+  applyIslandChatAlpha(islandChatOpacity.value);
+  islandChatOpacity.addEventListener('input', () => { applyIslandChatAlpha(islandChatOpacity.value); try { localStorage.setItem('gc.islandChatAlpha', islandChatOpacity.value); } catch {} });
+  function closeIslandChatInput() { islandChatInput.value = ''; islandChatForm.classList.add('hidden'); if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); }
+  window.addEventListener('keydown', (event) => { // Enter anywhere on the island starts typing
+    if (event.key !== 'Enter' || event.isComposing || event.repeat || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
+    if (event.target !== document.body && event.target !== plazaStage) return; // a focused field or button keeps its own Enter
+    event.preventDefault();
+    islandChatForm.classList.remove('hidden'); islandChatInput.focus();
+  });
+  islandChatInput.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); closeIslandChatInput(); } });
+  islandChatInput.addEventListener('blur', () => { if (!islandChatInput.value.trim()) islandChatForm.classList.add('hidden'); });
+  islandChatForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const text = islandChatInput.value.trim();
+    if (!text) { closeIslandChatInput(); return; }
+    islandChatInput.disabled = true;
+    try { await api('/api/lobby/chat', { method: 'POST', body: JSON.stringify({ text }) }); islandChatInput.disabled = false; closeIslandChatInput(); }
+    catch (err) { islandChatInput.disabled = false; showToast(err.message, 3500); islandChatInput.focus(); }
+  });
 
   function renderLobbyChat() {
     if (!lobbyChatMessages) return;

@@ -731,7 +731,8 @@ function plazaSeparate(token, x, z, prev) {
 }
 let plazaDirty = false;
 function plazaSnapshot() {
-  return { players: [...plazaPresence.values()].map(({ id, name, look, title, champion, x, z, yaw, moving }) => ({ id, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
+  // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
+  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, x, z, yaw, moving }) => ({ id, chatId, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -3112,7 +3113,7 @@ async function requestHandler(req, res) {
     const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
     plazaLastPos.set(session.token, spot);
     plazaPresence.set(session.token, {
-      id: session.plazaId, account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
     });

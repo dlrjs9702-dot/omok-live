@@ -39,7 +39,15 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div></section>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div>
+        <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
+        <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
+        <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
+          <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
+          <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
+        </section>
+        <form id="islandChatForm" class="islandChatForm hidden"><input id="islandChatInput" type="text" maxlength="300" autocomplete="off" placeholder="Enter 전송 · Esc 취소" aria-label="채팅 입력" /></form>
+      </section>
 
       <div id="lobbyHighlights" class="lobbyHighlights">
       <section id="announcementsCard" class="card noticeCard" aria-label="공지사항">

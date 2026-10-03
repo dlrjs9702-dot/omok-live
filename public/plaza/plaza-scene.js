@@ -102,8 +102,46 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     sprite.scale.set(2.2, (2.2 * canvas.height) / 512, 1); sprite.renderOrder = 2;
     return sprite;
   }
+  // v1.10.2 말풍선: a chat message over its sender for a few seconds (both lines wrap at the bubble's width).
+  const BUBBLE_MS = 5500;
+  function makeBubble(text) {
+    const font = '700 40px Pretendard, "Malgun Gothic", system-ui, sans-serif';
+    const c0 = document.createElement('canvas').getContext('2d'); c0.font = font;
+    const lines = []; let line = ''; let cut = false;
+    for (const ch of String(text)) {
+      if (c0.measureText(line + ch).width > 420 && line) { lines.push(line); line = ''; if (lines.length === 2) { cut = true; break; } }
+      line += ch;
+    }
+    if (!cut && line) lines.push(line);
+    if (cut) lines[1] = `${lines[1].slice(0, -1)}…`; // two lines at most
+    const width = Math.min(480, Math.max(...lines.map((l) => c0.measureText(l).width)) + 56);
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 60 + lines.length * 50;
+    const c = canvas.getContext('2d'); const left = (512 - width) / 2; const bodyH = canvas.height - 26;
+    c.fillStyle = 'rgba(255,255,255,.96)'; c.strokeStyle = 'rgba(60,48,36,.35)'; c.lineWidth = 3;
+    c.beginPath(); c.roundRect(left, 4, width, bodyH, 26); c.moveTo(244, bodyH + 2); c.lineTo(256, canvas.height - 4); c.lineTo(270, bodyH + 2); c.fill(); c.stroke();
+    c.fillStyle = '#2b2220'; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
+    lines.forEach((l, i) => c.fillText(l, 256, 4 + 30 + i * 50));
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, depthTest: false, transparent: true }));
+    sprite.scale.set(2.6, (2.6 * canvas.height) / 512, 1); sprite.renderOrder = 3;
+    sprite.userData = { text: String(text), until: performance.now() + BUBBLE_MS };
+    return sprite;
+  }
+  function say(c, text) {
+    if (!c) return;
+    disposeTag(c.bubble);
+    c.bubble = makeBubble(text);
+    c.bubble.position.y = (c.tag ? c.tag.position.y + c.tag.scale.y / 2 : 2.4) + 0.25 + c.bubble.scale.y / 2;
+    c.root.add(c.bubble);
+  }
+  function stepBubble(c, now) {
+    const b = c?.bubble; if (!b) return;
+    const left = b.userData.until - now;
+    if (left <= 0) { disposeTag(b); c.bubble = null; return; }
+    b.material.opacity = Math.min(1, left / 600);
+  }
   const disposeTag = (tag) => { if (!tag) return; tag.material.map.dispose(); tag.material.dispose(); tag.parent?.remove(tag); };
-  const disposeCharacter = (c) => { disposeTag(c.tag); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
+  const disposeCharacter = (c) => { disposeTag(c.tag); disposeTag(c.bubble); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
 
 
   // v1.10.0 게임 아일랜드: the island itself (terrain, sea, streams, bridges, walks, woods, harbour) comes from island.js;
@@ -198,12 +236,14 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   const facilityRoots = [];
   const npcs = []; // ponytail: NPCs only idle-breathe; real NPC behaviour is a later plaza version
   const doors = {};
-  for (const facility of facilities) {
+  // v1.10.2: the gazebo stays as a place to sit in the nature area; chat is an overlay now, not a facility.
+  for (const facility of [...facilities, { id: 'chat', name: '', decor: true }]) {
     const spot = SPOTS[facility.id];
-    if (!spot) continue;
+    if (!spot || (facility.decor && facilities.some((f) => f.id === facility.id))) continue;
     const { x, z } = spot;
     const root = new THREE.Group(); root.position.set(x, heightAt(x, z), z); root.rotation.y = Math.atan2(spot.face[0] - x, spot.face[1] - z);
-    root.userData.facility = facility.id; scene.add(root); facilityRoots.push(root);
+    scene.add(root);
+    if (!facility.decor) { root.userData.facility = facility.id; facilityRoots.push(root); }
     const toCentre = new THREE.Vector2(Math.sin(root.rotation.y), Math.cos(root.rotation.y)); // the way the front faces
     let depth = 0;
     // a point in this facility's own frame (lx right, lz toward the front) in world coordinates
@@ -321,7 +361,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.15, 24), mat(0xe8d8bf), 0, 0.08, 0, root);
       mesh(new THREE.ConeGeometry(1.95, 1.1, 24), mat(0x7cc4b5), 0, 2.75, 0, root);
       mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.4, 20), mat(0xc58b5a), 0, 0.35, 0, root);
-      sign(facility.name, root, 3.9);
+      if (!facility.decor) sign(facility.name, root, 3.9);
       solids.push({ x, z, r: 1.7 });
     } else if (spot.kind === 'npc') { // the attendance keeper: a friendly villager next to a stamp stand
       depth = 0.9;
@@ -336,7 +376,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     const reach = depth / 2 + 1.3;
     const out = Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps
-    doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
+    if (!facility.decor) doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
   }
 
   // v1.10.1: the shop street's reserved lot (외형 변경 시설 comes later): a low fence around levelled ground, no entrance yet.
@@ -632,6 +672,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     animate(me, dt, moving);
     stepOthers(dt);
+    const now = performance.now(); stepBubble(me, now); for (const o of others.values()) stepBubble(o.c, now);
     for (const npc of npcs) { // the keeper turns to a player who comes close and waves
       const close = near === npc.home.id;
       npc.lookAt = close ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null;
@@ -710,9 +751,11 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap };
+  // v1.10.2: a chat message over someone's head ('me' or another player's id)
+  const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak };
 }

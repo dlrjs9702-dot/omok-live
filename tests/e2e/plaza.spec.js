@@ -332,6 +332,50 @@ test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 
   await a.context.close();
 });
 
+// v1.10.2 게임 아일랜드 채팅: Enter opens the input right on the island (walking keys type, they do not walk), Enter sends
+// through the lobby chat, the message pops up over the sender on both screens, Esc cancels, and the 「채팅」 tab shows
+// the conversation in a see-through panel. No facility needed.
+test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 사람 화면 말풍선, 입력 중 이동 없음, Esc 취소, 채팅 탭·투명도', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '말하는A');
+  const b = await intoPlaza(browser, request, '듣는B');
+  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
+  const aId = await idOf(a);
+  await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).some((o) => o.id === id), aId), { timeout: 10000 }).toBe(true);
+  const page = a.page;
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#islandChatInput')).toBeFocused();
+  const before = await state(page);
+  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft'); // typing, not walking
+  await page.keyboard.type('안녕하세요 섬 친구들');
+  const during = await state(page);
+  expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#islandChatForm')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().bubble), { timeout: 8000 }).toBe('안녕하세요 섬 친구들');
+  await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.bubble, aId), { timeout: 8000 }).toBe('안녕하세요 섬 친구들');
+  // walking works again right after sending
+  await page.keyboard.down('ArrowUp');
+  await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - during.x, now.z - during.z); }, { timeout: 8000 }).toBeGreaterThan(0.2);
+  await page.keyboard.up('ArrowUp');
+  // Esc cancels without sending
+  await page.keyboard.press('Enter'); await page.keyboard.type('보내지 않을 말'); await page.keyboard.press('Escape');
+  await expect(page.locator('#islandChatForm')).toBeHidden();
+  // the other screen's tab marks the new message; the panel shows it and fades with the slider
+  await expect(b.page.locator('#islandChatTab')).toHaveClass(/unread/);
+  await b.page.locator('#islandChatTab').click();
+  await expect(b.page.locator('#islandChatPanel')).toBeVisible();
+  await expect(b.page.locator('#islandChatMessages')).toContainText('안녕하세요 섬 친구들');
+  await expect(b.page.locator('#islandChatMessages')).not.toContainText('보내지 않을 말');
+  await b.page.locator('#islandChatOpacity').fill('40');
+  await expect.poll(() => b.page.locator('#islandChatPanel').evaluate((el) => getComputedStyle(el).backgroundColor)).toContain('0.4');
+  // the bubble goes away after a few seconds
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().bubble), { timeout: 12000 }).toBe(null);
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
+});
+
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
   test.setTimeout(60000);
