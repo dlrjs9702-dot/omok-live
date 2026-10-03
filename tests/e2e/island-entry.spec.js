@@ -9,9 +9,15 @@ async function enter(browser, html) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
-  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
-  const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
-  return { context, page, token };
+  // A key whose tab was just closed stays 「이미 사용 중」 until the server lets the old session go (a moment; longer on a
+  // slow CI runner): open the entry file again until it is free, like a person would.
+  for (let tries = 0; ; tries += 1) {
+    await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
+    const saved = await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'));
+    if (saved) return { context, page, token: JSON.parse(saved).token };
+    if (tries >= 30) throw new Error('입장 파일이 계속 사용 중');
+    await page.waitForTimeout(500);
+  }
 }
 const leaveForGood = async (who) => { await who.page.close({ runBeforeUnload: true }); await who.context.close(); await new Promise((r) => setTimeout(r, 1800)); }; // the tab is closed
 
