@@ -925,6 +925,18 @@
     <p id="genderStatus" class="skinShopStatus" role="status"></p>
     <button id="genderConfirmBtn" type="button" class="secondary" disabled>확정</button>
   </dialog>
+  <dialog id="donationDialog" class="recordsDialog donationDialog" aria-labelledby="donationTitle">
+    <div class="recordsDialogHead"><h2 id="donationTitle">기부</h2><span id="donationBalance" class="skinShopBalance"></span><button id="donationCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <p id="donationMine" class="donationMine"></p>
+    <div id="donationRanking" class="donationRanking" role="list" aria-label="이번 주 기부 순위"></div>
+    <p id="donationLast" class="smallMuted"></p>
+    <form id="donationForm" class="donationForm">
+      <input id="donationAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="기부할 포인트" aria-label="기부할 포인트" />
+      <div class="donationQuick"><button type="button" class="ghost tiny" data-add="10000">+1만</button><button type="button" class="ghost tiny" data-add="100000">+10만</button><button type="button" class="ghost tiny" data-add="1000000">+100만</button></div>
+      <button id="donationSubmit" type="submit" class="secondary">기부</button>
+    </form>
+    <p id="donationStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+  </dialog>
   <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
     <div class="recordsDialogHead"><h2 id="skinShopTitle">상점</h2><span id="skinShopBalance" class="skinShopBalance"></span><button id="skinShopCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>

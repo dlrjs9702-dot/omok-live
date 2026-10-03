@@ -191,6 +191,36 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('v1.10.5 기부: 즉시 소각·요청당 한 번·잔액 부족 거절·주간 순위(같은 금액은 먼저 도달한 사람)·한 번만 결산', async () => {
+    const E = 'guest:55555555-5555-4555-8555-555555555555'; const F = 'guest:66666666-6666-4666-8666-666666666666'; // fresh accounts (100,000P each)
+    const week = '2026-09-28'; const inWeek = (h) => Date.parse(`2026-09-29T0${h}:00:00+09:00`);
+    const startA = (await store.getAccount(E)).balance; const startB = (await store.getAccount(F)).balance;
+    const first = await store.donate({ userId: E, requestId: 'don-a-0001', amount: 30_000, name: '에이' }, inWeek(1));
+    assert.equal(first.applied, true); assert.equal(first.total, 30_000); assert.equal(first.balance, startA - 30_000);
+    assert.equal((await store.donate({ userId: E, requestId: 'don-a-0001', amount: 30_000, name: '에이' }, inWeek(1))).applied, false, '같은 요청은 한 번만');
+    assert.equal((await store.getAccount(E)).balance, startA - 30_000, '소각: 다른 계정으로 가지 않는다');
+    const tooMuch = await store.donate({ userId: F, requestId: 'don-b-big1', amount: startB + 1, name: '비' }, inWeek(2));
+    assert.deepEqual([tooMuch.applied, tooMuch.reason], [false, 'insufficient']);
+    assert.equal((await store.getAccount(F)).balance, startB);
+    await new Promise((r) => setTimeout(r, 15));
+    assert.equal((await store.donate({ userId: F, requestId: 'don-b-0001', amount: 10_000, name: '비' }, inWeek(2))).applied, true);
+    await new Promise((r) => setTimeout(r, 15));
+    assert.equal((await store.donate({ userId: F, requestId: 'don-b-0002', amount: 20_000, name: '비' }, inWeek(3))).total, 30_000); // same total, reached later
+    await assert.rejects(store.donate({ userId: E, requestId: 'don-a-0002', amount: 0 }, inWeek(1)), RangeError);
+    const rows = await store.donationWeekRows(week);
+    assert.equal(rows.length, 2);
+    assert.deepEqual(await store.donationUnsettledWeeks('2026-10-05'), [week]);
+    const statues = [{ rank: 1, name: '에이', look: {} }, { rank: 2, name: '비', look: {} }];
+    const settled = await store.settleDonationWeek(week, statues);
+    assert.equal(settled.applied, true);
+    assert.equal(settled.hoguking, E, '같은 30,000P면 먼저 도달한 사람이 1위');
+    assert.deepEqual(settled.ranking.map((r) => [r.name, r.total, r.rank]), [['에이', 30_000, 1], ['비', 30_000, 2]]);
+    assert.equal((await store.settleDonationWeek(week, [])).applied, false, '한 번만');
+    assert.deepEqual((await store.donationWeekResult(week)).statues, statues);
+    assert.deepEqual(await store.donationUnsettledWeeks('2026-10-05'), []);
+    assert.equal((await store.history(E)).items.find((item) => item.reason === 'donation').memo, `${week} 주`);
+  });
+
   return store;
 }
 

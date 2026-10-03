@@ -48,6 +48,7 @@ export const SPOTS = {
   board: { x: -10, z: -6, face: [0, 0], kind: 'board' },
   attendance: { x: 10, z: -6, face: [0, 0], kind: 'npc' },
   map: { x: -11, z: 6, face: [0, 2], kind: 'mapboard' },
+  donate: { x: 9.8, z: 9.8, face: [0, 0], kind: 'donation' }, // v1.10.5 기부함, between the two statues
   chat: { x: -18, z: 27, face: [-4, 22], kind: 'gazebo' },
   climb: { x: -59, z: -28, face: [-44, -19], kind: 'tower' }, // a tall tower on the hill, seen from far away
   admin: { x: 24, z: 15, face: [14, 6], kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 },
