@@ -336,7 +336,7 @@ test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 
 // through the lobby chat, the message pops up over the sender on both screens, Esc cancels, and the 「채팅」 tab shows
 // the conversation in a see-through panel. No facility needed.
 test('게임 아일랜드 채팅: Enter 입력·전송, 내 말풍선과 다른 사람 화면 말풍선, 입력 중 이동 없음, Esc 취소, 채팅 탭·투명도', async ({ browser, request }) => {
-  test.setTimeout(90000);
+  test.setTimeout(180000); // two 3D island pages (see the collision test)
   const a = await intoPlaza(browser, request, '말하는A');
   const b = await intoPlaza(browser, request, '듣는B');
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
