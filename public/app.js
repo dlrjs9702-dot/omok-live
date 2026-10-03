@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.10').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.0').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1425,6 +1425,7 @@
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'chat', name: '채팅', open: () => openPlazaWindow('대기방 채팅', [document.querySelector('.lobbyChatCard')]) },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
+    { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
@@ -1462,7 +1463,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.10').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.0').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),

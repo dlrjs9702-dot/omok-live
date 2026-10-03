@@ -288,6 +288,46 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   for (const who of [a, b]) await who.context.close();
 });
 
+// v1.10.0 게임 아일랜드 지형: start in the raised central plaza; the sea, streams and pond stop you while bridges and
+// the pier carry you; every facility's entrance stands on walkable ground; the map board opens the island map.
+test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 다리·선착장은 건넌다, 모든 시설 입구에 닿고 안내 지도가 열린다', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '섬탐험');
+  const { page } = a;
+  const d = () => page.evaluate(() => window.PlazaDebug());
+  const start = await d();
+  expect(Math.hypot(start.x, start.z)).toBeLessThan(12); // the plaza (radius 16) around the fountain
+  const plazaH = await page.evaluate(() => window.PlazaDebug().heightAt(0, 8));
+  expect(plazaH).toBeGreaterThan(await page.evaluate(() => window.PlazaDebug().heightAt(0, 30)) + 0.4); // a little higher than around it
+  // about 40 s across: land reaches far out on both sides, the sea beyond
+  const reach = await page.evaluate(() => { const w = window.PlazaDebug().walkable; let east = 0; let west = 0; for (let x = 0; x < 140; x += 1) { if (w(x, 0)) east = x; if (w(-x, 0)) west = x; } return east + west; });
+  expect(reach / 5.2).toBeGreaterThan(30); expect(reach / 5.2).toBeLessThan(48);
+  // streams block, their bridges do not
+  const bridges = start.bridges; expect(bridges.length).toBeGreaterThanOrEqual(4);
+  for (const b of bridges) {
+    expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x, b.z])).toBe(true);
+    expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x - b.uz * (b.w / 2 + 0.5), b.z + b.ux * (b.w / 2 + 0.5)])).toBe(false); // just past its rail: water
+  }
+  // every facility's entrance is reachable ground
+  for (const [id, door] of Object.entries(start.doors)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
+  // walking south down the pier stops at its end, over the sea
+  const pier = start.pier;
+  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [pier.x, pier.z + pier.half - 3]);
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(1500); await page.keyboard.up('ArrowDown');
+  const end = await d();
+  expect(end.z).toBeLessThan(pier.z + pier.half + 0.5); expect(end.z).toBeGreaterThan(pier.z + pier.half - 1.5);
+  // the map board opens the island map in a window
+  await page.evaluate(() => window.PlazaDebug().place('map'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 안내 지도');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog #islandMapCanvas')).toBeVisible();
+  const painted = await page.evaluate(() => { const c = document.getElementById('islandMapCanvas'); const px = c.getContext('2d').getImageData(c.width / 2, c.height / 2, 1, 1).data; return px[3] > 0; });
+  expect(painted).toBe(true);
+  await page.locator('#plazaCloseBtn').click();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
   test.setTimeout(60000);

@@ -2,10 +2,10 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.0';
 
 const TAU = Math.PI * 2;
-const SPEED = 5.2; // units per second: centre to any facility in about two seconds
-const BOUND = 16.5; // walkable radius
+const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
 const REACH = 2.4; // how close to a facility's door counts as "near"
 // v1.9.6 player collision (plaza only): every character is the same circle at its feet on the ground (hair, capes and
 // halos do not make it bigger). Close to a facility's door the circle shrinks so a crowd can never block an entrance.
@@ -13,19 +13,6 @@ const PLAYER_R = 0.45;
 const DOOR_PLAYER_R = 0.28;
 const DOOR_ZONE = 2.6;
 const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
-
-// Facility layout around the fountain (angle 0 = straight ahead of the spawn point, away from the camera).
-const LAYOUT = {
-  games: { angle: 0, radius: 11.5, kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b },
-  shop: { angle: -0.95, radius: 11, kind: 'shop', wall: 0xd9f0ff, roof: 0x6aa9e8 },
-  records: { angle: 0.95, radius: 11, kind: 'house', wall: 0xf3e2ff, roof: 0x9b7fd6 },
-  board: { angle: -1.9, radius: 10, kind: 'board' },
-  missions: { angle: 1.9, radius: 10, kind: 'board', tint: 0x8fd18a },
-  attendance: { angle: -2.7, radius: 8.5, kind: 'npc' },
-  chat: { angle: 2.7, radius: 9, kind: 'gazebo' },
-  admin: { angle: 2.3, radius: 13, kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 }, // shown to the admin only
-  climb: { angle: -2.3, radius: 13, kind: 'gate' }, // v1.9.4 상시 등반 도전: a mountain gate
-};
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   let renderer;
@@ -43,17 +30,17 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfe6ff);
-  scene.fog = new THREE.Fog(0xd7efff, 34, 70);
-  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 140);
+  scene.fog = new THREE.Fog(0xd7efff, 70, 175); // far enough that the climbing tower reads from the plaza
+  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 180); // nothing is drawn past the fog
 
   scene.add(new THREE.HemisphereLight(0xfff4dc, 0x8cc970, 1.05));
   const sun = new THREE.DirectionalLight(0xfff0d2, 1.75);
   sun.position.set(-9, 18, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 60 });
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80 }); // follows the player
   sun.shadow.bias = -0.0006;
-  scene.add(sun);
+  scene.add(sun); scene.add(sun.target);
 
   const mats = new Map(); // one material per colour
   const mat = (color, extra = {}) => {
@@ -119,87 +106,63 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   const disposeCharacter = (c) => { disposeTag(c.tag); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
 
 
-  // Ground: grass island, a few soft mounds, the paved centre and a curved walking loop with spokes.
-  const ground = mesh(new THREE.CircleGeometry(60, 64), mat(0x9fd67f));
-  ground.rotation.x = -Math.PI / 2; ground.castShadow = false;
-  for (const [x, z, s, c] of [[-14, -12, 4.5, 0x93cd74], [15, -10, 5, 0x97d17a], [-16, 9, 4, 0x93cd74], [14, 12, 4.2, 0x97d17a], [0, -20, 6, 0x91cb72]]) {
-    const mound = mesh(new THREE.SphereGeometry(s, 24, 12), mat(c), x, -s * 0.78, z);
-    mound.scale.y = 0.55; mound.castShadow = false;
-  }
-  const flat = (geometry, color, y, x = 0, z = 0, rot = 0) => {
-    const m = mesh(geometry, mat(color), x, y, z);
-    m.rotation.x = -Math.PI / 2; m.rotation.z = rot; m.castShadow = false;
-    return m;
-  };
-  flat(new THREE.CircleGeometry(5.6, 48), 0xf3e6c8, 0.02);
-  flat(new THREE.RingGeometry(5.6, 5.9, 48), 0xe2cfa6, 0.025);
-  flat(new THREE.RingGeometry(8.1, 9.5, 64), 0xefdcb4, 0.02);
-  for (const id of Object.keys(LAYOUT)) { // spokes from the centre to each facility, slightly bent
-    const { angle, radius } = LAYOUT[id];
-    const len = radius - 6.2;
-    const mid = 5.6 + len / 2;
-    flat(new THREE.PlaneGeometry(1.5, len), 0xefdcb4, 0.021, Math.sin(angle) * -mid, Math.cos(angle) * -mid, angle);
-  }
-
-  // Centre landmark: a round fountain with bobbing water drops.
-  const fountain = new THREE.Group(); scene.add(fountain);
-  mesh(new THREE.CylinderGeometry(2.5, 2.7, 0.55, 40), mat(0xeae3d6), 0, 0.27, 0, fountain);
-  mesh(new THREE.CylinderGeometry(2.25, 2.25, 0.1, 40), mat(0x86d0f0, { roughness: 0.2, metalness: 0.1 }), 0, 0.52, 0, fountain);
+  // v1.10.0 게임 아일랜드: the island itself (terrain, sea, streams, bridges, walks, woods, harbour) comes from island.js;
+  // here is the raised central plaza: the fountain whose water runs off into the streams, benches, lamps, flower beds
+  // and the two empty plinths kept for the donation statues.
+  const island = buildIsland(scene, { mat, mesh, solids });
+  const PH = heightAt(0, 0);
+  const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain);
+  mesh(new THREE.CylinderGeometry(2.9, 3.1, 0.6, 44), mat(0xeae3d6), 0, 0.3, 0, fountain);
+  mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.1, 44), mat(0x86d0f0, { roughness: 0.2, metalness: 0.1 }), 0, 0.56, 0, fountain);
   mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 20), mat(0xeae3d6), 0, 1.2, 0, fountain);
   mesh(new THREE.CylinderGeometry(1.1, 0.6, 0.35, 28), mat(0xf1ebe0), 0, 1.95, 0, fountain);
   mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.06, 28), mat(0x86d0f0, { roughness: 0.2 }), 0, 2.1, 0, fountain);
+  for (let k = 0; k < 4; k += 1) { // a spout on the rim over each channel
+    const a = Math.PI / 4 + (k * Math.PI) / 2;
+    const spout = mesh(new THREE.BoxGeometry(0.5, 0.18, 0.7), mat(0xd9d0c0), Math.cos(a) * 3, 0.5, Math.sin(a) * 3, fountain); spout.rotation.y = -a;
+  }
   const drops = [];
   for (let i = 0; i < 8; i += 1) {
     const d = mesh(new THREE.SphereGeometry(0.12, 10, 8), mat(0xc8ecff, { roughness: 0.1, transparent: true, opacity: 0.85 }), 0, 2.3, 0, fountain);
     d.castShadow = false; d.userData.phase = i / 8; drops.push(d);
   }
-  solids.push({ x: 0, z: 0, r: 3.0 });
-
-  // Benches and lamps around the fountain, trees and flower beds on the outer ring.
-  for (let i = 0; i < 4; i += 1) {
-    const a = Math.PI / 4 + (i * TAU) / 4;
+  solids.push({ x: 0, z: 0, r: 3.4 });
+  const plazaBusy = (x, z, gap) => [...Object.values(SPOTS), ...STATUE_SPOTS].some((s) => Math.hypot(s.x - x, s.z - z) < gap);
+  for (const a of [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38]) { // benches facing the fountain, clear of the channels
     const bench = new THREE.Group(); scene.add(bench);
-    bench.position.set(Math.sin(a) * 4.6, 0, Math.cos(a) * 4.6); bench.rotation.y = a + Math.PI;
+    bench.position.set(Math.cos(a) * 5, PH, Math.sin(a) * 5); bench.rotation.y = Math.atan2(-bench.position.x, -bench.position.z);
     mesh(new THREE.BoxGeometry(1.7, 0.12, 0.55), mat(0xc58b5a), 0, 0.5, 0, bench);
     mesh(new THREE.BoxGeometry(1.7, 0.45, 0.1), mat(0xc58b5a), 0, 0.8, -0.25, bench);
     for (const x of [-0.7, 0.7]) mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), mat(0x6b5a4a), x, 0.25, 0, bench);
     solids.push({ x: bench.position.x, z: bench.position.z, r: 0.9 });
   }
   const lamps = [];
-  for (const a of [-2.3, -1.425, -0.475, 0.475, 1.425, 2.3]) { // between the paths to the facilities
-    const x = -Math.sin(a) * 7.2; const z = -Math.cos(a) * 7.2;
-    mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 10), mat(0x4d6b5c), x, 1.3, z);
-    lamps.push(mesh(new THREE.SphereGeometry(0.26, 16, 12), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), x, 2.75, z));
+  for (let k = 0; k < 8; k += 1) {
+    const a = Math.PI / 8 + (k * Math.PI) / 4; const x = Math.cos(a) * 12; const z = Math.sin(a) * 12;
+    if (plazaBusy(x, z, 3)) continue;
+    mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 10), mat(0x4d6b5c), x, PH + 1.3, z);
+    lamps.push(mesh(new THREE.SphereGeometry(0.26, 16, 12), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), x, PH + 2.75, z));
     solids.push({ x, z, r: 0.35 });
   }
-  const tree = (x, z, s = 1) => {
-    mesh(new THREE.CylinderGeometry(0.22 * s, 0.3 * s, 1.4 * s, 10), mat(0xa9774f), x, 0.7 * s, z);
-    mesh(new THREE.SphereGeometry(1.25 * s, 20, 14), mat(0x76c267), x, 2.1 * s, z);
-    mesh(new THREE.SphereGeometry(0.85 * s, 18, 12), mat(0x86cf74), x + 0.55 * s, 2.7 * s, z + 0.3 * s);
-    solids.push({ x, z, r: 0.75 * s });
-  };
-  const facilityAngles = Object.values(LAYOUT).map((f) => f.angle);
-  for (let i = 0; i < 22; i += 1) {
-    const a = (i * TAU) / 22 + 0.07;
-    const gap = Math.min(...facilityAngles.map((f) => Math.abs(Math.atan2(Math.sin(a - f), Math.cos(a - f)))));
-    if (gap < 0.32) continue; // keep the view of each facility open
-    const r = 15.5 + (i % 3) * 1.3;
-    tree(Math.sin(a) * -r, Math.cos(a) * -r, 0.85 + (i % 4) * 0.12);
-  }
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i * TAU) / 8 + TAU / 16;
-    const bx = Math.sin(a) * 10.4; const bz = Math.cos(a) * 10.4;
-    const gap = Math.min(...facilityAngles.map((f) => Math.abs(Math.atan2(Math.sin(a - f - Math.PI), Math.cos(a - f - Math.PI)))));
-    if (gap < 0.42) continue;
-    mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.3, 20), mat(0xb98b62), bx, 0.15, bz);
-    mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), mat(0x6b4f3a), bx, 0.31, bz);
+  for (let i = 0; i < 12; i += 1) { // beds along the plaza rim, between the walks and channels
+    const a = Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62);
+    const bx = Math.cos(a) * (PLAZA_R - 2.2); const bz = Math.sin(a) * (PLAZA_R - 2.2);
+    if (plazaBusy(bx, bz, 3.4)) continue;
+    mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.3, 20), mat(0xb98b62), bx, PH + 0.15, bz);
+    mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), mat(0x6b4f3a), bx, PH + 0.31, bz);
     for (let k = 0; k < 9; k += 1) {
       const fa = k * 2.4; const fr = 0.2 + (k % 3) * 0.22;
-      const f = mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(flowerColors[(i + k) % flowerColors.length]), bx + Math.cos(fa) * fr, 0.45, bz + Math.sin(fa) * fr);
+      const f = mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(flowerColors[(i + k) % flowerColors.length]), bx + Math.cos(fa) * fr, PH + 0.45, bz + Math.sin(fa) * fr);
       f.castShadow = false;
     }
     solids.push({ x: bx, z: bz, r: 1.1 });
+  }
+  for (const st of STATUE_SPOTS) { // 기부 동상 자리: an empty round plinth with a laurel ring (the statues come later)
+    mesh(new THREE.CylinderGeometry(1.2, 1.35, 0.5, 24), mat(0xe9e2d4), st.x, PH + 0.25, st.z);
+    mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.9, 20), mat(0xf4efe6), st.x, PH + 0.95, st.z);
+    const ring = mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 26), mat(0x8fbf6a), st.x, PH + 1.41, st.z); ring.rotation.x = Math.PI / 2;
+    solids.push({ x: st.x, z: st.z, r: 1.3 });
   }
 
   // Name signs: a canvas sprite over each facility.
@@ -218,27 +181,39 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     return sprite;
   };
 
-  // Facilities: each faces the fountain; the door point is where "near" is measured.
+  // The map board's picture (redrawn as I walk; the window version draws into the caller's canvas).
+  const mapCanvas = document.createElement('canvas'); mapCanvas.width = 640; mapCanvas.height = 470;
+  const mapTexture = new THREE.CanvasTexture(mapCanvas); mapTexture.colorSpace = THREE.SRGBColorSpace; textures.push(mapTexture);
+  let mapDrawnAt = null;
+  function refreshMapBoard() {
+    const p = me.root.position;
+    if (mapDrawnAt && Math.hypot(mapDrawnAt.x - p.x, mapDrawnAt.z - p.z) < 1.5) return;
+    mapDrawnAt = { x: p.x, z: p.z };
+    island.drawMap(mapCanvas.getContext('2d'), mapCanvas.width, mapCanvas.height, mapDrawnAt); mapTexture.needsUpdate = true;
+  }
+
+  // Facilities: each faces its walk or the fountain; the door point is where "near" is measured.
   const facilityRoots = [];
   const npcs = []; // ponytail: NPCs only idle-breathe; real NPC behaviour is a later plaza version
   const doors = {};
   for (const facility of facilities) {
-    const spot = LAYOUT[facility.id];
+    const spot = SPOTS[facility.id];
     if (!spot) continue;
-    const x = -Math.sin(spot.angle) * spot.radius; const z = -Math.cos(spot.angle) * spot.radius;
-    const root = new THREE.Group(); root.position.set(x, 0, z); root.rotation.y = Math.atan2(-x, -z);
+    const { x, z } = spot;
+    const root = new THREE.Group(); root.position.set(x, heightAt(x, z), z); root.rotation.y = Math.atan2(spot.face[0] - x, spot.face[1] - z);
     root.userData.facility = facility.id; scene.add(root); facilityRoots.push(root);
-    const toCentre = new THREE.Vector2(-x, -z).normalize();
+    const toCentre = new THREE.Vector2(Math.sin(root.rotation.y), Math.cos(root.rotation.y)); // the way the front faces
     let depth = 0;
     if (spot.kind === 'hall' || spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
-      const w = spot.kind === 'hall' ? 4.4 : 3.2; const h = spot.kind === 'hall' ? 2.9 : 2.4; depth = spot.kind === 'hall' ? 3.4 : 2.7;
+      const w = spot.kind === 'hall' ? 8.4 : 3.2; const h = spot.kind === 'hall' ? 4.6 : 2.4; depth = spot.kind === 'hall' ? 6.4 : 2.7; // the hall is the island's big building
       mesh(new THREE.BoxGeometry(w, h, depth), mat(spot.wall), 0, h / 2, 0, root);
       const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.82, 1.7, 4), mat(spot.roof), 0, h + 0.85, 0, root);
       roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
-      mesh(new THREE.BoxGeometry(0.95, 1.45, 0.08), mat(0x8a5a3b), 0, 0.72, depth / 2 + 0.02, root);
-      mesh(new THREE.SphereGeometry(0.06, 8, 6), mat(0xf6d36b), 0.3, 0.75, depth / 2 + 0.08, root);
-      for (const wx of [-w * 0.3, w * 0.3]) {
-        mesh(new THREE.CircleGeometry(0.32, 20), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, h * 0.62, depth / 2 + 0.02, root);
+      const k = spot.kind === 'hall' ? 1.8 : 1; // the hall's door and windows are scaled with it
+      mesh(new THREE.BoxGeometry(0.95 * k, 1.45 * k, 0.08), mat(0x8a5a3b), 0, 0.72 * k, depth / 2 + 0.02, root);
+      mesh(new THREE.SphereGeometry(0.06 * k, 8, 6), mat(0xf6d36b), 0.3 * k, 0.75 * k, depth / 2 + 0.08, root);
+      for (const wx of spot.kind === 'hall' ? [-w * 0.36, -w * 0.18, w * 0.18, w * 0.36] : [-w * 0.3, w * 0.3]) {
+        mesh(new THREE.CircleGeometry(0.32 * (k > 1 ? 1.4 : 1), 20), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, h * 0.62, depth / 2 + 0.02, root);
       }
       if (spot.kind === 'shop') { // a striped awning
         for (let k = 0; k < 6; k += 1) {
@@ -251,10 +226,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 1.65, 0, root);
       }
       if (spot.kind === 'hall') { // the game hall: a big black-and-white stone pair on the roof
-        const b = mesh(new THREE.SphereGeometry(0.45, 24, 16), mat(0x26272e, { roughness: 0.35 }), -0.45, h + 1.85, 0, root); b.scale.y = 0.55;
-        const wst = mesh(new THREE.SphereGeometry(0.45, 24, 16), mat(0xfafafa, { roughness: 0.35 }), 0.45, h + 1.85, 0, root); wst.scale.y = 0.55;
+        const b = mesh(new THREE.SphereGeometry(0.9, 24, 16), mat(0x26272e, { roughness: 0.35 }), -0.9, h + 1.95, 0, root); b.scale.y = 0.55;
+        const wst = mesh(new THREE.SphereGeometry(0.9, 24, 16), mat(0xfafafa, { roughness: 0.35 }), 0.9, h + 1.95, 0, root); wst.scale.y = 0.55;
       }
-      sign(facility.name, root, h + ({ hall: 2.45, house: 2.8 }[spot.kind] || 2.25)); // above the roof ornaments
+      sign(facility.name, root, h + ({ hall: 3.1, house: 2.8 }[spot.kind] || 2.25)); // above the roof ornaments
       solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -268,6 +243,14 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       }
       sign(facility.name, root, 3.4);
       solids.push({ x, z, r: 1.5 });
+    } else if (spot.kind === 'mapboard') { // v1.10.0 안내 지도: the island drawn on a board, with where I am
+      depth = 0.3;
+      for (const px of [-1.5, 1.5]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.8, 10), mat(0x8a5a3b), px, 1.4, 0, root);
+      mesh(new THREE.BoxGeometry(3.3, 2.5, 0.14), mat(0x8a5a3b), 0, 1.85, 0, root);
+      const face = mesh(new THREE.PlaneGeometry(3, 2.2), new THREE.MeshBasicMaterial({ map: mapTexture }), 0, 1.85, 0.08, root); face.castShadow = false;
+      const roofBar = mesh(new THREE.BoxGeometry(3.6, 0.16, 0.5), mat(0x6b4f3a), 0, 3.18, 0, root); roofBar.rotation.x = 0.1;
+      sign(facility.name, root, 3.8);
+      solids.push({ x, z, r: 1.7 });
     } else if (spot.kind === 'gate') { // v1.9.4: a stone gate in front of a little mountain with a flag on top
       depth = 1.2;
       const stone = mat(0xb8b0a4);
@@ -306,7 +289,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   // The player's character: a big head on a short body.
   const ME_BASE = { shirt: 0x7cb8ff, hair: 0x4a3326, skin: 0xffe0c4 };
   let me = makeCharacter(ME_BASE);
-  me.root.position.set((Math.random() - 0.5) * 3, 0, 7 + Math.random() * 0.8); // a little apart from whoever arrived just before
+  me.root.position.set(SPAWN.x + (Math.random() - 0.5) * 3, 0, SPAWN.z + Math.random() * 0.8); // the plaza, a little apart from whoever arrived just before
+  me.root.position.y = heightAt(me.root.position.x, me.root.position.z);
   scene.add(me.root);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
   function setAvatar({ look = {}, name = '', title = null, champion = false } = {}) {
@@ -335,7 +319,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
-        c.root.position.set(p.x, 0, p.z); c.root.rotation.y = p.yaw;
+        c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
         c.tag = makeTag(p.name || '', p.title || null, p.champion); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
         o = { c, key, champion: Boolean(p.champion) }; others.set(p.id, o);
       }
@@ -351,7 +335,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   let correction = null;
   function correctTo(x, z) {
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
-    if (d > 0.3) { me.root.position.x = x; me.root.position.z = z; correction = null; } // the server's word, at once (a short hop)
+    if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
   function stepCorrection(dt) {
@@ -376,6 +360,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
         p.x = m.x + ux * keep; p.z = m.z + uz * keep;
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
+      p.y = heightAt(p.x, p.z);
       o.c.targetYaw = t.yaw;
       animate(o.c, dt, t.moving || dist > 0.05);
     }
@@ -503,25 +488,44 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     return [nx, nz];
   }
 
-  const tryMove = (nx, nz) => {
-    [nx, nz] = collidePlayers(me.root.position.x, me.root.position.z, nx, nz);
-    const d = Math.hypot(nx, nz);
-    if (d > BOUND) { nx *= BOUND / d; nz *= BOUND / d; }
-    for (const s of solids) {
+  // v1.10.0: hundreds of trees and lamps on the island, so the solids are looked up in a coarse grid.
+  const GRID = 8; const grid = new Map();
+  for (const s of solids) {
+    for (let gx = Math.floor((s.x - s.r) / GRID); gx <= Math.floor((s.x + s.r) / GRID); gx += 1) {
+      for (let gz = Math.floor((s.z - s.r) / GRID); gz <= Math.floor((s.z + s.r) / GRID); gz += 1) {
+        const key = `${gx},${gz}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(s);
+      }
+    }
+  }
+  const solidsNear = (x, z) => grid.get(`${Math.floor(x / GRID)},${Math.floor(z / GRID)}`) || [];
+  const pushOut = (nx, nz) => {
+    for (const s of solidsNear(nx, nz)) {
       const dx = nx - s.x; const dz = nz - s.z; const dist = Math.hypot(dx, dz); const min = s.r + 0.45;
       if (dist < min && dist > 1e-6) { nx = s.x + (dx / dist) * min; nz = s.z + (dz / dist) * min; }
     }
-    me.root.position.x = nx; me.root.position.z = nz;
+    return [nx, nz];
+  };
+  const tryMove = (nx, nz) => {
+    const p = me.root.position;
+    [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
+    [nx, nz] = pushOut(nx, nz);
+    if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
+      if (walkable(nx, p.z)) nz = p.z; else if (walkable(p.x, nz)) nx = p.x; else return;
+    }
+    p.x = nx; p.z = nz; p.y = heightAt(nx, nz);
   };
   const angleTo = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
+  let overview = false; // tests and support: the whole island from above
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
   function placeCamera(snap) {
     const p = me.root.position;
-    const want = new THREE.Vector3(p.x * 0.85, 0, p.z * 0.85 + 0).add(OFFSET); // trail softly, keep the square in view
-    const look = new THREE.Vector3(p.x * 0.85, 1.3, p.z * 0.85 - 2.4);
+    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : 180)) { camera.far = overview ? 600 : 180; camera.updateProjectionMatrix(); }
+    if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
+    const want = new THREE.Vector3(p.x, p.y, p.z).add(OFFSET); // v1.10.0: follow the player across the island
+    const look = new THREE.Vector3(p.x, p.y + 1.3, p.z - 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, 0.08); camLook.lerp(look, 0.1); }
     camera.position.copy(camPos); camera.lookAt(camLook);
   }
@@ -529,10 +533,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   let running = false; let raf = 0; let last = 0; let clock = 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; clock += dt;
+    const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
     step(dt);
     renderer.render(scene, camera);
-    adaptQuality(dt);
+    adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
   }
   // A slow PC steps the picture down instead of stuttering: first a lower pixel ratio, then no shadows.
   let quality = 2; let slowTime = 0; let sampled = 0;
@@ -576,6 +580,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     if (best !== near) { near = best; onNear?.(near ? { id: near, name: doors[near].name } : null); }
     me.lookAt = near ? Math.atan2(doors[near].x - me.root.position.x, doors[near].z - me.root.position.z) : null;
+    sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
+    island.step(clock); refreshMapBoard();
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = 0.55 + Math.sin(clock * 1.5 + i) * 0.05; });
     placeCamera(false);
@@ -623,7 +629,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
-    mats.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose());
+    mats.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); island.dispose();
     renderer.dispose(); renderer.domElement.remove();
   }
   // For tests and support: where things are, and a way to stand at a facility's door.
@@ -637,7 +643,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
-      teleport: (x, z) => { me.root.position.x = x; me.root.position.z = z; correction = null; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
+      teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
+      render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
   }
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo };
+  // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
+  const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap };
 }
