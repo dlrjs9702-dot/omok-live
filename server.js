@@ -419,6 +419,8 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
     p.rejoinable = session.currentRoomId === room.id && (!voluntary
       || Boolean(findSeat(room, token) && (room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))));
     p.rejoinOnlyWhilePlaying = voluntary;
+    // v1.9.10: see roomAwaits -- whether opening the entry file again brings this person straight back into the room.
+    p.droppedMidMatch = room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended');
     syncGamePause(room);
     broadcast(room);
   }
@@ -849,11 +851,20 @@ function registerParticipant(room, session) {
   p.connected = true;
   p.rejoinable = false;
   p.rejoinOnlyWhilePlaying = false;
+  p.droppedMidMatch = false;
   p.lastSeen = nowIso();
   if (room.hostIdentity === sessionIdentity(session)) room.hostSessionToken = session.token;
   if (room.game.status !== 'selecting' && !findSeat(room, session.token)) p.choice = 'spectator';
   if (isNew) appendSystemMessage(room, (session.label || '게스트') + '님이 입장했습니다.');
   return p;
+}
+
+// v1.9.10: opening the entry file again is a fresh visit to Game Island, except when the room is still waiting for this
+// person: they dropped out of a match in progress, or other players are still connected there (a rematch after the
+// last game). An abandoned room is not entered by itself; the seat or host role is still given back on joining it again.
+function roomAwaits(room, oldToken, p) {
+  return Boolean(p.droppedMidMatch) || Object.entries(room.participants)
+    .some(([token, other]) => token !== oldToken && other.connected && sessions.has(token));
 }
 
 function findSeat(room, token) {
@@ -2683,7 +2694,7 @@ async function requestHandler(req, res) {
       const previousHost = Object.entries(room.participants).find(([oldToken, p]) =>
         participantIdentity(p) === identity && oldToken !== session.token
         && !p.connected && !sessions.has(oldToken));
-      if (!previousHost && sessions.has(room.hostSessionToken)) continue;
+      if (!previousHost || !roomAwaits(room, previousHost[0], previousHost[1])) continue; // an abandoned room: start on the island
       session.currentRoomId = room.id;
       registerParticipant(room, session);
       broadcast(room);
@@ -2695,7 +2706,7 @@ async function requestHandler(req, res) {
       let latest = null;
       for (const room of rooms.values()) {
         for (const [oldToken, p] of Object.entries(room.participants)) {
-          if (participantIdentity(p) !== identity || !p.rejoinable || p.connected || sessions.has(oldToken)) continue;
+          if (participantIdentity(p) !== identity || !p.rejoinable || p.connected || sessions.has(oldToken) || !roomAwaits(room, oldToken, p)) continue;
           if (p.rejoinOnlyWhilePlaying && !(room.game.status === 'playing' || (isTwenty(room) && room.game.status === 'round-ended'))) continue;
           if (!latest || String(p.lastSeen || '') > String(latest.lastSeen || '')) latest = { room, lastSeen: p.lastSeen };
         }
