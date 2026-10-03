@@ -29,9 +29,9 @@ module.exports = defineConfig({
   ],
   use: {
     baseURL,
-    // v1.8.8: the PC lobby opens as the 3D plaza; the older specs drive the classic lobby, so they start with it chosen
-    // (tests/e2e/plaza.spec.js switches to the plaza itself).
-    storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'gc.lobbyMode', value: 'classic' }] }] },
+    // v1.9.7: 일반 사용자는 기존 로비로 전환할 수 없다. 오래된 e2e만 webdriver 전용 내부 플래그로
+    // 기존 DOM을 사용하고, plaza.spec은 그 플래그를 지운 뒤 실제 게임 아일랜드를 검증한다.
+    storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'gc.testClassic', value: '1' }] }] },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
