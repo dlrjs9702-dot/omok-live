@@ -28,8 +28,10 @@
   const keydown = onKey(true); const keyup = onKey(false); const blur = () => { keys.clear(); tapped.clear(); };
 
   // Send the inputs the server has not seen, starting exactly at its tick. One request at a time.
+  // Returns true (sent or nothing to send), 'busy' (a request is already out) or false (it failed).
   async function flush(force = false) {
-    if (sending || !pending.length || (!force && performance.now() - lastSend < 100)) return;
+    if (sending) return 'busy';
+    if (!pending.length || (!force && performance.now() - lastSend < 100)) return true;
     sending = true; lastSend = performance.now();
     const batch = pending.slice(0, 60);
     try {
@@ -40,8 +42,10 @@
       const replay = { ...server };
       for (const p of pending) S.step(replay, p.input);
       state = replay; others = data.others || [];
+      return true;
     } catch (error) {
       if (error.status === 409) { stop(); els.status.textContent = '등반이 끝났거나 다른 창에서 이어 하고 있습니다.'; }
+      return false;
     } finally { sending = false; }
   }
 
@@ -140,7 +144,13 @@
   async function finish() {
     if (!S.isSafe(state) || ending) return;
     ending = true; keys.clear();
-    while (pending.length) { await flush(true); if (sending) await new Promise((r) => setTimeout(r, 30)); } // the server needs every input first
+    // The server needs every input first. A failed send (or one that never catches up) gives the button back instead of
+    // retrying forever (Codex review of PR #117).
+    for (let tries = 0; pending.length; tries += 1) {
+      const sent = await flush(true);
+      if (sent === false || tries >= 40) { ending = false; if (!els.status.textContent) els.status.textContent = '연결이 고르지 않습니다. 잠시 뒤 다시 눌러 주세요.'; return; }
+      if (pending.length) await new Promise((r) => setTimeout(r, sent === 'busy' ? 30 : 80));
+    }
     try {
       const data = await api('/api/climb/end', { method: 'POST', body: '{}' });
       stop();

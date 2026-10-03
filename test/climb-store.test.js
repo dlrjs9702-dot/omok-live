@@ -86,3 +86,58 @@ test('주간 순위: 경쟁 순위(1·1·3 / 1·2·2·2·5)와 순위 보상', (
   assert.deepEqual(rank([0, 10]), [1], '0m 기록은 순위에 없다');
   assert.deepEqual([1, 2, 3, 4, 20, 21].map(weeklyPrize), [1_000_000, 700_000, 500_000, 100_000, 100_000, 0]);
 });
+
+// v1.9.5 주간 결산: 경쟁 순위 보상(공동순위는 각자 전액, 20위 밖 없음), 공동 1위 전원 챔피언, 한 번만 결산.
+const uid = (i) => `guest:00000000-0000-4000-8000-${String(1000 + i).padStart(12, '0')}`;
+async function weekWith(s, bests, when = at('2026-10-07T03:00:00Z')) { // week 2026-10-05
+  for (const [i, best] of bests.entries()) await s.recordClimb({ userId: uid(i), climbId: climbId(), altitude: best, name: `P${i}` }, when + i);
+  return '2026-10-05';
+}
+const paid = async (s, i) => (await s.getAccount(uid(i), at('2026-10-20T00:00:00Z'))).balance;
+
+test('주간 결산: 1위·1위·3위 — 공동 1위 둘 다 1,000,000P·챔피언, 다음은 3위 500,000P', async (t) => {
+  const s = await store(t);
+  const week = await weekWith(s, [3000, 3000, 2950]);
+  assert.deepEqual(await s.climbUnsettledWeeks('2026-10-12'), [week]);
+  assert.deepEqual(await s.climbUnsettledWeeks('2026-10-05'), [], '진행 중인 주는 결산하지 않는다');
+  const result = await s.settleClimbWeek(week);
+  assert.deepEqual(result.ranking.map((r) => r.rank), [1, 1, 3]);
+  assert.deepEqual(result.payouts.map((p) => p.amount), [1_000_000, 1_000_000, 500_000]);
+  assert.deepEqual(result.champions.sort(), [uid(0), uid(1)].sort());
+  // daily (100,000 / 100,000 / ~97,000) + weekly prize on top of the 100,000 start
+  assert.equal(await paid(s, 0), 100_000 + 100_000 + 1_000_000);
+  assert.equal(await paid(s, 2), 100_000 + Math.round(100_000 * (2950 / 3000) ** 2) + 500_000);
+  assert.deepEqual((await s.climbWeekResult(week)).champions.sort(), [uid(0), uid(1)].sort());
+  assert.deepEqual(await s.climbUnsettledWeeks('2026-10-12'), []);
+});
+
+test('주간 결산: 1위·2위·2위·2위·5위, 다시 결산하거나 동시에 결산해도 한 번만 지급', async (t) => {
+  const s = await store(t);
+  const week = await weekWith(s, [3000, 2000, 2000, 2000, 1000]);
+  const [r1, r2] = await Promise.all([s.settleClimbWeek(week), s.settleClimbWeek(week)]);
+  assert.equal([r1, r2].filter((r) => r.applied).length, 1, '동시에 두 번 결산해도 한 번');
+  const again = await s.settleClimbWeek(week);
+  assert.equal(again.applied, false);
+  assert.deepEqual(r1.ranking.map((r) => r.rank), [1, 2, 2, 2, 5]);
+  assert.deepEqual(r1.payouts.map((p) => p.amount), [1_000_000, 700_000, 700_000, 700_000, 100_000], '건너뛴 3·4위 보상은 없다');
+  assert.deepEqual(r1.champions, [uid(0)], '2위 이하는 챔피언 아님');
+  const daily = (h) => Math.round(100_000 * (h / 3000) ** 2);
+  assert.equal(await paid(s, 3), 100_000 + daily(2000) + 700_000);
+  assert.equal((await s.history(uid(1))).items.filter((item) => item.reason === 'climb_weekly_rank').length, 1);
+});
+
+test('주간 결산: 20위 동률은 모두 100,000P, 공동순위로 다음 순위가 20위를 넘으면 순위권 보상 없음', async (t) => {
+  const s = await store(t);
+  // 19 distinct records, then three tied at 20th, then one more (rank 23)
+  const bests = [...Array.from({ length: 19 }, (_, i) => 2900 - i * 10), 500, 500, 500, 100];
+  const week = await weekWith(s, bests);
+  const result = await s.settleClimbWeek(week);
+  const byRank = (rank) => result.payouts.filter((p) => p.rank === rank).map((p) => p.amount);
+  assert.deepEqual(byRank(20), [100_000, 100_000, 100_000]);
+  assert.ok(!result.payouts.some((p) => p.rank > 20), '23위는 없음');
+  const s2 = await store(t);
+  const week2 = await weekWith(s2, [...Array.from({ length: 18 }, (_, i) => 2900 - i * 10), 300, 300, 300, 50]); // ranks 19,19,19 then 22
+  const result2 = await s2.settleClimbWeek(week2);
+  assert.deepEqual(result2.payouts.filter((p) => p.rank === 19).length, 3);
+  assert.ok(!result2.payouts.some((p) => p.rank === 22));
+});
