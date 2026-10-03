@@ -17,6 +17,7 @@ const LAYOUT = {
   missions: { angle: 1.9, radius: 10, kind: 'board', tint: 0x8fd18a },
   attendance: { angle: -2.7, radius: 8.5, kind: 'npc' },
   chat: { angle: 2.7, radius: 9, kind: 'gazebo' },
+  admin: { angle: 2.3, radius: 13, kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 }, // shown to the admin only
 };
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
@@ -172,7 +173,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     root.userData.facility = facility.id; scene.add(root); facilityRoots.push(root);
     const toCentre = new THREE.Vector2(-x, -z).normalize();
     let depth = 0;
-    if (spot.kind === 'hall' || spot.kind === 'shop' || spot.kind === 'house') {
+    if (spot.kind === 'hall' || spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
       const w = spot.kind === 'hall' ? 4.4 : 3.2; const h = spot.kind === 'hall' ? 2.9 : 2.4; depth = spot.kind === 'hall' ? 3.4 : 2.7;
       mesh(new THREE.BoxGeometry(w, h, depth), mat(spot.wall), 0, h / 2, 0, root);
       const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.82, 1.7, 4), mat(spot.roof), 0, h + 0.85, 0, root);
@@ -221,7 +222,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     } else if (spot.kind === 'npc') { // the attendance keeper: a friendly villager next to a stamp stand
       depth = 0.9;
       const npc = makeCharacter({ shirt: 0xffb86b, hair: 0x5b3a29, skin: 0xffdcbc, hat: 0x6bc4a6 });
-      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); npc.root.userData.npc = npc;
+      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       mesh(new THREE.BoxGeometry(1.0, 0.95, 0.7), mat(0xc58b5a), 0.7, 0.48, 0, root);
       mesh(new THREE.BoxGeometry(1.1, 0.08, 0.8), mat(0xffe9b8), 0.7, 0.99, 0, root);
       mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 16), mat(0xe2574c), 0.7, 1.12, 0, root);
@@ -339,6 +340,21 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; clock += dt;
     step(dt);
     renderer.render(scene, camera);
+    adaptQuality(dt);
+  }
+  // A slow PC steps the picture down instead of stuttering: first a lower pixel ratio, then no shadows.
+  let quality = 2; let slowTime = 0; let sampled = 0;
+  function adaptQuality(dt) {
+    if (quality === 0) return;
+    sampled += dt; slowTime += dt > 1 / 35 ? dt : 0;
+    if (sampled < 3) return;
+    if (slowTime / sampled > 0.5) {
+      quality -= 1;
+      if (quality === 1) renderer.setPixelRatio(1);
+      else { renderer.shadowMap.enabled = false; sun.castShadow = false; mats.forEach((m) => { m.needsUpdate = true; }); }
+      resize();
+    }
+    sampled = 0; slowTime = 0;
   }
   function step(dt) {
     let ix = 0; let iz = 0;
@@ -353,7 +369,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       me.targetYaw = Math.atan2(ix, iz);
     }
     animate(me, dt, moving);
-    for (const npc of npcs) animate(npc, dt, false);
+    for (const npc of npcs) { // the keeper turns to a player who comes close and waves
+      const close = near === npc.home.id;
+      npc.lookAt = close ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null;
+      npc.waving = close;
+      animate(npc, dt, false);
+    }
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -382,6 +403,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     c.hop = Math.max(0, c.hop - dt * 2.8);
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
     c.armL.rotation.z = -hopT * 1.1; c.armR.rotation.z = hopT * 1.1; // a little cheer when interacting
+    if (c.waving) { c.armR.rotation.z = 2.5 + Math.sin(clock * 9) * 0.35; c.armR.rotation.x = 0; }
     c.body.position.y = (moving ? Math.abs(Math.sin(c.phase)) * 0.07 : 0) + hopT * 0.28;
     c.body.rotation.x = c.lean; c.body.rotation.z = c.roll;
     c.body.scale.y = 1 + (moving ? 0 : Math.sin(clock * 2.2) * 0.012);
@@ -418,7 +440,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } } };
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } } };
   }
   return { start, stop, dispose, debug, interact };
 }

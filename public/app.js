@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.8').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.9').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1402,6 +1402,7 @@
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'chat', name: '채팅', open: () => openPlazaWindow('대기방 채팅', [document.querySelector('.lobbyChatCard')]) },
+    { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
   function openPlazaWindow(title, nodes) {
@@ -1430,14 +1431,19 @@
     document.body.classList.toggle('plazaMode', on);
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
-    if (!on) { if (plazaDialog.open) plazaDialog.close(); plaza.controller?.stop(); return; }
+    if (!on) {
+      if (plazaDialog.open) plazaDialog.close();
+      plaza.controller?.stop();
+      if (view === 'gate' && plaza.controller) { plaza.controller.dispose(); plaza.controller = null; } // the next login may be a different role
+      return;
+    }
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.8.8').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.8.9').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
-        facilities: PLAZA_FACILITIES.map(({ id, name }) => ({ id, name })),
+        facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
         onInteract: (id) => PLAZA_FACILITIES.find((f) => f.id === id)?.open(),
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')), // any window over the square stops the character
@@ -2762,17 +2768,43 @@
 
   const missionTabWeekly = document.getElementById('missionTabWeekly');
   const missionPanelWeekly = document.getElementById('missionPanelWeekly');
+  // v1.8.9 events tab: every open point event from the same /api/events the lobby popup uses; a row opens that popup.
+  const missionTabEvents = document.getElementById('missionTabEvents');
+  const missionPanelEvents = document.getElementById('missionPanelEvents');
+  const eventSummary = document.getElementById('eventSummary');
+  const eventList = document.getElementById('eventList');
+  let eventsTabRequest = 0;
+  async function loadEventsTab() {
+    const ticket = ++eventsTabRequest;
+    try {
+      const { events, account } = await api('/api/events');
+      if (ticket !== eventsTabRequest) return;
+      eventAccount = account;
+      eventSummary.textContent = events.length ? `진행 중 ${events.length}개 · 받음 ${events.filter(ev => ev.claimed).length}개` : '진행 중인 이벤트가 없습니다.';
+      eventList.replaceChildren(...events.map((event) => {
+        const row = missionRow({ title: event.title, reward: event.rewardPoints, done: event.claimed }, { bonus: true });
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = event.claimed ? 'ghost tiny' : 'secondary tiny';
+        open.textContent = event.claimed ? '받음' : '받으러 가기';
+        open.addEventListener('click', () => openEventDialog(event));
+        row.append(open);
+        return row;
+      }));
+    } catch {}
+  }
   function selectMissionTab(name) {
-    const tabs = { today: [missionTabToday, missionPanelToday], weekly: [missionTabWeekly, missionPanelWeekly], achievements: [missionTabAchievements, missionPanelAchievements] };
+    const tabs = { today: [missionTabToday, missionPanelToday], weekly: [missionTabWeekly, missionPanelWeekly], achievements: [missionTabAchievements, missionPanelAchievements], events: [missionTabEvents, missionPanelEvents] };
     for (const [key, [tab, panel]] of Object.entries(tabs)) {
       tab.setAttribute('aria-selected', String(key === name));
       panel.classList.toggle('hidden', key !== name);
     }
-    if (name === 'achievements') loadAchievements(); else loadMissions(); // today and weekly come from the same response
+    if (name === 'achievements') loadAchievements(); else if (name === 'events') loadEventsTab(); else loadMissions(); // today and weekly share one response
   }
   missionTabWeekly.addEventListener('click', () => selectMissionTab('weekly'));
   missionTabToday.addEventListener('click', () => selectMissionTab('today'));
   missionTabAchievements.addEventListener('click', () => selectMissionTab('achievements'));
+  missionTabEvents.addEventListener('click', () => selectMissionTab('events'));
 
   missionBtn.addEventListener('click', () => { missionDialog.showModal(); selectMissionTab('today'); });
   document.getElementById('missionCloseBtn').addEventListener('click', () => missionDialog.close());
@@ -2978,6 +3010,7 @@
       await loadPoints();
       if (result.granted) showRewardEffect(result.amount, result.successMessage);
       else showToast('이미 받은 이벤트입니다.');
+      if (!missionPanelEvents.classList.contains('hidden')) loadEventsTab();
     } catch (err) {
       if (err.status === 401) { eventDialog.close(); return; }
       eventDialogError.textContent = err.message;

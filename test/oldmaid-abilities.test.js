@@ -107,6 +107,9 @@ test('redirect only changes the target for the current turn -- the next player s
   const g = oldmaid.create();
   oldmaid.setMode(g, 'special');
   oldmaid.start(g, ['1', '2', '3']);
+  // Fixed hands with no possible pair: a random deal could empty a hand on this draw and change the rotation.
+  const c = (rank, id) => ({ id, rank, suit: '♠' });
+  g.hands = { 1: [c('A', 'a'), c('K', 'k')], 2: [c('Q', 'q'), c('J', 'j')], 3: [c('5', 'f'), c('6', 's')] };
   g.abilities['1'] = 'redirect';
   g.turn = '1'; g.target = '2';
   oldmaid.redirectTarget(g, '1', g.revision);

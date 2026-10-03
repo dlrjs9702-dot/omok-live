@@ -1560,3 +1560,4 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage):not(#pointHistoryPanel)
 .plazaDialogBody>*{margin:0!important;min-width:0}
 .plazaDialogBody input[type=radio],.plazaDialogBody input[type=checkbox]{width:auto;padding:0}
 .plazaDialogBody label{font-size:inherit;color:inherit}
+.missionRow>button{justify-self:end}

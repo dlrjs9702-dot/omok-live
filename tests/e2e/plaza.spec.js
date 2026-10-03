@@ -23,9 +23,9 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 
   // Arrow keys move the character.
   const start = await state(page);
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
-  const moved = await state(page);
-  expect(start.z - moved.z).toBeGreaterThan(0.3);
+  await page.keyboard.down('ArrowUp'); // held until it has walked (a busy machine renders few frames)
+  await expect.poll(async () => start.z - (await state(page)).z, { timeout: 10000 }).toBeGreaterThan(0.3);
+  await page.keyboard.up('ArrowUp');
 
   // At the shop door: a short hint, and Space opens the skin shop over the square.
   await page.evaluate(() => window.PlazaDebug().place('shop'));
@@ -38,9 +38,9 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01); // no walking while a window is open
   await page.keyboard.press('Escape');
   await expect(page.locator('#skinShopDialog')).toBeHidden();
-  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(300); await page.keyboard.up('ArrowDown');
-  const after = await state(page);
-  expect(Math.hypot(after.x - during.x, after.z - during.z)).toBeGreaterThan(0.2); // back to walking right away
+  await page.keyboard.down('ArrowDown'); // back to walking right away
+  await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - during.x, now.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
+  await page.keyboard.up('ArrowDown');
 
   // A click on a facility runs the same action: the board opens the notices in a window, closing puts them back.
   await page.evaluate(() => window.PlazaDebug().place('board'));
@@ -58,6 +58,9 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await page.evaluate(() => window.PlazaDebug().place('missions'));
   await page.keyboard.press('Space');
   await expect(page.locator('#missionDialog')).toBeVisible();
+  await page.locator('#missionTabEvents').click(); // v1.8.9: the events tab is live (open events or "none")
+  await expect(page.locator('#missionPanelEvents')).toBeVisible();
+  await expect(page.locator('#eventSummary')).not.toHaveText('');
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.PlazaDebug().place('records'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
