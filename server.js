@@ -36,6 +36,8 @@ const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
+const ClimbSim = require('./public/climb/climb-sim.js');
+const { competitionRanking, climbWeekOf } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -606,6 +608,32 @@ function broadcastLobby() {
       lobbyStreams.delete(entry);
     }
   }
+}
+
+// v1.9.4 상시 등반 도전: each account's climb in progress, simulated here (public/climb/climb-sim.js) from the player's
+// inputs only -- the browser runs the same steps for instant feedback, but where a climber is (and so the record) is
+// the server's. Memory only: a refresh or reconnect resumes it, a redeploy or 30 idle minutes drops it, and nothing is
+// ever recorded unless the player ends the climb standing safely. Climbers never collide with each other.
+const climbs = new Map(); // point account -> { id, token, name, state, credit, lastAt, startedAt }
+const CLIMB_IDLE_MS = 30 * 60 * 1000;
+const CLIMB_BURST_TICKS = 90; // at most 3 seconds of inputs may arrive at once (a slow network catching up)
+const CLIMB_MAX_BATCH = 60;
+function climbView(climb) { return climb ? { id: climb.id, state: climb.state } : null; }
+function climbOthers(account, climb, now) {
+  const out = [];
+  for (const [other, c] of climbs) {
+    if (other === account || now - c.lastAt > 10000 || Math.abs(c.state.y - climb.state.y) > 40) continue;
+    out.push({ name: c.name, x: Math.round(c.state.x * 100) / 100, y: Math.round(c.state.y * 100) / 100 });
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+const climbPruner = setInterval(() => { const now = nowMs(); for (const [account, c] of climbs) if (now - c.lastAt > CLIMB_IDLE_MS) climbs.delete(account); }, 60 * 1000);
+climbPruner.unref?.();
+async function climbRankingView(week, account) {
+  const ranked = competitionRanking(await pointStore.climbWeekRows(week));
+  const mine = ranked.find((row) => row.userId === account) || null;
+  return { week, top: ranked.slice(0, 20).map(({ rank, name, best, userId }) => ({ rank, name, best, me: userId === account })), me: mine ? { rank: mine.rank, best: mine.best } : null, total: ranked.length };
 }
 
 // v1.9.3 3D 광장 V3: who is walking in the plaza right now. Memory only (a redeploy clears it, the next position
@@ -2540,7 +2568,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.9.3' });
+    return sendJson(res, 200, { ok: true, version: '1.9.4' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2991,6 +3019,91 @@ async function requestHandler(req, res) {
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, id: session.plazaId });
   }
+  // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
+  if (pathname === '/api/climb' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`climbview:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const now = nowMs();
+    const status = await pointStore.climbStatus(account, now);
+    return sendJson(res, 200, { ok: true, ...status, ranking: await climbRankingView(climbWeekOf(now), account), active: climbView(climbs.get(account)) });
+  }
+  if (pathname === '/api/climb/start' && req.method === 'POST') { // start, or resume the climb in progress
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`climbstart:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const now = nowMs();
+    let climb = climbs.get(account);
+    if (!climb || body.restart === true) {
+      climb = { id: crypto.randomUUID(), state: ClimbSim.newState(), startedAt: now, credit: CLIMB_BURST_TICKS };
+      climbs.set(account, climb);
+    }
+    Object.assign(climb, { token: session.token, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), lastAt: now });
+    return sendJson(res, 200, { ok: true, active: climbView(climb) });
+  }
+  if (pathname === '/api/climb/input' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const climb = climbs.get(account);
+    if (!climb || climb.token !== session.token) return sendError(res, 409, 'CLIMB_NOT_ACTIVE', '진행 중인 등반이 없습니다.');
+    if (!checkRateLimit(`climbinput:${session.token}`, 2400, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const now = nowMs();
+    // A token bucket of ticks: real time earns 30 a second (up to a 3 second burst), so inputs can never run the
+    // climb faster than real time. A batch that does not start at the server's tick is ignored (the client resyncs).
+    climb.credit = Math.min(CLIMB_BURST_TICKS, climb.credit + ((now - climb.lastAt) / 1000) * ClimbSim.TICKS_PER_SECOND);
+    climb.lastAt = now;
+    const inputs = Array.isArray(body.inputs) ? body.inputs : [];
+    if (Number(body.tick) === climb.state.tick) {
+      const n = Math.min(inputs.length, CLIMB_MAX_BATCH, Math.floor(climb.credit));
+      for (let i = 0; i < n; i += 1) ClimbSim.step(climb.state, (Number(inputs[i]) | 0) & 31);
+      climb.credit -= n;
+    }
+    return sendJson(res, 200, { ok: true, state: climb.state, others: climbOthers(account, climb, now) });
+  }
+  if (pathname === '/api/climb/end' && req.method === 'POST') { // confirm the record: the altitude where I stand now
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const climb = climbs.get(account);
+    if (!climb || climb.token !== session.token) return sendError(res, 409, 'CLIMB_NOT_ACTIVE', '진행 중인 등반이 없습니다.');
+    if (!ClimbSim.isSafe(climb.state)) return sendError(res, 409, 'CLIMB_NOT_SAFE', '발판 위에 멈춰 선 뒤에 끝낼 수 있습니다.');
+    const now = nowMs(); // one clock reading for this whole finish (day and week of the record)
+    const altitude = ClimbSim.altitude(climb.state);
+    const outcome = await pointStore.recordClimb({ userId: account, climbId: climb.id, altitude, name: climb.name }, now);
+    if (climbs.get(account) === climb) climbs.delete(account);
+    if (outcome.delta > 0) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, altitude: outcome.altitude, delta: outcome.delta, best: outcome.best, paid: outcome.paid, weekBest: outcome.weekBest, balance: outcome.balance });
+  }
+  if (pathname === '/api/climb/abandon' && req.method === 'POST') { // leave without a record
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const climb = climbs.get(account);
+    if (climb && climb.token === session.token) climbs.delete(account);
+    return sendJson(res, 200, { ok: true });
+  }
+  // Test-only (NODE_ENV=test): stand my climber on the static platform nearest below a height (to test records
+  // without climbing 3,000 m by hand).
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/place' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const climb = climbs.get(pointAccountForSession(session));
+    if (!climb) return sendError(res, 409, 'CLIMB_NOT_ACTIVE', '진행 중인 등반이 없습니다.');
+    const body = await parseJson(req);
+    const target = Number(body.y) || 0;
+    let index = 0;
+    ClimbSim.COURSE.platforms.forEach((p, i) => { if (!p.move && p.y <= target && p.y >= ClimbSim.COURSE.platforms[index].y) index = i; });
+    const p = ClimbSim.COURSE.platforms[index];
+    Object.assign(climb.state, { x: Number.isFinite(Number(body.x)) ? Math.min(p.x1, Math.max(p.x0, Number(body.x))) : (p.x0 + p.x1) / 2, y: body.air ? p.y + 1 : p.y, vx: 0, vy: 0, grounded: !body.air, plat: body.air ? -1 : index, climb: -1, stun: 0 });
+    return sendJson(res, 200, { ok: true, state: climb.state });
+  }
+
   if (pathname === '/api/plaza/leave' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3561,7 +3674,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.3 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.4 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -1561,3 +1561,31 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage):not(#pointHistoryPanel)
 .plazaDialogBody input[type=radio],.plazaDialogBody input[type=checkbox]{width:auto;padding:0}
 .plazaDialogBody label{font-size:inherit;color:inherit}
 .missionRow>button{justify-self:end}
+
+/* v1.9.4 상시 등반 도전: the course canvas with a small fixed HUD, the bar under it, and the climb window */
+.climbView{padding:14px;display:grid;gap:10px}
+.climbStage{position:relative;border-radius:16px;overflow:hidden;background:#0b1324}
+.climbCanvas{display:block;width:100%;height:auto;aspect-ratio:960/600;outline:none}
+.climbCanvas:focus-visible{outline:2px solid #60a5fa;outline-offset:-2px}
+.climbHud{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:rgba(15,23,42,.82);color:#f8fafc;font-weight:900;font-size:1.05rem;letter-spacing:.02em;pointer-events:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.climbResult{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;gap:8px;justify-items:center;padding:18px 26px;border-radius:16px;background:rgba(15,23,42,.92);border:1px solid #334155;text-align:center}
+.climbResult strong{font-size:1.35rem;font-weight:900;color:#fde68a}
+.climbResult span{font-size:.84rem;color:#cbd5e1}
+.climbResultActions{display:flex;gap:8px;margin-top:4px}
+.climbBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.climbKeys{font-size:.76rem;color:#94a3b8}
+.climbStatus{flex:1;font-size:.78rem;color:#fecaca}
+.recordsDialog.climbDialog{width:min(520px,94vw)}
+.climbSummary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px}
+.climbSummary>div{display:grid;gap:2px;padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449}
+.climbSummary small{font-size:.72rem;color:#94a3b8}
+.climbSummary strong{font-size:1.35rem;font-weight:900;font-variant-numeric:tabular-nums}
+.climbActions{display:flex;gap:8px}
+.climbActions .secondary{flex:1}
+.climbRankTitle{font-size:1rem;margin:14px 0 6px}
+.climbRanking{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:300px;overflow:auto}
+.climbRankRow{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:10px;background:#0f172a;border:1px solid #273449;font-size:.8rem}
+.climbRankRow b{color:#fbbf24}
+.climbRankRow strong{font-variant-numeric:tabular-nums}
+.climbRankRow.me{border-color:#60a5fa}
+.climbRankEmpty{font-size:.78rem;color:#94a3b8;padding:6px 2px}

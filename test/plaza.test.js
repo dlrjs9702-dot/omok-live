@@ -19,7 +19,7 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const app = read('public/app.js');
   const facilities = app.match(/const PLAZA_FACILITIES = \[([\s\S]*?)\n {2}\];/)[1];
   const ids = [...facilities.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
-  assert.deepEqual(ids.sort(), ['admin', 'attendance', 'board', 'chat', 'games', 'missions', 'records', 'shop']);
+  assert.deepEqual(ids.sort(), ['admin', 'attendance', 'board', 'chat', 'climb', 'games', 'missions', 'records', 'shop']);
   for (const id of ids) assert.match(scene, new RegExp(`\\b${id}: \\{ angle:`), `${id} 시설 배치`);
   for (const target of ['skinShopBtn', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'lobbyCard']) {
     assert.match(facilities + app.match(/const publicRoomsCardEl = .*/)[0], new RegExp(target), `${target} 재사용`);
