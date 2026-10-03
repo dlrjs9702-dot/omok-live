@@ -532,6 +532,7 @@
     prevItems = null;
     animatedTurn = { key: null, count: 0 };
     stagedResultKey = null;
+    viewedRound = null;
     elementsById = new Map();
     anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
   }
@@ -540,13 +541,16 @@
     const before = lastState?.gameType === 'gostop' && state?.gameType === 'gostop' && elementsById.size ? snapshot() : null;
     lastState = state;
     if (!state || state.gameType !== 'gostop') { cancelFx(); seenEventKey = undefined; prevItems = null; return; }
-    SKN().h.unstyle($('gostopPanel'), panelApplied);
+    // v1.8.5: the room theme dresses the table itself (the felt), which is now the main stage of the screen.
+    SKN().h.unstyle($('gostopFelt'), panelApplied);
     panelApplied = null;
     const themeDef = SKN().def(state.skinTheme);
-    if (themeDef?.panel) { panelApplied = { backgroundImage: SKN().h.img(`gs-panel:${state.skinTheme}`, 720, 520, themeDef.panel), backgroundSize: 'cover', ...themeDef.frame }; SKN().h.style($('gostopPanel'), panelApplied); }
+    if (themeDef?.panel) { panelApplied = { backgroundImage: SKN().h.img(`gs-panel:${state.skinTheme}`, 960, 640, themeDef.panel), backgroundSize: 'cover', ...themeDef.frame }; SKN().h.style($('gostopFelt'), panelApplied); }
     elementsById = new Map();
     anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
     const g = state.game;
+    // seat count drives the table layout: 2 = 맞고 (one opponent on top), 3 = 고스톱 (two opponents, top-left and top-right)
+    $('gostopFelt').classList.toggle('threeSeats', g.status !== 'selecting' && (g.seatOrder || []).length === 3);
     const seat = state.me?.seat || null;
     const modeText = g.status === 'selecting' ? '고스톱 · 맞고' : g.mode === 'matgo' ? '맞고' : '고스톱';
     $('gostopTitle').textContent = modeText;
@@ -566,7 +570,20 @@
     renderEvent(state);
     renderHand(state);
     renderResult(state);
+    bringTableIntoView(g);
     afterRender(state, before);
+  }
+
+  // v1.8.5: when a hand starts (or this room is first shown mid-hand) the whole table is scrolled into view once,
+  // so my hand is not below the fold. Later renders never move the page. The jump is instant and happens before the
+  // card movement measures where cards are, so the animation never starts from a position the page scrolled away from.
+  let viewedRound = null;
+  function bringTableIntoView(g) {
+    if (g.status !== 'playing' || viewedRound === g.round) return;
+    viewedRound = g.round;
+    const felt = $('gostopFelt');
+    const r = felt.getBoundingClientRect();
+    if (r.bottom > window.innerHeight || r.top < 0) felt.scrollIntoView({ block: r.height > window.innerHeight ? 'start' : 'end', behavior: 'auto' });
   }
 
 

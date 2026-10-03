@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.4').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.8.5').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1357,6 +1357,7 @@
     gateView.classList.toggle('hidden', name !== 'gate');
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
+    if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
   }
 
   function identityText() {
@@ -4099,6 +4100,10 @@
     halliSetupRow.classList.toggle('hidden', !halli || g.status !== 'selecting');
     if (halli) renderHalli();
     gostopPanel.classList.toggle('hidden', !gostop);
+    // v1.8.5: a table game (고스톱·맞고) uses a wider page on PC so the table, not the web panels, is the centre.
+    document.body.classList.toggle('tableGameRoom', gostop);
+    // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
+    document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();

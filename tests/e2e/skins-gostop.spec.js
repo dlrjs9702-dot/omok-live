@@ -47,7 +47,8 @@ test('고스톱 스킨: 방장 테마가 모든 화면에 같고, 상대 손패 
   expect(await oppBack(a)).not.toBe(await oppBack(b)); // 방장이 보는 손님 뒷면(노란 도깨비)과 손님이 보는 방장 뒷면(왕실)은 다르다
   const deckBack = (who) => who.page.locator('#gostopDeck .hwatuBack').first().evaluate(el => el.style.backgroundImage);
   expect(await deckBack(a)).toBe(await deckBack(b)); // 산(덱)은 모두에게 같다
-  const panelImage = (who) => who.page.locator('#gostopPanel').evaluate(el => el.style.backgroundImage);
+  // v1.8.5: the room theme dresses the large table (the felt), the main stage of the screen.
+  const panelImage = (who) => who.page.locator('#gostopFelt').evaluate(el => el.style.backgroundImage);
   expect((await panelImage(a)).startsWith('url("data:image/png')).toBe(true);
   expect(await panelImage(a)).toBe(await panelImage(b));
   // 내 손패 받침은 내 스킨(방장=왕실 금빛 테두리). 손패 카드의 앞면은 그대로 48장 공용 그림이다.

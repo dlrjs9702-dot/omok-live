@@ -1455,3 +1455,63 @@ button.pdChip.link{cursor:pointer}button.pdChip.link:hover{border-color:#93c5fd}
 @keyframes pdBanner{0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
 .pandemicLog{display:grid;gap:3px;max-height:150px;overflow:auto;font-size:.82rem;color:#bcd0e6}.pdLogLine{padding:2px 0;border-bottom:1px solid #1e293b}
 @media(prefers-reduced-motion:reduce){.pdPawn{transition:none}.pdFxRing,.pdBanner{animation-duration:.01s}}
+
+/* v1.8.5 고스톱·맞고 대형 테이블: the play area is one felt table with a wooden rim. Opponents sit at the top
+   (two of them split left/right in 3인 고스톱), the floor and deck take the wide centre, my captures and hand sit
+   at the bottom. Cards are larger here than anywhere else; card movement measures the real elements, so the
+   animation follows the new sizes. Card faces are unchanged; skins dress backs, frames, areas and this table. */
+@media(min-width:881px){
+  body.tableGameRoom .shell{width:min(1600px,calc(100% - 24px))}
+}
+.gostopPanel{gap:8px}
+.gostopFelt{position:relative;display:grid;grid-template-areas:"opp" "table" "mine" "actions" "hand";gap:12px;padding:18px 20px 14px;
+  border:12px solid #6b3f1d;border-radius:30px;
+  background:radial-gradient(ellipse at 50% 44%,#23874d 0,#17683a 46%,#0d4a28 100%);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.08),inset 0 0 70px rgba(0,0,0,.42),0 0 0 1px #2b170a,0 22px 48px rgba(0,0,0,.45)}
+.gostopFelt .gostopOpponents{grid-area:opp;grid-template-columns:minmax(0,1fr);gap:14px}
+.gostopFelt.threeSeats .gostopOpponents{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gostopFelt .gostopSeat{gap:8px;padding:10px 12px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(3,24,13,.42);backdrop-filter:none}
+.gostopFelt .gostopSeat.mine{background:rgba(3,24,13,.5)}
+.gostopFelt .gostopSeat.isTurn{border-color:rgba(250,204,21,.65);box-shadow:0 0 0 2px rgba(250,204,21,.25)}
+.gostopFelt .gostopStats{font-size:.92rem}
+.gostopFelt .gostopTable{grid-area:table;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);align-items:center;gap:6px 22px;
+  min-height:250px;padding:12px 26px;border-radius:24px;background:radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.07),rgba(0,0,0,.14) 80%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.06)}
+.gostopFelt .gostopEvent{grid-column:1/-1;justify-content:center;min-height:30px;font-size:1rem;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.gostopFelt .gostopFloor{grid-column:1;justify-content:center;align-content:center;gap:16px}
+.gostopFelt .gostopDeck{grid-column:2}
+.gostopFelt .gostopDeck small{font-size:.9rem;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.gostopFelt .gostopMineArea{grid-area:mine}
+.gostopFelt .gostopActions{grid-area:actions;justify-content:center}
+.gostopFelt .gostopHand{grid-area:hand;justify-content:center;gap:10px;padding:14px 12px 8px;border-radius:20px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.2))}
+/* sizes: hand clearly larger and easy to click, floor scaled to the table, captures stacked like real piles */
+.gostopFelt .hwatu-hand{width:84px;height:124px}
+.gostopFelt .hwatu-normal{width:76px;height:112px}
+.gostopFelt .hwatu-mini{width:36px;height:53px}
+.gostopFelt .hwatu-tiny{width:30px;height:45px}
+.gostopFelt .hwatu-hand.hasArt .hwatuMonth{font-size:.86rem}.gostopFelt .hwatu-hand.hasArt .hwatuBadge{font-size:.76rem}
+.gostopFelt .hwatu-normal.hasArt .hwatuMonth{font-size:.74rem}.gostopFelt .hwatu-normal.hasArt .hwatuBadge{font-size:.66rem}
+.gostopFelt .hwatu-mini.hasArt .hwatuMonth{font-size:.52rem}.gostopFelt .hwatu-mini.hasArt .hwatuBadge{font-size:.5rem}
+.gostopFelt button.hwatu.actionableTarget:hover:not(:disabled){transform:translateY(-8px)}
+.gostopFelt .gostopCaptured{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.gostopFelt .gostopPile{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.1)}
+.gostopFelt .gostopPileCards{min-height:56px;gap:0;overflow:visible;flex-wrap:wrap;row-gap:4px}
+.gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 36px}
+.gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:-16px}
+.gostopFelt .gostopBacks{gap:0}
+.gostopFelt .gostopBacks .hwatu-tiny+.hwatu-tiny{margin-left:-17px}
+.gostopFelt .gostopBacks small{margin-left:10px}
+.gostopFelt .gostopFloorGroup.ppeokStack .hwatu+.hwatu{margin-left:-52px}
+body.tableGamePlaying #teamPlayers{display:none!important}
+/* v1.8.5 compact chrome around the table: head line and the settlement history share one row, an opponent's
+   name and the backs of their hand share one row, so the whole table fits a 1080px-high PC screen. */
+.gostopPanel{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.gostopPanel>*{grid-column:1/-1}
+.gostopPanel>.gostopHead{grid-column:1}
+.gostopPanel>.gostopPointHistory{grid-column:2;max-width:420px;justify-self:end}
+.gostopFelt .gostopSeat{grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px}
+.gostopFelt .gostopSeat>.gostopSeatHead{grid-column:1}
+.gostopFelt .gostopSeat>.gostopBacks{grid-column:2;justify-self:end}
+.gostopFelt .gostopSeat>.gostopCaptured,.gostopFelt .gostopSeat>details{grid-column:1/-1}
+.gostopFelt .gostopPile{padding:3px 4px;gap:2px}
+.gostopFelt .gostopPileCards{min-height:53px}
+.gostopFelt .gostopTable{min-height:220px}
