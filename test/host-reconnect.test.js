@@ -93,7 +93,9 @@ async function serverFixture(t) {
   return { req, enter, guest };
 }
 
-test('a guest host keeps room access and host-only setup after reconnecting before role selection', { timeout: 35000 }, async t => {
+// v1.9.10: a waiting room nobody else is in is not entered by itself when the entry file is opened again -- that visit
+// starts on Game Island (it used to drop people into an old omok room). Joining the room again still gives the host role back.
+test('a guest host of an empty waiting room starts on Game Island, and joining it again keeps host-only setup', { timeout: 35000 }, async t => {
   const { req, enter, guest } = await serverFixture(t);
   const host = await guest('방장');
   const created = await req('/api/rooms', host.session, { gameType: 'bingo' });
@@ -102,13 +104,29 @@ test('a guest host keeps room access and host-only setup after reconnecting befo
 
   assert.equal((await req('/api/session/release', null, { sessionToken: host.session })).status, 200);
   host.session = await enter(host.key);
+  assert.equal((await req('/api/room', host.session, undefined, 'GET')).data.state, null);
 
+  assert.equal((await req('/api/rooms/join', host.session, { code: roomCode })).status, 200);
   const restored = await req('/api/room', host.session, undefined, 'GET');
-  assert.equal(restored.status, 200);
   assert.equal(restored.data.state.me.isHost, true);
   assert.equal(restored.data.state.me.roomCode, roomCode);
   assert.equal(restored.data.state.game.status, 'selecting');
   assert.equal((await req('/api/room/set-bingo-target', host.session, { targetLines: 2 })).status, 200);
+});
+
+test('a guest host comes straight back to a waiting room where someone is still waiting', { timeout: 35000 }, async t => {
+  const { req, enter, guest } = await serverFixture(t);
+  const host = await guest('방장');
+  const friend = await guest('친구');
+  const created = await req('/api/rooms', host.session, { gameType: 'bingo' });
+  const roomCode = created.data.state.me.roomCode;
+  assert.equal((await req('/api/rooms/join', friend.session, { code: roomCode })).status, 200);
+
+  assert.equal((await req('/api/session/release', null, { sessionToken: host.session })).status, 200);
+  host.session = await enter(host.key);
+  const restored = (await req('/api/room', host.session, undefined, 'GET')).data.state;
+  assert.equal(restored.me.isHost, true);
+  assert.equal(restored.me.roomCode, roomCode);
 });
 
 test('host and player seats reconnect in a non-numbered game, preserving server-side roles', { timeout: 35000 }, async t => {
