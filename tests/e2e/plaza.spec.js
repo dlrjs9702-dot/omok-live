@@ -172,3 +172,47 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
+
+// v1.9.5 주간 챔피언: 지난주 공동 1위 두 사람 모두 광장 이름표에 「챔피언」이 붙고, 다른 사람에게도 같게 보이며, 다시 접속해도 그대로다.
+test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람에게도 보이고 재접속 후에도 유지', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const lastWeek = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const champs = [];
+  for (const label of ['챔피언가', '챔피언나']) {
+    const who = await shopper(browser, request, label);
+    expect((await post(request, '/api/test/climb/record', who.token, { altitude: 3000, at: lastWeek })).status).toBe(200);
+    champs.push(who);
+  }
+  const plain = await shopper(browser, request, '구경꾼');
+  expect((await post(request, '/api/test/climb/record', plain.token, { altitude: 2950, at: lastWeek })).status).toBe(200);
+  expect((await post(request, '/api/test/climb/settle', null, { reopen: true })).status).toBe(200); // a retried test settles last week again
+  for (const who of [...champs, plain]) {
+    await who.page.reload();
+    await who.page.locator('#lobbyModeBtn').click();
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  }
+  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
+  const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];
+  const seen = (who, id) => who.page.evaluate((other) => (window.PlazaDebug()?.others || []).find((o) => o.id === other) || null, id);
+  // everyone sees the two champions marked, and the third not
+  for (const [viewer, others] of [[plain, [idA, idB]], [champs[0], [idB]], [champs[1], [idA]]]) {
+    for (const id of others) await expect.poll(() => seen(viewer, id).then((o) => o?.champion), { timeout: 10000 }).toBe(true);
+  }
+  await expect.poll(() => seen(champs[0], idC).then((o) => o && o.champion), { timeout: 10000 }).toBe(false);
+  for (const who of champs) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().champion), { timeout: 8000 }).toBe(true);
+  expect(await plain.page.evaluate(() => window.PlazaDebug().champion)).toBe(false);
+  // the climb window names last week's champions
+  await plain.page.evaluate(() => document.getElementById('climbBtn').click());
+  await expect(plain.page.locator('#climbChampions')).toContainText('챔피언가');
+  await expect(plain.page.locator('#climbChampions')).toContainText('챔피언나');
+  await plain.page.keyboard.press('Escape');
+  // a reconnect brings it back from the server
+  await plain.page.evaluate(() => document.getElementById('climbDialog').close());
+  await champs[1].context.close(); // fewer 3D pages while one reloads
+  await champs[0].page.reload();
+  await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug().champion), { timeout: 8000 }).toBe(true);
+  await expect.poll(() => seen(plain, idA).then((o) => o?.champion), { timeout: 10000 }).toBe(true);
+  for (const who of [champs[0], plain]) await expectNoScriptError(who.page);
+  for (const who of [champs[0], plain]) await who.context.close();
+});

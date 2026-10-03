@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.4').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.5').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1455,7 +1455,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.4').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.5').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1475,9 +1475,9 @@
   });
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
-  let plazaAvatar = null;
+  let plazaAvatar = null; let plazaChampion = false;
   async function refreshPlazaAvatar() {
-    try { plazaAvatar = (await api('/api/skins')).avatar || null; } catch { return; }
+    try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); } catch { return; }
     applyPlazaAvatar();
     plazaLastSent = null; // others see the new look with the next pose
   }
@@ -1497,7 +1497,11 @@
       .then((data) => { if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); } })
       .catch(() => {}).finally(() => { plazaSending = false; });
   }
-  function showPlazaPlayers() { plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId)); }
+  function showPlazaPlayers() {
+    plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
+    const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
+    if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
+  }
   function setPlazaPresence(on) {
     if (on && !plazaSendTimer) { plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
     if (!on && plazaSendTimer) {
@@ -1507,7 +1511,7 @@
     }
   }
   function applyPlazaAvatar() {
-    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
+    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
 
@@ -1523,6 +1527,8 @@
     byId('climbTodayPaid').textContent = `+${Number(climbInfo.today.paid).toLocaleString('ko-KR')}P`;
     byId('climbWeekBest').textContent = meters(climbInfo.weekBest);
     byId('climbWeekRank').textContent = climbInfo.ranking.me ? `${climbInfo.ranking.me.rank}위` : '';
+    byId('climbChampions').textContent = climbInfo.champions?.names?.length ? `지난주 챔피언 · ${climbInfo.champions.names.join(', ')}` : '';
+    byId('climbChampions').classList.toggle('hidden', !climbInfo.champions?.names?.length);
     const resume = Boolean(climbInfo.active);
     byId('climbStartBtn').textContent = resume ? `이어서 도전 · ${meters(Math.floor(climbInfo.active.state.y))}` : '도전 시작';
     byId('climbRestartBtn').classList.toggle('hidden', !resume);
@@ -2677,6 +2683,7 @@
     if (item.reason === 'achievement') return `업적 · ${item.memo || '달성'}`;
     if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
+    if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
   }

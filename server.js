@@ -37,7 +37,7 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines } = require('./lib/missions');
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
-const { competitionRanking, climbWeekOf } = require('./lib/climb');
+const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -630,6 +630,46 @@ function climbOthers(account, climb, now) {
 }
 const climbPruner = setInterval(() => { const now = nowMs(); for (const [account, c] of climbs) if (now - c.lastAt > CLIMB_IDLE_MS) climbs.delete(account); }, 60 * 1000);
 climbPruner.unref?.();
+// v1.9.5 주간 랭킹·챔피언: a week that has ended is settled once (prizes by competition ranking, IDEAS 「상시 등반
+// 도전」), at startup, every minute and whenever someone opens the climb window. The champions of the week that
+// just ended are this week's champions; when a new week starts they are no longer anyone's, by construction.
+let climbSettling = null;
+let championCache = { week: null, ids: new Set(), names: [] };
+async function settleClimbWeeks(now = nowMs()) {
+  if (climbSettling) return climbSettling;
+  climbSettling = (async () => {
+    const current = climbWeekOf(now); // one clock reading for the whole run
+    const paidTo = new Set();
+    for (const week of await pointStore.climbUnsettledWeeks(current)) {
+      const result = await pointStore.settleClimbWeek(week);
+      if (result.applied) for (const payout of result.payouts) paidTo.add(payout.userId);
+    }
+    await refreshChampions(now);
+    if (paidTo.size) notifyPointsChanged([...paidTo]);
+  })().catch((error) => console.error('등반 주간 결산 실패:', error.message)).finally(() => { climbSettling = null; });
+  return climbSettling;
+}
+async function refreshChampions(now = nowMs()) {
+  const week = previousWeek(climbWeekOf(now));
+  const result = await pointStore.climbWeekResult(week);
+  const ids = new Set(result?.champions || []);
+  const names = (result?.ranking || []).filter((row) => ids.has(row.userId)).map((row) => row.name);
+  const changed = championCache.week !== week || [...ids].sort().join() !== [...championCache.ids].sort().join();
+  championCache = { week, ids, names };
+  if (changed) { // name tags in the plaza follow at once
+    for (const entry of plazaPresence.values()) entry.champion = ids.has(entry.account);
+    plazaDirty = true;
+  }
+}
+function isChampion(account, now = nowMs()) {
+  return championCache.week === previousWeek(climbWeekOf(now)) && championCache.ids.has(account);
+}
+const climbWeekTicker = setInterval(() => {
+  if (championCache.week !== previousWeek(climbWeekOf(nowMs()))) refreshChampions().catch(() => {}); // Monday 00:00: last week's champions expire at once
+  settleClimbWeeks();
+}, 60 * 1000);
+climbWeekTicker.unref?.();
+
 async function climbRankingView(week, account) {
   const ranked = competitionRanking(await pointStore.climbWeekRows(week));
   const mine = ranked.find((row) => row.userId === account) || null;
@@ -645,7 +685,7 @@ const PLAZA_BOUND = 18;
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
 let plazaDirty = false;
 function plazaSnapshot() {
-  return { players: [...plazaPresence.values()].map(({ id, name, look, title, x, z, yaw, moving }) => ({ id, name, look, title, x, z, yaw, moving })) };
+  return { players: [...plazaPresence.values()].map(({ id, name, look, title, champion, x, z, yaw, moving }) => ({ id, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -1182,6 +1222,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
   if (room.missionsAwarded.has(result.id)) return;
   if (room.game.endReason === 'disconnect') { room.missionsAwarded.add(result.id); return; }
   const sole = result.outcomes.filter(outcome => outcome.result === 'win').length === 1;
+  const finishedAt = nowMs(); // v1.9.5: every participant's daily/weekly mission uses this one time (Monday 00:00 KST edge)
   try {
     for (let i = 0; i < result.outcomes.length; i += 1) {
       const account = accounts[i];
@@ -1191,7 +1232,7 @@ async function awardMissions(room, result, accounts, seats, resignedSeat) {
       const done = await pointStore.recordMissionMatch({
         userId: account, matchId: result.id, gameType: result.gameType, result: outcome.result, soleWinner: sole && outcome.result === 'win',
         clean: seats[i] !== resignedSeat, opponents: accounts.filter((other, j) => j !== i && other),
-      });
+      }, finishedAt);
       // v1.7.20: achievements read the match record just saved; checked even when the mission part was a repeat.
       const earned = await syncAchievements(outcome.id, account);
       const lines = [...(done.applied ? [...toastLines(done), ...weeklyToastLines(done)] : []), ...achievementToasts(earned.granted)];
@@ -2568,7 +2609,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.9.4' });
+    return sendJson(res, 200, { ok: true, version: '1.9.5' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2719,7 +2760,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped) });
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account) });
   }
 
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
@@ -3012,7 +3053,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const { look, title } = avatarLookOf(equippedSkinCache.get(account));
     plazaPresence.set(session.token, {
-      id: session.plazaId, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      id: session.plazaId, account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
     });
@@ -3026,8 +3067,10 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     if (!checkRateLimit(`climbview:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const now = nowMs();
+    await settleClimbWeeks(now);
     const status = await pointStore.climbStatus(account, now);
-    return sendJson(res, 200, { ok: true, ...status, ranking: await climbRankingView(climbWeekOf(now), account), active: climbView(climbs.get(account)) });
+    return sendJson(res, 200, { ok: true, ...status, ranking: await climbRankingView(climbWeekOf(now), account), active: climbView(climbs.get(account)),
+      champions: { week: championCache.week, names: championCache.names }, champion: isChampion(account, now) });
   }
   if (pathname === '/api/climb/start' && req.method === 'POST') { // start, or resume the climb in progress
     const session = requireSession(req, res);
@@ -3090,6 +3133,21 @@ async function requestHandler(req, res) {
   }
   // Test-only (NODE_ENV=test): stand my climber on the static platform nearest below a height (to test records
   // without climbing 3,000 m by hand).
+  // Test-only: a record made at a chosen time (as if a climb ended then), and a settlement run at a chosen time.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/record' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const outcome = await pointStore.recordClimb({ userId: pointAccountForSession(session), climbId: crypto.randomUUID(), altitude: Number(body.altitude), name: session.label || '' }, Number(body.at) || nowMs());
+    return sendJson(res, 200, { ok: true, ...outcome });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
+    const body = await parseJson(req);
+    const now = Number(body.now) || nowMs();
+    if (body.reopen === true && pointStore.testReopenClimbWeek) await pointStore.testReopenClimbWeek(previousWeek(climbWeekOf(now)));
+    await settleClimbWeeks(now);
+    return sendJson(res, 200, { ok: true, champions: championCache, championOf: Object.fromEntries([...championCache.ids].map((id) => [id, isChampion(id, now)])) });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/place' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3625,6 +3683,7 @@ async function main() {
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
@@ -3674,7 +3733,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.4 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.5 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -133,3 +133,29 @@ test('등반 서버: 새로고침(같은 계정의 새 세션)은 이어서 하�
   assert.equal(resumed.data.active.id, view.data.active.id);
   assert.equal(resumed.data.active.state.y, view.data.active.state.y);
 });
+
+test('주간 챔피언: 지난주 공동 1위 둘 다 챔피언, 3위는 아님, 다음 주가 시작되면 만료, 결산은 한 번', { timeout: 60000 }, async (t) => {
+  const fx = await boot(t);
+  const [a, b, c] = [await fx.guest('공동일등A'), await fx.guest('공동일등B'), await fx.guest('삼등')];
+  const lastWeek = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const [who, altitude] of [[a, 3000], [b, 3000], [c, 2950]]) assert.equal((await fx.req('/api/test/climb/record', who.session, { altitude, at: lastWeek })).status, 200);
+  const before = Object.fromEntries(await Promise.all([a, b, c].map(async (who) => [who.label, (await fx.req('/api/points', who.session)).data.balance])));
+  const settled = await fx.req('/api/test/climb/settle', null, {});
+  assert.equal(settled.status, 200);
+  const view = async (who) => (await fx.req('/api/climb', who.session)).data;
+  const [va, vb, vc] = [await view(a), await view(b), await view(c)];
+  assert.deepEqual([va.champion, vb.champion, vc.champion], [true, true, false]);
+  assert.deepEqual(va.champions.names.sort(), ['공동일등A', '공동일등B']);
+  const after = async (who) => (await fx.req('/api/points', who.session)).data.balance;
+  assert.equal(await after(a) - before[a.label], 1_000_000);
+  assert.equal(await after(b) - before[b.label], 1_000_000);
+  assert.equal(await after(c) - before[c.label], 500_000, '1위·1위 다음은 3위');
+  await fx.req('/api/test/climb/settle', null, {});
+  assert.equal(await after(a) - before[a.label], 1_000_000, '다시 결산해도 한 번만');
+  assert.equal((await fx.req('/api/skins', a.session)).data.champion, true, '광장 이름표용 내 챔피언 상태');
+  // a week later, last week's champions expire
+  const nextWeek = await fx.req('/api/test/climb/settle', null, { now: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  assert.equal(nextWeek.data.champions.ids && Object.keys(nextWeek.data.championOf).length, 0);
+  await fx.req('/api/test/climb/settle', null, { now: Date.now() });
+  assert.equal((await view(a)).champion, true, '이번 주에는 다시 그대로');
+});

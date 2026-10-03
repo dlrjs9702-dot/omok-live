@@ -85,14 +85,25 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     avatar_hat_5: (c) => { const halo = mesh(new THREE.TorusGeometry(0.36, 0.05, 10, 32), mat(0xffe28a, { emissive: 0xffd24a, emissiveIntensity: 1.1 }), 0, 0.8, 0, c.head); halo.rotation.x = Math.PI / 2; halo.castShadow = false; c.halo = halo; },
   };
 
-  // Name tag over a character: the nickname, and the title (a legend's name) under it.
-  function makeTag(name, title) {
+  // Name tag over a character: the nickname (with a small gold 「챔피언」 mark for this week's climbing champion,
+  // v1.9.5) and, on its own line, the title (a legend's name). Small and layered so both fit without a banner.
+  function makeTag(name, title, champion = false) {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = title ? 168 : 104;
     const c = canvas.getContext('2d'); c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.font = '800 54px Pretendard, "Malgun Gothic", system-ui, sans-serif'; const nw = Math.min(500, c.measureText(name).width + 48);
-    c.fillStyle = 'rgba(30,24,20,.62)'; c.beginPath(); c.roundRect((512 - nw) / 2, 8, nw, 88, 44); c.fill();
-    c.fillStyle = '#ffffff'; c.fillText(name, 256, 54, 470);
-    if (title) { const t = `《${title}》`; c.font = '800 38px Pretendard, "Malgun Gothic", system-ui, sans-serif'; c.fillStyle = '#ffd86b'; c.strokeStyle = 'rgba(40,28,10,.85)'; c.lineWidth = 7; c.strokeText(t, 256, 134, 480); c.fillText(t, 256, 134, 480); }
+    const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+    c.font = font(54); const nameW = Math.min(360, c.measureText(name).width);
+    c.font = font(34); const pillW = champion ? c.measureText('챔피언').width + 34 : 0;
+    const gap = champion ? 14 : 0; const total = Math.min(500, nameW + gap + pillW + 48);
+    c.fillStyle = 'rgba(30,24,20,.62)'; c.beginPath(); c.roundRect((512 - total) / 2, 8, total, 88, 44); c.fill();
+    const left = (512 - (nameW + gap + pillW)) / 2;
+    c.font = font(54); c.fillStyle = '#ffffff'; c.fillText(name, left + nameW / 2, 54, 360);
+    if (champion) {
+      const px = left + nameW + gap;
+      const g = c.createLinearGradient(px, 0, px + pillW, 0); g.addColorStop(0, '#ffd86b'); g.addColorStop(1, '#f0b429');
+      c.fillStyle = g; c.beginPath(); c.roundRect(px, 30, pillW, 48, 24); c.fill();
+      c.font = font(34); c.fillStyle = '#4a2a00'; c.fillText('챔피언', px + pillW / 2, 55);
+    }
+    if (title) { const t = `\u300a${title}\u300b`; c.font = font(38); c.fillStyle = '#ffd86b'; c.strokeStyle = 'rgba(40,28,10,.85)'; c.lineWidth = 7; c.strokeText(t, 256, 134, 480); c.fillText(t, 256, 134, 480); }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
     sprite.scale.set(2.2, (2.2 * canvas.height) / 512, 1); sprite.renderOrder = 2;
@@ -292,12 +303,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   me.root.position.set((Math.random() - 0.5) * 3, 0, 7 + Math.random() * 0.8); // a little apart from whoever arrived just before
   scene.add(me.root);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
-  function setAvatar({ look = {}, name = '', title = null } = {}) {
+  function setAvatar({ look = {}, name = '', title = null, champion = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
     disposeCharacter(old); scene.add(me.root);
-    if (name) { me.tag = makeTag(name, title); me.tag.position.y = 2.75; me.root.add(me.tag); }
-    me.look = look; me.title = title;
+    if (name) { me.tag = makeTag(name, title, champion); me.tag.position.y = 2.75; me.root.add(me.tag); }
+    me.look = look; me.title = title; me.champion = Boolean(champion);
   }
 
   // v1.9.3 V3: everyone else in the plaza. The server's snapshots move a target; each frame the character glides
@@ -309,20 +320,20 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     for (const p of list || []) {
       if (!p?.id) continue;
       seen.add(p.id);
-      const key = JSON.stringify([p.look || {}, p.name, p.title || null]);
+      const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion)]);
       let o = others.get(p.id);
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, 0, p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
-        o = { c, key }; others.set(p.id, o);
+        c.tag = makeTag(p.name || '', p.title || null, p.champion); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
+        o = { c, key, champion: Boolean(p.champion) }; others.set(p.id, o);
       }
-      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) };
+      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.champion = Boolean(p.champion);
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -544,7 +555,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, tag: Boolean(me.tag), others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag) })) };
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag), others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion) })) };
   }
   return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose };
 }
