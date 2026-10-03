@@ -14,7 +14,14 @@ test('공개 화투 그림은 압축·장기 캐시로 내려가고, 카드 이�
   const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
   const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'hwatu-test', NODE_ENV: 'test' }, stdio: 'ignore' });
-  t.after(async () => { proc.kill('SIGTERM'); await new Promise(resolve => proc.once('exit', resolve)); await fs.rm(dir, { recursive: true, force: true }); });
+  t.after(async () => { // only a live server is awaited (an exited one emits no further 'exit'), at most 5 s
+    if (proc.exitCode === null && proc.signalCode === null) {
+      const exited = new Promise(resolve => proc.once('exit', resolve));
+      proc.kill('SIGTERM');
+      await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5000).unref())]);
+    }
+    await fs.rm(dir, { recursive: true, force: true });
+  });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
 

@@ -83,24 +83,29 @@ async function threeInAMatch(t, dropVia) {
   assert.equal((await req('/api/room/next-round', a.session, {})).status, 200); // and start the next round (rematch)
   state = (await req('/api/room', a.session, undefined, 'GET')).data.state;
   assert.equal(state.game.status, 'selecting');
-  return { ...fx, a, b, c };
+  return { ...fx, a, b, c, nextRound: state };
 }
 
 test('a refresh/dropped page keeps its seat through the next round and gets it back on re-entry', { timeout: 40_000 }, async t => {
-  const { req, enter, c } = await threeInAMatch(t, async ({ req: request }, player) => {
+  const { req, enter, c, nextRound } = await threeInAMatch(t, async ({ req: request }, player) => {
     assert.equal((await request('/api/session/release', null, { sessionToken: player.session })).status, 200); // pagehide
     await new Promise(resolve => setTimeout(resolve, 1700)); // past the 1 s release grace
   });
+  assert.ok(nextRound.players['3'], '다른 참가자 화면에서도 3번 좌석은 끊긴 사람 몫으로 남아 있다');
   const back = await enter(c.key);
   const mine = (await req('/api/room', back, undefined, 'GET')).data.state;
   assert.equal(mine?.me?.seat, '3', '끊겼다 돌아온 사람은 다음 판에서도 같은 좌석');
 });
 
 test('an explicit logout gives the seat up once that match has ended (existing rule)', { timeout: 40_000 }, async t => {
-  const { req, enter, c } = await threeInAMatch(t, async ({ req: request }, player) => {
+  const { req, enter, a, c, nextRound } = await threeInAMatch(t, async ({ req: request }, player) => {
     assert.equal((await request('/api/logout', player.session, {})).status, 200);
   });
+  // PR #76 review: a null room state for the returning session alone would pass the check below, so the seat itself is
+  // checked in the room as the other players see it.
+  assert.equal(nextRound.players['3'], null, '다른 참가자 화면에서 3번 좌석이 실제로 비었다');
   const back = await enter(c.key);
   const mine = (await req('/api/room', back, undefined, 'GET')).data.state;
   assert.notEqual(mine?.me?.seat, '3', '접속 종료한 사람의 좌석은 다음 판에 비워진다');
+  assert.equal((await req('/api/room', a.session, undefined, 'GET')).data.state.players['3'], null, '다시 들어온 뒤에도 좌석은 비어 있다');
 });
