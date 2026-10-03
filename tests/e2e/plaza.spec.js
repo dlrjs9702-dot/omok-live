@@ -34,9 +34,11 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 
   // At the shop door: a short hint, and Space opens the skin shop over the square.
   await page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상점');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
   await page.keyboard.press('Space');
   await expect(page.locator('#skinShopDialog')).toBeVisible();
+  await expect(page.locator('#skinShopTitle')).toHaveText('게임 스킨 상점');
+  await expect(page.locator('#skinShopDialog').getByRole('tab', { name: '광장 아바타' })).toHaveCount(0); // character skins: the shop next door
   const before = await state(page);
   await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft');
   const during = await state(page);
@@ -121,11 +123,13 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   expect(await page.evaluate(() => window.PlazaDebug().title)).toBe('천상 바둑');
   expect(await page.evaluate(() => window.PlazaDebug().tag)).toBe(true);
 
-  // 상점(광장의 상점 건물): 광장 아바타 탭, 칸 표시, 칭호 구역; 장착하면 캐릭터가 바로 바뀐다.
-  await page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상점');
+  // v1.10.1 캐릭터 스킨 상점(상점가): 아바타 품목만, 칸 표시, 칭호 구역; 장착하면 캐릭터가 바로 바뀐다.
+  await page.evaluate(() => window.PlazaDebug().place('avatar'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 캐릭터 스킨 상점');
   await page.keyboard.press('Space');
   const dialog = page.locator('#skinShopDialog');
+  await expect(dialog.locator('#skinShopTitle')).toHaveText('캐릭터 스킨 상점');
+  await expect(dialog.getByRole('tab')).toHaveText(['광장 아바타']); // game skins are sold next door
   await dialog.getByRole('tab', { name: '광장 아바타' }).click();
   await expect(dialog.locator('.skinCard')).toHaveCount(16);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
@@ -220,7 +224,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
 // v1.9.6 광장 플레이어 충돌: 정면으로 막히고, 비스듬히 가면 옆으로 미끄러져 지나가며, 둘이 동시에 마주 걸어도
 // 통과·순간이동이 없고, 누가 서 있어도 시설 입구는 막히지 않는다. (등반에서는 충돌 없음: climb.spec)
 test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입구 막힘 없음', async ({ browser, request }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000); // two 3D pages of the whole island on a software renderer: about 1.8 minutes on a slow CI runner
   const a = await intoPlaza(browser, request, '부딪는A');
   const b = await intoPlaza(browser, request, '부딪는B');
   // SLOW=6 reproduces a slow CI runner (CPU throttling) for this test
@@ -280,7 +284,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   await settle(a, bId, door.x, door.z);
   await teleport(a, shopDoor.x + 1.5, shopDoor.z + 1.5); // then walk into the doorway B is standing in
   await a.page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 상점');
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
   await a.page.keyboard.press('Space');
   await expect(a.page.locator('#skinShopDialog')).toBeVisible();
   await a.page.keyboard.press('Escape');
