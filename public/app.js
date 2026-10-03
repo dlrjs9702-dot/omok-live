@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.8').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.9').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1089,7 +1089,11 @@
   // per-element, per-frame 0..1 multi-bounce height (see bounceHeight above) with a small random
   // phase/scale jitter per element (spins[i].bouncePhase/bounceScale, set by the caller) so several
   // elements tumbling together don't bounce in exact lockstep.
+  // v1.9.9: a tumble belongs to the room it started in. Entering a room bumps tumbleGen (resetRoomAnimationState), so an
+  // unfinished throw/roll stops: no more frames on the old elements, no onDone into the new room's state.
+  let tumbleGen = 0;
   function animateTumble(els, spins, buildFrame, finalTransforms, { duration = 700, settleMs = 420, decorate, onDone } = {}) {
+    const gen = tumbleGen;
     els.forEach(el => el.classList.remove('settling'));
     const settle = (withTransition) => {
       els.forEach((el, i) => {
@@ -1103,6 +1107,7 @@
     if (reducedMotionActive() || !els.length) { settle(false); return; }
     const start = performance.now();
     const frame = timestamp => {
+      if (gen !== tumbleGen) return;
       const elapsed = timestamp - start;
       if (elapsed >= duration) { settle(true); return; }
       const progress = elapsed / duration;
@@ -1457,7 +1462,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.8').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.9').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -3348,6 +3353,7 @@
   // piece, a dice or piece move, a card flight, a drawn tile) belongs to the room it was seen in. Entering a room clears it,
   // so the first snapshot of that room is only a baseline and nothing from the previous room is replayed or compared.
   function resetRoomAnimationState() {
+    tumbleGen += 1;
     pieceMotionKey = null; pieceMotionStart = 0;
     if (pieceMotionFrame !== null) cancelAnimationFrame(pieceMotionFrame);
     pieceMotionFrame = null;

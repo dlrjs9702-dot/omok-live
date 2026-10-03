@@ -339,7 +339,11 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
         c.tag = makeTag(p.name || '', p.title || null, p.champion); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
         o = { c, key, champion: Boolean(p.champion) }; others.set(p.id, o);
       }
-      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.champion = Boolean(p.champion);
+      // v1.9.9: how fast they were walking between the last two snapshots, so my collision can look a little ahead
+      const now = performance.now(); const prev = o.target; const gap = prev ? (now - o.targetAt) / 1000 : 0;
+      o.vel = p.moving && prev && gap > 0.02 && gap < 1 ? { x: (p.x - prev.x) / gap, z: (p.z - prev.z) / gap } : { x: 0, z: 0 };
+      const speed = Math.hypot(o.vel.x, o.vel.z); if (speed > SPEED * 1.3) { o.vel.x *= (SPEED * 1.3) / speed; o.vel.z *= (SPEED * 1.3) / speed; }
+      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion);
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -363,6 +367,15 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const p = o.c.root.position; const t = o.target; const k = Math.min(1, dt * 9);
       const dist = Math.hypot(t.x - p.x, t.z - p.z);
       if (dist > 6) { p.x = t.x; p.z = t.z; } else { p.x += (t.x - p.x) * k; p.z += (t.z - p.z) * k; } // a far jump (reconnect) snaps
+      // v1.9.9: their glide never sinks into my character (the server already keeps the real positions apart; a late
+      // snapshot would otherwise draw them inside me for a moment). Moving apart is never held back.
+      const m = me.root.position; const dx = p.x - m.x; const dz = p.z - m.z; const d = Math.hypot(dx, dz);
+      const min = playerRadiusAt(m.x, m.z) + playerRadiusAt(p.x, p.z);
+      if (dist <= 6 && d < min && d < o.drawnGap - 1e-4) {
+        const ux = d > 1e-4 ? dx / d : 0; const uz = d > 1e-4 ? dz / d : 1; const keep = Math.min(min, o.drawnGap);
+        p.x = m.x + ux * keep; p.z = m.z + uz * keep;
+      }
+      o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
       o.c.targetYaw = t.yaw;
       animate(o.c, dt, t.moving || dist > 0.05);
     }
@@ -457,6 +470,13 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
       if (t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05) out.push({ x: t.x, z: t.z, r: playerRadiusAt(t.x, t.z) });
+      // v1.9.9: and, while they walk, where they are by now (the snapshot is already old when it arrives). On a slow PC
+      // two people walking at each other otherwise each stop against the other's old spot and end up drawn overlapping.
+      if (t?.moving && o.vel && (o.vel.x || o.vel.z)) {
+        const ahead = Math.min(0.35, (performance.now() - o.targetAt) / 1000 + 0.12);
+        const ax = t.x + o.vel.x * ahead; const az = t.z + o.vel.z * ahead;
+        out.push({ x: ax, z: az, r: playerRadiusAt(ax, az) });
+      }
     }
     return out;
   }

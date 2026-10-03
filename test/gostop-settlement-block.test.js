@@ -28,7 +28,16 @@ test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고,
   let output = '';
   proc.stdout.on('data', data => { output += data; });
   proc.stderr.on('data', data => { output += data; });
-  t.after(async () => { proc.kill('SIGTERM'); await new Promise(resolve => proc.once('exit', resolve)); await fs.rm(dir, { recursive: true, force: true }); });
+  t.after(async () => {
+    // PR #74 review: a server that already exited (a crash the test reports) emits no further 'exit', so only a live one is
+    // awaited, and never longer than 5 s.
+    if (proc.exitCode === null && proc.signalCode === null) {
+      const exited = new Promise(resolve => proc.once('exit', resolve));
+      proc.kill('SIGTERM');
+      await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5000).unref())]);
+    }
+    await fs.rm(dir, { recursive: true, force: true });
+  });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i += 1) {
     try { if ((await fetch(`${base}/health`)).ok) break; } catch {}
