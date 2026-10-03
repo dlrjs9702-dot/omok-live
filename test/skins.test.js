@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf } = require('../lib/skins');
+const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf, avatarLookOf } = require('../lib/skins');
 const SkinLooks = require('../public/skin-looks');
 
 // v1.7.30 skins: the catalog and looks (unit), then buying / equipping / sharing through the real server.
@@ -30,16 +30,23 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   const omokView = catalogView().find(f => f.family === 'omok').skins;
   const pairOf = id => omokView.find(s => s.id === id).pair;
   assert.deepEqual(['omok_l1', 'omok_t2', 'omok_l2', 'omok_t1'].map(pairOf), ['omok_t2', 'omok_l1', 'omok_t1', 'omok_l2']);
-  assert.ok(SKINS.filter(s => s.tier === 'legend').every(s => s.pair), '모든 전설이 방 테마와 짝');
-  for (const skin of SKINS) assert.equal(skin.price, TIERS[skin.tier].price);
+  assert.ok(SKINS.filter(s => s.tier === 'legend' && s.family !== 'avatar').every(s => s.pair), '모든 게임 전설이 방 테마와 짝');
+  for (const skin of SKINS.filter(s => s.family !== 'avatar')) assert.equal(skin.price, TIERS[skin.tier].price);
+  // v1.9.2 광장 아바타: 칸(헤어·의상·모자)마다 품목, 가격은 게임 스킨보다 낮고, 전설 배지·짝에는 들어가지 않는다.
+  const avatar = SKINS.filter(s => s.family === 'avatar');
+  assert.deepEqual(['hair', 'outfit', 'hat'].map(slot => avatar.filter(s => s.slot === slot).length), [6, 5, 5]);
+  assert.deepEqual([...new Set(avatar.map(s => s.price))].sort((x, y) => x - y), [200_000, 500_000, 1_500_000]);
+  assert.deepEqual(badgesOf(avatar.map(s => s.id)), [], '아바타는 프로필 배지가 아니다');
+  assert.deepEqual(avatarLookOf({ avatar: { hair: 'avatar_hair_6', outfit: 'avatar_hat_1', title: 'omok_l1' } }), { look: { hair: 'avatar_hair_6' }, title: '천상 바둑' }, '칸이 맞지 않는 품목은 무시');
+  assert.equal(avatarLookOf({ avatar: { title: 'omok_c1' } }).title, null, '칭호는 전설만');
   assert.equal(familyOf('omok'), 'omok');
   assert.equal(familyOf('omok2v2'), 'omok');
   assert.equal(familyOf('othello'), 'othello');
   assert.equal(familyOf('rpg'), null, '스킨 대상이 아닌 게임');
   assert.equal(familyOf('cityking'), null);
   assert.equal(skinById('nope'), null);
-  assert.deepEqual(catalogView().map(f => f.family), Object.keys(ACTIVE_FAMILIES));
-  for (const family of catalogView()) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
+  assert.deepEqual(catalogView().map(f => f.family), [...Object.keys(ACTIVE_FAMILIES), 'avatar']);
+  for (const family of catalogView().filter(f => f.family !== 'avatar')) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
     const tiers = tier => family.skins.filter(s => s.tier === tier).length;
     // v1.8.7 오목 → v1.9.2 모든 게임: 테마마다 짝 전설(전설 2)
     const twoLegends = true; // v1.9.2: every game has two legends, one per room theme
@@ -160,4 +167,17 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
   assert.equal((await fx.req('/api/room', b.session)).data.state.players.black.skin, undefined);
   assert.deepEqual((await fx.req('/api/skins', b.session)).data.owned, []);
   assert.equal((await fx.req('/api/skins/equip', b.session, { skinId: skin })).status, 409);
+
+  // v1.9.2 광장 아바타·칭호: 아바타 품목은 같은 구매·장착 흐름, 칭호는 보유한 전설만.
+  assert.equal((await fx.grant(a, 3_500_000)).status, 200);
+  assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: 'avatar_hat_4' })).status, 200);
+  const worn = await fx.req('/api/skins/equip', a.session, { skinId: 'avatar_hat_4' });
+  assert.deepEqual(worn.data.avatar, { look: { hat: 'avatar_hat_4' }, title: null });
+  assert.equal((await fx.req('/api/skins/title', a.session, { skinId: 'omok_l1' })).status, 409, '사지 않은 전설은 칭호 불가');
+  assert.equal((await fx.req('/api/skins/title', a.session, { skinId: 'avatar_hat_4' })).status, 404, '아바타 품목은 칭호가 아님');
+  assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: 'omok_l1' })).status, 200);
+  const titled = await fx.req('/api/skins/title', a.session, { skinId: 'omok_l1' });
+  assert.deepEqual([titled.status, titled.data.avatar.title], [200, '천상 바둑']);
+  assert.equal((await fx.req('/api/skins', a.session)).data.avatar.title, '천상 바둑');
+  assert.equal((await fx.req('/api/skins/title', a.session, { skinId: null })).data.avatar.title, null);
 });

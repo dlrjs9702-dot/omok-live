@@ -234,7 +234,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.1').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.2').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1451,7 +1451,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.1').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.2').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1460,6 +1460,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')), // any window over the square stops the character
       });
       if (!plaza.controller) plaza.failed = true;
+      else refreshPlazaAvatar();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
     }).catch((error) => { plaza.loading = null; plaza.failed = true; console.error(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1469,7 +1470,17 @@
     syncPlaza('lobby');
   });
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
+  // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
+  let plazaAvatar = null;
+  async function refreshPlazaAvatar() {
+    try { plazaAvatar = (await api('/api/skins')).avatar || null; } catch { return; }
+    applyPlazaAvatar();
+  }
+  function applyPlazaAvatar() {
+    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
+  }
   window.PlazaDebug = () => plaza.controller?.debug() || null;
+  Object.defineProperty(window, '__plazaController', { get: () => plaza.controller, configurable: true }); // tests try looks on
 
   function identityText() {
     return sessionRole === 'admin' ? '관리자 세션' : `${sessionLabel || '게스트'} · 입장 파일 세션`;
@@ -2878,7 +2889,7 @@
         name.textContent = skin.name;
         const meta = document.createElement('span');
         meta.className = 'skinMeta';
-        const tier = document.createElement('span'); tier.textContent = skin.tierLabel;
+        const tier = document.createElement('span'); tier.textContent = skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel;
         const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
         meta.append(tier, price);
         const button = document.createElement('button');
@@ -2894,6 +2905,31 @@
       section.append(heading, grid);
       skinShopBody.append(section);
     }
+    if (family.family === 'avatar') skinShopBody.append(renderTitlePicker());
+  }
+
+  // v1.9.2 광장 칭호: any owned legend skin's name can be worn under the player's name in the plaza.
+  function renderTitlePicker() {
+    const section = document.createElement('section');
+    section.className = 'skinFamily skinTitles';
+    const heading = document.createElement('h3');
+    heading.textContent = '칭호';
+    const list = document.createElement('div');
+    list.className = 'skinTitleList';
+    const current = skinShop.equipped?.avatar?.title || null;
+    const legends = skinShop.catalog.flatMap(f => f.family === 'avatar' ? [] : f.skins.filter(s => s.tier === 'legend' && skinShop.owned.has(s.id)));
+    for (const skin of [{ id: null, name: '칭호 없음' }, ...legends]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `ghost tiny skinTitle${(skin.id || null) === current ? ' selected' : ''}`;
+      button.setAttribute('aria-pressed', String((skin.id || null) === current));
+      button.dataset.action = 'title';
+      button.dataset.skin = skin.id || '';
+      button.textContent = skin.name;
+      list.append(button);
+    }
+    section.append(heading, list);
+    return section;
   }
 
   async function loadSkinShop() {
@@ -2934,7 +2970,11 @@
       } else if (action === 'unequip') {
         const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
         skinShop.equipped = data.equipped;
+      } else if (action === 'title') {
+        const data = await api('/api/skins/title', { method: 'POST', body: JSON.stringify({ skinId: skinId || null }) });
+        skinShop.equipped = data.equipped;
       }
+      if (['equip', 'unequip', 'title'].includes(action)) refreshPlazaAvatar(); // the plaza character wears it at once
       renderSkinShop();
     } catch (error) {
       skinBuyArmed = null;

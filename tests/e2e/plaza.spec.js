@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, expectNoScriptError } = require('./skin-support');
+const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-support');
 
 // v1.8.8 3D 광장 로비 V1: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈추며,
 // 시설 창은 기존 로비 기능 그대로(게임관에서 방 만들기). 「기존 로비」 전환은 브라우저에 기억된다. PC 전용.
@@ -7,8 +7,8 @@ test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
 
-async function intoPlaza(browser, request, label) {
-  const who = await shopper(browser, request, label);
+async function intoPlaza(browser, request, label, points = 0) {
+  const who = await shopper(browser, request, label, points);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
   await who.page.locator('#lobbyModeBtn').click(); // the specs start in the classic lobby (playwright.config.js)
   await expect(who.page.locator('#plazaStage canvas')).toBeVisible({ timeout: 15000 });
@@ -102,6 +102,36 @@ test('광장: 게임관 창에서 방을 만들면 방으로 들어가고, 나�
   await expect(page.locator('#lobbyView')).toBeVisible();
   await expect(page.locator('#plazaStage')).toBeHidden();
   await expect(page.locator('#lobbyModeBtn')).toHaveText('광장');
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.9.2 광장 V2: 상점의 광장 아바타 탭(헤어·의상·모자, 칭호)과 광장 캐릭터가 같은 모습이고, 장착하면 바로 바뀐다.
+test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호가 광장 캐릭터와 이름표에 바로 나온다', async ({ browser, request }) => {
+  const a = await intoPlaza(browser, request, '아바타', 7_000_000);
+  const { page } = a;
+  await buyAndEquip(request, a, ['avatar_hair_6', 'avatar_outfit_5', 'omok_l1']);
+  expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_4' })).status).toBe(200); // owned, not worn yet
+  expect((await post(request, '/api/skins/title', a.token, { skinId: 'omok_l1' })).status).toBe(200);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 8000 }).toEqual({ hair: 'avatar_hair_6', outfit: 'avatar_outfit_5' });
+  expect(await page.evaluate(() => window.PlazaDebug().title)).toBe('천상 바둑');
+  expect(await page.evaluate(() => window.PlazaDebug().tag)).toBe(true);
+
+  // 상점(광장의 상점 건물): 광장 아바타 탭, 칸 표시, 칭호 구역; 장착하면 캐릭터가 바로 바뀐다.
+  await page.evaluate(() => window.PlazaDebug().place('shop'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상점');
+  await page.keyboard.press('Space');
+  const dialog = page.locator('#skinShopDialog');
+  await dialog.getByRole('tab', { name: '광장 아바타' }).click();
+  await expect(dialog.locator('.skinCard')).toHaveCount(16);
+  await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
+  await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
+  await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
+  await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
   await a.context.close();
 });
