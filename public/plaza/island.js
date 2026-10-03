@@ -404,9 +404,9 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
-  function drawMap(ctx, w, h, me) {
-    const s = Math.min(w, h) / 236; const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;
-    ctx.fillStyle = '#7fcbe9'; ctx.fillRect(0, 0, w, h);
+  // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
+  function drawGround(ctx, w, h, X, Z, s) {
+    ctx.fillStyle = '#7fcbe9'; ctx.fillRect(-2 * w, -2 * h, 5 * w, 5 * h); // the sea (wide enough for a turned minimap)
     const shore = (grow) => { ctx.beginPath(); for (let i = 0; i <= 180; i += 1) { const a = (i / 180) * TAU; const R = coastR(a) + grow; const px = X(Math.cos(a) * R); const pz = Z(Math.sin(a) * R); if (i) ctx.lineTo(px, pz); else ctx.moveTo(px, pz); } ctx.closePath(); };
     shore(0); ctx.fillStyle = '#f1dfae'; ctx.fill();
     shore(-5); ctx.fillStyle = '#9fd67f'; ctx.fill();
@@ -417,6 +417,11 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     ctx.beginPath(); ctx.arc(X(0), Z(0), PLAZA_R * s, 0, TAU); ctx.fillStyle = '#f3e6c8'; ctx.fill(); ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 2; ctx.stroke();
     line([[PIER.x - PIER.ux * PIER.half, PIER.z - PIER.uz * PIER.half], [PIER.x + PIER.ux * PIER.half, PIER.z + PIER.uz * PIER.half]], PIER.w, '#b07a4f');
     line([[BREAKWATER.x - BREAKWATER.ux * BREAKWATER.half, BREAKWATER.z - BREAKWATER.uz * BREAKWATER.half], [BREAKWATER.x + BREAKWATER.ux * BREAKWATER.half, BREAKWATER.z + BREAKWATER.uz * BREAKWATER.half]], BREAKWATER.w, '#a39b8e');
+    for (const b of bridges) line([[b.x - b.ux * b.half, b.z - b.uz * b.half], [b.x + b.ux * b.half, b.z + b.uz * b.half]], b.w, '#b07a4f');
+  }
+  function drawMap(ctx, w, h, me) {
+    const s = Math.min(w, h) / 236; const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;
+    drawGround(ctx, w, h, X, Z, s);
     ctx.font = `800 ${Math.round(w / 28)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const area of Object.values(AREAS)) {
       ctx.beginPath(); ctx.arc(X(area.x), Z(area.z), w / 70, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill();
@@ -429,7 +434,51 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     }
   }
 
+  // v1.10.2 미니맵: the ground around me (about 80 m across), turned with the camera so the way I look is always up,
+  // the places nearby with upright short names, my position, and a small 「N」 on the rim pointing north. `markers`
+  // ({ x, z }) are drawn as 「!」 -- kept for nearby events later.
+  const MINI_RANGE = 40;
+  function drawMinimap(ctx, size, me, viewYaw, places = [], markers = []) {
+    const s = size / (MINI_RANGE * 2); const c = size / 2;
+    const fx = -Math.sin(viewYaw); const fz = -Math.cos(viewYaw); // where the camera looks, on the ground
+    const turn = -Math.PI / 2 - Math.atan2(fz, fx); // rotate the map so that direction points up
+    const cos = Math.cos(turn); const sin = Math.sin(turn);
+    const at = (x, z) => { const dx = (x - me.x) * s; const dz = (z - me.z) * s; return [c + dx * cos - dz * sin, c + dx * sin + dz * cos]; };
+    ctx.save(); ctx.clearRect(0, 0, size, size);
+    ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.clip();
+    ctx.save(); ctx.translate(c, c); ctx.rotate(turn);
+    drawGround(ctx, size, size, (x) => (x - me.x) * s, (z) => (z - me.z) * s, s);
+    ctx.restore();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `800 ${Math.round(size / 15)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+    const labels = [];
+    for (const p of places) {
+      if (Math.hypot(p.x - me.x, p.z - me.z) > MINI_RANGE * 1.1) continue;
+      const [px, pz] = at(p.x, p.z);
+      ctx.beginPath(); ctx.arc(px, pz, size / 45, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill();
+      if (labels.some(([lx, lz]) => Math.abs(lx - px) < size / 3 && Math.abs(lz - pz) < size / 12)) continue; // the dot only when names would overlap
+      labels.push([px, pz]);
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(p.name, px, pz - size / 18); ctx.fillStyle = '#3d2f22'; ctx.fillText(p.name, px, pz - size / 18);
+    }
+    ctx.font = `900 ${Math.round(size / 9)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
+    for (const m of markers) { // future events: a red 「!」 at the place
+      const [mx, mz] = at(m.x, m.z);
+      ctx.beginPath(); ctx.arc(mx, mz, size / 18, 0, TAU); ctx.fillStyle = '#e8443c'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillText('!', mx, mz + 1);
+    }
+    // me: the view always points up
+    ctx.beginPath(); ctx.moveTo(c, c); ctx.arc(c, c, size * 0.3, -Math.PI / 2 - 0.5, -Math.PI / 2 + 0.5); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(c, c - size * 0.075); ctx.lineTo(c - size * 0.045, c + size * 0.04); ctx.lineTo(c + size * 0.045, c + size * 0.04); ctx.closePath();
+    ctx.fillStyle = '#e8443c'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,250,240,.95)'; ctx.stroke();
+    const north = -Math.PI / 2 + turn; const nx = c + Math.cos(north) * (c - 13); const nz = c + Math.sin(north) * (c - 13); // north on the rim
+    ctx.beginPath(); ctx.arc(nx, nz, 10, 0, TAU); ctx.fillStyle = 'rgba(255,250,240,.95)'; ctx.fill();
+    ctx.font = `900 ${Math.round(size / 13)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.fillStyle = '#b3261e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('N', nx, nz + 1);
+    return turn;
+  }
+
   function step(clock) { boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { drawMap, step, dispose, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { drawMap, drawMinimap, step, dispose, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

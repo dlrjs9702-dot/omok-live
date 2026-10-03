@@ -1555,6 +1555,7 @@ body.plazaMode .shell{width:min(1600px,calc(100% - 24px));padding-bottom:16px}
 body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 #lobbyView>#islandMapCard{display:none}.islandMapCard canvas{display:block;width:auto;max-width:100%;max-height:72vh;margin:0 auto;border-radius:14px}
 .plazaStage{position:relative;height:calc(100vh - 126px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
+.plazaStage canvas.islandMinimap{position:absolute;top:12px;right:12px;width:176px;height:176px;z-index:2;border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none}
 .islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#f8fafc;font-weight:850;border:1px solid #334155}
 .islandChatTab.unread::after{content:'';display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:#f87171;vertical-align:middle}
 .islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(15,23,42,var(--island-chat-alpha));border:1px solid rgba(51,65,85,var(--island-chat-alpha));color:#e5e7eb}

@@ -16,7 +16,7 @@ async function intoPlaza(browser, request, label, points = 0) {
   await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
   await who.page.reload();
   await expect(who.page.locator('#lobbyView')).toBeVisible();
-  await expect(who.page.locator('#plazaStage canvas')).toBeVisible({ timeout: 15000 });
+  await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
   return who;
 }
@@ -104,7 +104,7 @@ test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일�
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('#lobbyView')).toBeVisible();
-  await expect(page.locator('#plazaStage canvas')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await expectNoScriptError(page);
   await a.context.close();
@@ -382,7 +382,7 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '돌려보기');
   const { page } = a;
-  const box = await page.locator('#plazaStage canvas').boundingBox();
+  const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
   const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
   expect(await page.evaluate(() => window.PlazaDebug().camYaw)).toBe(0);
   await page.mouse.move(cx, cy); await page.mouse.down();
@@ -390,6 +390,9 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await page.mouse.up();
   const yaw = await page.evaluate(() => window.PlazaDebug().camYaw);
   expect(yaw).toBeGreaterThan(1.2); expect(yaw).toBeLessThan(2); // 200 px ≈ 1.6 rad
+  // the minimap (top right) turns with the view: the way I look stays at its top
+  await expect.poll(async () => { const d = await page.evaluate(() => window.PlazaDebug()); return Math.abs(Math.atan2(Math.sin(d.minimap.turn - d.camYaw), Math.cos(d.minimap.turn - d.camYaw))); }, { timeout: 3000 }).toBeLessThan(0.01);
+  await expect(page.locator('#plazaStage canvas.islandMinimap')).toBeVisible();
   await expect(page.locator('#plazaDialog')).toBeHidden();
   await expect(page.locator('#skinShopDialog')).toBeHidden();
   // ↑ walks away from the camera: along (-sin yaw, -cos yaw)

@@ -221,6 +221,18 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     return sprite;
   };
 
+  // v1.10.2 미니맵: a small round map in the top-right corner of the island view (redrawn about 8 times a second).
+  const minimap = document.createElement('canvas'); minimap.className = 'islandMinimap'; minimap.width = 176; minimap.height = 176;
+  minimap.setAttribute('role', 'img'); minimap.setAttribute('aria-label', '미니맵');
+  host.append(minimap);
+  let minimapAt = 0; let minimapTurn = 0; let mapMarkers = []; // markers: future nearby events (none yet)
+  function refreshMinimap(now) {
+    if (now - minimapAt < 120) return;
+    minimapAt = now;
+    const places = Object.entries(doors).map(([, d]) => ({ x: d.x, z: d.z, name: d.name }));
+    minimapTurn = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, mapMarkers);
+  }
+
   // The map board's picture (redrawn as I walk; the window version draws into the caller's canvas).
   const mapCanvas = document.createElement('canvas'); mapCanvas.width = 640; mapCanvas.height = 470;
   const mapTexture = new THREE.CanvasTexture(mapCanvas); mapTexture.colorSpace = THREE.SRGBColorSpace; textures.push(mapTexture);
@@ -707,7 +719,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     if (best !== near) { near = best; onNear?.(near ? { id: near, name: doors[near].name } : null); }
     me.lookAt = near ? Math.atan2(doors[near].x - me.root.position.x, doors[near].z - me.root.position.z) : null;
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
-    island.step(clock); refreshMapBoard();
+    island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = 0.55 + Math.sin(clock * 1.5 + i) * 0.05; });
     placeCamera(false);
@@ -757,7 +769,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
     mats.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); island.dispose();
-    renderer.dispose(); renderer.domElement.remove();
+    renderer.dispose(); renderer.domElement.remove(); minimap.remove();
   }
   // For tests and support: where things are, and a way to stand at a facility's door.
   function debug() {
@@ -771,11 +783,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
   // v1.10.2: a chat message over someone's head ('me' or another player's id)
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak };
+  const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers };
 }
