@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.9.9 방 이동 연출·광장 충돌·테스트 안정화
+
+IDEAS 개선 백로그 B6(PR #76 리뷰)·B7 ②(PR #75 리뷰)·H28(PR #74 리뷰) 후속과 v1.9.7 CI에서 반복된 광장 충돌 flaky, 사용자 지시(2026-10-04).
+
+- 윷·랜드킹 tumble(`public/app.js`): 공통 `animateTumble()`이 세대 번호(`tumbleGen`)를 잡고, 방에 들어올 때 `resetRoomAnimationState()`가 번호를 올린다. 진행 중이던 윷 던지기·주사위 굴리기는 다음 프레임에서 멈추고 `onDone`을 부르지 않는다(윷 막대·주사위 DOM은 방마다 재사용되므로 이전 프레임이 새 방의 막대를 움직일 수 있었다).
+- 광장 충돌(`public/plaza/plaza-scene.js`): 걷는 상대는 마지막 두 스냅샷으로 속도를 구해 지금쯤의 위치(최대 0.35초 앞)도 충돌 원에 넣는다. 다른 사람의 보간은 내 캐릭터 접촉원 안으로 더 들어가지 않는다(멀어지는 쪽은 그대로). 원인: 느린 화면에서 두 사람이 서로의 지난 위치에 대고 멈춰 화면상 겹침(CPU 6배 감속으로 0.12까지 재현). 서버 보정 규칙은 그대로.
+- 테스트: 좌석 유지 회귀(`test/seat-retention.test.js`)가 다른 참가자의 방 상태에서 좌석이 실제로 비었는지/유지되는지 확인. 서버를 띄우는 테스트 2곳(`gostop-settlement-block`, `hwatu-serve`)은 살아 있는 서버만 최대 5초 기다려 종료. 팬데믹 e2e가 페이지 3개를 닫지 않아 같은 워커의 이후 3D 테스트를 느리게 하던 문제 수정. 충돌 e2e에 `SLOW=6`(CPU 감속) 재현 옵션.
+- 제외: 게임 규칙, 서버 충돌 보정, 다른 연출.
+- 검증: `npm test`, 광장·등반 e2e(감속 6배 3회 연속 통과, 수정 전 0.12·0.43으로 실패), 윷 e2e.
+
 ## v1.9.8 다빈치 코드 재접속 연출 기준선·테마 테이블
 
 IDEAS 개선 백로그 B7 후속(PR #75 리뷰 P2 ①)과 PR #100 리뷰 P2(테마가 불투명 테이블에 가려짐), 사용자 지시(2026-10-04).
