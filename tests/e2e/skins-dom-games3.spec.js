@@ -112,6 +112,15 @@ test('다빈치 코드 스킨: 방장 테마가 모든 화면에 같고, 각 랙
   const panelImage = (who) => who.page.locator('#davinciPanel').evaluate(el => el.style.backgroundImage);
   expect((await panelImage(a)).startsWith('url("data:image/png')).toBe(true);
   expect(await panelImage(a)).toBe(await panelImage(b));
+  // v1.9.8: the table (which covers most of the panel) wears the same theme under a light veil, not the green felt
+  const tableImage = (who) => who.page.locator('#davinciHands').evaluate(el => getComputedStyle(el).backgroundImage);
+  for (const who of [a, b]) {
+    const image = await tableImage(who);
+    expect(image).toContain('linear-gradient');
+    expect(image).toContain('data:image/png');
+    expect(image).not.toContain('table.svg');
+  }
+  expect(await tableImage(a)).toBe(await tableImage(b));
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
