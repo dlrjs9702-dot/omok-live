@@ -16,6 +16,12 @@
   const lobbyConnectionBadge = document.getElementById('lobbyConnectionBadge');
   const lobbyConnectedCount = document.getElementById('lobbyConnectedCount');
   const logoutBtn = document.getElementById('logoutBtn');
+  const adminWindowBtn = document.getElementById('adminWindowBtn');
+  const myInfoBtn = document.getElementById('myInfoBtn');
+  const myInfoDialog = document.getElementById('myInfoDialog');
+  const myInfoCloseBtn = document.getElementById('myInfoCloseBtn');
+  const myInfoSkinBody = document.getElementById('myInfoSkinBody');
+  const myInfoSkinStatus = document.getElementById('myInfoSkinStatus');
   const roomLogoutBtn = document.getElementById('roomLogoutBtn');
   const logoutDialog = document.getElementById('logoutDialog');
   const logoutCancelBtn = document.getElementById('logoutCancelBtn');
@@ -1390,20 +1396,15 @@
     syncPlaza(name);
   }
 
-  // v1.8.8 3D 광장 로비: on a PC the lobby is a small 3D square (public/plaza/plaza-scene.js) whose facilities open the
-  // existing lobby UIs in a window over it (the sections move into #plazaDialog and back on close). 「기존 로비」 switches
-  // back (remembered per browser); a touch-only device, a narrow window or no WebGL keeps the classic lobby.
-  const PLAZA_PREF_KEY = 'gc.lobbyMode';
+  // v1.9.7 게임 아일랜드: 일반 사용자는 기존 로비로 전환하지 않는다. PC에서는 항상 3D 허브를 사용하고,
+  // 작은 화면·WebGL 실패 때만 내부 호환용 기존 레이아웃이 fallback으로 남는다. 기능은 시설/오버레이에서 연다.
   const plazaStage = document.getElementById('plazaStage');
   const plazaHint = document.getElementById('plazaHint');
   const plazaDialog = document.getElementById('plazaDialog');
   const plazaDialogTitle = document.getElementById('plazaDialogTitle');
   const plazaDialogBody = document.getElementById('plazaDialogBody');
-  const lobbyModeBtn = document.getElementById('lobbyModeBtn');
   const publicRoomsCardEl = document.getElementById('publicRoomsCard');
   const plaza = { controller: null, loading: null, failed: false };
-  let plazaPref = 'plaza';
-  try { plazaPref = localStorage.getItem(PLAZA_PREF_KEY) || 'plaza'; } catch {}
   const plazaWide = window.matchMedia('(min-width: 881px)');
   const plazaFits = () => plazaWide.matches && !rpgTouchOnly();
   const byId = (id) => document.getElementById(id);
@@ -1439,9 +1440,7 @@
   }
   function syncPlaza(view) {
     const fits = plazaFits() && !plaza.failed;
-    const on = view === 'lobby' && fits && plazaPref !== 'classic';
-    lobbyModeBtn.classList.toggle('hidden', !fits);
-    lobbyModeBtn.textContent = plazaPref === 'classic' ? '광장' : '기존 로비';
+    const on = view === 'lobby' && fits;
     document.body.classList.toggle('plazaMode', on);
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
@@ -1468,10 +1467,9 @@
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
     }).catch((error) => { plaza.loading = null; plaza.failed = true; console.error(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
-  lobbyModeBtn.addEventListener('click', () => {
-    plazaPref = plazaPref === 'classic' ? 'plaza' : 'classic';
-    try { localStorage.setItem(PLAZA_PREF_KEY, plazaPref); } catch {}
-    syncPlaza('lobby');
+  adminWindowBtn.addEventListener('click', () => {
+    if (sessionRole !== 'admin') return;
+    openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
   });
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
@@ -1621,6 +1619,7 @@
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
       adminPresencePanel.classList.toggle('hidden', sessionRole !== 'admin');
+      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin');
       announcementAddBtn.classList.toggle('hidden', sessionRole !== 'admin');
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');
@@ -2928,6 +2927,125 @@
   // balance; this only lists them and sends "buy X" / "equip X". A purchase takes two clicks (the second one says
   // the price) so a stray click never spends points.
   const skinShopDialog = document.getElementById('skinShopDialog');
+  let myInfoSkins = null; // { catalog, owned: Set, equipped } — 구매 기능 없이 보유 스킨만 표시
+  let myInfoSkinFamily = null;
+
+  function renderMyInfoSkins() {
+    myInfoSkinBody.replaceChildren();
+    if (!myInfoSkins) return;
+    const families = myInfoSkins.catalog
+      .map((family) => ({ ...family, skins: family.skins.filter((skin) => myInfoSkins.owned.has(skin.id)) }))
+      .filter((family) => family.skins.length);
+    if (!families.length) {
+      const empty = document.createElement('p');
+      empty.className = 'emptyState';
+      empty.textContent = '보유한 스킨이 없습니다.';
+      myInfoSkinBody.append(empty);
+      return;
+    }
+    if (!families.some((family) => family.family === myInfoSkinFamily)) myInfoSkinFamily = families[0].family;
+    const tabs = document.createElement('div');
+    tabs.className = 'skinTabs';
+    tabs.setAttribute('role', 'tablist');
+    for (const family of families) {
+      const tab = document.createElement('button');
+      tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(family.family === myInfoSkinFamily));
+      tab.dataset.family = family.family;
+      tab.textContent = family.name;
+      tabs.append(tab);
+    }
+    myInfoSkinBody.append(tabs);
+    const family = families.find((item) => item.family === myInfoSkinFamily);
+    if (!family) return;
+    for (const tierKey of SKIN_TIER_ORDER) {
+      const skins = family.skins.filter((skin) => skin.tier === tierKey);
+      if (!skins.length) continue;
+      const section = document.createElement('section');
+      section.className = 'skinFamily';
+      const heading = document.createElement('h3');
+      heading.textContent = skins[0].tierLabel;
+      const grid = document.createElement('div');
+      grid.className = 'skinGrid';
+      for (const skin of skins) {
+        const equipped = myInfoSkins.equipped?.[family.family]?.[skin.slot] === skin.id;
+        const card = document.createElement('div');
+        card.className = `skinCard${equipped ? ' equipped' : ''}`;
+        const preview = document.createElement('canvas');
+        preview.width = 260; preview.height = 130;
+        preview.setAttribute('role', 'img');
+        preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+        window.SkinLooks?.paintPreview(preview, skin.id);
+        const name = document.createElement('span');
+        name.className = 'skinName'; name.textContent = skin.name;
+        const meta = document.createElement('span');
+        meta.className = 'skinMeta';
+        meta.textContent = skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.skin = skin.id;
+        if (equipped) {
+          button.className = 'ghost';
+          button.textContent = '장착 중 · 해제';
+          button.dataset.action = 'unequip';
+          button.dataset.slot = skin.slot;
+          button.dataset.game = family.family;
+        } else {
+          button.className = 'secondary';
+          button.textContent = '장착';
+          button.dataset.action = 'equip';
+        }
+        card.append(preview, name, meta, button);
+        grid.append(card);
+      }
+      section.append(heading, grid);
+      myInfoSkinBody.append(section);
+    }
+  }
+
+  async function loadMyInfoSkins() {
+    myInfoSkinStatus.textContent = '';
+    try {
+      const data = await api('/api/skins');
+      myInfoSkins = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped };
+      renderMyInfoSkins();
+    } catch (error) {
+      if (myInfoDialog.open) myInfoSkinStatus.textContent = `보유 스킨을 불러오지 못했습니다 · ${error.message}`;
+    }
+  }
+
+  myInfoSkinBody.addEventListener('click', async (event) => {
+    const tab = event.target.closest('button.skinTab');
+    if (tab && myInfoSkins) { myInfoSkinFamily = tab.dataset.family; renderMyInfoSkins(); return; }
+    const button = event.target.closest('button[data-action]');
+    if (!button || !myInfoSkins) return;
+    myInfoSkinStatus.textContent = '';
+    const { action, skin: skinId } = button.dataset;
+    try {
+      if (action === 'equip') {
+        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId }) });
+        myInfoSkins.equipped = data.equipped;
+      } else if (action === 'unequip') {
+        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
+        myInfoSkins.equipped = data.equipped;
+      }
+      await refreshPlazaAvatar();
+      renderMyInfoSkins();
+      if (skinShop) { skinShop.equipped = myInfoSkins.equipped; renderSkinShop(); }
+    } catch (error) {
+      myInfoSkinStatus.textContent = error.message;
+      loadMyInfoSkins();
+    }
+  });
+
+  myInfoBtn.addEventListener('click', () => {
+    setPointHistoryOpen(false);
+    myInfoDialog.showModal();
+    loadPoints();
+    loadMyInfoSkins();
+  });
+  myInfoCloseBtn.addEventListener('click', () => myInfoDialog.close());
+  myInfoDialog.addEventListener('close', () => setPointHistoryOpen(false));
   const skinShopBody = document.getElementById('skinShopBody');
   const skinShopBalance = document.getElementById('skinShopBalance');
   const skinShopStatus = document.getElementById('skinShopStatus');
