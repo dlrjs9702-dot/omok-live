@@ -156,6 +156,26 @@ test('다빈치 코드 테이블: 내 자리 아래·상대 둘러앉음·더미
   state = await roomState(request, a.token);
   expect(state.game.turn).toBe(nextTurn);
   expect(state.game.phase).toBe('continue');
+
+  // v1.9.8: coming back (reload = reconnect) shows the table as it is -- the drawn tile, the last guess and its answer
+  // are not played again as new events. The next real event still animates.
+  const watcher = victim.page;
+  await watcher.addInitScript(() => {
+    window.__played = [];
+    const marks = ['draw-in', 'guess-result', 'reveal-now', 'placed-now'];
+    new MutationObserver((list) => {
+      for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1) for (const el of [n, ...n.querySelectorAll('*')]) for (const c of marks) if (el.classList.contains(c)) window.__played.push(c);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await watcher.reload();
+  await expect(watcher.locator(`#davinciHands .davinciTile[data-tile-id="${answer.id}"] .davinciTileValue`)).toHaveText(String(answer.number));
+  await expect(watcher.locator('.davinciDrawnSlot .davinciTile')).toHaveCount(1);
+  await watcher.waitForTimeout(800);
+  expect(await watcher.evaluate(() => window.__played)).toEqual([]);
+  const nextHidden = (await roomState(request, victim.token)).me.myDavinciTiles.find(tile => !tile.revealed);
+  await guesser.page.locator(`#davinciHands .davinciHand[data-owner="${victimSeat}"] .davinciTile[data-tile-id="${nextHidden.id}"]`).click();
+  await guesser.page.locator('.davinciPickNumber').nth(nextHidden.number).click();
+  await expect.poll(() => watcher.evaluate(() => window.__played.includes('guess-result'))).toBe(true);
   expect([...a.errors, ...b.errors, ...c.errors]).toEqual([]);
   for (const view of views) await view.context.close();
 });

@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.7').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.9.8').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -289,6 +289,7 @@
   let davinciLastDrawKey = null;
   let davinciFxPlayed = null;
   let davinciSpecialPlayed = null;
+  let davinciBaselinePending = true; // the first snapshot of an entered room only seeds the keys below (nothing replays)
   let halliPrevStatus = null;
   let davinciPrevStatus = null;
   const oldmaidPanel = document.getElementById('oldmaidPanel');
@@ -1456,7 +1457,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.7').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.9.8').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -3357,6 +3358,7 @@
     cityAnimationFrame = null;
     if (davinciGuessFeedbackTimer) clearTimeout(davinciGuessFeedbackTimer);
     davinciGuessFeedbackTimer = null; davinciGuessFeedbackKey = null; davinciLastDrawKey = null; davinciFxPlayed = null; davinciSpecialPlayed = null; davinciPrevStatus = null;
+    davinciBaselinePending = true; davinciRevealRound = null;
     window.GostopUI?.reset?.();
     window.TwentyQuestionsUI?.reset?.();
   }
@@ -6330,8 +6332,18 @@
   }
 
   let davinciThemeApplied = null;
+  let davinciTableThemeApplied = null;
   function renderDavinci() {
     const g = state.game;
+    if (davinciBaselinePending) {
+      // Entering or reconnecting: the drawn tile and the last guess already on the table are the baseline, so they are
+      // drawn as they are instead of playing the draw / guess / answer effects again. Only later snapshots animate.
+      davinciBaselinePending = false;
+      const guessKey = davinciFeedbackKey(g.lastGuess);
+      davinciGuessFeedbackKey = guessKey; davinciGuessFeedbackUntil = 0;
+      davinciFxPlayed = guessKey && `guess:${guessKey}`; davinciSpecialPlayed = guessKey && `special:${guessKey}`;
+      davinciLastDrawKey = g.status === 'playing' && g.drawn && g.turn ? `${g.round}:${g.turn}:${g.pileCount}` : null;
+    }
     if (davinciRevealRound !== g.round) {
       davinciRevealStates.clear();
       davinciRevealRound = g.round;
@@ -6356,6 +6368,11 @@
     davinciThemeApplied = null;
     const themeD = SLD.def(state.skinTheme);
     if (themeD?.panel) { davinciThemeApplied = { backgroundImage: SLD.h.img(`dv-panel:${state.skinTheme}`, 720, 520, themeD.panel), backgroundSize: 'cover', ...themeD.frame }; SLD.h.style(davinciPanel, davinciThemeApplied); }
+    // v1.9.8: the table covers most of the panel, so it wears the theme too (instead of the green felt) under a light
+    // veil that keeps the tiles and racks readable; without a theme the felt stays.
+    SLD.h.unstyle(davinciHands, davinciTableThemeApplied);
+    davinciTableThemeApplied = themeD?.panel ? { background: `linear-gradient(rgba(8,12,20,.16),rgba(8,12,20,.32)), ${SLD.h.img(`dv-panel:${state.skinTheme}`, 720, 520, themeD.panel)} center/cover no-repeat` } : null;
+    SLD.h.style(davinciHands, davinciTableThemeApplied);
     if (g.status === 'finished' && davinciPrevStatus === 'playing') { // v1.9.2: a winner's legend `win` over the panel
       const finalSkin = [].concat(g.winner || []).map((s) => SLD.def(state.players?.[s]?.skin)).find((d) => d?.legend && d.win);
       if (finalSkin) requestAnimationFrame(() => SLD.h.playFx(davinciPanel, finalSkin.win, 2400, 10));
