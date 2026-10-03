@@ -216,7 +216,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     await expect(a.page.locator('#gostopSetupNote')).toContainText('나가리 ×2 이월');
     await a.page.locator('#gostopStartBtn').click();
-    await expect(a.page.locator('#gostopMeta')).toContainText('나가리 ×2');
+    await expect(a.page.locator('#gostopMeta')).toContainText('나가리 ×2', { timeout: 15_000 }); // the started round reaches the table over the stream (slow CI runners)
     expect((await roomState(request, a.token)).game.nagariMultiplier).toBe(2);
 
     // 잔액 한도: 서버가 한도를 적용한 정산 결과(계산액 → 실제 지급액)를 그대로 보여준다(표시 검증: 같은 렌더 함수에 결과만 바꿔 전달).
