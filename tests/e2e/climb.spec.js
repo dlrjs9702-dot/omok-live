@@ -123,3 +123,25 @@ test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열�
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// PR #117 리뷰(P2): 끝내기 직전 입력 전송이 실패해도 무한 재시도하지 않고 버튼을 돌려준다.
+test('등반: 끝내기 직전 입력 전송이 실패하면 멈추지 않고 다시 누를 수 있다', async ({ browser, request }) => {
+  test.setTimeout(60000);
+  const a = await shopper(browser, request, '끊김');
+  const { page } = a;
+  await startClimb(page);
+  let inputCalls = 0;
+  await page.route('**/api/climb/input', (route) => { inputCalls += 1; return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"DOWN","message":"잠시 오류"}' }); });
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(300); await page.keyboard.up('ArrowRight'); // leaves inputs unsent
+  await expect(page.locator('#climbEndBtn')).toBeEnabled({ timeout: 5000 });
+  await page.locator('#climbEndBtn').click();
+  await expect(page.locator('#climbStatus')).not.toHaveText('', { timeout: 5000 });
+  const calls = inputCalls; await page.waitForTimeout(1000);
+  expect(inputCalls - calls).toBeLessThan(15); // not a tight retry loop
+  await page.unroute('**/api/climb/input');
+  await page.waitForTimeout(500);
+  await expect(page.locator('#climbEndBtn')).toBeEnabled({ timeout: 5000 });
+  await page.locator('#climbEndBtn').click();
+  await expect(page.locator('#climbResult')).toBeVisible({ timeout: 8000 }); // works again once the network is back
+  await a.context.close();
+});
