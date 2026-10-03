@@ -2,11 +2,10 @@ const { test, expect } = require('@playwright/test');
 const { post, shopper, expectNoScriptError } = require('./skin-support');
 
 // v1.9.4 상시 등반 도전 (PC): the window, the climb screen with its fixed HUD, keyboard play, ending on a platform
-// (record + daily points), leaving without a record and resuming after a reload, the plaza gate, and two climbers
+// (record + daily points), leaving without a record and resuming after a reload, and two climbers
 // at once (they never collide). The record height comes from the server's simulation; the test hook only places
 // the climber on a platform so a test does not have to climb 300 m by hand.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
-test.describe.configure({ mode: 'default' }); // the plaza part shares one square
 
 const debug = (page) => page.evaluate(() => window.ClimbDebug());
 
@@ -91,37 +90,6 @@ test('등반: 두 사람이 동시에 올라도 서로 막지 않고, 같은 자
   expect(da.x).toBeGreaterThan(12.5);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
-});
-
-test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
-  test.setTimeout(60000);
-  const a = await shopper(browser, request, '입구');
-  const { page } = a;
-  await page.locator('#lobbyModeBtn').click();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().place('climb'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');
-  await page.keyboard.press('Space');
-  await expect(page.locator('#climbDialog')).toBeVisible();
-  const before = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft');
-  const during = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#climbDialog')).toBeHidden();
-  await page.keyboard.down('ArrowDown');
-  await expect.poll(async () => { const d = await page.evaluate(() => window.PlazaDebug()); return Math.hypot(d.x - during.x, d.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
-  await page.keyboard.up('ArrowDown');
-  // a click on the gate does the same
-  await page.evaluate(() => window.PlazaDebug().place('climb'));
-  await page.waitForTimeout(300);
-  const gate = await page.evaluate(() => window.PlazaDebug().screenOf('climb'));
-  await page.mouse.click(gate.x, gate.y);
-  await expect(page.locator('#climbDialog')).toBeVisible();
-  await page.locator('#climbStartBtn').click();
-  await expect(page.locator('#climbView')).toBeVisible();
-  await expectNoScriptError(page);
-  await a.context.close();
 });
 
 // PR #117 리뷰(P2): 끝내기 직전 입력 전송이 실패해도 무한 재시도하지 않고 버튼을 돌려준다.

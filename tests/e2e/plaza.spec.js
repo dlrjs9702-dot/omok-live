@@ -216,3 +216,104 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   for (const who of [champs[0], plain]) await expectNoScriptError(who.page);
   for (const who of [champs[0], plain]) await who.context.close();
 });
+
+// v1.9.6 광장 플레이어 충돌: 정면으로 막히고, 비스듬히 가면 옆으로 미끄러져 지나가며, 둘이 동시에 마주 걸어도
+// 통과·순간이동이 없고, 누가 서 있어도 시설 입구는 막히지 않는다. (등반에서는 충돌 없음: climb.spec)
+test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입구 막힘 없음', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '부딪는A');
+  const b = await intoPlaza(browser, request, '부딪는B');
+  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
+  const [aId, bId] = [await idOf(a), await idOf(b)];
+  const me = (who) => who.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+  const seen = (who, id) => who.page.evaluate((other) => (window.PlazaDebug()?.others || []).find((o) => o.id === other) || null, id);
+  const teleport = (who, x, z) => who.page.evaluate(([px, pz]) => window.PlazaWarp(px, pz), [x, z]);
+  const settle = async (who, id, x, z) => expect.poll(async () => { const o = await seen(who, id); return o ? Math.hypot(o.x - x, o.z - z) : 99; }, { timeout: 10000 }).toBeLessThan(0.05);
+
+  // 1) head-on: A walks straight at B and stops at the contact, never inside
+  await teleport(b, 0, 10); await teleport(a, 0, 8.2);
+  await settle(a, bId, 0, 10);
+  await a.page.keyboard.down('ArrowDown'); await a.page.waitForTimeout(1200); await a.page.keyboard.up('ArrowDown');
+  let pa = await me(a);
+  expect(Math.hypot(pa.x, pa.z - 10)).toBeGreaterThan(0.86);
+  expect(pa.z).toBeLessThan(10);
+
+  // 2) at an angle: A slides along B and gets past, never closer than the contact
+  await teleport(a, -0.35, 8.4);
+  let closest = 99;
+  await a.page.keyboard.down('ArrowDown'); await a.page.keyboard.down('ArrowRight');
+  for (let i = 0; i < 16; i += 1) { await a.page.waitForTimeout(60); pa = await me(a); closest = Math.min(closest, Math.hypot(pa.x, pa.z - 10)); }
+  await a.page.keyboard.up('ArrowDown'); await a.page.keyboard.up('ArrowRight');
+  expect(closest).toBeGreaterThan(0.86);
+  expect(pa.z).toBeGreaterThan(10.2); // got past B's side
+  expect(pa.x).toBeGreaterThan(0.6);
+
+  // 3) both at once, toward each other: no passing through, no jumps
+  await teleport(a, 0, 8.4); await teleport(b, 0, 10.8);
+  await settle(a, bId, 0, 10.8); await settle(b, aId, 0, 8.4);
+  await a.page.keyboard.down('ArrowDown'); await b.page.keyboard.down('ArrowUp');
+  // what each player sees: my character against the other one as drawn on my screen
+  const onScreen = async (who, id) => { const [m, o] = [await me(who), await seen(who, id)]; return o ? Math.hypot(m.x - o.x, m.z - o.z) : 99; };
+  let prevA = await me(a); let prevB = await me(b); let biggestStep = 0; let nearestSeen = 99;
+  for (let i = 0; i < 15; i += 1) {
+    await a.page.waitForTimeout(100);
+    const [na, nb] = [await me(a), await me(b)];
+    biggestStep = Math.max(biggestStep, Math.hypot(na.x - prevA.x, na.z - prevA.z), Math.hypot(nb.x - prevB.x, nb.z - prevB.z));
+    nearestSeen = Math.min(nearestSeen, await onScreen(a, bId), await onScreen(b, aId));
+    prevA = na; prevB = nb;
+  }
+  await a.page.keyboard.up('ArrowDown'); await b.page.keyboard.up('ArrowUp');
+  expect(prevA.z).toBeLessThan(prevB.z); // nobody passed through
+  expect(nearestSeen).toBeGreaterThan(0.45); // never drawn inside each other (a glide may briefly close the gap while the server settles)
+  expect(biggestStep).toBeLessThan(1.2); // no teleporting back and forth
+  await a.page.waitForTimeout(800);
+  const [ra, rb] = [await me(a), await me(b)];
+  expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5); // at rest: apart, and still
+  expect(Math.hypot((await me(a)).x - ra.x, (await me(a)).z - ra.z)).toBeLessThan(0.05);
+
+  // 4) B stands right in the shop's door: A still reaches the shop and opens it
+  const shopDoor = await b.page.evaluate(() => window.PlazaDebug().doors.shop);
+  await teleport(b, shopDoor.x, shopDoor.z);
+  const door = await me(b);
+  await settle(a, bId, door.x, door.z);
+  await teleport(a, shopDoor.x + 1.5, shopDoor.z + 1.5); // then walk into the doorway B is standing in
+  await a.page.evaluate(() => window.PlazaDebug().place('shop'));
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 상점');
+  await a.page.keyboard.press('Space');
+  await expect(a.page.locator('#skinShopDialog')).toBeVisible();
+  await a.page.keyboard.press('Escape');
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
+});
+
+// v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
+test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
+  test.setTimeout(60000);
+  const a = await shopper(browser, request, '입구');
+  const { page } = a;
+  await page.locator('#lobbyModeBtn').click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().place('climb'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#climbDialog')).toBeVisible();
+  const before = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft');
+  const during = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+  expect(Math.hypot(during.x - before.x, during.z - before.z)).toBeLessThan(0.01);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#climbDialog')).toBeHidden();
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(async () => { const d = await page.evaluate(() => window.PlazaDebug()); return Math.hypot(d.x - during.x, d.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
+  await page.keyboard.up('ArrowDown');
+  // a click on the gate does the same
+  await page.evaluate(() => window.PlazaDebug().place('climb'));
+  await page.waitForTimeout(300);
+  const gate = await page.evaluate(() => window.PlazaDebug().screenOf('climb'));
+  await page.mouse.click(gate.x, gate.y);
+  await expect(page.locator('#climbDialog')).toBeVisible();
+  await page.locator('#climbStartBtn').click();
+  await expect(page.locator('#climbView')).toBeVisible();
+  await expectNoScriptError(page);
+  await a.context.close();
+});

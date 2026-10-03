@@ -683,6 +683,50 @@ const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
 const PLAZA_BOUND = 18;
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
+// v1.9.6 player collision: the last word on where a plaza player stands. Smaller than the screen's circles (0.45 each,
+// 0.28 at a door) so it only removes a real overlap (lag, a hand-made request) and never fights normal walking.
+const PLAZA_SERVER_MIN = 0.5;
+// The last position stored for a session, kept when its plaza entry drops (a lost stream, a slow client) so the next
+// update is still checked along its path. Only an explicit leave (room, classic lobby, logout) forgets it.
+const plazaLastPos = new Map(); // session token -> { x, z }
+// Only the sender moves: out of anyone else it overlaps, to the nearest spot on that person's circle (a few passes for
+// a crowd). Returns the corrected position.
+function plazaSeparate(token, x, z, prev) {
+  // First the path since my last position: if it runs into someone I was not touching, I stop at the contact on my
+  // side (two people walking at each other can never swap places between two updates).
+  // (Entering the plaza again -- a reconnect, coming back from a room -- starts without a previous position.)
+  if (prev) {
+    const sx = x - prev.x; const sz = z - prev.z; const len2 = sx * sx + sz * sz;
+    if (len2 > 1e-8) {
+      let tHit = 1;
+      for (const [other, entry] of plazaPresence) {
+        if (other === token) continue;
+        const fx = prev.x - entry.x; const fz = prev.z - entry.z;
+        const c = fx * fx + fz * fz - PLAZA_SERVER_MIN * PLAZA_SERVER_MIN;
+        if (c <= 0) continue; // already overlapping at the start: the separation below handles it
+        const bq = 2 * (fx * sx + fz * sz); const disc = bq * bq - 4 * len2 * c;
+        if (bq >= 0 || disc < 0) continue; // moving away, or the line misses the circle
+        const t = (-bq - Math.sqrt(disc)) / (2 * len2);
+        if (t >= 0 && t < tHit) tHit = t;
+      }
+      if (tHit < 1) { const k = Math.max(0, tHit - 1e-3); x = prev.x + sx * k; z = prev.z + sz * k; }
+    }
+  }
+  for (let pass = 0; pass < 4; pass += 1) {
+    let moved = false;
+    for (const [other, entry] of plazaPresence) {
+      if (other === token) continue;
+      let dx = x - entry.x; let dz = z - entry.z; let d = Math.hypot(dx, dz);
+      if (d >= PLAZA_SERVER_MIN) continue;
+      if (d < 1e-4) { dx = (prev?.x ?? x + 1) - entry.x; dz = (prev?.z ?? z) - entry.z; d = Math.hypot(dx, dz); }
+      if (d < 1e-4) { dx = 1; dz = 0; d = 1; }
+      x = entry.x + (dx / d) * PLAZA_SERVER_MIN; z = entry.z + (dz / d) * PLAZA_SERVER_MIN; moved = true;
+    }
+    if (!moved) break;
+  }
+  const clamp = (v) => Math.max(-PLAZA_BOUND, Math.min(PLAZA_BOUND, v));
+  return { x: Math.round(clamp(x) * 100) / 100, z: Math.round(clamp(z) * 100) / 100 };
+}
 let plazaDirty = false;
 function plazaSnapshot() {
   return { players: [...plazaPresence.values()].map(({ id, name, look, title, champion, x, z, yaw, moving }) => ({ id, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
@@ -693,6 +737,7 @@ function prunePlazaPresence(now = nowMs()) {
     const session = sessions.get(token);
     if (!session || session.currentRoomId || now - entry.at > PLAZA_STALE_MS) dropPlazaPresence(token);
   }
+  for (const token of plazaLastPos.keys()) { const session = sessions.get(token); if (!session || session.currentRoomId) plazaLastPos.delete(token); }
 }
 const plazaTicker = setInterval(() => {
   prunePlazaPresence();
@@ -2609,7 +2654,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.9.5' });
+    return sendJson(res, 200, { ok: true, version: '1.9.6' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3052,13 +3097,17 @@ async function requestHandler(req, res) {
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
     const { look, title } = avatarLookOf(equippedSkinCache.get(account));
+    const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
+    const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+    plazaLastPos.set(session.token, spot);
     plazaPresence.set(session.token, {
       id: session.plazaId, account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
-      x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100,
+      x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
     });
     plazaDirty = true;
-    return sendJson(res, 200, { ok: true, id: session.plazaId });
+    const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected });
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -3166,6 +3215,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     dropPlazaPresence(session.token);
+    plazaLastPos.delete(session.token); // the next entry may start anywhere (it is a new arrival)
     return sendJson(res, 200, { ok: true });
   }
 
@@ -3733,7 +3783,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.5 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.9.6 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
