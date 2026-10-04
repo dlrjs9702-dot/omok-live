@@ -47,6 +47,15 @@
     'nature.tree.tall': { seasons: seasonal('nature/tree_v3_{s}.glb'), scale: 0.8, near: 35 },
     'nature.bush': { seasons: seasonal('nature/shrub_{s}.glb'), scale: 0.9, near: 22, shadows: false },
     'prop.bench': { seasons: seasonal('bench_{s}_v1.glb'), scale: 0.85, rotationY: Math.PI }, // faces the fountain like the old one
+    // v1.10.20 the rest of the environment set: rocks and the stump are the same in every season (common/); the gazebo
+    // (the nature area's decor facility, its circle and sign unchanged) and the plaza flower beds follow the season.
+    // Rocks sit 0.1 above the ground like the procedural ones did, so their models are lowered by that much.
+    'nature.rock.0': { url: `${BASE}/common/rock_v1_round.glb`, scale: 1.1, offset: [0, -0.2, 0], near: 40 },
+    'nature.rock.1': { url: `${BASE}/common/rock_v2_wide.glb`, scale: 0.95, offset: [0, -0.2, 0], near: 40 },
+    'nature.rock.2': { url: `${BASE}/common/rock_v3_tall.glb`, scale: 0.9, offset: [0, -0.2, 0], near: 40 },
+    'nature.tree.stump': { url: `${BASE}/common/stump_v1_short.glb`, scale: 1.0, near: 35 },
+    'facility.chat': { seasons: seasonal('gazebo_{s}_v1.glb'), scale: 1.1, rotationY: Math.PI },
+    'prop.planter': { seasons: seasonal('planter_{s}_v1.glb'), scale: 1.25 },
   };
 
   return { REGISTRY };

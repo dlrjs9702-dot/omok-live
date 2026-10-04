@@ -19,10 +19,19 @@ async function parse(buffer) {
 test('운영 등록부: 연결한 모델은 사계절 파일이 모두 리소스 팩 폴더에 있고 실제 GLB로 읽힌다', async () => {
   const fs = require('node:fs'); const path = require('node:path');
   const { buildAssetManifest } = require('../lib/asset-manifest');
-  assert.deepEqual(Object.keys(REGISTRY).sort(), ['nature.bush', 'nature.tree.blossom', 'nature.tree.round', 'nature.tree.tall', 'nature.tree.tiered', 'prop.bench']);
+  assert.deepEqual(Object.keys(REGISTRY).sort(), ['facility.chat', 'nature.bush', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.round', 'nature.tree.stump',
+    'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.planter']);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
   for (const [id, entry] of Object.entries(REGISTRY)) {
+    assert.ok(entry.scale > 0.5 && entry.scale < 1.4, `${id} 크기 보정`);
+    if (!entry.seasons) { // the same in every season (common/)
+      assert.match(entry.url, /^\/assets\/island\/seasonal-v2\/common\//, id);
+      for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
+      assert.ok(pack.assets.some((a) => a.url === entry.url), `${id} 리소스 팩`);
+      parsed.set(entry.url, 1);
+      continue;
+    }
     assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
     for (const season of P.SEASONS) {
       const url = P.entryOf(REGISTRY, id, [], season).url;
@@ -36,9 +45,8 @@ test('운영 등록부: 연결한 모델은 사계절 파일이 모두 리소스
       assert.ok(parsed.get(url) > 0, `${id} ${season} 메시`);
     }
     assert.equal(P.entryOf(REGISTRY, id, [], null), null, `${id}: 계절 없이 쓰는 파일은 없음`);
-    assert.ok(entry.scale > 0.5 && entry.scale < 1.2, `${id} 크기 보정`);
   }
-  assert.equal(parsed.size, 20);
+  assert.equal(parsed.size, 32);
 });
 
 test('게임 아일랜드 계절: KST 날짜 1~7 봄, 8~14 여름, 15~21 가을, 22~말일 겨울, 다음 달 1일 00:00에 봄', () => {
