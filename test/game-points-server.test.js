@@ -186,27 +186,29 @@ test('고스톱은 참가비 없음, 서버 재시작으로 끝나지 못한 판
   const started = await fx.req('/api/room/start-gostop', a.session, {});
   assert.equal(started.status, 200, JSON.stringify(started.data));
   assert.equal((await fx.room(a)).points.policy, 'settlement');
-  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '고스톱은 1,000P 참가비 없음');
+  // no entry fee: nobody's history has a game_entry row (the deal itself may already move a special bonus between them)
+  for (const person of [a, b]) assert.ok(!(await fx.req('/api/points/history', person.session)).data.items.some((item) => item.reason === 'game_entry'), '고스톱은 1,000P 참가비 없음');
+  const afterGostop = [await fx.balance(a), await fx.balance(b)];
   assert.equal((await fx.req('/api/room/leave', a.session, {})).status, 200);
   assert.equal((await fx.req('/api/room/leave', b.session, {})).status, 200);
 
   await openRoom(fx, 'othello', a, [b]);
   assert.equal((await fx.req('/api/room/choose-role', a.session, { choice: 'black' })).status, 200);
   assert.equal((await fx.req('/api/room/choose-role', b.session, { choice: 'white' })).status, 200);
-  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [99_000, 99_000]);
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], afterGostop.map((n) => n - 1_000));
   await fx.stop(); // 진행 중인 판이 서버와 함께 사라진다
 
   fx = await boot(t, dir);
   assert.match(fx.logs(), /참가 포인트 환불: 재시작으로 끝나지 못한 게임 1판/);
   a.session = await fx.enter(a.key);
   b.session = await fx.enter(b.key);
-  assert.deepEqual([await fx.balance(a), await fx.balance(b)], [100_000, 100_000], '전액 환불');
+  assert.deepEqual([await fx.balance(a), await fx.balance(b)], afterGostop, '전액 환불');
   const items = (await fx.req('/api/points/history', a.session)).data.items;
   assert.deepEqual([items[0].reason, items[0].gameType, items[0].delta], ['game_refund', 'othello', 1_000]);
   await fx.stop();
   fx = await boot(t, dir);
   a.session = await fx.enter(a.key);
-  assert.equal(await fx.balance(a), 100_000, '두 번째 재시작에서는 다시 환불하지 않음');
+  assert.equal(await fx.balance(a), afterGostop[0], '두 번째 재시작에서는 다시 환불하지 않음');
 });
 
 test('관리자 포인트 지급 API: 10,000P 단위·사유 필수·관리자만·요청 1회·원장/내역 기록', { timeout: 60000 }, async t => {

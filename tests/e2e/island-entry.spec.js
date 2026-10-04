@@ -9,11 +9,23 @@ async function enter(browser, html) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
-  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
-  const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
-  return { context, page, token };
+  // A key whose tab was just closed stays 「이미 사용 중」 until the server lets the old session go (a moment; longer on a
+  // slow CI runner): open the entry file again until it is free, like a person would.
+  for (let tries = 0; ; tries += 1) {
+    await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
+    const saved = await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'));
+    if (saved) return { context, page, token: JSON.parse(saved).token };
+    if (tries >= 30) throw new Error('입장 파일이 계속 사용 중');
+    await page.waitForTimeout(500);
+  }
 }
-const leaveForGood = async (who) => { await who.page.close({ runBeforeUnload: true }); await who.context.close(); await new Promise((r) => setTimeout(r, 1800)); }; // the tab is closed
+// The tab is closed: a browser sends the release on pagehide, but a test browser does not always deliver it, so the
+// test sends that same release itself (otherwise the key stays in use until the 90 s idle limit).
+const leaveForGood = async (request, who) => {
+  await who.page.close({ runBeforeUnload: true }); await who.context.close();
+  await post(request, '/api/session/release', null, { sessionToken: who.token });
+  await new Promise((r) => setTimeout(r, 1800)); // past the release grace
+};
 
 test('첫 접속: 아무도 없는 대기방을 두고 나갔다가 입장 파일을 다시 열면 게임 아일랜드에서 시작한다', async ({ browser, request }) => {
   const admin = await adminToken(request);
@@ -22,7 +34,7 @@ test('첫 접속: 아무도 없는 대기방을 두고 나갔다가 입장 파�
   expect((await post(request, '/api/rooms', first.token, { gameType: 'omok' })).status).toBe(201);
   await first.page.reload();
   await expect(first.page.locator('#roomView')).toBeVisible(); // a refresh stays in the room (same tab, same session)
-  await leaveForGood(first);
+  await leaveForGood(request, first);
   const again = await enter(browser, issued.html);
   await expect(again.page.locator('#lobbyView')).toBeVisible();
   await expect(again.page.locator('#roomView')).toBeHidden();
@@ -39,7 +51,7 @@ test('첫 접속: 진행 중이던 대국에서 끊겼다면 입장 파일을 �
   expect((await post(request, '/api/rooms/join', white.token, { code: created.data.state.me.roomCode })).status).toBe(200);
   expect((await post(request, '/api/room/choose-role', black.token, { choice: 'black' })).status).toBe(200);
   expect((await post(request, '/api/room/choose-role', white.token, { choice: 'white' })).status).toBe(200);
-  await leaveForGood(black);
+  await leaveForGood(request, black);
   const back = await enter(browser, keys[0].html);
   await expect(back.page.locator('#roomView')).toBeVisible();
   for (const who of [back, white]) await who.context.close();

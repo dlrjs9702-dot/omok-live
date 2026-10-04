@@ -38,9 +38,9 @@
       const half = w / 2; const x0 = Math.max(0, cx - half); const x1 = Math.min(W, cx + half);
       platforms.push({ x0, x1, y, move, shelf: false }); return platforms[platforms.length - 1];
     };
-    platforms.push({ x0: 0, x1: W, y: 0, move: null, shelf: true });
-    // A full-width shelf every 100 m: a fall never costs more than one stretch, and every shelf is a safe place to stop.
-    const shelf = (y) => { platforms.push({ x0: 0, x1: W, y, move: null, shelf: true }); };
+    platforms.push({ x0: 0, x1: W, y: 0, move: null, shelf: true }); // the ground
+    // v1.10.4: no full-width shelf every 100 m any more (사용자 결정 2026-10-04) -- a fall stops only on a real step it
+    // happens to land on, and with bad luck goes all the way down. Each stretch simply carries on from its last step.
     const clampX = (x, w) => Math.min(W - w / 2 - 0.5, Math.max(w / 2 + 0.5, x));
 
     // One chain of platforms from (x, y) up to yEnd; returns the last spot.
@@ -63,8 +63,8 @@
         }
         let dy = hard ? range(1.8, 2.15) : style === 'wide' ? range(1.5, 1.85) : range(1.6, 2.05);
         if (y + dy > yEnd) dy = yEnd - y;
+        if (dy < 0.6) break; // close enough: the next stretch starts from this step
         const ny = y + dy;
-        if (ny >= yEnd - 0.01) break; // the shelf at yEnd is the next step (full width, always reachable)
         const gap = dy > 1.8 ? 1.3 : 2.3;
         const reach = cw / 2 + w / 2 + gap;
         let nx = cx + (rnd() < 0.5 ? -1 : 1) * range(Math.min(1, reach * 0.4), reach);
@@ -84,26 +84,40 @@
         }
         cx = nx; cw = w; y = ny;
       }
-      return { x: cx, y: yEnd };
+      return { x: cx, y };
+    }
+    // two lanes meet again: a few steps from each lane's end toward the middle, then one step in the middle
+    function merge(ends) {
+      let top = 0;
+      for (const end of ends) {
+        let { x: ex, y: ey } = end;
+        while (Math.abs(ex - W / 2) > 2.6) { ex += Math.sign(W / 2 - ex) * Math.min(2.8, Math.abs(ex - W / 2) - 2.4); ey += 0.9; plat(ex, 2.4, ey); }
+        top = Math.max(top, ey);
+      }
+      plat(W / 2, 4, top + 1.4);
+      return { x: W / 2, y: top + 1.4 };
     }
 
     let x = W / 2; let y = 0;
     for (let s = 0; s < SECTIONS.length; s += 1) {
       const style = SECTIONS[s].style;
       for (let k = 1; k <= 3; k += 1) {
-        const yEnd = s * 300 + k * 100;
-        if (style === 'branch') { // two ways up: ladders on the left, jumps on the right; both reach the shelf
-          chain(5, y, yEnd, 'branch', [0.5, 10.5]);
-          chain(19, y, yEnd, 'small', [13.5, 23.5]);
+        const yEnd = s * 300 + k * 100 - (s === SECTIONS.length - 1 && k === 3 ? 8 : 0); // the last stretch leaves room for the steps to the summit
+        let end;
+        if (style === 'branch') { // two ways up: ladders on the left, jumps on the right; they meet in the middle
+          const left = chain(x, y, yEnd, 'branch', [0.5, 10.5]);
+          const right = chain(x, y, yEnd, 'small', [13.5, 23.5]);
+          end = merge([left, right]);
         } else {
-          chain(x, y, yEnd, style);
+          end = chain(x, y, yEnd, style);
         }
         if (style === 'ropes' || (style === 'summit' && k === 2)) gusts.push({ y0: y + 10, y1: yEnd - 10, dir: k % 2 ? 1 : -1, strength: style === 'summit' ? 3.2 : 2.6, period: 4, on: 0.5, phase: rnd() });
-        y = yEnd;
-        if (yEnd < TOP) shelf(yEnd);
-        x = range(5, 19);
+        ({ x, y } = end);
       }
     }
+    let last = merge([{ x, y }]); // steps from the last stretch to the middle, then up to the summit platform
+    for (let side = 1; last.y < TOP - 1.9; side = -side) { last = { x: W / 2 + side * 2.2, y: last.y + 1.7 }; plat(last.x, 2.6, last.y); }
+    if (last.y > TOP - 0.3) throw new Error('course: the summit approach is too high');
     platforms.push({ x0: W / 2 - 4, x1: W / 2 + 4, y: TOP, move: null, shelf: true, summit: true });
     platforms.sort((a, b) => a.y - b.y);
     return { platforms, ladders, balls, gusts };

@@ -88,6 +88,9 @@
       if (l.kind === 'rope') { ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 3; ctx.beginPath(); for (let y = l.y0; y <= l.y1; y += 0.5) { const x = toX(l.x + Math.sin(y * 1.3 + tick * 0.05) * 0.06); if (y === l.y0) ctx.moveTo(x, toY(y)); else ctx.lineTo(x, toY(y)); } ctx.stroke(); }
       else { ctx.strokeStyle = '#8a5a3b'; ctx.lineWidth = 3; for (const dx of [-0.3, 0.3]) { ctx.beginPath(); ctx.moveTo(toX(l.x + dx), toY(l.y0)); ctx.lineTo(toX(l.x + dx), toY(l.y1)); ctx.stroke(); } ctx.lineWidth = 2; for (let y = l.y0 + 0.3; y < l.y1; y += 0.45) { ctx.beginPath(); ctx.moveTo(toX(l.x - 0.3), toY(y)); ctx.lineTo(toX(l.x + 0.3), toY(y)); ctx.stroke(); } }
     }
+    // v1.10.4: height marks every 100 m on the left wall (only a label -- there is no shelf to stand on there now)
+    ctx.font = '800 13px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(74,56,40,.55)';
+    for (let m = Math.ceil(y0 / 100) * 100; m <= y1; m += 100) if (m > 0 && m < S.TOP) ctx.fillText(`${m.toLocaleString('ko-KR')}m`, toX(0.15), toY(m) + 5);
     // platforms
     for (const p of S.COURSE.platforms) {
       if (p.y < y0 - 3 || p.y > y1 + 3) continue;
