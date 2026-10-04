@@ -212,5 +212,81 @@
 
   // --- building the scene -----------------------------------------------------------------------------------------------
 
-  return { coastR, PLAZA_R, AREAS, SPOTS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+
+  // v1.10.11: the seeded nature of the island (moved from island.js unchanged, same seed and order): trees, flowers,
+  // bushes, grass tufts, shore rocks, cliff fence posts and lamps. Computed once, on first use, by both the browser
+  // (which draws them) and the server (which keeps events off them).
+  let natureCache = null;
+  function nature() {
+    if (natureCache) return natureCache;
+    let seed = 0x1a2b3c;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const clearOf = (x, z, walkGap) => {
+      if (!walkable(x, z) || coastDist(x, z) < 6) return false;
+      if (Math.hypot(x, z) < PLAZA_R + 7) return false;
+      if (walkDist(x, z) < walkGap || streamDist(x, z) < STREAM_HALF + 2) return false;
+      if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
+      for (const s of Object.values(SPOTS)) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
+      if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
+      return true;
+    };
+    const trees = [];
+    const woods = [[-48, 44, 22, 46], [30, -62, 20, 30], [-72, 6, 16, 22], [70, 40, 16, 20], [-30, -66, 16, 20]];
+    for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 12; tries += 1) {
+      const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
+      if (clearOf(x, z, 3) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.2)) { trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); k += 1; }
+    }
+    for (let tries = 0; trees.length < 260 && tries < 6000; tries += 1) { // and scattered everywhere else
+      const a = rnd() * TAU; const r = 24 + rnd() * 80; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
+      if (clearOf(x, z, 4) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 6)) trees.push({ x, z, s: 0.75 + rnd() * 0.5 });
+    }
+    const flowers = [];
+    for (const [fx, fz, fr, n] of [[-34, 58, 9, 120], [-58, 30, 6, 60], [20, 40, 6, 50], [-22, -30, 5, 40], [58, 22, 5, 40], [-6, 44, 4, 30]]) {
+      for (let k = 0; k < n; k += 1) { const a = rnd() * TAU; const r = Math.sqrt(rnd()) * fr; const x = fx + Math.cos(a) * r; const z = fz + Math.sin(a) * r; if (walkable(x, z) && walkDist(x, z) > 0.6) flowers.push({ x, z, c: k % 5 }); }
+    }
+    // Bushes along the walks and around the woods, and grass tufts everywhere, so open ground never looks bare.
+    const bushes = [];
+    for (const w of walkCurves) for (let i = 3; i < w.pts.length; i += 5) {
+      if (rnd() < 0.45) continue;
+      const [x, z] = w.pts[i]; const [x2, z2] = w.pts[Math.max(0, i - 1)]; const l = Math.hypot(x - x2, z - z2) || 1;
+      const side = rnd() < 0.5 ? -1 : 1; const off = w.w / 2 + 1.3 + rnd() * 1.2;
+      const bx = x + side * (-(z - z2) / l) * off; const bz = z + side * ((x - x2) / l) * off;
+      if (clearOf(bx, bz, 0.9) && Math.hypot(bx, bz) > PLAZA_R + 3) bushes.push({ x: bx, z: bz, s: 0.6 + rnd() * 0.5 });
+    }
+    for (let tries = 0; bushes.length < 420 && tries < 5000; tries += 1) {
+      const a = rnd() * TAU; const r = 26 + rnd() * 76; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
+      if (clearOf(x, z, 1.5)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 });
+    }
+    const tufts = [];
+    for (let tries = 0; tufts.length < 1400 && tries < 9000; tries += 1) {
+      const a = rnd() * TAU; const r = PLAZA_R + 5 + rnd() * 85; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
+      if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4 && PADS.every((p) => Math.hypot(x - p.x, z - p.z) > p.r)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
+    }
+    const rocks = [];
+    for (let tries = 0; rocks.length < 90 && tries < 4000; tries += 1) {
+      const a = rnd() * TAU; const x = Math.cos(a) * (coastR(a) - 2 - rnd() * 5); const z = Math.sin(a) * (coastR(a) - 2 - rnd() * 5);
+      if (Math.abs(wrap(a - Math.PI / 2)) < 0.5) continue; // keep the harbour beach clear
+      rocks.push({ x, z, s: 0.5 + rnd() * (cliffAt(x, z) > 0.4 ? 1.6 : 0.8), r: rnd() * 6 });
+    }
+    const posts = []; // a low fence along the top of the north cliffs
+    for (let a = -Math.PI; a < Math.PI; a += 0.035) {
+      const R = coastR(a) - 3.6; const x = Math.cos(a) * R; const z = Math.sin(a) * R;
+      if (cliffAt(x, z) > 0.55) posts.push({ x, z });
+    }
+    const lampSpots = [];
+    for (const w of walkCurves.slice(0, 5)) for (let i = 8; i < w.pts.length - 4; i += 14) {
+      const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
+      const lx = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
+      if (walkable(lx, lz) && streamDist(lx, lz) > STREAM_HALF + 1.5) lampSpots.push({ x: lx, z: lz });
+    }
+    natureCache = { trees, flowers, bushes, tufts, rocks, posts, lampSpots };
+    return natureCache;
+  }
+  // Things a character walks around, with their radius (the same circles the browser uses).
+  function natureSolids() {
+    const n = nature();
+    return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
+  }
+
+  return { nature, natureSolids, coastR, PLAZA_R, AREAS, SPOTS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

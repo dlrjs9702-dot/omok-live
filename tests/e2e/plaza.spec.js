@@ -298,10 +298,11 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   expect(prevA.z).toBeLessThan(prevB.z); // nobody passed through
   expect(nearestSeen).toBeGreaterThan(0.45); // never drawn inside each other (a glide may briefly close the gap while the server settles)
   expect(biggestStep).toBeLessThan(1.2); // no teleporting back and forth
-  await a.page.waitForTimeout(800);
-  const [ra, rb] = [await me(a), await me(b)];
-  expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5); // at rest: apart, and still
-  expect(Math.hypot((await me(a)).x - ra.x, (await me(a)).z - ra.z)).toBeLessThan(0.05);
+  // at rest: comes still (a server correction may still be gliding for a moment on a slow runner), and apart
+  let ra = await me(a);
+  await expect.poll(async () => { const now = await me(a); const moved = Math.hypot(now.x - ra.x, now.z - ra.z); ra = now; return moved; }, { timeout: 5000, intervals: [400] }).toBeLessThan(0.05);
+  const rb = await me(b);
+  expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5);
 
   // 4) B stands right in the shop's door: A still reaches the shop and opens it
   const shopDoor = await b.page.evaluate(() => window.PlazaDebug().doors.shop);
@@ -650,4 +651,44 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 560);
   await expectNoScriptError(page);
   await a.context.close();
+});
+
+// v1.10.11 서버 공용 랜덤 이벤트: the minimap shows 「!」 only for events inside its round view; standing at one shows
+// 「SPACE · 줍기」 (or 채집); solving it takes it off every screen at once.
+test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른 사람 화면에서도 바로 사라진다', async ({ browser, request }) => {
+  test.setTimeout(180000); // two 3D island pages
+  const a = await intoPlaza(browser, request, '이벤트손님');
+  const b = await intoPlaza(browser, request, '이벤트구경');
+  const target = (await get(request, '/api/test/island/events', a.token)).data.events.find((e) => !e.npc);
+  const key = `ev:${target.type}:${target.id}`;
+  const spotNear = (page, from, min, max) => page.evaluate(({ from, min, max }) => { // somewhere one may stand, min..max away
+    const d = window.PlazaDebug();
+    for (let r = min; r <= max; r += 0.5) for (let k = 0; k < 24; k += 1) { const x = from.x + Math.cos(k * 0.26) * r; const z = from.z + Math.sin(k * 0.26) * r; if (d.walkable(x, z)) return { x, z }; }
+    return null;
+  }, { from, min, max });
+  const shownMatchesRange = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d.minimap.markers === d.markers.filter((m) => Math.hypot(m.x - d.x, m.z - d.z) <= 38).length; });
+
+  // 60 away: the event is known to my screen but not on the minimap
+  const far = await spotNear(a.page, target, 58, 70);
+  await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), far);
+  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => shownMatchesRange(a.page), { timeout: 5000 }).toBe(true);
+  expect(await a.page.evaluate((t) => window.PlazaDebug().markers.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < 0.01), target)).toBe(true);
+
+  // b watches from nearby; a walks up to it: the 「!」 is on a's minimap and Space solves it
+  const watch = await spotNear(b.page, target, 12, 20);
+  await b.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), watch);
+  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 10000 }).toBe(true);
+  const close = await spotNear(a.page, target, 0.9, 1.6);
+  await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
+  await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · (줍기|채집)/, { timeout: 10000 });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().minimap.markers), { timeout: 5000 }).toBeGreaterThan(0);
+  expect(await shownMatchesRange(a.page)).toBe(true);
+  await a.page.keyboard.press('Space');
+  await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 5000 });
+  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 5000 }).toBe(false);
+  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 5000 }).toBe(false);
+  expect((await get(request, '/api/test/island/events', a.token)).data.events.length).toBe(15);
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
 });

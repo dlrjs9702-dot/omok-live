@@ -7,7 +7,7 @@ import * as THREE from '/vendor/three/three.module.js';
 
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
-export const { coastR, PLAZA_R, AREAS, SPOTS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS } = T;
+export const { coastR, PLAZA_R, AREAS, SPOTS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, nature } = T;
 const { TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, streamDist, walkDist, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER } = T;
 
 export function buildIsland(scene, { mat, mesh, solids }) {
@@ -112,27 +112,9 @@ export function buildIsland(scene, { mat, mesh, solids }) {
 
   // Instanced nature: trees, flowers, rocks, fence posts. Placement is fixed (seeded) and keeps walks, water, the
   // plaza and every building clear.
-  let seed = 0x1a2b3c;
-  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const clearOf = (x, z, walkGap) => {
-    if (!walkable(x, z) || coastDist(x, z) < 6) return false;
-    if (Math.hypot(x, z) < PLAZA_R + 7) return false;
-    if (walkDist(x, z) < walkGap || streamDist(x, z) < STREAM_HALF + 2) return false;
-    if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
-    for (const s of Object.values(SPOTS)) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
-    if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
-    return true;
-  };
-  const trees = [];
-  const woods = [[-48, 44, 22, 46], [30, -62, 20, 30], [-72, 6, 16, 22], [70, 40, 16, 20], [-30, -66, 16, 20]];
-  for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 12; tries += 1) {
-    const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
-    if (clearOf(x, z, 3) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.2)) { trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); k += 1; }
-  }
-  for (let tries = 0; trees.length < 260 && tries < 6000; tries += 1) { // and scattered everywhere else
-    const a = rnd() * TAU; const r = 24 + rnd() * 80; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-    if (clearOf(x, z, 4) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 6)) trees.push({ x, z, s: 0.75 + rnd() * 0.5 });
-  }
+  // v1.10.11: where the trees, flowers, bushes, rocks, fence posts and lamps stand comes from island-terrain.js (the
+  // server keeps events clear of them too)
+  const { trees, flowers, bushes, tufts, rocks, posts, lampSpots } = nature();
   const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const v3 = new THREE.Vector3(); const sc = new THREE.Vector3();
   // One instanced mesh per 40-unit square of the island, so whatever is off screen (or outside the shadow area around
   // the player) is skipped as a whole instead of drawing every tree on the island every frame.
@@ -152,58 +134,20 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   instanced(new THREE.SphereGeometry(0.85, 8, 6), mat(0x86cf74), trees, (t) => setM(t.x + 0.5 * t.s, ground(t.x, t.z) + 2.7 * t.s, t.z + 0.3 * t.s, t.s));
   for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.75 * t.s });
 
-  const flowers = []; const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
-  for (const [fx, fz, fr, n] of [[-34, 58, 9, 120], [-58, 30, 6, 60], [20, 40, 6, 50], [-22, -30, 5, 40], [58, 22, 5, 40], [-6, 44, 4, 30]]) {
-    for (let k = 0; k < n; k += 1) { const a = rnd() * TAU; const r = Math.sqrt(rnd()) * fr; const x = fx + Math.cos(a) * r; const z = fz + Math.sin(a) * r; if (walkable(x, z) && walkDist(x, z) > 0.6) flowers.push({ x, z, c: k % 5 }); }
-  }
+  const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   flowerColors.forEach((col, ci) => {
     const list = flowers.filter((f) => f.c === ci);
     instanced(new THREE.SphereGeometry(0.13, 5, 3), mat(col), list, (f) => setM(f.x, ground(f.x, f.z) + 0.16, f.z, 1), { shadow: false });
   });
-  // Bushes along the walks and around the woods, and grass tufts everywhere, so open ground never looks bare.
-  const bushes = [];
-  for (const w of walkCurves) for (let i = 3; i < w.pts.length; i += 5) {
-    if (rnd() < 0.45) continue;
-    const [x, z] = w.pts[i]; const [x2, z2] = w.pts[Math.max(0, i - 1)]; const l = Math.hypot(x - x2, z - z2) || 1;
-    const side = rnd() < 0.5 ? -1 : 1; const off = w.w / 2 + 1.3 + rnd() * 1.2;
-    const bx = x + side * (-(z - z2) / l) * off; const bz = z + side * ((x - x2) / l) * off;
-    if (clearOf(bx, bz, 0.9) && Math.hypot(bx, bz) > PLAZA_R + 3) bushes.push({ x: bx, z: bz, s: 0.6 + rnd() * 0.5 });
-  }
-  for (let tries = 0; bushes.length < 420 && tries < 5000; tries += 1) {
-    const a = rnd() * TAU; const r = 26 + rnd() * 76; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-    if (clearOf(x, z, 1.5)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 });
-  }
   instanced(new THREE.SphereGeometry(0.9, 7, 5), mat(0x6fbf5e), bushes, (b) => setM(b.x, ground(b.x, b.z) + 0.35 * b.s, b.z, b.s, b.s * 0.75));
   instanced(new THREE.SphereGeometry(0.6, 6, 4), mat(0x83cf6c), bushes, (b) => setM(b.x + 0.45 * b.s, ground(b.x, b.z) + 0.5 * b.s, b.z - 0.2 * b.s, b.s, b.s * 0.8));
   for (const b of bushes) solids.push({ x: b.x, z: b.z, r: 0.75 * b.s });
-  const tufts = [];
-  for (let tries = 0; tufts.length < 1400 && tries < 9000; tries += 1) {
-    const a = rnd() * TAU; const r = PLAZA_R + 5 + rnd() * 85; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-    if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4 && PADS.every((p) => Math.hypot(x - p.x, z - p.z) > p.r)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
-  }
   instanced(new THREE.ConeGeometry(0.16, 0.5, 4), mat(0x7cbf5c), tufts, (t) => setM(t.x, ground(t.x, t.z) + 0.2 * t.s, t.z, t.s, t.s, t.r), { shadow: false });
 
-  const rocks = [];
-  for (let tries = 0; rocks.length < 90 && tries < 4000; tries += 1) {
-    const a = rnd() * TAU; const x = Math.cos(a) * (coastR(a) - 2 - rnd() * 5); const z = Math.sin(a) * (coastR(a) - 2 - rnd() * 5);
-    if (Math.abs(wrap(a - Math.PI / 2)) < 0.5) continue; // keep the harbour beach clear
-    rocks.push({ x, z, s: 0.5 + rnd() * (cliffAt(x, z) > 0.4 ? 1.6 : 0.8), r: rnd() * 6 });
-  }
   instanced(new THREE.DodecahedronGeometry(1), mat(0xb8b0a4), rocks, (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r));
-  const posts = []; // a low fence along the top of the north cliffs
-  for (let a = -Math.PI; a < Math.PI; a += 0.035) {
-    const R = coastR(a) - 3.6; const x = Math.cos(a) * R; const z = Math.sin(a) * R;
-    if (cliffAt(x, z) > 0.55) posts.push({ x, z });
-  }
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
 
   // Lamps along the main walks, benches beside them.
-  const lampSpots = [];
-  for (const w of walkCurves.slice(0, 5)) for (let i = 8; i < w.pts.length - 4; i += 14) {
-    const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
-    const lx = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
-    if (walkable(lx, lz) && streamDist(lx, lz) > STREAM_HALF + 1.5) lampSpots.push({ x: lx, z: lz });
-  }
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 1.3, p.z, 1));
   instanced(new THREE.SphereGeometry(0.24, 12, 9), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 2.72, p.z, 1), { shadow: false });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
@@ -265,7 +209,10 @@ export function buildIsland(scene, { mat, mesh, solids }) {
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(p.name, px, pz - size / 18); ctx.fillStyle = '#3d2f22'; ctx.fillText(p.name, px, pz - size / 18);
     }
     ctx.font = `900 ${Math.round(size / 9)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
-    for (const m of markers) { // future events: a red 「!」 at the place
+    let shown = 0;
+    for (const m of markers) { // v1.10.11 events: a red 「!」, only for what lies inside this round map (never beyond it)
+      if (Math.hypot(m.x - me.x, m.z - me.z) > MINI_RANGE - 2) continue;
+      shown += 1;
       const [mx, mz] = at(m.x, m.z);
       ctx.beginPath(); ctx.arc(mx, mz, size / 18, 0, TAU); ctx.fillStyle = '#e8443c'; ctx.fill();
       ctx.fillStyle = '#fff'; ctx.fillText('!', mx, mz + 1);
@@ -280,7 +227,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     ctx.beginPath(); ctx.arc(nx, nz, 10, 0, TAU); ctx.fillStyle = 'rgba(255,250,240,.95)'; ctx.fill();
     ctx.font = `900 ${Math.round(size / 13)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.fillStyle = '#b3261e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('N', nx, nz + 1);
-    return turn;
+    return { turn, shown };
   }
 
   function step(clock) { boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }

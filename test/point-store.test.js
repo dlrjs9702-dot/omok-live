@@ -235,6 +235,36 @@ async function exercise(t, makeStore) {
     assert.equal(tomorrow.applied, true, '다음 날 다시');
   });
 
+  await t.test('v1.10.11 공용 이벤트 보상: 이벤트당 한 번·일일 한도·분실물 반환·주인이 떠난 분실물은 관공서', async () => {
+    const R = 'guest:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const Items = require('../lib/island-items');
+    const now = Date.parse('2026-10-04T16:00:00+09:00');
+    const before = (await store.getAccount(R)).balance;
+    const coin = await store.islandReward({ userId: R, claimId: 'event:coin0001', amount: 30, title: '떨어진 동전' }, now);
+    assert.equal(coin.applied, true);
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:coin0001', amount: 30, title: '떨어진 동전' }, now)).applied, false, '이벤트당 한 번');
+    assert.equal((await store.getAccount(R)).balance, before + 30);
+    assert.equal((await store.history(R)).items[0].memo, '떨어진 동전');
+    // returning a lost thing: only with it in the bag, and it leaves the bag
+    const missing = await store.islandReward({ userId: R, claimId: 'event-return:lost0001', amount: 150, title: '분실물 찾아주기', takeEventId: 'lost0001' }, now);
+    assert.deepEqual([missing.applied, missing.reason], [false, 'missing']);
+    await store.islandGive({ userId: R, claimId: 'event:lost0001', itemId: 'lost', meta: { eventId: 'lost0001' } });
+    await store.islandGive({ userId: R, claimId: 'event:lost0002', itemId: 'lost', meta: { eventId: 'lost0002' } });
+    const back = await store.islandReward({ userId: R, claimId: 'event-return:lost0001', amount: 150, title: '분실물 찾아주기', takeEventId: 'lost0001' }, now);
+    assert.equal(back.applied, true);
+    assert.deepEqual((await store.islandBag(R)).items.map((e) => e.meta?.eventId), ['lost0002']);
+    // a lost thing whose owner is still waiting stays out of the town hall; once the owner is gone, the hall takes it
+    const waiting = await store.islandSell({ userId: R, requestId: 'sell-lost-01', place: 'office', activeLost: ['lost0002'] }, now);
+    assert.deepEqual([waiting.applied, waiting.reason], [false, 'nothing']);
+    const found = await store.islandSell({ userId: R, requestId: 'sell-lost-02', place: 'office', activeLost: [] }, now);
+    assert.equal(found.paid, Items.ITEMS.lost.price);
+    // the daily limit
+    const big = await store.islandReward({ userId: R, claimId: 'event:big00001', amount: Items.DAILY_CAP, title: '큰 보상' }, now);
+    assert.deepEqual([big.applied, big.reason], [false, 'cap']);
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00002', amount: Items.DAILY_CAP - 330, title: '남은 만큼' }, now)).applied, true);
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00003', amount: 1, title: '넘침' }, now)).reason, 'cap');
+  });
+
   await t.test('v1.10.9 작명소: 100,000P 한 번 차감·같은 요청은 한 번만·24시간 대기·잔액 부족·환불', async () => {
     const N = 'guest:99999999-9999-4999-8999-999999999999'; const O = 'guest:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; // fresh accounts (100,000P)
     const t0 = Date.parse('2026-10-04T12:00:00+09:00');
