@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.11').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.12').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1752,8 +1752,10 @@
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving;
     if (!changed && now - plazaLastSentAt < 3000) return;
     plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
+    const sentAt = Date.now();
     api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) })
       .then((data) => {
+        plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
