@@ -191,6 +191,36 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('v1.10.9 작명소: 100,000P 한 번 차감·같은 요청은 한 번만·24시간 대기·잔액 부족·환불', async () => {
+    const N = 'guest:99999999-9999-4999-8999-999999999999'; const O = 'guest:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; // fresh accounts (100,000P)
+    const t0 = Date.parse('2026-10-04T12:00:00+09:00');
+    const first = await store.chargeNickname({ userId: N, requestId: 'nick-0001', name: '새 이름' }, t0);
+    assert.equal(first.applied, true); assert.equal(first.balanceAfter, 0);
+    const again = await store.chargeNickname({ userId: N, requestId: 'nick-0001', name: '새 이름' }, t0);
+    assert.equal(again.applied, false); assert.equal(again.name, '새 이름'); // the same request: already done
+    assert.equal((await store.getAccount(N)).balance, 0, '한 번만 차감');
+    assert.equal((await store.nicknameRequest('nick-0001')).name, '새 이름');
+    assert.equal((await store.nicknameState(N)).until, new Date(t0 + 86400000).toISOString());
+    await store.adminGrant({ grantId: 'admin-grant:nick-1', userId: N, amount: 500_000, category: 'event', memo: '' });
+    const wait = await store.chargeNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }, t0 + 86400000 - 1);
+    assert.deepEqual([wait.applied, wait.reason], [false, 'cooldown']);
+    assert.equal((await store.getAccount(N)).balance, 500_000, '대기 중에는 차감 없음');
+    const later = await store.chargeNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }, t0 + 86400000);
+    assert.equal(later.applied, true, '거절된 요청은 다시 보낼 수 있다');
+    assert.equal(await store.refundNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }), true);
+    assert.equal(await store.refundNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }), false, '환불은 한 번');
+    assert.equal((await store.getAccount(N)).balance, 500_000);
+    assert.equal((await store.nicknameState(N)).changedAt, new Date(t0).toISOString(), '환불하면 이전 대기로');
+    assert.equal(await store.nicknameRequest('nick-0002'), null);
+    await store.ensureAccount(O);
+    await store.adminGrant({ grantId: 'admin-grant:nick-2', userId: O, amount: 10_000, category: 'event', memo: '' });
+    await store.chargeNickname({ userId: O, requestId: 'nick-o-01', name: '가' }, t0); // 110,000 → 10,000
+    const poor = await store.chargeNickname({ userId: O, requestId: 'nick-o-02', name: '나' }, t0 + 2 * 86400000);
+    assert.deepEqual([poor.applied, poor.reason], [false, 'insufficient']);
+    assert.ok((await store.history(N)).items.some((item) => item.reason === 'nickname' && item.memo === '새 이름'));
+    await assert.rejects(store.chargeNickname({ userId: N, requestId: 'nick-0003', name: '  ' }, t0), RangeError);
+  });
+
   await t.test('v1.10.7 당일 위치: 계정당 마지막 위치와 날짜를 한 번에 저장·조회', async () => {
     const G = 'guest:77777777-7777-4777-8777-777777777777'; const H = 'guest:88888888-8888-4888-8888-888888888888';
     assert.equal(await store.plazaSpot(G), null);
