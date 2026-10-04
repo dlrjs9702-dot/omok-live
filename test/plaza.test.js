@@ -23,7 +23,8 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const facilities = app.match(/const PLAZA_FACILITIES = \[([\s\S]*?)\n {2}\];/)[1];
   const ids = [...facilities.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
   assert.deepEqual(ids.sort(), ['admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'games', 'map', 'missions', 'records', 'shop']);
-  for (const id of ids) assert.match(island, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
+  const terrain = read('public/plaza/island-terrain.js'); // v1.10.7: the facility spots moved with the island's shape
+  for (const id of ids) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
   for (const target of ['openSkinShop', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'lobbyCard']) {
     assert.match(facilities + app.match(/const publicRoomsCardEl = .*/)[0], new RegExp(target), `${target} 재사용`);
   }

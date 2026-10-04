@@ -543,3 +543,19 @@ test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열�
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.7 게임 아일랜드 당일 위치: a reload (a new login the same day) starts where I last stood, not at the plaza.
+test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에서 시작한다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '위치복원');
+  const { page } = a;
+  await page.evaluate(() => window.PlazaWarp(25, 4)); // the shop street walk
+  await expect.poll(async () => (await get(request, '/api/plaza/spot', a.token)).data.spot, { timeout: 10000 }).toEqual({ x: 25, z: 4 });
+  await page.reload();
+  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => state(page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
+  const at = await state(page);
+  expect(Math.hypot(at.x - 25, at.z - 4)).toBeLessThan(0.6);
+  await expectNoScriptError(page);
+  await a.context.close();
+});

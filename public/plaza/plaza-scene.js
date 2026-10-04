@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.6';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.7';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -14,7 +14,7 @@ const DOOR_PLAYER_R = 0.28;
 const DOOR_ZONE = 2.6;
 const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
 
-export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
+export function createPlaza(host, { facilities, onInteract, onNear, blocked, startAt }) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -680,6 +680,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     }
     return [nx, nz];
   };
+  // v1.10.7 당일 위치: today's last spot from the server (already on standable ground there); out of a tree, a lamp or
+  // a building it may have been put into since, and the plaza if that still leaves it somewhere one cannot stand.
+  if (startAt && Number.isFinite(startAt.x) && Number.isFinite(startAt.z)) {
+    const [sx, sz] = pushOut(startAt.x, startAt.z);
+    if (walkable(sx, sz)) me.root.position.set(sx, heightAt(sx, sz), sz);
+  }
   const tryMove = (nx, nz) => {
     const p = me.root.position;
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
