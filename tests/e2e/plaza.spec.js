@@ -22,6 +22,7 @@ async function intoPlaza(browser, request, label, points = 0) {
 }
 
 test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 창을 열며 창이 열린 동안 멈춘다', async ({ browser, request }) => {
+  test.setTimeout(60000); // a software-rendered 3D page walking to two facilities: about 21-29 s on a CI runner already
   const a = await intoPlaza(browser, request, '광장');
   const { page } = a;
   await expect(page.locator('#announcementsCard')).toBeHidden(); // the classic lobby sections are put away
