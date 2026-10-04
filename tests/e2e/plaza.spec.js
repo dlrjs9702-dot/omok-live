@@ -615,3 +615,39 @@ test('작명소: 상점가 책상에서 이름을 바꾸면 100,000P 차감, 바
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.10 이벤트 인벤토리: the bag (I or the 「가방」 tab) shows what I carry; the town hall settles trash and found
+// wallets, the trader buys herbs, berries and mushrooms -- each takes only its own things.
+test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·지갑만, 상인은 약재만 받아 포인트로 바꾼다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '가방손님');
+  const { page } = a;
+  for (const [itemId, qty] of [['trash', 3], ['herb', 2], ['wallet', 1], ['trash', 1]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#islandBagDialog')).toBeVisible();
+  await expect(page.locator('#islandBagCount')).toHaveText('3/16');
+  await expect(page.locator('#islandBagGrid [data-item="trash"]')).toContainText('×4');
+  await page.locator('#islandBagCloseBtn').click();
+  const before = (await get(request, '/api/points', a.token)).data.balance;
+  await page.evaluate(() => window.PlazaDebug().place('townhall'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +320P');
+  await page.locator('#islandPlaceSubmit').click();
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+320P');
+  await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 320);
+  await page.locator('#islandPlaceCloseBtn').click();
+  await page.evaluate(() => window.PlazaDebug().place('trader'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +240P');
+  await page.locator('#islandPlaceSubmit').click();
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+240P');
+  await page.locator('#islandPlaceCloseBtn').click();
+  await page.locator('#islandBagTab').click();
+  await expect(page.locator('#islandBagCount')).toHaveText('0/16');
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 560);
+  await expectNoScriptError(page);
+  await a.context.close();
+});

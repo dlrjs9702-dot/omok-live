@@ -42,6 +42,7 @@
       <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
+        <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
           <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
@@ -936,6 +937,16 @@
       <button id="donationSubmit" type="submit" class="secondary">기부</button>
     </form>
     <p id="donationStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="islandBagDialog" class="recordsDialog islandBagDialog" aria-labelledby="islandBagTitle">
+    <div class="recordsDialogHead"><h2 id="islandBagTitle">가방</h2><span id="islandBagCount" class="skinShopBalance"></span><button id="islandBagCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div id="islandBagGrid" class="islandBagGrid" role="list" aria-label="가방"></div>
+  </dialog>
+  <dialog id="islandPlaceDialog" class="recordsDialog islandBagDialog" aria-labelledby="islandPlaceTitle">
+    <div class="recordsDialogHead"><h2 id="islandPlaceTitle"></h2><button id="islandPlaceCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div id="islandPlaceList" class="islandPlaceList" role="list"></div>
+    <button id="islandPlaceSubmit" type="button" class="secondary"></button>
+    <p id="islandPlaceStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="namingDialog" class="recordsDialog namingDialog" aria-labelledby="namingTitle">
     <div class="recordsDialogHead"><h2 id="namingTitle">작명소</h2><span id="namingPrice" class="skinShopBalance"></span><button id="namingCloseBtn" type="button" class="ghost tiny">닫기</button></div>

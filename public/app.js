@@ -1427,6 +1427,8 @@
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'naming', name: '작명소', open: () => openNaming() }, // v1.10.9 작명소
+    { id: 'townhall', name: '관공서', open: () => openIslandPlace('office') }, // v1.10.10 이벤트 인벤토리
+    { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
@@ -1495,6 +1497,79 @@
     plazaLastSent = null; // others see the new look with the next pose
     if (sessionRole !== 'admin' && !plazaAvatar?.look?.gender && document.body.classList.contains('plazaMode')) openGenderChoice();
   }
+  // v1.10.10 이벤트 인벤토리: the island bag (the 「가방」 tab or I), and handing things in -- trash and found wallets
+  // at the town hall, herbs, berries and mushrooms to the trader. One request id per visit until the server answers.
+  const islandBagDialog = document.getElementById('islandBagDialog');
+  const islandPlaceDialog = document.getElementById('islandPlaceDialog');
+  const islandPlaceSubmit = document.getElementById('islandPlaceSubmit');
+  const islandPlaceStatus = document.getElementById('islandPlaceStatus');
+  let islandPlace = null; let islandPlaceRequest = null;
+  const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' } };
+  function drawIslandBag(bag) {
+    const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
+    for (let i = 0; i < (bag.slots || 16); i += 1) {
+      const item = bag.items[i]; const slot = document.createElement('div');
+      slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem');
+      if (item) {
+        slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId;
+        const name = document.createElement('span'); name.textContent = item.name;
+        const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
+        slot.append(item.icon, name, qty);
+      } else slot.setAttribute('aria-label', '빈 칸');
+      grid.append(slot);
+    }
+    document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
+  }
+  async function openIslandBag() {
+    if (!islandBagDialog.open) islandBagDialog.showModal();
+    try { drawIslandBag(await api('/api/island/bag')); } catch (error) { showToast(error.message); }
+  }
+  function drawIslandPlace(bag) {
+    const list = document.getElementById('islandPlaceList'); list.replaceChildren();
+    const mine = bag.items.filter((item) => item.at === islandPlace);
+    let total = 0;
+    for (const item of mine) {
+      const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem');
+      const what = document.createElement('span'); what.textContent = `${item.icon} ${item.name} ×${item.qty}`;
+      const worth = document.createElement('strong'); worth.textContent = `${(item.qty * item.price).toLocaleString('ko-KR')}P`;
+      row.append(what, worth); list.append(row); total += item.qty * item.price;
+    }
+    if (!mine.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '맡길 물건이 없습니다.'; list.append(empty); }
+    islandPlaceSubmit.textContent = `${ISLAND_PLACES[islandPlace].verb} +${total.toLocaleString('ko-KR')}P`;
+    islandPlaceSubmit.disabled = !mine.length;
+  }
+  async function openIslandPlace(place) {
+    islandPlace = place; islandPlaceStatus.textContent = '';
+    document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
+    if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
+    try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }
+  }
+  islandPlaceSubmit.addEventListener('click', async () => {
+    const place = islandPlace; islandPlaceSubmit.disabled = true;
+    if (islandPlaceRequest?.place !== place) islandPlaceRequest = { place, id: crypto.randomUUID() };
+    try {
+      const p = plaza.controller?.pose?.(); // my position first, so the server knows I am at the counter
+      if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place, requestId: islandPlaceRequest.id }) });
+      islandPlaceRequest = null;
+      islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
+      drawIslandPlace(data.bag); loadPoints();
+    } catch (error) {
+      islandPlaceStatus.textContent = error.message;
+      if (error.status === 409 || error.status === 400) { islandPlaceRequest = null; islandPlaceSubmit.disabled = false; }
+      else islandPlaceSubmit.disabled = false; // a lost answer: the same request is sent again
+    }
+  });
+  document.getElementById('islandBagTab').addEventListener('click', () => openIslandBag());
+  document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
+  document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
+  for (const d of [islandBagDialog, islandPlaceDialog]) d.addEventListener('close', () => { if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
+  window.addEventListener('keydown', (event) => { // I opens the bag on the island
+    if (event.code !== 'KeyI' || event.isComposing || event.repeat || !document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
+    if (event.target !== document.body && event.target !== plazaStage) return;
+    event.preventDefault(); openIslandBag();
+  });
+
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 100,000P on a second press that names the
   // price, then 24 hours before the next change. One request id per name until the server answers (a retry after a
   // lost answer is the same change, paid once).
@@ -2848,6 +2923,7 @@
     if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
     if (item.reason === 'donation') return `기부 · ${item.memo || '소각'}`; // v1.10.5
     if (item.reason === 'nickname') return `작명소 · ${item.memo || '이름 변경'}`; // v1.10.9
+    if (item.reason === 'island_sale') return `게임 아일랜드 · ${item.memo || '정산'}`; // v1.10.10
     if (item.reason === 'nickname_refund') return `작명소 환불 · ${item.memo || '이름 변경'}`;
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';

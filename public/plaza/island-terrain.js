@@ -54,6 +54,8 @@
     chat: { x: -18, z: 27, face: [-4, 22], kind: 'gazebo' },
     climb: { x: -59, z: -28, face: [-44, -19], kind: 'tower' }, // a tall tower on the hill, seen from far away
     admin: { x: 24, z: 15, face: [14, 6], kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 },
+  townhall: { x: -24, z: 6, face: [-14, 3], kind: 'townhall', wall: 0xf7f0e1, roof: 0x3f7d68 }, // v1.10.10 중앙 관공서: settles trash, takes found wallets
+  trader: { x: 62, z: -6, face: [62, 4], kind: 'stall' }, // v1.10.10 상점가 상인: buys herbs, berries and mushrooms
   naming: { x: 48.5, z: -3.4, face: [48.5, 4], kind: 'desk' }, // v1.10.9 작명소: a folding desk on the shop street, between the two shops
   };
   const RESERVED_LOTS = [{ x: 49, z: 11, face: [49, 0] }]; // the shop street's next building (외형 변경 시설, later)
