@@ -13,6 +13,12 @@ const PLAYER_R = 0.45;
 const DOOR_PLAYER_R = 0.28;
 const DOOR_ZONE = 2.6;
 const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
+// v1.10.16: wandering islanders use the same physical ground as players, plus a slightly smaller personal circle.
+// Their shared A* route remains the long-range plan; this local radius handles benches/props added by the scene and
+// keeps islanders from visually passing through one another between path cells.
+const WANDERER_R = 0.42;
+const WANDERER_SEP = 0.9;
+const WANDERER_SWEEP = 0.22;
 // v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
 // loaded before the app like island-terrain.js)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
@@ -801,18 +807,58 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     if (!IslandNpcs) return;
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
       const r = IslandNpcs.round(n);
-      const c = makeCharacter(r.look); scene.add(c.root); assets.dress('character.islander', c);
+      const c = makeCharacter(r.look); c.groundedWalk = true; scene.add(c.root); assets.dress('character.islander', c);
       wanderers.push({ n, c, f: createFollower({ maxSpeed: 4 }) });
     }
   }, 400);
   function stepWanderers(dt) {
     const now = Date.now() + serverOffset; const m = me.root.position;
+    // 1) follow the deterministic A* route, but sweep each drawn step through the scene's real collision circles.
+    // This closes the old gap where the route grid knew about major terrain while the final Three.js drawing could
+    // still cut through benches, lamps, flower beds or a newly added prop between coarse path cells.
+    const poses = [];
     for (const w of wanderers) {
-      const at = IslandNpcs.at(w.n, now); const f = w.f;
+      const at = IslandNpcs.at(w.n, now); const f = w.f; const before = w.c.root.position;
       f.step(at, dt);
-      const dx = f.x - m.x; const dz = f.z - m.z; const d = Math.hypot(dx, dz); const min = PLAYER_R * 2;
-      if (d < min) { const ux = d > 1e-4 ? dx / d : 1; const uz = d > 1e-4 ? dz / d : 0; f.nudge(m.x + ux * min, m.z + uz * min); } // around me, not through
-      const p = w.c.root.position; p.set(f.x, heightAt(f.x, f.z), f.z);
+      const [x, z] = moveWandererOnGround(before.x, before.z, f.x, f.z);
+      if (Math.hypot(x - f.x, z - f.z) > 1e-5) f.nudge(x, z);
+      poses.push(at);
+    }
+
+    // 2) fixed-order local separation. Two passes are enough for ten islanders and remain deterministic on every
+    // client. A shifted point is accepted only through moveWandererOnGround, so avoiding a neighbour never pushes an
+    // islander into water, a cliff, a building or a prop.
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (let i = 0; i < wanderers.length; i += 1) for (let j = i + 1; j < wanderers.length; j += 1) {
+        const a = wanderers[i]; const b = wanderers[j];
+        let dx = a.f.x - b.f.x; let dz = a.f.z - b.f.z; let d = Math.hypot(dx, dz);
+        if (d >= WANDERER_SEP) continue;
+        if (d < 1e-5) { const angle = ((a.n * 17 + b.n * 31) % 16) * TAU / 16; dx = Math.cos(angle); dz = Math.sin(angle); d = 1; }
+        const ux = dx / d; const uz = dz / d; const shift = (WANDERER_SEP - d) / 2 + 0.005;
+        const [ax, az] = moveWandererOnGround(a.f.x, a.f.z, a.f.x + ux * shift, a.f.z + uz * shift);
+        const [bx, bz] = moveWandererOnGround(b.f.x, b.f.z, b.f.x - ux * shift, b.f.z - uz * shift);
+        a.f.nudge(ax, az); b.f.nudge(bx, bz);
+      }
+    }
+
+    // 3) people and event NPCs are moving/fixed circles too. Wanderers yield locally instead of walking through them.
+    const people = [{ x: m.x, z: m.z, r: playerRadiusAt(m.x, m.z) }];
+    for (const o of others.values()) people.push({ x: o.c.root.position.x, z: o.c.root.position.z, r: playerRadiusAt(o.c.root.position.x, o.c.root.position.z) });
+    for (const o of eventObjs.values()) if (o.npc) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R });
+    for (const w of wanderers) {
+      for (const o of people) {
+        let dx = w.f.x - o.x; let dz = w.f.z - o.z; let d = Math.hypot(dx, dz); const min = WANDERER_R + o.r;
+        if (d >= min) continue;
+        if (d < 1e-5) { dx = 1; dz = 0; d = 1; }
+        const [x, z] = moveWandererOnGround(w.f.x, w.f.z, o.x + (dx / d) * min, o.z + (dz / d) * min);
+        w.f.nudge(x, z);
+      }
+    }
+
+    for (let i = 0; i < wanderers.length; i += 1) {
+      const w = wanderers[i]; const at = poses[i]; const f = w.f; const p = w.c.root.position;
+      // Exact terrain/deck height every frame: no interpolation in Y, so feet do not hover over slopes or bridges.
+      p.set(f.x, heightAt(f.x, f.z), f.z);
       w.c.root.visible = Math.hypot(f.x - m.x, f.z - m.z) < 85;
       if (!w.c.root.visible) continue;
       w.c.targetYaw = f.speed > 0.4 && f.heading != null ? f.heading : at.yaw;
@@ -889,12 +935,43 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     }
   }
   const solidsNear = (x, z) => grid.get(`${Math.floor(x / GRID)},${Math.floor(z / GRID)}`) || [];
-  const pushOut = (nx, nz) => {
-    for (const s of solidsNear(nx, nz)) {
-      const dx = nx - s.x; const dz = nz - s.z; const dist = Math.hypot(dx, dz); const min = s.r + 0.45;
-      if (dist < min && dist > 1e-6) { nx = s.x + (dx / dist) * min; nz = s.z + (dz / dist) * min; }
+  const pushOutRadius = (nx, nz, radius) => {
+    // A move can be inside two nearby circles (for example a fence next to a tree), so settle a few times.
+    for (let pass = 0; pass < 3; pass += 1) {
+      let changed = false;
+      for (const s of solidsNear(nx, nz)) {
+        let dx = nx - s.x; let dz = nz - s.z; let dist = Math.hypot(dx, dz); const min = s.r + radius;
+        if (dist >= min) continue;
+        if (dist < 1e-6) { dx = 1; dz = 0; dist = 1; }
+        nx = s.x + (dx / dist) * min; nz = s.z + (dz / dist) * min; changed = true;
+      }
+      if (!changed) break;
     }
     return [nx, nz];
+  };
+  const pushOut = (nx, nz) => pushOutRadius(nx, nz, PLAYER_R);
+
+  // Walk a short segment through the exact scene collisions, not just the long-range A* grid. Sampling prevents a
+  // slow frame from tunnelling through a thin prop. If terrain blocks the full step, keep the axis that can still move,
+  // which produces the same natural wall/shore sliding used by the player.
+  const moveWandererOnGround = (px, pz, nx, nz) => {
+    const distance = Math.hypot(nx - px, nz - pz);
+    const count = Math.max(1, Math.ceil(distance / WANDERER_SWEEP));
+    let x = px; let z = pz;
+    for (let k = 1; k <= count; k += 1) {
+      const t = k / count;
+      let tx = px + (nx - px) * t; let tz = pz + (nz - pz) * t;
+      [tx, tz] = pushOutRadius(tx, tz, WANDERER_R);
+      if (!walkable(tx, tz)) {
+        let ax = tx; let az = z; [ax, az] = pushOutRadius(ax, az, WANDERER_R);
+        let bx = x; let bz = tz; [bx, bz] = pushOutRadius(bx, bz, WANDERER_R);
+        if (walkable(ax, az)) { tx = ax; tz = az; }
+        else if (walkable(bx, bz)) { tx = bx; tz = bz; }
+        else break;
+      }
+      x = tx; z = tz;
+    }
+    return [x, z];
   };
   // v1.10.7 당일 위치: today's last spot from the server (already on standable ground there); out of a tree, a lamp or
   // a building it may have been put into since, and the plaza if that still leaves it somewhere one cannot stand.
@@ -1018,7 +1095,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
     c.armL.rotation.z = -hopT * 1.1; c.armR.rotation.z = hopT * 1.1; // a little cheer when interacting
     if (c.waving) { c.armR.rotation.z = 2.5 + Math.sin(clock * 9) * 0.35; c.armR.rotation.x = 0; }
-    c.body.position.y = Math.abs(Math.sin(c.phase)) * 0.07 * walk * (1 + run * 0.6) + hopT * 0.28;
+    // Islanders keep their feet visually planted: their root already follows exact terrain height, so only a tiny
+    // pelvis bob remains. Player/remote-player animation keeps the existing livelier bounce.
+    const bodyBob = c.groundedWalk ? 0.012 : 0.07;
+    c.body.position.y = Math.abs(Math.sin(c.phase)) * bodyBob * walk * (1 + run * 0.6) + hopT * 0.28;
     c.body.rotation.x = c.lean; c.body.rotation.z = c.roll;
     c.body.scale.y = 1 + (1 - walk) * Math.sin(clock * 2.2) * 0.012;
     // the head turns toward a nearby facility (limited), and nods on interaction
@@ -1062,7 +1142,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, assets: assets.debug(), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, y: w.c.root.position.y, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed, grounded: Math.abs(w.c.root.position.y - heightAt(w.f.x, w.f.z)) < 1e-4, walkable: walkable(w.f.x, w.f.z), clear: solidsNear(w.f.x, w.f.z).every((o) => Math.hypot(w.f.x - o.x, w.f.z - o.z) >= o.r + WANDERER_R - 0.01) })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
