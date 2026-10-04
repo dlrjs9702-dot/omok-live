@@ -293,11 +293,30 @@
     natureCache = { trees, flowers, bushes, tufts, rocks, posts, lampSpots };
     return natureCache;
   }
+  // v1.10.16: the plaza's fixed props with their collision circles -- benches facing the fountain, lamps on a ring, flower
+  // beds along the rim -- placed once here for both the scene (plaza-scene.js draws them) and the islanders' route grid
+  // (island-npcs.js), so a round never runs through them and the islanders have nothing there to squeeze round.
+  function plazaProps() {
+    const busy = (x, z, gap) => [...Object.values(SPOTS), ...STATUE_SPOTS].some((s) => Math.hypot(s.x - x, s.z - z) < gap);
+    const benches = [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38].map((a) => ({ x: Math.cos(a) * 5, z: Math.sin(a) * 5, r: 0.9 }));
+    const lamps = [];
+    for (let k = 0; k < 8; k += 1) {
+      const a = Math.PI / 8 + (k * Math.PI) / 4; const x = Math.cos(a) * 12; const z = Math.sin(a) * 12;
+      if (!busy(x, z, 3)) lamps.push({ x, z, r: 0.35 });
+    }
+    const beds = [];
+    for (let i = 0; i < 12; i += 1) {
+      const a = Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62);
+      const x = Math.cos(a) * (PLAZA_R - 2.2); const z = Math.sin(a) * (PLAZA_R - 2.2);
+      if (!busy(x, z, 3.4)) beds.push({ x, z, r: 1.1, i }); // i: the bed's place in the ring (its flower colours)
+    }
+    return { benches, lamps, beds };
+  }
   // Things a character walks around, with their radius (the same circles the browser uses).
   function natureSolids() {
     const n = nature();
     return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
   }
 
-  return { nature, natureSolids, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

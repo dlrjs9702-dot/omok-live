@@ -705,14 +705,40 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBe(10);
   await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBe(10);
   await a.page.waitForTimeout(1500); // both have heard the server clock (pose answers)
-  const both = await Promise.all([a.page, b.page].map((page) => page.evaluate(() => { const d = window.PlazaDebug(); const t = d.serverNow(); return { t, list: d.wanderers }; })));
-  const lag = Math.abs(both[0].t - both[1].t) / 1000;
+  // Where an islander's round has it is a pure function of the server clock (island-npcs.js `at`), so the two screens
+  // show the same places when they agree on that clock. (v1.10.16: comparing the drawn spots directly measured mostly
+  // how far apart the two software-rendered pages' last frames were; what is drawn is checked against the round below.)
+  const both = await Promise.all([a.page, b.page].map((page) => page.evaluate(() => { const t = window.PlazaDebug().serverNow(); return { t, list: Array.from({ length: 10 }, (_, n) => window.IslandNpcs.at(n, t)) }; })));
+  const lag = Math.abs(both[0].t - both[1].t) / 1000; // the two screens' server clocks (and the two reads) a moment apart
   for (let n = 0; n < 10; n += 1) {
     const p = both[0].list[n]; const q = both[1].list[n];
-    expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeLessThan(1 + lag * 2); // the same place (a moment apart at most)
+    expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeLessThan(0.2 + lag * 2); // the same place on the shared round
   }
   const first = await islanders(a.page); await a.page.waitForTimeout(4000); const later = await islanders(a.page);
   expect(first.filter((p, n) => Math.hypot(p.x - later[n].x, p.z - later[n].z) > 1).length).toBeGreaterThan(2); // they walk
+
+  // v1.10.16: over several seconds of real frames, every islander stands on the ground (feet at the terrain or deck
+  // height), on standable ground, inside no collision circle, apart from the others and close to its shared round
+  const R = await a.page.evaluate(() => window.PlazaDebug().wandererR);
+  for (let k = 0; k < 12; k += 1) {
+    const list = await islanders(a.page);
+    for (const w of list) {
+      expect(w.grounded, `n${w.n} 지면`).toBe(true);
+      expect(w.walkable, `n${w.n} 설 수 있는 땅`).toBe(true);
+      expect(w.clear, `n${w.n} 장애물 밖 (${w.x.toFixed(2)}, ${w.z.toFixed(2)})`).toBe(true);
+      expect(w.off, `n${w.n} 경로 근처`).toBeLessThan(5);
+    }
+    for (let i = 0; i < list.length; i += 1) for (let j = i + 1; j < list.length; j += 1) {
+      expect(Math.hypot(list[i].x - list[j].x, list[i].z - list[j].z), `n${i}·n${j} 겹치지 않음`).toBeGreaterThan(2 * R * 0.9);
+    }
+    await a.page.waitForTimeout(500);
+  }
+  // standing right where an islander is: it steps out of my way instead of walking through me
+  const target = (await islanders(a.page))[0];
+  await a.page.evaluate(({ x, z }) => window.PlazaDebug().teleport(x, z), target);
+  await a.page.waitForTimeout(400);
+  const gap = await a.page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers[0]; return { d: Math.hypot(w.x - d.x, w.z - d.z), min: d.wandererR + d.radiusAt(d.x, d.z) }; });
+  expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
