@@ -779,7 +779,9 @@ function plazaSeparate(token, x, z, prev) {
 let plazaDirty = false;
 function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
-  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), x, z, yaw, moving })) };
+  // v1.10.8: t = when the server took that pose (ms), so each screen spaces the poses by when they happened, not by
+  // when its snapshot arrived
+  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), x, z, yaw, moving, t: at })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -2759,7 +2761,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.7' });
+    return sendJson(res, 200, { ok: true, version: '1.10.8' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3958,7 +3960,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.7 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.8 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

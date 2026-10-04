@@ -161,6 +161,31 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.shop; await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
 
+  // v1.10.8: a walks down the harbour walk; on b's screen a moves on evenly -- never backward, never faster than a
+  // run in a frame (no surge after a late update), and arrives where a stopped
+  await a.page.evaluate(() => window.PlazaWarp(-1, 22));
+  await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x + 1, o.z - 22) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
+  const watching = b.page.evaluate((id) => new Promise((resolve) => { // until a stands still on b's screen again
+    const out = []; const start = performance.now(); window.__walkDone = false;
+    const tick = () => {
+      const o = (window.PlazaDebug()?.others || []).find((p) => p.id === id); if (o) out.push({ t: performance.now(), z: o.z });
+      const settled = window.__walkDone && out.length > 2 && Math.abs(out[out.length - 1].z - window.__walkEnd) < 0.05;
+      if (!settled && performance.now() - start < 30000) requestAnimationFrame(tick); else resolve(out);
+    };
+    requestAnimationFrame(tick);
+  }), aId);
+  await a.page.keyboard.down('ArrowDown'); // held until a has walked a few steps (a slow runner draws few frames)
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().z), { timeout: 15000 }).toBeGreaterThan(24);
+  await a.page.keyboard.up('ArrowDown');
+  await a.page.waitForTimeout(300);
+  const end = await a.page.evaluate(() => window.PlazaDebug().z);
+  await b.page.evaluate((z) => { window.__walkEnd = z; window.__walkDone = true; }, end);
+  const walked = await watching;
+  const steps = walked.slice(1).map((s, i) => ({ dz: s.z - walked[i].z, dt: (s.t - walked[i].t) / 1000 })).filter((s) => s.dt > 0);
+  expect(Math.min(...steps.map((s) => s.dz))).toBeGreaterThan(-0.02); // never backward
+  expect(Math.max(...steps.filter((s) => s.dt > 0.012).map((s) => s.dz / s.dt))).toBeLessThan(5.2 * 1.75); // no surge
+  expect(walked[walked.length - 1].z).toBeCloseTo(end, 1); // b sees a arrive where a stopped
+
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
   await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
   await a.page.keyboard.press('Space');
