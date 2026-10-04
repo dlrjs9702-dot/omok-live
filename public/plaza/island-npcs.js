@@ -23,10 +23,11 @@
   ];
 
   const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const BUILDING_R = { hall: 13, shop: 3.4, house: 3.4, office: 3.4, townhall: 3.4, tower: 3.5, gazebo: 3.2, board: 1.6, npc: 1.6, desk: 1.6, stall: 1.8, donation: 1.4, mapboard: 1.4 };
+  const BUILDING_R = { cottage: 3.9, hall: 13, shop: 3.4, house: 3.4, office: 3.4, townhall: 3.4, tower: 3.5, gazebo: 3.2, board: 1.6, npc: 1.6, desk: 1.6, stall: 1.8, donation: 1.4, mapboard: 1.4 };
 
   // On a bridge deck, with a little room (a bridge is a way over its stream).
-  const onAnyBridge = (x, z) => T.bridges.some((b) => { const dx = x - b.x; const dz = z - b.z; return Math.abs(dx * b.ux + dz * b.uz) <= b.half + 0.8 && Math.abs(-dx * b.uz + dz * b.ux) <= b.w / 2 + 0.3; });
+  // the whole cell (its centre and corners) on the deck, so a path through it never clips the water at the side
+  const onAnyBridge = (x, z) => [[0, 0], [-0.75, -0.75], [0.75, -0.75], [-0.75, 0.75], [0.75, 0.75]].every(([dx, dz]) => T.onBridge(x + dx, z + dz));
   const cellOf = (x, z) => [Math.floor((x + EXTENT) / CELL), Math.floor((z + EXTENT) / CELL)];
   const centre = (i, j) => ({ x: -EXTENT + (i + 0.5) * CELL, z: -EXTENT + (j + 0.5) * CELL });
   let grid = null; // Uint8Array: 0 free, 1 blocked; and the cost of stepping on each cell
@@ -36,7 +37,7 @@
     const solids = T.natureSolids();
     const near = new Map(); // a coarse bucket of the nature solids
     for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
-    const spots = Object.values(T.SPOTS);
+    const spots = T.BUILDINGS; // v1.10.13: the cottages too
     for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
       const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
       let bad = T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
