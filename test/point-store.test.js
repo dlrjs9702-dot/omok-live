@@ -191,6 +191,19 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('v1.10.7 당일 위치: 계정당 마지막 위치와 날짜를 한 번에 저장·조회', async () => {
+    const G = 'guest:77777777-7777-4777-8777-777777777777'; const H = 'guest:88888888-8888-4888-8888-888888888888';
+    assert.equal(await store.plazaSpot(G), null);
+    assert.equal(await store.savePlazaSpots([]), 0);
+    await store.savePlazaSpots([{ userId: G, day: '2026-10-04', x: 12.345, z: -40.5 }, { userId: H, day: '2026-10-04', x: 1, z: 2 }]);
+    assert.deepEqual(await store.plazaSpot(G), { day: '2026-10-04', x: 12.35, z: -40.5 });
+    await store.savePlazaSpots([{ userId: G, day: '2026-10-05', x: 3, z: 4 }]);
+    assert.deepEqual(await store.plazaSpot(G), { day: '2026-10-05', x: 3, z: 4 }, '계정당 한 줄(덮어쓰기)');
+    assert.deepEqual(await store.plazaSpot(H), { day: '2026-10-04', x: 1, z: 2 });
+    await assert.rejects(store.savePlazaSpots([{ userId: G, day: '어제', x: 1, z: 1 }]), TypeError);
+    await assert.rejects(store.savePlazaSpots([{ userId: G, day: '2026-10-05', x: NaN, z: 1 }]), RangeError);
+  });
+
   await t.test('v1.10.5 기부: 즉시 소각·요청당 한 번·잔액 부족 거절·주간 순위(같은 금액은 먼저 도달한 사람)·한 번만 결산', async () => {
     const E = 'guest:55555555-5555-4555-8555-555555555555'; const F = 'guest:66666666-6666-4666-8666-666666666666'; // fresh accounts (100,000P each)
     const week = '2026-09-28'; const inWeek = (h) => Date.parse(`2026-09-29T0${h}:00:00+09:00`);

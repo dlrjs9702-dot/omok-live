@@ -1464,9 +1464,13 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.6').then((mod) => {
+    // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
+    // keeps the screen and so the spot it had.
+    const spotToday = api('/api/plaza/spot').then((data) => data.spot || null).catch(() => null);
+    plaza.loading = Promise.all([import('/plaza/plaza-scene.js?v=1.10.5'), spotToday]).then(([mod, startAt]) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
+        startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
         onInteract: (id) => PLAZA_FACILITIES.find((f) => f.id === id)?.open(),
         onNear: showPlazaHint,

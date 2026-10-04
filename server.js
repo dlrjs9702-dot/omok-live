@@ -37,10 +37,11 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines } = require('./lib/missions');
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
+const IslandTerrain = require('./public/plaza/island-terrain.js'); // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
-const { donationRanking, createPointStore, validUserId, DONATION_MAX, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
+const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -798,6 +799,52 @@ const plazaTicker = setInterval(() => {
   }
 }, PLAZA_TICK_MS);
 plazaTicker.unref?.();
+
+// v1.10.7 게임 아일랜드 당일 위치 (IDEAS 「당일 접속 위치 복원」): each account's last island spot today (Asia/Seoul). Kept
+// in memory as poses arrive and written to the store only every PLAZA_SPOT_SAVE_MS, when the player leaves the island
+// (a room, logout) and when the server stops -- never once per pose. Separate from rooms and their rejoin state.
+const PLAZA_SPOT_SAVE_MS = 15000;
+const plazaSpots = new Map(); // account -> { day, x, z, dirty }
+// Somewhere a character may stand (land, a bridge or the pier; not the sea, a stream, the pond, a cliff edge or the
+// fountain). Spots that are not -- the island changed since, or a hand-made request -- move to the nearest one that
+// is, and to the plaza when nothing is near.
+const plazaStandable = (x, z) => Math.abs(x) <= PLAZA_BOUND && Math.abs(z) <= PLAZA_BOUND && Math.hypot(x, z) > 3.9 && IslandTerrain.walkable(x, z);
+function plazaSafeSpot(x, z) {
+  if (plazaStandable(x, z)) return { x, z };
+  for (let r = 1; r <= 12; r += 1) {
+    for (let k = 0; k < 16; k += 1) {
+      const a = (k / 16) * Math.PI * 2; const sx = Math.round((x + Math.cos(a) * r) * 100) / 100; const sz = Math.round((z + Math.sin(a) * r) * 100) / 100;
+      if (plazaStandable(sx, sz)) return { x: sx, z: sz };
+    }
+  }
+  return null;
+}
+function notePlazaSpot(account, x, z, now = nowMs()) {
+  if (!account || !plazaStandable(x, z)) return; // only a spot one may stand on is kept
+  plazaSpots.set(account, { day: kstDate(now), x, z, dirty: true });
+}
+let plazaSpotSaving = null;
+function savePlazaSpots() {
+  if (plazaSpotSaving) return plazaSpotSaving;
+  const list = [];
+  for (const [userId, spot] of plazaSpots) if (spot.dirty) { spot.dirty = false; list.push({ userId, day: spot.day, x: spot.x, z: spot.z }); }
+  if (!list.length) return Promise.resolve();
+  plazaSpotSaving = pointStore.savePlazaSpots(list)
+    .catch((error) => { console.error('아일랜드 위치 저장 실패:', error.message); for (const s of list) { const cur = plazaSpots.get(s.userId); if (cur && cur.x === s.x && cur.z === s.z) cur.dirty = true; } })
+    .finally(() => { plazaSpotSaving = null; });
+  return plazaSpotSaving;
+}
+// Today's spot of an account (memory first, then the store), already moved to somewhere one may stand; null = start at
+// the central plaza (a new day, or never on the island).
+async function plazaSpotToday(account, now = nowMs()) {
+  if (!account) return null;
+  const spot = plazaSpots.get(account) || await pointStore.plazaSpot(account).catch(() => null);
+  if (!spot || spot.day !== kstDate(now)) return null;
+  return plazaSafeSpot(spot.x, spot.z);
+}
+const plazaSpotTimer = setInterval(() => { for (const [account, spot] of plazaSpots) if (!spot.dirty && spot.day !== kstDate()) plazaSpots.delete(account); savePlazaSpots(); }, PLAZA_SPOT_SAVE_MS);
+plazaSpotTimer.unref?.();
+process.once('SIGTERM', () => { savePlazaSpots().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
 
 async function broadcastAnnouncements() {
   const items = await announcementStore.list();
@@ -3173,6 +3220,7 @@ async function requestHandler(req, res) {
     const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
     const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
     plazaLastPos.set(session.token, spot);
+    notePlazaSpot(account, spot.x, spot.z);
     plazaPresence.set(session.token, {
       id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
@@ -3334,7 +3382,15 @@ async function requestHandler(req, res) {
     if (!session) return;
     dropPlazaPresence(session.token);
     plazaLastPos.delete(session.token); // the next entry may start anywhere (it is a new arrival)
+    await savePlazaSpots(); // v1.10.7: leaving the island (a room, logout) keeps today's spot right away
     return sendJson(res, 200, { ok: true });
+  }
+  // v1.10.7 당일 위치: where my island starts -- today's last spot (checked and moved to standable ground), or null for
+  // the central plaza (a new day, or the first visit).
+  if (pathname === '/api/plaza/spot' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    return sendJson(res, 200, { ok: true, spot: await plazaSpotToday(pointAccountForSession(session)) });
   }
 
   // Public to authenticated members; only administrators may modify notices.
