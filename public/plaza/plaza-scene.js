@@ -833,8 +833,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
         const a = wanderers[i]; const b = wanderers[j];
         let dx = a.f.x - b.f.x; let dz = a.f.z - b.f.z; let d = Math.hypot(dx, dz);
         if (d >= WANDERER_SEP) continue;
-        if (d < 1e-5) { const angle = ((a.n * 17 + b.n * 31) % 16) * TAU / 16; dx = Math.cos(angle); dz = Math.sin(angle); d = 1; }
-        const ux = dx / d; const uz = dz / d; const shift = (WANDERER_SEP - d) / 2 + 0.005;
+        let ux; let uz;
+        if (d < 1e-5) { const angle = ((a.n * 17 + b.n * 31) % 16) * TAU / 16; ux = Math.cos(angle); uz = Math.sin(angle); d = 0; }
+        else { ux = dx / d; uz = dz / d; }
+        const shift = (WANDERER_SEP - d) / 2 + 0.005;
         const [ax, az] = moveWandererOnGround(a.f.x, a.f.z, a.f.x + ux * shift, a.f.z + uz * shift);
         const [bx, bz] = moveWandererOnGround(b.f.x, b.f.z, b.f.x - ux * shift, b.f.z - uz * shift);
         a.f.nudge(ax, az); b.f.nudge(bx, bz);
