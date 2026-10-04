@@ -6,7 +6,13 @@
 // HTML, app code, API calls, event streams -- is not touched and keeps its normal network/HTTP-cache behaviour.
 const CACHE = 'gc-assets-v1';
 
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', event => {
+  // Chrome 123+ static routing: game API traffic (actions, event streams) never wakes this worker up.
+  if (event.addRoutes && typeof URLPattern === 'function') {
+    event.waitUntil(event.addRoutes({ condition: { urlPattern: new URLPattern({ pathname: '/api/*' }) }, source: 'network' }).catch(() => {}));
+  }
+  self.skipWaiting();
+});
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('fetch', event => {
