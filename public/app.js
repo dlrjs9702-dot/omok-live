@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.5').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.6').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1464,7 +1464,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.5').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.6').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1497,6 +1497,9 @@
   const donationSubmit = document.getElementById('donationSubmit');
   const donationStatusEl = document.getElementById('donationStatus');
   let donationArmed = null; let donationArmTimer = 0;
+  // v1.10.6: one request id per confirmed amount, kept until the server says it went through -- a retry after a lost
+  // answer is then the same request (burned once). Another amount gets a new id.
+  let donationRequest = null;
   const pts = (n) => `${Number(n || 0).toLocaleString('ko-KR')}P`;
   function disarmDonation() { donationArmed = null; clearTimeout(donationArmTimer); donationSubmit.textContent = '기부'; }
   async function loadDonation() {
@@ -1529,13 +1532,15 @@
     const amount = Math.floor(Number(donationAmount.value));
     if (!Number.isSafeInteger(amount) || amount < 1) { donationStatusEl.textContent = '기부할 포인트를 입력해 주세요.'; return; }
     if (donationArmed !== amount) { // first press: say exactly what will be given
-      donationArmed = amount; donationSubmit.textContent = `${pts(amount)} 기부 확인`; donationStatusEl.textContent = '';
+      donationArmed = amount; if (donationRequest?.amount !== amount) donationRequest = { amount, id: crypto.randomUUID() };
+      donationSubmit.textContent = `${pts(amount)} 기부 확인`; donationStatusEl.textContent = '';
       clearTimeout(donationArmTimer); donationArmTimer = setTimeout(disarmDonation, 10000); // the confirm stays 10 s
       return;
     }
     disarmDonation(); donationSubmit.disabled = true;
     try {
-      const data = await api('/api/donation', { method: 'POST', body: JSON.stringify({ amount, requestId: crypto.randomUUID() }) });
+      const data = await api('/api/donation', { method: 'POST', body: JSON.stringify({ amount, requestId: donationRequest.id }) });
+      donationRequest = null;
       donationStatusEl.textContent = `${pts(amount)} 기부했습니다 · 이번 주 ${pts(data.total)}`;
       donationAmount.value = ''; loadPoints(); loadDonation();
     } catch (error) { donationStatusEl.textContent = error.message; }
