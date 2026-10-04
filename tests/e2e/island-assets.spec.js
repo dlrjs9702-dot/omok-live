@@ -62,7 +62,7 @@ let proceduralDoors = null;
 test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
   const a = await island(browser, request, '에셋없음', 'none');
   const d = await debug(a.page);
-  expect(d.assets).toEqual({ registered: [], loader: 'none', season: null });
+  expect(d.assets).toMatchObject({ registered: [], loader: 'none' });
   expect(a.code).toEqual([]); // neither the loader module nor GLTFLoader was fetched
   proceduralDoors = d.doors;
   await stillPlays(a.page);
@@ -145,6 +145,8 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
   expect(tree.placed).toBe(true);
   expect(tree.copies).toBeGreaterThan(20); // every round tree on the island
   expect(tree.parts).toBe(1); // a plain-coloured model: flattened into one part, one draw call per square
+  // next to one of them (the model distance shrinks on a slow machine's lower quality tiers)
+  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 1.5, z + 1.5), tree.at);
   await expect.poll(async () => (await batches()).find((b) => b.ids[0] === 'nature.tree.round').near).toBeGreaterThan(0);
   expect(list.find((b) => b.ids[0] === 'nature.flower').placed).toBe(true);
   for (const bush of list.filter((b) => b.ids[0].startsWith('nature.bush'))) expect(bush.placed).toBe(false); // missing file: procedural
@@ -158,46 +160,50 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
   await a.context.close();
 });
 
-test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 계절 파일이 없으면 코드 생성형으로 돌아간다', async ({ browser, request }) => {
+test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 계절 파일이 없으면 코드 생성형, 자동으로 돌리면 서울 날짜 규칙의 계절', async ({ browser, request }) => {
   const a = await island(browser, request, '계절', { 'nature.rock': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } });
   const { page } = a;
   const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
-  expect((await rock()).placed).toBe(false); // no season chosen yet: no file
-  await page.evaluate(() => window.PlazaDebug().setSeason('spring'));
-  await expect.poll(async () => (await rock())?.url).toBe(BOX);
-  await expect.poll(async () => (await rock()).placed).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().setSeason('winter'));
-  await expect.poll(async () => (await rock()).url).toBe(BOX2);
-  await expect.poll(async () => (await rock()).placed).toBe(true);
   await page.evaluate(() => window.PlazaDebug().setSeason('summer')); // no summer file
   await expect.poll(async () => (await rock()).placed).toBe(false);
-  expect(a.hits).toEqual({ [BOX]: 1, [BOX2]: 1 });
+  await page.evaluate(() => window.PlazaDebug().setSeason('winter'));
+  await expect.poll(async () => (await rock())?.url).toBe(BOX2);
+  await expect.poll(async () => (await rock()).placed).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().setSeason('spring'));
+  await expect.poll(async () => (await rock()).url).toBe(BOX);
+  await expect.poll(async () => (await rock()).placed).toBe(true);
+  expect(a.hits[BOX]).toBe(1); expect(a.hits[BOX2]).toBe(1); // each file once, however often the season changes
+  // back to the automatic season: the Seoul-date rule on the server clock
+  await page.evaluate(() => window.PlazaDebug().setSeason(null));
+  const expected = await page.evaluate(() => window.AssetPipeline.seasonOf(window.PlazaDebug().serverNow()));
+  await expect.poll(async () => (await debug(page)).assets.season).toBe(expected);
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();
 });
 
-// v1.10.18 the registered trial models, as players get them: from the game resource pack (Cache Storage), once each
-test('운영 등록부: 시험 모델(봄 둥근 나무·관목·광장 벤치)이 리소스 팩에서 한 번씩 받아져 교체되고, 섬은 그대로 동작한다', async ({ browser, request }) => {
-  const a = await island(browser, request, '시험모델', null);
+// v1.10.18/19 the registered models, as players get them: this season's files, from the game resource pack (Cache
+// Storage), once each
+test('운영 등록부: 지금 계절의 나무·관목·광장 벤치 모델이 리소스 팩에서 한 번씩 받아져 교체되고, 섬은 그대로 동작한다', async ({ browser, request }) => {
+  const a = await island(browser, request, '운영모델', null);
   const { page } = a;
-  const glbs = [];
-  page.on('request', (r) => { if (r.url().includes('/assets/island/seasonal-v2/')) glbs.push(new URL(r.url()).pathname); });
-  const ids = ['nature.tree.round', 'nature.bush', 'prop.bench'];
-  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 20000 }).toEqual(['model', 'model', 'model']);
+  const ids = await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY));
+  const season = await page.evaluate(() => window.AssetPipeline.seasonOf(window.PlazaDebug().serverNow()));
+  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 30000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
+  expect(d.assets.season).toBe(season);
   const files = Object.entries(d.assets.files).filter(([url]) => url.includes('/seasonal-v2/'));
-  expect(files.map(([, state]) => state)).toEqual(['loaded', 'loaded', 'loaded']);
-  // every model file is in the active pack of the resource cache
+  expect(files.length).toBe(5); // tree_v1, tree_v2 (tiered and blossom share it), tree_v3, shrub, bench
+  for (const [url, state] of files) { expect(url).toContain(`/seasonal-v2/${season}/`); expect(state).toBe('loaded'); }
+  // every model file of every season is in the active pack of the resource cache
   const cached = await page.evaluate(async () => {
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.includes('/seasonal-v2/'));
   });
-  expect(cached.sort()).toEqual(files.map(([url]) => url).sort());
-  const tree = d.assets.batches.find((b) => b.ids[0] === 'nature.tree.round');
-  expect(tree.placed).toBe(true); expect(tree.parts).toBe(1);
-  for (const b of d.assets.batches.filter((x) => x.ids[0].startsWith('nature.bush'))) expect(b.placed).toBe(true);
+  expect(cached.length).toBe(20);
+  for (const [url] of files) expect(cached).toContain(url);
+  for (const b of d.assets.batches) { expect(b.placed).toBe(true); expect(b.parts).toBe(1); }
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors);
   await stillPlays(page);
   expect(a.errors).toEqual([]);

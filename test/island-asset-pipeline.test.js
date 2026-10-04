@@ -14,24 +14,52 @@ async function parse(buffer) {
   return new Promise((resolve, reject) => new GLTFLoader().parse(ab, '', resolve, reject));
 }
 
-// v1.10.18: the first real models -- a few on purpose (one tree kind, the bushes, the plaza benches); every file is in
-// public/assets/island (so in the game resource pack, with its content revision) and is a valid glTF binary
-test('운영 등록부: 시험 연결한 모델 3종만 있고, 파일은 리소스 팩 폴더에 있으며 실제 GLB로 읽힌다', async () => {
+// v1.10.18/19: the real models -- every file is in public/assets/island (so in the game resource pack, with its
+// content revision), in all four seasons, and is a valid glTF binary
+test('운영 등록부: 연결한 모델은 사계절 파일이 모두 리소스 팩 폴더에 있고 실제 GLB로 읽힌다', async () => {
   const fs = require('node:fs'); const path = require('node:path');
   const { buildAssetManifest } = require('../lib/asset-manifest');
-  assert.deepEqual(Object.keys(REGISTRY).sort(), ['nature.bush', 'nature.tree.round', 'prop.bench']);
-  assert.deepEqual(P.enabledIds(REGISTRY).sort(), ['nature.bush', 'nature.tree.round', 'prop.bench']);
+  assert.deepEqual(Object.keys(REGISTRY).sort(), ['nature.bush', 'nature.tree.blossom', 'nature.tree.round', 'nature.tree.tall', 'nature.tree.tiered', 'prop.bench']);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
+  const parsed = new Map();
   for (const [id, entry] of Object.entries(REGISTRY)) {
-    assert.match(entry.url, /^\/assets\/island\/seasonal-v2\/spring\//, id);
-    const file = path.join(__dirname, '..', 'public', entry.url);
-    assert.ok(fs.existsSync(file), `${id} 파일`);
-    assert.ok(pack.assets.some((a) => a.url === entry.url), `${id} 리소스 팩`);
-    const gltf = await parse(fs.readFileSync(file));
-    let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
-    assert.ok(meshes > 0, `${id} 메시`);
+    assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
+    for (const season of P.SEASONS) {
+      const url = P.entryOf(REGISTRY, id, [], season).url;
+      assert.match(url, new RegExp(`^/assets/island/seasonal-v2/${season}/`), `${id} ${season}`);
+      assert.ok(pack.assets.some((a) => a.url === url), `${id} ${season} 리소스 팩`);
+      if (!parsed.has(url)) {
+        const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
+        let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
+        parsed.set(url, meshes);
+      }
+      assert.ok(parsed.get(url) > 0, `${id} ${season} 메시`);
+    }
+    assert.equal(P.entryOf(REGISTRY, id, [], null), null, `${id}: 계절 없이 쓰는 파일은 없음`);
     assert.ok(entry.scale > 0.5 && entry.scale < 1.2, `${id} 크기 보정`);
   }
+  assert.equal(parsed.size, 20);
+});
+
+test('게임 아일랜드 계절: KST 날짜 1~7 봄, 8~14 여름, 15~21 가을, 22~말일 겨울, 다음 달 1일 00:00에 봄', () => {
+  const kst = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 9, min); // Seoul wall time -> ms
+  const at = (y, m, d, h, min) => P.seasonOf(kst(y, m, d, h, min));
+  assert.equal(at(2026, 10, 1, 0, 0), 'spring');
+  assert.equal(at(2026, 10, 7, 23, 59), 'spring');
+  assert.equal(at(2026, 10, 8, 0, 0), 'summer');
+  assert.equal(at(2026, 10, 14, 23, 59), 'summer');
+  assert.equal(at(2026, 10, 15, 0, 0), 'autumn');
+  assert.equal(at(2026, 10, 21, 23, 59), 'autumn');
+  assert.equal(at(2026, 10, 22, 0, 0), 'winter');
+  for (const d of [28, 29, 30, 31]) assert.equal(at(2026, 10, d, 12, 0), 'winter', `10월 ${d}일`);
+  assert.equal(at(2026, 10, 31, 23, 59), 'winter');
+  assert.equal(at(2026, 11, 1, 0, 0), 'spring'); // the next month starts in spring
+  assert.equal(at(2026, 2, 28, 23, 59), 'winter'); assert.equal(at(2026, 3, 1, 0, 0), 'spring'); // a short month
+  assert.equal(at(2028, 2, 29, 12, 0), 'winter'); // a leap day
+  assert.equal(at(2026, 12, 31, 23, 59), 'winter'); assert.equal(at(2027, 1, 1, 0, 0), 'spring'); // the year's end
+  // Seoul, not the viewer's clock or UTC: 2026-10-07 23:30 UTC is already the 8th in Seoul
+  assert.equal(P.seasonOf(Date.UTC(2026, 9, 7, 23, 30)), 'summer');
+  assert.equal(P.seasonOf(Date.UTC(2026, 9, 7, 14, 59)), 'spring');
 });
 
 test('에셋 등록부 조회: 비활성·운영 차단·주소 없음은 쓰지 않고, 구체 id부터 고른다', () => {

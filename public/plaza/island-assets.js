@@ -32,15 +32,21 @@
   // Example (next patch):
   //   'facility.townhall': { url: '/assets/island/townhall.glb', scale: 1 },
   //   'character.player': { url: '/assets/island/player.glb', animations: { idle: 'Idle', walk: 'Walk', run: 'Run' } },
-  // v1.10.18 first models on the island (360 refinement v2, spring set; the files' own front is -z, origin on the ground
-  // at the footprint's centre, 1 unit = 1 m). Sizes are matched to the procedural copies they replace -- a round tree
-  // about 3.5 tall, a bush about 1.6 wide, the plaza bench 1.7 wide -- whose place, turn and size every copy keeps.
-  const SPRING = '/assets/island/seasonal-v2/spring';
+  // v1.10.18 first models on the island (360 refinement v2; the files' own front is -z, origin on the ground at the
+  // footprint's centre, 1 unit = 1 m). Sizes are matched to the procedural copies they replace -- a round tree about 3.5
+  // tall, a bush about 1.6 wide, the plaza bench 1.7 wide -- whose place, turn and size every copy keeps.
+  // v1.10.19: every model in four seasons (the island's season: asset-pipeline.js `seasonOf`), and more tree kinds --
+  // tiered and blossom take the wide-crowned tree_v2, tall the upright tree_v3; pine, fruit and sapling stay procedural.
+  // `near`: models only within this of the player (thousands of triangles each); the rest keep their light procedural copies.
+  const BASE = '/assets/island/seasonal-v2';
+  const seasonal = (file) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${BASE}/${s}/${file.replace(/\{s\}/g, s)}`]));
   const REGISTRY = {
-    // `near`: models only within this of the player (thousands of triangles each); the rest keep their light procedural copies
-    'nature.tree.round': { url: `${SPRING}/nature/tree_v1_spring.glb`, scale: 0.72, near: 35 },
-    'nature.bush': { url: `${SPRING}/nature/shrub_spring.glb`, scale: 0.9, near: 22, shadows: false },
-    'prop.bench': { url: `${SPRING}/bench_spring_v1.glb`, scale: 0.85, rotationY: Math.PI }, // faces the fountain like the old one
+    'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), scale: 0.72, near: 35 },
+    'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), scale: 0.68, near: 35 },
+    'nature.tree.blossom': { seasons: seasonal('nature/tree_v2_{s}.glb'), scale: 0.62, near: 35 },
+    'nature.tree.tall': { seasons: seasonal('nature/tree_v3_{s}.glb'), scale: 0.8, near: 35 },
+    'nature.bush': { seasons: seasonal('nature/shrub_{s}.glb'), scale: 0.9, near: 22, shadows: false },
+    'prop.bench': { seasons: seasonal('bench_{s}_v1.glb'), scale: 0.85, rotationY: Math.PI }, // faces the fountain like the old one
   };
 
   return { REGISTRY };

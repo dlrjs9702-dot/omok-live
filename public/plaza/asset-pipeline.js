@@ -30,6 +30,14 @@
     for (const id of [].concat(ids)) { const entry = entryOf(registry, id, off, season); if (entry) return { id, entry }; }
     return null;
   }
+  // v1.10.19 게임 아일랜드 계절 (IDEAS, 2026-10-05): by the day of the month in Asia/Seoul -- 1-7 spring, 8-14 summer,
+  // 15-21 autumn, 22 to the month's end winter (29-31 too), back to spring on the 1st at 00:00. Korea keeps no summer
+  // time, so Seoul is always UTC+9. `ms` is the server clock (every screen the same island), like the other KST rules.
+  const SEOUL = 9 * 3600 * 1000;
+  function seasonOf(ms) {
+    const day = new Date(ms + SEOUL).getUTCDate();
+    return day <= 7 ? 'spring' : day <= 14 ? 'summer' : day <= 21 ? 'autumn' : 'winter';
+  }
   // ids that could show a model in some season (so the loader is worth fetching)
   const enabledIds = (registry, off = []) => Object.keys(registry || {}).filter((id) => [null, ...SEASONS].some((season) => entryOf(registry, id, off, season)));
 
@@ -155,5 +163,5 @@
     };
   }
 
-  return { SEASONS, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
+  return { SEASONS, seasonOf, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
 });
