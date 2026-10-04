@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.17 게임 아일랜드 자연물·소품 외부 모델 연결 구조
+
+비공개 IDEAS 「자연물·나무 외부 GLB 대상 확장」(2026-10-05)과 연속 작업 지시 2단계(2026-10-05). v1.10.15 파이프라인을 재사용해 외부 모델 대상을 자연물과 광장 소품으로 넓혔다. 등록부는 여전히 비어 있어 화면은 v1.10.16과 같다(실제 모델 연결은 다음 버전).
+
+- 대상 ID: `nature.tree.<kind>`(round·tiered·pine·tall·blossom·fruit·sapling·stump) → `nature.tree`, `nature.bush.<0|1>` → `nature.bush`, `nature.rock`, `nature.flower`, `nature.grass`, `prop.bench`·`prop.lamp`·`prop.planter`(광장).
+- 자연물(`island.js` `instanced`): 등록된 종류만 칸(60유닛)별로 따로 굽고 각 사본의 배치 행렬(자리·회전·크기, 기존 시드 그대로)을 모아 `assets.batch(ids, cells)`로 넘긴다. 로드 성공 시 칸마다 InstancedMesh를 같은 행렬 × 등록 항목의 scale/rotationY/offset으로 배치하고 그 칸의 생성형 묶음만 숨긴다. 충돌 원·이벤트·NPC 경로는 원래 배치에서 계산되므로 그대로. 등록 없음·실패·`ISLAND_ASSETS_OFF`·`enabled:false`면 생성형 그대로.
+- 효율: 텍스처 없는 불투명 단색 재질 모델(이번 제작본 형식)은 로드 시 한 번 정점색 지오메트리 1개 + 재질 1개로 평탄화 → 칸·종류당 그리기 호출 1회. 텍스처가 있으면 메시별 InstancedMesh. 지오메트리·재질은 모든 칸이 공유, 같은 URL은 1회 다운로드·파싱(기존 캐시).
+- LOD: 칸 단위 거리 전환 — 플레이어에서 `near`(기본 45, 품질 단계 1/0.75/0.5배) 안의 칸만 모델, 바깥은 생성형(+6 여유로 깜빡임 방지). 플레이어가 1 이상 움직일 때만 다시 계산.
+- 소품: 광장 벤치·가로등·화단을 논리 그룹(자리·방향; 충돌은 `plazaProps()`)과 외형 그룹으로 나눠 기존 `attach` 재사용. 월드 위치·모양은 그대로.
+- 계절: 등록 항목의 `seasons: { spring, summer, autumn, winter }` → 그 계절 파일, 없으면 `url`, 둘 다 없으면 생성형. `setSeason(season)`이 구조물(attach)·자연물 묶음을 다시 해석해 바뀐 대상만 새 파일을 받아 교체(자동 계절 규칙은 다음 단계). 캐릭터는 계절 대상 아님.
+- 검증: `test/island-asset-pipeline.test.js` +2(계절 해석: 그 계절→url→생성형, 꺼짐; 지연 로더의 wants·batch·update·setSeason 전달·등록 없을 때 무동작), e2e `island-assets.spec.js` +2(같은 GLB 1회 다운로드로 round 나무 전부·꽃 배치, 평탄화 1부분, 가까운 칸만 모델, 없는 파일의 덤불은 생성형, 벤치 교체, 문 좌표 불변, 섬 동작 / 계절 변경 시 그 계절 파일로 교체·없는 계절은 생성형). 기존 테스트 전부.
+
 ## v1.10.16 게임 아일랜드 배회 NPC 이동 현실화
 
 비공개 IDEAS 「배회 NPC 이동 현실화」(사용자 확정 2026-10-05). ChatGPT가 작업 브랜치 `fix/island-npc-grounding-20261005`에 올린 구현(`bbeebe3`, `plaza-scene.js`)을 Claude Code가 인수해 검토·보완했다.

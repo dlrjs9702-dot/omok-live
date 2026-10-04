@@ -8,10 +8,11 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
+import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
 
 const P = globalThis.AssetPipeline;
 
-export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, onError = () => {} }) {
+export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, season = null, onError = () => {} }) {
   // A .gltf names its .bin and textures relative to itself; they are pack files as well, so they too get their
   // revision URL (and with it the resource cache). Already-versioned, data: and blob: URLs pass through.
   const manager = new THREE.LoadingManager();
@@ -22,6 +23,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   const lods = [];
   const shown = {}; // target id -> 'loading' | 'model' | 'procedural'
   let quality = tier; let disposed = false;
+  const attaches = []; const batches = []; const made = []; // made: geometries/materials this file created (flattened models)
 
   // One placed copy of a loaded model. Geometry, materials and textures stay shared with the loaded file; SkeletonUtils'
   // clone also gives a skinned mesh its own skeleton (a plain clone() would leave every copy driving the same bones).
@@ -54,21 +56,125 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // `holder` is the gameplay object (position, facing; its collision, door and sign are the scene's and stay as they
   // are); `procedural` is the code-built look inside it, hidden only once the model is actually there.
-  function attach(ids, holder, procedural) {
-    const hit = P.pick(registry, ids, off); if (!hit) return;
+  // v1.10.17: kept as a record, so a change of season can swap the model (setSeason).
+  function attach(ids, holder, procedural) { const rec = { ids, holder, procedural, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  function swapAttach(rec, object) {
+    if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); }
+    rec.object = object; if (object) rec.holder.add(object);
+    rec.procedural.visible = !object;
+  }
+  function applyAttach(rec) {
+    const hit = P.pick(registry, rec.ids, off, season); const url = hit?.entry.url || null;
+    if (url === rec.url) return;
+    rec.url = url;
+    if (!hit) { swapAttach(rec, null); return; }
     shown[hit.id] = 'loading';
     build(hit.entry).then((object) => {
-      if (disposed || !holder.parent) return;
-      if (!object) { shown[hit.id] = 'procedural'; return; }
-      holder.add(object); procedural.visible = false; shown[hit.id] = 'model';
+      if (disposed || rec.url !== url || !rec.holder.parent) return;
+      swapAttach(rec, object); shown[hit.id] = object ? 'model' : 'procedural';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+  }
+
+  // v1.10.17 one model's parts for placing it many times: its meshes with their place in the model applied. A model of
+  // plain-coloured materials (no textures, opaque -- the island's are) is flattened into one geometry with the colours
+  // in its vertices and one shared material: one draw call per square of the island for all its copies. Worked out
+  // once per file.
+  const partsCache = new WeakMap();
+  const TEXTURE_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap'];
+  function partsOf(gltf) {
+    if (partsCache.has(gltf)) return partsCache.get(gltf);
+    gltf.scene.updateMatrixWorld(true);
+    const meshes = []; gltf.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh) meshes.push(o); });
+    const plain = meshes.every((m) => [].concat(m.material).length === 1 && m.material.isMeshStandardMaterial && !m.material.transparent && TEXTURE_SLOTS.every((slot) => !m.material[slot]));
+    let parts;
+    if (plain && meshes.length) {
+      const geos = meshes.map((m) => {
+        const g = m.geometry.clone().applyMatrix4(m.matrixWorld); const flat = g.index ? g.toNonIndexed() : g; if (flat !== g) g.dispose();
+        if (!flat.attributes.normal) flat.computeVertexNormals();
+        const count = flat.attributes.position.count; const colour = new Float32Array(count * 3); const own = flat.attributes.color;
+        for (let i = 0; i < count; i += 1) {
+          colour[i * 3] = m.material.color.r * (own ? own.getX(i) : 1); colour[i * 3 + 1] = m.material.color.g * (own ? own.getY(i) : 1); colour[i * 3 + 2] = m.material.color.b * (own ? own.getZ(i) : 1);
+        }
+        for (const name of Object.keys(flat.attributes)) if (!['position', 'normal'].includes(name)) flat.deleteAttribute(name);
+        flat.setAttribute('color', new THREE.BufferAttribute(colour, 3));
+        return flat;
+      });
+      const geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose());
+      const roughness = meshes.reduce((sum, m) => sum + m.material.roughness, 0) / meshes.length;
+      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness: 0 });
+      made.push(geometry, material);
+      parts = [{ geometry, material }];
+    } else {
+      parts = meshes.map((m) => { const geometry = m.geometry.clone().applyMatrix4(m.matrixWorld); made.push(geometry); return { geometry, material: m.material }; });
+    }
+    partsCache.set(gltf, parts);
+    return parts;
+  }
+
+  // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
+  // { x, z (its centre), parent, procedural: [the square's procedural meshes of this kind], matrices: [one per copy],
+  // shadow }. Once the model is in, every square gets one InstancedMesh per part of the model, placed with the very
+  // matrices the procedural copies had (place, turn, size -- so where things stand, their collision and every game rule
+  // stay as they were); update() shows the models in the squares near the player and the procedural copies further
+  // away. Nothing registered, a failed load or a switched-off id: the procedural copies stay.
+  function batch(ids, cells) { const rec = { ids, cells, url: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
+  function clearBatch(rec) {
+    if (rec.placed) for (const { cell, meshes } of rec.placed) { for (const im of meshes) { cell.parent.remove(im); im.dispose(); } for (const p of cell.procedural) p.visible = true; }
+    rec.placed = null; rec.entry = null;
+  }
+  const local = new THREE.Matrix4(); const both = new THREE.Matrix4();
+  function applyBatch(rec) {
+    const hit = P.pick(registry, rec.ids, off, season); const url = hit?.entry.url || null;
+    if (url === rec.url) return;
+    rec.url = url;
+    if (!hit) { clearBatch(rec); return; }
+    shown[hit.id] = 'loading';
+    cache.get(url).then((gltf) => {
+      if (disposed || rec.url !== url) return;
+      clearBatch(rec);
+      if (!gltf) { shown[hit.id] = 'procedural'; return; }
+      const parts = partsOf(gltf); const entry = hit.entry;
+      local.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
+      rec.placed = rec.cells.map((cell) => ({ cell, model: null, meshes: parts.map(({ geometry, material }) => {
+        const im = new THREE.InstancedMesh(geometry, material, cell.matrices.length);
+        cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local)));
+        im.computeBoundingSphere(); im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true; im.visible = false;
+        cell.parent.add(im); return im;
+      }) }));
+      rec.entry = entry; shown[hit.id] = 'model'; lastX = NaN; // the next update() places them
+    }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+  }
+  // Near squares show the model, far ones their procedural copies (with a little slack so a square on the boundary does
+  // not flicker). The distance is the entry's `near`, shortened on lower quality tiers.
+  let lastX = NaN; let lastZ = NaN;
+  function update(x, z) {
+    if (Math.hypot(x - lastX, z - lastZ) < 1) return; // nothing to change until the player has moved a little
+    lastX = x; lastZ = z;
+    for (const rec of batches) {
+      if (!rec.placed) continue;
+      const near = P.lodDistance(rec.entry.near ?? 45, quality);
+      for (const p of rec.placed) {
+        const d = Math.hypot(p.cell.x - x, p.cell.z - z); const model = p.model ? d < near + 6 : d < near;
+        if (model === p.model) continue;
+        p.model = model; for (const im of p.meshes) im.visible = model; for (const q of p.cell.procedural) q.visible = !model;
+      }
+    }
+  }
+
+  // v1.10.17: the season the island shows; every structure and batch whose file depends on it is loaded again and
+  // swapped once ready (a season without a file falls back to the entry's `url`, then to the procedural look)
+  function setSeason(next) {
+    if (next === season) return;
+    season = next;
+    for (const rec of attaches) applyAttach(rec);
+    for (const rec of batches) applyBatch(rec);
   }
 
   // A character: the rigged model goes under c.root (the name tag and chat bubble stay), the procedural body is
   // hidden, and plaza-scene's animate() hands the drawn speed to c.anim (Idle/Walk/Run cross-fades) instead of
   // swinging the procedural joints. One model per character, no LOD (a rig's clips bind to one copy of the bones).
   function dress(ids, c) {
-    const hit = P.pick(registry, ids, off); if (!hit) return;
+    const hit = P.pick(registry, ids, off, season); if (!hit) return;
     c.assetPending = hit.id; shown[hit.id] = 'loading';
     cache.get(hit.entry.url).then((gltf) => {
       if (disposed || c.assetPending !== hit.id || !c.root.parent) return;
@@ -86,12 +192,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
 
   function setQuality(next) {
-    quality = next;
+    quality = next; lastX = NaN;
     for (const lod of lods) for (const level of lod.levels) level.distance = P.lodDistance(lodBase.get(level.object) || 0, quality);
   }
 
   function dispose() {
     disposed = true;
+    for (const rec of batches) clearBatch(rec);
+    for (const x of made) x.dispose();
     cache.clear((gltf) => gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
       o.geometry.dispose();
@@ -99,5 +207,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }));
   }
 
-  return { attach, dress, release, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality }) };
+  const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.url, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
+    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.filter((p) => p.model).length : 0, parts: rec.placed?.[0]?.meshes.length ?? 0 }));
+  return { attach, dress, release, batch, update, setSeason, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, season, batches: batchDebug() }) };
 }

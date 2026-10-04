@@ -12,6 +12,7 @@ test.describe.configure({ mode: 'default' }); // 3D pages one after another, lik
 
 const BOX = '/assets/island/__e2e/box.glb';
 const RIG = '/assets/island/__e2e/rig.glb';
+const BOX2 = '/assets/island/__e2e/box-winter.glb';
 const debug = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { running: d.running, assets: d.assets, doors: d.doors, x: d.x, z: d.z, near: d.near }; });
 
 async function island(browser, request, label, registry, { failLoader = false } = {}) {
@@ -22,6 +23,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
     const url = new URL(route.request().url()).pathname; hits[url] = (hits[url] || 0) + 1;
     if (url === BOX) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
     if (url === RIG) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: riggedGlb() });
+    if (url === BOX2) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
     if (url.endsWith('broken.glb')) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: Buffer.from('glTF but not really') });
     return route.fulfill({ status: 404, body: 'not found' });
   });
@@ -55,7 +57,7 @@ let proceduralDoors = null;
 test('등록 없음(운영 기본): 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
   const a = await island(browser, request, '에셋없음', null);
   const d = await debug(a.page);
-  expect(d.assets).toEqual({ registered: [], loader: 'none' });
+  expect(d.assets).toEqual({ registered: [], loader: 'none', season: null });
   expect(a.code).toEqual([]); // neither the loader module nor GLTFLoader was fetched
   proceduralDoors = d.doors;
   await stillPlays(a.page);
@@ -119,5 +121,54 @@ test('로더 자체를 받지 못해도 모든 대상이 코드 생성형으로 
   await expect.poll(async () => (await debug(a.page)).assets.loader, { timeout: 10000 }).toBe('failed');
   expect(a.hits).toEqual({});
   await stillPlays(a.page);
+  await a.context.close();
+});
+
+// v1.10.17 nature and plaza props
+test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기존 자리·회전·크기에 배치하고, 가까운 칸만 모델, 실패한 종류는 코드 생성형, 소품도 교체된다', async ({ browser, request }) => {
+  const a = await island(browser, request, '자연물', {
+    'nature.tree.round': { url: BOX, scale: 1.5 },
+    'nature.flower': { url: BOX, scale: 0.2 },
+    'nature.bush': { url: '/assets/island/__e2e/missing-bush.glb' },
+    'prop.bench': { url: BOX },
+  });
+  const { page } = a;
+  const batches = async () => (await debug(page)).assets.batches || [];
+  await expect.poll(async () => (await batches()).filter((b) => b.placed).length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
+  const list = await batches();
+  const tree = list.find((b) => b.ids[0] === 'nature.tree.round');
+  expect(tree.placed).toBe(true);
+  expect(tree.copies).toBeGreaterThan(20); // every round tree on the island
+  expect(tree.parts).toBe(1); // a plain-coloured model: flattened into one part, one draw call per square
+  await expect.poll(async () => (await batches()).find((b) => b.ids[0] === 'nature.tree.round').near).toBeGreaterThan(0);
+  expect(list.find((b) => b.ids[0] === 'nature.flower').placed).toBe(true);
+  for (const bush of list.filter((b) => b.ids[0].startsWith('nature.bush'))) expect(bush.placed).toBe(false); // missing file: procedural
+  const shown = (await debug(page)).assets.shown;
+  expect(shown['nature.bush']).toBe('procedural');
+  expect(shown['prop.bench']).toBe('model');
+  expect(a.hits[BOX]).toBe(1); // trees, flowers and the four benches share one download
+  if (proceduralDoors) expect((await debug(page)).doors).toEqual(proceduralDoors);
+  await stillPlays(page);
+  expect(a.errors).toEqual([]);
+  await a.context.close();
+});
+
+test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 계절 파일이 없으면 코드 생성형으로 돌아간다', async ({ browser, request }) => {
+  const a = await island(browser, request, '계절', { 'nature.rock': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } });
+  const { page } = a;
+  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock');
+  await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
+  expect((await rock()).placed).toBe(false); // no season chosen yet: no file
+  await page.evaluate(() => window.PlazaDebug().setSeason('spring'));
+  await expect.poll(async () => (await rock())?.url).toBe(BOX);
+  await expect.poll(async () => (await rock()).placed).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().setSeason('winter'));
+  await expect.poll(async () => (await rock()).url).toBe(BOX2);
+  await expect.poll(async () => (await rock()).placed).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().setSeason('summer')); // no summer file
+  await expect.poll(async () => (await rock()).placed).toBe(false);
+  expect(a.hits).toEqual({ [BOX]: 1, [BOX2]: 1 });
+  await stillPlays(page);
+  expect(a.errors).toEqual([]);
   await a.context.close();
 });
