@@ -135,7 +135,7 @@ test('지연 로더: 등록이 없으면 로더를 받지 않고, 있으면 한 
   const none = P.createLazyAssets({ registry: {}, importLoader: () => { imported += 1; return {}; } });
   none.attach('facility.shop', {}, {}); none.dress('character.player', {}); none.setQuality(1);
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(imported, 0); assert.deepEqual(none.debug(), { registered: [], loader: 'none' });
+  assert.equal(imported, 0); assert.deepEqual(none.debug(), { registered: [], loader: 'none', season: null });
 
   const offAll = P.createLazyAssets({ registry: { 'facility.shop': { url: '/x.glb' } }, off: ['*'], importLoader: () => { imported += 1; return {}; } });
   await new Promise((r) => setTimeout(r, 0));
@@ -160,4 +160,43 @@ test('지연 로더: 등록이 없으면 로더를 받지 않고, 있으면 한 
   broken.attach('facility.shop', {}, {}); broken.release({}); broken.dispose();
   assert.deepEqual(errors, [['loader', 'decoder failed']]);
   assert.equal(broken.debug().loader, 'failed');
+});
+
+// v1.10.17 nature/props and seasons
+test('계절 파일: 그 계절 파일 → 기본 url → 없으면 코드 생성형, 꺼진 등록은 계절과 무관하게 코드 생성형', () => {
+  const registry = {
+    'nature.tree.round': { seasons: { spring: '/a/spring.glb', winter: '/a/winter.glb' } },
+    'nature.tree': { url: '/a/any.glb', seasons: { autumn: '/a/autumn.glb' } },
+    'nature.bush': { seasons: { summer: '/a/bush.glb' }, enabled: false },
+  };
+  assert.equal(P.pick(registry, ['nature.tree.round', 'nature.tree'], [], 'spring').entry.url, '/a/spring.glb');
+  assert.equal(P.pick(registry, ['nature.tree.round', 'nature.tree'], [], 'winter').entry.url, '/a/winter.glb');
+  const summer = P.pick(registry, ['nature.tree.round', 'nature.tree'], [], 'summer'); // round has no summer file: the general id
+  assert.deepEqual([summer.id, summer.entry.url], ['nature.tree', '/a/any.glb']);
+  assert.equal(P.pick(registry, 'nature.tree', [], 'autumn').entry.url, '/a/autumn.glb');
+  assert.equal(P.pick(registry, 'nature.tree.round', [], 'summer'), null);
+  assert.equal(P.pick(registry, 'nature.tree.round', [], null), null); // no season, no url
+  assert.equal(P.pick(registry, 'nature.bush', [], 'summer'), null);
+  assert.equal(registry['nature.tree'].url, '/a/any.glb', '등록부 원본은 그대로');
+  assert.deepEqual(P.enabledIds(registry).sort(), ['nature.tree', 'nature.tree.round']);
+  assert.deepEqual(P.SEASONS, ['spring', 'summer', 'autumn', 'winter']);
+});
+
+test('지연 로더: 자연물 묶음 요청(wants·batch)과 매 프레임 update·계절 변경을 로더에 넘기고, 등록이 없으면 아무것도 하지 않는다', async () => {
+  const none = P.createLazyAssets({ registry: {}, importLoader: () => { throw new Error('not expected'); } });
+  assert.equal(none.wants(['nature.tree.round', 'nature.tree']), false);
+  none.batch('nature.tree', []); none.update(1, 2); none.setSeason('winter');
+  assert.equal(none.debug().season, 'winter');
+
+  const seen = [];
+  const lazy = P.createLazyAssets({ registry: { 'nature.tree': { seasons: { winter: '/w.glb' } } }, options: { season: 'spring' }, importLoader: async () => ({ createIslandAssets: (o) => {
+    seen.push(['create', o.season]);
+    return { batch: (ids, cells) => seen.push(['batch', ids, cells.length]), update: (x, z) => seen.push(['update', x, z]), setSeason: (s) => seen.push(['season', s]), attach() {}, dress() {}, setQuality() {}, release() {}, dispose() {}, debug: () => ({}) };
+  } }) });
+  assert.equal(lazy.wants('nature.tree'), true); // a winter file: worth keeping apart even in spring
+  assert.equal(lazy.wants('nature.bush'), false);
+  lazy.batch('nature.tree', [{}, {}]); lazy.update(5, 6); // update before the loader is in: nothing to move yet
+  await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0));
+  lazy.update(7, 8); lazy.setSeason('winter');
+  assert.deepEqual(seen, [['create', 'spring'], ['batch', 'nature.tree', 2], ['update', 7, 8], ['season', 'winter']]);
 });

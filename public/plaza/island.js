@@ -156,7 +156,7 @@ function waterTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-export function buildIsland(scene, { mat, mesh, solids }) {
+export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
 
@@ -315,14 +315,30 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   // of every kind in a CELL square goes into one static mesh (one for things that cast shadows, one for the rest), with
   // its tint in the vertex colours -- a few dozen draw calls for the whole island's greenery instead of one per kind
   // per square. Still culled square by square when off screen.
-  const baked = new Map(); // `${cx},${cz},${shadow}` -> [{ geometry, matrix, color }]
-  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null } = {}) => {
+  const baked = new Map(); // `${cx},${cz},${shadow}[,group]` -> { copies: [{ geometry, matrix, color }], group, cx, cz, cell }
+  // v1.10.17: a list given a `target` (registry ids, e.g. ['nature.tree.round', 'nature.tree']) that has a model to load
+  // is kept apart -- its own baked meshes per square, and every copy's matrix -- and handed to `assets.batch`, which
+  // swaps those squares for the model once it is in (asset-loader.js). Placement, sizes and turns are exactly the
+  // procedural ones, so where things stand, the circles round them and the islanders' routes stay as they were.
+  const groups = []; // { target, cells: Map(cellKey -> { x, z, parent, procedural: [], matrices: [], shadow }) }
+  const groupOf = (target, shadow) => {
+    if (!target || !assets?.wants(target)) return null;
+    const g = { target, shadow, cells: new Map() }; groups.push(g); return g;
+  };
+  const cellOf = (g, item, cell) => {
+    const cx = Math.floor(item.x / cell); const cz = Math.floor(item.z / cell); const key = `${cx},${cz}`;
+    if (!g.cells.has(key)) g.cells.set(key, { x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, half: cell / 2, parent: scene, procedural: [], matrices: [], shadow: g.shadow });
+    return g.cells.get(key);
+  };
+  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null } = {}) => {
+    const g = groupOf(target, shadow);
     if (material === natureMat) {
       for (const item of list) {
         place(item, 0);
-        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}`;
-        if (!baked.has(key)) baked.set(key, []);
-        baked.get(key).push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
+        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${g ? `,${groups.indexOf(g)}` : ''}`;
+        if (!baked.has(key)) baked.set(key, { copies: [], group: g, cell, item });
+        baked.get(key).copies.push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
+        if (g) cellOf(g, item, cell).matrices.push(m4.clone());
       }
       return;
     }
@@ -331,8 +347,10 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     for (const item of list) { const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}`; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(item); }
     for (const items of cells.values()) {
       const im = new THREE.InstancedMesh(geometry, material, items.length);
-      items.forEach((item, i) => { place(item, i); im.setMatrixAt(i, m4); if (color) im.setColorAt(i, color(item, tint)); });
+      const rec = g ? cellOf(g, items[0], cell) : null;
+      items.forEach((item, i) => { place(item, i); im.setMatrixAt(i, m4); if (color) im.setColorAt(i, color(item, tint)); if (rec) rec.matrices.push(m4.clone()); });
       im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
+      if (rec) rec.procedural.push(im);
     }
   };
   const setM = (x, y, z, s, sy = s, ry = 0) => { q.setFromAxisAngle(v3.set(0, 1, 0), ry); m4.compose(v3.set(x, y, z), q, sc.set(s, sy, s)); };
@@ -357,33 +375,33 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     ['stump', 0.04, [part(new THREE.CylinderGeometry(0.42, 0.5, 0.45, 9), 0xa9774f, 0, 0.22, 0, { shade: [0.8, 1] }), part(new THREE.CylinderGeometry(0.36, 0.36, 0.02, 9), 0xe8c99a, 0, 0.455, 0), crown(SPH, 0x7cbf5c, 0.55, 0.12, 0.2, 0.45, 0.3)]],
   ];
   const kindOf = (t) => { let r = hash(t.x, t.z); for (let k = 0; k < TREE_KINDS.length; k += 1) { r -= TREE_KINDS[k][1]; if (r <= 0) return k; } return 0; };
-  TREE_KINDS.forEach(([, , parts], k) => {
+  TREE_KINDS.forEach(([name, , parts], k) => {
     const list = trees.filter((t) => kindOf(t) === k);
     if (!list.length) return;
     instanced(mergeColored(parts), natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
-      { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14) });
+      { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`nature.tree.${name}`, 'nature.tree'] });
   });
   for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.75 * t.s });
 
   // Flowers: one mesh, each a little bloom with its colour per copy.
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   const bloom = mergeColored([part(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 4), 0x5f9e4f, 0, 0.11, 0), part(new THREE.SphereGeometry(0.5, 6, 3), 0xffffff, 0, 0.24, 0, { sx: 0.24, sy: 0.14, sz: 0.24 })]);
-  instanced(bloom, natureMat, flowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
+  instanced(bloom, natureMat, flowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]), target: 'nature.flower' });
   // Bushes: round clusters of a few blobs (two shapes), darker underneath, each tinted a little.
   const BUSH_KINDS = [
     [crown(SPH, 0x6fbf5e, 0, 0.42, 0, 1.6, 1.05), crown(SPH, 0x7cc86a, 0.55, 0.35, 0.25, 1.05, 0.8), crown(SPH, 0x83cf6c, -0.5, 0.32, -0.15, 0.95, 0.7)],
     [crown(SPH, 0x66b85a, 0, 0.36, 0, 1.3, 0.85), crown(SPH, 0x74c463, 0.6, 0.3, 0, 1.0, 0.7), crown(SPH, 0x7cc86a, -0.55, 0.28, 0.2, 0.95, 0.65), crown(SPH, 0x8ad27a, 0.05, 0.62, 0.1, 0.8, 0.55)],
   ];
   BUSH_KINDS.forEach((parts, k) => instanced(mergeColored(parts), natureMat, bushes.filter((b) => (hash(b.x, b.z, 6) < 0.5 ? 0 : 1) === k),
-    (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16) }));
+    (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: [`nature.bush.${k}`, 'nature.bush'] }));
   for (const b of bushes) solids.push({ x: b.x, z: b.z, r: 0.75 * b.s });
   // Grass: small clumps of soft blades (not spikes), lighter at the tips.
   const blade = (rx, rz, h) => part(new THREE.ConeGeometry(0.05, h, 3, 1, true), 0x7cbf5c, Math.sin(rz) * h * 0.25, h / 2, -Math.sin(rx) * h * 0.25, { rx, rz, shade: [0.7, 1.15] });
   const clump = mergeColored([blade(0, 0, 0.42), blade(0.35, 0.3, 0.34), blade(-0.3, -0.35, 0.32)]);
-  instanced(clump, natureMat, tufts, (t) => setM(t.x, ground(t.x, t.z), t.z, t.s, t.s, t.r), { shadow: false, cell: 60, color: (t, c) => c.setHSL(0.03 * (hash(t.x, t.z, 11) - 0.5), 0.15, 0.85 + hash(t.x, t.z, 12) * 0.25) });
+  instanced(clump, natureMat, tufts, (t) => setM(t.x, ground(t.x, t.z), t.z, t.s, t.s, t.r), { shadow: false, cell: 60, color: (t, c) => c.setHSL(0.03 * (hash(t.x, t.z, 11) - 0.5), 0.15, 0.85 + hash(t.x, t.z, 12) * 0.25), target: 'nature.grass' });
 
   const pebble = keep(mergeColored([part(new THREE.IcosahedronGeometry(1, 0), 0xffffff, 0, 0, 0, { shade: [0.8, 1.05] })])); // white, tinted per copy
-  instanced(pebble, natureMat, rocks, (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r), { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12) });
+  instanced(pebble, natureMat, rocks, (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r), { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: 'nature.rock' });
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
@@ -422,7 +440,7 @@ export function buildIsland(scene, { mat, mesh, solids }) {
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
-  for (const [key, copies] of baked) {
+  for (const [key, { copies, group, cell, item }] of baked) {
     let count = 0; for (const c of copies) count += c.geometry.attributes.position.count;
     const pos = new Float32Array(count * 3); const nor = new Float32Array(count * 3); const col = new Float32Array(count * 3);
     let o = 0;
@@ -439,13 +457,15 @@ export function buildIsland(scene, { mat, mesh, solids }) {
     const geo = keep(new THREE.BufferGeometry());
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.endsWith(',1'); m.receiveShadow = true; scene.add(m);
+    const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; scene.add(m);
+    if (group) cellOf(group, item, cell).procedural.push(m);
   }
 
   // Lamps along the main walks, benches beside them.
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 1.3, p.z, 1));
   instanced(new THREE.SphereGeometry(0.24, 12, 9), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 2.72, p.z, 1), { shadow: false });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
+  for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.

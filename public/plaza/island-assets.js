@@ -19,7 +19,15 @@
   //   character.player                 me and other players
   //   character.<facility id>, character.npc   a facility keeper (attendance, stall, desk)
   //   character.islander               the walking islanders
+  //   v1.10.17 nature, placed many times (island.js; each copy keeps the procedural one's place, turn and size, which
+  //   the model's own scale/rotationY/offset come on top of; near squares of the island show the model, `near` units):
+  //   nature.tree.<kind>, nature.tree  kind: round, tiered, pine, tall, blossom, fruit, sapling, stump
+  //   nature.bush.<0|1>, nature.bush   the two bush shapes
+  //   nature.rock, nature.flower, nature.grass
+  //   v1.10.17 plaza props (one model each, like a facility): prop.bench, prop.lamp, prop.planter
   // A character model faces +z, feet at the origin, about 2 units tall; its clips are named in `animations`.
+  // Seasonal files: `seasons: { spring, summer, autumn, winter }` instead of (or besides) `url` -- the island's season
+  // picks the file, a season without one uses `url`, and with neither the target stays procedural.
   //
   // Example (next patch):
   //   'facility.townhall': { url: '/assets/island/townhall.glb', scale: 1 },

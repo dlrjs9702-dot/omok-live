@@ -11,22 +11,27 @@
   // model only when one is registered, enabled and loaded; anything else keeps the procedural visual. The Three.js
   // side (GLTFLoader, cloning, AnimationMixer, LOD objects) is public/plaza/asset-loader.js, loaded only when needed.
 
-  // A registry entry (public/plaza/island-assets.js), all but `url` optional:
-  //   { url, enabled, scale, rotationY, offset: [x, y, z], shadows, lod: [{ url, distance }],
-  //     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', ... }, speeds: { walk, run } }
+  // A registry entry (public/plaza/island-assets.js), all optional but a `url` or `seasons`:
+  //   { url, seasons: { spring, summer, autumn, winter }, enabled, scale, rotationY, offset: [x, y, z], shadows,
+  //     lod: [{ url, distance }], near, animations: { idle: 'Idle', walk: 'Walk', run: 'Run', ... }, speeds: { walk, run } }
+  // v1.10.17: `seasons` gives a file per season; the current season's file is used, then `url`, and without either
+  // the target stays procedural. `near` (nature batches): how close a square of the island must be to show the model.
   // `off` lists ids switched off at run time (server ISLAND_ASSETS_OFF; '*' = all).
-  function entryOf(registry, id, off = []) {
+  const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+  function entryOf(registry, id, off = [], season = null) {
     const entry = registry && Object.prototype.hasOwnProperty.call(registry, id) ? registry[id] : null;
-    if (!entry || typeof entry.url !== 'string' || !entry.url || entry.enabled === false) return null;
-    if (off.includes('*') || off.includes(id)) return null;
-    return entry;
+    if (!entry || entry.enabled === false || off.includes('*') || off.includes(id)) return null;
+    const url = (season && typeof entry.seasons?.[season] === 'string' && entry.seasons[season]) || entry.url;
+    if (typeof url !== 'string' || !url) return null;
+    return url === entry.url ? entry : { ...entry, url };
   }
   // The first usable entry among `ids`, most specific first (e.g. ['cottage.3', 'cottage']).
-  function pick(registry, ids, off = []) {
-    for (const id of [].concat(ids)) { const entry = entryOf(registry, id, off); if (entry) return { id, entry }; }
+  function pick(registry, ids, off = [], season = null) {
+    for (const id of [].concat(ids)) { const entry = entryOf(registry, id, off, season); if (entry) return { id, entry }; }
     return null;
   }
-  const enabledIds = (registry, off = []) => Object.keys(registry || {}).filter((id) => entryOf(registry, id, off));
+  // ids that could show a model in some season (so the loader is worth fetching)
+  const enabledIds = (registry, off = []) => Object.keys(registry || {}).filter((id) => [null, ...SEASONS].some((season) => entryOf(registry, id, off, season)));
 
   // Every URL is fetched and parsed once; all targets asking for it share that one promise. A failure (404, a broken
   // file, a decoder error...) is reported once and resolves to null: the caller keeps its procedural visual.
@@ -120,12 +125,13 @@
   // cannot load leaves every target procedural.
   function createLazyAssets({ registry, off = [], importLoader, options = {}, onError = (what, error) => console.warn('3D 에셋을 쓰지 않습니다:', what, error) }) {
     const ids = enabledIds(registry, off);
+    let season = options.season || null;
     let impl = null; let failed = false; let disposed = false; const queue = [];
     const call = (name, args) => { if (disposed || failed) return; if (impl) impl[name](...args); else if (ids.length) queue.push([name, args]); };
     if (ids.length) {
       Promise.resolve().then(importLoader).then((mod) => {
         if (disposed) return;
-        impl = mod.createIslandAssets({ ...options, registry, off, onError });
+        impl = mod.createIslandAssets({ ...options, season, registry, off, onError });
         for (const [name, args] of queue.splice(0)) impl[name](...args);
       }).catch((error) => { failed = true; queue.length = 0; onError('loader', error); });
     }
@@ -134,12 +140,20 @@
       attach: (targetIds, holder, procedural) => call('attach', [targetIds, holder, procedural]),
       // a character (plaza-scene makeCharacter): the model goes under c.root, the procedural body is hidden
       dress: (targetIds, character) => call('dress', [targetIds, character]),
+      // v1.10.17 nature and props placed many times: does any of `targetIds` have a model to load? (synchronous, so the
+      // scene can keep those copies apart from the rest when it bakes), then hand over the placed copies square by
+      // square (see asset-loader.js `batch`)
+      wants: (targetIds) => Boolean([null, ...SEASONS].some((s) => pick(registry, targetIds, off, s))),
+      batch: (targetIds, cells) => call('batch', [targetIds, cells]),
+      // each frame: where the player is (near squares show models, far ones their procedural copies)
+      update: (x, z) => { if (impl) impl.update(x, z); },
+      setSeason: (next) => { season = next; if (impl) impl.setSeason(next); },
       setQuality: (tier) => call('setQuality', [tier]),
       release: (character) => { if (impl) impl.release(character); },
       dispose() { disposed = true; queue.length = 0; impl?.dispose(); },
-      debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', ...(impl?.debug() || {}) }),
+      debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', season, ...(impl?.debug() || {}) }),
     };
   }
 
-  return { entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
+  return { SEASONS, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
 });
