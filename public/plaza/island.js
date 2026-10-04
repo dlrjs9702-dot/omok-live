@@ -398,7 +398,12 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   instanced(clump, natureMat, tufts, (t) => setM(t.x, ground(t.x, t.z), t.z, t.s, t.s, t.r), { shadow: false, cell: 60, color: (t, c) => c.setHSL(0.03 * (hash(t.x, t.z, 11) - 0.5), 0.15, 0.85 + hash(t.x, t.z, 12) * 0.25), target: 'nature.grass' });
 
   const pebble = keep(mergeColored([part(new THREE.IcosahedronGeometry(1, 0), 0xffffff, 0, 0, 0, { shade: [0.8, 1.05] })])); // white, tinted per copy
-  instanced(pebble, natureMat, rocks, (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r), { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: 'nature.rock' });
+  // v1.10.20: three rock shapes for models (round, wide, tall), each rock's from its place; without models the three
+  // lists bake together exactly as one did
+  for (let k = 0; k < 3; k += 1) {
+    instanced(pebble, natureMat, rocks.filter((r) => Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
+      { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: [`nature.rock.${k}`, 'nature.rock'] });
+  }
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut

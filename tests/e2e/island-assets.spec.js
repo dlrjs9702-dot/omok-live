@@ -161,9 +161,9 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
 });
 
 test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 계절 파일이 없으면 코드 생성형, 자동으로 돌리면 서울 날짜 규칙의 계절', async ({ browser, request }) => {
-  const a = await island(browser, request, '계절', { 'nature.rock': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } });
+  const a = await island(browser, request, '계절', { 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // over the registered round-rock model
   const { page } = a;
-  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock');
+  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock.0');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
   await page.evaluate(() => window.PlazaDebug().setSeason('summer')); // no summer file
   await expect.poll(async () => (await rock()).placed).toBe(false);
@@ -194,14 +194,15 @@ test('운영 등록부: 지금 계절의 나무·관목·광장 벤치 모델이
   const d = await debug(page);
   expect(d.assets.season).toBe(season);
   const files = Object.entries(d.assets.files).filter(([url]) => url.includes('/seasonal-v2/'));
-  expect(files.length).toBe(5); // tree_v1, tree_v2 (tiered and blossom share it), tree_v3, shrub, bench
-  for (const [url, state] of files) { expect(url).toContain(`/seasonal-v2/${season}/`); expect(state).toBe('loaded'); }
+  // this season: tree_v1, tree_v2 (tiered and blossom share it), tree_v3, shrub, bench, gazebo, planter; and the four common files
+  expect(files.length).toBe(11);
+  for (const [url, state] of files) { expect(url).toMatch(new RegExp(`/seasonal-v2/(${season}|common)/`)); expect(state).toBe('loaded'); }
   // every model file of every season is in the active pack of the resource cache
   const cached = await page.evaluate(async () => {
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.includes('/seasonal-v2/'));
   });
-  expect(cached.length).toBe(20);
+  expect(cached.length).toBe(32);
   for (const [url] of files) expect(cached).toContain(url);
   for (const b of d.assets.batches) { expect(b.placed).toBe(true); expect(b.parts).toBe(1); }
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors);

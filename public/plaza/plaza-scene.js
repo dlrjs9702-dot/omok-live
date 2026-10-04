@@ -218,7 +218,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   for (const bed of PROPS.beds) { // beds along the plaza rim, between the walks and channels
     const { i } = bed;
-    const [holder, visual] = propHolder(bed.x, bed.z);
+    const [holder, visual] = propHolder(bed.x, bed.z, Math.atan2(-bed.x, -bed.z)); // v1.10.20: facing the fountain (a planter model lies along the rim)
     mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.3, 20), mat(0xb98b62), 0, 0.15, 0, visual);
     mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), mat(0x6b4f3a), 0, 0.31, 0, visual);
     for (let k = 0; k < 9; k += 1) {
