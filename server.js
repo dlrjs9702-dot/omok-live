@@ -40,7 +40,7 @@ const ClimbSim = require('./public/climb/climb-sim.js');
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
-const { donationRanking, createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
+const { donationRanking, createPointStore, validUserId, DONATION_MAX, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -2712,7 +2712,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.5' });
+    return sendJson(res, 200, { ok: true, version: '1.10.6' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3285,7 +3285,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`donation:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
     const amount = Number(body.amount);
-    if (!Number.isSafeInteger(amount) || amount < 1) return sendError(res, 400, 'BAD_AMOUNT', '기부할 포인트를 입력해 주세요.');
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > DONATION_MAX) return sendError(res, 400, 'BAD_AMOUNT', '기부할 포인트를 입력해 주세요.');
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const now = nowMs();
     const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) }, now);
@@ -3902,7 +3902,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.5 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.6 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

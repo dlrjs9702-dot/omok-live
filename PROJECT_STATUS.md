@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.6 기부 재시도 안정화(PR #129 리뷰 후속)
+
+PR #129 Codex 리뷰 P1·P2와 E2E 실패 기록(비공개 IDEAS 말미) 후속. 사용자 지시(2026-10-04): 게임 아일랜드 연속 패치 0단계.
+
+- P1(`public/app.js`): 기부 요청 ID를 확인 단계에서 금액별로 한 번 만들고, 서버가 성공을 돌려줄 때까지 같은 ID를 재사용(응답만 끊긴 재시도는 저장소의 `donation:<requestId>` 클레임으로 한 번만 소각). 금액이 바뀌면 새 ID, 성공하면 비움.
+- P2(`server.js`·`lib/point-store.js`): `DONATION_MAX`(1,000,000,000P)를 저장소와 API가 함께 사용, 초과는 400 `BAD_AMOUNT`(이전에는 저장소 RangeError가 500).
+- E2E 실패 기록(`dd23c8e`): 원인은 느린 러너에서 확인 버튼 5초 만료였고 `cd08404`(10초·테스트 대기 정리)에서 CI 2건 통과 후 병합된 것을 확인 — 코드 변경 없음.
+- 검증: `test/donation-server.test.js`(같은 요청 ID 두 번 → 한 번만 차감, 상한 초과 400; 수정 전 서버에서 500으로 실패 확인), `tests/e2e/plaza.spec.js` 기부 테스트에 첫 요청 응답 끊김 → 재시도 한 번만 차감 추가(수정 전 클라이언트에서 20,000P 이중 차감으로 실패 확인).
+
 ## v1.10.5 기부 동상·호구왕
 
 IDEAS 「기부 동상」(사용자 확정: 주간 경계 월요일 00:00, 동상 교체 월요일 00:30, 같은 금액은 먼저 도달 순, 1위 「호구왕」 기간제 업적, 기부 포인트 즉시 소각)과 사용자 결정(2026-10-04: 1주일 기준, 전주 월~일 기부가 확정되면 업적, 유효기간 1주일).
