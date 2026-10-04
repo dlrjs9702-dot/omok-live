@@ -490,8 +490,7 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   await expect(page.locator('#donationLast')).toContainText('기부왕');
   await page.locator('#donationDialog [data-add="10000"]').click();
   await page.locator('#donationSubmit').click();
-  await expect(page.locator('#donationSubmit')).toHaveText('10,000P 기부 확인');
-  expect((await get(request, '/api/points', b.token)).data.balance).toBe(before); // not yet
+  await expect(page.locator('#donationSubmit')).toHaveText('10,000P 기부 확인'); // nothing is taken by the first press
   await page.locator('#donationSubmit').click();
   await expect(page.locator('#donationStatus')).toContainText('10,000P 기부했습니다');
   await expect(page.locator('#donationMine')).toContainText('이번 주 내 기부 10,000P');

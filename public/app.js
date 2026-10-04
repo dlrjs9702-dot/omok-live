@@ -1530,7 +1530,7 @@
     if (!Number.isSafeInteger(amount) || amount < 1) { donationStatusEl.textContent = '기부할 포인트를 입력해 주세요.'; return; }
     if (donationArmed !== amount) { // first press: say exactly what will be given
       donationArmed = amount; donationSubmit.textContent = `${pts(amount)} 기부 확인`; donationStatusEl.textContent = '';
-      clearTimeout(donationArmTimer); donationArmTimer = setTimeout(disarmDonation, 5000);
+      clearTimeout(donationArmTimer); donationArmTimer = setTimeout(disarmDonation, 10000); // the confirm stays 10 s
       return;
     }
     disarmDonation(); donationSubmit.disabled = true;
