@@ -2,8 +2,8 @@
 // Shift / 1-4 / Tab into intents for the server, predicts only the local character's movement, and
 // interpolates everything else between server ticks. mount() returns a controller; unmount()
 // stops the frame loop and releases the scene, listeners and timers.
-import { createScene } from './rpg-scene.js?v=1.10.8';
-import { createHud } from './rpg-hud.js?v=1.10.8';
+import { createScene } from './rpg-scene.js?v=1.10.9';
+import { createHud } from './rpg-hud.js?v=1.10.9';
 
 const MOVE_KEYS = { ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8 };
 const PRESS_KEYS = { KeyQ: 'q', KeyW: 'w', KeyE: 'e', KeyR: 'r', ShiftLeft: 'dash', ShiftRight: 'dash', Tab: 'tab', Digit1: 'item1', Digit2: 'item2', Digit3: 'item3', Digit4: 'item4' };
