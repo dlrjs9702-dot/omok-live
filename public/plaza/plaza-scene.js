@@ -807,8 +807,14 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     if (!IslandNpcs) return;
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
       const r = IslandNpcs.round(n);
-      const c = makeCharacter(r.look); c.groundedWalk = true; scene.add(c.root); assets.dress('character.islander', c);
-      wanderers.push({ n, c, f: createFollower({ maxSpeed: 4 }) });
+      const c = makeCharacter(r.look); c.groundedWalk = true;
+      // Start at the shared route's current point immediately. Do not sweep from the Group's default (0,0,0),
+      // which would make a newly created islander visibly cross unrelated terrain before reaching its route.
+      const at = IslandNpcs.at(n, Date.now() + serverOffset);
+      const f = createFollower({ maxSpeed: 4 }); f.step(at, 0);
+      c.root.position.set(at.x, heightAt(at.x, at.z), at.z);
+      scene.add(c.root); assets.dress('character.islander', c);
+      wanderers.push({ n, c, f });
     }
   }, 400);
   function stepWanderers(dt) {
