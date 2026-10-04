@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.4').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.5').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1425,6 +1425,7 @@
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
+    { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
@@ -1463,7 +1464,7 @@
     plazaStage.focus({ preventScroll: true });
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
-    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.4').then((mod) => {
+    plaza.loading = import('/plaza/plaza-scene.js?v=1.10.5').then((mod) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, {
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
@@ -1472,7 +1473,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       if (!plaza.controller) plaza.failed = true;
-      else refreshPlazaAvatar();
+      else { refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); }
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
     }).catch((error) => { plaza.loading = null; plaza.failed = true; console.error(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1482,13 +1483,65 @@
   });
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
-  let plazaAvatar = null; let plazaChampion = false;
+  let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   async function refreshPlazaAvatar() {
-    try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); } catch { return; }
+    try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); plazaHoguking = Boolean(data.hoguking); } catch { return; }
     applyPlazaAvatar();
     plazaLastSent = null; // others see the new look with the next pose
     if (sessionRole !== 'admin' && !plazaAvatar?.look?.gender && document.body.classList.contains('plazaMode')) openGenderChoice();
   }
+  // v1.10.5 기부: the window at the plaza's donation box -- this week's top five and my total, last week's 호구왕, and
+  // giving: the amount (typed or +1만/+10만/+100만), then a second press that says the amount (points are burned).
+  const donationDialog = document.getElementById('donationDialog');
+  const donationAmount = document.getElementById('donationAmount');
+  const donationSubmit = document.getElementById('donationSubmit');
+  const donationStatusEl = document.getElementById('donationStatus');
+  let donationArmed = null; let donationArmTimer = 0;
+  const pts = (n) => `${Number(n || 0).toLocaleString('ko-KR')}P`;
+  function disarmDonation() { donationArmed = null; clearTimeout(donationArmTimer); donationSubmit.textContent = '기부'; }
+  async function loadDonation() {
+    try {
+      const data = await api('/api/donation');
+      document.getElementById('donationBalance').textContent = data.balance != null ? `보유 ${pts(data.balance)}` : '';
+      document.getElementById('donationMine').textContent = `이번 주 내 기부 ${pts(data.myTotal)}${data.myRank ? ` · ${data.myRank}위` : ''}`;
+      const list = document.getElementById('donationRanking'); list.replaceChildren();
+      for (const row of data.ranking) {
+        const item = document.createElement('div'); item.className = `donationRow${row.me ? ' me' : ''}`; item.setAttribute('role', 'listitem');
+        const who = document.createElement('span'); who.textContent = `${row.rank}위 ${row.name}`;
+        const total = document.createElement('strong'); total.textContent = pts(row.total);
+        item.append(who, total); list.append(item);
+      }
+      if (!data.ranking.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '이번 주 기부가 아직 없습니다.'; list.append(empty); }
+      document.getElementById('donationLast').textContent = data.hoguking ? `지난주 호구왕 · ${data.hoguking}` : '';
+      plazaStatues = data.statues || plazaStatues; plaza.controller?.setStatues?.(plazaStatues);
+    } catch (error) { donationStatusEl.textContent = error.message; }
+  }
+  function openDonation() {
+    donationStatusEl.textContent = ''; donationAmount.value = ''; disarmDonation();
+    donationDialog.showModal(); loadDonation();
+  }
+  document.getElementById('donationCloseBtn').addEventListener('click', () => donationDialog.close());
+  donationDialog.addEventListener('close', () => { disarmDonation(); if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
+  donationDialog.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => { donationAmount.value = String((Number(donationAmount.value) || 0) + Number(b.dataset.add)); disarmDonation(); }));
+  donationAmount.addEventListener('input', disarmDonation);
+  document.getElementById('donationForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const amount = Math.floor(Number(donationAmount.value));
+    if (!Number.isSafeInteger(amount) || amount < 1) { donationStatusEl.textContent = '기부할 포인트를 입력해 주세요.'; return; }
+    if (donationArmed !== amount) { // first press: say exactly what will be given
+      donationArmed = amount; donationSubmit.textContent = `${pts(amount)} 기부 확인`; donationStatusEl.textContent = '';
+      clearTimeout(donationArmTimer); donationArmTimer = setTimeout(disarmDonation, 10000); // the confirm stays 10 s
+      return;
+    }
+    disarmDonation(); donationSubmit.disabled = true;
+    try {
+      const data = await api('/api/donation', { method: 'POST', body: JSON.stringify({ amount, requestId: crypto.randomUUID() }) });
+      donationStatusEl.textContent = `${pts(amount)} 기부했습니다 · 이번 주 ${pts(data.total)}`;
+      donationAmount.value = ''; loadPoints(); loadDonation();
+    } catch (error) { donationStatusEl.textContent = error.message; }
+    finally { donationSubmit.disabled = false; }
+  });
+
   // v1.10.3 첫 접속 성별 선택: the first visit to the island asks once (남자/여자); the server keeps the first answer.
   const genderDialog = document.getElementById('genderDialog');
   const genderConfirmBtn = document.getElementById('genderConfirmBtn');
@@ -1540,6 +1593,7 @@
     plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
     const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
     if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
+    if (mine && Boolean(mine.hoguking) !== plazaHoguking) { plazaHoguking = Boolean(mine.hoguking); applyPlazaAvatar(); } // v1.10.5
   }
   function setPlazaPresence(on) {
     if (on && !plazaSendTimer) { plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
@@ -1550,7 +1604,7 @@
     }
   }
   function applyPlazaAvatar() {
-    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
+    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
@@ -2730,6 +2784,7 @@
     if (item.reason === 'achievement') return `업적 · ${item.memo || '달성'}`;
     if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
+    if (item.reason === 'donation') return `기부 · ${item.memo || '소각'}`; // v1.10.5
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';
@@ -3511,6 +3566,7 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'plaza') { plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.

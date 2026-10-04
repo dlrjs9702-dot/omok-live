@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post, shopper, buyAndEquip, expectNoScriptError } = require('./skin-support');
+const { post, get, shopper, buyAndEquip, expectNoScriptError } = require('./skin-support');
 
 // 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
 // v1.9.7부터 일반 사용자에게 기존 로비 전환 UI는 없고, 계정 메뉴는 관리자 창(관리자만)·내 정보·접속 종료만 둔다. PC 전용.
@@ -63,6 +63,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 
   // The mission board and the records hall.
   await page.evaluate(() => window.PlazaDebug().place('missions'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 미션판'); // the next frame marks it as near (a slow runner pressed too early)
   await page.keyboard.press('Space');
   await expect(page.locator('#missionDialog')).toBeVisible();
   await page.locator('#missionTabEvents').click(); // v1.8.9: the events tab is live (open events or "none")
@@ -455,6 +456,48 @@ test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 
   await expect(page.locator('#genderDialog')).toBeHidden();
   for (const who of [a, watcher]) await expectNoScriptError(who.page);
   for (const who of [a, watcher]) await who.context.close();
+});
+
+// v1.10.5 기부 동상: last week's donations are closed -- the same total goes to whoever reached it first -- its 1st and
+// 2nd stand as statues in the central plaza, its 1st wears 「호구왕」 (on everyone's screen), and the donation box takes
+// points (burned) after a second press that names the amount.
+test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한 사람이 1위, 1위 호구왕 이름표, 기부함에서 기부하면 포인트 소각', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const kst = new Date(Date.now() + 9 * 3600 * 1000);
+  test.skip(kst.getUTCDay() === 1 && kst.getUTCHours() === 0 && kst.getUTCMinutes() < 31, '월요일 00:00~00:30(KST)은 동상 교체 전');
+  const a = await intoPlaza(browser, request, '기부왕', 9_000_000);
+  const b = await intoPlaza(browser, request, '기부둘', 9_000_000);
+  const gift = 5_000_000 + Math.floor((Date.now() % 1_000_000) / 10) * 10; // bigger than any earlier attempt's (a retry keeps last week's rows)
+  const lastWeek = Date.now() - 7 * 24 * 3600 * 1000;
+  expect((await post(request, '/api/test/donation/record', a.token, { amount: gift, at: lastWeek })).status).toBe(200);
+  await new Promise((r) => setTimeout(r, 30));
+  expect((await post(request, '/api/test/donation/record', b.token, { amount: gift, at: lastWeek })).status).toBe(200); // same total, later
+  expect((await post(request, '/api/test/donation/settle', null, { reopen: true })).status).toBe(200);
+  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
+  const aId = await idOf(a);
+  for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
+  expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
+  await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
+
+  // the donation box: amount, a second press naming it, then the points are gone (burned) and this week's total shows
+  const page = b.page;
+  const before = (await get(request, '/api/points', b.token)).data.balance;
+  await page.evaluate(() => window.PlazaDebug().place('donate'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 기부');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#donationDialog')).toBeVisible();
+  await expect(page.locator('#donationLast')).toContainText('기부왕');
+  await page.locator('#donationDialog [data-add="10000"]').click();
+  await page.locator('#donationSubmit').click();
+  await expect(page.locator('#donationSubmit')).toHaveText('10,000P 기부 확인'); // nothing is taken by the first press
+  await page.locator('#donationSubmit').click();
+  await expect(page.locator('#donationStatus')).toContainText('10,000P 기부했습니다');
+  await expect(page.locator('#donationMine')).toContainText('이번 주 내 기부 10,000P');
+  expect((await get(request, '/api/points', b.token)).data.balance).toBe(before - 10_000);
+  await page.locator('#donationCloseBtn').click();
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
 });
 
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)

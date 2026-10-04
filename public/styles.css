@@ -1563,6 +1563,10 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .genderFace{width:64px;height:64px;border-radius:50%;background:#ffe0c4;position:relative;overflow:hidden}.genderFace::before{content:'';position:absolute;left:-4px;right:-4px;top:-6px;height:30px;border-radius:50% 50% 40% 40%;background:#4a3326}
 .genderFace.female::after{content:'';position:absolute;left:-2px;right:-2px;top:16px;bottom:-12px;border-radius:30% 30% 0 0;border:9px solid #4a3326;border-top:0;border-bottom:0}
 .genderNote{margin:12px 0 4px;font-size:.78rem;color:#94a3b8}#genderConfirmBtn{width:100%;margin-top:6px}
+/* v1.10.5 기부 */
+.recordsDialog.donationDialog{width:min(92vw,460px)}.donationMine{margin:4px 0 10px;font-weight:850;color:#fde68a}
+.donationRanking{display:grid;gap:6px;margin-bottom:8px}.donationRow{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:12px;background:#0f172a;border:1px solid #263246;font-size:.86rem}.donationRow.me{border-color:#60a5fa}
+.donationForm{display:grid;gap:8px;margin-top:10px}.donationForm input{padding:10px 12px;border-radius:12px;background:#0f172a;color:#f8fafc;border:1px solid #334155}.donationQuick{display:flex;gap:6px}
 .islandChatTab{position:absolute;left:14px;top:14px;z-index:3;padding:7px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#f8fafc;font-weight:850;border:1px solid #334155}
 .islandChatTab.unread::after{content:'';display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:#f87171;vertical-align:middle}
 .islandChatPanel{--island-chat-alpha:.8;position:absolute;left:14px;top:58px;z-index:3;width:min(360px,40%);height:min(46%,420px);display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:16px;background:rgba(15,23,42,var(--island-chat-alpha));border:1px solid rgba(51,65,85,var(--island-chat-alpha));color:#e5e7eb}

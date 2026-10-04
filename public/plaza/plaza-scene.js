@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.4';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.5';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -80,21 +80,25 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
 
   // Name tag over a character: the nickname (with a small gold 「챔피언」 mark for this week's climbing champion,
   // v1.9.5) and, on its own line, the title (a legend's name). Small and layered so both fit without a banner.
-  function makeTag(name, title, champion = false) {
+  // v1.10.5: 「호구왕」 (this week's top donor) is a second small mark after the name, in its own colour.
+  function makeTag(name, title, champion = false, hoguking = false) {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = title ? 168 : 104;
     const c = canvas.getContext('2d'); c.textAlign = 'center'; c.textBaseline = 'middle';
     const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
-    c.font = font(54); const nameW = Math.min(360, c.measureText(name).width);
-    c.font = font(34); const pillW = champion ? c.measureText('챔피언').width + 34 : 0;
-    const gap = champion ? 14 : 0; const total = Math.min(500, nameW + gap + pillW + 48);
+    const pills = [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
+    c.font = font(34); for (const p of pills) p.w = c.measureText(p.text).width + 34;
+    const pillsW = pills.reduce((n, p) => n + p.w + 12, 0);
+    c.font = font(54); const nameW = Math.min(pills.length > 1 ? 250 : 360, c.measureText(name).width);
+    const total = Math.min(504, nameW + pillsW + 48);
     c.fillStyle = 'rgba(30,24,20,.62)'; c.beginPath(); c.roundRect((512 - total) / 2, 8, total, 88, 44); c.fill();
-    const left = (512 - (nameW + gap + pillW)) / 2;
-    c.font = font(54); c.fillStyle = '#ffffff'; c.fillText(name, left + nameW / 2, 54, 360);
-    if (champion) {
-      const px = left + nameW + gap;
-      const g = c.createLinearGradient(px, 0, px + pillW, 0); g.addColorStop(0, '#ffd86b'); g.addColorStop(1, '#f0b429');
-      c.fillStyle = g; c.beginPath(); c.roundRect(px, 30, pillW, 48, 24); c.fill();
-      c.font = font(34); c.fillStyle = '#4a2a00'; c.fillText('챔피언', px + pillW / 2, 55);
+    let left = (512 - (nameW + pillsW)) / 2;
+    c.font = font(54); c.fillStyle = '#ffffff'; c.fillText(name, left + nameW / 2, 54, nameW);
+    left += nameW + 12;
+    for (const p of pills) {
+      const g = c.createLinearGradient(left, 0, left + p.w, 0); g.addColorStop(0, p.from); g.addColorStop(1, p.to);
+      c.fillStyle = g; c.beginPath(); c.roundRect(left, 30, p.w, 48, 24); c.fill();
+      c.font = font(34); c.fillStyle = p.ink; c.fillText(p.text, left + p.w / 2, 55);
+      left += p.w + 12;
     }
     if (title) { const t = `\u300a${title}\u300b`; c.font = font(38); c.fillStyle = '#ffd86b'; c.strokeStyle = 'rgba(40,28,10,.85)'; c.lineWidth = 7; c.strokeText(t, 256, 134, 480); c.fillText(t, 256, 134, 480); }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
@@ -347,6 +351,15 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       }
       sign(facility.name, root, 3.4);
       solids.push({ x, z, r: 1.5 });
+    } else if (spot.kind === 'donation') { // v1.10.5 기부함: a wooden chest with a coin slot and a gold band
+      depth = 0.9;
+      mesh(new THREE.BoxGeometry(1.2, 0.9, 0.8), mat(0xa06a3f), 0, 0.45, 0, root);
+      mesh(new THREE.BoxGeometry(1.26, 0.12, 0.86), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, 0.6, 0, root);
+      const lid = mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16, 1, false, 0, Math.PI), mat(0x8a5a3b), 0, 0.9, 0, root); lid.rotation.z = Math.PI / 2;
+      mesh(new THREE.BoxGeometry(0.42, 0.04, 0.08), mat(0x2b2220), 0, 1.31, 0, root); // the slot
+      mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.04, 16), mat(0xffd23f, { metalness: 0.6, roughness: 0.3 }), 0.3, 1.32, 0.1, root).rotation.x = 0.4;
+      sign(facility.name, root, 2.3);
+      solids.push({ x, z, r: 0.95 });
     } else if (spot.kind === 'mapboard') { // v1.10.0 안내 지도: the island drawn on a board, with where I am
       depth = 0.3;
       for (const px of [-1.5, 1.5]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.8, 10), mat(0x8a5a3b), px, 1.4, 0, root);
@@ -404,6 +417,27 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     solids.push({ x: lot.x, z: lot.z, r: 3.2 });
   }
 
+  // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
+  // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.
+  let statueList = []; let statueKey = '[]'; const statueRoots = [];
+  function setStatues(list) {
+    const next = (Array.isArray(list) ? list : []).filter((s) => s && (s.rank === 1 || s.rank === 2)).slice(0, 2);
+    const key = JSON.stringify(next.map(({ rank, name, look, title }) => [rank, name, look, title]));
+    if (key === statueKey) return;
+    statueKey = key; statueList = next;
+    for (const r of statueRoots.splice(0)) { r.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }); r.parent?.remove(r); }
+    for (const st of next) {
+      const spot = STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
+      const c = makeCharacter({ shirt: 0xffffff, hair: 0xffffff, skin: 0xffffff, look: st.look || {} });
+      const metal = mat(st.rank === 1 ? 0xf3c64a : 0xc9d1dc, { metalness: 0.75, roughness: 0.3 });
+      c.root.traverse((o) => { if (o.isMesh) o.material = metal; });
+      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(1.15);
+      c.armR.rotation.z = 2.4; // a wave, frozen
+      scene.add(c.root); statueRoots.push(c.root);
+      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 4.3, spot.z); scene.add(plate); statueRoots.push(plate);
+    }
+  }
+
   // The player's character: a big head on a short body.
   const ME_BASE = { shirt: 0x7cb8ff, hair: 0x4a3326, skin: 0xffe0c4 };
   let me = makeCharacter(ME_BASE);
@@ -411,12 +445,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
   me.root.position.y = heightAt(me.root.position.x, me.root.position.z);
   scene.add(me.root);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
-  function setAvatar({ look = {}, name = '', title = null, champion = false } = {}) {
+  function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
     disposeCharacter(old); scene.add(me.root);
-    if (name) { me.tag = makeTag(name, title, champion); me.tag.position.y = 2.75; me.root.add(me.tag); }
-    me.look = look; me.title = title; me.champion = Boolean(champion);
+    if (name) { me.tag = makeTag(name, title, champion, hoguking); me.tag.position.y = 2.75; me.root.add(me.tag); }
+    me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
 
   // v1.9.3 V3: everyone else in the plaza. The server's snapshots move a target; each frame the character glides
@@ -428,24 +462,24 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
     for (const p of list || []) {
       if (!p?.id) continue;
       seen.add(p.id);
-      const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion)]);
+      const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion), Boolean(p.hoguking)]);
       let o = others.get(p.id);
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null, p.champion); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null, p.champion); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
+        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
         o = { c, key, champion: Boolean(p.champion) }; others.set(p.id, o);
       }
       // v1.9.9: how fast they were walking between the last two snapshots, so my collision can look a little ahead
       const now = performance.now(); const prev = o.target; const gap = prev ? (now - o.targetAt) / 1000 : 0;
       o.vel = p.moving && prev && gap > 0.02 && gap < 1 ? { x: (p.x - prev.x) / gap, z: (p.z - prev.z) / gap } : { x: 0, z: 0 };
       const speed = Math.hypot(o.vel.x, o.vel.z); if (speed > SPEED * 1.3) { o.vel.x *= (SPEED * 1.3) / speed; o.vel.z *= (SPEED * 1.3) / speed; }
-      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion); o.look = p.look || {};
+      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion); o.hoguking = Boolean(p.hoguking); o.look = p.look || {};
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -788,14 +822,15 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked }) {
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), tag: Boolean(me.tag),
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
   // v1.10.2: a chat message over someone's head ('me' or another player's id)
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
+  const setStatuesPublic = (list) => setStatues(list);
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic };
 }

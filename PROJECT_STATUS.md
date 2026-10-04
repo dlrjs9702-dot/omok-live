@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.5 기부 동상·호구왕
+
+IDEAS 「기부 동상」(사용자 확정: 주간 경계 월요일 00:00, 동상 교체 월요일 00:30, 같은 금액은 먼저 도달 순, 1위 「호구왕」 기간제 업적, 기부 포인트 즉시 소각)과 사용자 결정(2026-10-04: 1주일 기준, 전주 월~일 기부가 확정되면 업적, 유효기간 1주일).
+
+- 저장(`lib/point-store.js`): `donate`(요청 ID당 한 번, 잔액 부족 거절, 원장 `donation` 차감 = 소각, 주간 합계·도달 시각), `donationWeekRows`·`donationUnsettledWeeks`·`settleDonationWeek`(주당 한 번, 1위=호구왕, 상위 10 순위와 서버가 넘긴 동상 스냅샷 저장)·`donationWeekResult`. PostgreSQL `donation_weeks`, JSON `donation.weeks`. 순위 `donationRanking`: 합계 내림차순, 같으면 도달 시각 오름차순(공동 순위 없음).
+- 서버(`server.js`): 끝난 주를 시작 때·1분마다·기부 창을 열 때 결산. 1·2위 동상은 결산 순간의 외형(아바타 look·칭호)을 저장해 월요일 00:30부터 전시(그 전에는 2주 전 동상 유지). 호구왕은 결산부터 다음 결산까지(1주일), 광장 이름표·`/api/skins`. `GET/POST /api/donation`, 대기방 스트림 `statues` 이벤트. 테스트 훅 `/api/test/donation/record|settle`.
+- 화면: 중앙광장 두 받침대 사이 기부함 시설(Space·클릭) → 기부 창(보유 포인트, 이번 주 내 기부·순위, 이번 주 상위 5, 지난주 호구왕, 금액 입력·+1만/+10만/+100만, 두 번째 누름이 금액을 말해 주는 확인). 받침대 위 금(1위)·은(2위) 동상과 「n위 이름」 판. 이름표 「호구왕」(보라).
+- 제외: 소각 재원으로 포인트를 나눠 주는 랜덤 게임(규칙 미확정, 구현 안 함).
+- 검증: `test/point-store.test.js`(JSON·PostgreSQL: 소각, 요청당 한 번, 잔액 부족, 같은 금액 먼저 도달 1위, 한 번만 결산, 동상 저장, 내역), `tests/e2e/plaza.spec.js`(지난주 기록 → 동상 1·2위, 1위 호구왕 본인·다른 사람 화면, 기부함 두 번 눌러 기부·잔액 감소·이번 주 합계; 월요일 00:00~00:30 KST에는 건너뜀), 화면 캡처.
+
 ## v1.10.4 등반 낙하 안전장치(100m 쉼터) 삭제
 
 IDEAS 「상시 등반 도전 · 낙하 안전장치 제거」 갱신·구현 지시(사용자 2026-10-04: 100m 쉼터 때문에 떨어지면 무조건 걸리므로 쉼터 삭제, 운이 나쁘면 맨 아래까지, 아니면 중간 실제 발판).

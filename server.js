@@ -40,7 +40,7 @@ const ClimbSim = require('./public/climb/climb-sim.js');
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
-const { createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
+const { donationRanking, createPointStore, validUserId, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -663,11 +663,57 @@ async function refreshChampions(now = nowMs()) {
     plazaDirty = true;
   }
 }
+// v1.10.5 기부 동상 (IDEAS 「기부 동상」): a week of donations is closed once after it ends (startup, every minute, and
+// when the donation window opens). Its 1st and 2nd are kept as statues -- their look as it was when the week closed --
+// shown from Monday 00:30 (until then the statues of the week before stay), and its 1st is 「호구왕」 from the close
+// until the next week closes (one week).
+let donationSettling = null;
+let donationCache = { week: null, hoguking: null, statues: [], statuesWeek: null };
+const STATUE_SWAP_MS = 30 * 60 * 1000;
+const weekStartMs = (week) => Date.parse(`${week}T00:00:00+09:00`);
+async function settleDonationWeeks(now = nowMs()) {
+  if (donationSettling) return donationSettling;
+  donationSettling = (async () => {
+    const current = climbWeekOf(now);
+    for (const week of await pointStore.donationUnsettledWeeks(current)) {
+      const top = donationRanking(await pointStore.donationWeekRows(week)).slice(0, 2);
+      const statues = [];
+      for (const row of top) {
+        const equipped = equippedSkinCache.get(row.userId) || (await pointStore.skinState(row.userId)).equipped;
+        const { look, title } = avatarLookOf(equipped);
+        statues.push({ rank: row.rank, name: row.name || '게스트', total: row.total, look, title });
+      }
+      await pointStore.settleDonationWeek(week, statues);
+    }
+    await refreshDonation(now);
+  })().catch((error) => console.error('기부 주간 결산 실패:', error.message)).finally(() => { donationSettling = null; });
+  return donationSettling;
+}
+async function refreshDonation(now = nowMs()) {
+  const current = climbWeekOf(now); const week = previousWeek(current);
+  const result = await pointStore.donationWeekResult(week);
+  const statuesWeek = now >= weekStartMs(current) + STATUE_SWAP_MS ? week : previousWeek(week);
+  const shown = statuesWeek === week ? result : await pointStore.donationWeekResult(statuesWeek);
+  const hoguking = result?.hoguking || null;
+  const changed = donationCache.week !== week || donationCache.hoguking !== hoguking || donationCache.statuesWeek !== statuesWeek;
+  donationCache = { week, hoguking, statues: shown?.statues || [], statuesWeek };
+  if (changed) {
+    for (const entry of plazaPresence.values()) entry.hoguking = entry.account === hoguking;
+    plazaDirty = true;
+    for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } // the plaza statues change for everyone
+  }
+}
+const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: donationCache.statues });
+function isHoguking(account, now = nowMs()) {
+  return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
+}
+
 function isChampion(account, now = nowMs()) {
   return championCache.week === previousWeek(climbWeekOf(now)) && championCache.ids.has(account);
 }
 const climbWeekTicker = setInterval(() => {
   if (championCache.week !== previousWeek(climbWeekOf(nowMs()))) refreshChampions().catch(() => {}); // Monday 00:00: last week's champions expire at once
+  settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
   settleClimbWeeks();
 }, 60 * 1000);
 climbWeekTicker.unref?.();
@@ -732,7 +778,7 @@ function plazaSeparate(token, x, z, prev) {
 let plazaDirty = false;
 function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
-  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, x, z, yaw, moving }) => ({ id, chatId, name, look, title, champion: Boolean(champion), x, z, yaw, moving })) };
+  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), x, z, yaw, moving })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -2666,7 +2712,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.4' });
+    return sendJson(res, 200, { ok: true, version: '1.10.5' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -2817,7 +2863,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account) });
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account), hoguking: isHoguking(account) });
   }
 
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
@@ -3089,6 +3135,7 @@ async function requestHandler(req, res) {
     broadcastLobby();
     sseWrite(res, 'announcements', { items: await announcementStore.list() });
     sseWrite(res, 'plaza', plazaSnapshot()); // who is already in the plaza (v1.9.3)
+    sseWrite(res, 'statues', statueSnapshot()); // v1.10.5: the donation statues on show
 
     const heartbeat = setInterval(() => {
       const current = sessions.get(session.token);
@@ -3127,7 +3174,7 @@ async function requestHandler(req, res) {
     const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
     plazaLastPos.set(session.token, spot);
     plazaPresence.set(session.token, {
-      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
     });
@@ -3215,6 +3262,51 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const outcome = await pointStore.recordClimb({ userId: pointAccountForSession(session), climbId: crypto.randomUUID(), altitude: Number(body.altitude), name: session.label || '' }, Number(body.at) || nowMs());
     return sendJson(res, 200, { ok: true, ...outcome });
+  }
+  // v1.10.5 기부: this week's ranking and my total, the statues on show, this week's 호구왕; giving burns the points.
+  if (pathname === '/api/donation' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const now = nowMs(); const account = pointAccountForSession(session);
+    await settleDonationWeeks(now);
+    const week = climbWeekOf(now);
+    const ranking = donationRanking(await pointStore.donationWeekRows(week));
+    const mine = ranking.find((row) => row.userId === account);
+    const hogukingName = (await pointStore.donationWeekResult(previousWeek(week)))?.ranking?.[0]?.name || null;
+    return sendJson(res, 200, { ok: true, week, myTotal: mine?.total || 0, myRank: mine?.rank || null,
+      ranking: ranking.slice(0, 5).map(({ name, total, rank, userId }) => ({ name, total, rank, me: userId === account })),
+      statues: donationCache.statues, statuesWeek: donationCache.statuesWeek, hoguking: hogukingName, isHoguking: isHoguking(account, now),
+      balance: pointStore.cachedBalance(account) });
+  }
+  if (pathname === '/api/donation' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`donation:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const amount = Number(body.amount);
+    if (!Number.isSafeInteger(amount) || amount < 1) return sendError(res, 400, 'BAD_AMOUNT', '기부할 포인트를 입력해 주세요.');
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const now = nowMs();
+    const result = await pointStore.donate({ userId: account, requestId: body.requestId, amount, name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) }, now);
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
+    notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, total: result.total, amount: result.amount, balance: result.balance ?? result.balanceAfter });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/donation/record' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const result = await pointStore.donate({ userId: pointAccountForSession(session), requestId: crypto.randomUUID(), amount: Number(body.amount), name: String(session.label || '게스트') }, Number(body.at) || nowMs());
+    return sendJson(res, 200, { ok: true, result });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/donation/settle' && req.method === 'POST') {
+    const body = await parseJson(req);
+    const now = Number(body.now) || nowMs();
+    if (body.reopen === true) await pointStore.testReopenDonationWeek(previousWeek(climbWeekOf(now)));
+    donationCache = { week: null, hoguking: null, statues: [], statuesWeek: null };
+    await settleDonationWeeks(now);
+    return sendJson(res, 200, { ok: true, donation: donationCache });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
     const body = await parseJson(req);
@@ -3760,6 +3852,7 @@ async function main() {
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
+  settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
@@ -3809,7 +3902,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.4 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.5 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
