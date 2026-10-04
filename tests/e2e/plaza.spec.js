@@ -298,10 +298,11 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   expect(prevA.z).toBeLessThan(prevB.z); // nobody passed through
   expect(nearestSeen).toBeGreaterThan(0.45); // never drawn inside each other (a glide may briefly close the gap while the server settles)
   expect(biggestStep).toBeLessThan(1.2); // no teleporting back and forth
-  await a.page.waitForTimeout(800);
-  const [ra, rb] = [await me(a), await me(b)];
-  expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5); // at rest: apart, and still
-  expect(Math.hypot((await me(a)).x - ra.x, (await me(a)).z - ra.z)).toBeLessThan(0.05);
+  // at rest: comes still (a server correction may still be gliding for a moment on a slow runner), and apart
+  let ra = await me(a);
+  await expect.poll(async () => { const now = await me(a); const moved = Math.hypot(now.x - ra.x, now.z - ra.z); ra = now; return moved; }, { timeout: 5000, intervals: [400] }).toBeLessThan(0.05);
+  const rb = await me(b);
+  expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5);
 
   // 4) B stands right in the shop's door: A still reaches the shop and opens it
   const shopDoor = await b.page.evaluate(() => window.PlazaDebug().doors.shop);

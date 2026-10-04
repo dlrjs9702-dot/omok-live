@@ -708,7 +708,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
           if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
           npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.6; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
-        } else eventModel(ev.kind, root);
+        } else { eventModel(ev.kind, root); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);
         eventObjs.set(key, { root, npc });
       }
