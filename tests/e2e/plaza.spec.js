@@ -114,6 +114,7 @@ test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일�
 
 // v1.9.2 광장 V2: 상점의 광장 아바타 탭(헤어·의상·모자, 칭호)과 광장 캐릭터가 같은 모습이고, 장착하면 바로 바뀐다.
 test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호가 광장 캐릭터와 이름표에 바로 나온다', async ({ browser, request }) => {
+  test.setTimeout(60000); // a software-rendered 3D page through the shop: 18-29 s on a CI runner, at the default 30 s on a slow one
   const a = await intoPlaza(browser, request, '아바타', 7_000_000);
   const { page } = a;
   await buyAndEquip(request, a, ['avatar_hair_6', 'avatar_outfit_5', 'omok_l1']);
@@ -206,7 +207,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
 // v1.9.5 주간 챔피언: 지난주 공동 1위 두 사람 모두 광장 이름표에 「챔피언」이 붙고, 다른 사람에게도 같게 보이며, 다시 접속해도 그대로다.
 test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람에게도 보이고 재접속 후에도 유지', async ({ browser, request }) => {
-  test.setTimeout(90000);
+  test.setTimeout(150000); // three 3D pages on a software renderer: 52-96 s on a CI runner already
   const lastWeek = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const champs = [];
   for (const label of ['챔피언가', '챔피언나']) {
