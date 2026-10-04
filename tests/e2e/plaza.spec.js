@@ -161,6 +161,23 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.shop; await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
 
+  // v1.10.8: a walks down the harbour walk; on b's screen a moves on evenly -- never backward, never faster than a
+  // run in a frame (no surge after a late update), and arrives where a stopped
+  await a.page.evaluate(() => window.PlazaWarp(-1, 22));
+  await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x + 1, o.z - 22) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
+  const watching = b.page.evaluate((id) => new Promise((resolve) => {
+    const out = []; const until = performance.now() + 2600;
+    const tick = () => { const o = (window.PlazaDebug()?.others || []).find((p) => p.id === id); if (o) out.push({ t: performance.now(), z: o.z }); if (performance.now() < until) requestAnimationFrame(tick); else resolve(out); };
+    requestAnimationFrame(tick);
+  }), aId);
+  await a.page.keyboard.down('ArrowDown'); await a.page.waitForTimeout(1200); await a.page.keyboard.up('ArrowDown');
+  const walked = await watching; const end = await a.page.evaluate(() => window.PlazaDebug().z);
+  expect(end - 22).toBeGreaterThan(0.8);
+  const steps = walked.slice(1).map((s, i) => ({ dz: s.z - walked[i].z, dt: (s.t - walked[i].t) / 1000 })).filter((s) => s.dt > 0);
+  expect(Math.min(...steps.map((s) => s.dz))).toBeGreaterThan(-0.02); // never backward
+  expect(Math.max(...steps.filter((s) => s.dt > 0.012).map((s) => s.dz / s.dt))).toBeLessThan(5.2 * 1.75); // no surge
+  await expect.poll(async () => (await seen(b, aId)).z, { timeout: 5000 }).toBeCloseTo(end, 1);
+
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
   await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
   await a.page.keyboard.press('Space');

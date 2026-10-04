@@ -13,6 +13,9 @@ const PLAYER_R = 0.45;
 const DOOR_PLAYER_R = 0.28;
 const DOOR_ZONE = 2.6;
 const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
+// v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
+// loaded before the app like island-terrain.js)
+const { createTrack, createFollower } = globalThis.RemoteMotion;
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked, startAt }) {
   let renderer;
@@ -473,13 +476,17 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
         c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
-        o = { c, key, champion: Boolean(p.champion) }; others.set(p.id, o);
+        o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: SPEED * 1.6 }) }; others.set(p.id, o);
       }
-      // v1.9.9: how fast they were walking between the last two snapshots, so my collision can look a little ahead
-      const now = performance.now(); const prev = o.target; const gap = prev ? (now - o.targetAt) / 1000 : 0;
-      o.vel = p.moving && prev && gap > 0.02 && gap < 1 ? { x: (p.x - prev.x) / gap, z: (p.z - prev.z) / gap } : { x: 0, z: 0 };
-      const speed = Math.hypot(o.vel.x, o.vel.z); if (speed > SPEED * 1.3) { o.vel.x *= (SPEED * 1.3) / speed; o.vel.z *= (SPEED * 1.3) / speed; }
-      o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now; o.champion = Boolean(p.champion); o.hoguking = Boolean(p.hoguking); o.look = p.look || {};
+      // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
+      // walking speed also feed my collision's look-ahead (v1.9.9)
+      const now = performance.now();
+      if (o.track.push({ t: p.t, x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }, now)) {
+        const latest = o.track.latest(); o.vel = latest.vel;
+        const speed = Math.hypot(o.vel.x, o.vel.z); if (speed > SPEED * 1.3) { o.vel.x *= (SPEED * 1.3) / speed; o.vel.z *= (SPEED * 1.3) / speed; }
+        o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now;
+      }
+      o.champion = Boolean(p.champion); o.hoguking = Boolean(p.hoguking); o.look = p.look || {};
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -499,22 +506,28 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   }
   function stepOthers(dt) {
     stepCorrection(dt);
+    const now = performance.now();
     for (const o of others.values()) {
-      const p = o.c.root.position; const t = o.target; const k = Math.min(1, dt * 9);
-      const dist = Math.hypot(t.x - p.x, t.z - p.z);
-      if (dist > 6) { p.x = t.x; p.z = t.z; } else { p.x += (t.x - p.x) * k; p.z += (t.z - p.z) * k; } // a far jump (reconnect) snaps
+      // v1.10.8: drawn a little in the past between two real poses (even speed however the updates arrive), walking
+      // on through a short gap, a changed path blended in by how far off it is, a warp at once (remote-motion.js)
+      const p = o.c.root.position; const at = o.track.at(now); const f = o.follow;
+      if (!at) continue;
+      f.step(at, dt);
+      const warped = Math.hypot(f.x - p.x, f.z - p.z) > 6;
+      p.x = f.x; p.z = f.z;
       // v1.9.9: their glide never sinks into my character (the server already keeps the real positions apart; a late
       // snapshot would otherwise draw them inside me for a moment). Moving apart is never held back.
       const m = me.root.position; const dx = p.x - m.x; const dz = p.z - m.z; const d = Math.hypot(dx, dz);
       const min = playerRadiusAt(m.x, m.z) + playerRadiusAt(p.x, p.z);
-      if (dist <= 6 && d < min && d < o.drawnGap - 1e-4) {
+      if (!warped && d < min && d < o.drawnGap - 1e-4) {
         const ux = d > 1e-4 ? dx / d : 0; const uz = d > 1e-4 ? dz / d : 1; const keep = Math.min(min, o.drawnGap);
-        p.x = m.x + ux * keep; p.z = m.z + uz * keep;
+        p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
       p.y = heightAt(p.x, p.z);
-      o.c.targetYaw = t.yaw;
-      animate(o.c, dt, t.moving || dist > 0.05);
+      // facing: the way they are drawn walking, and the server's facing once they stand
+      o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
+      animate(o.c, dt, f.speed > 0.4, f.speed);
     }
   }
   const pose = () => ({ x: me.root.position.x, z: me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() });
@@ -771,31 +784,35 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     lamps.forEach((l, i) => { l.material.emissiveIntensity = 0.55 + Math.sin(clock * 1.5 + i) * 0.05; });
     placeCamera(false);
   }
-  function animate(c, dt, moving) {
+  // v1.10.8: the gait follows how fast the character is drawn moving (`speed`): it blends from standing to walking
+  // and, faster than a walk (someone catching up), toward a run -- never a sudden switch.
+  function animate(c, dt, moving, speed = moving ? SPEED : 0) {
     const yaw = c.root.rotation.y;
     const target = c.targetYaw ?? yaw;
     const turn = angleTo(yaw, target);
     const rate = Math.min(1, dt * 12);
     c.root.rotation.y = yaw + turn * rate;
     c.roll += (THREE.MathUtils.clamp(-turn * 0.25, -0.18, 0.18) - c.roll) * Math.min(1, dt * 10); // lean into a turn
-    c.lean += ((moving ? 0.14 : 0) - c.lean) * Math.min(1, dt * 8); // lean forward while walking
-    if (moving) c.phase += dt * SPEED * 2.1; else c.phase *= Math.max(0, 1 - dt * 8);
-    const swing = Math.sin(c.phase) * (moving ? 0.65 : 0);
+    c.gait = (c.gait || 0) + (Math.min(1.7, Math.max(0, speed) / SPEED) - (c.gait || 0)) * Math.min(1, dt * 7);
+    const walk = Math.min(1, c.gait); const run = Math.max(0, Math.min(1, (c.gait - 1.1) / 0.5));
+    c.lean += ((0.14 * walk + 0.1 * run) - c.lean) * Math.min(1, dt * 8); // lean forward while walking, more running
+    if (speed > 0.2) c.phase += dt * speed * 2.1; else c.phase *= Math.max(0, 1 - dt * 8); // the stride matches the ground
+    const swing = Math.sin(c.phase) * (0.65 * walk + 0.25 * run);
     c.legL.rotation.x = swing; c.legR.rotation.x = -swing;
-    const idle = moving ? 0 : Math.sin(clock * 2.2 + (c === me ? 0 : 1.7)) * 0.05;
+    const idle = (1 - walk) * Math.sin(clock * 2.2 + (c === me ? 0 : 1.7)) * 0.05;
     c.armL.rotation.x = -swing * 0.9 + idle; c.armR.rotation.x = swing * 0.9 - idle;
     c.hop = Math.max(0, c.hop - dt * 2.8);
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
     c.armL.rotation.z = -hopT * 1.1; c.armR.rotation.z = hopT * 1.1; // a little cheer when interacting
     if (c.waving) { c.armR.rotation.z = 2.5 + Math.sin(clock * 9) * 0.35; c.armR.rotation.x = 0; }
-    c.body.position.y = (moving ? Math.abs(Math.sin(c.phase)) * 0.07 : 0) + hopT * 0.28;
+    c.body.position.y = Math.abs(Math.sin(c.phase)) * 0.07 * walk * (1 + run * 0.6) + hopT * 0.28;
     c.body.rotation.x = c.lean; c.body.rotation.z = c.roll;
-    c.body.scale.y = 1 + (moving ? 0 : Math.sin(clock * 2.2) * 0.012);
+    c.body.scale.y = 1 + (1 - walk) * Math.sin(clock * 2.2) * 0.012;
     // the head turns toward a nearby facility (limited), and nods on interaction
     const wantHead = c.lookAt != null ? THREE.MathUtils.clamp(angleTo(c.root.rotation.y, c.lookAt), -0.7, 0.7) : 0;
     c.headYaw += (wantHead - c.headYaw) * Math.min(1, dt * 6);
     c.head.rotation.y = c.headYaw; c.head.rotation.x = -hopT * 0.25;
-    if (c.cape) c.cape.rotation.x = 0.18 + c.lean * 2.2 + Math.sin(clock * 7 + c.phase) * (moving ? 0.08 : 0.02); // the cape trails when walking
+    if (c.cape) c.cape.rotation.x = 0.18 + c.lean * 2.2 + Math.sin(clock * 7 + c.phase) * (0.02 + 0.06 * walk); // the cape trails when walking
     if (c.halo) c.halo.position.y = 0.8 + Math.sin(clock * 2.4) * 0.04;
   }
 
