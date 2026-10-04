@@ -112,7 +112,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
 
   // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
-  // { x, z (its centre), parent, procedural: [the square's procedural meshes of this kind], matrices: [one per copy],
+  // { x, z (its centre), half (half its side), parent, procedural: [the square's procedural meshes of this kind], matrices: [one per copy],
   // shadow }. Once the model is in, every square gets one InstancedMesh per part of the model, placed with the very
   // matrices the procedural copies had (place, turn, size -- so where things stand, their collision and every game rule
   // stay as they were); update() shows the models in the squares near the player and the procedural copies further
@@ -145,7 +145,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
   // Near squares show the model, far ones their procedural copies (with a little slack so a square on the boundary does
-  // not flicker). The distance is the entry's `near`, shortened on lower quality tiers.
+  // not flicker). The distance -- to the square's nearest edge -- is the entry's `near`, shortened on lower quality tiers.
   let lastX = NaN; let lastZ = NaN;
   function update(x, z) {
     if (Math.hypot(x - lastX, z - lastZ) < 1) return; // nothing to change until the player has moved a little
@@ -154,7 +154,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (!rec.placed) continue;
       const near = P.lodDistance(rec.entry.near ?? 45, quality);
       for (const p of rec.placed) {
-        const d = Math.hypot(p.cell.x - x, p.cell.z - z); const model = p.model ? d < near + 6 : d < near;
+        // to the nearest point of the square (0 inside it): the square I stand in always counts as near
+        const half = p.cell.half || 0; const d = Math.hypot(Math.max(0, Math.abs(p.cell.x - x) - half), Math.max(0, Math.abs(p.cell.z - z) - half));
+        const model = p.model ? d < near + 6 : d < near;
         if (model === p.model) continue;
         p.model = model; for (const im of p.meshes) im.visible = model; for (const q of p.cell.procedural) q.visible = !model;
       }

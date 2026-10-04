@@ -327,7 +327,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   };
   const cellOf = (g, item, cell) => {
     const cx = Math.floor(item.x / cell); const cz = Math.floor(item.z / cell); const key = `${cx},${cz}`;
-    if (!g.cells.has(key)) g.cells.set(key, { x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: scene, procedural: [], matrices: [], shadow: g.shadow });
+    if (!g.cells.has(key)) g.cells.set(key, { x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, half: cell / 2, parent: scene, procedural: [], matrices: [], shadow: g.shadow });
     return g.cells.get(key);
   };
   const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null } = {}) => {
