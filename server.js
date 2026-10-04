@@ -139,7 +139,12 @@ const eventAudience = new Map();
 const rewardTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
-let assetManifestJson = '{"version":"","assets":[]}';
+// v1.10.14 resource pack (lib/asset-manifest.js) and its emergency off switch: ASSET_CACHE=off (Render environment, no
+// code change) sends every page the "off" manifest, so browsers drop the worker and the gc-res:* caches and load assets
+// from the server as before. Pages and /asset-cache.json are no-store, so a change reaches browsers on their next load.
+let assetCacheEnabled = !/^(off|false|0)$/i.test(process.env.ASSET_CACHE || '');
+const assetManifestJson = { on: '', off: JSON.stringify({ enabled: false, version: '', assets: [] }) };
+let assetPackVersion = '';
 
 function nowIso() { return new Date().toISOString(); }
 function nowMs() { return Date.now(); }
@@ -201,7 +206,7 @@ function sendIndex(res, bootstrap = {}) {
     .replace('__SESSION_ROLE__', escapeAttr(bootstrap.role || ''))
     .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
     .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
-    .replace('__ASSET_MANIFEST__', () => assetManifestJson);
+    .replace('__ASSET_MANIFEST__', () => (assetCacheEnabled ? assetManifestJson.on : assetManifestJson.off));
   res.writeHead(200, securityHeaders({
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Length': Buffer.byteLength(html),
@@ -2813,6 +2818,15 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, version: '1.10.14' });
   }
 
+  // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
+  if (pathname === '/asset-cache.json' && req.method === 'GET') {
+    return sendJson(res, 200, { enabled: assetCacheEnabled, version: assetCacheEnabled ? assetPackVersion : '' });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/asset-cache' && req.method === 'POST') {
+    assetCacheEnabled = (await parseJson(req)).enabled !== false;
+    return sendJson(res, 200, { enabled: assetCacheEnabled });
+  }
+
   if (pathname === '/guest-entry' && req.method === 'POST') {
     if (browserBlocked(req)) return sendChromeOnly(res);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
@@ -4074,7 +4088,9 @@ async function requestHandler(req, res) {
 async function main() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
-  assetManifestJson = JSON.stringify(buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]))).replace(/</g, '\\u003c');
+  const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]));
+  assetPackVersion = pack.version;
+  assetManifestJson.on = JSON.stringify({ enabled: true, ...pack }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });

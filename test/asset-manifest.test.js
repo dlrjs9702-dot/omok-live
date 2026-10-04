@@ -41,3 +41,32 @@ test('리소스 매니페스트: 실제 public 폴더의 게임 리소스를 담
   assert.ok(manifest.assets.some(a => a.url === '/assets/halli/banana.svg'));
   for (const asset of manifest.assets) assert.match(asset.rev, /^[0-9a-f]{16}$/);
 });
+
+// v1.10.14 emergency off switch: ASSET_CACHE=off (Render environment, no code change) gives every page the "off"
+// manifest and tells leftover workers to remove themselves; both answers are never cached.
+test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cache.json이 꺼짐을 알린다', { timeout: 30_000 }, async t => {
+  const net = require('node:net');
+  const { spawn } = require('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-off-'));
+  const port = await new Promise(resolve => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+  const proc = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: 'off-test', NODE_ENV: 'test', ASSET_CACHE: 'off' }, stdio: 'ignore' });
+  t.after(async () => {
+    if (proc.exitCode === null && proc.signalCode === null) {
+      const exited = new Promise(resolve => proc.once('exit', resolve));
+      proc.kill('SIGTERM');
+      await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5000).unref())]);
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const base = `http://127.0.0.1:${port}`;
+  for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+
+  const flag = await fetch(`${base}/asset-cache.json`);
+  assert.equal(flag.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await flag.json(), { enabled: false, version: '' });
+  const page = await fetch(`${base}/`);
+  assert.equal(page.headers.get('cache-control'), 'no-store');
+  const manifest = JSON.parse((await page.text()).match(/<script id="assetManifest" type="application\/json">([^<]*)<\/script>/)[1]);
+  assert.deepEqual(manifest, { enabled: false, version: '', assets: [] });
+});
