@@ -68,5 +68,5 @@ test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cach
   const page = await fetch(`${base}/`);
   assert.equal(page.headers.get('cache-control'), 'no-store');
   const manifest = JSON.parse((await page.text()).match(/<script id="assetManifest" type="application\/json">([^<]*)<\/script>/)[1]);
-  assert.deepEqual(manifest, { enabled: false, version: '', assets: [] });
+  assert.deepEqual(manifest, { enabled: false, version: '', assets: [], assetsOff: [] });
 });

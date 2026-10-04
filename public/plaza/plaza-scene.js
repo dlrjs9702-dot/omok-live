@@ -17,6 +17,15 @@ const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart th
 // loaded before the app like island-terrain.js)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
 const IslandNpcs = globalThis.IslandNpcs; // v1.10.12 배회 NPC (public/plaza/island-npcs.js)
+// v1.10.15 고품질 에셋 파이프라인 (public/plaza/asset-pipeline.js, island-assets.js; loaded before the app)
+const AssetPipeline = globalThis.AssetPipeline;
+// The registered island models, plus -- in automated browser tests only, like gc.testClassic -- entries a test puts in
+// localStorage gc.testIslandAssets.
+function islandAssetRegistry() {
+  const registry = { ...(globalThis.IslandAssets?.REGISTRY || {}) };
+  try { if (navigator.webdriver) Object.assign(registry, JSON.parse(localStorage.getItem('gc.testIslandAssets') || '{}')); } catch {}
+  return registry;
+}
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked, startAt }) {
   let renderer;
@@ -59,6 +68,13 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     return m;
   };
   const solids = []; // {x, z, r}: what the character walks around
+  // v1.10.15: a target registered in island-assets.js swaps its procedural look for its model once that has loaded;
+  // unregistered, switched off or failed targets keep the procedural one. Nothing registered (now) loads nothing.
+  const assets = AssetPipeline.createLazyAssets({
+    registry: islandAssetRegistry(), off: window.GameBoot?.manifest?.assetsOff || [],
+    importLoader: () => import('./asset-loader.js?v=1.10.15'),
+    options: { assetUrl: (path) => window.GameBoot?.assetUrl(path) ?? path, walkSpeed: SPEED, tier: 2 },
+  });
   const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }); // v1.10.13: every merged build (island.js)
   const STONE = new THREE.CylinderGeometry(0.5, 0.5, 1, 9);
 
@@ -151,7 +167,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     b.material.opacity = Math.min(1, left / 600);
   }
   const disposeTag = (tag) => { if (!tag) return; tag.material.map.dispose(); tag.material.dispose(); tag.parent?.remove(tag); };
-  const disposeCharacter = (c) => { disposeTag(c.tag); disposeTag(c.bubble); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
+  const disposeCharacter = (c) => { assets.release(c); disposeTag(c.tag); disposeTag(c.bubble); c.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); c.root.parent?.remove(c.root); };
 
 
   // v1.10.0 게임 아일랜드: the island itself (terrain, sea, streams, bridges, walks, woods, harbour) comes from island.js;
@@ -265,6 +281,9 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const { x, z } = spot;
     const root = new THREE.Group(); root.position.set(x, heightAt(x, z), z); root.rotation.y = Math.atan2(spot.face[0] - x, spot.face[1] - z);
     scene.add(root);
+    // v1.10.15: `root` is the gameplay object (place, facing, sign, keeper; collision and door are worked out from the
+    // spot below); `visual` is only the procedural look, the part a registered model replaces.
+    const visual = new THREE.Group(); root.add(visual);
     if (!facility.decor) { root.userData.facility = facility.id; facilityRoots.push(root); }
     const toCentre = new THREE.Vector2(Math.sin(root.rotation.y), Math.cos(root.rotation.y)); // the way the front faces
     let depth = 0;
@@ -278,30 +297,30 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
       depth = 10; const w = 15; const h = 6.2;
       const wall = mat(spot.wall); const trim = mat(0xfff6e6); const roofM = mat(spot.roof); const gold = mat(0xf6c945, { metalness: 0.5, roughness: 0.35 });
-      mesh(new THREE.BoxGeometry(w + 1.2, 0.5, depth + 2.6), mat(0xe9dcc4), 0, 0.25, 0.7, root); // terrace
-      for (let k = 0; k < 3; k += 1) mesh(new THREE.BoxGeometry(6.4 - k * 0.6, 0.17, 0.5), mat(0xefe4cf), 0, 0.085 + k * 0.17, depth / 2 + 2.2 - k * 0.45, root); // steps
-      mesh(new THREE.BoxGeometry(w, h, depth), wall, 0, 0.5 + h / 2, 0, root);
-      mesh(new THREE.BoxGeometry(w + 0.4, 0.35, depth + 0.4), trim, 0, 0.5 + h, 0, root); // cornice
-      const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.74, 2.2, 4), roofM, 0, 0.5 + h + 1.25, 0, root); roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
-      const dome = mesh(new THREE.SphereGeometry(2.6, 28, 16, 0, TAU, 0, Math.PI / 2), mat(0x7ec4e8, { roughness: 0.4 }), 0, 0.5 + h + 1.4, 0, root); dome.scale.y = 1.1;
-      mesh(new THREE.CylinderGeometry(2.7, 2.7, 0.5, 28), trim, 0, 0.5 + h + 1.3, 0, root);
-      mesh(new THREE.SphereGeometry(0.35, 14, 10), gold, 0, 0.5 + h + 4.45, 0, root);
+      mesh(new THREE.BoxGeometry(w + 1.2, 0.5, depth + 2.6), mat(0xe9dcc4), 0, 0.25, 0.7, visual); // terrace
+      for (let k = 0; k < 3; k += 1) mesh(new THREE.BoxGeometry(6.4 - k * 0.6, 0.17, 0.5), mat(0xefe4cf), 0, 0.085 + k * 0.17, depth / 2 + 2.2 - k * 0.45, visual); // steps
+      mesh(new THREE.BoxGeometry(w, h, depth), wall, 0, 0.5 + h / 2, 0, visual);
+      mesh(new THREE.BoxGeometry(w + 0.4, 0.35, depth + 0.4), trim, 0, 0.5 + h, 0, visual); // cornice
+      const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.74, 2.2, 4), roofM, 0, 0.5 + h + 1.25, 0, visual); roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
+      const dome = mesh(new THREE.SphereGeometry(2.6, 28, 16, 0, TAU, 0, Math.PI / 2), mat(0x7ec4e8, { roughness: 0.4 }), 0, 0.5 + h + 1.4, 0, visual); dome.scale.y = 1.1;
+      mesh(new THREE.CylinderGeometry(2.7, 2.7, 0.5, 28), trim, 0, 0.5 + h + 1.3, 0, visual);
+      mesh(new THREE.SphereGeometry(0.35, 14, 10), gold, 0, 0.5 + h + 4.45, 0, visual);
       for (const sx of [-1, 1]) { // side towers with flags
         const tx = sx * (w / 2 + 0.6);
-        mesh(new THREE.CylinderGeometry(1.35, 1.5, h + 2.6, 18), trim, tx, 0.5 + (h + 2.6) / 2, -depth / 2 + 1.6, root);
-        mesh(new THREE.ConeGeometry(1.7, 2.4, 18), roofM, tx, 0.5 + h + 2.6 + 1.2, -depth / 2 + 1.6, root);
-        mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), mat(0x4a3828), tx, 0.5 + h + 5, -depth / 2 + 1.6, root);
-        const flag = mesh(new THREE.PlaneGeometry(0.9, 0.55), mat(sx < 0 ? 0x26272e : 0xfafafa, { side: THREE.DoubleSide }), tx + 0.45, 0.5 + h + 5.4, -depth / 2 + 1.6, root); flag.castShadow = false;
+        mesh(new THREE.CylinderGeometry(1.35, 1.5, h + 2.6, 18), trim, tx, 0.5 + (h + 2.6) / 2, -depth / 2 + 1.6, visual);
+        mesh(new THREE.ConeGeometry(1.7, 2.4, 18), roofM, tx, 0.5 + h + 2.6 + 1.2, -depth / 2 + 1.6, visual);
+        mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), mat(0x4a3828), tx, 0.5 + h + 5, -depth / 2 + 1.6, visual);
+        const flag = mesh(new THREE.PlaneGeometry(0.9, 0.55), mat(sx < 0 ? 0x26272e : 0xfafafa, { side: THREE.DoubleSide }), tx + 0.45, 0.5 + h + 5.4, -depth / 2 + 1.6, visual); flag.castShadow = false;
         solids.push({ ...at(tx, -depth / 2 + 1.6), r: 1.6 });
       }
-      for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) mesh(new THREE.CylinderGeometry(0.32, 0.36, h - 0.4, 14), trim, cx, 0.5 + (h - 0.4) / 2, depth / 2 + 1.25, root); // the colonnade
-      mesh(new THREE.BoxGeometry(12.4, 0.6, 1.4), trim, 0, 0.5 + h - 0.1, depth / 2 + 0.95, root);
-      const pediment = mesh(new THREE.CylinderGeometry(1.6, 1.6, 12.6, 3), roofM, 0, 0.5 + h + 0.75, depth / 2 + 0.95, root); pediment.rotation.set(0, 0, Math.PI / 2); pediment.scale.set(1, 1, 0.6);
-      const b = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0x26272e, { roughness: 0.35 }), -0.7, 0.5 + h + 1.3, depth / 2 + 1.6, root); b.scale.z = 0.5;
-      const ws = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0xfafafa, { roughness: 0.35 }), 0.7, 0.5 + h + 1.3, depth / 2 + 1.6, root); ws.scale.z = 0.5;
-      mesh(new THREE.BoxGeometry(2.2, 3.4, 0.1), mat(0x8a5a3b), 0, 0.5 + 1.7, depth / 2 + 0.03, root); // the big door
-      for (const sx of [-0.55, 0.55]) mesh(new THREE.SphereGeometry(0.1, 8, 6), gold, sx, 0.5 + 1.8, depth / 2 + 0.12, root);
-      for (const wx of [-5.6, -3.2, 3.2, 5.6]) for (const wy of [2.1, 4.4]) mesh(new THREE.BoxGeometry(1.1, 1.3, 0.08), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, 0.5 + wy, depth / 2 + 0.03, root);
+      for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) mesh(new THREE.CylinderGeometry(0.32, 0.36, h - 0.4, 14), trim, cx, 0.5 + (h - 0.4) / 2, depth / 2 + 1.25, visual); // the colonnade
+      mesh(new THREE.BoxGeometry(12.4, 0.6, 1.4), trim, 0, 0.5 + h - 0.1, depth / 2 + 0.95, visual);
+      const pediment = mesh(new THREE.CylinderGeometry(1.6, 1.6, 12.6, 3), roofM, 0, 0.5 + h + 0.75, depth / 2 + 0.95, visual); pediment.rotation.set(0, 0, Math.PI / 2); pediment.scale.set(1, 1, 0.6);
+      const b = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0x26272e, { roughness: 0.35 }), -0.7, 0.5 + h + 1.3, depth / 2 + 1.6, visual); b.scale.z = 0.5;
+      const ws = mesh(new THREE.SphereGeometry(0.62, 20, 14), mat(0xfafafa, { roughness: 0.35 }), 0.7, 0.5 + h + 1.3, depth / 2 + 1.6, visual); ws.scale.z = 0.5;
+      mesh(new THREE.BoxGeometry(2.2, 3.4, 0.1), mat(0x8a5a3b), 0, 0.5 + 1.7, depth / 2 + 0.03, visual); // the big door
+      for (const sx of [-0.55, 0.55]) mesh(new THREE.SphereGeometry(0.1, 8, 6), gold, sx, 0.5 + 1.8, depth / 2 + 0.12, visual);
+      for (const wx of [-5.6, -3.2, 3.2, 5.6]) for (const wy of [2.1, 4.4]) mesh(new THREE.BoxGeometry(1.1, 1.3, 0.08), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, 0.5 + wy, depth / 2 + 0.03, visual);
       sign(facility.name, root, 0.5 + h + 5.6);
       boxSolids(0, 0.7, w + 1.2, depth + 2.6);
       for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) solids.push({ ...at(cx, depth / 2 + 1.25), r: 0.4 });
@@ -310,16 +329,16 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const stone = mat(0xd8d0c2); const band = mat(0xb8ae9e); const roofM = mat(0x6f8fd8);
       let y = 0;
       for (const [r0, r1, hh] of [[3.2, 3.4, 4], [2.8, 3.1, 5], [2.4, 2.75, 5], [2.1, 2.35, 4]]) { // tapering stages with bands between
-        mesh(new THREE.CylinderGeometry(r0, r1, hh, 22), stone, 0, y + hh / 2, 0, root); y += hh;
-        mesh(new THREE.CylinderGeometry(r0 + 0.2, r0 + 0.2, 0.35, 22), band, 0, y, 0, root);
-        for (let k = 0; k < 4; k += 1) { const a = (k / 4) * TAU + Math.PI / 4 + y; mesh(new THREE.BoxGeometry(0.5, 0.9, 0.12), mat(0x3d4a63), Math.sin(a) * (r0 + 0.02), y - hh / 2, Math.cos(a) * (r0 + 0.02), root).rotation.y = a; }
+        mesh(new THREE.CylinderGeometry(r0, r1, hh, 22), stone, 0, y + hh / 2, 0, visual); y += hh;
+        mesh(new THREE.CylinderGeometry(r0 + 0.2, r0 + 0.2, 0.35, 22), band, 0, y, 0, visual);
+        for (let k = 0; k < 4; k += 1) { const a = (k / 4) * TAU + Math.PI / 4 + y; mesh(new THREE.BoxGeometry(0.5, 0.9, 0.12), mat(0x3d4a63), Math.sin(a) * (r0 + 0.02), y - hh / 2, Math.cos(a) * (r0 + 0.02), visual).rotation.y = a; }
       }
-      const ring = mesh(new THREE.TorusGeometry(2.6, 0.12, 8, 30), band, 0, y - 1.6, 0, root); ring.rotation.x = Math.PI / 2; // the balcony rail
-      mesh(new THREE.ConeGeometry(2.7, 3.6, 22), roofM, 0, y + 1.8, 0, root);
-      mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), mat(0x4a3828), 0, y + 4.6, 0, root);
-      const flag = mesh(new THREE.PlaneGeometry(1.3, 0.8), mat(0xe83c46, { side: THREE.DoubleSide }), 0.65, y + 5.3, 0, root); flag.castShadow = false;
-      mesh(new THREE.BoxGeometry(1.4, 2.3, 0.2), mat(0x6b4a33), 0, 1.15, 3.25, root); // the door
-      const arch = mesh(new THREE.TorusGeometry(0.72, 0.12, 8, 16, Math.PI), band, 0, 2.3, 3.32, root); arch.castShadow = false;
+      const ring = mesh(new THREE.TorusGeometry(2.6, 0.12, 8, 30), band, 0, y - 1.6, 0, visual); ring.rotation.x = Math.PI / 2; // the balcony rail
+      mesh(new THREE.ConeGeometry(2.7, 3.6, 22), roofM, 0, y + 1.8, 0, visual);
+      mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), mat(0x4a3828), 0, y + 4.6, 0, visual);
+      const flag = mesh(new THREE.PlaneGeometry(1.3, 0.8), mat(0xe83c46, { side: THREE.DoubleSide }), 0.65, y + 5.3, 0, visual); flag.castShadow = false;
+      mesh(new THREE.BoxGeometry(1.4, 2.3, 0.2), mat(0x6b4a33), 0, 1.15, 3.25, visual); // the door
+      const arch = mesh(new THREE.TorusGeometry(0.72, 0.12, 8, 16, Math.PI), band, 0, 2.3, 3.32, visual); arch.castShadow = false;
       sign(facility.name, root, 4.3);
       solids.push({ x, z, r: 3.5 });
     } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'townhall') {
@@ -335,91 +354,91 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
         townhall: { roof: 'hip', rise: 1.0, windows: [[-1.12, 0.6], [1.12, 0.6], [-0.6, 0.55, 'l'], [0.6, 0.55, 'l'], [-0.6, 0.55, 'r'], [0.6, 0.55, 'r']], lamp: true },
       };
       const bodyMesh = new THREE.Mesh(building({ w, d: depth, h, wall: spot.wall, roofColor: spot.roof, ...looks[facility.id] }), vcMat);
-      bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; root.add(bodyMesh);
+      bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; visual.add(bodyMesh);
       if (spot.kind === 'townhall') { // v1.10.10 관공서: two columns by the door and a flag on the roof
-        for (const px of [-0.75, 0.75]) mesh(new THREE.CylinderGeometry(0.12, 0.14, h * 0.9, 12), mat(0xfffaf0), px, h * 0.45, depth / 2 + 0.25, root);
-        mesh(new THREE.BoxGeometry(2.0, 0.14, 0.6), mat(0xfffaf0), 0, h * 0.92, depth / 2 + 0.2, root);
-        mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 8), mat(0x8a8f99), w * 0.32, h + 1.4, 0, root);
-        mesh(new THREE.PlaneGeometry(0.62, 0.4), mat(0x5fb0ff, { side: THREE.DoubleSide }), w * 0.32 + 0.32, h + 1.95, 0, root);
+        for (const px of [-0.75, 0.75]) mesh(new THREE.CylinderGeometry(0.12, 0.14, h * 0.9, 12), mat(0xfffaf0), px, h * 0.45, depth / 2 + 0.25, visual);
+        mesh(new THREE.BoxGeometry(2.0, 0.14, 0.6), mat(0xfffaf0), 0, h * 0.92, depth / 2 + 0.2, visual);
+        mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 8), mat(0x8a8f99), w * 0.32, h + 1.4, 0, visual);
+        mesh(new THREE.PlaneGeometry(0.62, 0.4), mat(0x5fb0ff, { side: THREE.DoubleSide }), w * 0.32 + 0.32, h + 1.95, 0, visual);
       }
       if (spot.kind === 'house') { // the records hall carries a trophy
-        mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.5, 0, root);
-        mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, root);
+        mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.5, 0, visual);
+        mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
       sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
       solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
-      for (const px of [-1.25, 1.25]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 10), mat(0x8a5a3b), px, 1.3, 0, root);
-      mesh(new THREE.BoxGeometry(2.8, 1.6, 0.16), mat(spot.tint || 0xc58b5a), 0, 1.75, 0, root);
-      mesh(new THREE.BoxGeometry(3.1, 0.18, 0.4), mat(0x8a5a3b), 0, 2.65, 0, root);
+      for (const px of [-1.25, 1.25]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 10), mat(0x8a5a3b), px, 1.3, 0, visual);
+      mesh(new THREE.BoxGeometry(2.8, 1.6, 0.16), mat(spot.tint || 0xc58b5a), 0, 1.75, 0, visual);
+      mesh(new THREE.BoxGeometry(3.1, 0.18, 0.4), mat(0x8a5a3b), 0, 2.65, 0, visual);
       const paper = [0xffffff, 0xfff3b0, 0xd7f0ff, 0xffd9e6];
       for (let k = 0; k < 5; k += 1) {
-        const p = mesh(new THREE.PlaneGeometry(0.55, 0.5), mat(paper[k % 4]), -0.95 + k * 0.47, 1.7 + (k % 2 ? 0.25 : -0.2), 0.09, root);
+        const p = mesh(new THREE.PlaneGeometry(0.55, 0.5), mat(paper[k % 4]), -0.95 + k * 0.47, 1.7 + (k % 2 ? 0.25 : -0.2), 0.09, visual);
         p.rotation.z = (k % 2 ? 1 : -1) * 0.06; p.castShadow = false;
       }
       sign(facility.name, root, 3.4);
       solids.push({ x, z, r: 1.5 });
     } else if (spot.kind === 'donation') { // v1.10.5 기부함: a wooden chest with a coin slot and a gold band
       depth = 0.9;
-      mesh(new THREE.BoxGeometry(1.2, 0.9, 0.8), mat(0xa06a3f), 0, 0.45, 0, root);
-      mesh(new THREE.BoxGeometry(1.26, 0.12, 0.86), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, 0.6, 0, root);
-      const lid = mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16, 1, false, 0, Math.PI), mat(0x8a5a3b), 0, 0.9, 0, root); lid.rotation.z = Math.PI / 2;
-      mesh(new THREE.BoxGeometry(0.42, 0.04, 0.08), mat(0x2b2220), 0, 1.31, 0, root); // the slot
-      mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.04, 16), mat(0xffd23f, { metalness: 0.6, roughness: 0.3 }), 0.3, 1.32, 0.1, root).rotation.x = 0.4;
+      mesh(new THREE.BoxGeometry(1.2, 0.9, 0.8), mat(0xa06a3f), 0, 0.45, 0, visual);
+      mesh(new THREE.BoxGeometry(1.26, 0.12, 0.86), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, 0.6, 0, visual);
+      const lid = mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16, 1, false, 0, Math.PI), mat(0x8a5a3b), 0, 0.9, 0, visual); lid.rotation.z = Math.PI / 2;
+      mesh(new THREE.BoxGeometry(0.42, 0.04, 0.08), mat(0x2b2220), 0, 1.31, 0, visual); // the slot
+      mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.04, 16), mat(0xffd23f, { metalness: 0.6, roughness: 0.3 }), 0.3, 1.32, 0.1, visual).rotation.x = 0.4;
       sign(facility.name, root, 2.3);
       solids.push({ x, z, r: 0.95 });
     } else if (spot.kind === 'mapboard') { // v1.10.0 안내 지도: the island drawn on a board, with where I am
       depth = 0.3;
-      for (const px of [-1.5, 1.5]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.8, 10), mat(0x8a5a3b), px, 1.4, 0, root);
-      mesh(new THREE.BoxGeometry(3.3, 2.5, 0.14), mat(0x8a5a3b), 0, 1.85, 0, root);
-      const face = mesh(new THREE.PlaneGeometry(3, 2.2), new THREE.MeshBasicMaterial({ map: mapTexture }), 0, 1.85, 0.08, root); face.castShadow = false;
-      const roofBar = mesh(new THREE.BoxGeometry(3.6, 0.16, 0.5), mat(0x6b4f3a), 0, 3.18, 0, root); roofBar.rotation.x = 0.1;
+      for (const px of [-1.5, 1.5]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.8, 10), mat(0x8a5a3b), px, 1.4, 0, visual);
+      mesh(new THREE.BoxGeometry(3.3, 2.5, 0.14), mat(0x8a5a3b), 0, 1.85, 0, visual);
+      const face = mesh(new THREE.PlaneGeometry(3, 2.2), new THREE.MeshBasicMaterial({ map: mapTexture }), 0, 1.85, 0.08, visual); face.castShadow = false;
+      const roofBar = mesh(new THREE.BoxGeometry(3.6, 0.16, 0.5), mat(0x6b4f3a), 0, 3.18, 0, visual); roofBar.rotation.x = 0.1;
       sign(facility.name, root, 3.8);
       solids.push({ x, z, r: 1.7 });
     } else if (spot.kind === 'gate') { // v1.9.4: a stone gate in front of a little mountain with a flag on top
       depth = 1.2;
       const stone = mat(0xb8b0a4);
-      for (const px of [-1.4, 1.4]) mesh(new THREE.BoxGeometry(0.55, 2.6, 0.7), stone, px, 1.3, 0, root);
-      mesh(new THREE.BoxGeometry(3.6, 0.5, 0.85), mat(0x8a6a4a), 0, 2.85, 0, root);
-      const hill = mesh(new THREE.ConeGeometry(2.6, 4.2, 7), mat(0x7cb46a), 0, 2.1, -2.3, root); hill.rotation.y = 0.3;
-      mesh(new THREE.ConeGeometry(0.9, 0.9, 7), mat(0xf4f7fb), 0, 3.95, -2.3, root); // snow cap
-      mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), mat(0x4a3828), 0, 4.75, -2.3, root);
-      const flag = mesh(new THREE.PlaneGeometry(0.6, 0.38), mat(0xe83c46, { side: THREE.DoubleSide }), 0.3, 5.1, -2.3, root); flag.castShadow = false;
+      for (const px of [-1.4, 1.4]) mesh(new THREE.BoxGeometry(0.55, 2.6, 0.7), stone, px, 1.3, 0, visual);
+      mesh(new THREE.BoxGeometry(3.6, 0.5, 0.85), mat(0x8a6a4a), 0, 2.85, 0, visual);
+      const hill = mesh(new THREE.ConeGeometry(2.6, 4.2, 7), mat(0x7cb46a), 0, 2.1, -2.3, visual); hill.rotation.y = 0.3;
+      mesh(new THREE.ConeGeometry(0.9, 0.9, 7), mat(0xf4f7fb), 0, 3.95, -2.3, visual); // snow cap
+      mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), mat(0x4a3828), 0, 4.75, -2.3, visual);
+      const flag = mesh(new THREE.PlaneGeometry(0.6, 0.38), mat(0xe83c46, { side: THREE.DoubleSide }), 0.3, 5.1, -2.3, visual); flag.castShadow = false;
       sign(facility.name, root, 3.6);
       solids.push({ x: x - Math.sin(root.rotation.y) * 2.3, z: z - Math.cos(root.rotation.y) * 2.3, r: 2.4 });
       for (const px of [-1.4, 1.4]) solids.push({ x: x + Math.cos(root.rotation.y) * px, z: z - Math.sin(root.rotation.y) * px, r: 0.45 });
     } else if (spot.kind === 'gazebo') { // a small round gazebo with a bench inside
       depth = 2.4;
-      for (let k = 0; k < 6; k += 1) { const a = (k * TAU) / 6; mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8), mat(0xffffff), Math.cos(a) * 1.4, 1.1, Math.sin(a) * 1.4, root); }
-      mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.15, 24), mat(0xe8d8bf), 0, 0.08, 0, root);
-      mesh(new THREE.ConeGeometry(1.95, 1.1, 24), mat(0x7cc4b5), 0, 2.75, 0, root);
-      mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.4, 20), mat(0xc58b5a), 0, 0.35, 0, root);
+      for (let k = 0; k < 6; k += 1) { const a = (k * TAU) / 6; mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8), mat(0xffffff), Math.cos(a) * 1.4, 1.1, Math.sin(a) * 1.4, visual); }
+      mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.15, 24), mat(0xe8d8bf), 0, 0.08, 0, visual);
+      mesh(new THREE.ConeGeometry(1.95, 1.1, 24), mat(0x7cc4b5), 0, 2.75, 0, visual);
+      mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.4, 20), mat(0xc58b5a), 0, 0.35, 0, visual);
       if (!facility.decor) sign(facility.name, root, 3.9);
       solids.push({ x, z, r: 1.7 });
     } else if (spot.kind === 'npc') { // the attendance keeper: a friendly villager next to a stamp stand
       depth = 0.9;
       const npc = makeCharacter({ shirt: 0xffb86b, hair: 0x5b3a29, skin: 0xffdcbc, hat: 0x6bc4a6 });
-      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
-      mesh(new THREE.BoxGeometry(1.0, 0.95, 0.7), mat(0xc58b5a), 0.7, 0.48, 0, root);
-      mesh(new THREE.BoxGeometry(1.1, 0.08, 0.8), mat(0xffe9b8), 0.7, 0.99, 0, root);
-      mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 16), mat(0xe2574c), 0.7, 1.12, 0, root);
+      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      mesh(new THREE.BoxGeometry(1.0, 0.95, 0.7), mat(0xc58b5a), 0.7, 0.48, 0, visual);
+      mesh(new THREE.BoxGeometry(1.1, 0.08, 0.8), mat(0xffe9b8), 0.7, 0.99, 0, visual);
+      mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 16), mat(0xe2574c), 0.7, 1.12, 0, visual);
       sign(facility.name, root, 2.9);
       solids.push({ x, z, r: 1.2 });
       npcs.push(npc);
     } else if (spot.kind === 'stall') { // v1.10.10 상점가 상인: a trader behind a market stall with crates of produce
       depth = 1.3;
       const npc = makeCharacter({ shirt: 0x6bbf73, hair: 0x6b4a2b, skin: 0xffdcbc, hat: 0xf2c14e });
-      npc.root.position.set(0, 0, -0.85); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      npc.root.position.set(0, 0, -0.85); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       const wood = mat(0xb07a4f);
-      mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), wood, 0, 0.45, 0.1, root); // the counter
+      mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), wood, 0, 0.45, 0.1, visual); // the counter
       for (const [lx, color] of [[-0.6, 0x8fd16b], [0, 0xe2574c], [0.6, 0xc9a27a]]) { // herbs, berries, mushrooms
-        mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), mat(0xc58b5a), lx, 0.99, 0.1, root);
-        for (let k = 0; k < 4; k += 1) mesh(new THREE.SphereGeometry(0.08, 8, 6), mat(color), lx - 0.12 + (k % 2) * 0.24, 1.12, 0.0 + Math.floor(k / 2) * 0.2, root);
+        mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), mat(0xc58b5a), lx, 0.99, 0.1, visual);
+        for (let k = 0; k < 4; k += 1) mesh(new THREE.SphereGeometry(0.08, 8, 6), mat(color), lx - 0.12 + (k % 2) * 0.24, 1.12, 0.0 + Math.floor(k / 2) * 0.2, visual);
       }
-      for (const px of [-0.95, 0.95]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 8), wood, px, 1.15, -0.25, root);
+      for (const px of [-0.95, 0.95]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 8), wood, px, 1.15, -0.25, visual);
       for (let k = 0; k < 5; k += 1) { // a striped awning over the stall
-        const strip = mesh(new THREE.BoxGeometry(0.42, 0.06, 1.3), mat(k % 2 ? 0xffffff : 0x6bbf73), -0.84 + k * 0.42, 2.25, 0.05, root);
+        const strip = mesh(new THREE.BoxGeometry(0.42, 0.06, 1.3), mat(k % 2 ? 0xffffff : 0x6bbf73), -0.84 + k * 0.42, 2.25, 0.05, visual);
         strip.rotation.x = 0.22;
       }
       sign(facility.name, root, 3.0);
@@ -428,20 +447,21 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;
       const npc = makeCharacter({ shirt: 0x3f5f8f, hair: 0xd9d4cc, skin: 0xffdcbc, hat: 0x2b2b2b });
-      npc.root.position.set(0, 0, -0.75); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      npc.root.position.set(0, 0, -0.75); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       const wood = mat(0xb07a4f);
-      mesh(new THREE.BoxGeometry(1.6, 0.07, 0.8), wood, 0, 0.78, 0.1, root); // the desk top
-      for (const [lx, lz] of [[-0.7, -0.22], [0.7, -0.22], [-0.7, 0.42], [0.7, 0.42]]) mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.76, 8), wood, lx, 0.38, lz, root);
-      mesh(new THREE.BoxGeometry(0.62, 0.012, 0.42), mat(0xfffaf0), -0.15, 0.82, 0.15, root); // a sheet of paper
-      mesh(new THREE.BoxGeometry(0.22, 0.05, 0.16), mat(0x2b2b2b), 0.48, 0.835, 0.05, root); // the ink stone
-      const brush = mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.34, 8), mat(0x8a5a3b), 0.25, 0.84, 0.3, root); brush.rotation.z = Math.PI / 2;
-      const pole = mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8), mat(0x8a5a3b), 0.95, 1.1, -0.35, root);
+      mesh(new THREE.BoxGeometry(1.6, 0.07, 0.8), wood, 0, 0.78, 0.1, visual); // the desk top
+      for (const [lx, lz] of [[-0.7, -0.22], [0.7, -0.22], [-0.7, 0.42], [0.7, 0.42]]) mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.76, 8), wood, lx, 0.38, lz, visual);
+      mesh(new THREE.BoxGeometry(0.62, 0.012, 0.42), mat(0xfffaf0), -0.15, 0.82, 0.15, visual); // a sheet of paper
+      mesh(new THREE.BoxGeometry(0.22, 0.05, 0.16), mat(0x2b2b2b), 0.48, 0.835, 0.05, visual); // the ink stone
+      const brush = mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.34, 8), mat(0x8a5a3b), 0.25, 0.84, 0.3, visual); brush.rotation.z = Math.PI / 2;
+      const pole = mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8), mat(0x8a5a3b), 0.95, 1.1, -0.35, visual);
       pole.castShadow = false;
-      const cloth = mesh(new THREE.PlaneGeometry(0.42, 1.1), mat(0xfff3d6, { side: THREE.DoubleSide }), 0.95, 1.5, -0.33, root); cloth.position.x = 0.73;
+      const cloth = mesh(new THREE.PlaneGeometry(0.42, 1.1), mat(0xfff3d6, { side: THREE.DoubleSide }), 0.95, 1.5, -0.33, visual); cloth.position.x = 0.73;
       sign(facility.name, root, 2.7);
       solids.push({ ...at(0, 0.1), r: 0.95 }, { ...at(0, -0.75), r: 0.45 });
       npcs.push(npc);
     }
+    assets.attach(`facility.${facility.id}`, root, visual);
     const reach = depth / 2 + 1.3;
     const out = Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps
     if (!facility.decor) doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
@@ -480,18 +500,20 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const door = look.door || 0; const side = door > 0 ? -1 : 1; const ww = look.w / 2 - 0.62;
     const windows = door ? [[side * ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r'], [0, 0.58, 'b']] : [[-ww, 0.6], [ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']];
     const g = new THREE.Group(); const y0 = heightAt(c.x, c.z); g.position.set(c.x, y0, c.z); g.rotation.y = Math.atan2(c.face[0] - c.x, c.face[1] - c.z); scene.add(g);
-    const body = new THREE.Mesh(building({ ...look, windows }), vcMat); body.castShadow = true; body.receiveShadow = true; g.add(body);
+    const visual = new THREE.Group(); g.add(visual); // v1.10.15: the look only; the solids below stay the house's
+    const body = new THREE.Mesh(building({ ...look, windows }), vcMat); body.castShadow = true; body.receiveShadow = true; visual.add(body);
     // the yard: a mailbox by the way out, a short fence along each side, stepping stones to the walk
     const toWalk = Math.hypot(c.face[0] - c.x, c.face[1] - c.z) - 1.6;
     const yard = [['mailbox', look.w / 2 + 0.5, look.d / 2 + 1.5, 0, c.style % 2], ['fence', -look.w / 2 - 0.9, 0.4, Math.PI / 2, look.d + 1.6], ['fence', look.w / 2 + 0.9, -0.6, Math.PI / 2, look.d - 0.4]];
     if (!look.planters) yard.push(['planter', -look.w / 2 + 0.2, look.d / 2 + 0.9, 0, c.style]);
-    const yardGeo = props(yard); const yardMesh = new THREE.Mesh(yardGeo, vcMat); yardMesh.castShadow = true; yardMesh.receiveShadow = true; g.add(yardMesh);
+    const yardGeo = props(yard); const yardMesh = new THREE.Mesh(yardGeo, vcMat); yardMesh.castShadow = true; yardMesh.receiveShadow = true; visual.add(yardMesh);
     const stones = [];
     for (let z = look.d / 2 + 0.95; z < toWalk; z += 0.8) {
       const wx = c.x + Math.sin(g.rotation.y) * z + Math.cos(g.rotation.y) * door; const wz = c.z + Math.cos(g.rotation.y) * z - Math.sin(g.rotation.y) * door;
       stones.push(part(STONE, 0xddd5c6, door + Math.sin(z * 3.1) * 0.12, heightAt(wx, wz) - y0 + 0.03, z, { ry: z, sx: 0.62, sy: 0.08, sz: 0.5 }));
     }
-    if (stones.length) { const st = new THREE.Mesh(mergeColored(stones), vcMat); st.receiveShadow = true; g.add(st); }
+    if (stones.length) { const st = new THREE.Mesh(mergeColored(stones), vcMat); st.receiveShadow = true; visual.add(st); }
+    assets.attach([`cottage.${c.style % COTTAGE_LOOKS.length}`, 'cottage'], g, visual);
     // walked around: the house, the two fences and the mailbox
     const local = (lx, lz) => ({ x: c.x + Math.cos(g.rotation.y) * lx + Math.sin(g.rotation.y) * lz, z: c.z - Math.sin(g.rotation.y) * lx + Math.cos(g.rotation.y) * lz });
     for (let lx = -look.w / 2 + 0.7; lx <= look.w / 2 - 0.69; lx += 0.75) for (let lz = -look.d / 2 + 0.7; lz <= look.d / 2 - 0.69; lz += 0.75) solids.push({ ...local(lx, lz), r: 0.95 });
@@ -525,12 +547,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   let me = makeCharacter(ME_BASE);
   me.root.position.set(SPAWN.x + (Math.random() - 0.5) * 3, 0, SPAWN.z + Math.random() * 0.8); // the plaza, a little apart from whoever arrived just before
   me.root.position.y = heightAt(me.root.position.x, me.root.position.z);
-  scene.add(me.root);
+  scene.add(me.root); assets.dress('character.player', me);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
   function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
-    disposeCharacter(old); scene.add(me.root);
+    disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me);
     if (name) { me.tag = makeTag(name, title, champion, hoguking); me.tag.position.y = 2.75; me.root.add(me.tag); }
     me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
@@ -549,12 +571,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root);
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root); assets.dress('character.player', o.c);
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root);
+        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root); assets.dress('character.player', c);
         o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: SPEED * 1.6 }) }; others.set(p.id, o);
       }
       // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
@@ -743,7 +765,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
         let npc = null;
         if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
           npc = makeCharacter(ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 });
-          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
+          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc);
           if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
           npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.6; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
@@ -779,7 +801,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     if (!IslandNpcs) return;
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
       const r = IslandNpcs.round(n);
-      const c = makeCharacter(r.look); scene.add(c.root);
+      const c = makeCharacter(r.look); scene.add(c.root); assets.dress('character.islander', c);
       wanderers.push({ n, c, f: createFollower({ maxSpeed: 4 }) });
     }
   }, 400);
@@ -915,6 +937,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
   }
   // A slow PC steps the picture down instead of stuttering: first a lower pixel ratio, then no shadows.
+  // v1.10.15 tiers: 2 high (pixel ratio up to 1.5, shadows, registered LOD distances), 1 medium (pixel ratio 1, LOD
+  // switches nearer), 0 low (no shadows, nearer still) -- the model LOD part is asset-pipeline.js `lodDistance`.
   let quality = 2; let slowTime = 0; let sampled = 0;
   function adaptQuality(dt) {
     if (quality === 0) return;
@@ -924,6 +948,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       quality -= 1;
       if (quality === 1) renderer.setPixelRatio(1);
       else { renderer.shadowMap.enabled = false; sun.castShadow = false; mats.forEach((m) => { m.needsUpdate = true; }); }
+      assets.setQuality(quality);
       resize();
     }
     sampled = 0; slowTime = 0;
@@ -979,6 +1004,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const turn = angleTo(yaw, target);
     const rate = Math.min(1, dt * 12);
     c.root.rotation.y = yaw + turn * rate;
+    if (c.anim) { c.anim.update(dt, speed); return; } // v1.10.15: a registered model -- Idle/Walk/Run from the same speed
     c.roll += (THREE.MathUtils.clamp(-turn * 0.25, -0.18, 0.18) - c.roll) * Math.min(1, dt * 10); // lean into a turn
     c.gait = (c.gait || 0) + (Math.min(1.7, Math.max(0, speed) / SPEED) - (c.gait || 0)) * Math.min(1, dt * 7);
     const walk = Math.min(1, c.gait); const run = Math.max(0, Math.min(1, (c.gait - 1.1) / 0.5));
@@ -1015,6 +1041,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
+    assets.dispose();
     for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
@@ -1033,7 +1060,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, assets: assets.debug(), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
