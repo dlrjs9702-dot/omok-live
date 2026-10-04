@@ -16,6 +16,7 @@ const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart th
 // v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
 // loaded before the app like island-terrain.js)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
+const IslandNpcs = globalThis.IslandNpcs; // v1.10.12 배회 NPC (public/plaza/island-npcs.js)
 
 export function createPlaza(host, { facilities, onInteract, onNear, blocked, startAt }) {
   let renderer;
@@ -726,6 +727,40 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   }
   const doorOf = (id) => doors[id] || eventDoors[id];
 
+  // v1.10.12 배회 NPC: islanders strolling between stopping places on the walks. Where each is comes from the shared
+  // round (island-npcs.js) at the server's clock, so every screen agrees and nothing is sent; the drawing goes through
+  // the same follower as other people (remote-motion.js), which also lets one step around me instead of through me.
+  const wanderers = []; // { n, c, f }
+  let serverOffset = 0; let clockRtt = Infinity; // server ms minus my ms, from the quickest answer seen
+  function setServerTime(serverMs, sentAt, receivedAt) {
+    const rtt = receivedAt - sentAt;
+    if (!Number.isFinite(serverMs) || rtt < 0 || rtt > clockRtt * 1.5 + 50) return;
+    clockRtt = Math.min(clockRtt, rtt); serverOffset = serverMs + rtt / 2 - receivedAt;
+  }
+  const wanderersTimer = setTimeout(() => { // after the first frames: the islanders' map takes a moment to work out
+    if (!IslandNpcs) return;
+    for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
+      const r = IslandNpcs.round(n);
+      const c = makeCharacter(r.look); scene.add(c.root);
+      wanderers.push({ n, c, f: createFollower({ maxSpeed: 4 }) });
+    }
+  }, 400);
+  function stepWanderers(dt) {
+    const now = Date.now() + serverOffset; const m = me.root.position;
+    for (const w of wanderers) {
+      const at = IslandNpcs.at(w.n, now); const f = w.f;
+      f.step(at, dt);
+      const dx = f.x - m.x; const dz = f.z - m.z; const d = Math.hypot(dx, dz); const min = PLAYER_R * 2;
+      if (d < min) { const ux = d > 1e-4 ? dx / d : 1; const uz = d > 1e-4 ? dz / d : 0; f.nudge(m.x + ux * min, m.z + uz * min); } // around me, not through
+      const p = w.c.root.position; p.set(f.x, heightAt(f.x, f.z), f.z);
+      w.c.root.visible = Math.hypot(f.x - m.x, f.z - m.z) < 85;
+      if (!w.c.root.visible) continue;
+      w.c.targetYaw = f.speed > 0.4 && f.heading != null ? f.heading : at.yaw;
+      w.c.lookAt = at.moving ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      animate(w.c, dt, f.speed > 0.3, f.speed);
+    }
+  }
+
   let near = null; let nearName = null;
   function interact(id) {
     keys.clear();
@@ -746,6 +781,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   function otherCircles() {
     const out = [];
     for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
+    for (const w of wanderers) if (w.c.root.visible) out.push({ x: w.f.x, z: w.f.z, r: PLAYER_R }); // v1.10.12: and the islanders
     for (const o of others.values()) {
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
@@ -870,6 +906,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     }
     animate(me, dt, moving);
     stepOthers(dt);
+    stepWanderers(dt);
     const now = performance.now(); stepBubble(me, now); for (const o of others.values()) stepBubble(o.c, now);
     for (const npc of npcs) { // the keeper turns to a player who comes close and waves
       const close = near === npc.home.id;
@@ -937,9 +974,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
 
   function start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); }
   function stop() { running = false; cancelAnimationFrame(raf); keys.clear(); }
+  const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
-    for (const o of others.values()) disposeCharacter(o.c); others.clear();
+    for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
     renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
@@ -959,7 +997,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
@@ -968,5 +1006,5 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const setStatuesPublic = (list) => setStatues(list);
   const setEventsPublic = (list) => setEvents(list);
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime };
 }

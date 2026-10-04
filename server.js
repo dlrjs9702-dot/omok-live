@@ -3264,7 +3264,7 @@ async function requestHandler(req, res) {
     });
     plazaDirty = true;
     const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: islandEvents.nearby(spot.x, spot.z, account) }); // v1.10.11: the events near me
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: islandEvents.nearby(spot.x, spot.z, account), now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
