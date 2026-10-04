@@ -1475,7 +1475,7 @@
       plaza.controller = mod.createPlaza(plazaStage, {
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => PLAZA_FACILITIES.find((f) => f.id === id)?.open(),
+        onInteract: (id) => (id.startsWith('ev:') ? solveIslandEvent(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1569,6 +1569,39 @@
     if (event.target !== document.body && event.target !== plazaStage) return;
     event.preventDefault(); openIslandBag();
   });
+
+  // v1.10.11 공용 이벤트: what lies near me (from each pose answer), less what was just solved by anyone (the lobby
+  // stream says so at once; a pose answer already on its way must not bring it back).
+  let islandEventsNear = []; const islandEventsGone = new Map(); // id -> when it was removed
+  function showIslandEvents(list) {
+    const now = Date.now();
+    for (const [id, at] of islandEventsGone) if (now - at > 60000) islandEventsGone.delete(id);
+    islandEventsNear = list.filter((ev) => !islandEventsGone.has(ev.id));
+    plaza.controller?.setEvents?.(islandEventsNear);
+  }
+  function forgetIslandEvents(ids) {
+    for (const id of ids || []) islandEventsGone.set(id, Date.now());
+    showIslandEvents(islandEventsNear);
+  }
+  let islandEventBusy = false;
+  async function solveIslandEvent(key) {
+    const id = key.split(':')[2];
+    if (!id || islandEventBusy) return;
+    islandEventBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
+      if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id }) });
+      if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
+      else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P`);
+      if (data.points) loadPoints();
+      if (data.action !== 'pickup') islandEventsGone.set(id, Date.now());
+      showIslandEvents(data.events || islandEventsNear);
+    } catch (error) {
+      showToast(error.message);
+      if (error.status === 409 && /사라졌/.test(error.message)) forgetIslandEvents([id]);
+    } finally { islandEventBusy = false; }
+  }
 
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 100,000P on a second press that names the
   // price, then 24 hours before the next change. One request id per name until the server answers (a retry after a
@@ -1723,6 +1756,7 @@
       .then((data) => {
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
+        if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
       })
       .catch(() => {}).finally(() => { plazaSending = false; });
   }
@@ -3706,6 +3740,7 @@
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'plaza') { plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };

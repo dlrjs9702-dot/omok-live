@@ -38,7 +38,8 @@ const { toastLines, weeklyToastLines } = require('./lib/missions');
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
-const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리 // v1.10.7: the island's shape, shared with the browser
+const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
+const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
@@ -802,6 +803,19 @@ const plazaTicker = setInterval(() => {
   }
 }, PLAZA_TICK_MS);
 plazaTicker.unref?.();
+
+// v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
+// the events near them (with each pose answer), so no screen holds the whole island's list; when one is solved every
+// screen is told at once to drop it (the lobby stream), and a new one appears elsewhere.
+const islandEvents = createIslandEvents({ now: () => nowMs() });
+function broadcastIslandRemoved(ids) {
+  if (!ids.length) return;
+  for (const entry of [...lobbyStreams]) {
+    try { sseWrite(entry.res, 'islandEvent', { removed: ids }); } catch { lobbyStreams.delete(entry); }
+  }
+}
+const islandEventTimer = setInterval(() => broadcastIslandRemoved(islandEvents.expire()), 30000);
+islandEventTimer.unref?.();
 
 // v1.10.9 작명소: what a nickname may be and when two are the same (every space removed). One change at a time on this
 // server, so two people can never take the same new name at once.
@@ -3250,7 +3264,7 @@ async function requestHandler(req, res) {
     });
     plazaDirty = true;
     const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected });
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: islandEvents.nearby(spot.x, spot.z, account) }); // v1.10.11: the events near me
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -3351,11 +3365,46 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     const account = pointAccountForSession(session);
-    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place }, nowMs());
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+  }
+  // v1.10.11 공용 이벤트: solving one (standing at it). Taking it is decided at once (two players can never both get
+  // it); the bag or the points follow, and if they cannot (a full bag, today's limit) the event stays for anyone.
+  if (pathname === '/api/island/event' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-event:${session.token}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
+    if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const account = pointAccountForSession(session);
+    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+    if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (claimed.error) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
+    let outcome;
+    try {
+      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null });
+      else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
+    } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
+    if (outcome.reason) {
+      islandEvents.settle(claimed, false, account);
+      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+      if (outcome.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
+      return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
+    }
+    const done = islandEvents.settle(claimed, true, account);
+    if (done?.removed) broadcastIslandRemoved([done.removed]);
+    if (claimed.points) notifyPointsChanged([account]);
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    return sendJson(res, 200, { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
+      points: claimed.points || 0, balance: outcome.balance ?? null, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
+  }
+  // Test-only: every event (tests walk to one), and a fresh set.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
+    return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/give' && req.method === 'POST') {
     const session = requireSession(req, res);

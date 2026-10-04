@@ -232,12 +232,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const minimap = document.createElement('canvas'); minimap.className = 'islandMinimap'; minimap.width = 176; minimap.height = 176;
   minimap.setAttribute('role', 'img'); minimap.setAttribute('aria-label', '미니맵');
   host.append(minimap);
-  let minimapAt = 0; let minimapTurn = 0; let mapMarkers = []; // markers: future nearby events (none yet)
+  let minimapAt = 0; let minimapTurn = 0; let minimapShown = 0; let mapMarkers = []; // markers: the events near me (v1.10.11)
   function refreshMinimap(now) {
     if (now - minimapAt < 120) return;
     minimapAt = now;
     const places = Object.entries(doors).map(([, d]) => ({ x: d.x, z: d.z, name: d.name }));
-    minimapTurn = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, mapMarkers);
+    ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, mapMarkers));
   }
 
   // The map board's picture (redrawn as I walk; the window version draws into the caller's canvas).
@@ -660,10 +660,76 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   renderer.domElement.addEventListener('click', onClick);
   renderer.domElement.addEventListener('pointermove', onMove);
 
-  let near = null;
+  // v1.10.11 공용 이벤트: what the server says lies near me -- a small object (or an NPC) at each, a short 「SPACE · 줍기」
+  // when I stand by it, a click on it does the same, and a 「!」 on the minimap. Keys: `ev:<kind>:<id>`.
+  const eventDoors = {}; // key -> { x, z, name } (only what I can act on)
+  const eventObjs = new Map(); // key -> { root, npc }
+  const EVENT_REACH = 1.9;
+  function eventModel(kind, root) {
+    const add = (geo, color, x, y, z, extra) => mesh(geo, mat(color, extra), x, y, z, root);
+    if (kind === 'beach_trash' || kind === 'grass_trash') {
+      const can = add(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 10), 0xc9d1d9, 0, 0.1, 0); can.rotation.z = Math.PI / 2;
+      add(new THREE.DodecahedronGeometry(0.14), 0xf3f0e8, 0.25, 0.1, 0.15);
+      const bottle = add(new THREE.CylinderGeometry(0.06, 0.08, 0.32, 10), kind === 'beach_trash' ? 0x6fc3a8 : 0x9aa5b1, -0.22, 0.08, -0.1); bottle.rotation.set(Math.PI / 2, 0, 0.6);
+    } else if (kind === 'herb') {
+      for (let k = 0; k < 5; k += 1) { const leaf = add(new THREE.ConeGeometry(0.06, 0.42, 5), 0x4fbf6a, Math.cos(k * 1.26) * 0.09, 0.2, Math.sin(k * 1.26) * 0.09); leaf.rotation.set(Math.sin(k) * 0.4, 0, Math.cos(k) * 0.4); }
+      add(new THREE.SphereGeometry(0.07, 10, 8), 0xd9fbe4, 0, 0.45, 0, { emissive: 0x8ff0b0, emissiveIntensity: 0.8 });
+    } else if (kind === 'berry') {
+      add(new THREE.SphereGeometry(0.32, 8, 6), 0x5aa94f, 0, 0.3, 0);
+      for (let k = 0; k < 7; k += 1) add(new THREE.SphereGeometry(0.07, 8, 6), 0xd83a4a, Math.cos(k) * 0.26, 0.3 + Math.sin(k * 2) * 0.12, Math.sin(k) * 0.26);
+    } else if (kind === 'mushroom') {
+      for (const [mx, mz, s] of [[0, 0, 1], [0.22, 0.12, 0.7], [-0.18, 0.15, 0.6]]) {
+        add(new THREE.CylinderGeometry(0.04 * s, 0.05 * s, 0.18 * s, 8), 0xf6efe0, mx, 0.09 * s, mz);
+        add(new THREE.SphereGeometry(0.13 * s, 12, 8, 0, TAU, 0, Math.PI / 2), 0xd8453a, mx, 0.17 * s, mz);
+      }
+    } else if (kind === 'coin') {
+      const coin = add(new THREE.CylinderGeometry(0.16, 0.16, 0.035, 18), 0xf6c945, 0, 0.35, 0, { metalness: 0.6, roughness: 0.3, emissive: 0x6b4d00, emissiveIntensity: 0.25 });
+      coin.rotation.x = Math.PI / 2; root.userData.spin = coin;
+    } else if (kind === 'wallet') {
+      add(new THREE.BoxGeometry(0.34, 0.06, 0.24), 0x7a4b2a, 0, 0.04, 0);
+      add(new THREE.BoxGeometry(0.34, 0.02, 0.1), 0x5e3920, 0, 0.08, 0.07);
+    } else if (kind === 'lost_item') { // a little teddy bear
+      add(new THREE.SphereGeometry(0.16, 12, 10), 0xc68a55, 0, 0.16, 0);
+      add(new THREE.SphereGeometry(0.12, 12, 10), 0xc68a55, 0, 0.38, 0);
+      for (const ex of [-0.08, 0.08]) add(new THREE.SphereGeometry(0.045, 8, 6), 0xa86f3f, ex, 0.48, 0);
+    }
+  }
+  function setEvents(list) {
+    const seen = new Set();
+    for (const ev of list || []) {
+      if (!ev?.id || !Number.isFinite(ev.x) || !Number.isFinite(ev.z)) continue;
+      const key = `ev:${ev.kind}:${ev.id}`; seen.add(key);
+      if (!eventObjs.has(key)) {
+        const root = new THREE.Group(); root.position.set(ev.x, heightAt(ev.x, ev.z), ev.z); root.rotation.y = (ev.x * 7 + ev.z * 3) % TAU; scene.add(root);
+        let npc = null;
+        if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
+          npc = makeCharacter(ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 });
+          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
+          if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
+          npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.6; npc.root.add(npc.tag); // what they want, at a glance
+          npcs.push(npc);
+        } else eventModel(ev.kind, root);
+        root.userData.facility = key; facilityRoots.push(root);
+        eventObjs.set(key, { root, npc });
+      }
+      if (ev.verb) eventDoors[key] = { x: ev.x, z: ev.z, name: ev.verb }; else delete eventDoors[key];
+    }
+    for (const [key, o] of eventObjs) {
+      if (seen.has(key)) continue;
+      scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);
+      if (o.npc) { npcs.splice(npcs.indexOf(o.npc), 1); disposeCharacter(o.npc); }
+      o.root.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
+      eventObjs.delete(key); delete eventDoors[key];
+    }
+    mapMarkers = [...eventObjs.keys()].filter((key) => eventDoors[key] || key.startsWith('ev:lost_item:')).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }));
+    minimapAt = 0;
+  }
+  const doorOf = (id) => doors[id] || eventDoors[id];
+
+  let near = null; let nearName = null;
   function interact(id) {
     keys.clear();
-    const door = doors[id];
+    const door = doorOf(id);
     if (door) me.targetYaw = Math.atan2(door.x - me.root.position.x, door.z - me.root.position.z); // turn to face it
     me.hop = 1;
     onInteract?.(id);
@@ -679,6 +745,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // function so a spatial grid can replace the plain loop if the plaza ever holds many people.
   function otherCircles() {
     const out = [];
+    for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
     for (const o of others.values()) {
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
@@ -816,8 +883,13 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < bestD) { best = id; bestD = d; }
     }
-    if (best !== near) { near = best; onNear?.(near ? { id: near, name: doors[near].name } : null); }
-    me.lookAt = near ? Math.atan2(doors[near].x - me.root.position.x, doors[near].z - me.root.position.z) : null;
+    for (const [id, door] of Object.entries(eventDoors)) { // v1.10.11: an event right by me comes first
+      const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
+      if (d < EVENT_REACH && d < bestD + 1) { best = id; bestD = d - 1; }
+    }
+    if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName } : null); }
+    me.lookAt = near ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
+    for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { spin.rotation.z = clock * 2.4; spin.position.y = 0.35 + Math.sin(clock * 2) * 0.05; } }
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
@@ -887,13 +959,14 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: mapMarkers.length }, walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
   // v1.10.2: a chat message over someone's head ('me' or another player's id)
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
   const setStatuesPublic = (list) => setStatues(list);
+  const setEventsPublic = (list) => setEvents(list);
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic };
 }
