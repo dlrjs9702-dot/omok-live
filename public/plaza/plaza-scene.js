@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.12';
+import { buildIsland, building, props, part, mergeColored, heightAt, walkable, SPOTS, COTTAGES, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.13';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -59,6 +59,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     return m;
   };
   const solids = []; // {x, z, r}: what the character walks around
+  const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }); // v1.10.13: every merged build (island.js)
+  const STONE = new THREE.CylinderGeometry(0.5, 0.5, 1, 9);
 
   // v1.9.2 avatar parts: the 3D model of every avatar item (ids are lib/skins.js's), added onto a character.
   // ponytail: one hand-built part per item; a data-driven part kit is worth it only past a few dozen items
@@ -159,10 +161,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const PH = heightAt(0, 0);
   const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain);
   mesh(new THREE.CylinderGeometry(2.9, 3.1, 0.6, 44), mat(0xeae3d6), 0, 0.3, 0, fountain);
-  mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.1, 44), mat(0x86d0f0, { roughness: 0.2, metalness: 0.1 }), 0, 0.56, 0, fountain);
+  mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.1, 44), mat(0x86d0f0, { roughness: 0.45 }), 0, 0.56, 0, fountain); // v1.10.13: no metal shine
   mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 20), mat(0xeae3d6), 0, 1.2, 0, fountain);
   mesh(new THREE.CylinderGeometry(1.1, 0.6, 0.35, 28), mat(0xf1ebe0), 0, 1.95, 0, fountain);
-  mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.06, 28), mat(0x86d0f0, { roughness: 0.2 }), 0, 2.1, 0, fountain);
+  mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.06, 28), mat(0x86d0f0, { roughness: 0.45 }), 0, 2.1, 0, fountain);
   for (let k = 0; k < 4; k += 1) { // a spout on the rim over each channel
     const a = Math.PI / 4 + (k * Math.PI) / 2;
     const spout = mesh(new THREE.BoxGeometry(0.5, 0.18, 0.7), mat(0xd9d0c0), Math.cos(a) * 3, 0.5, Math.sin(a) * 3, fountain); spout.rotation.y = -a;
@@ -321,22 +323,19 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       sign(facility.name, root, 4.3);
       solids.push({ x, z, r: 3.5 });
     } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'townhall') {
+      // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
+      // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
+      // crooked), framed door and windows; each facility its own silhouette. Footprint and door are unchanged.
       const w = 3.2; const h = 2.4; depth = 2.7;
-      mesh(new THREE.BoxGeometry(w, h, depth), mat(spot.wall), 0, h / 2, 0, root);
-      const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.82, 1.7, 4), mat(spot.roof), 0, h + 0.85, 0, root);
-      roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
-      const k = 1;
-      mesh(new THREE.BoxGeometry(0.95 * k, 1.45 * k, 0.08), mat(0x8a5a3b), 0, 0.72 * k, depth / 2 + 0.02, root);
-      mesh(new THREE.SphereGeometry(0.06 * k, 8, 6), mat(0xf6d36b), 0.3 * k, 0.75 * k, depth / 2 + 0.08, root);
-      for (const wx of [-w * 0.3, w * 0.3]) {
-        mesh(new THREE.CircleGeometry(0.32, 20), mat(0xbfe9ff, { roughness: 0.2, emissive: 0x6fb7e0, emissiveIntensity: 0.15 }), wx, h * 0.62, depth / 2 + 0.02, root);
-      }
-      if (spot.kind === 'shop') { // a striped awning
-        for (let k = 0; k < 6; k += 1) {
-          const strip = mesh(new THREE.BoxGeometry(w / 6, 0.08, 0.9), mat(k % 2 ? 0xffffff : 0xff8aa8), -w / 2 + w / 12 + (k * w) / 6, h * 0.86, depth / 2 + 0.4, root);
-          strip.rotation.x = 0.35;
-        }
-      }
+      const looks = {
+        shop: { roof: 'front', rise: 1.35, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], planters: true },
+        avatar: { roof: 'gable', rise: 1.05, chimney: 0.9, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], shutters: 0xe87a9e },
+        records: { roof: 'front', rise: 1.7, windows: [[-1.08, 0.62], [1.08, 0.62], [-0.6, 0.55, 'l'], [0.6, 0.55, 'l'], [-0.6, 0.55, 'r'], [0.6, 0.55, 'r']], porch: true },
+        admin: { roof: 'hip', rise: 0.85, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'r']], lamp: true },
+        townhall: { roof: 'hip', rise: 1.0, windows: [[-1.12, 0.6], [1.12, 0.6], [-0.6, 0.55, 'l'], [0.6, 0.55, 'l'], [-0.6, 0.55, 'r'], [0.6, 0.55, 'r']], lamp: true },
+      };
+      const bodyMesh = new THREE.Mesh(building({ w, d: depth, h, wall: spot.wall, roofColor: spot.roof, ...looks[facility.id] }), vcMat);
+      bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; root.add(bodyMesh);
       if (spot.kind === 'townhall') { // v1.10.10 관공서: two columns by the door and a flag on the roof
         for (const px of [-0.75, 0.75]) mesh(new THREE.CylinderGeometry(0.12, 0.14, h * 0.9, 12), mat(0xfffaf0), px, h * 0.45, depth / 2 + 0.25, root);
         mesh(new THREE.BoxGeometry(2.0, 0.14, 0.6), mat(0xfffaf0), 0, h * 0.92, depth / 2 + 0.2, root);
@@ -344,10 +343,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
         mesh(new THREE.PlaneGeometry(0.62, 0.4), mat(0x5fb0ff, { side: THREE.DoubleSide }), w * 0.32 + 0.32, h + 1.95, 0, root);
       }
       if (spot.kind === 'house') { // the records hall carries a trophy
-        mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 2.0, 0, root);
-        mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 1.65, 0, root);
+        mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.5, 0, root);
+        mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, root);
       }
-      sign(facility.name, root, h + (spot.kind === 'house' ? 2.8 : 2.25)); // above the roof ornaments
+      sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
       solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -459,6 +458,45 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     for (const pz of [-2.9, 2.9]) for (const side of [-1, 1]) { const rail = mesh(new THREE.BoxGeometry(pz > 0 ? 2.2 : 6.8, 0.08, 0.06), mat(0xc58b5a), pz > 0 ? side * 2.3 : 0, 0.62, pz, g); if (pz < 0 && side > 0) rail.visible = false; }
     for (const [cx, cz] of [[-1.8, -1], [-1.1, -1.4], [2, 0.6]]) mesh(new THREE.BoxGeometry(0.7, 0.6, 0.7), mat(0xb98b62), cx, 0.3, cz, g);
     solids.push({ x: lot.x, z: lot.z, r: 3.2 });
+  }
+
+  // v1.10.13 생활 마을: the islanders' cottages (island-terrain COTTAGES). A few shared parts in different combinations
+  // -- roof kind and pitch, proportions, door place, windows, shutters, chimney, porch, planters, lamp -- so no two are
+  // the same house in another colour; each with a mailbox, a short side fence and stepping stones out to the walk.
+  // Decoration only: walked around like any building, nothing to open.
+  const COTTAGE_LOOKS = [
+    { w: 3.4, d: 2.8, h: 2.3, wall: 0xfff1d6, roofColor: 0xd9705a, roof: 'gable', rise: 1.15, chimney: 1.0, porch: true, shutters: 0x6aa9e8, planters: true },
+    { w: 3.0, d: 3.0, h: 2.2, wall: 0xe8f4e4, roofColor: 0x5f9e7a, roof: 'hip', rise: 1.2, lamp: true, door: -0.55 },
+    { w: 3.8, d: 2.6, h: 2.0, wall: 0xf6e0e8, roofColor: 0x8f6fb8, roof: 'front', rise: 1.5, porch: true, planters: true },
+    { w: 3.2, d: 2.7, h: 2.6, wall: 0xdcecff, roofColor: 0x4f7fb0, roof: 'gable', rise: 1.0, chimney: -0.9, shutters: 0xffffff, door: 0.5 },
+    { w: 2.8, d: 2.6, h: 2.1, wall: 0xfff8e8, roofColor: 0xc9894f, roof: 'front', rise: 1.3, lamp: true, planters: true },
+    { w: 3.6, d: 3.0, h: 2.2, wall: 0xf3e4cf, roofColor: 0x7a8f5a, roof: 'hip', rise: 1.1, chimney: 1.0, porch: true, door: -0.6 },
+    { w: 3.0, d: 2.6, h: 2.4, wall: 0xffe7d1, roofColor: 0xd96a6a, roof: 'gable', rise: 1.25, shutters: 0x7bbf8a, lamp: true },
+    { w: 3.4, d: 2.8, h: 2.3, wall: 0xe4ecf2, roofColor: 0x6a7f99, roof: 'front', rise: 1.4, chimney: -0.8, planters: true, door: 0.55 },
+    { w: 3.0, d: 2.8, h: 2.2, wall: 0xfbefd9, roofColor: 0xb5654a, roof: 'hip', rise: 1.0, porch: true, shutters: 0x5f9e7a },
+  ];
+  for (const c of COTTAGES) {
+    const look = COTTAGE_LOOKS[c.style % COTTAGE_LOOKS.length];
+    const door = look.door || 0; const side = door > 0 ? -1 : 1; const ww = look.w / 2 - 0.62;
+    const windows = door ? [[side * ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r'], [0, 0.58, 'b']] : [[-ww, 0.6], [ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']];
+    const g = new THREE.Group(); const y0 = heightAt(c.x, c.z); g.position.set(c.x, y0, c.z); g.rotation.y = Math.atan2(c.face[0] - c.x, c.face[1] - c.z); scene.add(g);
+    const body = new THREE.Mesh(building({ ...look, windows }), vcMat); body.castShadow = true; body.receiveShadow = true; g.add(body);
+    // the yard: a mailbox by the way out, a short fence along each side, stepping stones to the walk
+    const toWalk = Math.hypot(c.face[0] - c.x, c.face[1] - c.z) - 1.6;
+    const yard = [['mailbox', look.w / 2 + 0.5, look.d / 2 + 1.5, 0, c.style % 2], ['fence', -look.w / 2 - 0.9, 0.4, Math.PI / 2, look.d + 1.6], ['fence', look.w / 2 + 0.9, -0.6, Math.PI / 2, look.d - 0.4]];
+    if (!look.planters) yard.push(['planter', -look.w / 2 + 0.2, look.d / 2 + 0.9, 0, c.style]);
+    const yardGeo = props(yard); const yardMesh = new THREE.Mesh(yardGeo, vcMat); yardMesh.castShadow = true; yardMesh.receiveShadow = true; g.add(yardMesh);
+    const stones = [];
+    for (let z = look.d / 2 + 0.95; z < toWalk; z += 0.8) {
+      const wx = c.x + Math.sin(g.rotation.y) * z + Math.cos(g.rotation.y) * door; const wz = c.z + Math.cos(g.rotation.y) * z - Math.sin(g.rotation.y) * door;
+      stones.push(part(STONE, 0xddd5c6, door + Math.sin(z * 3.1) * 0.12, heightAt(wx, wz) - y0 + 0.03, z, { ry: z, sx: 0.62, sy: 0.08, sz: 0.5 }));
+    }
+    if (stones.length) { const st = new THREE.Mesh(mergeColored(stones), vcMat); st.receiveShadow = true; g.add(st); }
+    // walked around: the house, the two fences and the mailbox
+    const local = (lx, lz) => ({ x: c.x + Math.cos(g.rotation.y) * lx + Math.sin(g.rotation.y) * lz, z: c.z - Math.sin(g.rotation.y) * lx + Math.cos(g.rotation.y) * lz });
+    for (let lx = -look.w / 2 + 0.7; lx <= look.w / 2 - 0.69; lx += 0.75) for (let lz = -look.d / 2 + 0.7; lz <= look.d / 2 - 0.69; lz += 0.75) solids.push({ ...local(lx, lz), r: 0.95 });
+    for (const [fx, z0, len] of [[-look.w / 2 - 0.9, 0.4 - (look.d + 1.6) / 2, look.d + 1.6], [look.w / 2 + 0.9, -0.6 - (look.d - 0.4) / 2, look.d - 0.4]]) for (let t = 0; t <= len; t += 0.6) solids.push({ ...local(fx, z0 + t), r: 0.22 });
+    solids.push({ ...local(look.w / 2 + 0.5, look.d / 2 + 1.5), r: 0.3 });
   }
 
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -982,7 +1020,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     renderer.domElement.removeEventListener('click', onClick); renderer.domElement.removeEventListener('pointermove', onMove);
     renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.removeEventListener('pointercancel', onUp);
     scene.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
-    mats.forEach((m) => m.dispose()); textures.forEach((t) => t.dispose()); island.dispose();
+    mats.forEach((m) => m.dispose()); vcMat.dispose(); textures.forEach((t) => t.dispose()); island.dispose();
     renderer.dispose(); renderer.domElement.remove(); minimap.remove();
   }
   // For tests and support: where things are, and a way to stand at a facility's door.
@@ -997,7 +1035,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });

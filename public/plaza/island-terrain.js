@@ -61,6 +61,17 @@
   const RESERVED_LOTS = [{ x: 49, z: 11, face: [49, 0] }]; // the shop street's next building (외형 변경 시설, later)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const SPAWN = { x: 0, z: 8 };
+  // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
+  // far end of the shop street. Decoration only (no door to enter); each `style` picks a different build (plaza-scene).
+  const COTTAGES = [
+    { x: 10.8, z: 36.6, face: [4, 37], style: 0 }, { x: -3.1, z: 38.8, face: [3.3, 41.3], style: 1 },
+    { x: 7.6, z: 48.3, face: [1.4, 45.8], style: 2 }, { x: -6.8, z: 49.9, face: [0, 50.3], style: 3 },
+    { x: 9.6, z: 59.3, face: [3.2, 61.4], style: 4 }, { x: -4, z: 61.7, face: [2.3, 59.2], style: 5 },
+    { x: 10.5, z: 69.4, face: [3.8, 68.2], style: 6 }, { x: 67.8, z: 8.3, face: [70.3, 2], style: 7 },
+    { x: 74.5, z: -3.7, face: [72.1, 2.7], style: 8 },
+  ];
+  // Everything built that the island's other parts keep clear of (events, islanders' walks, trees).
+  const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
 
   // Streams: from the plaza edge toward the sea on the four diagonals, winding more the further they go.
   function makeStream(a0, phase) {
@@ -138,7 +149,7 @@
     if (cd < 0) h = -0.95 + cd * 0.45;
     return h;
   }
-  const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4).map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
+  const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...COTTAGES.map((c) => [c.x, c.z, 4.6]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4).map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
     .map(([x, z, r]) => ({ x, z, r, h: rawLand(x, z) }));
   function land(x, z) {
     let h = rawLand(x, z);
@@ -226,7 +237,7 @@
       if (Math.hypot(x, z) < PLAZA_R + 7) return false;
       if (walkDist(x, z) < walkGap || streamDist(x, z) < STREAM_HALF + 2) return false;
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
-      for (const s of Object.values(SPOTS)) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
+      for (const s of BUILDINGS) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
       if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
       return true;
     };
@@ -288,5 +299,5 @@
     return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
   }
 
-  return { nature, natureSolids, coastR, PLAZA_R, AREAS, SPOTS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { nature, natureSolids, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));
