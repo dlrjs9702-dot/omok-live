@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.13').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.14').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -6356,10 +6356,10 @@
     halliCards.replaceChildren();
     let halliFxTarget = null;
     const fruitAssets = {
-      '딸기': '/assets/halli/strawberry.svg',
-      '바나나': '/assets/halli/banana.svg',
-      '라임': '/assets/halli/lime.svg',
-      '자두': '/assets/halli/plum.svg',
+      '딸기': window.GameBoot.assetUrl('/assets/halli/strawberry.svg'),
+      '바나나': window.GameBoot.assetUrl('/assets/halli/banana.svg'),
+      '라임': window.GameBoot.assetUrl('/assets/halli/lime.svg'),
+      '자두': window.GameBoot.assetUrl('/assets/halli/plum.svg'),
     };
     for (const owner of g.seatOrder || []) {
       const card = document.createElement('div');
@@ -8715,5 +8715,5 @@
   pointHistoryMore.addEventListener('click', () => loadPointHistory());
   selectGame('omok');
   drawBoard();
-  loadSession();
+  window.GameBoot.ready.then(loadSession); // v1.10.14: after the Chrome check and the resource pack (public/game-boot.js)
 })();

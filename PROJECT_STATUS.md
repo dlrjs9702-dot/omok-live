@@ -11,6 +11,23 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.14 게임 리소스 캐시 기반 (Chrome 전용)
+
+비공개 IDEAS 「게임센터 — 고품질 리소스 캐시 기반」(사용자 확정 2026-10-04)과 구현 지시·추가 지시(사전검사, 롤백 구조, 2026-10-04). 그래픽·에셋 자체는 바꾸지 않고, 앞으로 큰 정적 리소스를 브라우저에 저장·재사용할 기반만 만들었다.
+
+- Chrome 전용: `public/browser-gate.js` `classifyBrowser`(서버·브라우저 공용) — Client Hints 브랜드(`navigator.userAgentData.brands`, 서버는 `Sec-CH-UA` 헤더)를 우선해 `Microsoft Edge`→edge, `Google Chrome`→chrome, Chromium만(Playwright)→chromium, 그 밖(Whale·Brave·Opera 등)→other. 힌트가 없으면 UA(`Edg/`·타 브라우저 토큰 제외 + vendor `Google Inc.`)로 보수적으로 판단. 서버는 `/`·`/guest-entry`에서 허용 외 브라우저에 「Google Chrome으로 접속해 주세요」만 반환(입장 파일 검증 전이라 Edge로 먼저 열어도 키가 잡히거나 사용 기록이 남지 않음). 페이지(`public/game-boot.js`)도 같은 판별로 막는다. 허용 목록 `ALLOWED_BROWSERS`: 운영 `chrome`, `NODE_ENV=test`는 `chrome chromium other`(Edge는 어디서도 불가).
+- 리소스 팩: `lib/asset-manifest.js`가 서버 시작 시 `public/assets`·`public/hwatu`의 정적 파일(코드·문서 제외)마다 내용 SHA-256 앞 16자리 revision·크기를 계산하고, 팩 버전(목록 해시)과 함께 `index.html`(no-store)에 JSON으로 넣는다. 코드와 같은 배포에서 나오므로 코드·에셋 버전이 어긋나지 않는다. 파일은 정적 파일 그대로이며 DB에는 아무것도 저장하지 않는다. 게임 코드는 `GameBoot.assetUrl(path)`로 `<경로>?rev=<해시>`를 쓴다(현재 화투 그림·할리갈리 과일).
+- 버전별 캐시: 이름공간 `gc-res:` — 팩 `gc-res:pack:<팩 버전>:<빌드 id>`, 활성 포인터 `gc-res:meta`의 `/active`, 사전검사용 `gc-res:probe`. 새 팩 버전은 새 staging 캐시에 만든다(바뀌지 않은 파일은 활성 팩에서 로컬 복사, 새·바뀐 파일만 내려받아 해시 확인). 모든 키가 갖춰졌는지 확인한 뒤 포인터 한 번 쓰기로 전환하고 그다음에 옛 팩을 지운다. 실패하면 staging만 지우고 활성 팩·포인터는 그대로.
+- 사전검사(다운로드 전): ① Service Worker·Cache Storage·`crypto.subtle`·`storage.estimate` 지원 ② `estimate()` 사용량·quota ③ 이번 빌드 크기 ④ 여유 = 빌드 크기(staging이 활성 팩과 함께 있는 최대 시점) + 동시 6개 중 가장 큰 파일들(쓰는 중) + 항목당 8 KiB + 예비(빌드의 10%, 최소 16 MiB) ⑤ `persist()` 요청(거절 무관) ⑥ `gc-res:probe`에 64 KiB 쓰기→읽기 비교→삭제. 하나라도 실패하면 받지 않는다. 회사 PC 여부는 추정하지 않고 실제 기능·quota·쓰기 결과로만 판단한다.
+- 실패 시(사용자 결정 2026-10-04): 게임에 들어가지 않고 「게임 리소스를 저장할 수 없습니다」(저장 공간·쓰기 거부·기능 없음) 또는 「게임 리소스 준비 실패」(네트워크·revision 불일치) 한 줄과 「다시 시도」만. 자동 재시도·백그라운드 다운로드 없음(첫 실패 시 진행 중 요청도 중단). 저장이 막힌 PC가 많다고 확인되면 아래 OFF 스위치로 v1.10.13처럼 서버에서 받는 방식으로 되돌린다.
+- Service Worker(`public/sw.js`): `?rev=`가 붙은 같은 출처 GET만 활성 팩에서 내주고, 없으면 네트워크. HTML·코드·API·스트림은 건드리지 않고 `/api/*`는 Chrome 정적 라우팅으로 워커를 거치지 않는다. 기존 `?v=` 캐시 버스팅·no-store HTML 그대로라 배포 반영에 강제 새로고침이 필요 없다. skipWaiting+claim, 상태 없음 — `?rev=` 주소는 v1.10.14 이후 코드만 만들므로 어떤 버전의 페이지와도 충돌하지 않는다. 페이지 로드(내비게이션)마다 `/asset-cache.json`(no-store)을 확인해 404(이전 버전 서버)나 `enabled:false`면 `gc-res:*` 캐시를 지우고 스스로 해제한다. 네트워크 오류·5xx는 무시.
+- 롤백: Render 환경변수 `ASSET_CACHE=off`(코드 수정 없음, 외부 사용자는 바꿀 수 없음) → 페이지가 빈 매니페스트를 받아 새 다운로드 없이 워커 해제·`gc-res:*`만 삭제(로컬 저장소·세션 등 다른 데이터 유지) 후 기존처럼 서버에서 로드. Git/Render 이전 버전 재배포는 별도 단계이며 순서·방법은 [docs/release.md](docs/release.md) 「게임 리소스 캐시 롤백」. 테스트 서버 전용 `/api/test/asset-cache`로 같은 스위치를 실행 중에 바꿔 e2e에서 검증한다.
+- 저장 공간: `persisted()`/`persist()`는 요청만, 결과는 입장 조건이 아니다.
+- 화면: 0.25초를 넘기는 빌드만 전체 화면 「게임 리소스 준비 중」 + 바이트 기준 %·막대, 끝나면 자동 입장. `app.js`는 `GameBoot.ready` 뒤에 `loadSession`. 매니페스트 JSON은 읽은 뒤 DOM에서 지운다(관전자 비공개 e2e가 페이지 HTML에서 카드 이름을 찾는 검사와 충돌).
+- CI 대응: `loadSession`이 리소스 준비 뒤로 밀리면서, 입장 직후 숨은 등반 버튼을 스크립트로 누르던 `climb.spec`이 뒤늦은 로비 진입(`showView('lobby')` → 등반 정지)과 겹쳐 실패 → e2e 입장 도우미 `shopper`가 로비가 보일 때까지 기다리게 함(실제 사용자는 준비 화면·입장 전 화면 때문에 그 버튼을 누를 수 없음).
+- 제외: 그래픽·에셋 교체, PWA, 런처, 모바일 대응(모바일 Chrome을 따로 막지도 않음). CSS가 직접 부르는 `/assets/davinci/table.svg`는 revision URL을 쓰지 않아 기존 HTTP 캐시로 받는다.
+- 검증: `test/browser-gate.test.js`(브랜드·UA 판별, `Sec-CH-UA`, `ALLOWED_BROWSERS=chrome` 서버의 Edge·위장 Edge·Firefox·Whale 차단, Edge 입장 파일 거부), `test/asset-manifest.test.js`(파일별 해시·변경/삭제, `ASSET_CACHE=off` 서버의 꺼짐 응답·no-store), `npm test` 전체, e2e `asset-cache.spec.js` 10(정상 활성화·재접속 0건·워커 응답 / 1개 변경 시 1개만 받고 새 버전 캐시로 전환·옛 캐시 삭제 / 캐시 삭제 후 재구축 / 다운로드 끊김 시 staging 폐기·활성 팩 유지·미입장·재시도 / quota 여유 부족 시 0건·재시도해도 0건 / 쓰기 시험 거부 시 0건·활성 팩 유지 / 실패 중 OFF → 0건·워커 해제·`gc-res:*`만 삭제·다른 저장 데이터 유지·서버 로딩으로 입장 → 다시 ON 재구축 / `/asset-cache.json` 404 시 남은 워커 자가 해제 / Edge 차단 / Chrome 입장) 3회 연속 통과, 회귀 e2e(첫 접속·광장·로비·재접속·고스톱·DOM 게임 스킨). 로컬 완전 롤백 1회: 같은 Chrome 프로필로 v1.10.14 캐시를 만든 뒤 실제 v1.10.13(`2010aaa`) 서버로 교체 → 첫 페이지 로드에서 워커 0·`gc-res:*` 0·로컬 저장소 유지, 관리자 로비 입장 정상. 실제 Chrome·Edge PC, 회사 PC 실기 미검증.
+
 ## v1.10.13 게임 아일랜드 환경 비주얼 개선
 
 비공개 IDEAS 「게임 아일랜드 환경 비주얼 품질 개선」(사용자 확정 2026-10-04, 우선순위 ①~⑥)과 구현 지시(2026-10-04). 기능·좌표·서버 판정은 바꾸지 않고 형태·재질·배치만 다듬었다.

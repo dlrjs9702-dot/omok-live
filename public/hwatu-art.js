@@ -184,7 +184,7 @@
   // drawing above. html(id) is what the table puts inside a card; svg(id) stays the game center drawing.
   const PUBLIC = new Set(IDS.filter(id => !id.startsWith('bonus-')));
   function html(id) {
-    if (PUBLIC.has(id)) return `<img class="hwatuImg" src="/hwatu/${id}.svg" alt="" draggable="false" decoding="async">`;
+    if (PUBLIC.has(id)) return `<img class="hwatuImg" src="${window.GameBoot?.assetUrl(`/hwatu/${id}.svg`) ?? `/hwatu/${id}.svg`}" alt="" draggable="false" decoding="async">`;
     return svg(id);
   }
 

@@ -1623,3 +1623,10 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .islandPlaceList{display:grid;gap:6px;margin:6px 0 10px}
 .islandPlaceRow{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449;font-size:.8rem}
 .islandPlaceRow strong{color:#fde68a}
+
+/* v1.10.14 game boot: resource preparation / Chrome notice over the whole page (public/game-boot.js) */
+.bootView{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0b1220;color:#f8fafc;text-align:center}
+.bootView strong{font-size:1.2rem;font-weight:900}
+.bootPercent{font-size:1.35rem;font-weight:900;color:#fde68a}
+.bootBar{width:min(320px,80vw);height:10px;border-radius:999px;background:#0f172a;border:1px solid #273449;overflow:hidden}
+.bootBar span{display:block;height:100%;width:0;background:#2563eb;transition:width .2s}
