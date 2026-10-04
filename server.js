@@ -41,7 +41,7 @@ const IslandTerrain = require('./public/plaza/island-terrain.js'); // v1.10.7: t
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
-const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
+const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
 const {
   MAX_CHAT_LENGTH,
@@ -801,6 +801,25 @@ const plazaTicker = setInterval(() => {
   }
 }, PLAZA_TICK_MS);
 plazaTicker.unref?.();
+
+// v1.10.9 작명소: what a nickname may be and when two are the same (every space removed). One change at a time on this
+// server, so two people can never take the same new name at once.
+// ponytail: an in-process lock (one instance, WEB_CONCURRENCY=1); a unique index on the normalized name if it ever scales out
+const NICKNAME_MAX = 12;
+const NICKNAME_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const RESERVED_NICKNAMES = new Set(['관리자', '게스트']);
+const normalizeNickname = (name) => String(name || '').replace(/\s+/g, '');
+const nicknameFormatOk = (name) => name.length <= NICKNAME_MAX && /^[가-힣ㄱ-ㅎㅏ-ㅣ0-9 ]+$/.test(name) && normalizeNickname(name).length > 0;
+let nicknameQueue = Promise.resolve();
+function withNicknameLock(fn) { const run = nicknameQueue.then(fn, fn); nicknameQueue = run.catch(() => {}); return run; }
+// The new name everywhere at once: the entry key (stays the same file) and every open session of it -- the island name
+// tag, chat and rooms take the session's name from here on.
+async function renameGuest(keyId, name) {
+  const row = await accessStore.rename(keyId, name);
+  if (!row) return null;
+  for (const session of sessions.values()) if (session.guestKeyId === keyId) session.label = name;
+  return row;
+}
 
 // v1.10.7 게임 아일랜드 당일 위치 (IDEAS 「당일 접속 위치 복원」): each account's last island spot today (Asia/Seoul). Kept
 // in memory as poses arrive and written to the store only every PLAZA_SPOT_SAVE_MS, when the player leaves the island
@@ -2761,7 +2780,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.8' });
+    return sendJson(res, 200, { ok: true, version: '1.10.9' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3312,6 +3331,58 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const outcome = await pointStore.recordClimb({ userId: pointAccountForSession(session), climbId: crypto.randomUUID(), altitude: Number(body.altitude), name: session.label || '' }, Number(body.at) || nowMs());
     return sendJson(res, 200, { ok: true, ...outcome });
+  }
+  // v1.10.9 작명소: my nickname, the price and when I may change it again.
+  if (pathname === '/api/nickname' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const state = session.guestKeyId ? await pointStore.nicknameState(pointAccountForSession(session)) : null;
+    const until = state && Date.parse(state.until) > nowMs() ? state.until : null;
+    return sendJson(res, 200, { ok: true, name: session.label || '', fee: NICKNAME_FEE, until, allowed: Boolean(session.guestKeyId), balance: pointStore.cachedBalance?.(pointAccountForSession(session)) ?? null });
+  }
+  // A paid change (IDEAS 「작명소」, 사용자 확정 2026-10-04): Korean letters, digits and spaces only (spaces kept as
+  // typed), unique in the whole game center comparing names with every space removed, 100,000P, then 24 hours before
+  // the next change. Nothing is taken for a bad name, a taken name, the wait, too few points or a failure here; the
+  // same request sent again is answered without a second charge.
+  if (pathname === '/api/nickname' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!session.guestKeyId) return sendError(res, 403, 'NICKNAME_GUEST_ONLY', '관리자 이름은 바꿀 수 없습니다.');
+    if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
+    if (!checkRateLimit(`nickname:${session.guestKeyId}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const name = typeof body.name === 'string' ? body.name : '';
+    if (!nicknameFormatOk(name)) return sendError(res, 400, 'BAD_NAME', `한글·숫자·공백으로 ${NICKNAME_MAX}자까지 입력해 주세요.`);
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const account = pointAccountForSession(session);
+    return withNicknameLock(async () => {
+      const done = await pointStore.nicknameRequest(body.requestId);
+      if (done) { // the same request again (its answer was lost): already changed
+        if (done.userId !== account) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+        await renameGuest(session.guestKeyId, done.name);
+        return sendJson(res, 200, { ok: true, name: done.name, until: new Date(Date.parse(done.changedAt) + NICKNAME_COOLDOWN_MS).toISOString(), balance: done.balanceAfter });
+      }
+      const keys = await accessStore.list();
+      const mine = keys.find((key) => key.id === session.guestKeyId && !key.revokedAt);
+      if (!mine) return sendError(res, 404, 'ACTIVE_KEY_NOT_FOUND', '사용 가능한 계정을 찾을 수 없습니다.');
+      const wanted = normalizeNickname(name);
+      if (normalizeNickname(mine.label) === wanted) return sendError(res, 409, 'SAME_NAME', '지금 쓰는 이름과 같습니다.');
+      if (RESERVED_NICKNAMES.has(wanted) || keys.some((key) => key.id !== mine.id && normalizeNickname(key.label) === wanted)) return sendError(res, 409, 'NAME_TAKEN', '이미 쓰고 있는 이름입니다.');
+      const now = nowMs();
+      const result = await pointStore.chargeNickname({ userId: account, requestId: body.requestId, name }, now);
+      if (result.reason === 'cooldown') return sendJson(res, 409, { error: 'NICKNAME_COOLDOWN', message: '이름을 바꾼 지 24시간이 지나야 다시 바꿀 수 있습니다.', until: result.until });
+      if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
+      try {
+        if (!await renameGuest(mine.id, name)) throw new Error('입장키를 찾을 수 없습니다.');
+      } catch (error) { // the name was not saved: the points and the previous wait come back
+        console.error('작명소 이름 저장 실패:', error.message);
+        await pointStore.refundNickname({ userId: account, requestId: body.requestId, name });
+        notifyPointsChanged([account]);
+        return sendError(res, 500, 'NICKNAME_FAILED', '이름을 바꾸지 못했습니다. 포인트는 차감되지 않았습니다.');
+      }
+      notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, name, until: new Date(now + NICKNAME_COOLDOWN_MS).toISOString(), balance: result.balance ?? result.balanceAfter });
+    });
   }
   // v1.10.5 기부: this week's ranking and my total, the statues on show, this week's 호구왕; giving burns the points.
   if (pathname === '/api/donation' && req.method === 'GET') {
@@ -3916,6 +3987,10 @@ async function main() {
     let created = 0;
     for (const key of await accessStore.list()) if ((await pointStore.ensureAccount(`guest:${key.id}`)).created) created += 1;
     console.log(`포인트 저장소: ${DATABASE_URL ? 'PostgreSQL' : '로컬 JSON'} · 신규 계정 ${created}개`);
+    // v1.10.9 작명소: names that are already the same once spaces are removed are left as they are (counted only)
+    const byName = new Map();
+    for (const key of await accessStore.list()) byName.set(normalizeNickname(key.label), (byName.get(normalizeNickname(key.label)) || 0) + 1);
+    console.log(`닉네임 중복(공백 무시): 기존 ${[...byName.values()].filter((n) => n > 1).length}묶음`);
     const refunded = await refundOrphanEntries();
     if (refunded) console.log(`참가 포인트 환불: 재시작으로 끝나지 못한 게임 ${refunded}판`);
   } catch (error) {
@@ -3960,7 +4035,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.8 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.9 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

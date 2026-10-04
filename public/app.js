@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.8').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.9').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1426,6 +1426,7 @@
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
+    { id: 'naming', name: '작명소', open: () => openNaming() }, // v1.10.9 작명소
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
@@ -1494,6 +1495,58 @@
     plazaLastSent = null; // others see the new look with the next pose
     if (sessionRole !== 'admin' && !plazaAvatar?.look?.gender && document.body.classList.contains('plazaMode')) openGenderChoice();
   }
+  // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 100,000P on a second press that names the
+  // price, then 24 hours before the next change. One request id per name until the server answers (a retry after a
+  // lost answer is the same change, paid once).
+  const namingDialog = document.getElementById('namingDialog');
+  const namingInput = document.getElementById('namingInput');
+  const namingSubmit = document.getElementById('namingSubmit');
+  const namingStatus = document.getElementById('namingStatus');
+  let namingArmed = null; let namingArmTimer = 0; let namingRequest = null; let namingFee = 100000;
+  function disarmNaming() { namingArmed = null; clearTimeout(namingArmTimer); namingSubmit.textContent = '이름 바꾸기'; }
+  async function loadNaming() {
+    try {
+      const data = await api('/api/nickname');
+      namingFee = data.fee || namingFee;
+      document.getElementById('namingCurrent').textContent = `지금 이름 · ${data.name}`;
+      document.getElementById('namingPrice').textContent = `${namingFee.toLocaleString('ko-KR')}P`;
+      const until = data.until ? new Date(data.until) : null;
+      document.getElementById('namingWait').textContent = until ? `${until.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}부터 다시 바꿀 수 있습니다` : '';
+      namingSubmit.disabled = Boolean(until) || !data.allowed; namingInput.disabled = !data.allowed;
+    } catch (error) { namingStatus.textContent = error.message; }
+  }
+  function openNaming() {
+    namingStatus.textContent = ''; namingInput.value = ''; disarmNaming();
+    namingDialog.showModal(); loadNaming();
+  }
+  document.getElementById('namingCloseBtn').addEventListener('click', () => namingDialog.close());
+  namingDialog.addEventListener('close', () => { disarmNaming(); if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
+  namingInput.addEventListener('input', disarmNaming);
+  document.getElementById('namingForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const name = namingInput.value;
+    if (!name.trim()) { namingStatus.textContent = '새 이름을 입력해 주세요.'; return; }
+    if (!/^[가-힣ㄱ-ㅎㅏ-ㅣ0-9 ]+$/.test(name) || name.length > 12) { namingStatus.textContent = '한글·숫자·공백으로 12자까지 입력해 주세요.'; return; }
+    if (namingArmed !== name) { // first press: say what it costs
+      namingArmed = name; if (namingRequest?.name !== name) namingRequest = { name, id: crypto.randomUUID() };
+      namingSubmit.textContent = `${namingFee.toLocaleString('ko-KR')}P 변경 확인`; namingStatus.textContent = '';
+      clearTimeout(namingArmTimer); namingArmTimer = setTimeout(disarmNaming, 10000);
+      return;
+    }
+    disarmNaming(); namingSubmit.disabled = true;
+    try {
+      const data = await api('/api/nickname', { method: 'POST', body: JSON.stringify({ name, requestId: namingRequest.id }) });
+      namingRequest = null;
+      sessionLabel = data.name; applyPlazaAvatar(); plazaLastSent = null; identityLabel.textContent = identityText();
+      namingStatus.textContent = `「${data.name}」(으)로 바꿨습니다`;
+      namingInput.value = ''; loadPoints(); await loadNaming();
+    } catch (error) {
+      namingStatus.textContent = error.message;
+      if (error.status !== 409 && error.status !== 400) return; // a lost answer: the same request may be sent again
+      namingRequest = null; await loadNaming();
+    } finally { namingSubmit.disabled = Boolean(document.getElementById('namingWait').textContent); }
+  });
+
   // v1.10.5 기부: the window at the plaza's donation box -- this week's top five and my total, last week's 호구왕, and
   // giving: the amount (typed or +1만/+10만/+100만), then a second press that says the amount (points are burned).
   const donationDialog = document.getElementById('donationDialog');
@@ -2794,6 +2847,8 @@
     if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
     if (item.reason === 'donation') return `기부 · ${item.memo || '소각'}`; // v1.10.5
+    if (item.reason === 'nickname') return `작명소 · ${item.memo || '이름 변경'}`; // v1.10.9
+    if (item.reason === 'nickname_refund') return `작명소 환불 · ${item.memo || '이름 변경'}`;
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';

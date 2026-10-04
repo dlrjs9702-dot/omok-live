@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.10.8" />
+  <link rel="stylesheet" href="/styles.css?v=1.10.9" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__">
   <main class="shell">
@@ -937,6 +937,16 @@
     </form>
     <p id="donationStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
   </dialog>
+  <dialog id="namingDialog" class="recordsDialog namingDialog" aria-labelledby="namingTitle">
+    <div class="recordsDialogHead"><h2 id="namingTitle">작명소</h2><span id="namingPrice" class="skinShopBalance"></span><button id="namingCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <p id="namingCurrent" class="donationMine"></p>
+    <form id="namingForm" class="donationForm">
+      <input id="namingInput" type="text" maxlength="12" autocomplete="off" placeholder="새 이름" aria-label="새 이름" />
+      <button id="namingSubmit" type="submit" class="secondary">이름 바꾸기</button>
+    </form>
+    <p id="namingWait" class="smallMuted"></p>
+    <p id="namingStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+  </dialog>
   <dialog id="skinShopDialog" class="recordsDialog skinShopDialog" aria-labelledby="skinShopTitle">
     <div class="recordsDialogHead"><h2 id="skinShopTitle">상점</h2><span id="skinShopBalance" class="skinShopBalance"></span><button id="skinShopCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <p id="skinShopStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
@@ -1028,33 +1038,33 @@
     <p id="pauseDialogMessage"></p>
     <div class="logoutDialogActions"><button id="pauseWaitBtn" class="ghost" type="button">기다리기</button><button id="pauseEndBtn" class="primary" type="button">게임 종료</button></div>
   </dialog>
-  <script src="/session-lock.js?v=1.10.8"></script>
-  <script src="/recent-action.js?v=1.10.8"></script>
-  <script src="/skin-looks.js?v=1.10.8"></script>
-  <script src="/skin-art-omok.js?v=1.10.8"></script>
-  <script src="/skin-art-connect4.js?v=1.10.8"></script>
-  <script src="/skin-art-othello.js?v=1.10.8"></script>
-  <script src="/skin-art-yut.js?v=1.10.8"></script>
-  <script src="/skin-art-dots.js?v=1.10.8"></script>
-  <script src="/skin-art-bingo.js?v=1.10.8"></script>
-  <script src="/skin-art-baseball.js?v=1.10.8"></script>
-  <script src="/skin-art-pictionary.js?v=1.10.8"></script>
-  <script src="/skin-art-twenty.js?v=1.10.8"></script>
-  <script src="/skin-art-liar.js?v=1.10.8"></script>
-  <script src="/skin-art-davinci.js?v=1.10.8"></script>
-  <script src="/skin-art-oldmaid.js?v=1.10.8"></script>
-  <script src="/skin-art-halli.js?v=1.10.8"></script>
-  <script src="/skin-art-gostop.js?v=1.10.8"></script>
-  <script src="/skin-art-avatar.js?v=1.10.8"></script>
-  <script src="/climb/climb-sim.js?v=1.10.8"></script>
-  <script src="/plaza/island-terrain.js?v=1.10.8"></script>
-  <script src="/plaza/remote-motion.js?v=1.10.8"></script>
-  <script src="/climb/climb-client.js?v=1.10.8"></script>
-  <script src="/twentyquestions-ui.js?v=1.10.8"></script>
-  <script src="/hwatu-art.js?v=1.10.8"></script>
-  <script src="/gostop-ui.js?v=1.10.8"></script>
-  <script src="/pandemic-map.js?v=1.10.8"></script>
-  <script src="/pandemic-ui.js?v=1.10.8"></script>
-  <script src="/app.js?v=1.10.8"></script>
+  <script src="/session-lock.js?v=1.10.9"></script>
+  <script src="/recent-action.js?v=1.10.9"></script>
+  <script src="/skin-looks.js?v=1.10.9"></script>
+  <script src="/skin-art-omok.js?v=1.10.9"></script>
+  <script src="/skin-art-connect4.js?v=1.10.9"></script>
+  <script src="/skin-art-othello.js?v=1.10.9"></script>
+  <script src="/skin-art-yut.js?v=1.10.9"></script>
+  <script src="/skin-art-dots.js?v=1.10.9"></script>
+  <script src="/skin-art-bingo.js?v=1.10.9"></script>
+  <script src="/skin-art-baseball.js?v=1.10.9"></script>
+  <script src="/skin-art-pictionary.js?v=1.10.9"></script>
+  <script src="/skin-art-twenty.js?v=1.10.9"></script>
+  <script src="/skin-art-liar.js?v=1.10.9"></script>
+  <script src="/skin-art-davinci.js?v=1.10.9"></script>
+  <script src="/skin-art-oldmaid.js?v=1.10.9"></script>
+  <script src="/skin-art-halli.js?v=1.10.9"></script>
+  <script src="/skin-art-gostop.js?v=1.10.9"></script>
+  <script src="/skin-art-avatar.js?v=1.10.9"></script>
+  <script src="/climb/climb-sim.js?v=1.10.9"></script>
+  <script src="/plaza/island-terrain.js?v=1.10.9"></script>
+  <script src="/plaza/remote-motion.js?v=1.10.9"></script>
+  <script src="/climb/climb-client.js?v=1.10.9"></script>
+  <script src="/twentyquestions-ui.js?v=1.10.9"></script>
+  <script src="/hwatu-art.js?v=1.10.9"></script>
+  <script src="/gostop-ui.js?v=1.10.9"></script>
+  <script src="/pandemic-map.js?v=1.10.9"></script>
+  <script src="/pandemic-ui.js?v=1.10.9"></script>
+  <script src="/app.js?v=1.10.9"></script>
 </body>
 </html>
