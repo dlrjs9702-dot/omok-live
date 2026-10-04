@@ -344,9 +344,11 @@ test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 
   // walking south down the pier stops at its end, over the sea
   const pier = start.pier;
   await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [pier.x, pier.z + pier.half - 3]);
-  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(1500); await page.keyboard.up('ArrowDown');
+  await page.keyboard.down('ArrowDown'); // held until it reaches the end (a slow runner draws few frames), then a little more
+  await expect.poll(async () => (await d()).z, { timeout: 15000 }).toBeGreaterThan(pier.z + pier.half - 1.5);
+  await page.waitForTimeout(800); await page.keyboard.up('ArrowDown');
   const end = await d();
-  expect(end.z).toBeLessThan(pier.z + pier.half + 0.5); expect(end.z).toBeGreaterThan(pier.z + pier.half - 1.5);
+  expect(end.z).toBeLessThan(pier.z + pier.half + 0.5); // stopped at the end, over the sea
   // the map board opens the island map in a window
   await page.evaluate(() => window.PlazaDebug().place('map'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 안내 지도');
