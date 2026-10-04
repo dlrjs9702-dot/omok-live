@@ -13,6 +13,9 @@ const PLAYER_R = 0.45;
 const DOOR_PLAYER_R = 0.28;
 const DOOR_ZONE = 2.6;
 const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart this much per frame, never a jump
+// v1.10.16: the procedural character's soles are this far above its root (leg pivot 0.5, capsule bottom 0.085); the
+// walking islanders are lowered by it so their feet are on the ground, not just their root.
+const FOOT_LIFT = 0.085;
 // v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
 // loaded before the app like island-terrain.js)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
@@ -191,28 +194,25 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     d.castShadow = false; d.userData.phase = i / 8; drops.push(d);
   }
   solids.push({ x: 0, z: 0, r: 3.4 });
-  const plazaBusy = (x, z, gap) => [...Object.values(SPOTS), ...STATUE_SPOTS].some((s) => Math.hypot(s.x - x, s.z - z) < gap);
-  for (const a of [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38]) { // benches facing the fountain, clear of the channels
+  const PROPS = globalThis.IslandTerrain.plazaProps(); // v1.10.16: placed in island-terrain.js, shared with the islanders' routes
+  for (const b of PROPS.benches) { // benches facing the fountain, clear of the channels
     const bench = new THREE.Group(); scene.add(bench);
-    bench.position.set(Math.cos(a) * 5, PH, Math.sin(a) * 5); bench.rotation.y = Math.atan2(-bench.position.x, -bench.position.z);
+    bench.position.set(b.x, PH, b.z); bench.rotation.y = Math.atan2(-bench.position.x, -bench.position.z);
     mesh(new THREE.BoxGeometry(1.7, 0.12, 0.55), mat(0xc58b5a), 0, 0.5, 0, bench);
     mesh(new THREE.BoxGeometry(1.7, 0.45, 0.1), mat(0xc58b5a), 0, 0.8, -0.25, bench);
     for (const x of [-0.7, 0.7]) mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), mat(0x6b5a4a), x, 0.25, 0, bench);
-    solids.push({ x: bench.position.x, z: bench.position.z, r: 0.9 });
+    solids.push(b);
   }
   const lamps = [];
-  for (let k = 0; k < 8; k += 1) {
-    const a = Math.PI / 8 + (k * Math.PI) / 4; const x = Math.cos(a) * 12; const z = Math.sin(a) * 12;
-    if (plazaBusy(x, z, 3)) continue;
+  for (const lamp of PROPS.lamps) {
+    const { x, z } = lamp;
     mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 10), mat(0x4d6b5c), x, PH + 1.3, z);
     lamps.push(mesh(new THREE.SphereGeometry(0.26, 16, 12), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), x, PH + 2.75, z));
-    solids.push({ x, z, r: 0.35 });
+    solids.push(lamp);
   }
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
-  for (let i = 0; i < 12; i += 1) { // beds along the plaza rim, between the walks and channels
-    const a = Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62);
-    const bx = Math.cos(a) * (PLAZA_R - 2.2); const bz = Math.sin(a) * (PLAZA_R - 2.2);
-    if (plazaBusy(bx, bz, 3.4)) continue;
+  for (const bed of PROPS.beds) { // beds along the plaza rim, between the walks and channels
+    const { x: bx, z: bz, i } = bed;
     mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.3, 20), mat(0xb98b62), bx, PH + 0.15, bz);
     mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), mat(0x6b4f3a), bx, PH + 0.31, bz);
     for (let k = 0; k < 9; k += 1) {
@@ -220,7 +220,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const f = mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(flowerColors[(i + k) % flowerColors.length]), bx + Math.cos(fa) * fr, PH + 0.45, bz + Math.sin(fa) * fr);
       f.castShadow = false;
     }
-    solids.push({ x: bx, z: bz, r: 1.1 });
+    solids.push(bed);
   }
   for (const st of STATUE_SPOTS) { // 기부 동상 자리: an empty round plinth with a laurel ring (the statues come later)
     mesh(new THREE.CylinderGeometry(1.2, 1.35, 0.5, 24), mat(0xe9e2d4), st.x, PH + 0.25, st.z);
@@ -790,7 +790,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // v1.10.12 배회 NPC: islanders strolling between stopping places on the walks. Where each is comes from the shared
   // round (island-npcs.js) at the server's clock, so every screen agrees and nothing is sent; the drawing goes through
   // the same follower as other people (remote-motion.js), which also lets one step around me instead of through me.
-  const wanderers = []; // { n, c, f }
+  const wanderers = []; // { n, c, w } -- w: the islander's walker state (island-npcs.js createWalkers)
+  let walkers = null;
   let serverOffset = 0; let clockRtt = Infinity; // server ms minus my ms, from the quickest answer seen
   function setServerTime(serverMs, sentAt, receivedAt) {
     const rtt = receivedAt - sentAt;
@@ -799,25 +800,34 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   }
   const wanderersTimer = setTimeout(() => { // after the first frames: the islanders' map takes a moment to work out
     if (!IslandNpcs) return;
+    // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
+    walkers = IslandNpcs.createWalkers({ walkable, solidsNear });
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
       const r = IslandNpcs.round(n);
-      const c = makeCharacter(r.look); scene.add(c.root); assets.dress('character.islander', c);
-      wanderers.push({ n, c, f: createFollower({ maxSpeed: 4 }) });
+      const c = makeCharacter(r.look); c.groundedWalk = true;
+      // starts where its round has it now, not at the origin walking over to it
+      const w = walkers.add(n, Date.now() + serverOffset);
+      c.root.position.set(w.x, heightAt(w.x, w.z), w.z);
+      scene.add(c.root); assets.dress('character.islander', c);
+      wanderers.push({ n, c, w });
     }
   }, 400);
   function stepWanderers(dt) {
-    const now = Date.now() + serverOffset; const m = me.root.position;
-    for (const w of wanderers) {
-      const at = IslandNpcs.at(w.n, now); const f = w.f;
-      f.step(at, dt);
-      const dx = f.x - m.x; const dz = f.z - m.z; const d = Math.hypot(dx, dz); const min = PLAYER_R * 2;
-      if (d < min) { const ux = d > 1e-4 ? dx / d : 1; const uz = d > 1e-4 ? dz / d : 0; f.nudge(m.x + ux * min, m.z + uz * min); } // around me, not through
-      const p = w.c.root.position; p.set(f.x, heightAt(f.x, f.z), f.z);
-      w.c.root.visible = Math.hypot(f.x - m.x, f.z - m.z) < 85;
-      if (!w.c.root.visible) continue;
-      w.c.targetYaw = f.speed > 0.4 && f.heading != null ? f.heading : at.yaw;
-      w.c.lookAt = at.moving ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
-      animate(w.c, dt, f.speed > 0.3, f.speed);
+    if (!walkers) return;
+    const m = me.root.position;
+    // v1.10.16: the shared round, stepped around solids, each other and people (island-npcs.js createWalkers): me,
+    // other players and event visitors are circles to give way to
+    const people = [{ x: m.x, z: m.z, r: playerRadiusAt(m.x, m.z) }];
+    for (const o of others.values()) people.push({ x: o.c.root.position.x, z: o.c.root.position.z, r: playerRadiusAt(o.c.root.position.x, o.c.root.position.z) });
+    for (const o of eventObjs.values()) if (o.npc) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R });
+    walkers.step(Date.now() + serverOffset, dt, people);
+    for (const { c, w } of wanderers) {
+      c.root.position.set(w.x, heightAt(w.x, w.z), w.z); // the exact ground (slopes, bridge decks) every frame
+      c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85;
+      if (!c.root.visible) continue;
+      c.targetYaw = w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw;
+      c.lookAt = w.pose.moving ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      animate(c, dt, w.speed > 0.3, w.speed);
     }
   }
 
@@ -841,7 +851,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   function otherCircles() {
     const out = [];
     for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
-    for (const w of wanderers) if (w.c.root.visible && playerRadiusAt(w.f.x, w.f.z) === PLAYER_R) out.push({ x: w.f.x, z: w.f.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
+    for (const { c, w } of wanderers) if (c.root.visible && playerRadiusAt(w.x, w.z) === PLAYER_R) out.push({ x: w.x, z: w.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
     for (const o of others.values()) {
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
@@ -880,22 +890,34 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   }
 
   // v1.10.0: hundreds of trees and lamps on the island, so the solids are looked up in a coarse grid.
+  // v1.10.16: each circle is listed in every cell from which a character (radius up to 0.5) could touch it -- listed
+  // only where the circle itself lies, one standing just across a cell edge from it was not checked against it.
   const GRID = 8; const grid = new Map();
   for (const s of solids) {
-    for (let gx = Math.floor((s.x - s.r) / GRID); gx <= Math.floor((s.x + s.r) / GRID); gx += 1) {
-      for (let gz = Math.floor((s.z - s.r) / GRID); gz <= Math.floor((s.z + s.r) / GRID); gz += 1) {
+    const reach = s.r + 0.5;
+    for (let gx = Math.floor((s.x - reach) / GRID); gx <= Math.floor((s.x + reach) / GRID); gx += 1) {
+      for (let gz = Math.floor((s.z - reach) / GRID); gz <= Math.floor((s.z + reach) / GRID); gz += 1) {
         const key = `${gx},${gz}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(s);
       }
     }
   }
   const solidsNear = (x, z) => grid.get(`${Math.floor(x / GRID)},${Math.floor(z / GRID)}`) || [];
-  const pushOut = (nx, nz) => {
-    for (const s of solidsNear(nx, nz)) {
-      const dx = nx - s.x; const dz = nz - s.z; const dist = Math.hypot(dx, dz); const min = s.r + 0.45;
-      if (dist < min && dist > 1e-6) { nx = s.x + (dx / dist) * min; nz = s.z + (dz / dist) * min; }
+  const pushOutRadius = (nx, nz, radius) => {
+    // A move can be inside two nearby circles (for example a fence next to a tree), so settle a few times.
+    for (let pass = 0; pass < 3; pass += 1) {
+      let changed = false;
+      for (const s of solidsNear(nx, nz)) {
+        let dx = nx - s.x; let dz = nz - s.z; let dist = Math.hypot(dx, dz); const min = s.r + radius;
+        if (dist >= min) continue;
+        if (dist < 1e-6) { dx = 1; dz = 0; dist = 1; }
+        nx = s.x + (dx / dist) * min; nz = s.z + (dz / dist) * min; changed = true;
+      }
+      if (!changed) break;
     }
     return [nx, nz];
   };
+  const pushOut = (nx, nz) => pushOutRadius(nx, nz, PLAYER_R);
+
   // v1.10.7 당일 위치: today's last spot from the server (already on standable ground there); out of a tree, a lamp or
   // a building it may have been put into since, and the plaza if that still leaves it somewhere one cannot stand.
   if (startAt && Number.isFinite(startAt.x) && Number.isFinite(startAt.z)) {
@@ -1018,7 +1040,10 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
     c.armL.rotation.z = -hopT * 1.1; c.armR.rotation.z = hopT * 1.1; // a little cheer when interacting
     if (c.waving) { c.armR.rotation.z = 2.5 + Math.sin(clock * 9) * 0.35; c.armR.rotation.x = 0; }
-    c.body.position.y = Math.abs(Math.sin(c.phase)) * 0.07 * walk * (1 + run * 0.6) + hopT * 0.28;
+    // Islanders keep their feet visually planted: their root already follows exact terrain height, so only a tiny
+    // pelvis bob remains. Player/remote-player animation keeps the existing livelier bounce.
+    const bodyBob = c.groundedWalk ? 0.012 : 0.07;
+    c.body.position.y = Math.abs(Math.sin(c.phase)) * bodyBob * walk * (1 + run * 0.6) + hopT * 0.28 - (c.groundedWalk ? FOOT_LIFT : 0);
     c.body.rotation.x = c.lean; c.body.rotation.z = c.roll;
     c.body.scale.y = 1 + (1 - walk) * Math.sin(clock * 2.2) * 0.012;
     // the head turns toward a nearby facility (limited), and nods on interaction
@@ -1062,7 +1087,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, assets: assets.debug(), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map((w) => ({ n: w.n, x: w.f.x, z: w.f.z, visible: w.c.root.visible, speed: w.f.speed })), serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });

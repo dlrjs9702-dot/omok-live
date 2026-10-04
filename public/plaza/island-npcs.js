@@ -38,11 +38,20 @@
     const near = new Map(); // a coarse bucket of the nature solids
     for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
     const spots = T.BUILDINGS; // v1.10.13: the cottages too
+    const props = T.plazaProps();
+    const sceneProps = [...props.benches, ...props.lamps, ...props.beds, ...T.RESERVED_LOTS.map((l) => ({ x: l.x, z: l.z, r: 3.2 }))];
     for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
       const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
       let bad = T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
       if (!bad) for (const s of spots) if (Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
       if (!bad) for (const s of T.STATUE_SPOTS) if (Math.hypot(x - s.x, z - s.z) < 1.9) { bad = true; break; }
+      // v1.10.16: the plaza's benches, lamps and flower beds and the shop street's reserved lot, as the scene places them.
+      // Measured to the whole cell, not its centre: a lamp on a cell corner would otherwise leave all four cells round it
+      // free and a diagonal step straight through it; this way every step between free cells keeps 0.5 clear.
+      if (!bad) for (const s of sceneProps) {
+        const dx = Math.max(0, Math.abs(x - s.x) - CELL / 2); const dz = Math.max(0, Math.abs(z - s.z) - CELL / 2);
+        if (Math.hypot(dx, dz) < s.r + 0.5) { bad = true; break; }
+      }
       if (!bad) for (let a = -1; a <= 1 && !bad; a += 1) for (let b = -1; b <= 1 && !bad; b += 1) for (const s of near.get(`${Math.floor(x / 6) + a},${Math.floor(z / 6) + b}`) || []) if (Math.hypot(x - s.x, z - s.z) < s.r + 0.5) { bad = true; break; }
       blocked[id] = bad ? 1 : 0;
       cost[id] = 2.4;
@@ -177,5 +186,123 @@
     return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: true };
   }
 
-  return { COUNT, round, at, findPath, stopPlaces, buildGrid, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  // v1.10.16 이동 현실화: how the islanders are drawn walking on a screen. The shared round (`at`) stays the plan every
+  // screen agrees on; what is drawn is that point plus a small local offset, which only grows to step around what the
+  // coarse route grid does not know (benches, flower beds, a fence, a lamp), around each other and around people, and
+  // shrinks back to the route by itself (RETURN per second) -- so it never builds up, and screens drift apart only while
+  // something is being avoided. Every move is swept in short steps through the scene's real collision circles and kept
+  // on standable ground, so a slow frame cannot tunnel through a thin prop and no push ever lands in water or a wall.
+  // `solidsNear(x, z)` gives the circles {x, z, r} that may touch a character standing at (x, z).
+  // WARP: a target further than this from where it is drawn cannot come from walking (a frame moves the target less
+  // than 0.5 even mid-avoidance); it means a paused tab, and the islander is put straight back on its round.
+  // MAX_OFF: stuck in a pocket further than this from the round (props packed together) -- put back on the round.
+  // TOP: the fastest an islander is ever drawn going (catching up with its round after stepping round something: a jog)
+  const WALKER = { R: 0.42, SEP: 0.9, SWEEP: 0.22, RETURN: 2.5, WARP: 1.5, MAX_OFF: 5, TOP: 4 };
+  function createWalkers({ walkable, solidsNear }) {
+    const { R, SEP, SWEEP, RETURN, WARP, MAX_OFF, TOP } = WALKER;
+    // out of every circle it stands in; a point can be in two (a fence next to a tree), so settle a few times
+    function pushOut(x, z, r = R) {
+      for (let pass = 0; pass < 3; pass += 1) {
+        let changed = false;
+        for (const s of solidsNear(x, z)) {
+          let dx = x - s.x; let dz = z - s.z; let d = Math.hypot(dx, dz); const min = s.r + r;
+          if (d >= min) continue;
+          if (d < 1e-6) { dx = 1; dz = 0; d = 1; }
+          x = s.x + (dx / d) * min; z = s.z + (dz / d) * min; changed = true;
+        }
+        if (!changed) break;
+      }
+      return [x, z];
+    }
+    // inside no circle (with a hair of tolerance)
+    const clear = (x, z) => solidsNear(x, z).every((s) => Math.hypot(x - s.x, z - s.z) >= s.r + R - 0.01);
+    const free = (x, z) => walkable(x, z) && clear(x, z);
+    // a short walk from (px, pz) toward (nx, nz): sampled every SWEEP and pushed out of the circles at each sample.
+    // A sample still not free (water, coast, cliff, or wedged where two circles meet) first tries keeping one axis,
+    // then the same step turned 45 and 90 degrees either way -- sliding along the edge and round the end of a group of
+    // props -- and otherwise the walk stops at the last free point for this frame.
+    const TURNS = [Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2];
+    function move(px, pz, nx, nz) {
+      const count = Math.max(1, Math.ceil(Math.hypot(nx - px, nz - pz) / SWEEP));
+      const sx = (nx - px) / count; const sz = (nz - pz) / count; const len = Math.hypot(sx, sz);
+      let x = px; let z = pz; const stuck = !free(px, pz); // already inside (just placed): any way out is taken
+      // a way round counts only if it really gets somewhere (a push straight back into the same corner does not)
+      const usable = (p) => free(p[0], p[1]) && Math.hypot(p[0] - x, p[1] - z) > len * 0.3;
+      for (let k = 1; k <= count; k += 1) {
+        let [tx, tz] = pushOut(x + sx, z + sz);
+        if (!free(tx, tz)) {
+          let found = null;
+          for (const [cx, cz] of [[x + sx, z], [x, z + sz]]) { const p = pushOut(cx, cz); if (usable(p)) { found = p; break; } }
+          for (let i = 0; !found && i < TURNS.length; i += 1) {
+            const c = Math.cos(TURNS[i]); const s = Math.sin(TURNS[i]);
+            const p = pushOut(x + sx * c - sz * s, z + sx * s + sz * c); if (usable(p)) found = p;
+          }
+          if (found) [tx, tz] = found; else if (!stuck) break;
+        }
+        x = tx; z = tz;
+      }
+      return [x, z];
+    }
+    const list = [];
+    // a new islander starts where its round has it now (not at the origin, walking over to it)
+    function add(n, ms) {
+      const pose = at(n, ms); const [x, z] = pushOut(pose.x, pose.z);
+      const w = { n, x, z, px: x, pz: z, bx: pose.x, bz: pose.z, pose, speed: 0, heading: null };
+      list.push(w); return w;
+    }
+    // One frame. `people` are other circles to give way to ({x, z, r}: me, other players, event visitors).
+    let resyncs = 0; // times an islander was put back on its round (a paused tab, or stuck)
+    let lastMs = null;
+    function step(ms, frameDt, people = []) {
+      // the time that really passed on the server clock the rounds run on (a scene caps its frame step for animation;
+      // on a slow PC that cap would leave the islanders falling ever further behind their rounds)
+      const dt = lastMs === null ? frameDt : Math.min(1, Math.max(0, (ms - lastMs) / 1000)); lastMs = ms;
+      const keep = Math.exp(-RETURN * dt);
+      for (const w of list) { // 1) the shared route, plus what is left of the offset
+        const pose = at(w.n, ms); w.px = w.x; w.pz = w.z;
+        let tx = pose.x + (w.x - w.bx) * keep; let tz = pose.z + (w.z - w.bz) * keep;
+        const want = Math.hypot(tx - w.x, tz - w.z);
+        w.warped = want > WARP || Math.hypot(w.x - w.bx, w.z - w.bz) > MAX_OFF; // a long pause (a hidden tab), or stuck: back on the round at once
+        if (want > TOP * dt) { tx = w.x + ((tx - w.x) * TOP * dt) / want; tz = w.z + ((tz - w.z) * TOP * dt) / want; } // never faster than a jog
+        if (w.warped) { [w.x, w.z] = pushOut(pose.x, pose.z); w.speed = 0; resyncs += 1; } else [w.x, w.z] = move(w.x, w.z, tx, tz);
+        w.bx = pose.x; w.bz = pose.z; w.pose = pose;
+      }
+      for (let pass = 0; pass < 3; pass += 1) { // 2) apart from each other, in a fixed order
+        for (let i = 0; i < list.length; i += 1) for (let j = i + 1; j < list.length; j += 1) {
+          const a = list[i]; const b = list[j];
+          const dx = a.x - b.x; const dz = a.z - b.z; let d = Math.hypot(dx, dz);
+          if (d >= SEP) continue;
+          let ux; let uz;
+          if (d < 1e-5) { const angle = ((a.n * 17 + b.n * 31) % 16) * (Math.PI / 8); ux = Math.cos(angle); uz = Math.sin(angle); d = 0; } else { ux = dx / d; uz = dz / d; }
+          const shift = (SEP - d) / 2 + 0.005;
+          // pushed straight apart, two meeting head-on on a walk would only shove each other back; whoever has the other
+          // ahead of them also steps to their own right -- meeting, both do and pass; following, the one behind overtakes
+          const [ra, rb] = [[a, b], [b, a]].map(([me, other]) => {
+            if (!me.pose.moving) return [0, 0];
+            const hx = Math.sin(me.pose.yaw); const hz = Math.cos(me.pose.yaw);
+            return hx * (other.x - me.x) + hz * (other.z - me.z) > 0 ? [hz * shift, -hx * shift] : [0, 0];
+          });
+          [a.x, a.z] = move(a.x, a.z, a.x + ux * shift + ra[0], a.z + uz * shift + ra[1]);
+          // b takes whatever a could not (a against a wall or a prop): the pair still ends SEP apart where there is room
+          const left = SEP + 0.005 - Math.hypot(a.x - b.x, a.z - b.z);
+          if (left > 0) [b.x, b.z] = move(b.x, b.z, b.x - ux * left + rb[0], b.z - uz * left + rb[1]);
+        }
+      }
+      for (const w of list) for (const o of people) { // 3) out of people's way
+        let dx = w.x - o.x; let dz = w.z - o.z; let d = Math.hypot(dx, dz); const min = R + o.r;
+        if (d >= min) continue;
+        if (d < 1e-5) { dx = 1; dz = 0; d = 1; }
+        [w.x, w.z] = move(w.x, w.z, o.x + (dx / d) * min, o.z + (dz / d) * min);
+      }
+      for (const w of list) { // the drawn pace and heading pick the walk and the facing
+        if (w.warped) continue;
+        const moved = Math.hypot(w.x - w.px, w.z - w.pz); const v = dt > 0 ? moved / dt : 0;
+        w.speed += (v - w.speed) * Math.min(1, dt * 10);
+        if (moved > dt * 0.3) w.heading = Math.atan2(w.x - w.px, w.z - w.pz);
+      }
+    }
+    return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
+  }
+
+  return { COUNT, WALKER, round, at, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));
