@@ -14,9 +14,24 @@ async function parse(buffer) {
   return new Promise((resolve, reject) => new GLTFLoader().parse(ab, '', resolve, reject));
 }
 
-test('이번 버전은 실제 에셋을 하나도 등록하지 않는다(모든 대상이 코드 생성형)', () => {
-  assert.deepEqual(Object.keys(REGISTRY), []);
-  assert.deepEqual(P.enabledIds(REGISTRY), []);
+// v1.10.18: the first real models -- a few on purpose (one tree kind, the bushes, the plaza benches); every file is in
+// public/assets/island (so in the game resource pack, with its content revision) and is a valid glTF binary
+test('운영 등록부: 시험 연결한 모델 3종만 있고, 파일은 리소스 팩 폴더에 있으며 실제 GLB로 읽힌다', async () => {
+  const fs = require('node:fs'); const path = require('node:path');
+  const { buildAssetManifest } = require('../lib/asset-manifest');
+  assert.deepEqual(Object.keys(REGISTRY).sort(), ['nature.bush', 'nature.tree.round', 'prop.bench']);
+  assert.deepEqual(P.enabledIds(REGISTRY).sort(), ['nature.bush', 'nature.tree.round', 'prop.bench']);
+  const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
+  for (const [id, entry] of Object.entries(REGISTRY)) {
+    assert.match(entry.url, /^\/assets\/island\/seasonal-v2\/spring\//, id);
+    const file = path.join(__dirname, '..', 'public', entry.url);
+    assert.ok(fs.existsSync(file), `${id} 파일`);
+    assert.ok(pack.assets.some((a) => a.url === entry.url), `${id} 리소스 팩`);
+    const gltf = await parse(fs.readFileSync(file));
+    let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
+    assert.ok(meshes > 0, `${id} 메시`);
+    assert.ok(entry.scale > 0.5 && entry.scale < 1.2, `${id} 크기 보정`);
+  }
 });
 
 test('에셋 등록부 조회: 비활성·운영 차단·주소 없음은 쓰지 않고, 구체 id부터 고른다', () => {

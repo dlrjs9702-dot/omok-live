@@ -315,43 +315,40 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // of every kind in a CELL square goes into one static mesh (one for things that cast shadows, one for the rest), with
   // its tint in the vertex colours -- a few dozen draw calls for the whole island's greenery instead of one per kind
   // per square. Still culled square by square when off screen.
-  const baked = new Map(); // `${cx},${cz},${shadow}[,group]` -> { copies: [{ geometry, matrix, color }], group, cx, cz, cell }
+  const baked = new Map(); // `${cx},${cz},${shadow}` -> [{ geometry, matrix, color }]
   // v1.10.17: a list given a `target` (registry ids, e.g. ['nature.tree.round', 'nature.tree']) that has a model to load
-  // is kept apart -- its own baked meshes per square, and every copy's matrix -- and handed to `assets.batch`, which
-  // swaps those squares for the model once it is in (asset-loader.js). Placement, sizes and turns are exactly the
-  // procedural ones, so where things stand, the circles round them and the islanders' routes stay as they were.
-  const groups = []; // { target, cells: Map(cellKey -> { x, z, parent, procedural: [], matrices: [], shadow }) }
-  const groupOf = (target, shadow) => {
-    if (!target || !assets?.wants(target)) return null;
-    const g = { target, shadow, cells: new Map() }; groups.push(g); return g;
-  };
-  const cellOf = (g, item, cell) => {
-    const cx = Math.floor(item.x / cell); const cz = Math.floor(item.z / cell); const key = `${cx},${cz}`;
-    if (!g.cells.has(key)) g.cells.set(key, { x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, half: cell / 2, parent: scene, procedural: [], matrices: [], shadow: g.shadow });
-    return g.cells.get(key);
-  };
+  // is kept apart and handed to `assets.batch`, which shows the model for its copies near the player (asset-loader.js).
+  // v1.10.18: such a list is not baked but drawn as one InstancedMesh per square (its tint per copy) -- the same one draw
+  // call per square -- so the loader can take single copies out of it: the near ones become models, the rest stay.
+  // Placement, sizes and turns are exactly the procedural ones, so where things stand, the circles round them and the
+  // islanders' routes stay as they were.
+  const groups = []; // { target, cells: [{ x, z, parent, procedural: [InstancedMesh], matrices, colors, shadow }] }
   const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null } = {}) => {
-    const g = groupOf(target, shadow);
-    if (material === natureMat) {
+    const g = target && assets?.wants(target) ? { target, cells: [] } : null;
+    if (material === natureMat && !g) {
       for (const item of list) {
         place(item, 0);
-        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}${g ? `,${groups.indexOf(g)}` : ''}`;
-        if (!baked.has(key)) baked.set(key, { copies: [], group: g, cell, item });
-        baked.get(key).copies.push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
-        if (g) cellOf(g, item, cell).matrices.push(m4.clone());
+        const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)},${shadow ? 1 : 0}`;
+        if (!baked.has(key)) baked.set(key, []);
+        baked.get(key).push({ geometry, matrix: m4.clone(), color: color ? color(item, tint).clone() : null });
       }
       return;
     }
     keep(geometry);
     const cells = new Map();
     for (const item of list) { const key = `${Math.floor(item.x / cell)},${Math.floor(item.z / cell)}`; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(item); }
-    for (const items of cells.values()) {
+    for (const [key, items] of cells) {
       const im = new THREE.InstancedMesh(geometry, material, items.length);
-      const rec = g ? cellOf(g, items[0], cell) : null;
-      items.forEach((item, i) => { place(item, i); im.setMatrixAt(i, m4); if (color) im.setColorAt(i, color(item, tint)); if (rec) rec.matrices.push(m4.clone()); });
+      const matrices = []; const colors = [];
+      items.forEach((item, i) => {
+        place(item, i); im.setMatrixAt(i, m4);
+        if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
+        matrices.push(m4.clone());
+      });
       im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
-      if (rec) rec.procedural.push(im);
+      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: scene, procedural: [im], matrices, colors: color ? colors : null, shadow }); }
     }
+    if (g) groups.push(g);
   };
   const setM = (x, y, z, s, sy = s, ry = 0) => { q.setFromAxisAngle(v3.set(0, 1, 0), ry); m4.compose(v3.set(x, y, z), q, sc.set(s, sy, s)); };
   // v1.10.13 환경 비주얼: a few kinds of each thing, each kind one merged shape (island.js `part`/`mergeColored`) with
@@ -440,7 +437,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
-  for (const [key, { copies, group, cell, item }] of baked) {
+  for (const [key, copies] of baked) {
     let count = 0; for (const c of copies) count += c.geometry.attributes.position.count;
     const pos = new Float32Array(count * 3); const nor = new Float32Array(count * 3); const col = new Float32Array(count * 3);
     let o = 0;
@@ -458,7 +455,6 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.computeBoundingSphere();
     const m = new THREE.Mesh(geo, natureMat); m.castShadow = key.split(',')[2] === '1'; m.receiveShadow = true; scene.add(m);
-    if (group) cellOf(group, item, cell).procedural.push(m);
   }
 
   // Lamps along the main walks, benches beside them.

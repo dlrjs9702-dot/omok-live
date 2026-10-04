@@ -27,7 +27,19 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // One placed copy of a loaded model. Geometry, materials and textures stay shared with the loaded file; SkeletonUtils'
   // clone also gives a skinned mesh its own skeleton (a plain clone() would leave every copy driving the same bones).
+  // v1.10.18: a still model of plain colours (a prop, a building) is one flattened mesh (partsOf) -- one draw call
+  // instead of one per part; a rigged or textured one is cloned as before.
   function instance(gltf, entry) {
+    const flat = !gltf.animations?.length && partsOf(gltf);
+    if (flat && flat.length === 1 && flat[0].material.vertexColors) {
+      const mesh = new THREE.Mesh(flat[0].geometry, flat[0].material);
+      const object = new THREE.Group(); object.add(mesh);
+      object.scale.multiplyScalar(entry.scale ?? 1);
+      object.rotation.y += entry.rotationY || 0;
+      if (Array.isArray(entry.offset)) object.position.set(...entry.offset);
+      if (entry.shadows !== false) { mesh.castShadow = true; mesh.receiveShadow = true; }
+      return object;
+    }
     const object = cloneObject(gltf.scene);
     object.scale.multiplyScalar(entry.scale ?? 1);
     object.rotation.y += entry.rotationY || 0;
@@ -112,14 +124,27 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
 
   // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
-  // { x, z (its centre), half (half its side), parent, procedural: [the square's procedural meshes of this kind], matrices: [one per copy],
-  // shadow }. Once the model is in, every square gets one InstancedMesh per part of the model, placed with the very
-  // matrices the procedural copies had (place, turn, size -- so where things stand, their collision and every game rule
-  // stay as they were); update() shows the models in the squares near the player and the procedural copies further
-  // away. Nothing registered, a failed load or a switched-off id: the procedural copies stay.
+  // { x, z (its centre), parent, procedural: [the square's InstancedMesh of this kind], matrices: [one per copy],
+  // colors: [its tint per copy] | null, shadow }. Once the model is in, every square gets one InstancedMesh per part of
+  // the model, placed with the very matrices the procedural copies had (place, turn, size -- so where things stand,
+  // their collision and every game rule stay as they were).
+  // v1.10.18: copy by copy, not square by square -- update() puts the copies near the player into the model's mesh and
+  // the rest into the procedural one (each drawing only as many as it holds), so a detailed model costs triangles only
+  // where one stands close. Nothing registered, a failed load or a switched-off id: the procedural copies stay.
   function batch(ids, cells) { const rec = { ids, cells, url: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
+  // the copies `keep` (all, without a model) back in a square's procedural mesh, the rest drawn as the model
+  function fill(p, near) {
+    const { cell } = p; const proc = cell.procedural[0]; let a = 0; let b = 0;
+    cell.matrices.forEach((m, i) => {
+      if (near && near[i]) { both.multiplyMatrices(m, local); for (const im of p.meshes) im.setMatrixAt(a, both); a += 1; }
+      else { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; }
+    });
+    for (const im of p.meshes) { im.count = a; im.visible = a > 0; im.instanceMatrix.needsUpdate = true; } // nothing to draw: not even a call
+    proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+    p.near = a;
+  }
   function clearBatch(rec) {
-    if (rec.placed) for (const { cell, meshes } of rec.placed) { for (const im of meshes) { cell.parent.remove(im); im.dispose(); } for (const p of cell.procedural) p.visible = true; }
+    if (rec.placed) for (const p of rec.placed) { for (const im of p.meshes) { p.cell.parent.remove(im); im.dispose(); } p.meshes = []; fill(p, null); }
     rec.placed = null; rec.entry = null;
   }
   const local = new THREE.Matrix4(); const both = new THREE.Matrix4();
@@ -135,30 +160,33 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const parts = partsOf(gltf); const entry = hit.entry;
       local.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
-      rec.placed = rec.cells.map((cell) => ({ cell, model: null, meshes: parts.map(({ geometry, material }) => {
+      rec.placed = rec.cells.map((cell) => ({ cell, near: 0, meshes: parts.map(({ geometry, material }) => {
         const im = new THREE.InstancedMesh(geometry, material, cell.matrices.length);
         cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local)));
-        im.computeBoundingSphere(); im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true; im.visible = false;
+        im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
+        im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
         cell.parent.add(im); return im;
       }) }));
       rec.entry = entry; shown[hit.id] = 'model'; lastX = NaN; // the next update() places them
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
-  // Near squares show the model, far ones their procedural copies (with a little slack so a square on the boundary does
-  // not flicker). The distance -- to the square's nearest edge -- is the entry's `near`, shortened on lower quality tiers.
+  // Copies within the entry's `near` of the player (shortened on lower quality tiers) show the model, the rest their
+  // procedural look; worked out again only once the player has moved a unit, and only squares that can hold a near copy
+  // are filled again.
   let lastX = NaN; let lastZ = NaN;
   function update(x, z) {
-    if (Math.hypot(x - lastX, z - lastZ) < 1) return; // nothing to change until the player has moved a little
+    if (Math.hypot(x - lastX, z - lastZ) < 1) return;
     lastX = x; lastZ = z;
     for (const rec of batches) {
       if (!rec.placed) continue;
+      // the entry's transform for this batch, for fill()
+      local.compose(new THREE.Vector3(...(Array.isArray(rec.entry.offset) ? rec.entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rec.entry.rotationY || 0), new THREE.Vector3().setScalar(rec.entry.scale ?? 1));
       const near = P.lodDistance(rec.entry.near ?? 45, quality);
       for (const p of rec.placed) {
-        // to the nearest point of the square (0 inside it): the square I stand in always counts as near
-        const half = p.cell.half || 0; const d = Math.hypot(Math.max(0, Math.abs(p.cell.x - x) - half), Math.max(0, Math.abs(p.cell.z - z) - half));
-        const model = p.model ? d < near + 6 : d < near;
-        if (model === p.model) continue;
-        p.model = model; for (const im of p.meshes) im.visible = model; for (const q of p.cell.procedural) q.visible = !model;
+        const flags = p.cell.matrices.map((m) => Math.hypot(m.elements[12] - x, m.elements[14] - z) < near);
+        const count = flags.filter(Boolean).length;
+        if (count === 0 && p.near === 0) continue; // nothing near before or now: unchanged
+        fill(p, flags);
       }
     }
   }
@@ -210,6 +238,6 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
 
   const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.url, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
-    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.filter((p) => p.model).length : 0, parts: rec.placed?.[0]?.meshes.length ?? 0 }));
+    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed?.[0]?.meshes.length ?? 0 }));
   return { attach, dress, release, batch, update, setSeason, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, season, batches: batchDebug() }) };
 }

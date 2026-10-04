@@ -31,7 +31,12 @@ async function island(browser, request, label, registry, { failLoader = false } 
   page.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
   if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-  await page.evaluate((r) => { localStorage.removeItem('gc.testClassic'); if (r) localStorage.setItem('gc.testIslandAssets', JSON.stringify(r)); }, registry);
+  // 'none': as if nothing were registered (the registered entries are set to null); otherwise added to the registry
+  await page.evaluate((r) => {
+    localStorage.removeItem('gc.testClassic');
+    const own = r === 'none' ? Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])) : r;
+    if (own) localStorage.setItem('gc.testIslandAssets', JSON.stringify(own));
+  }, registry);
   await page.reload();
   await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
@@ -54,8 +59,8 @@ async function stillPlays(page) {
 
 let proceduralDoors = null;
 
-test('등록 없음(운영 기본): 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
-  const a = await island(browser, request, '에셋없음', null);
+test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
+  const a = await island(browser, request, '에셋없음', 'none');
   const d = await debug(a.page);
   expect(d.assets).toEqual({ registered: [], loader: 'none', season: null });
   expect(a.code).toEqual([]); // neither the loader module nor GLTFLoader was fetched
@@ -74,10 +79,10 @@ test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받�
   });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.shown, { timeout: 10000 })
-    .toEqual({ 'facility.townhall': 'model', cottage: 'model', 'character.player': 'model' });
+    .toMatchObject({ 'facility.townhall': 'model', cottage: 'model', 'character.player': 'model' });
   const d = await debug(page);
   expect(d.assets.loader).toBe('ready');
-  expect(d.assets.files).toEqual({ [BOX]: 'loaded', [RIG]: 'loaded' });
+  expect(d.assets.files).toMatchObject({ [BOX]: 'loaded', [RIG]: 'loaded' });
   expect(a.hits).toEqual({ [BOX]: 1, [RIG]: 1 }); // one download each: the town hall, nine cottages (two LOD levels) and me
   expect(d.assets.lods).toBe(9);
   expect(a.code).toEqual(expect.arrayContaining(['/plaza/asset-loader.js', '/vendor/three/addons/loaders/GLTFLoader.js', '/vendor/three/addons/utils/SkeletonUtils.js']));
@@ -105,7 +110,7 @@ test('실패·비활성화: 없는 파일·손상된 파일·꺼진 등록은 �
   });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.shown, { timeout: 10000 })
-    .toEqual({ 'facility.townhall': 'procedural', 'facility.shop': 'procedural', cottage: 'model' });
+    .toMatchObject({ 'facility.townhall': 'procedural', 'facility.shop': 'procedural', cottage: 'model' });
   const files = (await debug(page)).assets.files;
   expect(files[BOX]).toBe('loaded');
   expect(files['/assets/island/__e2e/missing.glb']).toMatch(/^failed/);
@@ -168,6 +173,32 @@ test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 
   await page.evaluate(() => window.PlazaDebug().setSeason('summer')); // no summer file
   await expect.poll(async () => (await rock()).placed).toBe(false);
   expect(a.hits).toEqual({ [BOX]: 1, [BOX2]: 1 });
+  await stillPlays(page);
+  expect(a.errors).toEqual([]);
+  await a.context.close();
+});
+
+// v1.10.18 the registered trial models, as players get them: from the game resource pack (Cache Storage), once each
+test('운영 등록부: 시험 모델(봄 둥근 나무·관목·광장 벤치)이 리소스 팩에서 한 번씩 받아져 교체되고, 섬은 그대로 동작한다', async ({ browser, request }) => {
+  const a = await island(browser, request, '시험모델', null);
+  const { page } = a;
+  const glbs = [];
+  page.on('request', (r) => { if (r.url().includes('/assets/island/seasonal-v2/')) glbs.push(new URL(r.url()).pathname); });
+  const ids = ['nature.tree.round', 'nature.bush', 'prop.bench'];
+  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 20000 }).toEqual(['model', 'model', 'model']);
+  const d = await debug(page);
+  const files = Object.entries(d.assets.files).filter(([url]) => url.includes('/seasonal-v2/'));
+  expect(files.map(([, state]) => state)).toEqual(['loaded', 'loaded', 'loaded']);
+  // every model file is in the active pack of the resource cache
+  const cached = await page.evaluate(async () => {
+    const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
+    return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.includes('/seasonal-v2/'));
+  });
+  expect(cached.sort()).toEqual(files.map(([url]) => url).sort());
+  const tree = d.assets.batches.find((b) => b.ids[0] === 'nature.tree.round');
+  expect(tree.placed).toBe(true); expect(tree.parts).toBe(1);
+  for (const b of d.assets.batches.filter((x) => x.ids[0].startsWith('nature.bush'))) expect(b.placed).toBe(true);
+  if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors);
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();
