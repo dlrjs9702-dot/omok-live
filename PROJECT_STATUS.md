@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.7 게임 아일랜드 당일 위치 복원
+
+비공개 IDEAS 「게임 아일랜드 — 당일 접속 위치 복원」(사용자 확정 2026-10-04)과 구현 지시(2026-10-04, 연속 패치 1단계).
+
+- 지형 공용화(`public/plaza/island-terrain.js`): `island.js`의 순수 지형 계산(해안선·물길·산책로·다리·선착장·`walkable`·`heightAt`·시설 좌표)을 그대로 옮겨 서버(`require`)와 브라우저(전역 `IslandTerrain`, `island.js`가 다시 내보냄)가 같은 파일을 쓴다. 이후 이벤트 배치·배회 NPC도 이 판정을 쓴다.
+- 서버(`server.js`): `/api/plaza/state`로 받은 위치 중 설 수 있는 곳(섬 안, 물·절벽·분수 아님)만 계정별 `{ day(KST), x, z }`로 메모리에 두고, 15초마다·`/api/plaza/leave`(방 입장·로그아웃) 때·SIGTERM 때만 저장(매 프레임 쓰지 않음). `GET /api/plaza/spot`은 오늘 위치를 돌려주며, 그 사이 지형이 바뀌어 설 수 없게 됐으면 가까운 설 수 있는 곳(반경 12까지)으로 옮기고, 오늘 위치가 없으면 `null`(중앙광장). 게임방 재접속 상태(`plazaLastPos`, 방 rejoin)와 별개.
+- 저장소: JSON `plaza.spots`, PostgreSQL `plaza_spots(user_id PK, day, x, z, updated_at)` 새 테이블(기존 테이블 변경 없음). `savePlazaSpots`는 바뀐 위치를 한 번에 씀.
+- 화면: 새 아일랜드 화면(로그인·새로고침)만 오늘 위치에서 시작(나무·가로등·건물 안이면 밖으로, 그래도 못 서면 중앙광장). 방에서 돌아오면 화면이 유지되므로 입장 전 위치 그대로.
+- 판단(기록에 없던 기준): 저장 주기 15초(서버 비정상 종료 때 최대 15초 전 위치), 보정 탐색 반경 12, 관리자 계정도 같은 규칙.
+- 검증: `test/plaza-spot.test.js`(저장·복원, 바다 위치 미저장, 재시작 후 유지, 전날 위치 무효, 물길 안 위치 보정), `test/point-store.test.js`(JSON·PostgreSQL 저장·조회), e2e `plaza.spec.js` 「당일 위치」(새로고침 후 마지막 위치).
+
 ## v1.10.6 기부 재시도 안정화(PR #129 리뷰 후속)
 
 PR #129 Codex 리뷰 P1·P2와 E2E 실패 기록(비공개 IDEAS 말미) 후속. 사용자 지시(2026-10-04): 게임 아일랜드 연속 패치 0단계.
