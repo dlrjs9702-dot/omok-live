@@ -692,3 +692,25 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
+
+// v1.10.12 배회 NPC: about ten islanders stroll on every screen, in the same places at the same moment (no packets:
+// each screen works out their rounds from the server clock), and they walk.
+test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 보인다', async ({ browser, request }) => {
+  test.setTimeout(180000); // two 3D island pages
+  const a = await intoPlaza(browser, request, '구경꾼하나');
+  const b = await intoPlaza(browser, request, '구경꾼둘');
+  const islanders = (page) => page.evaluate(() => window.PlazaDebug().wanderers);
+  await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBe(10);
+  await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBe(10);
+  await a.page.waitForTimeout(1500); // both have heard the server clock (pose answers)
+  const both = await Promise.all([a.page, b.page].map((page) => page.evaluate(() => { const d = window.PlazaDebug(); const t = d.serverNow(); return { t, list: d.wanderers }; })));
+  const lag = Math.abs(both[0].t - both[1].t) / 1000;
+  for (let n = 0; n < 10; n += 1) {
+    const p = both[0].list[n]; const q = both[1].list[n];
+    expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeLessThan(1 + lag * 2); // the same place (a moment apart at most)
+  }
+  const first = await islanders(a.page); await a.page.waitForTimeout(4000); const later = await islanders(a.page);
+  expect(first.filter((p, n) => Math.hypot(p.x - later[n].x, p.z - later[n].z) > 1).length).toBeGreaterThan(2); // they walk
+  for (const who of [a, b]) await expectNoScriptError(who.page);
+  for (const who of [a, b]) await who.context.close();
+});

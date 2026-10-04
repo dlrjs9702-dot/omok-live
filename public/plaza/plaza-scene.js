@@ -781,7 +781,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   function otherCircles() {
     const out = [];
     for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
-    for (const w of wanderers) if (w.c.root.visible) out.push({ x: w.f.x, z: w.f.z, r: PLAYER_R }); // v1.10.12: and the islanders
+    for (const w of wanderers) if (w.c.root.visible && playerRadiusAt(w.f.x, w.f.z) === PLAYER_R) out.push({ x: w.f.x, z: w.f.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
     for (const o of others.values()) {
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
