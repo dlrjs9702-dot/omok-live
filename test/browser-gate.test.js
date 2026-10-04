@@ -89,7 +89,7 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   assert.match(manifest.version, /^[0-9a-f]{16}$/);
   assert.ok(manifest.assets.some(asset => asset.url === '/hwatu/m01-gwang.svg'));
   // only game resources: no code, no license text
-  assert.ok(manifest.assets.every(asset => /^\/(assets|hwatu)\/.+\.(svg|png)$/.test(asset.url)), JSON.stringify(manifest.assets.map(a => a.url)));
+  assert.ok(manifest.assets.every(asset => /^\/(assets|hwatu)\/.+\.(svg|png|glb|gltf|bin|jpe?g|webp|avif)$/.test(asset.url)), JSON.stringify(manifest.assets.map(a => a.url)));
   // the service worker is plain static code, always revalidated so a new deploy's worker is picked up
   const sw = await fetch(`${base}/sw.js`);
   assert.equal(sw.status, 200);

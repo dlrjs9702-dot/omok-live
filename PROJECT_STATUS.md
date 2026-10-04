@@ -11,6 +11,23 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.15 게임 아일랜드 고품질 3D 에셋 파이프라인
+
+비공개 IDEAS 「고품질 에셋 파이프라인 단계 분리」(사용자 확정 2026-10-04)와 구현 지시(2026-10-05). 실제 모델은 하나도 넣지 않았다 — 등록부가 비어 있어 운영 아일랜드는 v1.10.14와 같은 코드 생성형 그대로이고, 로더 모듈도 받지 않는다.
+
+- 구조: `public/plaza/island-assets.js`(등록부, 비어 있음; 대상 id·좌표계 규칙 문서) → `public/plaza/asset-pipeline.js`(Three.js 없는 규칙: 등록 조회 `entryOf`/`pick`, URL별 1회 로드 캐시 `createLoadCache`, 걸음 상태 `nextGait`, AnimationMixer 계층 `createAnimator`, 품질 단계별 LOD 거리 `lodDistance`, 지연 로더 `createLazyAssets`) → `public/plaza/asset-loader.js`(ES 모듈: GLTFLoader, SkeletonUtils.clone, THREE.LOD; 등록이 하나라도 있을 때만 import). `plaza-scene.js`는 `assets.attach(id, 논리 그룹, 외형 그룹)`·`assets.dress(id, 캐릭터)`만 부른다.
+- 외형·논리 분리: 시설마다 `root`(위치·방향·간판·안내 NPC — 충돌 원·문 좌표는 SPOTS에서 계산)와 그 안의 `visual`(코드 생성형 외형만)로 나눴다. 모델이 로드되면 `root`에 붙이고 `visual`만 숨긴다. 주민 집도 같은 방식. 충돌·문·상호작용·이벤트·NPC 경로 좌표는 바뀌지 않았다.
+- 대상 id: `facility.<시설 id>`, `cottage.<0-8>` → `cottage`, `character.player`(나·다른 사람), `character.<시설 id>` → `character.npc`(안내 NPC), `character.islander`(배회 주민), `character.visitor` → `character.islander`(이벤트 방문객). 구체 id가 먼저.
+- 로드·재사용: 같은 URL은 여러 대상이 동시에 요청해도 한 번만 받아 파싱(Promise 공유), 인스턴스는 `SkeletonUtils.clone`(지오메트리·재질·텍스처 공유, 스킨 메시는 뼈대를 따로 복제). 캐릭터 폐기 시 `release`로 복제본만 떼고 공유 자원은 장면 종료(`dispose`) 때 한 번 해제.
+- 실패 복귀: 404·손상·파싱 실패·디코더 필요 형식·로더 모듈 실패 → 경고 한 번 기록, 그 대상만 코드 생성형 유지, 섬은 계속. 같은 실패 파일을 반복 요청하지 않는다. v1.10.14 리소스 팩 준비 실패 정책(입장 차단+재시도)은 그대로 — 그건 필수 팩이고, 이건 선택적 외형층이다.
+- 비활성화: 등록부 `enabled: false`(코드), 운영 환경변수 `ISLAND_ASSETS_OFF=facility.townhall,character.player`(또는 `*`)를 서버가 매니페스트에 넣어 페이지가 해당 대상만 코드 생성형으로 둔다(코드 수정 없음, 재시작으로 반영).
+- 애니메이션: `createAnimator` — 그려지는 이동 속도(나: 키 입력 속도, 다른 사람: v1.10.8 follower 속도, 주민: follower 속도) → Idle/Walk/Run(히스테리시스: 걷기 0.4/0.25, 달리기 걷기 속도의 1.3배/1.15배) → AnimationMixer crossFade(기본 0.25초). 클립이 없으면 run→walk→idle 대체, `speeds`로 보폭-지면 속도 맞춤, `play(name)`은 1회 재생 뒤 걸음으로 복귀(손 흔들기 등 확장용). 모델이 붙은 캐릭터는 `animate()`가 관절 대신 mixer에 속도만 넘긴다.
+- LOD·품질: 원래 안(자체 거리 전환) → THREE.LOD 선택. 렌더러가 프레임마다 거리 판정(추가 코드·루프 없음), `addLevel(…, hysteresis)` 지원. 기존 adaptive quality(2 높음/1 중간 DPR 1/0 낮음 그림자 끔)가 단계를 내릴 때 `setQuality`로 LOD 전환 거리를 1/0.75/0.5배로 줄인다. 캐릭터는 LOD 없음(리그 클립은 한 벌의 뼈대에만 묶임).
+- 서버: GLTFLoader·SkeletonUtils·BufferGeometryUtils를 `node_modules/three/examples/jsm`에서 허용 목록으로 제공하며 `from 'three'`를 `/vendor/three/three.module.js`로 바꿔 준다(CSP가 인라인 import map을 막으므로; 같은 모듈 URL이라 Three.js 인스턴스 하나). 원래 안의 DRACO/KTX2/Meshopt는 디코더(wasm 등)가 필요해 실제 모델이 생기는 패치로 미룸 — 그런 모델은 지금 로드 실패 → 코드 생성형. MIME 추가: `.glb` `.gltf` `.bin` `.jpg/.jpeg` `.webp` `.avif`(glTF 텍스처). `.ktx2`·`.wasm`은 디코더와 함께 추가할 것.
+- 리소스 캐시 연결: 모델은 `public/assets/island/`에 두면 v1.10.14 리소스 팩(매니페스트·내용 해시·Cache Storage·staging·증분·롤백)에 자동 포함. 로더는 `GameBoot.assetUrl`로 `?rev=` 주소를 쓰고, `.gltf`가 참조하는 `.bin`·텍스처도 LoadingManager URL 수정으로 같은 팩 주소를 쓴다. 별도 캐시 체계 없음.
+- 다음 패치 적용 방법: 파일을 `public/assets/island/`에 넣고 `island-assets.js`에 `'facility.townhall': { url: '/assets/island/townhall.glb' }` 또는 `'character.player': { url: …, animations: { idle: 'Idle', walk: 'Walk', run: 'Run' } }` 한 줄. 모델 좌표: 원점=지면 중심, 앞(문)=+z, 캐릭터 약 2 유닛. 플레이어 모델을 쓰면 현재 코드 생성형 아바타 꾸미기(헤어·의상·모자)는 그 모델에 적용되지 않으므로 그 패치에서 처리 방식을 정해야 한다.
+- 검증: `test/island-asset-pipeline.test.js`(등록부 비어 있음·조회 규칙·1회 로드·실패 기록·걸음 상태·LOD 단계·실제 GLTFLoader로 생성 GLB 파싱/손상 거부·SkeletonUtils 복제·AnimationMixer 전환/대체/교차 가중치·지연 로더), `test/island-asset-serve.test.js`(애드온 제공·import 경로 치환·허용 목록 밖 404, 6개 형식 MIME·리소스 팩 포함·revision, `ISLAND_ASSETS_OFF` 전달), e2e `island-assets.spec.js` 4(등록 없음: 로더 미요청·섬 동작 / 등록·성공: 같은 GLB 1회 다운로드로 관공서+집 9채(LOD)+내 캐릭터, 문 좌표 불변, Idle→Walk→Idle / 없는 파일·손상 파일·꺼진 등록: 그 대상만 코드 생성형, 1회만 요청 / 로더 모듈 실패: 섬 동작). 테스트 GLB는 `test-support/gltf-fixture.js`가 즉석 생성(저장소에 모델 파일 없음). `npm test` 661, 회귀 e2e(광장 전체·첫 접속·캐시·로비·등반·재접속). 로컬에서 main(v1.10.14)과 같은 위치·시점 캡처 비교: 시설·집·나무·길·물 동일, 차이는 서버마다 무작위인 이벤트·주민 위치뿐. 실제 GPU PC·회사 PC 미검증.
+
 ## v1.10.14 게임 리소스 캐시 기반 (Chrome 전용)
 
 비공개 IDEAS 「게임센터 — 고품질 리소스 캐시 기반」(사용자 확정 2026-10-04)과 구현 지시·추가 지시(사전검사, 롤백 구조, 2026-10-04). 그래픽·에셋 자체는 바꾸지 않고, 앞으로 큰 정적 리소스를 브라우저에 저장·재사용할 기반만 만들었다.
