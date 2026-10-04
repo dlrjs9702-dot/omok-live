@@ -1613,3 +1613,13 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .climbRankEmpty{font-size:.78rem;color:#94a3b8;padding:6px 2px}
 .climbChampions{margin:0 0 10px;font-size:.78rem;font-weight:800;color:#fde68a}
 .recordsDialog.namingDialog{width:min(92vw,420px)} /* v1.10.9 작명소 */
+/* v1.10.10 가방·관공서·상인 */
+.islandBagTab{top:auto;bottom:14px}
+.recordsDialog.islandBagDialog{width:min(92vw,440px)}
+.islandBagGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.islandBagSlot{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:12px;background:#0f172a;border:1px solid #273449;font-size:1.6rem}
+.islandBagSlot small{position:absolute;right:6px;bottom:4px;font-size:.72rem;font-weight:900;color:#f8fafc}
+.islandBagSlot span{position:absolute;left:6px;top:4px;font-size:.62rem;font-weight:800;color:#cbd5e1;max-width:calc(100% - 10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.islandPlaceList{display:grid;gap:6px;margin:6px 0 10px}
+.islandPlaceRow{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449;font-size:.8rem}
+.islandPlaceRow strong{color:#fde68a}

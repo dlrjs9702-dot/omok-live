@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.9';
+import { buildIsland, heightAt, walkable, SPOTS, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.10';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -319,7 +319,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const arch = mesh(new THREE.TorusGeometry(0.72, 0.12, 8, 16, Math.PI), band, 0, 2.3, 3.32, root); arch.castShadow = false;
       sign(facility.name, root, 4.3);
       solids.push({ x, z, r: 3.5 });
-    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
+    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'townhall') {
       const w = 3.2; const h = 2.4; depth = 2.7;
       mesh(new THREE.BoxGeometry(w, h, depth), mat(spot.wall), 0, h / 2, 0, root);
       const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.82, 1.7, 4), mat(spot.roof), 0, h + 0.85, 0, root);
@@ -335,6 +335,12 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
           const strip = mesh(new THREE.BoxGeometry(w / 6, 0.08, 0.9), mat(k % 2 ? 0xffffff : 0xff8aa8), -w / 2 + w / 12 + (k * w) / 6, h * 0.86, depth / 2 + 0.4, root);
           strip.rotation.x = 0.35;
         }
+      }
+      if (spot.kind === 'townhall') { // v1.10.10 관공서: two columns by the door and a flag on the roof
+        for (const px of [-0.75, 0.75]) mesh(new THREE.CylinderGeometry(0.12, 0.14, h * 0.9, 12), mat(0xfffaf0), px, h * 0.45, depth / 2 + 0.25, root);
+        mesh(new THREE.BoxGeometry(2.0, 0.14, 0.6), mat(0xfffaf0), 0, h * 0.92, depth / 2 + 0.2, root);
+        mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 8), mat(0x8a8f99), w * 0.32, h + 1.4, 0, root);
+        mesh(new THREE.PlaneGeometry(0.62, 0.4), mat(0x5fb0ff, { side: THREE.DoubleSide }), w * 0.32 + 0.32, h + 1.95, 0, root);
       }
       if (spot.kind === 'house') { // the records hall carries a trophy
         mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.5, 16), mat(0xf6c945, { metalness: 0.5, roughness: 0.35 }), 0, h + 2.0, 0, root);
@@ -400,6 +406,24 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 16), mat(0xe2574c), 0.7, 1.12, 0, root);
       sign(facility.name, root, 2.9);
       solids.push({ x, z, r: 1.2 });
+      npcs.push(npc);
+    } else if (spot.kind === 'stall') { // v1.10.10 상점가 상인: a trader behind a market stall with crates of produce
+      depth = 1.3;
+      const npc = makeCharacter({ shirt: 0x6bbf73, hair: 0x6b4a2b, skin: 0xffdcbc, hat: 0xf2c14e });
+      npc.root.position.set(0, 0, -0.85); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      const wood = mat(0xb07a4f);
+      mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), wood, 0, 0.45, 0.1, root); // the counter
+      for (const [lx, color] of [[-0.6, 0x8fd16b], [0, 0xe2574c], [0.6, 0xc9a27a]]) { // herbs, berries, mushrooms
+        mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), mat(0xc58b5a), lx, 0.99, 0.1, root);
+        for (let k = 0; k < 4; k += 1) mesh(new THREE.SphereGeometry(0.08, 8, 6), mat(color), lx - 0.12 + (k % 2) * 0.24, 1.12, 0.0 + Math.floor(k / 2) * 0.2, root);
+      }
+      for (const px of [-0.95, 0.95]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 8), wood, px, 1.15, -0.25, root);
+      for (let k = 0; k < 5; k += 1) { // a striped awning over the stall
+        const strip = mesh(new THREE.BoxGeometry(0.42, 0.06, 1.3), mat(k % 2 ? 0xffffff : 0x6bbf73), -0.84 + k * 0.42, 2.25, 0.05, root);
+        strip.rotation.x = 0.22;
+      }
+      sign(facility.name, root, 3.0);
+      solids.push({ ...at(0, 0.1), r: 1.1 }, { ...at(0, -0.85), r: 0.45 });
       npcs.push(npc);
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;

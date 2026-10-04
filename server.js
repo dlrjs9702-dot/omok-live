@@ -37,7 +37,8 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines } = require('./lib/missions');
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
-const IslandTerrain = require('./public/plaza/island-terrain.js'); // v1.10.7: the island's shape, shared with the browser
+const IslandTerrain = require('./public/plaza/island-terrain.js');
+const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
@@ -2780,7 +2781,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.9' });
+    return sendJson(res, 200, { ok: true, version: '1.10.10' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
@@ -3332,6 +3333,38 @@ async function requestHandler(req, res) {
     const outcome = await pointStore.recordClimb({ userId: pointAccountForSession(session), climbId: crypto.randomUUID(), altitude: Number(body.altitude), name: session.label || '' }, Number(body.at) || nowMs());
     return sendJson(res, 200, { ok: true, ...outcome });
   }
+  // v1.10.10 이벤트 인벤토리: my island bag, and handing its things in at the central town hall or the shop-street
+  // trader. The server holds the counts; selling needs me standing at that place (my last island position).
+  if (pathname === '/api/island/bag' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(pointAccountForSession(session)), dailyCap: IslandItems.DAILY_CAP });
+  }
+  if (pathname === '/api/island/sell' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-sell:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const place = body.place === 'office' || body.place === 'merchant' ? body.place : null;
+    if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const spot = IslandTerrain.SPOTS[place === 'office' ? 'townhall' : 'trader'];
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const account = pointAccountForSession(session);
+    const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place }, nowMs());
+    if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
+    if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
+    if (result.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/give' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null });
+    return sendJson(res, 200, { ok: true, ...result });
+  }
+
   // v1.10.9 작명소: my nickname, the price and when I may change it again.
   if (pathname === '/api/nickname' && req.method === 'GET') {
     const session = requireSession(req, res);
@@ -4035,7 +4068,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.9 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.10 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

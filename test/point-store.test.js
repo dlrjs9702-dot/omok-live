@@ -191,6 +191,50 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('v1.10.10 이벤트 인벤토리: 받기 한 번·스택·가득 참·장소별 정산·일일 한도·같은 요청 한 번', async () => {
+    const I = 'guest:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const Items = require('../lib/island-items');
+    const give = (claimId, itemId, qty = 1, meta = null) => store.islandGive({ userId: I, claimId, itemId, qty, meta });
+    assert.deepEqual((await store.islandBag(I)).items, []);
+    assert.equal((await give('give-trash-01', 'trash', 3)).applied, true);
+    assert.equal((await give('give-trash-01', 'trash', 3)).applied, false, '같은 받기는 한 번');
+    await Promise.all([give('give-trash-02', 'trash'), give('give-trash-03', 'trash')]);
+    const bag = await store.islandBag(I);
+    assert.deepEqual(bag.items.map((e) => [e.itemId, e.qty]), [['trash', 5]], '같은 아이템은 한 칸에 쌓인다');
+    assert.equal(bag.slots, Items.BAG_SLOTS);
+    await give('give-herb-01', 'herb', 2); await give('give-wallet-1', 'wallet'); await give('give-wallet-2', 'wallet');
+    assert.equal((await store.islandBag(I)).items.filter((e) => e.itemId === 'wallet').length, 2, '고유 아이템은 각각 한 칸');
+    for (let i = 0; i < Items.BAG_SLOTS - 4; i += 1) await give(`give-lost-${String(i).padStart(3, '0')}`, 'lost', 1, { owner: 'npc-1' });
+    const full = await give('give-berry-01', 'berry');
+    assert.deepEqual([full.applied, full.reason], [false, 'full']);
+    assert.equal((await give('give-trash-04', 'trash')).applied, true, '가득 차도 있는 칸에는 쌓인다');
+    await assert.rejects(give('give-bad-0001', 'gold'), RangeError);
+
+    const before = (await store.getAccount(I)).balance;
+    const now = Date.parse('2026-10-04T15:00:00+09:00');
+    const office = await store.islandSell({ userId: I, requestId: 'sell-office-01', place: 'office' }, now);
+    assert.equal(office.applied, true);
+    assert.equal(office.paid, 6 * Items.ITEMS.trash.price + 2 * Items.ITEMS.wallet.price);
+    assert.equal((await store.islandSell({ userId: I, requestId: 'sell-office-01', place: 'office' }, now)).applied, false, '같은 정산은 한 번');
+    assert.equal((await store.getAccount(I)).balance, before + office.paid);
+    assert.deepEqual((await store.islandBag(I)).items.filter((e) => e.at === 'office'), [], '관공서 물건만 나간다');
+    assert.ok((await store.islandBag(I)).items.some((e) => e.itemId === 'herb'));
+    const nothing = await store.islandSell({ userId: I, requestId: 'sell-office-02', place: 'office' }, now);
+    assert.deepEqual([nothing.applied, nothing.reason], [false, 'nothing']);
+    assert.equal((await store.history(I)).items[0].memo, '관공서 정산');
+
+    // the daily limit: only what fits is sold, the rest stays for tomorrow
+    await give('give-herb-02', 'herb', 60);
+    const merchant = await store.islandSell({ userId: I, requestId: 'sell-merch-01', place: 'merchant' }, now);
+    assert.equal(merchant.capped, true);
+    assert.ok(office.paid + merchant.paid <= Items.DAILY_CAP);
+    assert.ok((await store.islandBag(I)).items.find((e) => e.itemId === 'herb').qty > 0, '한도 넘는 몫은 가방에 남는다');
+    const capped = await store.islandSell({ userId: I, requestId: 'sell-merch-02', place: 'merchant' }, now);
+    assert.deepEqual([capped.applied, capped.reason], [false, 'cap']);
+    const tomorrow = await store.islandSell({ userId: I, requestId: 'sell-merch-03', place: 'merchant' }, now + 86400000);
+    assert.equal(tomorrow.applied, true, '다음 날 다시');
+  });
+
   await t.test('v1.10.9 작명소: 100,000P 한 번 차감·같은 요청은 한 번만·24시간 대기·잔액 부족·환불', async () => {
     const N = 'guest:99999999-9999-4999-8999-999999999999'; const O = 'guest:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; // fresh accounts (100,000P)
     const t0 = Date.parse('2026-10-04T12:00:00+09:00');
