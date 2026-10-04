@@ -6,7 +6,7 @@
   'use strict';
 
   // v1.10.15 게임 아일랜드 에셋 등록부: which island targets use an external 3D model instead of their procedural one.
-  // Empty on purpose -- every target is procedural until a model is registered here (the format is in
+  // Every other target is procedural until a model is registered here (the format is in
   // public/plaza/asset-pipeline.js `entryOf`). Model files go under public/assets/island/, which puts them in the game
   // resource pack (v1.10.14 manifest, content hash, Cache Storage, rollback) without any further step.
   //
@@ -32,7 +32,16 @@
   // Example (next patch):
   //   'facility.townhall': { url: '/assets/island/townhall.glb', scale: 1 },
   //   'character.player': { url: '/assets/island/player.glb', animations: { idle: 'Idle', walk: 'Walk', run: 'Run' } },
-  const REGISTRY = {};
+  // v1.10.18 first models on the island (360 refinement v2, spring set; the files' own front is -z, origin on the ground
+  // at the footprint's centre, 1 unit = 1 m). Sizes are matched to the procedural copies they replace -- a round tree
+  // about 3.5 tall, a bush about 1.6 wide, the plaza bench 1.7 wide -- whose place, turn and size every copy keeps.
+  const SPRING = '/assets/island/seasonal-v2/spring';
+  const REGISTRY = {
+    // `near`: models only within this of the player (thousands of triangles each); the rest keep their light procedural copies
+    'nature.tree.round': { url: `${SPRING}/nature/tree_v1_spring.glb`, scale: 0.72, near: 35 },
+    'nature.bush': { url: `${SPRING}/nature/shrub_spring.glb`, scale: 0.9, near: 22, shadows: false },
+    'prop.bench': { url: `${SPRING}/bench_spring_v1.glb`, scale: 0.85, rotationY: Math.PI }, // faces the fountain like the old one
+  };
 
   return { REGISTRY };
 });

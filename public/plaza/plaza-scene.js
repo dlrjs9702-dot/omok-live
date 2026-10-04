@@ -23,7 +23,7 @@ const IslandNpcs = globalThis.IslandNpcs; // v1.10.12 배회 NPC (public/plaza/i
 // v1.10.15 고품질 에셋 파이프라인 (public/plaza/asset-pipeline.js, island-assets.js; loaded before the app)
 const AssetPipeline = globalThis.AssetPipeline;
 // The registered island models, plus -- in automated browser tests only, like gc.testClassic -- entries a test puts in
-// localStorage gc.testIslandAssets.
+// localStorage gc.testIslandAssets (null removes a registered one).
 function islandAssetRegistry() {
   const registry = { ...(globalThis.IslandAssets?.REGISTRY || {}) };
   try { if (navigator.webdriver) Object.assign(registry, JSON.parse(localStorage.getItem('gc.testIslandAssets') || '{}')); } catch {}
@@ -75,7 +75,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // unregistered, switched off or failed targets keep the procedural one. Nothing registered (now) loads nothing.
   const assets = AssetPipeline.createLazyAssets({
     registry: islandAssetRegistry(), off: window.GameBoot?.manifest?.assetsOff || [],
-    importLoader: () => import('./asset-loader.js?v=1.10.15'),
+    importLoader: () => import('./asset-loader.js?v=1.10.18'),
     options: { assetUrl: (path) => window.GameBoot?.assetUrl(path) ?? path, walkSpeed: SPEED, tier: 2 },
   });
   const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }); // v1.10.13: every merged build (island.js)
