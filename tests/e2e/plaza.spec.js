@@ -584,3 +584,34 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 100,000P on a second press, shows at
+// once, and the next change waits 24 hours.
+test('작명소: 상점가 책상에서 이름을 바꾸면 100,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '작명손님', 200_000);
+  const { page } = a;
+  const before = (await get(request, '/api/points', a.token)).data.balance;
+  await page.evaluate(() => window.PlazaDebug().place('naming'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 작명소');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#namingDialog')).toBeVisible();
+  await expect(page.locator('#namingCurrent')).toContainText('작명손님');
+  await page.locator('#namingInput').fill('abc');
+  await page.locator('#namingSubmit').click();
+  await expect(page.locator('#namingStatus')).toContainText('한글·숫자·공백');
+  await page.locator('#namingInput').fill('새 손님 7');
+  await page.locator('#namingSubmit').click();
+  await expect(page.locator('#namingSubmit')).toHaveText('100,000P 변경 확인'); // nothing is taken by the first press
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before);
+  await page.locator('#namingSubmit').click();
+  await expect(page.locator('#namingStatus')).toContainText('새 손님 7');
+  await expect(page.locator('#namingCurrent')).toContainText('새 손님 7');
+  await expect(page.locator('#namingWait')).toContainText('다시 바꿀 수 있습니다');
+  await expect(page.locator('#namingSubmit')).toBeDisabled();
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 100_000);
+  await expect(page.locator('#identityLabel')).toContainText('새 손님 7');
+  await page.locator('#namingCloseBtn').click();
+  await expectNoScriptError(page);
+  await a.context.close();
+});

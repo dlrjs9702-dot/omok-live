@@ -1612,3 +1612,4 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .climbRankRow.me{border-color:#60a5fa}
 .climbRankEmpty{font-size:.78rem;color:#94a3b8;padding:6px 2px}
 .climbChampions{margin:0 0 10px;font-size:.78rem;font-weight:800;color:#fde68a}
+.recordsDialog.namingDialog{width:min(92vw,420px)} /* v1.10.9 작명소 */

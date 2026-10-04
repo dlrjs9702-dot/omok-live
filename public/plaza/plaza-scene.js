@@ -401,6 +401,22 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       sign(facility.name, root, 2.9);
       solids.push({ x, z, r: 1.2 });
       npcs.push(npc);
+    } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
+      depth = 1.2;
+      const npc = makeCharacter({ shirt: 0x3f5f8f, hair: 0xd9d4cc, skin: 0xffdcbc, hat: 0x2b2b2b });
+      npc.root.position.set(0, 0, -0.75); root.add(npc.root); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      const wood = mat(0xb07a4f);
+      mesh(new THREE.BoxGeometry(1.6, 0.07, 0.8), wood, 0, 0.78, 0.1, root); // the desk top
+      for (const [lx, lz] of [[-0.7, -0.22], [0.7, -0.22], [-0.7, 0.42], [0.7, 0.42]]) mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.76, 8), wood, lx, 0.38, lz, root);
+      mesh(new THREE.BoxGeometry(0.62, 0.012, 0.42), mat(0xfffaf0), -0.15, 0.82, 0.15, root); // a sheet of paper
+      mesh(new THREE.BoxGeometry(0.22, 0.05, 0.16), mat(0x2b2b2b), 0.48, 0.835, 0.05, root); // the ink stone
+      const brush = mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.34, 8), mat(0x8a5a3b), 0.25, 0.84, 0.3, root); brush.rotation.z = Math.PI / 2;
+      const pole = mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8), mat(0x8a5a3b), 0.95, 1.1, -0.35, root);
+      pole.castShadow = false;
+      const cloth = mesh(new THREE.PlaneGeometry(0.42, 1.1), mat(0xfff3d6, { side: THREE.DoubleSide }), 0.95, 1.5, -0.33, root); cloth.position.x = 0.73;
+      sign(facility.name, root, 2.7);
+      solids.push({ ...at(0, 0.1), r: 0.95 }, { ...at(0, -0.75), r: 0.45 });
+      npcs.push(npc);
     }
     const reach = depth / 2 + 1.3;
     const out = Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps
