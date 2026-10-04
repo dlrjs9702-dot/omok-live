@@ -145,6 +145,8 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
   expect(tree.placed).toBe(true);
   expect(tree.copies).toBeGreaterThan(20); // every round tree on the island
   expect(tree.parts).toBe(1); // a plain-coloured model: flattened into one part, one draw call per square
+  // next to one of them (the model distance shrinks on a slow machine's lower quality tiers)
+  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 1.5, z + 1.5), tree.at);
   await expect.poll(async () => (await batches()).find((b) => b.ids[0] === 'nature.tree.round').near).toBeGreaterThan(0);
   expect(list.find((b) => b.ids[0] === 'nature.flower').placed).toBe(true);
   for (const bush of list.filter((b) => b.ids[0].startsWith('nature.bush'))) expect(bush.placed).toBe(false); // missing file: procedural

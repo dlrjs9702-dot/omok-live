@@ -1,0 +1,33 @@
+const { test, expect } = require('@playwright/test');
+const { post, shopper, buyAndEquip } = require('./skin-support');
+const out = process.env.SHOT_DIR;
+
+test('visual: island topbar, my info, admin', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, '확인용', 3000000);
+  const { page } = a;
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic'));
+  await page.reload();
+  await expect(page.locator('#plazaStage canvas')).toBeVisible({ timeout: 20000 });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${out}/island-guest.png` });
+  if (buyAndEquip) await buyAndEquip(request, a, ['avatar_hair_1', 'omok_theme_1']).catch(() => {});
+  await page.locator('#myInfoBtn').click();
+  await page.locator('#pointHistoryBtn').click();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${out}/myinfo.png` });
+  await a.context.close();
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto('/');
+  await p.evaluate(() => localStorage.removeItem('gc.testClassic')); await p.reload();
+  await p.locator('#adminPassword').fill(process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password');
+  await p.locator('#adminPassword').press('Enter');
+  await expect(p.locator('#plazaStage canvas')).toBeVisible({ timeout: 20000 });
+  await p.waitForTimeout(1500);
+  await p.screenshot({ path: `${out}/island-admin.png` });
+  await p.locator('#adminWindowBtn').click();
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: `${out}/admin-window.png` });
+  await ctx.close();
+});

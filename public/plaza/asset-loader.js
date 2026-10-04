@@ -238,6 +238,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
 
   const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.url, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
-    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed?.[0]?.meshes.length ?? 0 }));
+    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed?.[0]?.meshes.length ?? 0,
+    at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null })); // one copy's place (tests)
   return { attach, dress, release, batch, update, setSeason, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, season, batches: batchDebug() }) };
 }
