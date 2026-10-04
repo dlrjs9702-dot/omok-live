@@ -34,6 +34,8 @@ async function shopper(browser, request, label, points = 0, gender = 'male') {
   if (points) await grant(request, person, points);
   // v1.10.3: test accounts have already chosen their character, so the island opens without the first-visit choice
   if (gender) await post(request, '/api/avatar/gender', token, { gender });
+  // v1.10.14: the game starts after the resource pack is ready; scripted clicks before that would race the lobby opening
+  await page.locator('#lobbyView').waitFor({ state: 'visible' });
   return person;
 }
 
