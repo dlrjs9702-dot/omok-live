@@ -63,6 +63,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 
   // The mission board and the records hall.
   await page.evaluate(() => window.PlazaDebug().place('missions'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 미션판'); // the next frame marks it as near (a slow runner pressed too early)
   await page.keyboard.press('Space');
   await expect(page.locator('#missionDialog')).toBeVisible();
   await page.locator('#missionTabEvents').click(); // v1.8.9: the events tab is live (open events or "none")
