@@ -30,7 +30,7 @@ test('할리갈리 공개 카드는 로컬 과일 SVG와 1~5개 반복 그림을
     ['라임', 'lime.svg'],
     ['자두', 'plum.svg'],
   ]) {
-    assert.match(halli, new RegExp(`'${fruit}': '/assets/halli/${file.replace('.', '\\.')}'`));
+    assert.match(halli, new RegExp(`'${fruit}': window\\.GameBoot\\.assetUrl\\('/assets/halli/${file.replace('.', '\\.')}'\\)`)); // v1.10.14 resource pack
     const svg = fs.readFileSync(path.join(root, 'public', 'assets', 'halli', file), 'utf8');
     assert.match(svg, /<svg[^>]+viewBox="0 0 96 96"/);
     assert.doesNotMatch(svg, /<image\\b/i);

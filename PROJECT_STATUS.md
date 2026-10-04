@@ -11,6 +11,19 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.14 게임 리소스 캐시 기반 (Chrome 전용)
+
+비공개 IDEAS 「게임센터 — 고품질 리소스 캐시 기반」(사용자 확정 2026-10-04)과 구현 지시(2026-10-04). 그래픽·에셋 자체는 바꾸지 않고, 앞으로 큰 정적 리소스를 브라우저에 저장·재사용할 기반만 만들었다.
+
+- Chrome 전용: `public/browser-gate.js` `classifyBrowser`(서버·브라우저 공용) — Client Hints 브랜드(`navigator.userAgentData.brands`, 서버는 `Sec-CH-UA` 헤더)를 우선해 `Microsoft Edge`→edge, `Google Chrome`→chrome, Chromium만(Playwright)→chromium, 그 밖(Whale·Brave·Opera 등)→other. 힌트가 없으면 UA(`Edg/`·타 브라우저 토큰 제외 + vendor `Google Inc.`)로 보수적으로 판단. 서버는 `/`·`/guest-entry`에서 허용 외 브라우저에 「Google Chrome으로 접속해 주세요」만 반환(입장 파일 검증 전이라 Edge로 먼저 열어도 키가 잡히거나 사용 기록이 남지 않음). 페이지(`public/game-boot.js`)도 같은 판별로 막는다. 허용 목록 `ALLOWED_BROWSERS`: 운영 `chrome`, `NODE_ENV=test`는 `chrome chromium other`(Edge는 어디서도 불가).
+- 리소스 팩: `lib/asset-manifest.js`가 서버 시작 시 `public/assets`·`public/hwatu`의 정적 파일(코드·문서 제외, 서버가 내용 형식을 아는 확장자)마다 내용 SHA-256 앞 16자리 revision·크기를 계산하고, `index.html`에 JSON으로 넣는다(코드와 같은 배포에서 나오므로 코드·에셋 버전이 어긋나지 않음). 파일은 정적 파일 그대로이며 DB에는 아무것도 저장하지 않는다.
+- 캐시·업데이트: Cache Storage `gc-assets-v1`의 키는 `<경로>?rev=<해시>`(내용 주소). 게임 시작 전 없는 키만 받아(병렬 6) 해시가 맞을 때만 저장하고, 전부 갖춰진 뒤에만 목록에 없는 키(옛 revision·삭제 파일)를 지운다. 받다가 실패하면 기존 키는 그대로, 게임은 시작하지 않고 「다시 시도」. 캐시·사이트 데이터를 지우면 다음 접속에 전부 다시 받는다. `public/sw.js`는 `?rev=`가 붙은 같은 출처 GET만 캐시에서 내주고(없으면 네트워크) HTML·코드·API·스트림은 건드리지 않아 기존 `?v=` 캐시 버스팅·배포 반영 방식이 그대로다. 게임 코드는 `GameBoot.assetUrl(path)`로 revision URL을 쓴다(현재 화투 그림·할리갈리 과일).
+- 저장 공간: `navigator.storage.estimate()`로 받을 크기보다 남은 공간이 적으면 캐시 없이 시작, `persisted()`/`persist()`는 요청만 하고 거부돼도 무관. Service Worker·Cache Storage·`crypto.subtle`이 없는 환경도 캐시 없이 기존처럼 시작.
+- 화면: 받는 데 0.25초를 넘기면 전체 화면 「게임 리소스 준비 중」 + 바이트 기준 %·막대, 끝나면 자동 입장. `app.js`는 `GameBoot.ready` 뒤에 `loadSession`.
+- 매니페스트 JSON은 읽은 뒤 DOM에서 지운다(관전자 비공개 e2e가 페이지 HTML에서 카드 이름을 찾는 검사와 충돌).
+- 제외: 그래픽·에셋 교체, PWA, 런처, 모바일 대응(모바일 Chrome을 따로 막지도 않음), CSS가 직접 부르는 `/assets/davinci/table.svg`는 revision URL을 쓰지 않아 기존 HTTP 캐시로 받는다.
+- 검증: `test/browser-gate.test.js`(브랜드·UA 판별, `Sec-CH-UA` 해석, `ALLOWED_BROWSERS=chrome` 서버에서 Edge·위장 Edge·Firefox·Whale 차단·Edge 입장 파일 거부·Chrome에 매니페스트), `test/asset-manifest.test.js`(파일별 해시·변경/삭제 반영), `npm test` 650 통과, e2e `asset-cache.spec.js` 6(첫 접속 전체 다운로드·재접속 0건·Service Worker 응답, 1개 revision 변경 시 1개만·옛 키 정리, 캐시 삭제 후 재구축, 다운로드 중 끊김 시 미입장·부분 저장 보존·재시도 완료, Edge 차단, Chrome 입장) + 회귀 e2e(첫 접속·광장·로비·재접속·고스톱 화면/대국·DOM 게임 스킨) 통과. 실제 Chrome·Edge PC 실기 미검증.
+
 ## v1.10.13 게임 아일랜드 환경 비주얼 개선
 
 비공개 IDEAS 「게임 아일랜드 환경 비주얼 품질 개선」(사용자 확정 2026-10-04, 우선순위 ①~⑥)과 구현 지시(2026-10-04). 기능·좌표·서버 판정은 바꾸지 않고 형태·재질·배치만 다듬었다.

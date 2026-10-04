@@ -45,6 +45,8 @@ const { evaluate: evaluateAchievements, achievementView, achievementToasts } = r
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const releaseAnnouncements = require('./lib/release-announcements');
+const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
+const { buildAssetManifest } = require('./lib/asset-manifest'); // v1.10.14 game resource pack
 const {
   MAX_CHAT_LENGTH,
   createRoomSocial,
@@ -68,6 +70,9 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+// v1.10.14: the game center is Google Chrome only. Tests also admit Playwright's unbranded Chromium and plain HTTP
+// clients ('other'); Edge is never admitted. ALLOWED_BROWSERS (space separated) overrides, e.g. for the gate test.
+const ALLOWED_BROWSERS = String(process.env.ALLOWED_BROWSERS || (process.env.NODE_ENV === 'test' ? 'chrome chromium other' : 'chrome')).split(/\s+/).filter(Boolean);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : 'dev-admin');
 const MAX_BODY = 48 * 1024;
 const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 60)) * 60 * 1000;
@@ -134,6 +139,7 @@ const eventAudience = new Map();
 const rewardTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
+let assetManifestJson = '{"version":"","assets":[]}';
 
 function nowIso() { return new Date().toISOString(); }
 function nowMs() { return Date.now(); }
@@ -193,7 +199,9 @@ function sendIndex(res, bootstrap = {}) {
   const html = indexTemplate
     .replace('__SESSION_TOKEN__', escapeAttr(bootstrap.sessionToken || ''))
     .replace('__SESSION_ROLE__', escapeAttr(bootstrap.role || ''))
-    .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''));
+    .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
+    .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
+    .replace('__ASSET_MANIFEST__', () => assetManifestJson);
   res.writeHead(200, securityHeaders({
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Length': Buffer.byteLength(html),
@@ -201,6 +209,13 @@ function sendIndex(res, bootstrap = {}) {
   }));
   res.end(html);
 }
+
+// v1.10.14: page requests from a browser outside ALLOWED_BROWSERS get only the Chrome notice. Checked before a guest
+// entry file is validated, so opening it in Edge first neither records a use nor holds the key for the Chrome tab.
+function browserBlocked(req) {
+  return !ALLOWED_BROWSERS.includes(classifyBrowser({ brands: parseSecChUa(req.headers['sec-ch-ua']), ua: req.headers['user-agent'] }));
+}
+function sendChromeOnly(res) { sendSimpleHtml(res, 403, 'Chrome 전용', 'Google Chrome으로 접속해 주세요.'); }
 
 function sendSimpleHtml(res, status, title, message) {
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeAttr(title)}</title><style>body{font-family:system-ui,sans-serif;background:#111827;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.box{max-width:460px;padding:30px;background:#1f2937;border-radius:20px;text-align:center}p{color:#d1d5db;line-height:1.6}</style></head><body><div class="box"><h1>${escapeAttr(title)}</h1><p>${escapeAttr(message)}</p></div></body></html>`;
@@ -2795,10 +2810,11 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.13' });
+    return sendJson(res, 200, { ok: true, version: '1.10.14' });
   }
 
   if (pathname === '/guest-entry' && req.method === 'POST') {
+    if (browserBlocked(req)) return sendChromeOnly(res);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
       return sendSimpleHtml(res, 429, '입장 제한', '입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
     }
@@ -4047,7 +4063,7 @@ async function requestHandler(req, res) {
   }
 
   if (req.method === 'GET') {
-    if (pathname === '/') return sendIndex(res, {});
+    if (pathname === '/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }
@@ -4058,6 +4074,7 @@ async function requestHandler(req, res) {
 async function main() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+  assetManifestJson = JSON.stringify(buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]))).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
@@ -4117,7 +4134,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.13 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.14 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
