@@ -13,7 +13,10 @@ const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); ret
 // These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
 // does that): every registered model is switched off, so each page draws the light procedural island. On a CI runner
 // (software rendering) several pages full of seasonal and Low models made these the slowest, flakiest tests.
+// v1.10.29: and a smaller window (still a PC width, about half the pixels): on the 2-core CI runner two or three
+// software-rendered pages starved each other's timers -- a first position post 23 s late, a toast 5 s late.
 async function islandPage(page) {
+  await page.setViewportSize({ width: 960, height: 680 });
   await page.evaluate(() => {
     localStorage.removeItem('gc.testClassic');
     localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
@@ -200,6 +203,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
   // a goes into a room: gone from b's plaza; back in the lobby: there again.
   await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 게임관'); // the next frame marks it as near (a starved runner pressed too early and the window never opened)
   await a.page.keyboard.press('Space');
   await a.page.locator('#plazaDialog #createRoomBtn').click();
   await expect(a.page.locator('#roomView')).toBeVisible();
@@ -242,6 +246,15 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   await expect.poll(() => seen(champs[0], idC).then((o) => o && o.champion), { timeout: 10000 }).toBe(false);
   for (const who of champs) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().champion), { timeout: 8000 }).toBe(true);
   expect(await plain.page.evaluate(() => window.PlazaDebug().champion)).toBe(false);
+  // v1.10.29: the mark sits on its own row under the name (not after it), and a chat bubble goes above the whole tag
+  const tag = await champs[0].page.evaluate(() => window.PlazaDebug().tagLayout);
+  expect(tag.rows).toEqual({ marks: ['챔피언'], title: false });
+  expect((await plain.page.evaluate(() => window.PlazaDebug().tagLayout)).rows).toEqual({ marks: [], title: false });
+  await champs[0].page.locator('#plazaStage').focus();
+  await champs[0].page.keyboard.press('Enter');
+  await champs[0].page.keyboard.type('안녕');
+  await champs[0].page.keyboard.press('Enter');
+  await expect.poll(() => champs[0].page.evaluate(() => window.PlazaDebug().tagLayout.bubbleBottom), { timeout: 8000 }).toBeGreaterThan(tag.top);
   // the climb window names last week's champions
   await plain.page.evaluate(() => document.getElementById('climbBtn').click());
   await expect(plain.page.locator('#climbChampions')).toContainText('챔피언가');
@@ -536,6 +549,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
 
   // a window open over the island: no camera keys either
   await page.evaluate(() => window.PlazaDebug().place('shop'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
   await expect(page.locator('#skinShopDialog')).toBeVisible();

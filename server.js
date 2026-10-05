@@ -505,11 +505,17 @@ function sessionHasLiveStream(token) {
   return false;
 }
 
-function requestSessionRelease(token) {
+// v1.10.29: `page` is the id of the page (one load of the tab, public/session-lock.js) whose pagehide sent this. On a
+// reload the old page's beacon can reach the server after the new page's first heartbeat; the new page may then go a
+// while without another request (a slow PC preparing the game resources), and the deferred release used to end the
+// session it had just resumed (「입장 세션이 만료되었습니다」). A release from a page that no longer holds the lease
+// (a newer page has sent its heartbeat) is ignored; one without a page id is handled as before.
+function requestSessionRelease(token, page = '') {
   const session = sessions.get(token);
   if (!session) return;
   // Admin sessions are not kept in the page across reloads, so there is nothing to resume.
   if (session.role !== 'guest') { releaseSessionToken(token); return; }
+  if (page && session.leasePage && session.leasePage !== page) return;
   session.releaseRequestedAt = nowMs();
   setTimeout(() => {
     const current = sessions.get(token);
@@ -3240,14 +3246,16 @@ async function requestHandler(req, res) {
   if (pathname === '/api/session/heartbeat' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
+    const body = await parseJson(req).catch(() => ({}));
     session.leaseSeenAt = nowMs();
+    if (body.page) session.leasePage = String(body.page).slice(0, 64); // v1.10.29: which page (tab load) holds the lease
     return sendJson(res, 200, { ok: true });
   }
 
   if (pathname === '/api/session/release' && req.method === 'POST') {
     const body = await parseJson(req);
     const token = String(body.sessionToken || '');
-    if (token) requestSessionRelease(token);
+    if (token) requestSessionRelease(token, String(body.page || '').slice(0, 64));
     return sendJson(res, 200, { ok: true });
   }
 

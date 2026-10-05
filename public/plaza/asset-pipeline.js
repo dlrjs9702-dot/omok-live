@@ -151,7 +151,7 @@
     }
     return {
       // a structure: `holder` keeps position, collision and interaction; `procedural` is hidden only once the model is in
-      attach: (targetIds, holder, procedural) => call('attach', [targetIds, holder, procedural]),
+      attach: (targetIds, holder, procedural, onSwap) => call('attach', [targetIds, holder, procedural, onSwap]),
       // a character (plaza-scene makeCharacter): the model goes under c.root, the procedural body is hidden
       dress: (targetIds, character) => call('dress', [targetIds, character]),
       // v1.10.17 nature and props placed many times: does any of `targetIds` have a model to load? (synchronous, so the

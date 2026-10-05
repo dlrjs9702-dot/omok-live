@@ -59,8 +59,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // A structure's model, with its LOD levels when registered: THREE.LOD switches by camera distance in the renderer
   // itself (no per-frame work here) and the quality tier scales the distances (setQuality). Only the main model is
   // required; a level that fails to load is left out.
+  // v1.10.29: an entry's `low` file (its season's) is the far level past `near` -- the same High/Low pair the nature
+  // batches use, here through THREE.LOD (the renderer picks per frame; no hysteresis needed for a single object).
   async function build(entry) {
-    const levels = [{ url: entry.url, distance: 0 }, ...(Array.isArray(entry.lod) ? entry.lod : [])];
+    const levels = [{ url: entry.url, distance: 0 }, ...(entry.lowUrl ? [{ url: entry.lowUrl, distance: entry.near ?? 60 }] : []), ...(Array.isArray(entry.lod) ? entry.lod : [])];
     const loaded = await Promise.all(levels.map((level) => cache.get(level.url)));
     if (!loaded[0]) return null;
     if (levels.length === 1) return instance(loaded[0], entry);
@@ -77,11 +79,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // `holder` is the gameplay object (position, facing; its collision, door and sign are the scene's and stay as they
   // are); `procedural` is the code-built look inside it, hidden only once the model is actually there.
   // v1.10.17: kept as a record, so a change of season can swap the model (setDay).
-  function attach(ids, holder, procedural) { const rec = { ids, holder, procedural, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
-  function swapAttach(rec, object) {
-    if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); }
+  // v1.10.29 `onSwap(entry | null)`: told when the model comes in (its registry entry) or goes (null), for game parts
+  // that sit on the look (the map board's picture moves onto the model's panel).
+  function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  function swapAttach(rec, object, entry = null) {
+    if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
     rec.procedural.visible = !object;
+    rec.onSwap?.(object ? entry : null);
   }
   function applyAttach(rec) {
     rec.holder.getWorldPosition(placeOf);
@@ -93,8 +98,31 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     shown[hit.id] = 'loading';
     build(hit.entry).then((object) => {
       if (disposed || rec.url !== url || !rec.holder.parent) return;
-      swapAttach(rec, object); shown[hit.id] = object ? 'model' : 'procedural';
+      if (object && rec.holder.userData.fit) object = fitted(object, rec.holder.userData.fit);
+      swapAttach(rec, object, hit.entry); shown[hit.id] = object ? 'model' : 'procedural';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+  }
+
+  // v1.10.29 a holder with `userData.fit(v)` (a bridge: island.js) gets the model reshaped to the game's own walking
+  // surface: every vertex, in the holder's space after the entry's scale/turn/offset, goes through fit(v) into a
+  // geometry of its own (flat-shaded, it is low-poly). Disposed when the holder's model changes (fittedOwn).
+  const fittedOwn = new WeakMap();
+  function fitted(object, fit) {
+    object.updateMatrixWorld(true);
+    const out = new THREE.Group(); const own = [];
+    const inv = new THREE.Matrix4().copy(object.parent ? object.parent.matrixWorld : new THREE.Matrix4()).invert(); const v = new THREE.Vector3();
+    object.traverse((o) => {
+      if (!o.isMesh) return;
+      const g = floats(o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone());
+      g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+      const P = g.attributes.position;
+      for (let i = 0; i < P.count; i += 1) { fit(v.fromBufferAttribute(P, i)); P.setXYZ(i, v.x, v.y, v.z); }
+      g.deleteAttribute('normal'); g.computeVertexNormals(); g.computeBoundingSphere();
+      const mesh = new THREE.Mesh(g, o.material); mesh.castShadow = o.castShadow; mesh.receiveShadow = o.receiveShadow;
+      out.add(mesh); own.push(g);
+    });
+    fittedOwn.set(out, own);
+    return out;
   }
 
   // v1.10.17 one model's parts for placing it many times: its meshes, each with its place in the model (`matrix`). A
@@ -181,12 +209,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // each copy's zone, worked out once (places never move)
   const zonesOf = (cell) => (cell.zones ||= cell.matrices.map((m) => (T ? T.seasonZoneAt(m.elements[12], m.elements[14]) : -1)));
   // the copies into their zone group's High or Low meshes (by p.flags), the ones without a model in the procedural mesh
+  // v1.10.29: a cell may have several procedural meshes placed with the same matrices (a lamp's pole and its bulb);
+  // each shows the copies without a model.
   function fill(p) {
-    const { cell } = p; const proc = cell.procedural[0]; let b = 0;
+    const { cell } = p; let b = 0;
     for (const g of p.groups.values()) { g.a = 0; g.b = 0; }
     cell.matrices.forEach((m, i) => {
       const g = p.groups.get(p.zones[i]);
-      if (!g) { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; return; }
+      if (!g) { for (const proc of cell.procedural) { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); } b += 1; return; }
       const high = p.flags[i] === 1 || !g.low; // no Low file: High everywhere
       for (const im of (high ? g.high : g.low)) im.setMatrixAt(high ? g.a : g.b, both.multiplyMatrices(m, local).multiply(im.userData.part));
       if (high) g.a += 1; else g.b += 1;
@@ -194,14 +224,15 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const set = (meshes, n) => { for (const im of meshes) { im.count = n; im.visible = n > 0; im.instanceMatrix.needsUpdate = true; } }; // none: not even a call
     p.near = 0; p.far = 0;
     for (const g of p.groups.values()) { set(g.high, g.a); if (g.low) set(g.low, g.b); p.near += g.a; p.far += g.b; }
-    proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+    for (const proc of cell.procedural) { proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true; }
     p.procedural = b;
   }
   function restoreProcedural(cell) {
-    const proc = cell.procedural[0];
-    cell.matrices.forEach((m, i) => { proc.setMatrixAt(i, m); if (cell.colors) proc.setColorAt(i, cell.colors[i]); });
-    proc.count = cell.matrices.length; proc.visible = proc.count > 0;
-    proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+    for (const proc of cell.procedural) {
+      cell.matrices.forEach((m, i) => { proc.setMatrixAt(i, m); if (cell.colors) proc.setColorAt(i, cell.colors[i]); });
+      proc.count = cell.matrices.length; proc.visible = proc.count > 0;
+      proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+    }
   }
   function clearBatch(rec) {
     if (rec.placed) {
@@ -316,6 +347,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function dispose() {
     disposed = true;
     for (const rec of batches) clearBatch(rec);
+    for (const rec of attaches) for (const g of (rec.object && fittedOwn.get(rec.object)) || []) g.dispose();
     for (const x of made) x.dispose();
     cache.clear((gltf) => gltf.scene.traverse((o) => {
       if (!o.isMesh) return;

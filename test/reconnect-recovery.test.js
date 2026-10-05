@@ -112,6 +112,22 @@ async function othello(fx, labels = ['가', '나']) {
   return { a, b, code };
 }
 
+// v1.10.29: on a reload the old page's beacon may arrive after the new page's first heartbeat; the new page may then
+// be quiet for longer than the grace (a slow PC preparing resources) -- it must keep its session. The page's own
+// release (the tab really closed) still frees it.
+test('새로고침: 이전 페이지의 해제 요청이 새 페이지 heartbeat보다 늦게 와도 세션 유지, 같은 페이지의 해제는 그대로 해제', { timeout: 30000 }, async t => {
+  const fx = await serverFixture(t);
+  const a = await fx.guest('늦은해제');
+  assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'old' })).status, 200);
+  assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'new' })).status, 200); // the reloaded page
+  assert.equal((await fx.req('/api/session/release', null, { sessionToken: a.session, page: 'old' })).status, 200); // late
+  await sleep(1600); // longer than the release grace, no request meanwhile
+  assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'new' })).status, 200, '새 페이지의 세션은 유지');
+  assert.equal((await fx.req('/api/session/release', null, { sessionToken: a.session, page: 'new' })).status, 200); // closed
+  await sleep(1600);
+  assert.equal((await fx.req('/api/session/heartbeat', a.session, { page: 'new' })).status, 401, '닫힌 페이지의 세션은 해제');
+});
+
 test('새로고침: pagehide 해제 요청 뒤 같은 세션으로 이어 가면 좌석·판·차례가 그대로다', { timeout: 30000 }, async t => {
   const fx = await serverFixture(t);
   const { a, b } = await othello(fx);

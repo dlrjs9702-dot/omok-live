@@ -44,9 +44,10 @@ test('아일랜드 GLB 빌드 설정: 설정·파일·등록부가 서로 맞는
   const configured = new Set();
   for (const entry of config.files) {
     assert.match(entry.sha256, /^[0-9a-f]{64}$/, entry.out);
+    if (entry.lowSrc) assert.match(entry.lowSha256, /^[0-9a-f]{64}$/, entry.out);
     assert.ok(files.has(entry.out), `${entry.out} 빌드 결과 있음`);
     configured.add(entry.out);
-    if (entry.low) {
+    if (entry.low || entry.lowSrc) { // v1.10.29 lowSrc: a far model the artist made
       const low = entry.out.replace(/\.glb$/, '_low.glb');
       assert.ok(files.has(low), `${low} 빌드 결과 있음`);
       configured.add(low);
