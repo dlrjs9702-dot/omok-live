@@ -892,7 +892,7 @@ islandEventTimer.unref?.();
 // screen drops it.
 const IslandWeeds = require('./lib/island-weeds');
 const weedPulls = new Map(); // session token -> { weedId, at, requestId, result }
-function broadcastLobby(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
+function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
 async function weedState(now = nowMs()) {
   let state = await pointStore.islandWeeds();
   const today = kstDate(now);
@@ -900,7 +900,7 @@ async function weedState(now = nowMs()) {
     const grown = state.day === null ? [] : IslandWeeds.grow(IslandTerrain.seasonDay(now), state.pulled, state);
     const before = state.day;
     state = await pointStore.islandWeedRoll({ day: today, grown });
-    if (before !== null && state.day === today) broadcastLobby('islandWeeds', { day: today }); // everyone fetches the new set
+    if (before !== null && state.day === today) broadcastIsland('islandWeeds', { day: today }); // everyone fetches the new set
   }
   return state;
 }
@@ -2888,7 +2888,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.30' });
+    return sendJson(res, 200, { ok: true, version: '1.10.31' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3549,11 +3549,11 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const outcome = await pointStore.islandPullWeed({ userId: account, requestId: body.requestId, weedId }, now);
     if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
-    if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastLobby('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
+    if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastIsland('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
     const result = { ok: true, weedId, bag: outcome.bag, bonus: outcome.bonus || 0, balance: outcome.balance ?? null };
     weedPulls.set(session.token, { ...pull, requestId: body.requestId, result });
     if (outcome.applied) {
-      broadcastLobby('islandWeed', { gone: [weedId] });
+      broadcastIsland('islandWeed', { gone: [weedId] });
       islandProgress('weed_pull', account, 1);
       if (outcome.bonus) notifyPointsChanged([account]);
     }
@@ -4322,7 +4322,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.30 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.31 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
