@@ -19,6 +19,9 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+// v1.10.22: a page loaded past the worker (a hard reload) is not controlled; game-boot.js asks for control this way,
+// since the game only starts in a controlled page
+self.addEventListener('message', event => { if (event.data === 'claim') event.waitUntil(self.clients.claim()); });
 
 async function checkServer() {
   let response;

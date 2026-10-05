@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.22 게임 리소스 캐시 구조 v2(단일 해시 파일 캐시·Web Lock·워커 제어 확인)
+
+고품질화 기반 연속 작업 1단계(사용자 지시 2026-10-05, IDEAS 「캐시 전환 후 고품질화 구조 정리」). `public/game-boot.js`, `public/sw.js`.
+
+- 저장: 버전마다 새 팩 캐시에 전체를 복사하던 staging 구조를 없애고 `gc-res:files` 하나에 `url?rev=<내용 해시>` 키로 저장. 키의 내용이 바뀌지 않으므로 업데이트는 새·바뀐 파일만 받아 같은 캐시에 넣는다(해시 검증 후 저장). 사전검사 필요량도 새로 받을 양 기준으로 줄었다.
+- 전환: 이 manifest의 파일이 모두 있으면 `gc-res:meta /active`를 `{version, cache: 'gc-res:files'}`로 쓴다(v1.10.14 형식 유지 → 이전 워커도 그대로 찾음). 그 뒤에만 manifest가 쓰지 않는 키를 지운다. 받다가 실패하면 포인터와 이전 버전 키는 그대로, 완성된 새 파일만 남는다.
+- 이전 구조: `gc-res:pack:*`(v1.10.14~21)의 파일은 같은 키라 한 번 로컬로 옮기고 팩 캐시는 삭제(다운로드 없음).
+- 탭 간 직렬화: 준비와 정리 전체를 `navigator.locks.request('gc-res:prepare')` 안에서 실행. 두 번째 탭은 첫 탭이 넣은 파일을 그대로 쓴다. Web Locks는 지원 조건에 추가(Chrome).
+- 워커 제어: 등록 성공이 아니라 `navigator.serviceWorker.controller`가 생길 때까지(최대 10초) 기다려야 준비 완료. 강력 새로고침으로 워커를 거치지 않은 페이지는 활성 워커에 `claim` 메시지를 보내 제어를 받는다(`sw.js` message 처리 추가). 실패 시 입장 차단 + 다시 시도, 서버 개별 직접 로딩 fallback 없음(사용자 결정). `ASSET_CACHE=off`는 그대로 전체 긴급 복귀 수단.
+- 롤백 메모: v1.10.21 이하로 코드만 되돌리면 그 코드는 포인터가 가리키는 `gc-res:files`에서 복사해 새 팩을 만들고 `gc-res:files`는 남는다(무해한 잔여, 다시 v1.10.22 이상이 되면 정리). 완전 정리는 기존대로 `ASSET_CACHE=off`.
+- 테스트(e2e `asset-cache.spec.js` 14개): 첫 활성화·재접속 무다운로드·워커 제어, 업데이트는 바뀐 파일만·안 쓰는 키 정리, 이전 팩 이전(다운로드 0), 두 탭 동시 준비(합계 다운로드 = 파일 수), 강력 새로고침 후 제어, 받다가 실패 시 포인터·이전 키 유지 후 재시도 완성, 워커 차단 시 입장 차단, 사전검사·쓰기 거부, 긴급 비활성화·이전 버전 재배포 롤백, Edge 차단·Chrome 입장. `page.route`를 쓰는 다른 e2e 7개 파일·plaza 회귀 통과.
+
 ## v1.10.21 게임 아일랜드 카메라 회전 확장(WASD·pitch)
 
 연속 작업 지시 5단계(2026-10-05). `public/plaza/plaza-scene.js`만 수정.

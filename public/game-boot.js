@@ -6,26 +6,38 @@
   //     the rest see one line asking for Chrome and the game never starts.
   //  2. Resources: the server puts the pack manifest in this page (#assetManifest: on/off, pack version, every file with
   //     a content-hash revision). The page itself is never cached, so the switch and the list are always the server's
-  //     latest and always match the code. Each pack version lives in its own cache: a new version is built in a fresh
-  //     staging cache (unchanged files copied from the active pack, new or changed ones downloaded and hash-checked),
-  //     checked complete, and only then made active by one write of the pointer in the meta cache; older pack caches
-  //     are deleted after that. A failure deletes the staging cache and leaves the active pack exactly as it was.
+  //     latest and always match the code.
+  //     v1.10.22 캐시 구조 v2: every file lives in ONE cache, `gc-res:files`, keyed `url?rev=<content hash>`. A key's
+  //     content never changes, so an update only downloads the new or changed files into it (hash-checked before they
+  //     are stored) -- nothing is copied, and storage needs the new files, not a second copy of the pack. Once every
+  //     file of this manifest is there, the pointer in the meta cache (`/active`, the same shape as v1.10.14, so a
+  //     worker of that version still finds the files) names this version, and only then are keys no manifest file
+  //     uses deleted. A failed update leaves what was there plus any complete new files -- the pointer and every key
+  //     the previous version used stay. Preparing and cleaning up run under one Web Lock, so tabs of the same profile
+  //     take turns (the second finds the files the first stored). A pack cache of v1.10.14-21 (`gc-res:pack:*`) is
+  //     moved over once, locally, and deleted.
   //  3. Pre-flight before any download (preflight): storage may be capped or refused (e.g. company PCs), so a build
   //     only starts when the browser's features, its quota with a safety margin and a real test write all allow it.
+  //  4. The worker must be in control of this page (v1.10.22): a registered worker is not enough -- until the page is
+  //     controlled, `?rev=` requests would quietly go to the server. If that does not happen within CONTROL_TIMEOUT the
+  //     game does not start. There is no per-file server fallback; ASSET_CACHE=off is the only way back to it.
   //  Any failure: the game does not start, one short line + a retry button; nothing retries by itself.
-  //  4. Off switch (server ASSET_CACHE=off): this page unregisters the worker, deletes only the `gc-res:*` caches and
+  //  5. Off switch (server ASSET_CACHE=off): this page unregisters the worker, deletes only the `gc-res:*` caches and
   //     the game loads its assets from the server as before v1.10.14.
-  // public/sw.js answers `?rev=` requests from the active pack only. Code before v1.10.14 never asks for such URLs, so
-  // a worker left behind by a rollback is inert, and it removes itself once the server no longer knows /asset-cache.json.
+  // public/sw.js answers `?rev=` requests from the cache the pointer names. Code before v1.10.14 never asks for such
+  // URLs, so a worker left behind by a rollback is inert, and it removes itself once the server no longer knows
+  // /asset-cache.json.
   const PREFIX = 'gc-res:';
   const META = `${PREFIX}meta`;
-  const PACK = `${PREFIX}pack:`;
+  const FILES = `${PREFIX}files`;
+  const LEGACY_PACK = `${PREFIX}pack:`;
   const PROBE = `${PREFIX}probe`;
+  const LOCK = `${PREFIX}prepare`;
   const PARALLEL = 6;
-  // Peak storage of a build: the staging pack (copied + downloaded files) exists next to the active pack until the
-  // switch, so the margin covers all of it + the PARALLEL largest downloads in flight while being written + per-entry
-  // bookkeeping + a reserve that keeps the site off its quota edge (other site data, browser index files): a tenth of
-  // the build, at least RESERVE_MIN.
+  const CONTROL_TIMEOUT = 10000;
+  // Peak storage of an update: the files to download (and, once, a legacy pack's files moved over) + the PARALLEL
+  // largest downloads in flight while being written + per-entry bookkeeping + a reserve that keeps the site off its
+  // quota edge (other site data, browser index files): a tenth of the new data, at least RESERVE_MIN.
   const ENTRY_OVERHEAD = 8 * 1024;
   const RESERVE_MIN = 16 * 1024 * 1024;
   const STORAGE_FAILED = '게임 리소스를 저장할 수 없습니다';
@@ -62,7 +74,7 @@
   }
 
   const cacheSupported = () => window.isSecureContext && 'serviceWorker' in navigator && 'caches' in window
-    && Boolean(crypto?.subtle) && typeof navigator.storage?.estimate === 'function';
+    && Boolean(crypto?.subtle) && typeof navigator.storage?.estimate === 'function' && typeof navigator.locks?.request === 'function';
   const storageError = message => Object.assign(new Error(message), { storage: true });
 
   function requiredBytes(copy, download) {
@@ -108,62 +120,82 @@
     try { await cache.put(key, response); } catch (error) { throw storageError(`write ${key}: ${error?.message || error}`); }
   }
 
-  // Every pack cache except `keep` goes (leftovers of an interrupted build, superseded versions); nothing else is touched.
-  async function dropPacks(keep) {
-    for (const name of await caches.keys()) if (name.startsWith(PACK) && name !== keep) await caches.delete(name);
+  async function legacyPacks() { return (await caches.keys()).filter(name => name.startsWith(LEGACY_PACK)); }
+
+  // One tab at a time (Web Lock): bring gc-res:files up to this manifest, then point at it, then drop unused keys.
+  async function syncFiles() {
+    if (!cacheSupported()) throw storageError('Service Worker / Cache Storage / storage estimate / Web Locks unavailable');
+    return navigator.locks.request(LOCK, async () => {
+      let files; let pointer = null; const have = new Set(); let legacy = [];
+      try {
+        files = await caches.open(FILES);
+        for (const request of await files.keys()) have.add(pathOf(request));
+        const hit = await caches.match('/active', { cacheName: META });
+        pointer = hit ? await hit.json() : null;
+        legacy = await legacyPacks();
+      } catch (error) { throw storageError(`open: ${error?.message || error}`); }
+
+      const wanted = manifest.assets.map(keyOf);
+      const missing = manifest.assets.filter(asset => !have.has(keyOf(asset)));
+      if (missing.length) {
+        // a v1.10.14-21 pack: its files are the same keys, so they are moved over locally instead of downloaded again
+        const move = []; const sources = new Map();
+        for (const name of legacy) {
+          const pack = await caches.open(name);
+          for (const request of await pack.keys()) sources.set(pathOf(request), pack);
+        }
+        const fetchList = [];
+        for (const asset of missing) (sources.has(keyOf(asset)) ? move : fetchList).push(asset);
+        await preflight(move, fetchList);
+        const total = [...move, ...fetchList].reduce((sum, asset) => sum + asset.size, 0);
+        let done = 0;
+        const progress = () => show('게임 리소스 준비 중', { progress: total ? done / total : 1 });
+        const timer = setTimeout(progress, 250); // a small update finishes before anything is shown
+        try {
+          for (const asset of move) {
+            const hit = await sources.get(keyOf(asset)).match(keyOf(asset));
+            if (hit) { await store(files, keyOf(asset), hit); done += asset.size; } else fetchList.push(asset);
+          }
+          let failed = false;
+          const abort = new AbortController(); // the first failure stops the downloads still in flight
+          const queue = [...fetchList];
+          await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, async () => {
+            while (queue.length && !failed) {
+              const asset = queue.shift();
+              try { await download(files, asset, abort.signal); } catch (error) { if (!failed) { failed = true; abort.abort(); } throw error; }
+              done += asset.size;
+              if (!failed && !view.classList.contains('hidden')) progress();
+            }
+          }));
+        } finally { clearTimeout(timer); }
+        const got = new Set((await files.keys()).map(pathOf));
+        if (!wanted.every(key => got.has(key))) throw new Error('files incomplete');
+      }
+      if (pointer?.version !== manifest.version || pointer?.cache !== FILES) {
+        await store(await caches.open(META), '/active', new Response(JSON.stringify({ version: manifest.version, cache: FILES })));
+      }
+      // only now, with this version complete and pointed at: keys no file of it uses, and the old pack caches
+      const keep = new Set(wanted);
+      for (const request of await files.keys()) if (!keep.has(pathOf(request))) await files.delete(request);
+      for (const name of legacy) await caches.delete(name);
+    });
   }
 
-  async function syncPack() {
-    if (!cacheSupported()) throw storageError('Service Worker / Cache Storage / storage estimate unavailable');
-    let active = null;
-    let activeCache = null;
-    const have = new Set();
+  // The page must be controlled by our worker. A first visit gets there by the worker's clients.claim() on activation;
+  // a page loaded past the worker (a hard reload) asks the active worker to claim it.
+  async function controlled() {
+    if (navigator.serviceWorker.controller) return;
+    const changed = new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+    let timer;
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Service Worker not in control')), CONTROL_TIMEOUT); });
     try {
-      const pointer = await caches.match('/active', { cacheName: META });
-      active = pointer ? await pointer.json() : null;
-      if (active?.cache && await caches.has(active.cache)) {
-        activeCache = await caches.open(active.cache);
-        for (const request of await activeCache.keys()) have.add(pathOf(request));
-      } else active = null;
-    } catch (error) { throw storageError(`open: ${error?.message || error}`); }
-
-    const wanted = manifest.assets.map(keyOf);
-    if (active?.version === manifest.version && wanted.every(key => have.has(key))) { await dropPacks(active.cache); return; }
-
-    const copy = manifest.assets.filter(asset => have.has(keyOf(asset)));
-    const fetchList = manifest.assets.filter(asset => !have.has(keyOf(asset)));
-    await dropPacks(active?.cache);
-    await preflight(copy, fetchList);
-    const stagingName = `${PACK}${manifest.version}:${Date.now().toString(36)}`;
-    const total = [...copy, ...fetchList].reduce((sum, asset) => sum + asset.size, 0);
-    let done = 0;
-    const progress = () => show('게임 리소스 준비 중', { progress: total ? done / total : 1 });
-    const timer = setTimeout(progress, 250); // a small update finishes before anything is shown
-    try {
-      const staging = await caches.open(stagingName);
-      for (const asset of copy) { // local, from the active pack: unchanged files are never downloaded again
-        const hit = await activeCache.match(keyOf(asset));
-        if (hit) { await store(staging, keyOf(asset), hit); done += asset.size; } else fetchList.push(asset);
-      }
-      let failed = false;
-      const abort = new AbortController(); // the first failure stops the downloads still in flight
-      const queue = [...fetchList];
-      await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, async () => {
-        while (queue.length && !failed) {
-          const asset = queue.shift();
-          try { await download(staging, asset, abort.signal); } catch (error) { if (!failed) { failed = true; abort.abort(); } throw error; }
-          done += asset.size;
-          if (!failed && !view.classList.contains('hidden')) progress();
-        }
-      }));
-      const got = new Set((await staging.keys()).map(pathOf));
-      if (!wanted.every(key => got.has(key))) throw new Error('staging pack incomplete');
-      await store(await caches.open(META), '/active', new Response(JSON.stringify({ version: manifest.version, cache: stagingName })));
-    } catch (error) {
-      await caches.delete(stagingName).catch(() => {});
-      throw error;
+      await Promise.race([(async () => {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        if (!navigator.serviceWorker.controller) registration.active?.postMessage('claim');
+        if (!navigator.serviceWorker.controller) await changed;
+      })(), timeout]);
     } finally { clearTimeout(timer); }
-    await dropPacks(stagingName);
   }
 
   // The server has the cache off: back to plain server loading. Only this feature's worker and caches are removed.
@@ -180,9 +212,9 @@
   async function prepare() {
     if (!manifest.enabled) return disable();
     if (!manifest.assets.length) return;
-    navigator.serviceWorker?.register('/sw.js').catch(error => console.warn('리소스 캐시 워커 등록 실패:', error));
+    navigator.serviceWorker?.register('/sw.js').catch(() => {}); // early; controlled() waits for it and reports a failure
     for (;;) {
-      try { await syncPack(); return; }
+      try { await syncFiles(); await controlled(); return; }
       catch (error) {
         console.warn('게임 리소스 준비 실패:', error);
         show(error?.storage ? STORAGE_FAILED : '게임 리소스 준비 실패', { canRetry: true });
