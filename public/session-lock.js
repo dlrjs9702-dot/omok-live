@@ -25,6 +25,9 @@
 
   let stopped = false;
   let timer = null;
+  // v1.10.29: this page's id, so the server can tell a late release from the page before a reload (ignored once this
+  // page has sent its heartbeat) from this page's own (server.js requestSessionRelease)
+  const page = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).slice(0, 64);
 
   async function heartbeat() {
     if (stopped) return;
@@ -32,7 +35,7 @@
       const res = await fetch('/api/session/heartbeat', {
         method: 'POST',
         headers: { 'X-Session-Token': token, 'Content-Type': 'application/json' },
-        body: '{}',
+        body: JSON.stringify({ page }),
         cache: 'no-store',
         keepalive: true,
       });
@@ -50,7 +53,7 @@
     if (stopped) return;
     stop();
     try {
-      const payload = new Blob([JSON.stringify({ sessionToken: token })], { type: 'application/json' });
+      const payload = new Blob([JSON.stringify({ sessionToken: token, page })], { type: 'application/json' });
       navigator.sendBeacon('/api/session/release', payload);
     } catch {}
   }

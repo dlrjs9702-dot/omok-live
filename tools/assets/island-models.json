@@ -1,7 +1,7 @@
 {
   "$comment": "v1.10.26 게임 아일랜드 모델 빌드 설정 (tools/assets/build-island-models.js). 원본은 저장소 밖 제작 폴더(--src)에 두고, 여기에는 변환 규칙·원본 SHA-256·게임용 산출 경로만 둔다.",
   "tool": "gltfpack 1.3.0 (devDependency, exact)",
-  "outDir": "public/assets/island/seasonal-v2",
+  "outDir": "public/assets/island",
   "profiles": {
     "high": [
       "-cc"
@@ -15,180 +15,851 @@
   },
   "files": [
     {
-      "out": "autumn/bench_autumn_v1.glb",
-      "src": "03. Autumn/bench_autumn_v1.glb",
+      "out": "additions-v1/autumn/bush_mounded_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/bush_mounded_autumn.glb",
+      "sha256": "e33247b438d0162f86b59a0e645c6d97cc135705e542cdc43b37bf8f5af42184",
+      "lowSrc": "additions:05. Low LOD/01. Nature/03. Autumn/bush_mounded_autumn.glb",
+      "lowSha256": "aa13328d93f801544322e052cc9045fbdd43b8df35c356d6475d33aca5ff9efb"
+    },
+    {
+      "out": "additions-v1/autumn/flower_0_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/flower_0_autumn.glb",
+      "sha256": "54025533cb68e28f89c3cdc594a4afc499247d2e326f55a2fc2fc3745cf11398",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/autumn/flower_1_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/flower_1_autumn.glb",
+      "sha256": "d547c13b0c814ab09a1cebcfa7b5dd81af7b2b3b9f7be28fed70187c0bbabfb0",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/autumn/flower_2_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/flower_2_autumn.glb",
+      "sha256": "2793bd7e047f222c0dc3ac8b3c7df16717e2508177bccf64584fbd5bdb95f847",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/autumn/flower_3_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/flower_3_autumn.glb",
+      "sha256": "5cf783a1844c087e1ad8bdf32534d7954d5ce202dfcf78d411064810b5d27b55",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/autumn/flower_4_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/flower_4_autumn.glb",
+      "sha256": "39e457b9d67ee2b53f9d9320c62b6d480457f1d07650561154d27bca3ff86219",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/autumn/tree_fruit_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/tree_fruit_autumn.glb",
+      "sha256": "3919593a3b401e96ffb3915d7e22196652303c528baed55706cb741a5519845c",
+      "lowSrc": "additions:05. Low LOD/01. Nature/03. Autumn/tree_fruit_autumn.glb",
+      "lowSha256": "85a29d397e0374b2e9655dfae33bd5e17fecd013773830ed1ea0961764ad7b52"
+    },
+    {
+      "out": "additions-v1/autumn/tree_pine_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/tree_pine_autumn.glb",
+      "sha256": "688a43dd76a8eefdb363b51d2eec4ced9a27187689ed094bd2d475f22cec2554",
+      "lowSrc": "additions:05. Low LOD/01. Nature/03. Autumn/tree_pine_autumn.glb",
+      "lowSha256": "040dffb15b4479f17501f4a09f41b35093b58fc33f5b69dd8443a95ccb350130"
+    },
+    {
+      "out": "additions-v1/autumn/tree_sapling_autumn.glb",
+      "src": "additions:01. Nature/03. Autumn/tree_sapling_autumn.glb",
+      "sha256": "b3e3088ac18831d4ad01807407ba54028609db4981e1a04ca34b7ab7ead2b909",
+      "lowSrc": "additions:05. Low LOD/01. Nature/03. Autumn/tree_sapling_autumn.glb",
+      "lowSha256": "2e99990c9a3d4320f2f907b292a497c37a7b2f28923ddec6f13e1779a790305b"
+    },
+    {
+      "out": "additions-v1/facilities/admin.glb",
+      "src": "additions:03. Facilities/admin.glb",
+      "sha256": "8a4fbdacead184119308f6becc91b9f599e92f7fd839ae8dad5375d54443269a",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/admin.glb",
+      "lowSha256": "97218aeb60b180300e9e1b885e6a90d2e3c6fa8b956d9eb48c8558f7501a3722"
+    },
+    {
+      "out": "additions-v1/facilities/attendance.glb",
+      "src": "additions:03. Facilities/attendance.glb",
+      "sha256": "e415db368dc0e9e9b5d49cd1b523588c2e3359a3675639a43c5a95a25a28d049",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/attendance.glb",
+      "lowSha256": "01bbf71ca2e8641b6ace25535fac3a0049d1db492a099ad4a0142a043ec4240c"
+    },
+    {
+      "out": "additions-v1/facilities/avatar.glb",
+      "src": "additions:03. Facilities/avatar.glb",
+      "sha256": "8141f547928a505714ece4ecb0a51994224f9733b3e7c88a3044d6d5f9e93889",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/avatar.glb",
+      "lowSha256": "2015441527dc2c5ffcef203d497f3654920278262b5355e0481cfc59b9f86dd5"
+    },
+    {
+      "out": "additions-v1/facilities/board.glb",
+      "src": "additions:03. Facilities/board.glb",
+      "sha256": "fccd6b1ec424180df553ba54c215647274677c6ce5a220a966eb4e76ab3a42b7",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/board.glb",
+      "lowSha256": "44e083d1c2a1afc510d4c95e42f3540182dc650afb0f2a9c529e7ccd91fee931"
+    },
+    {
+      "out": "additions-v1/facilities/climb.glb",
+      "src": "additions:03. Facilities/climb.glb",
+      "sha256": "bec6bbf5919bfc389089697944e084a0d1ee081cfdf5530c870fa417f21ba80b",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/climb.glb",
+      "lowSha256": "56c4d9bb3b379556fc7495b7a9325ca7b082a0a22b93514454a24110fe7954ab"
+    },
+    {
+      "out": "additions-v1/facilities/donate.glb",
+      "src": "additions:03. Facilities/donate.glb",
+      "sha256": "aa62aff4577c5c1e7820106921311b3154cac3e2f2cda7760d3069d0b0b0b405",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/donate.glb",
+      "lowSha256": "afdfb5da26819350bda812fe0533557e7f6c95bd826bcce720f3e5b6a196262f"
+    },
+    {
+      "out": "additions-v1/facilities/games.glb",
+      "src": "additions:03. Facilities/games.glb",
+      "sha256": "d24d39a9025fda4c1ca401b4f0ef3bc7729d8a194e3fe66df39dba3c1816df93",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/games.glb",
+      "lowSha256": "8bf026d35458b79000ce5da2f679d755dd394bfaec9fe387047ef2c891aa8065"
+    },
+    {
+      "out": "additions-v1/facilities/map.glb",
+      "src": "additions:03. Facilities/map.glb",
+      "sha256": "6a431034a6b5c24934874f9a459759f73c43fdc4a308bc0e1548e654d45fd823",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/map.glb",
+      "lowSha256": "841492f650d19139bfca90aa4b3244b79ec816339d93402004264640c74aaa34"
+    },
+    {
+      "out": "additions-v1/facilities/missions.glb",
+      "src": "additions:03. Facilities/missions.glb",
+      "sha256": "a6f5d83c37fa95a4f185bbc41f35714c6bf75df6ee5e335f793b65a4e30ec1c1",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/missions.glb",
+      "lowSha256": "f9937ad445e71fda9521b5be4e61e85a33b1bd27845c38e2111caa033b1b3c2f"
+    },
+    {
+      "out": "additions-v1/facilities/naming.glb",
+      "src": "additions:03. Facilities/naming.glb",
+      "sha256": "ace820d4e7632ffc728bdc62b75e8a18680fa261f4beb69dffe37ec7e993b86c",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/naming.glb",
+      "lowSha256": "6a15f8bccadbe0e76fc132ad71cb1ae3a2643471b044911f90e3b8e5c864b58c"
+    },
+    {
+      "out": "additions-v1/facilities/records.glb",
+      "src": "additions:03. Facilities/records.glb",
+      "sha256": "223196ab0afb8dcafc6aa635a5774f681a4d4fd13b2eb35e452ed22123197466",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/records.glb",
+      "lowSha256": "7584d1f631857e5f6f0452ecef0ff74fad3972de1a057600e63da1844c3accff"
+    },
+    {
+      "out": "additions-v1/facilities/shop.glb",
+      "src": "additions:03. Facilities/shop.glb",
+      "sha256": "b14ff35f33e060fd767d54280ed2694d3b331f94b475333cd4219c04436261a8",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/shop.glb",
+      "lowSha256": "4865ecf4e425a3e8e979531dd6f081de4c7703c31db44ca9029c5185e43b79ae"
+    },
+    {
+      "out": "additions-v1/facilities/townhall.glb",
+      "src": "additions:03. Facilities/townhall.glb",
+      "sha256": "7ecc9454ee9d283aa75f6546de06ec47ff588b232bd605b8585a7e0325152abe",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/townhall.glb",
+      "lowSha256": "ee708ddf827fa8f5492389f1bef44401143aec6ab72b03b7dbca25d141a1c377"
+    },
+    {
+      "out": "additions-v1/facilities/trader.glb",
+      "src": "additions:03. Facilities/trader.glb",
+      "sha256": "49d6cb41e05055a5f7023deb0432bd92be02bcb32fae114316c6d1e955023e75",
+      "lowSrc": "additions:05. Low LOD/03. Facilities/trader.glb",
+      "lowSha256": "c6aa7dc32af01c3b7cde84e6fb31ea5dd478adedec113025c6e899d5ccdbd851"
+    },
+    {
+      "out": "additions-v1/houses/cottage_0.glb",
+      "src": "additions:02. Village houses/cottage_0.glb",
+      "sha256": "ea6c008ea63b9a94f51adaccc382e3db33ca331e2ba8f5a70b45f8f5df786600",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_0.glb",
+      "lowSha256": "19228aac0551942cbc14220b82419154b5748bb1ff8144ad5803d6a552f24382"
+    },
+    {
+      "out": "additions-v1/houses/cottage_1.glb",
+      "src": "additions:02. Village houses/cottage_1.glb",
+      "sha256": "6a28fed55af20558132c1e21baf5b269af1730e216649fb9561ae035a42a6a4f",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_1.glb",
+      "lowSha256": "c358e02d9d670edd0d49be54d001bae6331beafecaaddf9a075fa5411defb386"
+    },
+    {
+      "out": "additions-v1/houses/cottage_2.glb",
+      "src": "additions:02. Village houses/cottage_2.glb",
+      "sha256": "8c3e1c10d614c406fbd5fbef1feb48f3db79eacbaeb21ab6f1c67da01a880114",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_2.glb",
+      "lowSha256": "d422f37832f797ea4cf4ebaef2eaa7583b8818b389b1c913f95391364fbe04d3"
+    },
+    {
+      "out": "additions-v1/houses/cottage_3.glb",
+      "src": "additions:02. Village houses/cottage_3.glb",
+      "sha256": "a0691a343708c508412624ab8dfcc8e3cda08e9c784ec58de51517de530ff15c",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_3.glb",
+      "lowSha256": "3eb4f05a8274787dc70b34c7c359a34e12a22908103d8f3c43ca6c9ef4381c4e"
+    },
+    {
+      "out": "additions-v1/houses/cottage_4.glb",
+      "src": "additions:02. Village houses/cottage_4.glb",
+      "sha256": "7a4e55b763c4ed1a2c88a7a8a15dc097a8eab96842720358b2cebebfcf74dd19",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_4.glb",
+      "lowSha256": "0c639e815cc7213c768b0fa12cada75590076ab27e1073709a456976185e5b4e"
+    },
+    {
+      "out": "additions-v1/houses/cottage_5.glb",
+      "src": "additions:02. Village houses/cottage_5.glb",
+      "sha256": "ea06be8df040ae496ce9dea403001e0eb7aca5ad15bb99fbac2f839283d642b0",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_5.glb",
+      "lowSha256": "ed64bb8e224b3190521b456118d7ca8b563295abcc9bd79e459a1c25f963aa84"
+    },
+    {
+      "out": "additions-v1/houses/cottage_6.glb",
+      "src": "additions:02. Village houses/cottage_6.glb",
+      "sha256": "fdb3f4376e53c88ba3a40f46c88e2bd419e581f0cedad46de53aeed6ce148686",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_6.glb",
+      "lowSha256": "c6fd480809f4ba3e00473a61e68ef31dea706fc3349e583171ab4db32172e1aa"
+    },
+    {
+      "out": "additions-v1/houses/cottage_7.glb",
+      "src": "additions:02. Village houses/cottage_7.glb",
+      "sha256": "48914cb93aeb3c1bfbb06f4ce2669540419623c60a8b8bbda6af50ec86005597",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_7.glb",
+      "lowSha256": "036e5d0c19e5078d9037f4aeb18189a5279cb5dac3cd71fe5c0fd44ef5e1e109"
+    },
+    {
+      "out": "additions-v1/houses/cottage_8.glb",
+      "src": "additions:02. Village houses/cottage_8.glb",
+      "sha256": "c6c003a9079120e4f88d391b39ee892b8d2c7dc55402db01ba3436af344effa6",
+      "lowSrc": "additions:05. Low LOD/02. Village houses/cottage_8.glb",
+      "lowSha256": "8c859b0e91d2dbcdfdf92367165fed1292730de1a4d26979602ed7f14bf35d04"
+    },
+    {
+      "out": "additions-v1/props/lamp.glb",
+      "src": "additions:04. Props/lamp.glb",
+      "sha256": "29f86e2f484ba3ada32fbcc48d08b49008d16b33082031ba1fdbf8a6002d6cd8",
+      "lowSrc": "additions:05. Low LOD/04. Props/lamp.glb",
+      "lowSha256": "03bc11e0df2745eb489ffe69c1f39c62863d169aa80483199f5bdca8f2d7c9d9"
+    },
+    {
+      "out": "additions-v1/spring/bush_mounded_spring.glb",
+      "src": "additions:01. Nature/01. Spring/bush_mounded_spring.glb",
+      "sha256": "082b86b9b9ff098482b26d25824cbceeb23a23e9f2b67d85d93983d52ef3d5e6",
+      "lowSrc": "additions:05. Low LOD/01. Nature/01. Spring/bush_mounded_spring.glb",
+      "lowSha256": "9c0c26569edd802122896009e4d91c87df7f42c887621a86e27f9ae943139d64"
+    },
+    {
+      "out": "additions-v1/spring/flower_0_spring.glb",
+      "src": "additions:01. Nature/01. Spring/flower_0_spring.glb",
+      "sha256": "12b336f430240837d03ccdf2440513258b2882c104590b02c1cb63355cf34718",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/spring/flower_1_spring.glb",
+      "src": "additions:01. Nature/01. Spring/flower_1_spring.glb",
+      "sha256": "826f4ed7bfc5b1f5f22d642bb71ec8b0d50061cbb51deb9cd6c70a63935962e7",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/spring/flower_2_spring.glb",
+      "src": "additions:01. Nature/01. Spring/flower_2_spring.glb",
+      "sha256": "dd7e22e553b9ca60ece4002e748bc5b6651632093ea6ca98702140e9d6659181",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/spring/flower_3_spring.glb",
+      "src": "additions:01. Nature/01. Spring/flower_3_spring.glb",
+      "sha256": "806f357360e20a4dfecb376e8bb900bceea0f9c23d49902ed5be3de7042ccfa5",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/spring/flower_4_spring.glb",
+      "src": "additions:01. Nature/01. Spring/flower_4_spring.glb",
+      "sha256": "f6107e4e76e96d76978009eddbcb5fbe91f0c44aaccd03d35113dc458e59bf47",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/spring/tree_fruit_spring.glb",
+      "src": "additions:01. Nature/01. Spring/tree_fruit_spring.glb",
+      "sha256": "e56323b98f1a95af269466fce8ce71eeced9348b385bb327309df6c8345fff69",
+      "lowSrc": "additions:05. Low LOD/01. Nature/01. Spring/tree_fruit_spring.glb",
+      "lowSha256": "71bd5b47f4aaf3fddc745f1d16545b1c771ccdfd005665492256f8daeb16014e"
+    },
+    {
+      "out": "additions-v1/spring/tree_pine_spring.glb",
+      "src": "additions:01. Nature/01. Spring/tree_pine_spring.glb",
+      "sha256": "54e593c9bcf7e139a799c57f421b742bb5134c1a564ee16048178ec510247c3b",
+      "lowSrc": "additions:05. Low LOD/01. Nature/01. Spring/tree_pine_spring.glb",
+      "lowSha256": "34ea1955b9518235ef6b662db5a26ff61c112db981ca0cc9d3c96e3bfa426b73"
+    },
+    {
+      "out": "additions-v1/spring/tree_sapling_spring.glb",
+      "src": "additions:01. Nature/01. Spring/tree_sapling_spring.glb",
+      "sha256": "67008673eb8d3f03196a0a42e2627e42604756325091dd4e9b163317f5f0fae4",
+      "lowSrc": "additions:05. Low LOD/01. Nature/01. Spring/tree_sapling_spring.glb",
+      "lowSha256": "6671fa2b2455589c1fd6ccb5c1cd07d772e17b40be2a3043acb8a3917d08ae9d"
+    },
+    {
+      "out": "additions-v1/summer/bush_mounded_summer.glb",
+      "src": "additions:01. Nature/02. Summer/bush_mounded_summer.glb",
+      "sha256": "6092eb8875b68613b5f21cc59065f5a080a74400446c3b0a97daba82f9b5b3c0",
+      "lowSrc": "additions:05. Low LOD/01. Nature/02. Summer/bush_mounded_summer.glb",
+      "lowSha256": "c2fd5c86a82e54a475bb4dc0c96953e4a783c6dba70eea94723625b198220259"
+    },
+    {
+      "out": "additions-v1/summer/flower_0_summer.glb",
+      "src": "additions:01. Nature/02. Summer/flower_0_summer.glb",
+      "sha256": "dd301821bb9a99dd8256d6dc5b9f67e49fc4ca0dc6790ddc0e2b1ae2a906cd76",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/summer/flower_1_summer.glb",
+      "src": "additions:01. Nature/02. Summer/flower_1_summer.glb",
+      "sha256": "b4104e7489aec73a54261f8d2705b1854e819574f2696e169a6491cd882bff1e",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/summer/flower_2_summer.glb",
+      "src": "additions:01. Nature/02. Summer/flower_2_summer.glb",
+      "sha256": "2240289ecebb435e05f5b552b21e784412e8b8d022d0621d40a2c7808b46457f",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/summer/flower_3_summer.glb",
+      "src": "additions:01. Nature/02. Summer/flower_3_summer.glb",
+      "sha256": "16bb541ba5897ec52309a0f013a782b044760c7192080e8b7a4dd2ee11dfe04b",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/summer/flower_4_summer.glb",
+      "src": "additions:01. Nature/02. Summer/flower_4_summer.glb",
+      "sha256": "1f763c234afe2c7cd586f87ec5723e01992a0b1e7161408fd3865d14b7f5d31b",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/summer/tree_fruit_summer.glb",
+      "src": "additions:01. Nature/02. Summer/tree_fruit_summer.glb",
+      "sha256": "2770f483b8e07032f9f0f8244f4ddaab893257802d0be44d9d4a1c10214d1f8a",
+      "lowSrc": "additions:05. Low LOD/01. Nature/02. Summer/tree_fruit_summer.glb",
+      "lowSha256": "2a21ce62dd4b46361022a85ab645a246bea21344bc3222405a05af6fcb6ad8df"
+    },
+    {
+      "out": "additions-v1/summer/tree_pine_summer.glb",
+      "src": "additions:01. Nature/02. Summer/tree_pine_summer.glb",
+      "sha256": "5b24b8fb8eaf4db1bc577eed80f0fade6f402b132f5e871f32242ed6db78a162",
+      "lowSrc": "additions:05. Low LOD/01. Nature/02. Summer/tree_pine_summer.glb",
+      "lowSha256": "fbb820ffd0abbc217fcb0f051a1d62b7a1604fced7a72e2ab9cb2ac3118d976e"
+    },
+    {
+      "out": "additions-v1/summer/tree_sapling_summer.glb",
+      "src": "additions:01. Nature/02. Summer/tree_sapling_summer.glb",
+      "sha256": "91ab3e5b5e89eb8178a7d8fd1a5e14b2c240e76efb2c1759d802d98fb4c325c4",
+      "lowSrc": "additions:05. Low LOD/01. Nature/02. Summer/tree_sapling_summer.glb",
+      "lowSha256": "38dd73c200205b156728aaf502d43ad7d65cbc356699f34b31b2d1f82502d98f"
+    },
+    {
+      "out": "additions-v1/winter/bush_mounded_winter.glb",
+      "src": "additions:01. Nature/04. Winter/bush_mounded_winter.glb",
+      "sha256": "b193d1b243442db74642b925bb3e828b26aa4cf915f4c66fcbbc52d1400dcfb1",
+      "lowSrc": "additions:05. Low LOD/01. Nature/04. Winter/bush_mounded_winter.glb",
+      "lowSha256": "65cd949e3f24a36deb437876b593a5414e245706f555bf9b20da9fccc82446e7"
+    },
+    {
+      "out": "additions-v1/winter/flower_0_winter.glb",
+      "src": "additions:01. Nature/04. Winter/flower_0_winter.glb",
+      "sha256": "08d862811811c7ddc3b6a8c12594a8acd7edb4ef3c307b5c8393435e910d08e8",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/winter/flower_1_winter.glb",
+      "src": "additions:01. Nature/04. Winter/flower_1_winter.glb",
+      "sha256": "f82cd1ceb13a72841b3eea7ada2a99e9a8442c63692a9a170b11e2fedcbce33b",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/winter/flower_2_winter.glb",
+      "src": "additions:01. Nature/04. Winter/flower_2_winter.glb",
+      "sha256": "de132127464d575002d9f9b2214cfa8e93d2ec4d23001b790bd189f14953452b",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/winter/flower_3_winter.glb",
+      "src": "additions:01. Nature/04. Winter/flower_3_winter.glb",
+      "sha256": "37906101168db02c1bfe5f5bc47be973022a9814e0787101344d519e7b70d2d7",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/winter/flower_4_winter.glb",
+      "src": "additions:01. Nature/04. Winter/flower_4_winter.glb",
+      "sha256": "70456b9ab8a17b5529673024b0d72ab04be4bbfe78ced4409cd23e69b590c061",
+      "low": 0.08
+    },
+    {
+      "out": "additions-v1/winter/tree_fruit_winter.glb",
+      "src": "additions:01. Nature/04. Winter/tree_fruit_winter.glb",
+      "sha256": "eb92948b0b26943b91884a0729c34622228d4e11b9e4b62d312005eac54dc632",
+      "lowSrc": "additions:05. Low LOD/01. Nature/04. Winter/tree_fruit_winter.glb",
+      "lowSha256": "8ab4a1fd8976527706ad584127b0e0cfb27ed65555598f6dc036a292cbba4146"
+    },
+    {
+      "out": "additions-v1/winter/tree_pine_winter.glb",
+      "src": "additions:01. Nature/04. Winter/tree_pine_winter.glb",
+      "sha256": "23ff3f69eeb49e70a177d71c02afcb547cbe00a36476d25d8707aa48f21c9dfa",
+      "lowSrc": "additions:05. Low LOD/01. Nature/04. Winter/tree_pine_winter.glb",
+      "lowSha256": "9c58e97289d9f5af2c2fef0f30e986a6e8eb08483fe9ee0bdab3ad063176a4ae"
+    },
+    {
+      "out": "additions-v1/winter/tree_sapling_winter.glb",
+      "src": "additions:01. Nature/04. Winter/tree_sapling_winter.glb",
+      "sha256": "bd6341fc4e25a8fd39be42763776f14ba62844e46812b9a27535c4ffe74d883a",
+      "lowSrc": "additions:05. Low LOD/01. Nature/04. Winter/tree_sapling_winter.glb",
+      "lowSha256": "b217bd83df24d37d1aa91bdc9ef6220c107bc88308d89e1f2cdaa24a54135363"
+    },
+    {
+      "out": "gaps-v1/autumn/foundation_autumn.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_autumn_high.glb",
+      "sha256": "9af454ea625fab8bb99d87f2ba1020894b10f6b7a153048b15322437eafd95f2",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_autumn_low.glb",
+      "lowSha256": "5734f711a3c67ddbd5fe6a0eab274b8d588105af855f06b896a26210c2b69e16"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_cluster_high.glb",
+      "sha256": "7f7d02235511396b28adf126a2ddbc343af2d4d8261423b89089977fea58df33",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_cluster_low.glb",
+      "lowSha256": "d3a18472a06aaf71e4e0f0e57157d9928125ee9ac1b6384c0505e63ae8cb275e"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_edge_high.glb",
+      "sha256": "2023cabc6663a9001ed0e405575ed1f9dcdb36d6dd74de9b9907ed4d08ff794c",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_edge_low.glb",
+      "lowSha256": "f1b8796372fc5c979a9b270ed93e36873aa2694e562b8e9c0ffb9f4ff97fac10"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_sparse_high.glb",
+      "sha256": "e500510c12a5ccc189fae67ffb27262f02ed413a41c19db042a5953a57823353",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_sparse_low.glb",
+      "lowSha256": "e5954c8304e88d7e888642d4f608125565bb82690639518af63508c576234cbc"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_leaf.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_leaf_high.glb",
+      "sha256": "1d30f439c016bc7fd2a95f6a803a848becdce0b4df59edaeb4f009667c6b5c8f"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_petal.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_petal_high.glb",
+      "sha256": "e8f7f99ec3d13fb426b42653107bcab771bcfd2ce97c6d93b3f7b9c60867814f"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_snowflake.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_snowflake_high.glb",
+      "sha256": "6c5e4c464c1cbe58e44361fe463f665e5e20aacfd2a9945baf6152e61df0a144"
+    },
+    {
+      "out": "gaps-v1/props/mailbox_blue.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/mailbox_blue_high.glb",
+      "sha256": "83ceef0a6063a01d3ab219d62d1aa54603da5ef1ad330d23dab4b26a7f53b044",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/mailbox_blue_low.glb",
+      "lowSha256": "ce03d17f83e17b802692161ca3bd36420b7618635643a91e257c1034635bbc5b"
+    },
+    {
+      "out": "gaps-v1/props/mailbox_red.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/mailbox_red_high.glb",
+      "sha256": "5957e03986f81b7f6af0e2b255af9705435ef32883c0f96550ccb5e8a6d096a0",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/mailbox_red_low.glb",
+      "lowSha256": "3cb0b409bf63fb2cb7ff442313e78e76011671f8efb1c684d1cc061e48f8c366"
+    },
+    {
+      "out": "gaps-v1/props/pier_deck.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/pier_deck_high.glb",
+      "sha256": "053bee328247d893b68ac56141c45703635b6e4bd3c84b75da643ea571e27a75",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/pier_deck_low.glb",
+      "lowSha256": "b56e4508e633cb3019cc8667239cd06b35d5835eb92b807503366371bfeff018"
+    },
+    {
+      "out": "gaps-v1/props/pier_post.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/pier_post_high.glb",
+      "sha256": "75159577135b74e23a109b95a54c3d7b10d7ad1e8a610a0d0d7294f6f5b293a5",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/pier_post_low.glb",
+      "lowSha256": "81294feeeb15eb7ae4b6a8df4effa3f9cadf220a210a7b7edd4cceba5716a05e"
+    },
+    {
+      "out": "gaps-v1/props/stepping_stone.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/stepping_stone_high.glb",
+      "sha256": "1ab73220625139560abb7e929a6b83e055d175fe8af67f3071afe36b8bc26849",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/stepping_stone_low.glb",
+      "lowSha256": "292feefcad9526eac0ba6e802f9d9f5ddb31b3f6ab195a587aeebf8efbe5bd69"
+    },
+    {
+      "out": "gaps-v1/sea/distant_coast_cove.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/distant_coast_cove_high.glb",
+      "sha256": "24d4c9c2b8de5cf76211c94add8da5b99decdfc07b8c9d7bc0447e0dc949b12b",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/distant_coast_cove_low.glb",
+      "lowSha256": "6f7ef89d8d8a89a6cf1212e016fa507bd50e5ca76126708c84985979f1c506aa"
+    },
+    {
+      "out": "gaps-v1/sea/distant_coast_long.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/distant_coast_long_high.glb",
+      "sha256": "301154433afa51bb5cf57d99b4d79cad3a57f795334d946322ce411225fceed0",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/distant_coast_long_low.glb",
+      "lowSha256": "7586d7d1dbbd01637e8294354342b2ce3bce7e0fc3e281c38008b638a08ed9b5"
+    },
+    {
+      "out": "gaps-v1/sea/glacier.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/glacier_high.glb",
+      "sha256": "6f22239001ea1c58a3f1b677ec88f725460b3ffe70e619e00bdd0acb5bfb0bb4",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/glacier_low.glb",
+      "lowSha256": "0cfba7264d1cc6495a48e086f38b340e0dad061ee8c8f9ac64a7ba8355a2ad1d"
+    },
+    {
+      "out": "gaps-v1/sea/ice_floe.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/ice_floe_high.glb",
+      "sha256": "36daaf30fad090acd379e8295d2f3f95d183186700d1b10dc66b86670b56cacc",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/ice_floe_low.glb",
+      "lowSha256": "5ec02bc6d0906b68f90e6c7e9db6d10ed95b527c490aaf565281fd032cc96fa0"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_peak.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_peak_high.glb",
+      "sha256": "8626c88d0c2128ead1ae18614bf4b93a59e6f4e4171b683c99ceac529cfe673c",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_peak_low.glb",
+      "lowSha256": "7fec47e46bc781c1eba2fd71110c05f479ba6d616cdee674273ad2671ba9ac73"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_ridge_rugged.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_ridge_rugged_high.glb",
+      "sha256": "905c2d05fcfc2605f7efcc9fb7fd90be2b6e95fd75f1f65699b98d5de460b57c",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_ridge_rugged_low.glb",
+      "lowSha256": "8bcfa46ad6edc4f57d8d2277aecd9d3e0a4ceb4c0c7837cb26b96385f5191439"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_ridge_soft.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_ridge_soft_high.glb",
+      "sha256": "798c5f5be644a6584befbe45106f43be0598d3ef001583331c8e34ec7ef792c6",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_ridge_soft_low.glb",
+      "lowSha256": "4f7866594f9856e0b7bd8fb174ff033d6a30c8326681929eda59860f260f5732"
+    },
+    {
+      "out": "gaps-v1/sea/splash.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/splash_high.glb",
+      "sha256": "fcc480c5a7c9665b6bd80ccfdc317cd21978dd6cd2eca6525d6c53341ed80cd5"
+    },
+    {
+      "out": "gaps-v1/sea/whale.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/whale_high.glb",
+      "sha256": "9ef19969ad6a7ca61e6bb1ce02636f7e7257060e15fa1faa1650be76d4b88f1e"
+    },
+    {
+      "out": "gaps-v1/spring/foundation_spring.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_spring_high.glb",
+      "sha256": "88fc3136d8986252bffc4dec124eb88e6a8ad27efc966675505669961fc7b5e9",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_spring_low.glb",
+      "lowSha256": "fd2b924b7b042080daac9df9548d3d7cf731ab2dfdc532232bf34d06a33ccccd"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_cluster_high.glb",
+      "sha256": "ab93afc04559e29a9a2af8aaad2f8676a13fbc056c7d9cefe44cb3f85f4574e1",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_cluster_low.glb",
+      "lowSha256": "5d1ea2a11a6e24ba12f8cd14c4af736e441d596ae96695651ea6063f1d57b5cb"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_edge_high.glb",
+      "sha256": "79717c15ae0f10d70f58183f992047aaa15bb1db89c2d489994be3fc86a3972a",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_edge_low.glb",
+      "lowSha256": "f24554c89500b677bd3e13def4de73e3cf00d26f1170e5df67ac839b8c7eca2b"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_sparse_high.glb",
+      "sha256": "d05e38bf15b08d65ba84007e5ccd40d2aca822122275a86ef69d4f9deb6984d9",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_sparse_low.glb",
+      "lowSha256": "11cfd7a4bf663a94b9873fb8bfce7ce5bd8bd0ff024a3da93d69b12ff63f7d82"
+    },
+    {
+      "out": "gaps-v1/summer/foundation_summer.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_summer_high.glb",
+      "sha256": "67a2b064bada9c6ed988181526dd68feb70bb396489facea19bf6700288acbd8",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_summer_low.glb",
+      "lowSha256": "bebb5a8c3d79cb77ea1213718d0e1465fb0ce478bbd47d038b9e285367f4af6a"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_cluster_high.glb",
+      "sha256": "3b242d3f3fee53871405bfc2808d84accb53207b0a13d15f8db42954dd40e912",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_cluster_low.glb",
+      "lowSha256": "b712628a46a48cde9388e1d2f9e77fec24d13f80a0001a23eb1180e0f93010c4"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_edge_high.glb",
+      "sha256": "a60d153af725924cb29093daa506cb9cc5aa0b9f7f83dabb6623aa7ee7caa5c3",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_edge_low.glb",
+      "lowSha256": "51551dc58c67a6b75afb257befef0cb0e73f4cd15ab579183fc836416c324c7b"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_sparse_high.glb",
+      "sha256": "db8ff0f6d9ae38d0368c4ef66d2432171cc037124a84794e014547bae738e560",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_sparse_low.glb",
+      "lowSha256": "835b20769adf8fb5b1f567a7606de4e0757af348106af067e04cb23f9afc536d"
+    },
+    {
+      "out": "gaps-v1/winter/foundation_winter.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_winter_high.glb",
+      "sha256": "b5847fabd4969a57cd479d573aae847b2772b30043639ff52adbaddc47b6800a",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_winter_low.glb",
+      "lowSha256": "8691f1e84427e821a93ff4fa5ecdea0269acc160b88eaf3757efe0adea9a553e"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_cluster_high.glb",
+      "sha256": "ea50310299c1963dbc91c4bef37a479e110b39e54cb85074f0cf98a00696c9a2",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_cluster_low.glb",
+      "lowSha256": "2a9cedbb0fea7517936a8f896fc7b207608c00f2b041ed3e4f7cde2d776a102c"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_edge_high.glb",
+      "sha256": "07c5d4f60c3915f511e4e113e21bd8dd8bb45f299e84859c43402d4ced9b24e1",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_edge_low.glb",
+      "lowSha256": "237d369e312bb6483a28b8a55c093bfb1d3974df00eb7f94203410bb6f62e7ab"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_sparse_high.glb",
+      "sha256": "cd676d2044a29fb05c219c489467943ff03a78abf2219ea61c6f01ff76372e03",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_sparse_low.glb",
+      "lowSha256": "479ffacf9be1e5236f44f84cdccc193bc701572622088d80348a40cb6aa4024b"
+    },
+    {
+      "out": "seasonal-v2/autumn/bench_autumn_v1.glb",
+      "src": "v2:03. Autumn/bench_autumn_v1.glb",
       "sha256": "e24d9e968206803af31dfa273a913d5f73c3b14a81a80310e56c4aa90a88f7e7"
     },
     {
-      "out": "autumn/gazebo_autumn_v1.glb",
-      "src": "03. Autumn/gazebo_autumn_v1.glb",
+      "out": "seasonal-v2/autumn/bridge_autumn_v1.glb",
+      "src": "v2:03. Autumn/bridge_autumn_v1.glb",
+      "sha256": "8fa7d497b6d5227e1a7c0a665fa98abae71e09a4c4bfc8333e6b647fd24d63e6"
+    },
+    {
+      "out": "seasonal-v2/autumn/fence_autumn_v1.glb",
+      "src": "v2:03. Autumn/fence_autumn_v1.glb",
+      "sha256": "71b64bc6045242ab3ffa96558dcc02b6c21119abd67b2abe6d442dd16259fa50"
+    },
+    {
+      "out": "seasonal-v2/autumn/gazebo_autumn_v1.glb",
+      "src": "v2:03. Autumn/gazebo_autumn_v1.glb",
       "sha256": "ac06efd49b6114f355274889fc43019f613c3815b88114b3f1cf9c25258a646c"
     },
     {
-      "out": "autumn/nature/shrub_autumn.glb",
-      "src": "03. Autumn/Nature/shrub_autumn.glb",
+      "out": "seasonal-v2/autumn/nature/shrub_autumn.glb",
+      "src": "v2:03. Autumn/Nature/shrub_autumn.glb",
       "sha256": "8b87081561cbad00d8cd4fc46b9b3bb22ac7083988169bbd713ccdb425b496d9",
       "low": 0.25
     },
     {
-      "out": "autumn/nature/tree_v1_autumn.glb",
-      "src": "03. Autumn/Nature/tree_v1_autumn.glb",
+      "out": "seasonal-v2/autumn/nature/tree_v1_autumn.glb",
+      "src": "v2:03. Autumn/Nature/tree_v1_autumn.glb",
       "sha256": "ea09d3f987efbd568d4c6e2be7f30808d27a5fb9e9989b15d81c2a604e838c77",
       "low": 0.25
     },
     {
-      "out": "autumn/nature/tree_v2_autumn.glb",
-      "src": "03. Autumn/Nature/tree_v2_autumn.glb",
+      "out": "seasonal-v2/autumn/nature/tree_v2_autumn.glb",
+      "src": "v2:03. Autumn/Nature/tree_v2_autumn.glb",
       "sha256": "dc60b153dbebd85f73595fc6beb730ca512256ba700b1ccb4124965f7d618a80",
       "low": 0.25
     },
     {
-      "out": "autumn/nature/tree_v3_autumn.glb",
-      "src": "03. Autumn/Nature/tree_v3_autumn.glb",
+      "out": "seasonal-v2/autumn/nature/tree_v3_autumn.glb",
+      "src": "v2:03. Autumn/Nature/tree_v3_autumn.glb",
       "sha256": "8aff3a47d80acf2cf764f23e588a1225776af8af7a89d615872c073a6fb9a68a",
       "low": 0.25
     },
     {
-      "out": "autumn/planter_autumn_v1.glb",
-      "src": "03. Autumn/planter_autumn_v1.glb",
+      "out": "seasonal-v2/autumn/planter_autumn_v1.glb",
+      "src": "v2:03. Autumn/planter_autumn_v1.glb",
       "sha256": "d5fd2d64f30f73e45046ac629d05db6ed6a272d285844e01c70c56e9bafc4f4c"
     },
     {
-      "out": "common/rock_v1_round.glb",
-      "src": "05. Common nature/rock_v1_round.glb",
+      "out": "seasonal-v2/common/rock_v1_round.glb",
+      "src": "v2:05. Common nature/rock_v1_round.glb",
       "sha256": "3031fd0f167183e540ae21b24e3aa1387f7a491d077d63bc9e445250b759fcdd"
     },
     {
-      "out": "common/rock_v2_wide.glb",
-      "src": "05. Common nature/rock_v2_wide.glb",
+      "out": "seasonal-v2/common/rock_v2_wide.glb",
+      "src": "v2:05. Common nature/rock_v2_wide.glb",
       "sha256": "214ec9d233bd872dc3f992230da77c2f7460fd781cccce52f28b79b85ccfef59"
     },
     {
-      "out": "common/rock_v3_tall.glb",
-      "src": "05. Common nature/rock_v3_tall.glb",
+      "out": "seasonal-v2/common/rock_v3_tall.glb",
+      "src": "v2:05. Common nature/rock_v3_tall.glb",
       "sha256": "041899f4f4fa3d8d174692c5d7316d3e225b86293748a9789aae163fcdace78a"
     },
     {
-      "out": "common/stump_v1_short.glb",
-      "src": "05. Common nature/stump_v1_short.glb",
+      "out": "seasonal-v2/common/stump_v1_short.glb",
+      "src": "v2:05. Common nature/stump_v1_short.glb",
       "sha256": "546d402a8e34679b1d3d9444cccee06d1727b08305e3bc335ad60cf7b6e84b00"
     },
     {
-      "out": "spring/bench_spring_v1.glb",
-      "src": "01. Spring/bench_spring_v1.glb",
+      "out": "seasonal-v2/common/stump_v2_tall.glb",
+      "src": "v2:05. Common nature/stump_v2_tall.glb",
+      "sha256": "e2004073d9c0bbd85a7bea83959374a524d18da4522a5ecaed86a663e17d1e91"
+    },
+    {
+      "out": "seasonal-v2/spring/bench_spring_v1.glb",
+      "src": "v2:01. Spring/bench_spring_v1.glb",
       "sha256": "4655d8f29a65cb0eb624977923123d34fb65349e699e6864bcb8ee2c687058b4"
     },
     {
-      "out": "spring/gazebo_spring_v1.glb",
-      "src": "01. Spring/gazebo_spring_v1.glb",
+      "out": "seasonal-v2/spring/bridge_spring_v1.glb",
+      "src": "v2:01. Spring/bridge_spring_v1.glb",
+      "sha256": "157031f9bb74771434696ab93e60f95d199de2a8a4219e20e0bbe073ca667d5a"
+    },
+    {
+      "out": "seasonal-v2/spring/fence_spring_v1.glb",
+      "src": "v2:01. Spring/fence_spring_v1.glb",
+      "sha256": "96f7f43fd4458d055f3cb0bc1b39d26418ed5427a50bd67dd3553576ea5f9cff"
+    },
+    {
+      "out": "seasonal-v2/spring/gazebo_spring_v1.glb",
+      "src": "v2:01. Spring/gazebo_spring_v1.glb",
       "sha256": "c131e7e707346b1098ef0ba78837dc61b7eeac13cb64af97772877b1fee9b7d6"
     },
     {
-      "out": "spring/nature/shrub_spring.glb",
-      "src": "01. Spring/Nature/shrub_spring.glb",
+      "out": "seasonal-v2/spring/nature/shrub_spring.glb",
+      "src": "v2:01. Spring/Nature/shrub_spring.glb",
       "sha256": "dd3d5fc2b6bb264e567d416069c5e1a8033aa6b3009c7148d3f36fca355df371",
       "low": 0.25
     },
     {
-      "out": "spring/nature/tree_v1_spring.glb",
-      "src": "01. Spring/Nature/tree_v1_spring.glb",
+      "out": "seasonal-v2/spring/nature/tree_v1_spring.glb",
+      "src": "v2:01. Spring/Nature/tree_v1_spring.glb",
       "sha256": "0aa89c10e294f44a30ecda6e51e7257ef0e69e4388c346616fe9ffeaf3170e46",
       "low": 0.25
     },
     {
-      "out": "spring/nature/tree_v2_spring.glb",
-      "src": "01. Spring/Nature/tree_v2_spring.glb",
+      "out": "seasonal-v2/spring/nature/tree_v2_spring.glb",
+      "src": "v2:01. Spring/Nature/tree_v2_spring.glb",
       "sha256": "d071159b2dc7f5d24878a137375b03cb1f6d388f2782170d137707dbf9999565",
       "low": 0.25
     },
     {
-      "out": "spring/nature/tree_v3_spring.glb",
-      "src": "01. Spring/Nature/tree_v3_spring.glb",
+      "out": "seasonal-v2/spring/nature/tree_v3_spring.glb",
+      "src": "v2:01. Spring/Nature/tree_v3_spring.glb",
       "sha256": "c85e84437104b720c7d9b57845548b667e9138168938c56dd87230f088878cc6",
       "low": 0.25
     },
     {
-      "out": "spring/planter_spring_v1.glb",
-      "src": "01. Spring/planter_spring_v1.glb",
+      "out": "seasonal-v2/spring/planter_spring_v1.glb",
+      "src": "v2:01. Spring/planter_spring_v1.glb",
       "sha256": "5a7727f5e2969f2fc044cbefeb51703bb6125e8aaad7a6df5ca2bedadb4ff355"
     },
     {
-      "out": "summer/bench_summer_v1.glb",
-      "src": "02. Summer/bench_summer_v1.glb",
+      "out": "seasonal-v2/summer/bench_summer_v1.glb",
+      "src": "v2:02. Summer/bench_summer_v1.glb",
       "sha256": "327a6148cabf70888e43bbf9aaf9f3ba2f7405842a4ea5ea7ce66827d5df4b3d"
     },
     {
-      "out": "summer/gazebo_summer_v1.glb",
-      "src": "02. Summer/gazebo_summer_v1.glb",
+      "out": "seasonal-v2/summer/bridge_summer_v1.glb",
+      "src": "v2:02. Summer/bridge_summer_v1.glb",
+      "sha256": "50b207d45bcd9c2a058fc672c34ec45dd132068bf444591f025ea45a38190f24"
+    },
+    {
+      "out": "seasonal-v2/summer/fence_summer_v1.glb",
+      "src": "v2:02. Summer/fence_summer_v1.glb",
+      "sha256": "89a1ff11b7efe40b4fbbf5ff13e68af5ea0896d195f9d234da1cd6d71bb81129"
+    },
+    {
+      "out": "seasonal-v2/summer/gazebo_summer_v1.glb",
+      "src": "v2:02. Summer/gazebo_summer_v1.glb",
       "sha256": "f55bd321b1ba77404fa0a8d0e9d182f54404a73c3cd59379eb4c03423101996a"
     },
     {
-      "out": "summer/nature/shrub_summer.glb",
-      "src": "02. Summer/Nature/shrub_summer.glb",
+      "out": "seasonal-v2/summer/nature/shrub_summer.glb",
+      "src": "v2:02. Summer/Nature/shrub_summer.glb",
       "sha256": "76ae715bc4788de09f93734b4b18e6f153b2eee857a0d6f758e79feb358e5d7c",
       "low": 0.25
     },
     {
-      "out": "summer/nature/tree_v1_summer.glb",
-      "src": "02. Summer/Nature/tree_v1_summer.glb",
+      "out": "seasonal-v2/summer/nature/tree_v1_summer.glb",
+      "src": "v2:02. Summer/Nature/tree_v1_summer.glb",
       "sha256": "6f323504cc87e0c72ffc9a1f9182dc675d010ab3d9ac6a83a276c7c7bf19598f",
       "low": 0.25
     },
     {
-      "out": "summer/nature/tree_v2_summer.glb",
-      "src": "02. Summer/Nature/tree_v2_summer.glb",
+      "out": "seasonal-v2/summer/nature/tree_v2_summer.glb",
+      "src": "v2:02. Summer/Nature/tree_v2_summer.glb",
       "sha256": "b1b0eabbc4f012c7e1b2c12a28c4fd171182f02d28a7411e425c3f90c93a78ed",
       "low": 0.25
     },
     {
-      "out": "summer/nature/tree_v3_summer.glb",
-      "src": "02. Summer/Nature/tree_v3_summer.glb",
+      "out": "seasonal-v2/summer/nature/tree_v3_summer.glb",
+      "src": "v2:02. Summer/Nature/tree_v3_summer.glb",
       "sha256": "65853978b8bb6c2ad51a7d3be83d68abe220709a0a8f5f1a39ff5ccb6d874f62",
       "low": 0.25
     },
     {
-      "out": "summer/planter_summer_v1.glb",
-      "src": "02. Summer/planter_summer_v1.glb",
+      "out": "seasonal-v2/summer/planter_summer_v1.glb",
+      "src": "v2:02. Summer/planter_summer_v1.glb",
       "sha256": "0d3410f629c50cdc2f6ceb20c9761013c294b21c3bb61d3a311e9c93ea887eaf"
     },
     {
-      "out": "winter/bench_winter_v1.glb",
-      "src": "04. Winter/bench_winter_v1.glb",
+      "out": "seasonal-v2/winter/bench_winter_v1.glb",
+      "src": "v2:04. Winter/bench_winter_v1.glb",
       "sha256": "dce258cc29388394dac8cc201307eb0d7b81eb3e7fb83fb04a86e78bd76cec4e"
     },
     {
-      "out": "winter/gazebo_winter_v1.glb",
-      "src": "04. Winter/gazebo_winter_v1.glb",
+      "out": "seasonal-v2/winter/bridge_winter_v1.glb",
+      "src": "v2:04. Winter/bridge_winter_v1.glb",
+      "sha256": "89f47812d5f9f99d1dc3ecb9ceb9404e45dcc13990882e616d35432885684288"
+    },
+    {
+      "out": "seasonal-v2/winter/fence_winter_v1.glb",
+      "src": "v2:04. Winter/fence_winter_v1.glb",
+      "sha256": "7dc93a11f4626e25396a3ff3dd22d58bdf932cad13e9ad1f7f9a5ac8c30d1f66"
+    },
+    {
+      "out": "seasonal-v2/winter/gazebo_winter_v1.glb",
+      "src": "v2:04. Winter/gazebo_winter_v1.glb",
       "sha256": "aba6877cb037669cdf44af86290501cbf52f90a9d88d5eefa9aef9afd796a0bd"
     },
     {
-      "out": "winter/nature/shrub_winter.glb",
-      "src": "04. Winter/Nature/shrub_winter.glb",
+      "out": "seasonal-v2/winter/nature/shrub_winter.glb",
+      "src": "v2:04. Winter/Nature/shrub_winter.glb",
       "sha256": "e7241c74134d57ad36f1b492e11776b231a05f60d2e09483a6f7e6f9f41195a5",
       "low": 0.25
     },
     {
-      "out": "winter/nature/tree_v1_winter.glb",
-      "src": "04. Winter/Nature/tree_v1_winter.glb",
+      "out": "seasonal-v2/winter/nature/tree_v1_winter.glb",
+      "src": "v2:04. Winter/Nature/tree_v1_winter.glb",
       "sha256": "7c22550f89e4f9b9b1350682795a1a4739a2399fb817c2f0f7bfca51baf5f4f0",
       "low": 0.25
     },
     {
-      "out": "winter/nature/tree_v2_winter.glb",
-      "src": "04. Winter/Nature/tree_v2_winter.glb",
+      "out": "seasonal-v2/winter/nature/tree_v2_winter.glb",
+      "src": "v2:04. Winter/Nature/tree_v2_winter.glb",
       "sha256": "ee69fef86fb0939a666cc4c2772ebe6e411e244fa41cc131e9cc95f947234283",
       "low": 0.25
     },
     {
-      "out": "winter/nature/tree_v3_winter.glb",
-      "src": "04. Winter/Nature/tree_v3_winter.glb",
+      "out": "seasonal-v2/winter/nature/tree_v3_winter.glb",
+      "src": "v2:04. Winter/Nature/tree_v3_winter.glb",
       "sha256": "3a502c456433c1888ddd7aa94008d80116c42dab8b3773ff14f6a758abdbde96",
       "low": 0.25
     },
     {
-      "out": "winter/planter_winter_v1.glb",
-      "src": "04. Winter/planter_winter_v1.glb",
+      "out": "seasonal-v2/winter/planter_winter_v1.glb",
+      "src": "v2:04. Winter/planter_winter_v1.glb",
       "sha256": "6d6e71ff0b42abc4c4819c37a9de0bda4d2357caac21aee5253454d05020f26e"
     }
-  ]
+  ],
+  "sources": {
+    "v2": "01. Game Island assets 2026-10-05/02. Finished assets",
+    "additions": "02. Game Island additions 2026-10-05/02. Finished assets",
+    "gaps": "04. Game Island gaps 2026-10-05"
+  }
 }

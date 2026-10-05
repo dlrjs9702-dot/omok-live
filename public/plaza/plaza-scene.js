@@ -77,7 +77,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbfe6ff);
   scene.fog = new THREE.Fog(0xd7efff, 70, 175); // far enough that the climbing tower reads from the plaza
-  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 180); // nothing is drawn past the fog
+  // v1.10.29: the camera reaches VIEW_FAR so the far scenery at sea (haze, no fog: asset-loader) shows over the
+  // horizon; the island itself still fades into the fog by 175 exactly as before
+  const VIEW_FAR = 420;
+  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, VIEW_FAR);
 
   scene.add(new THREE.HemisphereLight(0xfff4dc, 0x8cc970, 1.05));
   const sun = new THREE.DirectionalLight(0xfff0d2, 1.75);
@@ -136,30 +139,37 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   // Name tag over a character: the nickname (with a small gold 「챔피언」 mark for this week's climbing champion,
   // v1.9.5) and, on its own line, the title (a legend's name). Small and layered so both fit without a banner.
-  // v1.10.5: 「호구왕」 (this week's top donor) is a second small mark after the name, in its own colour.
+  // v1.10.5: 「호구왕」 (this week's top donor) is a second small mark, in its own colour.
+  // v1.10.29 (사용자 결정 2026-10-05): the marks (챔피언, 호구왕) are no longer after the name but on their own row right
+  // under it, side by side; the title's row comes below them. The tag stands on its bottom edge (sprite centre at the
+  // bottom), so a taller tag grows upward and never into the head; the chat bubble goes on top of it (say()).
+  const TAG_Y = 2.53; // the tag's bottom over a character's feet
   function makeTag(name, title, champion = false, hoguking = false) {
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = title ? 168 : 104;
+    const pills = [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 104 + (pills.length ? 58 : 0) + (title ? 64 : 0);
     const c = canvas.getContext('2d'); c.textAlign = 'center'; c.textBaseline = 'middle';
     const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
-    const pills = [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
-    c.font = font(34); for (const p of pills) p.w = c.measureText(p.text).width + 34;
-    const pillsW = pills.reduce((n, p) => n + p.w + 12, 0);
-    c.font = font(54); const nameW = Math.min(pills.length > 1 ? 250 : 360, c.measureText(name).width);
-    const total = Math.min(504, nameW + pillsW + 48);
+    c.font = font(54); const nameW = Math.min(440, c.measureText(name).width);
+    const total = Math.min(504, nameW + 48);
     c.fillStyle = 'rgba(30,24,20,.62)'; c.beginPath(); c.roundRect((512 - total) / 2, 8, total, 88, 44); c.fill();
-    let left = (512 - (nameW + pillsW)) / 2;
-    c.font = font(54); c.fillStyle = '#ffffff'; c.fillText(name, left + nameW / 2, 54, nameW);
-    left += nameW + 12;
-    for (const p of pills) {
-      const g = c.createLinearGradient(left, 0, left + p.w, 0); g.addColorStop(0, p.from); g.addColorStop(1, p.to);
-      c.fillStyle = g; c.beginPath(); c.roundRect(left, 30, p.w, 48, 24); c.fill();
-      c.font = font(34); c.fillStyle = p.ink; c.fillText(p.text, left + p.w / 2, 55);
-      left += p.w + 12;
+    c.fillStyle = '#ffffff'; c.fillText(name, 256, 54, nameW);
+    let y = 104;
+    if (pills.length) {
+      c.font = font(34); for (const p of pills) p.w = c.measureText(p.text).width + 34;
+      let left = (512 - (pills.reduce((n, p) => n + p.w, 0) + 12 * (pills.length - 1))) / 2;
+      for (const p of pills) {
+        const g = c.createLinearGradient(left, 0, left + p.w, 0); g.addColorStop(0, p.from); g.addColorStop(1, p.to);
+        c.fillStyle = g; c.beginPath(); c.roundRect(left, y + 2, p.w, 48, 24); c.fill();
+        c.fillStyle = p.ink; c.fillText(p.text, left + p.w / 2, y + 27);
+        left += p.w + 12;
+      }
+      y += 58;
     }
-    if (title) { const t = `\u300a${title}\u300b`; c.font = font(38); c.fillStyle = '#ffd86b'; c.strokeStyle = 'rgba(40,28,10,.85)'; c.lineWidth = 7; c.strokeText(t, 256, 134, 480); c.fillText(t, 256, 134, 480); }
+    if (title) { const t = `\u300a${title}\u300b`; c.font = font(38); c.fillStyle = '#ffd86b'; c.strokeStyle = 'rgba(40,28,10,.85)'; c.lineWidth = 7; c.strokeText(t, 256, y + 30, 480); c.fillText(t, 256, y + 30, 480); }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
-    sprite.scale.set(2.2, (2.2 * canvas.height) / 512, 1); sprite.renderOrder = 2;
+    sprite.center.set(0.5, 0); sprite.scale.set(2.2, (2.2 * canvas.height) / 512, 1); sprite.renderOrder = 2;
+    sprite.userData.rows = { marks: pills.map((p) => p.text), title: Boolean(title) }; // tests: what the rows under the name hold
     return sprite;
   }
   // v1.10.2 말풍선: a chat message over its sender for a few seconds (both lines wrap at the bubble's width).
@@ -191,7 +201,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!c) return;
     disposeTag(c.bubble);
     c.bubble = makeBubble(text);
-    c.bubble.position.y = (c.tag ? c.tag.position.y + c.tag.scale.y / 2 : 2.4) + 0.25 + c.bubble.scale.y / 2;
+    c.bubble.position.y = (c.tag ? c.tag.position.y + c.tag.scale.y : 2.4) + 0.25 + c.bubble.scale.y / 2; // over the whole tag (it stands on its bottom)
     c.root.add(c.bubble);
   }
   function stepBubble(c, now) {
@@ -208,6 +218,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // here is the raised central plaza: the fountain whose water runs off into the streams, benches, lamps, flower beds
   // and the two empty plinths kept for the donation statues.
   const island = buildIsland(scene, { mat, mesh, solids, assets });
+  // v1.10.29: a season day moves the models (assets) and the ground's colours (island) together
+  const setSeasonDay = (day) => { assets.setDay(day); island.setSeasonDay(day); };
+  island.setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now()));
   const PH = heightAt(0, 0);
   const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain);
   mesh(new THREE.CylinderGeometry(2.9, 3.1, 0.6, 44), mat(0xeae3d6), 0, 0.3, 0, fountain);
@@ -312,6 +325,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const facilityRoots = []; const buildingRoots = [];
   const npcs = []; // ponytail: NPCs only idle-breathe; real NPC behaviour is a later plaza version
   const doors = {};
+  let mapFace = null; // v1.10.29: places the map picture on the board's look (procedural or model)
   // v1.10.2: the gazebo stays as a place to sit in the nature area; chat is an overlay now, not a facility.
   for (const facility of [...facilities, { id: 'chat', name: '', decor: true }]) {
     const spot = SPOTS[facility.id];
@@ -335,8 +349,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (spot.kind === 'hall') { // v1.10.1 게임관: the island's landmark -- a columned hall with a dome and two towers
       depth = 10; const w = 15; const h = 6.2;
       const wall = mat(spot.wall); const trim = mat(0xfff6e6); const roofM = mat(spot.roof); const gold = mat(0xf6c945, { metalness: 0.5, roughness: 0.35 });
-      mesh(new THREE.BoxGeometry(w + 1.2, 0.5, depth + 2.6), mat(0xe9dcc4), 0, 0.25, 0.7, visual); // terrace
-      for (let k = 0; k < 3; k += 1) mesh(new THREE.BoxGeometry(6.4 - k * 0.6, 0.17, 0.5), mat(0xefe4cf), 0, 0.085 + k * 0.17, depth / 2 + 2.2 - k * 0.45, visual); // steps
+      // v1.10.29: the terrace and its steps are the hall's ground (its collision and the way up), so they stay under the
+      // hall model too, which stands on the terrace (facility.games offset)
+      mesh(new THREE.BoxGeometry(w + 1.2, 0.5, depth + 2.6), mat(0xe9dcc4), 0, 0.25, 0.7, root); // terrace
+      for (let k = 0; k < 3; k += 1) mesh(new THREE.BoxGeometry(6.4 - k * 0.6, 0.17, 0.5), mat(0xefe4cf), 0, 0.085 + k * 0.17, depth / 2 + 2.2 - k * 0.45, root); // steps
       mesh(new THREE.BoxGeometry(w, h, depth), wall, 0, 0.5 + h / 2, 0, visual);
       mesh(new THREE.BoxGeometry(w + 0.4, 0.35, depth + 0.4), trim, 0, 0.5 + h, 0, visual); // cornice
       const roof = mesh(new THREE.ConeGeometry(Math.max(w, depth) * 0.74, 2.2, 4), roofM, 0, 0.5 + h + 1.25, 0, visual); roof.rotation.y = Math.PI / 4; roof.scale.z = depth / w;
@@ -405,6 +421,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
       sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
       solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
+      footing(root, w + 0.6, depth + 0.6);
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
       for (const px of [-1.25, 1.25]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 10), mat(0x8a5a3b), px, 1.3, 0, visual);
@@ -430,7 +447,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       depth = 0.3;
       for (const px of [-1.5, 1.5]) mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.8, 10), mat(0x8a5a3b), px, 1.4, 0, visual);
       mesh(new THREE.BoxGeometry(3.3, 2.5, 0.14), mat(0x8a5a3b), 0, 1.85, 0, visual);
-      const face = mesh(new THREE.PlaneGeometry(3, 2.2), new THREE.MeshBasicMaterial({ map: mapTexture }), 0, 1.85, 0.08, visual); face.castShadow = false;
+      const face = mesh(new THREE.PlaneGeometry(3, 2.2), new THREE.MeshBasicMaterial({ map: mapTexture }), 0, 1.85, 0.08, root); face.castShadow = false;
+      // v1.10.29: on the board model the picture fills its blank panel (`Map_Panel`: centre (0, 1.60, -0.13), 2.20 x 1.23,
+      // facing the model's front -z, turned to +z by the entry), the map cropped top and bottom to the panel's shape
+      mapFace = (entry) => {
+        const k = entry ? entry.scale ?? 1 : 1;
+        face.scale.set(entry ? (2.2 * k) / 3 : 1, entry ? (1.23 * k) / 2.2 : 1, 1); face.position.set(0, entry ? 1.6 * k : 1.85, entry ? 0.13 * k + 0.012 : 0.08);
+        const crop = entry ? (mapCanvas.width / mapCanvas.height) / (2.2 / 1.23) : 1; mapTexture.repeat.set(1, crop); mapTexture.offset.set(0, (1 - crop) / 2);
+      };
       const roofBar = mesh(new THREE.BoxGeometry(3.6, 0.16, 0.5), mat(0x6b4f3a), 0, 3.18, 0, visual); roofBar.rotation.x = 0.1;
       sign(facility.name, root, 3.8);
       solids.push({ x, z, r: 1.7 });
@@ -499,7 +523,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       solids.push({ ...at(0, 0.1), r: 0.95 }, { ...at(0, -0.75), r: 0.45 });
       npcs.push(npc);
     }
-    assets.attach(`facility.${facility.id}`, root, visual);
+    assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : null);
     const reach = depth / 2 + 1.3;
     const out = Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps
     if (!facility.decor) doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
@@ -522,6 +546,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // -- roof kind and pitch, proportions, door place, windows, shutters, chimney, porch, planters, lamp -- so no two are
   // the same house in another colour; each with a mailbox, a short side fence and stepping stones out to the walk.
   // Decoration only: walked around like any building, nothing to open.
+  // v1.10.29 접지: stones (and a touch of the season) round a building's plinth, the door side left open
+  // (deco.foundation: 3.58 x 2.73, sized to the plinth); decoration only, under the building's own circles
+  function footing(parent, w, d) {
+    const holder = new THREE.Group(); holder.scale.set(w / 3.58, 1, d / 2.73); parent.add(holder);
+    assets.attach('deco.foundation', holder, new THREE.Group());
+  }
+  const allStones = []; // v1.10.29: every yard's stepping stones, one batch (prop.steppingStone) after the houses
+  const FENCE_SEG = 1.35; // v1.10.29: one fence model's length on the island (the 2.25 m model at the entry's scale 0.6)
   const COTTAGE_LOOKS = [
     { w: 3.4, d: 2.8, h: 2.3, wall: 0xfff1d6, roofColor: 0xd9705a, roof: 'gable', rise: 1.15, chimney: 1.0, porch: true, shutters: 0x6aa9e8, planters: true },
     { w: 3.0, d: 3.0, h: 2.2, wall: 0xe8f4e4, roofColor: 0x5f9e7a, roof: 'hip', rise: 1.2, lamp: true, door: -0.55 },
@@ -542,15 +574,27 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const body = new THREE.Mesh(building({ ...look, windows }), vcMat); body.castShadow = true; body.receiveShadow = true; visual.add(body);
     // the yard: a mailbox by the way out, a short fence along each side, stepping stones to the walk
     const toWalk = Math.hypot(c.face[0] - c.x, c.face[1] - c.z) - 1.6;
-    const yard = [['mailbox', look.w / 2 + 0.5, look.d / 2 + 1.5, 0, c.style % 2], ['fence', -look.w / 2 - 0.9, 0.4, Math.PI / 2, look.d + 1.6], ['fence', look.w / 2 + 0.9, -0.6, Math.PI / 2, look.d - 0.4]];
-    if (!look.planters) yard.push(['planter', -look.w / 2 + 0.2, look.d / 2 + 0.9, 0, c.style]);
-    const yardGeo = props(yard); const yardMesh = new THREE.Mesh(yardGeo, vcMat); yardMesh.castShadow = true; yardMesh.receiveShadow = true; visual.add(yardMesh);
-    const stones = [];
-    for (let z = look.d / 2 + 0.95; z < toWalk; z += 0.8) {
-      const wx = c.x + Math.sin(g.rotation.y) * z + Math.cos(g.rotation.y) * door; const wz = c.z + Math.cos(g.rotation.y) * z - Math.sin(g.rotation.y) * door;
-      stones.push(part(STONE, 0xddd5c6, door + Math.sin(z * 3.1) * 0.12, heightAt(wx, wz) - y0 + 0.03, z, { ry: z, sx: 0.62, sy: 0.08, sz: 0.5 }));
+    // v1.10.29: the house model replaces only the house (`visual`); the yard stays, and each fence run is a row of
+    // fence models (prop.fence) -- segments of about FENCE_SEG, stretched a little to fill the run exactly
+    // the mailbox is its own model too (prop.mailbox.<0 blue | 1 red>, the procedural one's colour)
+    if (!look.planters) { const yardMesh = new THREE.Mesh(props([['planter', -look.w / 2 + 0.2, look.d / 2 + 0.9, 0, c.style]]), vcMat); yardMesh.castShadow = true; yardMesh.receiveShadow = true; g.add(yardMesh); }
+    const box = new THREE.Group(); box.position.set(look.w / 2 + 0.5, 0, look.d / 2 + 1.5); g.add(box);
+    const boxLook = new THREE.Mesh(props([['mailbox', 0, 0, 0, c.style % 2]]), vcMat); boxLook.castShadow = true; box.add(boxLook);
+    assets.attach(`prop.mailbox.${c.style % 2}`, box, boxLook);
+    footing(g, look.w + 0.6, look.d + 0.6);
+    for (const [fx, fz, len] of [[-look.w / 2 - 0.9, 0.4, look.d + 1.6], [look.w / 2 + 0.9, -0.6, look.d - 0.4]]) {
+      const n = Math.max(1, Math.round(len / FENCE_SEG)); const stretch = len / n / FENCE_SEG;
+      for (let k = 0; k < n; k += 1) {
+        const seg = new THREE.Group(); seg.position.set(fx, 0, fz - len / 2 + ((k + 0.5) * len) / n); seg.rotation.y = Math.PI / 2; seg.scale.x = stretch; g.add(seg);
+        const look2 = new THREE.Mesh(props([['fence', 0, 0, 0, FENCE_SEG]]), vcMat); look2.castShadow = true; look2.receiveShadow = true; seg.add(look2);
+        assets.attach('prop.fence', seg, look2);
+      }
     }
-    if (stones.length) { const st = new THREE.Mesh(mergeColored(stones), vcMat); st.receiveShadow = true; visual.add(st); }
+    for (let z = look.d / 2 + 0.95; z < toWalk; z += 0.8) {
+      const lx = door + Math.sin(z * 3.1) * 0.12;
+      const wx = c.x + Math.sin(g.rotation.y) * z + Math.cos(g.rotation.y) * lx; const wz = c.z + Math.cos(g.rotation.y) * z - Math.sin(g.rotation.y) * lx;
+      allStones.push({ x: wx, z: wz, y: heightAt(wx, wz) + 0.03, ry: g.rotation.y + z });
+    }
     assets.attach([`cottage.${c.style % COTTAGE_LOOKS.length}`, 'cottage'], g, visual);
     // walked around: the house, the two fences and the mailbox
     const local = (lx, lz) => ({ x: c.x + Math.cos(g.rotation.y) * lx + Math.sin(g.rotation.y) * lz, z: c.z - Math.sin(g.rotation.y) * lx + Math.cos(g.rotation.y) * lz });
@@ -558,6 +602,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const [fx, z0, len] of [[-look.w / 2 - 0.9, 0.4 - (look.d + 1.6) / 2, look.d + 1.6], [look.w / 2 + 0.9, -0.6 - (look.d - 0.4) / 2, look.d - 0.4]]) for (let t = 0; t <= len; t += 0.6) solids.push({ ...local(fx, z0 + t), r: 0.22 });
     solids.push({ ...local(look.w / 2 + 0.5, look.d / 2 + 1.5), r: 0.3 });
   }
+
+  { // v1.10.29: the yards' stepping stones, one instanced batch (each stone placed and turned; the model replaces them)
+    const geo = mergeColored([part(STONE, 0xddd5c6, 0, 0, 0, { sx: 0.62, sy: 0.08, sz: 0.5 })]);
+    const im = new THREE.InstancedMesh(geo, vcMat, allStones.length); const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0); const one = new THREE.Vector3(1, 1, 1);
+    const matrices = allStones.map((st, i) => { m.compose(new THREE.Vector3(st.x, st.y, st.z), q.setFromAxisAngle(up, st.ry), one); im.setMatrixAt(i, m); return m.clone(); });
+    im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+    if (allStones.length) assets.batch('prop.steppingStone', [{ x: 0, z: 0, parent: scene, procedural: [im], matrices, colors: null, shadow: false }]);
+  }
+  assets.ambient(scene); // v1.10.29 the seasonal falling flakes round me
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -577,7 +630,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(1.15);
       c.armR.rotation.z = 2.4; // a wave, frozen
       scene.add(c.root); statueRoots.push(c.root);
-      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 4.3, spot.z); scene.add(plate); statueRoots.push(plate);
+      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 4.08, spot.z); scene.add(plate); statueRoots.push(plate);
     }
   }
 
@@ -592,7 +645,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
     disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me);
-    if (name) { me.tag = makeTag(name, title, champion, hoguking); me.tag.position.y = 2.75; me.root.add(me.tag); }
+    if (name) { me.tag = makeTag(name, title, champion, hoguking); me.tag.position.y = TAG_Y; me.root.add(me.tag); }
     me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
 
@@ -610,12 +663,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = 2.75; o.c.root.add(o.c.tag); scene.add(o.c.root); assets.dress('character.player', o.c);
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = TAG_Y; o.c.root.add(o.c.tag); scene.add(o.c.root); assets.dress('character.player', o.c);
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = 2.75; c.root.add(c.tag); scene.add(c.root); assets.dress('character.player', c);
+        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = TAG_Y; c.root.add(c.tag); scene.add(c.root); assets.dress('character.player', c);
         o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: SPEED * 1.6 }) }; others.set(p.id, o);
       }
       // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
@@ -833,7 +886,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 });
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc);
           if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
-          npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.6; npc.root.add(npc.tag); // what they want, at a glance
+          npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
         } else { eventModel(ev.kind, root); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);
@@ -1009,7 +1062,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const CAM_MIN = 4; const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST;
   function placeCamera(snap) {
     const p = me.root.position;
-    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : 180)) { camera.far = overview ? 600 : 180; camera.updateProjectionMatrix(); }
+    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : VIEW_FAR)) { camera.far = overview ? 600 : VIEW_FAR; camera.updateProjectionMatrix(); }
     if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
     const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
     // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
@@ -1078,6 +1131,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     sampled = 0; slowTime = 0;
   }
+  // v1.10.29 고래 (해상 풍경 결정 2026-10-05): now and then -- every WHALE_EVERY seconds or so -- a whale breaches once
+  // out at sea in front of me (sea.whale, BreachOnce: up out of the water, over and down, then gone), with a splash
+  // (sea.splash, SplashOnce) where it breaks the surface and where it falls back. Only on open sea well off the coast,
+  // the harbour and the breakwater; nothing to interact with. Tests can call one now (debug().whale()).
+  const WHALE_EVERY = [55, 120]; const SEA_Y = -0.6; let whaleAt = 40 + Math.random() * 40;
+  function whale(force = false) {
+    const T = globalThis.IslandTerrain; const p = me.root.position;
+    for (let k = 0; k < 16; k += 1) {
+      const a = camYaw + Math.PI + (Math.random() - 0.5) * 1.3; const d = 22 + Math.random() * 23; // in front of the camera, close enough to be in the picture
+      const x = p.x + Math.sin(a) * d; const z = p.z + Math.cos(a) * d;
+      if (T.coastDist(x, z) > -14 || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 25 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 25) continue;
+      const splash = (at) => assets.once('sea.splash', { parent: scene, x: at.x, y: SEA_Y, z: at.z });
+      assets.once('sea.whale', { parent: scene, x, y: SEA_Y, z, ry: Math.random() * TAU }, { onCross: splash });
+      return true;
+    }
+    return false;
+  }
+  function stepWhale() {
+    if (clock < whaleAt) return;
+    whaleAt = clock + WHALE_EVERY[0] + Math.random() * (WHALE_EVERY[1] - WHALE_EVERY[0]);
+    if (quality > 0 && !overview) whale();
+  }
   function step(dt) {
     let ix = 0; let iz = 0;
     if (!isBlocked()) {
@@ -1118,9 +1193,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { spin.rotation.z = clock * 2.4; spin.position.y = 0.35 + Math.sin(clock * 2) * 0.05; } }
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
+    assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
+    stepWhale();
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
-    if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; assets.setDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
+    if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
     island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = 0.55 + Math.sin(clock * 1.5 + i) * 0.05; });
@@ -1194,7 +1271,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; assets.setDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };

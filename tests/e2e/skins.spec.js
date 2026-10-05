@@ -26,6 +26,9 @@ async function inBrowser(browser, html) {
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
   const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
+  // the game opens once the resource pack is ready (like skin-support shopper): with the whole island in it (v1.10.29,
+  // over 200 files) a CI runner is still preparing when the lobby is looked at
+  await page.locator('#lobbyView').waitFor({ state: 'visible', timeout: 60000 });
   return { context, page, token };
 }
 

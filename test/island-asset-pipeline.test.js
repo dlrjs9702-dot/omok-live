@@ -17,37 +17,57 @@ async function parse(buffer) {
 
 // v1.10.18/19: the real models -- every file is in public/assets/island (so in the game resource pack, with its
 // content revision), in all four seasons, and is a valid glTF binary
-test('운영 등록부: 연결한 모델은 사계절 파일이 모두 리소스 팩 폴더에 있고 실제 GLB로 읽힌다', async () => {
+// v1.10.29: plus the 2026-10-05 additions (additions-v1): the last tree kinds, the second bush, a flower per colour,
+// houses, facilities, the lamp, and the v2 bridge, fence and tall stump; High and Low files alike.
+test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일이 모두 리소스 팩 폴더에 있고 실제 GLB로 읽힌다', async () => {
   const fs = require('node:fs'); const path = require('node:path');
   const { buildAssetManifest } = require('../lib/asset-manifest');
-  assert.deepEqual(Object.keys(REGISTRY).sort(), ['facility.chat', 'nature.bush', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.round', 'nature.tree.stump',
-    'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.planter']);
+  const FACILITIES = ['games', 'climb', 'shop', 'avatar', 'records', 'admin', 'townhall', 'board', 'missions', 'map', 'donate', 'attendance', 'trader', 'naming'];
+  assert.deepEqual(Object.keys(REGISTRY).sort(), ['facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.fruit', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
+    'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.bridge', 'prop.fence', 'prop.lamp', 'prop.planter',
+    ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`),
+    // v1.10.29 gap assets (gaps-v1)
+    'deco.layer.sparse', 'deco.layer.cluster', 'deco.layer.edge', 'deco.foundation', 'prop.mailbox.0', 'prop.mailbox.1', 'prop.steppingStone', 'prop.pierDeck', 'prop.pierPost',
+    'fx.petal', 'fx.leaf', 'fx.snow', 'sea.coastLong', 'sea.coastCove', 'sea.ridgeSoft', 'sea.ridgeRugged', 'sea.peak', 'sea.glacier', 'sea.floe', 'sea.whale', 'sea.splash'].sort());
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
+  const check = async (id, url, what) => {
+    assert.ok(pack.assets.some((a) => a.url === url), `${id} ${what} 리소스 팩`);
+    if (!parsed.has(url)) {
+      const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
+      let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
+      parsed.set(url, meshes);
+    }
+    assert.ok(parsed.get(url) > 0, `${id} ${what} 메시`);
+  };
   for (const [id, entry] of Object.entries(REGISTRY)) {
-    assert.ok(entry.scale > 0.5 && entry.scale < 1.4, `${id} 크기 보정`);
-    if (!entry.seasons) { // the same in every season (common/)
-      assert.match(entry.url, /^\/assets\/island\/seasonal-v2\/common\//, id);
+    const scale = entry.scale ?? 1;
+    if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
+    else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
+    if (!entry.seasons) { // the same in every season
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea))\//, id);
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
-      assert.ok(pack.assets.some((a) => a.url === entry.url), `${id} 리소스 팩`);
-      parsed.set(entry.url, 1);
+      await check(id, entry.url, 'High');
+      if (entry.low) await check(id, entry.low.url, 'Low');
       continue;
     }
     assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
     for (const season of P.SEASONS) {
-      const url = P.entryOf(REGISTRY, id, [], season).url;
-      assert.match(url, new RegExp(`^/assets/island/seasonal-v2/${season}/`), `${id} ${season}`);
-      assert.ok(pack.assets.some((a) => a.url === url), `${id} ${season} 리소스 팩`);
-      if (!parsed.has(url)) {
-        const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
-        let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
-        parsed.set(url, meshes);
-      }
-      assert.ok(parsed.get(url) > 0, `${id} ${season} 메시`);
+      const e = P.entryOf(REGISTRY, id, [], season);
+      assert.match(e.url, new RegExp(`^/assets/island/(seasonal-v2|additions-v1|gaps-v1)/${season}/`), `${id} ${season}`);
+      await check(id, e.url, season);
+      if (entry.low) { assert.ok(e.lowUrl.includes(`/${season}/`), `${id} ${season} Low`); await check(id, e.lowUrl, `${season} Low`); }
     }
     assert.equal(P.entryOf(REGISTRY, id, [], null), null, `${id}: 계절 없이 쓰는 파일은 없음`);
   }
-  assert.equal(parsed.size, 32);
+  const config = require('../tools/assets/island-models.json');
+  assert.equal(parsed.size, config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // every file built (tools/assets/island-models.json) is used
+  // the clips the game plays: the falling flakes loop, the whale and the splash once
+  for (const [id, clip] of [['fx.petal', 'PetalFallLoop'], ['fx.leaf', 'LeafFallLoop'], ['fx.snow', 'SnowflakeFallLoop'], ['sea.whale', 'BreachOnce'], ['sea.splash', 'SplashOnce']]) {
+    const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', REGISTRY[id].url)));
+    assert.deepEqual(gltf.animations.map((a) => a.name), [clip], id);
+    assert.ok(gltf.animations[0].duration > 1, id);
+  }
 });
 
 // v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전 (사용자 결정 2026-10-05; the v1.10.19 monthly whole-island season
@@ -297,6 +317,14 @@ test('High/Low LOD: low 파일은 계절별로 해석되고, 전환에는 히스
   let high = false; let switches = 0;
   for (const d of [36, 35.2, 34.8, 35.3, 36, 37.5, 38, 38.4, 38.6, 38.2, 37]) { const next = P.highState(high, d, 35); if (next !== high) switches += 1; high = next; }
   assert.equal(switches, 2);
+  // v1.10.29: flowers too are drawn at every distance (their colours are what makes the island look colourful from
+  // afar); their Low is the pipeline's own simplification of the same model, lighter than the artist's
+  const { REGISTRY: R } = require('../public/plaza/island-assets.js');
+  const config = require('../tools/assets/island-models.json');
+  for (const c of [0, 1, 2, 3, 4]) {
+    assert.equal(R[`nature.flower.${c}`].far, undefined, `flower ${c}`);
+    for (const f of config.files.filter((x) => x.out.includes(`/flower_${c}_`))) { assert.ok(f.low > 0 && f.low < 0.2, f.out); assert.equal(f.lowSrc, undefined, f.out); }
+  }
 });
 
 test('운영 등록부: 나무·관목은 사계절 Low 파일이 있고 High보다 가볍다', () => {

@@ -160,22 +160,63 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
 
+  // v1.10.29 계절 바닥: the ground follows the four season zones (island-terrain seasonZoneAt / zoneSeason) like the
+  // models on it -- each zone's grass and walks take the colours of that season's ground tiles (360 refinement v2
+  // ground_tile_<season>: `ground` for grass, `earth` for walks) and move with the zones each day; the neutral plaza
+  // keeps the island's own green. Near a zone's edge a vertex mixes the seasons of the ground around it (9 samples
+  // within SEASON_BLEND), so the seasons meet in a soft band instead of a line. Only colours change: heights, walks and
+  // collision stay as they are. Each painted mesh keeps its base colours and its zone weights (worked out once).
+  const SEASON_GROUND = { spring: [0xc0e0a4, 0xddc39c, 0.55, 0.3], summer: [0xacd497, 0xd9be95, 0.35, 0.2], autumn: [0xe9d7a8, 0xd4b890, 0.6, 0.3], winter: [0xeff4fa, 0xe5e7eb, 0.8, 0.55] }; // [ground, earth, ground share, earth share]
+  const SEASON_BLEND = 5;
+  const painted = []; // { attr, base, weights (5 per vertex: plaza, zones 0-3), kind: [target (0 ground, 1 earth), share] per vertex }
+  function seasonal(attr, at, kind) {
+    const n = attr.count; const weights = new Float32Array(n * 5); const kinds = new Float32Array(n * 2);
+    for (let i = 0; i < n; i += 1) {
+      const [x, z] = at(i);
+      for (let k = 0; k < 9; k += 1) { const a = (k / 8) * TAU; const r = k === 8 ? 0 : SEASON_BLEND; weights[i * 5 + 1 + T.seasonZoneAt(x + Math.cos(a) * r, z + Math.sin(a) * r)] += 1 / 9; }
+      const [t, share] = kind(i); kinds[i * 2] = t; kinds[i * 2 + 1] = share;
+    }
+    painted.push({ attr, base: attr.array.slice(), weights, kinds });
+  }
+  let paintedDay = null;
+  const tc = new THREE.Color();
+  function setSeasonDay(day) {
+    if (day === paintedDay) return;
+    paintedDay = day;
+    const looks = [0, 1, 2, 3].map((zone) => SEASON_GROUND[T.zoneSeason(zone, day)]);
+    const targets = looks.map((l) => [0, 1].map((t) => tc.set(l[t]).toArray()));
+    for (const { attr, base, weights, kinds } of painted) {
+      const out = attr.array;
+      for (let i = 0; i < attr.count; i += 1) {
+        const t = kinds[i * 2]; const share = kinds[i * 2 + 1];
+        for (let ch = 0; ch < 3; ch += 1) {
+          const b = base[i * 3 + ch]; let v = b;
+          if (share > 0) for (let zone = 0; zone < 4; zone += 1) { const w = weights[i * 5 + 1 + zone]; if (w) v += w * share * looks[zone][2 + t] * (targets[zone][t][ch] - b); }
+          out[i * 3 + ch] = v;
+        }
+      }
+      attr.needsUpdate = true;
+    }
+  }
+
   // Terrain: one mesh with vertex colours (grass, sand by the sea, rock on the cliffs).
   const SIZE = 250; const SEG = 125;
   const geo = keep(new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG)); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
   const grass = new THREE.Color(0x9fd67f); const grass2 = new THREE.Color(0x8cc96c); const sand = new THREE.Color(0xf1dfae);
   const rock = new THREE.Color(0xb7ad9e); const wet = new THREE.Color(0xd8c48f); const c = new THREE.Color();
+  const grassy = new Float32Array(pos.count); // v1.10.29: how much of a vertex is grass (the season paints that part)
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i); const z = pos.getZ(i); const h = ground(x, z); pos.setY(i, h);
-    const cd = coastDist(x, z); const cliff = cliffAt(x, z);
+    const cd = coastDist(x, z); const cliff = cliffAt(x, z); let g = 1;
     c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13));
-    if (cd < 8 && cliff < 0.5) c.lerp(cd < 2.5 ? wet : sand, smooth(8, 4, cd));
-    if (cliff > 0.4 && cd < 4) c.lerp(rock, smooth(4, 1, cd));
-    if (h < -0.4) c.copy(wet);
-    colors.set([c.r, c.g, c.b], i * 3);
+    if (cd < 8 && cliff < 0.5) { const a = smooth(8, 4, cd); c.lerp(cd < 2.5 ? wet : sand, a); g *= 1 - a; }
+    if (cliff > 0.4 && cd < 4) { const a = smooth(4, 1, cd); c.lerp(rock, a); g *= 1 - a; }
+    if (h < -0.4) { c.copy(wet); g = 0; }
+    colors.set([c.r, c.g, c.b], i * 3); grassy[i] = g;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
+  seasonal(geo.attributes.color, (i) => [pos.getX(i), pos.getZ(i)], (i) => [0, grassy[i]]);
   const terrain = new THREE.Mesh(geo, keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 })));
   terrain.receiveShadow = true; scene.add(terrain);
 
@@ -235,6 +276,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
       if (i) for (let k = 0; k < cols - 1; k += 1) { const p = (i - 1) * cols + k; const n = i * cols + k; idx.push(p, n + 1, n, p, p + 1, n + 1); }
     }
     const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    seasonal(g.attributes.color, (i) => [v[i * 3], v[i * 3 + 2]], (i) => (i % cols === 0 || i % cols === cols - 1 ? [0, 0.55] : [1, 1])); // v1.10.29: edges are half grass
     const m = new THREE.Mesh(g, pathMat); m.receiveShadow = true; scene.add(m); return m;
   };
   for (const [wi, w] of walkCurves.entries()) {
@@ -268,23 +310,43 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   disc(0, -44, 1.6, mat(0x6aa9e8), 0.065, 32); // an inlaid emblem in front of the hall
 
   // Bridges: an arched wooden deck with rails.
+  // v1.10.29: the bridge model (prop.bridge) is fitted to each bridge's logical deck -- its length 2 x half, its width w
+  // and its arch deckAt (what feet walk on, island-terrain): every vertex keeps its height above the model's own deck
+  // (BRIDGE.top, the model's plank tops, about 0.57 in the middle to 0.32 at the ends) on top of the game's.
   const plank = mat(0xc58b5a); const post = mat(0x8a5a3b);
+  const BRIDGE_SCALE = 1.3; // prop.bridge's scale (island-assets.js)
+  const BRIDGE = { half: 1.63, side: 0.8, top: (x) => 0.57 - 0.25 * (x / 1.5) ** 2 }; // the model: deck ends, post line, plank tops
   for (const b of bridges) {
     const g = new THREE.Group(); g.position.set(b.x, 0, b.z); g.rotation.y = Math.atan2(b.ux, b.uz); scene.add(g);
+    const visual = new THREE.Group(); g.add(visual);
     for (let k = -5; k <= 5; k += 1) {
       const u = (k / 5) * b.half; const y = deckAt({ b, u }) - 0.08;
-      const p = mesh(keep(new THREE.BoxGeometry(b.w, 0.16, (b.half * 2) / 11 + 0.05)), plank, 0, y, u, g); p.rotation.x = -Math.atan(-0.7 * u / (b.half * b.half));
+      const p = mesh(keep(new THREE.BoxGeometry(b.w, 0.16, (b.half * 2) / 11 + 0.05)), plank, 0, y, u, visual); p.rotation.x = -Math.atan(-0.7 * u / (b.half * b.half));
     }
     for (const side of [-1, 1]) for (let k = -2; k <= 2; k += 1) {
-      const u = (k / 2) * (b.half - 0.2); mesh(keep(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 8)), post, side * (b.w / 2 - 0.1), deckAt({ b, u }) + 0.4, u, g);
+      const u = (k / 2) * (b.half - 0.2); mesh(keep(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 8)), post, side * (b.w / 2 - 0.1), deckAt({ b, u }) + 0.4, u, visual);
     }
-    for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, b.half * 2)), post, side * (b.w / 2 - 0.1), b.deck + 0.9, 0, g); rail.castShadow = false; }
+    for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, b.half * 2)), post, side * (b.w / 2 - 0.1), b.deck + 0.9, 0, visual); rail.castShadow = false; }
+    // in the bridge's frame (z along it, the entry turns the model's length onto z and sizes it by `scale`)
+    g.userData.fit = (v) => {
+      const zm = v.z / BRIDGE_SCALE; const u = Math.max(-b.half, Math.min(b.half, zm * (b.half / BRIDGE.half)));
+      v.set(v.x * ((b.w / 2) / (BRIDGE.side * BRIDGE_SCALE)), v.y - BRIDGE_SCALE * BRIDGE.top(zm) + deckAt({ b, u }), (zm * b.half) / BRIDGE.half);
+    };
+    assets?.attach('prop.bridge', g, visual);
   }
 
   // Harbour: pier on posts, a few boats, the breakwater and its lighthouse.
   const pier = new THREE.Group(); pier.position.set(PIER.x, 0, PIER.z); pier.rotation.y = Math.atan2(PIER.ux, PIER.uz); scene.add(pier);
-  mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
-  for (let u = -PIER.half + 1; u <= PIER.half; u += 3) for (const s of [-1, 1]) mesh(keep(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8)), post, s * (PIER.w / 2 - 0.15), -0.6, u, pier);
+  const pierDeck = mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
+  const pierPosts = new THREE.Group(); pier.add(pierPosts);
+  for (let u = -PIER.half + 1; u <= PIER.half; u += 3) for (const s of [-1, 1]) mesh(keep(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8)), post, s * (PIER.w / 2 - 0.15), -0.6, u, pierPosts);
+  // v1.10.29: the pier's planked deck model (2 x 2.375, its top 0.245 over its base) in segments along the pier, its top
+  // on the deck the game walks on (PIER.deck), and a post model for each procedural post, its cap a little over the deck
+  if (assets) {
+    const n = Math.round((PIER.half * 2) / 2.375); const len = (PIER.half * 2) / n;
+    for (let k = 0; k < n; k += 1) { const seg = new THREE.Group(); seg.position.set(0, PIER.deck - 0.245, -PIER.half + (k + 0.5) * len); seg.scale.set(PIER.w / 2, 1, len / 2.375); pier.add(seg); assets.attach('prop.pierDeck', seg, pierDeck); }
+    for (const p of pierPosts.children) { const h = new THREE.Group(); h.position.set(p.position.x, PIER.deck + 0.25 - 1.88, p.position.z); pier.add(h); assets.attach('prop.pierPost', h, pierPosts); }
+  }
   const bw = new THREE.Group(); bw.position.set(BREAKWATER.x, 0, BREAKWATER.z); bw.rotation.y = Math.atan2(BREAKWATER.ux, BREAKWATER.uz); scene.add(bw);
   mesh(keep(new THREE.BoxGeometry(BREAKWATER.w, 1.6, BREAKWATER.half * 2)), mat(0xc9c2b6), 0, BREAKWATER.deck - 0.8, 0, bw);
   for (let u = -BREAKWATER.half; u <= BREAKWATER.half; u += 2.2) for (const s of [-1, 1]) { const st = mesh(keep(new THREE.DodecahedronGeometry(0.7)), mat(0xb3ab9d), s * (BREAKWATER.w / 2 + 0.3), -0.3, u + s * 0.6, bw); st.rotation.set(u, s, u * 0.5); }
@@ -323,7 +385,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // Placement, sizes and turns are exactly the procedural ones, so where things stand, the circles round them and the
   // islanders' routes stay as they were.
   const groups = []; // { target, cells: [{ x, z, parent, procedural: [InstancedMesh], matrices, colors, shadow }] }
-  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null } = {}) => {
+  // v1.10.29 `extra`: [[geometry, material, shadow]] more procedural meshes drawn with the same matrices (a lamp's bulb,
+  // its geometry already lifted onto the pole) -- a model replaces all of them together.
+  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [] } = {}) => {
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
     if (material === natureMat && !g) {
       for (const item of list) {
@@ -346,7 +410,8 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
         matrices.push(m4.clone());
       });
       im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
-      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: scene, procedural: [im], matrices, colors: color ? colors : null, shadow }); }
+      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; scene.add(e); return e; });
+      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: scene, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }
     if (g) groups.push(g);
   };
@@ -372,18 +437,27 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     ['stump', 0.04, [part(new THREE.CylinderGeometry(0.42, 0.5, 0.45, 9), 0xa9774f, 0, 0.22, 0, { shade: [0.8, 1] }), part(new THREE.CylinderGeometry(0.36, 0.36, 0.02, 9), 0xe8c99a, 0, 0.455, 0), crown(SPH, 0x7cbf5c, 0.55, 0.12, 0.2, 0.45, 0.3)]],
   ];
   const kindOf = (t) => { let r = hash(t.x, t.z); for (let k = 0; k < TREE_KINDS.length; k += 1) { r -= TREE_KINDS[k][1]; if (r <= 0) return k; } return 0; };
+  // v1.10.29: stumps come in two models (short, tall), each stump's from its place
   TREE_KINDS.forEach(([name, , parts], k) => {
-    const list = trees.filter((t) => kindOf(t) === k);
-    if (!list.length) return;
-    instanced(mergeColored(parts), natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
-      { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`nature.tree.${name}`, 'nature.tree'] });
+    const all = trees.filter((t) => kindOf(t) === k);
+    const splits = name === 'stump' ? [0, 1].map((v) => [all.filter((t) => (hash(t.x, t.z, 18) < 0.5 ? 0 : 1) === v), [`nature.tree.stump.${v}`, 'nature.tree.stump', 'nature.tree']]) : [[all, [`nature.tree.${name}`, 'nature.tree']]];
+    const geo = mergeColored(parts);
+    for (const [list, target] of splits) {
+      if (!list.length) continue;
+      instanced(geo, natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
+        { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target });
+    }
   });
   for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.75 * t.s });
 
   // Flowers: one mesh, each a little bloom with its colour per copy.
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   const bloom = mergeColored([part(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 4), 0x5f9e4f, 0, 0.11, 0), part(new THREE.SphereGeometry(0.5, 6, 3), 0xffffff, 0, 0.24, 0, { sx: 0.24, sy: 0.14, sz: 0.24 })]);
-  instanced(bloom, natureMat, flowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]), target: 'nature.flower' });
+  // v1.10.29: each colour its own model (nature.flower.<colour>: tulip, daisy, wildflowers, lavender, poppy), never one
+  // model tinted -- a tint would colour the leaves too. Without models the five lists bake together as one did.
+  for (let k = 0; k < flowerColors.length; k += 1) {
+    instanced(bloom, natureMat, flowers.filter((f) => f.c === k), (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]), target: [`nature.flower.${k}`, 'nature.flower'] });
+  }
   // Bushes: round clusters of a few blobs (two shapes), darker underneath, each tinted a little.
   const BUSH_KINDS = [
     [crown(SPH, 0x6fbf5e, 0, 0.42, 0, 1.6, 1.05), crown(SPH, 0x7cc86a, 0.55, 0.35, 0.25, 1.05, 0.8), crown(SPH, 0x83cf6c, -0.5, 0.32, -0.15, 0.95, 0.7)],
@@ -463,10 +537,39 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   }
 
   // Lamps along the main walks, benches beside them.
-  instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 1.3, p.z, 1));
-  instanced(new THREE.SphereGeometry(0.24, 12, 9), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), lampSpots, (p) => setM(p.x, ground(p.x, p.z) + 2.72, p.z, 1), { shadow: false });
+  // v1.10.29: placed on the ground (the pole and the bulb lifted in their geometry), so the lamp model (prop.lamp, the
+  // plaza's too) can take their place
+  instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z), p.z, 1),
+    { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), false]] });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
+  // v1.10.29 지면 레이어: low flat drifts of the zone's season -- spring petals, summer clover, autumn leaves, winter
+  // snow (deco.layer.*: three shapes) -- on level open grass inside the zones only (not the plaza, walks, water, banks,
+  // shores, bridges, building yards or the pond), from fixed spots. Decoration: nothing to walk round or pick up.
+  // Without a model nothing is drawn (the procedural stand-in is a speck under the ground).
+  const LAYERS = ['sparse', 'cluster', 'edge'];
+  if (assets && LAYERS.some((v) => assets.wants(`deco.layer.${v}`))) {
+    const spots = [];
+    for (let gx = -120; gx <= 120; gx += 7) for (let gz = -120; gz <= 120; gz += 7) {
+      const x = gx + (hash(gx, gz, 21) - 0.5) * 5; const z = gz + (hash(gz, gx, 22) - 0.5) * 5;
+      if (hash(x, z, 23) > 0.42 || Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 6 || cliffAt(x, z) > 0.2) continue;
+      if (walkDist(x, z) < 3.5 || streamDist(x, z) < STREAM_HALF + 2 || onBridge(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 3) continue;
+      const h = ground(x, z); if ([[1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue; // level ground only
+      spots.push({ x, z, v: Math.min(2, Math.floor(hash(x, z, 24) * 3)), r: hash(x, z, 25) * TAU });
+    }
+    const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })]));
+    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, 1, 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
+  }
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
+
+  // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well
+  // past the coast (about 300-330 from the plaza) so they never stand in front of the island or its buildings; they
+  // only rise over the horizon, pale with distance (the entries' haze). Not land anyone can reach.
+  const FAR = [['sea.glacier', 0, -320], ['sea.floe', -80, -280], ['sea.floe', 85, -272], ['sea.ridgeSoft', 235, -225], ['sea.coastLong', 318, 75],
+    ['sea.coastCove', -215, 245], ['sea.peak', -300, 95], ['sea.ridgeRugged', -305, -115]];
+  for (const [id, x, z] of FAR) {
+    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); scene.add(holder); // its length across the view
+    assets?.attach(id, holder, new THREE.Group());
+  }
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
@@ -548,5 +651,5 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   function step(clock) { flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { drawMap, drawMinimap, step, dispose, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { drawMap, drawMinimap, step, dispose, setSeasonDay, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
