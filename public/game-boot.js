@@ -122,6 +122,48 @@
 
   async function legacyPacks() { return (await caches.keys()).filter(name => name.startsWith(LEGACY_PACK)); }
 
+  // v1.10.25 groups (lib/asset-manifest.js): the required ones (core and the whole island) before the game starts,
+  // the rest when used. A manifest without groups makes everything required.
+  const requiredGroups = new Set(manifest.required || ['core']);
+  const required = manifest.assets.filter(asset => requiredGroups.has(asset.group || 'core'));
+
+  // PARALLEL downloads into the file cache; the first failure stops the rest and is thrown
+  async function downloadAll(files, list, onDone = () => {}) {
+    let failed = false;
+    const abort = new AbortController();
+    const queue = [...list];
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, async () => {
+      while (queue.length && !failed) {
+        const asset = queue.shift();
+        try { await download(files, asset, abort.signal); } catch (error) { if (!failed) { failed = true; abort.abort(); } throw error; }
+        onDone(asset.size);
+      }
+    }));
+  }
+
+  // A group used by only some players (a game's cards, a skin's files), fetched in the background when it is about to
+  // be needed -- e.g. on entering that game's room. Same lock, same hash check; it never blocks or shows anything, and
+  // a failure only means the worker fetches those files when they are asked for. Once per group per page.
+  const prefetched = new Map();
+  function prefetch(group) {
+    if (!manifest.enabled || !cacheSupported() || prefetched.has(group)) return prefetched.get(group) || Promise.resolve();
+    const list = manifest.assets.filter(asset => asset.group === group);
+    const job = (async () => {
+      await ready;
+      await navigator.locks.request(LOCK, async () => {
+        const files = await caches.open(FILES);
+        const have = new Set((await files.keys()).map(pathOf));
+        const missing = list.filter(asset => !have.has(keyOf(asset)));
+        if (!missing.length) return;
+        const { quota = 0, usage = 0 } = await navigator.storage.estimate();
+        if (quota - usage < requiredBytes([], missing)) return; // not now; the worker fetches them when asked
+        await downloadAll(files, missing);
+      });
+    })().catch(error => console.warn('게임 리소스 미리 받기 실패:', group, error));
+    prefetched.set(group, job);
+    return job;
+  }
+
   // One tab at a time (Web Lock): bring gc-res:files up to this manifest, then point at it, then drop unused keys.
   async function syncFiles() {
     if (!cacheSupported()) throw storageError('Service Worker / Cache Storage / storage estimate / Web Locks unavailable');
@@ -135,17 +177,17 @@
         legacy = await legacyPacks();
       } catch (error) { throw storageError(`open: ${error?.message || error}`); }
 
-      const wanted = manifest.assets.map(keyOf);
-      const missing = manifest.assets.filter(asset => !have.has(keyOf(asset)));
-      if (missing.length) {
-        // a v1.10.14-21 pack: its files are the same keys, so they are moved over locally instead of downloaded again
-        const move = []; const sources = new Map();
-        for (const name of legacy) {
-          const pack = await caches.open(name);
-          for (const request of await pack.keys()) sources.set(pathOf(request), pack);
-        }
-        const fetchList = [];
-        for (const asset of missing) (sources.has(keyOf(asset)) ? move : fetchList).push(asset);
+      const wanted = required.map(keyOf);
+      // a v1.10.14-21 pack: its files are the same keys, so they are moved over locally instead of downloaded again
+      // (any group's -- it is free); of the rest only the required groups are downloaded now
+      const sources = new Map();
+      for (const name of legacy) {
+        const pack = await caches.open(name);
+        for (const request of await pack.keys()) sources.set(pathOf(request), pack);
+      }
+      const move = manifest.assets.filter(asset => !have.has(keyOf(asset)) && sources.has(keyOf(asset)));
+      const fetchList = required.filter(asset => !have.has(keyOf(asset)) && !sources.has(keyOf(asset)));
+      if (move.length || fetchList.length) {
         await preflight(move, fetchList);
         const total = [...move, ...fetchList].reduce((sum, asset) => sum + asset.size, 0);
         let done = 0;
@@ -154,28 +196,19 @@
         try {
           for (const asset of move) {
             const hit = await sources.get(keyOf(asset)).match(keyOf(asset));
-            if (hit) { await store(files, keyOf(asset), hit); done += asset.size; } else fetchList.push(asset);
+            if (hit) { await store(files, keyOf(asset), hit); done += asset.size; } else if (required.includes(asset)) fetchList.push(asset);
           }
-          let failed = false;
-          const abort = new AbortController(); // the first failure stops the downloads still in flight
-          const queue = [...fetchList];
-          await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, async () => {
-            while (queue.length && !failed) {
-              const asset = queue.shift();
-              try { await download(files, asset, abort.signal); } catch (error) { if (!failed) { failed = true; abort.abort(); } throw error; }
-              done += asset.size;
-              if (!failed && !view.classList.contains('hidden')) progress();
-            }
-          }));
+          await downloadAll(files, fetchList, size => { done += size; if (!view.classList.contains('hidden')) progress(); });
         } finally { clearTimeout(timer); }
-        const got = new Set((await files.keys()).map(pathOf));
-        if (!wanted.every(key => got.has(key))) throw new Error('files incomplete');
       }
+      const got = new Set((await files.keys()).map(pathOf));
+      if (!wanted.every(key => got.has(key))) throw new Error('files incomplete');
       if (pointer?.version !== manifest.version || pointer?.cache !== FILES) {
         await store(await caches.open(META), '/active', new Response(JSON.stringify({ version: manifest.version, cache: FILES })));
       }
-      // only now, with this version complete and pointed at: keys no file of it uses, and the old pack caches
-      const keep = new Set(wanted);
+      // only now, with this version complete and pointed at: keys no file of it uses (a file of a group fetched when used
+      // stays while the manifest has it), and the old pack caches
+      const keep = new Set(manifest.assets.map(keyOf));
       for (const request of await files.keys()) if (!keep.has(pathOf(request))) await files.delete(request);
       for (const name of legacy) await caches.delete(name);
     });
@@ -228,5 +261,5 @@
     ? prepare().then(() => view.classList.add('hidden'))
     : (show('Google Chrome으로 접속해 주세요'), new Promise(() => {}));
 
-  window.GameBoot = { ready, assetUrl, manifest };
+  window.GameBoot = { ready, assetUrl, manifest, prefetch };
 })();

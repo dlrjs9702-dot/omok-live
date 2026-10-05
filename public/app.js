@@ -4611,6 +4611,7 @@
 
   function renderRoom() {
     if (!state) return;
+    window.GameBoot?.prefetch?.(`game.${state.gameType}`); // v1.10.25: this game's resources, once, in the background
     const g = state.game;
     seat = state.me?.seat || null;
     isHost = Boolean(state.me?.isHost);

@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.25 manifest 그룹(core·island 필수, 게임 리소스는 사용 시)
+
+고품질화 기반 연속 작업 3단계. `lib/asset-manifest.js`, `public/game-boot.js`, `public/sw.js`, `public/app.js`(1줄).
+
+- manifest 항목 `{url, rev, size, group}` + `required: ['core','island']`. 그룹은 폴더 규칙: `/assets/island/` → `island`(4계절·공용 전부), `/hwatu/` → `game.gostop`, `/assets/halli/` → `game.halligalli`, `/assets/davinci/` → `game.davinci`, 그 외 `core`. `skin.<id>`는 규칙만 열어 두고 현재 해당 파일 없음. 여러 Cache Storage가 아니라 단일 `gc-res:files` 안의 논리 그룹.
+- 입장 전 필수: required 그룹만(현재 아일랜드 모델 32개). 아일랜드는 현재 계절만 받지 않고 전부(사용자 결정).
+- 지연: 게임 방 화면이 그려질 때 `GameBoot.prefetch('game.<종류>')`가 같은 Web Lock·해시 검증으로 그 그룹을 백그라운드로 받는다(실패해도 입장·게임 막지 않음). 워커는 아직 없는 `?rev=` 파일을 네트워크에서 받아 내용 해시가 URL의 rev와 같을 때만 같은 캐시에 저장(다른 rev는 저장 안 함). 사용자 결정의 "서버 직접 로딩 fallback 없음"은 워커 없는 우회를 뜻하며, 이 경로는 워커·캐시를 거친다.
+- 정리: manifest에 남아 있는 모든 그룹의 키는 유지(받아 둔 게임 리소스 보존), 빠진 키만 삭제. 이전 팩 이전은 그룹과 무관하게 전부 로컬 이동.
+- 테스트: 단위(등록부의 모든 계절·공용 모델 URL이 매니페스트에 있고 group `island`, 필수 그룹 포함, 화투 48장 `game.gostop`), e2e(입장 전 다운로드 = 필수 그룹 수, 화투는 받지 않음, prefetch 후 48장 저장, 워커가 직접 요청 파일을 해시 확인 후 저장·틀린 rev 미저장, 재접속 시 재다운로드 없음) + 기존 캐시 e2e를 아일랜드 파일 기준으로 갱신.
+
 ## v1.10.24 코드 해시 전달(import map·HTTP immutable·수동 ?v= 제거)
 
 고품질화 기반 연속 작업 2단계. 새 파일 `lib/code-manifest.js`, 변경 `server.js`·`public/index.html`·모듈 import 3곳.
