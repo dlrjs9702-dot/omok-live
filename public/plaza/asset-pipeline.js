@@ -13,9 +13,11 @@
 
   // A registry entry (public/plaza/island-assets.js), all optional but a `url` or `seasons`:
   //   { url, seasons: { spring, summer, autumn, winter }, enabled, scale, rotationY, offset: [x, y, z], shadows,
-  //     lod: [{ url, distance }], near, animations: { idle: 'Idle', walk: 'Walk', run: 'Run', ... }, speeds: { walk, run } }
+  //     lod: [{ url, distance }], near, low: { seasons, url }, animations: { idle: 'Idle', walk: 'Walk', run: 'Run', ... },
+  //     speeds: { walk, run } }
   // v1.10.17: `seasons` gives a file per season; the current season's file is used, then `url`, and without either
-  // the target stays procedural. `near` (nature batches): how close a square of the island must be to show the model.
+  // the target stays procedural. `near` (nature batches): within this of the player a copy shows the full model, beyond
+  // it the entry's `low` file (v1.10.28; without one the full model at every distance).
   // `off` lists ids switched off at run time (server ISLAND_ASSETS_OFF; '*' = all).
   const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
   function entryOf(registry, id, off = [], season = null) {
@@ -23,8 +25,15 @@
     if (!entry || entry.enabled === false || off.includes('*') || off.includes(id)) return null;
     const url = (season && typeof entry.seasons?.[season] === 'string' && entry.seasons[season]) || entry.url;
     if (typeof url !== 'string' || !url) return null;
-    return url === entry.url ? entry : { ...entry, url };
+    // v1.10.28 `low`: { seasons, url } of the same design simplified, for far copies (resolved like the main file)
+    const low = entry.low;
+    const lowUrl = (season && typeof low?.seasons?.[season] === 'string' && low.seasons[season]) || (typeof low?.url === 'string' && low.url) || null;
+    return { ...entry, url, lowUrl };
   }
+  // v1.10.28 High/Low hysteresis: a copy turns High inside `near` and back to Low only past near x HIGH_BAND, so standing
+  // or walking at the edge never flickers between the two
+  const HIGH_BAND = 1.1;
+  const highState = (wasHigh, distance, near) => distance < (wasHigh ? near * HIGH_BAND : near);
   // The first usable entry among `ids`, most specific first (e.g. ['cottage.3', 'cottage']).
   function pick(registry, ids, off = [], season = null) {
     for (const id of [].concat(ids)) { const entry = entryOf(registry, id, off, season); if (entry) return { id, entry }; }
@@ -161,5 +170,5 @@
     };
   }
 
-  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
+  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, createLazyAssets };
 });
