@@ -50,6 +50,9 @@ function agePack(page, pattern) {
 }
 
 test.afterEach(async ({ request }) => { await setCache(request, true); });
+// v1.10.29: the island alone is now over 200 files -- past the browser's default resource-timing buffer (250 entries),
+// which `downloads` reads; a bigger buffer counts every download
+test.beforeEach(async ({ context }) => { await context.addInitScript(() => performance.setResourceTimingBufferSize(5000)); });
 
 test('정상 활성화: 첫 접속에 모두 받아 팩을 활성화하고, 다시 접속하면 받지 않으며 Service Worker가 활성 팩에서 내준다', async ({ page }) => {
   await page.goto('/');

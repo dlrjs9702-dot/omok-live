@@ -214,9 +214,10 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
 // v1.10.27: all four seasons are on the island at once -- the trees and shrubs of every season are loaded, the gazebo
 // shows its zone's season, the plaza's benches and flower beds (neutral) the plain summer files
 test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 그 구역의 계절, 광장 소품은 중립(여름) 파일, 섬은 그대로 동작한다', async ({ browser, request }) => {
+  test.setTimeout(120000); // every island model (all four seasons, High and Low) on a software renderer, then a whale's breach
   const a = await island(browser, request, '운영모델', null);
   const { page } = a;
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin'); // 관리실: admins only
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash'].includes(id)); // 관리실: admins only; the whale only now and then (below)
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -248,7 +249,8 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
   });
-  expect(cached.length).toBe(177); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
+  const config = require('../../tools/assets/island-models.json');
+  expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);
   for (const b of d.assets.batches) {
     expect(b.placed).toBe(true); expect(b.parts).toBe(1);
@@ -256,6 +258,14 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
   }
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors);
+  // v1.10.29: the falling flakes are ready for every season that has them, and a whale breaches once (LoopOnce) with a
+  // splash where it breaks the surface and where it falls back, then is gone
+  expect(d.assets.ambient.kinds.sort()).toEqual(['autumn', 'spring', 'winter']);
+  await page.evaluate(() => { const p = window.PlazaDebug(); p.teleport(-70, 75); p.setCamYaw(Math.PI * 0.75); });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().whale()), { timeout: 5000 }).toBe(true);
+  await expect.poll(async () => (await debug(page)).assets.played, { timeout: 15000 }).toEqual({ 'sea.whale': 1, 'sea.splash': 2 });
+  await expect.poll(async () => (await debug(page)).assets.playing, { timeout: 15000 }).toBe(0);
+  await page.evaluate(() => window.PlazaDebug().setCamYaw(0)); // the arrows walk screen-relative
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();

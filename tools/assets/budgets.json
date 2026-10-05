@@ -2,6 +2,8 @@
   "$comment": "v1.10.26 게임 아일랜드 GLB 예산 (test/glb-budget.test.js). 상한은 성능 기준이 아니라 현재 대표 에셋 실측 최댓값(2026-10-05, gltfpack 출력: 메시 1·노드 1·재질 최대 8(정자·화단)·삼각형 최대 12,568(tree_v2))이다. 더 큰 에셋을 넣을 때는 실제 GPU PC 측정 후 이 값을 의도적으로 올린다. v1.10.29: 재질 8 → 13(추가본 주민 집·시설의 최댓값; 장면은 단색 재질 모델을 정점색 메시 하나로 합쳐 그리므로 그리기 호출은 늘지 않는다).",
   "requiredExtensions": ["KHR_mesh_quantization", "EXT_meshopt_compression"],
   "allowedExtensions": ["KHR_mesh_quantization", "EXT_meshopt_compression"],
+  "animatedNodes": 2,
+  "$animatedNodes": "v1.10.29: 애니메이션이 있는 정적 모델(입자 FallLoop·고래·물보라)은 움직이는 루트 노드 + 양자화 보정 노드로 2개",
   "max": {
     "meshes": 1,
     "nodes": 1,

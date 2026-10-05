@@ -25,7 +25,10 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
   const FACILITIES = ['games', 'climb', 'shop', 'avatar', 'records', 'admin', 'townhall', 'board', 'missions', 'map', 'donate', 'attendance', 'trader', 'naming'];
   assert.deepEqual(Object.keys(REGISTRY).sort(), ['facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.fruit', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
     'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.bridge', 'prop.fence', 'prop.lamp', 'prop.planter',
-    ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`)].sort());
+    ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`),
+    // v1.10.29 gap assets (gaps-v1)
+    'deco.layer.sparse', 'deco.layer.cluster', 'deco.layer.edge', 'deco.foundation', 'prop.mailbox.0', 'prop.mailbox.1', 'prop.steppingStone', 'prop.pierDeck', 'prop.pierPost',
+    'fx.petal', 'fx.leaf', 'fx.snow', 'sea.coastLong', 'sea.coastCove', 'sea.ridgeSoft', 'sea.ridgeRugged', 'sea.peak', 'sea.glacier', 'sea.floe', 'sea.whale', 'sea.splash'].sort());
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
   const check = async (id, url, what) => {
@@ -38,9 +41,11 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     assert.ok(parsed.get(url) > 0, `${id} ${what} 메시`);
   };
   for (const [id, entry] of Object.entries(REGISTRY)) {
-    assert.ok(entry.scale > 0.5 && entry.scale < 1.4, `${id} 크기 보정`);
+    const scale = entry.scale ?? 1;
+    if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
+    else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props))\//, id);
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea))\//, id);
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');
@@ -49,13 +54,20 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
     for (const season of P.SEASONS) {
       const e = P.entryOf(REGISTRY, id, [], season);
-      assert.match(e.url, new RegExp(`^/assets/island/(seasonal-v2|additions-v1)/${season}/`), `${id} ${season}`);
+      assert.match(e.url, new RegExp(`^/assets/island/(seasonal-v2|additions-v1|gaps-v1)/${season}/`), `${id} ${season}`);
       await check(id, e.url, season);
       if (entry.low) { assert.ok(e.lowUrl.includes(`/${season}/`), `${id} ${season} Low`); await check(id, e.lowUrl, `${season} Low`); }
     }
     assert.equal(P.entryOf(REGISTRY, id, [], null), null, `${id}: 계절 없이 쓰는 파일은 없음`);
   }
-  assert.equal(parsed.size, 177); // every file built (tools/assets/island-models.json) is used
+  const config = require('../tools/assets/island-models.json');
+  assert.equal(parsed.size, config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // every file built (tools/assets/island-models.json) is used
+  // the clips the game plays: the falling flakes loop, the whale and the splash once
+  for (const [id, clip] of [['fx.petal', 'PetalFallLoop'], ['fx.leaf', 'LeafFallLoop'], ['fx.snow', 'SnowflakeFallLoop'], ['sea.whale', 'BreachOnce'], ['sea.splash', 'SplashOnce']]) {
+    const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', REGISTRY[id].url)));
+    assert.deepEqual(gltf.animations.map((a) => a.name), [clip], id);
+    assert.ok(gltf.animations[0].duration > 1, id);
+  }
 });
 
 // v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전 (사용자 결정 2026-10-05; the v1.10.19 monthly whole-island season

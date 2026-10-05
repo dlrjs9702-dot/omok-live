@@ -52,6 +52,13 @@
     attendance: { scale: 1, offset: [0.7, 0, 0] }, // the stamp stand beside its keeper (keeper at x -0.7)
     trader: { scale: 1, offset: [0, 0, 0.1] }, naming: { scale: 1, offset: [0, 0, 0.1] }, // in front of the keeper
   };
+  // v1.10.29 the 2026-10-05 gap assets (gaps-v1): ground layers, structure footings, yard and harbour props, the
+  // seasonal falling flakes, the far scenery at sea and the whale. The ground's own seasonal colours are not files: they
+  // are painted on the terrain (island.js setSeasonDay) in the palette of these sheets.
+  const GAPS = '/assets/island/gaps-v1';
+  const seasonalGaps = (file) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${GAPS}/${s}/${file.replace(/\{s\}/g, s)}`]));
+  const gapsProp = (name, extra = {}) => ({ url: `${GAPS}/props/${name}.glb`, low: { url: `${GAPS}/props/${name}_low.glb` }, ...extra });
+  const sea = (name, scale) => ({ url: `${GAPS}/sea/${name}.glb`, low: { url: `${GAPS}/sea/${name}_low.glb` }, scale, haze: 0.55, near: 150, shadows: false });
   const REGISTRY = {
     'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), low: { seasons: seasonal('nature/tree_v1_{s}_low.glb') }, scale: 0.72, near: 35 },
     'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.68, near: 35 },
@@ -83,6 +90,17 @@
     'prop.lamp': { url: `${ADD}/props/lamp.glb`, low: { url: `${ADD}/props/lamp_low.glb` }, scale: 0.85, near: 30 },
     'prop.bridge': { seasons: seasonal('bridge_{s}_v1.glb'), scale: 1.3, rotationY: -Math.PI / 2 }, // fitted to each bridge's deck (island.js BRIDGE)
     'prop.fence': { seasons: seasonal('fence_{s}_v1.glb'), scale: 0.6 }, // a cottage's yard fence, segment by segment (plaza-scene FENCE_SEG)
+    // ground layers in each zone's season (spring petals, summer clover, autumn leaves, winter snow), decoration only
+    ...Object.fromEntries(['sparse', 'cluster', 'edge'].map((v) => [`deco.layer.${v}`, { seasons: seasonalGaps(`layer_{s}_${v}.glb`), low: { seasons: seasonalGaps(`layer_{s}_${v}_low.glb`) }, near: 25, shadows: false }])),
+    'deco.foundation': { seasons: seasonalGaps('foundation_{s}.glb'), low: { seasons: seasonalGaps('foundation_{s}_low.glb') }, rotationY: Math.PI, near: 45, shadows: false }, // stones round a small building's plinth, the door side open
+    'prop.mailbox.0': gapsProp('mailbox_blue', { scale: 0.92, rotationY: Math.PI, near: 30 }),
+    'prop.mailbox.1': gapsProp('mailbox_red', { scale: 0.92, rotationY: Math.PI, near: 30 }),
+    'prop.steppingStone': gapsProp('stepping_stone', { scale: 0.85, near: 25, shadows: false }),
+    'prop.pierDeck': gapsProp('pier_deck', { near: 45 }), 'prop.pierPost': gapsProp('pier_post', { near: 45 }), // fitted to the pier (island.js)
+    'fx.petal': { url: `${GAPS}/props/atmosphere_petal.glb` }, 'fx.leaf': { url: `${GAPS}/props/atmosphere_leaf.glb` }, 'fx.snow': { url: `${GAPS}/props/atmosphere_snowflake.glb` },
+    'sea.coastLong': sea('distant_coast_long', 3), 'sea.coastCove': sea('distant_coast_cove', 3), 'sea.ridgeSoft': sea('mountain_ridge_soft', 2.2), 'sea.ridgeRugged': sea('mountain_ridge_rugged', 2.2),
+    'sea.peak': sea('mountain_peak', 2.2), 'sea.glacier': sea('glacier', 2.5), 'sea.floe': sea('ice_floe', 2.5),
+    'sea.whale': { url: `${GAPS}/sea/whale.glb`, scale: 1.2 }, 'sea.splash': { url: `${GAPS}/sea/splash.glb`, scale: 1.4 }, // played once (BreachOnce / SplashOnce)
   };
 
   return { REGISTRY };

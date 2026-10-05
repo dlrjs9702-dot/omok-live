@@ -13,7 +13,7 @@ import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.
 
 const P = globalThis.AssetPipeline;
 
-export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, day = null, onError = () => {} }) {
+export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, day = null, fogColor = 0xd7efff, onError = () => {} }) {
   // v1.10.27: a thing's season is its zone's today (island-terrain.js); the neutral plaza shows NEUTRAL_LOOK. Without
   // a day (or the terrain) every target uses its plain `url`.
   const T = globalThis.IslandTerrain;
@@ -36,10 +36,21 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // clone also gives a skinned mesh its own skeleton (a plain clone() would leave every copy driving the same bones).
   // v1.10.18: a still model of plain colours (a prop, a building) is one flattened mesh (partsOf) -- one draw call
   // instead of one per part; a rigged or textured one is cloned as before.
+  // v1.10.29 원경 `haze` (0..1): a landmark far out at sea stands past the scene fog's end, so it is drawn without the
+  // fog and mixed toward the fog colour by this much instead -- a pale silhouette on the horizon (one material per file)
+  const hazedOf = new Map();
+  function hazed(material, h) {
+    const key = `${material.uuid}|${h}`;
+    if (!hazedOf.has(key)) {
+      const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: material.roughness, metalness: 0, fog: false, color: new THREE.Color().setScalar(1 - h), emissive: new THREE.Color(fogColor).multiplyScalar(h) });
+      hazedOf.set(key, m); made.push(m);
+    }
+    return hazedOf.get(key);
+  }
   function instance(gltf, entry) {
     const flat = !gltf.animations?.length && partsOf(gltf);
     if (flat && flat.length === 1 && flat[0].material.vertexColors) {
-      const mesh = new THREE.Mesh(flat[0].geometry, flat[0].material);
+      const mesh = new THREE.Mesh(flat[0].geometry, entry.haze ? hazed(flat[0].material, entry.haze) : flat[0].material);
       mesh.applyMatrix4(flat[0].matrix); // its place in the model (a quantized model's dequantizing scale too)
       const object = new THREE.Group(); object.add(mesh);
       object.scale.multiplyScalar(entry.scale ?? 1);
@@ -318,6 +329,90 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     for (const rec of batches) applyBatch(rec);
   }
 
+  // v1.10.29 한 번 재생(고래 브리칭·물보라): a model with a clip of its own (root motion) is placed under a new holder
+  // ({ parent, x, y, z, ry }), plays its first clip once (LoopOnce) and is taken away when it ends. `onCross(world)`:
+  // each time the moving root passes the holder's level (the sea surface), going up or down. Driven by tick().
+  const playing = []; const played = {}; const at = new THREE.Vector3();
+  const place = (object, entry) => { object.scale.multiplyScalar(entry.scale ?? 1); object.rotation.y += entry.rotationY || 0; if (Array.isArray(entry.offset)) object.position.set(...entry.offset); };
+  function once(ids, { parent, x = 0, y = 0, z = 0, ry = 0 }, { onCross = null } = {}) {
+    const hit = P.pick(registry, ids, off, null); if (!hit) return;
+    cache.get(hit.entry.url).then((gltf) => {
+      if (disposed || !gltf?.animations?.length) return;
+      const holder = new THREE.Group(); holder.position.set(x, y, z); holder.rotation.y = ry; parent.add(holder);
+      const object = cloneObject(gltf.scene); place(object, hit.entry); holder.add(object);
+      object.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.frustumCulled = false; } });
+      const mixer = new THREE.AnimationMixer(object); const clip = gltf.animations[0];
+      const action = mixer.clipAction(clip); action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
+      const root = object.getObjectByName(clip.tracks[0]?.name.split('.')[0]) || object;
+      playing.push({ holder, object, mixer, root, t: 0, dur: clip.duration, below: null, onCross });
+      played[hit.id] = (played[hit.id] || 0) + 1;
+    }).catch((error) => onError(hit.id, error));
+  }
+
+  // v1.10.29 계절 낙하 입자: a few falling petals (spring), leaves (autumn) or snowflakes (winter) around the player,
+  // each from a ground emitter whose zone's season today picks the kind (summer and the neutral plaza: none). One
+  // model each (fx.petal / fx.leaf / fx.snow: a single flake with its FallLoop clip); every emitter is a copy in one
+  // InstancedMesh per kind, its clip sampled at its own phase -- no mixer per flake. A flake starts again elsewhere
+  // round the player when its loop ends (the clip hides the seam at scale 0). None on the lowest quality tier.
+  const AMBIENT = { spring: 'fx.petal', autumn: 'fx.leaf', winter: 'fx.snow' }; const AMBIENT_R = 16; const AMBIENT_N = [0, 18, 36];
+  let ambientState = null;
+  function ambient(parent) {
+    if (ambientState) return;
+    ambientState = { kinds: {}, emitters: [], time: 0, counts: {} };
+    for (const [season, id] of Object.entries(AMBIENT)) {
+      const hit = P.pick(registry, id, off, null); if (!hit) continue;
+      cache.get(hit.entry.url).then((gltf) => {
+        if (disposed || !gltf?.animations?.length) return;
+        let mesh = null; gltf.scene.traverse((o) => { if (o.isMesh && !mesh) mesh = o; }); if (!mesh) return;
+        const clip = gltf.animations[0];
+        const track = (end) => clip.tracks.find((t) => t.name.endsWith(end))?.createInterpolant() || null;
+        const im = new THREE.InstancedMesh(mesh.geometry, mesh.material, AMBIENT_N[2]); im.count = 0; im.frustumCulled = false; im.castShadow = false; parent.add(im);
+        const k = hit.entry.scale ?? 1;
+        ambientState.kinds[season] = { im, k, local: mesh.matrix.clone(), dur: clip.duration, pos: track('.position'), rot: track('.quaternion'), scl: track('.scale') };
+        shown[hit.id] = 'model';
+      }).catch((error) => onError(hit.id, error));
+    }
+  }
+  const fq = new THREE.Quaternion(); const fp = new THREE.Vector3(); const fs = new THREE.Vector3(); const fm = new THREE.Matrix4(); const fw = new THREE.Matrix4();
+  function respawn(e, x, z) {
+    const a = Math.random() * Math.PI * 2; const r = 2 + Math.random() * AMBIENT_R;
+    e.x = x + Math.cos(a) * r; e.z = z + Math.sin(a) * r; e.y = T ? T.heightAt(e.x, e.z) : 0; e.ry = Math.random() * Math.PI * 2;
+    e.season = T ? lookOf(T.seasonZoneAt(e.x, e.z)) : null; e.phase = Math.random() * 10; e.last = -1; e.born = ambientState.time;
+  }
+  function tickAmbient(dt, x, z) {
+    const st = ambientState; if (!st) return;
+    st.time += dt;
+    const n = AMBIENT_N[quality] ?? AMBIENT_N[2];
+    while (st.emitters.length < n) { const e = {}; respawn(e, x, z); st.emitters.push(e); }
+    const counts = {};
+    for (const k of Object.values(st.kinds)) k.im.count = 0;
+    for (let i = 0; i < n; i += 1) {
+      const e = st.emitters[i]; const k = st.kinds[e.season];
+      if (!k) { if (st.time - e.born > 4) respawn(e, x, z); continue; } // nothing falls here: look again in a while
+      const t = (st.time + e.phase) % k.dur;
+      if (t < e.last || Math.hypot(e.x - x, e.z - z) > AMBIENT_R * 1.4) { respawn(e, x, z); continue; }
+      e.last = t;
+      if (k.pos) fp.fromArray(k.pos.evaluate(t)); else fp.set(0, 0, 0);
+      if (k.rot) fq.fromArray(k.rot.evaluate(t)); else fq.identity();
+      if (k.scl) fs.fromArray(k.scl.evaluate(t)); else fs.set(1, 1, 1);
+      fw.makeTranslation(e.x, e.y, e.z).multiply(fm.makeRotationY(e.ry)).multiply(fm.makeScale(k.k, k.k, k.k)).multiply(fm.compose(fp, fq, fs)).multiply(k.local);
+      k.im.setMatrixAt(k.im.count, fw); k.im.count += 1; counts[e.season] = (counts[e.season] || 0) + 1;
+    }
+    for (const k of Object.values(st.kinds)) k.im.instanceMatrix.needsUpdate = true;
+    st.counts = counts;
+  }
+  // each frame: the one-off clips and the falling flakes
+  function tick(dt, x, z) {
+    for (let i = playing.length - 1; i >= 0; i -= 1) {
+      const p = playing[i]; p.t += dt; p.mixer.update(dt);
+      p.root.getWorldPosition(at); const below = at.y < p.holder.position.y;
+      if (p.below !== null && below !== p.below) p.onCross?.(at.clone());
+      p.below = below;
+      if (p.t >= p.dur) { p.mixer.stopAllAction(); p.mixer.uncacheRoot(p.object); p.holder.parent?.remove(p.holder); playing.splice(i, 1); }
+    }
+    tickAmbient(dt, x, z);
+  }
+
   // A character: the rigged model goes under c.root (the name tag and chat bubble stay), the procedural body is
   // hidden, and plaza-scene's animate() hands the drawn speed to c.anim (Idle/Walk/Run cross-fades) instead of
   // swinging the procedural joints. One model per character, no LOD (a rig's clips bind to one copy of the bones).
@@ -346,6 +441,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   function dispose() {
     disposed = true;
+    for (const p of playing.splice(0)) { p.mixer.stopAllAction(); p.holder.parent?.remove(p.holder); }
+    for (const k of Object.values(ambientState?.kinds || {})) { k.im.parent?.remove(k.im); k.im.dispose(); }
     for (const rec of batches) clearBatch(rec);
     for (const rec of attaches) for (const g of (rec.object && fittedOwn.get(rec.object)) || []) g.dispose();
     for (const x of made) x.dispose();
@@ -374,5 +471,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, release, batch, update, setDay, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug() }) };
+  return { attach, dress, release, batch, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

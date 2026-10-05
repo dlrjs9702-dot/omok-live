@@ -337,8 +337,16 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   // Harbour: pier on posts, a few boats, the breakwater and its lighthouse.
   const pier = new THREE.Group(); pier.position.set(PIER.x, 0, PIER.z); pier.rotation.y = Math.atan2(PIER.ux, PIER.uz); scene.add(pier);
-  mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
-  for (let u = -PIER.half + 1; u <= PIER.half; u += 3) for (const s of [-1, 1]) mesh(keep(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8)), post, s * (PIER.w / 2 - 0.15), -0.6, u, pier);
+  const pierDeck = mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
+  const pierPosts = new THREE.Group(); pier.add(pierPosts);
+  for (let u = -PIER.half + 1; u <= PIER.half; u += 3) for (const s of [-1, 1]) mesh(keep(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8)), post, s * (PIER.w / 2 - 0.15), -0.6, u, pierPosts);
+  // v1.10.29: the pier's planked deck model (2 x 2.375, its top 0.245 over its base) in segments along the pier, its top
+  // on the deck the game walks on (PIER.deck), and a post model for each procedural post, its cap a little over the deck
+  if (assets) {
+    const n = Math.round((PIER.half * 2) / 2.375); const len = (PIER.half * 2) / n;
+    for (let k = 0; k < n; k += 1) { const seg = new THREE.Group(); seg.position.set(0, PIER.deck - 0.245, -PIER.half + (k + 0.5) * len); seg.scale.set(PIER.w / 2, 1, len / 2.375); pier.add(seg); assets.attach('prop.pierDeck', seg, pierDeck); }
+    for (const p of pierPosts.children) { const h = new THREE.Group(); h.position.set(p.position.x, PIER.deck + 0.25 - 1.88, p.position.z); pier.add(h); assets.attach('prop.pierPost', h, pierPosts); }
+  }
   const bw = new THREE.Group(); bw.position.set(BREAKWATER.x, 0, BREAKWATER.z); bw.rotation.y = Math.atan2(BREAKWATER.ux, BREAKWATER.uz); scene.add(bw);
   mesh(keep(new THREE.BoxGeometry(BREAKWATER.w, 1.6, BREAKWATER.half * 2)), mat(0xc9c2b6), 0, BREAKWATER.deck - 0.8, 0, bw);
   for (let u = -BREAKWATER.half; u <= BREAKWATER.half; u += 2.2) for (const s of [-1, 1]) { const st = mesh(keep(new THREE.DodecahedronGeometry(0.7)), mat(0xb3ab9d), s * (BREAKWATER.w / 2 + 0.3), -0.3, u + s * 0.6, bw); st.rotation.set(u, s, u * 0.5); }
@@ -534,7 +542,34 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z), p.z, 1),
     { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), false]] });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
+  // v1.10.29 지면 레이어: low flat drifts of the zone's season -- spring petals, summer clover, autumn leaves, winter
+  // snow (deco.layer.*: three shapes) -- on level open grass inside the zones only (not the plaza, walks, water, banks,
+  // shores, bridges, building yards or the pond), from fixed spots. Decoration: nothing to walk round or pick up.
+  // Without a model nothing is drawn (the procedural stand-in is a speck under the ground).
+  const LAYERS = ['sparse', 'cluster', 'edge'];
+  if (assets && LAYERS.some((v) => assets.wants(`deco.layer.${v}`))) {
+    const spots = [];
+    for (let gx = -120; gx <= 120; gx += 7) for (let gz = -120; gz <= 120; gz += 7) {
+      const x = gx + (hash(gx, gz, 21) - 0.5) * 5; const z = gz + (hash(gz, gx, 22) - 0.5) * 5;
+      if (hash(x, z, 23) > 0.42 || Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 6 || cliffAt(x, z) > 0.2) continue;
+      if (walkDist(x, z) < 3.5 || streamDist(x, z) < STREAM_HALF + 2 || onBridge(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 3) continue;
+      const h = ground(x, z); if ([[1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue; // level ground only
+      spots.push({ x, z, v: Math.min(2, Math.floor(hash(x, z, 24) * 3)), r: hash(x, z, 25) * TAU });
+    }
+    const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })]));
+    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, 1, 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
+  }
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
+
+  // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well
+  // past the coast (about 300-330 from the plaza) so they never stand in front of the island or its buildings; they
+  // only rise over the horizon, pale with distance (the entries' haze). Not land anyone can reach.
+  const FAR = [['sea.glacier', 0, -320], ['sea.floe', -80, -280], ['sea.floe', 85, -272], ['sea.ridgeSoft', 235, -225], ['sea.coastLong', 318, 75],
+    ['sea.coastCove', -215, 245], ['sea.peak', -300, 95], ['sea.ridgeRugged', -305, -115]];
+  for (const [id, x, z] of FAR) {
+    const holder = new THREE.Group(); holder.position.set(x, -1.1, z); holder.rotation.y = Math.atan2(-x, -z); scene.add(holder); // its length across the view
+    assets?.attach(id, holder, new THREE.Group());
+  }
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.

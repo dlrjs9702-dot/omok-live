@@ -23,7 +23,7 @@ function glbInfo(file) {
     triangles += (p.indices !== undefined ? json.accessors[p.indices].count : json.accessors[p.attributes.POSITION].count) / 3;
   }
   return { meshes: (json.meshes || []).length, nodes: (json.nodes || []).length, materials: (json.materials || []).length,
-    textures: (json.textures || []).length + (json.images || []).length, triangles, extensions: json.extensionsUsed || [] };
+    textures: (json.textures || []).length + (json.images || []).length, triangles, extensions: json.extensionsUsed || [], animations: (json.animations || []).length };
 }
 
 const glbs = () => fs.readdirSync(outDir, { recursive: true }).map(String).filter((f) => f.endsWith('.glb')).map((f) => f.split(path.sep).join('/')).sort();
@@ -35,7 +35,10 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
     const info = glbInfo(path.join(outDir, f));
     for (const ext of budgets.requiredExtensions) assert.ok(info.extensions.includes(ext), `${f}: ${ext} 필요(빌드 파이프라인 출력)`);
     for (const ext of info.extensions) assert.ok(budgets.allowedExtensions.includes(ext), `${f}: 허용되지 않은 확장 ${ext}`);
-    for (const [key, max] of Object.entries(budgets.max)) assert.ok(info[key] <= max, `${f}: ${key} ${info[key]} > ${max}`);
+    for (const [key, max] of Object.entries(budgets.max)) {
+      const limit = key === 'nodes' && info.animations ? budgets.animatedNodes : max; // an animated root keeps its own node
+      assert.ok(info[key] <= limit, `${f}: ${key} ${info[key]} > ${limit}`);
+    }
   }
 });
 

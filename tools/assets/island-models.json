@@ -415,6 +415,227 @@
       "lowSha256": "b217bd83df24d37d1aa91bdc9ef6220c107bc88308d89e1f2cdaa24a54135363"
     },
     {
+      "out": "gaps-v1/autumn/foundation_autumn.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_autumn_high.glb",
+      "sha256": "9af454ea625fab8bb99d87f2ba1020894b10f6b7a153048b15322437eafd95f2",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_autumn_low.glb",
+      "lowSha256": "5734f711a3c67ddbd5fe6a0eab274b8d588105af855f06b896a26210c2b69e16"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_cluster_high.glb",
+      "sha256": "7f7d02235511396b28adf126a2ddbc343af2d4d8261423b89089977fea58df33",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_cluster_low.glb",
+      "lowSha256": "d3a18472a06aaf71e4e0f0e57157d9928125ee9ac1b6384c0505e63ae8cb275e"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_edge_high.glb",
+      "sha256": "2023cabc6663a9001ed0e405575ed1f9dcdb36d6dd74de9b9907ed4d08ff794c",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_edge_low.glb",
+      "lowSha256": "f1b8796372fc5c979a9b270ed93e36873aa2694e562b8e9c0ffb9f4ff97fac10"
+    },
+    {
+      "out": "gaps-v1/autumn/layer_autumn_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_autumn_sparse_high.glb",
+      "sha256": "e500510c12a5ccc189fae67ffb27262f02ed413a41c19db042a5953a57823353",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_autumn_sparse_low.glb",
+      "lowSha256": "e5954c8304e88d7e888642d4f608125565bb82690639518af63508c576234cbc"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_leaf.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_leaf_high.glb",
+      "sha256": "1d30f439c016bc7fd2a95f6a803a848becdce0b4df59edaeb4f009667c6b5c8f"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_petal.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_petal_high.glb",
+      "sha256": "e8f7f99ec3d13fb426b42653107bcab771bcfd2ce97c6d93b3f7b9c60867814f"
+    },
+    {
+      "out": "gaps-v1/props/atmosphere_snowflake.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/atmosphere_snowflake_high.glb",
+      "sha256": "6c5e4c464c1cbe58e44361fe463f665e5e20aacfd2a9945baf6152e61df0a144"
+    },
+    {
+      "out": "gaps-v1/props/mailbox_blue.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/mailbox_blue_high.glb",
+      "sha256": "83ceef0a6063a01d3ab219d62d1aa54603da5ef1ad330d23dab4b26a7f53b044",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/mailbox_blue_low.glb",
+      "lowSha256": "ce03d17f83e17b802692161ca3bd36420b7618635643a91e257c1034635bbc5b"
+    },
+    {
+      "out": "gaps-v1/props/mailbox_red.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/mailbox_red_high.glb",
+      "sha256": "5957e03986f81b7f6af0e2b255af9705435ef32883c0f96550ccb5e8a6d096a0",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/mailbox_red_low.glb",
+      "lowSha256": "3cb0b409bf63fb2cb7ff442313e78e76011671f8efb1c684d1cc061e48f8c366"
+    },
+    {
+      "out": "gaps-v1/props/pier_deck.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/pier_deck_high.glb",
+      "sha256": "053bee328247d893b68ac56141c45703635b6e4bd3c84b75da643ea571e27a75",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/pier_deck_low.glb",
+      "lowSha256": "b56e4508e633cb3019cc8667239cd06b35d5835eb92b807503366371bfeff018"
+    },
+    {
+      "out": "gaps-v1/props/pier_post.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/pier_post_high.glb",
+      "sha256": "75159577135b74e23a109b95a54c3d7b10d7ad1e8a610a0d0d7294f6f5b293a5",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/pier_post_low.glb",
+      "lowSha256": "81294feeeb15eb7ae4b6a8df4effa3f9cadf220a210a7b7edd4cceba5716a05e"
+    },
+    {
+      "out": "gaps-v1/props/stepping_stone.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/stepping_stone_high.glb",
+      "sha256": "1ab73220625139560abb7e929a6b83e055d175fe8af67f3071afe36b8bc26849",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/stepping_stone_low.glb",
+      "lowSha256": "292feefcad9526eac0ba6e802f9d9f5ddb31b3f6ab195a587aeebf8efbe5bd69"
+    },
+    {
+      "out": "gaps-v1/sea/distant_coast_cove.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/distant_coast_cove_high.glb",
+      "sha256": "24d4c9c2b8de5cf76211c94add8da5b99decdfc07b8c9d7bc0447e0dc949b12b",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/distant_coast_cove_low.glb",
+      "lowSha256": "6f7ef89d8d8a89a6cf1212e016fa507bd50e5ca76126708c84985979f1c506aa"
+    },
+    {
+      "out": "gaps-v1/sea/distant_coast_long.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/distant_coast_long_high.glb",
+      "sha256": "301154433afa51bb5cf57d99b4d79cad3a57f795334d946322ce411225fceed0",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/distant_coast_long_low.glb",
+      "lowSha256": "7586d7d1dbbd01637e8294354342b2ce3bce7e0fc3e281c38008b638a08ed9b5"
+    },
+    {
+      "out": "gaps-v1/sea/glacier.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/glacier_high.glb",
+      "sha256": "6f22239001ea1c58a3f1b677ec88f725460b3ffe70e619e00bdd0acb5bfb0bb4",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/glacier_low.glb",
+      "lowSha256": "0cfba7264d1cc6495a48e086f38b340e0dad061ee8c8f9ac64a7ba8355a2ad1d"
+    },
+    {
+      "out": "gaps-v1/sea/ice_floe.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/ice_floe_high.glb",
+      "sha256": "36daaf30fad090acd379e8295d2f3f95d183186700d1b10dc66b86670b56cacc",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/ice_floe_low.glb",
+      "lowSha256": "5ec02bc6d0906b68f90e6c7e9db6d10ed95b527c490aaf565281fd032cc96fa0"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_peak.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_peak_high.glb",
+      "sha256": "8626c88d0c2128ead1ae18614bf4b93a59e6f4e4171b683c99ceac529cfe673c",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_peak_low.glb",
+      "lowSha256": "7fec47e46bc781c1eba2fd71110c05f479ba6d616cdee674273ad2671ba9ac73"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_ridge_rugged.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_ridge_rugged_high.glb",
+      "sha256": "905c2d05fcfc2605f7efcc9fb7fd90be2b6e95fd75f1f65699b98d5de460b57c",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_ridge_rugged_low.glb",
+      "lowSha256": "8bcfa46ad6edc4f57d8d2277aecd9d3e0a4ceb4c0c7837cb26b96385f5191439"
+    },
+    {
+      "out": "gaps-v1/sea/mountain_ridge_soft.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/mountain_ridge_soft_high.glb",
+      "sha256": "798c5f5be644a6584befbe45106f43be0598d3ef001583331c8e34ec7ef792c6",
+      "lowSrc": "gaps:11. Distant sea scenery/02. Low/mountain_ridge_soft_low.glb",
+      "lowSha256": "4f7866594f9856e0b7bd8fb174ff033d6a30c8326681929eda59860f260f5732"
+    },
+    {
+      "out": "gaps-v1/sea/splash.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/splash_high.glb",
+      "sha256": "fcc480c5a7c9665b6bd80ccfdc317cd21978dd6cd2eca6525d6c53341ed80cd5"
+    },
+    {
+      "out": "gaps-v1/sea/whale.glb",
+      "src": "gaps:11. Distant sea scenery/01. High/whale_high.glb",
+      "sha256": "9ef19969ad6a7ca61e6bb1ce02636f7e7257060e15fa1faa1650be76d4b88f1e"
+    },
+    {
+      "out": "gaps-v1/spring/foundation_spring.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_spring_high.glb",
+      "sha256": "88fc3136d8986252bffc4dec124eb88e6a8ad27efc966675505669961fc7b5e9",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_spring_low.glb",
+      "lowSha256": "fd2b924b7b042080daac9df9548d3d7cf731ab2dfdc532232bf34d06a33ccccd"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_cluster_high.glb",
+      "sha256": "ab93afc04559e29a9a2af8aaad2f8676a13fbc056c7d9cefe44cb3f85f4574e1",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_cluster_low.glb",
+      "lowSha256": "5d1ea2a11a6e24ba12f8cd14c4af736e441d596ae96695651ea6063f1d57b5cb"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_edge_high.glb",
+      "sha256": "79717c15ae0f10d70f58183f992047aaa15bb1db89c2d489994be3fc86a3972a",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_edge_low.glb",
+      "lowSha256": "f24554c89500b677bd3e13def4de73e3cf00d26f1170e5df67ac839b8c7eca2b"
+    },
+    {
+      "out": "gaps-v1/spring/layer_spring_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_spring_sparse_high.glb",
+      "sha256": "d05e38bf15b08d65ba84007e5ccd40d2aca822122275a86ef69d4f9deb6984d9",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_spring_sparse_low.glb",
+      "lowSha256": "11cfd7a4bf663a94b9873fb8bfce7ce5bd8bd0ff024a3da93d69b12ff63f7d82"
+    },
+    {
+      "out": "gaps-v1/summer/foundation_summer.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_summer_high.glb",
+      "sha256": "67a2b064bada9c6ed988181526dd68feb70bb396489facea19bf6700288acbd8",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_summer_low.glb",
+      "lowSha256": "bebb5a8c3d79cb77ea1213718d0e1465fb0ce478bbd47d038b9e285367f4af6a"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_cluster_high.glb",
+      "sha256": "3b242d3f3fee53871405bfc2808d84accb53207b0a13d15f8db42954dd40e912",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_cluster_low.glb",
+      "lowSha256": "b712628a46a48cde9388e1d2f9e77fec24d13f80a0001a23eb1180e0f93010c4"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_edge_high.glb",
+      "sha256": "a60d153af725924cb29093daa506cb9cc5aa0b9f7f83dabb6623aa7ee7caa5c3",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_edge_low.glb",
+      "lowSha256": "51551dc58c67a6b75afb257befef0cb0e73f4cd15ab579183fc836416c324c7b"
+    },
+    {
+      "out": "gaps-v1/summer/layer_summer_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_summer_sparse_high.glb",
+      "sha256": "db8ff0f6d9ae38d0368c4ef66d2432171cc037124a84794e014547bae738e560",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_summer_sparse_low.glb",
+      "lowSha256": "835b20769adf8fb5b1f567a7606de4e0757af348106af067e04cb23f9afc536d"
+    },
+    {
+      "out": "gaps-v1/winter/foundation_winter.glb",
+      "src": "gaps:05. Structure layers/01. High/foundation_winter_high.glb",
+      "sha256": "b5847fabd4969a57cd479d573aae847b2772b30043639ff52adbaddc47b6800a",
+      "lowSrc": "gaps:05. Structure layers/02. Low/foundation_winter_low.glb",
+      "lowSha256": "8691f1e84427e821a93ff4fa5ecdea0269acc160b88eaf3757efe0adea9a553e"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_cluster.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_cluster_high.glb",
+      "sha256": "ea50310299c1963dbc91c4bef37a479e110b39e54cb85074f0cf98a00696c9a2",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_cluster_low.glb",
+      "lowSha256": "2a9cedbb0fea7517936a8f896fc7b207608c00f2b041ed3e4f7cde2d776a102c"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_edge.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_edge_high.glb",
+      "sha256": "07c5d4f60c3915f511e4e113e21bd8dd8bb45f299e84859c43402d4ced9b24e1",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_edge_low.glb",
+      "lowSha256": "237d369e312bb6483a28b8a55c093bfb1d3974df00eb7f94203410bb6f62e7ab"
+    },
+    {
+      "out": "gaps-v1/winter/layer_winter_sparse.glb",
+      "src": "gaps:04. Surface layers/01. High/layer_winter_sparse_high.glb",
+      "sha256": "cd676d2044a29fb05c219c489467943ff03a78abf2219ea61c6f01ff76372e03",
+      "lowSrc": "gaps:04. Surface layers/02. Low/layer_winter_sparse_low.glb",
+      "lowSha256": "479ffacf9be1e5236f44f84cdccc193bc701572622088d80348a40cb6aa4024b"
+    },
+    {
       "out": "seasonal-v2/autumn/bench_autumn_v1.glb",
       "src": "v2:03. Autumn/bench_autumn_v1.glb",
       "sha256": "e24d9e968206803af31dfa273a913d5f73c3b14a81a80310e56c4aa90a88f7e7"
@@ -638,6 +859,7 @@
   ],
   "sources": {
     "v2": "01. Game Island assets 2026-10-05/02. Finished assets",
-    "additions": "02. Game Island additions 2026-10-05/02. Finished assets"
+    "additions": "02. Game Island additions 2026-10-05/02. Finished assets",
+    "gaps": "04. Game Island gaps 2026-10-05"
   }
 }
