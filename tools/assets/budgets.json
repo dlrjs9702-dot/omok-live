@@ -5,8 +5,8 @@
   "animatedNodes": 2,
   "$animatedNodes": "v1.10.29: 애니메이션이 있는 정적 모델(입자 FallLoop·고래·물보라)은 움직이는 루트 노드 + 양자화 보정 노드로 2개",
   "rig": ["Root","Hips","Spine","Chest","Neck","Head","Shoulder.L","UpperArm.L","LowerArm.L","Hand.L","Shoulder.R","UpperArm.R","LowerArm.R","Hand.R","UpperLeg.L","LowerLeg.L","Foot.L","UpperLeg.R","LowerLeg.R","Foot.R"],
-  "character": { "meshes": 3, "triangles": 16464 },
-  "$character": "v1.10.30: 캐릭터 몸체·착용 모듈(characters/)은 공통 20관절(rig, 순서까지)을 그대로 두고 메시 3·삼각형 16,464(몸체 High 실측) 이하. 모션 파일은 메시 없이 클립 1개.",
+  "character": { "meshes": 5, "triangles": 16464 },
+  "$character": "v1.10.30: 캐릭터 몸체·착용 모듈(characters/)은 공통 20관절(rig, 순서까지)을 그대로 두고 메시 3·삼각형 16,464(몸체 High 실측) 이하. 모션 파일은 메시 없이 클립 1개. v1.10.32: 메시 3 → 5(05 의상은 재질별 4, 기존 무지개 머리는 5색 5 -- 재질마다 그리기 호출 1이라 캐릭터당 최대 그리기 호출의 상한).",
   "max": {
     "meshes": 1,
     "nodes": 1,
