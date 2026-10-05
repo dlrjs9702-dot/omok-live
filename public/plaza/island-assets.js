@@ -151,5 +151,18 @@
     return { parts: Object.values(parts), colors, tint: { skin: SKIN, ...(tint || {}) } };
   }
 
+  // v1.10.31 잡초 채집·생활 소품: the weed (a light model that stands apart from the grass, the same in every season)
+  // and the one pulled out with its roots (in the hand a moment); the finds of the island events as the 2026-10-05
+  // interaction props (their kinds, rules and rewards unchanged -- only their look)
+  REGISTRY['nature.grass'] = { url: '/assets/island/additions-v1/common/weed_standing.glb', near: 18, shadows: false };
+  REGISTRY['prop.weedRooted'] = { url: '/assets/island/additions-v1/common/weed_rooted.glb', shadows: false };
+  const prop = (name, extra = {}) => ({ url: `${CH}/props/${name}.glb`, shadows: false, ...extra });
+  Object.assign(REGISTRY, {
+    'prop.event.trash_can': prop('trash_can'), 'prop.event.trash_bottle': prop('trash_bottle'),
+    'prop.event.paper_litter': { url: '/assets/island/gaps-v1/props/paper_litter.glb', low: { url: '/assets/island/gaps-v1/props/paper_litter_low.glb' }, shadows: false, near: 40 },
+    'prop.event.herb': prop('herb'), 'prop.event.berry': prop('berries'), 'prop.event.mushroom': prop('mushrooms'),
+    'prop.event.coin': prop('coin'), 'prop.event.wallet': prop('wallet'), 'prop.event.lost_item': prop('lost_teddy'), 'prop.event.camera': prop('camera'),
+  });
+
   return { REGISTRY, WARDROBE, wardrobeOf };
 });

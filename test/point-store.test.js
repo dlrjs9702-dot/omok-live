@@ -261,7 +261,7 @@ async function exercise(t, makeStore) {
     // the daily limit
     const big = await store.islandReward({ userId: R, claimId: 'event:big00001', amount: Items.DAILY_CAP, title: '큰 보상' }, now);
     assert.deepEqual([big.applied, big.reason], [false, 'cap']);
-    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00002', amount: Items.DAILY_CAP - 330, title: '남은 만큼' }, now)).applied, true);
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00002', amount: Items.DAILY_CAP - 180 - Items.ITEMS.lost.price, title: '남은 만큼' }, now)).applied, true);
     assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00003', amount: 1, title: '넘침' }, now)).reason, 'cap');
   });
 
@@ -315,6 +315,42 @@ async function exercise(t, makeStore) {
     assert.ok((await store.history(L)).items.some((item) => item.reason === 'dye' && item.memo === '양갈래 머리 · 기본색'));
     await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0004', kind: 'surgery', slot: 'dye_avatar_hair_1', value: 'eyes_dot', price: 300_000 }), RangeError);
     await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0005', kind: 'surgery', slot: 'face_eyes', value: null, price: 300_000 }), RangeError);
+  });
+
+  await t.test('v1.10.31 잡초·주간 생활활동: 한 포기는 한 번만(동시·재요청), 999개 한 칸, 자정 보충은 하루 한 번, 10회째 50,000P 한 번', async () => {
+    const W = 'guest:0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d'; const V = 'guest:0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+    const now = Date.parse('2026-10-06T10:00:00+09:00');
+    await store.islandWeedRoll({ day: '2026-10-06', grown: [] });
+    const start = (await store.getAccount(W)).balance;
+    // the same weed pulled by two people at once: one gets it
+    const both = await Promise.all([store.islandPullWeed({ userId: W, requestId: 'weed-a-0001', weedId: 'w5' }, now), store.islandPullWeed({ userId: V, requestId: 'weed-b-0001', weedId: 'w5' }, now)]);
+    assert.equal(both.filter((r) => r.applied).length, 1);
+    assert.deepEqual(both.filter((r) => !r.applied).map((r) => r.reason), ['gone']);
+    const winner = both[0].applied ? W : V;
+    const again = await store.islandPullWeed({ userId: winner, requestId: winner === W ? 'weed-a-0001' : 'weed-b-0001', weedId: 'w5' }, now);
+    assert.equal(again.applied, false, '같은 요청은 한 번만');
+    assert.equal((await store.islandBag(winner)).items.find((e) => e.itemId === 'weed').qty, 1);
+    // nine more for W: the 10th activity of the week pays the bonus once
+    for (let i = 0; i < 12; i += 1) await store.islandPullWeed({ userId: W, requestId: `weed-w-${String(i).padStart(4, '0')}`, weedId: `w${100 + i}` }, now);
+    const week = await store.islandWeek(W, now);
+    assert.equal(week.paid, true); assert.ok(week.count >= 12);
+    assert.equal((await store.getAccount(W)).balance, start + 50_000, '주간 보너스 한 번');
+    const weeds = (await store.islandBag(W)).items.find((e) => e.itemId === 'weed');
+    assert.ok(weeds.qty >= 12 && weeds.qty <= 999);
+    // the town hall takes every weed at 300P, outside the daily limit of the other life rewards
+    const sold = await store.islandSell({ userId: W, requestId: 'sell-weed-01', place: 'office', activeLost: [] }, now);
+    assert.equal(sold.paid, weeds.qty * 300);
+    assert.equal((await store.islandReward({ userId: W, claimId: 'event:weedcap1', amount: 30_000, title: '한도 그대로' }, now)).applied, true, '잡초 정산은 일일 한도에 들지 않는다');
+    // a new day: the weeds pulled since the last one grow back once
+    const state = await store.islandWeeds();
+    assert.equal(state.pulled, 13);
+    const grown = Array.from({ length: state.pulled }, (_, i) => ({ id: `g20737-${i}`, x: i, z: 10 }));
+    const rolled = await store.islandWeedRoll({ day: '2026-10-07', grown });
+    assert.equal(rolled.added.length, 13); assert.equal(rolled.pulled, 0);
+    assert.equal((await store.islandWeedRoll({ day: '2026-10-07', grown })).added.length, 13, '하루 한 번');
+    assert.equal((await store.islandPullWeed({ userId: V, requestId: 'weed-b-0002', weedId: 'g20737-3' }, now)).applied, true);
+    assert.equal((await store.islandPullWeed({ userId: V, requestId: 'weed-b-0003', weedId: 'g20737-3' }, now)).reason, 'gone');
+    await assert.rejects(store.islandPullWeed({ userId: V, requestId: 'weed-b-0004', weedId: 'x1' }, now), RangeError);
   });
 
   await t.test('v1.10.7 당일 위치: 계정당 마지막 위치와 날짜를 한 번에 저장·조회', async () => {

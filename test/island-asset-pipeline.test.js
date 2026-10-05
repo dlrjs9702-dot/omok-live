@@ -30,7 +30,9 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     'deco.layer.sparse', 'deco.layer.cluster', 'deco.layer.edge', 'deco.foundation', 'prop.mailbox.0', 'prop.mailbox.1', 'prop.steppingStone', 'prop.pierDeck', 'prop.pierPost',
     'fx.petal', 'fx.leaf', 'fx.snow', 'sea.coastLong', 'sea.coastCove', 'sea.ridgeSoft', 'sea.ridgeRugged', 'sea.peak', 'sea.glacier', 'sea.floe', 'sea.whale', 'sea.splash',
     // v1.10.30 the specialist shops, the common-rig body and its wardrobe (face, hair, clothes, shoes, hats, faces)
-    'facility.faces', 'facility.hair', 'facility.accessories', 'facility.dye', 'character.base', ...Object.keys(REGISTRY).filter((id) => id.startsWith('wear.'))].sort());
+    'facility.faces', 'facility.hair', 'facility.accessories', 'facility.dye', 'character.base', ...Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')),
+    // v1.10.31 the weed (standing, pulled) and the finds' props
+    'nature.grass', 'prop.weedRooted', ...['trash_can', 'trash_bottle', 'paper_litter', 'herb', 'berry', 'mushroom', 'coin', 'wallet', 'lost_item', 'camera'].map((k) => `prop.event.${k}`)].sort());
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 10 + 8 + 30);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
@@ -53,7 +55,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea)|characters)\//, id);
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea)|characters|additions-v1\/common)\//, id);
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');

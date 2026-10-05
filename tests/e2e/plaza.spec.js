@@ -887,3 +887,37 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
+
+// v1.10.31 잡초 채집: only the nearest weed is offered; Space pulls it in about a second (GatherWeed) and the bag gets
+// one; walking away in that second calls it off (nothing taken); the pulled weed is gone from the island's list
+test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +1, 이동하면 취소, 섬에서 사라짐', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '잡초꾼');
+  const { page } = a;
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(1400);
+  const list = (await get(request, '/api/island/weeds', a.token)).data.weeds;
+  const [id, x, z] = list.find(([, wx, wz]) => Math.hypot(wx, wz) > 30 && Math.hypot(wx - 20, wz - 20) > 5);
+  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
+  const target = await page.evaluate(() => window.PlazaDebug().weeds.near);
+  // called off: walk away during the pull
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering), { timeout: 5000 }).toBe(target.slice(5));
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(500); await page.keyboard.up('ArrowUp');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering)).toBe(null);
+  const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
+  expect(await bagCount()).toBe(0);
+  // pulled: a second of standing still
+  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
+  const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
+  await page.keyboard.press('Space');
+  await expect.poll(bagCount, { timeout: 10000 }).toBe(1);
+  await expect.poll(() => page.evaluate((w) => window.PlazaDebug().weeds.at(w), pulledId)).toBe(null);
+  expect((await get(request, '/api/island/weeds', a.token)).data.weeds.some(([w]) => w === pulledId)).toBe(false);
+  void id;
+  await expectNoScriptError(page);
+  await a.context.close();
+});

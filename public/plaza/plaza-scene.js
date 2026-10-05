@@ -860,11 +860,95 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   // v1.10.11 공용 이벤트: what the server says lies near me -- a small object (or an NPC) at each, a short 「SPACE · 줍기」
   // when I stand by it, a click on it does the same, and a 「!」 on the minimap. Keys: `ev:<kind>:<id>`.
+  // v1.10.31 잡초 채집 (IDEAS 「잡초 채집」, 사용자 확정 2026-10-05): the island's weeds as the server lists them, drawn
+  // square by square (one instanced batch: the weed model, or the old tuft shape without it). Only the one nearest me
+  // within WEED_REACH is offered (a soft ring round it, 「SPACE · 잡초 뽑기」); pulling plays GatherWeed for about a
+  // second -- moving, a window opening or leaving the island in that time calls it off -- and only the server's answer
+  // takes the weed away (for everyone: removeWeeds).
+  const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 1000; const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
+  let weedCells = []; const weedById = new Map(); let weedGrid = new Map(); let weedKey = null; let gather = null;
+  const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
+  weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
+  const gridKey = (x, z) => `${Math.floor(x / WEED_GRID)},${Math.floor(z / WEED_GRID)}`;
+  function setWeeds(list) {
+    if (weedCells.length) { assets.unbatch(weedCells); for (const c of weedCells) { scene.remove(c.procedural[0]); c.procedural[0].dispose(); } }
+    weedCells = []; weedById.clear(); weedGrid = new Map();
+    if (weedKey) { delete eventDoors[weedKey]; weedKey = null; }
+    const byCell = new Map();
+    for (const [id, x, z] of list || []) { const k = `${Math.floor(x / WEED_CELL)},${Math.floor(z / WEED_CELL)}`; if (!byCell.has(k)) byCell.set(k, []); byCell.get(k).push({ id, x, z }); }
+    const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0); const v = new THREE.Vector3(); const sc = new THREE.Vector3();
+    for (const [k, items] of byCell) {
+      const im = new THREE.InstancedMesh(island.weedGeometry, island.natureMaterial, items.length);
+      const [cx, cz] = k.split(',').map(Number);
+      const cell = { x: (cx + 0.5) * WEED_CELL, z: (cz + 0.5) * WEED_CELL, parent: scene, procedural: [im], matrices: [], colors: null, shadow: false };
+      items.forEach((w, i) => {
+        const h = Math.abs(Math.sin(w.x * 12.9898 + w.z * 78.233) * 43758.5453) % 1; const size = 0.85 + h * 0.35;
+        m4.compose(v.set(w.x, heightAt(w.x, w.z), w.z), q.setFromAxisAngle(up, h * TAU), sc.set(size, size, size));
+        im.setMatrixAt(i, m4); cell.matrices.push(m4.clone());
+        weedById.set(w.id, { cell, i, x: w.x, z: w.z });
+        const g = gridKey(w.x, w.z); if (!weedGrid.has(g)) weedGrid.set(g, []); weedGrid.get(g).push(w.id);
+      });
+      im.computeBoundingSphere(); im.receiveShadow = true; scene.add(im); weedCells.push(cell);
+    }
+    if (weedCells.length) assets.batch('nature.grass', weedCells);
+  }
+  // a weed's copy moved (lifted while pulled) or gone (NOTHING)
+  function weedMatrix(w, matrix) { w.cell.procedural[0].setMatrixAt(w.i, matrix); w.cell.procedural[0].instanceMatrix.needsUpdate = true; w.cell.matrices[w.i] = matrix.clone(); assets.refill(w.cell); }
+  function removeWeeds(ids) {
+    for (const id of ids || []) {
+      const w = weedById.get(id); if (!w) continue;
+      if (gather?.id === id) endGather(false);
+      weedMatrix(w, NOTHING); weedById.delete(id);
+      const g = weedGrid.get(gridKey(w.x, w.z)); if (g) g.splice(g.indexOf(id), 1);
+      if (weedKey === `weed:${id}`) { delete eventDoors[weedKey]; weedKey = null; }
+    }
+  }
+  function nearestWeed() {
+    const p = me.root.position; let best = null; let bestD = WEED_REACH;
+    for (let gx = -1; gx <= 1; gx += 1) for (let gz = -1; gz <= 1; gz += 1) {
+      for (const id of weedGrid.get(`${Math.floor(p.x / WEED_GRID) + gx},${Math.floor(p.z / WEED_GRID) + gz}`) || []) {
+        const w = weedById.get(id); const d = Math.hypot(w.x - p.x, w.z - p.z); if (d < bestD) { best = id; bestD = d; }
+      }
+    }
+    return best;
+  }
+  function stepWeeds(dt) {
+    const id = gather ? gather.id : nearestWeed(); const key = id ? `weed:${id}` : null;
+    if (key !== weedKey) { if (weedKey) delete eventDoors[weedKey]; weedKey = key; if (key) { const w = weedById.get(id); eventDoors[key] = { x: w.x, z: w.z, name: '잡초 뽑기' }; } }
+    const w = id && weedById.get(id);
+    weedRing.visible = Boolean(w); if (w) weedRing.position.set(w.x, heightAt(w.x, w.z) + 0.04, w.z);
+    if (!gather) return;
+    gather.t += dt;
+    const moved = Math.hypot(me.root.position.x - gather.x, me.root.position.z - gather.z) > 0.25;
+    if (moved || isBlocked()) { endGather(false); return; } // moving, a window or leaving the island calls it off
+    const g = weedById.get(gather.id);
+    if (g) { const lift = new THREE.Matrix4().makeTranslation(0, Math.min(1, gather.t / WEED_MS * 1000) * 0.18, 0).multiply(gather.matrix); weedMatrix(g, lift); } // the weed gives a little
+    if (gather.t * 1000 >= WEED_MS) endGather(true);
+  }
+  function endGather(done) {
+    const g = gather; if (!g) return; gather = null;
+    const w = weedById.get(g.id); if (w && !done) weedMatrix(w, g.matrix); // let go: back as it was
+    g.done(done);
+  }
+  // start pulling (the app has told the server); `done(true)` after about a second, `done(false)` when called off
+  function gatherWeed(id, done) {
+    const w = weedById.get(id); if (!w || gather) return false;
+    gather = { id, t: 0, x: me.root.position.x, z: me.root.position.z, matrix: w.cell.matrices[w.i].clone(), done };
+    me.targetYaw = Math.atan2(w.x - me.root.position.x, w.z - me.root.position.z);
+    if (!me.anim?.play('gather')) me.hop = 1;
+    return true;
+  }
   const eventDoors = {}; // key -> { x, z, name } (only what I can act on)
   const eventObjs = new Map(); // key -> { root, npc }
   const EVENT_REACH = 1.9;
+  // v1.10.31: each find shows its interaction-prop model (2026-10-05 packs) over this procedural look -- the trash as a
+  // can and a bottle on the shore, paper on the grass
+  const EVENT_PROPS = { beach_trash: [['prop.event.trash_can', 0.12, 0], ['prop.event.trash_bottle', -0.2, -0.1]], grass_trash: [['prop.event.paper_litter', 0, 0]], herb: [['prop.event.herb', 0, 0]],
+    berry: [['prop.event.berry', 0, 0]], mushroom: [['prop.event.mushroom', 0, 0]], coin: [['prop.event.coin', 0, 0]], wallet: [['prop.event.wallet', 0, 0]], lost_item: [['prop.event.lost_item', 0, 0]] };
   function eventModel(kind, root) {
-    const add = (geo, color, x, y, z, extra) => mesh(geo, mat(color, extra), x, y, z, root);
+    const visual = new THREE.Group(); root.add(visual);
+    for (const [id, x, z] of EVENT_PROPS[kind] || []) { const h = new THREE.Group(); h.position.set(x, 0, z); root.add(h); assets.attach(id, h, visual); if (kind === 'coin') { h.position.y = 0.2; root.userData.spin = h; } }
+    const add = (geo, color, x, y, z, extra) => mesh(geo, mat(color, extra), x, y, z, visual);
     if (kind === 'beach_trash' || kind === 'grass_trash') {
       const can = add(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 10), 0xc9d1d9, 0, 0.1, 0); can.rotation.z = Math.PI / 2;
       add(new THREE.DodecahedronGeometry(0.14), 0xf3f0e8, 0.25, 0.1, 0.15);
@@ -882,7 +966,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     } else if (kind === 'coin') {
       const coin = add(new THREE.CylinderGeometry(0.16, 0.16, 0.035, 18), 0xf6c945, 0, 0.35, 0, { metalness: 0.6, roughness: 0.3, emissive: 0x6b4d00, emissiveIntensity: 0.25 });
-      coin.rotation.x = Math.PI / 2; root.userData.spin = coin;
+      coin.rotation.x = Math.PI / 2; root.userData.spin ||= coin;
     } else if (kind === 'wallet') {
       add(new THREE.BoxGeometry(0.34, 0.06, 0.24), 0x7a4b2a, 0, 0.04, 0);
       add(new THREE.BoxGeometry(0.34, 0.02, 0.1), 0x5e3920, 0, 0.08, 0.07);
@@ -904,7 +988,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           const spec = ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 };
           npc = makeCharacter(spec);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
-          if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
+          if (ev.kind === 'photo') { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
           npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
         } else { eventModel(ev.kind, root); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
@@ -1209,7 +1293,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName } : null); }
     me.lookAt = near ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
-    for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { spin.rotation.z = clock * 2.4; spin.position.y = 0.35 + Math.sin(clock * 2) * 0.05; } }
+    for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = clock * 2.4; else spin.rotation.y = clock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(clock * 2) * 0.05; } }
+    stepWeeds(dt); // v1.10.31
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
@@ -1291,7 +1376,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
@@ -1302,6 +1387,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
   const setStatuesPublic = (list) => setStatues(list);
   const setEventsPublic = (list) => setEvents(list);
+  // v1.10.31: an event's motion when the server took it (pick up, give back, a photo), the weed in hand
+  const playMine = (name) => Boolean(me.anim?.play(name));
+  const holdWeed = () => assets.hold(me, 'prop.weedRooted', 900);
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, holdWeed, playMine };
 }

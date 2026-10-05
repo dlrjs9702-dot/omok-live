@@ -161,6 +161,10 @@
       // square (see asset-loader.js `batch`)
       wants: (targetIds) => Boolean([null, ...SEASONS].some((s) => pick(registry, targetIds, off, s))),
       batch: (targetIds, cells) => call('batch', [targetIds, cells]),
+      // v1.10.31: a square of a batch drawn again after a copy changed; a batch taken away; a model held for a moment
+      refill: (cell) => call('refill', [cell]),
+      unbatch: (cells) => call('unbatch', [cells]),
+      hold: (character, targetIds, ms) => call('hold', [character, targetIds, ms]),
       // each frame: where the player is (near squares show models, far ones their procedural copies)
       update: (x, z) => { if (impl) impl.update(x, z); },
       // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise

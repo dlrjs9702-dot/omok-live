@@ -299,6 +299,28 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       rec.entry = entry; lastX = NaN;
     }).catch((error) => { shown[any.id] = 'procedural'; onError(any.id, error); });
   }
+  // v1.10.31: a copy of a square changed (a pulled weed's matrix set to nothing) -- the square is drawn again; and a
+  // whole batch taken away (the weeds laid out anew on a new day; the caller drops its procedural meshes)
+  function refill(cell) {
+    for (const rec of batches) {
+      if (!rec.cells.includes(cell)) continue;
+      const p = rec.placed?.find((q) => q.cell === cell);
+      if (p) fill(p); else restoreProcedural(cell);
+    }
+  }
+  function unbatch(cells) { const i = batches.findIndex((rec) => rec.cells === cells); if (i < 0) return; clearBatch(batches[i]); batches.splice(i, 1); }
+  // v1.10.31: a model in a character's right hand for a moment (a weed pulled out with its roots)
+  function hold(c, ids, ms = 900) {
+    const hit = P.pick(registry, ids, off, null); if (!hit) return;
+    cache.get(hit.entry.url).then((gltf) => {
+      if (disposed || !gltf || !c.root.parent) return;
+      const object = instance(gltf, hit.entry);
+      let hand = null; c.assetRoot?.traverse((o) => { if (o.isBone && /^Hand\.?R$/.test(o.name)) hand = o; });
+      if (hand) hand.add(object); else { (c.armR || c.root).add(object); object.position.set(0, -0.5, 0.1); } // the procedural arm's end
+      setTimeout(() => object.removeFromParent(), ms);
+    }).catch((error) => onError(hit.id, error));
+  }
+
   // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
   // only when one of its copies changed side.
   let lastX = NaN; let lastZ = NaN;
@@ -549,5 +571,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, wear, release, batch, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

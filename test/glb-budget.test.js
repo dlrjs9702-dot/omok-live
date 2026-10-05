@@ -38,7 +38,7 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
     for (const ext of info.extensions) assert.ok(budgets.allowedExtensions.includes(ext), `${f}: 허용되지 않은 확장 ${ext}`);
     // v1.10.30 a character body, a wardrobe part or a motion: the common 20-joint rig kept whole (no node or mesh
     // merging past it), every joint name in its order
-    if (f.startsWith('characters/')) {
+    if (f.startsWith('characters/') && !f.startsWith('characters/props/')) { // (hand-held props are still models)
       if (f.startsWith('characters/motions/')) { assert.equal(info.meshes, 0, f); assert.equal(info.animations, 1, f); continue; }
       assert.equal(info.joints.length, 1, `${f}: one skin`);
       assert.deepEqual(info.joints[0], budgets.rig, `${f}: 공통 20관절`);
