@@ -15,6 +15,9 @@ const UA = {
   opera: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 OPR/115.0.0.0',
   firefox: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
   safari: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15',
+  // v1.10.23: Chrome on macOS (its UA keeps the frozen "Mac OS X 10_15_7", also on Apple silicon)
+  macChrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  macEdge: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
 };
 const brands = (...names) => names.map(brand => ({ brand, version: '130' }));
 
@@ -40,6 +43,16 @@ test('브라우저 판별: Client Hints가 없으면 user agent로 보수적으�
   for (const ua of [UA.whale, UA.opera, UA.firefox, UA.safari, 'node', '']) assert.equal(classifyBrowser({ ua }), 'other', ua);
   assert.equal(classifyBrowser({ brands: [], ua: UA.edge }), 'edge'); // an empty brand list is no hint
   assert.equal(classifyBrowser(), 'other');
+});
+
+// v1.10.23 Mac Chrome 구형 로비 노출 수정: Chrome on a Mac is Chrome (client hints or, without them, the UA)
+test('브라우저 판별: macOS의 Google Chrome도 Chrome이고, macOS의 Edge·Safari는 아니다', () => {
+  assert.equal(classifyBrowser({ brands: brands('Google Chrome', 'Chromium', 'Not?A_Brand'), ua: UA.macChrome }), 'chrome');
+  assert.equal(classifyBrowser({ ua: UA.macChrome, vendor: 'Google Inc.' }), 'chrome');
+  assert.equal(classifyBrowser({ ua: UA.macChrome }), 'chrome'); // server side
+  assert.equal(classifyBrowser({ brands: brands('Microsoft Edge', 'Chromium', 'Not?A_Brand'), ua: UA.macEdge }), 'edge');
+  assert.equal(classifyBrowser({ ua: UA.macEdge, vendor: 'Google Inc.' }), 'edge');
+  assert.equal(classifyBrowser({ ua: UA.safari, vendor: 'Apple Computer, Inc.' }), 'other');
 });
 
 test('Sec-CH-UA 헤더를 브랜드 목록으로 읽는다', () => {
@@ -80,6 +93,13 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   const entry = await fetch(`${base}/guest-entry`, { method: 'POST', headers: { ...edge, 'Content-Type': 'application/x-www-form-urlencoded' }, body: `token=${'x'.repeat(40)}` });
   assert.equal(entry.status, 403);
   assert.match(await entry.text(), /Google Chrome/);
+
+  // macOS Chrome gets the game like Windows Chrome (v1.10.23)
+  const mac = await fetch(`${base}/`, { headers: { 'User-Agent': UA.macChrome, 'Sec-CH-UA': chrome['Sec-CH-UA'], 'Sec-CH-UA-Platform': '"macOS"' } });
+  assert.equal(mac.status, 200);
+  assert.match(await mac.text(), /id="plazaError"/);
+  const macNoHints = await fetch(`${base}/`, { headers: { 'User-Agent': UA.macChrome } });
+  assert.equal(macNoHints.status, 200);
 
   const page = await fetch(`${base}/`, { headers: chrome });
   assert.equal(page.status, 200);

@@ -1625,6 +1625,10 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .islandPlaceRow strong{color:#fde68a}
 
 /* v1.10.14 game boot: resource preparation / Chrome notice over the whole page (public/game-boot.js) */
+/* v1.10.23: the island could not start -- a short error and a retry where the island would be (never the classic lobby) */
+.plazaError{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0b1220;color:#f8fafc;text-align:center}
+.plazaError strong{font-size:1.1rem;font-weight:900}
+.plazaStage.plazaFailed .islandChatTab,.plazaStage.plazaFailed .islandChatPanel,.plazaStage.plazaFailed .plazaHint{display:none}
 .bootView{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0b1220;color:#f8fafc;text-align:center}
 .bootView strong{font-size:1.2rem;font-weight:900}
 .bootPercent{font-size:1.35rem;font-weight:900;color:#fde68a}

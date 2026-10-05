@@ -2836,7 +2836,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.22' });
+    return sendJson(res, 200, { ok: true, version: '1.10.23' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3591,6 +3591,18 @@ async function requestHandler(req, res) {
     await savePlazaSpots(); // v1.10.7: leaving the island (a room, logout) keeps today's spot right away
     return sendJson(res, 200, { ok: true });
   }
+  // v1.10.23: a screen whose island could not start (Mac Chrome report) says why, once, into the server log -- the
+  // reason code, the browser's platform and GPU name, a short message; nothing personal, a few per session at most
+  if (pathname === '/api/plaza/diag' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`plazadiag:${session.token.slice(0, 12)}`, 5, 10 * 60 * 1000)) return sendJson(res, 200, { ok: true });
+    const body = await parseJson(req);
+    const clip = (value, n) => String(value ?? '').replace(/[\r\n\t]+/g, ' ').slice(0, n);
+    const code = ['webgl-unavailable', 'webgl-context', 'module', 'init'].includes(body.code) ? body.code : 'other';
+    console.warn(`게임 아일랜드 시작 실패: code=${code} platform=${clip(body.platform, 40)} gpu=${clip(body.gpu, 120)} ua=${clip(req.headers['sec-ch-ua-platform'] || '', 30)} detail=${clip(body.detail, 200)}`);
+    return sendJson(res, 200, { ok: true });
+  }
   // v1.10.7 당일 위치: where my island starts -- today's last spot (checked and moved to standable ground), or null for
   // the central plaza (a new day, or the first visit).
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
@@ -4171,7 +4183,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.22 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.23 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -30,13 +30,43 @@ function islandAssetRegistry() {
   return registry;
 }
 
-export function createPlaza(host, { facilities, onInteract, onNear, blocked, startAt }) {
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  } catch (error) {
-    return null; // no WebGL: the caller keeps the classic lobby
+// v1.10.23 Mac Chrome 구형 로비 노출 수정: the island's WebGL renderer, made more forgivingly, and a failure that says
+// why. A context is first asked for with the island's preferred settings, then -- if that fails (some GPUs and
+// drivers, e.g. a Mac switching graphics, refuse a particular setting) -- with Chrome's defaults, then without
+// antialiasing on the low-power GPU. Each try that fails leaves no context behind, and there are at most three.
+// Errors carry a `code` for the caller (app.js shows its error screen, never the classic lobby, and reports it):
+//   webgl-unavailable  the browser gives no WebGL2 at all (hardware acceleration off, GPU blocked)
+//   webgl-context      WebGL2 exists but no context with any of the settings
+//   init               the island failed while being built
+const RENDERER_TRIES = [
+  { antialias: true, powerPreference: 'high-performance' },
+  { antialias: true },
+  { antialias: false, powerPreference: 'low-power' },
+];
+const coded = (error, code, extra = {}) => Object.assign(error instanceof Error ? error : new Error(String(error)), { code: error?.code || code, ...extra });
+function createRenderer() {
+  let gpu = '';
+  const probe = document.createElement('canvas').getContext('webgl2');
+  if (!probe) throw coded(new Error('WebGL2 unavailable'), 'webgl-unavailable');
+  try { const ext = probe.getExtension('WEBGL_debug_renderer_info'); gpu = String(probe.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : probe.RENDERER) || ''); } catch {}
+  probe.getExtension('WEBGL_lose_context')?.loseContext(); // give the probe's context back before asking for the real one
+  const errors = [];
+  for (const [attempt, options] of RENDERER_TRIES.entries()) {
+    try { return { renderer: new THREE.WebGLRenderer(options), attempt, gpu }; } catch (error) { errors.push(error?.message || String(error)); }
   }
+  throw coded(new Error(`WebGL context: ${errors.join(' | ')}`), 'webgl-context', { gpu });
+}
+
+export function createPlaza(host, options) {
+  const made = createRenderer();
+  try { return buildPlaza(host, options, made); } catch (error) {
+    made.renderer.dispose(); made.renderer.domElement.remove();
+    throw coded(error, 'init', { gpu: made.gpu });
+  }
+}
+
+function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, made) {
+  const { renderer } = made;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1156,6 +1186,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // For tests and support: where things are, and a way to stand at a facility's door.
   function debug() {
     const p = me.root.position;
+    const webgl = { attempt: made.attempt, gpu: made.gpu }; // v1.10.23: which renderer try succeeded
     const screenOf = (id) => {
       const root = facilityRoots.find((r) => r.userData.facility === id);
       if (!root) return null;
@@ -1163,7 +1194,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, assets: assets.debug(), setSeason: (season) => { seasonOverride = season; assets.setSeason(season ?? AssetPipeline.seasonOf(Date.now() + serverOffset)); }, gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), setSeason: (season) => { seasonOverride = season; assets.setSeason(season ?? AssetPipeline.seasonOf(Date.now() + serverOffset)); }, gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
