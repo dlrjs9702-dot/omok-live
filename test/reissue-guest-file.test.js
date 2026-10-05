@@ -138,7 +138,7 @@ test('old entry token authenticates on Render destination with the same account 
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
   });
-  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.25' });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.26' });
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
   assert.equal(issued.status, 201);
