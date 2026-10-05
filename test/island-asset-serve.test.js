@@ -77,6 +77,7 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
     assert.equal(res.headers.get('cache-control'), 'no-cache', url);
     assert.equal(res.headers.get('etag'), `"${rev}"`, url);
     assert.equal((await fetch(`${base}${url}`, { headers: { 'If-None-Match': `"${rev}"` } })).status, 304, url);
+    assert.equal((await fetch(`${base}${url}`, { headers: { 'If-None-Match': `W/"${rev}"` } })).status, 304, `${url} weak`); // as Cloudflare passes it on
   }
   const vendor = await fetch(`${base}/vendor/three/three.core.js`);
   assert.equal(vendor.headers.get('cache-control'), 'no-cache');

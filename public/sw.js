@@ -35,11 +35,29 @@ async function checkServer() {
   await self.registration.unregister();
 }
 
-async function fromActivePack(key) {
+async function activeCache() {
   const pointer = await caches.match('/active', { cacheName: META });
   const active = pointer && await pointer.json();
-  if (!active?.cache || !(await caches.has(active.cache))) return null;
-  return (await caches.open(active.cache)).match(key, { ignoreVary: true });
+  return active?.cache && await caches.has(active.cache) ? caches.open(active.cache) : null;
+}
+
+async function fromActivePack(key) {
+  return (await activeCache())?.match(key, { ignoreVary: true }) || null;
+}
+
+// v1.10.25 groups fetched when used (a game's cards, a skin's files): a `?rev=` file not stored yet is fetched and, once
+// its content matches the revision in its URL, kept under that key -- the same check the page makes, so the cache never
+// holds a file under a revision it does not have. Nothing is kept before the page has prepared the cache.
+async function keep(key, rev, response) {
+  try {
+    if (!response.ok || response.type !== 'basic' || !/^[0-9a-f]{16}$/.test(rev || '')) return;
+    const cache = await activeCache();
+    if (!cache) return;
+    const body = await response.arrayBuffer();
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', body));
+    if (Array.from(digest.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('') !== rev) return;
+    await cache.put(key, new Response(body, { headers: { 'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream' } }));
+  } catch {}
 }
 
 self.addEventListener('fetch', event => {
@@ -48,5 +66,9 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') event.waitUntil(checkServer());
   if (request.method !== 'GET' || !url.searchParams.has('rev')) return;
-  event.respondWith(fromActivePack(url.pathname + url.search).catch(() => null).then(hit => hit || fetch(request)));
+  const key = url.pathname + url.search;
+  event.respondWith(fromActivePack(key).catch(() => null).then(hit => hit || fetch(request).then(response => {
+    event.waitUntil(keep(key, url.searchParams.get('rev'), response.clone()));
+    return response;
+  })));
 });
