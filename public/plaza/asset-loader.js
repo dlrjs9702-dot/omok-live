@@ -458,6 +458,51 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // AnimationMixer moves everything and a High/Low switch keeps the motion, the sockets and what is worn. Materials are
   // cloned per character before any colour goes on (a dye or a keeper's colours never reach anyone else); a part's
   // dye goes on its dye material only. The clips come from the motion files (one clip each, the same rig).
+  // v1.10.32: a material is shared by every character that wears it in the same colours (only a dye or a keeper's own
+  // colours make a copy of its own), counted, and freed with the last one; the geometry of a part is shared as loaded,
+  // or -- when a combination asks a part to give way (P.fitWardrobe) -- one fitted copy per file and combination.
+  const wearMats = new Map(); // key -> { key, material, refs }
+  function wearMaterial(source, want) {
+    const key = `${source.uuid}|${want || ''}`;
+    let rec = wearMats.get(key);
+    if (!rec) { const material = source.clone(); if (want) material.color.set(want); made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
+    rec.refs += 1; return rec;
+  }
+  function dropMaterial(rec) {
+    rec.refs -= 1; if (rec.refs > 0) return;
+    wearMats.delete(rec.key); rec.material.dispose(); const k = made.indexOf(rec.material); if (k >= 0) made.splice(k, 1);
+  }
+  // a skinned mesh's vertices in the rig's rest space (its file's own pose: the bones as loaded, its inverse binds and
+  // bind matrix -- a quantized file's dequantizing scale is in there too), and back
+  const restMatrix = (mesh) => new THREE.Matrix4().multiplyMatrices(mesh.skeleton.bones[0].matrixWorld, mesh.skeleton.boneInverses[0]).multiply(mesh.bindMatrix);
+  const restCache = new Map(); // geometry uuid -> rest positions
+  function restOf(mesh) {
+    const key = mesh.geometry.uuid;
+    if (!restCache.has(key)) {
+      const attr = mesh.geometry.attributes.position; const M = restMatrix(mesh); const v = new THREE.Vector3(); const out = new Float32Array(attr.count * 3);
+      for (let i = 0; i < attr.count; i += 1) { v.fromBufferAttribute(attr, i).applyMatrix4(M); out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+      restCache.set(key, out);
+    }
+    return restCache.get(key);
+  }
+  const fittedOf = new Map(); // `${geometry uuid}|${ops}` -> geometry
+  function fittedGeometry(mesh, ops) {
+    const key = `${mesh.geometry.uuid}|${JSON.stringify(ops)}`;
+    if (!fittedOf.has(key)) {
+      const g = mesh.geometry; const index = g.index ? Array.from(g.index.array) : null;
+      const done = P.applyFit(restOf(mesh), index, ops);
+      const out = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(g.attributes)) out.setAttribute(name, attr); // shared, but for a moved position
+      if (done.pos) {
+        const back = restMatrix(mesh).invert(); const v = new THREE.Vector3(); const arr = new Float32Array(done.pos.length);
+        for (let i = 0; i < arr.length; i += 3) { v.set(done.pos[i], done.pos[i + 1], done.pos[i + 2]).applyMatrix4(back); arr[i] = v.x; arr[i + 1] = v.y; arr[i + 2] = v.z; }
+        out.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      }
+      if (done.index || index) out.setIndex(done.index || index);
+      made.push(out); fittedOf.set(key, out);
+    }
+    return fittedOf.get(key);
+  }
   const wearing = []; // characters with a High/Low pair: { c, high: [meshes], low: [meshes], isHigh }
   function wear(c, plan) {
     const base = P.pick(registry, 'character.base', off, null); if (!base || !plan) return;
@@ -474,27 +519,33 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       place(object, base.entry);
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
-      const high = []; const low = [];
-      const own = (m) => { const mats = [].concat(m.material).map((x) => x.clone()); m.material = Array.isArray(m.material) ? mats : mats[0]; made.push(...mats); return mats; };
-      const colour = (mesh, colors) => { for (const m of [].concat(mesh.material)) { const want = colors?.[m.name]; if (want) m.color.set(want); } };
-      const adopt = (gltf, colors, into) => {
-        const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true);
-        const meshes = []; copy.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
-        for (const m of meshes) {
+      const high = []; const low = []; const mats = [];
+      const own = (m, colors) => { // the shared material in the colours this character wants on it
+        const list = [].concat(m.material).map((x) => { const rec = wearMaterial(x, colors?.[x.name] || plan.tint?.[x.name]); mats.push(rec); return rec.material; });
+        m.material = Array.isArray(m.material) ? list : list[0];
+      };
+      const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };
+      // what each part gives way to in this combination (asset-pipeline fitWardrobe), worked out on the High files
+      const fits = P.fitWardrobe(parts.map((p, i) => ({ id: plan.parts[i], fit: p.entry.fit || null, pos: meshesOf(byUrl.get(p.entry.url)).flatMap((m) => Array.from(restOf(m))) })));
+      const adopt = (gltf, colors, into, fit) => {
+        for (const m of meshesOf(gltf)) {
+          if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
+          if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
-          m.frustumCulled = false; m.castShadow = true; own(m); colour(m, plan.tint); colour(m, colors); into.push(m);
+          m.frustumCulled = false; m.castShadow = true; own(m, colors); into.push(m);
         }
       };
-      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o); colour(o, plan.tint); high.push(o); } });
+      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } });
       const lowBody = base.entry.lowUrl ? byUrl.get(base.entry.lowUrl) : null;
-      if (lowBody) adopt(lowBody, null, low);
+      if (lowBody) adopt(lowBody, null, low, null);
       parts.forEach((p, i) => {
-        const colors = plan.colors?.[plan.parts[i]];
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : []); // a part without a Low file shows at every distance
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low);
+        const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit); // a part without a Low file shows at every distance
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit);
       });
+      c.wearMats = mats; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
       const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
       // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
@@ -530,8 +581,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // Before a character is thrown away: its copy goes, the shared geometry stays for the others.
   function release(c) {
     c.anim?.dispose(); if (c.assetRoot) c.root.remove(c.assetRoot);
-    if (c.wardrobe) c.assetRoot?.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) { m.dispose(); const k = made.indexOf(m); if (k >= 0) made.splice(k, 1); } });
-    c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null;
+    for (const rec of c.wearMats || []) dropMaterial(rec);
+    c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null; c.wearMats = null; c.fitted = null;
   }
 
   function setQuality(next) {
@@ -571,5 +622,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

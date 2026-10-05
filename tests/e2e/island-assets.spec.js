@@ -328,12 +328,47 @@ test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
   expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
-  // an item without a part yet: the procedural character, nothing swapped
+  // v1.10.32: an older item without a part until now (무지개 머리) is the common character too, its own remade part
   expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_5' })).status).toBe(200);
   await ready();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hair)).toBe('avatar_hair_5');
-  await page.waitForTimeout(3000);
-  expect(await page.evaluate(() => window.PlazaDebug().wardrobe)).toBe(null);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_rainbow', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
+  await expectNoScriptError(page);
+  await who.context.close();
+});
+
+// v1.10.32 캐릭터 조합 맞춤: the parts that meet where they are worn give way, from their own shapes -- the beanie's crown
+// over the curls (cover), the moon pendant out over the robe's front, the long cape draped over the robe's skirt (shift),
+// the ribbon tail out of the cape's cloth (slab); the boots replace the plain shoes and the robe the shirt and skirt; every
+// High mesh has its Low one (a far character changes model, never loses a part); the five accessory slots at once
+test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬리-망토, 액세서리 5칸 동시 장착, High/Low 짝', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const who = await shopper(browser, request, '조합맞춤', 5_000_000, 'female');
+  const { page, token } = who;
+  const items = ['avatar_hair_2', 'avatar_outfit_13', 'avatar_hat_6', 'avatar_cape_2', 'avatar_tail_10', 'avatar_shoes_2', 'avatar_necklace_4'];
+  for (const id of items) {
+    expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
+    expect((await post(request, '/api/skins/equip', token, { skinId: id })).status).toBe(200);
+  }
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+  const worn = ['wear.face_eyes_cheeks', 'wear.hair_curly', 'wear.outfit_robe', 'wear.hat_beanie', 'wear.cape_long', 'wear.tail_ribbon', 'wear.shoes_boots', 'wear.necklace_moon'];
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(worn);
+  const mine = await page.evaluate((list) => window.PlazaDebug().assets.wearing.find((w) => JSON.stringify(w.parts) === JSON.stringify(list)), worn);
+  expect(mine.fitted).toEqual({ 'wear.hair_curly': ['cover'], 'wear.cape_long': ['shift'], 'wear.tail_ribbon': ['slab'], 'wear.necklace_moon': ['shift'] });
+  expect(mine.meshes.low).toBe(mine.meshes.high);
+  expect(await page.evaluate(() => Object.keys(window.PlazaDebug().look).filter((k) => ['hat', 'cape', 'tail', 'shoes', 'necklace'].includes(k)).sort())).toEqual(['cape', 'hat', 'necklace', 'shoes', 'tail']);
+  if (process.env.SHOT_DIR) { // a look for whoever runs this locally (front, then from behind)
+    const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
+    const clip = { x: box.x + box.width / 2 - 110, y: box.y + box.height / 2 - 40, width: 220, height: 260 };
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/combo-back.png`, clip });
+    await page.keyboard.down('KeyA'); await page.waitForTimeout(1650); await page.keyboard.up('KeyA'); await page.waitForTimeout(400);
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/combo-front.png`, clip });
+  }
+  // taking a slot off puts the base back (no shoes bought: the plain ones)
+  expect((await post(request, '/api/skins/equip', token, { game: 'avatar', slot: 'shoes', skinId: null })).status).toBe(200);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.wardrobe), { timeout: 90000 })
+    .toEqual(['wear.face_eyes_cheeks', 'wear.hair_curly', 'wear.shoes', 'wear.outfit_robe', 'wear.hat_beanie', 'wear.cape_long', 'wear.tail_ribbon', 'wear.necklace_moon']);
   await expectNoScriptError(page);
   await who.context.close();
 });

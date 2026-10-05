@@ -134,6 +134,86 @@
   const LOD_SCALE = [0.5, 0.75, 1];
   const lodDistance = (base, tier) => base * (LOD_SCALE[tier] ?? 1);
 
+  // v1.10.32 캐릭터 조합 맞춤: what each worn part must give way to, worked out from the parts themselves in the common
+  // rig's rest space (y up, the front -z, metres; every part file shares it) -- so a new skin needs no hand-placed
+  // numbers, only its slot (and a hat its brim line). `parts`: [{ id, fit: { slot, cover, hideWith }, pos: [x,y,z,...]
+  // (the High file's vertices) }] -> { [id]: { ops: [...], hide: [material names] } }. The ops, applied by applyFit:
+  //  - cover   a hat's crown hides the hair faces above its brim line (a bun, curls or spikes never poke through);
+  //  - shift   a necklace's pendant comes forward over whatever the clothes have on the chest (a bib, a plate, a tie);
+  //            a cape hangs behind the clothes' back, band by band from the shoulders down (a hood, a skirt, a coat
+  //            push it out, and lower bands never come in again: it drapes);
+  //  - slab    a tail's faces caught inside the cape's cloth come out behind it (no flicker of two surfaces in one place);
+  //  - hide    a part's own built-in piece gives way to a worn one (the 왕실 망토 outfit's cape when a cape is worn).
+  // Faces and vertices only move or go (per character combination; the files stay as they are).
+  const FIT = { band: 0.06, gap: 0.015, chest: { x: 0.16, y0: 0.86, y1: 1.06 }, pendantZ: -0.2, capeZ: 0.15, back: 0.36, tailX: 0.45 };
+  function fitWardrobe(parts) {
+    const out = Object.fromEntries(parts.map((p) => [p.id, { ops: [], hide: [] }]));
+    const of = (slots) => parts.filter((p) => slots.includes(p.fit?.slot));
+    const each = (list, fn) => { for (const p of list) for (let i = 0; i < p.pos.length; i += 3) fn(p.pos[i], p.pos[i + 1], p.pos[i + 2]); };
+    const slots = new Set(parts.map((p) => p.fit?.slot));
+    for (const p of parts) for (const [slot, mats] of Object.entries(p.fit?.hideWith || {})) if (slots.has(slot)) out[p.id].hide.push(...mats);
+    const cover = Math.min(...of(['hat']).map((p) => p.fit?.cover ?? Infinity));
+    if (Number.isFinite(cover)) for (const p of of(['hair'])) out[p.id].ops.push({ kind: 'cover', above: cover });
+    const clothes = of(['outfit', 'top', 'bottom']);
+    for (const neck of of(['necklace'])) {
+      let front = Infinity; let back = -Infinity;
+      each(clothes.filter((p) => p.fit.slot !== 'bottom'), (x, y, z) => { if (Math.abs(x) < FIT.chest.x && y > FIT.chest.y0 && y < FIT.chest.y1) front = Math.min(front, z); });
+      each([neck], (x, y, z) => { if (z < FIT.pendantZ && y < FIT.chest.y1) back = Math.max(back, z); });
+      const dz = front - FIT.gap - back;
+      if (Number.isFinite(dz) && dz < 0) out[neck.id].ops.push({ kind: 'shift', zMax: FIT.pendantZ, yMax: FIT.chest.y1, curve: [[0, dz]] });
+    }
+    const bandOf = (y) => Math.round(y / FIT.band);
+    for (const cape of of(['cape'])) {
+      const back = new Map(); const inner = new Map();
+      each(clothes, (x, y, z) => { if (Math.abs(x) < FIT.back) { const b = bandOf(y); back.set(b, Math.max(back.get(b) ?? -Infinity, z)); } });
+      each([cape], (x, y, z) => { if (z > FIT.capeZ) { const b = bandOf(y); inner.set(b, Math.min(inner.get(b) ?? Infinity, z)); } });
+      const bands = [...inner.keys()].sort((a, b) => b - a); // from the shoulders down
+      let need = 0; const curve = [];
+      for (const b of bands) { if (back.has(b)) need = Math.max(need, back.get(b) + FIT.gap - inner.get(b)); curve.push([b * FIT.band, need]); }
+      if (curve.some(([, dz]) => dz > 0)) out[cape.id].ops.push({ kind: 'shift', zMin: FIT.capeZ, curve });
+      // the cape's cloth where it now hangs, for the tail
+      const shifted = { pos: applyFit(cape.pos, null, out[cape.id].ops).pos || cape.pos };
+      const lo = new Map(); const hi = new Map();
+      each([shifted], (x, y, z) => { if (z > FIT.capeZ && Math.abs(x) < FIT.tailX) { const b = bandOf(y); lo.set(b, Math.min(lo.get(b) ?? Infinity, z)); hi.set(b, Math.max(hi.get(b) ?? -Infinity, z)); } });
+      const slab = [...lo.keys()].map((b) => [b * FIT.band, lo.get(b) - 0.01, hi.get(b) + FIT.gap]);
+      for (const tail of of(['tail'])) out[tail.id].ops.push({ kind: 'slab', xAbs: FIT.tailX, bands: slab });
+    }
+    return out;
+  }
+  // The ops on one geometry: rest-space positions (flat array) and its triangle list (null: unindexed) ->
+  // { pos: new positions or null (unchanged), index: new triangle list or null (unchanged) }
+  function applyFit(pos, index, ops) {
+    let P = null; let I = null;
+    const curveAt = (curve, y) => {
+      if (curve.length === 1) return curve[0][1];
+      for (let k = 0; k < curve.length - 1; k += 1) { const [y0, a] = curve[k]; const [y1, b] = curve[k + 1]; if (y <= y0 && y >= y1) return a + ((y0 - y) / (y0 - y1 || 1)) * (b - a); }
+      return y > curve[0][0] ? curve[0][1] : curve[curve.length - 1][1];
+    };
+    for (const op of ops) {
+      if (op.kind === 'cover') {
+        const src = I || index || Array.from({ length: pos.length / 3 }, (_, i) => i);
+        const keep = [];
+        for (let t = 0; t < src.length; t += 3) { const cy = ((P || pos)[src[t] * 3 + 1] + (P || pos)[src[t + 1] * 3 + 1] + (P || pos)[src[t + 2] * 3 + 1]) / 3; if (cy <= op.above) keep.push(src[t], src[t + 1], src[t + 2]); }
+        if (keep.length !== src.length) I = keep;
+      } else if (op.kind === 'shift') {
+        P ||= Float32Array.from(pos);
+        for (let i = 0; i < P.length; i += 3) {
+          const y = P[i + 1]; const z = P[i + 2];
+          if ((op.zMin !== undefined && z <= op.zMin) || (op.zMax !== undefined && z >= op.zMax) || (op.yMax !== undefined && y >= op.yMax)) continue;
+          P[i + 2] = z + curveAt(op.curve, y);
+        }
+      } else if (op.kind === 'slab') {
+        P ||= Float32Array.from(pos);
+        for (let i = 0; i < P.length; i += 3) {
+          if (Math.abs(P[i]) > op.xAbs) continue;
+          const band = op.bands.find(([y]) => Math.abs(y - P[i + 1]) <= FIT.band / 2); if (!band) continue;
+          if (P[i + 2] >= band[1] && P[i + 2] < band[2]) P[i + 2] = band[2];
+        }
+      }
+    }
+    return { pos: P, index: I };
+  }
+
   // What the scene calls. With nothing registered (the default) every call is a no-op and the loader module is never
   // fetched; otherwise the loader is imported once and the calls made meanwhile are replayed on it. A loader that
   // cannot load leaves every target procedural.
@@ -180,5 +260,5 @@
     };
   }
 
-  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, createLazyAssets };
+  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, fitWardrobe, applyFit, createLazyAssets };
 });
