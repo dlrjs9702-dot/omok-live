@@ -191,7 +191,7 @@ test.describe('업데이트 실패', () => {
 
     failing = true;
     await page.reload();
-    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패');
+    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 20_000 }); // the winter files come last among ~48 (v1.10.28 Low files): a slow runner needs more than 5 s to reach them
     await expect(page.locator('#bootRetry')).toBeVisible();
     expect(await pending(page)).toBe(true);
     expect(await active(page)).toEqual({ version: 'older', cache: FILES }); // not pointed at the new version
@@ -267,7 +267,7 @@ test.describe('롤백', () => {
     // the worker is in control here, so the route goes on the context (it also sees the worker's requests)
     await context.route(/\/assets\/island\/seasonal-v2\/winter\/[^?]+\?rev=/, route => route.abort('internetdisconnected'));
     await page.reload();
-    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패');
+    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 20_000 });
     await page.evaluate(() => { localStorage.setItem('keep.me', '1'); sessionStorage.setItem('keep.me', '1'); });
 
     expect((await setCache(request, false)).ok()).toBe(true);

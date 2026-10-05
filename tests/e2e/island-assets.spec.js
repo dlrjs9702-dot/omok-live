@@ -130,9 +130,11 @@ test('로더 자체를 받지 못해도 모든 대상이 코드 생성형으로 
 });
 
 // v1.10.17 nature and plaza props
-test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기존 자리·회전·크기에 배치하고, 가까운 칸만 모델, 실패한 종류는 코드 생성형, 소품도 교체된다', async ({ browser, request }) => {
+// v1.10.28: with a model, every copy at every distance is the model (no procedural copies left); without a Low file
+// (here it is missing) the full model is used far away too
+test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기존 자리·회전·크기에 배치하고, 모든 거리에서 모델(Low 없으면 High), 실패한 종류는 코드 생성형, 소품도 교체된다', async ({ browser, request }) => {
   const a = await island(browser, request, '자연물', {
-    'nature.tree.round': { url: BOX, scale: 1.5 },
+    'nature.tree.round': { url: BOX, scale: 1.5, low: { url: '/assets/island/__e2e/missing-low.glb' } },
     'nature.flower': { url: BOX, scale: 0.2 },
     'nature.bush': { url: '/assets/island/__e2e/missing-bush.glb' },
     'prop.bench': { url: BOX },
@@ -145,6 +147,8 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
   expect(tree.placed).toBe(true);
   expect(tree.copies).toBeGreaterThan(20); // every round tree on the island
   expect(tree.parts).toBe(1); // a plain-coloured model: flattened into one part, one draw call per square
+  expect(tree.procedural).toBe(0); // no copy is drawn procedural, near or far
+  expect(tree.low).toBe(null); // the Low file failed: High everywhere
   // next to one of them (the model distance shrinks on a slow machine's lower quality tiers)
   await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x + 1.5, z + 1.5), tree.at);
   await expect.poll(async () => (await batches()).find((b) => b.ids[0] === 'nature.tree.round').near).toBeGreaterThan(0);
@@ -211,7 +215,10 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const files = Object.entries(d.assets.files).filter(([url]) => url.includes('/seasonal-v2/'));
   for (const [, state] of files) expect(state).toBe('loaded');
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-    for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);
+    for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) {
+      expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);
+      expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}_low.glb`)), `${season} ${kind} low`).toBe(true); // v1.10.28
+    }
   }
   const gazebo = d.assets.attaches.find((x) => x.ids.includes('facility.chat'));
   expect(gazebo.zone).toBeGreaterThanOrEqual(0);
@@ -224,11 +231,49 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.includes('/seasonal-v2/'));
   });
-  expect(cached.length).toBe(32);
+  expect(cached.length).toBe(48); // 32 models + 16 Low files, all four seasons
   for (const [url] of files) expect(cached).toContain(url);
-  for (const b of d.assets.batches) { expect(b.placed).toBe(true); expect(b.parts).toBe(1); }
+  for (const b of d.assets.batches) {
+    expect(b.placed).toBe(true); expect(b.parts).toBe(1);
+    expect(b.procedural).toBe(0); // the island never turns procedural with distance
+    expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
+  }
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors);
   await stillPlays(page);
+  expect(a.errors).toEqual([]);
+  await a.context.close();
+});
+
+// v1.10.28 섬 전체 High/Low LOD (사용자 결정 2026-10-05): the registered models as players get them -- near the player a
+// tree is the full model, far away the same design simplified (never the procedural look), and the switch has a band
+test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 Low, 경계에는 히스테리시스, 생성형으로 돌아가지 않는다', async ({ browser, request }) => {
+  const a = await island(browser, request, 'LOD', null);
+  const { page } = a;
+  const tree = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.tree.round');
+  await expect.poll(async () => (await tree())?.placed, { timeout: 30000 }).toBe(true);
+  const t = await tree();
+  expect(t.low).toMatch(/tree_v1_[a-z]+_low\.glb$/);
+  await page.evaluate(() => window.PlazaDebug().holdQuality(2)); // a slow test machine must not change the distances mid-way
+  const near = async () => page.evaluate(() => { const d = window.PlazaDebug(); return 35 * window.AssetPipeline.LOD_SCALE[d.quality]; });
+  // the player stands `dist` east of the first round tree
+  const standAt = async (dist) => { await page.evaluate(([x, z, dd]) => window.PlazaDebug().teleport(x + dd, z), [...t.at, dist]); await page.waitForTimeout(250); };
+  await standAt(2);
+  await expect.poll(async () => (await tree()).first).toBe('high');
+  await standAt((await near()) + 1.5); // past `near` but inside the band: stays High
+  await expect.poll(async () => (await tree()).first).toBe('high');
+  await standAt((await near()) * 1.1 + 3); // past the band: Low
+  await expect.poll(async () => (await tree()).first).toBe('low');
+  await standAt((await near()) + 1.5); // back inside the band from far: stays Low
+  await expect.poll(async () => (await tree()).first).toBe('low');
+  await standAt((await near()) - 2); // inside `near`: High again
+  await expect.poll(async () => (await tree()).first).toBe('high');
+  // across the island everything stays the model (High near, Low far), never procedural, never drawn twice
+  for (const b of (await debug(page)).assets.batches) {
+    expect(b.procedural).toBe(0);
+    expect(b.near + b.far).toBe(b.copies);
+  }
+  const all = await tree();
+  expect(all.far).toBeGreaterThan(0); expect(all.near).toBeGreaterThan(0);
   expect(a.errors).toEqual([]);
   await a.context.close();
 });

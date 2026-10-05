@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.28 섬 전체 High/Low LOD(4계절 구역 구조 위, 원거리 생성형 전환 제거)
+
+고품질화 LOD·품질 단계(사용자 지시 2026-10-05: 4계절 동시 존재 구조 위에서 재검토). 이전 WIP `claude/island-lod-v11026`은 기계적으로 병합하지 않고, Low 파일·레지스트리·히스테리시스·테스트만 재사용하고 로더 묶음 구조는 계절 구역 그룹에 맞춰 다시 작성. `public/plaza/asset-loader.js`·`asset-pipeline.js`·`island-assets.js`·`plaza-scene.js`(디버그), `tools/assets/island-models.json`, Low 파일 16개.
+
+- 대체한 구조: "근거리 GLB / 원거리 생성형" 사본 LOD → 모델이 있는 대상은 모든 거리에서 같은 계열(가까이 High, 멀리 Low). 생성형은 모델 없는 계절·로딩 실패·비활성화·`ISLAND_ASSETS_OFF` fallback으로만.
+- 구조: 칸(60)마다 계절 구역 그룹, 그룹마다 그 구역 오늘 계절의 High·Low 모델 부품별 InstancedMesh(geometry·material은 로드 파일 공유, 정리 시 인스턴스 버퍼만 dispose). 사본마다 High/Low 상태를 기억하고 `near`(나무 35, 관목 22, 품질 배율 0.5/0.75/1) 안이면 High, `near × 1.1` 밖이면 Low(히스테리시스 `highState`), 바뀐 칸만 다시 채움. 날이 바뀌면 그룹을 새 계절 High·Low로 재구성. Low 파일 없음(바위·그루터기, 또는 실패) → High 전 거리. 그림자: High만 cast, Low는 receive만(그림자 카메라 ±30).
+- Low: 같은 원본에서 파이프라인 `low` 프로필(`-si 0.25 -sa -cc`)로 자동 생성 — 나무 3종·관목 × 4계절 16개 161,732 B(재생성 시 동일 바이트). 아일랜드 필수 그룹 642,344 B(High 480,612 + Low 161,732). 벤치·화단·정자는 부착 대상이라 원래 거리와 무관하게 GLB만 표시 → Low 불필요(필요 시 부착 LOD 연결).
+- 측정(로컬 RX 570·D3D11 실제 GPU, 프레임 제한 해제, 같은 12시점, 품질 2단계 고정, 계절일 20736; 회사 PC 대표값 아님): 현재 운영 구조(A, 월간 계절·원거리 생성형) 그리기 평균 407·삼각형 0.69M·프레임 중앙값 3.42ms → v1.10.28(4계절+LOD) 397·0.41M·3.35ms, 생성형 사본 0, geometry 686개. 삼각형이 줄어든 것은 겨울 맨가지 나무(1.8k) 등 계절 혼합 영향으로 추정. 캡처로 먼 나무가 구역 계절 GLB(북 봄·서 겨울)로 보이는 것 확인.
+- 테스트: 단위(Low 계절 해석·히스테리시스 왕복 1회씩·운영 등록부 Low 존재·High보다 가벼움·예산·설정 일치), e2e(운영 등록부: 사계절 High·Low 모두 로드·캐시 48개·모든 묶음 생성형 0·near+far=사본 수, LOD: 가까이 High→밴드 안 유지→밴드 밖 Low→밴드 안 Low 유지→안쪽 High, Low 파일 실패 시 High 전 거리). 테스트 중 자동 품질 변경 방지용 `PlazaDebug().holdQuality(tier)` 추가.
+- CI: 1차는 느린 러너에서 광장 멀티유저 테스트 재시도로 40분 제한 초과(기존 flaky), 재실행은 `asset-cache` "받다가 끊기면" 실패 — 입장 전 파일이 32→48개로 늘어 마지막 순서인 겨울 파일에서 끊기까지 5초(기본 대기)를 넘김 → 해당 확인 2곳 대기 20초.
+
 ## v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전(월간 전체섬 계절 폐기)
 
 IDEAS 「게임 아일랜드 4계절 동시 존재·일일 회전 규칙」(사용자 2026-10-05). `public/plaza/island-terrain.js`, `asset-pipeline.js`, `asset-loader.js`, `plaza-scene.js`, `island-assets.js`(주석).

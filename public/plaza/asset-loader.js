@@ -163,80 +163,102 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
   // { x, z (its centre), parent, procedural: [the square's InstancedMesh of this kind], matrices: [one per copy],
-  // colors: [its tint per copy] | null, shadow }. Once the models are in, every square draws its near copies with the
-  // model, placed with the very matrices the procedural copies had (place, turn, size -- so where things stand, their
-  // collision and every game rule stay as they were).
-  // v1.10.18: copy by copy -- update() puts the copies near the player into the model's meshes and the rest into the
-  // procedural one, so a detailed model costs triangles only where one stands close.
-  // v1.10.27 4계절 동시 존재: each copy shows the season of the zone its place is in (fixed per copy), and today's
-  // season of each zone comes from the day -- so a square holds one group of InstancedMeshes per zone it touches, each
-  // with that zone's seasonal model; the copies are not multiplied. A new day rebuilds the groups with the moved
-  // seasons. A copy whose season has no model (nothing registered for it, a failed file) stays procedural.
+  // colors: [its tint per copy] | null, shadow }. Every copy is drawn with the very matrix the procedural copy had
+  // (place, turn, size -- so where things stand, their collision and every game rule stay as they were).
+  // v1.10.27 4계절 동시 존재: each copy shows the season of the zone its place is in (fixed per copy), today's season of
+  // each zone comes from the day -- so a square holds one group per zone it touches, with that zone's seasonal model;
+  // the copies are not multiplied. A new day rebuilds the groups with the moved seasons.
+  // v1.10.28 섬 전체 High/Low LOD (사용자 결정 2026-10-05): with a model, a copy shows it at every distance -- the full
+  // (High) model near the player, the same design simplified (Low, the entry's `low` file of that season, made by the
+  // build pipeline) farther away -- so the island keeps one art style everywhere and never turns procedural with
+  // distance. Each zone group has one InstancedMesh per model part for High and one for Low, sharing the loaded
+  // geometry and material (disposed with the file, never per copy). A copy turns High inside `near` and back to Low
+  // only past `near` x HIGH_BAND (hysteresis, asset-pipeline `highState`); only squares where a copy changed side are
+  // filled again. Only High casts shadows (the shadow camera covers about 30 around the player anyway). Without a Low
+  // file (rocks, the stump: already light) the High model is used at every distance. The procedural copies are only
+  // the fallback: a season with no model (nothing registered, a failed file, switched off).
   function batch(ids, cells) { const rec = { ids, cells, key: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
   // each copy's zone, worked out once (places never move)
   const zonesOf = (cell) => (cell.zones ||= cell.matrices.map((m) => (T ? T.seasonZoneAt(m.elements[12], m.elements[14]) : -1)));
-  // the copies near the player (flags) into their zone's model meshes, the rest back in the square's procedural mesh
-  function fill(p, near) {
+  // the copies into their zone group's High or Low meshes (by p.flags), the ones without a model in the procedural mesh
+  function fill(p) {
     const { cell } = p; const proc = cell.procedural[0]; let b = 0;
-    for (const g of p.groups.values()) g.n = 0;
+    for (const g of p.groups.values()) { g.a = 0; g.b = 0; }
     cell.matrices.forEach((m, i) => {
       const g = p.groups.get(p.zones[i]);
-      if (g && near && near[i]) { for (const im of g.meshes) im.setMatrixAt(g.n, both.multiplyMatrices(m, local).multiply(im.userData.part)); g.n += 1; }
-      else { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; }
+      if (!g) { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; return; }
+      const high = p.flags[i] === 1 || !g.low; // no Low file: High everywhere
+      for (const im of (high ? g.high : g.low)) im.setMatrixAt(high ? g.a : g.b, both.multiplyMatrices(m, local).multiply(im.userData.part));
+      if (high) g.a += 1; else g.b += 1;
     });
-    p.near = 0;
-    for (const g of p.groups.values()) { for (const im of g.meshes) { im.count = g.n; im.visible = g.n > 0; im.instanceMatrix.needsUpdate = true; } p.near += g.n; } // nothing to draw: not even a call
+    const set = (meshes, n) => { for (const im of meshes) { im.count = n; im.visible = n > 0; im.instanceMatrix.needsUpdate = true; } }; // none: not even a call
+    p.near = 0; p.far = 0;
+    for (const g of p.groups.values()) { set(g.high, g.a); if (g.low) set(g.low, g.b); p.near += g.a; p.far += g.b; }
     proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+    p.procedural = b;
+  }
+  function restoreProcedural(cell) {
+    const proc = cell.procedural[0];
+    cell.matrices.forEach((m, i) => { proc.setMatrixAt(i, m); if (cell.colors) proc.setColorAt(i, cell.colors[i]); });
+    proc.count = cell.matrices.length; proc.visible = proc.count > 0;
+    proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
   }
   function clearBatch(rec) {
-    if (rec.placed) for (const p of rec.placed) { for (const g of p.groups.values()) for (const im of g.meshes) { p.cell.parent.remove(im); im.dispose(); } p.groups.clear(); fill(p, null); }
+    if (rec.placed) {
+      for (const p of rec.placed) {
+        for (const g of p.groups.values()) for (const im of [...g.high, ...(g.low || [])]) { p.cell.parent.remove(im); im.dispose(); } // the instance buffers; geometry and material stay the file's
+        p.groups.clear(); restoreProcedural(p.cell);
+      }
+    }
     rec.placed = null; rec.entry = null;
   }
   const local = new THREE.Matrix4(); const both = new THREE.Matrix4();
   const entryMatrix = (entry, out) => out.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
   function applyBatch(rec) {
-    // the model of each zone today (zones -1..3; -1 = the neutral plaza)
+    // the model (and its Low file) of each zone today (zones -1..3; -1 = the neutral plaza)
     const zones = new Set(rec.cells.flatMap((cell) => zonesOf(cell)));
     const hits = new Map([...zones].map((zone) => [zone, P.pick(registry, rec.ids, off, lookOf(zone))]));
-    const key = `${day}|${[...hits].map(([zone, hit]) => `${zone}:${hit?.entry.url || ''}`).sort().join(',')}`;
+    const key = `${day}|${[...hits].map(([zone, hit]) => `${zone}:${hit?.entry.url || ''}:${hit?.entry.lowUrl || ''}`).sort().join(',')}`;
     if (key === rec.key) return;
     rec.key = key;
     const any = [...hits.values()].find(Boolean);
     if (!any) { clearBatch(rec); return; }
-    const urls = [...new Set([...hits.values()].filter(Boolean).map((hit) => hit.entry.url))];
+    const urls = [...new Set([...hits.values()].filter(Boolean).flatMap((hit) => [hit.entry.url, hit.entry.lowUrl].filter(Boolean)))];
     for (const hit of hits.values()) if (hit) shown[hit.id] = 'loading';
     Promise.all(urls.map((url) => cache.get(url))).then((loaded) => {
       if (disposed || rec.key !== key) return;
       clearBatch(rec);
       const models = new Map(urls.map((url, i) => [url, loaded[i]]));
-      if (![...models.values()].some(Boolean)) { for (const hit of hits.values()) if (hit) shown[hit.id] = 'procedural'; return; } // every file failed
+      if (![...hits.values()].some((hit) => hit && models.get(hit.entry.url))) { for (const hit of hits.values()) if (hit) shown[hit.id] = 'procedural'; return; } // every file failed
       const entry = any.entry; entryMatrix(entry, local);
       rec.zoneUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit && models.get(hit.entry.url) ? hit.entry.url : null]));
+      rec.zoneLowUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit?.entry.lowUrl && models.get(hit.entry.lowUrl) && models.get(hit.entry.url) ? hit.entry.lowUrl : null]));
       rec.placed = rec.cells.map((cell) => {
-        const p = { cell, near: 0, zones: zonesOf(cell), groups: new Map() };
+        const p = { cell, near: 0, far: 0, procedural: 0, zones: zonesOf(cell), flags: new Uint8Array(cell.matrices.length), groups: new Map() };
         const counts = new Map(); for (const zone of p.zones) counts.set(zone, (counts.get(zone) || 0) + 1);
         for (const [zone, count] of counts) {
           const hit = hits.get(zone); const gltf = hit && models.get(hit.entry.url);
           if (!gltf) continue; // this zone's season has no model: its copies stay procedural
-          const meshes = partsOf(gltf).map(({ geometry, material, matrix }) => {
+          const lowGltf = hit.entry.lowUrl ? models.get(hit.entry.lowUrl) : null;
+          const meshesOf = (model, shadow) => partsOf(model).map(({ geometry, material, matrix }) => {
             const im = new THREE.InstancedMesh(geometry, material, count);
             im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
-            im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
-            im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
+            im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
+            im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
             cell.parent.add(im); return im;
           });
-          p.groups.set(zone, { meshes, n: 0 });
+          p.groups.set(zone, { high: meshesOf(gltf, cell.shadow && entry.shadows !== false), low: lowGltf ? meshesOf(lowGltf, false) : null, a: 0, b: 0 });
         }
+        fill(p); // every copy Low (or High without a Low file) until the next update() works out the near ones
         return p;
       });
       for (const hit of hits.values()) if (hit) shown[hit.id] = models.get(hit.entry.url) ? 'model' : 'procedural';
-      rec.entry = entry; lastX = NaN; // the next update() places them
+      rec.entry = entry; lastX = NaN;
     }).catch((error) => { shown[any.id] = 'procedural'; onError(any.id, error); });
   }
-  // Copies within the entry's `near` of the player (shortened on lower quality tiers) show their model, the rest their
-  // procedural look; worked out again only once the player has moved a unit, and only squares that can hold a near copy
-  // are filled again.
+  // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
+  // only when one of its copies changed side.
   let lastX = NaN; let lastZ = NaN;
   function update(x, z) {
     if (Math.hypot(x - lastX, z - lastZ) < 1) return;
@@ -246,9 +268,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       entryMatrix(rec.entry, local);
       const near = P.lodDistance(rec.entry.near ?? 45, quality);
       for (const p of rec.placed) {
-        const flags = p.cell.matrices.map((m) => Math.hypot(m.elements[12] - x, m.elements[14] - z) < near);
-        if (!flags.some(Boolean) && p.near === 0) continue; // nothing near before or now: unchanged
-        fill(p, flags);
+        let changed = false;
+        p.cell.matrices.forEach((m, i) => {
+          const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
+          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; }
+        });
+        if (changed) fill(p);
       }
     }
   }
@@ -301,12 +326,19 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // v1.10.27: url = the model of the first copy's zone; zones = per zone (-1 the plaza) its season today, its file and
   // how many copies stand in it
+  // v1.10.27/28: url = the model of the first copy's zone; zones = per zone (-1 the plaza) its season today, its High
+  // and Low files and how many copies stand in it; near / far / procedural = copies drawn High / Low / procedural;
+  // first = how the first copy (at) is drawn
   const batchDebug = () => batches.map((rec) => {
     const zones = {};
-    for (const cell of rec.cells) zonesOf(cell).forEach((zone) => { zones[zone] ||= { look: lookOf(zone), url: rec.zoneUrls?.[zone] ?? null, copies: 0 }; zones[zone].copies += 1; });
-    const firstZone = rec.cells[0] ? zonesOf(rec.cells[0])[0] : null;
-    return { ids: [].concat(rec.ids), url: rec.placed ? rec.zoneUrls?.[firstZone] ?? null : null, zones, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
-      placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed ? [...(rec.placed.find((p) => p.groups.size)?.groups.values() || [])][0]?.meshes.length ?? 0 : 0,
+    for (const cell of rec.cells) zonesOf(cell).forEach((zone) => { zones[zone] ||= { look: lookOf(zone), url: rec.zoneUrls?.[zone] ?? null, low: rec.zoneLowUrls?.[zone] ?? null, copies: 0 }; zones[zone].copies += 1; });
+    const p0 = rec.placed?.[0]; const firstZone = rec.cells[0] ? zonesOf(rec.cells[0])[0] : null; const g0 = p0?.groups.get(firstZone);
+    const sum = (key) => (rec.placed ? rec.placed.reduce((n, p) => n + p[key], 0) : 0);
+    return { ids: [].concat(rec.ids), url: rec.placed ? rec.zoneUrls?.[firstZone] ?? null : null, low: rec.placed ? rec.zoneLowUrls?.[firstZone] ?? null : null, zones,
+      copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length, placed: Boolean(rec.placed),
+      near: sum('near'), far: sum('far'), procedural: rec.placed ? sum('procedural') : rec.cells.reduce((n, c) => n + c.matrices.length, 0),
+      parts: rec.placed ? [...(rec.placed.find((p) => p.groups.size)?.groups.values() || [])][0]?.high.length ?? 0 : 0,
+      first: !g0 ? 'procedural' : p0.flags[0] === 1 || !g0.low ? 'high' : 'low',
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
