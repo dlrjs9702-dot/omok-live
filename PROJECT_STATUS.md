@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.23 Mac Chrome 구형 로비 노출 수정(렌더러 재시도·오류 화면·원인 진단)
+
+IDEAS 「Mac Chrome에서 구형 로비 노출 · 수정 필요」(사용자 2026-10-05), 고품질화 2~5단계보다 우선. `public/plaza/plaza-scene.js`, `public/app.js`, `public/index.html`, `public/styles.css`, `server.js`.
+
+- 구형 로비가 보이던 코드 경로(확인): `syncPlaza()`가 ① 화면 조건 `plazaFits()`(폭 600 미만·터치 전용) 불만족, ② `plaza.failed`(= `createPlaza`가 `WebGLRenderer` 생성 예외에서 `null` 반환, 또는 `plaza-scene.js` import/초기화 예외)일 때 기존 정적 로비로 전환. macOS Chrome은 브라우저 판별(Client Hints·UA 모두 `chrome`)과 화면 조건(트랙패드 = fine pointer, 넓은 창)에는 걸리지 않으므로 ②가 유력. 실제 Mac 기기에서 어느 단계가 실패했는지는 실기 확인 전 미확정 — 후보: 하드웨어 가속 꺼짐/GPU 차단으로 WebGL2 없음, `powerPreference: 'high-performance'` 등 설정에서 컨텍스트 거부(그래픽 전환 Mac), 초기화 예외.
+- 렌더러: WebGL2 존재를 먼저 확인(없으면 `webgl-unavailable`, 재시도 안 함)한 뒤 ① 선호 설정 → ② Chrome 기본(`powerPreference` 없음) → ③ `antialias:false` + `low-power` 순서로 최대 3번. 실패한 시도는 컨텍스트를 남기지 않음, 확인용 probe 컨텍스트는 즉시 반납. 모두 실패하면 `webgl-context`. 성공한 시도 번호와 GPU 이름은 `PlazaDebug().webgl`.
+- 최종 실패: 일반 사용자에게 기존 로비 fallback 금지 → 아일랜드 자리에 「게임 아일랜드를 불러오지 못했습니다.」 + 다시 시도(채팅·가방 탭 숨김). 다시 시도는 같은 페이지에서 처음부터 재시도. 기존 로비 구조는 삭제하지 않고 관리자(내부 호환)와 자동 테스트(`gc.testClassic`)에서만 유지. 화면 조건(폭·터치 전용) 분기는 모바일 범위라 그대로.
+- 진단: 실패 코드 `webgl-unavailable`·`webgl-context`·`module`(아일랜드 코드 import 실패)·`init`(구성 중 예외)를 콘솔 오류와 `window.PlazaDiagnostics`에 남기고, `POST /api/plaza/diag`(세션 필요, 10분 5회 제한)로 서버 로그에 `게임 아일랜드 시작 실패: code=… platform=… gpu=…` 한 줄 기록(개인정보 없음) → 실제 Mac 사례의 원인을 Render 로그로 확인 가능. 필요한 정적 리소스(모델 파일) 실패는 기존대로 그 대상만 생성형 fallback, 리소스 준비 실패는 게임 시작 전 차단(v1.10.22).
+- 테스트: 단위(macOS Chrome UA/Client Hints → chrome, macOS Edge·Safari 제외, 서버 `/`에 Mac Chrome 헤더 200), e2e `mac-chrome.spec.js` 5개(Playwright Chromium + macOS UA·Client Hints·DPR 2: 아일랜드 진입·기존 로비 미노출, 선호 설정 거부 시 2번째 설정으로 진입, WebGL 없음 → 오류 화면·진단 코드, 컨텍스트 전부 거부 → 오류 화면 → 다시 시도로 진입, 아일랜드 모듈 500 → 오류 화면·`module`). Windows Chrome 회귀: plaza·island-entry·asset-cache·island-assets 40 통과·1 flaky(멀티유저, 기존). 실제 Mac Chrome·GPU 실기 미검증.
+
 ## v1.10.22 게임 리소스 캐시 구조 v2(단일 해시 파일 캐시·Web Lock·워커 제어 확인)
 
 고품질화 기반 연속 작업 1단계(사용자 지시 2026-10-05, IDEAS 「캐시 전환 후 고품질화 구조 정리」). `public/game-boot.js`, `public/sw.js`.

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
-  <link rel="stylesheet" href="/styles.css?v=1.10.22" />
+  <link rel="stylesheet" href="/styles.css?v=1.10.23" />
 </head>
 <body data-session="__SESSION_TOKEN__" data-role="__SESSION_ROLE__" data-label="__SESSION_LABEL__" data-browsers="__BROWSERS__">
   <main class="shell">
@@ -40,6 +40,7 @@
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
       <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div>
+        <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
         <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
@@ -1057,38 +1058,38 @@
     <button id="bootRetry" class="secondary hidden" type="button">다시 시도</button>
   </section>
   <script id="assetManifest" type="application/json">__ASSET_MANIFEST__</script>
-  <script src="/browser-gate.js?v=1.10.22"></script>
-  <script src="/game-boot.js?v=1.10.22"></script>
-  <script src="/session-lock.js?v=1.10.22"></script>
-  <script src="/recent-action.js?v=1.10.22"></script>
-  <script src="/skin-looks.js?v=1.10.22"></script>
-  <script src="/skin-art-omok.js?v=1.10.22"></script>
-  <script src="/skin-art-connect4.js?v=1.10.22"></script>
-  <script src="/skin-art-othello.js?v=1.10.22"></script>
-  <script src="/skin-art-yut.js?v=1.10.22"></script>
-  <script src="/skin-art-dots.js?v=1.10.22"></script>
-  <script src="/skin-art-bingo.js?v=1.10.22"></script>
-  <script src="/skin-art-baseball.js?v=1.10.22"></script>
-  <script src="/skin-art-pictionary.js?v=1.10.22"></script>
-  <script src="/skin-art-twenty.js?v=1.10.22"></script>
-  <script src="/skin-art-liar.js?v=1.10.22"></script>
-  <script src="/skin-art-davinci.js?v=1.10.22"></script>
-  <script src="/skin-art-oldmaid.js?v=1.10.22"></script>
-  <script src="/skin-art-halli.js?v=1.10.22"></script>
-  <script src="/skin-art-gostop.js?v=1.10.22"></script>
-  <script src="/skin-art-avatar.js?v=1.10.22"></script>
-  <script src="/climb/climb-sim.js?v=1.10.22"></script>
-  <script src="/plaza/island-terrain.js?v=1.10.22"></script>
-  <script src="/plaza/island-npcs.js?v=1.10.22"></script>
-  <script src="/plaza/remote-motion.js?v=1.10.22"></script>
-  <script src="/plaza/asset-pipeline.js?v=1.10.22"></script>
-  <script src="/plaza/island-assets.js?v=1.10.22"></script>
-  <script src="/climb/climb-client.js?v=1.10.22"></script>
-  <script src="/twentyquestions-ui.js?v=1.10.22"></script>
-  <script src="/hwatu-art.js?v=1.10.22"></script>
-  <script src="/gostop-ui.js?v=1.10.22"></script>
-  <script src="/pandemic-map.js?v=1.10.22"></script>
-  <script src="/pandemic-ui.js?v=1.10.22"></script>
-  <script src="/app.js?v=1.10.22"></script>
+  <script src="/browser-gate.js?v=1.10.23"></script>
+  <script src="/game-boot.js?v=1.10.23"></script>
+  <script src="/session-lock.js?v=1.10.23"></script>
+  <script src="/recent-action.js?v=1.10.23"></script>
+  <script src="/skin-looks.js?v=1.10.23"></script>
+  <script src="/skin-art-omok.js?v=1.10.23"></script>
+  <script src="/skin-art-connect4.js?v=1.10.23"></script>
+  <script src="/skin-art-othello.js?v=1.10.23"></script>
+  <script src="/skin-art-yut.js?v=1.10.23"></script>
+  <script src="/skin-art-dots.js?v=1.10.23"></script>
+  <script src="/skin-art-bingo.js?v=1.10.23"></script>
+  <script src="/skin-art-baseball.js?v=1.10.23"></script>
+  <script src="/skin-art-pictionary.js?v=1.10.23"></script>
+  <script src="/skin-art-twenty.js?v=1.10.23"></script>
+  <script src="/skin-art-liar.js?v=1.10.23"></script>
+  <script src="/skin-art-davinci.js?v=1.10.23"></script>
+  <script src="/skin-art-oldmaid.js?v=1.10.23"></script>
+  <script src="/skin-art-halli.js?v=1.10.23"></script>
+  <script src="/skin-art-gostop.js?v=1.10.23"></script>
+  <script src="/skin-art-avatar.js?v=1.10.23"></script>
+  <script src="/climb/climb-sim.js?v=1.10.23"></script>
+  <script src="/plaza/island-terrain.js?v=1.10.23"></script>
+  <script src="/plaza/island-npcs.js?v=1.10.23"></script>
+  <script src="/plaza/remote-motion.js?v=1.10.23"></script>
+  <script src="/plaza/asset-pipeline.js?v=1.10.23"></script>
+  <script src="/plaza/island-assets.js?v=1.10.23"></script>
+  <script src="/climb/climb-client.js?v=1.10.23"></script>
+  <script src="/twentyquestions-ui.js?v=1.10.23"></script>
+  <script src="/hwatu-art.js?v=1.10.23"></script>
+  <script src="/gostop-ui.js?v=1.10.23"></script>
+  <script src="/pandemic-map.js?v=1.10.23"></script>
+  <script src="/pandemic-ui.js?v=1.10.23"></script>
+  <script src="/app.js?v=1.10.23"></script>
 </body>
 </html>

@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.22').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.23').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1410,7 +1410,23 @@
   const plazaDialogTitle = document.getElementById('plazaDialogTitle');
   const plazaDialogBody = document.getElementById('plazaDialogBody');
   const publicRoomsCardEl = document.getElementById('publicRoomsCard');
-  const plaza = { controller: null, loading: null, failed: false };
+  // v1.10.23 Mac Chrome 구형 로비 노출 수정 (IDEAS 2026-10-05): `failed` is { code, detail } once the island could not
+  // start. A regular user then sees the island's own short error with a retry -- never the classic lobby (that stays
+  // only for administrators, as an internal fallback, and for automated tests that ask for it). The code says why:
+  // webgl-unavailable / webgl-context / module (the island's code did not load) / init (it failed while being built).
+  const plaza = { controller: null, loading: null, failed: null };
+  const plazaError = document.getElementById('plazaError');
+  document.getElementById('plazaRetry').addEventListener('click', () => {
+    plaza.failed = null;
+    syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
+  });
+  function plazaFailure(error) {
+    const failure = { code: error?.code || 'init', detail: String(error?.message || error).slice(0, 300), gpu: error?.gpu || '' };
+    window.PlazaDiagnostics = { ...failure, at: new Date().toISOString(), platform: navigator.userAgentData?.platform || navigator.platform || '' };
+    console.error('[게임 아일랜드] 시작 실패:', failure.code, failure.detail, error);
+    api('/api/plaza/diag', { method: 'POST', body: JSON.stringify({ code: failure.code, detail: failure.detail, gpu: failure.gpu, platform: window.PlazaDiagnostics.platform }) }).catch(() => {});
+    return failure;
+  }
   let plazaTestClassic = false;
   try { plazaTestClassic = Boolean(navigator.webdriver && localStorage.getItem('gc.testClassic') === '1'); } catch {}
   const plazaWide = window.matchMedia('(min-width: 600px)'); // v1.10.1: a half-screen PC window stays on the island too (the classic lobby is not for regular users)
@@ -1452,8 +1468,8 @@
     plazaHint.classList.toggle('hidden', !facility);
   }
   function syncPlaza(view) {
-    const fits = plazaFits() && !plaza.failed;
-    const on = view === 'lobby' && fits && !plazaTestClassic;
+    const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
+    const on = view === 'lobby' && plazaFits() && !plazaTestClassic && !classicFallback;
     document.body.classList.toggle('plazaMode', on);
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
@@ -1465,24 +1481,27 @@
       return;
     }
     plazaStage.focus({ preventScroll: true });
+    plazaStage.classList.toggle('plazaFailed', Boolean(plaza.failed));
+    plazaError.classList.toggle('hidden', !plaza.failed);
+    if (plaza.failed) return; // the error and its retry, over the island's place
     if (plaza.controller) { plaza.controller.start(); return; }
     if (plaza.loading) return;
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
     const spotToday = api('/api/plaza/spot').then((data) => data.spot || null).catch(() => null);
-    plaza.loading = Promise.all([import('/plaza/plaza-scene.js?v=1.10.5'), spotToday]).then(([mod, startAt]) => {
+    const sceneModule = import('/plaza/plaza-scene.js?v=1.10.23').catch((error) => { throw Object.assign(error, { code: 'module' }); });
+    plaza.loading = Promise.all([sceneModule, spotToday]).then(([mod, startAt]) => {
       plaza.loading = null;
-      plaza.controller = mod.createPlaza(plazaStage, {
+      plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
         onInteract: (id) => (id.startsWith('ev:') ? solveIslandEvent(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
-      if (!plaza.controller) plaza.failed = true;
-      else { refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); }
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues);
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
-    }).catch((error) => { plaza.loading = null; plaza.failed = true; console.error(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
+    }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
     if (sessionRole !== 'admin') return;
