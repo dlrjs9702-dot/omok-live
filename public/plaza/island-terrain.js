@@ -46,7 +46,12 @@
     records: { x: -20, z: -48, face: [-6, -42], kind: 'house', wall: 0xf3e2ff, roof: 0x9b7fd6 },
     missions: { x: 13, z: -46, face: [0, -42], kind: 'board', tint: 0x8fd18a },
     shop: { x: 42, z: -8, face: [42, 4], kind: 'shop', wall: 0xd9f0ff, roof: 0x6aa9e8 }, // 게임 스킨 상점
-    avatar: { x: 55, z: -8, face: [55, 4], kind: 'shop', wall: 0xffe4ef, roof: 0xe87a9e }, // 캐릭터 스킨 상점
+    avatar: { x: 55, z: -8, face: [55, 4], kind: 'shop', wall: 0xffe4ef, roof: 0xe87a9e }, // v1.10.30 옷가게 (was 캐릭터 스킨 상점)
+    // v1.10.30 상점가 꾸미기 점포 세분화: across the street from the shops, facing them (the reserved lot is the 잡화점)
+    faces: { x: 42.5, z: 11, face: [42.5, 0], kind: 'shop', wall: 0xeaf6f2, roof: 0x5fa39a }, // 성형외과
+    hair: { x: 49, z: 11, face: [49, 0], kind: 'shop', wall: 0xfff1e0, roof: 0xd98b5f }, // 미용실
+    accessories: { x: 55.5, z: 11, face: [55.5, 0], kind: 'shop', wall: 0xfdf3d7, roof: 0xc9a14a }, // 잡화점
+    dye: { x: 62, z: 10, face: [62, 0], kind: 'stall' }, // 염색사
     board: { x: -10, z: -6, face: [0, 0], kind: 'board' },
     attendance: { x: 10, z: -6, face: [0, 0], kind: 'npc' },
     map: { x: -11, z: 6, face: [0, 2], kind: 'mapboard' },
@@ -58,7 +63,7 @@
   trader: { x: 62, z: -6, face: [62, 4], kind: 'stall' }, // v1.10.10 상점가 상인: buys herbs, berries and mushrooms
   naming: { x: 48.5, z: -3.4, face: [48.5, 4], kind: 'desk' }, // v1.10.9 작명소: a folding desk on the shop street, between the two shops
   };
-  const RESERVED_LOTS = [{ x: 49, z: 11, face: [49, 0] }]; // the shop street's next building (외형 변경 시설, later)
+  const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the

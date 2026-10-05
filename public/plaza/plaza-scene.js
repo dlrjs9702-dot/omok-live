@@ -480,8 +480,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       solids.push({ x, z, r: 1.7 });
     } else if (spot.kind === 'npc') { // the attendance keeper: a friendly villager next to a stamp stand
       depth = 0.9;
-      const npc = makeCharacter({ shirt: 0xffb86b, hair: 0x5b3a29, skin: 0xffdcbc, hat: 0x6bc4a6 });
-      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      const npcSpec = { shirt: 0xffb86b, hair: 0x5b3a29, skin: 0xffdcbc, hat: 0x6bc4a6 };
+      const npc = makeCharacter(npcSpec);
+      npc.root.position.set(-0.7, 0, 0); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); dressUp(npc, { gender: 'female' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       mesh(new THREE.BoxGeometry(1.0, 0.95, 0.7), mat(0xc58b5a), 0.7, 0.48, 0, visual);
       mesh(new THREE.BoxGeometry(1.1, 0.08, 0.8), mat(0xffe9b8), 0.7, 0.99, 0, visual);
       mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 16), mat(0xe2574c), 0.7, 1.12, 0, visual);
@@ -490,8 +491,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npcs.push(npc);
     } else if (spot.kind === 'stall') { // v1.10.10 상점가 상인: a trader behind a market stall with crates of produce
       depth = 1.3;
-      const npc = makeCharacter({ shirt: 0x6bbf73, hair: 0x6b4a2b, skin: 0xffdcbc, hat: 0xf2c14e });
-      npc.root.position.set(0, 0, -0.85); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      const npcSpec = { shirt: 0x6bbf73, hair: 0x6b4a2b, skin: 0xffdcbc, hat: 0xf2c14e };
+      const npc = makeCharacter(npcSpec);
+      npc.root.position.set(0, 0, -0.85); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       const wood = mat(0xb07a4f);
       mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), wood, 0, 0.45, 0.1, visual); // the counter
       for (const [lx, color] of [[-0.6, 0x8fd16b], [0, 0xe2574c], [0.6, 0xc9a27a]]) { // herbs, berries, mushrooms
@@ -508,8 +510,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npcs.push(npc);
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;
-      const npc = makeCharacter({ shirt: 0x3f5f8f, hair: 0xd9d4cc, skin: 0xffdcbc, hat: 0x2b2b2b });
-      npc.root.position.set(0, 0, -0.75); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
+      const npcSpec = { shirt: 0x3f5f8f, hair: 0xd9d4cc, skin: 0xffdcbc, hat: 0x2b2b2b };
+      const npc = makeCharacter(npcSpec);
+      npc.root.position.set(0, 0, -0.75); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y, id: facility.id };
       const wood = mat(0xb07a4f);
       mesh(new THREE.BoxGeometry(1.6, 0.07, 0.8), wood, 0, 0.78, 0.1, visual); // the desk top
       for (const [lx, lz] of [[-0.7, -0.22], [0.7, -0.22], [-0.7, 0.42], [0.7, 0.42]]) mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.76, 8), wood, lx, 0.38, lz, visual);
@@ -615,22 +618,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
   // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.
-  let statueList = []; let statueKey = '[]'; const statueRoots = [];
+  let statueList = []; let statueKey = '[]'; const statueRoots = []; const statueChars = [];
+  const STATUE_SIZE = 2.6; // v1.10.30: the 1st donor's statue, in player heights (the 2nd is 70% of it)
   function setStatues(list) {
     const next = (Array.isArray(list) ? list : []).filter((s) => s && (s.rank === 1 || s.rank === 2)).slice(0, 2);
     const key = JSON.stringify(next.map(({ rank, name, look, title }) => [rank, name, look, title]));
     if (key === statueKey) return;
     statueKey = key; statueList = next;
+    for (const c of statueChars.splice(0)) { assets.release(c); const i = buildingRoots.indexOf(c.root); if (i >= 0) buildingRoots.splice(i, 1); }
     for (const r of statueRoots.splice(0)) { r.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }); r.parent?.remove(r); }
+    // v1.10.30 기부 동상 (사용자 결정 2026-10-05): the donors as they look -- their own colours, hair, clothes and face, the
+    // common-rig character when they have it (no gold or silver any more) -- at landmark size: the 1st STATUE_SIZE times
+    // a player, the 2nd 70% of that, waving, frozen. Over everyone's heads they never stand in the way (the plinth's
+    // circle is the walking limit); one that hides me from the camera fades like a building.
     for (const st of next) {
       const spot = STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
-      const c = makeCharacter({ shirt: 0xffffff, hair: 0xffffff, skin: 0xffffff, look: st.look || {} });
-      const metal = mat(st.rank === 1 ? 0xf3c64a : 0xc9d1dc, { metalness: 0.75, roughness: 0.3 });
-      c.root.traverse((o) => { if (o.isMesh) o.material = metal; });
-      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(1.15);
-      c.armR.rotation.z = 2.4; // a wave, frozen
-      scene.add(c.root); statueRoots.push(c.root);
-      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 4.08, spot.z); scene.add(plate); statueRoots.push(plate);
+      const size = st.rank === 1 ? STATUE_SIZE : STATUE_SIZE * 0.7;
+      const c = makeCharacter({ ...ME_BASE, look: st.look || {} });
+      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(size);
+      c.armR.rotation.z = 2.4; // a wave, frozen (the procedural character)
+      scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); c.root.userData.building = true; buildingRoots.push(c.root);
+      dressUp(c, st.look || {});
+      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 1.5 + 2.35 * size, spot.z); scene.add(plate); statueRoots.push(plate);
     }
   }
 
@@ -644,7 +653,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
-    disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me);
+    disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me); dressUp(me, look);
     if (name) { me.tag = makeTag(name, title, champion, hoguking); me.tag.position.y = TAG_Y; me.root.add(me.tag); }
     me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
@@ -663,12 +672,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = TAG_Y; o.c.root.add(o.c.tag); scene.add(o.c.root); assets.dress('character.player', o.c);
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.position.y = TAG_Y; o.c.root.add(o.c.tag); scene.add(o.c.root); assets.dress('character.player', o.c); dressUp(o.c, p.look || {});
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} });
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = TAG_Y; c.root.add(c.tag); scene.add(c.root); assets.dress('character.player', c);
+        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.position.y = TAG_Y; c.root.add(c.tag); scene.add(c.root); assets.dress('character.player', c); dressUp(c, p.look || {});
         o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: SPEED * 1.6 }) }; others.set(p.id, o);
       }
       // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
@@ -725,6 +734,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const pose = () => ({ x: me.root.position.x, z: me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() });
 
+  // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
+  // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours
+  // (`spec`: the procedural colours it is made with) and a gender. Without a part for something worn (or without the
+  // models) the procedural character stays as it is.
+  function dressUp(c, look = {}, spec = null) {
+    const hexOf = (n) => `#${Number(n).toString(16).padStart(6, '0')}`; // (called while the scene is still being built)
+    const plan = globalThis.IslandAssets?.wardrobeOf?.(look, spec ? { tint: { shirt: hexOf(spec.shirt), hair: hexOf(spec.hair) }, hat: spec.hat ? hexOf(spec.hat) : null } : {});
+    if (plan) assets.wear(c, plan);
+  }
   function makeCharacter({ shirt, hair, skin, hat = null, look = {} }) {
     const root = new THREE.Group();
     const body = new THREE.Group(); root.add(body);
@@ -883,8 +901,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         const root = new THREE.Group(); root.position.set(ev.x, heightAt(ev.x, ev.z), ev.z); root.rotation.y = (ev.x * 7 + ev.z * 3) % TAU; scene.add(root);
         let npc = null;
         if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
-          npc = makeCharacter(ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 });
-          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc);
+          const spec = ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 };
+          npc = makeCharacter(spec);
+          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
           if (ev.kind === 'photo') mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root);
           npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
@@ -927,7 +946,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // starts where its round has it now, not at the origin walking over to it
       const w = walkers.add(n, Date.now() + serverOffset);
       c.root.position.set(w.x, heightAt(w.x, w.z), w.z);
-      scene.add(c.root); assets.dress('character.islander', c);
+      scene.add(c.root); assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look);
       wanderers.push({ n, c, w });
     }
   }, 400);
@@ -1194,6 +1213,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
+    for (const c of statueChars) if (c.anim && !c.frozen) { c.anim.play('wave'); c.anim.update(0.7, 0); c.frozen = true; } // v1.10.30: a statue's wave, set once
     stepWhale();
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
@@ -1271,7 +1291,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };

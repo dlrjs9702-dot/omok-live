@@ -51,6 +51,8 @@
     board: { scale: 1.1 }, missions: { scale: 1.1 }, map: { scale: 1.25 }, donate: { scale: 1.1 },
     attendance: { scale: 1, offset: [0.7, 0, 0] }, // the stamp stand beside its keeper (keeper at x -0.7)
     trader: { scale: 1, offset: [0, 0, 0.1] }, naming: { scale: 1, offset: [0, 0, 0.1] }, // in front of the keeper
+    // v1.10.30 the specialist shops (2026-10-05 shop candidates, built under their game ids; `avatar` is the clothes shop)
+    faces: { scale: 1 }, hair: { scale: 1 }, accessories: { scale: 1 }, dye: { scale: 1, offset: [0, 0, 0.1] },
   };
   // v1.10.29 the 2026-10-05 gap assets (gaps-v1): ground layers, structure footings, yard and harbour props, the
   // seasonal falling flakes, the far scenery at sea and the whale. The ground's own seasonal colours are not files: they
@@ -103,5 +105,51 @@
     'sea.whale': { url: `${GAPS}/sea/whale.glb`, scale: 1.2 }, 'sea.splash': { url: `${GAPS}/sea/splash.glb`, scale: 1.4 }, // played once (BreachOnce / SplashOnce)
   };
 
-  return { REGISTRY };
+  // v1.10.30 공통 캐릭터 (2026-10-05 character + skins packs): one body (`character.base`, High and Low) with the
+  // common 20-joint rig, the motions as clip files, and the wardrobe -- face, hair, top, bottom, shoes, hats -- as
+  // parts rebound to that body's own skeleton (asset-loader `wear`). `wardrobeOf(look, role)` says which parts a
+  // character wears: the base of its gender, the avatar items it wears that have a part, its face (성형) and the
+  // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
+  // the procedural character (WARDROBE null): nobody's item is swapped for something else.
+  const CH = '/assets/island/characters';
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp'];
+  REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
+    clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp' },
+    speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
+  const part = (file, low = false, dye = null) => ({ url: `${CH}/wear/${file}.glb`, ...(low ? { low: { url: `${CH}/wear/${file}_low.glb` } } : {}), ...(dye ? { dye } : {}) });
+  for (const file of ['face_eyes_cheeks', 'hair_cap', 'hair_long', 'basic_shirt', 'female_shirt', 'basic_pants', 'short_skirt', 'shoes', 'overalls']) REGISTRY[`wear.${file}`] = part(file);
+  REGISTRY['wear.cat_ears'] = part('cat_ears', false, 'hair');
+  for (const [file, dye] of [['hair_twin_tail', 'hair'], ['hair_curly', 'hair'], ['hair_ponytail', 'hair'], ['hair_spiky', 'hair'], ['hat_straw', 'trim'], ['hat_flower', 'main'], ['hat_crown', 'accent'], ['hat_fedora', 'main']]) REGISTRY[`wear.${file}`] = part(file, true, dye);
+  for (const [face, designs] of Object.entries({ eyes: ['oval', 'dot', 'wide', 'sleepy', 'smile', 'wink', 'almond', 'sparkle', 'heart', 'bold'], nose: ['button', 'tiny', 'round', 'triangle', 'bean', 'bridge', 'upturned', 'soft_square', 'animal', 'freckles'], mouth: ['smile', 'wide_smile', 'straight', 'open', 'cheer', 'cat', 'pout', 'tooth', 'tongue', 'dimples'] })) {
+    for (const d of designs) REGISTRY[`wear.${face}_${d}`] = part(`${face}_${d}`, true);
+  }
+  // the avatar items (lib/skins.js) drawn by a part; slot -> what it replaces. null: no part yet (procedural character)
+  const WARDROBE = {
+    avatar_hair_1: 'wear.hair_twin_tail', avatar_hair_2: 'wear.hair_curly', avatar_hair_3: 'wear.hair_ponytail', avatar_hair_4: 'wear.hair_spiky', avatar_hair_5: null, avatar_hair_6: null,
+    avatar_outfit_1: 'wear.overalls', avatar_outfit_2: null, avatar_outfit_3: null, avatar_outfit_4: null, avatar_outfit_5: null,
+    avatar_hat_1: 'wear.hat_straw', avatar_hat_2: 'wear.cat_ears', avatar_hat_3: 'wear.hat_flower', avatar_hat_4: 'wear.hat_crown', avatar_hat_5: null,
+  };
+  // look: { gender, hair, outfit, hat, face: { eyes, nose, mouth }, dye: { itemId: '#rrggbb' } }; role: 'player' | 'keeper' |
+  // 'islander'; tint: { materialName: colour } (keepers and islanders wear their own colours). -> { parts, colors } | null
+  const SKIN = '#ffe0c4';
+  function wardrobeOf(look = {}, { tint = null, hat = null } = {}) {
+    const female = look.gender === 'female';
+    const parts = { face: 'wear.face_eyes_cheeks', hair: female ? 'wear.hair_long' : 'wear.hair_cap', top: female ? 'wear.female_shirt' : 'wear.basic_shirt',
+      bottom: female ? 'wear.short_skirt' : 'wear.basic_pants', shoes: 'wear.shoes' };
+    const colors = {}; // part id -> { material: colour }
+    for (const slot of ['hair', 'outfit', 'hat']) {
+      const item = look[slot]; if (!item) continue;
+      if (!Object.prototype.hasOwnProperty.call(WARDROBE, item) || !WARDROBE[item]) return null; // no part for it yet
+      const id = WARDROBE[item];
+      if (slot === 'hair') parts.hair = id; else if (slot === 'outfit') parts.outfit = id; else parts.hat = id;
+      const dye = look.dye?.[item]; if (dye && REGISTRY[id].dye) colors[id] = { [REGISTRY[id].dye]: dye };
+    }
+    if (hat && !parts.hat) { parts.hat = 'wear.hat_fedora'; colors['wear.hat_fedora'] = { main: hat }; } // a keeper's hat
+    for (const face of ['eyes', 'nose', 'mouth']) { const d = look.face?.[face]; if (d && REGISTRY[`wear.${face}_${d}`]) { parts[face] = `wear.${face}_${d}`; if (face === 'eyes') delete parts.face; } }
+    // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
+    return { parts: Object.values(parts), colors, tint: { skin: SKIN, ...(tint || {}) } };
+  }
+
+  return { REGISTRY, WARDROBE, wardrobeOf };
 });

@@ -295,6 +295,28 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.chargeNickname({ userId: N, requestId: 'nick-0003', name: '  ' }, t0), RangeError);
   });
 
+  await t.test('v1.10.30 성형외과·염색사: 요청당 한 번 차감·외형 슬롯 저장·잔액 부족은 그대로·기본색 복원도 같은 비용', async () => {
+    const L = 'guest:0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c'; // a fresh account (100,000P)
+    const poor = await store.chargeLook({ userId: L, requestId: 'look-0001', kind: 'surgery', slot: 'face_eyes', value: 'eyes_heart', price: 300_000, title: '눈 · 하트눈' });
+    assert.deepEqual([poor.applied, poor.reason], [false, 'insufficient']);
+    assert.equal((await store.getAccount(L)).balance, 100_000);
+    await store.adminGrant({ grantId: 'admin-grant:look-1', userId: L, amount: 400_000, category: 'event', memo: '' });
+    const done = await store.chargeLook({ userId: L, requestId: 'look-0001', kind: 'surgery', slot: 'face_eyes', value: 'eyes_heart', price: 300_000, title: '눈 · 하트눈' });
+    assert.equal(done.applied, true, '거절된 요청은 다시 보낼 수 있다'); assert.equal(done.balance, 200_000);
+    assert.equal(done.equipped.avatar.face_eyes, 'eyes_heart');
+    const again = await store.chargeLook({ userId: L, requestId: 'look-0001', kind: 'surgery', slot: 'face_eyes', value: 'eyes_heart', price: 300_000, title: '눈 · 하트눈' });
+    assert.equal(again.applied, false); assert.equal(again.slot, 'face_eyes');
+    assert.equal((await store.getAccount(L)).balance, 200_000, '한 번만 차감');
+    await store.chargeLook({ userId: L, requestId: 'look-0002', kind: 'dye', slot: 'dye_avatar_hair_1', value: 'c12', price: 50_000, title: '양갈래 머리 · 분홍' });
+    assert.equal((await store.skinState(L)).equipped.avatar.dye_avatar_hair_1, 'c12');
+    const back = await store.chargeLook({ userId: L, requestId: 'look-0003', kind: 'dye', slot: 'dye_avatar_hair_1', value: null, price: 50_000, title: '양갈래 머리 · 기본색' });
+    assert.equal(back.applied, true); assert.equal(back.balance, 100_000);
+    assert.equal((await store.skinState(L)).equipped.avatar.dye_avatar_hair_1, undefined);
+    assert.ok((await store.history(L)).items.some((item) => item.reason === 'dye' && item.memo === '양갈래 머리 · 기본색'));
+    await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0004', kind: 'surgery', slot: 'dye_avatar_hair_1', value: 'eyes_dot', price: 300_000 }), RangeError);
+    await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0005', kind: 'surgery', slot: 'face_eyes', value: null, price: 300_000 }), RangeError);
+  });
+
   await t.test('v1.10.7 당일 위치: 계정당 마지막 위치와 날짜를 한 번에 저장·조회', async () => {
     const G = 'guest:77777777-7777-4777-8777-777777777777'; const H = 'guest:88888888-8888-4888-8888-888888888888';
     assert.equal(await store.plazaSpot(G), null);

@@ -35,7 +35,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
-const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS } = require('./lib/skins');
+const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, faceDesign, dyeColor } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
@@ -2862,7 +2862,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.29' });
+    return sendJson(res, 200, { ok: true, version: '1.10.30' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3078,6 +3078,45 @@ async function requestHandler(req, res) {
     equippedSkinCache.set(account, result.equipped);
     if (!result.chosen && result.gender !== body.gender) return sendError(res, 409, 'GENDER_FIXED', '이미 선택한 성별은 바꿀 수 없습니다.');
     return sendJson(res, 200, { ok: true, gender: result.gender, avatar: avatarLookOf(result.equipped) });
+  }
+
+  // v1.10.30 성형외과·염색사: what can be chosen and what it costs; a paid change of one face part or one item's colour,
+  // once per request (a retry returns the first answer), refused without charge when the points are short
+  if (pathname === '/api/avatar/look-shop' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name })) }])),
+      palette: DYE_PALETTE, dyeable: [...DYEABLE] });
+  }
+  if ((pathname === '/api/avatar/surgery' || pathname === '/api/avatar/dye') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!session.guestKeyId) return sendError(res, 403, 'GUEST_ONLY', '관리자는 외형을 바꿀 수 없습니다.');
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`look:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    let plan;
+    if (pathname === '/api/avatar/surgery') {
+      const design = faceDesign(body.part, body.design);
+      if (!design) return sendError(res, 400, 'BAD_FACE', '고를 수 없는 얼굴입니다.');
+      plan = { kind: 'surgery', slot: `face_${body.part}`, value: `${body.part}_${design[0]}`, price: SURGERY_FEE, title: `${FACE_LABELS[body.part]} · ${design[1]}` };
+    } else {
+      const skin = skinById(body.itemId);
+      if (!skin || skin.family !== 'avatar' || !DYEABLE.has(skin.id)) return sendError(res, 400, 'NOT_DYEABLE', '염색할 수 없는 꾸미기입니다.');
+      const color = body.color === null ? null : dyeColor(body.color);
+      if (body.color !== null && !color) return sendError(res, 400, 'BAD_COLOR', '고를 수 없는 색입니다.');
+      const owned = (await pointStore.skinState(account)).owned || [];
+      if (!owned.includes(skin.id)) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 꾸미기만 염색할 수 있습니다.');
+      plan = { kind: 'dye', slot: `dye_${skin.id}`, value: color ? color.id : null, price: DYE_FEE, title: `${skin.name} · ${color ? color.name : '기본색'}` };
+    }
+    const result = await pointStore.chargeLook({ userId: account, requestId: body.requestId, ...plan });
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
+    if (!result.applied && (result.userId !== account || result.slot !== plan.slot)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const equipped = result.equipped || (await pointStore.skinState(account)).equipped;
+    equippedSkinCache.set(account, equipped);
+    if (result.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, balance: result.balance ?? result.balanceAfter, equipped, avatar: avatarLookOf(equipped) });
   }
 
   if (pathname === '/api/skins/title' && req.method === 'POST') {
@@ -4212,7 +4251,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.29 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.30 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

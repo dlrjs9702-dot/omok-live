@@ -1435,7 +1435,13 @@
   const PLAZA_FACILITIES = [
     { id: 'games', name: '게임관', open: () => openPlazaWindow('게임관', [document.querySelector('.lobbyTopGrid > .lobbyCard'), publicRoomsCardEl]) },
     { id: 'shop', name: '게임 스킨 상점', open: () => openSkinShop('game') }, // v1.10.1: two shops on the shop street
-    { id: 'avatar', name: '캐릭터 스킨 상점', open: () => openSkinShop('avatar') },
+    // v1.10.30 상점가 꾸미기 점포 세분화 (사용자 확정 2026-10-05): clothes, hair and accessories each their own shop,
+    // the face at the 성형외과, colours at the 염색사 (the former character-skin shop is the clothes shop)
+    { id: 'avatar', name: '옷가게', open: () => openSkinShop('avatar:outfit') },
+    { id: 'hair', name: '미용실', open: () => openSkinShop('avatar:hair') },
+    { id: 'accessories', name: '잡화점', open: () => openSkinShop('avatar:hat') },
+    { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
+    { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
     { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
@@ -1510,6 +1516,86 @@
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
+  // v1.10.30 성형외과·염색사: change one face part (300,000P each time) or the colour of one owned item (50,000P each
+  // time, its own colour back costs the same). A choice is pressed twice (the first press says the price); one request
+  // id per choice until the server answers, so a lost answer is never paid twice.
+  const lookCard = document.createElement('section'); lookCard.className = 'lobbyCard lookShop hidden'; document.body.append(lookCard);
+  let lookState = null; let lookArmed = null; let lookRequest = null; let lookArmTimer = null;
+  async function openLookShop(kind) {
+    lookArmed = null; lookRequest = null;
+    try {
+      const [shop, skins] = await Promise.all([api('/api/avatar/look-shop'), api('/api/skins')]);
+      lookState = { kind, shop, skins, item: null, status: '' };
+    } catch (error) { showToast(error.message); return; }
+    renderLookShop(); lookCard.classList.remove('hidden');
+    openPlazaWindow(kind === 'surgery' ? '성형외과' : '염색사', [lookCard]);
+  }
+  plazaDialog.addEventListener('close', () => { lookCard.classList.add('hidden'); clearTimeout(lookArmTimer); });
+  function renderLookShop() {
+    const { kind, shop, skins } = lookState; lookCard.textContent = '';
+    const price = kind === 'surgery' ? shop.surgeryFee : shop.dyeFee;
+    const head = document.createElement('p'); head.className = 'lookMeta';
+    head.textContent = `보유 ${Number(skins.balance).toLocaleString('ko-KR')}P · ${kind === 'surgery' ? '시술' : '염색'} 1회 ${price.toLocaleString('ko-KR')}P`;
+    lookCard.append(head);
+    const choice = (label, key, current, extra = {}) => {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.key = key;
+      b.className = lookArmed === key ? 'primary' : current ? 'secondary' : 'ghost';
+      b.textContent = lookArmed === key ? `한 번 더 누르면 ${price.toLocaleString('ko-KR')}P` : current ? `${label} · 지금` : label;
+      b.disabled = current || skins.balance < price;
+      if (extra.swatch) { const dot = document.createElement('span'); dot.className = 'lookSwatch'; dot.style.background = extra.swatch; b.prepend(dot); }
+      Object.assign(b.dataset, extra.data || {});
+      return b;
+    };
+    if (kind === 'surgery') {
+      const face = skins.avatar?.look?.face || {};
+      for (const [part, { label, designs }] of Object.entries(shop.faceParts)) {
+        const h = document.createElement('h3'); h.textContent = label;
+        const row = document.createElement('div'); row.className = 'lookChoices';
+        for (const d of designs) row.append(choice(d.name, `${part}:${d.id}`, face[part] === d.id, { data: { part, design: d.id } }));
+        lookCard.append(h, row);
+      }
+    } else {
+      const names = new Map(skins.catalog.flatMap((f) => f.skins.map((s) => [s.id, s.name])));
+      const mine = shop.dyeable.filter((id) => skins.owned.includes(id));
+      if (!mine.length) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = '염색할 수 있는 꾸미기가 없습니다'; lookCard.append(p); }
+      if (!mine.includes(lookState.item)) lookState.item = mine[0] || null;
+      const items = document.createElement('div'); items.className = 'lookChoices';
+      for (const id of mine) { const b = document.createElement('button'); b.type = 'button'; b.className = id === lookState.item ? 'secondary' : 'ghost'; b.textContent = names.get(id) || id; b.dataset.item = id; items.append(b); }
+      if (mine.length) lookCard.append(items);
+      if (lookState.item) {
+        const current = skins.equipped?.avatar?.[`dye_${lookState.item}`] || null;
+        const row = document.createElement('div'); row.className = 'lookChoices';
+        row.append(choice('기본색', `${lookState.item}:`, current === null, { data: { color: '' } }));
+        for (const c of shop.palette) row.append(choice(c.name, `${lookState.item}:${c.id}`, current === c.id, { swatch: c.hex, data: { color: c.id } }));
+        lookCard.append(row);
+      }
+    }
+    const status = document.createElement('p'); status.className = 'lookMeta'; status.setAttribute('role', 'status'); status.textContent = lookState.status;
+    lookCard.append(status);
+  }
+  lookCard.addEventListener('click', async (event) => {
+    const button = event.target.closest('button'); if (!button || button.disabled || !lookState) return;
+    if (button.dataset.item) { lookState.item = button.dataset.item; lookArmed = null; renderLookShop(); return; }
+    const key = button.dataset.key; if (!key) return;
+    if (lookArmed !== key) { // first press: what it costs
+      lookArmed = key; if (lookRequest?.key !== key) lookRequest = { key, id: crypto.randomUUID() };
+      lookState.status = ''; renderLookShop();
+      clearTimeout(lookArmTimer); lookArmTimer = setTimeout(() => { lookArmed = null; if (lookState) renderLookShop(); }, 10000);
+      return;
+    }
+    lookArmed = null; clearTimeout(lookArmTimer);
+    const surgery = lookState.kind === 'surgery';
+    const body = surgery ? { part: button.dataset.part, design: button.dataset.design, requestId: lookRequest.id } : { itemId: lookState.item, color: button.dataset.color || null, requestId: lookRequest.id };
+    try {
+      const data = await api(surgery ? '/api/avatar/surgery' : '/api/avatar/dye', { method: 'POST', body: JSON.stringify(body) });
+      lookRequest = null;
+      plazaAvatar = data.avatar || plazaAvatar; applyPlazaAvatar(); plazaLastSent = null; loadPoints();
+      lookState.skins = { ...lookState.skins, balance: data.balance, equipped: data.equipped, avatar: data.avatar };
+      lookState.status = surgery ? '시술을 마쳤습니다' : '염색을 마쳤습니다';
+    } catch (error) { lookState.status = error.message; }
+    renderLookShop();
+  });
+
   async function refreshPlazaAvatar() {
     try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); plazaHoguking = Boolean(data.hoguking); } catch { return; }
     applyPlazaAvatar();
@@ -3344,13 +3430,14 @@
 
   let skinShopFamily = null;
   let skinShopMode = 'all'; // v1.10.1 게임 아일랜드: 'game' (game skins) or 'avatar' (character skins) by which shop was entered
-  const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점' };
+  const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점', 'avatar:outfit': '옷가게', 'avatar:hair': '미용실', 'avatar:hat': '잡화점' };
   const SKIN_TIER_ORDER = ['common', 'premium', 'theme', 'legend'];
   function renderSkinShop() {
     skinShopBody.textContent = '';
     if (!skinShop) return;
     skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
-    const families = skinShop.catalog.filter(f => skinShopMode === 'all' || (skinShopMode === 'avatar') === (f.family === 'avatar'));
+    const avatarMode = skinShopMode.startsWith('avatar'); const slotOnly = skinShopMode.split(':')[1] || null; // v1.10.30: one slot per shop
+    const families = skinShop.catalog.filter(f => skinShopMode === 'all' || avatarMode === (f.family === 'avatar'));
     if (!families.some(f => f.family === skinShopFamily)) skinShopFamily = families[0]?.family;
     const tabs = document.createElement('div');
     tabs.className = 'skinTabs';
@@ -3367,7 +3454,7 @@
     const family = families.find(f => f.family === skinShopFamily);
     if (!family) return;
     for (const tierKey of SKIN_TIER_ORDER) {
-      const skins = family.skins.filter(skin => skin.tier === tierKey);
+      const skins = family.skins.filter(skin => skin.tier === tierKey && (!slotOnly || family.family !== 'avatar' || skin.slot === slotOnly));
       if (!skins.length) continue;
       const section = document.createElement('section');
       section.className = 'skinFamily';
@@ -3406,7 +3493,7 @@
       section.append(heading, grid);
       skinShopBody.append(section);
     }
-    if (family.family === 'avatar') skinShopBody.append(renderTitlePicker());
+    if (family.family === 'avatar' && (!slotOnly || slotOnly === 'outfit')) skinShopBody.append(renderTitlePicker());
   }
 
   // v1.9.2 광장 칭호: any owned legend skin's name can be worn under the player's name in the plaza.

@@ -154,6 +154,8 @@
       attach: (targetIds, holder, procedural, onSwap) => call('attach', [targetIds, holder, procedural, onSwap]),
       // a character (plaza-scene makeCharacter): the model goes under c.root, the procedural body is hidden
       dress: (targetIds, character) => call('dress', [targetIds, character]),
+      // v1.10.30: a common-rig character put together from wardrobe parts (island-assets wardrobeOf)
+      wear: (character, plan) => call('wear', [character, plan]),
       // v1.10.17 nature and props placed many times: does any of `targetIds` have a model to load? (synchronous, so the
       // scene can keep those copies apart from the rest when it bakes), then hand over the placed copies square by
       // square (see asset-loader.js `batch`)

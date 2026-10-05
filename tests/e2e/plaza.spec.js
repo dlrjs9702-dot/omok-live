@@ -139,19 +139,27 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   expect(await page.evaluate(() => window.PlazaDebug().title)).toBe('천상 바둑');
   expect(await page.evaluate(() => window.PlazaDebug().tag)).toBe(true);
 
-  // v1.10.1 캐릭터 스킨 상점(상점가): 아바타 품목만, 칸 표시, 칭호 구역; 장착하면 캐릭터가 바로 바뀐다.
-  await page.evaluate(() => window.PlazaDebug().place('avatar'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 캐릭터 스킨 상점');
-  await page.keyboard.press('Space');
+  // v1.10.30 상점가 꾸미기 점포 세분화: 옷가게는 의상과 칭호, 미용실은 헤어, 잡화점은 모자·장식만 판다; 장착하면 바로 바뀐다.
   const dialog = page.locator('#skinShopDialog');
-  await expect(dialog.locator('#skinShopTitle')).toHaveText('캐릭터 스킨 상점');
-  await expect(dialog.getByRole('tab')).toHaveText(['광장 아바타']); // game skins are sold next door
-  await dialog.getByRole('tab', { name: '광장 아바타' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(16);
+  const visit = async (id, name, count) => {
+    await page.evaluate((door) => window.PlazaDebug().place(door), id);
+    await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
+    await page.keyboard.press('Space');
+    await expect(dialog.locator('#skinShopTitle')).toHaveText(name);
+    await expect(dialog.getByRole('tab')).toHaveText(['광장 아바타']); // game skins are sold next door
+    await expect(dialog.locator('.skinCard')).toHaveCount(count);
+  };
+  await visit('hair', '미용실', 6);
+  await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
+  await dialog.locator('#skinShopCloseBtn').click();
+  await visit('accessories', '잡화점', 5);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
-  await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
+  await expect(dialog.locator('.skinTitle')).toHaveCount(0); // the title is the clothes shop's
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
+  await dialog.locator('#skinShopCloseBtn').click();
+  await visit('avatar', '옷가게', 5);
+  await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
@@ -641,6 +649,7 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const aId = await idOf(a);
   for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]);
+  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes)).toEqual([2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);

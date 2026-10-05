@@ -411,6 +411,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (p.t >= p.dur) { p.mixer.stopAllAction(); p.mixer.uncacheRoot(p.object); p.holder.parent?.remove(p.holder); playing.splice(i, 1); }
     }
     tickAmbient(dt, x, z);
+    wearLod(x, z);
   }
 
   // A character: the rigged model goes under c.root (the name tag and chat bubble stay), the procedural body is
@@ -428,10 +429,87 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
 
+  // v1.10.30 공통 캐릭터: a character put together from the common-rig body (`character.base`) and wardrobe parts
+  // (`plan` from island-assets wardrobeOf: { parts: [ids], colors: { id: { material: colour } }, tint: { material: colour } }).
+  // The body is cloned with its own skeleton (SkeletonUtils); every part's skinned meshes -- High and Low files alike --
+  // are bound to that same skeleton by joint name (each keeps its own inverse binds and bind matrix), so one
+  // AnimationMixer moves everything and a High/Low switch keeps the motion, the sockets and what is worn. Materials are
+  // cloned per character before any colour goes on (a dye or a keeper's colours never reach anyone else); a part's
+  // dye goes on its dye material only. The clips come from the motion files (one clip each, the same rig).
+  const wearing = []; // characters with a High/Low pair: { c, high: [meshes], low: [meshes], isHigh }
+  function wear(c, plan) {
+    const base = P.pick(registry, 'character.base', off, null); if (!base || !plan) return;
+    const parts = plan.parts.map((id) => P.pick(registry, id, off, null));
+    if (parts.some((p) => !p)) return; // a part switched off: the procedural character stays
+    const token = {}; c.assetPending = token; shown['character.base'] = 'loading';
+    const urls = [base.entry.url, base.entry.lowUrl, ...parts.flatMap((p) => [p.entry.url, p.entry.lowUrl])].filter(Boolean);
+    const clipUrls = Object.values(base.entry.clips || {});
+    Promise.all([...urls, ...clipUrls].map((url) => cache.get(url))).then((loaded) => {
+      if (disposed || c.assetPending !== token || !c.root.parent) return;
+      const byUrl = new Map([...urls, ...clipUrls].map((url, i) => [url, loaded[i]]));
+      if (urls.some((url) => !byUrl.get(url))) { console.warn('wear: missing', urls.filter((url) => !byUrl.get(url))); shown['character.base'] = 'procedural'; return; } // a file failed: procedural
+      const object = cloneObject(byUrl.get(base.entry.url).scene);
+      place(object, base.entry);
+      const bones = new Map(); let rootBone = null;
+      object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
+      const high = []; const low = [];
+      const own = (m) => { const mats = [].concat(m.material).map((x) => x.clone()); m.material = Array.isArray(m.material) ? mats : mats[0]; made.push(...mats); return mats; };
+      const colour = (mesh, colors) => { for (const m of [].concat(mesh.material)) { const want = colors?.[m.name]; if (want) m.color.set(want); } };
+      const adopt = (gltf, colors, into) => {
+        const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true);
+        const meshes = []; copy.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+        for (const m of meshes) {
+          const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
+          if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
+          const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
+          m.frustumCulled = false; m.castShadow = true; own(m); colour(m, plan.tint); colour(m, colors); into.push(m);
+        }
+      };
+      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o); colour(o, plan.tint); high.push(o); } });
+      const lowBody = base.entry.lowUrl ? byUrl.get(base.entry.lowUrl) : null;
+      if (lowBody) adopt(lowBody, null, low);
+      parts.forEach((p, i) => {
+        const colors = plan.colors?.[plan.parts[i]];
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : []); // a part without a Low file shows at every distance
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low);
+      });
+      const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
+      const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
+      // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
+      // the mixer each upper arm is turned `armTuck` down toward the body, in its parent's space -- about 20° out in every
+      // clip, the clips and joints untouched. The turn of the frame before is taken off first: a clip without an arm
+      // track (Idle) does not set the arm again, and the turn must not pile up.
+      const tuck = [[bones.get('UpperArmL') || bones.get('UpperArm.L'), 1], [bones.get('UpperArmR') || bones.get('UpperArm.R'), -1]].filter(([b]) => b)
+        .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; });
+      const play = anim.update.bind(anim); let tucked = false;
+      anim.update = (dt, speed) => {
+        if (tucked) for (const [bone, , undo] of tuck) bone.quaternion.premultiply(undo);
+        play(dt, speed);
+        for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
+        tucked = true;
+      };
+      c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
+      c.wardrobe = plan.parts.slice();
+      const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
+    }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
+  }
+  // High near the player, Low farther (the body's `near`, the same band as the nature), the mixer untouched
+  const wpos = new THREE.Vector3();
+  function wearLod(x, z) {
+    const near = P.lodDistance(registry['character.base']?.near ?? 22, quality);
+    for (let i = wearing.length - 1; i >= 0; i -= 1) {
+      const w = wearing[i]; if (!w.c.root.parent || w.c.assetRoot === null) { wearing.splice(i, 1); continue; }
+      w.c.root.getWorldPosition(wpos);
+      const high = P.highState(w.isHigh, Math.hypot(wpos.x - x, wpos.z - z), near);
+      if (high !== w.isHigh) { w.isHigh = high; for (const m of w.high) m.visible = high; for (const m of w.low) m.visible = !high; }
+    }
+  }
+
   // Before a character is thrown away: its copy goes, the shared geometry stays for the others.
   function release(c) {
     c.anim?.dispose(); if (c.assetRoot) c.root.remove(c.assetRoot);
-    c.anim = null; c.assetRoot = null; c.assetPending = null;
+    if (c.wardrobe) c.assetRoot?.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) { m.dispose(); const k = made.indexOf(m); if (k >= 0) made.splice(k, 1); } });
+    c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null;
   }
 
   function setQuality(next) {
@@ -471,5 +549,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, release, batch, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

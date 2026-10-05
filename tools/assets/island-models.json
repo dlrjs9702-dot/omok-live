@@ -73,6 +73,13 @@
       "lowSha256": "2e99990c9a3d4320f2f907b292a497c37a7b2f28923ddec6f13e1779a790305b"
     },
     {
+      "out": "additions-v1/facilities/accessories.glb",
+      "src": "additions:06. Specialist shop candidates/shop_accessories.glb",
+      "sha256": "e123a6b31638cb3d648452db68984113666ef6b340c233b21ab965f6583d977d",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_accessories.glb",
+      "lowSha256": "56b749f89a8b706205aceca3e13c6d08433717df96b1522a8c6c09541155a1bd"
+    },
+    {
       "out": "additions-v1/facilities/admin.glb",
       "src": "additions:03. Facilities/admin.glb",
       "sha256": "8a4fbdacead184119308f6becc91b9f599e92f7fd839ae8dad5375d54443269a",
@@ -88,10 +95,10 @@
     },
     {
       "out": "additions-v1/facilities/avatar.glb",
-      "src": "additions:03. Facilities/avatar.glb",
-      "sha256": "8141f547928a505714ece4ecb0a51994224f9733b3e7c88a3044d6d5f9e93889",
-      "lowSrc": "additions:05. Low LOD/03. Facilities/avatar.glb",
-      "lowSha256": "2015441527dc2c5ffcef203d497f3654920278262b5355e0481cfc59b9f86dd5"
+      "src": "additions:06. Specialist shop candidates/shop_clothing.glb",
+      "sha256": "9ba679613cda628d1bbf5d342a9de89052a958a7fbb50e7c4431931f97d8b048",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_clothing.glb",
+      "lowSha256": "d6c4725c9421b7eb8c4db43b0237fa159de6c8ed3c79e5856462078d8e376ca5"
     },
     {
       "out": "additions-v1/facilities/board.glb",
@@ -115,11 +122,32 @@
       "lowSha256": "afdfb5da26819350bda812fe0533557e7f6c95bd826bcce720f3e5b6a196262f"
     },
     {
+      "out": "additions-v1/facilities/dye.glb",
+      "src": "additions:06. Specialist shop candidates/shop_dye.glb",
+      "sha256": "4e9c6d2fe5dc152f9e49de5f6f6d6fd636b14882ce4940769a30a7d1db082d66",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_dye.glb",
+      "lowSha256": "a02d29ce610ef193edb801d67f15a1e9b171078ef0cd576a6b38cfdc16e9a411"
+    },
+    {
+      "out": "additions-v1/facilities/faces.glb",
+      "src": "additions:06. Specialist shop candidates/shop_faces.glb",
+      "sha256": "a326aceca4df6690c14f33d8d08d57a0a7e3d134e4a7fd27d0513eecab174e30",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_faces.glb",
+      "lowSha256": "65a9b1381b347c5481ae359e23e40f133ea0dac7717e4dedc90b9aae5a109170"
+    },
+    {
       "out": "additions-v1/facilities/games.glb",
       "src": "additions:03. Facilities/games.glb",
       "sha256": "d24d39a9025fda4c1ca401b4f0ef3bc7729d8a194e3fe66df39dba3c1816df93",
       "lowSrc": "additions:05. Low LOD/03. Facilities/games.glb",
       "lowSha256": "8bf026d35458b79000ce5da2f679d755dd394bfaec9fe387047ef2c891aa8065"
+    },
+    {
+      "out": "additions-v1/facilities/hair.glb",
+      "src": "additions:06. Specialist shop candidates/shop_hair.glb",
+      "sha256": "51be5d1b35e9d7dc3d7bf600b17b15a537f26c006c1c5e0a2b35e289edbe8a15",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_hair.glb",
+      "lowSha256": "b4ed37fdde62808fe5555af7fde6a8977dc1b1bd231eef91d7c3098a1752bf71"
     },
     {
       "out": "additions-v1/facilities/map.glb",
@@ -413,6 +441,404 @@
       "sha256": "bd6341fc4e25a8fd39be42763776f14ba62844e46812b9a27535c4ffe74d883a",
       "lowSrc": "additions:05. Low LOD/01. Nature/04. Winter/tree_sapling_winter.glb",
       "lowSha256": "b217bd83df24d37d1aa91bdc9ef6220c107bc88308d89e1f2cdaa24a54135363"
+    },
+    {
+      "out": "characters/body_core.glb",
+      "src": "character:03. Modular assets/body_core_high.glb",
+      "sha256": "2d7bf98901dbf5f551a9f76a65175cae7918ecb230d4018122f41eb1c8015988",
+      "lowSrc": "character:03. Modular assets/body_core_low.glb",
+      "lowSha256": "9962fa82ced64bf26646ea17c77157a280cffbf22a71e9705098e51cfd37a08d"
+    },
+    {
+      "out": "characters/motions/CarryIdle.glb",
+      "src": "character:02. Motions/CarryIdle.glb",
+      "sha256": "221dd7d8c17279a264c2a83330a694336a5756fab5e4240921d7cda433fcf80f"
+    },
+    {
+      "out": "characters/motions/Cheer.glb",
+      "src": "character:02. Motions/Cheer.glb",
+      "sha256": "c6f295e829452fb189989b74405768a080635aac0559a56efcf0f599ced73f1e"
+    },
+    {
+      "out": "characters/motions/GatherWeed.glb",
+      "src": "character:02. Motions/GatherWeed.glb",
+      "sha256": "0fd2aee0e9494d818225bf3e27738660f1e266ef68cd75fdf0ba11bba625412e"
+    },
+    {
+      "out": "characters/motions/Give.glb",
+      "src": "character:02. Motions/Give.glb",
+      "sha256": "f59de311cb39be63750c549877066fcc3ae01d783d32e971b5e62859d44ec344"
+    },
+    {
+      "out": "characters/motions/Idle.glb",
+      "src": "character:02. Motions/Idle.glb",
+      "sha256": "7b9070726e2e267f1595ccfa3a0b4d38a89bd0dbb70a312e0d9bbd12fca3bf2c"
+    },
+    {
+      "out": "characters/motions/Interact.glb",
+      "src": "character:02. Motions/Interact.glb",
+      "sha256": "623697d6cf9aacbb9c911256bf6fa8e76b9610e6eede63cba8bfaec5fe7c374c"
+    },
+    {
+      "out": "characters/motions/PhotoPose.glb",
+      "src": "character:02. Motions/PhotoPose.glb",
+      "sha256": "c0be82d638a94d4b5a43def0a5cbecfa68cc5ec2115ac305718f33b8fc5a8b18"
+    },
+    {
+      "out": "characters/motions/Pickup.glb",
+      "src": "character:02. Motions/Pickup.glb",
+      "sha256": "090854862c023b405279743f984a4af93fd61a6090bbd811f8581f2003695f06"
+    },
+    {
+      "out": "characters/motions/Receive.glb",
+      "src": "character:02. Motions/Receive.glb",
+      "sha256": "b9773b90cfd9100fa463bd8063ced397b7b5bf336753d78726ce7d9112737327"
+    },
+    {
+      "out": "characters/motions/Run.glb",
+      "src": "character:02. Motions/Run.glb",
+      "sha256": "aa54d5c7203de909c63d9860851b08a74f6923d657390e795884c5ec07e8bbd9"
+    },
+    {
+      "out": "characters/motions/SitDown.glb",
+      "src": "character:02. Motions/SitDown.glb",
+      "sha256": "bb45b3b01a9be4cb23a85afe3cf2c02bede7470ccdb3904cb37d234b59645bf1"
+    },
+    {
+      "out": "characters/motions/SitIdle.glb",
+      "src": "character:02. Motions/SitIdle.glb",
+      "sha256": "36fcf91af8d6402d0bc8096319d37e26e6588022e47487a1cafbc5ef11038e3a"
+    },
+    {
+      "out": "characters/motions/StandUp.glb",
+      "src": "character:02. Motions/StandUp.glb",
+      "sha256": "1a27537a87a13d4e5ddfce6da4f342fc5770d55c40992c693581d209930bcec2"
+    },
+    {
+      "out": "characters/motions/Walk.glb",
+      "src": "character:02. Motions/Walk.glb",
+      "sha256": "5f379d867d364b29b4e866c2d3ccf8d140d1cfac8f4b9618725dd2a2874fe44e"
+    },
+    {
+      "out": "characters/motions/Wave.glb",
+      "src": "character:02. Motions/Wave.glb",
+      "sha256": "38b60dc9729a0ce1f738d93e59fe64d38ef795e46d15739e51b3a9c6a87c3fd3"
+    },
+    {
+      "out": "characters/wear/basic_pants.glb",
+      "src": "character:03. Modular assets/basic_pants.glb",
+      "sha256": "5ae277585cffbaa5c189343456beeea3e45ce8d1c19260c99d64570b84bf39c6"
+    },
+    {
+      "out": "characters/wear/basic_shirt.glb",
+      "src": "character:03. Modular assets/basic_shirt.glb",
+      "sha256": "ee96203208e83d8bd048e030197eb8ac6695424abeb0b77743e2d20c0b2f5c75"
+    },
+    {
+      "out": "characters/wear/cat_ears.glb",
+      "src": "character:03. Modular assets/cat_ears.glb",
+      "sha256": "cd5259bf8dc7b0cb86cc39224a349fdb505a43a4b71da68f7536f359f0bc6205"
+    },
+    {
+      "out": "characters/wear/eyes_almond.glb",
+      "src": "skins:01. Eyes/01. High/eyes_07_almond_high.glb",
+      "sha256": "c6c9dd54a830bbdabed69463d2c236e6c0dda6aebfa4bd4746aba1bd60ea2013",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_07_almond_low.glb",
+      "lowSha256": "a96b8dc28ee3919d3b4daae75b418da8b1fa27e83591882bfb5d5513e0448595"
+    },
+    {
+      "out": "characters/wear/eyes_bold.glb",
+      "src": "skins:01. Eyes/01. High/eyes_10_bold_high.glb",
+      "sha256": "e7869f71854f7ba100e6fd962962585f9a9edf5421f35a640fffb6314819a366",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_10_bold_low.glb",
+      "lowSha256": "b43daebdedb4cffc348c64866139d9cc3ccf8130c44248f2fe3ce4bab7c831de"
+    },
+    {
+      "out": "characters/wear/eyes_dot.glb",
+      "src": "skins:01. Eyes/01. High/eyes_02_dot_high.glb",
+      "sha256": "46a1dc9693f7a02068b8a7ea610973e9808ff49565fcd1b0eb218363a81fb01b",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_02_dot_low.glb",
+      "lowSha256": "fe9060f36b5e155f4e8d0c6d0e6db8d98bbe739bbebd785f57bafeee40e1599e"
+    },
+    {
+      "out": "characters/wear/eyes_heart.glb",
+      "src": "skins:01. Eyes/01. High/eyes_09_heart_high.glb",
+      "sha256": "36d0103ef5404f9f3b306d6e8ba680a20c02597f5036cdf04a52655d072273bb",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_09_heart_low.glb",
+      "lowSha256": "36d0103ef5404f9f3b306d6e8ba680a20c02597f5036cdf04a52655d072273bb"
+    },
+    {
+      "out": "characters/wear/eyes_oval.glb",
+      "src": "skins:01. Eyes/01. High/eyes_01_oval_high.glb",
+      "sha256": "f0c21c7e838b31ab56fe7746c49cb536acab68938de94d048df65a1070529d4b",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_01_oval_low.glb",
+      "lowSha256": "8b9d570bb1e28a35fa75f4cd8a40311eb33d0d10865f12264507faa9581d957b"
+    },
+    {
+      "out": "characters/wear/eyes_sleepy.glb",
+      "src": "skins:01. Eyes/01. High/eyes_04_sleepy_high.glb",
+      "sha256": "994e120ec4e4bfd8be258df851b8a562e66dcce819231ee480b9672482f9f880",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_04_sleepy_low.glb",
+      "lowSha256": "e9918c5ee1016ceade383694585bfb26500077392580ede5d64734645b621076"
+    },
+    {
+      "out": "characters/wear/eyes_smile.glb",
+      "src": "skins:01. Eyes/01. High/eyes_05_smile_high.glb",
+      "sha256": "0e1f5c8de5cc667cd73971ff907ce31557532d3840243e2d4a04806c48910284",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_05_smile_low.glb",
+      "lowSha256": "fc7018b1c1f5ecfdba8c5a9a78abb7aef189307277521dfa7ddaedc20000340d"
+    },
+    {
+      "out": "characters/wear/eyes_sparkle.glb",
+      "src": "skins:01. Eyes/01. High/eyes_08_sparkle_high.glb",
+      "sha256": "adcb58e67876c104cde426d9d31fa670b5189135ff358420130635303fd9d0bd",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_08_sparkle_low.glb",
+      "lowSha256": "adcb58e67876c104cde426d9d31fa670b5189135ff358420130635303fd9d0bd"
+    },
+    {
+      "out": "characters/wear/eyes_wide.glb",
+      "src": "skins:01. Eyes/01. High/eyes_03_wide_high.glb",
+      "sha256": "2cb8f971a6e450543ffab0dab707a340a6ae3a984c449efb2ab7b0632ec67c2b",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_03_wide_low.glb",
+      "lowSha256": "8ad973901a19bc446cbd3a47a8872dc3fce27e530a967d56345943f039bc792a"
+    },
+    {
+      "out": "characters/wear/eyes_wink.glb",
+      "src": "skins:01. Eyes/01. High/eyes_06_wink_high.glb",
+      "sha256": "5e48a885f7cba58b22dbe2b21a6e7dbb008c398d6c663bf1c9e483c99078b213",
+      "lowSrc": "skins:01. Eyes/02. Low/eyes_06_wink_low.glb",
+      "lowSha256": "4a9c69fbd45fe84d0eedce299427218a309574ab6453b605831c9b4e110d6bef"
+    },
+    {
+      "out": "characters/wear/face_eyes_cheeks.glb",
+      "src": "character:03. Modular assets/face_eyes_cheeks.glb",
+      "sha256": "757a0b60bc3a83a5dd4cb3af7b792bd9831075a7f5f8b9e80f8c94a06c6d2164"
+    },
+    {
+      "out": "characters/wear/female_shirt.glb",
+      "src": "character:03. Modular assets/female_shirt.glb",
+      "sha256": "8ad227bbea622bc74b9ba953fc06277dcfa282dcc4994813844cead4d123f78c"
+    },
+    {
+      "out": "characters/wear/hair_cap.glb",
+      "src": "character:03. Modular assets/hair_cap.glb",
+      "sha256": "41ec0bb98cc92aeefa23b80f5bb895231c5cbf57991cced75dcd00d1e5d8fef0"
+    },
+    {
+      "out": "characters/wear/hair_curly.glb",
+      "src": "skins:04. Hair/01. High/hair_08_curly_high.glb",
+      "sha256": "84da6c783ff982e1b8f447bd4f8246618c727ebabe907619e92a3e2cef163de5",
+      "lowSrc": "skins:04. Hair/02. Low/hair_08_curly_low.glb",
+      "lowSha256": "8c359cdde6cbeb8adcb35a6e5e2b4b6205961d435bbf84136f032207837f9553"
+    },
+    {
+      "out": "characters/wear/hair_long.glb",
+      "src": "character:03. Modular assets/hair_long.glb",
+      "sha256": "793c0d1139bb4f8f37d7115a52314480ff3dde70bb0120d5df31526604da40f6"
+    },
+    {
+      "out": "characters/wear/hair_ponytail.glb",
+      "src": "skins:04. Hair/01. High/hair_05_ponytail_high.glb",
+      "sha256": "a901a38e4be1a6f9d33db9a638b9ebbcd21f71717a94d0ca0b4df15109a49dde",
+      "lowSrc": "skins:04. Hair/02. Low/hair_05_ponytail_low.glb",
+      "lowSha256": "55460ea0f59765b13fa3cf094a2ea35de6af26856bff40555477ab1cbb93b69c"
+    },
+    {
+      "out": "characters/wear/hair_spiky.glb",
+      "src": "skins:04. Hair/01. High/hair_10_spiky_high.glb",
+      "sha256": "f8a319d817cf577e0f4bf2a98da9c6cf287b67f976dfcd66a0669a9138af3801",
+      "lowSrc": "skins:04. Hair/02. Low/hair_10_spiky_low.glb",
+      "lowSha256": "4b724796748e339a85159fc94033fa30154c2774b0497ed5f40d29d924e58538"
+    },
+    {
+      "out": "characters/wear/hair_twin_tail.glb",
+      "src": "skins:04. Hair/01. High/hair_06_twin_tail_high.glb",
+      "sha256": "50d6d6322d40a769c1471800c159808d39d255e122bff73e62f2c855a24e283c",
+      "lowSrc": "skins:04. Hair/02. Low/hair_06_twin_tail_low.glb",
+      "lowSha256": "e5aed6ca6933b3279a50dcfd549dd3ce9a1c83ed0d7b8cb44b39053f24aeef42"
+    },
+    {
+      "out": "characters/wear/hat_crown.glb",
+      "src": "skins:06. Hat/01. High/hat_06_crown_high.glb",
+      "sha256": "957e89375b9f2944a63dfb95533b40418f9878e40a8976102689ba3217f99b6c",
+      "lowSrc": "skins:06. Hat/02. Low/hat_06_crown_low.glb",
+      "lowSha256": "1d758025ba2d8f71503b6ccb5de63bab2611b93312595fcdebe91b3d38e1e90b"
+    },
+    {
+      "out": "characters/wear/hat_fedora.glb",
+      "src": "skins:06. Hat/01. High/hat_05_fedora_high.glb",
+      "sha256": "68d95c6e14fb145a514bce46352bc246c18367d6512004a1b3a7f3778504de1c",
+      "lowSrc": "skins:06. Hat/02. Low/hat_05_fedora_low.glb",
+      "lowSha256": "f9a3cc99358a6fcdbe4cb4500d5414a3fe5888a4dea24902a62c960fc7ad4a5f"
+    },
+    {
+      "out": "characters/wear/hat_flower.glb",
+      "src": "skins:06. Hat/01. High/hat_09_flower_high.glb",
+      "sha256": "017caea3f8e80ba067102b9c6aec15d38e645ce84e63394d4f6b029d51710ce1",
+      "lowSrc": "skins:06. Hat/02. Low/hat_09_flower_low.glb",
+      "lowSha256": "7f69b287e44e68f4f7a8216a6e89dbf76647476f9c0c83975413fdd6aaaf3eab"
+    },
+    {
+      "out": "characters/wear/hat_straw.glb",
+      "src": "skins:06. Hat/01. High/hat_01_straw_high.glb",
+      "sha256": "abad70de8dd0a9991700524a2aec956d7032948fb6f06ff12a0cca31846ca174",
+      "lowSrc": "skins:06. Hat/02. Low/hat_01_straw_low.glb",
+      "lowSha256": "95c9990af83ed1ffde1842036ba46e9192098c6a47d8c9b5cad2f85ef4bfe5ee"
+    },
+    {
+      "out": "characters/wear/mouth_cat.glb",
+      "src": "skins:03. Mouth/01. High/mouth_06_cat_high.glb",
+      "sha256": "67a693c69f9568b127649d45d2b8d95140d383464b82bd4f2d9c4b9f9751bf1b",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_06_cat_low.glb",
+      "lowSha256": "9072932fdbda2c6580b7c4de78918ef1a12417bcee21685bee48213cd95bb4d1"
+    },
+    {
+      "out": "characters/wear/mouth_cheer.glb",
+      "src": "skins:03. Mouth/01. High/mouth_05_cheer_high.glb",
+      "sha256": "e7c803f047ab1df175ad18713251209aeb8ec46b3ff77e18aa235cce97a1a5d5",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_05_cheer_low.glb",
+      "lowSha256": "e826fccdcfb5e67e6ae370d0bce049d61b93e2215571aea6e37f50bb4c5c1710"
+    },
+    {
+      "out": "characters/wear/mouth_dimples.glb",
+      "src": "skins:03. Mouth/01. High/mouth_10_dimples_high.glb",
+      "sha256": "13f01f5722e4fd2bb7a9beb317f3b4442dd4e38719ac65f6150caffc72d4aea7",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_10_dimples_low.glb",
+      "lowSha256": "6d3001dec2d480e7646dc0fd5be385c378e7099e2505ec69ab49b6c23750607e"
+    },
+    {
+      "out": "characters/wear/mouth_open.glb",
+      "src": "skins:03. Mouth/01. High/mouth_04_open_high.glb",
+      "sha256": "3cede6ad5d211b673f60c903a6b0f275094546f33c72947d115bf27b23d0efc5",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_04_open_low.glb",
+      "lowSha256": "de5311e9cac206b8ac1400751b6f34fa7360788724f1e2177bdc80bbacbef8c4"
+    },
+    {
+      "out": "characters/wear/mouth_pout.glb",
+      "src": "skins:03. Mouth/01. High/mouth_07_pout_high.glb",
+      "sha256": "27b2625f69d3fe797c8d82e91507d80ec7d5a9eec254710d709ee9487509e7db",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_07_pout_low.glb",
+      "lowSha256": "89a0b4a1cc54c7fa7086fe3049eefa7c44a40e7fe736deb43ab472649b8eb741"
+    },
+    {
+      "out": "characters/wear/mouth_smile.glb",
+      "src": "skins:03. Mouth/01. High/mouth_01_smile_high.glb",
+      "sha256": "0f64301c537a1595eb23ced2af12913da6782dc43c8d20c4ccaeb545e6be804b",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_01_smile_low.glb",
+      "lowSha256": "fdf1d02e265d58e4c131c8de15644e30aa58dd275bd43d0031b162766fe3c235"
+    },
+    {
+      "out": "characters/wear/mouth_straight.glb",
+      "src": "skins:03. Mouth/01. High/mouth_03_straight_high.glb",
+      "sha256": "bc40c4b6f79d42eb0d2ee54413e6af85c24e0023472023db5311f4067a0483dd",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_03_straight_low.glb",
+      "lowSha256": "4e821614b79a2e10cd475ad95f027a9e59f304a67bcef1fd5c3ee38a52bb22b0"
+    },
+    {
+      "out": "characters/wear/mouth_tongue.glb",
+      "src": "skins:03. Mouth/01. High/mouth_09_tongue_high.glb",
+      "sha256": "13b26896e5c633dc77fe6708ce7b9e8b31406da86219b93ebcc5ba0c8163679e",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_09_tongue_low.glb",
+      "lowSha256": "62948113ffbbe087cd7488dcb2817c04e434ad3c43e44d7b4d39e5a1047cdf9a"
+    },
+    {
+      "out": "characters/wear/mouth_tooth.glb",
+      "src": "skins:03. Mouth/01. High/mouth_08_tooth_high.glb",
+      "sha256": "eec5160ae8ba076d95221375f0dd3edbab4fd7b9f4d8de0b12daf3cd6eb8756e",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_08_tooth_low.glb",
+      "lowSha256": "60fed5f26226dd73d49df9954bba164873edaf7fdc13a85d4de24c131a21dc39"
+    },
+    {
+      "out": "characters/wear/mouth_wide_smile.glb",
+      "src": "skins:03. Mouth/01. High/mouth_02_wide_smile_high.glb",
+      "sha256": "9ec7c30a0c5828417b1348065cab54cdbc77505c1cf9e3cdafa2c1c9d36fad99",
+      "lowSrc": "skins:03. Mouth/02. Low/mouth_02_wide_smile_low.glb",
+      "lowSha256": "7c3e612cca4eeed52418442198835ea2e526bc70cdf11729ff4877c7a12b87f7"
+    },
+    {
+      "out": "characters/wear/nose_animal.glb",
+      "src": "skins:02. Nose/01. High/nose_09_animal_high.glb",
+      "sha256": "6c5780f8b08887784ae878f67bc4791d3f861edbdff4e8f5808115b97a2fa9fe",
+      "lowSrc": "skins:02. Nose/02. Low/nose_09_animal_low.glb",
+      "lowSha256": "6c5780f8b08887784ae878f67bc4791d3f861edbdff4e8f5808115b97a2fa9fe"
+    },
+    {
+      "out": "characters/wear/nose_bean.glb",
+      "src": "skins:02. Nose/01. High/nose_05_bean_high.glb",
+      "sha256": "a80bde1fee5b7f2700eefeafad7dcadc188ba32d0710f17d59aed69157058c2a",
+      "lowSrc": "skins:02. Nose/02. Low/nose_05_bean_low.glb",
+      "lowSha256": "b3717fc0ab25b8f4eb964287136adf033592e1f9868a9e36a496d367347338dc"
+    },
+    {
+      "out": "characters/wear/nose_bridge.glb",
+      "src": "skins:02. Nose/01. High/nose_06_bridge_high.glb",
+      "sha256": "3675a8e424d2134147c36bd4aabcc7202b89acf8dec3163a8bdeba52b79a5a76",
+      "lowSrc": "skins:02. Nose/02. Low/nose_06_bridge_low.glb",
+      "lowSha256": "9c5139441dd85e18d032199ca8eb659951be7543c2e55b112945fa89aa9003cb"
+    },
+    {
+      "out": "characters/wear/nose_button.glb",
+      "src": "skins:02. Nose/01. High/nose_01_button_high.glb",
+      "sha256": "1367373e48c31458fa85a77369f055235ffbdb710e31e388dfd4248846622cfe",
+      "lowSrc": "skins:02. Nose/02. Low/nose_01_button_low.glb",
+      "lowSha256": "a09529b622c76890c957314394cb8b255e59520392812e86f7c4b4308b6b5884"
+    },
+    {
+      "out": "characters/wear/nose_freckles.glb",
+      "src": "skins:02. Nose/01. High/nose_10_freckles_high.glb",
+      "sha256": "e2743527ece4a509d71e07868541860c6697926bcb30c9a256797738ef2adbaf",
+      "lowSrc": "skins:02. Nose/02. Low/nose_10_freckles_low.glb",
+      "lowSha256": "e2743527ece4a509d71e07868541860c6697926bcb30c9a256797738ef2adbaf"
+    },
+    {
+      "out": "characters/wear/nose_round.glb",
+      "src": "skins:02. Nose/01. High/nose_03_round_high.glb",
+      "sha256": "39d87bc278428fafea1c7fe811bb1aa49e2b5bed555f4b6d1f5655fd63b02a26",
+      "lowSrc": "skins:02. Nose/02. Low/nose_03_round_low.glb",
+      "lowSha256": "c7921e95638ea2eb71b854c55be53cde0c9aef7fad87c6d7c7930f82cff66e5a"
+    },
+    {
+      "out": "characters/wear/nose_soft_square.glb",
+      "src": "skins:02. Nose/01. High/nose_08_soft_square_high.glb",
+      "sha256": "28d0b3e1a630cafb0ae78e6e4c626e1aa4c5f19f8609ffc9a3b3128976d3b6ff",
+      "lowSrc": "skins:02. Nose/02. Low/nose_08_soft_square_low.glb",
+      "lowSha256": "65ade822ec092172929f898711dd8ebe63318a54160f7ee6fc5ad5746555e449"
+    },
+    {
+      "out": "characters/wear/nose_tiny.glb",
+      "src": "skins:02. Nose/01. High/nose_02_tiny_high.glb",
+      "sha256": "4c27e81a950d2482d652c3258afce90bb175058cd46b195273f773f3fb3072b4",
+      "lowSrc": "skins:02. Nose/02. Low/nose_02_tiny_low.glb",
+      "lowSha256": "27fdf3e3c6bbc559126db96ac0dcfbf85861c2963374fdc56e55fdb0d29efcb3"
+    },
+    {
+      "out": "characters/wear/nose_triangle.glb",
+      "src": "skins:02. Nose/01. High/nose_04_triangle_high.glb",
+      "sha256": "ae48b232ee91b8aa87d4f1d45e806591492cbf7e31566c00b98eecf6d1b9c819",
+      "lowSrc": "skins:02. Nose/02. Low/nose_04_triangle_low.glb",
+      "lowSha256": "ae48b232ee91b8aa87d4f1d45e806591492cbf7e31566c00b98eecf6d1b9c819"
+    },
+    {
+      "out": "characters/wear/nose_upturned.glb",
+      "src": "skins:02. Nose/01. High/nose_07_upturned_high.glb",
+      "sha256": "dcfe9c98e76a6ea5c6613e398d62ffbb2b8655e0a7f1f4a02096616ee0602f9d",
+      "lowSrc": "skins:02. Nose/02. Low/nose_07_upturned_low.glb",
+      "lowSha256": "70d3a3fcb52e1c7a10c364afcad8aa289ed164f2ebb7fe7eb74d1ba714c897fc"
+    },
+    {
+      "out": "characters/wear/overalls.glb",
+      "src": "character:03. Modular assets/overalls.glb",
+      "sha256": "3b94e42d647dbcad6ccc672f5eb42abe4647fc313e39af15af83ca4546bcd491"
+    },
+    {
+      "out": "characters/wear/shoes.glb",
+      "src": "character:03. Modular assets/shoes.glb",
+      "sha256": "fde08178bd264290207fff6722d105b3768ac9d33aab513d811cb040bf964970"
+    },
+    {
+      "out": "characters/wear/short_skirt.glb",
+      "src": "character:03. Modular assets/short_skirt.glb",
+      "sha256": "5fcc10c7dacbf06cef0f6a1b4950b78e3af44a7a3f8aeae4bc948ab4a4043434"
     },
     {
       "out": "gaps-v1/autumn/foundation_autumn.glb",
@@ -860,6 +1286,8 @@
   "sources": {
     "v2": "01. Game Island assets 2026-10-05/02. Finished assets",
     "additions": "02. Game Island additions 2026-10-05/02. Finished assets",
-    "gaps": "04. Game Island gaps 2026-10-05"
+    "gaps": "04. Game Island gaps 2026-10-05",
+    "character": "03. Game Island character 2026-10-05",
+    "skins": "05. Game Island skins 2026-10-05"
   }
 }
