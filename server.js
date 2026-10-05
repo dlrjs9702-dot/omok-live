@@ -267,7 +267,9 @@ function codeHeaders(req, pathname) {
   return codeCacheHeaders(codeRevs, pathname, new URL(req?.url || '/', 'http://local').search);
 }
 function notModified(req, res, headers) {
-  if (!headers?.ETag || req?.headers?.['if-none-match'] !== headers.ETag) return false;
+  // a proxy (Cloudflare) may weaken the tag it passes on (W/"..."): the same file either way
+  const sent = String(req?.headers?.['if-none-match'] || '').split(',').map((tag) => tag.trim().replace(/^W\//, ''));
+  if (!headers?.ETag || !sent.includes(headers.ETag)) return false;
   res.writeHead(304, securityHeaders(headers));
   res.end();
   return true;
