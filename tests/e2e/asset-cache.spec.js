@@ -1,9 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
-// v1.10.14 game resource cache (public/game-boot.js + public/sw.js): each pack version in its own cache, built in
-// staging and switched only when complete; pre-flight (quota margin, test write) before any download; failures keep
-// the active pack and block entry with a retry; the off switch and a rollback deploy remove the worker and only the
-// gc-res:* caches and fall back to plain server loading; Edge is stopped at the door.
+// v1.10.14 game resource cache (public/game-boot.js + public/sw.js), v1.10.22 캐시 구조 v2: one cache of
+// content-addressed files (gc-res:files, `url?rev=`), only new or changed files downloaded, the pointer written once a
+// version is complete and unused keys dropped after it; one tab at a time (Web Lock); the page must be controlled by
+// the worker; pre-flight (quota margin, test write) before any download; failures keep what was there and block entry
+// with a retry; the off switch and a rollback deploy remove the worker and only the gc-res:* caches and fall back to
+// plain server loading; Edge is stopped at the door.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 test.describe.configure({ mode: 'serial' }); // the off switch is server-wide
 
@@ -16,20 +18,21 @@ const pending = page => page.evaluate(() => Promise.race([window.GameBoot.ready.
 const downloads = page => page.evaluate(() => performance.getEntriesByType('resource')
   .filter(e => e.initiatorType === 'fetch' && /[?&]rev=/.test(e.name)).map(e => new URL(e.name).pathname));
 const manifestKeys = page => page.evaluate(() => window.GameBoot.manifest.assets.map(a => `${a.url}?rev=${a.rev}`).sort());
+const FILES = 'gc-res:files';
 const ourCaches = page => page.evaluate(async () => (await caches.keys()).filter(n => n.startsWith('gc-res:')).sort());
-const packCaches = async page => (await ourCaches(page)).filter(n => n.startsWith('gc-res:pack:'));
 const active = page => page.evaluate(async () => { const r = await caches.match('/active', { cacheName: 'gc-res:meta' }); return r ? r.json() : null; });
 const packKeys = (page, name) => page.evaluate(async n => (await (await caches.open(n)).keys())
   .map(r => { const u = new URL(r.url); return u.pathname + u.search; }).sort(), name);
 const setCache = (request, enabled) => request.post('/api/test/asset-cache', { data: { enabled } });
 const workers = page => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length);
+const controlled = page => page.evaluate(() => Boolean(navigator.serviceWorker.controller));
 async function enterAsAdmin(page) {
   await page.locator('#adminPassword').fill(ADMIN_PASSWORD);
   await page.locator('#adminLoginForm button[type=submit]').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
 }
-// As if a new version had been published since the last visit: the stored pack is marked older, the files matching
-// `pattern` are missing from it (the ones the new version changed) and it holds a file the new version dropped.
+// As if a new version had been published since the last visit: the pointer is marked older, the files matching
+// `pattern` are missing (the ones the new version changed) and a file the new version dropped is still stored.
 function agePack(page, pattern) {
   return page.evaluate(async source => {
     const drop = new RegExp(source);
@@ -52,15 +55,17 @@ test('정상 활성화: 첫 접속에 모두 받아 팩을 활성화하고, 다�
   expect(keys.length).toBeGreaterThan(40);
   expect((await downloads(page)).length).toBe(keys.length);
   const pointer = await active(page);
-  expect(pointer.version).toBe(await page.evaluate(() => window.GameBoot.manifest.version));
-  expect(await packKeys(page, pointer.cache)).toEqual(keys);
-  expect(await ourCaches(page)).toEqual(['gc-res:meta', pointer.cache].sort()); // one pack; the pre-flight probe is gone
+  expect(pointer).toEqual({ version: await page.evaluate(() => window.GameBoot.manifest.version), cache: FILES });
+  expect(await packKeys(page, FILES)).toEqual(keys);
+  expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']); // one file cache; the pre-flight probe is gone
+  expect(await controlled(page)).toBe(true); // the game starts only in a page the worker controls
   await expect(page.locator('#bootView')).toBeHidden();
 
   await page.reload();
   await ready(page);
   expect(await downloads(page)).toEqual([]);
-  expect((await active(page)).cache).toBe(pointer.cache);
+  expect(await active(page)).toEqual(pointer);
+  expect(await controlled(page)).toBe(true);
 
   await page.evaluate(() => navigator.serviceWorker.ready);
   const served = page.waitForResponse(r => r.url().includes('/hwatu/m01-gwang.svg?rev='));
@@ -70,19 +75,61 @@ test('정상 활성화: 첫 접속에 모두 받아 팩을 활성화하고, 다�
   expect(response.headers()['content-type']).toBe('image/svg+xml');
 });
 
-test('업데이트: 바뀐 파일만 받아 새 버전 캐시를 만들고, 완성된 뒤에만 전환해 옛 버전 캐시를 지운다', async ({ page }) => {
+test('업데이트: 바뀐 파일만 같은 캐시에 받고(복사 없음), 완성된 뒤에 버전을 가리키고 안 쓰는 파일을 지운다', async ({ page }) => {
   await page.goto('/');
   await ready(page);
   const keys = await manifestKeys(page);
-  const old = await agePack(page, /^\/hwatu\/m01-gwang\.svg$/);
+  await agePack(page, /^\/hwatu\/m01-gwang\.svg$/);
 
   await page.reload();
   await ready(page);
-  expect(await downloads(page)).toEqual(['/hwatu/m01-gwang.svg']); // the rest were copied locally
-  const pointer = await active(page);
-  expect(pointer.cache).not.toBe(old.cache);
-  expect(await packCaches(page)).toEqual([pointer.cache]);
-  expect(await packKeys(page, pointer.cache)).toEqual(keys); // the dropped file is not carried over
+  expect(await downloads(page)).toEqual(['/hwatu/m01-gwang.svg']); // the rest stay where they are
+  expect(await active(page)).toEqual({ version: await page.evaluate(() => window.GameBoot.manifest.version), cache: FILES });
+  expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
+  expect(await packKeys(page, FILES)).toEqual(keys); // the dropped file is gone
+});
+
+test('이전 구조(v1.10.14~21)의 팩은 내려받지 않고 한 번 옮긴 뒤 지운다', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  const keys = await manifestKeys(page);
+  await page.evaluate(async () => { // the files as a v1.10.21 pack cache, the pointer at it
+    const files = await caches.open('gc-res:files');
+    const pack = await caches.open('gc-res:pack:older:1');
+    for (const request of await files.keys()) await pack.put(request, await files.match(request));
+    await caches.delete('gc-res:files');
+    await (await caches.open('gc-res:meta')).put('/active', new Response(JSON.stringify({ version: 'older', cache: 'gc-res:pack:older:1' })));
+  });
+  await page.reload();
+  await ready(page);
+  expect(await downloads(page)).toEqual([]);
+  expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
+  expect(await packKeys(page, FILES)).toEqual(keys);
+  expect((await active(page)).cache).toBe(FILES);
+});
+
+test('같은 프로필의 두 탭이 동시에 준비해도 한 번만 받고 둘 다 들어간다', async ({ page, context }) => {
+  await page.goto('/');
+  await ready(page);
+  const keys = await manifestKeys(page);
+  await page.evaluate(async () => { for (const name of await caches.keys()) await caches.delete(name); });
+  const other = await context.newPage();
+  await Promise.all([page.reload(), other.goto('/')]);
+  await Promise.all([ready(page), ready(other)]);
+  const fetched = [...await downloads(page), ...await downloads(other)];
+  expect(fetched.length).toBe(keys.length); // the tab that waited for the lock found every file there
+  expect(await packKeys(page, FILES)).toEqual(keys);
+  expect(await controlled(other)).toBe(true);
+});
+
+test('강력 새로고침(워커를 거치지 않은 로드)도 워커의 제어를 받은 뒤 들어간다', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  const cdp = await page.context().newCDPSession(page);
+  await Promise.all([page.waitForEvent('load'), cdp.send('Page.reload', { ignoreCache: true })]);
+  await ready(page);
+  expect(await controlled(page)).toBe(true);
+  expect(await downloads(page)).toEqual([]);
 });
 
 test('캐시를 지우면 다음 접속에 자동으로 다시 받는다', async ({ page }) => {
@@ -94,15 +141,14 @@ test('캐시를 지우면 다음 접속에 자동으로 다시 받는다', async
   await page.reload();
   await ready(page);
   expect((await downloads(page)).length).toBe(keys.length);
-  expect(await packKeys(page, (await active(page)).cache)).toEqual(keys);
+  expect(await packKeys(page, FILES)).toEqual(keys);
 });
 
 test.describe('업데이트 실패', () => {
-  test.use({ serviceWorkers: 'block' }); // so the route below sees the page's own downloads
-
-  test('받다가 끊기면 새 캐시를 버리고 기존 활성 캐시를 그대로 두며, 게임은 시작하지 않고 다시 시도로 마저 받는다', async ({ page }) => {
+  test('받다가 끊기면 이전 버전 파일과 포인터를 그대로 두고, 게임은 시작하지 않으며 다시 시도로 마저 받는다', async ({ page, context }) => {
     let failing = false;
-    await page.route(/\/hwatu\/m05-[a-z0-9]+\.svg\?rev=/, route => (failing ? route.abort('internetdisconnected') : route.continue()));
+    // on the context: the downloads go through the worker once it controls the page
+    await context.route(/\/hwatu\/m05-[a-z0-9]+\.svg\?rev=/, route => (failing ? route.abort('internetdisconnected') : route.continue()));
     await page.goto('/');
     await ready(page);
     const keys = await manifestKeys(page);
@@ -113,17 +159,27 @@ test.describe('업데이트 실패', () => {
     await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패');
     await expect(page.locator('#bootRetry')).toBeVisible();
     expect(await pending(page)).toBe(true);
-    expect(await active(page)).toEqual({ version: 'older', cache: old.cache }); // still the old pack
-    expect(await packKeys(page, old.cache)).toEqual(old.keys); // untouched
-    expect(await packCaches(page)).toEqual([old.cache]); // the staging cache is gone
+    expect(await active(page)).toEqual({ version: 'older', cache: FILES }); // not pointed at the new version
+    const stored = await packKeys(page, FILES);
+    expect(old.keys.every(key => stored.includes(key))).toBe(true); // nothing the previous version used was removed
 
     failing = false;
     await page.locator('#bootRetry').click();
     await ready(page);
-    const pointer = await active(page);
-    expect(await packKeys(page, pointer.cache)).toEqual(keys);
-    expect(await packCaches(page)).toEqual([pointer.cache]);
+    expect(await packKeys(page, FILES)).toEqual(keys);
+    expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
     await expect(page.locator('#bootView')).toBeHidden();
+  });
+});
+
+test.describe('워커 차단', () => {
+  test.use({ serviceWorkers: 'block' });
+  test('Service Worker가 페이지를 제어하지 못하면 서버에서 따로 받지 않고 입장을 막고 다시 시도만 보인다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 20_000 });
+    await expect(page.locator('#bootRetry')).toBeVisible();
+    expect(await pending(page)).toBe(true);
+    expect(await controlled(page)).toBe(false);
   });
 });
 
@@ -136,7 +192,8 @@ test.describe('사전검사', () => {
     await expect(page.locator('#bootRetry')).toBeVisible();
     expect(await pending(page)).toBe(true);
     expect(await downloads(page)).toEqual([]);
-    expect(await ourCaches(page)).toEqual([]);
+    expect((await ourCaches(page)).filter(name => name !== FILES)).toEqual([]);
+    expect(await packKeys(page, FILES)).toEqual([]); // nothing stored
     await page.locator('#bootRetry').click();
     await expect(page.locator('#bootTitle')).toHaveText(STORAGE_FAILED);
     await page.waitForTimeout(500);
@@ -160,9 +217,9 @@ test.describe('사전검사', () => {
     await expect(page.locator('#bootTitle')).toHaveText(STORAGE_FAILED);
     expect(await pending(page)).toBe(true);
     expect(await downloads(page)).toEqual([]);
-    expect(await active(page)).toEqual({ version: 'older', cache: old.cache });
-    expect(await packKeys(page, old.cache)).toEqual(old.keys);
-    expect(await ourCaches(page)).toEqual(['gc-res:meta', old.cache].sort()); // no staging, no probe left
+    expect(await active(page)).toEqual({ version: 'older', cache: FILES });
+    expect(await packKeys(page, FILES)).toEqual(old.keys);
+    expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']); // no probe left
   });
 });
 
@@ -202,7 +259,7 @@ test.describe('롤백', () => {
     await page.goto('/');
     await ready(page);
     await page.evaluate(() => navigator.serviceWorker.ready);
-    expect((await packCaches(page)).length).toBe(1);
+    expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
     // the older deploy has no such endpoint (the worker's own request goes through the context)
     await context.route('**/asset-cache.json', route => route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"NOT_FOUND"}' }));
     await page.goto('/health'); // any page load under the worker; older code never asks for ?rev= URLs
