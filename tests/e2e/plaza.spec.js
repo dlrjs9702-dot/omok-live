@@ -780,22 +780,22 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +320P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +7,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+320P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+7,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 320);
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 7000); // v1.10.31 단가: 쓰레기 500 × 4 + 지갑 5,000
   await page.locator('#islandPlaceCloseBtn').click();
   await page.evaluate(() => window.PlazaDebug().place('trader'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +240P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +4,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+240P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+4,000P');
   await page.locator('#islandPlaceCloseBtn').click();
   await page.locator('#islandBagTab').click();
   await expect(page.locator('#islandBagCount')).toHaveText('0/16');
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 560);
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 11000); // + 약재 2,000 × 2
   await expectNoScriptError(page);
   await a.context.close();
 });
