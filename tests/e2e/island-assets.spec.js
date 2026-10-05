@@ -217,7 +217,9 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   test.setTimeout(240000); // every island model (all four seasons, High and Low) on a software renderer, then a whale's breach
   const a = await island(browser, request, '운영모델', null);
   const { page } = a;
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash'].includes(id)); // 관리실: admins only; the whale only now and then (below)
+  // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
+  // where that find is, the pulled weed only in a hand
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.'));
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
