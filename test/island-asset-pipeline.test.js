@@ -50,25 +50,52 @@ test('운영 등록부: 연결한 모델은 사계절 파일이 모두 리소스
   assert.equal(parsed.size, 32);
 });
 
-test('게임 아일랜드 계절: KST 날짜 1~7 봄, 8~14 여름, 15~21 가을, 22~말일 겨울, 다음 달 1일 00:00에 봄', () => {
+// v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전 (사용자 결정 2026-10-05; the v1.10.19 monthly whole-island season
+// is gone): four zones always show the four seasons, the central plaza is neutral, at 00:00 Asia/Seoul every season
+// moves one zone clockwise and the arrangement comes back every 4 days; only the seasons move, never places.
+test('게임 아일랜드 계절 구역: 중앙광장 중립, 섬은 네 구역으로 고르게 나뉘고 경계는 직선이 아니다', () => {
+  const T = require('../public/plaza/island-terrain.js');
+  assert.equal(T.seasonZoneAt(0, 0), -1);
+  for (const id of ['board', 'attendance', 'map', 'donate']) assert.equal(T.seasonZoneAt(T.SPOTS[id].x, T.SPOTS[id].z), -1, `${id}: 광장 중립`);
+  for (const [x, z] of [[0, 10], [12, -12], [-15, 15]]) assert.equal(T.seasonZoneAt(x, z), -1);
+  // far from the edges: north, east, south, west are zones 0..3 (clockwise seen from above, north = -z)
+  assert.equal(T.seasonZoneAt(0, -70), 0); assert.equal(T.seasonZoneAt(70, 0), 1); assert.equal(T.seasonZoneAt(0, 70), 2); assert.equal(T.seasonZoneAt(-70, 0), 3);
+  const counts = [0, 0, 0, 0]; let land = 0;
+  for (let x = -130; x <= 130; x += 2) for (let z = -130; z <= 130; z += 2) {
+    if (!T.walkable(x, z)) continue;
+    land += 1; const zone = T.seasonZoneAt(x, z); if (zone >= 0) counts[zone] += 1;
+  }
+  for (const n of counts) assert.ok(n > land * 0.18 && n < land * 0.32, `구역 크기 ${counts}`);
+  // an edge is not one straight line: along the north-east diagonal the zone changes back and forth with distance
+  const along = []; for (let r = 30; r <= 110; r += 4) along.push(T.seasonZoneAt(r * Math.SQRT1_2, -r * Math.SQRT1_2));
+  assert.ok(new Set(along).size === 2 && along.some((zone, i) => i > 0 && zone !== along[i - 1]), along.join(''));
+  // a place's zone never changes (the day only moves the seasons)
+  assert.equal(T.seasonZoneAt(40, -50), T.seasonZoneAt(40, -50));
+});
+
+test('게임 아일랜드 계절 회전: 날마다 네 계절이 모두 있고 서울 00:00에 시계방향으로 한 구역, 4일마다 원래대로', () => {
+  const T = require('../public/plaza/island-terrain.js');
   const kst = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 9, min); // Seoul wall time -> ms
-  const at = (y, m, d, h, min) => P.seasonOf(kst(y, m, d, h, min));
-  assert.equal(at(2026, 10, 1, 0, 0), 'spring');
-  assert.equal(at(2026, 10, 7, 23, 59), 'spring');
-  assert.equal(at(2026, 10, 8, 0, 0), 'summer');
-  assert.equal(at(2026, 10, 14, 23, 59), 'summer');
-  assert.equal(at(2026, 10, 15, 0, 0), 'autumn');
-  assert.equal(at(2026, 10, 21, 23, 59), 'autumn');
-  assert.equal(at(2026, 10, 22, 0, 0), 'winter');
-  for (const d of [28, 29, 30, 31]) assert.equal(at(2026, 10, d, 12, 0), 'winter', `10월 ${d}일`);
-  assert.equal(at(2026, 10, 31, 23, 59), 'winter');
-  assert.equal(at(2026, 11, 1, 0, 0), 'spring'); // the next month starts in spring
-  assert.equal(at(2026, 2, 28, 23, 59), 'winter'); assert.equal(at(2026, 3, 1, 0, 0), 'spring'); // a short month
-  assert.equal(at(2028, 2, 29, 12, 0), 'winter'); // a leap day
-  assert.equal(at(2026, 12, 31, 23, 59), 'winter'); assert.equal(at(2027, 1, 1, 0, 0), 'spring'); // the year's end
-  // Seoul, not the viewer's clock or UTC: 2026-10-07 23:30 UTC is already the 8th in Seoul
-  assert.equal(P.seasonOf(Date.UTC(2026, 9, 7, 23, 30)), 'summer');
-  assert.equal(P.seasonOf(Date.UTC(2026, 9, 7, 14, 59)), 'spring');
+  const day = T.seasonDay(kst(2026, 10, 5, 12));
+  for (let d = day; d < day + 8; d += 1) {
+    const seasons = [0, 1, 2, 3].map((zone) => T.zoneSeason(zone, d));
+    assert.deepEqual([...seasons].sort(), ['autumn', 'spring', 'summer', 'winter']); // all four, every day
+    for (let zone = 0; zone < 4; zone += 1) {
+      assert.equal(T.zoneSeason((zone + 1) % 4, d + 1), T.zoneSeason(zone, d)); // a season moves one zone clockwise
+      assert.equal(T.zoneSeason(zone, d + 4), T.zoneSeason(zone, d)); // back every 4 days
+    }
+    assert.equal(T.zoneSeason(-1, d), null); // the plaza has none
+  }
+  // the day turns at 00:00 Seoul, not at the viewer's or UTC midnight
+  assert.equal(T.seasonDay(kst(2026, 10, 5, 23, 59)), T.seasonDay(kst(2026, 10, 5, 0, 0)));
+  assert.equal(T.seasonDay(kst(2026, 10, 6, 0, 0)), T.seasonDay(kst(2026, 10, 5, 23, 59)) + 1);
+  assert.equal(T.seasonDay(Date.UTC(2026, 9, 5, 15, 0)), T.seasonDay(kst(2026, 10, 6, 0, 0))); // 15:00 UTC = 00:00 KST
+  assert.equal(T.seasonAt(0, -70, kst(2026, 10, 5, 12)), T.zoneSeason(0, day));
+  assert.equal(T.seasonAt(0, 0, kst(2026, 10, 5, 12)), null);
+  // month ends and years do not matter any more: only the count of days
+  assert.equal(T.seasonDay(kst(2027, 1, 1)) - T.seasonDay(kst(2026, 12, 31)), 1);
+  assert.equal(P.NEUTRAL_LOOK, 'summer'); // the plaza's seasonal props show the plain green files
+  assert.equal(P.seasonOf, undefined); // the monthly rule is gone
 });
 
 test('에셋 등록부 조회: 비활성·운영 차단·주소 없음은 쓰지 않고, 구체 id부터 고른다', () => {
@@ -187,7 +214,7 @@ test('지연 로더: 등록이 없으면 로더를 받지 않고, 있으면 한 
   const none = P.createLazyAssets({ registry: {}, importLoader: () => { imported += 1; return {}; } });
   none.attach('facility.shop', {}, {}); none.dress('character.player', {}); none.setQuality(1);
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(imported, 0); assert.deepEqual(none.debug(), { registered: [], loader: 'none', season: null });
+  assert.equal(imported, 0); assert.deepEqual(none.debug(), { registered: [], loader: 'none', day: null });
 
   const offAll = P.createLazyAssets({ registry: { 'facility.shop': { url: '/x.glb' } }, off: ['*'], importLoader: () => { imported += 1; return {}; } });
   await new Promise((r) => setTimeout(r, 0));
@@ -237,18 +264,18 @@ test('계절 파일: 그 계절 파일 → 기본 url → 없으면 코드 생�
 test('지연 로더: 자연물 묶음 요청(wants·batch)과 매 프레임 update·계절 변경을 로더에 넘기고, 등록이 없으면 아무것도 하지 않는다', async () => {
   const none = P.createLazyAssets({ registry: {}, importLoader: () => { throw new Error('not expected'); } });
   assert.equal(none.wants(['nature.tree.round', 'nature.tree']), false);
-  none.batch('nature.tree', []); none.update(1, 2); none.setSeason('winter');
-  assert.equal(none.debug().season, 'winter');
+  none.batch('nature.tree', []); none.update(1, 2); none.setDay(3);
+  assert.equal(none.debug().day, 3);
 
   const seen = [];
-  const lazy = P.createLazyAssets({ registry: { 'nature.tree': { seasons: { winter: '/w.glb' } } }, options: { season: 'spring' }, importLoader: async () => ({ createIslandAssets: (o) => {
-    seen.push(['create', o.season]);
-    return { batch: (ids, cells) => seen.push(['batch', ids, cells.length]), update: (x, z) => seen.push(['update', x, z]), setSeason: (s) => seen.push(['season', s]), attach() {}, dress() {}, setQuality() {}, release() {}, dispose() {}, debug: () => ({}) };
+  const lazy = P.createLazyAssets({ registry: { 'nature.tree': { seasons: { winter: '/w.glb' } } }, options: { day: 1 }, importLoader: async () => ({ createIslandAssets: (o) => {
+    seen.push(['create', o.day]);
+    return { batch: (ids, cells) => seen.push(['batch', ids, cells.length]), update: (x, z) => seen.push(['update', x, z]), setDay: (d) => seen.push(['day', d]), attach() {}, dress() {}, setQuality() {}, release() {}, dispose() {}, debug: () => ({}) };
   } }) });
   assert.equal(lazy.wants('nature.tree'), true); // a winter file: worth keeping apart even in spring
   assert.equal(lazy.wants('nature.bush'), false);
   lazy.batch('nature.tree', [{}, {}]); lazy.update(5, 6); // update before the loader is in: nothing to move yet
   await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0));
-  lazy.update(7, 8); lazy.setSeason('winter');
-  assert.deepEqual(seen, [['create', 'spring'], ['batch', 'nature.tree', 2], ['update', 7, 8], ['season', 'winter']]);
+  lazy.update(7, 8); lazy.setDay(3);
+  assert.deepEqual(seen, [['create', 1], ['batch', 'nature.tree', 2], ['update', 7, 8], ['day', 3]]);
 });
