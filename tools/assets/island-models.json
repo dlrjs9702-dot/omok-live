@@ -73,6 +73,13 @@
       "lowSha256": "2e99990c9a3d4320f2f907b292a497c37a7b2f28923ddec6f13e1779a790305b"
     },
     {
+      "out": "additions-v1/facilities/accessories.glb",
+      "src": "additions:06. Specialist shop candidates/shop_accessories.glb",
+      "sha256": "e123a6b31638cb3d648452db68984113666ef6b340c233b21ab965f6583d977d",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_accessories.glb",
+      "lowSha256": "56b749f89a8b706205aceca3e13c6d08433717df96b1522a8c6c09541155a1bd"
+    },
+    {
       "out": "additions-v1/facilities/admin.glb",
       "src": "additions:03. Facilities/admin.glb",
       "sha256": "8a4fbdacead184119308f6becc91b9f599e92f7fd839ae8dad5375d54443269a",
@@ -88,10 +95,10 @@
     },
     {
       "out": "additions-v1/facilities/avatar.glb",
-      "src": "additions:03. Facilities/avatar.glb",
-      "sha256": "8141f547928a505714ece4ecb0a51994224f9733b3e7c88a3044d6d5f9e93889",
-      "lowSrc": "additions:05. Low LOD/03. Facilities/avatar.glb",
-      "lowSha256": "2015441527dc2c5ffcef203d497f3654920278262b5355e0481cfc59b9f86dd5"
+      "src": "additions:06. Specialist shop candidates/shop_clothing.glb",
+      "sha256": "9ba679613cda628d1bbf5d342a9de89052a958a7fbb50e7c4431931f97d8b048",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_clothing.glb",
+      "lowSha256": "d6c4725c9421b7eb8c4db43b0237fa159de6c8ed3c79e5856462078d8e376ca5"
     },
     {
       "out": "additions-v1/facilities/board.glb",
@@ -115,11 +122,32 @@
       "lowSha256": "afdfb5da26819350bda812fe0533557e7f6c95bd826bcce720f3e5b6a196262f"
     },
     {
+      "out": "additions-v1/facilities/dye.glb",
+      "src": "additions:06. Specialist shop candidates/shop_dye.glb",
+      "sha256": "4e9c6d2fe5dc152f9e49de5f6f6d6fd636b14882ce4940769a30a7d1db082d66",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_dye.glb",
+      "lowSha256": "a02d29ce610ef193edb801d67f15a1e9b171078ef0cd576a6b38cfdc16e9a411"
+    },
+    {
+      "out": "additions-v1/facilities/faces.glb",
+      "src": "additions:06. Specialist shop candidates/shop_faces.glb",
+      "sha256": "a326aceca4df6690c14f33d8d08d57a0a7e3d134e4a7fd27d0513eecab174e30",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_faces.glb",
+      "lowSha256": "65a9b1381b347c5481ae359e23e40f133ea0dac7717e4dedc90b9aae5a109170"
+    },
+    {
       "out": "additions-v1/facilities/games.glb",
       "src": "additions:03. Facilities/games.glb",
       "sha256": "d24d39a9025fda4c1ca401b4f0ef3bc7729d8a194e3fe66df39dba3c1816df93",
       "lowSrc": "additions:05. Low LOD/03. Facilities/games.glb",
       "lowSha256": "8bf026d35458b79000ce5da2f679d755dd394bfaec9fe387047ef2c891aa8065"
+    },
+    {
+      "out": "additions-v1/facilities/hair.glb",
+      "src": "additions:06. Specialist shop candidates/shop_hair.glb",
+      "sha256": "51be5d1b35e9d7dc3d7bf600b17b15a537f26c006c1c5e0a2b35e289edbe8a15",
+      "lowSrc": "additions:05. Low LOD/06. Specialist shop candidates/shop_hair.glb",
+      "lowSha256": "b4ed37fdde62808fe5555af7fde6a8977dc1b1bd231eef91d7c3098a1752bf71"
     },
     {
       "out": "additions-v1/facilities/map.glb",

@@ -51,6 +51,8 @@
     board: { scale: 1.1 }, missions: { scale: 1.1 }, map: { scale: 1.25 }, donate: { scale: 1.1 },
     attendance: { scale: 1, offset: [0.7, 0, 0] }, // the stamp stand beside its keeper (keeper at x -0.7)
     trader: { scale: 1, offset: [0, 0, 0.1] }, naming: { scale: 1, offset: [0, 0, 0.1] }, // in front of the keeper
+    // v1.10.30 the specialist shops (2026-10-05 shop candidates, built under their game ids; `avatar` is the clothes shop)
+    faces: { scale: 1 }, hair: { scale: 1 }, accessories: { scale: 1 }, dye: { scale: 1, offset: [0, 0, 0.1] },
   };
   // v1.10.29 the 2026-10-05 gap assets (gaps-v1): ground layers, structure footings, yard and harbour props, the
   // seasonal falling flakes, the far scenery at sea and the whale. The ground's own seasonal colours are not files: they

@@ -618,22 +618,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
   // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.
-  let statueList = []; let statueKey = '[]'; const statueRoots = [];
+  let statueList = []; let statueKey = '[]'; const statueRoots = []; const statueChars = [];
+  const STATUE_SIZE = 2.6; // v1.10.30: the 1st donor's statue, in player heights (the 2nd is 70% of it)
   function setStatues(list) {
     const next = (Array.isArray(list) ? list : []).filter((s) => s && (s.rank === 1 || s.rank === 2)).slice(0, 2);
     const key = JSON.stringify(next.map(({ rank, name, look, title }) => [rank, name, look, title]));
     if (key === statueKey) return;
     statueKey = key; statueList = next;
+    for (const c of statueChars.splice(0)) { assets.release(c); const i = buildingRoots.indexOf(c.root); if (i >= 0) buildingRoots.splice(i, 1); }
     for (const r of statueRoots.splice(0)) { r.traverse((o) => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }); r.parent?.remove(r); }
+    // v1.10.30 기부 동상 (사용자 결정 2026-10-05): the donors as they look -- their own colours, hair, clothes and face, the
+    // common-rig character when they have it (no gold or silver any more) -- at landmark size: the 1st STATUE_SIZE times
+    // a player, the 2nd 70% of that, waving, frozen. Over everyone's heads they never stand in the way (the plinth's
+    // circle is the walking limit); one that hides me from the camera fades like a building.
     for (const st of next) {
       const spot = STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
-      const c = makeCharacter({ shirt: 0xffffff, hair: 0xffffff, skin: 0xffffff, look: st.look || {} });
-      const metal = mat(st.rank === 1 ? 0xf3c64a : 0xc9d1dc, { metalness: 0.75, roughness: 0.3 });
-      c.root.traverse((o) => { if (o.isMesh) o.material = metal; });
-      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(1.15);
-      c.armR.rotation.z = 2.4; // a wave, frozen
-      scene.add(c.root); statueRoots.push(c.root);
-      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 4.08, spot.z); scene.add(plate); statueRoots.push(plate);
+      const size = st.rank === 1 ? STATUE_SIZE : STATUE_SIZE * 0.7;
+      const c = makeCharacter({ ...ME_BASE, look: st.look || {} });
+      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(size);
+      c.armR.rotation.z = 2.4; // a wave, frozen (the procedural character)
+      scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); c.root.userData.building = true; buildingRoots.push(c.root);
+      dressUp(c, st.look || {});
+      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 1.5 + 2.35 * size, spot.z); scene.add(plate); statueRoots.push(plate);
     }
   }
 
@@ -1207,6 +1213,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
+    for (const c of statueChars) if (c.anim && !c.frozen) { c.anim.play('wave'); c.anim.update(0.7, 0); c.frozen = true; } // v1.10.30: a statue's wave, set once
     stepWhale();
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
@@ -1284,7 +1291,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };

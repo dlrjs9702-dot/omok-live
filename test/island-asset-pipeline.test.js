@@ -28,7 +28,10 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`),
     // v1.10.29 gap assets (gaps-v1)
     'deco.layer.sparse', 'deco.layer.cluster', 'deco.layer.edge', 'deco.foundation', 'prop.mailbox.0', 'prop.mailbox.1', 'prop.steppingStone', 'prop.pierDeck', 'prop.pierPost',
-    'fx.petal', 'fx.leaf', 'fx.snow', 'sea.coastLong', 'sea.coastCove', 'sea.ridgeSoft', 'sea.ridgeRugged', 'sea.peak', 'sea.glacier', 'sea.floe', 'sea.whale', 'sea.splash'].sort());
+    'fx.petal', 'fx.leaf', 'fx.snow', 'sea.coastLong', 'sea.coastCove', 'sea.ridgeSoft', 'sea.ridgeRugged', 'sea.peak', 'sea.glacier', 'sea.floe', 'sea.whale', 'sea.splash',
+    // v1.10.30 the specialist shops, the common-rig body and its wardrobe (face, hair, clothes, shoes, hats, faces)
+    'facility.faces', 'facility.hair', 'facility.accessories', 'facility.dye', 'character.base', ...Object.keys(REGISTRY).filter((id) => id.startsWith('wear.'))].sort());
+  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 10 + 8 + 30);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
   const check = async (id, url, what) => {
@@ -41,11 +44,16 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     assert.ok(parsed.get(url) > 0, `${id} ${what} 메시`);
   };
   for (const [id, entry] of Object.entries(REGISTRY)) {
+    for (const url of Object.values(entry.clips || {})) { // v1.10.30 the motions: one clip each, no mesh
+      assert.ok(pack.assets.some((a) => a.url === url), `${id} ${url} 리소스 팩`);
+      const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
+      assert.equal(gltf.animations.length, 1, url); parsed.set(url, 0);
+    }
     const scale = entry.scale ?? 1;
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea))\//, id);
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea)|characters)\//, id);
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');

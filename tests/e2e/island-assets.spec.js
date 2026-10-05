@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, expectNoScriptError } = require('./skin-support');
+const { shopper, post, expectNoScriptError } = require('./skin-support');
 const { staticGlb, riggedGlb } = require('../../test-support/gltf-fixture.js');
 
 // v1.10.15 고품질 에셋 파이프라인 in the real island: with nothing registered nothing extra is loaded and everything
@@ -304,4 +304,34 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   expect(all.far).toBeGreaterThan(0); expect(all.near).toBeGreaterThan(0);
   expect(a.errors).toEqual([]);
   await a.context.close();
+});
+
+// v1.10.30 공통 캐릭터: the common-rig body with its gender's clothes; an avatar item with a part is worn on the same
+// skeleton, the face (성형) and a dyed item (염색) change what is worn, the island goes on; an item without a part yet keeps
+// the procedural character (never swapped for something else)
+test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const who = await shopper(browser, request, '공통캐릭', 2_000_000, 'female');
+  const { page, token } = who;
+  const ready = async () => {
+    await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+  };
+  await ready();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
+  for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
+  expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
+  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: 'e2e-look-eyes-1' })).status).toBe(200);
+  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: 'e2e-look-dye-1' })).status).toBe(200);
+  await ready();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
+  expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
+  // an item without a part yet: the procedural character, nothing swapped
+  expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_5' })).status).toBe(200);
+  await ready();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hair)).toBe('avatar_hair_5');
+  await page.waitForTimeout(3000);
+  expect(await page.evaluate(() => window.PlazaDebug().wardrobe)).toBe(null);
+  await expectNoScriptError(page);
+  await who.context.close();
 });

@@ -1613,6 +1613,14 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .climbRankEmpty{font-size:.78rem;color:#94a3b8;padding:6px 2px}
 .climbChampions{margin:0 0 10px;font-size:.78rem;font-weight:800;color:#fde68a}
 .recordsDialog.namingDialog{width:min(92vw,420px)} /* v1.10.9 작명소 */
+/* v1.10.30 성형외과·염색사 */
+.lookShop { display: grid; gap: 10px; }
+.lookShop h3 { margin: 6px 0 0; font-size: 1rem; }
+.lookChoices { display: flex; flex-wrap: wrap; gap: 8px; }
+.lookChoices button { display: inline-flex; align-items: center; gap: 6px; }
+.lookSwatch { width: 14px; height: 14px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .25); flex: none; }
+.lookMeta { margin: 0; color: var(--muted, #64748b); }
+
 /* v1.10.10 가방·관공서·상인 */
 .islandBagTab{top:auto;bottom:14px}
 .recordsDialog.islandBagDialog{width:min(92vw,440px)}

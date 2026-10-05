@@ -150,7 +150,8 @@ test('배회 NPC 이동: 다른 시각에 들어온 두 화면도 곧 같은 자
   // a tab that slept for ten minutes: straight back on the shared round, not a long walk over
   const ms = t0 + 6 * 60 * 1000 + 10 * 60 * 1000;
   a.step(ms, 0.05);
-  for (const w of a.list) { assert.ok(Math.hypot(w.x - w.bx, w.z - w.bz) < 1, `n${w.n} 바로 경로로`); assert.ok(w.warped || Math.hypot(w.x - w.px, w.z - w.pz) < 1.5, `n${w.n} 먼 거리를 한 번에 쓸고 가지 않음`); }
+  // (as in run(): when a prop dropped on the round covers the round's own point, the islander waits right beside it)
+  for (const w of a.list) { assert.ok(Math.hypot(w.x - w.bx, w.z - w.bz) < (a.clear(w.bx, w.bz) ? 1 : 1.5) && a.clear(w.x, w.z), `n${w.n} 바로 경로로`); assert.ok(w.warped || Math.hypot(w.x - w.px, w.z - w.pz) < 1.5, `n${w.n} 먼 거리를 한 번에 쓸고 가지 않음`); }
 });
 
 test('배회 NPC 이동: 정확히 같은 자리에 겹쳐 생겨도 서로 비켜서고, 물·장애물로 밀려나지 않는다', () => {
