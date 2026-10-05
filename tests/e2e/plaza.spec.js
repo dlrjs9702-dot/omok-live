@@ -501,12 +501,17 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   const dragged = await cam();
   expect(dragged.pitch).toBeGreaterThan(before.pitch + 0.15); // 80 px up
   expect(dragged.yaw).toBeGreaterThan(before.yaw + 0.4); // 80 px left
-  // and the keys go on from there: sampled while turning, every step is small
-  let prev = dragged; let biggest = 0;
+  // and the keys go on from there: sampled while A turns, the view only ever moves on from the dragged angle (the
+  // keys' old angle is 0.64 back the other way) and the tilt stays where the drag left it
+  let prev = dragged;
   await page.keyboard.down('a');
-  for (let k = 0; k < 8; k += 1) { await page.waitForTimeout(60); const now = await cam(); biggest = Math.max(biggest, Math.abs(now.yaw - prev.yaw), Math.abs(now.pitch - prev.pitch)); prev = now; }
+  for (let k = 0; k < 8; k += 1) {
+    await page.waitForTimeout(60); const now = await cam();
+    expect(now.yaw).toBeGreaterThanOrEqual(prev.yaw - 0.01); // no jump back to an old angle
+    expect(Math.abs(now.pitch - dragged.pitch)).toBeLessThan(0.02);
+    prev = now;
+  }
   await page.keyboard.up('a');
-  expect(biggest).toBeLessThan(0.35); // no jump back to an old angle
   expect(prev.yaw).toBeGreaterThan(dragged.yaw);
 
   // typing a chat message: W/A/S/D are letters, not camera keys
