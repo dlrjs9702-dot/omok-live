@@ -156,69 +156,92 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
   // { x, z (its centre), parent, procedural: [the square's InstancedMesh of this kind], matrices: [one per copy],
-  // colors: [its tint per copy] | null, shadow }. Once the model is in, every square gets one InstancedMesh per part of
-  // the model, placed with the very matrices the procedural copies had (place, turn, size -- so where things stand,
-  // their collision and every game rule stay as they were).
-  // v1.10.18: copy by copy, not square by square -- update() puts the copies near the player into the model's mesh and
-  // the rest into the procedural one (each drawing only as many as it holds), so a detailed model costs triangles only
-  // where one stands close. Nothing registered, a failed load or a switched-off id: the procedural copies stay.
-  function batch(ids, cells) { const rec = { ids, cells, url: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
-  // the copies `keep` (all, without a model) back in a square's procedural mesh, the rest drawn as the model
-  function fill(p, near) {
-    const { cell } = p; const proc = cell.procedural[0]; let a = 0; let b = 0;
-    cell.matrices.forEach((m, i) => {
-      if (near && near[i]) { for (const im of p.meshes) im.setMatrixAt(a, both.multiplyMatrices(m, local).multiply(im.userData.part)); a += 1; }
-      else { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; }
+  // colors: [its tint per copy] | null, shadow }. Once the model is in, every square draws its copies with the model,
+  // placed with the very matrices the procedural copies had (place, turn, size -- so where things stand, their
+  // collision and every game rule stay as they were).
+  // v1.10.26 섬 전체 High/Low LOD (사용자 결정 2026-10-05): every copy of a target with a model shows that model at
+  // every distance -- the full (High) model near the player, the same design simplified (Low, the entry's `low` file
+  // made by the build pipeline) farther away -- so the island never turns back into its procedural look with distance.
+  // Per square there is one InstancedMesh per model part for High and one for Low, sharing the loaded geometry and
+  // material; each draws only the copies it holds (none: not even a draw call). A copy switches to High inside `near`
+  // and back to Low only past `near` x HIGH_BAND (hysteresis, asset-pipeline `highState`), so walking along the edge
+  // does not flicker. Only High casts shadows (the shadow camera covers about 30 around the player anyway). Without a
+  // Low file (rocks, the stump: already light) the High model is used at every distance. The procedural copies are
+  // only the fallback: nothing registered, a failed or switched-off model.
+  function batch(ids, cells) { const rec = { ids, cells, key: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
+  // a square's copies back in its procedural mesh (no model)
+  function procedural(cell, show) {
+    const proc = cell.procedural[0];
+    if (show) cell.matrices.forEach((m, i) => { proc.setMatrixAt(i, m); if (cell.colors) proc.setColorAt(i, cell.colors[i]); });
+    proc.count = show ? cell.matrices.length : 0; proc.visible = show && proc.count > 0;
+    proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
+  }
+  // the square's copies into its High and Low meshes by p.high (a copy's flag), with the entry's transform `local`
+  function fill(p) {
+    let a = 0; let b = 0;
+    const far = p.low || p.high; // no Low file: High everywhere
+    p.cell.matrices.forEach((m, i) => {
+      const near = p.flags[i] || !p.low;
+      for (const im of (near ? p.high : far)) im.setMatrixAt(near ? a : b, both.multiplyMatrices(m, local).multiply(im.userData.part));
+      if (near) a += 1; else b += 1;
     });
-    for (const im of p.meshes) { im.count = a; im.visible = a > 0; im.instanceMatrix.needsUpdate = true; } // nothing to draw: not even a call
-    proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
-    p.near = a;
+    const set = (meshes, n) => { for (const im of meshes) { im.count = n; im.visible = n > 0; im.instanceMatrix.needsUpdate = true; } };
+    set(p.high, a); if (p.low) set(p.low, b);
+    p.near = a; p.far = b; // without a Low file every copy is High
   }
   function clearBatch(rec) {
-    if (rec.placed) for (const p of rec.placed) { for (const im of p.meshes) { p.cell.parent.remove(im); im.dispose(); } p.meshes = []; fill(p, null); }
+    if (rec.placed) for (const p of rec.placed) { for (const im of [...p.high, ...(p.low || [])]) { p.cell.parent.remove(im); im.dispose(); } procedural(p.cell, true); }
     rec.placed = null; rec.entry = null;
   }
   const local = new THREE.Matrix4(); const both = new THREE.Matrix4();
+  const entryMatrix = (entry, out) => out.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
   function applyBatch(rec) {
-    const hit = P.pick(registry, rec.ids, off, season); const url = hit?.entry.url || null;
-    if (url === rec.url) return;
-    rec.url = url;
+    const hit = P.pick(registry, rec.ids, off, season); const key = hit ? `${hit.entry.url} ${hit.entry.lowUrl || ''}` : null;
+    if (key === rec.key) return;
+    rec.key = key;
     if (!hit) { clearBatch(rec); return; }
     shown[hit.id] = 'loading';
-    cache.get(url).then((gltf) => {
-      if (disposed || rec.url !== url) return;
+    const { entry } = hit;
+    Promise.all([cache.get(entry.url), entry.lowUrl ? cache.get(entry.lowUrl) : null]).then(([gltf, lowGltf]) => {
+      if (disposed || rec.key !== key) return;
       clearBatch(rec);
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
-      const parts = partsOf(gltf); const entry = hit.entry;
-      local.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
-      rec.placed = rec.cells.map((cell) => ({ cell, near: 0, meshes: parts.map(({ geometry, material, matrix }) => {
+      entryMatrix(entry, local);
+      const meshesOf = (model, cell, shadow) => partsOf(model).map(({ geometry, material, matrix }) => {
         const im = new THREE.InstancedMesh(geometry, material, cell.matrices.length);
         im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
         cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local).multiply(matrix)));
         im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
-        im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
+        im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
         cell.parent.add(im); return im;
-      }) }));
-      rec.entry = entry; shown[hit.id] = 'model'; lastX = NaN; // the next update() places them
+      });
+      rec.placed = rec.cells.map((cell) => {
+        procedural(cell, false);
+        const shadow = cell.shadow && entry.shadows !== false;
+        const p = { cell, near: 0, far: 0, flags: new Uint8Array(cell.matrices.length), high: meshesOf(gltf, cell, shadow), low: lowGltf ? meshesOf(lowGltf, cell, false) : null };
+        fill(p); // every copy Low (or High without a Low file) until the next update() works out the near ones
+        return p;
+      });
+      rec.entry = entry; shown[hit.id] = 'model'; lastX = NaN;
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
-  // Copies within the entry's `near` of the player (shortened on lower quality tiers) show the model, the rest their
-  // procedural look; worked out again only once the player has moved a unit, and only squares that can hold a near copy
-  // are filled again.
+  // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
+  // only when one of its copies changed side.
   let lastX = NaN; let lastZ = NaN;
   function update(x, z) {
     if (Math.hypot(x - lastX, z - lastZ) < 1) return;
     lastX = x; lastZ = z;
     for (const rec of batches) {
       if (!rec.placed) continue;
-      // the entry's transform for this batch, for fill()
-      local.compose(new THREE.Vector3(...(Array.isArray(rec.entry.offset) ? rec.entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rec.entry.rotationY || 0), new THREE.Vector3().setScalar(rec.entry.scale ?? 1));
+      entryMatrix(rec.entry, local);
       const near = P.lodDistance(rec.entry.near ?? 45, quality);
       for (const p of rec.placed) {
-        const flags = p.cell.matrices.map((m) => Math.hypot(m.elements[12] - x, m.elements[14] - z) < near);
-        const count = flags.filter(Boolean).length;
-        if (count === 0 && p.near === 0) continue; // nothing near before or now: unchanged
-        fill(p, flags);
+        let changed = false;
+        p.cell.matrices.forEach((m, i) => {
+          const high = P.highState(p.flags[i] === 1, Math.hypot(m.elements[12] - x, m.elements[14] - z), near);
+          if (high !== (p.flags[i] === 1)) { p.flags[i] = high ? 1 : 0; changed = true; }
+        });
+        if (changed) fill(p);
       }
     }
   }
@@ -269,8 +292,13 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }));
   }
 
-  const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.url, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
-    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed?.[0]?.meshes.length ?? 0,
+  // v1.10.26: near = copies drawn High, far = copies drawn Low, procedural = copies drawn procedural (0 with a model);
+  // first = how the first copy (at) is drawn
+  const sum = (rec, fn) => rec.cells.reduce((n, cell, k) => n + fn(cell, rec.placed?.[k]), 0);
+  const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.key ? rec.key.split(' ')[0] : null, low: rec.placed?.[0]?.low ? rec.entry.lowUrl : null,
+    copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length, placed: Boolean(rec.placed),
+    near: rec.placed ? sum(rec, (_, p) => p.near) : 0, far: rec.placed ? sum(rec, (_, p) => p.far) : 0, procedural: sum(rec, (cell) => (cell.procedural[0].visible ? cell.procedural[0].count : 0)),
+    parts: rec.placed?.[0]?.high.length ?? 0, first: !rec.placed ? 'procedural' : rec.placed[0].flags[0] || !rec.placed[0].low ? 'high' : 'low',
     at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null })); // one copy's place (tests)
   return { attach, dress, release, batch, update, setSeason, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, season, batches: batchDebug() }) };
 }

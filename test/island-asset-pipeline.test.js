@@ -252,3 +252,36 @@ test('지연 로더: 자연물 묶음 요청(wants·batch)과 매 프레임 upda
   lazy.update(7, 8); lazy.setSeason('winter');
   assert.deepEqual(seen, [['create', 'spring'], ['batch', 'nature.tree', 2], ['update', 7, 8], ['season', 'winter']]);
 });
+
+// v1.10.26 섬 전체 High/Low LOD: a target's far copies use the entry's `low` file of the same season (never the
+// procedural look), and the High/Low switch has a band so standing at the edge does not flicker
+test('High/Low LOD: low 파일은 계절별로 해석되고, 전환에는 히스테리시스가 있다', () => {
+  const P = require('../public/plaza/asset-pipeline.js');
+  const reg = { t: { seasons: { spring: '/a/s.glb', winter: '/a/w.glb' }, low: { seasons: { spring: '/a/s_low.glb' }, url: '/a/any_low.glb' } }, r: { url: '/a/rock.glb' } };
+  assert.equal(P.entryOf(reg, 't', [], 'spring').lowUrl, '/a/s_low.glb');
+  assert.equal(P.entryOf(reg, 't', [], 'winter').lowUrl, '/a/any_low.glb');
+  assert.equal(P.entryOf(reg, 'r', [], 'spring').lowUrl, null); // no low file: the full model at every distance
+  assert.equal(P.HIGH_BAND, 1.1);
+  assert.equal(P.highState(false, 34.9, 35), true);
+  assert.equal(P.highState(false, 35.5, 35), false);
+  assert.equal(P.highState(true, 37, 35), true); // inside the band: stays High
+  assert.equal(P.highState(true, 38.6, 35), false);
+  // walking back and forth across the edge: one switch each way, not one per step
+  let high = false; let switches = 0;
+  for (const d of [36, 35.2, 34.8, 35.3, 36, 37.5, 38, 38.4, 38.6, 38.2, 37]) { const next = P.highState(high, d, 35); if (next !== high) switches += 1; high = next; }
+  assert.equal(switches, 2);
+});
+
+test('운영 등록부: 나무·관목은 사계절 Low 파일이 있고 High보다 가볍다', () => {
+  const fs = require('node:fs'); const path = require('node:path');
+  const P = require('../public/plaza/asset-pipeline.js');
+  const { REGISTRY } = require('../public/plaza/island-assets.js');
+  for (const id of ['nature.tree.round', 'nature.tree.tiered', 'nature.tree.blossom', 'nature.tree.tall', 'nature.bush']) {
+    for (const season of P.SEASONS) {
+      const e = P.entryOf(REGISTRY, id, [], season);
+      assert.ok(e.lowUrl && e.lowUrl.endsWith('_low.glb') && e.lowUrl.includes(`/${season}/`), `${id} ${season}`);
+      assert.ok(fs.statSync(path.join(__dirname, '..', 'public', e.lowUrl)).size < fs.statSync(path.join(__dirname, '..', 'public', e.url)).size);
+    }
+  }
+  for (const id of ['nature.rock.0', 'nature.tree.stump']) assert.equal(P.entryOf(REGISTRY, id, [], 'spring').lowUrl, null);
+});

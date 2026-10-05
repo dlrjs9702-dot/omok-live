@@ -37,15 +37,17 @@
   // tall, a bush about 1.6 wide, the plaza bench 1.7 wide -- whose place, turn and size every copy keeps.
   // v1.10.19: every model in four seasons (the island's season: asset-pipeline.js `seasonOf`), and more tree kinds --
   // tiered and blossom take the wide-crowned tree_v2, tall the upright tree_v3; pine, fruit and sapling stay procedural.
-  // `near`: models only within this of the player (thousands of triangles each); the rest keep their light procedural copies.
+  // `near`: the full model within this of the player (thousands of triangles each). v1.10.26: farther copies show the
+  // same design simplified (`low`, made by tools/assets/build-island-models.js from the same source, about a quarter of
+  // the triangles), never the procedural look; rocks and the stump are light enough to stay full at every distance.
   const BASE = '/assets/island/seasonal-v2';
   const seasonal = (file) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${BASE}/${s}/${file.replace(/\{s\}/g, s)}`]));
   const REGISTRY = {
-    'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), scale: 0.72, near: 35 },
-    'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), scale: 0.68, near: 35 },
-    'nature.tree.blossom': { seasons: seasonal('nature/tree_v2_{s}.glb'), scale: 0.62, near: 35 },
-    'nature.tree.tall': { seasons: seasonal('nature/tree_v3_{s}.glb'), scale: 0.8, near: 35 },
-    'nature.bush': { seasons: seasonal('nature/shrub_{s}.glb'), scale: 0.9, near: 22, shadows: false },
+    'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), low: { seasons: seasonal('nature/tree_v1_{s}_low.glb') }, scale: 0.72, near: 35 },
+    'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.68, near: 35 },
+    'nature.tree.blossom': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.62, near: 35 },
+    'nature.tree.tall': { seasons: seasonal('nature/tree_v3_{s}.glb'), low: { seasons: seasonal('nature/tree_v3_{s}_low.glb') }, scale: 0.8, near: 35 },
+    'nature.bush': { seasons: seasonal('nature/shrub_{s}.glb'), low: { seasons: seasonal('nature/shrub_{s}_low.glb') }, scale: 0.9, near: 22, shadows: false },
     'prop.bench': { seasons: seasonal('bench_{s}_v1.glb'), scale: 0.85, rotationY: Math.PI }, // faces the fountain like the old one
     // v1.10.20 the rest of the environment set: rocks and the stump are the same in every season (common/); the gazebo
     // (the nature area's decor facility, its circle and sign unchanged) and the plaza flower beds follow the season.
