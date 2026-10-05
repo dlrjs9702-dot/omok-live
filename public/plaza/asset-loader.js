@@ -1,12 +1,13 @@
 // v1.10.15 고품질 에셋 파이프라인 -- the Three.js side of the island's optional 3D models (the rules, the registry
 // lookup and the lazy front are public/plaza/asset-pipeline.js). Imported only when the registry has a usable entry,
 // so with nothing registered this file, GLTFLoader and SkeletonUtils are never downloaded.
-// glTF 2.0 (.glb, or .gltf with .bin and PNG/JPEG/WebP/AVIF textures) through GLTFLoader. Draco, KTX2 and Meshopt need
-// decoders (extra files, WebAssembly); they are not set up yet, so a model that needs one fails to load and its
-// target simply stays procedural. Add the decoder here (loader.setDRACOLoader / setKTX2Loader / setMeshoptDecoder)
-// in the patch that brings the first such model.
+// glTF 2.0 (.glb, or .gltf with .bin and PNG/JPEG/WebP/AVIF textures) through GLTFLoader.
+// v1.10.25: models come out of the build pipeline (tools/assets/) quantized (KHR_mesh_quantization) and Meshopt-
+// compressed (EXT_meshopt_compression), so the Meshopt decoder is set up (WebAssembly, allowed by the page's CSP
+// 'wasm-unsafe-eval'). Draco and KTX2 are not: a model that needs one fails to load and its target stays procedural.
 import * as THREE from '/vendor/three/three.module.js';
 import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
 
@@ -18,6 +19,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   const manager = new THREE.LoadingManager();
   manager.setURLModifier((url) => (url.startsWith('/') && !url.includes('?') ? assetUrl(url) : url));
   const loader = new GLTFLoader(manager);
+  loader.setMeshoptDecoder(MeshoptDecoder);
   const cache = P.createLoadCache((url) => loader.loadAsync(assetUrl(url)), (url, error) => onError(url, error));
   const lodBase = new Map(); // LOD level object -> its registered distance
   const lods = [];
@@ -33,6 +35,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const flat = !gltf.animations?.length && partsOf(gltf);
     if (flat && flat.length === 1 && flat[0].material.vertexColors) {
       const mesh = new THREE.Mesh(flat[0].geometry, flat[0].material);
+      mesh.applyMatrix4(flat[0].matrix); // its place in the model (a quantized model's dequantizing scale too)
       const object = new THREE.Group(); object.add(mesh);
       object.scale.multiplyScalar(entry.scale ?? 1);
       object.rotation.y += entry.rotationY || 0;
@@ -87,12 +90,27 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
 
-  // v1.10.17 one model's parts for placing it many times: its meshes with their place in the model applied. A model of
-  // plain-coloured materials (no textures, opaque -- the island's are) is flattened into one geometry with the colours
-  // in its vertices and one shared material: one draw call per square of the island for all its copies. Worked out
-  // once per file.
+  // v1.10.17 one model's parts for placing it many times: its meshes, each with its place in the model (`matrix`). A
+  // model of plain-coloured materials (no textures, opaque -- the island's are) is flattened into one geometry with the
+  // colours in its vertices and one shared material: one draw call per square of the island for all its copies.
+  // v1.10.25: the place is kept as a matrix, never baked into the vertices -- a quantized model keeps its vertices in
+  // small integers and its dequantizing scale/offset in that matrix, and baking metres into those integers wrecks it
+  // (checked with a real quantized tree: it filled the screen). Meshes on one node (the pipeline's output: one mesh,
+  // a primitive per colour) merge as they are and keep their index; meshes on different nodes are first turned into
+  // plain floats and moved into the model's space. Worked out once per file.
   const partsCache = new WeakMap();
   const TEXTURE_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap'];
+  const identity = new THREE.Matrix4();
+  // every attribute as plain floats (quantized and normalized values read back as what they mean)
+  function floats(geometry) {
+    for (const [name, a] of Object.entries(geometry.attributes)) {
+      if (a.array instanceof Float32Array && !a.normalized && !a.isInterleavedBufferAttribute) continue;
+      const out = new Float32Array(a.count * a.itemSize); const get = [a.getX, a.getY, a.getZ, a.getW];
+      for (let i = 0; i < a.count; i += 1) for (let c = 0; c < a.itemSize; c += 1) out[i * a.itemSize + c] = get[c].call(a, i);
+      geometry.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize));
+    }
+    return geometry;
+  }
   function partsOf(gltf) {
     if (partsCache.has(gltf)) return partsCache.get(gltf);
     gltf.scene.updateMatrixWorld(true);
@@ -100,24 +118,37 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const plain = meshes.every((m) => [].concat(m.material).length === 1 && m.material.isMeshStandardMaterial && !m.material.transparent && TEXTURE_SLOTS.every((slot) => !m.material[slot]));
     let parts;
     if (plain && meshes.length) {
-      const geos = meshes.map((m) => {
-        const g = m.geometry.clone().applyMatrix4(m.matrixWorld); const flat = g.index ? g.toNonIndexed() : g; if (flat !== g) g.dispose();
-        if (!flat.attributes.normal) flat.computeVertexNormals();
-        const count = flat.attributes.position.count; const colour = new Float32Array(count * 3); const own = flat.attributes.color;
+      const shared = meshes.every((m) => m.matrixWorld.equals(meshes[0].matrixWorld));
+      const indexed = meshes.every((m) => m.geometry.index);
+      const colourOf = (m) => (g) => {
+        if (!g.attributes.normal) g.computeVertexNormals();
+        const count = g.attributes.position.count; const colour = new Float32Array(count * 3); const own = g.attributes.color;
         for (let i = 0; i < count; i += 1) {
           colour[i * 3] = m.material.color.r * (own ? own.getX(i) : 1); colour[i * 3 + 1] = m.material.color.g * (own ? own.getY(i) : 1); colour[i * 3 + 2] = m.material.color.b * (own ? own.getZ(i) : 1);
         }
-        for (const name of Object.keys(flat.attributes)) if (!['position', 'normal'].includes(name)) flat.deleteAttribute(name);
-        flat.setAttribute('color', new THREE.BufferAttribute(colour, 3));
-        return flat;
+        for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
+        g.setAttribute('color', new THREE.BufferAttribute(colour, 3));
+        return g;
+      };
+      const build = (bake) => meshes.map((m) => {
+        let g = m.geometry.clone();
+        if (bake) floats(g).applyMatrix4(m.matrixWorld);
+        if (!indexed && g.index) { const flat = g.toNonIndexed(); g.dispose(); g = flat; }
+        return colourOf(m)(g);
       });
-      const geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose());
+      let geos = build(!shared);
+      let geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose());
+      let matrix = shared ? meshes[0].matrixWorld.clone() : identity;
+      if (!geometry) { // parts of different kinds (e.g. differently quantized): plain floats in the model's space
+        geos = build(true).map(floats); geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose()); matrix = identity;
+      }
       const roughness = meshes.reduce((sum, m) => sum + m.material.roughness, 0) / meshes.length;
       const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness: 0 });
       made.push(geometry, material);
-      parts = [{ geometry, material }];
+      parts = [{ geometry, material, matrix }];
     } else {
-      parts = meshes.map((m) => { const geometry = m.geometry.clone().applyMatrix4(m.matrixWorld); made.push(geometry); return { geometry, material: m.material }; });
+      // shared with the loaded file (disposed with it), each with its place in the model
+      parts = meshes.map((m) => ({ geometry: m.geometry, material: m.material, matrix: m.matrixWorld.clone() }));
     }
     partsCache.set(gltf, parts);
     return parts;
@@ -136,7 +167,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function fill(p, near) {
     const { cell } = p; const proc = cell.procedural[0]; let a = 0; let b = 0;
     cell.matrices.forEach((m, i) => {
-      if (near && near[i]) { both.multiplyMatrices(m, local); for (const im of p.meshes) im.setMatrixAt(a, both); a += 1; }
+      if (near && near[i]) { for (const im of p.meshes) im.setMatrixAt(a, both.multiplyMatrices(m, local).multiply(im.userData.part)); a += 1; }
       else { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; }
     });
     for (const im of p.meshes) { im.count = a; im.visible = a > 0; im.instanceMatrix.needsUpdate = true; } // nothing to draw: not even a call
@@ -160,9 +191,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const parts = partsOf(gltf); const entry = hit.entry;
       local.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
-      rec.placed = rec.cells.map((cell) => ({ cell, near: 0, meshes: parts.map(({ geometry, material }) => {
+      rec.placed = rec.cells.map((cell) => ({ cell, near: 0, meshes: parts.map(({ geometry, material, matrix }) => {
         const im = new THREE.InstancedMesh(geometry, material, cell.matrices.length);
-        cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local)));
+        im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
+        cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local).multiply(matrix)));
         im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
         im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
         cell.parent.add(im); return im;

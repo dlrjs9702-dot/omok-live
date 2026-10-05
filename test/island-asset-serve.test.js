@@ -49,7 +49,7 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
   const mapText = homeHtml.match(/<script type="importmap">([^<]*)<\/script>/)[1];
   const { imports } = JSON.parse(mapText);
   const sha = `'sha256-${require('node:crypto').createHash('sha256').update(mapText).digest('base64')}'`;
-  assert.ok(home.headers.get('content-security-policy').includes(`script-src 'self' ${sha}`));
+  assert.ok(home.headers.get('content-security-policy').includes(`script-src 'self' 'wasm-unsafe-eval' ${sha}`)); // v1.10.25 Meshopt decoder
   const threeUrl = imports.three;
   assert.match(threeUrl, /^\/vendor\/three\/three\.module\.js\?h=[0-9a-f]{16}$/);
   assert.equal(imports['/vendor/three/three.module.js'], threeUrl);
@@ -58,7 +58,7 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
   assert.doesNotMatch(homeHtml, /\?v=/);
 
   // the loader and what it imports, served as they are (the bare 'three' goes through the import map)
-  for (const addon of ['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'utils/BufferGeometryUtils.js']) {
+  for (const addon of ['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'utils/BufferGeometryUtils.js', 'libs/meshopt_decoder.module.js']) {
     const url = imports[`/vendor/three/addons/${addon}`];
     assert.match(url, /\?h=[0-9a-f]{16}$/, addon);
     const res = await fetch(`${base}${url}`);

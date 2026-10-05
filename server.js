@@ -188,7 +188,7 @@ function securityHeaders(extra = {}) {
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
     ...extra,
   };
 }
@@ -257,6 +257,8 @@ const VENDOR_FILES = {
   '/vendor/three/addons/loaders/GLTFLoader.js': path.join(THREE_ADDONS, 'loaders', 'GLTFLoader.js'),
   '/vendor/three/addons/utils/BufferGeometryUtils.js': path.join(THREE_ADDONS, 'utils', 'BufferGeometryUtils.js'),
   '/vendor/three/addons/utils/SkeletonUtils.js': path.join(THREE_ADDONS, 'utils', 'SkeletonUtils.js'),
+  // v1.10.25: the Meshopt decoder for the pipeline's compressed models (WebAssembly inside; CSP 'wasm-unsafe-eval')
+  '/vendor/three/addons/libs/meshopt_decoder.module.js': path.join(THREE_ADDONS, 'libs', 'meshopt_decoder.module.js'),
 };
 // v1.10.23: served as they are -- the addons' bare 'three' resolves through the page's import map to the very module
 // URL the game imports (one Three.js instance, shared classes); no rewriting.
