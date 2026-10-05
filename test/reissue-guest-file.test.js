@@ -138,7 +138,7 @@ test('old entry token authenticates on Render destination with the same account 
     RENDER_EXTERNAL_URL: 'https://omok-live.onrender.com',
     PUBLIC_BASE_URL: 'https://silent-lake-9bcf.dlrjs9702.workers.dev',
   });
-  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.20' });
+  assert.deepEqual((await req('/health')).data, { ok: true, version: '1.10.21' });
   const admin = (await req('/api/admin/login', 'POST', null, { password: 'test-reissue-password' })).data.sessionToken;
   const issued = await req('/api/admin/keys', 'POST', admin, { label: '기존 사용자' });
   assert.equal(issued.status, 201);
@@ -235,5 +235,5 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);
-  assert.match(html, /app\.js\?v=1.10.20/);
+  assert.match(html, /app\.js\?v=1.10.21/);
 });
