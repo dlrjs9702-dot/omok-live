@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.24 코드 해시 전달(import map·HTTP immutable·수동 ?v= 제거)
+
+고품질화 기반 연속 작업 2단계. 새 파일 `lib/code-manifest.js`, 변경 `server.js`·`public/index.html`·모듈 import 3곳.
+
+- 서버 시작 시 `public`의 JS·CSS(리소스 팩 폴더 `assets`·`hwatu` 제외)와 three vendor 파일의 내용 해시(sha256 앞 16자, `revisionOf` 재사용)를 계산.
+- 페이지: `<script src>`·`<link href>`에 `?h=<해시>`(기존 `?v=` 제거). 첫 `<script>` 앞에 import map을 넣어 모든 모듈 경로와 `three`를 해시 URL로 매핑, CSP `script-src`에 import map의 sha256 해시만 추가(인라인 스크립트 일반 허용 아님).
+- 응답: 요청 `h`가 현재 해시와 같을 때만 `public, max-age=31536000, immutable`. 해시 없음·옛 해시는 현재 파일을 `no-cache` + `ETag`로(304 지원) — 옛 URL이 새 내용으로 장기 캐시되지 않게.
+- vendor: addon의 `from 'three'` 문자열 치환을 없애고 원본 그대로 제공(import map이 해석). 하루 캐시 → 해시 기준 immutable.
+- 수동 버전 문자열 제거: `index.html` 34곳, `app.js`의 `rpg-client`·`plaza-scene` 동적 import(옛 값 1.10.5가 남아 있던 곳 포함), `plaza-scene`의 `island.js`·`asset-loader.js`, `rpg-client`의 두 모듈. AGENTS.md·`docs/release.md`의 버전 동기화 목록에서 `?v=` 항목 삭제, `test/release-version.test.js`가 `?v=` 재유입을 검사.
+- 코드는 Cache Storage 리소스 캐시에 넣지 않는다(IDEAS 결정). 번들러·게임별 지연 로딩은 측정 후 판단(이번에 미적용).
+- 테스트: 단위(페이지 해시 URL·import map·CSP 해시·immutable/no-cache/ETag/304·옛 해시, vendor 원본 제공), e2e(모든 JS·CSS가 해시 URL·immutable, CSP 위반 없음, 리소스 캐시에 코드 없음), plaza·island-assets·island-entry 회귀.
+
 ## v1.10.23 Mac Chrome 구형 로비 노출 수정(렌더러 재시도·오류 화면·원인 진단)
 
 IDEAS 「Mac Chrome에서 구형 로비 노출 · 수정 필요」(사용자 2026-10-05), 고품질화 2~5단계보다 우선. `public/plaza/plaza-scene.js`, `public/app.js`, `public/index.html`, `public/styles.css`, `server.js`.
