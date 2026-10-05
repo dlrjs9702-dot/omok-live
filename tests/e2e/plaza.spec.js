@@ -780,22 +780,22 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +320P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +7,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+320P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+7,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 320);
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 7000); // v1.10.31 단가: 쓰레기 500 × 4 + 지갑 5,000
   await page.locator('#islandPlaceCloseBtn').click();
   await page.evaluate(() => window.PlazaDebug().place('trader'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +240P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +4,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+240P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+4,000P');
   await page.locator('#islandPlaceCloseBtn').click();
   await page.locator('#islandBagTab').click();
   await expect(page.locator('#islandBagCount')).toHaveText('0/16');
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 560);
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 11000); // + 약재 2,000 × 2
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -886,4 +886,38 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
+});
+
+// v1.10.31 잡초 채집: only the nearest weed is offered; Space pulls it in about a second (GatherWeed) and the bag gets
+// one; walking away in that second calls it off (nothing taken); the pulled weed is gone from the island's list
+test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +1, 이동하면 취소, 섬에서 사라짐', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '잡초꾼');
+  const { page } = a;
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(1400);
+  const list = (await get(request, '/api/island/weeds', a.token)).data.weeds;
+  const [id, x, z] = list.find(([, wx, wz]) => Math.hypot(wx, wz) > 30 && Math.hypot(wx - 20, wz - 20) > 5);
+  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
+  const target = await page.evaluate(() => window.PlazaDebug().weeds.near);
+  // called off: walk away during the pull
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering), { timeout: 5000 }).toBe(target.slice(5));
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(500); await page.keyboard.up('ArrowUp');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering)).toBe(null);
+  const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
+  expect(await bagCount()).toBe(0);
+  // pulled: a second of standing still
+  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
+  const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
+  await page.keyboard.press('Space');
+  await expect.poll(bagCount, { timeout: 10000 }).toBe(1);
+  await expect.poll(() => page.evaluate((w) => window.PlazaDebug().weeds.at(w), pulledId)).toBe(null);
+  expect((await get(request, '/api/island/weeds', a.token)).data.weeds.some(([w]) => w === pulledId)).toBe(false);
+  void id;
+  await expectNoScriptError(page);
+  await a.context.close();
 });

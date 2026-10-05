@@ -73,6 +73,16 @@
       "lowSha256": "2e99990c9a3d4320f2f907b292a497c37a7b2f28923ddec6f13e1779a790305b"
     },
     {
+      "out": "additions-v1/common/weed_rooted.glb",
+      "src": "additions:01. Nature/05. Common/weed_rooted.glb",
+      "sha256": "249cd5a87f080df317196d6bf6a2b317703e7529ce824f913db4f5946c950359"
+    },
+    {
+      "out": "additions-v1/common/weed_standing.glb",
+      "src": "additions:01. Nature/05. Common/weed_standing.glb",
+      "sha256": "40c45e2daf61abc9ca2988ef815b051f4ce7826481508f30545cf628c5da7af2"
+    },
+    {
       "out": "additions-v1/facilities/accessories.glb",
       "src": "additions:06. Specialist shop candidates/shop_accessories.glb",
       "sha256": "e123a6b31638cb3d648452db68984113666ef6b340c233b21ab965f6583d977d",
@@ -525,6 +535,51 @@
       "sha256": "38b60dc9729a0ce1f738d93e59fe64d38ef795e46d15739e51b3a9c6a87c3fd3"
     },
     {
+      "out": "characters/props/berries.glb",
+      "src": "character:04. Interaction props/berries.glb",
+      "sha256": "e60baed6004f390270c82760c44afe8c2d46df6ffc060922a632e11816e9c97e"
+    },
+    {
+      "out": "characters/props/camera.glb",
+      "src": "character:04. Interaction props/camera.glb",
+      "sha256": "d9a1e9d62baea250286030e865cc5d72e42ee784e92df7c1030f5e9f2eade39b"
+    },
+    {
+      "out": "characters/props/coin.glb",
+      "src": "character:04. Interaction props/coin.glb",
+      "sha256": "19955a1fac367fc389b73156c6cfd4fb55f13c5704bd069debd224f8650fe2ce"
+    },
+    {
+      "out": "characters/props/herb.glb",
+      "src": "character:04. Interaction props/herb.glb",
+      "sha256": "114c4adfc77c36be112662a8c5dec7ccbe529ffadb3416f1ef1305cda980552c"
+    },
+    {
+      "out": "characters/props/lost_teddy.glb",
+      "src": "character:04. Interaction props/lost_teddy.glb",
+      "sha256": "a0bb00530912356ffc373f150698b5163d02f06e7f09abfa8f94f57390c9d7b3"
+    },
+    {
+      "out": "characters/props/mushrooms.glb",
+      "src": "character:04. Interaction props/mushrooms.glb",
+      "sha256": "d37a20279f329a177ff3dc5fec02dff357a2043971b4f3f8d889888747887308"
+    },
+    {
+      "out": "characters/props/trash_bottle.glb",
+      "src": "character:04. Interaction props/trash_bottle.glb",
+      "sha256": "65148c6168e3833b199cbee9a11bdb7bcd52f8fb179c59a6bb77279399ac99e7"
+    },
+    {
+      "out": "characters/props/trash_can.glb",
+      "src": "character:04. Interaction props/trash_can.glb",
+      "sha256": "d671107d9a895e96b668523d4e9527df268372984246fc23afc460c8984c6949"
+    },
+    {
+      "out": "characters/props/wallet.glb",
+      "src": "character:04. Interaction props/wallet.glb",
+      "sha256": "d1fe247451f90295994c846cd6d3bcea6d226b2a63a0ee8d454447a575b8beb6"
+    },
+    {
       "out": "characters/wear/basic_pants.glb",
       "src": "character:03. Modular assets/basic_pants.glb",
       "sha256": "5ae277585cffbaa5c189343456beeea3e45ce8d1c19260c99d64570b84bf39c6"
@@ -896,6 +951,13 @@
       "sha256": "5957e03986f81b7f6af0e2b255af9705435ef32883c0f96550ccb5e8a6d096a0",
       "lowSrc": "gaps:06. Props and atmosphere/02. Low/mailbox_red_low.glb",
       "lowSha256": "3cb0b409bf63fb2cb7ff442313e78e76011671f8efb1c684d1cc061e48f8c366"
+    },
+    {
+      "out": "gaps-v1/props/paper_litter.glb",
+      "src": "gaps:06. Props and atmosphere/01. High/paper_litter_high.glb",
+      "sha256": "36490a375f228903f725c42104d195045281967c534ee8e487309f2fc100e939",
+      "lowSrc": "gaps:06. Props and atmosphere/02. Low/paper_litter_low.glb",
+      "lowSha256": "48c6ac3975e9aec113fb7637d7fb819e846553b443445b434985e258d6d9d66c"
     },
     {
       "out": "gaps-v1/props/pier_deck.glb",

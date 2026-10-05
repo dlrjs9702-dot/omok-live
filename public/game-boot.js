@@ -190,8 +190,8 @@
       if (move.length || fetchList.length) {
         await preflight(move, fetchList);
         const total = [...move, ...fetchList].reduce((sum, asset) => sum + asset.size, 0);
-        let done = 0;
-        const progress = () => show('게임 리소스 준비 중', { progress: total ? done / total : 1 });
+        let done = 0; let over = false; // over: a download still in flight after a failure must not cover the retry screen
+        const progress = () => { if (!over) show('게임 리소스 준비 중', { progress: total ? done / total : 1 }); };
         const timer = setTimeout(progress, 250); // a small update finishes before anything is shown
         try {
           for (const asset of move) {
@@ -199,7 +199,7 @@
             if (hit) { await store(files, keyOf(asset), hit); done += asset.size; } else if (required.includes(asset)) fetchList.push(asset);
           }
           await downloadAll(files, fetchList, size => { done += size; if (!view.classList.contains('hidden')) progress(); });
-        } finally { clearTimeout(timer); }
+        } finally { clearTimeout(timer); over = true; }
       }
       const got = new Set((await files.keys()).map(pathOf));
       if (!wanted.every(key => got.has(key))) throw new Error('files incomplete');

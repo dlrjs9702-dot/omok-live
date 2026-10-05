@@ -1501,11 +1501,11 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id.startsWith('ev:') ? solveIslandEvent(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, or a facility
+        onInteract: (id) => (id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues);
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1688,6 +1688,32 @@
     for (const id of ids || []) islandEventsGone.set(id, Date.now());
     showIslandEvents(islandEventsNear);
   }
+  // v1.10.31 잡초 채집: the island's weeds, and pulling one -- the server first hears which (start, standing by it), the
+  // character pulls for about a second (moving or a window calls it off), then the server pulls it (finish, one request
+  // id, sent once more if the answer was lost) and everyone's island drops it.
+  let weedBusy = false;
+  async function loadWeeds() { try { const data = await api('/api/island/weeds'); plaza.controller?.setWeeds?.(data.weeds); } catch {} }
+  async function pullWeed(key) {
+    const id = key.slice('weed:'.length);
+    if (!id || weedBusy) return;
+    weedBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
+      if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      await api('/api/island/weed/start', { method: 'POST', body: JSON.stringify({ weedId: id }) });
+      const pulled = await new Promise((resolve) => { if (!plaza.controller?.gatherWeed?.(id, resolve)) resolve(false); });
+      if (!pulled) return; // called off
+      const body = JSON.stringify({ weedId: id, requestId: crypto.randomUUID() });
+      let data;
+      try { data = await api('/api/island/weed/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; data = await api('/api/island/weed/finish', { method: 'POST', body }); }
+      plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
+      showToast(`🌱 잡초 +1${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
+      if (data.bonus) loadPoints();
+    } catch (error) {
+      showToast(error.message);
+      if (error.data?.error === 'WEED_GONE') plaza.controller?.removeWeeds?.([id]);
+    } finally { weedBusy = false; }
+  }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {
     const id = key.split(':')[2];
@@ -1698,7 +1724,9 @@
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id }) });
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
-      else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P`);
+      else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
+      // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back
+      plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : data.action === 'return' ? 'give' : 'pickup');
       if (data.points) loadPoints();
       if (data.action !== 'pickup') islandEventsGone.set(id, Date.now());
       showIslandEvents(data.events || islandEventsNear);
@@ -3849,6 +3877,8 @@
     try { parsed = JSON.parse(data); } catch { return; }
     if (event === 'plaza') { plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
+    if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
+    if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };

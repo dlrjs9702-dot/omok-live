@@ -468,8 +468,10 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   for (const b of bushes) solids.push({ x: b.x, z: b.z, r: 0.75 * b.s });
   // Grass: small clumps of soft blades (not spikes), lighter at the tips.
   const blade = (rx, rz, h) => part(new THREE.ConeGeometry(0.05, h, 3, 1, true), 0x7cbf5c, Math.sin(rz) * h * 0.25, h / 2, -Math.sin(rx) * h * 0.25, { rx, rz, shade: [0.7, 1.15] });
-  const clump = mergeColored([blade(0, 0, 0.42), blade(0.35, 0.3, 0.34), blade(-0.3, -0.35, 0.32)]);
-  instanced(clump, natureMat, tufts, (t) => setM(t.x, ground(t.x, t.z), t.z, t.s, t.s, t.r), { shadow: false, cell: 60, color: (t, c) => c.setHSL(0.03 * (hash(t.x, t.z, 11) - 0.5), 0.15, 0.85 + hash(t.x, t.z, 12) * 0.25), target: 'nature.grass' });
+  const clump = keep(mergeColored([blade(0, 0, 0.42), blade(0.35, 0.3, 0.34), blade(-0.3, -0.35, 0.32)]));
+  // v1.10.31 잡초 채집: the island's tufts are the weeds now -- drawn by the scene from the server's list (pulled ones
+  // gone, new ones grown at midnight), with this shape when the weed model is not there (plaza-scene setWeeds)
+  void tufts;
 
   const pebble = keep(mergeColored([part(new THREE.IcosahedronGeometry(1, 0), 0xffffff, 0, 0, 0, { shade: [0.8, 1.05] })])); // white, tinted per copy
   // v1.10.20: three rock shapes for models (round, wide, tall), each rock's from its place; without models the three
@@ -651,5 +653,5 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   function step(clock) { flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { drawMap, drawMinimap, step, dispose, setSeasonDay, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { drawMap, drawMinimap, step, dispose, setSeasonDay, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

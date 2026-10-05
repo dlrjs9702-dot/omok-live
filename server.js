@@ -884,6 +884,32 @@ function broadcastIslandRemoved(ids) {
 const islandEventTimer = setInterval(() => broadcastIslandRemoved(islandEvents.expire()), 30000);
 islandEventTimer.unref?.();
 
+// v1.10.31 잡초 채집 (IDEAS 「잡초 채집」, 사용자 확정 2026-10-05): the island's weeds (lib/island-weeds.js) and their state
+// in the store (pulled, grown, kept with the bags). At 00:00 Asia/Seoul the weeds pulled since the last regrowth grow back
+// elsewhere -- worked out by whichever comes first after the day changes (this check, a request, the next start after the
+// server was off), once per day (the store refuses a second). Pulling takes two steps about a second apart (the
+// player's GatherWeed): start says which weed (standing by it), finish pulls it -- once, for one player, then everyone's
+// screen drops it.
+const IslandWeeds = require('./lib/island-weeds');
+const weedPulls = new Map(); // session token -> { weedId, at, requestId, result }
+function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
+async function weedState(now = nowMs()) {
+  let state = await pointStore.islandWeeds();
+  const today = kstDate(now);
+  if (state.day !== today) {
+    const grown = state.day === null ? [] : IslandWeeds.grow(IslandTerrain.seasonDay(now), state.pulled, state);
+    const before = state.day;
+    state = await pointStore.islandWeedRoll({ day: today, grown });
+    if (before !== null && state.day === today) broadcastIsland('islandWeeds', { day: today }); // everyone fetches the new set
+  }
+  return state;
+}
+// v1.10.31 (IDEAS: prepared for missions later, not in the mission pool now): life progress -- weeds pulled, weeds
+// handed in. Nothing listens yet; a future 「잡초 N개」 mission hooks in here.
+function islandProgress(kind, account, qty) { void kind; void account; void qty; }
+const weedTimer = setInterval(() => { weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); }, 60 * 1000);
+weedTimer.unref?.();
+
 // v1.10.9 작명소: what a nickname may be and when two are the same (every space removed). One change at a time on this
 // server, so two people can never take the same new name at once.
 // ponytail: an in-process lock (one instance, WEB_CONCURRENCY=1); a unique index on the normalized name if it ever scales out
@@ -2862,7 +2888,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.30' });
+    return sendJson(res, 200, { ok: true, version: '1.10.31' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3487,7 +3513,51 @@ async function requestHandler(req, res) {
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
     if (result.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
     if (result.applied) notifyPointsChanged([account]);
+    const weeds = (result.sold || []).find((x) => x.itemId === 'weed'); if (result.applied && weeds) islandProgress('weed_submit', account, weeds.qty);
     return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
+  }
+  // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
+  if (pathname === '/api/island/weeds' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const state = await weedState();
+    return sendJson(res, 200, { ok: true, day: state.day, weeds: IslandWeeds.active(state).map((w) => [w.id, w.x, w.z]), pullMs: IslandWeeds.PULL_MS });
+  }
+  if ((pathname === '/api/island/weed/start' || pathname === '/api/island/weed/finish') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-weed:${session.token}`, 120, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const weedId = typeof body.weedId === 'string' && /^(w\d{1,5}|g\d{4,6}-\d{1,5})$/.test(body.weedId) ? body.weedId : null;
+    if (!weedId) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const now = nowMs();
+    const near = (w) => { const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); return at && Math.hypot(at.x - w.x, at.z - w.z) <= IslandWeeds.REACH; };
+    if (pathname === '/api/island/weed/start') {
+      const weed = IslandWeeds.find(await weedState(now), weedId);
+      if (!weed) return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.');
+      if (!near(weed)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      weedPulls.set(session.token, { weedId, at: now });
+      return sendJson(res, 200, { ok: true, pullMs: IslandWeeds.PULL_MS });
+    }
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const pull = weedPulls.get(session.token);
+    if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result); // the same finish again (a lost answer)
+    if (!pull || pull.weedId !== weedId || pull.result) return sendError(res, 409, 'WEED_NOT_STARTED', '다시 시도해 주세요.');
+    if (now - pull.at < IslandWeeds.PULL_MS) return sendError(res, 409, 'WEED_TOO_SOON', '다시 시도해 주세요.');
+    const weed = IslandWeeds.find(await weedState(now), weedId);
+    if (weed && !near(weed)) { weedPulls.delete(session.token); return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.'); }
+    const account = pointAccountForSession(session);
+    const outcome = await pointStore.islandPullWeed({ userId: account, requestId: body.requestId, weedId }, now);
+    if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastIsland('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
+    const result = { ok: true, weedId, bag: outcome.bag, bonus: outcome.bonus || 0, balance: outcome.balance ?? null };
+    weedPulls.set(session.token, { ...pull, requestId: body.requestId, result });
+    if (outcome.applied) {
+      broadcastIsland('islandWeed', { gone: [weedId] });
+      islandProgress('weed_pull', account, 1);
+      if (outcome.bonus) notifyPointsChanged([account]);
+    }
+    return sendJson(res, 200, result);
   }
   // v1.10.11 공용 이벤트: solving one (standing at it). Taking it is decided at once (two players can never both get
   // it); the bag or the points follow, and if they cannot (a full bag, today's limit) the event stays for anyone.
@@ -3504,7 +3574,7 @@ async function requestHandler(req, res) {
     if (claimed.error) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
     let outcome;
     try {
-      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null });
+      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
     if (outcome.reason) {
@@ -3515,10 +3585,10 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
-    if (claimed.points) notifyPointsChanged([account]);
+    if (claimed.points || outcome.bonus) notifyPointsChanged([account]); // v1.10.31: or the week's life bonus
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     return sendJson(res, 200, { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
-      points: claimed.points || 0, balance: outcome.balance ?? null, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
+      points: claimed.points || 0, bonus: outcome.bonus || 0, balance: outcome.balance ?? null, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
   }
   // Test-only: every event (tests walk to one), and a fresh set.
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
@@ -3528,7 +3598,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null });
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs());
     return sendJson(res, 200, { ok: true, ...result });
   }
 
@@ -4197,6 +4267,7 @@ async function main() {
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
+  weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
@@ -4251,7 +4322,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.30 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.31 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
