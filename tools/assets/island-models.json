@@ -1,0 +1,178 @@
+{
+  "$comment": "v1.10.26 게임 아일랜드 모델 빌드 설정 (tools/assets/build-island-models.js). 원본은 저장소 밖 제작 폴더(--src)에 두고, 여기에는 변환 규칙·원본 SHA-256·게임용 산출 경로만 둔다.",
+  "tool": "gltfpack 1.3.0 (devDependency, exact)",
+  "outDir": "public/assets/island/seasonal-v2",
+  "profiles": {
+    "high": [
+      "-cc"
+    ],
+    "low": [
+      "-si",
+      "{ratio}",
+      "-sa",
+      "-cc"
+    ]
+  },
+  "files": [
+    {
+      "out": "autumn/bench_autumn_v1.glb",
+      "src": "03. Autumn/bench_autumn_v1.glb",
+      "sha256": "e24d9e968206803af31dfa273a913d5f73c3b14a81a80310e56c4aa90a88f7e7"
+    },
+    {
+      "out": "autumn/gazebo_autumn_v1.glb",
+      "src": "03. Autumn/gazebo_autumn_v1.glb",
+      "sha256": "ac06efd49b6114f355274889fc43019f613c3815b88114b3f1cf9c25258a646c"
+    },
+    {
+      "out": "autumn/nature/shrub_autumn.glb",
+      "src": "03. Autumn/Nature/shrub_autumn.glb",
+      "sha256": "8b87081561cbad00d8cd4fc46b9b3bb22ac7083988169bbd713ccdb425b496d9"
+    },
+    {
+      "out": "autumn/nature/tree_v1_autumn.glb",
+      "src": "03. Autumn/Nature/tree_v1_autumn.glb",
+      "sha256": "ea09d3f987efbd568d4c6e2be7f30808d27a5fb9e9989b15d81c2a604e838c77"
+    },
+    {
+      "out": "autumn/nature/tree_v2_autumn.glb",
+      "src": "03. Autumn/Nature/tree_v2_autumn.glb",
+      "sha256": "dc60b153dbebd85f73595fc6beb730ca512256ba700b1ccb4124965f7d618a80"
+    },
+    {
+      "out": "autumn/nature/tree_v3_autumn.glb",
+      "src": "03. Autumn/Nature/tree_v3_autumn.glb",
+      "sha256": "8aff3a47d80acf2cf764f23e588a1225776af8af7a89d615872c073a6fb9a68a"
+    },
+    {
+      "out": "autumn/planter_autumn_v1.glb",
+      "src": "03. Autumn/planter_autumn_v1.glb",
+      "sha256": "d5fd2d64f30f73e45046ac629d05db6ed6a272d285844e01c70c56e9bafc4f4c"
+    },
+    {
+      "out": "common/rock_v1_round.glb",
+      "src": "05. Common nature/rock_v1_round.glb",
+      "sha256": "3031fd0f167183e540ae21b24e3aa1387f7a491d077d63bc9e445250b759fcdd"
+    },
+    {
+      "out": "common/rock_v2_wide.glb",
+      "src": "05. Common nature/rock_v2_wide.glb",
+      "sha256": "214ec9d233bd872dc3f992230da77c2f7460fd781cccce52f28b79b85ccfef59"
+    },
+    {
+      "out": "common/rock_v3_tall.glb",
+      "src": "05. Common nature/rock_v3_tall.glb",
+      "sha256": "041899f4f4fa3d8d174692c5d7316d3e225b86293748a9789aae163fcdace78a"
+    },
+    {
+      "out": "common/stump_v1_short.glb",
+      "src": "05. Common nature/stump_v1_short.glb",
+      "sha256": "546d402a8e34679b1d3d9444cccee06d1727b08305e3bc335ad60cf7b6e84b00"
+    },
+    {
+      "out": "spring/bench_spring_v1.glb",
+      "src": "01. Spring/bench_spring_v1.glb",
+      "sha256": "4655d8f29a65cb0eb624977923123d34fb65349e699e6864bcb8ee2c687058b4"
+    },
+    {
+      "out": "spring/gazebo_spring_v1.glb",
+      "src": "01. Spring/gazebo_spring_v1.glb",
+      "sha256": "c131e7e707346b1098ef0ba78837dc61b7eeac13cb64af97772877b1fee9b7d6"
+    },
+    {
+      "out": "spring/nature/shrub_spring.glb",
+      "src": "01. Spring/Nature/shrub_spring.glb",
+      "sha256": "dd3d5fc2b6bb264e567d416069c5e1a8033aa6b3009c7148d3f36fca355df371"
+    },
+    {
+      "out": "spring/nature/tree_v1_spring.glb",
+      "src": "01. Spring/Nature/tree_v1_spring.glb",
+      "sha256": "0aa89c10e294f44a30ecda6e51e7257ef0e69e4388c346616fe9ffeaf3170e46"
+    },
+    {
+      "out": "spring/nature/tree_v2_spring.glb",
+      "src": "01. Spring/Nature/tree_v2_spring.glb",
+      "sha256": "d071159b2dc7f5d24878a137375b03cb1f6d388f2782170d137707dbf9999565"
+    },
+    {
+      "out": "spring/nature/tree_v3_spring.glb",
+      "src": "01. Spring/Nature/tree_v3_spring.glb",
+      "sha256": "c85e84437104b720c7d9b57845548b667e9138168938c56dd87230f088878cc6"
+    },
+    {
+      "out": "spring/planter_spring_v1.glb",
+      "src": "01. Spring/planter_spring_v1.glb",
+      "sha256": "5a7727f5e2969f2fc044cbefeb51703bb6125e8aaad7a6df5ca2bedadb4ff355"
+    },
+    {
+      "out": "summer/bench_summer_v1.glb",
+      "src": "02. Summer/bench_summer_v1.glb",
+      "sha256": "327a6148cabf70888e43bbf9aaf9f3ba2f7405842a4ea5ea7ce66827d5df4b3d"
+    },
+    {
+      "out": "summer/gazebo_summer_v1.glb",
+      "src": "02. Summer/gazebo_summer_v1.glb",
+      "sha256": "f55bd321b1ba77404fa0a8d0e9d182f54404a73c3cd59379eb4c03423101996a"
+    },
+    {
+      "out": "summer/nature/shrub_summer.glb",
+      "src": "02. Summer/Nature/shrub_summer.glb",
+      "sha256": "76ae715bc4788de09f93734b4b18e6f153b2eee857a0d6f758e79feb358e5d7c"
+    },
+    {
+      "out": "summer/nature/tree_v1_summer.glb",
+      "src": "02. Summer/Nature/tree_v1_summer.glb",
+      "sha256": "6f323504cc87e0c72ffc9a1f9182dc675d010ab3d9ac6a83a276c7c7bf19598f"
+    },
+    {
+      "out": "summer/nature/tree_v2_summer.glb",
+      "src": "02. Summer/Nature/tree_v2_summer.glb",
+      "sha256": "b1b0eabbc4f012c7e1b2c12a28c4fd171182f02d28a7411e425c3f90c93a78ed"
+    },
+    {
+      "out": "summer/nature/tree_v3_summer.glb",
+      "src": "02. Summer/Nature/tree_v3_summer.glb",
+      "sha256": "65853978b8bb6c2ad51a7d3be83d68abe220709a0a8f5f1a39ff5ccb6d874f62"
+    },
+    {
+      "out": "summer/planter_summer_v1.glb",
+      "src": "02. Summer/planter_summer_v1.glb",
+      "sha256": "0d3410f629c50cdc2f6ceb20c9761013c294b21c3bb61d3a311e9c93ea887eaf"
+    },
+    {
+      "out": "winter/bench_winter_v1.glb",
+      "src": "04. Winter/bench_winter_v1.glb",
+      "sha256": "dce258cc29388394dac8cc201307eb0d7b81eb3e7fb83fb04a86e78bd76cec4e"
+    },
+    {
+      "out": "winter/gazebo_winter_v1.glb",
+      "src": "04. Winter/gazebo_winter_v1.glb",
+      "sha256": "aba6877cb037669cdf44af86290501cbf52f90a9d88d5eefa9aef9afd796a0bd"
+    },
+    {
+      "out": "winter/nature/shrub_winter.glb",
+      "src": "04. Winter/Nature/shrub_winter.glb",
+      "sha256": "e7241c74134d57ad36f1b492e11776b231a05f60d2e09483a6f7e6f9f41195a5"
+    },
+    {
+      "out": "winter/nature/tree_v1_winter.glb",
+      "src": "04. Winter/Nature/tree_v1_winter.glb",
+      "sha256": "7c22550f89e4f9b9b1350682795a1a4739a2399fb817c2f0f7bfca51baf5f4f0"
+    },
+    {
+      "out": "winter/nature/tree_v2_winter.glb",
+      "src": "04. Winter/Nature/tree_v2_winter.glb",
+      "sha256": "ee69fef86fb0939a666cc4c2772ebe6e411e244fa41cc131e9cc95f947234283"
+    },
+    {
+      "out": "winter/nature/tree_v3_winter.glb",
+      "src": "04. Winter/Nature/tree_v3_winter.glb",
+      "sha256": "3a502c456433c1888ddd7aa94008d80116c42dab8b3773ff14f6a758abdbde96"
+    },
+    {
+      "out": "winter/planter_winter_v1.glb",
+      "src": "04. Winter/planter_winter_v1.glb",
+      "sha256": "6d6e71ff0b42abc4c4819c37a9de0bda4d2357caac21aee5253454d05020f26e"
+    }
+  ]
+}

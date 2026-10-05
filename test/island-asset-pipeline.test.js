@@ -10,8 +10,9 @@ const { staticGlb, riggedGlb } = require('../test-support/gltf-fixture.js');
 const three = () => import('three');
 async function parse(buffer) {
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); // v1.10.26 pipeline output
   const ab = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-  return new Promise((resolve, reject) => new GLTFLoader().parse(ab, '', resolve, reject));
+  return new Promise((resolve, reject) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(ab, '', resolve, reject));
 }
 
 // v1.10.18/19: the real models -- every file is in public/assets/island (so in the game resource pack, with its

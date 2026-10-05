@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.26 GLB 최적화 파이프라인(gltfpack·Meshopt·양자화)·예산 테스트
+
+고품질화 기반 연속 작업 4단계. 새 `tools/assets/`(`build-island-models.js`, `island-models.json`, `budgets.json`), `test/glb-budget.test.js`, 변경 `public/plaza/asset-loader.js`·`server.js`, devDependency `gltfpack@1.3.0`(정확 고정, WebAssembly 빌드).
+
+- 도구 비교: gltfpack(단일 CLI로 메시 결합·재질 정리·양자화·Meshopt·단순화, 의존성 1개, 현재 32개 모두 처리) vs gltf-transform(팔레트 등 세밀하지만 meshoptimizer 등 여러 패키지 필요). 현재 무텍스처 저폴리 에셋에는 gltfpack이 단순·안정 → 채택. Draco·KTX2·WebGPU 미도입.
+- 빌드: 원본은 저장소 밖 제작 폴더(`--src`), 설정에 원본 SHA-256(32개 모두 현재 배포 파일과 일치 확인)·출력 경로·프로필(`high: -cc`, `low: -si {ratio} -sa -cc`). 원본 SHA가 다르면 중단. 같은 입력이면 같은 출력(재실행 시 변경 없음 확인).
+- 결과: 아일랜드 모델 32개 2,355,920 B → 480,612 B. 메시 15~17개 → 1개(재질별 primitive), 재질 12 → 최대 8. 원본 대비 경계 상자 최대 차이 0.18 mm(32개 전부 three로 파싱해 비교).
+- 양자화 실측: 양자화 GLB(KHR_mesh_quantization)를 기존 런타임에 넣으면 노드 변환을 정수 정점에 구워 넣어 모델이 화면 전체로 깨짐(캡처 확인). → 정점 재변환 대신 행렬 보존: 부품마다 노드 행렬(`matrix`)을 유지해 인스턴스 행렬에 곱함. 같은 노드의 메시는 양자화 상태·인덱스 그대로 병합(이전의 `toNonIndexed` 제거로 정점 수 감소), 다른 노드면 float로 풀어 변환 후 병합. 텍스처/리깅 모델은 원본 geometry 공유.
+- 런타임: `MeshoptDecoder` 연결(vendor 허용 목록 1개 추가), CSP `script-src`에 `'wasm-unsafe-eval'`(WebAssembly 컴파일만 허용). 압축 해제 실패 시 그 대상만 생성형 fallback.
+- 예산 테스트: 모든 아일랜드 GLB가 파이프라인 출력(필수 확장 KHR_mesh_quantization·EXT_meshopt_compression, 그 외 확장 금지)이고 메시 1·노드 1·재질 ≤8·삼각형 ≤12,568·텍스처 0. 상한은 성능 기준이 아니라 현재 대표 에셋 실측 최댓값이며 GPU PC 측정 후 의도적으로 조정. 설정·파일·등록부 일치(설정에 없는 파일·등록부의 비빌드 파일 금지, Low는 High보다 가벼움).
+- 테스트: 단위(예산·설정 일치, 운영 등록부 GLB를 Meshopt 디코더로 실제 파싱), e2e island-assets 7개(운영 모델 로드·생성형 fallback).
+
 ## v1.10.25 manifest 그룹(core·island 필수, 게임 리소스는 사용 시)
 
 고품질화 기반 연속 작업 3단계. `lib/asset-manifest.js`, `public/game-boot.js`, `public/sw.js`, `public/app.js`(1줄).
