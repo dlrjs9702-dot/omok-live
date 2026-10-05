@@ -35,7 +35,7 @@
   // v1.10.18 first models on the island (360 refinement v2; the files' own front is -z, origin on the ground at the
   // footprint's centre, 1 unit = 1 m). Sizes are matched to the procedural copies they replace -- a round tree about 3.5
   // tall, a bush about 1.6 wide, the plaza bench 1.7 wide -- whose place, turn and size every copy keeps.
-  // v1.10.19: every model in four seasons (the island's season: asset-pipeline.js `seasonOf`), and more tree kinds --
+  // v1.10.19: every model in four seasons (v1.10.27: each copy shows its zone's season today -- island-terrain.js seasonZoneAt / zoneSeason), and more tree kinds --
   // tiered and blossom take the wide-crowned tree_v2, tall the upright tree_v3; pine, fruit and sapling stay procedural.
   // `near`: models only within this of the player (thousands of triangles each); the rest keep their light procedural copies.
   const BASE = '/assets/island/seasonal-v2';

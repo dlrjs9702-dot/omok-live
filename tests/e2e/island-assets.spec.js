@@ -160,43 +160,65 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
   await a.context.close();
 });
 
-test('계절 파일: 계절을 바꾸면 그 계절 파일로 교체하고, 그 계절 파일이 없으면 코드 생성형, 자동으로 돌리면 서울 날짜 규칙의 계절', async ({ browser, request }) => {
+// v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전: every copy shows its zone's season today; the next day every season
+// is one zone further clockwise (the files stay the same, each fetched once); a season without a file leaves that
+// zone's copies procedural; back to automatic, the day is the server clock's
+test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계방향으로 한 구역씩 이동, 파일 없는 계절은 코드 생성형', async ({ browser, request }) => {
   const a = await island(browser, request, '계절', { 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // over the registered round-rock model
   const { page } = a;
   const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock.0');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
-  await page.evaluate(() => window.PlazaDebug().setSeason('summer')); // no summer file
-  await expect.poll(async () => (await rock()).placed).toBe(false);
-  await page.evaluate(() => window.PlazaDebug().setSeason('winter'));
-  await expect.poll(async () => (await rock())?.url).toBe(BOX2);
-  await expect.poll(async () => (await rock()).placed).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().setSeason('spring'));
-  await expect.poll(async () => (await rock()).url).toBe(BOX);
-  await expect.poll(async () => (await rock()).placed).toBe(true);
-  expect(a.hits[BOX]).toBe(1); expect(a.hits[BOX2]).toBe(1); // each file once, however often the season changes
-  // back to the automatic season: the Seoul-date rule on the server clock
-  await page.evaluate(() => window.PlazaDebug().setSeason(null));
-  const expected = await page.evaluate(() => window.AssetPipeline.seasonOf(window.PlazaDebug().serverNow()));
-  await expect.poll(async () => (await debug(page)).assets.season).toBe(expected);
+  const expectDay = async (day) => {
+    await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), day);
+    await expect.poll(async () => (await debug(page)).assets.day).toBe(day);
+    await expect.poll(async () => (await rock())?.placed).toBe(true);
+    const zones = (await rock()).zones;
+    const looks = await page.evaluate((d) => [-1, 0, 1, 2, 3].map((zone) => window.IslandTerrain.zoneSeason(zone, d) || window.AssetPipeline.NEUTRAL_LOOK), day);
+    expect(Object.keys(zones).length).toBeGreaterThanOrEqual(3); // rocks all round the island
+    for (const [zone, z] of Object.entries(zones)) {
+      expect(z.look).toBe(looks[Number(zone) + 1]);
+      expect(z.url).toBe(z.look === 'spring' ? BOX : z.look === 'winter' ? BOX2 : null); // no file: procedural
+    }
+    return zones;
+  };
+  const day0 = 20736; // any day: 20736 % 4 === 0, zone k shows season k (north spring, east summer, south autumn, west winter)
+  const first = await expectDay(day0);
+  if (first[0]) expect(first[0].look).toBe('spring');
+  const next = await expectDay(day0 + 1);
+  for (const zone of [0, 1, 2, 3]) if (first[zone] && next[(zone + 1) % 4]) expect(next[(zone + 1) % 4].look).toBe(first[zone].look); // one zone clockwise
+  const cycle = await expectDay(day0 + 4); // back where it started
+  for (const zone of Object.keys(first)) expect(cycle[zone].look).toBe(first[zone].look);
+  expect(a.hits[BOX]).toBe(1); expect(a.hits[BOX2]).toBe(1); // each file once, however often the day changes
+  // back to the automatic day: the server clock's Seoul date
+  await page.evaluate(() => window.PlazaDebug().setSeasonDay(null));
+  const today = await page.evaluate(() => window.PlazaDebug().seasonDay());
+  await expect.poll(async () => (await debug(page)).assets.day).toBe(today);
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();
 });
 
-// v1.10.18/19 the registered models, as players get them: this season's files, from the game resource pack (Cache
-// Storage), once each
-test('운영 등록부: 지금 계절의 나무·관목·광장 벤치 모델이 리소스 팩에서 한 번씩 받아져 교체되고, 섬은 그대로 동작한다', async ({ browser, request }) => {
+// v1.10.18/19 the registered models, as players get them, from the game resource pack (Cache Storage), once each.
+// v1.10.27: all four seasons are on the island at once -- the trees and shrubs of every season are loaded, the gazebo
+// shows its zone's season, the plaza's benches and flower beds (neutral) the plain summer files
+test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 그 구역의 계절, 광장 소품은 중립(여름) 파일, 섬은 그대로 동작한다', async ({ browser, request }) => {
   const a = await island(browser, request, '운영모델', null);
   const { page } = a;
   const ids = await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY));
-  const season = await page.evaluate(() => window.AssetPipeline.seasonOf(window.PlazaDebug().serverNow()));
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 30000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
-  expect(d.assets.season).toBe(season);
+  expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.includes('/seasonal-v2/'));
-  // this season: tree_v1, tree_v2 (tiered and blossom share it), tree_v3, shrub, bench, gazebo, planter; and the four common files
-  expect(files.length).toBe(11);
-  for (const [url, state] of files) { expect(url).toMatch(new RegExp(`/seasonal-v2/(${season}|common)/`)); expect(state).toBe('loaded'); }
+  for (const [, state] of files) expect(state).toBe('loaded');
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);
+  }
+  const gazebo = d.assets.attaches.find((x) => x.ids.includes('facility.chat'));
+  expect(gazebo.zone).toBeGreaterThanOrEqual(0);
+  expect(gazebo.url).toContain(`/${gazebo.look}/gazebo_${gazebo.look}_v1.glb`);
+  for (const prop of d.assets.attaches.filter((x) => x.ids.includes('prop.bench') || x.ids.includes('prop.planter'))) {
+    expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
+  }
   // every model file of every season is in the active pack of the resource cache
   const cached = await page.evaluate(async () => {
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();

@@ -318,5 +318,31 @@
     return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
   }
 
-  return { nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  // --- seasons (v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전, 사용자 결정 2026-10-05) ----------------------------
+  // All four seasons are on the island at once, one per zone; at 00:00 Asia/Seoul every season moves one zone
+  // clockwise, so the same arrangement comes back every 4 days. Only which season a zone shows moves -- the ground,
+  // its places, collision, paths, events and today's spot stay where they are. The central plaza (and its ramps) is
+  // neutral, part of no season.
+  // Zones: 0 north, 1 east, 2 south, 3 west (clockwise seen from above, north = -z). Their edges are not straight
+  // lines: the angle is bent with the distance from the centre (so an edge curves across the island) and, thing by
+  // thing, shifted a little by place (so neighbouring seasons mix over a few metres instead of meeting on a line).
+  // Callers that draw the ground or plants by zone can use the same function and get the same edges.
+  const SEASON_ORDER = ['spring', 'summer', 'autumn', 'winter'];
+  const SEASON_NEUTRAL_R = 24; // the plaza (16) and its ramps (to 22), with a little room
+  const KST_MS = 9 * 3600 * 1000; const DAY_MS = 24 * 3600 * 1000; // Korea keeps no summer time
+  const placeNoise = (x, z) => { const v = Math.sin(x * 12.9898 + z * 78.233 + 11.3) * 43758.5453; return v - Math.floor(v); };
+  function seasonZoneAt(x, z) {
+    const r = Math.hypot(x, z);
+    if (r < SEASON_NEUTRAL_R) return -1;
+    const th = Math.atan2(x, -z) + 0.34 * Math.sin(r * 0.045 + 1.1) + 0.16 * Math.sin(r * 0.11 + 2.3) + (placeNoise(x, z) - 0.5) * 0.24;
+    return ((Math.floor((th + Math.PI / 4) / (Math.PI / 2)) % 4) + 4) % 4;
+  }
+  // days since 1970-01-01 in Seoul: the rotation step (changes at 00:00 KST)
+  const seasonDay = (ms) => Math.floor((ms + KST_MS) / DAY_MS);
+  // the season a zone shows on a day (null for the neutral plaza): zone k has season k on days divisible by 4, and a
+  // season in zone k today is in zone k+1 tomorrow
+  const zoneSeason = (zone, day) => (zone < 0 ? null : SEASON_ORDER[(((zone - day) % 4) + 4) % 4]);
+  const seasonAt = (x, z, ms) => zoneSeason(seasonZoneAt(x, z), seasonDay(ms));
+
+  return { SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

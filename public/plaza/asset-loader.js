@@ -13,7 +13,12 @@ import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.
 
 const P = globalThis.AssetPipeline;
 
-export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, season = null, onError = () => {} }) {
+export function createIslandAssets({ registry, off = [], assetUrl = (path) => path, walkSpeed = 1, tier = 2, day = null, onError = () => {} }) {
+  // v1.10.27: a thing's season is its zone's today (island-terrain.js); the neutral plaza shows NEUTRAL_LOOK. Without
+  // a day (or the terrain) every target uses its plain `url`.
+  const T = globalThis.IslandTerrain;
+  const lookOf = (zone) => (day === null || !T ? null : T.zoneSeason(zone, day) || P.NEUTRAL_LOOK);
+  const placeOf = new THREE.Vector3();
   // A .gltf names its .bin and textures relative to itself; they are pack files as well, so they too get their
   // revision URL (and with it the resource cache). Already-versioned, data: and blob: URLs pass through.
   const manager = new THREE.LoadingManager();
@@ -71,7 +76,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // `holder` is the gameplay object (position, facing; its collision, door and sign are the scene's and stay as they
   // are); `procedural` is the code-built look inside it, hidden only once the model is actually there.
-  // v1.10.17: kept as a record, so a change of season can swap the model (setSeason).
+  // v1.10.17: kept as a record, so a change of season can swap the model (setDay).
   function attach(ids, holder, procedural) { const rec = { ids, holder, procedural, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
   function swapAttach(rec, object) {
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); }
@@ -79,7 +84,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     rec.procedural.visible = !object;
   }
   function applyAttach(rec) {
-    const hit = P.pick(registry, rec.ids, off, season); const url = hit?.entry.url || null;
+    rec.holder.getWorldPosition(placeOf);
+    rec.zone = T ? T.seasonZoneAt(placeOf.x, placeOf.z) : -1; // v1.10.27: the season of the zone it stands in
+    const hit = P.pick(registry, rec.ids, off, lookOf(rec.zone)); const url = hit?.entry.url || null;
     if (url === rec.url) return;
     rec.url = url;
     if (!hit) { swapAttach(rec, null); return; }
@@ -156,53 +163,78 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // v1.10.17 nature and props placed many times (island.js `instanced`). `cells`: one square of the island each,
   // { x, z (its centre), parent, procedural: [the square's InstancedMesh of this kind], matrices: [one per copy],
-  // colors: [its tint per copy] | null, shadow }. Once the model is in, every square gets one InstancedMesh per part of
-  // the model, placed with the very matrices the procedural copies had (place, turn, size -- so where things stand,
-  // their collision and every game rule stay as they were).
-  // v1.10.18: copy by copy, not square by square -- update() puts the copies near the player into the model's mesh and
-  // the rest into the procedural one (each drawing only as many as it holds), so a detailed model costs triangles only
-  // where one stands close. Nothing registered, a failed load or a switched-off id: the procedural copies stay.
-  function batch(ids, cells) { const rec = { ids, cells, url: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
-  // the copies `keep` (all, without a model) back in a square's procedural mesh, the rest drawn as the model
+  // colors: [its tint per copy] | null, shadow }. Once the models are in, every square draws its near copies with the
+  // model, placed with the very matrices the procedural copies had (place, turn, size -- so where things stand, their
+  // collision and every game rule stay as they were).
+  // v1.10.18: copy by copy -- update() puts the copies near the player into the model's meshes and the rest into the
+  // procedural one, so a detailed model costs triangles only where one stands close.
+  // v1.10.27 4계절 동시 존재: each copy shows the season of the zone its place is in (fixed per copy), and today's
+  // season of each zone comes from the day -- so a square holds one group of InstancedMeshes per zone it touches, each
+  // with that zone's seasonal model; the copies are not multiplied. A new day rebuilds the groups with the moved
+  // seasons. A copy whose season has no model (nothing registered for it, a failed file) stays procedural.
+  function batch(ids, cells) { const rec = { ids, cells, key: null, entry: null, placed: null }; batches.push(rec); applyBatch(rec); }
+  // each copy's zone, worked out once (places never move)
+  const zonesOf = (cell) => (cell.zones ||= cell.matrices.map((m) => (T ? T.seasonZoneAt(m.elements[12], m.elements[14]) : -1)));
+  // the copies near the player (flags) into their zone's model meshes, the rest back in the square's procedural mesh
   function fill(p, near) {
-    const { cell } = p; const proc = cell.procedural[0]; let a = 0; let b = 0;
+    const { cell } = p; const proc = cell.procedural[0]; let b = 0;
+    for (const g of p.groups.values()) g.n = 0;
     cell.matrices.forEach((m, i) => {
-      if (near && near[i]) { for (const im of p.meshes) im.setMatrixAt(a, both.multiplyMatrices(m, local).multiply(im.userData.part)); a += 1; }
+      const g = p.groups.get(p.zones[i]);
+      if (g && near && near[i]) { for (const im of g.meshes) im.setMatrixAt(g.n, both.multiplyMatrices(m, local).multiply(im.userData.part)); g.n += 1; }
       else { proc.setMatrixAt(b, m); if (cell.colors) proc.setColorAt(b, cell.colors[i]); b += 1; }
     });
-    for (const im of p.meshes) { im.count = a; im.visible = a > 0; im.instanceMatrix.needsUpdate = true; } // nothing to draw: not even a call
+    p.near = 0;
+    for (const g of p.groups.values()) { for (const im of g.meshes) { im.count = g.n; im.visible = g.n > 0; im.instanceMatrix.needsUpdate = true; } p.near += g.n; } // nothing to draw: not even a call
     proc.count = b; proc.visible = b > 0; proc.instanceMatrix.needsUpdate = true; if (proc.instanceColor) proc.instanceColor.needsUpdate = true;
-    p.near = a;
   }
   function clearBatch(rec) {
-    if (rec.placed) for (const p of rec.placed) { for (const im of p.meshes) { p.cell.parent.remove(im); im.dispose(); } p.meshes = []; fill(p, null); }
+    if (rec.placed) for (const p of rec.placed) { for (const g of p.groups.values()) for (const im of g.meshes) { p.cell.parent.remove(im); im.dispose(); } p.groups.clear(); fill(p, null); }
     rec.placed = null; rec.entry = null;
   }
   const local = new THREE.Matrix4(); const both = new THREE.Matrix4();
+  const entryMatrix = (entry, out) => out.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
   function applyBatch(rec) {
-    const hit = P.pick(registry, rec.ids, off, season); const url = hit?.entry.url || null;
-    if (url === rec.url) return;
-    rec.url = url;
-    if (!hit) { clearBatch(rec); return; }
-    shown[hit.id] = 'loading';
-    cache.get(url).then((gltf) => {
-      if (disposed || rec.url !== url) return;
+    // the model of each zone today (zones -1..3; -1 = the neutral plaza)
+    const zones = new Set(rec.cells.flatMap((cell) => zonesOf(cell)));
+    const hits = new Map([...zones].map((zone) => [zone, P.pick(registry, rec.ids, off, lookOf(zone))]));
+    const key = `${day}|${[...hits].map(([zone, hit]) => `${zone}:${hit?.entry.url || ''}`).sort().join(',')}`;
+    if (key === rec.key) return;
+    rec.key = key;
+    const any = [...hits.values()].find(Boolean);
+    if (!any) { clearBatch(rec); return; }
+    const urls = [...new Set([...hits.values()].filter(Boolean).map((hit) => hit.entry.url))];
+    for (const hit of hits.values()) if (hit) shown[hit.id] = 'loading';
+    Promise.all(urls.map((url) => cache.get(url))).then((loaded) => {
+      if (disposed || rec.key !== key) return;
       clearBatch(rec);
-      if (!gltf) { shown[hit.id] = 'procedural'; return; }
-      const parts = partsOf(gltf); const entry = hit.entry;
-      local.compose(new THREE.Vector3(...(Array.isArray(entry.offset) ? entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), entry.rotationY || 0), new THREE.Vector3().setScalar(entry.scale ?? 1));
-      rec.placed = rec.cells.map((cell) => ({ cell, near: 0, meshes: parts.map(({ geometry, material, matrix }) => {
-        const im = new THREE.InstancedMesh(geometry, material, cell.matrices.length);
-        im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
-        cell.matrices.forEach((m, i) => im.setMatrixAt(i, both.multiplyMatrices(m, local).multiply(matrix)));
-        im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
-        im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
-        cell.parent.add(im); return im;
-      }) }));
-      rec.entry = entry; shown[hit.id] = 'model'; lastX = NaN; // the next update() places them
-    }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+      const models = new Map(urls.map((url, i) => [url, loaded[i]]));
+      if (![...models.values()].some(Boolean)) { for (const hit of hits.values()) if (hit) shown[hit.id] = 'procedural'; return; } // every file failed
+      const entry = any.entry; entryMatrix(entry, local);
+      rec.zoneUrls = Object.fromEntries([...hits].map(([zone, hit]) => [zone, hit && models.get(hit.entry.url) ? hit.entry.url : null]));
+      rec.placed = rec.cells.map((cell) => {
+        const p = { cell, near: 0, zones: zonesOf(cell), groups: new Map() };
+        const counts = new Map(); for (const zone of p.zones) counts.set(zone, (counts.get(zone) || 0) + 1);
+        for (const [zone, count] of counts) {
+          const hit = hits.get(zone); const gltf = hit && models.get(hit.entry.url);
+          if (!gltf) continue; // this zone's season has no model: its copies stay procedural
+          const meshes = partsOf(gltf).map(({ geometry, material, matrix }) => {
+            const im = new THREE.InstancedMesh(geometry, material, count);
+            im.userData.part = matrix; // the part's place in the model, after the copy's own and the entry's
+            let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
+            im.computeBoundingSphere(); // over every copy, so culling never hides one the update brings in
+            im.count = 0; im.visible = false; im.castShadow = cell.shadow && entry.shadows !== false; im.receiveShadow = true;
+            cell.parent.add(im); return im;
+          });
+          p.groups.set(zone, { meshes, n: 0 });
+        }
+        return p;
+      });
+      for (const hit of hits.values()) if (hit) shown[hit.id] = models.get(hit.entry.url) ? 'model' : 'procedural';
+      rec.entry = entry; lastX = NaN; // the next update() places them
+    }).catch((error) => { shown[any.id] = 'procedural'; onError(any.id, error); });
   }
-  // Copies within the entry's `near` of the player (shortened on lower quality tiers) show the model, the rest their
+  // Copies within the entry's `near` of the player (shortened on lower quality tiers) show their model, the rest their
   // procedural look; worked out again only once the player has moved a unit, and only squares that can hold a near copy
   // are filled again.
   let lastX = NaN; let lastZ = NaN;
@@ -211,23 +243,21 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     lastX = x; lastZ = z;
     for (const rec of batches) {
       if (!rec.placed) continue;
-      // the entry's transform for this batch, for fill()
-      local.compose(new THREE.Vector3(...(Array.isArray(rec.entry.offset) ? rec.entry.offset : [0, 0, 0])), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rec.entry.rotationY || 0), new THREE.Vector3().setScalar(rec.entry.scale ?? 1));
+      entryMatrix(rec.entry, local);
       const near = P.lodDistance(rec.entry.near ?? 45, quality);
       for (const p of rec.placed) {
         const flags = p.cell.matrices.map((m) => Math.hypot(m.elements[12] - x, m.elements[14] - z) < near);
-        const count = flags.filter(Boolean).length;
-        if (count === 0 && p.near === 0) continue; // nothing near before or now: unchanged
+        if (!flags.some(Boolean) && p.near === 0) continue; // nothing near before or now: unchanged
         fill(p, flags);
       }
     }
   }
 
-  // v1.10.17: the season the island shows; every structure and batch whose file depends on it is loaded again and
-  // swapped once ready (a season without a file falls back to the entry's `url`, then to the procedural look)
-  function setSeason(next) {
-    if (next === season) return;
-    season = next;
+  // v1.10.27: a new day (00:00 KST) -- every season moves one zone clockwise; every structure and batch whose zone's
+  // season changed swaps to that season's model (their files are already in the resource cache)
+  function setDay(next) {
+    if (next === day) return;
+    day = next;
     for (const rec of attaches) applyAttach(rec);
     for (const rec of batches) applyBatch(rec);
   }
@@ -236,7 +266,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // hidden, and plaza-scene's animate() hands the drawn speed to c.anim (Idle/Walk/Run cross-fades) instead of
   // swinging the procedural joints. One model per character, no LOD (a rig's clips bind to one copy of the bones).
   function dress(ids, c) {
-    const hit = P.pick(registry, ids, off, season); if (!hit) return;
+    const hit = P.pick(registry, ids, off, null); if (!hit) return; // characters have no season
     c.assetPending = hit.id; shown[hit.id] = 'loading';
     cache.get(hit.entry.url).then((gltf) => {
       if (disposed || c.assetPending !== hit.id || !c.root.parent) return;
@@ -269,8 +299,16 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }));
   }
 
-  const batchDebug = () => batches.map((rec) => ({ ids: [].concat(rec.ids), url: rec.url, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
-    placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed?.[0]?.meshes.length ?? 0,
-    at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null })); // one copy's place (tests)
-  return { attach, dress, release, batch, update, setSeason, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, season, batches: batchDebug() }) };
+  // v1.10.27: url = the model of the first copy's zone; zones = per zone (-1 the plaza) its season today, its file and
+  // how many copies stand in it
+  const batchDebug = () => batches.map((rec) => {
+    const zones = {};
+    for (const cell of rec.cells) zonesOf(cell).forEach((zone) => { zones[zone] ||= { look: lookOf(zone), url: rec.zoneUrls?.[zone] ?? null, copies: 0 }; zones[zone].copies += 1; });
+    const firstZone = rec.cells[0] ? zonesOf(rec.cells[0])[0] : null;
+    return { ids: [].concat(rec.ids), url: rec.placed ? rec.zoneUrls?.[firstZone] ?? null : null, zones, copies: rec.cells.reduce((n, c) => n + c.matrices.length, 0), squares: rec.cells.length,
+      placed: Boolean(rec.placed), near: rec.placed ? rec.placed.reduce((n, p) => n + p.near, 0) : 0, parts: rec.placed ? [...(rec.placed.find((p) => p.groups.size)?.groups.values() || [])][0]?.meshes.length ?? 0 : 0,
+      at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
+  });
+  const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
+  return { attach, dress, release, batch, update, setDay, setQuality, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug() }) };
 }

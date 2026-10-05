@@ -106,8 +106,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const assets = AssetPipeline.createLazyAssets({
     registry: islandAssetRegistry(), off: window.GameBoot?.manifest?.assetsOff || [],
     importLoader: () => import('./asset-loader.js'),
-    // v1.10.19: the island's season (asset-pipeline.js `seasonOf`); corrected to the server clock and kept current below
-    options: { assetUrl: (path) => window.GameBoot?.assetUrl(path) ?? path, walkSpeed: SPEED, tier: 2, season: AssetPipeline.seasonOf(Date.now()) },
+    // v1.10.27: the season day (island-terrain.js seasonDay: every zone's season), corrected to the server clock below
+    options: { assetUrl: (path) => window.GameBoot?.assetUrl(path) ?? path, walkSpeed: SPEED, tier: 2, day: globalThis.IslandTerrain.seasonDay(Date.now()) },
   });
   const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }); // v1.10.13: every merged build (island.js)
   const STONE = new THREE.CylinderGeometry(0.5, 0.5, 1, 9);
@@ -1052,7 +1052,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
 
   let running = false; let raf = 0; let last = 0; let clock = 0;
-  let seasonCheckedAt = -Infinity; let seasonOverride = null; // tests may hold a season (debug().setSeason)
+  let seasonCheckedAt = -Infinity; let seasonOverride = null; // tests may hold a season day (debug().setSeasonDay)
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
@@ -1118,9 +1118,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { spin.rotation.z = clock * 2.4; spin.position.y = 0.35 + Math.sin(clock * 2) * 0.05; } }
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
-    // v1.10.19: the season by the server clock, checked every few seconds -- at 00:00 KST on the 1st/8th/15th/22nd the
-    // seasonal models swap in place (their files are already in the resource pack)
-    if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; assets.setSeason(AssetPipeline.seasonOf(Date.now() + serverOffset)); }
+    // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
+    // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
+    if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; assets.setDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
     island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = 0.55 + Math.sin(clock * 1.5 + i) * 0.05; });
@@ -1194,7 +1194,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), setSeason: (season) => { seasonOverride = season; assets.setSeason(season ?? AssetPipeline.seasonOf(Date.now() + serverOffset)); }, gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), setSeasonDay: (d) => { seasonOverride = d; assets.setDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };

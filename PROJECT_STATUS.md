@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전(월간 전체섬 계절 폐기)
+
+IDEAS 「게임 아일랜드 4계절 동시 존재·일일 회전 규칙」(사용자 2026-10-05). `public/plaza/island-terrain.js`, `asset-pipeline.js`, `asset-loader.js`, `plaza-scene.js`, `island-assets.js`(주석).
+
+- 폐기: v1.10.19 월간 규칙(KST 1~7 봄·8~14 여름·15~21 가을·22~말일 겨울, 섬 전체 한 계절)과 `AssetPipeline.seasonOf`.
+- 구역(논리, 서버와 공유하는 `island-terrain.js`): `seasonZoneAt(x,z)` → 중앙광장(반지름 24: 광장 16 + 경사로 22 + 여유) `-1` 중립, 그 밖은 0 북·1 동·2 남·3 서(위에서 본 시계방향, 북=−z). 경계는 직선 십자가 아니다: 각도를 중심 거리에 따라 휘게 하고(경계가 섬을 가로질러 굽음) 물건마다 위치 해시로 조금씩 흔들어 이웃 계절이 몇 m 폭으로 섞이게 함(완충). 땅·식생을 구역별로 칠할 후속 작업도 같은 함수를 써서 같은 경계를 얻는다. 섬 육지 표본 기준 구역 크기 1741/1768/1514/1633.
+- 회전: `seasonDay(ms)` = 서울 기준 일수(00:00 KST에 바뀜), `zoneSeason(zone, day)` = `['spring','summer','autumn','winter'][(zone − day) mod 4]` → 매일 모든 계절 존재, 오늘 k구역의 계절이 내일 k+1구역(시계방향), 4일 주기. 지형·시설·충돌·길·이벤트 좌표·NPC 경로·당일 위치는 그대로(계절 상태와 모델 선택만 회전).
+- 에셋: 물건 수를 늘리지 않고 각 사본이 자기 자리 구역의 오늘 계절 GLB를 쓴다. 자연물 묶음은 칸(60)마다 구역별 InstancedMesh 그룹(그 구역 계절 모델), 사본 자리·구역은 고정, 날이 바뀌면 그룹을 새 계절로 다시 구성(파일은 이미 캐시). 부착 대상(정자)은 자기 자리 구역의 계절. 중앙광장 소품(벤치·화단)은 중립 → `NEUTRAL_LOOK = 'summer'`(평범한 녹음 파일, 중립 전용 모델이 생기면 교체). 계절 파일이 없는 구역의 사본은 생성형 유지, 모든 파일 실패 시 그 묶음 전체 생성형.
+- 접속 중 날짜 변경: 2초마다 서버 시계 기준 `seasonDay`를 확인해 바뀌면 `assets.setDay` → 제자리 교체. 테스트용 `PlazaDebug().setSeasonDay(d|null)`, `seasonDay()`.
+- 아직(다음 LOD 단계): 원거리 사본은 v1.10.18 구조대로 생성형(초록) — 섬 전체를 구역 계절 그림체로 보이게 하는 것은 High/Low LOD 단계(v1.10.28)에서 처리. 땅 색·눈·낙엽 등 지면 완충 표현은 미구현(함수만 준비).
+- 테스트: 단위(광장·광장 시설 중립, 네 방향 구역, 구역 크기 균형, 대각선을 따라 경계가 직선이 아님, 매일 사계절 존재·시계방향 한 구역·4일 주기·서울 00:00 경계·연말, 월간 함수 제거), e2e(구역별 계절 파일과 다음 날 시계방향 이동·4일 후 복귀·파일 1회 다운로드·파일 없는 계절 생성형·자동 복귀 시 서버 날짜, 운영 등록부: 사계절 나무·관목 모두 로드·정자는 구역 계절·광장 소품 중립). 캡처로 구역별 계절(북 봄·동 여름 경계 섞임, 남서 겨울·가을) 확인.
+
 ## v1.10.26 GLB 최적화 파이프라인(gltfpack·Meshopt·양자화)·예산 테스트
 
 고품질화 기반 연속 작업 4단계. 새 `tools/assets/`(`build-island-models.js`, `island-models.json`, `budgets.json`), `test/glb-budget.test.js`, 변경 `public/plaza/asset-loader.js`·`server.js`, devDependency `gltfpack@1.3.0`(정확 고정, WebAssembly 빌드).

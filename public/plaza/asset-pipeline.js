@@ -30,14 +30,11 @@
     for (const id of [].concat(ids)) { const entry = entryOf(registry, id, off, season); if (entry) return { id, entry }; }
     return null;
   }
-  // v1.10.19 게임 아일랜드 계절 (IDEAS, 2026-10-05): by the day of the month in Asia/Seoul -- 1-7 spring, 8-14 summer,
-  // 15-21 autumn, 22 to the month's end winter (29-31 too), back to spring on the 1st at 00:00. Korea keeps no summer
-  // time, so Seoul is always UTC+9. `ms` is the server clock (every screen the same island), like the other KST rules.
-  const SEOUL = 9 * 3600 * 1000;
-  function seasonOf(ms) {
-    const day = new Date(ms + SEOUL).getUTCDate();
-    return day <= 7 ? 'spring' : day <= 14 ? 'summer' : day <= 21 ? 'autumn' : 'winter';
-  }
+  // v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전: the season is no longer the whole island's (the v1.10.19 monthly
+  // rule is gone) but each thing's -- the zone its place is in and the day (island-terrain.js seasonZoneAt / seasonDay /
+  // zoneSeason). The neutral central plaza has no season of its own; its seasonal props show NEUTRAL_LOOK, the plain
+  // green summer files, until neutral models exist.
+  const NEUTRAL_LOOK = 'summer';
   // ids that could show a model in some season (so the loader is worth fetching)
   const enabledIds = (registry, off = []) => Object.keys(registry || {}).filter((id) => [null, ...SEASONS].some((season) => entryOf(registry, id, off, season)));
 
@@ -133,13 +130,13 @@
   // cannot load leaves every target procedural.
   function createLazyAssets({ registry, off = [], importLoader, options = {}, onError = (what, error) => console.warn('3D 에셋을 쓰지 않습니다:', what, error) }) {
     const ids = enabledIds(registry, off);
-    let season = options.season || null;
+    let day = options.day ?? null; // the season day (island-terrain seasonDay)
     let impl = null; let failed = false; let disposed = false; const queue = [];
     const call = (name, args) => { if (disposed || failed) return; if (impl) impl[name](...args); else if (ids.length) queue.push([name, args]); };
     if (ids.length) {
       Promise.resolve().then(importLoader).then((mod) => {
         if (disposed) return;
-        impl = mod.createIslandAssets({ ...options, season, registry, off, onError });
+        impl = mod.createIslandAssets({ ...options, day, registry, off, onError });
         for (const [name, args] of queue.splice(0)) impl[name](...args);
       }).catch((error) => { failed = true; queue.length = 0; onError('loader', error); });
     }
@@ -155,13 +152,14 @@
       batch: (targetIds, cells) => call('batch', [targetIds, cells]),
       // each frame: where the player is (near squares show models, far ones their procedural copies)
       update: (x, z) => { if (impl) impl.update(x, z); },
-      setSeason: (next) => { season = next; if (impl) impl.setSeason(next); },
+      // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise
+      setDay: (next) => { day = next; if (impl) impl.setDay(next); },
       setQuality: (tier) => call('setQuality', [tier]),
       release: (character) => { if (impl) impl.release(character); },
       dispose() { disposed = true; queue.length = 0; impl?.dispose(); },
-      debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', season, ...(impl?.debug() || {}) }),
+      debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', day, ...(impl?.debug() || {}) }),
     };
   }
 
-  return { SEASONS, seasonOf, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
+  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, createLazyAssets };
 });
