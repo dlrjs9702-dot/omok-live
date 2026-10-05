@@ -10,11 +10,21 @@ test.describe.configure({ mode: 'default' });
 
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
 
+// These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
+// does that): every registered model is switched off, so each page draws the light procedural island. On a CI runner
+// (software rendering) several pages full of seasonal and Low models made these the slowest, flakiest tests.
+async function islandPage(page) {
+  await page.evaluate(() => {
+    localStorage.removeItem('gc.testClassic');
+    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
+  });
+  await page.reload();
+}
+
 async function intoPlaza(browser, request, label, points = 0) {
   const who = await shopper(browser, request, label, points);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
-  await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
-  await who.page.reload();
+  await islandPage(who.page);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
   await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
@@ -219,8 +229,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   expect((await post(request, '/api/test/climb/record', plain.token, { altitude: 2950, at: lastWeek })).status).toBe(200);
   expect((await post(request, '/api/test/climb/settle', null, { reopen: true })).status).toBe(200); // a retried test settles last week again
   for (const who of [...champs, plain]) {
-    await who.page.evaluate(() => localStorage.removeItem('gc.testClassic'));
-    await who.page.reload();
+    await islandPage(who.page);
     await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true); // three 3D pages on a software renderer
   }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
@@ -577,8 +586,7 @@ test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 
   const watcher = await intoPlaza(browser, request, '구경');
   const a = await shopper(browser, request, '새친구', 0, null);
   const { page } = a;
-  await page.evaluate(() => localStorage.removeItem('gc.testClassic'));
-  await page.reload();
+  await islandPage(page);
   await expect(page.locator('#genderDialog')).toBeVisible({ timeout: 30000 });
   await page.keyboard.press('Escape');
   await expect(page.locator('#genderDialog')).toBeVisible(); // a choice is needed
@@ -659,8 +667,7 @@ test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열�
   test.setTimeout(60000);
   const a = await shopper(browser, request, '입구');
   const { page } = a;
-  await page.evaluate(() => localStorage.removeItem('gc.testClassic'));
-  await page.reload();
+  await islandPage(page);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
   await page.evaluate(() => window.PlazaDebug().place('climb'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');

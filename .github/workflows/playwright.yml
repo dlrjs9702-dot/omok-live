@@ -1,7 +1,10 @@
 name: Playwright E2E
 
+# A pull request runs once (pull_request); a push runs only on main (after a merge). A push to a PR branch used to run
+# the same suite a second time, doubling the runner time and the chance of meeting a flaky test.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -10,7 +13,8 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    # A normal run takes 8–15 minutes. Without a limit a hung step waits for GitHub's 6-hour default.
+    # A normal run took 8–15 minutes, by 2026-10 20–37 (more 3D tests on a software renderer). Without a limit a hung
+    # step waits for GitHub's 6-hour default.
     timeout-minutes: 40
 
     steps:
