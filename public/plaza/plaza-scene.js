@@ -2,7 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
-import { buildIsland, building, props, part, mergeColored, heightAt, walkable, SPOTS, COTTAGES, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js?v=1.10.13';
+import { buildIsland, building, props, part, mergeColored, heightAt, walkable, SPOTS, COTTAGES, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -75,7 +75,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // unregistered, switched off or failed targets keep the procedural one. Nothing registered (now) loads nothing.
   const assets = AssetPipeline.createLazyAssets({
     registry: islandAssetRegistry(), off: window.GameBoot?.manifest?.assetsOff || [],
-    importLoader: () => import('./asset-loader.js?v=1.10.18'),
+    importLoader: () => import('./asset-loader.js'),
     // v1.10.19: the island's season (asset-pipeline.js `seasonOf`); corrected to the server clock and kept current below
     options: { assetUrl: (path) => window.GameBoot?.assetUrl(path) ?? path, walkSpeed: SPEED, tier: 2, season: AssetPipeline.seasonOf(Date.now()) },
   });

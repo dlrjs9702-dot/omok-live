@@ -47,6 +47,7 @@ const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, N
 const releaseAnnouncements = require('./lib/release-announcements');
 const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
 const { buildAssetManifest } = require('./lib/asset-manifest'); // v1.10.14 game resource pack
+const { buildCodeManifest, prepareIndex, codeCacheHeaders } = require('./lib/code-manifest'); // v1.10.23 code hash URLs
 const {
   MAX_CHAT_LENGTH,
   createRoomSocial,
@@ -147,6 +148,9 @@ const eventAudience = new Map();
 const rewardTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
+// v1.10.23 (lib/code-manifest.js): the code files' content hashes and the page's import map CSP hash source
+let codeRevs = new Map();
+let importMapCsp = '';
 // v1.10.14 resource pack (lib/asset-manifest.js) and its emergency off switch: ASSET_CACHE=off (Render environment, no
 // code change) sends every page the "off" manifest, so browsers drop the worker and the gc-res:* caches and load assets
 // from the server as before. Pages and /asset-cache.json are no-store, so a change reaches browsers on their next load.
@@ -184,7 +188,7 @@ function securityHeaders(extra = {}) {
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    'Content-Security-Policy': `default-src 'self'; script-src 'self'${importMapCsp ? ` ${importMapCsp}` : ''}; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
     ...extra,
   };
 }
@@ -254,20 +258,30 @@ const VENDOR_FILES = {
   '/vendor/three/addons/utils/BufferGeometryUtils.js': path.join(THREE_ADDONS, 'utils', 'BufferGeometryUtils.js'),
   '/vendor/three/addons/utils/SkeletonUtils.js': path.join(THREE_ADDONS, 'utils', 'SkeletonUtils.js'),
 };
-// The addons import the bare name 'three'; the page has no import map (the CSP allows no inline script), so they are
-// pointed at the very module URL the game imports -- one Three.js instance, shared classes.
-const vendorSource = (pathname, raw) => (pathname.startsWith('/vendor/three/addons/')
-  ? Buffer.from(raw.toString('utf8').replace(/from 'three';/g, "from '/vendor/three/three.module.js';"))
-  : raw);
+// v1.10.23: served as they are -- the addons' bare 'three' resolves through the page's import map to the very module
+// URL the game imports (one Three.js instance, shared classes); no rewriting.
 
 const vendorCache = new Map();
+// v1.10.23 code cache rule: immutable for the current hash, otherwise no-cache with an ETag (and 304 when it matches).
+function codeHeaders(req, pathname) {
+  return codeCacheHeaders(codeRevs, pathname, new URL(req?.url || '/', 'http://local').search);
+}
+function notModified(req, res, headers) {
+  if (!headers?.ETag || req?.headers?.['if-none-match'] !== headers.ETag) return false;
+  res.writeHead(304, securityHeaders(headers));
+  res.end();
+  return true;
+}
+
 async function serveVendor(req, res, pathname) {
   const filePath = VENDOR_FILES[pathname];
   if (!filePath) return false;
+  const cache = codeHeaders(req, pathname) || { 'Cache-Control': 'no-cache' };
+  if (notModified(req, res, cache)) return true;
   let entry = vendorCache.get(pathname);
   if (!entry) {
     try {
-      const raw = vendorSource(pathname, await fsp.readFile(filePath));
+      const raw = await fsp.readFile(filePath);
       entry = { raw, gz: require('node:zlib').gzipSync(raw, { level: 9 }) };
       vendorCache.set(pathname, entry);
     } catch (err) {
@@ -277,7 +291,7 @@ async function serveVendor(req, res, pathname) {
   }
   const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
   const body = gzip ? entry.gz : entry.raw;
-  res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.js'], 'Content-Length': body.length, 'Cache-Control': 'public, max-age=86400', Vary: 'Accept-Encoding',
+  res.writeHead(200, securityHeaders({ 'Content-Type': MIME['.js'], 'Content-Length': body.length, ...cache, Vary: 'Accept-Encoding',
     ...(gzip ? { 'Content-Encoding': 'gzip' } : {}) }));
   res.end(body);
   return true;
@@ -317,10 +331,12 @@ async function serveStatic(res, pathname, req = null) {
     if (!stat.isFile()) return false;
     const ext = path.extname(filePath).toLowerCase();
     if (!MIME[ext]) return false;
+    const cache = codeHeaders(req, pathname) || { 'Cache-Control': 'no-cache' }; // v1.10.23: code by hash
+    if (notModified(req, res, cache)) return true;
     res.writeHead(200, securityHeaders({
       'Content-Type': MIME[ext],
       'Content-Length': stat.size,
-      'Cache-Control': 'no-cache',
+      ...cache,
     }));
     fs.createReadStream(filePath).pipe(res);
     return true;
@@ -4108,7 +4124,8 @@ async function requestHandler(req, res) {
 
 async function main() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
-  indexTemplate = await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+  codeRevs = buildCodeManifest(PUBLIC_DIR, VENDOR_FILES);
+  ({ html: indexTemplate, csp: importMapCsp } = prepareIndex(await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8'), codeRevs));
   const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]));
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');

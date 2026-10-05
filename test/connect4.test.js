@@ -199,5 +199,5 @@ test('Connect Four game selection and separate canvas hit detection are present 
   assert.match(js, /function connect4Layout\(/);
   assert.match(js, /state\.gameType === 'connect4'/);
   assert.match(js, /legalColumns/);
-  assert.match(html, /app\.js\?v=1.10.22/);
+  assert.match(html, /src="\/app\.js"/);
 });

@@ -19,9 +19,8 @@
 3. **버전 동기화**: 이전 버전 문자열을 모두 새 버전으로 바꾼다. 현재 위치:
    - `package.json`, `package-lock.json`(상단 2곳)
    - `server.js`: `/health`의 `version`, 시작 로그 `게임 서버 vX.Y.Z 실행`
-   - `public/index.html`: `?v=` 캐시 버스팅 전부
-   - `public/app.js`: `rpg-client.js?v=`, `public/rpg/rpg-client.js`: `rpg-scene.js?v=`, `rpg-hud.js?v=`
-   - `test/*.test.js`의 고정 버전(`health.data.version`, `app.js\?v=` 정규식). 현재는 점을 이스케이프하지 않은 형태(`v=1.7.25`)만 있지만, 과거처럼 이스케이프 형태(`1\.7\.25`)가 생길 수 있으니 둘 다 찾는다.
+   - 코드 캐시 버스팅은 v1.10.23부터 서버가 내용 해시(`?h=`)로 자동 처리한다(`lib/code-manifest.js`). `index.html`·모듈 import에 `?v=`를 다시 넣지 않는다(`test/release-version.test.js`가 검사).
+   - `test/*.test.js`의 고정 버전(`health.data.version` 등). 점을 이스케이프한 형태(`1\.7\.25`)가 생길 수 있으니 둘 다 찾는다.
    - 기능 주석(`// vX.Y.Z: …`), `PROJECT_STATUS.md`, 과거 공지는 바꾸지 않는다.
    - 확인(예: 이전 버전 1.7.25): `git grep -nF "1.7.25"`와 `git grep -nF '1\.7\.25'` 결과에 주석·공지·기록만 남아야 한다.
 4. **공지**: `lib/release-announcements.js` 끝에 새 항목 하나만 추가한다(`key: 'vX.Y.Z'`, `[개선]`/`[수정]` 제목, 실제로 바꾼 것만 쓴 짧은 본문, `publishedAt`). 목록은 `key`의 버전 순으로 정렬되므로 시각으로 순서를 맞출 필요는 없다(`lib/announcement-store.js` `compareAnnouncements`). 미래 시각도 숨겨지지 않는다.

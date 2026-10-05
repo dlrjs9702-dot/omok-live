@@ -268,6 +268,25 @@ test.describe('롤백', () => {
   });
 });
 
+// v1.10.23 코드 해시 전달: the page's code comes by content-hash URL with a long immutable cache, outside the resource
+// cache, and the inline import map passes the CSP (no violation, the island's modules load through it)
+test('코드는 해시 주소로 받아 HTTP 캐시에 오래 두고, 리소스 캐시에는 넣지 않는다', async ({ page }) => {
+  const code = [];
+  const violations = [];
+  page.on('console', msg => { if (/Content Security Policy/i.test(msg.text())) violations.push(msg.text()); });
+  page.on('response', r => { const u = new URL(r.url()); if (/\.(js|css)$/.test(u.pathname) && u.pathname !== '/sw.js') code.push([u.pathname + u.search, r.headers()['cache-control']]); });
+  await page.goto('/');
+  await ready(page);
+  expect(code.length).toBeGreaterThan(30);
+  for (const [url, cache] of code) {
+    expect(url).toMatch(/\?h=[0-9a-f]{16}$/);
+    expect(cache).toBe('public, max-age=31536000, immutable');
+  }
+  expect(await page.evaluate(() => JSON.parse(document.querySelector('script[type=importmap]').textContent).imports.three)).toMatch(/^\/vendor\/three\/three\.module\.js\?h=/);
+  expect((await packKeys(page, FILES)).some(key => /\.(js|css)\?/.test(key))).toBe(false);
+  expect(violations).toEqual([]);
+});
+
 const brands = list => `Object.defineProperty(Navigator.prototype, 'userAgentData', { configurable: true,
   get: () => ({ brands: ${JSON.stringify(list.map(brand => ({ brand, version: '130' })))}, mobile: false, platform: 'Windows' }) });`;
 
