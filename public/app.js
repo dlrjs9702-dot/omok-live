@@ -240,7 +240,7 @@
     }
     if (rpgBridge.loading) return;
     const generation = ++rpgBridge.generation;
-    rpgBridge.loading = import('/rpg/rpg-client.js?v=1.10.23').then((mod) => {
+    rpgBridge.loading = import('/rpg/rpg-client.js').then((mod) => {
       rpgBridge.loading = null;
       if (generation !== rpgBridge.generation || !isRpgGame()) return;
       rpgBridge.controller = mod.mount(rpgStage, {
@@ -1489,7 +1489,7 @@
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
     const spotToday = api('/api/plaza/spot').then((data) => data.spot || null).catch(() => null);
-    const sceneModule = import('/plaza/plaza-scene.js?v=1.10.23').catch((error) => { throw Object.assign(error, { code: 'module' }); });
+    const sceneModule = import('/plaza/plaza-scene.js').catch((error) => { throw Object.assign(error, { code: 'module' }); });
     plaza.loading = Promise.all([sceneModule, spotToday]).then(([mod, startAt]) => {
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start

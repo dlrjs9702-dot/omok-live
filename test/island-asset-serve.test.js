@@ -9,9 +9,10 @@ const { spawn } = require('node:child_process');
 const { revisionOf } = require('../lib/asset-manifest');
 const { staticGlb } = require('../test-support/gltf-fixture.js');
 
-// v1.10.15 고품질 에셋 파이프라인 (server side): the glTF loader is served from the three package with its 'three'
-// import pointed at the game's own module; model files and their buffers/textures are served with their types and
-// join the game resource pack (manifest + revision) like any other asset; ISLAND_ASSETS_OFF reaches the page.
+// v1.10.15 고품질 에셋 파이프라인 (server side): the glTF loader is served from the three package (v1.10.24: as it is,
+// its bare 'three' resolved by the page's import map; code by content hash, immutable only for the current hash);
+// model files and their buffers/textures are served with their types and join the game resource pack (manifest +
+// revision) like any other asset; ISLAND_ASSETS_OFF reaches the page.
 test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 팩 포함, 개별 비활성화 전달', { timeout: 30_000 }, async t => {
   const root = path.resolve(__dirname, '..');
   const fixtureDir = path.join(root, 'public', 'assets', 'island', `__test-${process.pid}`);
@@ -42,15 +43,43 @@ test('3D 에셋: 로더 애드온 제공, glTF 계열 형식 제공·리소스 �
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i += 1) { try { if ((await fetch(`${base}/health`)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
 
-  // the loader and what it imports, with the bare 'three' pointed at the game's module (no import map under the CSP)
+  // the page: hashed code URLs, and an import map (allowed by its CSP hash) for 'three' and every module path
+  const home = await fetch(`${base}/`);
+  const homeHtml = await home.text();
+  const mapText = homeHtml.match(/<script type="importmap">([^<]*)<\/script>/)[1];
+  const { imports } = JSON.parse(mapText);
+  const sha = `'sha256-${require('node:crypto').createHash('sha256').update(mapText).digest('base64')}'`;
+  assert.ok(home.headers.get('content-security-policy').includes(`script-src 'self' ${sha}`));
+  const threeUrl = imports.three;
+  assert.match(threeUrl, /^\/vendor\/three\/three\.module\.js\?h=[0-9a-f]{16}$/);
+  assert.equal(imports['/vendor/three/three.module.js'], threeUrl);
+  assert.match(imports['/plaza/plaza-scene.js'], /^\/plaza\/plaza-scene\.js\?h=[0-9a-f]{16}$/);
+  assert.match(homeHtml, /<script src="\/app\.js\?h=[0-9a-f]{16}"><\/script>/);
+  assert.doesNotMatch(homeHtml, /\?v=/);
+
+  // the loader and what it imports, served as they are (the bare 'three' goes through the import map)
   for (const addon of ['loaders/GLTFLoader.js', 'utils/SkeletonUtils.js', 'utils/BufferGeometryUtils.js']) {
-    const res = await fetch(`${base}/vendor/three/addons/${addon}`);
+    const url = imports[`/vendor/three/addons/${addon}`];
+    assert.match(url, /\?h=[0-9a-f]{16}$/, addon);
+    const res = await fetch(`${base}${url}`);
     assert.equal(res.status, 200, addon);
     assert.match(res.headers.get('content-type'), /javascript/);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=31536000, immutable', addon);
     const code = await res.text();
-    assert.doesNotMatch(code, /from 'three'/, addon);
-    assert.match(code, /from '\/vendor\/three\/three\.module\.js'/, addon);
+    assert.equal(code, fs.readFileSync(path.join(root, 'node_modules', 'three', 'examples', 'jsm', addon), 'utf8'), addon);
   }
+  // code by hash: the current hash is immutable; no hash or an old one is revalidated (ETag, 304) and never immutable
+  const appUrl = imports['/app.js'];
+  const rev = appUrl.split('?h=')[1];
+  assert.equal((await fetch(`${base}${appUrl}`)).headers.get('cache-control'), 'public, max-age=31536000, immutable');
+  for (const url of ['/app.js', '/app.js?h=0000000000000000']) {
+    const res = await fetch(`${base}${url}`);
+    assert.equal(res.headers.get('cache-control'), 'no-cache', url);
+    assert.equal(res.headers.get('etag'), `"${rev}"`, url);
+    assert.equal((await fetch(`${base}${url}`, { headers: { 'If-None-Match': `"${rev}"` } })).status, 304, url);
+  }
+  const vendor = await fetch(`${base}/vendor/three/three.core.js`);
+  assert.equal(vendor.headers.get('cache-control'), 'no-cache');
   assert.equal((await fetch(`${base}/vendor/three/addons/loaders/DRACOLoader.js`)).status, 404); // allow-list only
   assert.equal((await fetch(`${base}/vendor/three/addons/../../package.json`)).status, 404);
 
