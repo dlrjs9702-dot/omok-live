@@ -22,7 +22,7 @@ test('리소스 매니페스트: 파일별 내용 해시, 바뀐 파일만 revis
 
     const first = buildAssetManifest(dir, servable);
     assert.deepEqual(first.assets.map(a => a.url), ['/assets/island/tree.svg', '/assets/rock.png', '/hwatu/m01.svg']);
-    assert.deepEqual(first.assets[0], { url: '/assets/island/tree.svg', rev: revisionOf(Buffer.from('<svg>tree</svg>')), size: 15 });
+    assert.deepEqual(first.assets[0], { url: '/assets/island/tree.svg', rev: revisionOf(Buffer.from('<svg>tree</svg>')), size: 15, group: 'island' });
     assert.deepEqual(buildAssetManifest(dir, servable), first, '같은 파일이면 같은 결과');
 
     fs.writeFileSync(path.join(dir, 'assets', 'island', 'tree.svg'), '<svg>tree v2</svg>');
@@ -33,6 +33,33 @@ test('리소스 매니페스트: 파일별 내용 해시, 바뀐 파일만 revis
     assert.notEqual(second.assets[0].rev, first.assets[0].rev);
     assert.equal(second.assets[1].rev, first.assets[2].rev, '바뀌지 않은 파일은 같은 revision');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// v1.10.24 groups: logical groups in the one file cache; the island (every season and the common files of every
+// registered model) is required before the game starts, a game's files are not
+test('리소스 매니페스트 그룹: 아일랜드 등록 모델 파일은 4계절 모두 누락 없이 필수 island 그룹, 게임 리소스는 게임 그룹', () => {
+  const { groupOf, REQUIRED_GROUPS } = require('../lib/asset-manifest');
+  const { REGISTRY } = require('../public/plaza/island-assets.js');
+  const manifest = buildAssetManifest(path.join(__dirname, '..', 'public'), ext => ['.svg', '.png', '.glb'].includes(ext));
+  assert.deepEqual(manifest.required, REQUIRED_GROUPS);
+  assert.ok(REQUIRED_GROUPS.includes('island') && REQUIRED_GROUPS.includes('core'));
+  const byUrl = new Map(manifest.assets.map(a => [a.url, a]));
+  const urls = new Set();
+  for (const entry of Object.values(REGISTRY)) {
+    if (entry.url) urls.add(entry.url);
+    for (const url of Object.values(entry.seasons || {})) urls.add(url);
+  }
+  assert.ok(urls.size >= 32);
+  for (const url of urls) {
+    assert.ok(byUrl.has(url), `${url} 매니페스트에 있음`);
+    assert.equal(byUrl.get(url).group, 'island', url);
+  }
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) assert.ok([...urls].some(u => u.includes(`/${season}/`)), season);
+  assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => a.group === 'island'));
+  assert.ok(manifest.assets.filter(a => a.url.startsWith('/hwatu/')).every(a => a.group === 'game.gostop'));
+  assert.equal(groupOf('/assets/halli/banana.svg'), 'game.halligalli');
+  assert.equal(groupOf('/assets/davinci/table.svg'), 'game.davinci');
+  assert.equal(groupOf('/assets/ui/icon.svg'), 'core');
 });
 
 test('리소스 매니페스트: 실제 public 폴더의 게임 리소스를 담는다', () => {

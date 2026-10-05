@@ -17,7 +17,10 @@ const pending = page => page.evaluate(() => Promise.race([window.GameBoot.ready.
 // pack files this page load fetched from the network (Service Worker hits and local copies are not page fetches)
 const downloads = page => page.evaluate(() => performance.getEntriesByType('resource')
   .filter(e => e.initiatorType === 'fetch' && /[?&]rev=/.test(e.name)).map(e => new URL(e.name).pathname));
-const manifestKeys = page => page.evaluate(() => window.GameBoot.manifest.assets.map(a => `${a.url}?rev=${a.rev}`).sort());
+// v1.10.24: the files prepared before the game starts -- the required groups (core and the whole island)
+const manifestKeys = page => page.evaluate(() => { const m = window.GameBoot.manifest; return m.assets.filter(a => m.required.includes(a.group)).map(a => `${a.url}?rev=${a.rev}`).sort(); });
+const groupKeys = (page, group) => page.evaluate(g => window.GameBoot.manifest.assets.filter(a => a.group === g).map(a => `${a.url}?rev=${a.rev}`).sort(), group);
+const ROCK = '/assets/island/seasonal-v2/common/rock_v1_round.glb';
 const FILES = 'gc-res:files';
 const ourCaches = page => page.evaluate(async () => (await caches.keys()).filter(n => n.startsWith('gc-res:')).sort());
 const active = page => page.evaluate(async () => { const r = await caches.match('/active', { cacheName: 'gc-res:meta' }); return r ? r.json() : null; });
@@ -52,7 +55,7 @@ test('정상 활성화: 첫 접속에 모두 받아 팩을 활성화하고, 다�
   await page.goto('/');
   await ready(page);
   const keys = await manifestKeys(page);
-  expect(keys.length).toBeGreaterThan(40);
+  expect(keys.length).toBeGreaterThanOrEqual(32); // v1.10.24: the required groups (the island files)
   expect((await downloads(page)).length).toBe(keys.length);
   const pointer = await active(page);
   expect(pointer).toEqual({ version: await page.evaluate(() => window.GameBoot.manifest.version), cache: FILES });
@@ -68,25 +71,57 @@ test('정상 활성화: 첫 접속에 모두 받아 팩을 활성화하고, 다�
   expect(await controlled(page)).toBe(true);
 
   await page.evaluate(() => navigator.serviceWorker.ready);
-  const served = page.waitForResponse(r => r.url().includes('/hwatu/m01-gwang.svg?rev='));
-  await page.evaluate(() => fetch(window.GameBoot.assetUrl('/hwatu/m01-gwang.svg')).then(r => r.text()));
+  const served = page.waitForResponse(r => r.url().includes(`${ROCK}?rev=`));
+  await page.evaluate(url => fetch(window.GameBoot.assetUrl(url)).then(r => r.arrayBuffer()), ROCK);
   const response = await served;
   expect(response.fromServiceWorker()).toBe(true);
-  expect(response.headers()['content-type']).toBe('image/svg+xml');
+  expect(response.headers()['content-type']).toBe('model/gltf-binary');
 });
 
 test('업데이트: 바뀐 파일만 같은 캐시에 받고(복사 없음), 완성된 뒤에 버전을 가리키고 안 쓰는 파일을 지운다', async ({ page }) => {
   await page.goto('/');
   await ready(page);
   const keys = await manifestKeys(page);
-  await agePack(page, /^\/hwatu\/m01-gwang\.svg$/);
+  await agePack(page, /^\/assets\/island\/seasonal-v2\/common\/rock_v1_round\.glb$/);
 
   await page.reload();
   await ready(page);
-  expect(await downloads(page)).toEqual(['/hwatu/m01-gwang.svg']); // the rest stay where they are
+  expect(await downloads(page)).toEqual([ROCK]); // the rest stay where they are
   expect(await active(page)).toEqual({ version: await page.evaluate(() => window.GameBoot.manifest.version), cache: FILES });
   expect(await ourCaches(page)).toEqual([FILES, 'gc-res:meta']);
   expect(await packKeys(page, FILES)).toEqual(keys); // the dropped file is gone
+});
+
+// v1.10.24 manifest groups: the island (all four seasons) is required; a game's files are not downloaded before the
+// game starts but in its room (GameBoot.prefetch) or by the worker the first time one is asked for, into the same cache
+test('필수 그룹(core·아일랜드 4계절)만 입장 전에 받고, 게임 리소스는 쓸 때 같은 캐시에 받아 둔다', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  const required = await manifestKeys(page);
+  expect(await page.evaluate(() => window.GameBoot.manifest.required)).toEqual(['core', 'island']);
+  for (const season of ['spring', 'summer', 'autumn', 'winter', 'common']) expect(required.some(key => key.includes(`/seasonal-v2/${season}/`))).toBe(true);
+  expect(await downloads(page)).toHaveLength(required.length);
+  expect(await packKeys(page, FILES)).toEqual(required);
+  const cards = await groupKeys(page, 'game.gostop');
+  expect(cards.length).toBe(48);
+
+  // a game's room prepares its group in the background
+  await page.evaluate(() => window.GameBoot.prefetch('game.gostop'));
+  expect(await packKeys(page, FILES)).toEqual([...required, ...cards].sort());
+  // a file asked for directly is fetched by the worker and kept once its content matches its revision
+  const [plum] = (await groupKeys(page, 'game.halligalli')).filter(key => key.startsWith('/assets/halli/plum.svg'));
+  await page.evaluate(url => fetch(url).then(r => r.text()), plum);
+  await expect.poll(async () => (await packKeys(page, FILES)).includes(plum)).toBe(true);
+  // a wrong revision is never kept under its key
+  await page.evaluate(() => fetch('/assets/halli/lime.svg?rev=0000000000000000').then(r => r.text()));
+  await page.waitForTimeout(300);
+  expect((await packKeys(page, FILES)).some(key => key.includes('0000000000000000'))).toBe(false);
+
+  // kept across loads (still in the manifest), nothing downloaded again
+  await page.reload();
+  await ready(page);
+  expect(await downloads(page)).toEqual([]);
+  expect((await packKeys(page, FILES)).filter(key => cards.includes(key) || key === plum)).toHaveLength(cards.length + 1);
 });
 
 test('이전 구조(v1.10.14~21)의 팩은 내려받지 않고 한 번 옮긴 뒤 지운다', async ({ page }) => {
@@ -148,11 +183,11 @@ test.describe('업데이트 실패', () => {
   test('받다가 끊기면 이전 버전 파일과 포인터를 그대로 두고, 게임은 시작하지 않으며 다시 시도로 마저 받는다', async ({ page, context }) => {
     let failing = false;
     // on the context: the downloads go through the worker once it controls the page
-    await context.route(/\/hwatu\/m05-[a-z0-9]+\.svg\?rev=/, route => (failing ? route.abort('internetdisconnected') : route.continue()));
+    await context.route(/\/assets\/island\/seasonal-v2\/winter\/[^?]+\?rev=/, route => (failing ? route.abort('internetdisconnected') : route.continue()));
     await page.goto('/');
     await ready(page);
     const keys = await manifestKeys(page);
-    const old = await agePack(page, /^\/hwatu\/m0[45]-/);
+    const old = await agePack(page, /^\/assets\/island\/seasonal-v2\/(autumn|winter)\//);
 
     failing = true;
     await page.reload();
@@ -210,7 +245,7 @@ test.describe('사전검사', () => {
     });
     await page.goto('/');
     await ready(page);
-    const old = await agePack(page, /^\/hwatu\/m01-gwang\.svg$/);
+    const old = await agePack(page, /^\/assets\/island\/seasonal-v2\/common\/rock_v1_round\.glb$/);
     await page.evaluate(() => sessionStorage.setItem('denyWrites', '1'));
 
     await page.reload();
@@ -228,9 +263,9 @@ test.describe('롤백', () => {
     await page.goto('/');
     await ready(page);
     await page.evaluate(() => navigator.serviceWorker.ready);
-    await agePack(page, /^\/hwatu\/m05-/);
+    await agePack(page, /^\/assets\/island\/seasonal-v2\/winter\//);
     // the worker is in control here, so the route goes on the context (it also sees the worker's requests)
-    await context.route(/\/hwatu\/m05-[a-z0-9]+\.svg\?rev=/, route => route.abort('internetdisconnected'));
+    await context.route(/\/assets\/island\/seasonal-v2\/winter\/[^?]+\?rev=/, route => route.abort('internetdisconnected'));
     await page.reload();
     await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패');
     await page.evaluate(() => { localStorage.setItem('keep.me', '1'); sessionStorage.setItem('keep.me', '1'); });
@@ -244,7 +279,7 @@ test.describe('롤백', () => {
     expect(await ourCaches(page)).toEqual([]);
     expect(await page.evaluate(() => [localStorage.getItem('keep.me'), sessionStorage.getItem('keep.me'), localStorage.getItem('gc.testClassic')]))
       .toEqual(['1', '1', '1']); // other site data is left alone
-    expect(await page.evaluate(() => window.GameBoot.assetUrl('/hwatu/m01-gwang.svg'))).toBe('/hwatu/m01-gwang.svg');
+    expect(await page.evaluate(url => window.GameBoot.assetUrl(url), ROCK)).toBe(ROCK);
     await enterAsAdmin(page);
 
     // switched back on: the next load builds the cache again from scratch
