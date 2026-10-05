@@ -184,6 +184,7 @@ test('캐시를 지우면 다음 접속에 자동으로 다시 받는다', async
 
 test.describe('업데이트 실패', () => {
   test('받다가 끊기면 이전 버전 파일과 포인터를 그대로 두고, 게임은 시작하지 않으며 다시 시도로 마저 받는다', async ({ page, context }) => {
+    test.setTimeout(180_000); // the whole island prepared twice over on a slow runner
     let failing = false;
     // on the context: the downloads go through the worker once it controls the page
     await context.route(/\/assets\/island\/seasonal-v2\/winter\/[^?]+\?rev=/, route => (failing ? route.abort('internetdisconnected') : route.continue()));
@@ -194,7 +195,7 @@ test.describe('업데이트 실패', () => {
 
     failing = true;
     await page.reload();
-    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 20_000 }); // the winter files come last among ~48 (v1.10.28 Low files): a slow runner needs more than 5 s to reach them
+    await expect(page.locator('#bootTitle')).toHaveText('게임 리소스 준비 실패', { timeout: 90_000 }); // the winter files come late among the island's ~240 (v1.10.29): a slow runner needs well over 5 s to reach them
     await expect(page.locator('#bootRetry')).toBeVisible();
     expect(await pending(page)).toBe(true);
     expect(await active(page)).toEqual({ version: 'older', cache: FILES }); // not pointed at the new version
