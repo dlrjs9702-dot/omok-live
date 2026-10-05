@@ -278,7 +278,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   }
 
   // Facilities: each faces its walk or the fountain; the door point is where "near" is measured.
-  const facilityRoots = [];
+  const firstBuildingSolid = solids.length; // v1.10.21: the facilities' and houses' circles, kept for the camera
+  const facilityRoots = []; const buildingRoots = [];
   const npcs = []; // ponytail: NPCs only idle-breathe; real NPC behaviour is a later plaza version
   const doors = {};
   // v1.10.2: the gazebo stays as a place to sit in the nature area; chat is an overlay now, not a facility.
@@ -287,7 +288,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     if (!spot || (facility.decor && facilities.some((f) => f.id === facility.id))) continue;
     const { x, z } = spot;
     const root = new THREE.Group(); root.position.set(x, heightAt(x, z), z); root.rotation.y = Math.atan2(spot.face[0] - x, spot.face[1] - z);
-    scene.add(root);
+    scene.add(root); root.userData.building = true; buildingRoots.push(root); // v1.10.21: faded when it hides me
     // v1.10.15: `root` is the gameplay object (place, facing, sign, keeper; collision and door are worked out from the
     // spot below); `visual` is only the procedural look, the part a registered model replaces.
     const visual = new THREE.Group(); root.add(visual);
@@ -476,7 +477,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
 
   // v1.10.1: the shop street's reserved lot (외형 변경 시설 comes later): a low fence around levelled ground, no entrance yet.
   for (const lot of RESERVED_LOTS) {
-    const g = new THREE.Group(); g.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); g.rotation.y = Math.atan2(lot.face[0] - lot.x, lot.face[1] - lot.z); scene.add(g);
+    const g = new THREE.Group(); g.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); g.rotation.y = Math.atan2(lot.face[0] - lot.x, lot.face[1] - lot.z); scene.add(g); g.userData.building = true; buildingRoots.push(g);
     const dirt = mesh(new THREE.BoxGeometry(6.5, 0.06, 5.5), mat(0xd9c49a), 0, 0.03, 0, g); dirt.castShadow = false;
     for (let k = 0; k <= 12; k += 1) {
       const t = k / 12; const px = -3.4 + t * 6.8;
@@ -506,7 +507,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     const look = COTTAGE_LOOKS[c.style % COTTAGE_LOOKS.length];
     const door = look.door || 0; const side = door > 0 ? -1 : 1; const ww = look.w / 2 - 0.62;
     const windows = door ? [[side * ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r'], [0, 0.58, 'b']] : [[-ww, 0.6], [ww, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']];
-    const g = new THREE.Group(); const y0 = heightAt(c.x, c.z); g.position.set(c.x, y0, c.z); g.rotation.y = Math.atan2(c.face[0] - c.x, c.face[1] - c.z); scene.add(g);
+    const g = new THREE.Group(); const y0 = heightAt(c.x, c.z); g.position.set(c.x, y0, c.z); g.rotation.y = Math.atan2(c.face[0] - c.x, c.face[1] - c.z); scene.add(g); g.userData.building = true; buildingRoots.push(g);
     const visual = new THREE.Group(); g.add(visual); // v1.10.15: the look only; the solids below stay the house's
     const body = new THREE.Mesh(building({ ...look, windows }), vcMat); body.castShadow = true; body.receiveShadow = true; visual.add(body);
     // the yard: a mailbox by the way out, a short fence along each side, stepping stones to the walk
@@ -528,6 +529,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     solids.push({ ...local(look.w / 2 + 0.5, look.d / 2 + 1.5), r: 0.3 });
   }
 
+  const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
   // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.
   let statueList = []; let statueKey = '[]'; const statueRoots = [];
@@ -685,13 +687,15 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const onKeyDown = (event) => {
     if (isBlocked() || isTyping(event.target)) return;
     if (event.key.startsWith('Arrow')) { keys.add(event.key); event.preventDefault(); return; }
+    // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
+    if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
     if (event.code === 'Space' && (event.target === document.body || host.contains(event.target))) {
       event.preventDefault();
       if (!event.repeat && near) interact(near);
     }
   };
-  const onKeyUp = (event) => keys.delete(event.key);
-  const onBlur = () => keys.clear();
+  const onKeyUp = (event) => { keys.delete(event.key); camKeys.delete(event.code); };
+  const onBlur = () => { keys.clear(); camKeys.clear(); };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
@@ -711,13 +715,38 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   // stays a click on a facility). The arrow keys follow the view, so ↑ always walks into the screen.
   let camYaw = 0; let drag = null; let dragged = false;
   const DRAG_START = 5; const DRAG_TURN = 0.008; // pixels before a press becomes a drag, radians per pixel
+  // v1.10.21 카메라 회전 확장 (IDEAS 2026-10-05): the camera turns round my character (yaw) and tilts a little (pitch)
+  // -- mouse drag and W/A/S/D move one shared goal, and what is drawn eases toward it, so switching between them never
+  // jumps. Pitch is 0 at the default quarter view, + from higher up, held within ±PITCH_MAX (never straight down, never
+  // level with the ground). A held key turns at a speed that builds up over CAM_RAMP seconds and stops on release.
+  const CAM_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD']); const camKeys = new Set();
+  const PITCH_MAX = (15 * Math.PI) / 180; const DRAG_PITCH = 0.004; // radians per pixel up or down
+  const YAW_SPEED = 1.9; const PITCH_SPEED = 0.55; const CAM_RAMP = 0.25; // radians per second at full speed
+  let camPitch = 0; let yawGoal = 0; let pitchGoal = 0; let camHeld = 0; let camDt = 0;
+  const clampPitch = (v) => Math.max(-PITCH_MAX, Math.min(PITCH_MAX, v));
+  function turnCamera(dt) {
+    if (camKeys.size && !isBlocked()) {
+      camHeld = Math.min(CAM_RAMP, camHeld + dt); const speed = 0.35 + (0.65 * camHeld) / CAM_RAMP;
+      if (camKeys.has('KeyA')) yawGoal += YAW_SPEED * speed * dt; // A turns like dragging left, D like dragging right
+      if (camKeys.has('KeyD')) yawGoal -= YAW_SPEED * speed * dt;
+      if (camKeys.has('KeyW')) pitchGoal += PITCH_SPEED * speed * dt; // W: from higher up, like dragging up
+      if (camKeys.has('KeyS')) pitchGoal -= PITCH_SPEED * speed * dt;
+    } else { camHeld = 0; if (isBlocked()) camKeys.clear(); }
+    pitchGoal = clampPitch(pitchGoal);
+    const ease = 1 - Math.exp(-dt * 14);
+    camYaw += (yawGoal - camYaw) * ease; camPitch = clampPitch(camPitch + (pitchGoal - camPitch) * ease);
+  }
   const onDown = (event) => { if (event.button !== 0) return; drag = { x: event.clientX, y: event.clientY, id: event.pointerId }; dragged = false; };
   const onClick = (event) => { if (dragged) { dragged = false; return; } if (isBlocked()) return; const id = facilityAt(event); if (id) interact(id); };
   const onMove = (event) => {
     if (drag && drag.id === event.pointerId && !isBlocked()) {
       const dx = event.clientX - drag.x;
       if (!dragged && Math.hypot(dx, event.clientY - drag.y) >= DRAG_START) { dragged = true; renderer.domElement.setPointerCapture?.(event.pointerId); }
-      if (dragged) { camYaw -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN; drag.lastX = event.clientX; renderer.domElement.style.cursor = 'grabbing'; return; }
+      if (dragged) {
+        yawGoal -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN; drag.lastX = event.clientX;
+        pitchGoal = clampPitch(pitchGoal - (event.clientY - (drag.lastY ?? drag.y)) * DRAG_PITCH); drag.lastY = event.clientY; // dragging up: from higher up
+        renderer.domElement.style.cursor = 'grabbing'; return;
+      }
     }
     renderer.domElement.style.cursor = !isBlocked() && facilityAt(event) ? 'pointer' : 'grab';
   };
@@ -946,15 +975,50 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
+  const CAM_DIST = Math.hypot(OFFSET.y, OFFSET.z); const CAM_ELEV = Math.atan2(OFFSET.y, OFFSET.z); // the default view: 13.1 away, 34.4° up
+  const CAM_MIN = 4; const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST;
   function placeCamera(snap) {
     const p = me.root.position;
     scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : 180)) { camera.far = overview ? 600 : 180; camera.updateProjectionMatrix(); }
     if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
     const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
-    const want = new THREE.Vector3(p.x + sin * OFFSET.z, p.y + OFFSET.y, p.z + cos * OFFSET.z); // v1.10.0: follow the player across the island
+    // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
+    // building or house (never closer than CAM_MIN) -- and if even that is inside one (my back to a big building's
+    // front), lifted to CAM_OVER above me, over its walls; always at least CAM_CLEAR above the ground under it
+    const elev = CAM_ELEV + camPitch; const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
+    const inside = (c) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + 0.6);
+    let dist = CAM_DIST;
+    while (dist > CAM_MIN && inside(at(dist))) dist -= 0.5;
+    camDist = snap ? dist : camDist + (dist - camDist) * (dist < camDist ? 0.25 : 0.05); // in quickly, back out gently
+    const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
+    const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
     const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3, p.z - cos * 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, 0.08); camLook.lerp(look, 0.1); }
+    camPos.y = Math.max(camPos.y, heightAt(camPos.x, camPos.z) + CAM_CLEAR); // easing never dips it into a slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
+    fadeInWay(p);
+  }
+  // v1.10.21: a building or house between the camera and me is drawn see-through, so no view loses my character
+  const sightRay = new THREE.Raycaster(); sightRay.camera = camera;
+  const sightDir = new THREE.Vector3(); const ghosts = new Map(); let faded = new Set();
+  const ghost = (m) => { let g = ghosts.get(m); if (!g) { g = m.clone(); g.transparent = true; g.opacity = 0.3; g.depthWrite = false; ghosts.set(m, g); } return g; };
+  const swapGhost = (o, on) => {
+    if (!o.isMesh) return;
+    if (on && !o.userData.solidMat) { o.userData.solidMat = o.material; o.material = Array.isArray(o.material) ? o.material.map(ghost) : ghost(o.material); }
+    if (!on && o.userData.solidMat) { o.material = o.userData.solidMat; delete o.userData.solidMat; }
+  };
+  function fadeInWay(p) {
+    sightDir.set(p.x, p.y + 1.0, p.z).sub(camera.position); const far = sightDir.length();
+    sightRay.set(camera.position, sightDir.normalize()); sightRay.far = far;
+    const now = new Set();
+    for (const hit of sightRay.intersectObjects(buildingRoots.filter((r) => r.position.distanceToSquared(p) < 900), true)) {
+      if (hit.object.isSprite) continue; // a sign alone hides nothing
+      let o = hit.object; while (o.parent && !o.userData.building) o = o.parent;
+      now.add(o);
+    }
+    for (const r of faded) if (!now.has(r)) r.traverse((o) => swapGhost(o, false));
+    for (const r of now) r.traverse((o) => swapGhost(o, true)); // every frame, so a model attached meanwhile fades too
+    faded = now;
   }
 
   let running = false; let raf = 0; let last = 0; let clock = 0;
@@ -962,6 +1026,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
+    camDt = Math.min(0.25, real); // v1.10.21: turning keeps to the clock on a slow PC (the animation step is capped)
     step(dt);
     renderer.render(scene, camera);
     adaptQuality(Math.min(real, 1)); // real time, so a very slow PC steps down after 3 seconds, not 3 seconds of capped frames
@@ -989,6 +1054,7 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
     } else keys.clear();
+    turnCamera(camDt); // v1.10.21
     const moving = ix !== 0 || iz !== 0;
     if (moving) {
       const len = Math.hypot(ix, iz); ix /= len; iz /= len;
@@ -1099,7 +1165,8 @@ export function createPlaza(host, { facilities, onInteract, onNear, blocked, sta
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, assets: assets.debug(), setSeason: (season) => { seasonOverride = season; assets.setSeason(season ?? AssetPipeline.seasonOf(Date.now() + serverOffset)); }, gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), tag: Boolean(me.tag),
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; placeCamera(true); }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });

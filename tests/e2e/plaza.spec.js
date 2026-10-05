@@ -419,6 +419,9 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await page.mouse.move(cx, cy); await page.mouse.down();
   for (let k = 1; k <= 10; k += 1) await page.mouse.move(cx - k * 20, cy);
   await page.mouse.up();
+  // v1.10.21: the view eases to where the drag left it
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().camYaw), { timeout: 3000 }).toBeGreaterThan(1.2);
+  await page.waitForTimeout(400);
   const yaw = await page.evaluate(() => window.PlazaDebug().camYaw);
   expect(yaw).toBeGreaterThan(1.2); expect(yaw).toBeLessThan(2); // 200 px ≈ 1.6 rad
   // the minimap (top right) turns with the view: the way I look stays at its top
@@ -438,7 +441,7 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await page.mouse.move(cx, cy); await page.mouse.down();
   for (let k = 1; k <= 10; k += 1) await page.mouse.move(cx + k * 20, cy);
   await page.mouse.up();
-  expect(Math.abs(await page.evaluate(() => window.PlazaDebug().camYaw))).toBeLessThan(0.05);
+  await expect.poll(async () => Math.abs(await page.evaluate(() => window.PlazaDebug().camYaw)), { timeout: 3000 }).toBeLessThan(0.05);
   // a plain click on the board (no drag) still opens it
   await page.evaluate(() => window.PlazaDebug().place('board'));
   await page.waitForTimeout(400);
@@ -452,6 +455,116 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
   await page.mouse.up();
   await page.waitForTimeout(300);
   await expect(page.locator('#plazaDialog')).toBeHidden();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.21 카메라 회전 확장: W/A/S/D and the mouse turn one shared view -- A/D round my character like dragging, W/S and
+// dragging up/down tilt it within ±15° of the default quarter view; a held key turns smoothly and stops on release;
+// no turning while typing or while a window is open; the camera stays above the ground and out of buildings; the
+// arrow keys still walk.
+test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리고, 상하 ±15° 안, 입력창·창이 열린 동안은 무시, 지면·건물 밖', async ({ browser, request }) => {
+  test.setTimeout(150000);
+  const a = await intoPlaza(browser, request, '카메라');
+  const { page } = a;
+  const cam = () => page.evaluate(() => { const d = window.PlazaDebug(); return { yaw: d.camYaw, pitch: d.camPitch, max: d.pitchMax, camera: d.camera }; });
+  const hold = async (key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms); await page.keyboard.up(key); };
+  await page.locator('#plazaStage').focus();
+  const start = await cam();
+  expect(start.pitch).toBe(0); expect(start.yaw).toBe(0);
+  const max = start.max; expect(max).toBeCloseTo((15 * Math.PI) / 180, 5);
+
+  // A turns like dragging left (yaw up), D the other way; on release it stops
+  await hold('a', 600);
+  await page.waitForTimeout(300);
+  const afterA = await cam(); expect(afterA.yaw).toBeGreaterThan(0.3);
+  await page.waitForTimeout(400);
+  expect(Math.abs((await cam()).yaw - afterA.yaw)).toBeLessThan(0.02); // released: no more turning
+  await hold('d', 600); await page.waitForTimeout(300);
+  expect((await cam()).yaw).toBeLessThan(afterA.yaw - 0.3);
+
+  // W / S tilt, never past ±15°
+  await hold('w', 2500); await page.waitForTimeout(300);
+  const up = await cam(); expect(up.pitch).toBeGreaterThan(max - 0.01); expect(up.pitch).toBeLessThanOrEqual(max + 1e-9);
+  await hold('s', 3500); await page.waitForTimeout(300);
+  const down = await cam(); expect(down.pitch).toBeLessThan(-max + 0.01); expect(down.pitch).toBeGreaterThanOrEqual(-max - 1e-9);
+  expect(down.camera.clear).toBeGreaterThan(0.9); // the lowest view is still above the ground
+
+  // the mouse moves the same view: dragging up tilts up from where the keys left it, with no jump
+  const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
+  const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
+  const before = await cam();
+  await page.mouse.move(cx, cy); await page.mouse.down();
+  for (let k = 1; k <= 8; k += 1) await page.mouse.move(cx - k * 10, cy - k * 10);
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const dragged = await cam();
+  expect(dragged.pitch).toBeGreaterThan(before.pitch + 0.15); // 80 px up
+  expect(dragged.yaw).toBeGreaterThan(before.yaw + 0.4); // 80 px left
+  // and the keys go on from there: sampled while A turns, the view only ever moves on from the dragged angle (the
+  // keys' old angle is 0.64 back the other way) and the tilt stays where the drag left it
+  let prev = dragged;
+  await page.keyboard.down('a');
+  for (let k = 0; k < 8; k += 1) {
+    await page.waitForTimeout(60); const now = await cam();
+    expect(now.yaw).toBeGreaterThanOrEqual(prev.yaw - 0.01); // no jump back to an old angle
+    expect(Math.abs(now.pitch - dragged.pitch)).toBeLessThan(0.02);
+    prev = now;
+  }
+  await page.keyboard.up('a');
+  expect(prev.yaw).toBeGreaterThan(dragged.yaw);
+
+  // typing a chat message: W/A/S/D are letters, not camera keys
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#islandChatInput')).toBeFocused();
+  const typing = await cam();
+  await page.keyboard.type('wasd');
+  await page.waitForTimeout(300);
+  expect(await page.locator('#islandChatInput').inputValue()).toBe('wasd');
+  const typed = await cam(); expect(Math.abs(typed.yaw - typing.yaw)).toBeLessThan(0.02); expect(Math.abs(typed.pitch - typing.pitch)).toBeLessThan(0.02);
+  await page.keyboard.press('Escape');
+
+  // a window open over the island: no camera keys either
+  await page.evaluate(() => window.PlazaDebug().place('shop'));
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('#skinShopDialog')).toBeVisible();
+  const open = await cam();
+  await hold('d', 500); await hold('w', 500); await page.waitForTimeout(200);
+  const still = await cam(); expect(Math.abs(still.yaw - open.yaw)).toBeLessThan(0.02); expect(Math.abs(still.pitch - open.pitch)).toBeLessThan(0.02);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#skinShopDialog')).toBeHidden();
+
+  // the arrows still walk
+  const from = await state(page);
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.down('ArrowUp');
+  await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - from.x, now.z - from.z); }, { timeout: 10000 }).toBeGreaterThan(0.5);
+  await page.keyboard.up('ArrowUp');
+
+  // all round the island at the lowest tilt: above the ground and outside buildings (behind the game hall, by houses, on the hill)
+  await page.evaluate((m) => window.PlazaDebug().setCamPitch(-m), max);
+  const spots = await page.evaluate(() => { const d = window.PlazaDebug(); return Object.values(d.doors).map((o) => [o.x, o.z]); });
+  for (const [x, z] of spots) {
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      await page.evaluate(([x, z, yaw]) => { const d = window.PlazaDebug(); d.setCamYaw(yaw); d.teleport(x, z); }, [x, z, yaw]);
+      const c = (await cam()).camera;
+      expect(c.clear, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBeGreaterThan(0.9);
+      expect(c.inBuilding, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBe(false);
+    }
+  }
+
+  // looking back at the game hall from its door: the hall between the camera and me is see-through
+  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(Math.PI); d.teleport(d.doors.games.x, d.doors.games.z); });
+  expect((await cam()).camera.faded).toBeGreaterThan(0);
+  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(0); d.teleport(d.doors.games.x, d.doors.games.z); });
+  expect((await cam()).camera.faded).toBe(0);
+
+  // a resized window keeps the tilt in range
+  await page.setViewportSize({ width: 820, height: 600 }); await page.waitForTimeout(300);
+  await page.setViewportSize({ width: 1280, height: 900 }); await page.waitForTimeout(300);
+  const after = await cam(); expect(Math.abs(after.pitch)).toBeLessThanOrEqual(max + 1e-9);
   await expectNoScriptError(page);
   await a.context.close();
 });
