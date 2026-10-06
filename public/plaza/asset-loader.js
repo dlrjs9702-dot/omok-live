@@ -548,10 +548,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // colours make a copy of its own), counted, and freed with the last one; the geometry of a part is shared as loaded,
   // or -- when a combination asks a part to give way (P.fitWardrobe) -- one fitted copy per file and combination.
   const wearMats = new Map(); // key -> { key, material, refs }
-  function wearMaterial(source, want) {
-    const key = `${source.uuid}|${want || ''}`;
+  // v1.10.37 원거리 플레이어 가시성: a player's own materials are not faded by the fog (`clear`), so someone walking far
+  // off shows from a high or open place; what stands in front still hides them (depth), the islanders fade as before
+  function wearMaterial(source, want, clear = false) {
+    const key = `${source.uuid}|${want || ''}|${clear ? 'clear' : ''}`;
     let rec = wearMats.get(key);
-    if (!rec) { const material = source.clone(); if (want) material.color.set(want); made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
+    if (!rec) { const material = source.clone(); if (want) material.color.set(want); if (clear) material.fog = false; made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
     rec.refs += 1; return rec;
   }
   function dropMaterial(rec) {
@@ -608,7 +610,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const high = []; const low = []; const mats = [];
       const worn = {}; // material name -> the colour put on it (tests)
       const own = (m, colors) => { // the shared material in the colours this character wants on it
-        const list = [].concat(m.material).map((x) => { const want = colors?.[x.name] || plan.tint?.[x.name]; if (want) worn[x.name] = want; const rec = wearMaterial(x, want); mats.push(rec); return rec.material; });
+        const list = [].concat(m.material).map((x) => { const want = colors?.[x.name] || plan.tint?.[x.name]; if (want) worn[x.name] = want; const rec = wearMaterial(x, want, c.player); mats.push(rec); return rec.material; });
         m.material = Array.isArray(m.material) ? list : list[0];
       };
       const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };

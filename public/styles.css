@@ -1647,3 +1647,22 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .lostRequest{display:grid;gap:8px}
 .lostRequestLine{margin:0;font-size:.92rem;line-height:1.5;color:#f8fafc}
 .lostRequest button{justify-self:end}
+
+/* v1.10.37 혼자 하는 게임 — 지뢰찾기 */
+.soloGamesPanel .soloGameBtn{width:100%;margin-top:.4rem}
+.recordsDialog.minesDialog{width:auto;max-width:96vw}
+.minesLevels{display:flex;gap:.4rem;margin:.4rem 0}
+.minesLevels button{flex:1}
+.minesBar{display:flex;gap:1rem;justify-content:space-between;font-variant-numeric:tabular-nums;margin:.3rem 0 .5rem;color:#cbd5e1}
+.minesBoard{display:grid;gap:2px;background:#1e293b;padding:4px;border-radius:10px;user-select:none;width:max-content;margin:0 auto}
+.minesCell{width:26px;height:26px;padding:0;border:0;border-radius:4px;background:#64748b;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);font:800 15px/26px system-ui,sans-serif;color:#0f172a;cursor:pointer}
+.minesCell:hover{background:#7b8ba3}
+.minesCell.open{background:#e2e8f0;box-shadow:none;cursor:default}
+.minesCell.flag::after{content:'🚩';font-size:14px}
+.minesCell.mine{background:#fecaca}.minesCell.mine::after{content:'💣';font-size:14px}
+.minesCell.boom{background:#ef4444}
+.minesCell.n1{color:#2563eb}.minesCell.n2{color:#15803d}.minesCell.n3{color:#dc2626}.minesCell.n4{color:#1e3a8a}.minesCell.n5{color:#7f1d1d}.minesCell.n6{color:#0f766e}.minesCell.n7{color:#111827}.minesCell.n8{color:#6b7280}
+.minesStatus{min-height:1.4em;text-align:center;font-weight:700;margin:.5rem 0 0}
+/* v1.10.37 연계 퀘스트: the step under way, top left of the island */
+.questTracker{position:absolute;left:12px;top:64px;z-index:3;display:grid;gap:4px;pointer-events:none}
+.questTracker p{margin:0;padding:5px 10px;border-radius:10px;background:rgba(15,23,42,.62);color:#fef3c7;font-weight:700;font-size:.85rem}

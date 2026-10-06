@@ -1605,6 +1605,71 @@
   }
   // v1.10.10 이벤트 인벤토리: the island bag (the 「가방」 tab or I), and handing things in -- trash and found wallets
   // at the town hall, herbs, berries and mushrooms to the trader. One request id per visit until the server answers.
+  // v1.10.37 혼자 하는 게임 — 지뢰찾기: the board is the server's (it alone knows the mines); left click opens, right click
+  // flags, a click on an opened number opens around it once its flags match. A clear pays by level (shown with the time).
+  const minesDialog = document.getElementById('minesDialog');
+  const minesBoard = document.getElementById('minesBoard');
+  const minesStatus = document.getElementById('minesStatus');
+  let mines = null; let minesTimer = null; let minesBusy = false;
+  const clockText = (ms) => { const t = Math.floor(ms / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  async function openMines() {
+    if (plazaDialog.open) plazaDialog.close();
+    try {
+      const info = await api('/api/solo/minesweeper');
+      mines = { levels: info.levels, records: info.records, level: info.game?.view.level || mines?.level || 'beginner', id: info.game?.id || null, view: info.game?.view || null, shownAt: Date.now() };
+    } catch (error) { showToast(error.message); return; }
+    minesStatus.textContent = '';
+    renderMines(); if (!minesDialog.open) minesDialog.showModal();
+    if (!mines.view) newMines(mines.level);
+  }
+  async function newMines(level) {
+    try { const g = await api('/api/solo/minesweeper/new', { method: 'POST', body: JSON.stringify({ level }) }); Object.assign(mines, { level, id: g.id, view: g.view, shownAt: Date.now() }); minesStatus.textContent = ''; renderMines(); }
+    catch (error) { showToast(error.message); }
+  }
+  function renderMines() {
+    const levels = document.getElementById('minesLevels'); levels.replaceChildren();
+    for (const l of mines.levels) { const b = document.createElement('button'); b.type = 'button'; b.dataset.level = l.id; b.className = l.id === mines.level ? 'secondary' : 'ghost'; b.textContent = `${l.label} ${l.points.toLocaleString('ko-KR')}P`; levels.append(b); }
+    const v = mines.view; const best = mines.records?.[mines.level]?.best;
+    document.getElementById('minesBest').textContent = best ? `최고 ${clockText(best)}` : '';
+    if (!v) { minesBoard.replaceChildren(); return; }
+    document.getElementById('minesLeft').textContent = `💣 ${v.mines - v.flags}`;
+    minesBoard.style.gridTemplateColumns = `repeat(${v.w}, 26px)`;
+    const over = v.status === 'won' || v.status === 'lost'; const mineAt = new Set(v.mineAt || []);
+    const cells = v.cells.map((c, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'minesCell'; b.dataset.i = i;
+      if (c >= 0) { b.classList.add('open', `n${c}`); b.textContent = c ? String(c) : ''; } else if (c === -2) b.classList.add('flag');
+      if (over && mineAt.has(i) && c !== -2) b.classList.add('mine');
+      if (v.boom === i) b.classList.add('boom');
+      b.setAttribute('aria-label', c >= 0 ? String(c) : c === -2 ? '깃발' : '닫힘'); return b;
+    });
+    minesBoard.replaceChildren(...cells);
+    clearInterval(minesTimer);
+    const shown = () => { document.getElementById('minesTime').textContent = `⏱ ${clockText(v.status === 'playing' ? v.ms + (Date.now() - mines.shownAt) : v.ms)}`; };
+    shown(); if (v.status === 'playing') minesTimer = setInterval(shown, 500);
+  }
+  async function actMines(action, i) {
+    if (!mines?.id || minesBusy) return;
+    const v = mines.view; if (v.status === 'won' || v.status === 'lost') return;
+    minesBusy = true;
+    try {
+      const data = await api('/api/solo/minesweeper/act', { method: 'POST', body: JSON.stringify({ id: mines.id, action, x: i % v.w, y: Math.floor(i / v.w) }) });
+      mines.view = data.view; mines.shownAt = Date.now();
+      if (data.view.status === 'won') {
+        const r = data.result;
+        if (r) { mines.records[mines.level] = { best: r.best, clears: r.clears }; if (r.points) loadPoints(); }
+        minesStatus.textContent = `클리어 ${clockText(data.view.ms)}${r?.newBest ? ' · 최고 기록' : ''}${r?.points ? ` · +${r.points.toLocaleString('ko-KR')}P` : ''}`;
+      } else if (data.view.status === 'lost') minesStatus.textContent = '펑! 난이도를 눌러 다시 시작';
+      renderMines();
+    } catch (error) { showToast(error.message); if (error.status === 409) { mines.id = null; mines.view = null; renderMines(); } }
+    finally { minesBusy = false; }
+  }
+  document.getElementById('soloMinesBtn').addEventListener('click', openMines);
+  document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
+  minesDialog.addEventListener('close', () => clearInterval(minesTimer));
+  document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });
+  minesBoard.addEventListener('click', (event) => { const b = event.target.closest('.minesCell'); if (!b) return; actMines(b.classList.contains('open') ? 'chord' : 'open', Number(b.dataset.i)); });
+  minesBoard.addEventListener('contextmenu', (event) => { event.preventDefault(); const b = event.target.closest('.minesCell'); if (b && !b.classList.contains('open')) actMines('flag', Number(b.dataset.i)); });
+
   const islandBagDialog = document.getElementById('islandBagDialog');
   const islandPlaceDialog = document.getElementById('islandPlaceDialog');
   const islandPlaceSubmit = document.getElementById('islandPlaceSubmit');
@@ -1728,6 +1793,20 @@
     lostCard.replaceChildren(ask, more, meta, ok); lostCard.classList.remove('hidden');
     openPlazaWindow('분실물 찾아주기', [lostCard]);
   }
+  // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  function openQuestTalk(data) {
+    const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
+    const meta = document.createElement('p'); meta.className = 'lookMeta';
+    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ' · 이번 주 이야기 끝' : ''}` : data.done ? '이번 주 이야기 끝' : '';
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok); lostCard.classList.remove('hidden');
+    openPlazaWindow(data.name, [lostCard]);
+  }
+  const questTracker = document.getElementById('questTracker');
+  function showQuestTracker(list) {
+    questTracker.replaceChildren(...list.map((t) => { const p = document.createElement('p'); p.textContent = t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`; return p; }));
+    questTracker.classList.toggle('hidden', !list.length);
+  }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {
     const id = key.split(':')[2];
@@ -1739,6 +1818,7 @@
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
+      if (data.action === 'quest') { showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []); openQuestTalk(data); if (data.reward) loadPoints(); return; } // v1.10.37
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
       else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back
@@ -1911,6 +1991,7 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
+        if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
       })
       .catch(() => {}).finally(() => { plazaSending = false; });
   }
@@ -3097,6 +3178,8 @@
   function pointHistoryTitle(item) {
     if (item.reason === 'initial_grant') return '신규 계정 지급';
     if (item.reason === 'economy_reset') return '경제 개편 초기화'; // v1.10.35
+    if (item.reason === 'solo_game') return '혼자 게임 보상'; // v1.10.37
+    if (item.reason === 'quest') return '섬 주민 부탁'; // v1.10.37
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {

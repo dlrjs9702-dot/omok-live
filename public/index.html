@@ -39,7 +39,7 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="questTracker" class="questTracker hidden" role="status"></div>
         <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
@@ -172,6 +172,10 @@
               <button type="button" class="gameChoice" data-game="gostop"><strong>고스톱 · 맞고</strong></button>
             </div>
           </div>
+          </details>
+          <details class="developmentGamesPanel soloGamesPanel" open aria-label="혼자 게임">
+            <summary class="developmentGamesHead"><strong>혼자 게임</strong><small>접기 / 펼치기</small></summary>
+            <button id="soloMinesBtn" type="button" class="primary soloGameBtn">지뢰찾기</button>
           </details>
           <details class="developmentGamesPanel" open aria-label="게임 구현중">
             <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
@@ -938,6 +942,13 @@
       <button id="donationSubmit" type="submit" class="secondary">기부</button>
     </form>
     <p id="donationStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="minesDialog" class="recordsDialog minesDialog" aria-labelledby="minesTitle">
+    <div class="recordsDialogHead"><h2 id="minesTitle">지뢰찾기</h2><button id="minesCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div id="minesLevels" class="minesLevels" role="group" aria-label="난이도"></div>
+    <div class="minesBar"><span id="minesLeft">💣 0</span><span id="minesTime">⏱ 0:00</span><span id="minesBest"></span></div>
+    <div id="minesBoard" class="minesBoard" role="grid" aria-label="지뢰찾기 판"></div>
+    <p id="minesStatus" class="minesStatus" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="islandBagDialog" class="recordsDialog islandBagDialog" aria-labelledby="islandBagTitle">
     <div class="recordsDialogHead"><h2 id="islandBagTitle">가방</h2><span id="islandBagCount" class="skinShopBalance"></span><button id="islandBagCloseBtn" type="button" class="ghost tiny">닫기</button></div>
