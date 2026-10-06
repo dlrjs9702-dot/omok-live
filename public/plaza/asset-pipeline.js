@@ -244,7 +244,10 @@
       // v1.10.31: a square of a batch drawn again after a copy changed; a batch taken away; a model held for a moment
       refill: (cell) => call('refill', [cell]),
       unbatch: (cells) => call('unbatch', [cells]),
-      hold: (character, targetIds, ms) => call('hold', [character, targetIds, ms]),
+      hold: (character, targetIds, ms, options) => call('hold', [character, targetIds, ms, options]),
+      // v1.10.32 운반: a kept thing let go, or handed to another character's hand (a lost thing given back)
+      letGo: (character, key) => call('letGo', [character, key]),
+      handOver: (from, to, key) => call('handOver', [from, to, key]),
       // each frame: where the player is (near squares show models, far ones their procedural copies)
       update: (x, z) => { if (impl) impl.update(x, z); },
       // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise

@@ -364,6 +364,17 @@ test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬�
     await page.keyboard.down('KeyA'); await page.waitForTimeout(1650); await page.keyboard.up('KeyA'); await page.waitForTimeout(400);
     await page.screenshot({ path: `${process.env.SHOT_DIR}/combo-front.png`, clip });
   }
+  // v1.10.32 운반 on the common character: the lost thing's model on the chest joint, the arms laid over
+  const lost = (await post(request, '/api/test/island/lost', token, {})).data.event;
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.x, lost.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 20000 }).toMatchObject({ mine: lost.id, arms: true, held: true, on: 'Chest' });
+  if (process.env.SHOT_DIR) {
+    const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/carry.png`, clip: { x: box.x + box.width / 2 - 110, y: box.y + box.height / 2 - 40, width: 220, height: 260 } });
+  }
   // taking a slot off puts the base back (no shoes bought: the plain ones)
   expect((await post(request, '/api/skins/equip', token, { game: 'avatar', slot: 'shoes', skinId: null })).status).toBe(200);
   await page.reload();

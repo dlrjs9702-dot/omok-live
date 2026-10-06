@@ -189,6 +189,11 @@
     'prop.event.paper_litter': { url: '/assets/island/gaps-v1/props/paper_litter.glb', low: { url: '/assets/island/gaps-v1/props/paper_litter_low.glb' }, shadows: false, near: 40 },
     'prop.event.herb': prop('herb'), 'prop.event.berry': prop('berries'), 'prop.event.mushroom': prop('mushrooms'),
     'prop.event.coin': prop('coin'), 'prop.event.wallet': prop('wallet'), 'prop.event.lost_item': prop('lost_teddy'), 'prop.event.camera': prop('camera'),
+    // v1.10.32 생활 소품: a lost thing is a teddy or a pouch, a berry find a bush or fruit on the grass (each event's own,
+    // the same everywhere), and a gatherer's basket in the hand while picking (the same events, rules and rewards)
+    'prop.event.lost_pouch': { url: '/assets/island/gaps-v1/props/lost_pouch.glb', low: { url: '/assets/island/gaps-v1/props/lost_pouch_low.glb' }, shadows: false, near: 40 },
+    'prop.event.fruit': { url: '/assets/island/gaps-v1/props/fruit_pickup.glb', low: { url: '/assets/island/gaps-v1/props/fruit_pickup_low.glb' }, shadows: false, near: 40 },
+    'prop.event.basket': prop('collection_basket'),
   });
 
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };

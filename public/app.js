@@ -1678,10 +1678,11 @@
   // v1.10.11 공용 이벤트: what lies near me (from each pose answer), less what was just solved by anyone (the lobby
   // stream says so at once; a pose answer already on its way must not bring it back).
   let islandEventsNear = []; const islandEventsGone = new Map(); // id -> when it was removed
+  let islandReturning = null; // v1.10.32: a lost thing being given back stays drawn until the owner has taken it
   function showIslandEvents(list) {
     const now = Date.now();
     for (const [id, at] of islandEventsGone) if (now - at > 60000) islandEventsGone.delete(id);
-    islandEventsNear = list.filter((ev) => !islandEventsGone.has(ev.id));
+    islandEventsNear = list.filter((ev) => !islandEventsGone.has(ev.id) || ev.id === islandReturning);
     plaza.controller?.setEvents?.(islandEventsNear);
   }
   function forgetIslandEvents(ids) {
@@ -1719,6 +1720,7 @@
     const id = key.split(':')[2];
     if (!id || islandEventBusy) return;
     islandEventBusy = true;
+    if (key.startsWith('ev:lost_owner:')) islandReturning = id;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -1726,14 +1728,17 @@
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
       else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back
-      plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : data.action === 'return' ? 'give' : 'pickup');
+      // v1.10.32: given back hand to hand (the owner takes it, then goes), picked with a basket
+      if (data.action === 'return') plaza.controller?.returnLost?.(id);
+      else plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : 'pickup');
+      if (/^ev:(herb|berry|mushroom):/.test(key)) plaza.controller?.holdBasket?.();
       if (data.points) loadPoints();
       if (data.action !== 'pickup') islandEventsGone.set(id, Date.now());
       showIslandEvents(data.events || islandEventsNear);
     } catch (error) {
       showToast(error.message);
       if (error.status === 409 && /사라졌/.test(error.message)) forgetIslandEvents([id]);
-    } finally { islandEventBusy = false; }
+    } finally { islandEventBusy = false; islandReturning = null; }
   }
 
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 100,000P on a second press that names the
@@ -3459,12 +3464,15 @@
   let skinShopFamily = null;
   let skinShopMode = 'all'; // v1.10.1 게임 아일랜드: 'game' (game skins) or 'avatar' (character skins) by which shop was entered
   const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점', 'avatar:outfit': '옷가게', 'avatar:hair': '미용실', 'avatar:hat': '잡화점' };
-  const SKIN_TIER_ORDER = ['common', 'premium', 'theme', 'legend'];
+  const SKIN_TIER_ORDER = ['common', 'premium', 'rare', 'theme', 'legend']; // v1.10.32 희귀: character skins
+  // v1.10.32: the slots each character shop sells (잡화점: the five accessory slots, one tab each)
+  const SHOP_SLOTS = { 'avatar:outfit': ['outfit'], 'avatar:hair': ['hair'], 'avatar:hat': ['hat', 'cape', 'tail', 'shoes', 'necklace'] };
+  let skinShopSlot = null;
   function renderSkinShop() {
     skinShopBody.textContent = '';
     if (!skinShop) return;
     skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
-    const avatarMode = skinShopMode.startsWith('avatar'); const slotOnly = skinShopMode.split(':')[1] || null; // v1.10.30: one slot per shop
+    const avatarMode = skinShopMode.startsWith('avatar');
     const families = skinShop.catalog.filter(f => skinShopMode === 'all' || avatarMode === (f.family === 'avatar'));
     if (!families.some(f => f.family === skinShopFamily)) skinShopFamily = families[0]?.family;
     const tabs = document.createElement('div');
@@ -3481,8 +3489,27 @@
     skinShopBody.append(tabs);
     const family = families.find(f => f.family === skinShopFamily);
     if (!family) return;
+    // character skins: one slot at a time (v1.10.30 one shop per kind; v1.10.32 a tab per slot where a shop has several)
+    let slotOnly = null;
+    if (family.family === 'avatar') {
+      const slots = SHOP_SLOTS[skinShopMode] || [...new Set(family.skins.map(skin => skin.slot))];
+      if (!slots.includes(skinShopSlot)) skinShopSlot = slots[0];
+      slotOnly = skinShopSlot;
+      if (slots.length > 1) {
+        const slotTabs = document.createElement('div');
+        slotTabs.className = 'skinTabs skinSlotTabs'; slotTabs.setAttribute('role', 'tablist');
+        for (const slot of slots) {
+          const tab = document.createElement('button');
+          tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
+          tab.setAttribute('aria-selected', String(slot === slotOnly)); tab.dataset.slot = slot;
+          tab.textContent = family.skins.find(skin => skin.slot === slot)?.slotLabel || slot;
+          slotTabs.append(tab);
+        }
+        skinShopBody.append(slotTabs);
+      }
+    }
     for (const tierKey of SKIN_TIER_ORDER) {
-      const skins = family.skins.filter(skin => skin.tier === tierKey && (!slotOnly || family.family !== 'avatar' || skin.slot === slotOnly));
+      const skins = family.skins.filter(skin => skin.tier === tierKey && (!slotOnly || skin.slot === slotOnly));
       if (!skins.length) continue;
       const section = document.createElement('section');
       section.className = 'skinFamily';
@@ -3561,7 +3588,7 @@
 
   skinShopBody.addEventListener('click', async (event) => {
     const tab = event.target.closest('button.skinTab');
-    if (tab && skinShop) { skinShopFamily = tab.dataset.family; skinBuyArmed = null; renderSkinShop(); return; }
+    if (tab && skinShop) { if (tab.dataset.slot) skinShopSlot = tab.dataset.slot; else skinShopFamily = tab.dataset.family; skinBuyArmed = null; renderSkinShop(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !skinShop) return;
     const { action, skin: skinId } = button.dataset;
@@ -3599,7 +3626,7 @@
     }
   });
   function openSkinShop(mode = 'all') {
-    skinShopMode = mode; skinBuyArmed = null;
+    skinShopMode = mode; skinBuyArmed = null; skinShopSlot = null;
     document.getElementById('skinShopTitle').textContent = SKIN_SHOP_TITLES[mode];
     skinShopDialog.showModal(); loadSkinShop();
   }

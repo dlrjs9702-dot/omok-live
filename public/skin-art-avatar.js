@@ -52,13 +52,17 @@
     hat?.(ctx, r);
     ctx.restore();
   }
+  // v1.10.32: the shop shows each item as the island draws it -- worn on the common character, front and back
+  // (tools/assets/build-avatar-thumbs.py, a game resource-pack picture); this drawing until the picture is in
+  const pictures = new Map();
   function previewAvatar(ctx, w, h, skinId) {
+    let img = pictures.get(skinId);
+    if (!img) { img = new Image(); img.decoding = 'async'; img.src = window.GameBoot?.assetUrl?.(`/assets/shop/avatar/${skinId}.webp`) ?? `/assets/shop/avatar/${skinId}.webp`; pictures.set(skinId, img); }
+    if (img.complete && img.naturalWidth) { ctx.drawImage(img, 0, 0, w, h); return; }
     const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#bfe6ff'); g.addColorStop(.7, '#e8f6ff'); g.addColorStop(.7, '#9fd67f'); g.addColorStop(1, '#8cc970'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    drawAvatar(ctx, w / 2, h * .42, h * .42, skinId);
+    if (HAIRS[skinId] || OUTFITS[skinId] || HATS[skinId]) drawAvatar(ctx, w / 2, h * .42, h * .42, skinId);
+    img.addEventListener('load', () => ctx.drawImage(img, 0, 0, w, h), { once: true });
   }
-  const item = () => ({ avatar: true, preview: previewAvatar });
-  const defs = {};
-  for (const id of [...Object.keys(HAIRS), ...Object.keys(OUTFITS), ...Object.keys(HATS)]) if (id !== 'base') defs[id] = item();
-  S.define(defs);
+  S.define({ avatar_: { avatar: true, preview: previewAvatar } }); // every avatar item (skin-looks def: by its id's family)
   S.drawAvatar = drawAvatar;
 }());

@@ -310,15 +310,32 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   function unbatch(cells) { const i = batches.findIndex((rec) => rec.cells === cells); if (i < 0) return; clearBatch(batches[i]); batches.splice(i, 1); }
   // v1.10.31: a model in a character's right hand for a moment (a weed pulled out with its roots)
-  function hold(c, ids, ms = 900) {
+  // A thing in a character's hands: a moment (`ms`), or kept (`ms` null) under `key` until letGo -- v1.10.32 운반: carried
+  // in front of the chest (`bone` Chest, `at` there; `proc` on a procedural character) -- and handed over to another
+  // character's right hand (handOver: a lost thing given back). One held thing per key; a character thrown away drops it.
+  const boneOf = (c, pattern) => { let hit = null; c.assetRoot?.traverse((o) => { if (o.isBone && pattern.test(o.name)) hit = o; }); return hit; };
+  function seat(c, rec) {
+    const bone = rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : boneOf(c, /^Hand\.?R$/);
+    if (bone) { bone.add(rec.object); rec.object.position.set(...(rec.at || [0, 0, 0])); }
+    else if (rec.bone === 'Chest') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0.65, 0.38])); }
+    else { (c.armR || c.root).add(rec.object); rec.object.position.set(0, -0.5, 0.1); } // the procedural arm's end
+  }
+  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, proc = null, stand = null } = {}) {
     const hit = P.pick(registry, ids, off, null); if (!hit) return;
+    const token = {}; if (key) { letGo(c, key); (c.holding ||= {})[key] = { token, object: null }; }
     cache.get(hit.entry.url).then((gltf) => {
-      if (disposed || !gltf || !c.root.parent) return;
-      const object = instance(gltf, hit.entry);
-      let hand = null; c.assetRoot?.traverse((o) => { if (o.isBone && /^Hand\.?R$/.test(o.name)) hand = o; });
-      if (hand) hand.add(object); else { (c.armR || c.root).add(object); object.position.set(0, -0.5, 0.1); } // the procedural arm's end
-      setTimeout(() => object.removeFromParent(), ms);
+      if (disposed || !gltf || !c.root.parent || (key && c.holding?.[key]?.token !== token)) return;
+      const rec = { token, object: instance(gltf, hit.entry), bone, at, proc };
+      seat(c, rec); stand?.removeFromParent(); // the procedural stand-in gives way
+      if (key) c.holding[key] = rec; else setTimeout(() => rec.object.removeFromParent(), ms);
     }).catch((error) => onError(hit.id, error));
+  }
+  function letGo(c, key) { const rec = c.holding?.[key]; if (!rec) return; rec.object?.removeFromParent(); delete c.holding[key]; }
+  function handOver(from, to, key) {
+    const rec = from.holding?.[key]; if (!rec?.object) return false;
+    delete from.holding[key]; letGo(to, key);
+    const given = { ...rec, bone: 'Hand.R', at: [0, -0.12, -0.05] }; (to.holding ||= {})[key] = given; seat(to, given);
+    return true;
   }
 
   // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
@@ -554,15 +571,24 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       // track (Idle) does not set the arm again, and the turn must not pile up.
       const tuck = [[bones.get('UpperArmL') || bones.get('UpperArm.L'), 1], [bones.get('UpperArmR') || bones.get('UpperArm.R'), -1]].filter(([b]) => b)
         .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; });
-      const play = anim.update.bind(anim); let tucked = false;
+      // v1.10.32 운반: while `c.carrying`, the arms hold the thing in front -- CarryIdle's arms over whatever the legs do
+      // (Idle, Walk, Run): after the frame's pose the shoulders, arms and hands take that clip's (it holds still); the
+      // next frame first puts back what they had, so the tuck and the mixer go on as if nothing had been laid over them
+      const carryClip = clips.find((clip) => clip.name === base.entry.animations?.carry);
+      const carryArms = (carryClip?.tracks || []).filter((t) => /^(Shoulder|UpperArm|LowerArm|Hand)\.?[LR]\.quaternion$/.test(t.name))
+        .map((t) => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
+      const play = anim.update.bind(anim); let tucked = false; let laid = false;
       anim.update = (dt, speed) => {
+        if (laid) { for (const [bone, , kept] of carryArms) bone.quaternion.copy(kept); laid = false; }
         if (tucked) for (const [bone, , undo] of tuck) bone.quaternion.premultiply(undo);
         play(dt, speed);
         for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
         tucked = true;
+        if (c.carrying && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
       };
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
+      for (const key of Object.keys(c.holding || {})) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
   }
@@ -582,6 +608,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function release(c) {
     c.anim?.dispose(); if (c.assetRoot) c.root.remove(c.assetRoot);
     for (const rec of c.wearMats || []) dropMaterial(rec);
+    for (const key of Object.keys(c.holding || {})) letGo(c, key);
     c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null; c.wearMats = null; c.fitted = null;
   }
 
@@ -622,5 +649,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }
