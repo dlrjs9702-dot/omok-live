@@ -904,7 +904,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   const { page } = a;
   const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
   expect(lost?.npc).toBeTruthy();
-  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.x, lost.z]);
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
