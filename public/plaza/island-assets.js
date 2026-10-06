@@ -183,8 +183,13 @@
     }
     if (hat && !parts.hat) { parts.hat = 'wear.hat_fedora'; colors['wear.hat_fedora'] = { main: hat }; } // a keeper's hat
     for (const face of ['eyes', 'nose', 'mouth']) { const d = look.face?.[face]; if (d && REGISTRY[`wear.${face}_${d}`]) { parts[face] = `wear.${face}_${d}`; if (face === 'eyes') delete parts.face; } }
+    // v1.10.35 염색 (머리·눈·피부): the base hair when no hair item is worn, the drawn colour of whichever eyes are on
+    // (each design names it its own way), and the skin everywhere it shows
+    if (look.hairColor && (parts.hair === 'wear.hair_cap' || parts.hair === 'wear.hair_long')) colors[parts.hair] = { hair: look.hairColor };
+    const eyes = parts.eyes || parts.face;
+    if (look.eyeColor && eyes) colors[eyes] = { ...colors[eyes], eyes: look.eyeColor, ink: look.eyeColor, rose: look.eyeColor, accent: look.eyeColor };
     // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
-    return { parts: Object.values(parts), colors, tint: { skin: SKIN, ...(tint || {}) } };
+    return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) } };
   }
 
   // v1.10.31 잡초 채집·생활 소품: the weed (a light model that stands apart from the grass, the same in every season)

@@ -383,6 +383,15 @@ test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 
   };
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
+  // v1.10.35: the name tag stands just over the worn model's head (it was a fixed 2.53 over the feet)
+  const tag = await page.evaluate(() => window.PlazaDebug().tagLayout);
+  expect(tag.headTop).toBeGreaterThan(1.4); expect(tag.headTop).toBeLessThan(2.4);
+  expect(tag.bottom - tag.headTop).toBeGreaterThan(0.05); expect(tag.bottom - tag.headTop).toBeLessThan(0.25);
+  // v1.10.35 염색: the base hair, the eyes and the skin (nothing to own)
+  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: `e2e-body-${color}-1` })).status).toBe(200);
+  await ready();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 30000 }).toMatchObject({ hairColor: '#e2c27a', eyeColor: '#34507e', skinColor: '#b07a4d' });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wornColors), { timeout: 90000 }).toMatchObject({ hair: '#e2c27a', eyes: '#34507e', skin: '#b07a4d' });
   for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
   expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
   expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: 'e2e-look-eyes-1' })).status).toBe(200);

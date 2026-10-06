@@ -81,14 +81,14 @@ test('작명소: 형식·중복(공백 무시)·같은 이름·대기·잔액 �
   const done = await rename(sa, ' 새 이름', requestId);
   assert.equal(done.status, 200, JSON.stringify(done.data));
   assert.equal(done.data.name, ' 새 이름', '입력한 공백 유지');
-  assert.equal(await balance(sa), start - 100_000);
+  assert.equal(await balance(sa), start - 30_000);
   assert.equal((await rename(sa, ' 새 이름', requestId)).status, 200, '같은 요청 재전송은 성공 응답');
-  assert.equal(await balance(sa), start - 100_000, '한 번만 차감');
+  assert.equal(await balance(sa), start - 30_000, '한 번만 차감');
   assert.equal((await req('/api/nickname', sa)).data.name, ' 새 이름', '접속 중 세션에 바로 반영');
   assert.equal((await rename(sb, '새이름')).data.error, 'NAME_TAKEN', '바뀐 이름도 중복 판정');
   const wait = await rename(sa, '또 다른 이름');
   assert.equal(wait.data.error, 'NICKNAME_COOLDOWN'); assert.ok(wait.data.until);
-  assert.equal(await balance(sa), start - 100_000, '대기 중 차감 없음');
+  assert.equal(await balance(sa), start - 30_000, '대기 중 차감 없음');
   assert.ok((await req('/api/nickname', sa)).data.until);
   await req('/api/logout', sa, {}); // log out, then in again with the same entry file
   const again = await server.enter(a);
@@ -96,9 +96,10 @@ test('작명소: 형식·중복(공백 무시)·같은 이름·대기·잔액 �
   assert.equal((await req('/api/nickname', again)).data.name, ' 새 이름', '다시 접속해도 새 이름');
 
   // too few points: nothing taken
-  assert.equal((await req('/api/donation', sc, { amount: 50_000, requestId: crypto.randomUUID() })).status, 200);
+  assert.equal((await req('/api/donation', sc, { amount: 80_000, requestId: crypto.randomUUID() })).status, 200); // 20,000P left (작명 30,000P, v1.10.35)
   assert.equal((await rename(sc, '부족')).data.error, 'INSUFFICIENT_POINTS');
-  assert.equal(await balance(sc), 50_000);
+  assert.equal(await balance(sc), 20_000);
+  assert.equal((await req('/api/test/points-credit', sc, { amount: 30_000 })).status, 200); // enough again for the race below
 
   // two people asking for the same new name at the same moment: one gets it
   const both = await Promise.all([rename(sb, '동시 이름'), rename(sc, '동시이름')]);

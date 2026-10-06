@@ -159,7 +159,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '망토' }).click();
   await expect(dialog.locator('.skinCard')).toHaveCount(10);
   await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('전설 · 망토');
-  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('1,500,000P');
+  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('400,000P'); // 전설 (v1.10.35)
   await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '모자·장식' }).click();
   await expect(dialog.locator('.skinTitle')).toHaveCount(0); // the title is the clothes shop's
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
@@ -740,9 +740,9 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
   await a.context.close();
 });
 
-// v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 100,000P on a second press, shows at
+// v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 30,000P (v1.10.35) on a second press, shows at
 // once, and the next change waits 24 hours.
-test('작명소: 상점가 책상에서 이름을 바꾸면 100,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
+test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '작명손님', 200_000);
   const { page } = a;
@@ -757,14 +757,14 @@ test('작명소: 상점가 책상에서 이름을 바꾸면 100,000P 차감, 바
   await expect(page.locator('#namingStatus')).toContainText('한글·숫자·공백');
   await page.locator('#namingInput').fill('새 손님 7');
   await page.locator('#namingSubmit').click();
-  await expect(page.locator('#namingSubmit')).toHaveText('100,000P 변경 확인'); // nothing is taken by the first press
+  await expect(page.locator('#namingSubmit')).toHaveText('30,000P 변경 확인'); // nothing is taken by the first press
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before);
   await page.locator('#namingSubmit').click();
   await expect(page.locator('#namingStatus')).toContainText('새 손님 7');
   await expect(page.locator('#namingCurrent')).toContainText('새 손님 7');
   await expect(page.locator('#namingWait')).toContainText('다시 바꿀 수 있습니다');
   await expect(page.locator('#namingSubmit')).toBeDisabled();
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 100_000);
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 30_000);
   await expect(page.locator('#identityLabel')).toContainText('새 손님 7');
   await page.locator('#namingCloseBtn').click();
   await expectNoScriptError(page);
@@ -787,22 +787,22 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +7,000P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+7,000P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 7000); // v1.10.31 단가: 쓰레기 500 × 4 + 지갑 5,000
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
   await page.evaluate(() => window.PlazaDebug().place('trader'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
-  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +4,000P');
+  await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +8,000P');
   await page.locator('#islandPlaceSubmit').click();
-  await expect(page.locator('#islandPlaceStatus')).toContainText('+4,000P');
+  await expect(page.locator('#islandPlaceStatus')).toContainText('+8,000P');
   await page.locator('#islandPlaceCloseBtn').click();
   await page.locator('#islandBagTab').click();
   await expect(page.locator('#islandBagCount')).toHaveText('0/16');
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 11000); // + 약재 2,000 × 2
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 22000); // + 약재 4,000 × 2
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -910,7 +910,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialogTitle')).toHaveText('분실물 찾아주기');
   await expect(page.locator('.lostRequest')).toContainText('잃어버렸어요');
-  await expect(page.locator('.lostRequest')).toContainText('사례 5,000P');
+  await expect(page.locator('.lostRequest')).toContainText('사례 10,000P');
   await page.locator('.lostRequest button').click();
   await expect(page.locator('#plazaDialog')).toBeHidden();
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map

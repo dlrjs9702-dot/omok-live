@@ -15,10 +15,11 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const PASSWORD = 'skins-test';
 
 test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오목 2vs2는 오목 스킨을 함께 쓴다', () => {
-  assert.equal(TIERS.common.price, 500_000);
-  assert.equal(TIERS.premium.price, 1_000_000);
-  assert.equal(TIERS.theme.price, 1_500_000);
-  assert.equal(TIERS.legend.price, 3_000_000);
+  // v1.10.35 경제 기준(통합): about a fifth of the old 500,000 / 1,000,000 / 1,500,000 / 3,000,000P
+  assert.equal(TIERS.common.price, 100_000);
+  assert.equal(TIERS.premium.price, 200_000);
+  assert.equal(TIERS.theme.price, 300_000);
+  assert.equal(TIERS.legend.price, 600_000);
   const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok').length;
   assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 2], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 2(테마마다 하나)');
   assert.deepEqual(SKINS.filter(s => s.legacy).map(s => s.id).sort(), ['omok_common_amber', 'omok_common_bronze', 'omok_common_jade', 'omok_common_obsidian', 'omok_common_porcelain']);
@@ -34,15 +35,17 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   for (const skin of SKINS.filter(s => s.family !== 'avatar')) assert.equal(skin.price, TIERS[skin.tier].price);
   // v1.9.2 광장 아바타: 칸(헤어·의상·모자)마다 품목, 가격은 게임 스킨보다 낮고, 전설 배지·짝에는 들어가지 않는다.
   // v1.10.32: + the character skins (2026-10-05 pack) after them, 망토·꼬리·신발·목걸이 칸, the 4-tier prices
-  // (일반 100,000 / 고급 300,000 / 희귀 700,000 / 전설 1,500,000); the older 16 keep their ids and prices
+  // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
+  // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar');
   assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [12, 15, 12, 10, 10, 10, 10]);
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
   assert.equal(older.length, 16);
-  assert.deepEqual([...new Set(older.map(s => s.price))].sort((x, y) => x - y), [200_000, 500_000, 1_500_000]);
+  const PRICE = { common: 50_000, premium: 100_000, rare: 200_000, legend: 400_000 };
+  for (const s of older) assert.equal(s.price, PRICE[s.tier], s.id);
   const fresh = avatar.filter(s => !older.includes(s));
   assert.equal(fresh.length, 63);
-  for (const s of fresh) assert.equal(s.price, { common: 100_000, premium: 300_000, rare: 700_000, legend: 1_500_000 }[s.tier], s.id);
+  for (const s of fresh) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
   assert.equal(new Set(fresh.map(s => s.name)).size, 63);
   assert.equal(fresh.filter(s => s.tier === 'rare').every(s => s.tierLabel === '희귀'), true);
@@ -134,7 +137,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
   const fx = await boot(t);
   const a = await fx.guest('구매자');
   const b = await fx.guest('상대');
-  const skin = 'omok_common_jade';
+  const skin = 'omok_p1'; // 고급 200,000P (v1.10.35)
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
@@ -143,13 +146,13 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 
   const poor = await fx.req('/api/skins/buy', a.session, { skinId: skin });
-  assert.equal(poor.status, 409, '100,000P로는 500,000P 스킨을 못 삼');
+  assert.equal(poor.status, 409, '100,000P로는 200,000P 스킨을 못 삼');
   assert.equal(poor.data.error, 'INSUFFICIENT_POINTS');
   assert.equal((await fx.req('/api/points', a.session)).data.balance, 100_000, '실패는 차감 없음');
   assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: 'nope' })).status, 404);
   assert.equal((await fx.req('/api/skins/equip', a.session, { skinId: skin })).status, 409, '사지 않은 스킨은 장착 불가');
 
-  assert.equal((await fx.grant(a, 500_000)).status, 200);
+  assert.equal((await fx.grant(a, 200_000)).status, 200);
   const bought = await fx.req('/api/skins/buy', a.session, { skinId: skin, price: 1 }); // a client-sent price is ignored
   assert.deepEqual([bought.status, bought.data.purchased, bought.data.balance], [200, true, 100_000]);
   const again = await Promise.all([1, 2, 3].map(() => fx.req('/api/skins/buy', a.session, { skinId: skin })));

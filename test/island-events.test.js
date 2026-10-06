@@ -121,7 +121,7 @@ test('부탁: 주인에게 말 걸면 그 계정만 멀리서도 물건이 보�
   const owner = ev.nearby(lost.npc.x, lost.npc.z, 'acc-a').find((e) => e.kind === 'lost_owner');
   assert.equal(owner.verb, '말 걸기');
   const talk = ev.claim(lost.id, 'acc-a', { x: lost.npc.x, z: lost.npc.z }, { owner: true });
-  assert.equal(talk.action, 'talk'); assert.equal(talk.points, 5000);
+  assert.equal(talk.action, 'talk'); assert.equal(talk.points, 10000); // v1.10.35 단가
   assert.ok(ev.nearby(far.x, far.z, 'acc-a').some((e) => e.kind === 'lost_item' && e.id === lost.id));
   assert.equal(ev.nearby(far.x, far.z, 'acc-b').some((e) => e.kind === 'lost_item'), false);
   ev.settle(ev.claim(lost.id, 'acc-a', { x: lost.x, z: lost.z }), true, 'acc-a');

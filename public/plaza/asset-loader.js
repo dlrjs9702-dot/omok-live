@@ -585,8 +585,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
       const high = []; const low = []; const mats = [];
+      const worn = {}; // material name -> the colour put on it (tests)
       const own = (m, colors) => { // the shared material in the colours this character wants on it
-        const list = [].concat(m.material).map((x) => { const rec = wearMaterial(x, colors?.[x.name] || plan.tint?.[x.name]); mats.push(rec); return rec.material; });
+        const list = [].concat(m.material).map((x) => { const want = colors?.[x.name] || plan.tint?.[x.name]; if (want) worn[x.name] = want; const rec = wearMaterial(x, want); mats.push(rec); return rec.material; });
         m.material = Array.isArray(m.material) ? list : list[0];
       };
       const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };
@@ -610,7 +611,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit); // a part without a Low file shows at every distance
         if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit);
       });
-      c.wearMats = mats; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
+      c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
       const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
       // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
@@ -636,6 +637,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       };
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
+      // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head
+      c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
+      for (const m of high) { m.skeleton.update(); m.computeBoundingBox(); top.union(m.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, m.matrixWorld))); }
+      if (Number.isFinite(top.max.y) && top.max.y > 0.5) { c.headTop = top.max.y; c.onWorn?.(); }
       for (const key of Object.keys(c.holding || {})) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });

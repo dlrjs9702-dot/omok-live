@@ -266,9 +266,9 @@ async function exercise(t, makeStore) {
 test('JSON 포인트 저장소: 참가 포인트·정산 소각·관리자 지급', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-points-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  await exercise(t, async () => { const store = new JsonPointStore(path.join(dir, 'points.json')); await store.init(); return store; });
+  await exercise(t, async () => { const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100_000 }); await store.init(); return store; });
   // Persisted: a restarted process sees the same open entries and balances.
-  const reloaded = new JsonPointStore(path.join(dir, 'points.json'));
+  const reloaded = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100_000 });
   await reloaded.init();
   assert.deepEqual(await reloaded.openEntries(), []);
 });
@@ -281,7 +281,7 @@ test('PostgreSQL 포인트 저장소: 참가 포인트·정산 소각·관리자
   const admin = new Pool({ connectionString: url });
   await admin.query('DROP TABLE IF EXISTS point_ledger, point_settlements, point_accounts, mission_days');
   await admin.end();
-  const store = await exercise(t, async () => { const s = new PostgresPointStore(url); await s.init(); return s; });
+  const store = await exercise(t, async () => { const s = new PostgresPointStore(url, { initialGrant: 100_000 }); await s.init(); return s; });
   const sum = await store.pool.query('SELECT sum(delta) AS total, count(*) AS rows FROM point_ledger');
   const balances = await store.pool.query('SELECT sum(balance) AS total FROM point_accounts');
   assert.equal(Number(sum.rows[0].total), Number(balances.rows[0].total), '원장 합계 = 잔액 합계');
