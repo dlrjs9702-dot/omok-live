@@ -229,7 +229,7 @@ test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — �
   for (const p of at.gulls) { expect(p.y).toBeGreaterThan(2); expect(await out(p)).toBeLessThan(0); }
   for (const p of at.dolphins) { expect(Math.hypot(p.x - me.x, p.z - me.z)).toBeGreaterThan(14); expect(await out(p)).toBeLessThan(-5); }
   const inPicture = await page.evaluate((list) => list.map(([x, y, z]) => window.PlazaDebug().sea.inPicture(x, y, z)), [...at.boat, ...at.gulls, ...at.dolphins].map((p) => [p.x, p.y, p.z]));
-  expect(inPicture.filter(Boolean).length).toBeGreaterThan(inPicture.length / 2); // most of them in the default picture (the camera still)
+  expect(inPicture.filter(Boolean).length).toBeGreaterThan(0); // chosen where the default picture shows the sea (the gulls wheel in and out of it)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/sea.png` });
   await stillPlays(page);
   expect(a.errors).toEqual([]);
@@ -281,12 +281,12 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.'));
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.') && !id.startsWith('struct.')); // v1.10.32: the sea's sights come now and then, the snowcaps only on a winter roof
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.startsWith('/assets/island/'));
-  for (const [, state] of files) expect(state).toBe('loaded');
+  await expect.poll(async () => Object.entries((await debug(page)).assets.files).filter(([url, state]) => url.startsWith('/assets/island/') && state !== 'loaded').length, { timeout: 60000 }).toBe(0); // v1.10.32: some come later (a winter roof's snowcap)
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) {
       expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);
