@@ -100,8 +100,9 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const hall = { x: -24, z: 6 }; await stand(winner, hall.x + 3, hall.z + 3);
   const before = (await R()('/api/donation', winner)).data.balance;
   const sold = await R()('/api/island/sell', winner, { place: 'office', requestId: crypto.randomUUID() });
-  assert.equal(sold.status, 200); assert.equal(sold.data.paid, 300);
-  assert.equal((await R()('/api/donation', winner)).data.balance, before + 300);
+  const price = require('../lib/island-items').priceOf('weed'); // 300P (900P on a 제초 요청 day: the server's clock)
+  assert.equal(sold.status, 200); assert.equal(sold.data.paid, price);
+  assert.equal((await R()('/api/donation', winner)).data.balance, before + price);
   // a restart: the pulled weed stays pulled; then a midnight passed while the server was off: it grows back somewhere new
   await server.stop();
   const file = path.join(dir, 'points.json');

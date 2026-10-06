@@ -3304,10 +3304,11 @@
       eventSummary.textContent = events.length ? `진행 중 ${events.length}개 · 받음 ${events.filter(ev => ev.claimed).length}개` : '진행 중인 이벤트가 없습니다.';
       eventList.replaceChildren(...events.map((event) => {
         const row = missionRow({ title: event.title, reward: event.rewardPoints, done: event.claimed }, { bonus: true });
+        if (event.notice) row.querySelector('.reward').textContent = '안내'; // v1.10.33
         const open = document.createElement('button');
         open.type = 'button';
         open.className = event.claimed ? 'ghost tiny' : 'secondary tiny';
-        open.textContent = event.claimed ? '받음' : '받으러 가기';
+        open.textContent = event.notice ? '보기' : event.claimed ? '받음' : '받으러 가기';
         open.addEventListener('click', () => openEventDialog(event));
         row.append(open);
         return row;
@@ -3685,20 +3686,23 @@
     eventDismissInput.value = '';
     eventDismissError.textContent = '';
     eventPrompted.add(`${sessionToken}:${event.id}`);
-    eventDialogTitle.textContent = `🎉 ${event.title} 🎉`;
+    eventDialogTitle.textContent = event.notice ? `📢 ${event.title}` : `🎉 ${event.title} 🎉`; // v1.10.33: a notice
     eventDialogHeadline.textContent = event.headline;
     eventDialogMessage.textContent = event.message;
     eventDialogTeaser.textContent = event.teaser || '';
     eventDialogTeaser.classList.toggle('hidden', !event.teaser);
-    eventDialogReward.textContent = `+${Number(event.rewardPoints).toLocaleString('ko-KR')}P`;
+    eventDialogReward.textContent = event.notice ? '' : `+${Number(event.rewardPoints).toLocaleString('ko-KR')}P`;
+    eventDialogReward.classList.toggle('hidden', Boolean(event.notice));
     eventDialogNote.textContent = event.note;
     eventDialogClaimBtn.textContent = event.claimed ? '이미 받았습니다' : event.buttonLabel;
     eventDialogClaimBtn.disabled = Boolean(event.claimed);
+    document.getElementById('eventDialogCloseBtn').classList.toggle('hidden', Boolean(event.notice)); // a notice: one button, it closes
     eventDialogError.textContent = '';
     eventDialog.showModal();
   }
 
   async function claimEventReward() {
+    if (eventCurrent?.notice) { eventDialog.close(); return; } // v1.10.33: nothing to claim
     if (!eventCurrent || eventClaiming) return;
     eventClaiming = true;
     eventDialogClaimBtn.disabled = true;

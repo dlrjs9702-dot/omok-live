@@ -60,3 +60,16 @@ test('팝업 강조 문구(teaser): 선택 항목, 연가 이벤트에는 있고
   for (const teaser of ['', '   ', 'x'.repeat(41), 5]) assert.throws(() => validateEvent({ ...base, teaser }), RangeError, JSON.stringify(teaser));
   assert.equal('teaser' in validateEvent({ ...base, teaser: null }), false);
 });
+
+// v1.10.33 a notice event: no points (0, never claimable), the lobby sees `notice`; points on a notice, or 0 on a
+// reward event, are refused at definition time
+test('안내 이벤트: 보상 0·notice만 허용, 공개 정보에 notice, 제초 요청은 2026-10-06 하루', () => {
+  const base = { id: 'notice_test', title: '안내', headline: '안내입니다', message: '내용', buttonLabel: '확인', note: '오늘', successMessage: '확인', startAt: '2026-10-06T00:00:00+09:00', endAt: '2026-10-07T00:00:00+09:00', active: true };
+  assert.equal(validateEvent({ ...base, notice: true, rewardPoints: 0 }).notice, true);
+  assert.throws(() => validateEvent({ ...base, notice: true, rewardPoints: 100 }));
+  assert.throws(() => validateEvent({ ...base, rewardPoints: 0 }));
+  const weed = EVENTS.find((e) => e.id === 'weed_request_2026_10_06');
+  assert.equal(publicEvent(weed, false).notice, true);
+  assert.equal(eventStatus(weed, Date.parse('2026-10-06T12:00:00+09:00')), 'open');
+  assert.equal(eventStatus(weed, Date.parse('2026-10-07T00:00:00+09:00')), 'ended');
+});

@@ -11,7 +11,7 @@ const uniqueIp = () => `100.68.${process.pid % 250}.${(++ipCounter + Math.floor(
 let eventCounter = 0;
 
 // 새 입장 파일·전용 이벤트를 만들고(다른 테스트의 로비에는 보이지 않는다) 로비까지 들어간다.
-async function enterLobby({ browser, request }, { onPage } = {}) {
+async function enterLobby({ browser, request }, { onPage, eventFields = {} } = {}) {
   const login = await request.post('/api/admin/login', { headers: { 'X-Forwarded-For': uniqueIp() }, data: { password: adminPassword } });
   const admin = (await login.json()).sessionToken;
   const issued = await (await request.post('/api/admin/keys', { headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { label: '이벤트' } })).json();
@@ -21,6 +21,7 @@ async function enterLobby({ browser, request }, { onPage } = {}) {
     message: '연가 기념으로 모든 이용자에게 100,000P를 드립니다.', rewardPoints: 100_000,
     startAt: new Date(now - 3_600_000).toISOString(), endAt: new Date(now + 3_600_000).toISOString(),
     buttonLabel: '100,000P 받기', note: '오늘 하루 · 계정당 1회', successMessage: '연가 기념 포인트를 받았습니다!', teaser: '님들은 일하심? ㅋㅋ', active: true,
+    ...eventFields,
   };
   const registered = await request.post('/api/test/events', {
     headers: { 'X-Forwarded-For': uniqueIp(), 'X-Session-Token': admin }, data: { event, audienceKeyId: issued.key.id },
@@ -214,5 +215,21 @@ test('방 만들기 응답을 기다리는 사이 열린 이벤트 창은 방에
   await expect(page.locator('#eventDialog')).toBeHidden(); // 방에 들어가면 닫힌다
   await page.locator('#leaveRoomBtn').click();
   await expect(page.locator('#eventDialog')).toBeVisible({ timeout: 6000 }); // 받지 않았으니 로비에서 다시
+  await context.close();
+});
+
+// v1.10.33 안내(보상 없음): 로비 진입 시 같은 창으로 열리고, 포인트·받기 없이 「확인」 하나로 닫히며 잔액은 그대로다
+test('안내 이벤트: 접속하면 열리고 포인트 표시 없이 확인으로 닫히며, 지급은 없다', async ({ browser, request }) => {
+  const { context, page } = await enterLobby({ browser, request }, { eventFields: {
+    notice: true, rewardPoints: 0, title: '섬 제초 요청', headline: '섬에 풀이 너무 많이 자랐습니다!', message: '뽑은 잡초를 관공서로 가져와 주세요.', buttonLabel: '확인', note: '오늘 하루 · 잡초 개당 900P', teaser: undefined } });
+  const dialog = page.locator('#eventDialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#eventDialogTitle')).toHaveText('📢 섬 제초 요청');
+  await expect(page.locator('#eventDialogReward')).toBeHidden();
+  await expect(page.locator('#eventDialogCloseBtn')).toBeHidden();
+  await page.locator('#eventDialogClaimBtn').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
+  await expect(page.locator('#resultEffect')).toBeHidden();
   await context.close();
 });

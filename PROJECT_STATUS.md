@@ -11,6 +11,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.33 섬 제초 요청 안내·오늘 하루 잡초 3배
+
+사용자 지시 2026-10-06.
+
+- 안내 이벤트: `lib/point-events.js`에 보상 없는 안내(`notice: true`, `rewardPoints: 0`) 종류 추가 — 접속(로비 진입) 시 기존 이벤트 창으로 열리고 버튼은 닫기만(「오늘 하루 보지 않음」 그대로), 수령 요청은 409 `EVENT_NOTICE`, 이벤트 탭에는 「안내 · 보기」. 첫 안내 `weed_request_2026_10_06`(2026-10-06 00:00 ~ 10-07 00:00 KST).
+- 잡초 3배: `lib/island-items.js` `PRICE_BOOSTS`/`priceOf` — 같은 기간 잡초 300 → 900P(서버 시계), 가방 표시(`bagView`)와 관공서 정산(`sellAt`, 저장소 JSON·PostgreSQL 모두 요청 시각 전달)이 같은 값, 잡초는 기존대로 하루 한도 밖. 기간이 끝나면 자동으로 300P.
+- 검증: npm test(기간 경계 900/300, 정산 금액, 안내 정의·공개 정보).
+
 ## v1.10.32 게임 아일랜드 후속 완성: 캐릭터 스킨 상품화·조합 맞춤·기존 7종 전환·운반/전달·겨울 지붕 눈·해상 볼거리
 
 사용자 지시 2026-10-06(후속 완성 1~6, 단일 패치). 결정: IDEAS 「꾸미기 점포 세분화」(4등급 가격·영구 보유·무료 장착·중복 구매 금지·액세서리 5칸), 「염색사」(24색, 기본색 복원 같은 비용), 「섬 밖 원경·해상 풍경 확장」(후보: 선박·새떼·돌고래).
