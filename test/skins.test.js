@@ -33,9 +33,19 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.ok(SKINS.filter(s => s.tier === 'legend' && s.family !== 'avatar').every(s => s.pair), '모든 게임 전설이 방 테마와 짝');
   for (const skin of SKINS.filter(s => s.family !== 'avatar')) assert.equal(skin.price, TIERS[skin.tier].price);
   // v1.9.2 광장 아바타: 칸(헤어·의상·모자)마다 품목, 가격은 게임 스킨보다 낮고, 전설 배지·짝에는 들어가지 않는다.
+  // v1.10.32: + the character skins (2026-10-05 pack) after them, 망토·꼬리·신발·목걸이 칸, the 4-tier prices
+  // (일반 100,000 / 고급 300,000 / 희귀 700,000 / 전설 1,500,000); the older 16 keep their ids and prices
   const avatar = SKINS.filter(s => s.family === 'avatar');
-  assert.deepEqual(['hair', 'outfit', 'hat'].map(slot => avatar.filter(s => s.slot === slot).length), [6, 5, 5]);
-  assert.deepEqual([...new Set(avatar.map(s => s.price))].sort((x, y) => x - y), [200_000, 500_000, 1_500_000]);
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [12, 15, 12, 10, 10, 10, 10]);
+  const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
+  assert.equal(older.length, 16);
+  assert.deepEqual([...new Set(older.map(s => s.price))].sort((x, y) => x - y), [200_000, 500_000, 1_500_000]);
+  const fresh = avatar.filter(s => !older.includes(s));
+  assert.equal(fresh.length, 63);
+  for (const s of fresh) assert.equal(s.price, { common: 100_000, premium: 300_000, rare: 700_000, legend: 1_500_000 }[s.tier], s.id);
+  assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
+  assert.equal(new Set(fresh.map(s => s.name)).size, 63);
+  assert.equal(fresh.filter(s => s.tier === 'rare').every(s => s.tierLabel === '희귀'), true);
   assert.deepEqual(badgesOf(avatar.map(s => s.id)), [], '아바타는 프로필 배지가 아니다');
   assert.deepEqual(avatarLookOf({ avatar: { hair: 'avatar_hair_6', outfit: 'avatar_hat_1', title: 'omok_l1' } }), { look: { hair: 'avatar_hair_6' }, title: '천상 바둑' }, '칸이 맞지 않는 품목은 무시');
   assert.equal(avatarLookOf({ avatar: { title: 'omok_c1' } }).title, null, '칭호는 전설만');

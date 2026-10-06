@@ -32,8 +32,13 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     // v1.10.30 the specialist shops, the common-rig body and its wardrobe (face, hair, clothes, shoes, hats, faces)
     'facility.faces', 'facility.hair', 'facility.accessories', 'facility.dye', 'character.base', ...Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')),
     // v1.10.31 the weed (standing, pulled) and the finds' props
-    'nature.grass', 'prop.weedRooted', ...['trash_can', 'trash_bottle', 'paper_litter', 'herb', 'berry', 'mushroom', 'coin', 'wallet', 'lost_item', 'camera'].map((k) => `prop.event.${k}`)].sort());
-  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 10 + 8 + 30);
+    'nature.grass', 'prop.weedRooted', ...['trash_can', 'trash_bottle', 'paper_litter', 'herb', 'berry', 'mushroom', 'coin', 'wallet', 'lost_item', 'camera'].map((k) => `prop.event.${k}`),
+    // v1.10.32 the pouch, the fruit and the basket; the snowcaps, the shore and bank stones; the boat, the gull, the dolphin
+    'prop.event.lost_pouch', 'prop.event.fruit', 'prop.event.basket', 'struct.snowcap.flat', 'struct.snowcap.gable', 'struct.snowcap.round', 'nature.shoreStones', 'nature.riverBank',
+    'sea.boat', 'sea.gull', 'sea.dolphin'].sort());
+  // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
+  // shoes, necklaces 10 each) and the 30 face designs
+  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
   const check = async (id, url, what) => {
@@ -55,7 +60,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea)|characters|additions-v1\/common)\//, id);
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea)\//, id); // v1.10.32 + snowcaps, the sea sights
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');
@@ -349,4 +354,53 @@ test('운영 등록부: 나무·관목은 사계절 Low 파일이 있고 High보
     }
   }
   for (const id of ['nature.rock.0', 'nature.tree.stump']) assert.equal(P.entryOf(REGISTRY, id, [], 'spring').lowUrl, null);
+});
+
+// v1.10.32 캐릭터 조합 맞춤 (asset-pipeline fitWardrobe / applyFit): worked out from the parts' own shapes in the rig's
+// rest space -- a hat's brim line hides the hair faces under its crown, a pendant comes out over the clothes' chest,
+// a cape hangs behind the clothes' back band by band (never coming back in lower down), a tail caught in the cape's
+// cloth comes out behind it, and a part's own piece gives way to a worn slot
+test('조합 맞춤: 모자 덮기·펜던트·망토 드리우기·꼬리·내장 조각 숨김, 겹치지 않으면 손대지 않는다', () => {
+  const P = require('../public/plaza/asset-pipeline.js');
+  const tri = (...pts) => pts.flat();
+  const hair = { id: 'hair', fit: { slot: 'hair' }, pos: tri([0, 1.7, 0], [0.3, 2.05, 0], [-0.3, 2.05, 0], [0.4, 2.1, 0], [0, 2.12, 0.1], [-0.4, 2.1, 0]) };
+  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.0 }, pos: [0, 2.1, 0] };
+  const robe = { id: 'robe', fit: { slot: 'outfit' }, pos: tri([0, 0.95, -0.27], [0, 0.6, 0.36], [0, 0.95, 0.24]) };
+  const pendant = { id: 'neck', fit: { slot: 'necklace' }, pos: tri([0, 1.07, -0.19], [0, 0.99, -0.255], [0, 0.97, -0.235]) };
+  const cape = { id: 'cape', fit: { slot: 'cape' }, pos: tri([0, 1.07, 0.28], [0, 0.95, 0.28], [0, 0.6, 0.28], [0, 0.45, 0.28]) };
+  const tail = { id: 'tail', fit: { slot: 'tail' }, pos: tri([0, 0.6, 0.2], [0, 0.6, 0.38], [0, 0.6, 0.6]) };
+  const royal = { id: 'royal', fit: { slot: 'outfit', hideWith: { cape: ['cape_main'] } }, pos: [0, 1, 0] };
+  const fit = P.fitWardrobe([hair, hat, robe, pendant, cape, tail, royal]);
+  assert.deepEqual(fit.hair.ops, [{ kind: 'cover', above: 2.0 }]);
+  assert.deepEqual(P.applyFit(hair.pos, [0, 1, 2, 3, 4, 5], fit.hair.ops).index, [0, 1, 2]); // the face above the brim line goes
+  const neck = P.applyFit(pendant.pos, null, fit.neck.ops).pos;
+  assert.ok(neck[5] < -0.27 - 0.01 && Math.abs(neck[2] - -0.19) < 1e-6, '펜던트만 앞으로(끈은 그대로)');
+  const draped = P.applyFit(cape.pos, null, fit.cape.ops).pos;
+  assert.ok(draped[8] > 0.36, '치마 높이에서 망토가 뒤로'); assert.ok(draped[11] >= draped[8] - 1e-6, '아래로 갈수록 다시 들어오지 않음'); assert.ok(Math.abs(draped[2] - 0.28) < 1e-6, '어깨는 그대로');
+  const tailed = P.applyFit(tail.pos, null, fit.tail.ops).pos;
+  assert.ok(Math.abs(tailed[2] - 0.2) < 1e-6 && tailed[5] > draped[8] && Math.abs(tailed[8] - 0.6) < 1e-6, '망토 천 안의 꼬리 점만 그 뒤로(몸 쪽·바깥은 그대로)');
+  assert.deepEqual(fit.royal.hide, ['cape_main']);
+  // nothing meets: nothing changes
+  const plain = P.fitWardrobe([{ id: 'h', fit: { slot: 'hair' }, pos: hair.pos }, { id: 'o', fit: { slot: 'outfit' }, pos: [0, 1, 0] }]);
+  assert.deepEqual([plain.h.ops, plain.o.ops, plain.o.hide], [[], [], []]);
+});
+
+// v1.10.32 겨울 지붕 눈 (asset-pipeline roofShape / drapeSnow): a roof read from its faces -- flat, gable (which way its
+// ridge runs) or round -- and a snowcap laid over it, every point on the roof (never inside it), within its extent
+test('지붕 눈: 지붕 모양 판별과 눈 덮개를 지붕 위에 맞춰 덮기', () => {
+  const P = require('../public/plaza/asset-pipeline.js');
+  const quads = (...qs) => Float32Array.from(qs.flatMap(([a, b, c, d]) => [...a, ...b, ...c, ...a, ...c, ...d]));
+  const gableZ = quads([[-2, 2, -1.5], [0, 3, -1.5], [0, 3, 1.5], [-2, 2, 1.5]], [[0, 3, -1.5], [2, 2, -1.5], [2, 2, 1.5], [0, 3, 1.5]]);
+  const gableX = quads([[-2, 2, -1.5], [2, 2, -1.5], [2, 3, 0], [-2, 3, 0]], [[-2, 3, 0], [2, 3, 0], [2, 2, 1.5], [-2, 2, 1.5]]);
+  const pyramid = Float32Array.from([[[-2, 2, -2], [2, 2, -2]], [[2, 2, -2], [2, 2, 2]], [[2, 2, 2], [-2, 2, 2]], [[-2, 2, 2], [-2, 2, -2]]].flatMap(([a, b]) => [...a, ...b, 0, 4, 0]));
+  const flat = quads([[-1, 2.5, -1], [1, 2.5, -1], [1, 2.5, 1], [-1, 2.5, 1]]);
+  assert.deepEqual([gableZ, gableX, pyramid, flat].map((t) => { const r = P.roofShape(t); return [r.kind, r.ridge]; }), [['gable', 'z'], ['gable', 'x'], ['round', null], ['flat', null]]);
+  const roof = P.roofShape(gableX);
+  const cap = [-1, 0.1, -1, 1, 0.1, -1, 1, 0.1, 1, -1, 0.1, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1];
+  const d = P.drapeSnow(cap, [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6], roof);
+  assert.ok(d.index.length / 3 === 4 * 4 * 4, '두 번 나눠 지붕을 따라감');
+  for (let i = 0; i < d.pos.length; i += 3) {
+    assert.ok(d.pos[i + 1] >= roof.height(d.pos[i], d.pos[i + 2]) + 0.029, '지붕 위');
+    assert.ok(Math.abs(d.pos[i]) <= 2 && Math.abs(d.pos[i + 2]) <= 1.5, '지붕 범위 안');
+  }
 });

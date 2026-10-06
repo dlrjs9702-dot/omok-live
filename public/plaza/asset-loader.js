@@ -98,6 +98,54 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     rec.object = object; if (object) rec.holder.add(object);
     rec.procedural.visible = !object;
     rec.onSwap?.(object ? entry : null);
+    rec.snowEntry = object && entry?.snow ? entry : null; rec.snow = null; applySnow(rec);
+  }
+
+  // v1.10.32 겨울 지붕 눈 (IDEAS 섬 계절: four zones, the seasons one zone clockwise each day): a building with `snow`
+  // in a zone whose season today is winter wears snow on its roof -- the made snowcap (04 pack: flat, gable, round) of
+  // its roof's kind, laid over the roof's own faces (asset-pipeline roofShape / drapeSnow), worked out once per model
+  // file and shared by its copies; shown or hidden as the day turns its zone's season.
+  const roofOf = new Map(); // building url -> Promise<{ geometry, material } | null>
+  const isRoof = (name) => /roof/i.test(name || '');
+  function roofSnow(entry) {
+    if (!roofOf.has(entry.url)) {
+      roofOf.set(entry.url, cache.get(entry.url).then(async (gltf) => {
+        if (!gltf) return null;
+        gltf.scene.updateMatrixWorld(true);
+        const tris = []; const v = new THREE.Vector3();
+        gltf.scene.traverse((o) => {
+          if (!o.isMesh || !isRoof([].concat(o.material)[0]?.name)) return;
+          const g = o.geometry; const P = g.attributes.position; const idx = g.index;
+          const n = idx ? idx.count : P.count;
+          for (let i = 0; i < n; i += 1) { v.fromBufferAttribute(P, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld); tris.push(v.x, v.y, v.z); }
+        });
+        if (!tris.length) return null;
+        const roof = P.roofShape(Float32Array.from(tris));
+        const cap = await cache.get(registry[`struct.snowcap.${roof.kind}`]?.url);
+        let capMesh = null; cap?.scene.updateMatrixWorld(true); cap?.scene.traverse((o) => { if (o.isMesh && !capMesh) capMesh = o; });
+        if (!capMesh) return null;
+        const cp = capMesh.geometry.attributes.position; const pos = new Float32Array(cp.count * 3);
+        for (let i = 0; i < cp.count; i += 1) { v.fromBufferAttribute(cp, i).applyMatrix4(capMesh.matrixWorld); pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z; }
+        const draped = P.drapeSnow(pos, capMesh.geometry.index ? Array.from(capMesh.geometry.index.array) : null, roof);
+        const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(draped.pos, 3)); geometry.setIndex(draped.index);
+        geometry.computeVertexNormals(); geometry.computeBoundingSphere(); made.push(geometry);
+        return { geometry, material: capMesh.material, kind: roof.kind };
+      }));
+    }
+    return roofOf.get(entry.url);
+  }
+  function applySnow(rec) {
+    const winter = Boolean(rec.snowEntry) && lookOf(rec.zone) === 'winter';
+    if (rec.snow) rec.snow.visible = winter;
+    if (!winter || rec.snow || rec.snowPending === rec.object) return;
+    const object = rec.object; const entry = rec.snowEntry; rec.snowPending = object;
+    roofSnow(entry).then((snow) => {
+      if (disposed || !snow || rec.object !== object) return;
+      const group = new THREE.Group(); group.name = 'roofSnow'; group.userData.kind = snow.kind;
+      const mesh = new THREE.Mesh(snow.geometry, snow.material); mesh.receiveShadow = true; group.add(mesh);
+      if (object.isLOD) place(group, entry); // a LOD's levels carry the entry's scale and turn; a single model carries them itself
+      object.add(group); rec.snow = group; group.visible = lookOf(rec.zone) === 'winter';
+    }).catch((error) => onError(entry.url, error));
   }
   function applyAttach(rec) {
     rec.holder.getWorldPosition(placeOf);
@@ -310,15 +358,32 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   function unbatch(cells) { const i = batches.findIndex((rec) => rec.cells === cells); if (i < 0) return; clearBatch(batches[i]); batches.splice(i, 1); }
   // v1.10.31: a model in a character's right hand for a moment (a weed pulled out with its roots)
-  function hold(c, ids, ms = 900) {
+  // A thing in a character's hands: a moment (`ms`), or kept (`ms` null) under `key` until letGo -- v1.10.32 운반: carried
+  // in front of the chest (`bone` Chest, `at` there; `proc` on a procedural character) -- and handed over to another
+  // character's right hand (handOver: a lost thing given back). One held thing per key; a character thrown away drops it.
+  const boneOf = (c, pattern) => { let hit = null; c.assetRoot?.traverse((o) => { if (o.isBone && pattern.test(o.name)) hit = o; }); return hit; };
+  function seat(c, rec) {
+    const bone = rec.bone === 'Chest' ? boneOf(c, /^Chest$/) : boneOf(c, /^Hand\.?R$/);
+    if (bone) { bone.add(rec.object); rec.object.position.set(...(rec.at || [0, 0, 0])); }
+    else if (rec.bone === 'Chest') { c.root.add(rec.object); rec.object.position.set(...(rec.proc || [0, 0.65, 0.38])); }
+    else { (c.armR || c.root).add(rec.object); rec.object.position.set(0, -0.5, 0.1); } // the procedural arm's end
+  }
+  function hold(c, ids, ms = 900, { key = null, bone = 'Hand.R', at = null, proc = null, stand = null } = {}) {
     const hit = P.pick(registry, ids, off, null); if (!hit) return;
+    const token = {}; if (key) { letGo(c, key); (c.holding ||= {})[key] = { token, object: null }; }
     cache.get(hit.entry.url).then((gltf) => {
-      if (disposed || !gltf || !c.root.parent) return;
-      const object = instance(gltf, hit.entry);
-      let hand = null; c.assetRoot?.traverse((o) => { if (o.isBone && /^Hand\.?R$/.test(o.name)) hand = o; });
-      if (hand) hand.add(object); else { (c.armR || c.root).add(object); object.position.set(0, -0.5, 0.1); } // the procedural arm's end
-      setTimeout(() => object.removeFromParent(), ms);
+      if (disposed || !gltf || !c.root.parent || (key && c.holding?.[key]?.token !== token)) return;
+      const rec = { token, object: instance(gltf, hit.entry), bone, at, proc };
+      seat(c, rec); stand?.removeFromParent(); // the procedural stand-in gives way
+      if (key) c.holding[key] = rec; else setTimeout(() => rec.object.removeFromParent(), ms);
     }).catch((error) => onError(hit.id, error));
+  }
+  function letGo(c, key) { const rec = c.holding?.[key]; if (!rec) return; rec.object?.removeFromParent(); delete c.holding[key]; }
+  function handOver(from, to, key) {
+    const rec = from.holding?.[key]; if (!rec?.object) return false;
+    delete from.holding[key]; letGo(to, key);
+    const given = { ...rec, bone: 'Hand.R', at: [0, -0.12, -0.05] }; (to.holding ||= {})[key] = given; seat(to, given);
+    return true;
   }
 
   // Which copies are near enough for High, worked out again once the player has moved a unit; a square is filled again
@@ -347,7 +412,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function setDay(next) {
     if (next === day) return;
     day = next;
-    for (const rec of attaches) applyAttach(rec);
+    for (const rec of attaches) { applyAttach(rec); applySnow(rec); }
     for (const rec of batches) applyBatch(rec);
   }
 
@@ -458,6 +523,51 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // AnimationMixer moves everything and a High/Low switch keeps the motion, the sockets and what is worn. Materials are
   // cloned per character before any colour goes on (a dye or a keeper's colours never reach anyone else); a part's
   // dye goes on its dye material only. The clips come from the motion files (one clip each, the same rig).
+  // v1.10.32: a material is shared by every character that wears it in the same colours (only a dye or a keeper's own
+  // colours make a copy of its own), counted, and freed with the last one; the geometry of a part is shared as loaded,
+  // or -- when a combination asks a part to give way (P.fitWardrobe) -- one fitted copy per file and combination.
+  const wearMats = new Map(); // key -> { key, material, refs }
+  function wearMaterial(source, want) {
+    const key = `${source.uuid}|${want || ''}`;
+    let rec = wearMats.get(key);
+    if (!rec) { const material = source.clone(); if (want) material.color.set(want); made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
+    rec.refs += 1; return rec;
+  }
+  function dropMaterial(rec) {
+    rec.refs -= 1; if (rec.refs > 0) return;
+    wearMats.delete(rec.key); rec.material.dispose(); const k = made.indexOf(rec.material); if (k >= 0) made.splice(k, 1);
+  }
+  // a skinned mesh's vertices in the rig's rest space (its file's own pose: the bones as loaded, its inverse binds and
+  // bind matrix -- a quantized file's dequantizing scale is in there too), and back
+  const restMatrix = (mesh) => new THREE.Matrix4().multiplyMatrices(mesh.skeleton.bones[0].matrixWorld, mesh.skeleton.boneInverses[0]).multiply(mesh.bindMatrix);
+  const restCache = new Map(); // geometry uuid -> rest positions
+  function restOf(mesh) {
+    const key = mesh.geometry.uuid;
+    if (!restCache.has(key)) {
+      const attr = mesh.geometry.attributes.position; const M = restMatrix(mesh); const v = new THREE.Vector3(); const out = new Float32Array(attr.count * 3);
+      for (let i = 0; i < attr.count; i += 1) { v.fromBufferAttribute(attr, i).applyMatrix4(M); out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+      restCache.set(key, out);
+    }
+    return restCache.get(key);
+  }
+  const fittedOf = new Map(); // `${geometry uuid}|${ops}` -> geometry
+  function fittedGeometry(mesh, ops) {
+    const key = `${mesh.geometry.uuid}|${JSON.stringify(ops)}`;
+    if (!fittedOf.has(key)) {
+      const g = mesh.geometry; const index = g.index ? Array.from(g.index.array) : null;
+      const done = P.applyFit(restOf(mesh), index, ops);
+      const out = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(g.attributes)) out.setAttribute(name, attr); // shared, but for a moved position
+      if (done.pos) {
+        const back = restMatrix(mesh).invert(); const v = new THREE.Vector3(); const arr = new Float32Array(done.pos.length);
+        for (let i = 0; i < arr.length; i += 3) { v.set(done.pos[i], done.pos[i + 1], done.pos[i + 2]).applyMatrix4(back); arr[i] = v.x; arr[i + 1] = v.y; arr[i + 2] = v.z; }
+        out.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      }
+      if (done.index || index) out.setIndex(done.index || index);
+      made.push(out); fittedOf.set(key, out);
+    }
+    return fittedOf.get(key);
+  }
   const wearing = []; // characters with a High/Low pair: { c, high: [meshes], low: [meshes], isHigh }
   function wear(c, plan) {
     const base = P.pick(registry, 'character.base', off, null); if (!base || !plan) return;
@@ -474,27 +584,33 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       place(object, base.entry);
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
-      const high = []; const low = [];
-      const own = (m) => { const mats = [].concat(m.material).map((x) => x.clone()); m.material = Array.isArray(m.material) ? mats : mats[0]; made.push(...mats); return mats; };
-      const colour = (mesh, colors) => { for (const m of [].concat(mesh.material)) { const want = colors?.[m.name]; if (want) m.color.set(want); } };
-      const adopt = (gltf, colors, into) => {
-        const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true);
-        const meshes = []; copy.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
-        for (const m of meshes) {
+      const high = []; const low = []; const mats = [];
+      const own = (m, colors) => { // the shared material in the colours this character wants on it
+        const list = [].concat(m.material).map((x) => { const rec = wearMaterial(x, colors?.[x.name] || plan.tint?.[x.name]); mats.push(rec); return rec.material; });
+        m.material = Array.isArray(m.material) ? list : list[0];
+      };
+      const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };
+      // what each part gives way to in this combination (asset-pipeline fitWardrobe), worked out on the High files
+      const fits = P.fitWardrobe(parts.map((p, i) => ({ id: plan.parts[i], fit: p.entry.fit || null, pos: meshesOf(byUrl.get(p.entry.url)).flatMap((m) => Array.from(restOf(m))) })));
+      const adopt = (gltf, colors, into, fit) => {
+        for (const m of meshesOf(gltf)) {
+          if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
+          if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
-          m.frustumCulled = false; m.castShadow = true; own(m); colour(m, plan.tint); colour(m, colors); into.push(m);
+          m.frustumCulled = false; m.castShadow = true; own(m, colors); into.push(m);
         }
       };
-      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o); colour(o, plan.tint); high.push(o); } });
+      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } });
       const lowBody = base.entry.lowUrl ? byUrl.get(base.entry.lowUrl) : null;
-      if (lowBody) adopt(lowBody, null, low);
+      if (lowBody) adopt(lowBody, null, low, null);
       parts.forEach((p, i) => {
-        const colors = plan.colors?.[plan.parts[i]];
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : []); // a part without a Low file shows at every distance
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low);
+        const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit); // a part without a Low file shows at every distance
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit);
       });
+      c.wearMats = mats; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
       const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
       // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
@@ -503,15 +619,24 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       // track (Idle) does not set the arm again, and the turn must not pile up.
       const tuck = [[bones.get('UpperArmL') || bones.get('UpperArm.L'), 1], [bones.get('UpperArmR') || bones.get('UpperArm.R'), -1]].filter(([b]) => b)
         .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; });
-      const play = anim.update.bind(anim); let tucked = false;
+      // v1.10.32 운반: while `c.carrying`, the arms hold the thing in front -- CarryIdle's arms over whatever the legs do
+      // (Idle, Walk, Run): after the frame's pose the shoulders, arms and hands take that clip's (it holds still); the
+      // next frame first puts back what they had, so the tuck and the mixer go on as if nothing had been laid over them
+      const carryClip = clips.find((clip) => clip.name === base.entry.animations?.carry);
+      const carryArms = (carryClip?.tracks || []).filter((t) => /^(Shoulder|UpperArm|LowerArm|Hand)\.?[LR]\.quaternion$/.test(t.name))
+        .map((t) => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
+      const play = anim.update.bind(anim); let tucked = false; let laid = false;
       anim.update = (dt, speed) => {
+        if (laid) { for (const [bone, , kept] of carryArms) bone.quaternion.copy(kept); laid = false; }
         if (tucked) for (const [bone, , undo] of tuck) bone.quaternion.premultiply(undo);
         play(dt, speed);
         for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
         tucked = true;
+        if (c.carrying && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
       };
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
+      for (const key of Object.keys(c.holding || {})) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
   }
@@ -530,8 +655,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // Before a character is thrown away: its copy goes, the shared geometry stays for the others.
   function release(c) {
     c.anim?.dispose(); if (c.assetRoot) c.root.remove(c.assetRoot);
-    if (c.wardrobe) c.assetRoot?.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) { m.dispose(); const k = made.indexOf(m); if (k >= 0) made.splice(k, 1); } });
-    c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null;
+    for (const rec of c.wearMats || []) dropMaterial(rec);
+    for (const key of Object.keys(c.holding || {})) letGo(c, key);
+    c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null; c.wearMats = null; c.fitted = null;
   }
 
   function setQuality(next) {
@@ -570,6 +696,6 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       first: !g0 ? 'procedural' : p0.flags[0] === 1 || !g0.low ? 'high' : 'low',
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
-  const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

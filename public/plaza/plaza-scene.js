@@ -689,6 +689,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         o.target = { x: p.x, z: p.z, yaw: p.yaw, moving: Boolean(p.moving) }; o.targetAt = now;
       }
       o.champion = Boolean(p.champion); o.hoguking = Boolean(p.hoguking); o.look = p.look || {};
+      setCarry(o.c, p.carry || null); // v1.10.32 운반
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); }
   }
@@ -945,9 +946,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // can and a bottle on the shore, paper on the grass
   const EVENT_PROPS = { beach_trash: [['prop.event.trash_can', 0.12, 0], ['prop.event.trash_bottle', -0.2, -0.1]], grass_trash: [['prop.event.paper_litter', 0, 0]], herb: [['prop.event.herb', 0, 0]],
     berry: [['prop.event.berry', 0, 0]], mushroom: [['prop.event.mushroom', 0, 0]], coin: [['prop.event.coin', 0, 0]], wallet: [['prop.event.wallet', 0, 0]], lost_item: [['prop.event.lost_item', 0, 0]] };
-  function eventModel(kind, root) {
+  // v1.10.32: some finds come in two looks, each event its own (from its id: the same on every screen and in the hands)
+  const twoLooks = (id, a, b) => ([...String(id)].reduce((n, ch) => n + ch.charCodeAt(0), 0) % 2 ? b : a);
+  const lostProp = (id) => twoLooks(id, 'prop.event.lost_item', 'prop.event.lost_pouch');
+  function eventModel(kind, root, eventId) {
     const visual = new THREE.Group(); root.add(visual);
-    for (const [id, x, z] of EVENT_PROPS[kind] || []) { const h = new THREE.Group(); h.position.set(x, 0, z); root.add(h); assets.attach(id, h, visual); if (kind === 'coin') { h.position.y = 0.2; root.userData.spin = h; } }
+    const looks = kind === 'lost_item' ? [[lostProp(eventId), 0, 0]] : kind === 'berry' ? [[twoLooks(eventId, 'prop.event.berry', 'prop.event.fruit'), 0, 0]] : EVENT_PROPS[kind];
+    for (const [id, x, z] of looks || []) { const h = new THREE.Group(); h.position.set(x, 0, z); root.add(h); assets.attach(id, h, visual); if (kind === 'coin') { h.position.y = 0.2; root.userData.spin = h; } }
     const add = (geo, color, x, y, z, extra) => mesh(geo, mat(color, extra), x, y, z, visual);
     if (kind === 'beach_trash' || kind === 'grass_trash') {
       const can = add(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 10), 0xc9d1d9, 0, 0.1, 0); can.rotation.z = Math.PI / 2;
@@ -976,10 +981,55 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (const ex of [-0.08, 0.08]) add(new THREE.SphereGeometry(0.045, 8, 6), 0xa86f3f, ex, 0.48, 0);
     }
   }
+  // v1.10.32 운반·전달 (CarryIdle / Receive): a lost thing picked up stays in the hands -- in front of the chest, the arms
+  // holding it over standing, walking or running -- until it is given back; others see it in theirs (the server's
+  // `carry`). Giving it back: the owner turns to me, I hand it over (Give), they take it in their hand (Receive), and
+  // only then do they go with it.
+  // the thing as drawn without its model (a teddy, or a pouch), in front of the chest until the model takes its place
+  function lostThing(id) {
+    const g = new THREE.Group(); const add = (geo, color, x, y, z) => mesh(geo, mat(color), x, y, z, g);
+    if (lostProp(id) === 'prop.event.lost_pouch') { add(new THREE.SphereGeometry(0.17, 12, 10), 0x6f9a7c, 0, 0.15, 0).scale.set(1, 0.9, 0.75); add(new THREE.CylinderGeometry(0.05, 0.08, 0.08, 10), 0xf1e6c8, 0, 0.31, 0); }
+    else { add(new THREE.SphereGeometry(0.16, 12, 10), 0xc68a55, 0, 0.16, 0); add(new THREE.SphereGeometry(0.12, 12, 10), 0xc68a55, 0, 0.38, 0); for (const ex of [-0.08, 0.08]) add(new THREE.SphereGeometry(0.045, 8, 6), 0xa86f3f, ex, 0.48, 0); }
+    g.traverse((m) => { if (m.isMesh) m.castShadow = false; });
+    return g;
+  }
+  function setCarry(c, id) {
+    if ((c.carryId || null) === (id || null)) return;
+    if (c.carryStand) { c.carryStand.removeFromParent(); c.carryStand = null; }
+    c.carryId = id || null; c.carrying = Boolean(id);
+    if (!id) { assets.letGo(c, 'carry'); return; }
+    c.carryStand = lostThing(id); c.carryStand.position.set(0, 0.6, 0.38); c.root.add(c.carryStand);
+    assets.hold(c, lostProp(id), null, { key: 'carry', bone: 'Chest', at: [0, -0.4, -0.32], proc: [0, 0.6, 0.38], stand: c.carryStand });
+  }
+  const returning = new Set(); let carriedOwner = null; let lastReturn = null; // lastReturn: the steps, for tests
+  function returnLost(id) {
+    returning.add(id); const o = eventObjs.get(`ev:lost_owner:${id}`);
+    const t0 = performance.now(); lastReturn = { id, steps: [['give', 0]] }; const step = (name) => lastReturn?.id === id && lastReturn.steps.push([name, Math.round(performance.now() - t0)]);
+    if (!o?.npc) { setCarry(me, null); return; }
+    o.leaving = true; delete eventDoors[`ev:lost_owner:${id}`];
+    const p = me.root.position; const q = o.root.position;
+    me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; o.npc.home.yaw = o.root.rotation.y;
+    if (!me.anim?.play('give')) me.hop = 1;
+    o.npc.anim?.play('receive');
+    setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
+      if (!o.root.parent) return;
+      const stand = me.carryStand; me.carryStand = null; me.carryId = null; me.carrying = false;
+      if (stand?.parent) { o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
+      assets.handOver(me, o.npc, 'carry'); step('received');
+    }, 700);
+    setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 2100);
+  }
+  function removeEvent(key, o) {
+    scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);
+    if (o.npc) { npcs.splice(npcs.indexOf(o.npc), 1); disposeCharacter(o.npc); }
+    o.root.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
+    eventObjs.delete(key); delete eventDoors[key];
+  }
   function setEvents(list) {
-    const seen = new Set();
+    const seen = new Set(); let carried = null;
     for (const ev of list || []) {
       if (!ev?.id || !Number.isFinite(ev.x) || !Number.isFinite(ev.z)) continue;
+      if (ev.kind === 'carrying') { if (!returning.has(ev.id)) carried = ev; continue; }
       const key = `ev:${ev.kind}:${ev.id}`; seen.add(key);
       if (!eventObjs.has(key)) {
         const root = new THREE.Group(); root.position.set(ev.x, heightAt(ev.x, ev.z), ev.z); root.rotation.y = (ev.x * 7 + ev.z * 3) % TAU; scene.add(root);
@@ -991,20 +1041,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           if (ev.kind === 'photo') { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
           npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); // what they want, at a glance
           npcs.push(npc);
-        } else { eventModel(ev.kind, root); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
+        } else { eventModel(ev.kind, root, ev.id); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);
         eventObjs.set(key, { root, npc });
       }
       if (ev.verb) eventDoors[key] = { x: ev.x, z: ev.z, name: ev.verb }; else delete eventDoors[key];
     }
-    for (const [key, o] of eventObjs) {
-      if (seen.has(key)) continue;
-      scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);
-      if (o.npc) { npcs.splice(npcs.indexOf(o.npc), 1); disposeCharacter(o.npc); }
-      o.root.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
-      eventObjs.delete(key); delete eventDoors[key];
-    }
-    mapMarkers = [...eventObjs.keys()].filter((key) => eventDoors[key] || key.startsWith('ev:lost_item:')).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }));
+    for (const [key, o] of eventObjs) if (!seen.has(key) && !o.leaving) removeEvent(key, o); // one being handed its thing goes after
+    if (!returning.size) setCarry(me, carried?.id || null);
+    carriedOwner = carried ? { x: carried.x, z: carried.z } : null;
+    mapMarkers = [...eventObjs.keys()].filter((key) => eventDoors[key] || key.startsWith('ev:lost_item:')).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
+      .concat(carriedOwner ? [carriedOwner] : []); // whose it is: where to take it
     minimapAt = 0;
   }
   const doorOf = (id) => doors[id] || eventDoors[id];
@@ -1254,7 +1301,93 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepWhale() {
     if (clock < whaleAt) return;
     whaleAt = clock + WHALE_EVERY[0] + Math.random() * (WHALE_EVERY[1] - WHALE_EVERY[0]);
-    if (quality > 0 && !overview) whale();
+    if (quality > 0 && !overview && seaFree()) { whale(); seaLast = clock; }
+  }
+
+  // v1.10.32 해상 볼거리 (IDEAS 「섬 밖 원경·해상 풍경 확장」 후보): now and then, never something to do -- a small boat
+  // crossing out at sea, a few gulls wheeling over the water, a pod of dolphins leaping in a row (a splash going in and
+  // coming out), a lone splash. Out at sea only (past the coast, never by the harbour), and where the default camera
+  // shows it -- it looks down over the island, so the horizon is above the picture: a place is kept only if it falls
+  // inside the picture (the sights come nearer and lower instead of the camera changing). At most two at a time and
+  // never two starting together (the whale counts too); none on the lowest quality or the overview map. One set of
+  // holders, made once and reused.
+  const SEA = { boat: [80, 160], gulls: [45, 100], dolphins: [70, 140], splash: [35, 80] };
+  const seaNext = Object.fromEntries(Object.entries(SEA).map(([k, [a, b]]) => [k, 30 + Math.random() * (b - a) + a / 2]));
+  const seaActive = new Map(); let seaLast = -Infinity; let seaPool = null; const seaShown = {};
+  const seaFree = () => seaActive.size < 2 && clock - seaLast > 12;
+  function seaHolders() {
+    if (seaPool) return seaPool;
+    const make = (id, n) => Array.from({ length: n }, () => { const h = new THREE.Group(); h.visible = false; scene.add(h); assets.attach(id, h, new THREE.Group()); return h; });
+    seaPool = { boat: make('sea.boat', 1), gulls: make('sea.gull', 7), dolphins: make('sea.dolphin', 3) };
+    return seaPool;
+  }
+  // a spot out at sea, `d` from me, at least `clear` past the coast (and off the harbour), seen by the camera at height y
+  const seen = new THREE.Vector3();
+  const inPicture = (x, y, z) => { seen.set(x, y, z).project(camera); return seen.z < 1 && Math.abs(seen.x) < 0.88 && seen.y > -0.55 && seen.y < 0.82; };
+  const seaRay = new THREE.Raycaster(); const ndc = new THREE.Vector2(); const level = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); const hitAt = new THREE.Vector3();
+  function seaSpot(dMin, dMax, clear, above = 0) { // `above`: the height over the sea it will be seen at
+    const T = globalThis.IslandTerrain; const p = me.root.position;
+    level.constant = -SEA_Y;
+    for (let k = 0; k < 80; k += 1) { // a point of the picture's upper part, down onto that height
+      seaRay.setFromCamera(ndc.set((Math.random() - 0.5) * 1.7, 0.05 + Math.random() * 0.75), camera);
+      if (!seaRay.ray.intersectPlane(level, hitAt)) continue;
+      const { x, z } = hitAt; const d = Math.hypot(x - p.x, z - p.z);
+      if (d < dMin || d > dMax || T.coastDist(x, z) > -clear || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 30 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 30) continue;
+      if (above && !inPicture(x, SEA_Y + above, z)) continue;
+      return { x, z, a: Math.atan2(x - p.x, z - p.z) };
+    }
+    return null;
+  }
+  function seaSight(kind) {
+    const T = globalThis.IslandTerrain; const pool = seaHolders();
+    if (kind === 'splash') { const at = seaSpot(18, 45, 8); if (!at) return false; assets.once('sea.splash', { parent: scene, x: at.x, y: SEA_Y, z: at.z }); seaShown.splash = (seaShown.splash || 0) + 1; return true; }
+    if (seaActive.has(kind)) return false;
+    if (kind === 'boat') { // across the view, along the horizon
+      const mid = seaSpot(22, 60, 12, 1.5); if (!mid) return false;
+      const e = 0.5; const gx = T.coastDist(mid.x + e, mid.z) - T.coastDist(mid.x - e, mid.z); const gz = T.coastDist(mid.x, mid.z + e) - T.coastDist(mid.x, mid.z - e);
+      const gl = Math.hypot(gx, gz) || 1; const dir = { x: -gz / gl, z: gx / gl }; // along the shore
+      const L = 35; const side = Math.random() < 0.5 ? 1 : -1;
+      const from = { x: mid.x - dir.x * L * side, z: mid.z - dir.z * L * side }; const to = { x: mid.x + dir.x * L * side, z: mid.z + dir.z * L * side };
+      if (T.coastDist(from.x, from.z) > -6 || T.coastDist(to.x, to.z) > -6) return false;
+      const h = pool.boat[0]; h.visible = true; h.scale.setScalar(2.2); h.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      seaActive.set(kind, { t: 0, dur: (2 * L) / 1.3, step(s) { const u = s.t / s.dur; h.position.set(from.x + (to.x - from.x) * u, SEA_Y - 0.1 + Math.sin(s.t * 1.3) * 0.08, from.z + (to.z - from.z) * u); h.rotation.z = Math.sin(s.t * 0.9) * 0.05; }, end() { h.visible = false; } });
+    } else if (kind === 'gulls') { // a few wheeling over the sea, then away
+      const c = seaSpot(16, 45, 8, 4); if (!c) return false; // over the sea, low enough to be in the picture
+      const n = 5 + Math.floor(Math.random() * 3); const birds = pool.gulls.slice(0, n).map((h, i) => ({ h, phase: (i / n) * TAU + Math.random() * 0.4, r: 4 + Math.random() * 4, y: 2.6 + Math.random() * 1.6 }));
+      for (const b of birds) b.h.visible = true;
+      seaActive.set(kind, { t: 0, dur: 35 + Math.random() * 20, step(s) {
+        const away = Math.max(0, s.t - (s.dur - 8)) / 8; // the last seconds: wider and higher, then gone
+        for (const b of birds) { const a = b.phase + s.t * 0.35; const r = b.r * (1 + away * 3); b.h.position.set(c.x + Math.cos(a) * r, b.y + away * 10 + Math.sin(s.t * 1.7 + b.phase) * 0.3, c.z + Math.sin(a) * r); b.h.rotation.set(0, -a, 0.35); }
+      }, end() { for (const b of birds) b.h.visible = false; } });
+    } else if (kind === 'dolphins') { // two or three leaping one after another
+      const at = seaSpot(18, 40, 8); if (!at) return false;
+      const n = 2 + Math.floor(Math.random() * 2); const heading = Math.random() * TAU; const fwd = { x: Math.sin(heading), z: Math.cos(heading) };
+      const pod = pool.dolphins.slice(0, n).map((h, i) => ({ h, delay: i * 0.45, side: (i - (n - 1) / 2) * 1.6, splashed: 0 }));
+      const LEAP = 1.15; const GAP = 0.7; const LEAPS = 3; const RUN = 4.5;
+      seaActive.set(kind, { t: 0, dur: LEAPS * (LEAP + GAP) + 1.2, step(s) {
+        for (const d of pod) {
+          const t = s.t - d.delay; const k = Math.floor(t / (LEAP + GAP)); const u = (t - k * (LEAP + GAP)) / LEAP;
+          const inAir = t >= 0 && k < LEAPS && u <= 1; d.h.visible = inAir;
+          if (!inAir) continue;
+          const along = (k + u) * RUN; const y = SEA_Y - 0.5 + Math.sin(u * Math.PI) * 1.9;
+          d.h.position.set(at.x + fwd.x * along - fwd.z * d.side, y, at.z + fwd.z * along + fwd.x * d.side);
+          d.h.rotation.set(-Math.cos(u * Math.PI) * 0.9, heading, 0); // nose up going out, down going in
+          const edge = u < 0.08 ? k * 2 + 1 : u > 0.92 ? k * 2 + 2 : 0; // a splash going out and coming back in
+          if (edge && edge > d.splashed) { d.splashed = edge; assets.once('sea.splash', { parent: scene, x: d.h.position.x, y: SEA_Y, z: d.h.position.z }); }
+        }
+      }, end() { for (const d of pod) d.h.visible = false; } });
+    }
+    seaShown[kind] = (seaShown[kind] || 0) + 1;
+    return true;
+  }
+  function stepSea(dt) {
+    for (const [kind, s] of seaActive) { s.t += dt; if (s.t >= s.dur) { s.end(); seaActive.delete(kind); } else s.step(s); }
+    if (quality === 0 || overview) return;
+    for (const [kind, [a, b]] of Object.entries(SEA)) {
+      if (clock < seaNext[kind]) continue;
+      seaNext[kind] = clock + a + Math.random() * (b - a);
+      if (seaFree() && seaSight(kind)) seaLast = clock;
+    }
   }
   function step(dt) {
     let ix = 0; let iz = 0;
@@ -1299,7 +1432,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
     for (const c of statueChars) if (c.anim && !c.frozen) { c.anim.play('wave'); c.anim.update(0.7, 0); c.frozen = true; } // v1.10.30: a statue's wave, set once
-    stepWhale();
+    stepWhale(); stepSea(dt); // v1.10.32: the sea's other sights
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
     if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
@@ -1330,6 +1463,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
     c.armL.rotation.z = -hopT * 1.1; c.armR.rotation.z = hopT * 1.1; // a little cheer when interacting
     if (c.waving) { c.armR.rotation.z = 2.5 + Math.sin(clock * 9) * 0.35; c.armR.rotation.x = 0; }
+    if (c.carrying) { c.armL.rotation.set(-1.15, 0, -0.35); c.armR.rotation.set(-1.15, 0, 0.35); } // v1.10.32: holding it in front
     // Islanders keep their feet visually planted: their root already follows exact terrain height, so only a tiny
     // pelvis bob remains. Player/remote-player animation keeps the existing livelier bounce.
     const bodyBob = c.groundedWalk ? 0.012 : 0.07;
@@ -1376,9 +1510,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), eventKeys: [...eventObjs.keys()], wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
@@ -1390,6 +1524,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.31: an event's motion when the server took it (pick up, give back, a photo), the weed in hand
   const playMine = (name) => Boolean(me.anim?.play(name));
   const holdWeed = () => assets.hold(me, 'prop.weedRooted', 900);
+  const holdBasket = () => assets.hold(me, 'prop.event.basket', 1400); // v1.10.32: picking herbs, berries, mushrooms
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
-  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, holdWeed, playMine };
+  return { start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, holdWeed, holdBasket, returnLost, playMine };
 }

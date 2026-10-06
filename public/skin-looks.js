@@ -91,7 +91,7 @@
   // board { paint(ctx, w, h, pad), line, star, border } (a room theme), preview(ctx, w, h, skinId) (shop picture).
   const DEFS = {};
   function define(defs) { Object.assign(DEFS, defs); }
-  function def(skinId) { return (skinId && DEFS[skinId]) || null; }
+  function def(skinId) { return (skinId && (DEFS[skinId] || (String(skinId).startsWith('avatar_') && DEFS.avatar_))) || null; } // v1.10.32: one look for every avatar item
 
   // Paint one stone centered at (0, 0) of ctx with radius r.
   function paintStone(ctx, r, skinId, color, label) {

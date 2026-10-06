@@ -146,19 +146,26 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
     await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
     await page.keyboard.press('Space');
     await expect(dialog.locator('#skinShopTitle')).toHaveText(name);
-    await expect(dialog.getByRole('tab')).toHaveText(['광장 아바타']); // game skins are sold next door
+    await expect(dialog.getByRole('tab').first()).toHaveText('광장 아바타'); // game skins are sold next door
     await expect(dialog.locator('.skinCard')).toHaveCount(count);
   };
-  await visit('hair', '미용실', 6);
+  await visit('hair', '미용실', 12); // v1.10.32: + the six new hair styles
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '잡화점', 5);
+  await visit('accessories', '잡화점', 12);
+  // v1.10.32: the five accessory slots, a tab each (the hats first)
+  await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
+  await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '망토' }).click();
+  await expect(dialog.locator('.skinCard')).toHaveCount(10);
+  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('전설 · 망토');
+  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('1,500,000P');
+  await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '모자·장식' }).click();
   await expect(dialog.locator('.skinTitle')).toHaveCount(0); // the title is the clothes shop's
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('avatar', '옷가게', 5);
+  await visit('avatar', '옷가게', 15);
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
@@ -818,14 +825,14 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   // 60 away: the event is known to my screen but not on the minimap
   const far = await spotNear(a.page, target, 58, 70);
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), far);
-  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
   await expect.poll(() => shownMatchesRange(a.page), { timeout: 5000 }).toBe(true);
   expect(await a.page.evaluate((t) => window.PlazaDebug().markers.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < 0.01), target)).toBe(true);
 
   // b watches from nearby; a walks up to it: the 「!」 is on a's minimap and Space solves it
   const watch = await spotNear(b.page, target, 12, 20);
   await b.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), watch);
-  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
   const close = await spotNear(a.page, target, 0.9, 1.6);
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
   await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · (줍기|채집)/, { timeout: 10000 });
@@ -833,8 +840,8 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   expect(await shownMatchesRange(a.page)).toBe(true);
   await a.page.keyboard.press('Space');
   await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 5000 });
-  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 5000 }).toBe(false);
-  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().eventKeys.includes(k), key), { timeout: 5000 }).toBe(false);
+  await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
+  await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   expect((await get(request, '/api/test/island/events', a.token)).data.events.length).toBe(15);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
@@ -886,6 +893,43 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
+});
+
+// v1.10.32 운반·전달: a lost thing picked up stays in my hands (in front of the chest, the arms holding it) while I stand
+// and walk, the other players see it in mine; given back, the owner takes it hand to hand and only then goes
+test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 보이며, 주인이 받아 든 뒤 떠난다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '운반꾼');
+  const b = await intoPlaza(browser, request, '구경꾼');
+  const { page } = a;
+  const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  expect(lost?.npc).toBeTruthy();
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
+  await page.locator('#plazaStage').focus();
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 15000 }).toMatchObject({ mine: lost.id, arms: true, held: true });
+  // walking with it
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(700); await page.keyboard.up('ArrowUp');
+  expect(await page.evaluate(() => window.PlazaDebug().carry)).toMatchObject({ mine: lost.id, arms: true, held: true });
+  // someone else nearby sees it in my hands
+  const here = await page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  await b.page.evaluate(([x, z]) => window.PlazaWarp(x + 3, z), [here.x, here.z]);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().carry.others), { timeout: 15000 }).toBe(1);
+  // given back: still in my hands a moment, then in the owner's, then the owner goes
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 돌려주기', { timeout: 15000 });
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 10000 }).toMatchObject({ mine: null, arms: false, held: false });
+  await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_owner:${id}`), lost.id), { timeout: 10000 }).toBe(false);
+  // in that order: handed over (Give), held in the owner's hand (Receive) a while, then gone
+  const steps = await page.evaluate(() => window.PlazaDebug().lastReturn);
+  expect(steps.id).toBe(lost.id);
+  expect(steps.steps.map(([name]) => name)).toEqual(['give', 'received', 'gone']);
+  expect(steps.steps[1][1]).toBeGreaterThanOrEqual(650); expect(steps.steps[2][1] - steps.steps[1][1]).toBeGreaterThanOrEqual(1200);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().carry.others), { timeout: 15000 }).toBe(0);
+  await expectNoScriptError(page);
+  await a.context.close(); await b.context.close();
 });
 
 // v1.10.31 잡초 채집: only the nearest weed is offered; Space pulls it in about a second (GatherWeed) and the bag gets

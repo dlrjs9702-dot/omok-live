@@ -87,8 +87,13 @@
     // flowers at every distance -- their colours make the island colourful from afar; the far file is the pipeline's
     // own simplification of the same flower (about 160-520 triangles), lighter than the artist's Low
     ...Object.fromEntries([0, 1, 2, 3, 4].map((c) => [`nature.flower.${c}`, { seasons: seasonalAdd(`flower_${c}_{s}.glb`), low: { seasons: seasonalAdd(`flower_${c}_{s}_low.glb`) }, scale: 0.75, near: 20, shadows: false }])),
-    ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`cottage.${i}`, { url: `${ADD}/houses/cottage_${i}.glb`, low: { url: `${ADD}/houses/cottage_${i}_low.glb` }, scale: 1, rotationY: Math.PI, near: 45 }])),
-    ...Object.fromEntries(Object.entries(FACILITY_FIT).map(([id, fit]) => [`facility.${id}`, { url: `${ADD}/facilities/${id}.glb`, low: { url: `${ADD}/facilities/${id}_low.glb` }, rotationY: Math.PI, near: 60, ...fit }])),
+    // v1.10.32 `snow`: in a winter zone the roof wears snow (asset-loader roofSnow: a snowcap laid over its own roof)
+    ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`cottage.${i}`, { url: `${ADD}/houses/cottage_${i}.glb`, low: { url: `${ADD}/houses/cottage_${i}_low.glb` }, scale: 1, rotationY: Math.PI, near: 45, snow: true }])),
+    ...Object.fromEntries(Object.entries(FACILITY_FIT).map(([id, fit]) => [`facility.${id}`, { url: `${ADD}/facilities/${id}.glb`, low: { url: `${ADD}/facilities/${id}_low.glb` }, rotationY: Math.PI, near: 60, snow: true, ...fit }])),
+    // v1.10.32 해안·강둑 (04 pack): the beach rocks' low clusters and the bends' bank stones (island.js, their own places)
+    'nature.shoreStones': { url: `${GAPS}/props/shore_stone_cluster.glb`, low: { url: `${GAPS}/props/shore_stone_cluster_low.glb` }, scale: 0.75, near: 40 },
+    'nature.riverBank': { url: `${GAPS}/props/river_bank.glb`, low: { url: `${GAPS}/props/river_bank_low.glb` }, scale: 0.6, offset: [0, -0.05, 0], near: 40 },
+    ...Object.fromEntries(['flat', 'gable', 'round'].map((k) => [`struct.snowcap.${k}`, { url: `${GAPS}/structure/snowcap_${k}.glb`, shadows: false }])), // the made snowcaps (04 pack)
     'prop.lamp': { url: `${ADD}/props/lamp.glb`, low: { url: `${ADD}/props/lamp_low.glb` }, scale: 0.85, near: 30 },
     'prop.bridge': { seasons: seasonal('bridge_{s}_v1.glb'), scale: 1.3, rotationY: -Math.PI / 2 }, // fitted to each bridge's deck (island.js BRIDGE)
     'prop.fence': { seasons: seasonal('fence_{s}_v1.glb'), scale: 0.6 }, // a cottage's yard fence, segment by segment (plaza-scene FENCE_SEG)
@@ -102,6 +107,10 @@
     'fx.petal': { url: `${GAPS}/props/atmosphere_petal.glb` }, 'fx.leaf': { url: `${GAPS}/props/atmosphere_leaf.glb` }, 'fx.snow': { url: `${GAPS}/props/atmosphere_snowflake.glb` },
     'sea.coastLong': sea('distant_coast_long', 3), 'sea.coastCove': sea('distant_coast_cove', 3), 'sea.ridgeSoft': sea('mountain_ridge_soft', 2.2), 'sea.ridgeRugged': sea('mountain_ridge_rugged', 2.2),
     'sea.peak': sea('mountain_peak', 2.2), 'sea.glacier': sea('glacier', 2.5), 'sea.floe': sea('ice_floe', 2.5),
+    // v1.10.32 해상 볼거리 (2026-10-06 finish pack: made with the skins pack's generator): a small boat, a gull, a dolphin
+    'sea.boat': { url: '/assets/island/finish-v1/sea/boat.glb', low: { url: '/assets/island/finish-v1/sea/boat_low.glb' }, near: 90, shadows: false },
+    'sea.gull': { url: '/assets/island/finish-v1/sea/gull.glb', shadows: false },
+    'sea.dolphin': { url: '/assets/island/finish-v1/sea/dolphin.glb', low: { url: '/assets/island/finish-v1/sea/dolphin_low.glb' }, near: 40, shadows: false },
     'sea.whale': { url: `${GAPS}/sea/whale.glb`, scale: 1.2 }, 'sea.splash': { url: `${GAPS}/sea/splash.glb`, scale: 1.4 }, // played once (BreachOnce / SplashOnce)
   };
 
@@ -117,32 +126,59 @@
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp' },
     speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
-  const part = (file, low = false, dye = null) => ({ url: `${CH}/wear/${file}.glb`, ...(low ? { low: { url: `${CH}/wear/${file}_low.glb` } } : {}), ...(dye ? { dye } : {}) });
-  for (const file of ['face_eyes_cheeks', 'hair_cap', 'hair_long', 'basic_shirt', 'female_shirt', 'basic_pants', 'short_skirt', 'shoes', 'overalls']) REGISTRY[`wear.${file}`] = part(file);
-  REGISTRY['wear.cat_ears'] = part('cat_ears', false, 'hair');
-  for (const [file, dye] of [['hair_twin_tail', 'hair'], ['hair_curly', 'hair'], ['hair_ponytail', 'hair'], ['hair_spiky', 'hair'], ['hat_straw', 'trim'], ['hat_flower', 'main'], ['hat_crown', 'accent'], ['hat_fedora', 'main']]) REGISTRY[`wear.${file}`] = part(file, true, dye);
+  // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
+  // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
+  // pieces that give way to a worn slot (`hideWith`)
+  const part = (file, slot, { low = true, dye = null, ...fit } = {}) => ({ url: `${CH}/wear/${file}.glb`, ...(low ? { low: { url: `${CH}/wear/${file}_low.glb` } } : {}), ...(dye ? { dye } : {}), fit: { slot, ...fit } });
+  Object.assign(REGISTRY, {
+    'wear.face_eyes_cheeks': part('face_eyes_cheeks', 'face', { low: false }), 'wear.hair_cap': part('hair_cap', 'hair', { low: false }), 'wear.hair_long': part('hair_long', 'hair', { low: false }),
+    'wear.basic_shirt': part('basic_shirt', 'top', { low: false }), 'wear.female_shirt': part('female_shirt', 'top', { low: false }),
+    'wear.basic_pants': part('basic_pants', 'bottom', { low: false }), 'wear.short_skirt': part('short_skirt', 'bottom', { low: false }), 'wear.shoes': part('shoes', 'shoes', { low: false }),
+    'wear.overalls': part('overalls', 'outfit', { low: false }), 'wear.cat_ears': part('cat_ears', 'hat', { low: false, dye: 'hair' }),
+  });
+  // hair (05 skins pack, and the two older looks remade on the common rig: 무지개 머리 in its five colours, 별빛 머리)
+  for (const file of ['hair_twin_tail', 'hair_curly', 'hair_ponytail', 'hair_spiky', 'hair_crew', 'hair_side_part', 'hair_bob', 'hair_straight', 'hair_bun', 'hair_braid']) REGISTRY[`wear.${file}`] = part(file, 'hair', { dye: 'hair' });
+  for (const file of ['hair_rainbow', 'hair_starlight']) REGISTRY[`wear.${file}`] = part(file, 'hair');
+  // outfits: the whole set of clothes (the 05 outfits with the pelvis filled in, the older four remade)
+  for (const file of ['casual', 'hoodie', 'sailor', 'apron', 'explorer', 'raincoat', 'knight', 'robe', 'dress', 'sports', 'stripes', 'hanbok', 'space']) REGISTRY[`wear.outfit_${file}`] = part(`outfit_${file}`, 'outfit', { replaces: ['top', 'bottom'] });
+  REGISTRY['wear.outfit_royal'] = part('outfit_royal', 'outfit', { replaces: ['top', 'bottom'], hideWith: { cape: ['cape_main', 'cape_trim'] } }); // its cape gives way to a worn one
+  for (const [file, dye, cover] of [['straw', 'trim', 2.04], ['flower', 'main', null], ['crown', 'accent', null], ['fedora', 'main', 2.04], ['beanie', 'main', 1.87], ['beret', 'main', 2.0],
+    ['cap', 'main', 1.86], ['wizard', 'main', 2.04], ['bunny', 'trim', null], ['headphones', 'main', null]]) REGISTRY[`wear.hat_${file}`] = part(`hat_${file}`, 'hat', { dye, ...(cover ? { cover } : {}) });
+  REGISTRY['wear.hat_halo'] = part('hat_halo', 'hat');
+  for (const file of ['short', 'long', 'hooded', 'split', 'scallop', 'leaf', 'royal', 'star', 'wing', 'poncho']) REGISTRY[`wear.cape_${file}`] = part(`cape_${file}`, 'cape', { dye: file === 'wing' ? 'trim' : 'main' });
+  for (const [file, dye] of [['cat', 'main'], ['fox', 'main'], ['bunny', 'trim'], ['raccoon', 'main'], ['squirrel', 'main'], ['dragon', 'main'], ['lion', 'main'], ['dog', 'main'], ['devil', 'main'], ['ribbon', 'rose']]) REGISTRY[`wear.tail_${file}`] = part(`tail_${file}`, 'tail', { dye });
+  for (const file of ['sneakers', 'boots', 'rain', 'sandals', 'loafers', 'ribbon', 'hiking', 'armor', 'fur', 'slippers']) REGISTRY[`wear.shoes_${file}`] = part(`shoes_${file}`, 'shoes', { dye: 'main', replaces: ['shoes'] });
+  for (const [file, dye] of [['coin', 'accent'], ['star', 'accent'], ['heart', 'accent'], ['moon', 'accent'], ['gem', 'rose'], ['leaf', 'main'], ['shell', 'trim'], ['key', 'accent'], ['bell', 'accent'], ['lock', 'accent']]) REGISTRY[`wear.necklace_${file}`] = part(`necklace_${file}`, 'necklace', { dye });
   for (const [face, designs] of Object.entries({ eyes: ['oval', 'dot', 'wide', 'sleepy', 'smile', 'wink', 'almond', 'sparkle', 'heart', 'bold'], nose: ['button', 'tiny', 'round', 'triangle', 'bean', 'bridge', 'upturned', 'soft_square', 'animal', 'freckles'], mouth: ['smile', 'wide_smile', 'straight', 'open', 'cheer', 'cat', 'pout', 'tooth', 'tongue', 'dimples'] })) {
-    for (const d of designs) REGISTRY[`wear.${face}_${d}`] = part(`${face}_${d}`, true);
+    for (const d of designs) REGISTRY[`wear.${face}_${d}`] = part(`${face}_${d}`, 'face');
   }
-  // the avatar items (lib/skins.js) drawn by a part; slot -> what it replaces. null: no part yet (procedural character)
+  // the avatar items (lib/skins.js, ids by position) -> the part that draws each; every item has one (v1.10.32)
+  const items = (slot, files) => Object.fromEntries(files.map((file, i) => [`avatar_${slot}_${i + 1}`, `wear.${file}`]));
   const WARDROBE = {
-    avatar_hair_1: 'wear.hair_twin_tail', avatar_hair_2: 'wear.hair_curly', avatar_hair_3: 'wear.hair_ponytail', avatar_hair_4: 'wear.hair_spiky', avatar_hair_5: null, avatar_hair_6: null,
-    avatar_outfit_1: 'wear.overalls', avatar_outfit_2: null, avatar_outfit_3: null, avatar_outfit_4: null, avatar_outfit_5: null,
-    avatar_hat_1: 'wear.hat_straw', avatar_hat_2: 'wear.cat_ears', avatar_hat_3: 'wear.hat_flower', avatar_hat_4: 'wear.hat_crown', avatar_hat_5: null,
+    ...items('hair', ['hair_twin_tail', 'hair_curly', 'hair_ponytail', 'hair_spiky', 'hair_rainbow', 'hair_starlight', 'hair_crew', 'hair_side_part', 'hair_bob', 'hair_straight', 'hair_bun', 'hair_braid']),
+    ...items('outfit', ['overalls', 'outfit_stripes', 'outfit_hanbok', 'outfit_space', 'outfit_royal', 'outfit_casual', 'outfit_hoodie', 'outfit_sailor', 'outfit_apron', 'outfit_explorer', 'outfit_raincoat',
+      'outfit_knight', 'outfit_robe', 'outfit_dress', 'outfit_sports']),
+    ...items('hat', ['hat_straw', 'cat_ears', 'hat_flower', 'hat_crown', 'hat_halo', 'hat_beanie', 'hat_beret', 'hat_cap', 'hat_fedora', 'hat_wizard', 'hat_bunny', 'hat_headphones']),
+    ...items('cape', ['short', 'long', 'hooded', 'split', 'scallop', 'leaf', 'royal', 'star', 'wing', 'poncho'].map((d) => `cape_${d}`)),
+    ...items('tail', ['cat', 'fox', 'bunny', 'raccoon', 'squirrel', 'dragon', 'lion', 'dog', 'devil', 'ribbon'].map((d) => `tail_${d}`)),
+    ...items('shoes', ['sneakers', 'boots', 'rain', 'sandals', 'loafers', 'ribbon', 'hiking', 'armor', 'fur', 'slippers'].map((d) => `shoes_${d}`)),
+    ...items('necklace', ['coin', 'star', 'heart', 'moon', 'gem', 'leaf', 'shell', 'key', 'bell', 'lock'].map((d) => `necklace_${d}`)),
   };
-  // look: { gender, hair, outfit, hat, face: { eyes, nose, mouth }, dye: { itemId: '#rrggbb' } }; role: 'player' | 'keeper' |
-  // 'islander'; tint: { materialName: colour } (keepers and islanders wear their own colours). -> { parts, colors } | null
+  const LOOK_SLOTS = ['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'];
+  // look: { gender, hair, outfit, hat, cape, tail, shoes, necklace, face: { eyes, nose, mouth }, dye: { itemId: '#rrggbb' } };
+  // tint: { materialName: colour } (keepers and islanders wear their own colours). -> { parts, colors, tint } | null
   const SKIN = '#ffe0c4';
   function wardrobeOf(look = {}, { tint = null, hat = null } = {}) {
     const female = look.gender === 'female';
     const parts = { face: 'wear.face_eyes_cheeks', hair: female ? 'wear.hair_long' : 'wear.hair_cap', top: female ? 'wear.female_shirt' : 'wear.basic_shirt',
       bottom: female ? 'wear.short_skirt' : 'wear.basic_pants', shoes: 'wear.shoes' };
     const colors = {}; // part id -> { material: colour }
-    for (const slot of ['hair', 'outfit', 'hat']) {
+    for (const slot of LOOK_SLOTS) {
       const item = look[slot]; if (!item) continue;
-      if (!Object.prototype.hasOwnProperty.call(WARDROBE, item) || !WARDROBE[item]) return null; // no part for it yet
+      if (!Object.prototype.hasOwnProperty.call(WARDROBE, item) || !REGISTRY[WARDROBE[item]]) return null; // no part for it: the procedural character
       const id = WARDROBE[item];
-      if (slot === 'hair') parts.hair = id; else if (slot === 'outfit') parts.outfit = id; else parts.hat = id;
+      for (const replaced of REGISTRY[id].fit?.replaces || []) delete parts[replaced];
+      parts[slot] = id;
       const dye = look.dye?.[item]; if (dye && REGISTRY[id].dye) colors[id] = { [REGISTRY[id].dye]: dye };
     }
     if (hat && !parts.hat) { parts.hat = 'wear.hat_fedora'; colors['wear.hat_fedora'] = { main: hat }; } // a keeper's hat
@@ -162,7 +198,12 @@
     'prop.event.paper_litter': { url: '/assets/island/gaps-v1/props/paper_litter.glb', low: { url: '/assets/island/gaps-v1/props/paper_litter_low.glb' }, shadows: false, near: 40 },
     'prop.event.herb': prop('herb'), 'prop.event.berry': prop('berries'), 'prop.event.mushroom': prop('mushrooms'),
     'prop.event.coin': prop('coin'), 'prop.event.wallet': prop('wallet'), 'prop.event.lost_item': prop('lost_teddy'), 'prop.event.camera': prop('camera'),
+    // v1.10.32 생활 소품: a lost thing is a teddy or a pouch, a berry find a bush or fruit on the grass (each event's own,
+    // the same everywhere), and a gatherer's basket in the hand while picking (the same events, rules and rewards)
+    'prop.event.lost_pouch': { url: '/assets/island/gaps-v1/props/lost_pouch.glb', low: { url: '/assets/island/gaps-v1/props/lost_pouch_low.glb' }, shadows: false, near: 40 },
+    'prop.event.fruit': { url: '/assets/island/gaps-v1/props/fruit_pickup.glb', low: { url: '/assets/island/gaps-v1/props/fruit_pickup_low.glb' }, shadows: false, near: 40 },
+    'prop.event.basket': prop('collection_basket'),
   });
 
-  return { REGISTRY, WARDROBE, wardrobeOf };
+  return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

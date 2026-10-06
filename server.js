@@ -850,7 +850,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // v1.10.8: t = when the server took that pose (ms), so each screen spaces the poses by when they happened, not by
   // when its snapshot arrived
-  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), x, z, yaw, moving, t: at })) };
+  return { players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, carry }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), x, z, yaw, moving, t: at, carry: carry || null })) };
 }
 function dropPlazaPresence(token) { if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -2888,7 +2888,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.31' });
+    return sendJson(res, 200, { ok: true, version: '1.10.32' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3405,6 +3405,7 @@ async function requestHandler(req, res) {
       id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
+      carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
     });
     plazaDirty = true;
     const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
@@ -3593,6 +3594,10 @@ async function requestHandler(req, res) {
   // Test-only: every event (tests walk to one), and a fresh set.
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
+    const e = islandEvents.spawnLost();
+    return sendJson(res, 200, { ok: Boolean(e), event: e && { id: e.id, x: e.x, z: e.z, npc: e.npc } });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/give' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -4322,7 +4327,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.31 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.32 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
