@@ -63,6 +63,8 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   await a.page.locator('#otherRecordsBtn').click();
   const lookup = await a.page.locator('#recordsDialog').boundingBox();
   await a.page.locator('#recordsCloseBtn').click();
+  // v1.10.35: a common game skin is 100,000P now -- 50,000P left (a donation), so nothing can be bought yet
+  expect((await call(a, '/api/donation', { amount: 50_000, requestId: crypto.randomUUID() })).status).toBe(200);
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await expect(dialog).toBeVisible();
@@ -70,7 +72,7 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   await expect(dialog.locator('.skinCard')).toHaveCount(17);
   await expect(dialog.locator('.skinCard canvas')).toHaveCount(17);
 
-  // 100,000P뿐이라 살 수 없다(버튼 비활성).
+  // 50,000P뿐이라 살 수 없다(버튼 비활성).
   await expect(dialog.locator('.skinCard button').first()).toBeDisabled();
   await expect(dialog.locator('.skinCard button').first()).toContainText('포인트 부족');
 
@@ -79,13 +81,13 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   await dialog.getByRole('button', { name: '닫기' }).click();
   await a.page.locator('#skinShopBtn').click();
   const jade = dialog.locator('.skinCard', { hasText: '비취와 백옥' });
-  await expect(jade.locator('button')).toContainText('구매 500,000P');
+  await expect(jade.locator('button')).toContainText('구매 100,000P');
   await jade.locator('button').click();
-  await expect(jade.locator('button')).toContainText('한 번 더 누르면 500,000P 결제');
+  await expect(jade.locator('button')).toContainText('한 번 더 누르면 100,000P 결제');
   // 확인 클릭만으로는 차감이 없다.
-  await expect(dialog.locator('#skinShopBalance')).toHaveText('보유 600,000P');
+  await expect(dialog.locator('#skinShopBalance')).toHaveText('보유 550,000P');
   await jade.locator('button').click();
-  await expect(dialog.locator('#skinShopBalance')).toHaveText('보유 100,000P');
+  await expect(dialog.locator('#skinShopBalance')).toHaveText('보유 450,000P');
   await expect(jade.locator('button')).toHaveText('장착');
   await jade.locator('button').click();
   await expect(jade.locator('button')).toHaveText('장착 중 · 해제');
