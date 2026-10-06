@@ -36,7 +36,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     // v1.10.32 the pouch, the fruit and the basket; the snowcaps, the shore and bank stones; the boat, the gull, the dolphin
     'prop.event.lost_pouch', 'prop.event.fruit', 'prop.event.basket', 'struct.snowcap.flat', 'struct.snowcap.gable', 'struct.snowcap.round', 'nature.shoreStones', 'nature.riverBank',
     'sea.boat', 'sea.gull', 'sea.dolphin'].sort());
-  // v1.10.32: the base (10), every avatar item's part (hair 12, clothes 14 + overalls, hats 11 + cat ears, capes, tails,
+  // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
   // shoes, necklaces 10 each) and the 30 face designs
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30);
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));

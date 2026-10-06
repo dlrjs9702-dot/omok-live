@@ -146,19 +146,26 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
     await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
     await page.keyboard.press('Space');
     await expect(dialog.locator('#skinShopTitle')).toHaveText(name);
-    await expect(dialog.getByRole('tab')).toHaveText(['광장 아바타']); // game skins are sold next door
+    await expect(dialog.getByRole('tab').first()).toHaveText('광장 아바타'); // game skins are sold next door
     await expect(dialog.locator('.skinCard')).toHaveCount(count);
   };
-  await visit('hair', '미용실', 6);
+  await visit('hair', '미용실', 12); // v1.10.32: + the six new hair styles
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '잡화점', 5);
+  await visit('accessories', '잡화점', 12);
+  // v1.10.32: the five accessory slots, a tab each (the hats first)
+  await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
+  await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '망토' }).click();
+  await expect(dialog.locator('.skinCard')).toHaveCount(10);
+  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('전설 · 망토');
+  await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('1,500,000P');
+  await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '모자·장식' }).click();
   await expect(dialog.locator('.skinTitle')).toHaveCount(0); // the title is the clothes shop's
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('avatar', '옷가게', 5);
+  await visit('avatar', '옷가게', 15);
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
