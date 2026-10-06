@@ -66,8 +66,12 @@ jobs:
         if: ${{ matrix.shard == 1 }}
         run: npm test
 
+      # the desktop tests split in half (a plain --shard put nearly all of them in the first: the mobile project's mostly
+      # skipped tests filled the second half); the mobile project runs whole in the second
       - name: Run browser tests
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+        run: |
+          npm run test:e2e -- --project=chromium --shard=${{ matrix.shard }}/2
+          if [ "${{ matrix.shard }}" = "2" ]; then npm run test:e2e -- --project=mobile-chromium; fi
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

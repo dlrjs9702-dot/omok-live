@@ -103,5 +103,8 @@ test('운반: 주운 분실물은 어디서든 내 목록에 남고(주인 위�
   const back = ev.claim(lost.id, 'acc-a', { x: lost.npc.x, z: lost.npc.z });
   assert.equal(back.action, 'return'); ev.settle(back, true, 'acc-a');
   assert.equal(ev.carryOf('acc-a'), null);
+  // a thing still carried by someone else does not stop the next one (tests make one each)
+  const one = ev.spawnLost(); ev.settle(ev.claim(one.id, 'acc-c', { x: one.x, z: one.z }), true, 'acc-c');
+  assert.ok(ev.spawnLost()?.npc);
   t += 1;
 });
