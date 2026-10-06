@@ -293,7 +293,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sun.color.set(L.sun); sun.intensity = L.sunI;
     halloween.visible = on; fountain.visible = !on; candle.intensity = on ? 38 : 0;
     assets.setNight(on);
-  } // v1.10.16: placed in island-terrain.js, shared with the islanders' routes
+  }
+  const PROPS = globalThis.IslandTerrain.plazaProps(); // v1.10.16: placed in island-terrain.js, shared with the islanders' routes
   // v1.10.17: each plaza prop is a gameplay holder (place, facing; its circle is the shared plazaProps one) with its
   // procedural look in a `visual` group, which a registered model (prop.bench / prop.lamp / prop.planter) replaces
   const propHolder = (x, z, ry = 0) => { const holder = new THREE.Group(); holder.position.set(x, PH, z); holder.rotation.y = ry; scene.add(holder); const visual = new THREE.Group(); holder.add(visual); return [holder, visual]; };
