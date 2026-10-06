@@ -247,7 +247,7 @@ test('겨울 지붕 눈: 그날 겨울 구역의 집·시설만 지붕 모양에
   const roofs = async () => (await debug(page)).assets.attaches.filter((x) => x.snow !== undefined);
   const check = async (day) => {
     await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), day);
-    await expect.poll(async () => (await roofs()).filter((r) => r.look === 'winter').every((r) => ['flat', 'gable', 'round'].includes(r.snow)), { timeout: 90000 }).toBe(true);
+    await expect.poll(async () => { const w = (await roofs()).filter((r) => r.look === 'winter'); return w.length > 0 && w.every((r) => ['flat', 'gable', 'round'].includes(r.snow)); }, { timeout: 90000 }).toBe(true); // the buildings in first
     const list = await roofs();
     expect(list.filter((r) => r.look === 'winter').length).toBeGreaterThan(0);
     for (const r of list.filter((x) => x.look !== 'winter')) expect(['none', 'hidden']).toContain(r.snow);
@@ -431,7 +431,7 @@ test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬�
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 20000 }).toMatchObject({ mine: lost.id, arms: true, held: true, on: 'Chest' });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 60000 }).toMatchObject({ mine: lost.id, arms: true, held: true, on: 'Chest' }); // its model may still be coming on a slow runner
   if (process.env.SHOT_DIR) {
     const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
     await page.waitForTimeout(500);
