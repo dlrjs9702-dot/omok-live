@@ -12,7 +12,7 @@ const at = (iso) => Date.parse(iso);
 async function store(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'climb-store-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  const s = new JsonPointStore(path.join(dir, 'points.json'));
+  const s = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100_000 });
   await s.init();
   return s;
 }

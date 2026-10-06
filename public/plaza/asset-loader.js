@@ -636,6 +636,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       };
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
+      // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head
+      c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
+      for (const m of high) { m.skeleton.update(); m.computeBoundingBox(); top.union(m.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, m.matrixWorld))); }
+      if (Number.isFinite(top.max.y) && top.max.y > 0.5) { c.headTop = top.max.y; c.onWorn?.(); }
       for (const key of Object.keys(c.holding || {})) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });

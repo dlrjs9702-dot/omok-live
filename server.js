@@ -35,7 +35,7 @@ const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines } = require('./lib/missions');
-const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, faceDesign, dyeColor } = require('./lib/skins');
+const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
@@ -78,6 +78,11 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : 'dev-
 const MAX_BODY = 48 * 1024;
 const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 60)) * 60 * 1000;
 const SESSION_MAX_MS = Math.max(1, Number(process.env.SESSION_MAX_HOURS || 8)) * 60 * 60 * 1000;
+// v1.10.35 무입력 로그아웃 (IDEAS, 사용자 확정 2026-10-06): 30 minutes without a real input -- a key, the mouse, a click or
+// a touch -- ends the session, for everyone (players in a match, spectators, the island, admins). The page reports an
+// input at most once a minute (POST /api/session/input); an open stream's pings and other requests do not count.
+const INPUT_IDLE_MS = 30 * 60 * 1000;
+const INPUT_IDLE_MESSAGE = '30분 동안 입력이 없어 로그아웃되었습니다.';
 const ROOM_TTL_MS = Math.max(2, Number(process.env.ROOM_TTL_HOURS || 12)) * 60 * 60 * 1000;
 const GUEST_LOCK_TTL_MS = Math.max(30, Number(process.env.GUEST_LOCK_TTL_SECONDS || 90)) * 1000;
 // v1.6.99: a page's pagehide release is deferred this long, so a browser refresh can resume the
@@ -396,6 +401,7 @@ function createSession({ role, label, guestKeyId = null }) {
     createdAt: t,
     lastSeen: t,
     leaseSeenAt: t,
+    lastInput: t,
     currentRoomId: null,
   };
   sessions.set(token, session);
@@ -435,6 +441,12 @@ function isRoomHost(room, session) {
   const oldHost = room.participants?.[room.hostSessionToken];
   return room.hostSessionToken === session.token
     || (!room.hostIdentity && participantIdentity(oldHost) === identity);
+}
+
+// v1.10.35: every session whose last real input is 30 minutes old is logged out (its pages are told why)
+function sweepInputIdle() {
+  const now = nowMs();
+  for (const [token, session] of sessions) if (now - (session.lastInput ?? session.createdAt) > INPUT_IDLE_MS) releaseSessionToken(token, { message: INPUT_IDLE_MESSAGE });
 }
 
 function releaseSessionToken(token, { message = null, voluntary = false } = {}) {
@@ -3112,7 +3124,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name })) }])),
-      palette: DYE_PALETTE, dyeable: [...DYEABLE] });
+      palette: DYE_PALETTE, dyeable: [...DYEABLE], bodyDyes: BODY_DYES, skinTones: SKIN_TONES });
   }
   if ((pathname === '/api/avatar/surgery' || pathname === '/api/avatar/dye') && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -3127,6 +3139,10 @@ async function requestHandler(req, res) {
       const design = faceDesign(body.part, body.design);
       if (!design) return sendError(res, 400, 'BAD_FACE', '고를 수 없는 얼굴입니다.');
       plan = { kind: 'surgery', slot: `face_${body.part}`, value: `${body.part}_${design[0]}`, price: SURGERY_FEE, title: `${FACE_LABELS[body.part]} · ${design[1]}` };
+    } else if (Object.prototype.hasOwnProperty.call(BODY_DYES, body.itemId)) { // v1.10.35: the base hair, the eyes, the skin
+      const color = body.color === null ? null : bodyDyeColor(body.itemId, body.color);
+      if (body.color !== null && !color) return sendError(res, 400, 'BAD_COLOR', '고를 수 없는 색입니다.');
+      plan = { kind: 'dye', slot: `dye_${body.itemId}`, value: color ? color.id : null, price: color ? DYE_FEE : 0, title: `${BODY_DYES[body.itemId]} · ${color ? color.name : '기본색'}` };
     } else {
       const skin = skinById(body.itemId);
       if (!skin || skin.family !== 'avatar' || !DYEABLE.has(skin.id)) return sendError(res, 400, 'NOT_DYEABLE', '염색할 수 없는 꾸미기입니다.');
@@ -3134,7 +3150,7 @@ async function requestHandler(req, res) {
       if (body.color !== null && !color) return sendError(res, 400, 'BAD_COLOR', '고를 수 없는 색입니다.');
       const owned = (await pointStore.skinState(account)).owned || [];
       if (!owned.includes(skin.id)) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 꾸미기만 염색할 수 있습니다.');
-      plan = { kind: 'dye', slot: `dye_${skin.id}`, value: color ? color.id : null, price: DYE_FEE, title: `${skin.name} · ${color ? color.name : '기본색'}` };
+      plan = { kind: 'dye', slot: `dye_${skin.id}`, value: color ? color.id : null, price: color ? DYE_FEE : 0, title: `${skin.name} · ${color ? color.name : '기본색'}` };
     }
     const result = await pointStore.chargeLook({ userId: account, requestId: body.requestId, ...plan });
     if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
@@ -3315,6 +3331,20 @@ async function requestHandler(req, res) {
     const body = await parseJson(req).catch(() => ({}));
     session.leaseSeenAt = nowMs();
     if (body.page) session.leasePage = String(body.page).slice(0, 64); // v1.10.29: which page (tab load) holds the lease
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/api/session/input' && req.method === 'POST') { // v1.10.35: see INPUT_IDLE_MS
+    const session = requireSession(req, res);
+    if (!session) return;
+    session.lastInput = nowMs();
+    return sendJson(res, 200, { ok: true });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/input-idle' && req.method === 'POST') { // as if 30 minutes passed
+    const session = requireSession(req, res);
+    if (!session) return;
+    session.lastInput = nowMs() - INPUT_IDLE_MS - 1000;
+    sweepInputIdle();
     return sendJson(res, 200, { ok: true });
   }
 
@@ -4275,7 +4305,8 @@ async function main() {
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
-  pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
+  pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
@@ -4325,6 +4356,7 @@ async function main() {
   }, 10 * 60 * 1000).unref();
 
   setInterval(() => { if (invitations.size) broadcastLobby(); }, 15000).unref();
+  setInterval(sweepInputIdle, 60 * 1000).unref(); // v1.10.35
   setInterval(() => refundOrphanEntries('orphan-sweep').catch(error => console.error('참가 포인트 정기 정리 실패:', error.message)), 60_000).unref();
   setInterval(() => tickPictionaryRooms().catch(error => console.error('그림 맞히기 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickHalliRooms().catch(error => console.error('할리갈리 전적 처리 오류:', error)), 100).unref();

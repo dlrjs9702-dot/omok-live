@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, INITIAL_GRANT, DAILY_ATTENDANCE } = require('../lib/point-store');
+const { JsonPointStore, PostgresPointStore, kstDate, capTransfers, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT, DAILY_ATTENDANCE } = require('../lib/point-store');
+const INITIAL_GRANT = 100_000; // v1.10.35: production starts at 0P; these stores are given the old opening balance
 const { testDatabase } = require('../test-support/pg-database');
 
 const A = 'guest:11111111-1111-4111-8111-111111111111';
@@ -223,16 +224,12 @@ async function exercise(t, makeStore) {
     assert.deepEqual([nothing.applied, nothing.reason], [false, 'nothing']);
     assert.equal((await store.history(I)).items[0].memo, '관공서 정산');
 
-    // the daily limit: only what fits is sold, the rest stays for tomorrow
+    // v1.10.35 경제 기준(통합): no daily limit -- everything handed in is paid
     await give('give-herb-02', 'herb', 60);
     const merchant = await store.islandSell({ userId: I, requestId: 'sell-merch-01', place: 'merchant' }, now);
-    assert.equal(merchant.capped, true);
-    assert.ok(office.paid + merchant.paid <= Items.DAILY_CAP);
-    assert.ok((await store.islandBag(I)).items.find((e) => e.itemId === 'herb').qty > 0, '한도 넘는 몫은 가방에 남는다');
-    const capped = await store.islandSell({ userId: I, requestId: 'sell-merch-02', place: 'merchant' }, now);
-    assert.deepEqual([capped.applied, capped.reason], [false, 'cap']);
-    const tomorrow = await store.islandSell({ userId: I, requestId: 'sell-merch-03', place: 'merchant' }, now + 86400000);
-    assert.equal(tomorrow.applied, true, '다음 날 다시');
+    assert.equal(merchant.capped, false);
+    assert.equal(merchant.paid, 62 * Items.ITEMS.herb.price);
+    assert.equal((await store.islandBag(I)).items.some((e) => e.itemId === 'herb'), false, '모두 팔린다');
   });
 
   await t.test('v1.10.11 공용 이벤트 보상: 이벤트당 한 번·일일 한도·분실물 반환·주인이 떠난 분실물은 관공서', async () => {
@@ -258,37 +255,35 @@ async function exercise(t, makeStore) {
     assert.deepEqual([waiting.applied, waiting.reason], [false, 'nothing']);
     const found = await store.islandSell({ userId: R, requestId: 'sell-lost-02', place: 'office', activeLost: [] }, now);
     assert.equal(found.paid, Items.ITEMS.lost.price);
-    // the daily limit
-    const big = await store.islandReward({ userId: R, claimId: 'event:big00001', amount: Items.DAILY_CAP, title: '큰 보상' }, now);
-    assert.deepEqual([big.applied, big.reason], [false, 'cap']);
-    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00002', amount: Items.DAILY_CAP - 180 - Items.ITEMS.lost.price, title: '남은 만큼' }, now)).applied, true);
-    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00003', amount: 1, title: '넘침' }, now)).reason, 'cap');
+    // v1.10.35 경제 기준(통합): no daily limit
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00001', amount: 60_000, title: '큰 보상' }, now)).applied, true);
+    assert.equal((await store.islandReward({ userId: R, claimId: 'event:big00002', amount: 60_000, title: '또 큰 보상' }, now)).applied, true);
   });
 
-  await t.test('v1.10.9 작명소: 100,000P 한 번 차감·같은 요청은 한 번만·24시간 대기·잔액 부족·환불', async () => {
+  await t.test('v1.10.9 작명소: 30,000P(v1.10.35) 한 번 차감·같은 요청은 한 번만·24시간 대기·잔액 부족·환불', async () => {
     const N = 'guest:99999999-9999-4999-8999-999999999999'; const O = 'guest:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; // fresh accounts (100,000P)
     const t0 = Date.parse('2026-10-04T12:00:00+09:00');
     const first = await store.chargeNickname({ userId: N, requestId: 'nick-0001', name: '새 이름' }, t0);
-    assert.equal(first.applied, true); assert.equal(first.balanceAfter, 0);
+    assert.equal(first.applied, true); assert.equal(first.balanceAfter, 70_000);
     const again = await store.chargeNickname({ userId: N, requestId: 'nick-0001', name: '새 이름' }, t0);
     assert.equal(again.applied, false); assert.equal(again.name, '새 이름'); // the same request: already done
-    assert.equal((await store.getAccount(N)).balance, 0, '한 번만 차감');
+    assert.equal((await store.getAccount(N)).balance, 70_000, '한 번만 차감');
     assert.equal((await store.nicknameRequest('nick-0001')).name, '새 이름');
     assert.equal((await store.nicknameState(N)).until, new Date(t0 + 86400000).toISOString());
     await store.adminGrant({ grantId: 'admin-grant:nick-1', userId: N, amount: 500_000, category: 'event', memo: '' });
     const wait = await store.chargeNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }, t0 + 86400000 - 1);
     assert.deepEqual([wait.applied, wait.reason], [false, 'cooldown']);
-    assert.equal((await store.getAccount(N)).balance, 500_000, '대기 중에는 차감 없음');
+    assert.equal((await store.getAccount(N)).balance, 570_000, '대기 중에는 차감 없음');
     const later = await store.chargeNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }, t0 + 86400000);
     assert.equal(later.applied, true, '거절된 요청은 다시 보낼 수 있다');
     assert.equal(await store.refundNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }), true);
     assert.equal(await store.refundNickname({ userId: N, requestId: 'nick-0002', name: '또 이름' }), false, '환불은 한 번');
-    assert.equal((await store.getAccount(N)).balance, 500_000);
+    assert.equal((await store.getAccount(N)).balance, 570_000);
     assert.equal((await store.nicknameState(N)).changedAt, new Date(t0).toISOString(), '환불하면 이전 대기로');
     assert.equal(await store.nicknameRequest('nick-0002'), null);
     await store.ensureAccount(O);
-    await store.adminGrant({ grantId: 'admin-grant:nick-2', userId: O, amount: 10_000, category: 'event', memo: '' });
-    await store.chargeNickname({ userId: O, requestId: 'nick-o-01', name: '가' }, t0); // 110,000 → 10,000
+    await store.chargeLook({ userId: O, requestId: 'look-o-0001', kind: 'surgery', slot: 'face_eyes', value: 'eyes_heart', price: 60_000, title: '눈' });
+    await store.chargeNickname({ userId: O, requestId: 'nick-o-01', name: '가' }, t0); // 100,000 → 40,000 → 10,000
     const poor = await store.chargeNickname({ userId: O, requestId: 'nick-o-02', name: '나' }, t0 + 2 * 86400000);
     assert.deepEqual([poor.applied, poor.reason], [false, 'insufficient']);
     assert.ok((await store.history(N)).items.some((item) => item.reason === 'nickname' && item.memo === '새 이름'));
@@ -402,9 +397,9 @@ async function exercise(t, makeStore) {
 test('JSON 포인트 저장소', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'points-'));
   const file = path.join(dir, 'points.json');
-  await exercise(t, async () => { const store = new JsonPointStore(file); await store.init(); return store; });
+  await exercise(t, async () => { const store = new JsonPointStore(file, { initialGrant: INITIAL_GRANT }); await store.init(); return store; });
   // Reload from disk: balances survive a restart.
-  const reloaded = new JsonPointStore(file);
+  const reloaded = new JsonPointStore(file, { initialGrant: INITIAL_GRANT });
   await reloaded.init();
   assert.equal((await reloaded.getAccount(B)).balance, 0);
   await fs.rm(dir, { recursive: true, force: true });
@@ -422,7 +417,7 @@ test('PostgreSQL 포인트 저장소', async (t) => {
   const matches = new PostgresMatchStore(url);
   await matches.pool.query('DROP TABLE IF EXISTS game_match_history');
   await matches.init();
-  const store = await exercise(t, async () => { const s = new PostgresPointStore(url); await s.init(); await s.init(); return s; });
+  const store = await exercise(t, async () => { const s = new PostgresPointStore(url, { initialGrant: INITIAL_GRANT }); await s.init(); await s.init(); return s; });
 
   const match = id => ({ id, gameType: 'gostop', at: new Date().toISOString(), outcomes: [{ id: 'p-a', result: 'win' }, { id: 'p-c', result: 'loss' }] });
   const snapshot = async () => ({

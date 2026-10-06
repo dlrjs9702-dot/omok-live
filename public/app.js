@@ -1538,10 +1538,11 @@
     head.textContent = `보유 ${Number(skins.balance).toLocaleString('ko-KR')}P · ${kind === 'surgery' ? '시술' : '염색'} 1회 ${price.toLocaleString('ko-KR')}P`;
     lookCard.append(head);
     const choice = (label, key, current, extra = {}) => {
+      const cost = extra.free ? 0 : price; // v1.10.35: a dye back to the own colour is free
       const b = document.createElement('button'); b.type = 'button'; b.dataset.key = key;
       b.className = lookArmed === key ? 'primary' : current ? 'secondary' : 'ghost';
-      b.textContent = lookArmed === key ? `한 번 더 누르면 ${price.toLocaleString('ko-KR')}P` : current ? `${label} · 지금` : label;
-      b.disabled = current || skins.balance < price;
+      b.textContent = lookArmed === key ? (cost ? `한 번 더 누르면 ${cost.toLocaleString('ko-KR')}P` : '한 번 더 누르면 무료') : current ? `${label} · 지금` : label;
+      b.disabled = current || skins.balance < cost;
       if (extra.swatch) { const dot = document.createElement('span'); dot.className = 'lookSwatch'; dot.style.background = extra.swatch; b.prepend(dot); }
       Object.assign(b.dataset, extra.data || {});
       return b;
@@ -1555,9 +1556,9 @@
         lookCard.append(h, row);
       }
     } else {
-      const names = new Map(skins.catalog.flatMap((f) => f.skins.map((s) => [s.id, s.name])));
-      const mine = shop.dyeable.filter((id) => skins.owned.includes(id));
-      if (!mine.length) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = '염색할 수 있는 꾸미기가 없습니다'; lookCard.append(p); }
+      // v1.10.35: the base hair, the eyes and the skin come first (nothing to own), then the owned dyeable items
+      const names = new Map([...Object.entries(shop.bodyDyes || {}), ...skins.catalog.flatMap((f) => f.skins.map((s) => [s.id, s.name]))]);
+      const mine = [...Object.keys(shop.bodyDyes || {}), ...shop.dyeable.filter((id) => skins.owned.includes(id))];
       if (!mine.includes(lookState.item)) lookState.item = mine[0] || null;
       const items = document.createElement('div'); items.className = 'lookChoices';
       for (const id of mine) { const b = document.createElement('button'); b.type = 'button'; b.className = id === lookState.item ? 'secondary' : 'ghost'; b.textContent = names.get(id) || id; b.dataset.item = id; items.append(b); }
@@ -1565,8 +1566,8 @@
       if (lookState.item) {
         const current = skins.equipped?.avatar?.[`dye_${lookState.item}`] || null;
         const row = document.createElement('div'); row.className = 'lookChoices';
-        row.append(choice('기본색', `${lookState.item}:`, current === null, { data: { color: '' } }));
-        for (const c of shop.palette) row.append(choice(c.name, `${lookState.item}:${c.id}`, current === c.id, { swatch: c.hex, data: { color: c.id } }));
+        row.append(choice('기본색', `${lookState.item}:`, current === null, { free: true, data: { color: '' } }));
+        for (const c of lookState.item === 'skin' ? shop.skinTones : shop.palette) row.append(choice(c.name, `${lookState.item}:${c.id}`, current === c.id, { swatch: c.hex, data: { color: c.id } }));
         lookCard.append(row);
       }
     }
@@ -2007,6 +2008,15 @@
     }
     return data;
   }
+
+  // v1.10.35 무입력 로그아웃: a key, the mouse, a click or a touch tells the server at most once a minute that someone is
+  // here; 30 minutes without one and the server ends the session (server.js INPUT_IDLE_MS)
+  let inputSentAt = 0;
+  const sawInput = () => {
+    const now = Date.now(); if (!sessionToken || now - inputSentAt < 60 * 1000) return;
+    inputSentAt = now; api('/api/session/input', { method: 'POST', body: '{}' }).catch(() => {});
+  };
+  for (const type of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart']) window.addEventListener(type, sawInput, { capture: true, passive: true });
 
   function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
     try { sessionStorage.removeItem('gameCenterGuestSession'); } catch {} // see session-lock.js
@@ -3086,6 +3096,7 @@
   }
   function pointHistoryTitle(item) {
     if (item.reason === 'initial_grant') return '신규 계정 지급';
+    if (item.reason === 'economy_reset') return '경제 개편 초기화'; // v1.10.35
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
