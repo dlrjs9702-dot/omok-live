@@ -3571,9 +3571,13 @@ async function requestHandler(req, res) {
     const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
     if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const account = pointAccountForSession(session);
-    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+    const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (claimed.error) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
+    if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
+      const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+      return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
+    }
     let outcome;
     try {
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());

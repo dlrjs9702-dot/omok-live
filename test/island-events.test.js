@@ -59,7 +59,7 @@ test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고,
   const item = { x: lost.x, z: lost.z }; const owner = lost.npc;
   assert.ok(Math.hypot(item.x - owner.x, item.z - owner.z) > 12);
   const view = ev.nearby(owner.x, owner.z, 'guest:a');
-  assert.equal(view.find((v) => v.kind === 'lost_owner').verb, null, '줍기 전에는 주인에게 할 일 없음');
+  assert.equal(view.find((v) => v.kind === 'lost_owner').verb, '말 걸기', '줍기 전에는 주인이 부탁한다(v1.10.34)');
   const pick = ev.claim(lost.id, 'guest:a', item);
   assert.equal(pick.action, 'pickup');
   assert.deepEqual(ev.settle(pick, true, 'guest:a'), { carried: lost.id });
@@ -107,4 +107,24 @@ test('운반: 주운 분실물은 어디서든 내 목록에 남고(주인 위�
   const one = ev.spawnLost(); ev.settle(ev.claim(one.id, 'acc-c', { x: one.x, z: one.z }), true, 'acc-c');
   assert.ok(ev.spawnLost()?.npc);
   t += 1;
+});
+
+// v1.10.34 부탁: talking to the owner of a thing not found yet changes nothing but that I now see it from anywhere (it
+// stays where it is, nothing paid); too far is refused; once it is carried there is nothing to ask
+test('부탁: 주인에게 말 걸면 그 계정만 멀리서도 물건이 보이고, 멀면 거절, 주운 뒤에는 부탁 없음', () => {
+  const { createIslandEvents } = require('../lib/island-events');
+  const ev = createIslandEvents({ now: () => 1_000_000, random: (() => { let s = 11; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })() });
+  const lost = ev.spawnLost();
+  const far = { x: lost.x + 200, z: lost.z + 200 };
+  assert.equal(ev.claim(lost.id, 'acc-a', far, { owner: true }).error, 'TOO_FAR');
+  assert.equal(ev.nearby(far.x, far.z, 'acc-a').some((e) => e.kind === 'lost_item'), false);
+  const owner = ev.nearby(lost.npc.x, lost.npc.z, 'acc-a').find((e) => e.kind === 'lost_owner');
+  assert.equal(owner.verb, '말 걸기');
+  const talk = ev.claim(lost.id, 'acc-a', { x: lost.npc.x, z: lost.npc.z }, { owner: true });
+  assert.equal(talk.action, 'talk'); assert.equal(talk.points, 5000);
+  assert.ok(ev.nearby(far.x, far.z, 'acc-a').some((e) => e.kind === 'lost_item' && e.id === lost.id));
+  assert.equal(ev.nearby(far.x, far.z, 'acc-b').some((e) => e.kind === 'lost_item'), false);
+  ev.settle(ev.claim(lost.id, 'acc-a', { x: lost.x, z: lost.z }), true, 'acc-a');
+  assert.equal(ev.nearby(lost.npc.x, lost.npc.z, 'acc-b').find((e) => e.kind === 'lost_owner').verb, null);
+  assert.equal(ev.nearby(lost.npc.x, lost.npc.z, 'acc-a').find((e) => e.kind === 'lost_owner').verb, '돌려주기');
 });
