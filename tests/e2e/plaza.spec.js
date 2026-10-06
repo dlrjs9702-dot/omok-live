@@ -904,6 +904,16 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   const { page } = a;
   const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
   expect(lost?.npc).toBeTruthy();
+  // v1.10.34 부탁: talking to the owner -- what they lost, and its place on my map from anywhere
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('분실물 찾아주기');
+  await expect(page.locator('.lostRequest')).toContainText('잃어버렸어요');
+  await expect(page.locator('.lostRequest')).toContainText('사례 5,000P');
+  await page.locator('.lostRequest button').click();
+  await expect(page.locator('#plazaDialog')).toBeHidden();
+  await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
   await page.locator('#plazaStage').focus();

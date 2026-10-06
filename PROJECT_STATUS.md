@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.34 분실물 주인: 노란 별 「!」 표시·말 걸면 찾아 달라는 부탁
+
+사용자 지시 2026-10-06(「?가 접속해 있다」「말 걸면 잃어버린 것을 찾아 달라는 퀘스트를」).
+
+- 표시: 주인 NPC 머리 위 「?」가 플레이어 이름표와 같은 모양이라 접속자로 보였다 → 노란 별 안에 「!」(`plaza-scene` `makeStarMark`, 이름표 모양 아님). 관광객 카메라 이름표는 유지.
+- 부탁: 줍기 전 주인 근처에서 「SPACE · 말 걸기」 → 서버 `claim(..., { owner: true })`가 `talk`(거리 확인, 지급·상태 변경 없음, 그 계정을 `askers`에 기록) → 창 「분실물 찾아주기」(무엇을 잃어버렸는지 — 곰 인형/작은 주머니, 사례 금액). 부탁을 받은 계정에는 그 물건이 거리와 관계없이 `nearby`에 실려 미니맵에 표시. 줍기·운반·돌려주기·보상 규칙은 그대로(부탁 없이 주워도 됨).
+
 ## v1.10.33 섬 제초 요청 안내·오늘 하루 잡초 3배
 
 사용자 지시 2026-10-06.

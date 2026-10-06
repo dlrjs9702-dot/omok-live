@@ -1715,6 +1715,18 @@
       if (error.data?.error === 'WEED_GONE') plaza.controller?.removeWeeds?.([id]);
     } finally { weedBusy = false; }
   }
+  // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
+  const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
+  plazaDialog.addEventListener('close', () => lostCard.classList.add('hidden'));
+  function openLostRequest(id, points) {
+    const name = plaza.controller?.lostName?.(id) || '물건';
+    const ask = document.createElement('p'); ask.className = 'lostRequestLine'; ask.textContent = `「${name}${/[가-힣]/.test(name.slice(-1)) && (name.charCodeAt(name.length - 1) - 0xac00) % 28 ? '을' : '를'} 잃어버렸어요…`;
+    const more = document.createElement('p'); more.className = 'lostRequestLine'; more.textContent = '이 근처 풀밭 어딘가에 떨어뜨린 것 같아요. 찾아서 가져다주시면 사례할게요!」';
+    const meta = document.createElement('p'); meta.className = 'lookMeta'; meta.textContent = `미니맵 ! 표시 · 사례 ${Number(points || 0).toLocaleString('ko-KR')}P`;
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '찾아볼게요'; ok.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(ask, more, meta, ok); lostCard.classList.remove('hidden');
+    openPlazaWindow('분실물 찾아주기', [lostCard]);
+  }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {
     const id = key.split(':')[2];
@@ -1724,7 +1736,8 @@
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id }) });
+      const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
+      if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
       else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back

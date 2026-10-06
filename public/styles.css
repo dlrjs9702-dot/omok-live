@@ -1642,3 +1642,8 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .bootPercent{font-size:1.35rem;font-weight:900;color:#fde68a}
 .bootBar{width:min(320px,80vw);height:10px;border-radius:999px;background:#0f172a;border:1px solid #273449;overflow:hidden}
 .bootBar span{display:block;height:100%;width:0;background:#2563eb;transition:width .2s}
+
+/* v1.10.34 분실물 부탁 */
+.lostRequest{display:grid;gap:8px}
+.lostRequestLine{margin:0;font-size:.92rem;line-height:1.5;color:#f8fafc}
+.lostRequest button{justify-self:end}
