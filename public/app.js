@@ -1516,7 +1516,7 @@
   plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
-  // v1.10.30 성형외과·염색사: change one face part (300,000P each time) or the colour of one owned item (50,000P each
+  // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
   // time, its own colour back costs the same). A choice is pressed twice (the first press says the price); one request
   // id per choice until the server answers, so a lost answer is never paid twice.
   const lookCard = document.createElement('section'); lookCard.className = 'lobbyCard lookShop hidden'; document.body.append(lookCard);
@@ -1755,7 +1755,7 @@
     } finally { islandEventBusy = false; islandReturning = null; }
   }
 
-  // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 100,000P on a second press that names the
+  // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 30,000P (v1.10.35) on a second press that names the
   // price, then 24 hours before the next change. One request id per name until the server answers (a retry after a
   // lost answer is the same change, paid once).
   const namingDialog = document.getElementById('namingDialog');

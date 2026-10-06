@@ -585,8 +585,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
       const high = []; const low = []; const mats = [];
+      const worn = {}; // material name -> the colour put on it (tests)
       const own = (m, colors) => { // the shared material in the colours this character wants on it
-        const list = [].concat(m.material).map((x) => { const rec = wearMaterial(x, colors?.[x.name] || plan.tint?.[x.name]); mats.push(rec); return rec.material; });
+        const list = [].concat(m.material).map((x) => { const want = colors?.[x.name] || plan.tint?.[x.name]; if (want) worn[x.name] = want; const rec = wearMaterial(x, want); mats.push(rec); return rec.material; });
         m.material = Array.isArray(m.material) ? list : list[0];
       };
       const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };
@@ -610,7 +611,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit); // a part without a Low file shows at every distance
         if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit);
       });
-      c.wearMats = mats; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
+      c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
       const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
       // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
