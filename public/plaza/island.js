@@ -476,10 +476,15 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const pebble = keep(mergeColored([part(new THREE.IcosahedronGeometry(1, 0), 0xffffff, 0, 0, 0, { shade: [0.8, 1.05] })])); // white, tinted per copy
   // v1.10.20: three rock shapes for models (round, wide, tall), each rock's from its place; without models the three
   // lists bake together exactly as one did
+  // v1.10.32 해안 돌: about half the rocks on the beaches (not the cliffs) are a low cluster of shore stones (04 pack),
+  // lying along the shoreline, in the same places -- nothing new to walk round
+  const shoreStones = (r) => cliffAt(r.x, r.z) < 0.4 && hash(r.x, r.z, 31) < 0.5;
   for (let k = 0; k < 3; k += 1) {
-    instanced(pebble, natureMat, rocks.filter((r) => Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
+    instanced(pebble, natureMat, rocks.filter((r) => !shoreStones(r) && Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
       { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: [`nature.rock.${k}`, 'nature.rock'] });
   }
+  instanced(pebble, natureMat, rocks.filter(shoreStones), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, -(Math.atan2(r.z, r.x) + Math.PI / 2)),
+    { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: ['nature.shoreStones', 'nature.rock.1', 'nature.rock'] });
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
@@ -508,9 +513,10 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const turn = Math.abs(wrap(Math.atan2(cz - bz, cx - bx) - Math.atan2(bz - az, bx - ax)));
     if (turn < 0.16 || coastDist(bx, bz) < 4 || bendRocks.some((r) => Math.hypot(r.x - bx, r.z - bz) < 12) || bridges.some((b) => Math.hypot(b.x - bx, b.z - bz) < 5)) continue;
     const l = Math.hypot(cx - ax, cz - az) || 1; const side = wrap(Math.atan2(cz - bz, cx - bx) - Math.atan2(bz - az, bx - ax)) > 0 ? -1 : 1; // the outer bank
-    bendRocks.push({ x: bx - ((cz - az) / l) * 0.75 * side, z: bz + ((cx - ax) / l) * 0.75 * side, s: 0.32 + hash(bx, bz) * 0.15 });
+    bendRocks.push({ x: bx - ((cz - az) / l) * 0.75 * side, z: bz + ((cx - ax) / l) * 0.75 * side, s: 0.32 + hash(bx, bz) * 0.15, along: -Math.atan2(cz - az, cx - ax) });
   } });
-  instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.x), { cell: 60, color: (r, c) => c.set(0xb8b0a4) });
+  // v1.10.32 강둑 돌: the stones on the outer bank of each bend are the made bank stones (04 pack), along the stream
+  instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.along), { cell: 60, color: (r, c) => c.set(0xb8b0a4), target: 'nature.riverBank' });
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
   instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, ground(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });

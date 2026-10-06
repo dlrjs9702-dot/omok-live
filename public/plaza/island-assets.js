@@ -87,8 +87,13 @@
     // flowers at every distance -- their colours make the island colourful from afar; the far file is the pipeline's
     // own simplification of the same flower (about 160-520 triangles), lighter than the artist's Low
     ...Object.fromEntries([0, 1, 2, 3, 4].map((c) => [`nature.flower.${c}`, { seasons: seasonalAdd(`flower_${c}_{s}.glb`), low: { seasons: seasonalAdd(`flower_${c}_{s}_low.glb`) }, scale: 0.75, near: 20, shadows: false }])),
-    ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`cottage.${i}`, { url: `${ADD}/houses/cottage_${i}.glb`, low: { url: `${ADD}/houses/cottage_${i}_low.glb` }, scale: 1, rotationY: Math.PI, near: 45 }])),
-    ...Object.fromEntries(Object.entries(FACILITY_FIT).map(([id, fit]) => [`facility.${id}`, { url: `${ADD}/facilities/${id}.glb`, low: { url: `${ADD}/facilities/${id}_low.glb` }, rotationY: Math.PI, near: 60, ...fit }])),
+    // v1.10.32 `snow`: in a winter zone the roof wears snow (asset-loader roofSnow: a snowcap laid over its own roof)
+    ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [`cottage.${i}`, { url: `${ADD}/houses/cottage_${i}.glb`, low: { url: `${ADD}/houses/cottage_${i}_low.glb` }, scale: 1, rotationY: Math.PI, near: 45, snow: true }])),
+    ...Object.fromEntries(Object.entries(FACILITY_FIT).map(([id, fit]) => [`facility.${id}`, { url: `${ADD}/facilities/${id}.glb`, low: { url: `${ADD}/facilities/${id}_low.glb` }, rotationY: Math.PI, near: 60, snow: true, ...fit }])),
+    // v1.10.32 해안·강둑 (04 pack): the beach rocks' low clusters and the bends' bank stones (island.js, their own places)
+    'nature.shoreStones': { url: `${GAPS}/props/shore_stone_cluster.glb`, low: { url: `${GAPS}/props/shore_stone_cluster_low.glb` }, scale: 0.75, near: 40 },
+    'nature.riverBank': { url: `${GAPS}/props/river_bank.glb`, low: { url: `${GAPS}/props/river_bank_low.glb` }, scale: 0.6, offset: [0, -0.05, 0], near: 40 },
+    ...Object.fromEntries(['flat', 'gable', 'round'].map((k) => [`struct.snowcap.${k}`, { url: `${GAPS}/structure/snowcap_${k}.glb`, shadows: false }])), // the made snowcaps (04 pack)
     'prop.lamp': { url: `${ADD}/props/lamp.glb`, low: { url: `${ADD}/props/lamp_low.glb` }, scale: 0.85, near: 30 },
     'prop.bridge': { seasons: seasonal('bridge_{s}_v1.glb'), scale: 1.3, rotationY: -Math.PI / 2 }, // fitted to each bridge's deck (island.js BRIDGE)
     'prop.fence': { seasons: seasonal('fence_{s}_v1.glb'), scale: 0.6 }, // a cottage's yard fence, segment by segment (plaza-scene FENCE_SEG)
@@ -102,6 +107,10 @@
     'fx.petal': { url: `${GAPS}/props/atmosphere_petal.glb` }, 'fx.leaf': { url: `${GAPS}/props/atmosphere_leaf.glb` }, 'fx.snow': { url: `${GAPS}/props/atmosphere_snowflake.glb` },
     'sea.coastLong': sea('distant_coast_long', 3), 'sea.coastCove': sea('distant_coast_cove', 3), 'sea.ridgeSoft': sea('mountain_ridge_soft', 2.2), 'sea.ridgeRugged': sea('mountain_ridge_rugged', 2.2),
     'sea.peak': sea('mountain_peak', 2.2), 'sea.glacier': sea('glacier', 2.5), 'sea.floe': sea('ice_floe', 2.5),
+    // v1.10.32 해상 볼거리 (2026-10-06 finish pack: made with the skins pack's generator): a small boat, a gull, a dolphin
+    'sea.boat': { url: '/assets/island/finish-v1/sea/boat.glb', low: { url: '/assets/island/finish-v1/sea/boat_low.glb' }, near: 90, shadows: false },
+    'sea.gull': { url: '/assets/island/finish-v1/sea/gull.glb', shadows: false },
+    'sea.dolphin': { url: '/assets/island/finish-v1/sea/dolphin.glb', low: { url: '/assets/island/finish-v1/sea/dolphin_low.glb' }, near: 40, shadows: false },
     'sea.whale': { url: `${GAPS}/sea/whale.glb`, scale: 1.2 }, 'sea.splash': { url: `${GAPS}/sea/splash.glb`, scale: 1.4 }, // played once (BreachOnce / SplashOnce)
   };
 

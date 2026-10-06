@@ -98,6 +98,54 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     rec.object = object; if (object) rec.holder.add(object);
     rec.procedural.visible = !object;
     rec.onSwap?.(object ? entry : null);
+    rec.snowEntry = object && entry?.snow ? entry : null; rec.snow = null; applySnow(rec);
+  }
+
+  // v1.10.32 겨울 지붕 눈 (IDEAS 섬 계절: four zones, the seasons one zone clockwise each day): a building with `snow`
+  // in a zone whose season today is winter wears snow on its roof -- the made snowcap (04 pack: flat, gable, round) of
+  // its roof's kind, laid over the roof's own faces (asset-pipeline roofShape / drapeSnow), worked out once per model
+  // file and shared by its copies; shown or hidden as the day turns its zone's season.
+  const roofOf = new Map(); // building url -> Promise<{ geometry, material } | null>
+  const isRoof = (name) => /roof/i.test(name || '');
+  function roofSnow(entry) {
+    if (!roofOf.has(entry.url)) {
+      roofOf.set(entry.url, cache.get(entry.url).then(async (gltf) => {
+        if (!gltf) return null;
+        gltf.scene.updateMatrixWorld(true);
+        const tris = []; const v = new THREE.Vector3();
+        gltf.scene.traverse((o) => {
+          if (!o.isMesh || !isRoof([].concat(o.material)[0]?.name)) return;
+          const g = o.geometry; const P = g.attributes.position; const idx = g.index;
+          const n = idx ? idx.count : P.count;
+          for (let i = 0; i < n; i += 1) { v.fromBufferAttribute(P, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld); tris.push(v.x, v.y, v.z); }
+        });
+        if (!tris.length) return null;
+        const roof = P.roofShape(Float32Array.from(tris));
+        const cap = await cache.get(registry[`struct.snowcap.${roof.kind}`]?.url);
+        let capMesh = null; cap?.scene.updateMatrixWorld(true); cap?.scene.traverse((o) => { if (o.isMesh && !capMesh) capMesh = o; });
+        if (!capMesh) return null;
+        const cp = capMesh.geometry.attributes.position; const pos = new Float32Array(cp.count * 3);
+        for (let i = 0; i < cp.count; i += 1) { v.fromBufferAttribute(cp, i).applyMatrix4(capMesh.matrixWorld); pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z; }
+        const draped = P.drapeSnow(pos, capMesh.geometry.index ? Array.from(capMesh.geometry.index.array) : null, roof);
+        const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(draped.pos, 3)); geometry.setIndex(draped.index);
+        geometry.computeVertexNormals(); geometry.computeBoundingSphere(); made.push(geometry);
+        return { geometry, material: capMesh.material, kind: roof.kind };
+      }));
+    }
+    return roofOf.get(entry.url);
+  }
+  function applySnow(rec) {
+    const winter = Boolean(rec.snowEntry) && lookOf(rec.zone) === 'winter';
+    if (rec.snow) rec.snow.visible = winter;
+    if (!winter || rec.snow || rec.snowPending === rec.object) return;
+    const object = rec.object; const entry = rec.snowEntry; rec.snowPending = object;
+    roofSnow(entry).then((snow) => {
+      if (disposed || !snow || rec.object !== object) return;
+      const group = new THREE.Group(); group.name = 'roofSnow'; group.userData.kind = snow.kind;
+      const mesh = new THREE.Mesh(snow.geometry, snow.material); mesh.receiveShadow = true; group.add(mesh);
+      if (object.isLOD) place(group, entry); // a LOD's levels carry the entry's scale and turn; a single model carries them itself
+      object.add(group); rec.snow = group; group.visible = lookOf(rec.zone) === 'winter';
+    }).catch((error) => onError(entry.url, error));
   }
   function applyAttach(rec) {
     rec.holder.getWorldPosition(placeOf);
@@ -364,7 +412,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function setDay(next) {
     if (next === day) return;
     day = next;
-    for (const rec of attaches) applyAttach(rec);
+    for (const rec of attaches) { applyAttach(rec); applySnow(rec); }
     for (const rec of batches) applyBatch(rec);
   }
 
@@ -648,6 +696,6 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       first: !g0 ? 'procedural' : p0.flags[0] === 1 || !g0.low ? 'high' : 'low',
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
-  const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url }));
+  const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
   return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

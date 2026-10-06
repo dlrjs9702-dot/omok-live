@@ -214,6 +214,75 @@
     return { pos: P, index: I };
   }
 
+  // v1.10.32 겨울 지붕 눈: a roof read from its own faces (the triangles of its roof materials, the model's space) --
+  // the height over a grid (straight down onto the faces), its kind (flat; gable, and which way the ridge runs; or
+  // round: hipped, pyramid, cone) and the height anywhere on it (bilinear, gaps filled from the nearest cell).
+  function roofShape(tris, n = 24) {
+    let x0 = Infinity; let x1 = -Infinity; let z0 = Infinity; let z1 = -Infinity;
+    for (let i = 0; i < tris.length; i += 3) { x0 = Math.min(x0, tris[i]); x1 = Math.max(x1, tris[i]); z0 = Math.min(z0, tris[i + 2]); z1 = Math.max(z1, tris[i + 2]); }
+    const dx = (x1 - x0) / (n - 1); const dz = (z1 - z0) / (n - 1);
+    const H = new Float64Array(n * n).fill(NaN);
+    for (let t = 0; t < tris.length; t += 9) {
+      const ax = tris[t]; const ay = tris[t + 1]; const az = tris[t + 2]; const bx = tris[t + 3]; const by = tris[t + 4]; const bz = tris[t + 5]; const cx = tris[t + 6]; const cy = tris[t + 7]; const cz = tris[t + 8];
+      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz); if (Math.abs(d) < 1e-12) continue;
+      const i0 = Math.max(0, Math.floor((Math.min(ax, bx, cx) - x0) / dx)); const i1 = Math.min(n - 1, Math.ceil((Math.max(ax, bx, cx) - x0) / dx));
+      const j0 = Math.max(0, Math.floor((Math.min(az, bz, cz) - z0) / dz)); const j1 = Math.min(n - 1, Math.ceil((Math.max(az, bz, cz) - z0) / dz));
+      for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) {
+        const x = x0 + i * dx; const z = z0 + j * dz;
+        const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d; const l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d; const l3 = 1 - l1 - l2;
+        if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+        const y = l1 * ay + l2 * by + l3 * cy; const k = j * n + i; if (!(H[k] >= y)) H[k] = y;
+      }
+    }
+    for (let pass = 0; pass < n && H.some(Number.isNaN); pass += 1) { // gaps (slats, trims): the nearest filled cell
+      const prev = H.slice();
+      for (let j = 0; j < n; j += 1) for (let i = 0; i < n; i += 1) {
+        if (!Number.isNaN(prev[j * n + i])) continue;
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = prev[(j + b) * n + i + a]; if (i + a >= 0 && i + a < n && j + b >= 0 && j + b < n && !Number.isNaN(v)) { H[j * n + i] = v; break; } }
+      }
+    }
+    let lo = Infinity; let hi = -Infinity; let gx = 0; let gz = 0;
+    for (let j = 0; j < n; j += 1) for (let i = 0; i < n; i += 1) {
+      const v = H[j * n + i]; lo = Math.min(lo, v); hi = Math.max(hi, v);
+      if (i + 1 < n) gx += Math.abs(H[j * n + i + 1] - v) / dx; if (j + 1 < n) gz += Math.abs(H[(j + 1) * n + i] - v) / dz;
+    }
+    const kind = hi - lo < 0.25 ? 'flat' : Math.max(gx, gz) > 2.5 * Math.min(gx, gz) ? 'gable' : 'round';
+    const height = (x, z) => {
+      const fi = Math.min(n - 1.001, Math.max(0, (x - x0) / dx)); const fj = Math.min(n - 1.001, Math.max(0, (z - z0) / dz));
+      const i = Math.floor(fi); const j = Math.floor(fj); const u = fi - i; const w = fj - j; const at = (a, b) => H[(j + b) * n + i + a];
+      return (at(0, 0) * (1 - u) + at(1, 0) * u) * (1 - w) + (at(0, 1) * (1 - u) + at(1, 1) * u) * w;
+    };
+    return { kind, ridge: kind === 'gable' ? (gx > gz ? 'z' : 'x') : null, box: [x0, z0, x1, z1], low: lo, high: hi, height };
+  }
+  // A snowcap (a made cap: flat, gable with its ridge along z, or round) laid over a roof: subdivided so it can follow
+  // the roof's faces, stretched to the roof's extent (a little inside its edges, turned with a gable's ridge), each
+  // point set on the roof at its own thickness over the cap's underside. pos/index: the cap's (flat arrays) -> new ones.
+  function drapeSnow(pos, index, roof, { inset = 0.96, lift = 0.03, subdivide = 2 } = {}) {
+    let P = Array.from(pos); let I = index ? Array.from(index) : P.map((_, i) => i).filter((i) => i < P.length / 3);
+    for (let s = 0; s < subdivide; s += 1) { // each triangle into four (shared midpoints)
+      const mid = new Map(); const next = [];
+      const m = (a, b) => { const k = a < b ? `${a},${b}` : `${b},${a}`; if (!mid.has(k)) { mid.set(k, P.length / 3); P.push((P[a * 3] + P[b * 3]) / 2, (P[a * 3 + 1] + P[b * 3 + 1]) / 2, (P[a * 3 + 2] + P[b * 3 + 2]) / 2); } return mid.get(k); };
+      for (let t = 0; t < I.length; t += 3) { const [a, b, c] = [I[t], I[t + 1], I[t + 2]]; const ab = m(a, b); const bc = m(b, c); const ca = m(c, a); next.push(a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca); }
+      I = next;
+    }
+    let sx0 = Infinity; let sx1 = -Infinity; let sz0 = Infinity; let sz1 = -Infinity;
+    for (let i = 0; i < P.length; i += 3) { sx0 = Math.min(sx0, P[i]); sx1 = Math.max(sx1, P[i]); sz0 = Math.min(sz0, P[i + 2]); sz1 = Math.max(sz1, P[i + 2]); }
+    // the cap's underside: the lowest point near each place (a coarse grid of its own vertices)
+    const g = 12; const under = new Float64Array(g * g).fill(Infinity);
+    const cell = (x, z) => Math.min(g - 1, Math.floor(((x - sx0) / (sx1 - sx0 || 1)) * g)) + Math.min(g - 1, Math.floor(((z - sz0) / (sz1 - sz0 || 1)) * g)) * g;
+    for (let i = 0; i < P.length; i += 3) { const k = cell(P[i], P[i + 2]); under[k] = Math.min(under[k], P[i + 1]); }
+    const [x0, z0, x1, z1] = roof.box; const cx = (x0 + x1) / 2; const cz = (z0 + z1) / 2; const hx = ((x1 - x0) / 2) * inset; const hz = ((z1 - z0) / 2) * inset;
+    const out = new Float32Array(P.length);
+    for (let i = 0; i < P.length; i += 3) {
+      const u = ((P[i] - sx0) / (sx1 - sx0 || 1)) * 2 - 1; const w = ((P[i + 2] - sz0) / (sz1 - sz0 || 1)) * 2 - 1;
+      const [ru, rw] = roof.ridge === 'x' ? [w, u] : [u, w]; // the cap's slope runs across x; a ridge along x turns it
+      const X = cx + ru * hx; const Z = cz + rw * hz;
+      const t = Math.max(0, P[i + 1] - under[cell(P[i], P[i + 2])]);
+      out[i] = X; out[i + 1] = roof.height(X, Z) + lift + t; out[i + 2] = Z;
+    }
+    return { pos: out, index: I };
+  }
+
   // What the scene calls. With nothing registered (the default) every call is a no-op and the loader module is never
   // fetched; otherwise the loader is imported once and the calls made meanwhile are replayed on it. A loader that
   // cannot load leaves every target procedural.
@@ -263,5 +332,5 @@
     };
   }
 
-  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, fitWardrobe, applyFit, createLazyAssets };
+  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
 });

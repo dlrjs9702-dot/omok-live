@@ -210,6 +210,68 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
   await a.context.close();
 });
 
+// v1.10.32 해상 볼거리: a boat crossing out at sea, gulls wheeling over the water, dolphins leaping -- all past the
+// coast (never on the island), placed where the default camera shows them
+test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — 섬과 플레이 영역 밖, 기본 시점 화면 안', async ({ browser, request }) => {
+  test.setTimeout(240000);
+  const a = await island(browser, request, '바다구경', { __only: true, 'sea.boat': { url: BOX }, 'sea.gull': { url: BOX }, 'sea.dolphin': { url: BOX }, 'sea.splash': { url: BOX } });
+  const { page } = a;
+  await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 30000 }).toBe('ready');
+  await page.evaluate(() => window.PlazaWarp(98, 0)); // on the east beach, the open sea before it (the harbour is south)
+  const sights = () => page.evaluate(() => ({ at: window.PlazaDebug().sea.at(), me: { x: window.PlazaDebug().x, z: window.PlazaDebug().z } }));
+  const out = (p) => page.evaluate(([x, z]) => window.IslandTerrain.coastDist(x, z), [p.x, p.z]);
+  for (const kind of ['boat', 'gulls', 'dolphins']) {
+    await expect.poll(() => page.evaluate((k) => window.PlazaDebug().sea.show(k) || window.PlazaDebug().sea.active().includes(k), kind), { timeout: 20000 }).toBe(true);
+  }
+  await expect.poll(async () => { const s = await sights(); return ['boat', 'gulls', 'dolphins'].every((k) => (s.at[k] || []).length > 0); }, { timeout: 20000 }).toBe(true);
+  const { at, me } = await sights();
+  for (const p of at.boat) { expect(Math.hypot(p.x - me.x, p.z - me.z)).toBeGreaterThan(15); expect(await out(p)).toBeLessThan(-4); }
+  for (const p of at.gulls) { expect(p.y).toBeGreaterThan(2); expect(await out(p)).toBeLessThan(0); }
+  for (const p of at.dolphins) { expect(Math.hypot(p.x - me.x, p.z - me.z)).toBeGreaterThan(14); expect(await out(p)).toBeLessThan(-5); }
+  const inPicture = await page.evaluate((list) => list.map(([x, y, z]) => window.PlazaDebug().sea.inPicture(x, y, z)), [...at.boat, ...at.gulls, ...at.dolphins].map((p) => [p.x, p.y, p.z]));
+  expect(inPicture.filter(Boolean).length).toBeGreaterThan(inPicture.length / 2); // most of them in the default picture (the camera still)
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/sea.png` });
+  await stillPlays(page);
+  expect(a.errors).toEqual([]);
+  await a.context.close();
+});
+
+// v1.10.32 겨울 지붕 눈: the houses and facilities standing in today's winter zone wear snow on their roofs (the made
+// snowcap of their roof's kind, laid over that roof), the others none; the next day winter is one zone further and the
+// snow goes with it
+test('겨울 지붕 눈: 그날 겨울 구역의 집·시설만 지붕 모양에 맞춘 눈, 다음 날 구역 회전에 따라 이동', async ({ browser, request }) => {
+  test.setTimeout(240000);
+  const a = await island(browser, request, '지붕눈', null);
+  const { page } = a;
+  await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 30000 }).toBe('ready');
+  const roofs = async () => (await debug(page)).assets.attaches.filter((x) => x.snow !== undefined);
+  const check = async (day) => {
+    await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), day);
+    await expect.poll(async () => (await roofs()).filter((r) => r.look === 'winter').every((r) => ['flat', 'gable', 'round'].includes(r.snow)), { timeout: 90000 }).toBe(true);
+    const list = await roofs();
+    expect(list.filter((r) => r.look === 'winter').length).toBeGreaterThan(0);
+    for (const r of list.filter((x) => x.look !== 'winter')) expect(['none', 'hidden']).toContain(r.snow);
+    return list;
+  };
+  const day0 = 20736;
+  const first = await check(day0);
+  const kinds = new Set(first.filter((r) => r.look === 'winter').map((r) => r.snow));
+  const next = await check(day0 + 1);
+  const winterOf = (list) => new Set(list.filter((r) => r.look === 'winter').map((r) => r.zone));
+  expect([...winterOf(next)]).toEqual([...winterOf(first)].map((z) => (z + 1) % 4)); // one zone clockwise
+  expect(next.some((r) => r.snow === 'hidden')).toBe(true); // yesterday's winter roofs let go of theirs
+  void kinds;
+  if (process.env.SHOT_DIR) { // the village in its winter, for whoever runs this locally
+    const shot = await page.evaluate((d0) => { const t = window.IslandTerrain; const c = t.COTTAGES[2]; for (let d = d0; d < d0 + 4; d += 1) if (t.zoneSeason(t.seasonZoneAt(c.x, c.z), d) === 'winter') return { d, x: c.x, z: c.z }; return null; }, day0);
+    await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), shot.d);
+    await page.evaluate(([x, z]) => window.PlazaWarp(x - 2, z - 9), [shot.x, shot.z]); await page.waitForTimeout(6000);
+    await page.screenshot({ path: `${process.env.SHOT_DIR}/roof-snow.png` });
+  }
+  await stillPlays(page);
+  expect(a.errors).toEqual([]);
+  await a.context.close();
+});
+
 // v1.10.18/19 the registered models, as players get them, from the game resource pack (Cache Storage), once each.
 // v1.10.27: all four seasons are on the island at once -- the trees and shrubs of every season are loaded, the gazebo
 // shows its zone's season, the plaza's benches and flower beds (neutral) the plain summer files

@@ -1301,7 +1301,93 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function stepWhale() {
     if (clock < whaleAt) return;
     whaleAt = clock + WHALE_EVERY[0] + Math.random() * (WHALE_EVERY[1] - WHALE_EVERY[0]);
-    if (quality > 0 && !overview) whale();
+    if (quality > 0 && !overview && seaFree()) { whale(); seaLast = clock; }
+  }
+
+  // v1.10.32 해상 볼거리 (IDEAS 「섬 밖 원경·해상 풍경 확장」 후보): now and then, never something to do -- a small boat
+  // crossing out at sea, a few gulls wheeling over the water, a pod of dolphins leaping in a row (a splash going in and
+  // coming out), a lone splash. Out at sea only (past the coast, never by the harbour), and where the default camera
+  // shows it -- it looks down over the island, so the horizon is above the picture: a place is kept only if it falls
+  // inside the picture (the sights come nearer and lower instead of the camera changing). At most two at a time and
+  // never two starting together (the whale counts too); none on the lowest quality or the overview map. One set of
+  // holders, made once and reused.
+  const SEA = { boat: [80, 160], gulls: [45, 100], dolphins: [70, 140], splash: [35, 80] };
+  const seaNext = Object.fromEntries(Object.entries(SEA).map(([k, [a, b]]) => [k, 30 + Math.random() * (b - a) + a / 2]));
+  const seaActive = new Map(); let seaLast = -Infinity; let seaPool = null; const seaShown = {};
+  const seaFree = () => seaActive.size < 2 && clock - seaLast > 12;
+  function seaHolders() {
+    if (seaPool) return seaPool;
+    const make = (id, n) => Array.from({ length: n }, () => { const h = new THREE.Group(); h.visible = false; scene.add(h); assets.attach(id, h, new THREE.Group()); return h; });
+    seaPool = { boat: make('sea.boat', 1), gulls: make('sea.gull', 7), dolphins: make('sea.dolphin', 3) };
+    return seaPool;
+  }
+  // a spot out at sea, `d` from me, at least `clear` past the coast (and off the harbour), seen by the camera at height y
+  const seen = new THREE.Vector3();
+  const inPicture = (x, y, z) => { seen.set(x, y, z).project(camera); return seen.z < 1 && Math.abs(seen.x) < 0.88 && seen.y > -0.55 && seen.y < 0.82; };
+  const seaRay = new THREE.Raycaster(); const ndc = new THREE.Vector2(); const level = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); const hitAt = new THREE.Vector3();
+  function seaSpot(dMin, dMax, clear, above = 0) { // `above`: the height over the sea it will be seen at
+    const T = globalThis.IslandTerrain; const p = me.root.position;
+    level.constant = -SEA_Y;
+    for (let k = 0; k < 80; k += 1) { // a point of the picture's upper part, down onto that height
+      seaRay.setFromCamera(ndc.set((Math.random() - 0.5) * 1.7, 0.05 + Math.random() * 0.75), camera);
+      if (!seaRay.ray.intersectPlane(level, hitAt)) continue;
+      const { x, z } = hitAt; const d = Math.hypot(x - p.x, z - p.z);
+      if (d < dMin || d > dMax || T.coastDist(x, z) > -clear || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 30 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 30) continue;
+      if (above && !inPicture(x, SEA_Y + above, z)) continue;
+      return { x, z, a: Math.atan2(x - p.x, z - p.z) };
+    }
+    return null;
+  }
+  function seaSight(kind) {
+    const T = globalThis.IslandTerrain; const pool = seaHolders();
+    if (kind === 'splash') { const at = seaSpot(18, 45, 8); if (!at) return false; assets.once('sea.splash', { parent: scene, x: at.x, y: SEA_Y, z: at.z }); seaShown.splash = (seaShown.splash || 0) + 1; return true; }
+    if (seaActive.has(kind)) return false;
+    if (kind === 'boat') { // across the view, along the horizon
+      const mid = seaSpot(22, 60, 12, 1.5); if (!mid) return false;
+      const e = 0.5; const gx = T.coastDist(mid.x + e, mid.z) - T.coastDist(mid.x - e, mid.z); const gz = T.coastDist(mid.x, mid.z + e) - T.coastDist(mid.x, mid.z - e);
+      const gl = Math.hypot(gx, gz) || 1; const dir = { x: -gz / gl, z: gx / gl }; // along the shore
+      const L = 35; const side = Math.random() < 0.5 ? 1 : -1;
+      const from = { x: mid.x - dir.x * L * side, z: mid.z - dir.z * L * side }; const to = { x: mid.x + dir.x * L * side, z: mid.z + dir.z * L * side };
+      if (T.coastDist(from.x, from.z) > -6 || T.coastDist(to.x, to.z) > -6) return false;
+      const h = pool.boat[0]; h.visible = true; h.scale.setScalar(2.2); h.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      seaActive.set(kind, { t: 0, dur: (2 * L) / 1.3, step(s) { const u = s.t / s.dur; h.position.set(from.x + (to.x - from.x) * u, SEA_Y - 0.1 + Math.sin(s.t * 1.3) * 0.08, from.z + (to.z - from.z) * u); h.rotation.z = Math.sin(s.t * 0.9) * 0.05; }, end() { h.visible = false; } });
+    } else if (kind === 'gulls') { // a few wheeling over the sea, then away
+      const c = seaSpot(16, 45, 8, 4); if (!c) return false; // over the sea, low enough to be in the picture
+      const n = 5 + Math.floor(Math.random() * 3); const birds = pool.gulls.slice(0, n).map((h, i) => ({ h, phase: (i / n) * TAU + Math.random() * 0.4, r: 4 + Math.random() * 4, y: 2.6 + Math.random() * 1.6 }));
+      for (const b of birds) b.h.visible = true;
+      seaActive.set(kind, { t: 0, dur: 35 + Math.random() * 20, step(s) {
+        const away = Math.max(0, s.t - (s.dur - 8)) / 8; // the last seconds: wider and higher, then gone
+        for (const b of birds) { const a = b.phase + s.t * 0.35; const r = b.r * (1 + away * 3); b.h.position.set(c.x + Math.cos(a) * r, b.y + away * 10 + Math.sin(s.t * 1.7 + b.phase) * 0.3, c.z + Math.sin(a) * r); b.h.rotation.set(0, -a, 0.35); }
+      }, end() { for (const b of birds) b.h.visible = false; } });
+    } else if (kind === 'dolphins') { // two or three leaping one after another
+      const at = seaSpot(18, 40, 8); if (!at) return false;
+      const n = 2 + Math.floor(Math.random() * 2); const heading = Math.random() * TAU; const fwd = { x: Math.sin(heading), z: Math.cos(heading) };
+      const pod = pool.dolphins.slice(0, n).map((h, i) => ({ h, delay: i * 0.45, side: (i - (n - 1) / 2) * 1.6, splashed: 0 }));
+      const LEAP = 1.15; const GAP = 0.7; const LEAPS = 3; const RUN = 4.5;
+      seaActive.set(kind, { t: 0, dur: LEAPS * (LEAP + GAP) + 1.2, step(s) {
+        for (const d of pod) {
+          const t = s.t - d.delay; const k = Math.floor(t / (LEAP + GAP)); const u = (t - k * (LEAP + GAP)) / LEAP;
+          const inAir = t >= 0 && k < LEAPS && u <= 1; d.h.visible = inAir;
+          if (!inAir) continue;
+          const along = (k + u) * RUN; const y = SEA_Y - 0.5 + Math.sin(u * Math.PI) * 1.9;
+          d.h.position.set(at.x + fwd.x * along - fwd.z * d.side, y, at.z + fwd.z * along + fwd.x * d.side);
+          d.h.rotation.set(-Math.cos(u * Math.PI) * 0.9, heading, 0); // nose up going out, down going in
+          const edge = u < 0.08 ? k * 2 + 1 : u > 0.92 ? k * 2 + 2 : 0; // a splash going out and coming back in
+          if (edge && edge > d.splashed) { d.splashed = edge; assets.once('sea.splash', { parent: scene, x: d.h.position.x, y: SEA_Y, z: d.h.position.z }); }
+        }
+      }, end() { for (const d of pod) d.h.visible = false; } });
+    }
+    seaShown[kind] = (seaShown[kind] || 0) + 1;
+    return true;
+  }
+  function stepSea(dt) {
+    for (const [kind, s] of seaActive) { s.t += dt; if (s.t >= s.dur) { s.end(); seaActive.delete(kind); } else s.step(s); }
+    if (quality === 0 || overview) return;
+    for (const [kind, [a, b]] of Object.entries(SEA)) {
+      if (clock < seaNext[kind]) continue;
+      seaNext[kind] = clock + a + Math.random() * (b - a);
+      if (seaFree() && seaSight(kind)) seaLast = clock;
+    }
   }
   function step(dt) {
     let ix = 0; let iz = 0;
@@ -1346,7 +1432,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
     for (const c of statueChars) if (c.anim && !c.frozen) { c.anim.play('wave'); c.anim.update(0.7, 0); c.frozen = true; } // v1.10.30: a statue's wave, set once
-    stepWhale();
+    stepWhale(); stepSea(dt); // v1.10.32: the sea's other sights
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
     if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
@@ -1424,7 +1510,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doors[id]; if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), tagLayout: me.tag ? { bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
