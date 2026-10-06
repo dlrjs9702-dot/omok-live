@@ -84,3 +84,24 @@ test('공용 이벤트: 플레이어에게는 가까운 것만 알린다', () =>
   assert.ok(near.length < all.length + 1);
   for (const v of near) assert.ok(Math.hypot(v.x, v.z) <= NEAR);
 });
+
+// v1.10.32 운반: a lost thing I carry is mine to see wherever I am (its owner's place, for the map), and the account's
+// carry is known for the others' view; nobody else carries it
+test('운반: 주운 분실물은 어디서든 내 목록에 남고(주인 위치), 다른 계정에는 없다', () => {
+  const { createIslandEvents } = require('../lib/island-events');
+  let t = 1_000_000;
+  const ev = createIslandEvents({ now: () => t, random: (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })() });
+  const lost = ev.spawnLost();
+  assert.ok(lost && lost.npc);
+  const claimed = ev.claim(lost.id, 'acc-a', { x: lost.x, z: lost.z });
+  assert.equal(claimed.action, 'pickup');
+  ev.settle(claimed, true, 'acc-a');
+  const far = ev.nearby(lost.x + 300, lost.z + 300, 'acc-a');
+  assert.deepEqual(far.filter((e) => e.kind === 'carrying'), [{ id: lost.id, kind: 'carrying', x: lost.npc.x, z: lost.npc.z, verb: null }]);
+  assert.equal(ev.nearby(lost.x, lost.z, 'acc-b').some((e) => e.kind === 'carrying'), false);
+  assert.equal(ev.carryOf('acc-a'), lost.id); assert.equal(ev.carryOf('acc-b'), null);
+  const back = ev.claim(lost.id, 'acc-a', { x: lost.npc.x, z: lost.npc.z });
+  assert.equal(back.action, 'return'); ev.settle(back, true, 'acc-a');
+  assert.equal(ev.carryOf('acc-a'), null);
+  t += 1;
+});

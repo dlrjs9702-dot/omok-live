@@ -1830,23 +1830,17 @@
     {
       "out": "gaps-v1/structure/snowcap_flat.glb",
       "src": "gaps:05. Structure layers/01. High/snowcap_flat_high.glb",
-      "sha256": "e6c36c9aa3956e017378f60ec472ae9bad963eda2a9a386ec5cd9ac3700a0f69",
-      "lowSrc": "gaps:05. Structure layers/02. Low/snowcap_flat_low.glb",
-      "lowSha256": "bbd2245d07bf1186ac7169944158d5cc0335c3152014e40b52690dc2137e4d45"
+      "sha256": "e6c36c9aa3956e017378f60ec472ae9bad963eda2a9a386ec5cd9ac3700a0f69"
     },
     {
       "out": "gaps-v1/structure/snowcap_gable.glb",
       "src": "gaps:05. Structure layers/01. High/snowcap_gable_high.glb",
-      "sha256": "449a03f09daa78fdab9d15a939e5ed4cb9f77f8eb1fd50cc5d0c271448fd23a5",
-      "lowSrc": "gaps:05. Structure layers/02. Low/snowcap_gable_low.glb",
-      "lowSha256": "757605a38f00ea55eec60e73adb13e17bb84c4c8f502595f7917850dcd713cda"
+      "sha256": "449a03f09daa78fdab9d15a939e5ed4cb9f77f8eb1fd50cc5d0c271448fd23a5"
     },
     {
       "out": "gaps-v1/structure/snowcap_round.glb",
       "src": "gaps:05. Structure layers/01. High/snowcap_round_high.glb",
-      "sha256": "824d16bdf07bee709fe39693d977d21d595acd3e03fc40a7c5d528fa8cc557c1",
-      "lowSrc": "gaps:05. Structure layers/02. Low/snowcap_round_low.glb",
-      "lowSha256": "994167ee94291ff51fce04bf108e042eb4e00c3af22b1980f2b25b78b24aae87"
+      "sha256": "824d16bdf07bee709fe39693d977d21d595acd3e03fc40a7c5d528fa8cc557c1"
     },
     {
       "out": "gaps-v1/props/shore_stone_cluster.glb",
