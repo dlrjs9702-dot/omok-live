@@ -454,3 +454,34 @@ test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬�
   await expectNoScriptError(page);
   await who.context.close();
 });
+
+// v1.10.36 10월 할로윈 (사용자 확정 2026-10-06): October (Asia/Seoul) is night on the island -- the sky, the fog, the light,
+// the windows' glass lit -- and the fountain gives its place to the pedestal and the jack-o'-lantern (the 2026-10-06 pack's
+// models, glowing inside, an orange light on what is near); the rest of the year the day and the fountain come back. The
+// Halloween clothes are worn like any character skin.
+test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭오랜턴(빛), 할로윈 옷 착용, 10월이 아니면 원래대로', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const who = await shopper(browser, request, '할로윈', 2_000_000, 'female');
+  const { page, token } = who;
+  for (const id of ['avatar_outfit_17', 'avatar_hat_13', 'avatar_cape_12']) {
+    expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
+    expect((await post(request, '/api/skins/equip', token, { skinId: id })).status).toBe(200);
+  }
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().halloween.set(true));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(true);
+  expect(await page.evaluate(() => window.PlazaDebug().halloween.background())).toBe(0x0d1630);
+  expect(await page.evaluate(() => window.PlazaDebug().halloween.fountain())).toBe(false);
+  await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return [s['landmark.halloween.pedestal'], s['landmark.halloween.lantern']]; }), { timeout: 90000 }).toEqual(['model', 'model']);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glows()), { timeout: 30000 }).toBeGreaterThan(1); // the model's own glow joined
+  expect(await page.evaluate(() => window.PlazaDebug().halloween.candle())).toBeGreaterThan(20);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glass().lit), { timeout: 60000 }).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
+  // the rest of the year: the day and the fountain back
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(false);
+  expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit])).toEqual([true, 0xbfe6ff, 0]);
+  await expectNoScriptError(page);
+  await who.context.close();
+});

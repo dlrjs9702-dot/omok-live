@@ -321,6 +321,8 @@
       update: (x, z) => { if (impl) impl.update(x, z); },
       // v1.10.27: a new day (00:00 KST): every season moves one zone clockwise
       setDay: (next) => { day = next; if (impl) impl.setDay(next); },
+      // v1.10.36 10월 할로윈: night (the windows' glass glows); replayed when the loader comes
+      setNight: (on) => call('setNight', [on]),
       setQuality: (tier) => call('setQuality', [tier]),
       // v1.10.29: a model playing its clip once (a whale breaching), the seasonal falling flakes, and their per-frame step
       once: (targetIds, where, options) => call('once', [targetIds, where, options]),

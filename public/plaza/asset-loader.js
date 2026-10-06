@@ -93,7 +93,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // v1.10.29 `onSwap(entry | null)`: told when the model comes in (its registry entry) or goes (null), for game parts
   // that sit on the look (the map board's picture moves onto the model's panel).
   function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  // v1.10.36 10월 할로윈: at night every model's window glass glows warm (the materials are shared by a file's copies,
+  // so each is set once; those that load later take the current state)
+  const glassMats = new Set(); let night = false;
+  const lightGlass = (m) => { m.emissive?.set(0xffc46b); m.emissiveIntensity = night ? 0.9 : 0; };
+  function noteGlass(object) { object?.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glass' && !glassMats.has(m)) { glassMats.add(m); lightGlass(m); } }); }
+  function setNight(on) { night = Boolean(on); for (const m of glassMats) lightGlass(m); }
   function swapAttach(rec, object, entry = null) {
+    noteGlass(object);
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
     rec.procedural.visible = !object;
@@ -702,5 +709,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }
