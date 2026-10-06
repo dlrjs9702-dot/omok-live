@@ -339,7 +339,7 @@ async function exercise(t, makeStore) {
     assert.ok(weeds.qty >= 12 && weeds.qty <= 999);
     // the town hall takes every weed at 300P, outside the daily limit of the other life rewards
     const sold = await store.islandSell({ userId: W, requestId: 'sell-weed-01', place: 'office', activeLost: [] }, now);
-    assert.equal(sold.paid, weeds.qty * 300);
+    assert.equal(sold.paid, weeds.qty * require('../lib/island-items').priceOf('weed', now)); // 300P (900P on a 제초 요청 day)
     assert.equal((await store.islandReward({ userId: W, claimId: 'event:weedcap1', amount: 30_000, title: '한도 그대로' }, now)).applied, true, '잡초 정산은 일일 한도에 들지 않는다');
     // a new day: the weeds pulled since the last one grow back once
     const state = await store.islandWeeds();

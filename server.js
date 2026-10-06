@@ -2888,7 +2888,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.32' });
+    return sendJson(res, 200, { ok: true, version: '1.10.33' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3175,6 +3175,7 @@ async function requestHandler(req, res) {
     if (status === 'inactive') return sendError(res, 404, 'EVENT_NOT_FOUND', '진행 중인 이벤트가 아닙니다.');
     if (status === 'upcoming') return sendError(res, 409, 'EVENT_NOT_STARTED', '아직 시작하지 않은 이벤트입니다.');
     if (status === 'ended') return sendError(res, 409, 'EVENT_ENDED', '이미 종료된 이벤트입니다.');
+    if (event.notice) return sendError(res, 409, 'EVENT_NOTICE', '받을 포인트가 없는 안내입니다.'); // v1.10.33
     const outcome = await pointStore.claimEvent({ eventId: event.id, userId, amount: event.rewardPoints, title: event.title });
     if (outcome.applied) notifyPointsChanged([userId]);
     const balance = pointStore.cachedBalance(userId);
@@ -4327,7 +4328,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.32 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.33 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

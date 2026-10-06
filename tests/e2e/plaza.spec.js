@@ -833,7 +833,7 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   const watch = await spotNear(b.page, target, 12, 20);
   await b.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), watch);
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
-  const close = await spotNear(a.page, target, 0.9, 1.6);
+  const close = await spotNear(a.page, target, 0.4, 0.8); // nearer than any weed beside it (the nearest thing is what Space does)
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
   await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · (줍기|채집)/, { timeout: 10000 });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().minimap.markers), { timeout: 5000 }).toBeGreaterThan(0);
@@ -938,8 +938,8 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   test.setTimeout(90000);
   const a = await intoPlaza(browser, request, '잡초꾼');
   const { page } = a;
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(1400);
-  const list = (await get(request, '/api/island/weeds', a.token)).data.weeds;
+  const list = (await get(request, '/api/island/weeds', a.token)).data.weeds; // 1,400 on a fresh island (fewer after other tests pulled some)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(list.length);
   const [id, x, z] = list.find(([, wx, wz]) => Math.hypot(wx, wz) > 30 && Math.hypot(wx - 20, wz - 20) > 5);
   await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
