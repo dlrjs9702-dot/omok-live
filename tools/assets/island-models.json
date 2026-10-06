@@ -1893,6 +1893,209 @@
       "sha256": "ff398cc746e5d769af7020bfc5aee4c05f6af02acb8bcd6110a541c038439851",
       "lowSrc": "finish:02. Sea sights/02. Low/dolphin_low.glb",
       "lowSha256": "7c0fbffbb837dc915e572746dd2ce52b2a597701e5c2c55783213624ac7f6652"
+    },
+    {
+      "out": "halloween-v1/jack_o_lantern.glb",
+      "src": "halloween:01. Plaza landmarks/01. High/landmark_01_jack_o_lantern_high.glb",
+      "sha256": "cd2b0dc37fb89c1d02bb208895183569c38e4e969984d91d6279add7abfecc75",
+      "lowSrc": "halloween:01. Plaza landmarks/02. Low/landmark_01_jack_o_lantern_low.glb",
+      "lowSha256": "288b74c84dff43fc659eac1ebed75bd27844af115ead28a048f4dddb0ee77b57"
+    },
+    {
+      "out": "halloween-v1/pedestal.glb",
+      "src": "halloween:01. Plaza landmarks/01. High/landmark_02_pedestal_high.glb",
+      "sha256": "766859b29c520e961d9f4e2b6b4ef46a881af2cdce44af03af3efeea3a60ff1a",
+      "lowSrc": "halloween:01. Plaza landmarks/02. Low/landmark_02_pedestal_low.glb",
+      "lowSha256": "aa41bd14a870498a8a065e270805ea796d358d38c4f0103e9efb2d6f92739374"
+    },
+    {
+      "out": "characters/wear/hair_hw_pumpkin_bob.glb",
+      "src": "halloween:02. Hair/01. High/hair_01_pumpkin_bob_high.glb",
+      "sha256": "05c83cbe22bebfdfefc4b64bb0dc7c229bb732a5963f21c72578dfc16f18a1d0",
+      "lowSrc": "halloween:02. Hair/02. Low/hair_01_pumpkin_bob_low.glb",
+      "lowSha256": "cbae44f8f3c84c68439f5e870e513832cf7d15bc7e39ffa9aa7a4f6ae1cf04e4"
+    },
+    {
+      "out": "characters/wear/hair_hw_moon_buns.glb",
+      "src": "halloween:02. Hair/01. High/hair_02_moon_buns_high.glb",
+      "sha256": "56773f30c09018e2806f57a32545e5bf7bcc9c833b6820db71a6446c9d106b91",
+      "lowSrc": "halloween:02. Hair/02. Low/hair_02_moon_buns_low.glb",
+      "lowSha256": "061882077af98b4905ab7a430ea2c830922541613e0c124d89bc9da9cd7072ad"
+    },
+    {
+      "out": "characters/wear/hair_hw_witch_waves.glb",
+      "src": "halloween:02. Hair/01. High/hair_03_witch_waves_high.glb",
+      "sha256": "135ca647e5ad96fcddfdb8d5be1f273eae22ad36006ec2c3a378744ef46a889d",
+      "lowSrc": "halloween:02. Hair/02. Low/hair_03_witch_waves_low.glb",
+      "lowSha256": "a82d734e8d365ba16d770baa7daf5ffd5f8c00977d26071fbf21f62b45bdd31c"
+    },
+    {
+      "out": "characters/wear/hair_hw_vampire_sweep.glb",
+      "src": "halloween:02. Hair/01. High/hair_04_vampire_sweep_high.glb",
+      "sha256": "51b85b9e544e06a3dd85a12b40cff64a93cb762170340edaf05985fc55b2b925",
+      "lowSrc": "halloween:02. Hair/02. Low/hair_04_vampire_sweep_low.glb",
+      "lowSha256": "f4dc729cf2f7d6c7f25557ff348c4520803520c4a300ceaf019982b30ed2537e"
+    },
+    {
+      "out": "characters/wear/hair_hw_ghost_curls.glb",
+      "src": "halloween:02. Hair/01. High/hair_05_ghost_curls_high.glb",
+      "sha256": "accce07004544270e8f939bcb94fce138d50077ed7e0facb0df5351736bbb700",
+      "lowSrc": "halloween:02. Hair/02. Low/hair_05_ghost_curls_low.glb",
+      "lowSha256": "96e8617aae001d7caf449bf62c3f9a2c2c2e504c5d28b1f8a7abe993ee9dee5f"
+    },
+    {
+      "out": "characters/wear/outfit_hw_pumpkin.glb",
+      "src": "halloween:03. Outfit/01. High/outfit_01_pumpkin_high.glb",
+      "sha256": "8ce96a1450f04629dee95638bb6f0bccdce83bba2c520aa28c3037e178ed43db",
+      "lowSrc": "halloween:03. Outfit/02. Low/outfit_01_pumpkin_low.glb",
+      "lowSha256": "11feced7a001fe2472d9d89deedd7a2cbde8ff58a2e2df1e64f6a3ed66d2341c"
+    },
+    {
+      "out": "characters/wear/outfit_hw_witch.glb",
+      "src": "halloween:03. Outfit/01. High/outfit_02_witch_high.glb",
+      "sha256": "04b8ec9023953e300903c48e4dd2ca86ff73df3d2138aa591904a2cfb29aac8c",
+      "lowSrc": "halloween:03. Outfit/02. Low/outfit_02_witch_low.glb",
+      "lowSha256": "3cc74efc35c95ad12407a88ab7e2884a3c5f7b21f0c295992878c0534c7d2554"
+    },
+    {
+      "out": "characters/wear/outfit_hw_vampire.glb",
+      "src": "halloween:03. Outfit/01. High/outfit_03_vampire_high.glb",
+      "sha256": "475615eefcf09eb3b83050f2e3b8d711035b89c6d518976641c1dbd4b82f6a0c",
+      "lowSrc": "halloween:03. Outfit/02. Low/outfit_03_vampire_low.glb",
+      "lowSha256": "222a77feab407a2ef9a219593481061d63c246f49e5b6ed92f30175d3aa755ee"
+    },
+    {
+      "out": "characters/wear/outfit_hw_mummy.glb",
+      "src": "halloween:03. Outfit/01. High/outfit_04_mummy_high.glb",
+      "sha256": "efd695dc7f8870edccfe6b73dfa35e8c4ee6a1933477e57cefc6a6d6818a88b9",
+      "lowSrc": "halloween:03. Outfit/02. Low/outfit_04_mummy_low.glb",
+      "lowSha256": "45af3a46278c65604439275c44c59e1cc1be84050431ca618cd86a09df2bdd54"
+    },
+    {
+      "out": "characters/wear/outfit_hw_ghost.glb",
+      "src": "halloween:03. Outfit/01. High/outfit_05_ghost_high.glb",
+      "sha256": "06e02f53059e1fb786813f337e635b43875c081080dc2441ed7048c21c4ebd99",
+      "lowSrc": "halloween:03. Outfit/02. Low/outfit_05_ghost_low.glb",
+      "lowSha256": "179885f5713cef2ec484a97735cc32ac2f3ba0d806ddb3daeb5b3d6e415fadc9"
+    },
+    {
+      "out": "characters/wear/hat_hw_witch.glb",
+      "src": "halloween:04. Hat/01. High/hat_01_witch_high.glb",
+      "sha256": "4f7d3e24c24a76ef7af1a913780dcd16d975b4b025ef2d081b1b99f217b96fc0",
+      "lowSrc": "halloween:04. Hat/02. Low/hat_01_witch_low.glb",
+      "lowSha256": "0fe66a5d3028db57d87eb81f5934af0a592bdd0f3ca6e4347241cbb38a38bf88"
+    },
+    {
+      "out": "characters/wear/hat_hw_pumpkin.glb",
+      "src": "halloween:04. Hat/01. High/hat_02_pumpkin_high.glb",
+      "sha256": "a802e1f07f27c21b62064c5aecce9b23f6bc7b0dc1bb06cae8ae20e9381fea03",
+      "lowSrc": "halloween:04. Hat/02. Low/hat_02_pumpkin_low.glb",
+      "lowSha256": "3846c864d14c84cbdc536a7d91f739a9194263fcba30fc2792c32361b55939cd"
+    },
+    {
+      "out": "characters/wear/hat_hw_bat.glb",
+      "src": "halloween:04. Hat/01. High/hat_03_bat_high.glb",
+      "sha256": "008d076013a9fdade49d3f738742f9f757c7ced59a1a6e1009336300b052d03b",
+      "lowSrc": "halloween:04. Hat/02. Low/hat_03_bat_low.glb",
+      "lowSha256": "ece87aecc2abb2c23ea10bb917dcba19070993b6b0c66cf7482de422956fd0ba"
+    },
+    {
+      "out": "characters/wear/hat_hw_mummy.glb",
+      "src": "halloween:04. Hat/01. High/hat_04_mummy_high.glb",
+      "sha256": "cfcc87e0a7d2ac2d707606a85993407e4a2c9f54237dd116cbe66cb87c83e0aa",
+      "lowSrc": "halloween:04. Hat/02. Low/hat_04_mummy_low.glb",
+      "lowSha256": "d1fa5ff9087addda8f599a35f1e268c7dd093cb1b37771aa65590138be555aa9"
+    },
+    {
+      "out": "characters/wear/hat_hw_ghost.glb",
+      "src": "halloween:04. Hat/01. High/hat_05_ghost_high.glb",
+      "sha256": "284930eda4df81236101a07b73ec3381642d9ce0225700f2f0241e28f9f09ba9",
+      "lowSrc": "halloween:04. Hat/02. Low/hat_05_ghost_low.glb",
+      "lowSha256": "b2b8f5c896028ef9777bb97e4e7057564aa542315bf4ec45d162a11ac7d55f41"
+    },
+    {
+      "out": "characters/wear/cape_hw_bat.glb",
+      "src": "halloween:05. Cape/01. High/cape_01_bat_high.glb",
+      "sha256": "4b75dca0fba6fbfb98c5223f11e5116a5f264f334393f1ce9b3b96e8a9cc7b5d",
+      "lowSrc": "halloween:05. Cape/02. Low/cape_01_bat_low.glb",
+      "lowSha256": "ab3ba7063ad7db6dc2fc615e0982daef0fd3e62a9d8d910f174c980e2edef2bd"
+    },
+    {
+      "out": "characters/wear/cape_hw_moon.glb",
+      "src": "halloween:05. Cape/01. High/cape_02_moon_high.glb",
+      "sha256": "2ea31712682338d236e05af7fbfe0995a22a5e19e92723e1eecb7c16468b1479",
+      "lowSrc": "halloween:05. Cape/02. Low/cape_02_moon_low.glb",
+      "lowSha256": "9462f2c12c246dcd3628103bb6e727565e1aaa516669849eb021f7ae8e8f2a0a"
+    },
+    {
+      "out": "characters/wear/cape_hw_ghost.glb",
+      "src": "halloween:05. Cape/01. High/cape_03_ghost_high.glb",
+      "sha256": "50440e43f55722b4526643389149dc3c05cd42a06a5b43229190a7038bd1bf54",
+      "lowSrc": "halloween:05. Cape/02. Low/cape_03_ghost_low.glb",
+      "lowSha256": "09e429419df52a0a5c7ca809853deb4aeef7abb7b9cef8ca504a43e8b1690f5e"
+    },
+    {
+      "out": "characters/wear/tail_hw_devil.glb",
+      "src": "halloween:06. Tail/01. High/tail_01_devil_high.glb",
+      "sha256": "b29a3bbddf7f679fe6a19ce4472ee4f55917f1213c945c98b5e873c4565057b7",
+      "lowSrc": "halloween:06. Tail/02. Low/tail_01_devil_low.glb",
+      "lowSha256": "c0fe32190295d0550134977ad0b12b558df7f4b91b3fee90ddfcde325e33134f"
+    },
+    {
+      "out": "characters/wear/tail_hw_wisp.glb",
+      "src": "halloween:06. Tail/01. High/tail_02_wisp_high.glb",
+      "sha256": "0a2b4a52415bac0563204ea20a5583e4d83ddebba863003ee4d1fbda83b95947",
+      "lowSrc": "halloween:06. Tail/02. Low/tail_02_wisp_low.glb",
+      "lowSha256": "aaa6fd866dcacf0ef30864655f566ac40e400f5c969fec704d032031bbdb6785"
+    },
+    {
+      "out": "characters/wear/tail_hw_vine.glb",
+      "src": "halloween:06. Tail/01. High/tail_03_vine_high.glb",
+      "sha256": "9efe314b9bbfad994b7fab2c4cdc5a0d01c55660abc6c57511b190929ec9f4cb",
+      "lowSrc": "halloween:06. Tail/02. Low/tail_03_vine_low.glb",
+      "lowSha256": "1717167872a4b2932a20c706d9b71c545b4e7adcfeead649fdcd1afe5cc154fa"
+    },
+    {
+      "out": "characters/wear/shoes_hw_witch.glb",
+      "src": "halloween:07. Shoes/01. High/shoes_01_witch_high.glb",
+      "sha256": "1f18ef605a2e1532c6fc03be4786fb7d0c47ca430ffdc2abf2e9e0cc9e83b280",
+      "lowSrc": "halloween:07. Shoes/02. Low/shoes_01_witch_low.glb",
+      "lowSha256": "b85d84cec5968febacf484fdddf6fc88e15bea56027b71d08781a9ff7c7238f1"
+    },
+    {
+      "out": "characters/wear/shoes_hw_mummy.glb",
+      "src": "halloween:07. Shoes/01. High/shoes_02_mummy_high.glb",
+      "sha256": "1b18a810c053498f9e111e0a270d420896d94e7174d318fa5c89a447321c894f",
+      "lowSrc": "halloween:07. Shoes/02. Low/shoes_02_mummy_low.glb",
+      "lowSha256": "e0a96bb051080330cc82b9f8ba51c876d01f2c5f73ec67896a59e4da1152c77d"
+    },
+    {
+      "out": "characters/wear/shoes_hw_pumpkin.glb",
+      "src": "halloween:07. Shoes/01. High/shoes_03_pumpkin_high.glb",
+      "sha256": "7aa3f232e9a69183a3f20954360b929e8afa6929af37179177763cf764b365b4",
+      "lowSrc": "halloween:07. Shoes/02. Low/shoes_03_pumpkin_low.glb",
+      "lowSha256": "099766084bb3744df24dc641b9e7e5f19be640588a03732cd8ea1e45e88f7239"
+    },
+    {
+      "out": "characters/wear/necklace_hw_pumpkin.glb",
+      "src": "halloween:08. Necklace/01. High/necklace_01_pumpkin_high.glb",
+      "sha256": "5ff32c848183eb9bd5e9b7820a9423abfbbe5b3e791924f7e4619b81296b1c64",
+      "lowSrc": "halloween:08. Necklace/02. Low/necklace_01_pumpkin_low.glb",
+      "lowSha256": "b632a1fbf448468bc68b1ba86f734420554e89bd8e683f356f5c3f1f04cdc970"
+    },
+    {
+      "out": "characters/wear/necklace_hw_bat.glb",
+      "src": "halloween:08. Necklace/01. High/necklace_02_bat_high.glb",
+      "sha256": "2b27f3753f6ac25483a9fcc57294d11134d6cbbc0e9581dd151e8e40716c0021",
+      "lowSrc": "halloween:08. Necklace/02. Low/necklace_02_bat_low.glb",
+      "lowSha256": "bc33e0fe0aa7628e83c3d91b8160134bd365ac664824fac97351dfdd5ed2c0f0"
+    },
+    {
+      "out": "characters/wear/necklace_hw_moon_key.glb",
+      "src": "halloween:08. Necklace/01. High/necklace_03_moon_key_high.glb",
+      "sha256": "c38a7d858fb6564eaa9108e0739e0a7e26cd1a8c46262b6dff1678d39e81545c",
+      "lowSrc": "halloween:08. Necklace/02. Low/necklace_03_moon_key_low.glb",
+      "lowSha256": "51c3a9cb720ebcf3fb3e2e459a6b888ff9ef3792ec3ce1aafb6abdbad0caf960"
     }
   ],
   "sources": {
@@ -1901,6 +2104,7 @@
     "gaps": "04. Game Island gaps 2026-10-05",
     "character": "03. Game Island character 2026-10-05",
     "skins": "05. Game Island skins 2026-10-05",
-    "finish": "07. Game Island finish 2026-10-06"
+    "finish": "07. Game Island finish 2026-10-06",
+    "halloween": "08. Game Island Halloween 2026-10-06"
   }
 }

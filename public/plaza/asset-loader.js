@@ -93,7 +93,25 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   // v1.10.29 `onSwap(entry | null)`: told when the model comes in (its registry entry) or goes (null), for game parts
   // that sit on the look (the map board's picture moves onto the model's panel).
   function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  // v1.10.36 10월 할로윈: at night every model's window glass glows warm (the materials are shared by a file's copies,
+  // so each is set once; those that load later take the current state)
+  const glassMats = new Set(); let night = false;
+  const lightGlass = (m) => { m.emissive?.set(0xffc46b); m.emissiveIntensity = night ? 0.9 : 0; };
+  // a flattened model (one vertex-coloured mesh) lights its window vertices (`glow`) by one shared value: no extra draw
+  const nightGlow = { value: 0 }; let flatGlass = 0;
+  function flatMaterial(roughness) {
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness: 0 });
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.nightGlow = nightGlow;
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float nightGlow;\nvarying float vGlow;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.77, 0.42) * vGlow * nightGlow;');
+    };
+    return material;
+  }
+  function noteGlass(object) { object?.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glass' && !glassMats.has(m)) { glassMats.add(m); lightGlass(m); } }); }
+  function setNight(on) { night = Boolean(on); nightGlow.value = night ? 0.9 : 0; for (const m of glassMats) lightGlass(m); }
   function swapAttach(rec, object, entry = null) {
+    noteGlass(object);
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
     rec.procedural.visible = !object;
@@ -209,7 +227,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     if (partsCache.has(gltf)) return partsCache.get(gltf);
     gltf.scene.updateMatrixWorld(true);
     const meshes = []; gltf.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh) meshes.push(o); });
-    const plain = meshes.every((m) => [].concat(m.material).length === 1 && m.material.isMeshStandardMaterial && !m.material.transparent && TEXTURE_SLOTS.every((slot) => !m.material[slot]));
+    // v1.10.36: a model that glows (an emissive material, the jack-o'-lantern's inside) keeps its own materials
+    const plain = meshes.every((m) => [].concat(m.material).length === 1 && m.material.isMeshStandardMaterial && !m.material.transparent && TEXTURE_SLOTS.every((slot) => !m.material[slot]) && m.material.emissive.getHex() === 0);
     let parts;
     if (plain && meshes.length) {
       const shared = meshes.every((m) => m.matrixWorld.equals(meshes[0].matrixWorld));
@@ -222,6 +241,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         }
         for (const name of Object.keys(g.attributes)) if (!['position', 'normal'].includes(name)) g.deleteAttribute(name);
         g.setAttribute('color', new THREE.BufferAttribute(colour, 3));
+        g.setAttribute('glow', new THREE.BufferAttribute(new Float32Array(count).fill(m.material.name === 'glass' ? 1 : 0), 1)); // v1.10.36: a window, lit at night
         return g;
       };
       const build = (bake) => meshes.map((m) => {
@@ -237,7 +257,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         geos = build(true).map(floats); geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose()); matrix = identity;
       }
       const roughness = meshes.reduce((sum, m) => sum + m.material.roughness, 0) / meshes.length;
-      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness: 0 });
+      const material = flatMaterial(roughness);
+      if (meshes.some((m) => m.material.name === 'glass')) flatGlass += 1;
       made.push(geometry, material);
       parts = [{ geometry, material, matrix }];
     } else {
@@ -702,5 +723,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setQuality, once, ambient, tick, dispose, debug: () => ({ shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

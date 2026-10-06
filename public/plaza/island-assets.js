@@ -149,6 +149,13 @@
   for (const [file, dye] of [['cat', 'main'], ['fox', 'main'], ['bunny', 'trim'], ['raccoon', 'main'], ['squirrel', 'main'], ['dragon', 'main'], ['lion', 'main'], ['dog', 'main'], ['devil', 'main'], ['ribbon', 'rose']]) REGISTRY[`wear.tail_${file}`] = part(`tail_${file}`, 'tail', { dye });
   for (const file of ['sneakers', 'boots', 'rain', 'sandals', 'loafers', 'ribbon', 'hiking', 'armor', 'fur', 'slippers']) REGISTRY[`wear.shoes_${file}`] = part(`shoes_${file}`, 'shoes', { dye: 'main', replaces: ['shoes'] });
   for (const [file, dye] of [['coin', 'accent'], ['star', 'accent'], ['heart', 'accent'], ['moon', 'accent'], ['gem', 'rose'], ['leaf', 'main'], ['shell', 'trim'], ['key', 'accent'], ['bell', 'accent'], ['lock', 'accent']]) REGISTRY[`wear.necklace_${file}`] = part(`necklace_${file}`, 'necklace', { dye });
+  // v1.10.36 할로윈 (2026-10-06 Halloween pack): the same rig and fitting; each its own dye material (outfits never dyed)
+  const HW = { hair: ['pumpkin_bob', 'moon_buns', 'witch_waves', 'vampire_sweep', 'ghost_curls'], outfit: ['pumpkin', 'witch', 'vampire', 'mummy', 'ghost'],
+    hat: ['witch', 'pumpkin', 'bat', 'mummy', 'ghost'], cape: ['bat', 'moon', 'ghost'], tail: ['devil', 'wisp', 'vine'], shoes: ['witch', 'mummy', 'pumpkin'], necklace: ['pumpkin', 'bat', 'moon_key'] };
+  const HW_FIT = { 'hair': { dye: 'hair' }, 'outfit': { replaces: ['top', 'bottom'] }, 'hat_witch': { dye: 'main', cover: 2.04 }, 'hat_pumpkin': { dye: 'accent', cover: 1.98 }, 'hat_bat': { dye: 'main' },
+    'hat_mummy': { dye: 'trim', cover: 1.87 }, 'hat_ghost': { dye: 'main', cover: 2.03 }, 'cape': { dye: 'main' }, 'tail_devil': { dye: 'rose' }, 'tail_wisp': { dye: 'main' }, 'tail_vine': { dye: 'leaf' },
+    'shoes': { dye: 'main', replaces: ['shoes'] }, 'necklace_pumpkin': { dye: 'accent' }, 'necklace_bat': { dye: 'trim' }, 'necklace_moon_key': { dye: 'accent' } };
+  for (const [slot, designs] of Object.entries(HW)) for (const d of designs) REGISTRY[`wear.${slot}_hw_${d}`] = part(`${slot}_hw_${d}`, slot, HW_FIT[`${slot}_${d}`] || HW_FIT[slot]);
   for (const [face, designs] of Object.entries({ eyes: ['oval', 'dot', 'wide', 'sleepy', 'smile', 'wink', 'almond', 'sparkle', 'heart', 'bold'], nose: ['button', 'tiny', 'round', 'triangle', 'bean', 'bridge', 'upturned', 'soft_square', 'animal', 'freckles'], mouth: ['smile', 'wide_smile', 'straight', 'open', 'cheer', 'cat', 'pout', 'tooth', 'tongue', 'dimples'] })) {
     for (const d of designs) REGISTRY[`wear.${face}_${d}`] = part(`${face}_${d}`, 'face');
   }
@@ -164,6 +171,10 @@
     ...items('shoes', ['sneakers', 'boots', 'rain', 'sandals', 'loafers', 'ribbon', 'hiking', 'armor', 'fur', 'slippers'].map((d) => `shoes_${d}`)),
     ...items('necklace', ['coin', 'star', 'heart', 'moon', 'gem', 'leaf', 'shell', 'key', 'bell', 'lock'].map((d) => `necklace_${d}`)),
   };
+  // v1.10.36 할로윈: after each slot's items, in lib/skins.js HALLOWEEN_ITEMS order
+  const counts = {};
+  for (const id of Object.keys(WARDROBE)) { const slot = id.split('_')[1]; counts[slot] = Math.max(counts[slot] || 0, Number(id.split('_')[2])); }
+  for (const [slot, designs] of Object.entries(HW)) designs.forEach((d, i) => { WARDROBE[`avatar_${slot}_${counts[slot] + i + 1}`] = `wear.${slot}_hw_${d}`; });
   const LOOK_SLOTS = ['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'];
   // look: { gender, hair, outfit, hat, cape, tail, shoes, necklace, face: { eyes, nose, mouth }, dye: { itemId: '#rrggbb' } };
   // tint: { materialName: colour } (keepers and islanders wear their own colours). -> { parts, colors, tint } | null
@@ -191,6 +202,11 @@
     // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
     return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) } };
   }
+
+  // v1.10.36 10월 할로윈: the plaza's landmark in the fountain's place (pedestal, and the jack-o'-lantern on it at 1.05)
+  const HWL = '/assets/island/halloween-v1';
+  REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
+  REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
 
   // v1.10.31 잡초 채집·생활 소품: the weed (a light model that stands apart from the grass, the same in every season)
   // and the one pulled out with its roots (in the hand a moment); the finds of the island events as the 2026-10-05

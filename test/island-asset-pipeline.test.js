@@ -35,10 +35,12 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     'nature.grass', 'prop.weedRooted', ...['trash_can', 'trash_bottle', 'paper_litter', 'herb', 'berry', 'mushroom', 'coin', 'wallet', 'lost_item', 'camera'].map((k) => `prop.event.${k}`),
     // v1.10.32 the pouch, the fruit and the basket; the snowcaps, the shore and bank stones; the boat, the gull, the dolphin
     'prop.event.lost_pouch', 'prop.event.fruit', 'prop.event.basket', 'struct.snowcap.flat', 'struct.snowcap.gable', 'struct.snowcap.round', 'nature.shoreStones', 'nature.riverBank',
-    'sea.boat', 'sea.gull', 'sea.dolphin'].sort());
+    'sea.boat', 'sea.gull', 'sea.dolphin',
+    // v1.10.36 10월 할로윈: the plaza landmark (pedestal and jack-o'-lantern)
+    'landmark.halloween.pedestal', 'landmark.halloween.lantern'].sort());
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
   // shoes, necklaces 10 each) and the 30 face designs
-  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30);
+  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27); // v1.10.36: + the 27 Halloween parts
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();
   const check = async (id, url, what) => {
@@ -60,7 +62,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea)\//, id); // v1.10.32 + snowcaps, the sea sights
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1)\//, id); // v1.10.32 + snowcaps, the sea sights
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');
