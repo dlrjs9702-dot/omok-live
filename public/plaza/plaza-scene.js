@@ -144,6 +144,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // under it, side by side; the title's row comes below them. The tag stands on its bottom edge (sprite centre at the
   // bottom), so a taller tag grows upward and never into the head; the chat bubble goes on top of it (say()).
   const TAG_Y = 2.53; // the tag's bottom over a character's feet
+  // v1.10.34: an event visitor's mark -- a yellow star with 「!」, nothing like a player's name tag (the owner of a lost
+  // thing wore a 「?」 tag that read as someone logged in)
+  function makeStarMark() {
+    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+    const c = canvas.getContext('2d');
+    c.beginPath();
+    for (let k = 0; k < 10; k += 1) { const r = k % 2 ? 26 : 58; const a = -Math.PI / 2 + (k * Math.PI) / 5; c.lineTo(64 + Math.cos(a) * r, 68 + Math.sin(a) * r); }
+    c.closePath(); c.fillStyle = '#facc15'; c.fill(); c.lineJoin = 'round'; c.lineWidth = 6; c.strokeStyle = '#a16207'; c.stroke();
+    c.fillStyle = '#4a2a00'; c.font = '900 52px Pretendard, "Malgun Gothic", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', 64, 72);
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
+    sprite.center.set(0.5, 0); sprite.scale.set(0.75, 0.75, 1); sprite.renderOrder = 2; sprite.userData.mark = 'star';
+    return sprite;
+  }
   function makeTag(name, title, champion = false, hoguking = false) {
     const pills = [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 104 + (pills.length ? 58 : 0) + (title ? 64 : 0);
@@ -1039,7 +1053,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(spec);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
           if (ev.kind === 'photo') { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
-          npc.tag = makeTag(ev.kind === 'photo' ? '📷' : '?', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); // what they want, at a glance
+          // what they want, at a glance: the tourist's camera; the owner of a lost thing a yellow star 「!」 (v1.10.34)
+          if (ev.kind !== 'photo') { npc.tag = makeStarMark(); npc.tag.position.y = 2.44; npc.root.add(npc.tag); } else { npc.tag = makeTag('📷', null); npc.tag.scale.multiplyScalar(0.7); npc.tag.position.y = 2.44; npc.root.add(npc.tag); }
           npcs.push(npc);
         } else { eventModel(ev.kind, root, ev.id); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);

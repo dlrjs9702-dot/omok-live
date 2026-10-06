@@ -11,6 +11,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.34 분실물 주인 표시: 「?」 이름표 → 노란 별 「!」
+
+사용자 지시 2026-10-06(「?가 접속해 있다」): 분실물 주인 NPC 머리 위 「?」가 플레이어 이름표와 같은 모양이라 접속자로 보였다. 노란 별 안에 「!」를 그린 표시(`plaza-scene` `makeStarMark`, 이름표 모양 아님)로 교체. 주인 NPC·돌려주기 흐름은 그대로, 관광객 카메라 이름표는 유지.
+
 ## v1.10.33 섬 제초 요청 안내·오늘 하루 잡초 3배
 
 사용자 지시 2026-10-06.
