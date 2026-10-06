@@ -34,7 +34,9 @@ const { createAccessStore } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
-const { toastLines, weeklyToastLines } = require('./lib/missions');
+const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
+const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
+const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
@@ -453,6 +455,7 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
   const session = sessions.get(token);
   if (!session) return false;
   sessions.delete(token);
+  soloGames.delete(token); // v1.10.37: a game left behind is void
   let cancelledInvitation = false;
   for (const [id, invite] of invitations) {
     if (invite.fromToken === token || invite.toToken === token) {
@@ -918,7 +921,52 @@ async function weedState(now = nowMs()) {
 }
 // v1.10.31 (IDEAS: prepared for missions later, not in the mission pool now): life progress -- weeds pulled, weeds
 // handed in. Nothing listens yet; a future 「잡초 N개」 mission hooks in here.
-function islandProgress(kind, account, qty) { void kind; void account; void qty; }
+// v1.10.37 연계 퀘스트: what the server confirmed on the island moves a story on (a weed pulled, an event solved -- its
+// type, a place stood at). Each account's document for the week is kept here too, so standing about costs nothing.
+const questWeek = (now = nowMs()) => weekStart(kstDate(now));
+const questCache = new Map(); // account -> { week, doc, bag }
+async function questState(account) {
+  const week = questWeek(); const hit = questCache.get(account);
+  if (hit?.week === week) return hit;
+  const { doc, bag } = await pointStore.questDoc(account, week);
+  const st = { week, doc, bag, bagAt: nowMs() }; questCache.set(account, st); return st;
+}
+// the bag changes in many places (finds, sales, weeds); a thing to bring is counted from it, read again every few seconds
+// ponytail: a timed re-read, not a hook on every bag change; per-change invalidation if the bag paths are ever unified
+function questBagFresh(st, account) {
+  if (nowMs() - st.bagAt < 2000 || st.reading) return;
+  st.reading = true;
+  pointStore.questDoc(account, st.week).then(({ bag }) => { st.bag = bag; st.bagAt = nowMs(); }).catch(() => {}).finally(() => { st.reading = false; });
+}
+async function questApply(account, fn) {
+  const st = await questState(account);
+  const out = await pointStore.questApply(account, st.week, fn);
+  if (out?.doc) { st.doc = out.doc; if (out.bag) { st.bag = out.bag.items.map(({ entryId, itemId, qty, meta }) => ({ entryId, itemId, qty, meta })); st.bagAt = nowMs(); } }
+  return out;
+}
+function islandProgress(kind, account, qty, where = null) {
+  const what = kind === 'weed_pull' ? 'weed' : kind;
+  questState(account).then((st) => {
+    if (!IslandQuests.note(st.doc, what, { qty, ...(where || {}) })) return null; // nothing of mine waits on it
+    return questApply(account, (doc) => { const next = IslandQuests.note(doc, what, { qty, ...(where || {}) }); return next ? { doc: next, reward: 0 } : null; });
+  }).catch((error) => console.error('연계 퀘스트 기록 실패:', error.message));
+}
+// the islanders with a story, for the map and the 「SPACE · 말 걸기」 (always sent: they stand still), and the place the
+// step I am on points to
+function questEntries(account) {
+  const st = questCache.get(account); if (!st || st.week !== questWeek()) { questState(account).catch(() => {}); return { entries: [], track: [] }; }
+  questBagFresh(st, account);
+  const entries = []; const track = [];
+  for (const [id, story] of Object.entries(IslandQuests.STORIES)) {
+    const s = st.doc[id] || { step: 0, taken: false, count: 0, done: false };
+    entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name });
+    const t = IslandQuests.trackOf(id, s, st.bag);
+    if (t) { track.push(t); if (t.to && !t.ready) entries.push({ id: `questspot${id}`, kind: 'quest_spot', x: t.to.x, z: t.to.z, verb: null }); }
+  }
+  return { entries, track };
+}
+// v1.10.37 혼자 하는 게임: one game a session at a time, on the server (lib/minesweeper.js); gone with the session
+const soloGames = new Map(); // session token -> { id, level, engine }
 const weedTimer = setInterval(() => { weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); }, 60 * 1000);
 weedTimer.unref?.();
 
@@ -3440,7 +3488,9 @@ async function requestHandler(req, res) {
     });
     plazaDirty = true;
     const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: islandEvents.nearby(spot.x, spot.z, account), now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    const quests = questEntries(account); // v1.10.37 연계 퀘스트
+    if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -3549,6 +3599,60 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, paid: result.paid, sold: result.sold, capped: result.capped, bag: result.bag, balance: result.balance ?? result.balanceAfter });
   }
   // v1.10.31 잡초: every weed out now ([id, x, z]); start / finish pulling one
+  // v1.10.37 혼자 하는 게임 — 지뢰찾기 (IDEAS 「솔로 게임」): the board is the server's; a clear pays by level once per game,
+  // nothing for a clear faster than a person could (the level's minMs), no daily limit (경제 기준 통합)
+  if (pathname === '/api/solo/minesweeper' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const g = soloGames.get(session.token);
+    return sendJson(res, 200, { ok: true, levels: Object.entries(Minesweeper.LEVELS).map(([id, l]) => ({ id, label: l.label, w: l.w, h: l.h, mines: l.mines, points: l.points })),
+      records: (await pointStore.soloRecords(pointAccountForSession(session))).minesweeper || {}, game: g ? { id: g.id, view: g.engine.view() } : null });
+  }
+  if ((pathname === '/api/solo/minesweeper/new' || pathname === '/api/solo/minesweeper/act') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`solo:${session.token}`, 900, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    if (pathname === '/api/solo/minesweeper/new') {
+      if (!Minesweeper.LEVELS[body.level]) return sendError(res, 400, 'BAD_LEVEL', '고를 수 없는 난이도입니다.');
+      const g = { id: crypto.randomUUID(), level: body.level, engine: Minesweeper.createGame(body.level, { now: nowMs }) };
+      soloGames.set(session.token, g);
+      return sendJson(res, 200, { ok: true, id: g.id, view: g.engine.view() });
+    }
+    const g = soloGames.get(session.token);
+    if (!g || g.id !== body.id) return sendError(res, 409, 'NO_GAME', '새 게임을 시작해 주세요.');
+    const x = Number(body.x); const y = Number(body.y);
+    try { g.engine.act(String(body.action), x, y); } catch { return sendError(res, 400, 'BAD_MOVE', '잘못된 요청입니다.'); }
+    const view = g.engine.view();
+    let result = null;
+    if (view.status === 'won' && !g.paid) {
+      g.paid = true;
+      const L = Minesweeper.LEVELS[g.level];
+      const points = view.ms >= L.minMs ? L.points : 0;
+      const account = pointAccountForSession(session);
+      const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points, title: `지뢰찾기 ${L.label}` });
+      result = { points: out.points, best: out.best, clears: out.clears, newBest: out.newBest, balance: out.balance ?? out.balanceAfter };
+      if (out.points) notifyPointsChanged([account]);
+    }
+    return sendJson(res, 200, { ok: true, view, result });
+  }
+  // Test-only: where the mines are (and the game made older, as if played longer); a quest step's activity noted
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/solo/peek' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const g = soloGames.get(session.token); const body = await parseJson(req);
+    if (!g?.engine.game.mine) return sendError(res, 409, 'NO_GAME', '새 게임을 시작해 주세요.');
+    if (Number(body.ageMs) > 0) g.engine.game.startedAt -= Number(body.ageMs);
+    return sendJson(res, 200, { ok: true, mines: Array.from(g.engine.game.mine.keys()).filter((i) => g.engine.game.mine[i]) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/note' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req); const account = pointAccountForSession(session);
+    await questState(account);
+    const out = await questApply(account, (doc) => { const next = IslandQuests.note(doc, String(body.what), { qty: Number(body.qty) || 1 }); return next ? { doc: next, reward: 0 } : null; });
+    return sendJson(res, 200, { ok: true, doc: out?.doc || null });
+  }
   if (pathname === '/api/island/weeds' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3601,6 +3705,18 @@ async function requestHandler(req, res) {
     const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
     if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const account = pointAccountForSession(session);
+    if (id.startsWith('quest') && IslandQuests.STORIES[id.slice(5)]) { // v1.10.37 연계 퀘스트: talking to the islander
+      const story = id.slice(5); const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+      const week = questWeek();
+      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; });
+      if (out?.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
+      const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
+      if (r.reward) notifyPointsChanged([account]);
+      const quests = questEntries(account);
+      return sendJson(res, 200, { ok: true, action: 'quest', story, name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+        balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
+    }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (claimed.error) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
@@ -3621,6 +3737,7 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
+    if (claimed.event?.type) islandProgress(claimed.event.type, account, 1); // v1.10.37 연계 퀘스트 (e.g. beach_trash)
     if (claimed.points || outcome.bonus) notifyPointsChanged([account]); // v1.10.31: or the week's life bonus
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     return sendJson(res, 200, { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
