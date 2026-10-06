@@ -270,15 +270,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const pedestal = new THREE.Group(); halloween.add(pedestal);
   const pedestalLook = new THREE.Group(); pedestal.add(pedestalLook);
   mesh(new THREE.CylinderGeometry(3.05, 3.17, 1.05, 40), mat(0x4a3f52), 0, 0.525, 0, pedestalLook);
-  const lantern = new THREE.Group(); lantern.position.y = 1.05; halloween.add(lantern);
+  const lantern = new THREE.Group(); lantern.position.y = 1.05; lantern.rotation.y = Math.PI; halloween.add(lantern); // its face (model front -z) toward the plaza's way in
   const lanternLook = new THREE.Group(); lantern.add(lanternLook);
   const pumpkin = mesh(new THREE.SphereGeometry(2.9, 32, 20), mat(0xe8782a), 0, 2.45, 0, lanternLook); pumpkin.scale.set(1.18, 0.82, 1.1);
   mesh(new THREE.CylinderGeometry(0.28, 0.4, 0.9, 10), mat(0x5d7a3a), 0, 4.75, 0, lanternLook);
   const glowMat = new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff8a1f, emissiveIntensity: 1.6, roughness: 1 });
-  for (const [x, y, sx, sy] of [[-1, 3, 0.55, 0.5], [1, 3, 0.55, 0.5], [0, 1.85, 1.5, 0.4]]) { const cut = mesh(new THREE.SphereGeometry(1, 12, 8), glowMat, x, y, 3.0, lanternLook); cut.scale.set(sx, sy, 0.12); cut.castShadow = false; }
+  for (const [x, y, sx, sy] of [[-1, 3, 0.55, 0.5], [1, 3, 0.55, 0.5], [0, 1.85, 1.5, 0.4]]) { const cut = mesh(new THREE.SphereGeometry(1, 12, 8), glowMat, x, y, -3.0, lanternLook); cut.scale.set(sx, sy, 0.12); cut.castShadow = false; }
   const lanternGlows = [glowMat]; // the model's own `glow` material joins when it comes (lights the cut face)
   assets.attach('landmark.halloween.pedestal', pedestal, pedestalLook);
-  assets.attach('landmark.halloween.lantern', lantern, lanternLook, (entry) => { if (!entry) return; lantern.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glow' && !lanternGlows.includes(m)) { m.emissive?.set(0xff8a1f); lanternGlows.push(m); } }); });
+  assets.attach('landmark.halloween.lantern', lantern, lanternLook, (entry) => { if (!entry) return; lantern.traverse((o) => { for (const m of [].concat(o.material || [])) { if (m.name === 'glow' && !lanternGlows.includes(m)) { m.emissive?.set(0xff8a1f); lanternGlows.push(m); } if (m.name === 'accent') { m.emissive?.set(0x5a2206); m.emissiveIntensity = 0.7; } } }); }); // the shell lit a little from inside
   const candle = new THREE.PointLight(0xff9a3c, 0, 26, 1.6); candle.position.set(0, 3.6, 0); halloween.add(candle);
   const lessMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const DAY = { background: 0xbfe6ff, fog: 0xd7efff, sky: 0xfff4dc, ground: 0x8cc970, hemi: 1.05, sun: 0xfff0d2, sunI: 1.75 };
