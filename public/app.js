@@ -1825,7 +1825,7 @@
       // v1.10.32: given back hand to hand (the owner takes it, then goes), picked with a basket
       if (data.action === 'return') plaza.controller?.returnLost?.(id);
       else plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : 'pickup');
-      if (/^ev:(herb|berry|mushroom):/.test(key)) plaza.controller?.holdBasket?.();
+      if (/^ev:(herb|berry|mushroom|candy):/.test(key)) plaza.controller?.holdBasket?.();
       if (data.points) loadPoints();
       if (data.action !== 'pickup') islandEventsGone.set(id, Date.now());
       showIslandEvents(data.events || islandEventsNear);

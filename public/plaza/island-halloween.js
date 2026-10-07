@@ -59,7 +59,7 @@ const SHAPES = {
   lights: () => stringParts('lights'),
 };
 
-export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, benches, spots }) {
+export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, benches, spots, lampModel }) {
   const group = new THREE.Group(); group.visible = false; group.name = 'halloween-decor'; scene.add(group);
   const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
   const made = []; const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
@@ -148,6 +148,20 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   const flocks = [[0, 0, PH + 6, 10], [-48, 44, 10, 11], [30, -62, 11, 9]];
   const bats = new THREE.InstancedMesh(batGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }), flocks.length * 5); bats.frustumCulled = false; group.add(bats);
   const batAt = flocks.flatMap(([x, z, y, r], f) => [0, 1, 2, 3, 4].map((k) => ({ x, z, y: y + (k % 3) * 0.8, r: r + (k % 2) * 2.5, p: f * 2 + k * 1.25, v: 0.35 + (k % 3) * 0.06 })));
+  // v1.10.39: the bat model (halloween.bat) flies in their place, each beating its wings (Flap) a little out of step
+  // ponytail: one model copy + mixer per bat (15); the Codex pack's 4-bucket instanced Flap is the upgrade if bats grow
+  const batMixers = []; let batModels = 0;
+  const batHolders = batAt.map((b, i) => {
+    const h = new THREE.Group(); group.add(h);
+    assets.attach('halloween.bat', h, new THREE.Group(), (entry) => {
+      if (!entry) { batMixers[i] = null; batModels = Math.max(0, batModels - 1); bats.visible = batModels === 0; return; }
+      let src = null; h.traverse((o) => { if (!src && o.animations?.length) src = o; });
+      if (src) { const mixer = new THREE.AnimationMixer(src); mixer.clipAction(src.animations[0]).play(); mixer.update(i * 0.071); batMixers[i] = mixer; }
+      batModels += 1; bats.visible = false;
+    });
+    return h;
+  });
+  let lastClock = null; let seen = -1; const GLOW_LIT = 2.6;
   // the full moon and the stars, round wherever the camera is (not in the fog)
   const sky = new THREE.Group(); group.add(sky);
   const moon = new THREE.Mesh(new THREE.SphereGeometry(14, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c8, fog: false })); moon.position.set(-70, 120, -300); sky.add(moon);
@@ -160,18 +174,26 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
 
   function step(clock, camera, still) {
     if (!group.visible) return;
+    if (group.children.length !== seen) { // models came (or went): their `glow` lit brighter at night (the files' materials, shared)
+      seen = group.children.length;
+      group.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glow' && m.emissiveIntensity !== GLOW_LIT) m.emissiveIntensity = GLOW_LIT; });
+    }
+    shades.visible = lampModel(); // the lamps' orange shades go over lamp models only (the stand-in lamps have their own bulbs)
     sky.position.copy(camera.position);
     const t = still ? 0 : clock;
     wispAt.forEach((w, i) => { wisps.setMatrixAt(i, m4.makeTranslation(w.x + Math.sin(t * 0.4 + w.p) * 0.8, w.y + Math.sin(t * 0.9 + w.p) * 0.35, w.z + Math.cos(t * 0.33 + w.p) * 0.8)); });
     wisps.instanceMatrix.needsUpdate = true;
+    const dt = lastClock === null ? 0 : Math.min(0.1, clock - lastClock); lastClock = clock;
     batAt.forEach((b, i) => {
-      const a = t * b.v + b.p; const flap = still ? 1 : 0.35 + 0.65 * Math.abs(Math.sin(t * 11 + i));
-      bats.setMatrixAt(i, m4.makeTranslation(b.x + Math.cos(a) * b.r, b.y + Math.sin(t * 1.3 + i) * 0.4, b.z + Math.sin(a) * b.r).multiply(new THREE.Matrix4().makeRotationY(-a)).multiply(new THREE.Matrix4().makeScale(1.6 * flap, 1.6, 1.6)));
+      const a = t * b.v + b.p; const x = b.x + Math.cos(a) * b.r; const y = b.y + Math.sin(t * 1.3 + i) * 0.4; const z = b.z + Math.sin(a) * b.r;
+      const ry = Math.atan2(Math.sin(a), -Math.cos(a)); // its front (-z) along the way it flies
+      if (batModels) { batHolders[i].position.set(x, y, z); batHolders[i].rotation.y = ry; if (!still) batMixers[i]?.update(dt); return; }
+      const flap = still ? 1 : 0.35 + 0.65 * Math.abs(Math.sin(t * 11 + i));
+      bats.setMatrixAt(i, m4.makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationY(ry)).multiply(new THREE.Matrix4().makeScale(1.6 * flap, 1.6, 1.6)));
     });
     bats.instanceMatrix.needsUpdate = true;
   }
-  // the lamps' orange shades go over lamp models only (the stand-in lamps have their own bulbs)
-  const setOn = (on, lampModels) => { group.visible = on; shades.visible = on && lampModels; };
+  const setOn = (on) => { group.visible = on; };
   const dispose = () => { for (const g of made) g.dispose(); glowMat.dispose(); shadeMat.dispose(); wispMat.dispose(); scene.remove(group); };
-  return { group, step, setOn, dispose, debug: () => ({ shown: group.visible, kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
+  return { group, step, setOn, dispose, debug: () => ({ shown: group.visible, batModels, batsFlapping: batMixers.filter(Boolean).length, kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
 }

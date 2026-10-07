@@ -128,3 +128,14 @@ test('부탁: 주인에게 말 걸면 그 계정만 멀리서도 물건이 보�
   assert.equal(ev.nearby(lost.npc.x, lost.npc.z, 'acc-b').find((e) => e.kind === 'lost_owner').verb, null);
   assert.equal(ev.nearby(lost.npc.x, lost.npc.z, 'acc-a').find((e) => e.kind === 'lost_owner').verb, '돌려주기');
 });
+
+// v1.10.39 섬 전체 할로윈: candy bags lie about only in October (Asia/Seoul) and are gone when November comes
+test('사탕 주머니 이벤트: 10월에만 나오고 11월이 되면 사라진다', () => {
+  let t = Date.parse('2026-10-15T12:00:00+09:00'); let seen = 0;
+  for (let seed = 1; seed <= 12; seed += 1) { const ev = createIslandEvents({ random: seeded(seed), now: () => t }); seen += [...ev.events.values()].filter((e) => e.type === 'candy').length; }
+  assert.ok(seen > 0, '10월에는 사탕 주머니가 놓인다');
+  const ev = createIslandEvents({ random: seeded(3), now: () => t });
+  t = Date.parse('2026-11-01T00:01:00+09:00'); ev.expire();
+  assert.equal([...ev.events.values()].filter((e) => e.type === 'candy').length, 0);
+  assert.equal(ev.size(), 15, '빈자리는 다른 이벤트로 채운다');
+});

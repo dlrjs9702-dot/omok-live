@@ -958,6 +958,7 @@ function questEntries(account) {
   questBagFresh(st, account);
   const entries = []; const track = [];
   for (const [id, story] of Object.entries(IslandQuests.STORIES)) {
+    if (!IslandQuests.isOpen(id, nowMs())) continue; // v1.10.39: the Halloween kid only in October
     const s = st.doc[id] || { step: 0, taken: false, count: 0, done: false };
     entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name });
     const t = IslandQuests.trackOf(id, s, st.bag);
@@ -3705,7 +3706,7 @@ async function requestHandler(req, res) {
     const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
     if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const account = pointAccountForSession(session);
-    if (id.startsWith('quest') && IslandQuests.STORIES[id.slice(5)]) { // v1.10.37 연계 퀘스트: talking to the islander
+    if (id.startsWith('quest') && IslandQuests.isOpen(id.slice(5), nowMs())) { // v1.10.37 연계 퀘스트: talking to the islander
       const story = id.slice(5); const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       const week = questWeek();
       const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; });

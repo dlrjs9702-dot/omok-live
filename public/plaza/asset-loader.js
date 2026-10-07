@@ -60,6 +60,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       return object;
     }
     const object = cloneObject(gltf.scene);
+    object.animations = gltf.animations || []; // v1.10.38: a looping prop (the Halloween bats' Flap) plays its own clip
     object.scale.multiplyScalar(entry.scale ?? 1);
     object.rotation.y += entry.rotationY || 0;
     if (Array.isArray(entry.offset)) object.position.set(...entry.offset);
@@ -664,7 +665,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
       for (const m of high) { m.skeleton.update(); m.computeBoundingBox(); top.union(m.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, m.matrixWorld))); }
       if (Number.isFinite(top.max.y) && top.max.y > 0.5) { c.headTop = top.max.y; c.onWorn?.(); }
-      for (const key of Object.keys(c.holding || {})) seat(c, c.holding[key]); // a thing held before the model came: into its hands
+      for (const key of Object.keys(c.holding || {})) if (c.holding[key].object) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }
     }).catch((error) => { shown['character.base'] = 'procedural'; onError('character.base', error); });
   }

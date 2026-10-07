@@ -207,6 +207,18 @@
   const HWL = '/assets/island/halloween-v1';
   REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
   REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
+  // v1.10.39 섬 전체 할로윈 꾸미기 (Codex decor pack 2026-10-07): the batches of island-halloween.js, at their stand-ins'
+  // matrices (strings: left hook at the origin, 4 m along +x), the bat a looping Flap
+  const HWD = '/assets/island/halloween-decor-v1';
+  const hwd = (file, extra = {}) => ({ url: `${HWD}/${file}.glb`, low: { url: `${HWD}/${file}_low.glb` }, near: 35, ...extra });
+  Object.assign(REGISTRY, {
+    'halloween.pumpkinA': hwd('pumpkin_small_a', { scale: 1.45 }), 'halloween.pumpkinB': hwd('pumpkin_small_b', { scale: 1.45 }),
+    'halloween.stack': hwd('pumpkin_stack', { scale: 1.2 }), 'halloween.hay': hwd('hay_bale'), 'halloween.scarecrow': hwd('scarecrow'),
+    'halloween.cauldron': hwd('cauldron'), 'halloween.broom': hwd('broom_hay'),
+    'halloween.bunting': hwd('bunting', { shadows: false }), 'halloween.lights': hwd('string_lights', { shadows: false }),
+    'halloween.bat': hwd('bat', { scale: 1.3, shadows: false, near: 60 }),
+    'halloween.candyBag': hwd('candy_bag', { scale: 1.3 }), 'halloween.candyBasket': hwd('candy_basket'),
+  });
 
   // v1.10.31 잡초 채집·생활 소품: the weed (a light model that stands apart from the grass, the same in every season)
   // and the one pulled out with its roots (in the hand a moment); the finds of the island events as the 2026-10-05

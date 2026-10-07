@@ -297,6 +297,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const DAY = { background: 0xbfe6ff, fog: 0xd7efff, sky: 0xfff4dc, ground: 0x8cc970, hemi: 1.05, sun: 0xfff0d2, sunI: 1.75 };
   const NIGHT = { background: 0x0d1630, fog: 0x231a3d, sky: 0x6a5fa8, ground: 0x23304a, hemi: 0.6, sun: 0x9fb4ff, sunI: 0.55 }; // v1.10.38: a purple haze
   let night = null; let halloweenOverride = null;
+  const lampModel = () => lamps.length > 0 && !lamps[0].parent.visible; // v1.10.38: the lamp model stands in place of the stand-in
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9; // October, Asia/Seoul
   function setHalloween(on) {
     if (night === on) return; night = on;
@@ -309,7 +310,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.38: the whole island dressed up, and every lamp orange
     for (const m of [...lamps.map((l) => l.material), island.lampBulb]) { m.color.set(on ? 0xffc27a : 0xfff3c2); m.emissive.set(on ? 0xff8a1f : 0xffe08a); }
     island.lampBulb.emissiveIntensity = on ? 1.6 : 0.6;
-    decor.setOn(on, assets.debug().shown?.['prop.lamp'] === 'model');
+    decor.setOn(on);
   }
   const PROPS = globalThis.IslandTerrain.plazaProps(); // v1.10.16: placed in island-terrain.js, shared with the islanders' routes
   // v1.10.17: each plaza prop is a gameplay holder (place, facing; its circle is the shared plazaProps one) with its
@@ -697,7 +698,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   assets.ambient(scene); // v1.10.29 the seasonal falling flakes round me
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
-  const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots }); // v1.10.38
+  const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
   // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.
   let statueList = []; let statueKey = '[]'; const statueRoots = []; const statueChars = [];
@@ -1031,7 +1032,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.31: each find shows its interaction-prop model (2026-10-05 packs) over this procedural look -- the trash as a
   // can and a bottle on the shore, paper on the grass
   const EVENT_PROPS = { beach_trash: [['prop.event.trash_can', 0.12, 0], ['prop.event.trash_bottle', -0.2, -0.1]], grass_trash: [['prop.event.paper_litter', 0, 0]], herb: [['prop.event.herb', 0, 0]],
-    berry: [['prop.event.berry', 0, 0]], mushroom: [['prop.event.mushroom', 0, 0]], coin: [['prop.event.coin', 0, 0]], wallet: [['prop.event.wallet', 0, 0]], lost_item: [['prop.event.lost_item', 0, 0]] };
+    berry: [['prop.event.berry', 0, 0]], mushroom: [['prop.event.mushroom', 0, 0]], coin: [['prop.event.coin', 0, 0]], wallet: [['prop.event.wallet', 0, 0]], lost_item: [['prop.event.lost_item', 0, 0]], candy: [['halloween.candyBag', 0, 0]] }; // v1.10.39 사탕 주머니
   // v1.10.32: some finds come in two looks, each event its own (from its id: the same on every screen and in the hands)
   const twoLooks = (id, a, b) => ([...String(id)].reduce((n, ch) => n + ch.charCodeAt(0), 0) % 2 ? b : a);
   const lostProp = (id) => twoLooks(id, 'prop.event.lost_item', 'prop.event.lost_pouch');
@@ -1050,6 +1051,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     } else if (kind === 'berry') {
       add(new THREE.SphereGeometry(0.32, 8, 6), 0x5aa94f, 0, 0.3, 0);
       for (let k = 0; k < 7; k += 1) add(new THREE.SphereGeometry(0.07, 8, 6), 0xd83a4a, Math.cos(k) * 0.26, 0.3 + Math.sin(k * 2) * 0.12, Math.sin(k) * 0.26);
+    } else if (kind === 'candy') { // v1.10.39: an orange cloth bag with sweets peeping out (the model replaces it)
+      add(new THREE.SphereGeometry(0.17, 12, 9), 0xf08a24, 0, 0.17, 0);
+      for (let k = 0; k < 3; k += 1) add(new THREE.SphereGeometry(0.06, 8, 6), k % 2 ? 0xb46cff : 0xfff1c8, Math.cos(k * 2.1) * 0.07, 0.36, Math.sin(k * 2.1) * 0.07);
     } else if (kind === 'mushroom') {
       for (const [mx, mz, s] of [[0, 0, 1], [0.22, 0.12, 0.7], [-0.18, 0.15, 0.6]]) {
         add(new THREE.CylinderGeometry(0.04 * s, 0.05 * s, 0.18 * s, 8), 0xf6efe0, mx, 0.09 * s, mz);
@@ -1122,10 +1126,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         let npc = null;
         if (ev.kind === 'quest_npc') { // v1.10.37 연계 퀘스트: the islander with a story, standing at their place, facing the plaza
           const QUEST_LOOKS = { granny: [{ gender: 'female', outfit: 'avatar_outfit_9', hat: 'avatar_hat_1', hairColor: '#b9b8b4' }, { shirt: 0x8fbf6a, hair: 0xb9b8b4, skin: 0xffe0c4, hat: 0xe2c27a }],
-            fisher: [{ gender: 'male', outfit: 'avatar_outfit_11', hat: 'avatar_hat_6' }, { shirt: 0xf2c94c, hair: 0x4a3326, skin: 0xffd6b0, hat: 0x34507e }] };
+            fisher: [{ gender: 'male', outfit: 'avatar_outfit_11', hat: 'avatar_hat_6' }, { shirt: 0xf2c94c, hair: 0x4a3326, skin: 0xffd6b0, hat: 0x34507e }],
+            kid: [{ gender: 'male', outfit: 'avatar_outfit_16', hat: 'avatar_hat_14' }, { shirt: 0xf08a24, hair: 0x6b4a2b, skin: 0xffe0c4, hat: 0xf08a24 }] }; // v1.10.39: in a pumpkin costume
           const [look, spec] = QUEST_LOOKS[ev.story] || QUEST_LOOKS.granny;
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; dressUp(npc, look, spec);
+          if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
           npcs.push(npc);
         } else if (ev.kind === 'quest_spot') { // where a step asks me to go: only on the map
         } else if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
@@ -1543,7 +1549,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
     drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
     lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(clock * 1.5 + i) * 0.05; });
-    if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setHalloween(halloweenOverride ?? isHalloween(Date.now() + serverOffset)); if (night) decor.setOn(true, assets.debug().shown?.['prop.lamp'] === 'model'); }
+    if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setHalloween(halloweenOverride ?? isHalloween(Date.now() + serverOffset)); }
     decor.step(clock, camera, Boolean(lessMotion?.matches));
     if (night) { // a candle inside: slow, small changes; still when less motion is asked
       const f = lessMotion?.matches ? 1 : 0.88 + Math.sin(clock * 2.3) * 0.06 + Math.sin(clock * 5.1 + 1.3) * 0.04;

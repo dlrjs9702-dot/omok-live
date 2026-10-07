@@ -2096,6 +2096,90 @@
       "sha256": "c38a7d858fb6564eaa9108e0739e0a7e26cd1a8c46262b6dff1678d39e81545c",
       "lowSrc": "halloween:08. Necklace/02. Low/necklace_03_moon_key_low.glb",
       "lowSha256": "51c3a9cb720ebcf3fb3e2e459a6b888ff9ef3792ec3ce1aafb6abdbad0caf960"
+    },
+    {
+      "out": "halloween-decor-v1/pumpkin_small_a.glb",
+      "src": "halloweenDecor:01. Path and porch/01. High/hw_pumpkin_small_a_high.glb",
+      "sha256": "9842b619df5a8409abff152a768883c33bce0e7218249ea6968318c52281158f",
+      "lowSrc": "halloweenDecor:01. Path and porch/02. Low/hw_pumpkin_small_a_low.glb",
+      "lowSha256": "14e52051fb9d21e2c0f909b8ec5b3c458aecf7b4181639c931beb90dc122e2b8"
+    },
+    {
+      "out": "halloween-decor-v1/pumpkin_small_b.glb",
+      "src": "halloweenDecor:01. Path and porch/01. High/hw_pumpkin_small_b_high.glb",
+      "sha256": "b99aaf9bbe9a0c62ba934ee9cf6bcdaaf73fee66ed60d2c7373a70fdf61fff17",
+      "lowSrc": "halloweenDecor:01. Path and porch/02. Low/hw_pumpkin_small_b_low.glb",
+      "lowSha256": "cca4671723e8e3f2ba7411fa0c738b1a2fd3ec931627ee99cb98dd5b6b0e2f45"
+    },
+    {
+      "out": "halloween-decor-v1/pumpkin_stack.glb",
+      "src": "halloweenDecor:01. Path and porch/01. High/hw_pumpkin_stack_high.glb",
+      "sha256": "41ae0bd995ce1022c6d9a4ce901deaeb9b64e68a6af73b2e4296825d65ec6e62",
+      "lowSrc": "halloweenDecor:01. Path and porch/02. Low/hw_pumpkin_stack_low.glb",
+      "lowSha256": "a33080e8acd6806ae3158ecc215ea4359cadebb6da59faf5b49ad10dd45d4e51"
+    },
+    {
+      "out": "halloween-decor-v1/hay_bale.glb",
+      "src": "halloweenDecor:02. Field props/01. High/hw_hay_bale_high.glb",
+      "sha256": "671c3c1c7e1b533effc792290b3e78de8d7952bf4bfe5cd2f5e342b834b6c93a",
+      "lowSrc": "halloweenDecor:02. Field props/02. Low/hw_hay_bale_low.glb",
+      "lowSha256": "5a612ebfb0ccef657623f99945036b450fd5a8b2012789c30092561e9d93e3fa"
+    },
+    {
+      "out": "halloween-decor-v1/scarecrow.glb",
+      "src": "halloweenDecor:02. Field props/01. High/hw_scarecrow_high.glb",
+      "sha256": "2c604d5caa11596b65d4c31d7451721d9918b533d8c113c99fdd180a03918a52",
+      "lowSrc": "halloweenDecor:02. Field props/02. Low/hw_scarecrow_low.glb",
+      "lowSha256": "68599c5f42688b23f790822714a27cf68d7272d2cccd15dd938203ecdc78f4d1"
+    },
+    {
+      "out": "halloween-decor-v1/cauldron.glb",
+      "src": "halloweenDecor:02. Field props/01. High/hw_cauldron_high.glb",
+      "sha256": "6d2bd38d445aac07d4a3386d5b227ae421e70cb4b843bf6b6ec5cebbc386f29d",
+      "lowSrc": "halloweenDecor:02. Field props/02. Low/hw_cauldron_low.glb",
+      "lowSha256": "311b292a53ffac83cf9744090aa3f3a4cfa5c30712cfc9c8d071c580d3c1518f"
+    },
+    {
+      "out": "halloween-decor-v1/broom_hay.glb",
+      "src": "halloweenDecor:02. Field props/01. High/hw_broom_hay_high.glb",
+      "sha256": "1a1febf738204ba66b8bd6cd708d6743cc2cbaa4ef94508c137967e32c0b581d",
+      "lowSrc": "halloweenDecor:02. Field props/02. Low/hw_broom_hay_low.glb",
+      "lowSha256": "8c840c1e6b9378ef49a714be357cf5a17fbf06cba4c5feaba923a42188b60892"
+    },
+    {
+      "out": "halloween-decor-v1/bunting.glb",
+      "src": "halloweenDecor:03. Hanging decorations/01. High/hw_bunting_high.glb",
+      "sha256": "e623c37c346f17bd04a87c24790f84610d83241ab508e9ceca409b2aef60476d",
+      "lowSrc": "halloweenDecor:03. Hanging decorations/02. Low/hw_bunting_low.glb",
+      "lowSha256": "08007e335f77ddca42f5ac9697b8a61bcff0877af89fd4fdc56b1f925f0cb8eb"
+    },
+    {
+      "out": "halloween-decor-v1/string_lights.glb",
+      "src": "halloweenDecor:03. Hanging decorations/01. High/hw_string_lights_high.glb",
+      "sha256": "42104acedb054ac81de5eb81cf0f159be4bfc28f748d2676817ff0aa0e5f8091",
+      "lowSrc": "halloweenDecor:03. Hanging decorations/02. Low/hw_string_lights_low.glb",
+      "lowSha256": "595eac0d270ed4aa276d17163aa1c4d57a377a7de887d042a3cdd09ec9eb500f"
+    },
+    {
+      "out": "halloween-decor-v1/bat.glb",
+      "src": "halloweenDecor:04. Flying bat/01. High/hw_bat_high.glb",
+      "sha256": "8dba6008f8edae2aacc5041346e3d71df9ac518d5b3fb88c6ffab5f40391d8b5",
+      "lowSrc": "halloweenDecor:04. Flying bat/02. Low/hw_bat_low.glb",
+      "lowSha256": "f5799a607d2bc4a634cf674a302dab3918fcac4e19fa20dcd8cc1203c2564177"
+    },
+    {
+      "out": "halloween-decor-v1/candy_bag.glb",
+      "src": "halloweenDecor:05. Candy event/01. High/hw_candy_bag_high.glb",
+      "sha256": "abee759a4171b2eec91bffc1419c869fb14fb738d4612ee141e29cc778d0b0fc",
+      "lowSrc": "halloweenDecor:05. Candy event/02. Low/hw_candy_bag_low.glb",
+      "lowSha256": "df6c0117c1a5e676c18041263613d704c38042ff20f6a0378b3260741570adec"
+    },
+    {
+      "out": "halloween-decor-v1/candy_basket.glb",
+      "src": "halloweenDecor:05. Candy event/01. High/hw_candy_basket_high.glb",
+      "sha256": "08be55b55808f090aeeb83166f6191c5e61e7575e36f1007525e38c633103bfe",
+      "lowSrc": "halloweenDecor:05. Candy event/02. Low/hw_candy_basket_low.glb",
+      "lowSha256": "b883cb301d3550706c59aad79510c4e4d6ee80c5015acbfbb693e394bec8a55a"
     }
   ],
   "sources": {
@@ -2105,6 +2189,7 @@
     "character": "03. Game Island character 2026-10-05",
     "skins": "05. Game Island skins 2026-10-05",
     "finish": "07. Game Island finish 2026-10-06",
-    "halloween": "08. Game Island Halloween 2026-10-06"
+    "halloween": "08. Game Island Halloween 2026-10-06",
+    "halloweenDecor": "10. Game Island Halloween decor 2026-10-07"
   }
 }
