@@ -152,7 +152,10 @@
     const each = (list, fn) => { for (const p of list) for (let i = 0; i < p.pos.length; i += 3) fn(p.pos[i], p.pos[i + 1], p.pos[i + 2]); };
     const slots = new Set(parts.map((p) => p.fit?.slot));
     for (const p of parts) for (const [slot, mats] of Object.entries(p.fit?.hideWith || {})) if (slots.has(slot)) out[p.id].hide.push(...mats);
-    const cover = Math.min(...of(['hat']).map((p) => p.fit?.cover ?? Infinity));
+    // v1.10.40 모자 쓰는 깊이 (사용자 2026-10-07: 「모자는 쓰는 것」): a hat with `sink` comes down that far onto the head,
+    // `widen` times wider round its own axis so the head stays inside its crown; the hair's cover line comes down with it
+    for (const hat of of(['hat'])) if (hat.fit.sink || hat.fit.widen) out[hat.id].ops.push({ kind: 'seat', drop: hat.fit.sink || 0, widen: hat.fit.widen || 1 });
+    const cover = Math.min(...of(['hat']).map((p) => (p.fit?.cover ?? Infinity) - (p.fit?.sink || 0)));
     if (Number.isFinite(cover)) for (const p of of(['hair'])) out[p.id].ops.push({ kind: 'cover', above: cover });
     const clothes = of(['outfit', 'top', 'bottom']);
     for (const neck of of(['necklace'])) {
@@ -202,6 +205,9 @@
           if ((op.zMin !== undefined && z <= op.zMin) || (op.zMax !== undefined && z >= op.zMax) || (op.yMax !== undefined && y >= op.yMax)) continue;
           P[i + 2] = z + curveAt(op.curve, y);
         }
+      } else if (op.kind === 'seat') {
+        P ||= Float32Array.from(pos);
+        for (let i = 0; i < P.length; i += 3) { P[i] *= op.widen; P[i + 1] -= op.drop; P[i + 2] *= op.widen; }
       } else if (op.kind === 'slab') {
         P ||= Float32Array.from(pos);
         for (let i = 0; i < P.length; i += 3) {

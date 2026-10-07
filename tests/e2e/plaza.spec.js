@@ -497,19 +497,20 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
 });
 
 // v1.10.21 카메라 회전 확장: W/A/S/D and the mouse turn one shared view -- A/D round my character like dragging, W/S and
-// dragging up/down tilt it within ±15° of the default quarter view; a held key turns smoothly and stops on release;
+// dragging up/down tilt it (v1.10.40: up toward the sky to 45°, down 15°); a held key turns smoothly and stops on release;
 // no turning while typing or while a window is open; the camera stays above the ground and out of buildings; the
 // arrow keys still walk.
-test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리고, 상하 ±15° 안, 입력창·창이 열린 동안은 무시, 지면·건물 밖', async ({ browser, request }) => {
+test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리고, 하늘 쪽 45°·아래 15° 안, 입력창·창이 열린 동안은 무시, 지면·건물 밖', async ({ browser, request }) => {
   test.setTimeout(150000);
   const a = await intoPlaza(browser, request, '카메라');
   const { page } = a;
-  const cam = () => page.evaluate(() => { const d = window.PlazaDebug(); return { yaw: d.camYaw, pitch: d.camPitch, max: d.pitchMax, camera: d.camera }; });
+  const cam = () => page.evaluate(() => { const d = window.PlazaDebug(); return { yaw: d.camYaw, pitch: d.camPitch, max: d.pitchMax, sky: d.skyMax, camera: d.camera }; });
   const hold = async (key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms); await page.keyboard.up(key); };
   await page.locator('#plazaStage').focus();
   const start = await cam();
   expect(start.pitch).toBe(0); expect(start.yaw).toBe(0);
   const max = start.max; expect(max).toBeCloseTo((15 * Math.PI) / 180, 5);
+  const sky = start.sky; expect(sky).toBeCloseTo((45 * Math.PI) / 180, 5); // v1.10.40 하늘 보기
 
   // A turns like dragging left (yaw up), D the other way; on release it stops
   await hold('a', 600);
@@ -520,14 +521,14 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await hold('d', 600); await page.waitForTimeout(300);
   expect((await cam()).yaw).toBeLessThan(afterA.yaw - 0.3);
 
-  // W / S tilt, never past ±15°
+  // v1.10.40: W looks up toward the sky, never past 45°; S looks down from higher up, never past 15°
   await hold('w', 2500); await page.waitForTimeout(300);
-  const up = await cam(); expect(up.pitch).toBeGreaterThan(max - 0.01); expect(up.pitch).toBeLessThanOrEqual(max + 1e-9);
-  await hold('s', 3500); await page.waitForTimeout(300);
-  const down = await cam(); expect(down.pitch).toBeLessThan(-max + 0.01); expect(down.pitch).toBeGreaterThanOrEqual(-max - 1e-9);
-  expect(down.camera.clear).toBeGreaterThan(0.9); // the lowest view is still above the ground
+  const up = await cam(); expect(up.pitch).toBeLessThan(-sky + 0.01); expect(up.pitch).toBeGreaterThanOrEqual(-sky - 1e-9);
+  expect(up.camera.clear).toBeGreaterThan(0.9); // looking at the sky the camera is still above the ground
+  await hold('s', 4000); await page.waitForTimeout(300);
+  const down = await cam(); expect(down.pitch).toBeGreaterThan(max - 0.01); expect(down.pitch).toBeLessThanOrEqual(max + 1e-9);
 
-  // the mouse moves the same view: dragging up tilts up from where the keys left it, with no jump
+  // the mouse moves the same view: dragging up looks up from where the keys left it, with no jump
   const box = await page.locator('#plazaStage canvas.plazaCanvas').boundingBox();
   const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
   const before = await cam();
@@ -536,7 +537,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.mouse.up();
   await page.waitForTimeout(400);
   const dragged = await cam();
-  expect(dragged.pitch).toBeGreaterThan(before.pitch + 0.15); // 80 px up
+  expect(dragged.pitch).toBeLessThan(before.pitch - 0.15); // 80 px up: toward the sky
   expect(dragged.yaw).toBeGreaterThan(before.yaw + 0.4); // 80 px left
   // and the keys go on from there: sampled while A turns, the view only ever moves on from the dragged angle (the
   // keys' old angle is 0.64 back the other way) and the tilt stays where the drag left it
@@ -582,7 +583,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.keyboard.up('ArrowUp');
 
   // all round the island at the lowest tilt: above the ground and outside buildings (behind the game hall, by houses, on the hill)
-  await page.evaluate((m) => window.PlazaDebug().setCamPitch(-m), max);
+  await page.evaluate((m) => window.PlazaDebug().setCamPitch(-m), sky); // looking up at the sky: the camera at its lowest
   const spots = await page.evaluate(() => { const d = window.PlazaDebug(); return Object.values(d.doors).map((o) => [o.x, o.z]); });
   for (const [x, z] of spots) {
     for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
@@ -602,7 +603,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   // a resized window keeps the tilt in range
   await page.setViewportSize({ width: 820, height: 600 }); await page.waitForTimeout(300);
   await page.setViewportSize({ width: 1280, height: 900 }); await page.waitForTimeout(300);
-  const after = await cam(); expect(Math.abs(after.pitch)).toBeLessThanOrEqual(max + 1e-9);
+  const after = await cam(); expect(after.pitch).toBeLessThanOrEqual(max + 1e-9); expect(after.pitch).toBeGreaterThanOrEqual(-sky - 1e-9);
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -943,8 +944,9 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
 });
 
 // v1.10.31 잡초 채집: only the nearest weed is offered; Space pulls it in about a second (GatherWeed) and the bag gets
-// one; walking away in that second calls it off (nothing taken); the pulled weed is gone from the island's list
-test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +1, 이동하면 취소, 섬에서 사라짐', async ({ browser, request }) => {
+// one; the pulled weed is gone from the island's list. v1.10.40 채집 공통 시스템 (IDEAS 후속 확정 2026-10-07): while
+// pulling I stay where I stand -- the arrows do nothing -- and the camera still turns
+test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +1, 채집 중에는 제자리(카메라는 회전), 섬에서 사라짐', async ({ browser, request }) => {
   test.setTimeout(90000);
   const a = await intoPlaza(browser, request, '잡초꾼');
   const { page } = a;
@@ -954,21 +956,18 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
-  const target = await page.evaluate(() => window.PlazaDebug().weeds.near);
-  // called off: walk away during the pull
+  const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
+  const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering), { timeout: 5000 }).toBe(target.slice(5));
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(500); await page.keyboard.up('ArrowUp');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.gathering)).toBe(null);
-  const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
-  expect(await bagCount()).toBe(0);
-  // pulled: a second of standing still
-  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
-  const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
-  await page.keyboard.press('Space');
-  await expect.poll(bagCount, { timeout: 10000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().gather?.kind), { timeout: 5000 }).toBe('weed');
+  const from = await state(page); const yaw0 = await page.evaluate(() => window.PlazaDebug().camYaw);
+  await page.keyboard.down('ArrowUp'); await page.keyboard.down('a'); await page.waitForTimeout(400);
+  const held = await state(page); const yaw1 = await page.evaluate(() => window.PlazaDebug().camYaw);
+  await page.keyboard.up('ArrowUp'); await page.keyboard.up('a');
+  expect(Math.hypot(held.x - from.x, held.z - from.z)).toBeLessThan(0.05); // not a step
+  expect(yaw1).toBeGreaterThan(yaw0 + 0.1); // the camera turned
+  await expect.poll(bagCount, { timeout: 10000 }).toBe(1); // and the pull went on to the end
   await expect.poll(() => page.evaluate((w) => window.PlazaDebug().weeds.at(w), pulledId)).toBe(null);
   expect((await get(request, '/api/island/weeds', a.token)).data.weeds.some(([w]) => w === pulledId)).toBe(false);
   void id;

@@ -389,6 +389,23 @@ test('조합 맞춤: 모자 덮기·펜던트·망토 드리우기·꼬리·내�
   assert.deepEqual([plain.h.ops, plain.o.ops, plain.o.hide], [[], [], []]);
 });
 
+// v1.10.40 모자 쓰는 깊이: a hat with `sink`/`widen` comes down onto the head and wider round its axis, the hair's cover
+// line coming down with it; and every made hat's rim ends up at or below the forehead line, its crown round the head
+test('모자 쓰는 깊이: 내려 쓰고 넓혀 머리를 감싸며, 머리카락 덮기 선도 같이 내려간다', () => {
+  const P = require('../public/plaza/asset-pipeline.js');
+  const { REGISTRY } = require('../public/plaza/island-assets.js');
+  const hair = { id: 'hair', fit: { slot: 'hair' }, pos: [0, 1.7, 0, 0.3, 2.05, 0, -0.3, 2.05, 0] };
+  const hat = { id: 'hat', fit: { slot: 'hat', cover: 2.04, sink: 0.12, widen: 1.15 }, pos: [0.3, 2.07, 0, 0, 2.3, 0.3] };
+  const fit = P.fitWardrobe([hair, hat]);
+  assert.deepEqual(fit.hair.ops, [{ kind: 'cover', above: 2.04 - 0.12 }]);
+  const seated = P.applyFit(hat.pos, null, fit.hat.ops).pos;
+  for (const [i, v] of [[0, 0.345], [1, 1.95], [4, 2.18], [5, 0.345]]) assert.ok(Math.abs(seated[i] - v) < 1e-6, `${i}: ${seated[i]}`);
+  for (const id of ['wear.hat_straw', 'wear.hat_fedora', 'wear.hat_wizard', 'wear.hat_hw_witch', 'wear.hat_crown']) {
+    const f = REGISTRY[id].fit; assert.ok(f.sink >= 0.1 && f.widen >= 1 && f.widen <= 1.2, id);
+  }
+  for (const id of ['wear.hat_beanie', 'wear.hat_cap', 'wear.hat_halo']) assert.equal(REGISTRY[id].fit.sink, undefined, `${id}: 그대로`);
+});
+
 // v1.10.32 겨울 지붕 눈 (asset-pipeline roofShape / drapeSnow): a roof read from its faces -- flat, gable (which way its
 // ridge runs) or round -- and a snowcap laid over it, every point on the roof (never inside it), within its extent
 test('지붕 눈: 지붕 모양 판별과 눈 덮개를 지붕 위에 맞춰 덮기', () => {

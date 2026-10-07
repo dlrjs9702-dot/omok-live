@@ -165,12 +165,11 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   // the full moon and the stars, round wherever the camera is (not in the fog)
   const sky = new THREE.Group(); group.add(sky);
   const moon = new THREE.Mesh(new THREE.SphereGeometry(14, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c8, fog: false })); moon.position.set(-70, 120, -300); sky.add(moon);
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(22, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.12, fog: false, depthWrite: false })); halo.position.copy(moon.position); sky.add(halo);
   const starPos = []; let seed = 7; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   for (let i = 0; i < 500; i += 1) { const a = rnd() * Math.PI * 2; const e = 0.12 + rnd() * 1.4; const r = 340; starPos.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r); }
   const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3)); made.push(starGeo);
   const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, fog: false })); sky.add(stars);
-  for (const o of [moon, halo, stars]) { o.frustumCulled = false; o.renderOrder = -1; }
+  for (const o of [moon, stars]) { o.frustumCulled = false; o.renderOrder = -1; }
 
   function step(clock, camera, still) {
     if (!group.visible) return;
