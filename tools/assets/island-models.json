@@ -2251,6 +2251,106 @@
       "out": "characters/motions/Usher.glb",
       "src": "mayor:04. Motions/Usher.glb",
       "sha256": "0718903a1323f077fa26ebdae8173822aff648ce724deb0ecafb68887074e91d"
+    },
+    {
+      "out": "fishing-v1/fish_anchovy.glb",
+      "src": "fishing:01. Fish/01. High/fish_anchovy_high.glb",
+      "sha256": "1e5f9b4bf37e289d6c3dd4dcd327064d80648d69caf49986477811909f3e0303",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_anchovy_low.glb",
+      "lowSha256": "5d3ca3a9d430f1c855f2dd9b8339fa4a1b37e21a6e1e9bb3dcba82fa1b8b073a"
+    },
+    {
+      "out": "fishing-v1/fish_mackerel.glb",
+      "src": "fishing:01. Fish/01. High/fish_mackerel_high.glb",
+      "sha256": "737db7b759d116b7f4e85c4ddff6fb4ef07ad463b51166aadb3bc087058907bc",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_mackerel_low.glb",
+      "lowSha256": "52e0e3d836c11a83b3c5bce22702bb46aabb8411ba6b70c42642d93bc7c5e19b"
+    },
+    {
+      "out": "fishing-v1/fish_goby.glb",
+      "src": "fishing:01. Fish/01. High/fish_goby_high.glb",
+      "sha256": "2b07445be654e2fd23e88b44acd9c59980a172489b7a30dbe9f49c2c135b6de3",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_goby_low.glb",
+      "lowSha256": "dc391b4f4055bb74be43ad14efae9396e2e1f7734496405417e700606900bfb1"
+    },
+    {
+      "out": "fishing-v1/fish_cutlassfish.glb",
+      "src": "fishing:01. Fish/01. High/fish_cutlassfish_high.glb",
+      "sha256": "058f4f96ba6724295f535232b26f0569ad5a4fb7aeb8a67e893adb21009412ec",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_cutlassfish_low.glb",
+      "lowSha256": "267df5d501acf097581d78efc1f85c3d01c3c7c5315a43a295ce87fb1017f3f9"
+    },
+    {
+      "out": "fishing-v1/fish_pufferfish.glb",
+      "src": "fishing:01. Fish/01. High/fish_pufferfish_high.glb",
+      "sha256": "a5c7ad37303f9940044b3a38cda96081c42cf92b4c32b1b2eef57c8668bcad63",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_pufferfish_low.glb",
+      "lowSha256": "7e3fbb0f4bb14e5cc147f6365ad9f63b01c73384579fb6ee5b1cfb7fbfd29f4b"
+    },
+    {
+      "out": "fishing-v1/fish_octopus.glb",
+      "src": "fishing:01. Fish/01. High/fish_octopus_high.glb",
+      "sha256": "a7e955f4db545aa9f4807029a28bf77b16c3cd41715261ad928ca9f12825c900",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_octopus_low.glb",
+      "lowSha256": "f6f2bfcc7d76363f078476ae0dde7f83386d39ca933e3fbdeb83ebc96677cda1"
+    },
+    {
+      "out": "fishing-v1/fish_stingray.glb",
+      "src": "fishing:01. Fish/01. High/fish_stingray_high.glb",
+      "sha256": "670e333c68067652155799b2fb93eeecd03b01176be4a8dbe6f5e672dccaa56f",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_stingray_low.glb",
+      "lowSha256": "a75005abba7689020d3f05d27cf22fb9a6b890a06fce26eb94eda557ca701269"
+    },
+    {
+      "out": "fishing-v1/fish_giant_tuna.glb",
+      "src": "fishing:01. Fish/01. High/fish_giant_tuna_high.glb",
+      "sha256": "280547d21d04292d8ceacbc02f9e2cd2594d22f68716668dc93d37145c61b282",
+      "lowSrc": "fishing:01. Fish/02. Low/fish_giant_tuna_low.glb",
+      "lowSha256": "9aa59a46ac323522d09765742286110e19266f92a8f2daf43df4e758e857ac92"
+    },
+    {
+      "out": "fishing-v1/bobber.glb",
+      "src": "fishing:02. Equipment/01. High/bobber_high.glb",
+      "sha256": "0ddd96e1d215bfe8b950224a4d323070aaf1a650580e96056f224d281d608a5d",
+      "lowSrc": "fishing:02. Equipment/02. Low/bobber_low.glb",
+      "lowSha256": "bbcebdecc4fdd4366d4a03a2c2a52a43ff49746869356060304bc61d4761ad9d"
+    },
+    {
+      "out": "fishing-v1/quest_fishing_rod.glb",
+      "src": "fishing:02. Equipment/01. High/quest_fishing_rod_high.glb",
+      "sha256": "f1d383061cd7e0e217491061e5f15b84537bfd902207a395e10beb4c4cdcd70a",
+      "lowSrc": "fishing:02. Equipment/02. Low/quest_fishing_rod_low.glb",
+      "lowSha256": "4ec9555aa9f6ee8b8c4ca3d2ed133212f6c14c1d069edac56adfb65f1c3b5089"
+    },
+    {
+      "out": "characters/motions/FishCast.glb",
+      "src": "fishing:03. Motions/FishCast.glb",
+      "sha256": "33c2ebf44608051ca15ead227a04aa2b1979bd22f377b116c2f028f8c4ae0e28"
+    },
+    {
+      "out": "characters/motions/FishWait.glb",
+      "src": "fishing:03. Motions/FishWait.glb",
+      "sha256": "81502e5cc1406261142cb6997e64e28fdf2f581597917ac874ad87cbbc4471fe"
+    },
+    {
+      "out": "characters/motions/FishReel.glb",
+      "src": "fishing:03. Motions/FishReel.glb",
+      "sha256": "5c4c68417fb9dec11ac5550b6992f861889843be19a1b095b908bb33439e403c"
+    },
+    {
+      "out": "characters/motions/FishCatch.glb",
+      "src": "fishing:03. Motions/FishCatch.glb",
+      "sha256": "9170ffcdd0cff0f06e1fb359cfe19d2894d0cc2b328a11716eecea2db4afad4c"
+    },
+    {
+      "out": "characters/motions/FishBite.glb",
+      "src": "fishing:03. Motions/FishBite.glb",
+      "sha256": "d39b191b2bc6d600c0fe0316c61307f6d57218b2e5c8a91436cecfdf2ac18e7d"
+    },
+    {
+      "out": "characters/motions/FishMiss.glb",
+      "src": "fishing:03. Motions/FishMiss.glb",
+      "sha256": "74a62652d2670e52c3ac7152dcd63b7f0db0ba73d7ed1877538f2be1b72a4732"
     }
   ],
   "sources": {
@@ -2262,6 +2362,7 @@
     "finish": "07. Game Island finish 2026-10-06",
     "halloween": "08. Game Island Halloween 2026-10-06",
     "halloweenDecor": "10. Game Island Halloween decor 2026-10-07",
-    "mayor": "16. Game Island mayor and townhall 2026-10-07"
+    "mayor": "16. Game Island mayor and townhall 2026-10-07",
+    "fishing": "12. Game Island fishing 2026-10-07"
   }
 }

@@ -1666,3 +1666,9 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 /* v1.10.37 연계 퀘스트: the step under way, top left of the island */
 .questTracker{position:absolute;left:12px;top:64px;z-index:3;display:grid;gap:4px;pointer-events:none}
 .questTracker p{margin:0;padding:5px 10px;border-radius:10px;background:rgba(15,23,42,.62);color:#fef3c7;font-weight:700;font-size:.85rem}
+
+/* v1.10.42 도감: found finds in colour, the rest as silhouettes */
+.islandDexCell { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); font-size: 0.8rem; text-align: center; }
+.islandDexCell img { width: 56px; height: 56px; object-fit: contain; }
+.islandDexCell.unfound img { filter: brightness(0); opacity: 0.35; }
+.islandDexCell small { opacity: 0.7; min-height: 1em; }

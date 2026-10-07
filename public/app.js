@@ -1501,7 +1501,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1675,7 +1675,7 @@
   const islandPlaceSubmit = document.getElementById('islandPlaceSubmit');
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
   let islandPlace = null; let islandPlaceRequest = null;
-  const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' } };
+  const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '어부', verb: '판매' } }; // v1.10.42 어부: fish
   function drawIslandBag(bag) {
     const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
     for (let i = 0; i < (bag.slots || 16); i += 1) {
@@ -1692,6 +1692,7 @@
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
   async function openIslandBag() {
+    showDex(false);
     if (!islandBagDialog.open) islandBagDialog.showModal();
     try { drawIslandBag(await api('/api/island/bag')); } catch (error) { showToast(error.message); }
   }
@@ -1733,6 +1734,7 @@
   });
   document.getElementById('islandBagTab').addEventListener('click', () => openIslandBag());
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
+  document.getElementById('islandDexBtn').addEventListener('click', () => { const on = document.getElementById('islandDexGrid').classList.contains('hidden'); if (on) showDex(true); else openIslandBag(); }); // v1.10.42
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   for (const d of [islandBagDialog, islandPlaceDialog]) d.addEventListener('close', () => { if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
   window.addEventListener('keydown', (event) => { // I opens the bag on the island
@@ -1799,8 +1801,51 @@
     const meta = document.createElement('p'); meta.className = 'lookMeta';
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ' · 이번 주 이야기 끝' : ''}` : data.done ? '이번 주 이야기 끝' : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok); lostCard.classList.remove('hidden');
+    const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell); lostCard.classList.remove('hidden');
     openPlazaWindow(data.name, [lostCard]);
+  }
+  // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
+  // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
+  let fishBusy = false; let fishId = null;
+  async function fishAction() {
+    if (fishBusy) return;
+    const phase = plaza.controller?.fishingNow?.();
+    fishBusy = true;
+    try {
+      if (!phase) {
+        const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+        const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
+        fishId = data.fishId;
+        if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; })) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
+      } else if (phase === 'cast' || phase === 'wait' || phase === 'bite') {
+        try {
+          const data = await api('/api/island/fish/finish', { method: 'POST', body: JSON.stringify({ fishId }) });
+          plaza.controller?.fishResult?.(data.species);
+          showToast(`${data.grade === 'big' ? '🎉 대어! ' : ''}🐟 ${data.name} +1${data.firstTime ? ' · 도감 등록' : ''}`);
+        } catch (error) { plaza.controller?.fishResult?.(null); showToast(error.message); console.info('fish', error.data?.error); }
+      }
+    } catch (error) { showToast(error.message); } finally { fishBusy = false; }
+  }
+  // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
+  const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
+  async function showDex(on) {
+    const grid = document.getElementById('islandBagGrid'); const dex = document.getElementById('islandDexGrid');
+    document.getElementById('islandDexBtn').textContent = on ? '가방' : '도감';
+    document.getElementById('islandBagTitle').textContent = on ? '도감' : '가방';
+    grid.classList.toggle('hidden', on); dex.classList.toggle('hidden', !on);
+    if (!on) return;
+    try {
+      const data = await api('/api/island/dex');
+      document.getElementById('islandBagCount').textContent = `${data.found}/${data.total}`;
+      dex.replaceChildren(...data.entries.map((e) => {
+        const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
+        const img = document.createElement('img'); img.src = `/assets/island/fishing-v1/icons/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
+        const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
+        const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
+        cell.append(img, name, n); return cell;
+      }));
+    } catch (error) { showToast(error.message); }
   }
   // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
   function openMayor() {
@@ -3684,7 +3729,7 @@
     const list = document.createElement('div');
     list.className = 'skinTitleList';
     const current = skinShop.equipped?.avatar?.title || null;
-    const legends = skinShop.catalog.flatMap(f => f.family === 'avatar' ? [] : f.skins.filter(s => s.tier === 'legend' && skinShop.owned.has(s.id)));
+    const legends = [...skinShop.catalog.flatMap(f => f.family === 'avatar' ? [] : f.skins.filter(s => s.tier === 'legend' && skinShop.owned.has(s.id))), ...(skinShop.dexTitles || [])]; // v1.10.42 + 도감 칭호
     for (const skin of [{ id: null, name: '칭호 없음' }, ...legends]) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -3703,7 +3748,7 @@
     skinShopStatus.textContent = '';
     try {
       const data = await api('/api/skins');
-      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, balance: data.balance };
+      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, balance: data.balance, dexTitles: data.dexTitles || [] };
       renderSkinShop();
     } catch (error) {
       if (skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;

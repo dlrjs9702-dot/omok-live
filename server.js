@@ -37,6 +37,7 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
+const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
@@ -457,6 +458,7 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
   sessions.delete(token);
   soloGames.delete(token); // v1.10.37: a game left behind is void
   townhallPass.delete(token); townhallStrict.delete(token); // v1.10.41: the mayor's leave lasts the visit
+  fishCasts.delete(token); // v1.10.42: a cast left in the water ends with the visit
   let cancelledInvitation = false;
   for (const [id, invite] of invitations) {
     if (invite.fromToken === token || invite.toToken === token) {
@@ -1014,6 +1016,7 @@ function plazaSafeSpot(x, z) {
 // rest of their visit once asked; until then a pose inside the yard is put back out at the gate. Admins pass; in tests
 // everyone passes unless a test asks for the real rule (townhallStrict).
 const townhallPass = new Set(); const townhallStrict = new Set(); // session tokens
+const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species, biteAt, at, done }
 const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
 const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
 function notePlazaSpot(account, x, z, now = nowMs()) {
@@ -3118,7 +3121,8 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account), hoguking: isHoguking(account) });
+    const dexTitles = IslandFishing.titlesFor(Object.keys(await pointStore.dexOf(account)).length).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account), hoguking: isHoguking(account), dexTitles });
   }
 
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
@@ -3224,13 +3228,17 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     if (!checkRateLimit(`skinequip:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
-    let skinId = null;
-    if (body.skinId !== null && body.skinId !== undefined) {
+    let skinId = null; let free = false;
+    const dexTitle = IslandFishing.dexTitle(body.skinId); // v1.10.42: a 도감 title, worn in the same slot once its finds are in
+    if (dexTitle) {
+      if (Object.keys(await pointStore.dexOf(account)).length < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
+      skinId = dexTitle.id; free = true;
+    } else if (body.skinId !== null && body.skinId !== undefined) {
       const skin = skinById(body.skinId);
       if (!skin || skin.tier !== 'legend' || skin.family === 'avatar') return sendError(res, 404, 'SKIN_NOT_FOUND', '칭호로 쓸 수 있는 전설 스킨이 아닙니다.');
       skinId = skin.id;
     }
-    const result = await pointStore.equipSkin({ userId: account, game: 'avatar', slot: 'title', skinId });
+    const result = await pointStore.equipSkin({ userId: account, game: 'avatar', slot: 'title', skinId, free });
     if (!result.ok) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 전설 스킨만 칭호로 쓸 수 있습니다.');
     equippedSkinCache.set(account, result.equipped);
     return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
@@ -3595,9 +3603,9 @@ async function requestHandler(req, res) {
     if (!session) return;
     if (!checkRateLimit(`island-sell:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
-    const place = body.place === 'office' || body.place === 'merchant' ? body.place : null;
+    const place = ['office', 'merchant', 'fisher'].includes(body.place) ? body.place : null;
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard
+    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     const account = pointAccountForSession(session);
@@ -3707,6 +3715,62 @@ async function requestHandler(req, res) {
   }
   // v1.10.11 공용 이벤트: solving one (standing at it). Taking it is decided at once (two players can never both get
   // it); the bag or the points follow, and if they cannot (a full bag, today's limit) the event stays for anyone.
+  // v1.10.42 낚시 (IDEAS ①): a cast where one may fish -- the server picks the fish and when it bites; pulling in within
+  // the bite puts it in the bag (once per cast: a retry gets the same answer) and in the 도감; early or late, nothing lost
+  if (pathname === '/api/island/fish/start' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-fish:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    if (!at || !IslandFishing.canFish(at.x, at.z)) return sendError(res, 409, 'NOT_FISHING_SPOT', '물가에서 낚시할 수 있습니다.');
+    const now = nowMs(); const c = IslandFishing.cast(now);
+    const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
+    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS });
+  }
+  if (pathname === '/api/island/fish/finish' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const body = await parseJson(req);
+    const c = fishCasts.get(session.token);
+    if (!c || c.id !== body.fishId) return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.');
+    if (c.done) return sendJson(res, 200, c.done); // the same cast asked again (a lost answer)
+    const verdict = IslandFishing.judge(c, nowMs());
+    if (verdict !== 'ok') { fishCasts.delete(session.token); return sendError(res, 409, verdict === 'early' ? 'FISH_EARLY' : 'FISH_LATE', verdict === 'early' ? '아직 입질이 없었어요.' : '놓쳤습니다.'); }
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    if (!at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandFishing.MOVE_R) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
+    const account = pointAccountForSession(session);
+    const itemId = `fish_${c.species}`;
+    const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null }, nowMs());
+    if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    const dex = await pointStore.dexNote({ userId: account, entry: itemId });
+    const f = IslandFishing.SPECIES[c.species];
+    c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
+    islandProgress('fish', account, 1);
+    return sendJson(res, 200, c.done);
+  }
+  if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    fishCasts.delete(session.token);
+    return sendJson(res, 200, { ok: true });
+  }
+  if (pathname === '/api/island/dex' && req.method === 'GET') { // v1.10.42 도감: what I have found (silhouettes for the rest)
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const mine = await pointStore.dexOf(account);
+    const found = Object.keys(mine).length;
+    return sendJson(res, 200, { ok: true, entries: IslandFishing.DEX.map((d) => ({ ...d, count: mine[d.id]?.count || 0 })), found, total: IslandFishing.DEX.length,
+      titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now
+    const session = requireSession(req, res);
+    if (!session) return;
+    const c = fishCasts.get(session.token); const body = await parseJson(req);
+    if (c) { c.biteAt = nowMs(); if (typeof body.species === 'string' && IslandFishing.SPECIES[body.species]) c.species = body.species; }
+    return sendJson(res, 200, { ok: Boolean(c) });
+  }
   if (pathname === '/api/island/mayor' && req.method === 'POST') { // v1.10.41: asking the mayor at the gate -- in for this visit
     const session = requireSession(req, res);
     if (!session) return;
@@ -3754,6 +3818,7 @@ async function requestHandler(req, res) {
       if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
+    if (!outcome.reason && claimed.action === 'item' && IslandFishing.DEX_IDS.has(claimed.item)) await pointStore.dexNote({ userId: account, entry: claimed.item }).catch(() => {}); // v1.10.42 도감
     if (outcome.reason) {
       islandEvents.settle(claimed, false, account);
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
