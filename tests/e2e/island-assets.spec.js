@@ -302,9 +302,15 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
   }
   // v1.10.29: each flower colour its own model in every season; the bridges and yard fences take their zone's season
-  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const c of [0, 1, 2, 3, 4]) {
-    expect(files.some(([url]) => url.endsWith(`/additions-v1/${season}/flower_${c}_${season}.glb`)), `${season} flower ${c}`).toBe(true);
-    expect(files.some(([url]) => url.endsWith(`/additions-v1/${season}/flower_${c}_${season}_low.glb`)), `${season} flower ${c} low`).toBe(true); // far flowers keep their colour
+  // Terrain changes can leave a colour absent in one zone. Check every placed colour's actual seasonal H/L pair.
+  const flowers = d.assets.batches.filter((batch) => batch.ids[0].startsWith('nature.flower.'));
+  expect(flowers.length).toBe(5);
+  for (const batch of flowers) for (const zone of Object.values(batch.zones)) {
+    const colour = batch.ids[0].split('.').pop();
+    expect(zone.url.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '.glb')).toBe(true);
+    expect(zone.low.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '_low.glb')).toBe(true);
+    expect(files.some(([url, state]) => url === zone.url && state === 'loaded')).toBe(true);
+    expect(files.some(([url, state]) => url === zone.low && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));
   expect(bridges.length).toBe(4);
@@ -315,6 +321,11 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
   });
+  // All four seasons/colours remain available offline, including files not used by today's placement.
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const c of [0, 1, 2, 3, 4]) {
+    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '.glb');
+    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '_low.glb');
+  }
   const config = require('../../tools/assets/island-models.json');
   expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);

@@ -1117,6 +1117,8 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   const at = await a.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
   expect(Math.hypot(at.x - east.x, at.z - east.z)).toBeLessThan(0.5);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
+  await shiftTo(307); // renew the stop window after waiting for the other software-rendered page
+  await expect(a.page.locator('#plazaHint')).toContainText('전망 열차 타기', { timeout: 15000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeVisible(); // a PC clock 2 minutes fast: the menu uses the same corrected server clock as the train
   await a.page.getByRole('button', { name: '외곽 열차', exact: true }).click();
