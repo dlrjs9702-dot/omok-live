@@ -339,8 +339,10 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
 // v1.10.28 섬 전체 High/Low LOD (사용자 결정 2026-10-05): the registered models as players get them -- near the player a
 // tree is the full model, far away the same design simplified (never the procedural look), and the switch has a band
 test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 Low, 경계에는 히스테리시스, 생성형으로 돌아가지 않는다', async ({ browser, request }) => {
+  test.setTimeout(60000);
   const a = await island(browser, request, 'LOD', null);
   const { page } = a;
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.39: trees only -- October's decor and bats would slow a software-rendered runner
   const tree = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.tree.round');
   await expect.poll(async () => (await tree())?.placed, { timeout: 30000 }).toBe(true);
   const t = await tree();
