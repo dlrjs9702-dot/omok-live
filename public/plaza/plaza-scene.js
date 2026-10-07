@@ -909,17 +909,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // jumps. Pitch is 0 at the default quarter view, + from higher up, held within ±PITCH_MAX (never straight down, never
   // level with the ground). A held key turns at a speed that builds up over CAM_RAMP seconds and stops on release.
   const CAM_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD']); const camKeys = new Set();
-  const PITCH_MAX = (15 * Math.PI) / 180; const DRAG_PITCH = 0.004; // radians per pixel up or down
+  // v1.10.40 하늘 보기 카메라 (IDEAS 2026-10-07): W / dragging up now looks up toward the sky, as far as SKY_MAX past the
+  // default view (the camera comes down toward the ground, then its aim lifts above me); S / dragging down looks down
+  // from higher up, PITCH_MAX as before. Still the same orbit round my character, never free flight.
+  const PITCH_MAX = (15 * Math.PI) / 180; const SKY_MAX = (45 * Math.PI) / 180; const DRAG_PITCH = 0.004; // radians per pixel up or down
   const YAW_SPEED = 1.9; const PITCH_SPEED = 0.55; const CAM_RAMP = 0.25; // radians per second at full speed
   let camPitch = 0; let yawGoal = 0; let pitchGoal = 0; let camHeld = 0; let camDt = 0;
-  const clampPitch = (v) => Math.max(-PITCH_MAX, Math.min(PITCH_MAX, v));
+  const clampPitch = (v) => Math.max(-SKY_MAX, Math.min(PITCH_MAX, v)); // - toward the sky, + from higher up
   function turnCamera(dt) {
     if (camKeys.size && !isBlocked()) {
       camHeld = Math.min(CAM_RAMP, camHeld + dt); const speed = 0.35 + (0.65 * camHeld) / CAM_RAMP;
       if (camKeys.has('KeyA')) yawGoal += YAW_SPEED * speed * dt; // A turns like dragging left, D like dragging right
       if (camKeys.has('KeyD')) yawGoal -= YAW_SPEED * speed * dt;
-      if (camKeys.has('KeyW')) pitchGoal += PITCH_SPEED * speed * dt; // W: from higher up, like dragging up
-      if (camKeys.has('KeyS')) pitchGoal -= PITCH_SPEED * speed * dt;
+      if (camKeys.has('KeyW')) pitchGoal -= PITCH_SPEED * speed * dt; // W: up toward the sky, like dragging up
+      if (camKeys.has('KeyS')) pitchGoal += PITCH_SPEED * speed * dt;
     } else { camHeld = 0; if (isBlocked()) camKeys.clear(); }
     pitchGoal = clampPitch(pitchGoal);
     const ease = 1 - Math.exp(-dt * 14);
@@ -933,7 +936,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!dragged && Math.hypot(dx, event.clientY - drag.y) >= DRAG_START) { dragged = true; renderer.domElement.setPointerCapture?.(event.pointerId); }
       if (dragged) {
         yawGoal -= (event.clientX - (drag.lastX ?? drag.x)) * DRAG_TURN; drag.lastX = event.clientX;
-        pitchGoal = clampPitch(pitchGoal - (event.clientY - (drag.lastY ?? drag.y)) * DRAG_PITCH); drag.lastY = event.clientY; // dragging up: from higher up
+        pitchGoal = clampPitch(pitchGoal + (event.clientY - (drag.lastY ?? drag.y)) * DRAG_PITCH); drag.lastY = event.clientY; // dragging up: toward the sky
         renderer.domElement.style.cursor = 'grabbing'; return;
       }
     }
@@ -1001,30 +1004,36 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return best;
   }
   function stepWeeds(dt) {
-    const id = gather ? gather.id : nearestWeed(); const key = id ? `weed:${id}` : null;
+    const id = gather?.kind === 'weed' ? gather.id : nearestWeed(); const key = id ? `weed:${id}` : null;
     if (key !== weedKey) { if (weedKey) delete eventDoors[weedKey]; weedKey = key; if (key) { const w = weedById.get(id); eventDoors[key] = { x: w.x, z: w.z, name: '잡초 뽑기' }; } }
     const w = id && weedById.get(id);
     weedRing.visible = Boolean(w); if (w) weedRing.position.set(w.x, heightAt(w.x, w.z) + 0.04, w.z);
-    if (!gather) return;
-    gather.t += dt;
-    const moved = Math.hypot(me.root.position.x - gather.x, me.root.position.z - gather.z) > 0.25;
-    if (moved || isBlocked()) { endGather(false); return; } // moving, a window or leaving the island calls it off
-    const g = weedById.get(gather.id);
-    if (g) { const lift = new THREE.Matrix4().makeTranslation(0, Math.min(1, gather.t / WEED_MS * 1000) * 0.18, 0).multiply(gather.matrix); weedMatrix(g, lift); } // the weed gives a little
-    if (gather.t * 1000 >= WEED_MS) endGather(true);
+    stepGather(dt);
   }
-  function endGather(done) {
-    const g = gather; if (!g) return; gather = null;
-    const w = weedById.get(g.id); if (w && !done) weedMatrix(w, g.matrix); // let go: back as it was
-    g.done(done);
-  }
-  // start pulling (the app has told the server); `done(true)` after about a second, `done(false)` when called off
-  function gatherWeed(id, done) {
-    const w = weedById.get(id); if (!w || gather) return false;
-    gather = { id, t: 0, x: me.root.position.x, z: me.root.position.z, matrix: w.cell.matrices[w.i].clone(), done };
-    me.targetYaw = Math.atan2(w.x - me.root.position.x, w.z - me.root.position.z);
-    if (!me.anim?.play('gather')) me.hop = 1;
+  // v1.10.40 채집 상호작용 공통 시스템 (IDEAS 잡초 채집 후속 확정 2026-10-07): one gathering at a time, any kind --
+  // { kind, id, ms, anim, at, onStep(t), onDone(ok) }. While it runs I stay where I stand (the arrows do nothing, step()),
+  // the camera still turns; it ends done after `ms`, or called off by a window, leaving the island or endGather(false).
+  function startGather({ kind, id = null, ms, anim = 'gather', at = null, onStep = null, onDone }) {
+    if (gather) return false;
+    gather = { kind, id, ms, t: 0, onStep, onDone };
+    if (at) me.targetYaw = Math.atan2(at.x - me.root.position.x, at.z - me.root.position.z);
+    if (!me.anim?.play(anim)) me.hop = 1;
     return true;
+  }
+  function stepGather(dt) {
+    if (!gather) return;
+    if (isBlocked()) { endGather(false); return; }
+    gather.t += dt; gather.onStep?.(gather.t);
+    if (gather.t * 1000 >= gather.ms) endGather(true);
+  }
+  function endGather(done) { const g = gather; if (!g) return; gather = null; g.onDone(done); }
+  // start pulling a weed (the app has told the server); `done(true)` after about a second, `done(false)` when called off
+  function gatherWeed(id, done) {
+    const w = weedById.get(id); if (!w) return false;
+    const matrix = w.cell.matrices[w.i].clone();
+    return startGather({ kind: 'weed', id, ms: WEED_MS, at: w,
+      onStep: (t) => { const g = weedById.get(id); if (g) weedMatrix(g, new THREE.Matrix4().makeTranslation(0, Math.min(1, (t * 1000) / WEED_MS) * 0.18, 0).multiply(matrix)); }, // the weed gives a little
+      onDone: (ok) => { const g = weedById.get(id); if (g && !ok) weedMatrix(g, matrix); done(ok); } }); // let go: back as it was
   }
   const eventDoors = {}; // key -> { x, z, name } (only what I can act on)
   const eventObjs = new Map(); // key -> { root, npc }
@@ -1324,14 +1333,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
     // building or house (never closer than CAM_MIN) -- and if even that is inside one (my back to a big building's
     // front), lifted to CAM_OVER above me, over its walls; always at least CAM_CLEAR above the ground under it
-    const elev = CAM_ELEV + camPitch; const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
+    // v1.10.40: toward the sky the camera comes down to SKY_LOW above the level of my head, and what is left of the tilt
+    // lifts its aim (the look point raised as far as that angle) -- the sky and the moon above, me at the bottom
+    const SKY_LOW = 0.1; const lift = Math.max(0, SKY_LOW - (CAM_ELEV + camPitch));
+    const elev = Math.max(SKY_LOW, CAM_ELEV + camPitch); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
     const inside = (c) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + 0.6);
     let dist = CAM_DIST;
     while (dist > CAM_MIN && inside(at(dist))) dist -= 0.5;
     camDist = snap ? dist : camDist + (dist - camDist) * (dist < camDist ? 0.25 : 0.05); // in quickly, back out gently
     const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
     const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
-    const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3, p.z - cos * 2.4);
+    const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4), p.z - cos * 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, 0.08); camLook.lerp(look, 0.1); }
     camPos.y = Math.max(camPos.y, heightAt(camPos.x, camPos.z) + CAM_CLEAR); // easing never dips it into a slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
@@ -1498,10 +1510,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function step(dt) {
     let ix = 0; let iz = 0;
-    if (!isBlocked()) {
+    if (!isBlocked() && !gather) { // v1.10.40: gathering holds me in place (the keys stay pressed for after)
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
-    } else keys.clear();
+    } else if (isBlocked()) keys.clear();
     turnCamera(camDt); // v1.10.21
     const moving = ix !== 0 || iz !== 0;
     if (moving) {
@@ -1626,9 +1638,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, weeds: { count: weedById.size, near: weedKey, gathering: gather?.id || null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), halloween: { decor: () => decor.debug(), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), halloween: { decor: () => decor.debug(), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
