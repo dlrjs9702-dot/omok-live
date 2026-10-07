@@ -39,7 +39,7 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="questTracker" class="questTracker hidden" role="status"></div>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">환승 · 내려가기</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="questTracker" class="questTracker hidden" role="status"></div>
         <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
