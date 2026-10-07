@@ -1060,3 +1060,40 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.44 앉기·이모트·게임 초대: SPACE by a plaza bench sits (the seat is mine on the server; the other screen draws me
+// sitting there), an arrow stands me up; SPACE by another player opens 인사·환호·게임 초대 -- a wave shows on their screen,
+// and an invite goes with the room I make
+test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이며, 인사는 상대 화면에서 재생, 게임 초대가 간다', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await intoPlaza(browser, request, '앉는이');
+  const b = await intoPlaza(browser, request, '보는이');
+  const seat = await a.page.evaluate(() => window.PlazaDebug().seats[0]);
+  await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
+  const aId = await a.page.evaluate(() => window.PlazaDebug().playerId?.() ?? null);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.seat), { timeout: 15000 }).toBe(seat.id);
+  expect(await b.page.evaluate(() => window.PlazaDebug().takenSeats())).toEqual(expect.objectContaining({ [seat.id]: expect.any(String) }));
+  // an arrow stands me up and frees the seat on both screens
+  await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
+  await expect.poll(() => b.page.evaluate(() => Object.keys(window.PlazaDebug().takenSeats()).length), { timeout: 15000 }).toBe(0);
+  // beside the other player: 인사
+  const bp = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 인사', { timeout: 10000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.getByRole('button', { name: '인사', exact: true }).click();
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'wave')), { timeout: 15000 }).toBe(true);
+  // 게임 초대: the game hall's window, a room, and the invite
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.getByRole('button', { name: '게임 초대' }).click();
+  await expect(a.page.locator('#plazaDialog #createRoomBtn')).toBeVisible({ timeout: 10000 });
+  await a.page.locator('#plazaDialog #createRoomBtn').click();
+  await expect.poll(async () => (await get(request, '/api/invitations', b.token)).data.items?.length || 0, { timeout: 15000 }).toBe(1);
+  void aId;
+  await expectNoScriptError(a.page); await expectNoScriptError(b.page);
+  await a.context.close(); await b.context.close();
+});
