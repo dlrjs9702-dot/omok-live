@@ -316,7 +316,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const config = require('../../tools/assets/island-models.json');
   expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);
-  for (const b of d.assets.batches) {
+  for (const b of d.assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) { // v1.10.38: the Halloween decor's models are still being made
     expect(b.placed).toBe(true); expect(b.parts).toBe(1);
     expect(b.procedural).toBe(0); // the island never turns procedural with distance
     expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
@@ -360,7 +360,7 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   await standAt((await near()) - 2); // inside `near`: High again
   await expect.poll(async () => (await tree()).first).toBe('high');
   // across the island everything stays the model (High near, Low far), never procedural, never drawn twice
-  for (const b of (await debug(page)).assets.batches) {
+  for (const b of (await debug(page)).assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) {
     expect(b.procedural).toBe(0);
     expect(b.near + b.far).toBe(b.copies);
   }
