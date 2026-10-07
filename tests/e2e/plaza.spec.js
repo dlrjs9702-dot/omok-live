@@ -1028,8 +1028,35 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   await page.keyboard.press('KeyI'); await page.locator('#islandDexBtn').click();
-  await expect(page.locator('#islandBagCount')).toHaveText('1/11');
+  await expect(page.locator('#islandBagCount')).toHaveText('1/18'); // v1.10.43: + the 7 photo spots
   await expect(page.locator('.islandDexCell:not(.unfound)')).toHaveText(/고등어/);
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.43 기념사진 모드: 「사진」 hides the page around the island and every name tag, holds me in place; 「촬영」 saves a PNG
+// and by a photo spot keeps it in the 기념사진 page; Esc leaves
+test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면 PNG 저장·장소 기록, Esc로 나온다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '사진가');
+  const { page } = a;
+  await page.evaluate(() => window.PlazaWarp(0, 7));
+  await page.locator('#islandPhotoTab').click();
+  await expect(page.locator('body')).toHaveClass(/photoMode/);
+  await expect(page.locator('#photoBar')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().photo().hidden)).toBeGreaterThan(0);
+  const from = await state(page);
+  await page.locator('#plazaStage').focus(); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05);
+  const download = page.waitForEvent('download');
+  await page.locator('#photoShootBtn').click();
+  expect((await download).suggestedFilename()).toMatch(/^game-island-\d{8}-\d{6}\.png$/);
+  await expect(page.locator('.toast')).toContainText('중앙광장');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('body')).not.toHaveClass(/photoMode/);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().photo())).toEqual({ on: false, hidden: 0 });
+  await page.keyboard.press('KeyI'); await page.locator('#islandPhotoBtn').click();
+  await expect(page.locator('#islandBagCount')).toHaveText('1/7');
   await expectNoScriptError(page);
   await a.context.close();
 });

@@ -1734,7 +1734,7 @@
   });
   document.getElementById('islandBagTab').addEventListener('click', () => openIslandBag());
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
-  document.getElementById('islandDexBtn').addEventListener('click', () => { const on = document.getElementById('islandDexGrid').classList.contains('hidden'); if (on) showDex(true); else openIslandBag(); }); // v1.10.42
+  for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).addEventListener('click', () => (document.getElementById(id).classList.contains('selected') ? openIslandBag() : showDex(page))); // v1.10.42/43
   document.getElementById('islandPlaceCloseBtn').addEventListener('click', () => islandPlaceDialog.close());
   for (const d of [islandBagDialog, islandPlaceDialog]) d.addEventListener('close', () => { if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); });
   window.addEventListener('keydown', (event) => { // I opens the bag on the island
@@ -1829,16 +1829,25 @@
   }
   // v1.10.42 도감: the bag window's other page -- every find, the ones not found yet as silhouettes
   const DEX_ICON = { herb: 'herb', berry: 'berries', mushroom: 'mushrooms' };
+  // v1.10.43: the page `on` is 'dex' (the finds) or 'photo' (기념사진: the photo spots and the day each was taken); false the bag
   async function showDex(on) {
     const grid = document.getElementById('islandBagGrid'); const dex = document.getElementById('islandDexGrid');
-    document.getElementById('islandDexBtn').textContent = on ? '가방' : '도감';
-    document.getElementById('islandBagTitle').textContent = on ? '도감' : '가방';
-    grid.classList.toggle('hidden', on); dex.classList.toggle('hidden', !on);
+    for (const [id, page] of [['islandDexBtn', 'dex'], ['islandPhotoBtn', 'photo']]) document.getElementById(id).classList.toggle('selected', on === page);
+    document.getElementById('islandBagTitle').textContent = on === 'dex' ? '도감' : on === 'photo' ? '기념사진' : '가방';
+    grid.classList.toggle('hidden', Boolean(on)); dex.classList.toggle('hidden', !on);
     if (!on) return;
     try {
       const data = await api('/api/island/dex');
-      document.getElementById('islandBagCount').textContent = `${data.found}/${data.total}`;
-      dex.replaceChildren(...data.entries.map((e) => {
+      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : true));
+      document.getElementById('islandBagCount').textContent = on === 'photo' ? `${list.filter((e) => e.count).length}/${list.length}` : `${data.found}/${data.total}`;
+      dex.replaceChildren(...list.map((e) => {
+        if (e.kind === 'photo') {
+          const cell = document.createElement('div'); cell.className = `islandDexCell islandPhotoCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
+          const icon = document.createElement('b'); icon.textContent = '📷';
+          const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
+          const day = document.createElement('small'); day.textContent = e.first ? new Date(e.first).toLocaleDateString('ko-KR') : '';
+          cell.append(icon, name, day); return cell;
+        }
         const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
         const img = document.createElement('img'); img.src = `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
         const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
@@ -1847,6 +1856,42 @@
       }));
     } catch (error) { showToast(error.message); }
   }
+  // v1.10.43 기념사진: 「사진」 (or P) -- the island without name tags or the page around it; 「촬영」 counts three while my
+  // character poses, saves the picture as a PNG on this PC and, by a photo spot, keeps the spot in the 기념사진 page
+  const photoBar = document.getElementById('photoBar'); const photoCount = document.getElementById('photoCount');
+  let photoBusy = false;
+  function enterPhoto() {
+    if (!plaza.controller?.setPhotoMode?.(true, () => { document.body.classList.remove('photoMode'); photoBar.classList.add('hidden'); })) return;
+    document.body.classList.add('photoMode'); photoBar.classList.remove('hidden'); plazaStage.focus({ preventScroll: true });
+  }
+  const leavePhoto = () => plaza.controller?.setPhotoMode?.(false);
+  async function takePhoto() {
+    if (photoBusy) return; photoBusy = true;
+    try {
+      plaza.controller?.photoPose?.();
+      for (const n of [3, 2, 1]) { photoCount.textContent = String(n); photoCount.classList.remove('hidden'); await new Promise((r) => setTimeout(r, 1000)); }
+      photoCount.classList.add('hidden');
+      const blob = await plaza.controller?.capture?.();
+      plaza.controller?.photoPose?.(false);
+      if (blob) {
+        const a = document.createElement('a'); const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
+        a.download = `game-island-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`;
+        a.href = URL.createObjectURL(blob); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      }
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const data = await api('/api/island/photo', { method: 'POST', body: '{}' }).catch(() => null);
+      showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
+    } finally { photoBusy = false; photoCount.classList.add('hidden'); plaza.controller?.photoPose?.(false); }
+  }
+  document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
+  document.getElementById('photoShootBtn').addEventListener('click', () => takePhoto());
+  document.getElementById('photoCloseBtn').addEventListener('click', () => leavePhoto());
+  window.addEventListener('keydown', (event) => {
+    if (!document.body.classList.contains('plazaMode') || event.isComposing || event.repeat) return;
+    if (event.code === 'Escape' && document.body.classList.contains('photoMode')) { event.preventDefault(); leavePhoto(); return; }
+    if (event.code !== 'KeyP' || document.querySelector('dialog[open]') || (event.target !== document.body && event.target !== plazaStage)) return;
+    event.preventDefault(); if (document.body.classList.contains('photoMode')) leavePhoto(); else enterPhoto();
+  });
   // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
   function openMayor() {
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${plaza.controller?.mayorLine?.() || '무슨 용무로 오셨소?'}」`;
