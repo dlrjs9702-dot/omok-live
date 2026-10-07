@@ -148,6 +148,9 @@
   //  - slab    a tail's faces caught inside the cape's cloth come out behind it (no flicker of two surfaces in one place);
   //  - hide    a part's own built-in piece gives way to a worn one (the 왕실 망토 outfit's cape when a cape is worn).
   // Faces and vertices only move or go (per character combination; the files stay as they are).
+  // v1.10.46 TAIL_TUCK: seated, what is behind z0 comes in to `k` of its depth and up by `lift` of it -- the longest tail
+  // (0.92 behind the hips seated) ends 0.38 behind, short of a bench's back (0.40 behind a seated character's hips)
+  const TAIL_TUCK = { kind: 'tuck', z0: 0.15, k: 0.3, lift: 0.7 };
   const FIT = { band: 0.06, gap: 0.015, chest: { x: 0.16, y0: 0.86, y1: 1.06 }, pendantZ: -0.2, capeZ: 0.15, back: 0.36, tailX: 0.45 };
   function fitWardrobe(parts) {
     const out = Object.fromEntries(parts.map((p) => [p.id, { ops: [], hide: [] }]));
@@ -211,6 +214,9 @@
       } else if (op.kind === 'seat') {
         P ||= Float32Array.from(pos);
         for (let i = 0; i < P.length; i += 3) { P[i] *= op.widen; P[i + 1] -= op.drop; P[i + 2] *= op.widen; }
+      } else if (op.kind === 'tuck') { // v1.10.46: a tail swept up close to the back (z0 back), for sitting against a bench
+        P ||= Float32Array.from(pos);
+        for (let i = 0; i < P.length; i += 3) { const d = P[i + 2] - op.z0; if (d <= 0) continue; P[i + 1] += d * op.lift; P[i + 2] = op.z0 + d * op.k; }
       } else if (op.kind === 'slab') {
         P ||= Float32Array.from(pos);
         for (let i = 0; i < P.length; i += 3) {
@@ -343,5 +349,5 @@
     };
   }
 
-  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
+  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, TAIL_TUCK, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
 });

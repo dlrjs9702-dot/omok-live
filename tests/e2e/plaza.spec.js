@@ -1098,6 +1098,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   expect(await b.page.evaluate(() => window.PlazaDebug().takenSeats())).toEqual(expect.objectContaining({ [seat.id]: expect.any(String) }));
   // v1.10.45: on the bench's seat, not in it -- lifted on both screens
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).lift).toBeCloseTo(0.28, 1);
+  expect((await a.page.evaluate(() => window.PlazaDebug().act())).tail).toBe(true); // v1.10.46: a tail tucked while seated
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.lift), { timeout: 10000 }).toBeCloseTo(0.28, 1);
   // an arrow stands me up and frees the seat on both screens
   await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
