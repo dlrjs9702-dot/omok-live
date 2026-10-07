@@ -1840,7 +1840,7 @@
       document.getElementById('islandBagCount').textContent = `${data.found}/${data.total}`;
       dex.replaceChildren(...data.entries.map((e) => {
         const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-        const img = document.createElement('img'); img.src = `/assets/island/fishing-v1/icons/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
+        const img = document.createElement('img'); img.src = `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
         const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
         const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
         cell.append(img, name, n); return cell;
