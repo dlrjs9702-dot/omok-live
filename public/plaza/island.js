@@ -547,8 +547,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // Lamps along the main walks, benches beside them.
   // v1.10.29: placed on the ground (the pole and the bulb lifted in their geometry), so the lamp model (prop.lamp, the
   // plaza's too) can take their place
+  const lampBulb = mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }); // v1.10.38: orange in October (plaza-scene)
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z), p.z, 1),
-    { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), false]] });
+    { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), lampBulb, false]] });
   for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
   // v1.10.29 지면 레이어: low flat drifts of the zone's season -- spring petals, summer clover, autumn leaves, winter
   // snow (deco.layer.*: three shapes) -- on level open grass inside the zones only (not the plaza, walks, water, banks,
@@ -659,5 +660,5 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   function step(clock) { flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { drawMap, drawMinimap, step, dispose, setSeasonDay, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

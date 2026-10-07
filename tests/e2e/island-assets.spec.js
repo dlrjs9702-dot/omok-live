@@ -477,11 +477,18 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glows()), { timeout: 30000 }).toBeGreaterThan(1); // the model's own glow joined
   expect(await page.evaluate(() => window.PlazaDebug().halloween.candle())).toBeGreaterThan(20);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glass().lit), { timeout: 60000 }).toBeGreaterThan(0);
+  // v1.10.38 섬 전체 할로윈: jack-o'-lanterns along the walks and at the doors, scarecrows, strings, lamps orange, the sky
+  const decor = await page.evaluate(() => window.PlazaDebug().halloween.decor());
+  expect(decor.shown).toBe(true);
+  expect(decor.kinds.pumpkinA + decor.kinds.pumpkinB).toBeGreaterThan(40);
+  expect([decor.kinds.stack > 9, decor.kinds.scarecrow > 3, decor.kinds.hay > 3, decor.kinds.cauldron > 1, decor.kinds.bunting > 10, decor.kinds.lights > 2]).toEqual([true, true, true, true, true, true]);
+  expect([decor.wisps > 10, decor.bats > 10, decor.moon]).toEqual([true, true, true]);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shades), { timeout: 60000 }).toBe(true); // over the lamp models
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
   await page.evaluate(() => window.PlazaDebug().halloween.set(false));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(false);
-  expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit])).toEqual([true, 0xbfe6ff, 0]);
+  expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit, window.PlazaDebug().halloween.decor().shown])).toEqual([true, 0xbfe6ff, 0, false]);
   await expectNoScriptError(page);
   await who.context.close();
 });
