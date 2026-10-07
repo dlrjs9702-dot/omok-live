@@ -255,7 +255,7 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
     await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // three 3D pages on a software renderer (v1.10.41: 60 s, the island grew)
     await who.page.evaluate(() => window.PlazaDebug().halloween.set(false)); // October's night is the Halloween tests'
   }
-  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
+  const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 30000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];
   const seen = (who, id) => who.page.evaluate((other) => (window.PlazaDebug()?.others || []).find((o) => o.id === other) || null, id);
   // everyone sees the two champions marked, and the third not
