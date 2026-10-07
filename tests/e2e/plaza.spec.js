@@ -602,7 +602,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(Math.PI); d.teleport(d.doors.games.x, d.doors.games.z); });
   expect((await cam()).camera.faded).toBeGreaterThan(0);
   await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(0); d.teleport(d.doors.games.x, d.doors.games.z); });
-  expect((await cam()).camera.faded).toBe(0);
+  await expect.poll(async () => (await cam()).camera.faded, { timeout: 3000 }).toBe(0); // v1.10.45: it eases back after a short hold
 
   // a resized window keeps the tilt in range
   await page.setViewportSize({ width: 820, height: 600 }); await page.waitForTimeout(300);
@@ -995,14 +995,34 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   // asking the mayor
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  // v1.10.45: a click on the hall from out here opens nothing -- only SPACE at its door, in the yard
+  await page.evaluate(() => { const T = window.IslandTerrain.TOWNHALL; window.PlazaDebug().setCamYaw(Math.atan2(T.sin, T.cos)); });
+  await page.waitForTimeout(500);
+  const hallAt = await page.evaluate(() => window.PlazaDebug().screenOf('townhall'));
+  await page.mouse.click(hallAt.x, hallAt.y); await page.waitForTimeout(500);
+  await expect(page.locator('#islandPlaceDialog')).toBeHidden();
+  expect(await page.locator('#plazaStage .plazaCanvas').evaluate((c) => c.style.cursor)).not.toBe('pointer');
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await page.getByRole('button', { name: '용무가 있습니다' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
-  await expect.poll(async () => { const t = await page.evaluate(() => window.PlazaDebug().townhall()); return Math.hypot(t.mayorAt.x - t.gate.x, t.mayorAt.z - t.gate.z); }, { timeout: 15000 }).toBeGreaterThan(2); // he steps aside
+  // he steps out of the gate, then aside along the outside of the wall: never back inside the yard behind the wall
+  const walk = [];
+  for (let k = 0; k < 40; k += 1) { walk.push(await page.evaluate(() => { const t = window.PlazaDebug().townhall(); return window.IslandTerrain.townhallLocal(t.mayorAt.x, t.mayorAt.z); })); await page.waitForTimeout(100); }
+  const z1 = await page.evaluate(() => window.IslandTerrain.TOWNHALL.yard.z1);
+  for (const w of walk) expect(Math.abs(w.lx) < 1.2 || w.lz > z1 + 0.6, JSON.stringify(w)).toBe(true);
+  await expect.poll(async () => { const t = await page.evaluate(() => window.PlazaDebug().townhall()); return Math.hypot(t.mayorAt.x - t.aside.x, t.mayorAt.z - t.aside.z); }, { timeout: 15000 }).toBeLessThan(0.1); // he steps aside
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await page.waitForTimeout(1500);
   const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
   expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
+  // v1.10.45: walking at the hall from the yard stops at the foot of the steps and along the terrace's front, never into it
+  for (const lx of [0, 4.6, -6.5]) {
+    await page.evaluate((x) => { const p = window.IslandTerrain.townhallWorld(x, 9.5); window.PlazaDebug().teleport(p.x, p.z); }, lx);
+    await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1800); await page.keyboard.up('ArrowUp');
+    const at = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); });
+    expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
+  }
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -1076,6 +1096,9 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   const aId = await a.page.evaluate(() => window.PlazaDebug().playerId?.() ?? null);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.seat), { timeout: 15000 }).toBe(seat.id);
   expect(await b.page.evaluate(() => window.PlazaDebug().takenSeats())).toEqual(expect.objectContaining({ [seat.id]: expect.any(String) }));
+  // v1.10.45: on the bench's seat, not in it -- lifted on both screens
+  expect((await a.page.evaluate(() => window.PlazaDebug().act())).lift).toBeCloseTo(0.28, 1);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.lift), { timeout: 10000 }).toBeCloseTo(0.28, 1);
   // an arrow stands me up and frees the seat on both screens
   await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
