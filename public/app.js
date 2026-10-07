@@ -1501,7 +1501,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1892,6 +1892,29 @@
     if (event.code !== 'KeyP' || document.querySelector('dialog[open]') || (event.target !== document.body && event.target !== plazaStage)) return;
     event.preventDefault(); if (document.body.classList.contains('photoMode')) leavePhoto(); else enterPhoto();
   });
+  // v1.10.44 앉기: the server says the seat is mine, then I sit (an arrow key stands me up)
+  async function sitDown(seat) {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      await api('/api/island/sit', { method: 'POST', body: JSON.stringify({ seat }) });
+      plaza.controller?.sit?.(seat);
+    } catch (error) { showToast(error.message); }
+  }
+  // v1.10.44 다른 사람에게 SPACE: 인사 · 환호 · 게임 초대 (the game hall's room window, then the invite to them)
+  let islandInviteTo = null;
+  function openPlayerMenu(plazaId) {
+    const who = plaza.controller?.debug?.().others?.find((o) => o.id === plazaId);
+    const make = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.addEventListener('click', () => { plazaDialog.addEventListener('close', () => fn(), { once: true }); plazaDialog.close(); }); return b; }; // after the window has closed (it puts its sections back then)
+    lostCard.replaceChildren(make('인사', 'primary', () => plaza.controller?.emote?.('wave')), make('환호', 'ghost', () => plaza.controller?.emote?.('cheer')),
+      make('게임 초대', 'secondary', () => { islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open(); }));
+    lostCard.classList.remove('hidden');
+    openPlazaWindow(who?.name || '', [lostCard]);
+  }
+  async function sendIslandInvite() {
+    const to = islandInviteTo; islandInviteTo = null;
+    if (!to || Date.now() - to.at > 5 * 60 * 1000) return;
+    try { const data = await api('/api/island/invite', { method: 'POST', body: JSON.stringify({ plazaId: to.id }) }); showToast(`${data.to || '상대'}님에게 대전 초대를 보냈습니다.`); } catch (error) { showToast(error.message, 4200); }
+  }
   // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
   function openMayor() {
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${plaza.controller?.mayorLine?.() || '무슨 용무로 오셨소?'}」`;
@@ -2086,7 +2109,8 @@
     const c = plaza.controller;
     if (!c?.pose || plazaSending || !document.body.classList.contains('plazaMode')) return;
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
-    const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving;
+    const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
+      || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once
     if (!changed && now - plazaLastSentAt < 3000) return;
     plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
     const sentAt = Date.now();
@@ -2368,6 +2392,7 @@
       }) });
       roomTitleInput.value = '';
       enterRoomState(data.state);
+      sendIslandInvite(); // v1.10.44: the room made for an island invite
       showToast(visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
   }
