@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.44 벤치 앉기·인사·환호·게임 초대
+
+사용자 지시 2026-10-07(비공개 IDEAS 「낚시·도감·기념사진·앉기/이모트/게임 초대」 ④).
+
+- 자세 동기화 확장: 자세에 `act`(sit·wave·cheer, 서버 허용 목록)·`actN`(새 인사 구분)·`seat`. 다른 화면은 같은 클립(SitDown→SitIdle 반복·StandUp·Wave·Cheer)을 재생, 앉은 사람은 좌석 자리·방향에 고정.
+- 앉기: 광장 벤치 4개 × 2좌석(`IslandTerrain.plazaProps().seats`). 가까운 빈 좌석에서 `SPACE · 앉기` → `POST /api/island/sit`(2.8 m 안, 먼저 앉은 사람, 섬을 떠나거나 세션이 끝나면 비움) → 채집 공통 시스템으로 제자리(카메라 회전). 방향키로 일어나 한 걸음 앞으로, `/api/island/stand`.
+- 다른 사람 옆(2.2 m) `SPACE · 인사` → 짧은 창: 인사·환호·게임 초대. 게임 초대는 게임관 창(방 만들기)을 열고, 방이 만들어지면 `POST /api/island/invite`(섬 id로 상대 세션을 찾아 기존 초대와 같은 규칙·알림)로 보냄. 방에 들어가면 섬에서 나가는 기존 동작 그대로.
+- 검증: npm test(좌석 먼저·일어나면 비움·허용 행동만), e2e(앉기가 다른 화면에 보임·일어남·인사가 상대 화면에서 재생·게임 초대 도착).
+
 ## v1.10.43 기념사진 모드·사진 장소 기록
 
 사용자 지시 2026-10-07(비공개 IDEAS 「낚시·도감·기념사진·앉기/이모트/게임 초대」 ③).
