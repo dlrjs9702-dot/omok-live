@@ -11,6 +11,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.39 할로윈 소품 모델 연결·박쥐 날갯짓·사탕 주머니·할로윈 꼬마 부탁
+
+사용자 지시 2026-10-07(비공개 IDEAS 「게임 아일랜드 섬 전체 할로윈 꾸미기」 ③·④). Codex 제작본(`Desktopsset. Game Island Halloween decor 2026-10-07`, 비공개 인계 `docs/island-halloween-decor-20261007.md`) 12종 High/Low를 `public/assets/island/halloween-decor-v1/`로 빌드(`tools/assets/island-models.json` 원본 SHA-256).
+
+- 등록부 `halloween.*`: v1.10.38 배치 9종이 같은 행렬로 모델 교체(줄은 왼쪽 고리 원점 +X 4m 그대로). 발광 재질(`glow`)은 합치지 않고 밤에 2.6으로 밝힘 — 그래서 꾸미기 배치는 그리기 호출이 재질 수만큼(테스트 예외).
+- 박쥐 `halloween.bat`: 15마리 각자 모델+`Flap` 루프(위상 차이), 비행 방향으로 몸을 돌림. 예산 `flapping`(메시 3·노드 6). 로더 `instance`가 클립을 객체에 남김.
+- 사탕 주머니 이벤트(`lib/island-events.js` `candy`, 풀밭, 최대 4): 10월(서울)에만 나오고 11월이 되면 남은 것이 사라짐. 가방 아이템 `candy`(상인 1,500P).
+- 할로윈 꼬마(`lib/island-quests.js` `kid`, -5, 19.5): 10월에만(`isOpen`) — 사탕 주머니 3(3,000) → 광장 큰 호박 앞(2,000) → 할머니 댁(2,000) + 보너스 15,000. 공통 캐릭터 0.72배·호박 축제복·호박 베레모, 손에 호박 사탕 바구니(`halloween.candyBasket`).
+- 수정: 캐릭터 모델이 들어올 때 아직 불러오는 중인 손 소품(객체 없음)을 손에 붙이려다 오류로 생성형에 남던 것(`asset-loader` 재장착에서 건너뜀). 가로등 주황 덮개를 매 프레임 실제 모델 여부로(느린 PC에서 5초 점검이 늦던 것).
+- 보류: 퀘스트 보완 6종(화단 꽃 없음/만개·기념사진 액자·낚싯대·물뿌리개·카메라 가방)은 연계 퀘스트 다음 단계에서. 박쥐 4버킷 인스턴싱은 마릿수가 늘 때.
+- 검증: npm test 707, e2e(할로윈 모델 9종·박쥐 15마리 날갯짓·꼬마 표시, 운영 등록부), 밤 화면 캡처.
+
 ## v1.10.38 섬 전체 할로윈 꾸미기(1단계: 배치 틀·임시 모양)
 
 사용자 지시 2026-10-07(비공개 IDEAS 「게임 아일랜드 섬 전체 할로윈 꾸미기」): 광장 밖이 황량하다 — 섬 전체를 귀엽게 꾸민다. 소품 모델은 Codex 제작 대기(같은 IDEAS의 「할로윈 꾸미기 소품 12」), 그 전까지 같은 자리·크기의 임시 모양.
