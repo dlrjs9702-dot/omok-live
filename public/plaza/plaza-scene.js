@@ -1641,6 +1641,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:')) delete eventDoors[k];
+    if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
     if (!best && !gather && !fishing) {
       const m = me.root.position; let seat = null; let sd = 1.6;
       for (const s of SEATS) { const d = Math.hypot(s.x - m.x, s.z - m.z); if (d < sd && !takenSeats.has(s.id)) { seat = s; sd = d; } }

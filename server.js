@@ -3511,7 +3511,7 @@ async function requestHandler(req, res) {
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
-        if (act !== 'sit') freeSeat(session.token);
+        // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
     plazaDirty = true;
