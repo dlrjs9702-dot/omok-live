@@ -2966,7 +2966,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.44' });
+    return sendJson(res, 200, { ok: true, version: '1.10.45' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3618,6 +3618,7 @@ async function requestHandler(req, res) {
     const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (place === 'office' && !(IslandTerrain.inTownhallYard(at.x, at.z) && passesGate(session))) return sendError(res, 409, 'TOO_FAR', '관공서 안으로 들어가서 다시 시도해 주세요.'); // v1.10.45: in the yard, past the mayor (not over the wall from outside)
     const account = pointAccountForSession(session);
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');

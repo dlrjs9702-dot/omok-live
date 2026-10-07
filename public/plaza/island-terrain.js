@@ -342,8 +342,10 @@
       const x = Math.cos(a) * (PLAZA_R - 2.2); const z = Math.sin(a) * (PLAZA_R - 2.2);
       if (!busy(x, z, 3.4)) beds.push({ x, z, r: 1.1, i }); // i: the bed's place in the ring (its flower colours)
     }
-    // v1.10.44 앉기: two seats on each bench, facing the way the bench does
-    const seats = benches.flatMap((b, k) => { const ry = Math.atan2(-b.x, -b.z); return [-1, 1].map((s) => ({ id: `b${k}${s < 0 ? 'l' : 'r'}`, x: b.x + Math.cos(ry) * 0.45 * s + Math.sin(ry) * 0.12, z: b.z - Math.sin(ry) * 0.45 * s + Math.cos(ry) * 0.12, yaw: ry })); });
+    // v1.10.44 앉기: a seat on each bench, facing the way the bench does. v1.10.45: one, in the middle -- a sitting
+    // character is 1.06 m across with its arms and the bench 1.56 m between its armrests, so two always overlapped (and
+    // the outer hands went into the armrests); 0.08 forward of the bench's middle, the knees just past the seat's edge
+    const seats = benches.map((b, k) => { const ry = Math.atan2(-b.x, -b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.08, z: b.z + Math.cos(ry) * 0.08, yaw: ry }; });
     return { benches, lamps, beds, seats };
   }
   // Things a character walks around, with their radius (the same circles the browser uses).

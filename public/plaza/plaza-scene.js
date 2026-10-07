@@ -227,7 +227,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     c.fillStyle = 'rgba(255,255,255,.96)'; c.strokeStyle = 'rgba(60,48,36,.35)'; c.lineWidth = 3;
     c.beginPath(); c.roundRect(left, 4, width, bodyH, 26); c.moveTo(244, bodyH + 2); c.lineTo(256, canvas.height - 4); c.lineTo(270, bodyH + 2); c.fill(); c.stroke();
     c.fillStyle = '#2b2220'; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle';
-    lines.forEach((l, i) => c.fillText(l, 256, 4 + 30 + i * 50));
+    lines.forEach((l, i) => c.fillText(l, 256, 4 + bodyH / 2 - (lines.length - 1) * 25 + i * 50)); // v1.10.45: centred in the body (it sat 12 px high)
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, depthTest: false, transparent: true }));
     sprite.scale.set(2.6, (2.6 * canvas.height) / 512, 1); sprite.renderOrder = 3;
@@ -483,6 +483,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.SphereGeometry(1.4, 16, 10, 0, TAU, 0, Math.PI / 2), mat(0x5f8f7f), 0, 0.5 + h + 2.8, -0.6, visual);
       sign(facility.name, root, 12.6);
       boxSolids(0, -0.6, w, 10, 1.4); boxSolids(0, 0, 16.2, 12.6, 0.8); // the hall, and its terrace (the steps are the way up)
+      // v1.10.45: the grid above left gaps a character could slip through (0.8 circles 1.7 apart), so the terrace and the
+      // steps are also walled round their edges with circles that overlap (one never gets past the foot of the steps)
+      const edge = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
+      edge(0, 0, 16.2, 12.6); edge(0, 6.85, 6, 1.1);
     } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
@@ -712,7 +716,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   assets.ambient(scene); // v1.10.29 the seasonal falling flakes round me
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
-  const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag }); // v1.10.41
+  const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
   doors.mayor = yard.door;
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -835,7 +839,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       p.y = heightAt(p.x, p.z);
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
-      if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = heightAt(s.x, s.z); o.c.targetYaw = s.yaw; } } // v1.10.44
+      if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = heightAt(s.x, s.z) + SEAT_LIFT; o.c.targetYaw = s.yaw; } } // v1.10.44
       animate(o.c, dt, o.act !== 'sit' && f.speed > 0.4, o.act === 'sit' ? 0 : f.speed);
     }
   }
@@ -919,7 +923,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
     for (const hit of raycaster.intersectObjects(facilityRoots, true)) {
-      for (let o = hit.object; o; o = o.parent) if (o.userData.facility) return o.userData.facility;
+      for (let o = hit.object; o; o = o.parent) if (o.userData.facility) return o.userData.facility === 'townhall' ? null : o.userData.facility; // v1.10.45: the town hall only by SPACE at its door, in the yard (past the mayor)
     }
     return null;
   };
@@ -1445,23 +1449,34 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const sightRay = new THREE.Raycaster(); sightRay.camera = camera;
   const sightDir = new THREE.Vector3(); const ghosts = new Map(); let faded = new Set();
   const ghost = (m) => { let g = ghosts.get(m); if (!g) { g = m.clone(); g.transparent = true; g.opacity = 0.3; g.depthWrite = false; ghosts.set(m, g); } return g; };
-  const swapGhost = (o, on) => {
+  const swapGhost = (o, on, opacity) => {
     if (!o.isMesh) return;
     if (on && !o.userData.solidMat) { o.userData.solidMat = o.material; o.material = Array.isArray(o.material) ? o.material.map(ghost) : ghost(o.material); }
+    if (on) for (const g of [].concat(o.material)) g.opacity = opacity;
     if (!on && o.userData.solidMat) { o.material = o.userData.solidMat; delete o.userData.solidMat; }
   };
+  // v1.10.45: a building standing at the edge of the line to me flickered solid / see-through every frame (one ray just
+  // grazing it). Now three rays (feet, body, head) see it, it stays faded FADE_HOLD after the last one did, and it eases
+  // in and out over FADE_TIME rather than switching
+  const FADE_HOLD = 0.4; const FADE_TIME = 0.25; const fading = new Map(); let fadeClock = 0; // building -> { a, seen }
   function fadeInWay(p) {
-    sightDir.set(p.x, p.y + 1.0, p.z).sub(camera.position); const far = sightDir.length();
-    sightRay.set(camera.position, sightDir.normalize()); sightRay.far = far;
-    const now = new Set();
-    for (const hit of sightRay.intersectObjects(buildingRoots.filter((r) => r.position.distanceToSquared(p) < 900), true)) {
-      if (hit.object.isSprite) continue; // a sign alone hides nothing
-      let o = hit.object; while (o.parent && !o.userData.building) o = o.parent;
-      now.add(o);
+    const dt = Math.min(0.1, clock - fadeClock); fadeClock = clock;
+    const near = buildingRoots.filter((r) => r.position.distanceToSquared(p) < 900);
+    for (const h of [0.4, 1.0, 1.6]) {
+      sightDir.set(p.x, p.y + h, p.z).sub(camera.position); const far = sightDir.length();
+      sightRay.set(camera.position, sightDir.normalize()); sightRay.far = far;
+      for (const hit of sightRay.intersectObjects(near, true)) {
+        if (hit.object.isSprite) continue; // a sign alone hides nothing
+        let o = hit.object; while (o.parent && !o.userData.building) o = o.parent;
+        const f = fading.get(o) || { a: 0, seen: 0 }; f.seen = clock; fading.set(o, f);
+      }
     }
-    for (const r of faded) if (!now.has(r)) r.traverse((o) => swapGhost(o, false));
-    for (const r of now) r.traverse((o) => swapGhost(o, true)); // every frame, so a model attached meanwhile fades too
-    faded = now;
+    for (const [r, f] of fading) {
+      f.a = Math.max(0, Math.min(1, f.a + (clock - f.seen <= FADE_HOLD ? 1 : -1) * (dt / FADE_TIME)));
+      if (f.a <= 0 && clock - f.seen > FADE_HOLD) { r.traverse((o) => swapGhost(o, false)); fading.delete(r); continue; }
+      const opacity = 1 - 0.7 * f.a; r.traverse((o) => swapGhost(o, true, opacity)); // every frame, so a model attached meanwhile fades too
+    }
+    faded = new Set(fading.keys());
   }
 
   let running = false; let raf = 0; let last = 0; let clock = 0;
@@ -1773,12 +1788,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.44 앉기·이모트 (IDEAS ④): a seat on a plaza bench (the server keeps who sits), a wave or a cheer -- each sent with
   // my pose (act, a count telling a new wave from the last), played on everyone's screen with the same clips
   const SEATS = globalThis.IslandTerrain.plazaProps().seats;
+  // v1.10.45: SitIdle has the hips 0.38 up and the seat of the body 0.26 up; the bench's seat (at its 0.85 size) is 0.54
+  // up -- lifted by the difference, I sit on it instead of in it
+  const SEAT_LIFT = 0.28;
   const myAct = { act: null, n: 0, seat: null }; let sitting = null; const takenSeats = new Map(); // seat -> other player id
   function sit(seatId) {
     const s = SEATS.find((x) => x.id === seatId); if (!s || gather || fishing) return false;
     if (!startGather({ kind: 'sit', ms: Infinity, anim: 'sitDown', onDone: () => standUp(false) })) return false;
     sitting = { seat: s, t: 0, from: { x: me.root.position.x, z: me.root.position.z } };
-    me.root.position.set(s.x, heightAt(s.x, s.z), s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw;
+    me.root.position.set(s.x, heightAt(s.x, s.z) + SEAT_LIFT, s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw;
     me.anim?.loop?.('sitIdle'); myAct.act = 'sit'; myAct.seat = s.id;
     return true;
   }
