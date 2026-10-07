@@ -91,14 +91,13 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   }
   // v1.10.45: at night the hall's pale marble keeps a little light of its own -- the sides, out of the yard's lights and
   // away from the moon, were a flat dark block; no extra light (each one costs every lit material)
-  const WALL_NIGHT = new THREE.Color(0x4a5262); let hallMeshes = -1;
+  const WALL_NIGHT = new THREE.Color(0x4a5262);
   function moonlit(on) {
     if (!hall) return;
-    let n = 0; hall.traverse((x) => { if (x.isMesh) n += 1; }); hallMeshes = n;
     hall.traverse((x) => {
       for (const m of [].concat(x.material || [])) {
         if (!m.emissive || m.name === 'glow' || m.transparent) continue;
-        if (!m.userData.dayEmissive) m.userData.dayEmissive = m.emissive.getHex();
+        if (m.userData.dayEmissive == null) m.userData.dayEmissive = m.emissive.getHex();
         const pale = m.color && m.color.r + m.color.g + m.color.b > 1.9; // the marble, not the roof, the windows or the doors
         m.emissive.set(on && pale ? WALL_NIGHT : m.userData.dayEmissive);
       }
@@ -109,18 +108,18 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   const gate = at(0, Y.z1); const out = at(0, Y.z1 + 1.4);
   // v1.10.45: he steps forward out of the gate, then aside along the outside of the wall (going straight to a spot inside
   // he walked through the gate pillar and the wall); back the same way
-  const mid = at(-0.9, Y.z1 + 0.85); const aside = at(-gx - 1.35, Y.z1 + 0.85);
+  const mid = at(-0.9, Y.z1 + 0.85); const aside = at(-gx - 0.95, Y.z1 + 0.85);
   const spec = { shirt: 0x1f2a44, hair: 0x2b2b2b, skin: 0xffdcbc };
   const mayor = makeCharacter(spec); mayor.animNames = { idle: 'GuardIdle' }; mayor.noTuck = true;
   mayor.root.position.set(gate.x, heightAt(gate.x, gate.z), gate.z); mayor.root.rotation.y = ry; scene.add(mayor.root);
   dressUp(mayor, { gender: 'male', hair: 'avatar_hair_8', outfit: 'npc_outfit_suit', shoes: 'avatar_shoes_5', dye: { avatar_shoes_5: '#1f2a44' } }, spec);
   mayor.tag = makeTag('시장', null); mayor.root.add(mayor.tag); fitTag(mayor);
   const gateSolid = { x: gate.x, z: gate.z, r: 1.7, gate: true }; solids.push(gateSolid); // open to whoever has his leave
-  let pass = false; let bowed = false; let lineAt = 0; let leg = 1; let frames = 0;
+  let pass = false; let bowed = false; let lineAt = 0; let leg = 1; let litAgo = 0;
   const setPass = (on) => { if (on && !pass) mayor.anim?.play('usher'); if (Boolean(on) !== pass) leg = 0; pass = Boolean(on); };
   function step(dt, me, animate) {
     const lit = nightOn && nearYard(me.root.position); if (lights[0].visible !== lit) for (const l of lights) l.visible = lit;
-    if (hall && nightOn && (frames += 1) % 60 === 0) { let n = 0; hall.traverse((x) => { if (x.isMesh) n += 1; }); if (n !== hallMeshes) moonlit(true); } // the model came in
+    if (hall && nightOn && (litAgo += dt) > 1) { litAgo = 0; moonlit(true); } // the model (and its High / Low) comes in later and swaps
     const route = pass ? [mid, aside] : [mid, gate]; const p = mayor.root.position;
     let to = route[Math.min(leg, 1)]; let d = Math.hypot(to.x - p.x, to.z - p.z);
     if (d <= 0.05 && leg < 1) { leg = 1; to = route[1]; d = Math.hypot(to.x - p.x, to.z - p.z); } const busy = mayor.anim && mayor.anim.state !== 'idle' && mayor.anim.state !== 'walk';
