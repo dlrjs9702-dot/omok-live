@@ -31,6 +31,9 @@ async function intoPlaza(browser, request, label, points = 0) {
   await expect(who.page.locator('#lobbyView')).toBeVisible();
   await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
+  // v1.10.41: these tests are about the island itself -- October's night (its decor, bats and lights) is the Halloween
+  // tests' (island-assets.spec), and on a software-rendered runner it made this file too slow for its shard
+  await who.page.evaluate(() => window.PlazaDebug().halloween.set(false));
   return who;
 }
 
