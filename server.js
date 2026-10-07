@@ -2960,7 +2960,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.42' });
+    return sendJson(res, 200, { ok: true, version: '1.10.43' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3755,13 +3755,23 @@ async function requestHandler(req, res) {
     fishCasts.delete(session.token);
     return sendJson(res, 200, { ok: true });
   }
+  if (pathname === '/api/island/photo' && req.method === 'POST') { // v1.10.43 기념사진: taken near a photo spot -> kept (spot and day only)
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-photo:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    const spot = at && IslandFishing.photoSpotAt(at.x, at.z);
+    if (!spot) return sendJson(res, 200, { ok: true, spot: null });
+    const dex = await pointStore.dexNote({ userId: pointAccountForSession(session), entry: spot.id });
+    return sendJson(res, 200, { ok: true, spot: { id: spot.id, name: spot.name }, first: dex.first });
+  }
   if (pathname === '/api/island/dex' && req.method === 'GET') { // v1.10.42 도감: what I have found (silhouettes for the rest)
     const session = requireSession(req, res);
     if (!session) return;
     const account = pointAccountForSession(session);
     const mine = await pointStore.dexOf(account);
     const found = Object.keys(mine).length;
-    return sendJson(res, 200, { ok: true, entries: IslandFishing.DEX.map((d) => ({ ...d, count: mine[d.id]?.count || 0 })), found, total: IslandFishing.DEX.length,
+    return sendJson(res, 200, { ok: true, entries: IslandFishing.DEX.map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now
@@ -4571,7 +4581,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.42 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.43 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -50,3 +50,20 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   const sold = (await req('/api/island/sell', sa, { place: 'fisher', requestId: 'fish-sale-0001' })).data;
   assert.equal(sold.paid, 4000 + 300 + 500 + 400); assert.equal((await req('/api/points', sa)).data.balance, before + sold.paid);
 });
+
+// v1.10.43 기념사진: a picture by a photo spot is kept once on the account (spot and day, no image); elsewhere nothing;
+// the spots are in the 도감 beside the fish and finds
+test('기념사진 서버: 장소 근처에서만 기록, 처음 한 번 표시, 도감에 들어간다', async (t) => {
+  assert.equal(F.photoSpotAt(0, 3).id, 'photo_plaza'); assert.equal(F.photoSpotAt(60, 60), null);
+  for (const s of F.PHOTO_SPOTS) assert.ok(T.walkable(s.x, s.z), s.name);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'photo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const sa = await server.enter(await server.issue('사진가')); assert.ok(sa, server.logs());
+  await req('/api/plaza/state', sa, { x: 60, z: 60, yaw: 0, moving: false });
+  assert.equal((await req('/api/island/photo', sa, {})).data.spot, null);
+  await req('/api/plaza/state', sa, { x: 0, z: 6, yaw: 0, moving: false });
+  const first = (await req('/api/island/photo', sa, {})).data; assert.deepEqual([first.spot.id, first.first], ['photo_plaza', true]);
+  assert.equal((await req('/api/island/photo', sa, {})).data.first, false);
+  const dex = (await req('/api/island/dex', sa)).data;
+  const e = dex.entries.find((x) => x.id === 'photo_plaza'); assert.equal(e.kind, 'photo'); assert.ok(e.first > 0); assert.equal(dex.found, 1);
+});

@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.43 기념사진 모드·사진 장소 기록
+
+사용자 지시 2026-10-07(비공개 IDEAS 「낚시·도감·기념사진·앉기/이모트/게임 초대」 ③).
+
+- 모드: 「사진」 버튼(섬 왼쪽 아래)·P로 들어가고 Esc·「닫기」로 나옴. 채집 공통 시스템으로 제자리(카메라는 하늘까지 회전), 이름표·말풍선(스프라이트)과 화면 표시(상단·탭·안내·미니맵·채팅) 숨김. 「촬영」: 3초 카운트다운 동안 카메라 쪽을 보며 PhotoPose 유지 → 같은 작업에서 렌더 후 캔버스 `toBlob` → `game-island-YYYYMMDD-HHMMSS.png` 다운로드(업로드 없음).
+- 기록: 사진 장소 7곳(`lib/island-fishing.js` PHOTO_SPOTS, 가장 가까운 곳) 근처에서 찍으면 `POST /api/island/photo`가 계정별로 장소·처음 날짜를 도감(`island_dex`/JSON dex)에 남김. 그 밖의 곳은 PNG만. 가방 창 「기념사진」 페이지(📷, 미촬영은 흐림). 도감 18개, 칭호 4·10·18.
+- 수정: JSON 저장소의 도감 처음 시각을 숫자(ms)로(PostgreSQL과 같게).
+- 검증: npm test(장소 판정·기록·처음 한 번), e2e(모드 숨김·제자리·PNG 파일명·장소 기록·Esc), 화면 캡처(이름표 없는 PNG·기념사진 페이지).
+
 ## v1.10.42 낚시·도감·어부 판매·도감 칭호
 
 사용자 지시 2026-10-07(비공개 IDEAS 「낚시·도감·기념사진·앉기/이모트/게임 초대」 ①②, 순서: 관공서 다음). Codex 12 낚시 에셋(물고기 8·찌·낚싯대 High/Low, 모션 FishCast·Wait·Reel·Catch·Bite·Miss, 도감 아이콘 11) 연결.

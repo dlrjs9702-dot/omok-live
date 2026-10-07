@@ -44,6 +44,7 @@
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
         <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
+        <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
           <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
@@ -950,8 +951,10 @@
     <div id="minesBoard" class="minesBoard" role="grid" aria-label="지뢰찾기 판"></div>
     <p id="minesStatus" class="minesStatus" role="status" aria-live="polite"></p>
   </dialog>
+  <div id="photoBar" class="photoBar hidden"><button id="photoShootBtn" type="button" class="secondary">촬영</button><button id="photoCloseBtn" type="button" class="ghost">닫기</button></div>
+  <div id="photoCount" class="photoCount hidden" aria-live="polite"></div>
   <dialog id="islandBagDialog" class="recordsDialog islandBagDialog" aria-labelledby="islandBagTitle">
-    <div class="recordsDialogHead"><h2 id="islandBagTitle">가방</h2><span id="islandBagCount" class="skinShopBalance"></span><button id="islandDexBtn" type="button" class="ghost tiny">도감</button><button id="islandBagCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div class="recordsDialogHead"><h2 id="islandBagTitle">가방</h2><span id="islandBagCount" class="skinShopBalance"></span><button id="islandDexBtn" type="button" class="ghost tiny">도감</button><button id="islandPhotoBtn" type="button" class="ghost tiny">기념사진</button><button id="islandBagCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="islandBagGrid" class="islandBagGrid" role="list" aria-label="가방"></div>
     <div id="islandDexGrid" class="islandBagGrid islandDexGrid hidden" role="list" aria-label="도감"></div>
   </dialog>
