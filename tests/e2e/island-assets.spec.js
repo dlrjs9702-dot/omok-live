@@ -316,7 +316,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const config = require('../../tools/assets/island-models.json');
   expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);
-  for (const b of d.assets.batches) {
+  for (const b of d.assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) { // v1.10.38: the Halloween decor's models are still being made
     expect(b.placed).toBe(true); expect(b.parts).toBe(1);
     expect(b.procedural).toBe(0); // the island never turns procedural with distance
     expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
@@ -360,7 +360,7 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   await standAt((await near()) - 2); // inside `near`: High again
   await expect.poll(async () => (await tree()).first).toBe('high');
   // across the island everything stays the model (High near, Low far), never procedural, never drawn twice
-  for (const b of (await debug(page)).assets.batches) {
+  for (const b of (await debug(page)).assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) {
     expect(b.procedural).toBe(0);
     expect(b.near + b.far).toBe(b.copies);
   }
@@ -477,11 +477,18 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glows()), { timeout: 30000 }).toBeGreaterThan(1); // the model's own glow joined
   expect(await page.evaluate(() => window.PlazaDebug().halloween.candle())).toBeGreaterThan(20);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glass().lit), { timeout: 60000 }).toBeGreaterThan(0);
+  // v1.10.38 섬 전체 할로윈: jack-o'-lanterns along the walks and at the doors, scarecrows, strings, lamps orange, the sky
+  const decor = await page.evaluate(() => window.PlazaDebug().halloween.decor());
+  expect(decor.shown).toBe(true);
+  expect(decor.kinds.pumpkinA + decor.kinds.pumpkinB).toBeGreaterThan(40);
+  expect([decor.kinds.stack > 9, decor.kinds.scarecrow > 3, decor.kinds.hay > 3, decor.kinds.cauldron > 1, decor.kinds.bunting > 10, decor.kinds.lights > 2]).toEqual([true, true, true, true, true, true]);
+  expect([decor.wisps > 10, decor.bats > 10, decor.moon]).toEqual([true, true, true]);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shades), { timeout: 60000 }).toBe(true); // over the lamp models
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
   await page.evaluate(() => window.PlazaDebug().halloween.set(false));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(false);
-  expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit])).toEqual([true, 0xbfe6ff, 0]);
+  expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit, window.PlazaDebug().halloween.decor().shown])).toEqual([true, 0xbfe6ff, 0, false]);
   await expectNoScriptError(page);
   await who.context.close();
 });
