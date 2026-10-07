@@ -1081,6 +1081,54 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   await a.context.close();
 });
 
+// v1.10.47 공중 관광열차: by a stop's boarding spot SPACE gets on the train standing there (riding on its seat, the other
+// screen draws me there too), the hint tells the next stop between stops, and SPACE at the next stop gets off onto its spot
+test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 보이며, 다음 정류장에서 내린다', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await intoPlaza(browser, request, '열차손님');
+  const b = await intoPlaza(browser, request, '열차구경');
+  const round = 210000;
+  const shiftTo = async (sec) => { const now = Date.now(); expect((await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now })).status).toBe(200); };
+  await shiftTo(236); // train 0 standing at the river stop
+  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('A').spot);
+  await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내부 강변역 승강기', { timeout: 15000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('A');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
+  await shiftTo(237);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 전망 열차 타기', { timeout: 15000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id), { timeout: 10000 }).toBe(3);
+  expect((await a.page.evaluate(() => window.PlazaDebug().train())).y).toBeGreaterThan(2.5); // up on the car's seat over the stream
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(1);
+  // between stops: the next stop and when, not a key to press
+  await shiftTo(270);
+  await expect(a.page.locator('#plazaHint')).toContainText('다음 정류장 · 북해안역', { timeout: 15000 });
+  await expect(a.page.locator('#plazaHint')).not.toContainText('SPACE');
+  // at the east stop: off, onto its boarding spot
+  await shiftTo(307);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내리기 · 북해안역', { timeout: 15000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding), { timeout: 10000 }).toBe(null);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
+  const east = await a.page.evaluate(() => { const p = window.PlazaDebug().train().platform; return window.IslandTrain.platformSpot(p.line, p.station, p.slot); });
+  const at = await a.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  expect(Math.hypot(at.x - east.x, at.z - east.z)).toBeLessThan(0.5);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.getByRole('button', { name: '외곽 열차', exact: true }).click();
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('outer');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.getByRole('button', { name: '내려가기', exact: true }).click();
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
+  expect(await a.page.evaluate(() => window.PlazaDebug().train().platform)).toBe(null);
+  await post(request, '/api/test/train-shift', a.token, { ms: 0 });
+  await expectNoScriptError(a.page); await expectNoScriptError(b.page);
+  await a.context.close(); await b.context.close();
+});
+
 // v1.10.44 앉기·이모트·게임 초대: SPACE by a plaza bench sits (the seat is mine on the server; the other screen draws me
 // sitting there), an arrow stands me up; SPACE by another player opens 인사·환호·게임 초대 -- a wave shows on their screen,
 // and an invite goes with the room I make

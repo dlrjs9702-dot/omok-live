@@ -57,7 +57,13 @@ function run(solidsNear, t0, minutes = 10) {
       assert.ok(walkers.clear(w.x, w.z), `n${w.n} frame ${k}: 장애물 안이 아님 (${w.x.toFixed(2)}, ${w.z.toFixed(2)})`);
       const off = Math.hypot(w.x - w.bx, w.z - w.bz); maxOff = Math.max(maxOff, off); if (off > 0.2) avoided += 1;
       // frames in a row more than 1 off the round although the round's own point is free (nothing left to step round)
-      spell[i] = off > 1 && walkers.clear(w.bx, w.bz) ? spell[i] + 1 : 0; maxSpell = Math.max(maxSpell, spell[i]);
+      // A free endpoint alone does not mean the return is clear (a tree can still stand between them).
+      const samples = Math.max(1, Math.ceil(off / P.WALKER.SWEEP));
+      const returnClear = off > 1 && Array.from({ length: samples }, (_, j) => {
+        const u = (j + 1) / samples; const x = w.x + (w.bx - w.x) * u; const z = w.z + (w.bz - w.z) * u;
+        return T.walkable(x, z) && walkers.clear(x, z);
+      }).every(Boolean);
+      spell[i] = returnClear ? spell[i] + 1 : 0; maxSpell = Math.max(maxSpell, spell[i]);
       if (!w.warped) maxStep = Math.max(maxStep, Math.hypot(w.x - before[i][0], w.z - before[i][1]));
     }
     const L = walkers.list;

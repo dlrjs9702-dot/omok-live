@@ -50,8 +50,9 @@ let built = 0;
 for (const file of config.files) {
   if (only && !file.out.includes(only)) continue;
   const output = path.join(root, config.outDir, file.out);
-  pack(source(file.src, file.sha256), output, config.profiles.high);
-  if (file.lowSrc) pack(source(file.lowSrc, file.lowSha256), path.join(root, config.outDir, lowName(file.out)), config.profiles.high);
+  const keep = file.args || []; // v1.10.47: e.g. -kn, a model whose named nodes the game moves (a carriage's wheels, doors, seat anchors)
+  pack(source(file.src, file.sha256), output, [...config.profiles.high, ...keep]);
+  if (file.lowSrc) pack(source(file.lowSrc, file.lowSha256), path.join(root, config.outDir, lowName(file.out)), [...config.profiles.high, ...keep]);
   else if (file.low) pack(source(file.src, file.sha256), path.join(root, config.outDir, lowName(file.out)), config.profiles.low.map((o) => (o === '{ratio}' ? String(file.low) : o)));
   built += 1;
   console.log(`${file.out}${file.lowSrc ? ' (+ low 제작본)' : file.low ? ` (+ low ${file.low})` : ''}`);

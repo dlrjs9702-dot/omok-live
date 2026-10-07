@@ -1470,7 +1470,7 @@
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
   function showPlazaHint(facility) {
-    plazaHint.textContent = facility ? `SPACE · ${facility.name}` : '';
+    plazaHint.textContent = facility ? (facility.plain ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
     plazaHint.classList.toggle('hidden', !facility);
   }
   function syncPlaza(view) {
@@ -1501,7 +1501,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1893,6 +1893,34 @@
     event.preventDefault(); if (document.body.classList.contains('photoMode')) leavePhoto(); else enterPhoto();
   });
   // v1.10.44 앉기: the server says the seat is mine, then I sit (an arrow key stands me up)
+  // v1.10.47 관광열차: SPACE by a stop gets on the train standing there (the server checks the stop, the train and a free
+  // seat); on board, SPACE at a stop gets off there. A plain hint (the next train's time) does nothing.
+  async function trainPlatform(stop, line) {
+    try { const r = await api('/api/island/train/platform', { method: 'POST', body: JSON.stringify({ stop, line }) }); plaza.controller?.setPlatform?.({ ...r, stop }); }
+    catch (error) { showToast(error.message); }
+  }
+  function trainMenu(stop) {
+    const R = globalThis.IslandTrain; const current = plaza.controller?.platform?.();
+    const button = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.onclick = () => { plazaDialog.addEventListener('close', fn, { once: true }); plazaDialog.close(); }; return b; };
+    const choices = Object.entries(R.LINES).filter(([line, L]) => L.order.includes(stop) && line !== current?.line).map(([line, L]) => button(L.name, () => trainPlatform(stop, line)));
+    if (current && R.docked(Date.now() + (plaza.controller?.debug?.().train().shift || 0), stop).some((d) => d.line === current.line)) choices.unshift(button('타기', () => trainAction('board')));
+    if (current) choices.push(button('내려가기', () => trainPlatform(stop, 'ground')));
+    lostCard.replaceChildren(...choices); lostCard.classList.remove('hidden'); openPlazaWindow(R.STATIONS[stop].name, [lostCard]);
+  }
+  async function trainAction(what) {
+    if (!(plazaHint.textContent || '').startsWith('SPACE')) return;
+    try {
+      if (what === 'ride') { const r = await api('/api/island/train/alight', { method: 'POST', body: '{}' }); plaza.controller?.alight?.(r); return; }
+      if (what === 'platform') { trainMenu(plaza.controller?.platform?.().station); return; }
+      if (what.startsWith('enter:')) {
+        const stop = what.slice(6); const lines = Object.entries(globalThis.IslandTrain.LINES).filter(([, L]) => L.order.includes(stop));
+        const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) });
+        if (lines.length === 1) await trainPlatform(stop, lines[0][0]); else trainMenu(stop); return;
+      }
+      const platform = plaza.controller?.platform?.(); if (!platform) return;
+      const r = await api('/api/island/train/board', { method: 'POST', body: JSON.stringify({ stop: platform.station, line: platform.line }) }); plaza.controller?.board?.(r.train, r.seat);
+    } catch (error) { showToast(error.message); }
+  }
   async function sitDown(seat) {
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -2120,6 +2148,15 @@
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
+        plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
+        const riding = plaza.controller?.riding?.();
+        const waiting = plaza.controller?.platform?.();
+        if (sentAt > (plaza.controller?.trainChangedAt?.() || 0) + 1500) {
+          if (!riding && data.ride) plaza.controller?.board?.(data.ride.id, data.ride.seat);
+          else if (!riding && !waiting && data.platform) plaza.controller?.setPlatform?.({ platform: data.platform });
+          else if (!riding && waiting && data.platform === null) { const st = globalThis.IslandTrain.stationOf(waiting.station); plaza.controller?.setPlatform?.({ ...st.spot, stop: st.id, platform: null }); }
+        }
+        if (riding && data.ride === null && sentAt > riding.at + 1500) plaza.controller?.alight?.(null); // the server has no ride of mine (a restart)
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
       })
@@ -4144,7 +4181,7 @@
     if (!data) return;
     let parsed;
     try { parsed = JSON.parse(data); } catch { return; }
-    if (event === 'plaza') { plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
+    if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere

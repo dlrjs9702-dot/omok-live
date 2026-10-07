@@ -58,7 +58,7 @@
       cost[id] = 2.4;
     }
     for (const curve of T.streamCurves) for (const [x, z] of curve) { // the streams (bridges stay open)
-      const reach = T.STREAM_HALF + 0.25 + MARGIN + 0.6; const [i0, j0] = cellOf(x - reach, z - reach); const [i1, j1] = cellOf(x + reach, z + reach);
+      const reach = T.STREAM_HALF + (T.riverExtra?.(x, z) || 0) + 0.25 + MARGIN + 0.6; const [i0, j0] = cellOf(x - reach, z - reach); const [i1, j1] = cellOf(x + reach, z + reach);
       for (let j = Math.max(0, j0); j <= Math.min(N - 1, j1); j += 1) for (let i = Math.max(0, i0); i <= Math.min(N - 1, i1); i += 1) {
         const c = centre(i, j); if (T.streamDist(c.x, c.z) < T.STREAM_HALF + 0.25 + MARGIN && !onAnyBridge(c.x, c.z)) blocked[j * N + i] = 1;
       }

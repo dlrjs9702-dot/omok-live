@@ -2351,6 +2351,28 @@
       "out": "characters/motions/FishMiss.glb",
       "src": "fishing:03. Motions/FishMiss.glb",
       "sha256": "74a62652d2670e52c3ac7152dcd63b7f0db0ba73d7ed1877538f2be1b72a4732"
+    },
+    {
+      "out": "train-v1/train_carriage.glb",
+      "src": "train:01. Carriage/01. High/train_carriage_high.glb",
+      "sha256": "2ce66700c0a4a470bf6e344f8de27dc276e9a84f4b67dfbd4edc28dd33f99785",
+      "lowSrc": "train:01. Carriage/02. Low/train_carriage_low.glb",
+      "lowSha256": "be96ab110382e58c0a2f00d4d384f9d7da238046181a7b43cd85b16561135039",
+      "args": [
+        "-kn"
+      ]
+    },
+    {
+      "out": "train-v1/train_platform.glb",
+      "src": "train:02. Stations/01. High/train_platform_high.glb",
+      "sha256": "39d9be10a3e264cdbb83e6109c2258232ca001cae90b0396843249291f9fef81",
+      "lowSrc": "train:02. Stations/02. Low/train_platform_low.glb",
+      "lowSha256": "a72837d659d9d5a5eac8eb68db05147ad83fb547a609f44efad1f81c86bf5322"
+    },
+    {
+      "out": "characters/motions/RideLookAround.glb",
+      "src": "train:05. Motions/RideLookAround.glb",
+      "sha256": "78655bd74d580b0725c96de6983ff2d26e6b78c3a7c10322b390408b1f8d8e8f"
     }
   ],
   "sources": {
@@ -2363,6 +2385,7 @@
     "halloween": "08. Game Island Halloween 2026-10-06",
     "halloweenDecor": "10. Game Island Halloween decor 2026-10-07",
     "mayor": "16. Game Island mayor and townhall 2026-10-07",
-    "fishing": "12. Game Island fishing 2026-10-07"
+    "fishing": "12. Game Island fishing 2026-10-07",
+    "train": "22. Game Island tourism train 2026-10-07"
   }
 }
