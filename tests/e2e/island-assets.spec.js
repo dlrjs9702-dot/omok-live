@@ -176,8 +176,10 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
 // is one zone further clockwise (the files stay the same, each fetched once); a season without a file leaves that
 // zone's copies procedural; back to automatic, the day is the server clock's
 test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계방향으로 한 구역씩 이동, 파일 없는 계절은 코드 생성형', async ({ browser, request }) => {
+  test.setTimeout(60000);
   const a = await island(browser, request, '계절', { __only: true, 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // the round-rock model alone (the whole registry is the next test's)
   const { page } = a;
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.41: rocks only -- October's decor would slow a software-rendered runner
   const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock.0');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
   const expectDay = async (day) => {
