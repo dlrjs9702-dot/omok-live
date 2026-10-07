@@ -100,3 +100,19 @@ test('연계 퀘스트·지뢰찾기 저장: PostgreSQL — 같은 흐름', asyn
   await store.init();
   await storeFlow(store);
 });
+
+// v1.10.39 섬 전체 할로윈: the costumed kid's story is out only in October (Asia/Seoul); candy bags from the bag
+test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머니 3개 → 광장 호박 앞 → 할머니 댁', () => {
+  const oct = Date.parse('2026-10-31T23:30:00+09:00'); const nov = Date.parse('2026-11-01T00:10:00+09:00');
+  assert.equal(Q.isOpen('kid', oct), true); assert.equal(Q.isOpen('kid', nov), false); assert.equal(Q.isOpen('granny', nov), true);
+  assert.equal(Q.talk({}, 'kid', [], at('kid'), nov).error, 'NO_STORY');
+  let doc = Q.talk({}, 'kid', [], at('kid'), oct).doc;
+  const bag = [{ entryId: 'a', itemId: 'candy', qty: 3 }];
+  assert.equal(Q.markOf('kid', doc.kid, bag), 'ready');
+  let r = Q.talk(doc, 'kid', bag, at('kid'), oct); doc = r.doc;
+  assert.deepEqual([r.reward, r.take], [3000, { itemId: 'candy', qty: 3 }]);
+  assert.equal(Q.note(doc, 'at', { x: 0, z: 5.5, now: nov }), null, '11월에는 진행되지 않음');
+  doc = Q.note(doc, 'at', { x: 0, z: 5.5, now: oct }); doc = Q.talk(doc, 'kid', [], at('kid'), oct).doc;
+  doc = Q.note(doc, 'at', { x: 5.5, z: 39, now: oct }); r = Q.talk(doc, 'kid', [], at('kid'), oct);
+  assert.deepEqual([r.reward, r.done], [17000, true]);
+});

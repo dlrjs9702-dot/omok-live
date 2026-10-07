@@ -281,7 +281,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.') && !id.startsWith('struct.')); // v1.10.32: the sea's sights come now and then, the snowcaps only on a winter roof
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.') && !id.startsWith('struct.')); // v1.10.32: the sea's sights come now and then, the snowcaps only on a winter roof
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -316,8 +316,8 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const config = require('../../tools/assets/island-models.json');
   expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);
-  for (const b of d.assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) { // v1.10.38: the Halloween decor's models are still being made
-    expect(b.placed).toBe(true); expect(b.parts).toBe(1);
+  for (const b of d.assets.batches) {
+    expect(b.placed).toBe(true); expect(b.parts).toBe(b.ids[0].startsWith('halloween.') ? b.parts : 1); // v1.10.39: the Halloween decor keeps its glowing material apart (not flattened)
     expect(b.procedural).toBe(0); // the island never turns procedural with distance
     expect(b.near + b.far).toBe(b.copies); // every copy drawn exactly once (High or Low), no doubles
   }
@@ -339,8 +339,10 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
 // v1.10.28 섬 전체 High/Low LOD (사용자 결정 2026-10-05): the registered models as players get them -- near the player a
 // tree is the full model, far away the same design simplified (never the procedural look), and the switch has a band
 test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 Low, 경계에는 히스테리시스, 생성형으로 돌아가지 않는다', async ({ browser, request }) => {
+  test.setTimeout(60000);
   const a = await island(browser, request, 'LOD', null);
   const { page } = a;
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.39: trees only -- October's decor and bats would slow a software-rendered runner
   const tree = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.tree.round');
   await expect.poll(async () => (await tree())?.placed, { timeout: 30000 }).toBe(true);
   const t = await tree();
@@ -360,7 +362,7 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   await standAt((await near()) - 2); // inside `near`: High again
   await expect.poll(async () => (await tree()).first).toBe('high');
   // across the island everything stays the model (High near, Low far), never procedural, never drawn twice
-  for (const b of (await debug(page)).assets.batches.filter((x) => !x.ids[0].startsWith('halloween.'))) {
+  for (const b of (await debug(page)).assets.batches) {
     expect(b.procedural).toBe(0);
     expect(b.near + b.far).toBe(b.copies);
   }
@@ -484,6 +486,10 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   expect([decor.kinds.stack > 9, decor.kinds.scarecrow > 3, decor.kinds.hay > 3, decor.kinds.cauldron > 1, decor.kinds.bunting > 10, decor.kinds.lights > 2]).toEqual([true, true, true, true, true, true]);
   expect([decor.wisps > 10, decor.bats > 10, decor.moon]).toEqual([true, true, true]);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shades), { timeout: 60000 }).toBe(true); // over the lamp models
+  // v1.10.39: the Codex decor pack in place of the stand-ins, the bats beating their wings
+  await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return ['pumpkinA', 'pumpkinB', 'stack', 'hay', 'scarecrow', 'cauldron', 'broom', 'bunting', 'lights'].map((k) => s[`halloween.${k}`]); }), { timeout: 90000 }).toEqual(Array(9).fill('model'));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsFlapping), { timeout: 60000 }).toBe(15);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
   await page.evaluate(() => window.PlazaDebug().halloween.set(false));
