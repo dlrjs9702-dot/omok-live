@@ -11,6 +11,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.42 낚시·도감·어부 판매·도감 칭호
+
+사용자 지시 2026-10-07(비공개 IDEAS 「낚시·도감·기념사진·앉기/이모트/게임 초대」 ①②, 순서: 관공서 다음). Codex 12 낚시 에셋(물고기 8·찌·낚싯대 High/Low, 모션 FishCast·Wait·Reel·Catch·Bite·Miss, 도감 아이콘 11) 연결.
+
+- 서버(`lib/island-fishing.js`): 종 8(흔함 60%·보통 28%·희귀 11%·대어 1%, 단가 300~45,000P, 기대값 약 1,450P/회), 던질 수 있는 곳 `IslandTerrain.canFish`(부두·방파제·절벽 아닌 물가 3 m). `POST /api/island/fish/start`(종·입질 시각 추첨, 세션당 한 판) → `finish`(입질 1.5 s + 지연 0.7 s 안, 던진 자리 1.5 m 안, 같은 판은 같은 답) → 가방 `fish_<종>`(원장 claim `fish:<id>`)·도감. 이르면 FISH_EARLY, 늦으면 FISH_LATE, 잃는 것 없음. 항구 어부에게 일괄 판매(`/api/island/sell` place `fisher`).
+- 도감: JSON `dex`, PostgreSQL `island_dex`(계정·항목·횟수·처음 시각). 물고기 8 + 약재·열매·버섯. 가방 창 「도감」 페이지(미획득은 실루엣). 칭호 4·8·11종(`dex_title_1~3`)은 기존 칭호 칸에서 선택(`/api/skins/title`, 서버가 도감 수 확인, 보유 없이 장착 `free`).
+- 화면: 채집 공통 시스템 위의 낚시(제자리·카메라 회전), FishCast → 0.48 s 찌 착수 → FishWait 반복 → 입질 FishBite+찌 흔들림+「!」 → 당기기 FishCatch(0.42 s 낚싯대 놓음, 0.68 s 물고기 손에)/FishMiss. 줄은 낚싯대 Tip(모델 공간 [0.08, 1.38, 0])에서 찌까지. 시간은 실제 시각 기준(느린 프레임에서도 입질이 늦게 보이지 않게). 낚시 중 팔 보정 끔. 애니메이터에 반복 상태 `loop`/`release`. 손 소품 회전 `rot`.
+- 검증: npm test(확률·기대값·판정·서버 흐름·어부 판매·도감 칭호), e2e(제자리·입질·당기기·가방·도감), 화면 캡처(던지기·입질·대왕 참치·도감).
+
 ## v1.10.41 관공서 확장: 대리석 관공서·마당·담장·야간 조명·정문 시장
 
 사용자 지시 2026-10-07(비공개 IDEAS 「게임 아일랜드 관공서 확장·대리석 앞마당·야간 조명」, 정문·담장·시장 확정). Codex 16 시장·관공서 v2(`townhall-v2/`, 정장 `characters/wear/outfit_suit`, 모션 GuardIdle·Bow·Usher) 연결, 이전 관공서 모델(additions-v1 facilities/townhall) 삭제.
