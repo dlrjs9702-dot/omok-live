@@ -76,8 +76,11 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   const pools = new THREE.InstancedMesh(poolGeo, poolMat, place.lampA.length + place.lampB.length);
   [...place.lampA, ...place.lampB].forEach((mm, i) => { const p = new THREE.Vector3().setFromMatrixPosition(mm); pools.setMatrixAt(i, m4.makeTranslation(p.x, p.y + 0.05, p.z)); });
   pools.computeBoundingSphere(); pools.visible = false; pools.renderOrder = 1; group.add(pools);
-  let glows = []; let seen = -1;
+  let glows = []; let seen = -1; let nightOn = false;
+  // the two real lights are in the scene only near the yard (every lit material pays for each light in view or not)
+  const yardMid = at(0, 11); const nearYard = (p) => Math.hypot(p.x - yardMid.x, p.z - yardMid.z) < 45;
   function setNight(on) {
+    nightOn = on;
     for (const l of lights) l.intensity = on ? 11 : 0;
     pools.visible = on; glowMat.color.setScalar(on ? 1 : 0.85);
     if (group.children.length !== seen) { seen = group.children.length; glows = []; group.traverse((x) => { for (const m of [].concat(x.material || [])) if (m.name === 'glow' && !glows.includes(m)) glows.push(m); }); }
@@ -95,6 +98,7 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   let pass = false; let bowed = false; let lineAt = 0;
   const setPass = (on) => { if (on && !pass) mayor.anim?.play('usher'); pass = Boolean(on); };
   function step(dt, me, animate) {
+    const lit = nightOn && nearYard(me.root.position); if (lights[0].visible !== lit) for (const l of lights) l.visible = lit;
     const to = pass ? aside : gate; const p = mayor.root.position;
     const d = Math.hypot(to.x - p.x, to.z - p.z); const busy = mayor.anim && mayor.anim.state !== 'idle' && mayor.anim.state !== 'walk';
     const moving = d > 0.05 && !busy; const speed = moving ? 1.6 : 0;
@@ -108,5 +112,5 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   const line = () => MAYOR_LINES[(lineAt++) % MAYOR_LINES.length];
   const dispose = () => { for (const x of made) x.dispose(); scene.remove(group); scene.remove(mayor.root); };
   return { group, mayor, door: { x: out.x, z: out.z, name: '말 걸기' }, gateSolid, isOpen: () => pass, setPass, setNight, step, line, dispose,
-    debug: () => ({ pass, solidOpen: pass, mayorAt: { x: +mayor.root.position.x.toFixed(2), z: +mayor.root.position.z.toFixed(2) }, gate: { x: gate.x, z: gate.z }, out, lights: lights.map((l) => l.intensity), pools: pools.visible, worn: Boolean(mayor.assetRoot), clip: mayor.anim?.clip || null, kinds: Object.fromEntries(Object.entries(place).map(([k, v]) => [k, v.length])) }) };
+    debug: () => ({ pass, solidOpen: pass, lit: lights[0].visible, mayorAt: { x: +mayor.root.position.x.toFixed(2), z: +mayor.root.position.z.toFixed(2) }, gate: { x: gate.x, z: gate.z }, out, lights: lights.map((l) => l.intensity), pools: pools.visible, worn: Boolean(mayor.assetRoot), clip: mayor.anim?.clip || null, kinds: Object.fromEntries(Object.entries(place).map(([k, v]) => [k, v.length])) }) };
 }
