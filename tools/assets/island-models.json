@@ -195,13 +195,6 @@
       "lowSha256": "4865ecf4e425a3e8e979531dd6f081de4c7703c31db44ca9029c5185e43b79ae"
     },
     {
-      "out": "additions-v1/facilities/townhall.glb",
-      "src": "additions:03. Facilities/townhall.glb",
-      "sha256": "7ecc9454ee9d283aa75f6546de06ec47ff588b232bd605b8585a7e0325152abe",
-      "lowSrc": "additions:05. Low LOD/03. Facilities/townhall.glb",
-      "lowSha256": "ee708ddf827fa8f5492389f1bef44401143aec6ab72b03b7dbca25d141a1c377"
-    },
-    {
       "out": "additions-v1/facilities/trader.glb",
       "src": "additions:03. Facilities/trader.glb",
       "sha256": "49d6cb41e05055a5f7023deb0432bd92be02bcb32fae114316c6d1e955023e75",
@@ -2180,6 +2173,84 @@
       "sha256": "08be55b55808f090aeeb83166f6191c5e61e7575e36f1007525e38c633103bfe",
       "lowSrc": "halloweenDecor:05. Candy event/02. Low/hw_candy_basket_low.glb",
       "lowSha256": "b883cb301d3550706c59aad79510c4e4d6ee80c5015acbfbb693e394bec8a55a"
+    },
+    {
+      "out": "townhall-v2/townhall_marble.glb",
+      "src": "mayor:01. Townhall/01. High/townhall_marble_high.glb",
+      "sha256": "211fd552567d2195ed5c58eef7a44db8a205a69ccf535a0549a190b5d32e678a",
+      "lowSrc": "mayor:01. Townhall/02. Low/townhall_marble_low.glb",
+      "lowSha256": "7d18b1fe602b1fb7b30fc586b9977c35ed78868df3ae30d67beabe588b05807d"
+    },
+    {
+      "out": "townhall-v2/marble_wall_2m.glb",
+      "src": "mayor:02. Courtyard/01. High/marble_wall_2m_high.glb",
+      "sha256": "139e9e1528fb3e91529857b67dd2889bc8bcd22644fb26bb683881f116cc58da",
+      "lowSrc": "mayor:02. Courtyard/02. Low/marble_wall_2m_low.glb",
+      "lowSha256": "580dec89d6cc826d6ae0e1cc20b0cdaea7c1d28a0b4bd93be1b525a5613c5b06"
+    },
+    {
+      "out": "townhall-v2/marble_wall_post.glb",
+      "src": "mayor:02. Courtyard/01. High/marble_wall_post_high.glb",
+      "sha256": "e81f4135ce35a58a7dc93e415e06dc52a3369b059b71da9d7832975821c688f7",
+      "lowSrc": "mayor:02. Courtyard/02. Low/marble_wall_post_low.glb",
+      "lowSha256": "dfb2d8406f77aebb027853dbcc1ce4a064e8a99650cb999b2f25044f5db7d22e"
+    },
+    {
+      "out": "townhall-v2/marble_wall_corner.glb",
+      "src": "mayor:02. Courtyard/01. High/marble_wall_corner_high.glb",
+      "sha256": "0c05d8e26421069b611dc1da63fe49fff6708b726b2ab8d01a1120456ff3f914",
+      "lowSrc": "mayor:02. Courtyard/02. Low/marble_wall_corner_low.glb",
+      "lowSha256": "d3340a24878b88cb4e313997a4d2000478a0c930e0f7b34fedce5bf075a9fbde"
+    },
+    {
+      "out": "townhall-v2/marble_gate_pillar.glb",
+      "src": "mayor:02. Courtyard/01. High/marble_gate_pillar_high.glb",
+      "sha256": "59d8968312e1ab631ece650a7d1da2c2984499472c3428f442e2e172b403a8d8",
+      "lowSrc": "mayor:02. Courtyard/02. Low/marble_gate_pillar_low.glb",
+      "lowSha256": "24fbf212e8f945614c870d96e4dd000692d9679ec1510fee98a999f54a2f7cad"
+    },
+    {
+      "out": "townhall-v2/marble_planter.glb",
+      "src": "mayor:02. Courtyard/01. High/marble_planter_high.glb",
+      "sha256": "a9ee9b458ce5efdc9c67d33adec8b1b80c76db830ed659db77457576c1fcd0cf",
+      "lowSrc": "mayor:02. Courtyard/02. Low/marble_planter_low.glb",
+      "lowSha256": "8e1d91b357773b5813644f88e34c16091a0ca034e4498b8e2560d69044baa7f0"
+    },
+    {
+      "out": "townhall-v2/lamp_grand_a.glb",
+      "src": "mayor:09. Reused grand lamps/01. High/lamp_grand_a_high.glb",
+      "sha256": "13994823a32943aed1ba2c3a9fe0b918acbcd37f5f6b1a137e0dc969c7f308a8",
+      "lowSrc": "mayor:09. Reused grand lamps/02. Low/lamp_grand_a_low.glb",
+      "lowSha256": "f130eb92f78e36e1f4522fbe4ddfde7ad14cf0f5c656cf8ab293f5c713f7e603"
+    },
+    {
+      "out": "townhall-v2/lamp_grand_b.glb",
+      "src": "mayor:09. Reused grand lamps/01. High/lamp_grand_b_high.glb",
+      "sha256": "42302efac8e2820192feb1be196c1e2c4bcbc2d797c25739c165888346bc9800",
+      "lowSrc": "mayor:09. Reused grand lamps/02. Low/lamp_grand_b_low.glb",
+      "lowSha256": "5c76a2467ec87c13736fc8108cbdec72193f5ec7c9a13c62c8f22f2427b9d013"
+    },
+    {
+      "out": "characters/wear/outfit_suit.glb",
+      "src": "mayor:03. Mayor/01. High/outfit_suit_high.glb",
+      "sha256": "b9daf5d060db6c81be0a01f468066f8bb72238f562741f33879c486b4da16c03",
+      "lowSrc": "mayor:03. Mayor/02. Low/outfit_suit_low.glb",
+      "lowSha256": "b06592025eaeb4b7d871536a2b5c6642f97b5601c2dfb4a63a051c77f91c8b90"
+    },
+    {
+      "out": "characters/motions/GuardIdle.glb",
+      "src": "mayor:04. Motions/GuardIdle.glb",
+      "sha256": "1eeb064c7c531798846d0648a3432c90fa40f590afb6a2bab2e225ff17dc37e1"
+    },
+    {
+      "out": "characters/motions/Bow.glb",
+      "src": "mayor:04. Motions/Bow.glb",
+      "sha256": "46a420fce28114361fe2a2b327fa971d14d448bd2e40dd8e5386003cf077345f"
+    },
+    {
+      "out": "characters/motions/Usher.glb",
+      "src": "mayor:04. Motions/Usher.glb",
+      "sha256": "0718903a1323f077fa26ebdae8173822aff648ce724deb0ecafb68887074e91d"
     }
   ],
   "sources": {
@@ -2190,6 +2261,7 @@
     "skins": "05. Game Island skins 2026-10-05",
     "finish": "07. Game Island finish 2026-10-06",
     "halloween": "08. Game Island Halloween 2026-10-06",
-    "halloweenDecor": "10. Game Island Halloween decor 2026-10-07"
+    "halloweenDecor": "10. Game Island Halloween decor 2026-10-07",
+    "mayor": "16. Game Island mayor and townhall 2026-10-07"
   }
 }

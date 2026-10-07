@@ -456,6 +456,7 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
   if (!session) return false;
   sessions.delete(token);
   soloGames.delete(token); // v1.10.37: a game left behind is void
+  townhallPass.delete(token); townhallStrict.delete(token); // v1.10.41: the mayor's leave lasts the visit
   let cancelledInvitation = false;
   for (const [id, invite] of invitations) {
     if (invite.fromToken === token || invite.toToken === token) {
@@ -1009,6 +1010,12 @@ function plazaSafeSpot(x, z) {
   }
   return null;
 }
+// v1.10.41 관공서 정문 시장 (IDEAS 2026-10-07, 「접속 동안만」): the mayor at the yard's gate lets a player in for the
+// rest of their visit once asked; until then a pose inside the yard is put back out at the gate. Admins pass; in tests
+// everyone passes unless a test asks for the real rule (townhallStrict).
+const townhallPass = new Set(); const townhallStrict = new Set(); // session tokens
+const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
+const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
 function notePlazaSpot(account, x, z, now = nowMs()) {
   if (!account || !plazaStandable(x, z)) return; // only a spot one may stand on is kept
   plazaSpots.set(account, { day: kstDate(now), x, z, dirty: true });
@@ -1030,6 +1037,7 @@ async function plazaSpotToday(account, now = nowMs()) {
   if (!account) return null;
   const spot = plazaSpots.get(account) || await pointStore.plazaSpot(account).catch(() => null);
   if (!spot || spot.day !== kstDate(now)) return null;
+  if (IslandTerrain.inTownhallYard(spot.x, spot.z)) return { ...TOWNHALL_GATE_OUT }; // v1.10.41: a new visit asks the mayor again
   return plazaSafeSpot(spot.x, spot.z);
 }
 const plazaSpotTimer = setInterval(() => { for (const [account, spot] of plazaSpots) if (!spot.dirty && spot.day !== kstDate()) plazaSpots.delete(account); savePlazaSpots(); }, PLAZA_SPOT_SAVE_MS);
@@ -2949,7 +2957,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.40' });
+    return sendJson(res, 200, { ok: true, version: '1.10.41' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3478,7 +3486,8 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     const { look, title } = avatarLookOf(equippedSkinCache.get(account));
     const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
-    const spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+    let spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+    if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
     plazaLastPos.set(session.token, spot);
     notePlazaSpot(account, spot.x, spot.z);
     plazaPresence.set(session.token, {
@@ -3491,7 +3500,7 @@ async function requestHandler(req, res) {
     const corrected = spot.x !== wanted.x || spot.z !== wanted.z;
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, townhallPass: passesGate(session), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -3588,7 +3597,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const place = body.place === 'office' || body.place === 'merchant' ? body.place : null;
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const spot = IslandTerrain.SPOTS[place === 'office' ? 'townhall' : 'trader'];
+    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     const account = pointAccountForSession(session);
@@ -3698,6 +3707,21 @@ async function requestHandler(req, res) {
   }
   // v1.10.11 공용 이벤트: solving one (standing at it). Taking it is decided at once (two players can never both get
   // it); the bag or the points follow, and if they cannot (a full bag, today's limit) the event stays for anyone.
+  if (pathname === '/api/island/mayor' && req.method === 'POST') { // v1.10.41: asking the mayor at the gate -- in for this visit
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-mayor:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    if (!at || Math.hypot(at.x - TOWNHALL_GATE_OUT.x, at.z - TOWNHALL_GATE_OUT.z) > 3.5) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    townhallPass.add(session.token);
+    return sendJson(res, 200, { ok: true, townhallPass: true });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/townhall-strict' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    townhallStrict.add(session.token); townhallPass.delete(session.token);
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === '/api/island/event' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -4482,7 +4506,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.40 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.41 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

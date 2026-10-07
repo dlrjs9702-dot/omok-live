@@ -1501,7 +1501,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1802,6 +1802,21 @@
     lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok); lostCard.classList.remove('hidden');
     openPlazaWindow(data.name, [lostCard]);
   }
+  // v1.10.41 관공서 정문 시장: one formal line and one button; his leave lasts this visit (the server keeps it)
+  function openMayor() {
+    const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${plaza.controller?.mayorLine?.() || '무슨 용무로 오셨소?'}」`;
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '용무가 있습니다';
+    ok.addEventListener('click', async () => {
+      ok.disabled = true;
+      try {
+        const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+        const data = await api('/api/island/mayor', { method: 'POST', body: '{}' });
+        plaza.controller?.setTownhallPass?.(Boolean(data.townhallPass)); plazaDialog.close();
+      } catch (error) { showToast(error.message); ok.disabled = false; }
+    });
+    lostCard.replaceChildren(line, ok); lostCard.classList.remove('hidden');
+    openPlazaWindow('시장', [lostCard]);
+  }
   const questTracker = document.getElementById('questTracker');
   function showQuestTracker(list) {
     questTracker.replaceChildren(...list.map((t) => { const p = document.createElement('p'); p.textContent = t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`; return p; }));
@@ -1990,6 +2005,7 @@
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
+        if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
       })

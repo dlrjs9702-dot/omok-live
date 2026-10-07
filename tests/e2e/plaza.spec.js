@@ -974,3 +974,31 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.41 관공서 확장: the mayor stands in the yard's gate; without his leave a step into the yard is put back out at the
+// gate (the server), SPACE by him asks once and he lets me in for the rest of the visit, stepping aside
+test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말을 걸어 허가받으면 비켜서고 들어갈 수 있다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '시장손님');
+  const { page } = a;
+  expect((await post(request, '/api/test/townhall-strict', a.token, {})).status).toBe(200);
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass), { timeout: 10000 }).toBe(false); // the next pose's answer
+  const th = await page.evaluate(() => window.PlazaDebug().townhall());
+  // straight into the yard (as a hand-made pose would): the server puts me back at the gate
+  await page.evaluate(() => window.PlazaDebug().place('townhall'));
+  await expect.poll(async () => { const s = await state(page); return Math.hypot(s.x - th.out.x, s.z - th.out.z); }, { timeout: 15000 }).toBeLessThan(0.6);
+  // asking the mayor
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await page.getByRole('button', { name: '용무가 있습니다' }).click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
+  await expect.poll(async () => { const t = await page.evaluate(() => window.PlazaDebug().townhall()); return Math.hypot(t.mayorAt.x - t.gate.x, t.mayorAt.z - t.gate.z); }, { timeout: 15000 }).toBeGreaterThan(2); // he steps aside
+  await page.evaluate(() => window.PlazaDebug().place('townhall'));
+  await page.waitForTimeout(1500);
+  const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
+  expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
+  await expectNoScriptError(page);
+  await a.context.close();
+});

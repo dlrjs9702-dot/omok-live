@@ -637,13 +637,13 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       });
       c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
-      const anim = P.createAnimator(THREE, object, clips, base.entry.animations || {}, { walkSpeed, speeds: base.entry.speeds });
+      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds }); // v1.10.41 c.animNames: a character's own idle (the mayor's GuardIdle)
       // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
       // the mixer each upper arm is turned `armTuck` down toward the body, in its parent's space -- about 20° out in every
       // clip, the clips and joints untouched. The turn of the frame before is taken off first: a clip without an arm
       // track (Idle) does not set the arm again, and the turn must not pile up.
       const tuck = [[bones.get('UpperArmL') || bones.get('UpperArm.L'), 1], [bones.get('UpperArmR') || bones.get('UpperArm.R'), -1]].filter(([b]) => b)
-        .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; });
+        .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (c.noTuck ? 0 : base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; }); // v1.10.41: not over the mayor's own arm poses
       // v1.10.32 운반: while `c.carrying`, the arms hold the thing in front -- CarryIdle's arms over whatever the legs do
       // (Idle, Walk, Run): after the frame's pose the shoulders, arms and hands take that clip's (it holds still); the
       // next frame first puts back what they had, so the tuck and the mixer go on as if nothing had been laid over them
