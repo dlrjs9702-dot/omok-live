@@ -1043,6 +1043,75 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (gather.t * 1000 >= gather.ms) endGather(true);
   }
   function endGather(done) { const g = gather; if (!g) return; gather = null; g.onDone(done); }
+  // v1.10.42 낚시 (IDEAS ①, Codex 12): a cast on the gathering system (I stay put, the camera turns). The server picked
+  // the fish and the bite; here only what shows -- FishCast (the bobber lands at its cast_line, 0.48 s), FishWait until the
+  // bite, then FishBite with the bobber bobbing under a 「!」 for the bite's window; FishCatch (the rod let go at 0.42 s,
+  // the fish in the hand at 0.68 s) or FishMiss. The line runs from the rod's tip (FISH_TIP in the rod's own space).
+  const FISH_TIP = new THREE.Vector3(0.08, 1.38, 0);
+  const FISH_HOLD = { default: { at: [0, 0, -0.12], rot: [0, Math.PI / 2, 0] }, giant_tuna: { at: [0.18, -0.12, -0.14], rot: [0, Math.PI / 2, 0] } };
+  let fishing = null;
+  const fishLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xf4f1ea, transparent: true, opacity: 0.85 }));
+  fishLine.frustumCulled = false; fishLine.visible = false; scene.add(fishLine);
+  const bobberHolder = new THREE.Group(); bobberHolder.visible = false; scene.add(bobberHolder);
+  const bobberLook = new THREE.Group(); bobberHolder.add(bobberLook);
+  mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(0xe2574c), 0, 0.03, 0, bobberLook); mesh(new THREE.SphereGeometry(0.06, 10, 8, 0, TAU, Math.PI / 2, Math.PI / 2), mat(0xffffff), 0, 0.03, 0, bobberLook);
+  assets.attach('fishing.bobber', bobberHolder, bobberLook);
+  // where the water is from here: the nearest open water round me (sea), a few metres out
+  function waterFrom(x, z) {
+    const T = globalThis.IslandTerrain; let best = null;
+    for (let k = 0; k < 24; k += 1) {
+      const a = (k / 24) * TAU; const wx = x + Math.sin(a) * 5; const wz = z + Math.cos(a) * 5;
+      if (T.walkable(wx, wz) || T.coastDist(wx, wz) > -0.5) continue;
+      const cd = T.coastDist(wx, wz); if (!best || cd < best.cd) best = { x: wx, z: wz, cd, yaw: a };
+    }
+    return best;
+  }
+  function fishBegin({ biteIn, window: biteMs }, onEnd) {
+    const water = waterFrom(me.root.position.x, me.root.position.z); if (!water || fishing) return false;
+    const ok = startGather({ kind: 'fish', ms: Infinity, anim: 'fishCast', at: water, onDone: () => fishStop(false) });
+    if (!ok) return false;
+    fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, landed: false };
+    me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
+    return true;
+  }
+  function fishStop(release = true) {
+    const f = fishing; if (!f) return; fishing = null;
+    fishLine.visible = false; bobberHolder.visible = false; if (f.mark) { disposeTag(f.mark); f.mark = null; }
+    assets.letGo(me, 'rod'); assets.letGo(me, 'catch'); me.noTuck = false; me.anim?.release?.();
+    if (release && gather?.kind === 'fish') { gather.onDone = () => {}; endGather(false); }
+    f.onEnd?.();
+  }
+  // the server's answer: the fish (species) or none (missed)
+  function fishResult(species) {
+    const f = fishing; if (!f) return;
+    f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species;
+    me.anim?.release?.(); me.anim?.play(species ? 'fishCatch' : 'fishMiss');
+    if (f.mark) { disposeTag(f.mark); f.mark = null; }
+  }
+  function stepFishing(dt) {
+    const f = fishing; if (!f) return;
+    f.t = (performance.now() - f.start) / 1000; // real time: the bite is the server's, a slow frame rate must not show it late
+    const sea = SEA_Y + 0.02;
+    if (f.phase === 'cast' && f.t >= 0.48 && !f.landed) { f.landed = true; bobberHolder.visible = true; fishLine.visible = true; bobberHolder.position.set(f.water.x, sea, f.water.z); }
+    if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); }
+    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
+    if (f.phase === 'bite' && f.t >= f.biteEnd + 0.8) fishResult(null); // nobody pulled: it got away
+    if (f.phase === 'catch') {
+      const t = f.t - f.t0;
+      if (t >= 0.42 && !f.dropped) { f.dropped = true; assets.letGo(me, 'rod'); fishLine.visible = false; bobberHolder.visible = false; }
+      if (t >= 0.68 && !f.held) { f.held = true; const fit = FISH_HOLD[f.species] || FISH_HOLD.default; assets.hold(me, `fish.${f.species}`, 0, { key: 'catch', at: fit.at, rot: fit.rot }); }
+      if (t >= 2.4) fishStop();
+    }
+    if (f.phase === 'miss' && f.t - f.t0 >= 0.9) fishStop();
+    // the bobber rides the water; at the bite it dips and jerks
+    if (bobberHolder.visible) bobberHolder.position.y = sea + (f.phase === 'bite' ? -0.06 + Math.sin(clock * 22) * 0.05 : Math.sin(clock * 2.2) * 0.015);
+    if (fishLine.visible) {
+      const rod = me.holding?.rod?.object; const from = new THREE.Vector3();
+      if (rod) rod.localToWorld(from.copy(FISH_TIP)); else from.set(me.root.position.x, me.root.position.y + 1.6, me.root.position.z);
+      const to = bobberHolder.position.clone().setY(bobberHolder.position.y + 0.08);
+      const pts = fishLine.geometry.attributes.position; pts.setXYZ(0, from.x, from.y, from.z); pts.setXYZ(1, to.x, to.y, to.z); pts.needsUpdate = true; fishLine.geometry.computeBoundingSphere();
+    }
+  }
   // start pulling a weed (the app has told the server); `done(true)` after about a second, `done(false)` when called off
   function gatherWeed(id, done) {
     const w = weedById.get(id); if (!w) return false;
@@ -1562,10 +1631,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < EVENT_REACH && d < bestD + 1) { best = id; bestD = d - 1; }
     }
+    // v1.10.42 낚시: by the water with nothing else near -- SPACE casts; while fishing it pulls in (or stops before the bite)
+    if (fishing || (!best && !gather && globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z))) {
+      const w = fishing ? fishing.water : waterFrom(me.root.position.x, me.root.position.z);
+      if (w) { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: fishing ? (fishing.phase === 'bite' ? '당기기' : '그만하기') : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
+    } else delete eventDoors['fish:spot'];
     if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName } : null); }
     me.lookAt = near ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = clock * 2.4; else spin.rotation.y = clock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(clock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31
+    stepFishing(dt); // v1.10.42
     sun.position.set(me.root.position.x - 9, me.root.position.y + 18, me.root.position.z + 8); sun.target.position.copy(me.root.position);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
     assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
@@ -1655,7 +1730,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), townhall: () => yard.debug(), halloween: { decor: () => decor.debug(), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), townhall: () => yard.debug(), halloween: { decor: () => decor.debug(), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
@@ -1672,6 +1747,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const holdBasket = () => assets.hold(me, 'prop.event.basket', 1400); // v1.10.32: picking herbs, berries, mushrooms
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
   const setTownhallPass = (on) => yard.setPass(on); const mayorLine = () => yard.line(); // v1.10.41
-  return { setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, holdWeed, holdBasket, returnLost, playMine,
+  const fishingNow = () => (fishing ? fishing.phase : null); // v1.10.42
+  return { fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

@@ -242,6 +242,12 @@
     if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 0.2) return false;
     return streamDist(x, z) > STREAM_HALF + 0.25;
   }
+  // v1.10.42 낚시: the pier, the breakwater, or the shore's edge by the water (not the cliffs) -- where a cast may start
+  function canFish(x, z) {
+    if (!walkable(x, z)) return false;
+    if (inRect(PIER, x, z, 0.2) || inRect(BREAKWATER, x, z, 0.2)) return true;
+    return coastDist(x, z) < 5 && cliffAt(x, z) < 0.35 && !onBridge(x, z);
+  }
   const ISLAND_RADIUS = 130; // the server's outer bound for positions
 
   // --- building the scene -----------------------------------------------------------------------------------------------
@@ -370,5 +376,5 @@
   const zoneSeason = (zone, day) => (zone < 0 ? null : SEASON_ORDER[(((zone - day) % 4) + 4) % 4]);
   const seasonAt = (x, z, ms) => zoneSeason(seasonZoneAt(x, z), seasonDay(ms));
 
-  return { TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

@@ -97,6 +97,7 @@
     const groundSpeed = { walk: speeds.walk || walkSpeed, run: speeds.run || walkSpeed * 1.6 };
     let state = 'idle'; let current = actionFor('idle'); current?.play();
     let once = null; // a one-off clip (play) holds until it has finished
+    let held = null; // v1.10.42: a looping clip (loop) kept until release() -- fishing's wait and reel
     function fadeTo(action) {
       if (!action || action === current) return;
       action.reset(); action.setEffectiveWeight(1); action.play();
@@ -109,8 +110,8 @@
       weights: () => Object.fromEntries(Object.entries(actions).map(([name, action]) => [name, action.isRunning() ? action.getEffectiveWeight() : 0])),
       update(dt, speed) {
         speed = Math.max(0, speed || 0);
-        if (once && !once.isRunning()) { once = null; state = 'idle'; fadeTo(actionFor('idle')); }
-        if (!once) {
+        if (once && !once.isRunning()) { once = null; state = held || 'idle'; fadeTo(held ? actions[held] : actionFor('idle')); }
+        if (!once && !held) {
           const next = nextGait(state, speed, walkSpeed);
           if (next !== state) { state = next; fadeTo(actionFor(next)); }
           const moving = current === actions.run ? 'run' : 'walk';
@@ -124,6 +125,8 @@
         action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = false; action.timeScale = 1;
         state = name; once = action; fadeTo(action); return true;
       },
+      loop(name) { const action = actions[name]; if (!action) return false; action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = 1; held = name; if (!once) { state = name; fadeTo(action); } return true; },
+      release() { held = null; if (!once) { state = 'idle'; fadeTo(actionFor('idle')); } },
       dispose() { mixer.stopAllAction(); mixer.uncacheRoot(rootObject); },
     };
   }

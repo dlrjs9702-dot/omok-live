@@ -1006,3 +1006,30 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.42 낚시·도감: SPACE by the water casts (I stay put), the bite shows a 「!」 over the bobber and SPACE pulls the
+// server's fish into the bag and the 도감; the bag window's 도감 page shows it among the silhouettes
+test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도감에 들어간다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '낚시꾼');
+  const { page } = a;
+  await page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x, d.pier.z + 9); });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 10000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);
+  const from = await state(page);
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
+  const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05); // fishing holds me in place
+  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow());
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 당기기');
+  await page.keyboard.press('Space');
+  await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
+  await page.keyboard.press('KeyI'); await page.locator('#islandDexBtn').click();
+  await expect(page.locator('#islandBagCount')).toHaveText('1/11');
+  await expect(page.locator('.islandDexCell:not(.unfound)')).toHaveText(/고등어/);
+  await expectNoScriptError(page);
+  await a.context.close();
+});

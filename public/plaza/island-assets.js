@@ -121,10 +121,10 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher']; // v1.10.41 the mayor's three
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss']; // v1.10.41 the mayor's three; v1.10.42 낚시
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
-    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher' },
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss' },
     speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
@@ -219,6 +219,12 @@
   REGISTRY['facility.townhall'] = th2('townhall_marble', { near: 90, snow: true });
   Object.assign(REGISTRY, { 'townhall.wall': th2('marble_wall_2m', { near: 40 }), 'townhall.post': th2('marble_wall_post', { near: 40 }), 'townhall.corner': th2('marble_wall_corner', { near: 40 }),
     'townhall.gatePillar': th2('marble_gate_pillar', { near: 50 }), 'townhall.planter': th2('marble_planter', { near: 40 }), 'townhall.lampA': th2('lamp_grand_a', { near: 50 }), 'townhall.lampB': th2('lamp_grand_b', { near: 50 }) });
+  // v1.10.42 낚시 (Codex 12): the rod (its tip at FISH_TIP in its own space, the line drawn by the game), the bobber
+  // (the water line at y 0) and the eight fish (centred on their grip), held in the right hand
+  const FISH = '/assets/island/fishing-v1';
+  const fishFile = (file, extra = {}) => ({ url: `${FISH}/${file}.glb`, low: { url: `${FISH}/${file}_low.glb` }, shadows: false, ...extra });
+  REGISTRY['fishing.rod'] = fishFile('quest_fishing_rod'); REGISTRY['fishing.bobber'] = fishFile('bobber');
+  for (const s of ['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna']) REGISTRY[`fish.${s}`] = fishFile(`fish_${s}`);
   REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
   REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
   // v1.10.39 섬 전체 할로윈 꾸미기 (Codex decor pack 2026-10-07): the batches of island-halloween.js, at their stand-ins'
