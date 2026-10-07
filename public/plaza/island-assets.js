@@ -62,6 +62,8 @@
   const gapsProp = (name, extra = {}) => ({ url: `${GAPS}/props/${name}.glb`, low: { url: `${GAPS}/props/${name}_low.glb` }, ...extra });
   const sea = (name, scale) => ({ url: `${GAPS}/sea/${name}.glb`, low: { url: `${GAPS}/sea/${name}_low.glb` }, scale, haze: 0.55, near: 150, shadows: false });
   const REGISTRY = {
+    'train.car': { url: '/assets/island/train-v1/train_carriage.glb', low: { url: '/assets/island/train-v1/train_carriage_low.glb' }, near: 45 },
+    'train.platform': { url: '/assets/island/train-v1/train_platform.glb', low: { url: '/assets/island/train-v1/train_platform_low.glb' }, near: 45 },
     'nature.tree.round': { seasons: seasonal('nature/tree_v1_{s}.glb'), low: { seasons: seasonal('nature/tree_v1_{s}_low.glb') }, scale: 0.72, near: 35 },
     'nature.tree.tiered': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.68, near: 35 },
     'nature.tree.blossom': { seasons: seasonal('nature/tree_v2_{s}.glb'), low: { seasons: seasonal('nature/tree_v2_{s}_low.glb') }, scale: 0.62, near: 35 },
@@ -121,10 +123,10 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss']; // v1.10.41 the mayor's three; v1.10.42 낚시
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround']; // v1.10.41 the mayor's three; v1.10.42 낚시
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
-    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss' },
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss' },
     speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own

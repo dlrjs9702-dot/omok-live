@@ -97,3 +97,13 @@ test('긴급 비활성화 스위치: ASSET_CACHE=off면 페이지와 /asset-cach
   const manifest = JSON.parse((await page.text()).match(/<script id="assetManifest" type="application\/json">([^<]*)<\/script>/)[1]);
   assert.deepEqual(manifest, { enabled: false, version: '', assets: [], assetsOff: [] });
 });
+
+// Directory enumeration and a file read are separate operations: concurrent cleanup must not break other servers.
+test('리소스 매니페스트: 열거 뒤 사라진 임시 파일만 생략하고 나머지 파일은 보존한다', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-vanish-')); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const assets = path.join(dir, 'assets'); fs.mkdirSync(assets);
+  fs.writeFileSync(path.join(assets, 'gone.png'), 'temporary'); fs.writeFileSync(path.join(assets, 'kept.png'), 'kept');
+  const readDirectory = fs.readdirSync;
+  t.mock.method(fs, 'readdirSync', (p, options) => { const names = readDirectory(p, options); if (p === assets) fs.rmSync(path.join(assets, 'gone.png'), { force: true }); return names; });
+  assert.deepEqual(buildAssetManifest(dir, () => true).assets.map((a) => a.url), ['/assets/kept.png']);
+});

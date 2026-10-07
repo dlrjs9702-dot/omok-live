@@ -302,9 +302,15 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(prop.zone).toBe(-1); expect(prop.look).toBe('summer'); // the neutral plaza
   }
   // v1.10.29: each flower colour its own model in every season; the bridges and yard fences take their zone's season
-  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const c of [0, 1, 2, 3, 4]) {
-    expect(files.some(([url]) => url.endsWith(`/additions-v1/${season}/flower_${c}_${season}.glb`)), `${season} flower ${c}`).toBe(true);
-    expect(files.some(([url]) => url.endsWith(`/additions-v1/${season}/flower_${c}_${season}_low.glb`)), `${season} flower ${c} low`).toBe(true); // far flowers keep their colour
+  // Terrain changes can leave a colour absent in one zone. Check every placed colour's actual seasonal H/L pair.
+  const flowers = d.assets.batches.filter((batch) => batch.ids[0].startsWith('nature.flower.'));
+  expect(flowers.length).toBe(5);
+  for (const batch of flowers) for (const zone of Object.values(batch.zones)) {
+    const colour = batch.ids[0].split('.').pop();
+    expect(zone.url.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '.glb')).toBe(true);
+    expect(zone.low.endsWith('/' + zone.look + '/flower_' + colour + '_' + zone.look + '_low.glb')).toBe(true);
+    expect(files.some(([url, state]) => url === zone.url && state === 'loaded')).toBe(true);
+    expect(files.some(([url, state]) => url === zone.low && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));
   expect(bridges.length).toBe(4);
@@ -315,6 +321,11 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
   });
+  // All four seasons/colours remain available offline, including files not used by today's placement.
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) for (const c of [0, 1, 2, 3, 4]) {
+    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '.glb');
+    expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '_low.glb');
+  }
   const config = require('../../tools/assets/island-models.json');
   expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
   for (const [url] of files) expect(cached).toContain(url);
@@ -506,4 +517,25 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit, window.PlazaDebug().halloween.decor().shown])).toEqual([true, 0xbfe6ff, 0, false]);
   await expectNoScriptError(page);
   await who.context.close();
+});
+
+// Real train models: both LOD door mixers, shared carriage files, platform swap and the riding clip contract.
+test('관광열차 실물: 3객차·6승강장 High/Low 로드와 문 열기·닫기', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const { REGISTRY } = require('../../public/plaza/island-assets.js');
+  const a = await island(browser, request, '열차모델', { __only: true, 'train.car': REGISTRY['train.car'], 'train.platform': REGISTRY['train.platform'] });
+  await a.page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.every((c) => c.model)), { timeout: 30000 }).toBe(true);
+  expect(await a.page.evaluate(() => window.PlazaDebug().train().cars.map((c) => ({ mixers: c.mixers, wheels: c.wheels })))).toEqual([{ mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }]);
+  const d = await debug(a.page); expect(d.assets.shown).toMatchObject({ 'train.car': 'model', 'train.platform': 'model' });
+  expect(d.assets.files).toMatchObject({ '/assets/island/train-v1/train_carriage.glb': 'loaded', '/assets/island/train-v1/train_carriage_low.glb': 'loaded', '/assets/island/train-v1/train_platform.glb': 'loaded', '/assets/island/train-v1/train_platform_low.glb': 'loaded' });
+  const shift = async (sec) => { const now = Date.now(); await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / 210000) * 210000 + sec * 1000 - now }); };
+  await shift(237);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 3).opened), { timeout: 12000 }).toBe(true);
+  const st = await a.page.evaluate(() => window.IslandTrain.stationOf('A').spot);
+  await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [st.x, st.z]);
+  await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-station.png') });
+  await shift(270);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 3).opened), { timeout: 12000 }).toBe(false);
+  await post(request, '/api/test/train-shift', a.token, { ms: 0 }); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });

@@ -151,7 +151,24 @@
     }
     return best;
   }
-  const streamDist = (x, z) => { let d = Infinity; for (const s of streamCurves) d = Math.min(d, lineDist(x, z, s)); return d; };
+  // v1.10.47 관광열차 A역 (IDEAS 2026-10-08): the north-west stream is widened to about 12 m by the inner river stop, its
+  // ends easing back to the usual width over RIVER_WIDE.ramp -- the water reaches further there, so every distance to a
+  // stream (the ground cut, where one can stand, trees, weeds, the islanders' paths, bridges) sees the wider water
+  const RIVER_WIDE = { pts: [[-21.35, -23.39], [-21.57, -24.08], [-21.77, -24.8], [-21.95, -25.53], [-22.1, -26.28], [-22.22, -27.04], [-22.32, -27.82], [-22.4, -28.6], [-22.47, -29.4], [-22.51, -30.2], [-22.55, -31.0], [-22.57, -31.8], [-22.59, -32.6], [-22.61, -33.4], [-22.64, -34.18], [-22.67, -34.96], [-22.72, -35.72], [-22.79, -36.47], [-22.88, -37.19], [-23.0, -37.9], [-23.16, -38.58], [-23.37, -39.24], [-23.61, -39.87], [-23.91, -40.47], [-24.26, -41.03], [-24.67, -41.57], [-25.13, -42.07], [-25.66, -42.53], [-26.24, -42.95]], half: 6, ramp: 6 };
+  { let s = 0; RIVER_WIDE.at = RIVER_WIDE.pts.map((p, i, a) => (s += i ? Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) : 0)); RIVER_WIDE.len = s; }
+  function riverExtra(x, z) { // how much wider than STREAM_HALF the water is here (0 away from the widened reach)
+    const W = RIVER_WIDE; if (Math.abs(x - W.pts[14][0]) > 30 || Math.abs(z - W.pts[14][1]) > 30) return 0;
+    let best = Infinity; let at = 0;
+    for (let i = 0; i < W.pts.length - 1; i += 1) {
+      const [ax, az] = W.pts[i]; const [bx, bz] = W.pts[i + 1]; const vx = bx - ax; const vz = bz - az; const l2 = vx * vx + vz * vz || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2)); const d = Math.hypot(x - ax - vx * t, z - az - vz * t);
+      if (d < best) { best = d; at = W.at[i] + t * (W.at[i + 1] - W.at[i]); }
+    }
+    if (best > W.half + 6) return 0;
+    const full = W.half - STREAM_HALF; const k = Math.min(smooth(0, W.ramp, at), 1 - smooth(W.len - W.ramp, W.len, at));
+    return full * k;
+  }
+  const streamDist = (x, z) => { let d = Infinity; for (const s of streamCurves) d = Math.min(d, lineDist(x, z, s)); const e = riverExtra(x, z); return e > 0 ? Math.min(d, lineDist(x, z, streamCurves[2]) - e) : d; };
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
 
   // Ground before water is cut in: plateau, hills, north cliffs, beaches; flat pads under buildings and squares.
@@ -204,7 +221,8 @@
     const a = pts[Math.max(0, run.i - 2)]; const b = pts[Math.min(pts.length - 1, run.i + 2)];
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
     const ux = (b[0] - a[0]) / len; const uz = (b[1] - a[1]) / len;
-    const half = 3.3; const ends = (land(run.x - ux * half, run.z - uz * half) + land(run.x + ux * half, run.z + uz * half)) / 2;
+    const half = 3.3 + riverExtra(run.x, run.z); const ends = // v1.10.47: longer over the widened river
+      (land(run.x - ux * half, run.z - uz * half) + land(run.x + ux * half, run.z + uz * half)) / 2;
     bridges.push({ x: run.x, z: run.z, ux, uz, half, w: Math.max(2.6, run.w), deck: Math.max(ends, ground(run.x, run.z) + 0.9) + 0.1 });
   }
   function onBridge(x, z) {
@@ -256,7 +274,8 @@
   // v1.10.11: the seeded nature of the island (moved from island.js unchanged, same seed and order): trees, flowers,
   // bushes, grass tufts, shore rocks, cliff fence posts and lamps. Computed once, on first use, by both the browser
   // (which draws them) and the server (which keeps events off them).
-  let natureCache = null;
+  let natureCache = null; const treeBlocks = []; // v1.10.47: places a tree must not stand (under the train's rail)
+  function addTreeBlock(fn) { treeBlocks.push(fn); natureCache = null; }
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x1a2b3c;
@@ -268,6 +287,7 @@
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
       for (const s of BUILDINGS) if (s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
       if (inTownhall(x, z, 4)) return false; // v1.10.41
+      if (treeBlocks.some((fn) => fn(x, z))) return false; // v1.10.47 (island-train.js)
       if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
       return true;
     };
@@ -383,5 +403,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

@@ -121,7 +121,7 @@ test('admin rename endpoint validates input, invalidates prior file and active s
   assert.equal(issued.status, 201);
   const id = issued.data.key.id;
   const beforeLogin = await enter(issued.data.html);
-  assert.equal(beforeLogin.status, 200);
+  assert.equal(beforeLogin.status, 200, beforeLogin.html);
   const guestSession = beforeLogin.html.match(/data-session="([^"]+)"/)?.[1];
   assert.ok(guestSession);
   const route = `/api/admin/keys/${id}/rename`;

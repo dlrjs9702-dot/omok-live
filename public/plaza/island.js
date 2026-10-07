@@ -8,7 +8,7 @@ import * as THREE from '/vendor/three/three.module.js';
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
 export const { coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, nature } = T;
-const { BUILDINGS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, streamDist, walkDist, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER } = T;
+const { RIVER_WIDE, riverExtra, BUILDINGS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, streamDist, walkDist, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER } = T;
 
 // v1.10.13 환경 비주얼: one way to build the island's static things out of simple parts. Every part (a box, a cone, a
 // roof slab...) is placed and coloured, then all of a thing's parts become ONE geometry with vertex colours, drawn with
@@ -238,16 +238,16 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     for (let i = 0; i < pts.length; i += 1) {
       const a = pts[Math.max(0, i - 1)]; const b = pts[Math.min(pts.length - 1, i + 1)];
       const dx = b[0] - a[0]; const dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1;
-      const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i]; const y = yOf(x, z) + lift;
+      const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i]; const y = yOf(x, z) + lift; const wd = typeof width === 'function' ? width(x, z) : width; // v1.10.47: a width along the line
       if (i) run += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
-      v.push(x + nx * width / 2, y, z + nz * width / 2, x - nx * width / 2, y, z - nz * width / 2);
+      v.push(x + nx * wd / 2, y, z + nz * wd / 2, x - nx * wd / 2, y, z - nz * wd / 2);
       uv.push(0, run / 6, 1, run / 6);
       if (i) { const k = i * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); } // counter-clockwise from above
     }
     const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = new THREE.Mesh(g, material); m.receiveShadow = true; scene.add(m); return m;
   };
-  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), STREAM_HALF * 2 + 0.6, (x, z) => Math.max(-0.58, land(x, z) - 0.45), water); // ends where it meets the sea
+  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), (x, z) => (STREAM_HALF + riverExtra(x, z)) * 2 + 0.6, (x, z) => Math.max(-0.58, land(x, z) - 0.45), water); // ends where it meets the sea
   // In the plaza the fountain's water runs out along shallow channels toward each stream.
   for (const s of STREAMS) {
     const [ex, ez] = s[0]; const a = Math.atan2(ez, ex);
@@ -590,11 +590,20 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const line = (pts, width, color) => { ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.strokeStyle = color; ctx.lineWidth = width * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); };
     for (const wk of walkCurves) line(wk.pts, wk.w + 1, '#e8d2a2');
     for (const st of streamCurves) line(st, STREAM_HALF * 2 + 1, '#5fb4e0');
+    line(RIVER_WIDE.pts, RIVER_WIDE.half * 2 - 2, '#5fb4e0'); // v1.10.47 the widened reach by the inner river stop
     ctx.beginPath(); ctx.arc(X(POND.x), Z(POND.z), POND.r * s, 0, TAU); ctx.fillStyle = '#5fb4e0'; ctx.fill();
     ctx.beginPath(); ctx.arc(X(0), Z(0), PLAZA_R * s, 0, TAU); ctx.fillStyle = '#f3e6c8'; ctx.fill(); ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 2; ctx.stroke();
     line([[PIER.x - PIER.ux * PIER.half, PIER.z - PIER.uz * PIER.half], [PIER.x + PIER.ux * PIER.half, PIER.z + PIER.uz * PIER.half]], PIER.w, '#b07a4f');
     line([[BREAKWATER.x - BREAKWATER.ux * BREAKWATER.half, BREAKWATER.z - BREAKWATER.uz * BREAKWATER.half], [BREAKWATER.x + BREAKWATER.ux * BREAKWATER.half, BREAKWATER.z + BREAKWATER.uz * BREAKWATER.half]], BREAKWATER.w, '#a39b8e');
     for (const b of bridges) line([[b.x - b.ux * b.half, b.z - b.uz * b.half], [b.x + b.ux * b.half, b.z + b.uz * b.half]], b.w, '#b07a4f');
+    const train = globalThis.IslandTrain;
+    if (train) {
+      for (const [id, L] of Object.entries(train.LINES)) {
+        const { xs, zs } = L.route; const pts = []; for (let i = 0; i < xs.length; i += 4) pts.push([xs[i], zs[i]]);
+        ctx.setLineDash([3 * s, 2 * s]); line(pts, 1.6, id === 'outer' ? 'rgba(70,140,210,.85)' : 'rgba(220,160,55,.85)'); ctx.setLineDash([]);
+      }
+      for (const st of Object.values(train.STATIONS)) { ctx.beginPath(); ctx.arc(X(st.entry[0]), Z(st.entry[1]), Math.max(3, 2.6 * s), 0, TAU); ctx.fillStyle = '#2f6fc0'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
   }
   function drawMap(ctx, w, h, me) {
     const s = Math.min(w, h) / 236; const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;

@@ -31,7 +31,7 @@
    - 변경 기능 확인 한 가지(관련 `npm run test:e2e` 스펙 또는 로컬 서버 화면 확인). 브라우저 실행 파일 오류면 `npx playwright install chromium`
    - 실행하지 못한 검증은 사유와 함께 기록한다.
 7. **커밋·PR**: 원격 작업 브랜치에 푸시하고 Draft PR을 만든다. 제목 `[vX.Y.Z] 요약`(문서만: `[docs] 요약`), 본문에는 변경·제외·검증과 비공개 `STATUS.md` 링크만 둔다. `STATUS.md`에 마지막 원격 SHA와 PR 번호를 갱신한다.
-8. **CI**: GitHub Actions `Playwright E2E`(정적 검사, `npm test`, `npm run test:e2e`)가 성공해야 한다. PR에서는 `pull_request`로 한 번만 돈다(작업 브랜치 push로는 돌지 않음, 2026-10-05 #153). 병합 뒤 `main` push로 한 번 더 돈다. 실패하면 병합하지 않는다. 준비되지 않은 중간 변경으로 PR CI를 반복하지 않도록, 묶음을 완성한 뒤 Draft PR을 연다. E2E가 반복해서 35분을 넘거나 40분 제한으로 취소되면 제한만 늘리지 말고 2개 작업으로 나눈다(shard). v1.10.32부터 E2E는 `shard 1/2`·`2/2` 두 작업이 함께 돌고(정적 검사·`npm test`는 1번에서만), 둘 다 성공해야 한다.
+8. **CI**: GitHub Actions `Playwright E2E`(정적 검사, `npm test`, `npm run test:e2e`)가 성공해야 한다. PR에서는 `pull_request`로 한 번만 돈다(작업 브랜치 push로는 돌지 않음, 2026-10-05 #153). 병합 뒤 `main` push로 한 번 더 돈다. 실패하면 병합하지 않는다. 준비되지 않은 중간 변경으로 PR CI를 반복하지 않도록, 묶음을 완성한 뒤 Draft PR을 연다. E2E가 반복해서 35분을 넘거나 40분 제한으로 취소되면 제한만 늘리지 말고 2개 작업으로 나눈다(shard). v1.10.32부터 E2E는 `shard 1/2`·`2/2` 두 작업이 함께 돌고(정적 검사·`npm test`는 1번에서만), 모든 묶음이 성공해야 한다. v1.10.47부터는 일반 PC 2분할·실물 에셋·광장을 각각 실행하는 4묶음으로 나누고, 기존 모바일 프로젝트는 전체 실행한다.
 9. **병합**: 사용자 승인 범위 안에서 Ready for review로 바꾼 뒤 squash 병합한다(기존 관례). 코드 변경이 있으면 병합 커밋에 `[skip render]`를 넣지 않는다. 문서만 바뀐 PR은 **실제 병합 커밋 메시지**에 `[skip render]`를 넣는다.
 10. **배포 확인**(AGENTS §6): Render 서비스 `omok-live`의 배포 기록을 직접 조회한다.
     - 새 main SHA의 배포가 `live`, 로그에 `omok-live@X.Y.Z start`·`게임 서버 vX.Y.Z 실행`·저장소 PostgreSQL 줄

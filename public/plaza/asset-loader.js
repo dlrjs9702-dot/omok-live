@@ -60,6 +60,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       return object;
     }
     const object = cloneObject(gltf.scene);
+    object.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.transparent && /^(window_glass|rail_glass)$/.test(m.name)) m.depthWrite = false; });
     object.animations = gltf.animations || []; // v1.10.38: a looping prop (the Halloween bats' Flap) plays its own clip
     object.scale.multiplyScalar(entry.scale ?? 1);
     object.rotation.y += entry.rotationY || 0;

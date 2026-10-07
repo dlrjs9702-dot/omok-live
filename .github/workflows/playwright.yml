@@ -18,11 +18,12 @@ jobs:
     # v1.10.32: past the 40-minute limit (docs/release.md: split rather than raise it) -- the browser tests in two
     # shards side by side; the static checks and npm test once, in the first. v1.10.41: three shards (the island's
     # October night and the town hall made the plaza tests slower; a shard went past 40 minutes)
+    # v1.10.47: one shard reached 39.3m while the others took 6-8m. Split the two 3D suites from general games.
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        group: [games-1, games-2, assets, plaza]
 
     steps:
       - name: Checkout
@@ -64,21 +65,26 @@ jobs:
           exit 1
 
       - name: Run unit and integration tests
-        if: ${{ matrix.shard == 1 }}
+        if: ${{ matrix.group == 'games-1' }}
         run: npm test
 
-      # the desktop tests split in half (a plain --shard put nearly all of them in the first: the mobile project's mostly
-      # skipped tests filled the second half); the mobile project runs whole in the last
+      # Disjoint groups retain the full desktop suite. Mobile runs whole with the general-group filter cleared.
       - name: Run browser tests
+        env:
+          PLAYWRIGHT_TEST_GROUP: ${{ matrix.group }}
         run: |
-          npm run test:e2e -- --project=chromium --shard=${{ matrix.shard }}/3
-          if [ "${{ matrix.shard }}" = "3" ]; then npm run test:e2e -- --project=mobile-chromium; fi
+          case "$PLAYWRIGHT_TEST_GROUP" in
+            games-*) npm run test:e2e -- --project=chromium --shard=${PLAYWRIGHT_TEST_GROUP#games-}/2 ;;
+            assets) npm run test:e2e -- --project=chromium tests/e2e/island-assets.spec.js ;;
+            plaza) npm run test:e2e -- --project=chromium tests/e2e/plaza.spec.js ;;
+          esac
+          if [ "$PLAYWRIGHT_TEST_GROUP" = "games-2" ]; then PLAYWRIGHT_TEST_GROUP= npm run test:e2e -- --project=mobile-chromium; fi
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report-${{ matrix.group }}
           path: playwright-report/
           if-no-files-found: ignore
 
@@ -86,6 +92,6 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-test-results-${{ matrix.shard }}
+          name: playwright-test-results-${{ matrix.group }}
           path: test-results/
           if-no-files-found: ignore
