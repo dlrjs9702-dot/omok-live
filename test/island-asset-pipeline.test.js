@@ -427,3 +427,12 @@ test('지붕 눈: 지붕 모양 판별과 눈 덮개를 지붕 위에 맞춰 덮
     assert.ok(Math.abs(d.pos[i]) <= 2 && Math.abs(d.pos[i + 2]) <= 1.5, '지붕 범위 안');
   }
 });
+
+// v1.10.46: seated, a tail sweeps up close to the back -- the longest (0.92 behind the hips) ends short of the bench's
+// back 0.40 behind; the part at the body (z0 and in front) does not move
+test('앉은 꼬리: 등받이(엉덩이 뒤 0.40) 앞에서 끝나고 몸에 붙은 쪽은 그대로', () => {
+  const pos = new Float32Array([0, 0.5, 0.1, 0, 0.57, 0.92, 0, 0.22, 0.91]);
+  const out = P.applyFit(pos, null, [P.TAIL_TUCK]).pos;
+  assert.deepEqual(Array.from(out.slice(0, 3)).map((v) => +v.toFixed(3)), [0, 0.5, 0.1]);
+  for (const i of [3, 6]) { assert.ok(out[i + 2] < 0.4, `z ${out[i + 2]}`); assert.ok(out[i + 1] > pos[i + 1], '위로 올라감'); }
+});

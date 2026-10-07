@@ -617,10 +617,13 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const meshesOf = (gltf) => { const copy = cloneObject(gltf.scene); copy.updateMatrixWorld(true); const list = []; copy.traverse((o) => { if (o.isSkinnedMesh) list.push(o); }); return list; };
       // what each part gives way to in this combination (asset-pipeline fitWardrobe), worked out on the High files
       const fits = P.fitWardrobe(parts.map((p, i) => ({ id: plan.parts[i], fit: p.entry.fit || null, pos: meshesOf(byUrl.get(p.entry.url)).flatMap((m) => Array.from(restOf(m))) })));
-      const adopt = (gltf, colors, into, fit) => {
+      const tails = []; // v1.10.46: seated, a tail is swept up against the back (c.tuckTail)
+      const adopt = (gltf, colors, into, fit, tail = false) => {
         for (const m of meshesOf(gltf)) {
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
+          const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
           if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
+          if (sitGeometry) { m.userData.stand = m.geometry; m.userData.sit = sitGeometry; tails.push(m); }
           const skeleton = new THREE.Skeleton(m.skeleton.bones.map((b) => bones.get(b.name)), m.skeleton.boneInverses.map((x) => x.clone()));
           if (skeleton.bones.some((b) => !b)) throw new Error(`rig mismatch: ${m.name}`);
           const bindMatrix = m.bindMatrix.clone(); m.removeFromParent(); rootBone.parent.add(m); m.bind(skeleton, bindMatrix);
@@ -632,8 +635,9 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (lowBody) adopt(lowBody, null, low, null);
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit); // a part without a Low file shows at every distance
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit);
+        const tail = p.entry.fit?.slot === 'tail';
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit, tail); // a part without a Low file shows at every distance
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail);
       });
       c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
@@ -659,6 +663,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         if (tucked) for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
         if (c.carrying && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
       };
+      c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };
+      c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
       // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head

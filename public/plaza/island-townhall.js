@@ -98,6 +98,13 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
       for (const m of [].concat(x.material || [])) {
         if (!m.emissive || m.name === 'glow' || m.transparent) continue;
         if (m.userData.dayEmissive == null) m.userData.dayEmissive = m.emissive.getHex();
+        // v1.10.46: on a vertex-coloured model (the hall is one) the glow goes by each face's own colour -- the marble
+        // takes it, the brown door and the green roof hardly (it greyed the door)
+        if (m.vertexColors && !m.userData.glowByColor) {
+          const before = m.onBeforeCompile; m.userData.glowByColor = true;
+          m.onBeforeCompile = (shader, renderer) => { before?.call(m, shader, renderer); shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#ifdef USE_COLOR\ntotalEmissiveRadiance *= vColor.rgb * vColor.rgb;\n#endif'); };
+          const key = m.customProgramCacheKey.bind(m); m.customProgramCacheKey = () => `${key()}|glowByColor`; m.needsUpdate = true;
+        }
         const pale = m.color && m.color.r + m.color.g + m.color.b > 1.9; // the marble, not the roof, the windows or the doors
         m.emissive.set(on && pale ? WALL_NIGHT : m.userData.dayEmissive);
       }

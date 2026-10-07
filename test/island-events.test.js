@@ -139,3 +139,12 @@ test('사탕 주머니 이벤트: 10월에만 나오고 11월이 되면 사라�
   assert.equal([...ev.events.values()].filter((e) => e.type === 'candy').length, 0);
   assert.equal(ev.size(), 15, '빈자리는 다른 이벤트로 채운다');
 });
+
+// v1.10.46: the island's October night (decor, bats, moon) is off from 1 November 00:00 in Seoul, on all of October
+test('할로윈 화면: 10월 내내 켜지고 11월 1일 0시(서울)에 꺼진다', () => {
+  const T = require('../public/plaza/island-terrain.js');
+  assert.equal(T.isHalloween(Date.parse('2026-10-01T00:00:00+09:00')), true);
+  assert.equal(T.isHalloween(Date.parse('2026-10-31T23:59:59+09:00')), true);
+  assert.equal(T.isHalloween(Date.parse('2026-11-01T00:00:00+09:00')), false);
+  assert.equal(T.isHalloween(Date.parse('2026-09-30T23:59:59+09:00')), false);
+});

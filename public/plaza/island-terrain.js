@@ -344,8 +344,9 @@
     }
     // v1.10.44 앉기: a seat on each bench, facing the way the bench does. v1.10.45: one, in the middle -- a sitting
     // character is 1.06 m across with its arms and the bench 1.56 m between its armrests, so two always overlapped (and
-    // the outer hands went into the armrests); 0.08 forward of the bench's middle, the knees just past the seat's edge
-    const seats = benches.map((b, k) => { const ry = Math.atan2(-b.x, -b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.08, z: b.z + Math.cos(ry) * 0.08, yaw: ry }; });
+    // the outer hands went into the armrests). v1.10.46: 0.18 forward of the bench's middle (was 0.08) -- the back of the
+    // bench 0.40 behind the hips, so a cape (0.31-0.41 behind them seated) clears it; still on the seat, knees past its edge
+    const seats = benches.map((b, k) => { const ry = Math.atan2(-b.x, -b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     return { benches, lamps, beds, seats };
   }
   // Things a character walks around, with their radius (the same circles the browser uses).
@@ -380,5 +381,7 @@
   const zoneSeason = (zone, day) => (zone < 0 ? null : SEASON_ORDER[(((zone - day) % 4) + 4) % 4]);
   const seasonAt = (x, z, ms) => zoneSeason(seasonZoneAt(x, z), seasonDay(ms));
 
-  return { canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
+  const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
+  return { isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

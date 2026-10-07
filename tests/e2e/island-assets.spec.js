@@ -491,6 +491,13 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   // v1.10.39: the Codex decor pack in place of the stand-ins, the bats beating their wings
   await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return ['pumpkinA', 'pumpkinB', 'stack', 'hay', 'scarecrow', 'cauldron', 'broom', 'bunting', 'lights'].map((k) => s[`halloween.${k}`]); }), { timeout: 90000 }).toEqual(Array(9).fill('model'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsFlapping), { timeout: 60000 }).toBe(15);
+  // v1.10.46: drawn instanced (body, two wings), flying a straight way across and on -- never hanging in one place
+  expect((await page.evaluate(() => window.PlazaDebug().halloween.decor())).batInstanced).toBeGreaterThanOrEqual(2);
+  await page.evaluate(() => window.PlazaDebug().halloween.launchBats());
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsFlying), { timeout: 15000 }).toBe(15);
+  const ways = (await page.evaluate(() => window.PlazaDebug().halloween.decor().flights)).filter((f) => f.on);
+  expect(ways.length).toBe(3);
+  for (const f of ways) expect(Math.hypot(f.dir.x, f.dir.z)).toBeCloseTo(1, 3);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
