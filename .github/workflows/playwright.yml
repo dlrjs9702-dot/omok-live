@@ -16,12 +16,13 @@ jobs:
     # A normal run took 8–15 minutes, by 2026-10 20–37 (more 3D tests on a software renderer). Without a limit a hung
     # step waits for GitHub's 6-hour default.
     # v1.10.32: past the 40-minute limit (docs/release.md: split rather than raise it) -- the browser tests in two
-    # shards side by side; the static checks and npm test once, in the first
+    # shards side by side; the static checks and npm test once, in the first. v1.10.41: three shards (the island's
+    # October night and the town hall made the plaza tests slower; a shard went past 40 minutes)
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout
@@ -67,11 +68,11 @@ jobs:
         run: npm test
 
       # the desktop tests split in half (a plain --shard put nearly all of them in the first: the mobile project's mostly
-      # skipped tests filled the second half); the mobile project runs whole in the second
+      # skipped tests filled the second half); the mobile project runs whole in the last
       - name: Run browser tests
         run: |
-          npm run test:e2e -- --project=chromium --shard=${{ matrix.shard }}/2
-          if [ "${{ matrix.shard }}" = "2" ]; then npm run test:e2e -- --project=mobile-chromium; fi
+          npm run test:e2e -- --project=chromium --shard=${{ matrix.shard }}/3
+          if [ "${{ matrix.shard }}" = "3" ]; then npm run test:e2e -- --project=mobile-chromium; fi
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

@@ -55,8 +55,8 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests()), { timeout: 20000 }).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'questgranny', mark: 'new' })]));
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questgranny'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 10000 });
-  await page.keyboard.press('Space');
-  await expect(page.locator('#plazaDialog')).toBeVisible();
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); // the key to the island, not to whatever had focus
+  await expect(page.locator('#plazaDialog')).toBeVisible({ timeout: 10000 });
   await expect(page.locator('#plazaDialog')).toContainText('정원사 할머니');
   await expect(page.locator('#plazaDialog')).toContainText('잡초 20포기');
   await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click();

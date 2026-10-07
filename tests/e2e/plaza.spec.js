@@ -31,6 +31,9 @@ async function intoPlaza(browser, request, label, points = 0) {
   await expect(who.page.locator('#lobbyView')).toBeVisible();
   await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
+  // v1.10.41: these tests are about the island itself -- October's night (its decor, bats and lights) is the Halloween
+  // tests' (island-assets.spec), and on a software-rendered runner it made this file too slow for its shard
+  await who.page.evaluate(() => window.PlazaDebug().halloween.set(false));
   return who;
 }
 
@@ -236,7 +239,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
 // v1.9.5 주간 챔피언: 지난주 공동 1위 두 사람 모두 광장 이름표에 「챔피언」이 붙고, 다른 사람에게도 같게 보이며, 다시 접속해도 그대로다.
 test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람에게도 보이고 재접속 후에도 유지', async ({ browser, request }) => {
-  test.setTimeout(150000); // three 3D pages on a software renderer: 52-96 s on a CI runner already
+  test.setTimeout(240000); // three 3D pages on a software renderer: 52-96 s on a CI runner already (v1.10.41: more with the town hall)
   const lastWeek = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const champs = [];
   for (const label of ['챔피언가', '챔피언나']) {
@@ -249,7 +252,8 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   expect((await post(request, '/api/test/climb/settle', null, { reopen: true })).status).toBe(200); // a retried test settles last week again
   for (const who of [...champs, plain]) {
     await islandPage(who.page);
-    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true); // three 3D pages on a software renderer
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // three 3D pages on a software renderer (v1.10.41: 60 s, the island grew)
+    await who.page.evaluate(() => window.PlazaDebug().halloween.set(false)); // October's night is the Halloween tests'
   }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];
@@ -971,6 +975,34 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await expect.poll(() => page.evaluate((w) => window.PlazaDebug().weeds.at(w), pulledId)).toBe(null);
   expect((await get(request, '/api/island/weeds', a.token)).data.weeds.some(([w]) => w === pulledId)).toBe(false);
   void id;
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.41 관공서 확장: the mayor stands in the yard's gate; without his leave a step into the yard is put back out at the
+// gate (the server), SPACE by him asks once and he lets me in for the rest of the visit, stepping aside
+test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말을 걸어 허가받으면 비켜서고 들어갈 수 있다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '시장손님');
+  const { page } = a;
+  expect((await post(request, '/api/test/townhall-strict', a.token, {})).status).toBe(200);
+  await page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass), { timeout: 10000 }).toBe(false); // the next pose's answer
+  const th = await page.evaluate(() => window.PlazaDebug().townhall());
+  // straight into the yard (as a hand-made pose would): the server puts me back at the gate
+  await page.evaluate(() => window.PlazaDebug().place('townhall'));
+  await expect.poll(async () => { const s = await state(page); return Math.hypot(s.x - th.out.x, s.z - th.out.z); }, { timeout: 15000 }).toBeLessThan(0.6);
+  // asking the mayor
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await page.getByRole('button', { name: '용무가 있습니다' }).click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
+  await expect.poll(async () => { const t = await page.evaluate(() => window.PlazaDebug().townhall()); return Math.hypot(t.mayorAt.x - t.gate.x, t.mayorAt.z - t.gate.z); }, { timeout: 15000 }).toBeGreaterThan(2); // he steps aside
+  await page.evaluate(() => window.PlazaDebug().place('townhall'));
+  await page.waitForTimeout(1500);
+  const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
+  expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
   await expectNoScriptError(page);
   await a.context.close();
 });

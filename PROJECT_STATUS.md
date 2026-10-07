@@ -11,6 +11,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.41 관공서 확장: 대리석 관공서·마당·담장·야간 조명·정문 시장
+
+사용자 지시 2026-10-07(비공개 IDEAS 「게임 아일랜드 관공서 확장·대리석 앞마당·야간 조명」, 정문·담장·시장 확정). Codex 16 시장·관공서 v2(`townhall-v2/`, 정장 `characters/wear/outfit_suit`, 모션 GuardIdle·Bow·Usher) 연결, 이전 관공서 모델(additions-v1 facilities/townhall) 삭제.
+
+- 지형(`island-terrain.js` `TOWNHALL`): 중심 (-24, 6) → (-32.3, 6.4)(IDEAS 약 8 m 후퇴 + 개울을 피해 오른쪽 2 m). 건물 쪽 좌표계(lx 오른쪽, lz 광장 쪽)로 테라스(±8.1, -6.3~7.35)·마당(±8.3, 7.35~16.35)·정문 폭 3.2. 광장 높이(PLAZA_H)의 둥근 직사각 대지(±12.5, -9~26, 둘레 5 m 경사)를 `land()`에. `inTownhall`/`inTownhallYard`로 나무·풀·잡초 재생·공용 이벤트·주민 경로(A*)에서 제외. 둘레 산책로는 관공서 뒤로 돌아가게 부풀림(24→48점), 등반 길 시작을 마당 남쪽으로.
+- 장면(`island-townhall.js`): 대리석 바닥·테두리, 담장(2 m 판넬 늘림·3판넬마다 기둥·모서리)·정문 기둥, 대형 가로등 6(마당 4·정문 밖 2)·화단 2, 모두 배치 묶음(`townhall.*`)과 충돌 원. 밤: 마당 위 실광원 2(11)·가로등 아래 빛 웅덩이·발광 재질. 관공서 문 지점은 계단 앞 마당 안(8.6).
+- 시장: 공통 캐릭터+옆가르마+정장(NPC 전용 `npc_outfit_suit`, 판매 없음)+남색 로퍼, 대기 GuardIdle(팔 보정 끔), 가까이 오면 인사(Bow), 허가 때 Usher 뒤 옆으로 비켜섬. 이름표 「시장」. 정문 충돌 원은 허가 뒤 열림.
+- 허가(서버): 세션별 `townhallPass`(접속 동안, 세션 해제 시 삭제), `POST /api/island/mayor`(정문 앞 3.5 m 안), 허가 없는 자세가 마당 안이면 정문 밖으로 보정, 당일 위치 복원도 정문 밖. 관리자 통과, 테스트 환경은 기본 통과(`/api/test/townhall-strict`로 실제 규칙). 관공서 정산 거리는 문 지점 기준.
+- 검증: npm test(관공서 지형·자연물·이벤트 비중첩 단위 테스트), e2e(정문 막힘→대화→허가→비켜섬→입장), 낮·밤·정문·마당 화면 캡처.
+
 ## v1.10.40 모자 쓰는 깊이·하늘 보기 카메라·채집 공통 시스템
 
 사용자 지시 2026-10-07(비공개 IDEAS 「아바타 모자가 머리 위에 떠 보임」, 「하늘 보기 카메라 확장」, 「잡초 채집」 후속 확정).

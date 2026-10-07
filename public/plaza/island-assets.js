@@ -121,10 +121,10 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp'];
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher']; // v1.10.41 the mayor's three
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
-    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp' },
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher' },
     speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
@@ -149,6 +149,7 @@
   for (const [file, dye, cover] of [['straw', 'trim', 2.04], ['flower', 'main', null], ['crown', 'accent', null], ['fedora', 'main', 2.04], ['beanie', 'main', 1.87], ['beret', 'main', 2.0],
     ['cap', 'main', 1.86], ['wizard', 'main', 2.04], ['bunny', 'trim', null], ['headphones', 'main', null]]) REGISTRY[`wear.hat_${file}`] = part(`hat_${file}`, 'hat', { dye, ...(cover ? { cover } : {}), ...(SEAT[file] ? { sink: SEAT[file][0], widen: SEAT[file][1] } : {}) });
   REGISTRY['wear.hat_halo'] = part('hat_halo', 'hat');
+  REGISTRY['wear.outfit_suit'] = part('outfit_suit', 'outfit', { replaces: ['top', 'bottom'] }); // v1.10.41 the mayor's suit (NPC only)
   for (const file of ['short', 'long', 'hooded', 'split', 'scallop', 'leaf', 'royal', 'star', 'wing', 'poncho']) REGISTRY[`wear.cape_${file}`] = part(`cape_${file}`, 'cape', { dye: file === 'wing' ? 'trim' : 'main' });
   for (const [file, dye] of [['cat', 'main'], ['fox', 'main'], ['bunny', 'trim'], ['raccoon', 'main'], ['squirrel', 'main'], ['dragon', 'main'], ['lion', 'main'], ['dog', 'main'], ['devil', 'main'], ['ribbon', 'rose']]) REGISTRY[`wear.tail_${file}`] = part(`tail_${file}`, 'tail', { dye });
   for (const file of ['sneakers', 'boots', 'rain', 'sandals', 'loafers', 'ribbon', 'hiking', 'armor', 'fur', 'slippers']) REGISTRY[`wear.shoes_${file}`] = part(`shoes_${file}`, 'shoes', { dye: 'main', replaces: ['shoes'] });
@@ -179,6 +180,7 @@
   const counts = {};
   for (const id of Object.keys(WARDROBE)) { const slot = id.split('_')[1]; counts[slot] = Math.max(counts[slot] || 0, Number(id.split('_')[2])); }
   for (const [slot, designs] of Object.entries(HW)) designs.forEach((d, i) => { WARDROBE[`avatar_${slot}_${counts[slot] + i + 1}`] = `wear.${slot}_hw_${d}`; });
+  WARDROBE.npc_outfit_suit = 'wear.outfit_suit'; // v1.10.41: the mayor's own (not an avatar item)
   const LOOK_SLOTS = ['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'];
   // look: { gender, hair, outfit, hat, cape, tail, shoes, necklace, face: { eyes, nose, mouth }, dye: { itemId: '#rrggbb' } };
   // tint: { materialName: colour } (keepers and islanders wear their own colours). -> { parts, colors, tint } | null
@@ -209,6 +211,14 @@
 
   // v1.10.36 10월 할로윈: the plaza's landmark in the fountain's place (pedestal, and the jack-o'-lantern on it at 1.05)
   const HWL = '/assets/island/halloween-v1';
+  // v1.10.41 관공서 확장 (Codex 16 시장·관공서 v2): the marble town hall (front +Z, its 15 x 10 body on the 16.2 x 12.6
+  // terrace), the yard's wall pieces (a 2 m panel from its left end along +x, posts, corners, the gate's pillars), planters
+  // and the grand lamps; the mayor's suit (NPC only, never sold)
+  const TH2 = '/assets/island/townhall-v2';
+  const th2 = (file, extra = {}) => ({ url: `${TH2}/${file}.glb`, low: { url: `${TH2}/${file}_low.glb` }, ...extra });
+  REGISTRY['facility.townhall'] = th2('townhall_marble', { near: 90, snow: true });
+  Object.assign(REGISTRY, { 'townhall.wall': th2('marble_wall_2m', { near: 40 }), 'townhall.post': th2('marble_wall_post', { near: 40 }), 'townhall.corner': th2('marble_wall_corner', { near: 40 }),
+    'townhall.gatePillar': th2('marble_gate_pillar', { near: 50 }), 'townhall.planter': th2('marble_planter', { near: 40 }), 'townhall.lampA': th2('lamp_grand_a', { near: 50 }), 'townhall.lampB': th2('lamp_grand_b', { near: 50 }) });
   REGISTRY['landmark.halloween.pedestal'] = { url: `${HWL}/pedestal.glb`, low: { url: `${HWL}/pedestal_low.glb` }, near: 70 };
   REGISTRY['landmark.halloween.lantern'] = { url: `${HWL}/jack_o_lantern.glb`, low: { url: `${HWL}/jack_o_lantern_low.glb` }, near: 70 };
   // v1.10.39 섬 전체 할로윈 꾸미기 (Codex decor pack 2026-10-07): the batches of island-halloween.js, at their stand-ins'

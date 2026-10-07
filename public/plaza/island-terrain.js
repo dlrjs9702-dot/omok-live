@@ -59,7 +59,7 @@
     chat: { x: -18, z: 27, face: [-4, 22], kind: 'gazebo' },
     climb: { x: -59, z: -28, face: [-44, -19], kind: 'tower' }, // a tall tower on the hill, seen from far away
     admin: { x: 24, z: 15, face: [14, 6], kind: 'office', wall: 0xe4e7ec, roof: 0x7b8794 },
-  townhall: { x: -24, z: 6, face: [-14, 3], kind: 'townhall', wall: 0xf7f0e1, roof: 0x3f7d68 }, // v1.10.10 중앙 관공서: settles trash, takes found wallets
+  townhall: { x: -32.3, z: 6.4, face: [-14.6, 1.1], kind: 'townhall', wall: 0xf7f0e1, roof: 0x3f7d68 }, // v1.10.10 중앙 관공서 (settles trash, takes found wallets); v1.10.41 the marble hall, 8 m back from (-24, 6) and 2 m to its right, clear of the stream
   trader: { x: 62, z: -6, face: [62, 4], kind: 'stall' }, // v1.10.10 상점가 상인: buys herbs, berries and mushrooms
   naming: { x: 48.5, z: -3.4, face: [48.5, 4], kind: 'desk' }, // v1.10.9 작명소: a folding desk on the shop street, between the two shops
   };
@@ -75,6 +75,19 @@
     { x: 10.5, z: 69.4, face: [3.8, 68.2], style: 6 }, { x: 67.8, z: 8.3, face: [70.3, 2], style: 7 },
     { x: 74.5, z: -3.7, face: [72.1, 2.7], style: 8 },
   ];
+  // v1.10.41 관공서 확장 (IDEAS, 사용자 확정 2026-10-07): the marble town hall (15 x 10 on a 16.2 x 12.6 terrace, its
+  // steps out to 7.35 in front) with a walled marble yard before it (18 wide, 9 deep, a 3.2 m open gate in the middle of
+  // the front wall where the mayor stands), all on ground raised to the plaza's top and run on from it. Measured in the
+  // hall's own frame: lx to its right, lz toward its front (the plaza).
+  const TOWNHALL = (() => {
+    const s = SPOTS.townhall; const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z);
+    return { x: s.x, z: s.z, ry, cos: Math.cos(ry), sin: Math.sin(ry), body: { hx: 8.1, z0: -6.3, z1: 7.35 }, yard: { hx: 8.3, z0: 7.35, z1: 16.35 }, gate: { hw: 1.6 }, pad: { hx: 12.5, z0: -9, z1: 26 } };
+  })();
+  const townhallLocal = (x, z) => { const dx = x - TOWNHALL.x; const dz = z - TOWNHALL.z; return { lx: TOWNHALL.cos * dx - TOWNHALL.sin * dz, lz: TOWNHALL.sin * dx + TOWNHALL.cos * dz }; };
+  const townhallWorld = (lx, lz) => ({ x: TOWNHALL.x + TOWNHALL.cos * lx + TOWNHALL.sin * lz, z: TOWNHALL.z - TOWNHALL.sin * lx + TOWNHALL.cos * lz });
+  // inside the hall's terrace, or its yard (within the walls), with `m` more all round
+  const inTownhall = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const b = TOWNHALL.body; return Math.abs(lx) <= b.hx + m && lz >= b.z0 - m && lz <= TOWNHALL.yard.z1 + m; };
+  const inTownhallYard = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const y = TOWNHALL.yard; return Math.abs(lx) <= y.hx - m && lz >= y.z0 - m && lz <= y.z1 - m; };
   // Everything built that the island's other parts keep clear of (events, islanders' walks, trees).
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
 
@@ -94,12 +107,13 @@
 
   // Walks (centre lines); the ring links the areas without crossing the plaza.
   const ring = [];
-  for (let i = 0; i < 24; i += 1) { const a = (i / 24) * TAU; const r = 34 + 3 * Math.sin(3 * a + 1); ring.push([Math.cos(a) * r, Math.sin(a) * r]); }
+  const hallA = Math.atan2(TOWNHALL.z, TOWNHALL.x) + 0.12; // v1.10.41: the ring goes round behind the town hall
+  for (let i = 0; i < 48; i += 1) { const a = (i / 48) * TAU; const r = 34 + 3 * Math.sin(3 * a + 1) + 12 * bump(wrap(a - hallA), 0.62); ring.push([Math.cos(a) * r, Math.sin(a) * r]); }
   ring.push(ring[0]);
   const WALKS = [
     { w: 3.2, pts: [[0, -15], [3, -23], [-3, -32], [0, -41]] }, // to the hall
     { w: 3.2, pts: [[15, 1], [25, 4], [35, -1], [47, 2], [60, -1], [73, 3]] }, // the shop street
-    { w: 3, pts: [[-15, -2], [-25, -5], [-35, -13], [-44, -19], [-52, -24]] }, // up to the climb
+    { w: 3, pts: [[-14, -6], [-24, -12], [-35, -14], [-44, -19], [-52, -24]] }, // up to the climb (v1.10.41: south of the town hall's yard)
     { w: 3.2, pts: [[0, 15], [-3, 25], [4, 37], [0, 51], [4, 65], [2, 78], [5, 86]] }, // down to the harbour
     { w: 2.6, pts: [[-2, 32], [-14, 37], [-27, 41], [-36, 47], [-40, 56]] }, // into the nature area
     { w: 2.4, pts: ring },
@@ -154,11 +168,15 @@
     if (cd < 0) h = -0.95 + cd * 0.45;
     return h;
   }
-  const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...COTTAGES.map((c) => [c.x, c.z, 4.6]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4).map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
+  const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...COTTAGES.map((c) => [c.x, c.z, 4.6]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4 && s.kind !== 'townhall').map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
     .map(([x, z, r]) => ({ x, z, r, h: rawLand(x, z) }));
   function land(x, z) {
     let h = rawLand(x, z);
     for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
+    // v1.10.41: the town hall's ground at the plaza's top, run on from the plaza (a rounded slab, 5 m of slope round it)
+    const { lx, lz } = townhallLocal(x, z); const pad = TOWNHALL.pad;
+    const out = Math.hypot(Math.max(0, Math.abs(lx) - pad.hx), Math.max(0, pad.z0 - lz, lz - pad.z1));
+    if (out < 5) h = Math.max(h, lerp(PLAZA_H, h, smooth(0, 5, out)));
     return h;
   }
   function ground(x, z) {
@@ -242,7 +260,8 @@
       if (Math.hypot(x, z) < PLAZA_R + 7) return false;
       if (walkDist(x, z) < walkGap || streamDist(x, z) < STREAM_HALF + 2) return false;
       if (Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5 || Math.hypot(x, z + 44) < 11) return false;
-      for (const s of BUILDINGS) if (Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
+      for (const s of BUILDINGS) if (s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (s.kind === 'hall' ? 13 : 7)) return false;
+      if (inTownhall(x, z, 4)) return false; // v1.10.41
       if (x > 30 && x < 80 && z > -16 && z < 17) return false; // the shop street stays open
       return true;
     };
@@ -273,10 +292,12 @@
       const a = rnd() * TAU; const r = 26 + rnd() * 76; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
       if (clearOf(x, z, 1.5)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 });
     }
+    // v1.10.41: never in front of a facility's door (a weed there would take its SPACE): 3.5 and 6 m out along its face
+    const fronts = Object.values(SPOTS).flatMap((sp) => { const dx = sp.face[0] - sp.x; const dz = sp.face[1] - sp.z; const l = Math.hypot(dx, dz) || 1; return [3.5, 6].map((d) => ({ x: sp.x + (dx / l) * d, z: sp.z + (dz / l) * d })); });
     const tufts = [];
     for (let tries = 0; tufts.length < 1400 && tries < 9000; tries += 1) {
       const a = rnd() * TAU; const r = PLAZA_R + 5 + rnd() * 85; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-      if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4 && PADS.every((p) => Math.hypot(x - p.x, z - p.z) > p.r)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
+      if (walkable(x, z) && coastDist(x, z) > 7 && walkDist(x, z) > 0.4 && PADS.every((p) => Math.hypot(x - p.x, z - p.z) > p.r) && !inTownhall(x, z, 3) && fronts.every((f) => Math.hypot(x - f.x, z - f.z) > 4)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7, r: rnd() * 6 });
     }
     const rocks = [];
     for (let tries = 0; rocks.length < 90 && tries < 4000; tries += 1) {
@@ -349,5 +370,5 @@
   const zoneSeason = (zone, day) => (zone < 0 ? null : SEASON_ORDER[(((zone - day) % 4) + 4) % 4]);
   const seasonAt = (x, z, ms) => zoneSeason(seasonZoneAt(x, z), seasonDay(ms));
 
-  return { SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));
