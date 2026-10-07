@@ -239,7 +239,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
 // v1.9.5 주간 챔피언: 지난주 공동 1위 두 사람 모두 광장 이름표에 「챔피언」이 붙고, 다른 사람에게도 같게 보이며, 다시 접속해도 그대로다.
 test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람에게도 보이고 재접속 후에도 유지', async ({ browser, request }) => {
-  test.setTimeout(150000); // three 3D pages on a software renderer: 52-96 s on a CI runner already
+  test.setTimeout(240000); // three 3D pages on a software renderer: 52-96 s on a CI runner already (v1.10.41: more with the town hall)
   const lastWeek = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const champs = [];
   for (const label of ['챔피언가', '챔피언나']) {
@@ -252,7 +252,8 @@ test('광장 챔피언: 공동 1위 둘 다 챔피언 이름표, 다른 사람�
   expect((await post(request, '/api/test/climb/settle', null, { reopen: true })).status).toBe(200); // a retried test settles last week again
   for (const who of [...champs, plain]) {
     await islandPage(who.page);
-    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true); // three 3D pages on a software renderer
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // three 3D pages on a software renderer (v1.10.41: 60 s, the island grew)
+    await who.page.evaluate(() => window.PlazaDebug().halloween.set(false)); // October's night is the Halloween tests'
   }
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const [idA, idB, idC] = [await idOf(champs[0]), await idOf(champs[1]), await idOf(plain)];
