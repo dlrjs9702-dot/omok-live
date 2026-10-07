@@ -2109,7 +2109,8 @@
     const c = plaza.controller;
     if (!c?.pose || plazaSending || !document.body.classList.contains('plazaMode')) return;
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
-    const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving;
+    const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
+      || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once
     if (!changed && now - plazaLastSentAt < 3000) return;
     plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
     const sentAt = Date.now();
