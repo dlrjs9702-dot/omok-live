@@ -24,9 +24,10 @@ async function islandPage(page) {
   await page.reload();
 }
 
-async function intoPlaza(browser, request, label, points = 0) {
+async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
   const who = await shopper(browser, request, label, points);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
+  if (clockSkew) await who.page.addInitScript((skew) => { const realNow = Date.now.bind(Date); Date.now = () => realNow() + skew; }, clockSkew);
   await islandPage(who.page);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
   await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
@@ -1085,7 +1086,7 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
 // screen draws me there too), the hint tells the next stop between stops, and SPACE at the next stop gets off onto its spot
 test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 보이며, 다음 정류장에서 내린다', async ({ browser, request }) => {
   test.setTimeout(180000);
-  const a = await intoPlaza(browser, request, '열차손님');
+  const a = await intoPlaza(browser, request, '열차손님', 0, 120000);
   const b = await intoPlaza(browser, request, '열차구경');
   const round = 210000;
   const shiftTo = async (sec) => { const now = Date.now(); expect((await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now })).status).toBe(200); };
@@ -1117,6 +1118,7 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   expect(Math.hypot(at.x - east.x, at.z - east.z)).toBeLessThan(0.5);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeVisible(); // a PC clock 2 minutes fast: the menu uses the same corrected server clock as the train
   await a.page.getByRole('button', { name: '외곽 열차', exact: true }).click();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('outer');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);

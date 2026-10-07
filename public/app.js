@@ -1903,7 +1903,7 @@
     const R = globalThis.IslandTrain; const current = plaza.controller?.platform?.();
     const button = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.onclick = () => { plazaDialog.addEventListener('close', fn, { once: true }); plazaDialog.close(); }; return b; };
     const choices = Object.entries(R.LINES).filter(([line, L]) => L.order.includes(stop) && line !== current?.line).map(([line, L]) => button(L.name, () => trainPlatform(stop, line)));
-    if (current && R.docked(Date.now() + (plaza.controller?.debug?.().train().shift || 0), stop).some((d) => d.line === current.line)) choices.unshift(button('타기', () => trainAction('board')));
+    if (current && (plaza.controller?.trainDocked?.(stop) || []).some((d) => d.line === current.line)) choices.unshift(button('타기', () => trainAction('board')));
     if (current) choices.push(button('내려가기', () => trainPlatform(stop, 'ground')));
     lostCard.replaceChildren(...choices); lostCard.classList.remove('hidden'); openPlazaWindow(R.STATIONS[stop].name, [lostCard]);
   }

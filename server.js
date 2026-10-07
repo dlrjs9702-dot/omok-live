@@ -3815,7 +3815,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: Boolean(c) });
   }
   // v1.10.44 앉기: a free seat right by me is mine until I stand (or leave the island)
-  // v1.10.47 관광열차: get on the train standing at the stop I am at (a free seat of its eight), and off at whichever stop
+  // v1.10.47 관광열차: get on the train standing at the stop I am at (a free seat of its four), and off at whichever stop
   // it stands at (onto that stop's boarding spot)
   if (pathname === '/api/island/train/platform' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
