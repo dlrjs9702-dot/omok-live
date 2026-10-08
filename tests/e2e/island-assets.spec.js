@@ -1,5 +1,38 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, expectNoScriptError } = require('./skin-support');
+
+test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await shopper(browser, request, '동물고양이', 1000000, 'male');
+  const b = await shopper(browser, request, '동물여우', 1000000, 'female');
+  for (const [who, animal] of [[a, 'cat'], [b, 'fox']]) {
+    let lastBalance;
+    for (const slot of ['outfit', 'hat', 'tail', 'shoes', 'necklace']) {
+      const id = `avatar_animal_${animal}_${slot}`;
+      const bought = await post(request, '/api/skins/buy', who.token, { skinId: id });
+      expect(bought.status).toBe(200); lastBalance = bought.data.balance;
+      expect((await post(request, '/api/skins/equip', who.token, { skinId: id })).status).toBe(200);
+    }
+    const duplicate = await post(request, '/api/skins/buy', who.token, { skinId: `avatar_animal_${animal}_outfit` });
+    expect(duplicate.status).toBe(200); expect(duplicate.data.purchased).toBe(false); expect(duplicate.data.balance).toBe(lastBalance);
+    await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); });
+    await who.page.reload();
+    const worn = ['outfit', 'hat', 'tail', 'shoes', 'necklace'].map((s) => `wear.animal_${animal}_${s}`);
+    await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(worn));
+    const asset = await who.page.evaluate((part) => window.PlazaDebug().assets.wearing.find((w) => w.parts.includes(part)), worn[0]);
+    expect(asset.meshes.low).toBe(asset.meshes.high);
+  }
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit'))), { timeout: 30000 }).toBe(true);
+  await b.page.evaluate(() => window.PlazaDebug().place('climb'));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit') && !w.high)), { timeout: 30000 }).toBe(true);
+  await a.page.reload();
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit', 'wear.animal_cat_hat']));
+  expect((await post(request, '/api/skins/equip', a.token, { game: 'avatar', slot: 'hat', skinId: null })).status).toBe(200);
+  await a.page.reload(); // API setup bypasses the shop handler's refreshPlazaAvatar.
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit']));
+  expect(await a.page.evaluate(() => window.PlazaDebug().wardrobe)).not.toContain('wear.animal_cat_hat');
+  for (const who of [a, b]) { await expectNoScriptError(who.page); await who.context.close(); }
+});
 const { staticGlb, riggedGlb } = require('../../test-support/gltf-fixture.js');
 
 // v1.10.15 고품질 에셋 파이프라인 in the real island: with nothing registered nothing extra is loaded and everything

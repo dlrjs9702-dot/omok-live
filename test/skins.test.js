@@ -38,7 +38,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar');
-  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17, 20, 17, 13, 13, 13, 13]); // v1.10.36: + 할로윈 27
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17, 30, 27, 13, 23, 23, 23]); // v1.10.36: + 할로윈 27
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
   assert.equal(older.length, 16);
   const PRICE = { common: 50_000, premium: 100_000, rare: 200_000, legend: 400_000 };
@@ -47,7 +47,10 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(halloween.length, 27); // v1.10.36 할로윈 (sold for good), the same price list
   for (const s of halloween) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => halloween.filter(s => s.tier === t).length), [5, 15, 5, 2]);
-  const fresh = avatar.filter(s => !older.includes(s) && !halloween.includes(s));
+  const fresh = avatar.filter(s => !older.includes(s) && !halloween.includes(s) && !s.id.startsWith('avatar_animal_'));
+  const animals = avatar.filter(s => s.id.startsWith('avatar_animal_'));
+  assert.equal(animals.length, 50);
+  for (const s of animals) assert.equal(s.price, ['outfit', 'hat'].includes(s.slot) ? 100000 : 50000);
   assert.equal(fresh.length, 63);
   for (const s of fresh) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
