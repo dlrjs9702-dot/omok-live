@@ -23,7 +23,9 @@ test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 Hig
     expect(asset.meshes.low).toBe(asset.meshes.high);
   }
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit'))), { timeout: 30000 }).toBe(true);
-  await b.page.evaluate(() => window.PlazaDebug().place('climb'));
+  await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
+  const far = await b.page.evaluate(() => { const p = window.PlazaDebug(); const at = p.doors.climb; p.teleport(at.x, at.z); return at; }); // place() observes player collision; two shoppers start close together.
+  await expect.poll(() => a.page.evaluate((at) => { const o = window.PlazaDebug().others.find((p) => p.look.outfit === 'avatar_animal_fox_outfit'); return o ? Math.hypot(o.x - at.x, o.z - at.z) : Infinity; }, far), { timeout: 30000 }).toBeLessThan(2);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit') && !w.high)), { timeout: 30000 }).toBe(true);
   await a.page.reload();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit', 'wear.animal_cat_hat']));
@@ -316,12 +318,16 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket'].includes(id) && !id.startsWith('wear.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish')); // v1.10.42: the rod, bobber and fish only while fishing // v1.10.32: the sea's sights come now and then, the snowcaps only on a winter roof
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish')); // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.startsWith('/assets/island/'));
   await expect.poll(async () => Object.entries((await debug(page)).assets.files).filter(([url, state]) => url.startsWith('/assets/island/') && state !== 'loaded').length, { timeout: 60000 }).toBe(0); // v1.10.32: some come later (a winter roof's snowcap)
+  for (const id of ['quest.watering_can', 'quest.fishing_rod']) {
+    const url = await page.evaluate((key) => window.IslandAssets.REGISTRY[key].url, id);
+    await expect.poll(async () => (await debug(page)).assets.files[url], { timeout: 30000, message: id + ' NPC hand prop' }).toBe('loaded');
+  }
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     for (const kind of ['tree_v1', 'tree_v2', 'tree_v3', 'shrub']) {
       expect(files.some(([url]) => url.includes(`/${season}/nature/${kind}_${season}.glb`)), `${season} ${kind}`).toBe(true);

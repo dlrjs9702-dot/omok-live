@@ -156,7 +156,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('hair', '미용실', 17); // v1.10.32: + the six new hair styles; v1.10.36: + 5 Halloween
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '잡화점', 17); // hats (v1.10.36: + 5 Halloween)
+  await visit('accessories', '잡화점', 27); // v1.10.49: ten animal hats
   // v1.10.32: the five accessory slots, a tab each (the hats first)
   await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
@@ -169,7 +169,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('avatar', '옷가게', 20); // v1.10.36: + 5 Halloween outfits
+  await visit('avatar', '옷가게', 30); // v1.10.49: ten animal outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
