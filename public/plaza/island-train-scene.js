@@ -1,10 +1,5 @@
-// v1.10.47 공중 관광열차 (비공개 IDEAS 「공중 관광열차」 2026-10-08 설계): what shows of the trains -- the two lines' glass rails
-// (island-train.js), slim pillars (28 offshore supports; none on land), each
-// line's platforms (the Codex train_platform where the carriage docks), at each station a glass lift by its entrance with a
-// walkway out to each platform, and the four trains (the Codex train_carriage: its doors open for the stop, its wheels turn
-// with the way it has come). Riders are placed by plaza-scene (seatAt). The view line's carriage is drawn mirrored (its
-// doors face its stations, on its right). train.car / train.platform are attach points: the stand-ins drawn here show
-// until the models come.
+// v1.10.48: figure-eight glass rail, 28 offshore supports, two platforms/lifts and four real carriages.
+// Access piers pass below the rail; upper walkways stay beside the doors.
 import * as THREE from '/vendor/three/three.module.js';
 import { part, mergeColored } from './island.js';
 
@@ -57,6 +52,11 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
   const lifts = Object.entries(R.STATIONS).map(([id, st]) => {
     const plats = R.PLATFORMS.filter((p) => p.station === id);
     const lift = R.liftOf(id); const lx = lift.x; const lz = lift.z; const ground = lift.y;
+    // Low access pier passes under the raised rail; the upper walkway stays on the door side.
+    const [ex, ez] = st.entry; const accessLength = Math.hypot(lx - ex, lz - ez);
+    const access = new THREE.Group(); access.position.set((ex + lx) / 2, ground, (ez + lz) / 2); access.rotation.y = Math.atan2(lx - ex, lz - ez); group.add(access);
+    const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }),
+      ...[-.85, .85].map(x => part(G.box, FRAME, x, .5, 0, { sx: .06, sy: .06, sz: accessLength }))]); made.push(ag); access.add(new THREE.Mesh(ag, vcMat));
     const top = Math.max(...plats.map((p) => p.y)) + 2.6;
     const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;
     const d = Math.hypot(cx - lx, cz - lz) || 1; const ux = (cx - lx) / d; const uz = (cz - lz) / d;

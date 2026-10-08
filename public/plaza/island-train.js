@@ -1,11 +1,5 @@
-// v1.10.47 공중 관광열차 (비공개 IDEAS 「공중 관광열차」, 사용자 확정 2026-10-07 · 설계 갱신 2026-10-08): sightseeing trains on
-// glass rails. Four stations -- A 내부 강변역 (by the widened north-west stream, high up), B 동해안역, C 북해안역, D 남서해안역
-// -- and two lines that never share a rail: 외곽 (round the coast, D -> B -> C -> D, two trains 144 s apart) and 전망
-// (A -> C -> high over the central plaza -> D -> A, two trains). Every leg 90 s, every stop 6 s, a round 288 s, run all day
-// with or without anyone on board. At C and D the coast line stops low and the view line high (two platforms, one lift).
-// Shared by the browser and server, like island-terrain.js: cubic rail curves with straight docking corridors,
-// sampled at sub-metre spacing. A train position follows the server clock --
-// the server reserves segments and station tracks; clients share its progress clocks, including safety holds.
+// v1.10.48: two coast stations, one grade-separated figure-eight, four trains 60s apart.
+// Each half takes 120s (114s moving + 6s stopped); shared server-authoritative block reservations.
 (function (root, factory) {
   const terrain = typeof module === 'object' && module.exports ? require('./island-terrain.js') : root.IslandTerrain;
   const api = factory(terrain);
@@ -14,7 +8,7 @@
 }(typeof self !== 'undefined' ? self : this, (T) => {
   const { lerp } = T;
   const SEA = -0.6; // the sea's surface in the game (the drawing's heights are over the sea)
-  const TRAVEL = 90; const DWELL = 6; const CYCLE = 3 * (TRAVEL + DWELL); // seconds
+  const TRAVEL = 114; const DWELL = 6; const CYCLE = 2 * (TRAVEL + DWELL); // each half 120s, full circuit 240s
   const SURFACE = 0.025; // the running line over the rail's glass (the carriage's root stands on it)
   const CLEAR = 2.6; // a carriage's underside over ground one can walk on, anywhere but at a station
   // the carriage (Codex train_carriage, front -Z, doors on its left): four seats -- the avatar's root, facing forward
@@ -23,24 +17,18 @@
   const DOCK = [3.24, -0.55, 0]; // the carriage's root in its platform's frame (the platform on the carriage's left)
   // a line's `side`: the doors' side of the way it runs (-1 left, the model as made; +1 right: the view line's stations are
   // on its right, so its carriage is drawn mirrored across its length -- doors, seats and all)
-  const STATIONS = { A: { name: '내부 강변역', entry: [-13, -35] }, B: { name: '동해안역', entry: [99.78, -8.73] }, C: { name: '북해안역', entry: [-16.7, -94.7] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
+  const STATIONS = { B: { name: '동해안역', entry: [99.78, -8.73] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
   const LINES = {
-    outer: { name: '외곽 열차', side: -1, order: ['D', 'B', 'C'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 144 }] },
-    view: { name: '전망 열차', side: 1, order: ['A', 'C', 'D'], trains: [{ id: 3, offset: 48 }, { id: 4, offset: 192 }] },
+    tour: { name: '관광 열차', side: -1, order: ['B', 'D'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 60 }, { id: 3, offset: 120 }, { id: 4, offset: 180 }] },
   };
   // Wide seaward sightseeing curves and 40m straight docking corridors.
   const corridor = (x,z,y,dx,dz,id) => [-20,-10,0,10,20].map(k => [x+dx*k,z+dz*k,y,k===0?id:null,dx,dz]);
-  const inv = 1 / Math.sqrt(2);
   const routes = {
-    outer: [
-      ...corridor(-90.8,76.2,2.2,inv,inv,'D'), [-45,125,5.5], [10,150,6.5], [80,135,6.5], [140,80,6.5], [145,25,4.5],
-      ...corridor(109.7,-9.6,2.2,-.4,-Math.sqrt(.84),'B'), [95,-70,6.5], [65,-140,6.5], [10,-150,6.5],
-      ...corridor(-18.4,-104.6,8,-1,0,'C'), [-80,-125,6.5], [-140,-75,6.5], [-150,0,5], [-140,50,3.5],
-    ],
-    view: [
-      ...corridor(-22.6,-35,13.4,0,-1,'A'), [-65,-70,15], [-75,-110,16], [-48.4,-104.6,12.4],
-      ...corridor(-18.4,-104.6,14.4,1,0,'C'), [45,-145,18], [95,-130,19], [105,-75,19], [55,-40,19], [0,-4,17.4], [-45,45,14], [-65.05,57.29,8.4],
-      ...corridor(-90.8,76.2,8.4,-.8,.6,'D'), [-135,95,8.4], [-160,65,10], [-140,20,14], [-80,-5,15], [-60,-10,14], [-22.6,5,13.4],
+    tour: [
+      ...corridor(109.7,-9.6,7,0,-1,'B'), [220,-100,12], [230,-230,15], [80,-280,18], [20,-150,18],
+      [0,0,18,null,-.5,Math.sqrt(.75)], [-45,85,15],
+      ...corridor(-90.8,76.2,7,-.8,-.6,'D'), [-230,-10,12], [-220,-180,18], [-110,-100,24],
+      [0,0,24,null,.8,.6], [140,100,18], [270,80,12], [240,0,9], [155,70,7],
     ],
   };
   for (const [name,line] of Object.entries(LINES)) {
@@ -79,39 +67,54 @@
   };
   function timetableAt(id, ms) {
     const t = trainOf(id); const L = LINES[t.line]; const p = (((ms / 1000 - t.offset) % CYCLE) + CYCLE) % CYCLE;
-    const leg = Math.min(2, Math.floor(p / (TRAVEL + DWELL))); const inLeg = p - leg * (TRAVEL + DWELL);
-    const from = L.order[leg]; const to = L.order[(leg + 1) % 3];
+    const leg = Math.floor(p / (TRAVEL + DWELL)); const inLeg = p - leg * (TRAVEL + DWELL);
+    const from = L.order[leg]; const to = L.order[(leg + 1) % L.order.length];
     const s0 = L.stops[from]; let s1 = L.stops[to]; if (s1 <= s0) s1 += L.route.LENGTH;
     if (inLeg < TRAVEL) return { id, line: t.line, from, s: lerp(s0, s1, ease(inLeg / TRAVEL)), stop: null, next: to, eta: TRAVEL - inLeg, wait: 0, moved: s1 - s0 };
-    return { id, line: t.line, from, s: s1, stop: to, next: L.order[(leg + 2) % 3], eta: 0, wait: TRAVEL + DWELL - inLeg, moved: 0 };
+    return { id, line: t.line, from, s: s1, stop: to, next: L.order[(leg + 2) % L.order.length], eta: 0, wait: TRAVEL + DWELL - inLeg, moved: 0 };
   }
   let service = null;
   function setService(snapshot) { service = snapshot || null; }
+  // The station block starts BEFORE braking, so a queued train cannot reach an occupied platform.
+  const boundaries = [0, 38, 76, 110, 120, 158, 196, 230, 240];
+  function blockAt(id, cursor) {
+    const phase = ((cursor / 1000 - trainOf(id).offset) % CYCLE + CYCLE) % CYCLE;
+    const zone = boundaries.findIndex((end, i) => i > 0 && phase < end) - 1;
+    return { zone, remaining: (boundaries[zone + 1] - phase) * 1000 };
+  }
   function trainAt(id, ms) {
     const clock = service?.clocks?.find((c) => c.id === id);
     if (!clock) return timetableAt(id, ms);
     // Extrapolate only up to the next boundary. A stale response cannot let a client depart without a reservation.
-    const st = timetableAt(id, clock.cursor);
-    const boundary = (st.stop ? st.wait : st.eta) * 1000;
+    const boundary = blockAt(id, clock.cursor).remaining;
     const dt = clock.held ? 0 : Math.min(Math.max(0, ms - service.at), Math.max(0, boundary - 0.001));
     return { ...timetableAt(id, clock.cursor + dt), held: clock.held };
   }
-  // The server owns actual progress. Reserve the next segment AND destination before leaving a platform;
-  // delay freezes that train's clock, and it resumes from there instead of jumping back to the timetable.
+  // The server owns progress and admits a train to its next block only after the previous occupant vacates.
+  // Held trains keep their previous reservation; resuming never catches up by teleporting.
   function createTraffic(ms) {
     let at = ms;
-    const clocks = TRAINS.map(({ id }) => ({ id, cursor: ms, held: false }));
+    const clocks = TRAINS.map(({ id }) => ({ id, cursor: ms, held: false, zone: blockAt(id, ms - .001).zone }));
     const blocked = new Set();
-    const keys = (c) => { const st = timetableAt(c.id, c.cursor); return st.stop || c.held
-      ? [`${st.line}:station:${st.stop || st.from}`]
-      : [`${st.line}:segment:${st.from}`, `${st.line}:station:${st.next}`]; };
+    const key = (zone) => 'tour:zone:' + zone;
+    const keys = (c) => [key(c.zone)];
     function departures() {
-      for (const c of clocks) {
-        const phase = ((c.cursor / 1000 - trainOf(c.id).offset) % (TRAVEL + DWELL) + TRAVEL + DWELL) % (TRAVEL + DWELL);
-        if (phase > 0.000001) continue;
-        const st = timetableAt(c.id, c.cursor);
-        const needed = [`${st.line}:segment:${st.from}`, `${st.line}:station:${st.next}`];
-        c.held = needed.some((k) => blocked.has(k) || clocks.some((other) => other !== c && keys(other).includes(k)));
+      const waiting = clocks.filter(c => blockAt(c.id, c.cursor).zone !== c.zone);
+      const allowed = new Set(waiting.filter(c => !blocked.has(key(blockAt(c.id, c.cursor).zone))));
+      // Vacating a block and entering the next is atomic, including simultaneous departures.
+      let changed;
+      do {
+        changed = false;
+        for (const c of allowed) {
+          const target = blockAt(c.id, c.cursor).zone;
+          if (clocks.some(other => other !== c && other.zone === target && !allowed.has(other))) {
+            allowed.delete(c); changed = true;
+          }
+        }
+      } while (changed);
+      for (const c of waiting) {
+        c.held = !allowed.has(c);
+        if (!c.held) c.zone = blockAt(c.id, c.cursor).zone;
       }
     }
     function advance(now) {
@@ -121,8 +124,7 @@
         const moving = clocks.filter((c) => !c.held);
         let dt = remaining;
         for (const c of moving) {
-          const st = timetableAt(c.id, c.cursor);
-          dt = Math.min(dt, (st.stop ? st.wait : st.eta) * 1000);
+          dt = Math.min(dt, blockAt(c.id, c.cursor).remaining);
         }
         if (dt < 0.00001) dt = Math.min(remaining, 0.001);
         for (const c of moving) c.cursor += dt;
@@ -162,17 +164,9 @@
     return { x: p.x + lx * c + lz * s, y: p.y, z: p.z - lx * s + lz * c, yaw: p.yaw };
   }
   function liftOf(station) {
-    const plats = PLATFORMS.filter((p) => p.station === station); const [ex, ez] = STATIONS[station].entry;
-    const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;
-    const heading = Math.atan2(cx - ex, cz - ez);
-    // The 2.5m shaft must clear the walking corridor and station entrance, even on the narrow coast.
-    for (const radius of [4, 5, 6, 7, 8, 9, 10]) for (const turn of [0, .3, -.3, .6, -.6, .9, -.9, 1.2, -1.2, Math.PI]) {
-      const x = ex + Math.sin(heading + turn) * radius; const z = ez + Math.cos(heading + turn) * radius;
-      if (T.walkDist(x, z) < 3.2 || [-2, -1, 0, 1, 2].some((dx) => [-2, -1, 0, 1, 2].some((dz) => T.onBridge(x + dx, z + dz))) || T.BUILDINGS.some((b) => Math.hypot(b.x - x, b.z - z) < 8)) continue;
-      if (T.coastDist(x, z) > 0 && !T.walkable(x, z)) continue;
-      return { x, z, y: T.coastDist(x, z) < 0 ? SEA : T.heightAt(x, z) };
-    }
-    throw new Error('No clear lift site: ' + station);
+    const p = PLATFORMS.find(p => p.station === station);
+    // Beyond the deck's end, on the same side of the track: neither shaft nor upper walkway crosses a carriage.
+    return { x: p.x + Math.sin(p.yaw) * 5.5, z: p.z + Math.cos(p.yaw) * 5.5, y: T.heightAt(...STATIONS[station].entry) };
   }
   // v1.10.47 had 84 offshore supports (79 outer, 5 view). Keep 28 total even on the longer rails.
   const PILLARS = [];
@@ -182,7 +176,7 @@
       const i = r.S.findIndex((v) => v >= s); const x = r.xs[i]; const z = r.zs[i];
       if (T.coastDist(x, z) < 0) sea.push({ x, z, top: r.ys[i] - .2, foot: SEA - .6 });
     }
-    const count = line === 'outer' ? 26 : 2;
+    const count = 28;
     for (let i=0;i<count;i++) PILLARS.push(sea[Math.floor((i+.5)*sea.length/count)]);
   }
   // the trains standing at a station now (doors open)
@@ -204,6 +198,10 @@
   }
   // no tree under a rail low enough to touch it (a tree stands up to about 9 m)
   const liftSites = Object.keys(STATIONS).map(liftOf);
+  T.addNatureBlock((x,z,radius) => Object.entries(STATIONS).some(([id,st]) => {
+    const lift=liftOf(id);
+    return T.segDist(x,z,...st.entry,lift.x,lift.z)<1+radius || Math.hypot(x-lift.x,z-lift.z)<1.5+radius;
+  }));
   T.addTreeBlock((x, z) => liftSites.some(p => Math.hypot(p.x-x,p.z-z)<2.5) || Object.values(LINES).some(({ route: r }) => { for (let i = 0; i < r.S.length; i += 2) { if (Math.abs(r.xs[i] - x) > 5 || Math.abs(r.zs[i] - z) > 5) continue; if (Math.hypot(r.xs[i] - x, r.zs[i] - z) < 5 && r.ys[i] - T.heightAt(x, z) < 11) return true; } return false; }));
   return { CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
 }));

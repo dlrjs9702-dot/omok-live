@@ -520,7 +520,7 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
 });
 
 // Real train models: both LOD door mixers, shared carriage files, platform swap and the riding clip contract.
-test('관광열차 실물: 4객차·6승강장 High/Low 로드와 문 열기·닫기', async ({ browser, request }) => {
+test('관광열차 실물: 4객차·2승강장 High/Low 로드와 문 열기·닫기', async ({ browser, request }) => {
   test.setTimeout(120000);
   const { REGISTRY } = require('../../public/plaza/island-assets.js');
   const a = await island(browser, request, '열차모델', { __only: true, 'train.car': REGISTRY['train.car'], 'train.platform': REGISTRY['train.platform'] });
@@ -529,19 +529,21 @@ test('관광열차 실물: 4객차·6승강장 High/Low 로드와 문 열기·�
   expect(await a.page.evaluate(() => window.PlazaDebug().train().cars.map((c) => ({ mixers: c.mixers, wheels: c.wheels })))).toEqual([{ mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }]);
   const d = await debug(a.page); expect(d.assets.shown).toMatchObject({ 'train.car': 'model', 'train.platform': 'model' });
   expect(d.assets.files).toMatchObject({ '/assets/island/train-v1/train_carriage.glb': 'loaded', '/assets/island/train-v1/train_carriage_low.glb': 'loaded', '/assets/island/train-v1/train_platform.glb': 'loaded', '/assets/island/train-v1/train_platform_low.glb': 'loaded' });
-  const shift = async (sec) => { const now = Date.now(); await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / 288000) * 288000 + sec * 1000 - now }); };
-  await shift(331);
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 3).opened), { timeout: 12000 }).toBe(true);
-  const st = await a.page.evaluate(() => window.IslandTrain.stationOf('A').spot);
+  const shift = async (sec) => { const now = Date.now(); await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / 240000) * 240000 + sec * 1000 - now }); };
+  await shift(235);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 1).opened), { timeout: 12000 }).toBe(true);
+  const st = await a.page.evaluate(() => window.IslandTrain.stationOf('B').spot);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [st.x, st.z]);
+  await a.page.evaluate(() => { const p=window.IslandTrain.stationOf('B').spot,l=window.IslandTrain.liftOf('B');window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); });
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-station.png') });
   await a.page.evaluate(() => window.PlazaDebug().overview(true));
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-route-overview.png') });
-  await shift(236);
+  await shift(355);
   const south = await a.page.evaluate(() => window.IslandTrain.stationOf('D').spot);
   await a.page.evaluate(([x,z]) => { window.PlazaDebug().overview(false); window.PlazaWarp(x,z); }, [south.x,south.z]);
+  await a.page.evaluate(() => { const p=window.IslandTrain.stationOf('D').spot,l=window.IslandTrain.liftOf('D');window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); });
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-south-station.png') });
-  await shift(380);
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 3).opened), { timeout: 12000 }).toBe(false);
+  await shift(280);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 1).opened), { timeout: 12000 }).toBe(false);
   await post(request, '/api/test/train-shift', a.token, { ms: 0 }); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });

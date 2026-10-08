@@ -1430,7 +1430,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   };
   const angleTo = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
-  let overview = false; // tests and support: the whole island from above
+  let overview = false; let riding = null; // initialize before the first camera placement
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
@@ -1438,8 +1438,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const CAM_MIN = 4; const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST;
   function placeCamera(snap) {
     const p = me.root.position;
-    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : VIEW_FAR)) { camera.far = overview ? 600 : VIEW_FAR; camera.updateProjectionMatrix(); }
-    if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
+    // The wide sea lobes must still show the island from the carriage.
+    scene.fog.far = overview ? 2000 : riding ? 600 : 175;
+    const far = overview ? 1100 : riding ? 650 : VIEW_FAR;
+    if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
+    if (overview) { camera.position.set(20, 900, -45); camera.lookAt(20, 0, -45); return; }
     const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
     // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
     // building or house (never closer than CAM_MIN) -- and if even that is inside one (my back to a big building's
@@ -1851,7 +1854,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const myAct = { act: null, n: 0, seat: null }; let sitting = null; const takenSeats = new Map(); // seat -> other player id
   // v1.10.47 관광열차: on board (the server gave me train k's seat), I sit on it wherever the train is -- the arrows do nothing,
   // the camera turns as ever; SPACE at a stop gets off (app: /api/island/train/alight) onto that stop's boarding spot
-  const R = globalThis.IslandTrain; let riding = null; let platform = null; let liftRide = null; let trainChangedAt = 0; let trainShift = 0; // tests only: the server moved the trains' clock
+  const R = globalThis.IslandTrain; let platform = null; let liftRide = null; let trainChangedAt = 0; let trainShift = 0; // tests only: the server moved the trains' clock
   const trainNow = () => Date.now() + serverOffset + trainShift;
   function board(id, seat) {
     if (riding || !R.TRAINS.some((t) => t.id === id) || !R.SEATS[seat]) return false;
