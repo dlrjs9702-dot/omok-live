@@ -1118,7 +1118,8 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await shiftTo(228); // approach the east stop before the open-door window
   const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('B').spot);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 동해안역 승강기', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('승강장 올라가기', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toBeVisible(); await expect(a.page.locator('#plazaHint')).toBeHidden();
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('B');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
@@ -1126,7 +1127,8 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('ArrowRight'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowRight');
   const afterWalk = await state(a.page); expect(Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z)).toBeGreaterThan(.2);
   await shiftTo(228);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 관광 열차 타기', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('타기 · 관광 열차', { timeout: 15000 });
+  await expect(a.page.locator('#plazaHint')).toBeHidden();
   await clickDockButton(a.page.locator('#trainMainBtn'));
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id), { timeout: 10000 }).toBe(1);
   expect((await a.page.evaluate(() => window.PlazaDebug().train())).y).toBeGreaterThan(2.5); // up on the car's seat over the stream
@@ -1135,9 +1137,12 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await shiftTo(280);
   await expect(a.page.locator('#plazaHint')).toContainText('다음 정류장 · 남서해안역', { timeout: 15000 });
   await expect(a.page.locator('#plazaHint')).not.toContainText('SPACE');
+  await expect(a.page.locator('#plazaHint')).toBeVisible(); await expect(a.page.locator('#trainMainBtn')).toBeHidden();
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('');
   // at the southwest stop: off, anywhere inside its walkable platform
   await shiftTo(348);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내리기 · 남서해안역', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('내리기 · 남서해안역', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toBeVisible(); await expect(a.page.locator('#plazaHint')).toBeHidden();
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding), { timeout: 10000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
@@ -1145,7 +1150,7 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   expect(deck.station).toBe('D');expect(deck.drift).toBeLessThan(.01);expect(deck.y).toBeCloseTo(deck.height,1);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
   await shiftTo(348); // renew the stop window after waiting for the other software-rendered page
-  await expect(a.page.locator('#plazaHint')).toContainText('관광 열차 타기', { timeout: 15000 });
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('타기 · 관광 열차', { timeout: 15000 });
   await a.page.locator('#trainMenuBtn').click();
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeVisible(); // a PC clock 2 minutes fast: the menu uses the same corrected server clock as the train
   await shiftTo(340);
