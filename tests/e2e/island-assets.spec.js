@@ -540,13 +540,33 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
 // v1.10.30 공통 캐릭터: the common-rig body with its gender's clothes; an avatar item with a part is worn on the same
 // skeleton, the face (성형) and a dyed item (염색) change what is worn, the island goes on; an item without a part yet keeps
 // the procedural character (never swapped for something else)
+test.describe('캐릭터 재접속 회귀', () => {
+test.use({ trace: 'retain-on-failure' }); // Keep the initial reload failure, not only a retry's unrelated error.
 test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
   test.setTimeout(180000);
   const who = await shopper(browser, request, '공통캐릭', 2_000_000, 'female');
   const { page, token } = who;
+  // Look payments use a globally unique ledger request key. Each retry creates a new account.
+  const lookRequest = () => require('node:crypto').randomUUID();
+  const bootFailures = [];
+  page.on('pageerror', error => bootFailures.push({ script: error.message }));
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith('/api/') && response.status() >= 400) bootFailures.push({ path, status: response.status() });
+  });
   const ready = async () => {
     await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+    try {
+      await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+    } catch (error) {
+      console.log('CHARACTER_BOOT_FAILURE', { failures: bootFailures, state: await page.evaluate(() => ({
+        sessionSaved: Boolean(sessionStorage.getItem('gameCenterGuestSession')),
+        gateVisible: !document.getElementById('gateView').classList.contains('hidden'),
+        toast: document.getElementById('toast').textContent,
+        sceneReady: Boolean(window.PlazaDebug?.()),
+      })) });
+      throw error;
+    }
   };
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
@@ -555,14 +575,14 @@ test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 
   expect(tag.headTop).toBeGreaterThan(1.4); expect(tag.headTop).toBeLessThan(2.4);
   expect(tag.bottom - tag.headTop).toBeGreaterThan(0.05); expect(tag.bottom - tag.headTop).toBeLessThan(0.25);
   // v1.10.35 염색: the base hair, the eyes and the skin (nothing to own)
-  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: `e2e-body-${color}-1` })).status).toBe(200);
+  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: lookRequest() })).status).toBe(200);
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 30000 }).toMatchObject({ hairColor: '#e2c27a', eyeColor: '#34507e', skinColor: '#b07a4d' });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wornColors), { timeout: 90000 }).toMatchObject({ hair: '#e2c27a', eyes: '#34507e', skin: '#b07a4d' });
   for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
   expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
-  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: 'e2e-look-eyes-1' })).status).toBe(200);
-  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: 'e2e-look-dye-1' })).status).toBe(200);
+  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: lookRequest() })).status).toBe(200);
+  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: lookRequest() })).status).toBe(200);
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
   expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
@@ -572,6 +592,7 @@ test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_rainbow', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
   await expectNoScriptError(page);
   await who.context.close();
+});
 });
 
 // v1.10.32 캐릭터 조합 맞춤: the parts that meet where they are worn give way, from their own shapes -- the beanie's crown
