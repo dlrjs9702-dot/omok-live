@@ -123,7 +123,7 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround']; // v1.10.41 the mayor's three; v1.10.42 낚시
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround', 'Nod', 'Clap', 'PickFruit'];
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss' },
@@ -260,5 +260,20 @@
     'prop.event.basket': prop('collection_basket'),
   });
 
+  // v1.10.49: the artist's animal parts use the existing body, fitting and ownership paths.
+  const ANIMALS = ['cat', 'dog', 'sheep', 'rabbit', 'bear', 'panda', 'fox', 'hamster', 'pig', 'cow'];
+  for (const animal of ANIMALS) for (const slot of ['outfit', 'hat', 'tail', 'shoes', 'necklace']) {
+    const id = `wear.animal_${animal}_${slot}`;
+    REGISTRY[id] = part(`animal_${animal}_${slot}`, slot, slot === 'outfit' ? { replaces: ['top', 'bottom'] } : slot === 'hat' ? { cover: 1.95 } : slot === 'shoes' ? { replaces: ['shoes'] } : {});
+    WARDROBE[`avatar_animal_${animal}_${slot}`] = id;
+  }
+  Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
+  const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    REGISTRY[`tree.harvest.${season}`] = life(`tree_harvest_${season}`);
+    REGISTRY[`tree.fruitLayer.${season}`] = life(`tree_fruit_layer_${season}`);
+  }
+  REGISTRY['prop.harvest.fruit'] = life('harvest_fruit_hand');
+  for (const name of ['flowerbed_empty', 'flowerbed_bloom', 'photo_frame', 'fishing_rod', 'watering_can', 'camera_bag']) REGISTRY[`quest.${name}`] = life(`quest_${name}`);
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

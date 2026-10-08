@@ -19,7 +19,8 @@ plans = json.loads(subprocess.check_output(['node', '-e', '''
 const A = require('./public/plaza/island-assets.js');
 const out = {};
 for (const item of Object.keys(A.WARDROBE)) {
-  const slot = item.split('_')[1];
+  if (!item.startsWith('avatar_')) continue;
+  const slot = item.startsWith('avatar_animal_') ? item.split('_').pop() : item.split('_')[1];
   const plan = A.wardrobeOf({ gender: 'male', [slot]: item });
   out[item] = { slot, urls: plan.parts.map((id) => A.REGISTRY[id].url) };
 }
@@ -41,6 +42,8 @@ skin = [1.0, 0.7454, 0.552, 1]  # the island's warm skin #ffe0c4 (the game tints
 out_dir = ROOT / 'public/assets/shop/avatar'; out_dir.mkdir(parents=True, exist_ok=True)
 body = source(plans.pop('__body'))
 for item, plan in plans.items():
+    if '--only' in sys.argv and sys.argv[sys.argv.index('--only') + 1] not in item:
+        continue
     parts, mats = parts_of([body] + [source(u) for u in plan['urls']])
     for m in mats:
         if m.get('name') == 'skin': m['pbrMetallicRoughness']['baseColorFactor'] = skin

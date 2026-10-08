@@ -1810,6 +1810,7 @@
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
   function openQuestTalk(data) {
+    plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
     const meta = document.createElement('p'); meta.className = 'lookMeta';
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ' · 이번 주 이야기 끝' : ''}` : data.done ? '이번 주 이야기 끝' : '';
@@ -1856,7 +1857,7 @@
       dex.replaceChildren(...list.map((e) => {
         if (e.kind === 'photo') {
           const cell = document.createElement('div'); cell.className = `islandDexCell islandPhotoCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-          const icon = document.createElement('b'); icon.textContent = '📷';
+          const icon = document.createElement('img'); icon.src = `/assets/dex/${e.id}.png`; icon.alt = ''; icon.width = 64; icon.height = 64;
           const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
           const day = document.createElement('small'); day.textContent = e.first ? new Date(e.first).toLocaleDateString('ko-KR') : '';
           cell.append(icon, name, day); return cell;
@@ -1951,7 +1952,7 @@
   function openPlayerMenu(plazaId) {
     const who = plaza.controller?.debug?.().others?.find((o) => o.id === plazaId);
     const make = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.addEventListener('click', () => { plazaDialog.addEventListener('close', () => fn(), { once: true }); plazaDialog.close(); }); return b; }; // after the window has closed (it puts its sections back then)
-    lostCard.replaceChildren(make('인사', 'primary', () => plaza.controller?.emote?.('wave')), make('환호', 'ghost', () => plaza.controller?.emote?.('cheer')),
+    lostCard.replaceChildren(make('인사', 'primary', () => plaza.controller?.emote?.('bow')), make('환호', 'ghost', () => plaza.controller?.emote?.('cheer')),
       make('게임 초대', 'secondary', () => { islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open(); }));
     lostCard.classList.remove('hidden');
     openPlazaWindow(who?.name || '', [lostCard]);

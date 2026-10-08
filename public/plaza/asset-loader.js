@@ -660,9 +660,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         if (laid) { for (const [bone, , kept] of carryArms) bone.quaternion.copy(kept); laid = false; }
         if (tucked) for (const [bone, , undo] of tuck) bone.quaternion.premultiply(undo);
         play(dt, speed);
-        tucked = !c.noTuck; // v1.10.41/42: not over clips that pose the arms themselves (the mayor's, fishing)
+        const posed = ['Nod', 'Clap', 'Bow', 'PickFruit'].includes(anim.clip);
+        tucked = !c.noTuck && !posed; // v1.10.41/42: not over clips that pose the arms themselves (the mayor's, fishing)
         if (tucked) for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
-        if (c.carrying && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
+        if (c.carrying && !posed && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
       };
       c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };
       c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start
