@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, expectNoScriptError } = require('./skin-support');
-// Preserve the initial boot/reload failure rather than only a retry's unrelated error.
-test.use({ trace: 'retain-on-failure' });
+// A separate test type preserves the first character reload failure without tracing every 3D test.
+const characterTest = test.extend({ trace: 'retain-on-failure' });
 
 test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급·자원 유지', async ({browser,request}) => {
   test.setTimeout(120000);
@@ -542,7 +542,7 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
 // v1.10.30 공통 캐릭터: the common-rig body with its gender's clothes; an avatar item with a part is worn on the same
 // skeleton, the face (성형) and a dyed item (염색) change what is worn, the island goes on; an item without a part yet keeps
 // the procedural character (never swapped for something else)
-test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
+characterTest('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
   test.setTimeout(180000);
   const who = await shopper(browser, request, '공통캐릭', 2_000_000, 'female');
   const { page, token } = who;
