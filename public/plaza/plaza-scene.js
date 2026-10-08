@@ -813,6 +813,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.9.6: the server moved me out of someone (it saw an overlap my screen did not): glide there, through tryMove.
   let correction = null;
   function correctTo(x, z) {
+    if (liftRide || riding) return;
+    if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
@@ -839,7 +841,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // snapshot would otherwise draw them inside me for a moment). Moving apart is never held back.
       const m = me.root.position; const dx = p.x - m.x; const dz = p.z - m.z; const d = Math.hypot(dx, dz);
       const min = playerRadiusAt(m.x, m.z) + playerRadiusAt(p.x, p.z);
-      if (!warped && d < min && d < o.drawnGap - 1e-4) {
+      if (!warped && !o.platform && !o.ride && !platform && !riding && d < min && d < o.drawnGap - 1e-4) {
         const ux = d > 1e-4 ? dx / d : 0; const uz = d > 1e-4 ? dz / d : 1; const keep = Math.min(min, o.drawnGap);
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
@@ -848,12 +850,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
       if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = heightAt(s.x, s.z) + SEAT_LIFT; o.c.targetYaw = s.yaw; } } // v1.10.44
-      if (o.platform && !o.ride) { const q = R.platformSpot(o.platform.line, o.platform.station, o.platform.slot); p.set(q.x, q.y, q.z); o.c.targetYaw = q.yaw; animate(o.c, dt, false, 0); continue; }
+      if (o.platform && !o.ride) { const q = R.platformClamp(o.platform.line, o.platform.station, p.x, p.z); p.set(q.x, q.y, q.z); animate(o.c, dt, f.speed > .4, f.speed); continue; }
       if (o.ride) { const q = R.seatAt(o.ride.id, o.ride.seat, trainNow()); p.set(q.x, q.y, q.z); o.c.root.rotation.y = q.yaw; o.c.targetYaw = q.yaw; animate(o.c, dt, false, 0); continue; } // v1.10.47
       animate(o.c, dt, o.act !== 'sit' && f.speed > 0.4, o.act === 'sit' ? 0 : f.speed);
     }
   }
-  const pose = () => ({ x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !platform && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat }); // v1.10.44 act
+  const pose = () => ({ x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat }); // v1.10.44 act
 
   // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
   // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours
@@ -912,6 +914,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const isBlocked = () => Boolean(blocked?.()) || !running;
   const onKeyDown = (event) => {
     if (isBlocked() || isTyping(event.target)) return;
+    if (event.code === 'Space' && event.target.closest?.('button')) return;
     if (event.key.startsWith('Arrow')) { keys.add(event.key); event.preventDefault(); return; }
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
@@ -1343,6 +1346,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
     for (const { c, w } of wanderers) if (c.root.visible && playerRadiusAt(w.x, w.z) === PLAYER_R) out.push({ x: w.x, z: w.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
     for (const o of others.values()) {
+      if (o.ride || o.platform) continue;
       const p = o.c.root.position; out.push({ x: p.x, z: p.z, r: playerRadiusAt(p.x, p.z) }); // where they are drawn
       const t = o.target; // and where the server last had them (ahead of the drawing while they move), so lag cannot open a gap
       if (t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05) out.push({ x: t.x, z: t.z, r: playerRadiusAt(t.x, t.z) });
@@ -1416,6 +1420,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const tryMove = (nx, nz) => {
     const p = me.root.position;
+    if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -1425,7 +1430,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   };
   const angleTo = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
-  let overview = false; // tests and support: the whole island from above
+  let overview = false; let riding = null; // initialize before the first camera placement
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
@@ -1433,8 +1438,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const CAM_MIN = 4; const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST;
   function placeCamera(snap) {
     const p = me.root.position;
-    scene.fog.far = overview ? 2000 : 175; if (camera.far !== (overview ? 600 : VIEW_FAR)) { camera.far = overview ? 600 : VIEW_FAR; camera.updateProjectionMatrix(); }
-    if (overview) { camera.position.set(0, 230, 40); camera.lookAt(0, 0, 0); return; }
+    // The wide sea lobes must still show the island from the carriage.
+    scene.fog.far = overview ? 2000 : riding ? 600 : 175;
+    const far = overview ? 1100 : riding ? 650 : VIEW_FAR;
+    if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
+    if (overview) { camera.position.set(20, 550, -45); camera.lookAt(20, 0, -45); return; }
     const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
     // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
     // building or house (never closer than CAM_MIN) -- and if even that is inside one (my back to a big building's
@@ -1640,7 +1648,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function step(dt) {
     let ix = 0; let iz = 0;
     if (sitting && !isBlocked() && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => keys.has(k))) standUp(); // v1.10.44: an arrow stands me up
-    if (!isBlocked() && !gather && !riding && !platform && !liftRide) { // v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
+    if (!isBlocked() && !gather && !riding && !liftRide) { // v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
     } else if (isBlocked()) keys.clear();
@@ -1683,14 +1691,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (best && !doorOf(best)) best = null;
     if (riding) {
       const st = R.trainAt(riding.id, trainNow()); const m = me.root.position;
-      eventDoors['train:ride'] = st.held ? { x: m.x, z: m.z, name: '안전 대기', plain: true } : st.stop ? { x: m.x, z: m.z, name: `내리기 · ${R.stationOf(st.stop).name}` } : { x: m.x, z: m.z, name: `다음 정류장 · ${R.stationOf(st.next).name} ${Math.ceil(st.eta)}초`, plain: true };
+      eventDoors['train:ride'] = st.held ? { x: m.x, z: m.z, name: '안전 대기', plain: true } : st.stop && st.wait > .7 && st.wait <= R.DWELL - .7 ? { x: m.x, z: m.z, name: `내리기 · ${R.stationOf(st.stop).name}` } : st.stop ? { x: m.x, z: m.z, name: `정차 중 · ${R.stationOf(st.stop).name}`, plain: true } : { x: m.x, z: m.z, name: `다음 정류장 · ${R.stationOf(st.next).name} ${Math.ceil(st.eta)}초`, plain: true };
       best = 'train:ride';
     } else if (platform) {
       const dock = R.docked(trainNow(), platform.station).find((d) => d.line === platform.line);
       const m = me.root.position;
-      const interchange = Object.values(R.LINES).filter((L) => L.order.includes(platform.station)).length > 1;
-      const key = dock && !liftRide && !interchange ? 'train:board' : 'train:platform';
-      eventDoors[key] = { x: m.x, z: m.z, plain: Boolean(liftRide), name: liftRide ? '승강기' : dock ? R.LINES[platform.line].name + ' 타기' : R.STATIONS[platform.station].name + ' · ' + R.LINES[platform.line].name + ' ' + (R.nextAt(platform.station, trainNow())[platform.line] === null ? '대기' : R.nextAt(platform.station, trainNow())[platform.line] + '초') };
+      const key = dock && !liftRide ? 'train:board' : 'train:platform';
+      eventDoors[key] = { x: m.x, z: m.z, plain: Boolean(liftRide), name: liftRide ? '승강기' : dock ? R.LINES[platform.line].name + ' 타기' : R.LINES[platform.line].name + ' · 도착 ' + (R.nextAt(platform.station, trainNow())[platform.line] === null ? '대기' : R.nextAt(platform.station, trainNow())[platform.line] + '초') };
       best = key;
     } else if (!gather && !fishing && !liftRide) {
       const m = me.root.position;
@@ -1847,7 +1854,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const myAct = { act: null, n: 0, seat: null }; let sitting = null; const takenSeats = new Map(); // seat -> other player id
   // v1.10.47 관광열차: on board (the server gave me train k's seat), I sit on it wherever the train is -- the arrows do nothing,
   // the camera turns as ever; SPACE at a stop gets off (app: /api/island/train/alight) onto that stop's boarding spot
-  const R = globalThis.IslandTrain; let riding = null; let platform = null; let liftRide = null; let trainChangedAt = 0; let trainShift = 0; // tests only: the server moved the trains' clock
+  const R = globalThis.IslandTrain; let platform = null; let liftRide = null; let trainChangedAt = 0; let trainShift = 0; // tests only: the server moved the trains' clock
   const trainNow = () => Date.now() + serverOffset + trainShift;
   function board(id, seat) {
     if (riding || !R.TRAINS.some((t) => t.id === id) || !R.SEATS[seat]) return false;
@@ -1890,7 +1897,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       else me.root.position.lerpVectors(new THREE.Vector3(r.lift.x, r.to.y, r.lift.z), target, (u - 0.8) / 0.2);
       train.liftAt?.(r.station, me.root.position.y); if (u === 1) liftRide = null;
     } else if (platform && !riding) {
-      const q = R.platformSpot(platform.line, platform.station, platform.slot); me.root.position.set(q.x, q.y, q.z);
+      const q = R.platformClamp(platform.line, platform.station, me.root.position.x, me.root.position.z); me.root.position.set(q.x, q.y, q.z);
     }
   }
   function sit(seatId) {

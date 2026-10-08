@@ -839,7 +839,7 @@ function plazaSeparate(token, x, z, prev) {
     if (len2 > 1e-8) {
       let tHit = 1;
       for (const [other, entry] of plazaPresence) {
-        if (other === token) continue;
+        if (other === token || entry.ride || entry.platform) continue;
         const fx = prev.x - entry.x; const fz = prev.z - entry.z;
         const c = fx * fx + fz * fz - PLAZA_SERVER_MIN * PLAZA_SERVER_MIN;
         if (c <= 0) continue; // already overlapping at the start: the separation below handles it
@@ -854,7 +854,7 @@ function plazaSeparate(token, x, z, prev) {
   for (let pass = 0; pass < 4; pass += 1) {
     let moved = false;
     for (const [other, entry] of plazaPresence) {
-      if (other === token) continue;
+      if (other === token || entry.ride || entry.platform) continue;
       let dx = x - entry.x; let dz = z - entry.z; let d = Math.hypot(dx, dz);
       if (d >= PLAZA_SERVER_MIN) continue;
       if (d < 1e-4) { dx = (prev?.x ?? x + 1) - entry.x; dz = (prev?.z ?? z) - entry.z; d = Math.hypot(dx, dz); }
@@ -2975,7 +2975,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.47' });
+    return sendJson(res, 200, { ok: true, version: '1.10.48' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3517,7 +3517,7 @@ async function requestHandler(req, res) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
     } else if (platform) {
-      spot = IslandTrain.platformSpot(platform.line, platform.station, platform.slot);
+      spot = IslandTrain.platformClamp(platform.line, platform.station, wanted.x, wanted.z);
       const entry = IslandTrain.stationOf(platform.station).spot; plazaLastPos.set(session.token, entry); notePlazaSpot(account, entry.x, entry.z);
     } else {
       spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
@@ -3537,7 +3537,7 @@ async function requestHandler(req, res) {
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
     plazaDirty = true;
-    const corrected = !ride && !platform && (spot.x !== wanted.x || spot.z !== wanted.z);
+    const corrected = !ride && (spot.x !== wanted.x || spot.z !== wanted.z);
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
@@ -4717,7 +4717,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.47 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.48 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

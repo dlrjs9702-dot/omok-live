@@ -276,6 +276,8 @@
   // (which draws them) and the server (which keeps events off them).
   let natureCache = null; const treeBlocks = []; // v1.10.47: places a tree must not stand (under the train's rail)
   function addTreeBlock(fn) { treeBlocks.push(fn); natureCache = null; }
+  const natureBlocks = [];
+  function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x1a2b3c;
@@ -343,6 +345,8 @@
       if (walkable(lx, lz) && streamDist(lx, lz) > STREAM_HALF + 1.5) lampSpots.push({ x: lx, z: lz });
     }
     natureCache = { trees, flowers, bushes, tufts, rocks, posts, lampSpots };
+    // Remove only obstructing props, retaining the original seeded positions of all remaining scenery.
+    for (const key of Object.keys(natureCache)) natureCache[key] = natureCache[key].filter(p => !natureBlocks.some(fn => fn(p.x, p.z, p.s || 1)));
     return natureCache;
   }
   // v1.10.16: the plaza's fixed props with their collision circles -- benches facing the fountain, lamps on a ring, flower
@@ -403,5 +407,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

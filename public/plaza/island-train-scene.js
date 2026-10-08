@@ -1,10 +1,5 @@
-// v1.10.47 공중 관광열차 (비공개 IDEAS 「공중 관광열차」 2026-10-08 설계): what shows of the trains -- the two lines' glass rails
-// (island-train.js), slim pillars (in the water, or on open ground clear of walks, doors, bridges and the river), each
-// line's platforms (the Codex train_platform where the carriage docks), at each station a glass lift by its entrance with a
-// walkway out to each platform, and the three trains (the Codex train_carriage: its doors open for the stop, its wheels turn
-// with the way it has come). Riders are placed by plaza-scene (seatAt). The view line's carriage is drawn mirrored (its
-// doors face its stations, on its right). train.car / train.platform are attach points: the stand-ins drawn here show
-// until the models come.
+// v1.10.48: figure-eight glass rail, 28 offshore supports, two platforms/lifts and four real carriages.
+// Access piers pass below the rail; upper walkways stay beside the doors.
 import * as THREE from '/vendor/three/three.module.js';
 import { part, mergeColored } from './island.js';
 
@@ -31,24 +26,14 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); made.push(g);
     return g;
   }
-  const pillarAt = [];
+  const pillarAt = R.PILLARS;
   for (const L of Object.values(R.LINES)) {
     const r = L.route;
     const plate = new THREE.Mesh(beam(r, 0, 0.6, 0, -0.2), glass); plate.renderOrder = 1; group.add(plate);
     for (const o of [-0.6, 0.6]) group.add(new THREE.Mesh(beam(r, o, 0.035, 0.05, -0.2), line));
     group.add(new THREE.Mesh(beam(r, 0, 0.12, R.SURFACE, 0.001), line));
-    // pillars about every 9 m: in the water, or on ground clear of where people go (walks, doors, bridges, the river)
-    for (let s = 4; s < r.LENGTH - 4; s += 9) {
-      const i = r.S.findIndex((v) => v >= s); const x = r.xs[i]; const z = r.zs[i];
-      if (T.walkable(x, z)) {
-        if (T.walkDist(x, z) < 2.4 || T.onBridge(x, z) || T.BUILDINGS.some((b) => Math.hypot(b.x - x, b.z - z) < 8) || Math.hypot(x, z) < T.PLAZA_R + 3) continue;
-        if (Object.values(R.STATIONS).some((st) => Math.hypot(st.entry[0] - x, st.entry[1] - z) < 4)) continue;
-        solids.push({ x, z, r: 0.45 });
-      }
-      if (T.coastDist(x, z) > 0 && T.streamDist(x, z) < T.STREAM_HALF + 1.5) continue; // keep the inland river flowing
-      pillarAt.push({ x, z, top: r.ys[i] - 0.2, foot: Math.min(T.heightAt(x, z), -0.6) - 0.6 });
-    }
   }
+
   const pillars = new THREE.InstancedMesh(G.cyl, steel, pillarAt.length);
   const m4 = new THREE.Matrix4(); const q0 = new THREE.Quaternion();
   pillarAt.forEach((p, i) => { const h = p.top - p.foot; pillars.setMatrixAt(i, m4.compose(new THREE.Vector3(p.x, p.foot + h / 2, p.z), q0, new THREE.Vector3(0.22, h, 0.22))); });
@@ -66,9 +51,15 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
   // each station: a glass lift beside its entrance, as high as its highest platform, and a walkway from it to each platform
   const lifts = Object.entries(R.STATIONS).map(([id, st]) => {
     const plats = R.PLATFORMS.filter((p) => p.station === id);
-    const [ex, ez] = st.entry; const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;
-    const d = Math.hypot(cx - ex, cz - ez) || 1; const ux = (cx - ex) / d; const uz = (cz - ez) / d;
-    const lx = ex + ux * 2; const lz = ez + uz * 2; const ground = T.heightAt(lx, lz); const top = Math.max(...plats.map((p) => p.y)) + 2.6;
+    const lift = R.liftOf(id); const lx = lift.x; const lz = lift.z; const ground = lift.y;
+    // Low access pier passes under the raised rail; the upper walkway stays on the door side.
+    const [ex, ez] = st.entry; const accessLength = Math.hypot(lx - ex, lz - ez);
+    const access = new THREE.Group(); access.position.set((ex + lx) / 2, ground, (ez + lz) / 2); access.rotation.y = Math.atan2(lx - ex, lz - ez); group.add(access);
+    const ag = mergeColored([part(G.box, DECK, 0, -.1, 0, { sx: 1.8, sy: .2, sz: accessLength }),
+      ...[-.85, .85].map(x => part(G.box, FRAME, x, .5, 0, { sx: .06, sy: .06, sz: accessLength }))]); made.push(ag); access.add(new THREE.Mesh(ag, vcMat));
+    const top = Math.max(...plats.map((p) => p.y)) + 2.6;
+    const cx = plats.reduce((a, p) => a + p.x, 0) / plats.length; const cz = plats.reduce((a, p) => a + p.z, 0) / plats.length;
+    const d = Math.hypot(cx - lx, cz - lz) || 1; const ux = (cx - lx) / d; const uz = (cz - lz) / d;
     const holder = new THREE.Group(); holder.position.set(lx, ground, lz); holder.rotation.y = Math.atan2(ux, uz); group.add(holder);
     const H = top - ground;
     const parts = [part(G.box, SAGE, 0, 0.1, 0, { sx: 2.4, sy: 0.2, sz: 2.4 }), part(G.box, FRAME, 0, H, 0, { sx: 2.5, sy: 0.18, sz: 2.5 }),
@@ -80,7 +71,6 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
       const midK = 1.2 + (reach - 1.2) / 2; const mx = (wx / wl) * midK; const mz = (wz / wl) * midK;
       const lxl = mx * c - mz * s; const lzl = mx * s + mz * c;
       parts.push(part(G.box, DECK, lxl, p.y - ground - 0.1, lzl, { sx: 1.6, sy: 0.2, sz: Math.max(0.2, reach - 1.2), ry: Math.atan2(wx, wz) - holder.rotation.y }));
-      for (let k = 1.4; k < reach; k += 0.7) { const x = lx + (wx / wl) * k; const z = lz + (wz / wl) * k; if (T.walkable(x, z) && p.y - T.heightAt(x, z) < 2.6) solids.push({ x, z, r: 0.8 }); } // low over the shore: walked round
     }
     const geo = mergeColored(parts); made.push(geo);
     const body = new THREE.Mesh(geo, vcMat); body.castShadow = true; holder.add(body);
@@ -88,7 +78,7 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     const cabin = new THREE.Group(); holder.add(cabin);
     const cg = mergeColored([part(G.box, DECK, 0, 0.08, 0, { sx: 2, sy: 0.16, sz: 2 }), part(G.box, FRAME, 0, 2.4, 0, { sx: 2, sy: 0.08, sz: 2 })]); made.push(cg); cabin.add(new THREE.Mesh(cg, vcMat));
     sign?.(st.name, holder, H + 1.1);
-    solids.push({ x: lx, z: lz, r: 1.45 });
+    if (T.walkable(lx, lz)) solids.push({ x: lx, z: lz, r: 1.45 });
     return { id, x: lx, z: lz, top, ground, cabin };
   });
 

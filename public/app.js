@@ -1406,6 +1406,10 @@
   // 작은 화면·WebGL 실패 때만 내부 호환용 기존 레이아웃이 fallback으로 남는다. 기능은 시설/오버레이에서 연다.
   const plazaStage = document.getElementById('plazaStage');
   const plazaHint = document.getElementById('plazaHint');
+  const trainControls = document.getElementById('trainControls');
+  const trainMainBtn = document.getElementById('trainMainBtn');
+  const trainMenuBtn = document.getElementById('trainMenuBtn');
+  trainMenuBtn.onclick = () => trainAction('platform');
   const plazaDialog = document.getElementById('plazaDialog');
   const plazaDialogTitle = document.getElementById('plazaDialogTitle');
   const plazaDialogBody = document.getElementById('plazaDialogBody');
@@ -1470,8 +1474,17 @@
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
   function showPlazaHint(facility) {
-    plazaHint.textContent = facility ? (facility.plain ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
+    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
     plazaHint.classList.toggle('hidden', !facility);
+    const isTrain = facility?.id?.startsWith('train:');
+    trainControls.classList.toggle('hidden', !isTrain);
+    if (isTrain) {
+      const waiting = facility.id === 'train:platform';
+      trainMainBtn.textContent = waiting ? facility.name : facility.id.startsWith('train:enter:') ? '승강장 올라가기' : facility.id === 'train:board' ? '타기 · ' + facility.name.replace(' 타기', '') : facility.name;
+      trainMainBtn.disabled = Boolean(facility.plain || waiting);
+      trainMainBtn.onclick = () => trainAction(facility.id.slice(6));
+      trainMenuBtn.classList.toggle('hidden', !plaza.controller?.platform?.() || Boolean(facility.plain));
+    }
   }
   function syncPlaza(view) {
     const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
@@ -1903,12 +1916,17 @@
     const R = globalThis.IslandTrain; const current = plaza.controller?.platform?.();
     const button = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.onclick = () => { plazaDialog.addEventListener('close', fn, { once: true }); plazaDialog.close(); }; return b; };
     const choices = Object.entries(R.LINES).filter(([line, L]) => L.order.includes(stop) && line !== current?.line).map(([line, L]) => button(L.name, () => trainPlatform(stop, line)));
-    if (current && (plaza.controller?.trainDocked?.(stop) || []).some((d) => d.line === current.line)) choices.unshift(button('타기', () => trainAction('board')));
+    if (current) {
+      const boarding = button('타기', () => trainAction('board'));
+      const refresh = () => { boarding.disabled = !(plaza.controller?.trainDocked?.(stop) || []).some((d) => d.line === current.line); };
+      refresh(); const timer = setInterval(refresh, 200);
+      plazaDialog.addEventListener('close', () => clearInterval(timer), { once: true }); choices.unshift(boarding);
+    }
     if (current) choices.push(button('내려가기', () => trainPlatform(stop, 'ground')));
     lostCard.replaceChildren(...choices); lostCard.classList.remove('hidden'); openPlazaWindow(R.STATIONS[stop].name, [lostCard]);
   }
   async function trainAction(what) {
-    if (!(plazaHint.textContent || '').startsWith('SPACE')) return;
+    if (plaza.controller?.debug?.().train?.().lifting) return;
     try {
       if (what === 'ride') { const r = await api('/api/island/train/alight', { method: 'POST', body: '{}' }); plaza.controller?.alight?.(r); return; }
       if (what === 'platform') { trainMenu(plaza.controller?.platform?.().station); return; }
@@ -2146,7 +2164,7 @@
       .then((data) => {
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
-        if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
+        if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();

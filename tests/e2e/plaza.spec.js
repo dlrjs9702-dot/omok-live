@@ -1088,43 +1088,54 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   test.setTimeout(180000);
   const a = await intoPlaza(browser, request, '열차손님', 0, 120000);
   const b = await intoPlaza(browser, request, '열차구경');
-  const round = 210000;
-  const shiftTo = async (sec) => { const now = Date.now(); expect((await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now })).status).toBe(200); };
-  await shiftTo(236); // train 0 standing at the river stop
-  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('A').spot);
+  const round = 240000;
+  // Native click honors disabled state. Avoid the multi-frame pointer actionability delay on a software GPU,
+  // which can itself consume the entire 4.6s open-door window; the rendered hint is checked before each action.
+  const clickDockButton = (button) => button.evaluate(b => b.click());
+  const shiftTo = async (sec) => { const now = Date.now(); const r = await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now }); expect(r.status).toBe(200); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().shift), { timeout: 10000 }).toBe(r.data.trainShift); };
+  await shiftTo(228); // approach the east stop before the open-door window
+  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('B').spot);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내부 강변역 승강기', { timeout: 15000 });
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 동해안역 승강기', { timeout: 15000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('A');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('B');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
-  await shiftTo(237);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 전망 열차 타기', { timeout: 15000 });
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id), { timeout: 10000 }).toBe(3);
+  const beforeWalk = await state(a.page);
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('ArrowRight'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowRight');
+  const afterWalk = await state(a.page); expect(Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z)).toBeGreaterThan(.2);
+  await shiftTo(228);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 관광 열차 타기', { timeout: 15000 });
+  await clickDockButton(a.page.locator('#trainMainBtn'));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id), { timeout: 10000 }).toBe(1);
   expect((await a.page.evaluate(() => window.PlazaDebug().train())).y).toBeGreaterThan(2.5); // up on the car's seat over the stream
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(1);
   // between stops: the next stop and when, not a key to press
-  await shiftTo(270);
-  await expect(a.page.locator('#plazaHint')).toContainText('다음 정류장 · 북해안역', { timeout: 15000 });
+  await shiftTo(280);
+  await expect(a.page.locator('#plazaHint')).toContainText('다음 정류장 · 남서해안역', { timeout: 15000 });
   await expect(a.page.locator('#plazaHint')).not.toContainText('SPACE');
-  // at the east stop: off, onto its boarding spot
-  await shiftTo(307);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내리기 · 북해안역', { timeout: 15000 });
+  // at the southwest stop: off, anywhere inside its walkable platform
+  await shiftTo(348);
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 내리기 · 남서해안역', { timeout: 15000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding), { timeout: 10000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
-  const east = await a.page.evaluate(() => { const p = window.PlazaDebug().train().platform; return window.IslandTrain.platformSpot(p.line, p.station, p.slot); });
-  const at = await a.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
-  expect(Math.hypot(at.x - east.x, at.z - east.z)).toBeLessThan(0.5);
+  const deck = await a.page.evaluate(() => { const d=window.PlazaDebug(),p=d.train().platform;const q=window.IslandTrain.platformClamp(p.line,p.station,d.x,d.z);return { station:p.station, drift:Math.hypot(q.x-d.x,q.z-d.z),height:q.y,y:d.train().y }; });
+  expect(deck.station).toBe('D');expect(deck.drift).toBeLessThan(.01);expect(deck.y).toBeCloseTo(deck.height,1);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
-  await shiftTo(307); // renew the stop window after waiting for the other software-rendered page
-  await expect(a.page.locator('#plazaHint')).toContainText('전망 열차 타기', { timeout: 15000 });
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await shiftTo(348); // renew the stop window after waiting for the other software-rendered page
+  await expect(a.page.locator('#plazaHint')).toContainText('관광 열차 타기', { timeout: 15000 });
+  await a.page.locator('#trainMenuBtn').click();
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeVisible(); // a PC clock 2 minutes fast: the menu uses the same corrected server clock as the train
-  await a.page.getByRole('button', { name: '외곽 열차', exact: true }).click();
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('outer');
+  await shiftTo(340);
+  await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeDisabled();
+  await shiftTo(348);
+  await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeEnabled({ timeout: 15000 });
+  await clickDockButton(a.page.getByRole('button', { name: '타기', exact: true }));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id)).toBe(1);
+  await shiftTo(348); await expect(a.page.locator('#trainMainBtn')).toHaveText('내리기 · 남서해안역', { timeout: 15000 }); const offResponse = a.page.waitForResponse(r => r.url().endsWith('/api/island/train/alight')); await clickDockButton(a.page.locator('#trainMainBtn')); const offResult = await offResponse; expect(await offResult.json()).toMatchObject({ ok: true, stop: 'D' });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('tour');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.locator('#trainMenuBtn').click();
   await a.page.getByRole('button', { name: '내려가기', exact: true }).click();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   expect(await a.page.evaluate(() => window.PlazaDebug().train().platform)).toBe(null);
