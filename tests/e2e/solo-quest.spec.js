@@ -67,6 +67,22 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('+2,000P');
   await expect(page.locator('#plazaDialog')).toContainText('열매 5개');
+  // v1.10.49: only the account whose server story is done sees the flowerbed bloom.
+  await page.keyboard.press('Escape');
+  expect((await post(request, '/api/test/island/give', token, { itemId: 'berry', qty: 5 })).status).toBe(200);
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toContainText('강가에 꽃');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.PlazaDebug().teleport(47, 38.3));
+  await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
+  await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questgranny'));
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'bloom', frame: true });
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'empty', frame: false });
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.questScenes()), { timeout: 30000 }).toMatchObject({ flower: 'bloom', frame: true });
   // someone far off: the name tag is drawn out of the fog, the chat bubble only near
   await b.page.evaluate(() => window.PlazaDebug().place('climb'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().farSight()), { timeout: 20000 }).toEqual([expect.objectContaining({ tag: true })]);

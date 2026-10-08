@@ -2373,6 +2373,476 @@
       "out": "characters/motions/RideLookAround.glb",
       "src": "train:05. Motions/RideLookAround.glb",
       "sha256": "78655bd74d580b0725c96de6983ff2d26e6b78c3a7c10322b390408b1f8d8e8f"
+    },
+    {
+      "out": "characters/wear/animal_cat_outfit.glb",
+      "src": "animals:01. Cat/outfit/outfit_cat_high.glb",
+      "sha256": "adf2f426b9c153e2db5c24cb62cf62c6507709aaa3d3f8f0854949a3699c822c",
+      "lowSrc": "animals:01. Cat/outfit/outfit_cat_low.glb",
+      "lowSha256": "c338b3da2855b5df420dd5c6dece415869efa41027a4f8ef72501cf2bd718e3b"
+    },
+    {
+      "out": "characters/wear/animal_cat_hat.glb",
+      "src": "animals:01. Cat/hat/hat_cat_high.glb",
+      "sha256": "46c473ef26c8bc29fe13d779b659e00f86db079452e7b96668f0a149a541af97",
+      "lowSrc": "animals:01. Cat/hat/hat_cat_low.glb",
+      "lowSha256": "afde4ac17f397d917edc115cd88fc5f74fe18c5666190382803c7c8802cc3503"
+    },
+    {
+      "out": "characters/wear/animal_cat_tail.glb",
+      "src": "animals:01. Cat/tail/tail_cat_high.glb",
+      "sha256": "f19f94f21821e6eefa4a866cdd7596690748052a21ead8c666c6b6926e59af51",
+      "lowSrc": "animals:01. Cat/tail/tail_cat_low.glb",
+      "lowSha256": "31e0d589b1b187f897afde0e232cfd77f89f4b439cdea52d71b2636d9e24a97b"
+    },
+    {
+      "out": "characters/wear/animal_cat_shoes.glb",
+      "src": "animals:01. Cat/shoes/shoes_cat_high.glb",
+      "sha256": "18373843793f20ac9f06eab7af35ff3687fdbe0e003bd268c716736e16bc5683",
+      "lowSrc": "animals:01. Cat/shoes/shoes_cat_low.glb",
+      "lowSha256": "65468235c8d9c97b3d2783f5895cb294cee415f31b895429d604c154b81ccf1b"
+    },
+    {
+      "out": "characters/wear/animal_cat_necklace.glb",
+      "src": "animals:01. Cat/necklace/necklace_cat_high.glb",
+      "sha256": "ad962b24c3cf0d7f38db608ba3782cde632b8adbfbb9f95994a089285bf89437",
+      "lowSrc": "animals:01. Cat/necklace/necklace_cat_low.glb",
+      "lowSha256": "549d0ddef4b1eebda243b8bdaab6e649e00adba6491a9d1d078f92366f053fa9"
+    },
+    {
+      "out": "characters/wear/animal_dog_outfit.glb",
+      "src": "animals:02. Dog/outfit/outfit_dog_high.glb",
+      "sha256": "0a167cb99126c31f7f6fd61554ece737c71c28689a11ab1b15c15580b8f72890",
+      "lowSrc": "animals:02. Dog/outfit/outfit_dog_low.glb",
+      "lowSha256": "3638caf71df44cabadef3354f2e5e56f345ba55c1a50f94ef239c785923821b5"
+    },
+    {
+      "out": "characters/wear/animal_dog_hat.glb",
+      "src": "animals:02. Dog/hat/hat_dog_high.glb",
+      "sha256": "3baa67c64c02192484c949900942efdca493f3cbc356a11e6b4e6c6ee2d06ab6",
+      "lowSrc": "animals:02. Dog/hat/hat_dog_low.glb",
+      "lowSha256": "ee198d68f3b033d5e906f0e5ce4fc06b8d1ac22e2cca4a8afdbc03dcddea2583"
+    },
+    {
+      "out": "characters/wear/animal_dog_tail.glb",
+      "src": "animals:02. Dog/tail/tail_dog_high.glb",
+      "sha256": "4bd792a7ff295029693f999f24c95ab89231d9ff0e432ab04302a3c5798c1e75",
+      "lowSrc": "animals:02. Dog/tail/tail_dog_low.glb",
+      "lowSha256": "ee1110b7fd829d57fe46db1e52d132ede60faa73df04f7cfcd06522e886ac093"
+    },
+    {
+      "out": "characters/wear/animal_dog_shoes.glb",
+      "src": "animals:02. Dog/shoes/shoes_dog_high.glb",
+      "sha256": "b71c6757ba40bb7405453cc441bb4ada10f8987a16bec361e4fee0ed533d2d76",
+      "lowSrc": "animals:02. Dog/shoes/shoes_dog_low.glb",
+      "lowSha256": "435681f948034a9ac1d11f9be2ca77df131f27cca48ab1697f83e1424a5a8b78"
+    },
+    {
+      "out": "characters/wear/animal_dog_necklace.glb",
+      "src": "animals:02. Dog/necklace/necklace_dog_high.glb",
+      "sha256": "a0af8c63c80429bcda4284247a8a3b59c27f339c6cd7b471146751b3038c4ffb",
+      "lowSrc": "animals:02. Dog/necklace/necklace_dog_low.glb",
+      "lowSha256": "a98eb9544d3bb6149f029c8cfc53da5f3158bff3dee17cfc7605c438cd327e04"
+    },
+    {
+      "out": "characters/wear/animal_sheep_outfit.glb",
+      "src": "animals:03. Sheep/outfit/outfit_sheep_high.glb",
+      "sha256": "b41e83e4750d5d7bea37c77fd24df7001c524c8175cde806362195fcd65279ce",
+      "lowSrc": "animals:03. Sheep/outfit/outfit_sheep_low.glb",
+      "lowSha256": "0c232773c8ce7c7dd2a9732d946f5ec50a4c866aa283a308c40e1bb860b9bbbd"
+    },
+    {
+      "out": "characters/wear/animal_sheep_hat.glb",
+      "src": "animals:03. Sheep/hat/hat_sheep_high.glb",
+      "sha256": "4faab1030b4c233605c93883ffe47dbe923b74a758c880709178f88041dd5e83",
+      "lowSrc": "animals:03. Sheep/hat/hat_sheep_low.glb",
+      "lowSha256": "125009470d4af0fa0dbc796430e85bfbb19bee6f46f278b7fa4aa1aa084074d1"
+    },
+    {
+      "out": "characters/wear/animal_sheep_tail.glb",
+      "src": "animals:03. Sheep/tail/tail_sheep_high.glb",
+      "sha256": "6c5bedb9bc0d90e90e25e48ca6d8a91da43d44960e013a21ad98b647a0e4671e",
+      "lowSrc": "animals:03. Sheep/tail/tail_sheep_low.glb",
+      "lowSha256": "1011e32db23f3899cc90b28589fdb47d03351fcf36b6b356b3bd159c2a4ac639"
+    },
+    {
+      "out": "characters/wear/animal_sheep_shoes.glb",
+      "src": "animals:03. Sheep/shoes/shoes_sheep_high.glb",
+      "sha256": "388bfb1f8a7d1042ac15fe66deb95d30697b818d9634295f92874142105ad535",
+      "lowSrc": "animals:03. Sheep/shoes/shoes_sheep_low.glb",
+      "lowSha256": "373df40f0e258b0406d1dbb25df0cf1c6aded2c2275abcaa40bb36da6d7540dc"
+    },
+    {
+      "out": "characters/wear/animal_sheep_necklace.glb",
+      "src": "animals:03. Sheep/necklace/necklace_sheep_high.glb",
+      "sha256": "a13a08f99333be7fa78303970fa4e40fdd11b57a100c2e0ce6a5fc7f3718c74c",
+      "lowSrc": "animals:03. Sheep/necklace/necklace_sheep_low.glb",
+      "lowSha256": "898d9b45423a4f82993e6d9b100193572a09f6f2d4bb239b2f63e80287f86c25"
+    },
+    {
+      "out": "characters/wear/animal_rabbit_outfit.glb",
+      "src": "animals:04. Rabbit/outfit/outfit_rabbit_high.glb",
+      "sha256": "f98437baf863dd940eee75e9a8750d116b281d3dbcb4694dcb32ce2180ebe585",
+      "lowSrc": "animals:04. Rabbit/outfit/outfit_rabbit_low.glb",
+      "lowSha256": "cf45edbec5f7ecdf1d957c29b55596f46a64bc44b3fea786cb9307d24d930838"
+    },
+    {
+      "out": "characters/wear/animal_rabbit_hat.glb",
+      "src": "animals:04. Rabbit/hat/hat_rabbit_high.glb",
+      "sha256": "1ff3f631af97718fc21f442298185b24818b336309f4c651fc23c1162c8a6a29",
+      "lowSrc": "animals:04. Rabbit/hat/hat_rabbit_low.glb",
+      "lowSha256": "be0b738e0c2f109538bd23821d7aa60ae05347a0590e9389e838ee2cda67a12f"
+    },
+    {
+      "out": "characters/wear/animal_rabbit_tail.glb",
+      "src": "animals:04. Rabbit/tail/tail_rabbit_high.glb",
+      "sha256": "5ba1f6ffb3efcf2b3f3aa60e93c02b365cfdb531056b90d1415e7656f609107f",
+      "lowSrc": "animals:04. Rabbit/tail/tail_rabbit_low.glb",
+      "lowSha256": "f690402c226ba15a8c66fac1cfb83ac1c8f6ddffbfc6fe5490f0b43565743382"
+    },
+    {
+      "out": "characters/wear/animal_rabbit_shoes.glb",
+      "src": "animals:04. Rabbit/shoes/shoes_rabbit_high.glb",
+      "sha256": "be0efb36ebe0a47acf6e19997476895875f080c0dc25d49b48032857362672e7",
+      "lowSrc": "animals:04. Rabbit/shoes/shoes_rabbit_low.glb",
+      "lowSha256": "7a2c704a687907f1030af3c75321c4bf432c9fd9920da4408c9877194d703393"
+    },
+    {
+      "out": "characters/wear/animal_rabbit_necklace.glb",
+      "src": "animals:04. Rabbit/necklace/necklace_rabbit_high.glb",
+      "sha256": "a69455aded43139606c81969e153f36c73929fbe5f287b8cab305407f3e9ad82",
+      "lowSrc": "animals:04. Rabbit/necklace/necklace_rabbit_low.glb",
+      "lowSha256": "090430db4f719c03d3fc39c97ff139ce0fcf7cbe7a9bbece77aa1ea025da7bd3"
+    },
+    {
+      "out": "characters/wear/animal_bear_outfit.glb",
+      "src": "animals:05. Bear/outfit/outfit_bear_high.glb",
+      "sha256": "3eeafa4c45cfa82c95a25ee6ad9932cdadcada13f95956bfdae66729dec68010",
+      "lowSrc": "animals:05. Bear/outfit/outfit_bear_low.glb",
+      "lowSha256": "b894500dd8513a581c32e8927bfa0e330ed2cba01ffc96df33ad70dcd31f7981"
+    },
+    {
+      "out": "characters/wear/animal_bear_hat.glb",
+      "src": "animals:05. Bear/hat/hat_bear_high.glb",
+      "sha256": "3f4501e8df7606f517689c2bf6bb620fcbfc8370e559ebe9c8a1f32176ce7f48",
+      "lowSrc": "animals:05. Bear/hat/hat_bear_low.glb",
+      "lowSha256": "c337d9f4d2515d93617cefef0c923a25d727cc9ef80c175848ee746bcad4fe93"
+    },
+    {
+      "out": "characters/wear/animal_bear_tail.glb",
+      "src": "animals:05. Bear/tail/tail_bear_high.glb",
+      "sha256": "610c89c7d3c998499d7a8be95c45d7dbe1961a3b1075567ad13475c150c728c0",
+      "lowSrc": "animals:05. Bear/tail/tail_bear_low.glb",
+      "lowSha256": "0e73205bd674a4e4671f0f810bdf62760e7508db24c607574691e67f7cacb29f"
+    },
+    {
+      "out": "characters/wear/animal_bear_shoes.glb",
+      "src": "animals:05. Bear/shoes/shoes_bear_high.glb",
+      "sha256": "a5067b7b831902ed0e1d19de61fcf9f9bfd27f16b5c653e19aeb1b82bf9fd422",
+      "lowSrc": "animals:05. Bear/shoes/shoes_bear_low.glb",
+      "lowSha256": "2f04492aed59991a799b1635f6369389955eba45d0b4ff05efe5328c6819ab74"
+    },
+    {
+      "out": "characters/wear/animal_bear_necklace.glb",
+      "src": "animals:05. Bear/necklace/necklace_bear_high.glb",
+      "sha256": "6902bbb516c148cdf3ca75890fec47d090680bf935fcd64ff46770d6f8aecbb0",
+      "lowSrc": "animals:05. Bear/necklace/necklace_bear_low.glb",
+      "lowSha256": "d16a08b99663f732c72f1c25f257430391c30221f03caae271531c9d978baf52"
+    },
+    {
+      "out": "characters/wear/animal_panda_outfit.glb",
+      "src": "animals:06. Panda/outfit/outfit_panda_high.glb",
+      "sha256": "0e8eb77ca468f0382801526ef2e33304ab9a32c9441d8c6a520630a206973623",
+      "lowSrc": "animals:06. Panda/outfit/outfit_panda_low.glb",
+      "lowSha256": "5468356bb399fe375a86c60904cdb479aea9940649dba0b77a298d866f322ddd"
+    },
+    {
+      "out": "characters/wear/animal_panda_hat.glb",
+      "src": "animals:06. Panda/hat/hat_panda_high.glb",
+      "sha256": "da7cabda93db4269ab1903087d50ca236c6a235936982e954a6e73317a9381db",
+      "lowSrc": "animals:06. Panda/hat/hat_panda_low.glb",
+      "lowSha256": "d9c020c7e0ad6bf3f182469c80b6d2e119828063e9f5cc2f213abf95e8616587"
+    },
+    {
+      "out": "characters/wear/animal_panda_tail.glb",
+      "src": "animals:06. Panda/tail/tail_panda_high.glb",
+      "sha256": "7cf675f9008567060479c56eda945b4fa466adc5888637cb5b5b2d665151bf0f",
+      "lowSrc": "animals:06. Panda/tail/tail_panda_low.glb",
+      "lowSha256": "175034cc366501f069db6e95d6a65163ffd19715b996d37063c11255cd712981"
+    },
+    {
+      "out": "characters/wear/animal_panda_shoes.glb",
+      "src": "animals:06. Panda/shoes/shoes_panda_high.glb",
+      "sha256": "cc2c35ca29e6f587bbaf55e72d7c0cc70ceed1a548be80d0c28209cf2432e04f",
+      "lowSrc": "animals:06. Panda/shoes/shoes_panda_low.glb",
+      "lowSha256": "acf8bfa445b80f6f8e66318155a8ae94daecc9e1d7ce067d3ad936df70d3a4e3"
+    },
+    {
+      "out": "characters/wear/animal_panda_necklace.glb",
+      "src": "animals:06. Panda/necklace/necklace_panda_high.glb",
+      "sha256": "25ec917dcb0a6f22b860b56c43fd40ac70e52833859c3ad95f3149915c819fcf",
+      "lowSrc": "animals:06. Panda/necklace/necklace_panda_low.glb",
+      "lowSha256": "6719dafb31de82ba14a22d6aa1f472ceb40a7a4aa631cd9cf7a44a7c799b6f93"
+    },
+    {
+      "out": "characters/wear/animal_fox_outfit.glb",
+      "src": "animals:07. Fox/outfit/outfit_fox_high.glb",
+      "sha256": "f24df9b5c8c92320acd4a26ceb72a8e737725dc007922d212a4082f2d0780ece",
+      "lowSrc": "animals:07. Fox/outfit/outfit_fox_low.glb",
+      "lowSha256": "105d7fad5ec3a0b0ee4ef6a2507be2fe338bd09c8539a24948f6b7416414ac4c"
+    },
+    {
+      "out": "characters/wear/animal_fox_hat.glb",
+      "src": "animals:07. Fox/hat/hat_fox_high.glb",
+      "sha256": "4ab2eea24fd7b2c259055cbc515d5e2f98f52cadabc0728d633b1008e6073521",
+      "lowSrc": "animals:07. Fox/hat/hat_fox_low.glb",
+      "lowSha256": "f7581b483f9c0a5b0c9bf66f9f52475afe78478c20e97e9f6b955e2be3ad1603"
+    },
+    {
+      "out": "characters/wear/animal_fox_tail.glb",
+      "src": "animals:07. Fox/tail/tail_fox_high.glb",
+      "sha256": "c58b8f4179fc63c8b3961410255b94783b84b7f931f60a8445360baa78a3578c",
+      "lowSrc": "animals:07. Fox/tail/tail_fox_low.glb",
+      "lowSha256": "f8104575ae67e0c6b4c669fdb561afa645ad4a17fe88a97f42433ffc86fdb921"
+    },
+    {
+      "out": "characters/wear/animal_fox_shoes.glb",
+      "src": "animals:07. Fox/shoes/shoes_fox_high.glb",
+      "sha256": "745b717f092ebd6eb0cfe0d8beaaaa58a32afe5dd89142dff1e19279de51a71a",
+      "lowSrc": "animals:07. Fox/shoes/shoes_fox_low.glb",
+      "lowSha256": "7417a47276ccb11b87d180ac059a0679ec1516313bbfdd648b868b4302f8ec91"
+    },
+    {
+      "out": "characters/wear/animal_fox_necklace.glb",
+      "src": "animals:07. Fox/necklace/necklace_fox_high.glb",
+      "sha256": "0d7f494fa162c7fe7d85fe1c995bab1b46fa5cdb969cdcb260124526bc1ca82d",
+      "lowSrc": "animals:07. Fox/necklace/necklace_fox_low.glb",
+      "lowSha256": "59d185936b1e468a28f0fd84ff7900852f7e6c7b57e3b7b5cede80b6fef1dc8c"
+    },
+    {
+      "out": "characters/wear/animal_hamster_outfit.glb",
+      "src": "animals:08. Hamster/outfit/outfit_hamster_high.glb",
+      "sha256": "e3edf069badebdfc31efa41e984390b248d1bbb012bab73d8c8d043d852fb143",
+      "lowSrc": "animals:08. Hamster/outfit/outfit_hamster_low.glb",
+      "lowSha256": "84e8e1bd050d4cecdfe7db8bb5a3a5b9d93b666875aad3995e90ca2e32c6a453"
+    },
+    {
+      "out": "characters/wear/animal_hamster_hat.glb",
+      "src": "animals:08. Hamster/hat/hat_hamster_high.glb",
+      "sha256": "ed6d6fd3df313ad9058d1ed3133d6918a655a382940faad877bb9b5445ffeaa5",
+      "lowSrc": "animals:08. Hamster/hat/hat_hamster_low.glb",
+      "lowSha256": "980a03a6151927387ab7a44f8b4d900f882b92356605223927a7c74b97cce4d4"
+    },
+    {
+      "out": "characters/wear/animal_hamster_tail.glb",
+      "src": "animals:08. Hamster/tail/tail_hamster_high.glb",
+      "sha256": "d84a615da88c8bb3f4f9d122568df6ed7f9ab73f07469cbd141e55bd54992259",
+      "lowSrc": "animals:08. Hamster/tail/tail_hamster_low.glb",
+      "lowSha256": "38c4796e31f3dab547c7442c3f159db40408e7b8904eaa1c5b705b10b07470b9"
+    },
+    {
+      "out": "characters/wear/animal_hamster_shoes.glb",
+      "src": "animals:08. Hamster/shoes/shoes_hamster_high.glb",
+      "sha256": "e69da3ee6c2b7905e03274eefedad5a9fa4aad8c1d829ffa3b4b67811ca02f00",
+      "lowSrc": "animals:08. Hamster/shoes/shoes_hamster_low.glb",
+      "lowSha256": "3f7ef78360640fd426db13e1cce4b532f21b0eac3a337831b55ccf1bcc46ca52"
+    },
+    {
+      "out": "characters/wear/animal_hamster_necklace.glb",
+      "src": "animals:08. Hamster/necklace/necklace_hamster_high.glb",
+      "sha256": "f754484ff6a132682357eb22bb0108a329a77fd13afa49fed7ec6acadda4ac0d",
+      "lowSrc": "animals:08. Hamster/necklace/necklace_hamster_low.glb",
+      "lowSha256": "768249c6dc36c998a03baa9d06b6e04c38f6600d42497d22ac4736947917804a"
+    },
+    {
+      "out": "characters/wear/animal_pig_outfit.glb",
+      "src": "animals:09. Pig/outfit/outfit_pig_high.glb",
+      "sha256": "24984592ef34d8e2ddb48b10c19eb1d50d9addffc0038c55f044c8ece43ce5f5",
+      "lowSrc": "animals:09. Pig/outfit/outfit_pig_low.glb",
+      "lowSha256": "757ed454894601795f434cefcbfeae522178d378305a02fa0b5dfd5b67246189"
+    },
+    {
+      "out": "characters/wear/animal_pig_hat.glb",
+      "src": "animals:09. Pig/hat/hat_pig_high.glb",
+      "sha256": "30b6589e52a7241ebd6667da061292f472cf7a2e1f2f990c3ef2e7a84acbc97f",
+      "lowSrc": "animals:09. Pig/hat/hat_pig_low.glb",
+      "lowSha256": "473f014850cd30a464b68cbee742389ffef45369e4f466625ffd7700620a16be"
+    },
+    {
+      "out": "characters/wear/animal_pig_tail.glb",
+      "src": "animals:09. Pig/tail/tail_pig_high.glb",
+      "sha256": "31116bc999bcab3ff37df09040f5bdac10ceec1965734283a3f16f0f5719a05b",
+      "lowSrc": "animals:09. Pig/tail/tail_pig_low.glb",
+      "lowSha256": "303167635c50554e6fefb4c4090a80d31aea248cfefce734bd6fe8ef3bbf8330"
+    },
+    {
+      "out": "characters/wear/animal_pig_shoes.glb",
+      "src": "animals:09. Pig/shoes/shoes_pig_high.glb",
+      "sha256": "c5ff789611f21d8791f20b5543dfbe35764a5c4dc840927e6abcf75f7b4f87d2",
+      "lowSrc": "animals:09. Pig/shoes/shoes_pig_low.glb",
+      "lowSha256": "d0f720f5c78bdd969362632ca7c76cd1ce9f2cef397b4b42488111860fd9d180"
+    },
+    {
+      "out": "characters/wear/animal_pig_necklace.glb",
+      "src": "animals:09. Pig/necklace/necklace_pig_high.glb",
+      "sha256": "bb5073b847f4fb3ea383965530815d300c68587003479b7dc7c50482cd0f03db",
+      "lowSrc": "animals:09. Pig/necklace/necklace_pig_low.glb",
+      "lowSha256": "ff470fc6028491a4ac5e4b8f3652adc56635b4ff01a394bd8851c12853adfbbc"
+    },
+    {
+      "out": "characters/wear/animal_cow_outfit.glb",
+      "src": "animals:10. Cow/outfit/outfit_cow_high.glb",
+      "sha256": "2be456bc319693b4122d1d7d6bf6786f17db8aa6a7ed62c7c368745d4721e5fa",
+      "lowSrc": "animals:10. Cow/outfit/outfit_cow_low.glb",
+      "lowSha256": "b16831cd7cb999260a8733d05994ee6ee9eb2bc96e8a6e60498e8a1ffbd9046b"
+    },
+    {
+      "out": "characters/wear/animal_cow_hat.glb",
+      "src": "animals:10. Cow/hat/hat_cow_high.glb",
+      "sha256": "7f24c54c7f2701082f904859a1d03ad682afcf4a2ce50fbebba4fb81f40c8c5f",
+      "lowSrc": "animals:10. Cow/hat/hat_cow_low.glb",
+      "lowSha256": "09af55c785642f993222374baaf6f2ac88526b2b85b2e3243d6e3ed8baeac794"
+    },
+    {
+      "out": "characters/wear/animal_cow_tail.glb",
+      "src": "animals:10. Cow/tail/tail_cow_high.glb",
+      "sha256": "44f78ad1cc36afb4cb8d760d8cd0628306a8c4fa58506155c8c009d13ab55a81",
+      "lowSrc": "animals:10. Cow/tail/tail_cow_low.glb",
+      "lowSha256": "4aaaec2136e6437b6f928f12fefcb65d477a60cd786ac6c402dadaecd6c7584b"
+    },
+    {
+      "out": "characters/wear/animal_cow_shoes.glb",
+      "src": "animals:10. Cow/shoes/shoes_cow_high.glb",
+      "sha256": "e9e03bed38dc7616b410d799e0712528aef54b4cd95c514a8bc429be7be62d48",
+      "lowSrc": "animals:10. Cow/shoes/shoes_cow_low.glb",
+      "lowSha256": "844a5082a4665180164661344ce01e4754c1c90e25f586d09d90afe9d3a9d4d1"
+    },
+    {
+      "out": "characters/wear/animal_cow_necklace.glb",
+      "src": "animals:10. Cow/necklace/necklace_cow_high.glb",
+      "sha256": "c2457794a7f00de2a262408c688ef221b652155643c17ce6b28ac50e725e1553",
+      "lowSrc": "animals:10. Cow/necklace/necklace_cow_low.glb",
+      "lowSha256": "60acedea526923290a791995c6b1f8777ecc8e32d699bbc649e0aebb8645df5a"
+    },
+    {
+      "out": "life-v1/tree_harvest_spring.glb",
+      "src": "life:01. Harvest trees/tree_harvest_spring_high.glb",
+      "sha256": "2783a551c9d263e70189ea0ec5eac660211e41869525c821cd666b3034705652",
+      "lowSrc": "life:01. Harvest trees/tree_harvest_spring_low.glb",
+      "lowSha256": "0124dffe2192d6bc40dda10ad7212a8fc0a8d707710d4125697ef91471478fe4"
+    },
+    {
+      "out": "life-v1/tree_fruit_layer_spring.glb",
+      "src": "life:01. Harvest trees/tree_fruit_layer_spring_high.glb",
+      "sha256": "856d1158886338686fee1919ca173b7ce075f4b86a0d43f02202985d70f1735f",
+      "lowSrc": "life:01. Harvest trees/tree_fruit_layer_spring_low.glb",
+      "lowSha256": "4fda2732f3f330fd6cc3dbae0419f03e6805de6fb6f3b5bc9f47d0ec8571496a"
+    },
+    {
+      "out": "life-v1/tree_harvest_summer.glb",
+      "src": "life:01. Harvest trees/tree_harvest_summer_high.glb",
+      "sha256": "a622ae05e1997fa86ac05a898b42cc683ce066b3c0760a648824c107114d50d9",
+      "lowSrc": "life:01. Harvest trees/tree_harvest_summer_low.glb",
+      "lowSha256": "8a7128a51987880f3a5b7f1ea676d392f33f8b460906f42666f63ddbf7f05b60"
+    },
+    {
+      "out": "life-v1/tree_fruit_layer_summer.glb",
+      "src": "life:01. Harvest trees/tree_fruit_layer_summer_high.glb",
+      "sha256": "d37497e00dce58397f89ebc30592ab61faa68a4dfc10009ecc1cfc7514904309",
+      "lowSrc": "life:01. Harvest trees/tree_fruit_layer_summer_low.glb",
+      "lowSha256": "ea00fbea0f9d0f2c0cf999176e7e7f47196b629df9a1b18019c5e14903ac86c4"
+    },
+    {
+      "out": "life-v1/harvest_fruit_hand.glb",
+      "src": "life:01. Harvest trees/harvest_fruit_hand_high.glb",
+      "sha256": "e0442ee3a64bed38b88907246680f49964460e72f42b96cc568ffd55e26c1adc",
+      "lowSrc": "life:01. Harvest trees/harvest_fruit_hand_low.glb",
+      "lowSha256": "bb66e0e4f38c2f64bb90d2e3fb31f8372154c39df7c60f069c563714eb0dfeca"
+    },
+    {
+      "out": "life-v1/tree_harvest_autumn.glb",
+      "src": "life:01. Harvest trees/tree_harvest_autumn_high.glb",
+      "sha256": "45c86ff9a468287f8fcd3491e060b0c1e0ac836e1fef5ec504d4bb07c92fdcec",
+      "lowSrc": "life:01. Harvest trees/tree_harvest_autumn_low.glb",
+      "lowSha256": "20d7eb7df6ab95a842c5c73bbc87b1569fbcb61e540f4a97209851ef8edb9180"
+    },
+    {
+      "out": "life-v1/tree_fruit_layer_autumn.glb",
+      "src": "life:01. Harvest trees/tree_fruit_layer_autumn_high.glb",
+      "sha256": "f40a39aa907f5049915a16826c8f8ed8065832e492a5c197582aad244b4f93e2",
+      "lowSrc": "life:01. Harvest trees/tree_fruit_layer_autumn_low.glb",
+      "lowSha256": "6109629a329d16f713d47741f859d2652fceeebffad35b2f2e387644f8ee8c44"
+    },
+    {
+      "out": "life-v1/tree_harvest_winter.glb",
+      "src": "life:01. Harvest trees/tree_harvest_winter_high.glb",
+      "sha256": "e88b599d2186588c351ef81d902daba1dc2761171cf0e35196c4cd7dbb5f9af1",
+      "lowSrc": "life:01. Harvest trees/tree_harvest_winter_low.glb",
+      "lowSha256": "77102dbdce12182b5ac9fde0f1fad023e22cc50cd268a7845f74a601d41d5430"
+    },
+    {
+      "out": "life-v1/tree_fruit_layer_winter.glb",
+      "src": "life:01. Harvest trees/tree_fruit_layer_winter_high.glb",
+      "sha256": "5cf646e20309aa8cfa0a6123288abcbc85c42b9aef0c7cbc095e88599af5186d",
+      "lowSrc": "life:01. Harvest trees/tree_fruit_layer_winter_low.glb",
+      "lowSha256": "c2e3e6406dfc37746e994811a94c914567b37e0b78512db3815f400bd3cd96de"
+    },
+    {
+      "out": "characters/motions/PickFruit.glb",
+      "src": "life:02. Motions/PickFruit.glb",
+      "sha256": "0f8acdf566411ab37b5e989f2b0028724d57793a1228b8a2055f8a904bf5f8ba"
+    },
+    {
+      "out": "characters/motions/Nod.glb",
+      "src": "life:02. Motions/Nod.glb",
+      "sha256": "846f91f15e63ae368daf569d2f16f8dbf43270e99513d1d717fc86cc8fc8d9fc"
+    },
+    {
+      "out": "characters/motions/Clap.glb",
+      "src": "life:02. Motions/Clap.glb",
+      "sha256": "15ffeb21aacbcc823246f700eac048228c2136f7ef877f2edff1690f1a994054"
+    },
+    {
+      "out": "life-v1/quest_camera_bag.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_camera_bag_high.glb",
+      "sha256": "e1d9ba5d97717060b9e48e19e67de3704bb1d4a6e5b5f359f4e5028a2a91e4b5",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_camera_bag_low.glb",
+      "lowSha256": "210914074499d96b6c670781e06f18369100d1698367d8a4cdbf3624b79dffe7"
+    },
+    {
+      "out": "life-v1/quest_fishing_rod.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_fishing_rod_high.glb",
+      "sha256": "d420435133f5839588bde196166f8cadc504dbb7b6cfdd502ddf9d02100ddb2b",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_fishing_rod_low.glb",
+      "lowSha256": "2a854f7b5844a0d7079301a38e77c387394e348057638ef7a056560aae502c37"
+    },
+    {
+      "out": "life-v1/quest_flowerbed_bloom.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_flowerbed_bloom_high.glb",
+      "sha256": "81255c788ade0ad030dcc37afb0c797ac24f8080cafa47af5cb47aec7d729cee",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_flowerbed_bloom_low.glb",
+      "lowSha256": "d9ed86dc335cf54e987ba8b56c6227f55d2709f76e3629bbdb301b92510d1ff5"
+    },
+    {
+      "out": "life-v1/quest_flowerbed_empty.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_flowerbed_empty_high.glb",
+      "sha256": "fe6660faf0d20fcdcfd8cdca1c2e7cb4414c62a89d26760a2937d8c5d60e9b6b",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_flowerbed_empty_low.glb",
+      "lowSha256": "7555e0797838e9067721547d4aa986de6ab04d05d28f65d539dee1cf9729686b"
+    },
+    {
+      "out": "life-v1/quest_photo_frame.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_photo_frame_high.glb",
+      "sha256": "59fac197c865cbbcab7716072e920dff57a4b996ce4e974302048b59f5268c2d",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_photo_frame_low.glb",
+      "lowSha256": "b180e40fe76ac38b1ce733a1f1c36b82319c145fde97e55d41aee8b619e2eac6"
+    },
+    {
+      "out": "life-v1/quest_watering_can.glb",
+      "src": "life:04. Reused quest scenes/01. High/quest_watering_can_high.glb",
+      "sha256": "3f4fbea71742b70f8a997fc491b4a977f6b8fc8f0aa6cf0b24918ad4f87cf226",
+      "lowSrc": "life:04. Reused quest scenes/02. Low/quest_watering_can_low.glb",
+      "lowSha256": "837544c4635ca0ce09f93ef392b91cb6f62eb17fff3bc3d0474cad73d32dde80"
     }
   ],
   "sources": {
@@ -2386,6 +2856,8 @@
     "halloweenDecor": "10. Game Island Halloween decor 2026-10-07",
     "mayor": "16. Game Island mayor and townhall 2026-10-07",
     "fishing": "12. Game Island fishing 2026-10-07",
-    "train": "22. Game Island tourism train 2026-10-07"
+    "train": "22. Game Island tourism train 2026-10-07",
+    "animals": "18. Game Island animal sets 2026-10-07",
+    "life": "20. Game Island life assets 2026-10-07"
   }
 }

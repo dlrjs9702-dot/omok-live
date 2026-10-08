@@ -1173,7 +1173,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 인사', { timeout: 10000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '인사', exact: true }).click();
-  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'wave')), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'bow')), { timeout: 15000 }).toBe(true);
   // 게임 초대: the game hall's window, a room, and the invite
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '게임 초대' }).click();

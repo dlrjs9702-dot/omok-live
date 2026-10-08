@@ -799,7 +799,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // v1.10.44: their act -- sitting (the clips, on their seat), or a new wave or cheer
       if (p.act === 'sit' && p.seat) { takenSeats.set(p.seat, p.id); if (o.act !== 'sit') { o.c.anim?.play('sitDown'); o.c.anim?.loop?.('sitIdle'); o.c.tailTucked = true; o.c.tuckTail?.(true); } }
       else if (o.act === 'sit') { o.c.anim?.release?.(); o.c.anim?.play('standUp'); o.c.tailTucked = false; o.c.tuckTail?.(false); }
-      if ((p.act === 'wave' || p.act === 'cheer') && p.actN !== o.actN) o.c.anim?.play(p.act);
+      if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
       o.act = p.act || null; o.actN = p.actN || 0; o.seat = p.seat || null;
       // v1.10.47: riding the train -- drawn on their seat by the same clock (the server only says which train and seat)
@@ -1233,6 +1233,27 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     o.root.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
     eventObjs.delete(key); delete eventDoors[key];
   }
+  let questScenes = null;
+  function prepareQuestScenes() {
+    if (questScenes) return questScenes;
+    const holder = (id, x, z, y = heightAt(x, z)) => {
+      const root = new THREE.Group(); root.position.set(x, y, z); scene.add(root);
+      const fallback = new THREE.Group(); root.add(fallback); assets.attach(id, root, fallback); return root;
+    };
+    // Account-local scenery follows the same weekly server document as the existing stories.
+    const T = globalThis.IslandTerrain;
+    questScenes = { empty: holder('quest.flowerbed_empty', 8, 39), bloom: holder('quest.flowerbed_bloom', 8, 39),
+      frame: holder('quest.photo_frame', 7, 39), boat: holder('sea.boat', T.PIER.x + 4, T.PIER.z + T.PIER.half + 5, -0.6), departure: null };
+    questScenes.bloom.visible = false; questScenes.frame.visible = false; questScenes.boat.visible = false;
+    return questScenes;
+  }
+  function stepQuestScenes(dt) {
+    if (!questScenes || questScenes.departure === null) return;
+    questScenes.departure += dt;
+    const T = globalThis.IslandTerrain; const t = questScenes.departure;
+    questScenes.boat.position.set(T.PIER.x + 4 + t * 0.4, -0.6, T.PIER.z + T.PIER.half + 5 + t * 2);
+    if (t >= 8) { questScenes.boat.visible = false; questScenes.departure = null; }
+  }
   function setEvents(list) {
     const seen = new Set(); let carried = null;
     for (const ev of list || []) {
@@ -1250,6 +1271,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; dressUp(npc, look, spec);
           if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
+          if (ev.story === 'granny') assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });
+          if (ev.story === 'fisher') assets.hold(npc, 'quest.fishing_rod', 0, { key: 'questTool' });
           npcs.push(npc);
         } else if (ev.kind === 'quest_spot') { // where a step asks me to go: only on the map
         } else if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
@@ -1257,6 +1280,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(spec);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
           if (ev.kind === 'photo') { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
+          if (ev.kind === 'photo') assets.hold(npc, 'quest.camera_bag', 0, { key: 'cameraBag', bone: 'Chest', at: [0.28, -0.5, -0.12], proc: [0.28, 0.65, 0.1] });
           // what they want, at a glance: the tourist's camera; the owner of a lost thing a yellow star 「!」 (v1.10.34)
           if (ev.kind !== 'photo') { npc.tag = makeStarMark(); npc.root.add(npc.tag); } else { npc.tag = makeTag('📷', null); npc.tag.scale.multiplyScalar(0.7); npc.root.add(npc.tag); } fitTag(npc);
           npcs.push(npc);
@@ -1266,6 +1290,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
       if (ev.verb) eventDoors[key] = { x: ev.x, z: ev.z, name: ev.verb }; else delete eventDoors[key];
       const o = eventObjs.get(key);
+      if (ev.kind === 'quest_npc' && ['granny', 'fisher'].includes(ev.story)) {
+        const s = prepareQuestScenes();
+        if (ev.story === 'granny') { s.empty.visible = !ev.done; s.bloom.visible = Boolean(ev.done); s.frame.visible = Boolean(ev.done); }
+        if (ev.story === 'fisher') {
+          if (o.done === false && ev.done) { s.departure = lessMotion?.matches ? null : 0; s.boat.visible = !lessMotion?.matches; }
+          else if (!ev.done) { s.departure = null; s.boat.visible = true; const T = globalThis.IslandTerrain; s.boat.position.set(T.PIER.x + 4, -0.6, T.PIER.z + T.PIER.half + 5); }
+          else if (s.departure === null) s.boat.visible = false;
+        }
+        o.done = Boolean(ev.done);
+      }
       if (ev.kind === 'quest_npc' && o.mark !== (ev.mark || null)) { // its mark follows the story: new, ready, or none under way
         o.mark = ev.mark || null; disposeTag(o.npc.tag); o.npc.tag = null;
         if (o.mark) { o.npc.tag = o.mark === 'ready' ? makeCheckMark() : makeStarMark(); o.npc.root.add(o.npc.tag); fitTag(o.npc); }
@@ -1661,7 +1695,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       tryMove(me.root.position.x + wx * SPEED * dt, me.root.position.z + wz * SPEED * dt);
       me.targetYaw = Math.atan2(wx, wz);
     }
-    stepPlatform(); stepRide();
+    stepPlatform(); stepRide(); stepQuestScenes(dt);
     animate(me, dt, moving);
     stepOthers(dt);
     stepWanderers(dt);
@@ -1826,7 +1860,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: faded.size, inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
@@ -1915,7 +1949,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (release && gather?.kind === 'sit') { gather.onDone = () => {}; endGather(false); }
     onInteract?.('seat:stand');
   }
-  function emote(kind) { if (gather || fishing || !['wave', 'cheer'].includes(kind)) return false; me.anim?.play(kind) || (me.hop = 1); myAct.act = kind; myAct.n += 1; setTimeout(() => { if (myAct.act === kind) myAct.act = null; }, 1500); return true; }
+  function emote(kind) { if (gather || fishing || me.carrying || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; me.anim?.play(kind) || (me.hop = 1); myAct.act = kind; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; }
   // v1.10.43 기념사진 모드 (IDEAS ③): I stay put (the camera turns, up to the sky), every name tag and bubble hidden; the
   // shot is the canvas alone (no page UI), drawn and read in the same task, saved as a PNG on the PC (nothing uploaded)
   let photoMode = false; const photoHidden = new Set();
