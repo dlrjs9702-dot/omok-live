@@ -104,7 +104,11 @@ test('열차 접근: 승강기 다리·길 여유, 해상 기둥만 1/3, 긴 순
     assert.ok(T.nature().rocks.every(p=>T.segDist(p.x,p.z,...R.STATIONS[id].entry,lift.x,lift.z)>=1+p.s),'접근로 돌 간섭 제거');
     for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) assert.equal(Boolean(T.onBridge(lift.x + dx, lift.z + dz)), false, id + ' bridge clearance');
   }
-  assert.ok(R.LINES.tour.route.LENGTH > 2200);
+  assert.ok(R.LINES.tour.route.LENGTH > 1100, 'two long sightseeing legs');
+  for (const phase of [40,160]) {
+    const speed=(R.timetableAt(1,(phase+.5)*1000).s-R.timetableAt(1,(phase-.5)*1000).s+R.LINES.tour.route.LENGTH)%R.LINES.tour.route.LENGTH;
+    assert.ok(speed>=4.5 && speed<=5.5, 'retain approximately 5m/s cruise speed');
+  }
   assert.ok(R.PILLARS.every(p => T.coastDist(p.x, p.z) < 0)); assert.equal(R.PILLARS.length, 28, '기존 해상84개에서1/3');
   for (const L of Object.values(R.LINES)) {
     const r=L.route;

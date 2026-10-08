@@ -1442,7 +1442,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     scene.fog.far = overview ? 2000 : riding ? 600 : 175;
     const far = overview ? 1100 : riding ? 650 : VIEW_FAR;
     if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
-    if (overview) { camera.position.set(20, 900, -45); camera.lookAt(20, 0, -45); return; }
+    if (overview) { camera.position.set(20, 550, -45); camera.lookAt(20, 0, -45); return; }
     const sin = Math.sin(camYaw); const cos = Math.cos(camYaw); // the low quarter view, turned by dragging (v1.10.2)
     // v1.10.21: tilted by camPitch around the same distance; pulled in toward me while the camera would stand inside a
     // building or house (never closer than CAM_MIN) -- and if even that is inside one (my back to a big building's

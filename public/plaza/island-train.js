@@ -23,14 +23,11 @@
   };
   // Wide seaward sightseeing curves and 40m straight docking corridors.
   const corridor = (x,z,y,dx,dz,id) => [-20,-10,0,10,20].map(k => [x+dx*k,z+dz*k,y,k===0?id:null,dx,dz]);
-  const routes = {
-    tour: [
-      ...corridor(109.7,-9.6,7,0,-1,'B'), [220,-100,12], [230,-230,15], [80,-280,18], [20,-150,18],
-      [0,0,18,null,-.5,Math.sqrt(.75)], [-45,85,15],
-      ...corridor(-90.8,76.2,7,-.8,-.6,'D'), [-230,-10,12], [-220,-180,18], [-110,-100,24],
-      [0,0,24,null,.8,.6], [140,100,18], [270,80,12], [240,0,9], [155,70,7],
-    ],
-  };
+  const routes = { tour: [
+    ...corridor(109.7,-9.6,7,.8,-.6,'B'), [150,-70,12], [120,-160,15], [30,-130,18],
+    [0,0,18,null,-.5,Math.sqrt(.75)], [-45,85,15], ...corridor(-90.8,76.2,7,-.8,-.6,'D'),
+    [-150,30,12], [-145,-95,18], [-65,-60,24], [0,0,24,null,.8,.6], [50,55,14]
+  ] };
   for (const [name,line] of Object.entries(LINES)) {
     const raw = routes[name]; const n=raw.length; const xs=[], zs=[], ys=[], S=[]; const stops={}; let distance=0;
     for(let i=0;i<n;i++) {
@@ -166,7 +163,7 @@
   function liftOf(station) {
     const p = PLATFORMS.find(p => p.station === station);
     // Beyond the deck's end, on the same side of the track: neither shaft nor upper walkway crosses a carriage.
-    return { x: p.x + Math.sin(p.yaw) * 5.5, z: p.z + Math.cos(p.yaw) * 5.5, y: T.heightAt(...STATIONS[station].entry) };
+    return { x: p.x + Math.sin(p.yaw) * (station==='B'?-5.5:5.5), z: p.z + Math.cos(p.yaw) * (station==='B'?-5.5:5.5), y: T.heightAt(...STATIONS[station].entry) };
   }
   // v1.10.47 had 84 offshore supports (79 outer, 5 view). Keep 28 total even on the longer rails.
   const PILLARS = [];

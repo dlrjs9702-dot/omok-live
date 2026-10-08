@@ -2164,7 +2164,7 @@
       .then((data) => {
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
-        if (data.corrected) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // v1.9.6: the server moved me out of someone
+        if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
         if (typeof data.townhallPass === 'boolean') plaza.controller?.setTownhallPass?.(data.townhallPass); // v1.10.41 the mayor's leave
         plaza.controller?.setTrainService?.(data.trainService); plaza.controller?.setTrainShift?.(data.trainShift || 0); // v1.10.47 관광열차 (moved only in tests)
         const riding = plaza.controller?.riding?.();
