@@ -1762,12 +1762,13 @@
   let islandReturning = null; // v1.10.32: a lost thing being given back stays drawn until the owner has taken it
   function showIslandEvents(list) {
     const now = Date.now();
-    for (const [id, at] of islandEventsGone) if (now - at > 60000) islandEventsGone.delete(id);
-    islandEventsNear = list.filter((ev) => !islandEventsGone.has(ev.id) || ev.id === islandReturning);
+    for (const [id, at] of islandEventsGone) if (now - at.at > 60000) islandEventsGone.delete(id);
+    for(const ev of list) { const gone=islandEventsGone.get(ev.id); if(gone && ev.generation>gone.generation) islandEventsGone.delete(ev.id); }
+    islandEventsNear = list.filter((ev) => ev.tree || !islandEventsGone.has(ev.id) || ev.id === islandReturning).map(ev => ev.tree && islandEventsGone.has(ev.id) ? {...ev,available:false,verb:null} : ev);
     plaza.controller?.setEvents?.(islandEventsNear);
   }
   function forgetIslandEvents(ids) {
-    for (const id of ids || []) islandEventsGone.set(id, Date.now());
+    for (const id of ids || []) islandEventsGone.set(id, {at:Date.now(),generation:islandEventsNear.find(e=>e.id===id)?.generation || 0});
     showIslandEvents(islandEventsNear);
   }
   // v1.10.31 잡초 채집: the island's weeds, and pulling one -- the server first hears which (start, standing by it), the
@@ -1777,7 +1778,7 @@
   async function loadWeeds() { try { const data = await api('/api/island/weeds'); plaza.controller?.setWeeds?.(data.weeds); } catch {} }
   async function pullWeed(key) {
     const id = key.slice('weed:'.length);
-    if (!id || weedBusy) return;
+    if (!id || weedBusy || islandEventBusy) return;
     weedBusy = true;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
@@ -1788,13 +1789,13 @@
       const body = JSON.stringify({ weedId: id, requestId: crypto.randomUUID() });
       let data;
       try { data = await api('/api/island/weed/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; data = await api('/api/island/weed/finish', { method: 'POST', body }); }
-      plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
+      plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
       showToast(`🌱 잡초 +1${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       if (data.bonus) loadPoints();
     } catch (error) {
       showToast(error.message);
       if (error.data?.error === 'WEED_GONE') plaza.controller?.removeWeeds?.([id]);
-    } finally { weedBusy = false; }
+    } finally { plaza.controller?.finishGather?.(); api('/api/island/weed/cancel', {method:'POST',body:'{}'}).catch(()=>{}); weedBusy = false; }
   }
   // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
   const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
@@ -1985,13 +1986,22 @@
   let islandEventBusy = false;
   async function solveIslandEvent(key) {
     const id = key.split(':')[2];
-    if (!id || islandEventBusy) return;
+    if (!id || islandEventBusy || weedBusy) return;
     islandEventBusy = true;
     if (key.startsWith('ev:lost_owner:')) islandReturning = id;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
+      const ev = islandEventsNear.find(e => e.id === id && e.resource);
+      let data;
+      if (ev) {
+        const spec=await api('/api/island/resource/start',{method:'POST',body:JSON.stringify({id})});
+        const done=await new Promise(resolve=>{if (!plaza.controller?.gatherResource?.(ev,spec,resolve)) resolve(false);});
+        if (!done) return;
+        const body=JSON.stringify({id,requestId:crypto.randomUUID()});
+        try { data=await api('/api/island/resource/finish',{method:'POST',body}); } catch(error) { if(error.status) throw error; data=await api('/api/island/resource/finish',{method:'POST',body}); }
+      } else data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
+      if (ev) plaza.controller?.finishGather?.(true);
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
       if (data.action === 'quest') { showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []); openQuestTalk(data); if (data.reward) loadPoints(); return; } // v1.10.37
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
@@ -1999,15 +2009,15 @@
       // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back
       // v1.10.32: given back hand to hand (the owner takes it, then goes), picked with a basket
       if (data.action === 'return') plaza.controller?.returnLost?.(id);
-      else plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : 'pickup');
+      else if (!ev) plaza.controller?.playMine?.(key.startsWith('ev:photo:') ? 'photo' : 'pickup');
       if (/^ev:(herb|berry|mushroom|candy):/.test(key)) plaza.controller?.holdBasket?.();
       if (data.points) loadPoints();
-      if (data.action !== 'pickup') islandEventsGone.set(id, Date.now());
+      if (data.action !== 'pickup') islandEventsGone.set(id, {at:Date.now(),generation:islandEventsNear.find(e=>e.id===id)?.generation || 0});
       showIslandEvents(data.events || islandEventsNear);
     } catch (error) {
       showToast(error.message);
       if (error.status === 409 && /사라졌/.test(error.message)) forgetIslandEvents([id]);
-    } finally { islandEventBusy = false; islandReturning = null; }
+    } finally { plaza.controller?.finishGather?.(); api('/api/island/resource/cancel',{method:'POST',body:'{}'}).catch(()=>{}); islandEventBusy = false; islandReturning = null; }
   }
 
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 30,000P (v1.10.35) on a second press that names the

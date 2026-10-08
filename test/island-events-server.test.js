@@ -60,39 +60,42 @@ async function boot(t, dir) {
   return { req, issue, enter, release, stop, logs: () => logs };
 }
 
-test('공용 이벤트: 가까운 것만 알리고, 먼저 해결한 한 사람만 받으며, 다시 15개가 된다', async (t) => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'island-events-'));
-  t.after(() => fs.rm(dir, { recursive: true, force: true }));
-  const server = await boot(t, dir);
-  const { req } = server;
-  const [a, b] = [await server.enter(await server.issue('이벤트에이')), await server.enter(await server.issue('이벤트비'))];
-  assert.ok(a && b, server.logs());
-  const all = async () => (await req('/api/test/island/events', a)).data.events;
-  const list = await all();
-  assert.equal(list.length, 15);
-  const stand = (s, p) => req('/api/plaza/state', s, { x: p.x, z: p.z, yaw: 0, moving: false });
-  const far = await stand(a, { x: 0, z: 8 });
-  for (const ev of far.data.events) assert.ok(Math.hypot(ev.x, ev.z - 8) <= 90.01, '가까운 것만');
-  assert.ok(far.data.events.length < 16);
-
-  const finds = list.filter((e) => !e.npc);
-  const first = finds[0];
-  assert.equal((await req('/api/island/event', a, { id: first.id })).data.error, 'TOO_FAR');
-  await stand(a, first); await stand(b, first);
-  const got = await req('/api/island/event', a, { id: first.id });
-  assert.equal(got.status, 200, JSON.stringify(got.data));
-  const late = await req('/api/island/event', b, { id: first.id });
-  assert.equal(late.data.error, 'EVENT_GONE');
-  const after = await all();
-  assert.equal(after.length, 15, '다시 15개');
-  assert.ok(!after.some((e) => e.id === first.id));
-  const bag = (await req('/api/island/bag', a)).data;
-  const balance = (await req('/api/donation', a)).data.balance;
-  assert.ok(bag.items.length > 0 || balance > 100_000, '받은 것이 있다');
-
-  // two at once: one of them
-  const second = after.find((e) => !e.npc && e.id !== first.id);
-  await stand(a, second); await stand(b, second);
-  const both = await Promise.all([req('/api/island/event', a, { id: second.id }), req('/api/island/event', b, { id: second.id })]);
-  assert.deepEqual(both.map((r) => r.status).sort(), [200, 409], JSON.stringify(both.map((r) => r.data)));
+test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·새세대·직접 수확·원장 유지', async t => {
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'life-server-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+  let server=await boot(t,dir);let req=server.req;
+  const ka=await server.issue('생활가'),kb=await server.issue('생활나');let a=await server.enter(ka),b=await server.enter(kb);
+  const all=async()=> (await req('/api/test/island/events',a)).data.events;
+  const stand=(s,p)=>req('/api/plaza/state',s,{x:p.x,z:p.z,yaw:0,moving:true});
+  const list=await all();assert.ok(list.length>15);
+  const one=list.find(e=>e.type==='mushroom');
+  assert.equal((await req('/api/island/resource/start',a,{id:one.id})).data.error,'TOO_FAR');
+  await stand(a,one);await stand(b,{x:one.x+1.2,z:one.z});
+  assert.equal((await req('/api/island/event',a,{id:one.id})).data.error,'COLLECT_NOT_STARTED');
+  const start=await req('/api/island/resource/start',a,{id:one.id});assert.equal(start.status,200);
+  const rid=crypto.randomUUID();assert.equal((await req('/api/island/resource/finish',a,{id:one.id,requestId:rid})).data.error,'COLLECT_TOO_SOON');
+  const moved=await stand(a,{x:0,z:8});assert.equal(moved.data.corrected,true);assert.equal(moved.data.x,one.x);
+  assert.equal((await req('/api/island/resource/start',b,{id:one.id})).status,200);
+  await sleep(1050);const both=await Promise.all([req('/api/island/resource/finish',a,{id:one.id,requestId:rid}),req('/api/island/resource/finish',b,{id:one.id,requestId:crypto.randomUUID()})]);
+  assert.deepEqual(both.map(r=>r.status).sort(),[200,409]);
+  const winner=both[0].status===200?a:b;
+  if(winner===a){await stand(a,one);assert.equal((await req('/api/island/resource/finish',a,{id:one.id,requestId:rid})).status,200);}
+  const bag=async s=>(await req('/api/island/bag',s)).data.items;
+  assert.equal((await bag(winner)).find(e=>e.itemId==='mushroom').qty,1);
+  assert.equal((await req('/api/island/resource/start',winner,{id:one.id})).data.error,'EVENT_GONE');
+  await req('/api/island/resource/cancel',a,{});await req('/api/island/resource/cancel',b,{});
+  await stand(b,{x:0,z:8});await req('/api/test/island/events',a,{grow:one.id});
+  const grown=(await all()).find(e=>e.id===one.id);await stand(winner,grown);
+  await req('/api/island/resource/start',winner,{id:one.id});await req('/api/island/resource/cancel',winner,{});
+  assert.equal((await req('/api/island/resource/finish',winner,{id:one.id,requestId:crypto.randomUUID()})).data.error,'COLLECT_NOT_STARTED');
+  const tree=(await all()).find(e=>e.type==='berry');await stand(a,tree);await stand(b,{x:0,z:8});
+  const fruit=await req('/api/island/resource/start',a,{id:tree.id});assert.equal(fruit.data.anim,'pickFruit');assert.equal(fruit.data.ms,1800);
+  await sleep(1850);const picked=await req('/api/island/resource/finish',a,{id:tree.id,requestId:crypto.randomUUID()});assert.equal(picked.status,200,JSON.stringify(picked.data));
+  assert.equal(picked.data.item.qty,1);assert.equal(picked.data.events.find(e=>e.id===tree.id).available,false);
+  await req('/api/test/island/events',a,{grow:tree.id});const regrown=(await all()).find(e=>e.id===tree.id);assert.deepEqual([regrown.x,regrown.z],[tree.x,tree.z]);
+  await req('/api/island/resource/cancel',a,{});
+  const coin=(await all()).find(e=>e.type==='coin');await stand(a,coin);const before=(await req('/api/donation',a)).data.balance;
+  await req('/api/island/resource/start',a,{id:coin.id});await sleep(1050);const paid=await req('/api/island/resource/finish',a,{id:coin.id,requestId:crypto.randomUUID()});assert.equal(paid.data.points,2000);assert.equal((await req('/api/donation',a)).data.balance,before+2000);
+  const previousIds=(await all()).map(e=>e.id);await server.stop();server=await boot(t,dir);req=server.req;a=await server.enter(ka);
+  assert.equal((await bag(a)).find(e=>e.itemId==='berry').qty,1);
+  assert.ok((await all()).every(e=>!previousIds.includes(e.id)));
 });

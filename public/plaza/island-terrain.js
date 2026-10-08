@@ -374,9 +374,27 @@
     return { benches, lamps, beds, seats };
   }
   // Things a character walks around, with their radius (the same circles the browser uses).
+  // A small deterministic subset; both server and renderer use the same trunk and approach.
+  let harvestNature = null; let harvestCache = null;
+  function harvestTrees() {
+    const n = nature(); if (harvestNature === n) return harvestCache;
+    const out = [];
+    for (const t of n.trees) {
+      const p = { x: t.x, z: t.z + 0.685 };
+      if (Math.hypot(p.x,p.z)<PLAZA_R+4) continue;
+      if (!walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || streamDist(p.x, p.z) < STREAM_HALF + 2 || inTownhall(p.x, p.z, 3)) continue;
+      if (n.trees.some(o => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some(o => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) continue;
+      if (BUILDINGS.some(b => b.kind !== 'townhall' && Math.hypot(p.x-b.x,p.z-b.z)<(b.kind === 'hall' ? 14 : 7)) || STATUE_SPOTS.some(b => Math.hypot(p.x-b.x,p.z-b.z)<3) || n.lampSpots.some(b => Math.hypot(p.x-b.x,p.z-b.z)<1.2)) continue;
+      if (out.some(o => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue;
+      out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
+      if (out.length === 20) break;
+    }
+    harvestNature = n; harvestCache = out; return out;
+  }
   function natureSolids() {
     const n = nature();
-    return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
+    const harvest = harvestTrees();
+    return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some(h => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
   }
 
   // --- seasons (v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전, 사용자 결정 2026-10-05) ----------------------------
@@ -407,5 +425,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

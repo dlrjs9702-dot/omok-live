@@ -274,6 +274,9 @@
     REGISTRY[`tree.fruitLayer.${season}`] = life(`tree_fruit_layer_${season}`);
   }
   REGISTRY['prop.harvest.fruit'] = life('harvest_fruit_hand');
+  for (const kind of ['harvest', 'fruitLayer']) REGISTRY[`tree.${kind}`] = { near: 35,
+    seasons: Object.fromEntries(['spring','summer','autumn','winter'].map(s => [s, REGISTRY[`tree.${kind}.${s}`].url])),
+    low: { seasons: Object.fromEntries(['spring','summer','autumn','winter'].map(s => [s, REGISTRY[`tree.${kind}.${s}`].low.url])) } };
   for (const name of ['flowerbed_empty', 'flowerbed_bloom', 'photo_frame', 'fishing_rod', 'watering_can', 'camera_bag']) REGISTRY[`quest.${name}`] = life(`quest_${name}`);
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

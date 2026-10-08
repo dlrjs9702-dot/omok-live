@@ -815,11 +815,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
 
 // v1.10.11 서버 공용 랜덤 이벤트: the minimap shows 「!」 only for events inside its round view; standing at one shows
 // 「SPACE · 줍기」 (or 채집); solving it takes it off every screen at once.
-test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른 사람 화면에서도 바로 사라진다', async ({ browser, request }) => {
+test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화면 소멸', async ({ browser, request }) => {
   test.setTimeout(180000); // two 3D island pages
   const a = await intoPlaza(browser, request, '이벤트손님');
   const b = await intoPlaza(browser, request, '이벤트구경');
-  const target = (await get(request, '/api/test/island/events', a.token)).data.events.find((e) => !e.npc);
+  const target = (await get(request, '/api/test/island/events', a.token)).data.events.find((e) => e.type === 'mushroom' && e.state === 'open');
   const key = `ev:${target.type}:${target.id}`;
   const spotNear = (page, from, min, max) => page.evaluate(({ from, min, max }) => { // somewhere one may stand, min..max away
     const d = window.PlazaDebug();
@@ -833,7 +833,7 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), far);
   await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
   await expect.poll(() => shownMatchesRange(a.page), { timeout: 5000 }).toBe(true);
-  expect(await a.page.evaluate((t) => window.PlazaDebug().markers.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < 0.01), target)).toBe(true);
+  expect(await a.page.evaluate((t) => window.PlazaDebug().markers.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < 0.01), target)).toBe(false);
 
   // b watches from nearby; a walks up to it: the 「!」 is on a's minimap and Space solves it
   const watch = await spotNear(b.page, target, 12, 20);
@@ -841,14 +841,14 @@ test('공용 이벤트: 미니맵 범위 안에서만 !, SPACE로 해결, 다른
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 10000 }).toBe(true);
   const close = await spotNear(a.page, target, 0.4, 0.8); // nearer than any weed beside it (the nearest thing is what Space does)
   await a.page.evaluate(({ x, z }) => window.PlazaWarp(x, z), close);
-  await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · (줍기|채집)/, { timeout: 10000 });
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().minimap.markers), { timeout: 5000 }).toBeGreaterThan(0);
+  await expect(a.page.locator('#plazaHint')).toHaveText(/SPACE · 버섯 · 채집/, { timeout: 10000 });
+  expect(await a.page.evaluate(t => window.PlazaDebug().markers.some(m => Math.hypot(m.x-t.x,m.z-t.z)<0.01),target)).toBe(false);
   expect(await shownMatchesRange(a.page)).toBe(true);
   await a.page.keyboard.press('Space');
   await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 5000 });
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
-  expect((await get(request, '/api/test/island/events', a.token)).data.events.length).toBe(15);
+  expect((await get(request, '/api/test/island/events', a.token)).data.events.find(e=>e.id===target.id).state).toBe('growing');
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
 });
@@ -959,7 +959,7 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(list.length);
   const [id, x, z] = list.find(([, wx, wz]) => Math.hypot(wx, wz) > 30 && Math.hypot(wx - 20, wz - 20) > 5);
   await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 뽑기');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 · 뽑기');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
   const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
   const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
