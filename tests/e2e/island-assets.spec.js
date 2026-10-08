@@ -1,6 +1,31 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, expectNoScriptError } = require('./skin-support');
 
+test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급·자원 유지', async ({browser,request}) => {
+  test.setTimeout(120000);
+  for (const kind of ['weed','resource']) {
+    const who=await island(browser,request,`이탈${kind}`,{__only:true});const {page,token}=who;
+    const target=kind==='weed' ? (await get(request,'/api/island/weeds',token)).data.weeds.map(([id,x,z])=>({id,x,z}))[0]
+      : (await get(request,'/api/test/island/events',token)).data.events.find(e=>e.type==='berry' && e.state==='open');
+    const placed=await post(request,'/api/plaza/state',token,{x:target.x,z:target.z,yaw:0,moving:false});expect(placed.status).toBe(200);
+    await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),x:placed.data.x,z:placed.data.z})}));
+    await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),placed.data);
+    await expect(page.locator('#plazaHint')).toContainText(kind==='weed'?'잡초':'나무 열매');
+    await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000)); // Keep the short pre-completion action observable on slow software renderers.
+    const started=page.waitForResponse(r=>r.url().endsWith(`/api/island/${kind}/start`));
+    const cancelled=page.waitForRequest(r=>r.url().endsWith(`/api/island/${kind}/cancel`),{timeout:10000});
+    await page.keyboard.press('Space');expect((await started).status()).toBe(200);
+    await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe(kind);
+    // An immediate session end bypasses the modal/frame cancellation path, exercising stop/dispose itself.
+    await page.evaluate(()=>document.getElementById('logoutConfirmBtn').click());
+    expect((await cancelled).postDataJSON()).toMatchObject(kind==='weed'?{weedId:target.id}:{id:target.id});
+    await expect(page.locator('#gateView')).toBeVisible();
+    if(kind==='weed') expect((await get(request,'/api/island/weeds',who.admin)).data.weeds.some(([id])=>id===target.id)).toBe(true);
+    else expect((await get(request,'/api/test/island/events',who.admin)).data.events.find(e=>e.id===target.id)).toMatchObject({state:'open'});
+    await expectNoScriptError(page);await who.context.close();
+  }
+});
+
 test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·이동 재개·재생·취소', async ({browser,request}) => {
   test.setTimeout(180000);
   const {REGISTRY,wardrobeOf}=require('../../public/plaza/island-assets');
@@ -10,8 +35,12 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(()=>window.PlazaDebug()?.assets.shown?.['character.base']),{timeout:60000}).toBe('model');
   const tree=(await get(request,'/api/test/island/events',a.token)).data.events.find(e=>e.type==='berry' && e.state==='open');
   const key=`ev:berry:${tree.id}`;
-  await b.page.evaluate(t=>window.PlazaDebug().teleport(t.x+5,t.z+5),tree);
-  await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),tree);
+  for(const who of [a,b]) await who.page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),...(who.fixtureAt||{})})}));
+  const observer=await post(request,'/api/plaza/state',b.token,{x:tree.x,z:tree.z+1.5,yaw:0,moving:false});expect(observer.status).toBe(200);
+  b.fixtureAt={x:observer.data.x,z:observer.data.z};
+  await b.page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),observer.data);
+  const placeHarvester=async()=>{const p=await post(request,'/api/plaza/state',a.token,{x:tree.x,z:tree.z,yaw:0,moving:false});expect(p.status).toBe(200);a.fixtureAt={x:p.data.x,z:p.data.z};await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),a.fixtureAt);};
+  await placeHarvester();
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 나무 열매 · 따기',{timeout:15000});
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:15000}).toBe(true);
   expect(await a.page.evaluate(t=>window.PlazaDebug().markers.some(m=>Math.hypot(m.x-t.x,m.z-t.z)<1),tree)).toBe(false);
@@ -27,7 +56,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   await a.page.keyboard.down('ArrowRight');await a.page.keyboard.down('KeyD');await a.page.waitForTimeout(250);await a.page.keyboard.up('KeyD');
   const held=await a.page.evaluate(()=>{const d=window.PlazaDebug();return {x:d.x,z:d.z,yaw:d.camYaw,gait:d.gait};});
   expect(Math.hypot(at.x-held.x,at.z-held.z)).toBeLessThan(.05);expect(held.gait).toBe('pickFruit');expect(Math.abs(held.yaw-at.yaw)).toBeGreaterThan(.05);
-  release();
+  a.fixtureAt=null;release();
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather),{timeout:10000}).toBe(null);
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gait),{timeout:5000}).toBe('walk');
   await expect.poll(()=>a.page.evaluate(p=>Math.hypot(window.PlazaDebug().x-p.x,window.PlazaDebug().z-p.z),at),{timeout:5000}).toBeGreaterThan(.2);await a.page.keyboard.up('ArrowRight');
@@ -38,8 +67,10 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   // Drop the old removal guard only when a newer server generation is visible.
   await a.page.unroute('**/api/island/resource/finish');
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:10000}).toBe(true);
-  await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),tree);
-  await expect(a.page.locator('#plazaHint')).toContainText('나무 열매');await a.page.keyboard.press('Space');
+  await placeHarvester();
+  await expect(a.page.locator('#plazaHint')).toContainText('나무 열매');
+  await a.page.clock.install();await a.page.clock.pauseAt(new Date(Date.now()+1000));
+  await a.page.keyboard.press('Space');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe('resource');await a.page.keyboard.press('Escape');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather)).toBe(null);
   expect((await get(request,'/api/island/bag',a.token)).data.items.find(i=>i.itemId==='berry').qty).toBe(1);

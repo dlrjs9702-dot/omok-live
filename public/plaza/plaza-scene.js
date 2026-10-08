@@ -1868,7 +1868,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   resize(); placeCamera(true);
 
   function start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); }
-  function stop() { running = false; cancelAnimationFrame(raf); keys.clear(); }
+  function stop() { if (gather?.waitServer) endGather(false); running = false; cancelAnimationFrame(raf); keys.clear(); }
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
