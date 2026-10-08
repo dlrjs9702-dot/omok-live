@@ -457,6 +457,7 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
   const session = sessions.get(token);
   if (!session) return false;
   sessions.delete(token);
+  dropPlazaPresence(token); // End pending weed/resource collection and remove the released visit immediately.
   soloGames.delete(token); // v1.10.37: a game left behind is void
   townhallPass.delete(token); townhallStrict.delete(token); // v1.10.41: the mayor's leave lasts the visit
   fishCasts.delete(token); // v1.10.42: a cast left in the water ends with the visit
