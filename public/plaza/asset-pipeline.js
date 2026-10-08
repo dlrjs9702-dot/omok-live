@@ -96,6 +96,7 @@
     const actionFor = (state) => actions[state] || (state === 'run' ? actions.walk || actions.idle : actions.idle) || null;
     const groundSpeed = { walk: speeds.walk || walkSpeed, run: speeds.run || walkSpeed * 1.6 };
     let state = 'idle'; let current = actionFor('idle'); current?.play();
+    let onceHeld = false;
     let once = null; // a one-off clip (play) holds until it has finished
     let held = null; // v1.10.42: a looping clip (loop) kept until release() -- fishing's wait and reel
     function fadeTo(action) {
@@ -110,7 +111,7 @@
       weights: () => Object.fromEntries(Object.entries(actions).map(([name, action]) => [name, action.isRunning() ? action.getEffectiveWeight() : 0])),
       update(dt, speed) {
         speed = Math.max(0, speed || 0);
-        if (once && !once.isRunning()) { once = null; state = held || 'idle'; fadeTo(held ? actions[held] : actionFor('idle')); }
+        if (once && !onceHeld && !once.isRunning()) { once = null; state = held || 'idle'; fadeTo(held ? actions[held] : actionFor('idle')); }
         if (!once && !held) {
           const next = nextGait(state, speed, walkSpeed);
           if (next !== state) { state = next; fadeTo(actionFor(next)); }
@@ -120,11 +121,13 @@
         mixer.update(dt);
       },
       // a named extra clip played once (e.g. 'wave'), then back to the gait; false when the model has no such clip
-      play(name) {
+      play(name, { ms = null, hold = false, elapsed = 0 } = {}) {
         const action = actions[name]; if (!action) return false;
-        action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = false; action.timeScale = 1;
-        state = name; once = action; fadeTo(action); return true;
+        action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = hold; action.timeScale = ms ? action.getClip().duration / (ms / 1000) : 1; onceHeld = hold;
+        state = name; once = action; fadeTo(action); action.time = Math.min(action.getClip().duration, elapsed * action.timeScale); return true;
       },
+      seekOnce(elapsed) { if (once && onceHeld) { const time=Math.min(once.getClip().duration,Math.max(0,elapsed)*once.timeScale); mixer.update(Math.max(0,(time-once.time)/once.timeScale)); } },
+      finishOnce() { onceHeld = false; once?.stop(); once = null; state = ''; current = null; },
       loop(name) { const action = actions[name]; if (!action) return false; action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = 1; held = name; if (!once) { state = name; fadeTo(action); } return true; },
       release() { held = null; if (!once) { state = 'idle'; fadeTo(actionFor('idle')); } },
       dispose() { mixer.stopAllAction(); mixer.uncacheRoot(rootObject); },

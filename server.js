@@ -871,9 +871,9 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // v1.10.8: t = when the server took that pose (ms), so each screen spaces the poses by when they happened, not by
   // when its snapshot arrived
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, carry, act, actN, seat, ride, platform }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, x, z, yaw, moving, t: at, carry: carry || null, act: act || null, actN: actN || 0, seat: seat || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, x, z, yaw, moving, t: at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
 }
-function dropPlazaPresence(token) { freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   for (const [token, entry] of plazaPresence) {
     const session = sessions.get(token);
@@ -912,6 +912,13 @@ islandEventTimer.unref?.();
 // player's GatherWeed): start says which weed (standing by it), finish pulls it -- once, for one player, then everyone's
 // screen drops it.
 const IslandWeeds = require('./lib/island-weeds');
+function collectionPose(token,pull=null) {
+  const p=plazaPresence.get(token); if(!p) return;
+  if(pull) Object.assign(p,{x:pull.pos.x,z:pull.pos.z,yaw:Math.atan2(pull.target.x-pull.pos.x,pull.target.z-pull.pos.z),moving:false,act:pull.anim,actN:pull.at,actAt:pull.at,actMs:pull.ms,actTarget:pull.target});
+  else if (['gather','pickup','pickFruit'].includes(p.act)) { p.act=null; delete p.actAt; delete p.actMs; delete p.actTarget; }
+  plazaDirty=true;
+}
+const resourcePulls = new Map();
 const weedPulls = new Map(); // session token -> { weedId, at, requestId, result }
 function broadcastIsland(type, data) { for (const entry of [...lobbyStreams]) { try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } } }
 async function weedState(now = nowMs()) {
@@ -2975,7 +2982,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.49' });
+    return sendJson(res, 200, { ok: true, version: '1.10.50' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3508,6 +3515,8 @@ async function requestHandler(req, res) {
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
     const { look, title } = avatarLookOf(equippedSkinCache.get(account));
+    const collecting = [resourcePulls.get(session.token), weedPulls.get(session.token)].find(p => p && !p.result && nowMs() - p.at < 15000);
+    if (!collecting) { const r=resourcePulls.get(session.token); if(r && nowMs()-r.at>15000) resourcePulls.delete(session.token); const w = weedPulls.get(session.token); if (w && !w.result) weedPulls.delete(session.token); }
     const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
     trainService();
     const ride = trainRiders.get(session.token); // v1.10.47: on the train, I am where its seat is (the clock says), not where I say
@@ -3520,7 +3529,7 @@ async function requestHandler(req, res) {
       spot = IslandTrain.platformClamp(platform.line, platform.station, wanted.x, wanted.z);
       const entry = IslandTrain.stationOf(platform.station).spot; plazaLastPos.set(session.token, entry); notePlazaSpot(account, entry.x, entry.z);
     } else {
-      spot = plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+      spot = collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
       plazaLastPos.set(session.token, spot);
       notePlazaSpot(account, spot.x, spot.z);
@@ -3528,11 +3537,11 @@ async function requestHandler(req, res) {
     plazaPresence.set(session.token, {
       id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
-      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: body.moving === true, at: nowMs(),
+      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: nowMs(),
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
-      ...(() => { const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
+      ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null }; const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
@@ -3710,11 +3719,12 @@ async function requestHandler(req, res) {
     const state = await weedState();
     return sendJson(res, 200, { ok: true, day: state.day, weeds: IslandWeeds.active(state).map((w) => [w.id, w.x, w.z]), pullMs: IslandWeeds.PULL_MS });
   }
-  if ((pathname === '/api/island/weed/start' || pathname === '/api/island/weed/finish') && req.method === 'POST') {
+  if (['/api/island/weed/start', '/api/island/weed/finish', '/api/island/weed/cancel'].includes(pathname) && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
     if (!checkRateLimit(`island-weed:${session.token}`, 120, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
+    if (pathname.endsWith('/cancel')) { if ((!body.weedId || weedPulls.get(session.token)?.weedId===body.weedId) && !weedPulls.get(session.token)?.result) weedPulls.delete(session.token); collectionPose(session.token); return sendJson(res, 200, { ok: true }); }
     const weedId = typeof body.weedId === 'string' && /^(w\d{1,5}|g\d{4,6}-\d{1,5})$/.test(body.weedId) ? body.weedId : null;
     if (!weedId) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const now = nowMs();
@@ -3723,7 +3733,10 @@ async function requestHandler(req, res) {
       const weed = IslandWeeds.find(await weedState(now), weedId);
       if (!weed) return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.');
       if (!near(weed)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-      weedPulls.set(session.token, { weedId, at: now });
+      if (resourcePulls.get(session.token) && !resourcePulls.get(session.token).result) return sendError(res, 409, 'COLLECT_BUSY', '채집 중입니다.');
+      const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+      weedPulls.set(session.token, { weedId, at: now, ms: IslandWeeds.PULL_MS, anim: 'gather', pos: { x: pos.x, z: pos.z }, target: { x: weed.x, z: weed.z } });
+      collectionPose(session.token,weedPulls.get(session.token));
       return sendJson(res, 200, { ok: true, pullMs: IslandWeeds.PULL_MS });
     }
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
@@ -3738,7 +3751,7 @@ async function requestHandler(req, res) {
     if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
     if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastIsland('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
     const result = { ok: true, weedId, bag: outcome.bag, bonus: outcome.bonus || 0, balance: outcome.balance ?? null };
-    weedPulls.set(session.token, { ...pull, requestId: body.requestId, result });
+    weedPulls.set(session.token, { ...pull, requestId: body.requestId, result }); collectionPose(session.token);
     if (outcome.applied) {
       broadcastIsland('islandWeed', { gone: [weedId] });
       islandProgress('weed_pull', account, 1);
@@ -3932,14 +3945,38 @@ async function requestHandler(req, res) {
     townhallStrict.add(session.token); townhallPass.delete(session.token);
     return sendJson(res, 200, { ok: true });
   }
-  if (pathname === '/api/island/event' && req.method === 'POST') {
+  if (['/api/island/event', '/api/island/resource/start', '/api/island/resource/finish', '/api/island/resource/cancel'].includes(pathname) && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
-    if (!checkRateLimit(`island-event:${session.token}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    if (!checkRateLimit(`island-event:${session.token}`, pathname === '/api/island/event' ? 60 : 120, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
+    if (pathname.endsWith('/cancel')) { if ((!body.id || resourcePulls.get(session.token)?.id===body.id) && !resourcePulls.get(session.token)?.result) resourcePulls.delete(session.token); collectionPose(session.token); return sendJson(res, 200, { ok: true }); }
     const id = typeof body.id === 'string' && /^[a-z0-9]{2,24}$/.test(body.id) ? body.id : null;
     if (!id) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const account = pointAccountForSession(session);
+    const resource = islandEvents.events.get(id);
+    const isResource = resource && !resource.npc;
+    let pull = resourcePulls.get(session.token);
+    if (pathname.endsWith('/start')) {
+      if (getCurrentRoom(session) || trainRiders.has(session.token) || trainVisitors.has(session.token)) return sendError(res, 409, 'COLLECT_BUSY', '지상에서 다시 시도해 주세요.');
+      if (!isResource || resource.state !== 'open' || resource.busy) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
+      const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+      if (!pos || Math.hypot(pos.x-resource.x,pos.z-resource.z)> (resource.tree ? 1.7 : 2.5)) return sendError(res,409,'TOO_FAR','가까이 가서 다시 시도해 주세요.');
+      if ([pull,weedPulls.get(session.token)].some(p => p && !p.result && nowMs()-p.at < 15000)) return sendError(res,409,'COLLECT_BUSY','채집 중입니다.');
+      const ms = resource.tree ? 1800 : 1000; const anim = resource.tree ? 'pickFruit' : 'pickup';
+      const stand = resource.tree ? {x:resource.x,z:resource.z} : {x:pos.x,z:pos.z};
+      if (resource.tree && [...plazaPresence].some(([token,p]) => token !== session.token && Math.hypot(p.x-stand.x,p.z-stand.z)<0.9)) return sendError(res,409,'COLLECT_BUSY','자리가 비면 다시 시도해 주세요.');
+      pull = { id, generation:resource.generation, at:nowMs(), ms, anim, pos:stand, target:resource.tree || {x:resource.x,z:resource.z} };
+      resourcePulls.set(session.token,pull); collectionPose(session.token,pull);
+      return sendJson(res,200,{ok:true,id,ms,anim,target:pull.target,pos:stand});
+    }
+    if (pathname.endsWith('/finish')) {
+      if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res,400,'BAD_REQUEST','잘못된 요청입니다.');
+      if (pull?.result && pull.requestId === body.requestId && pull.id === id) return sendJson(res,200,pull.result);
+      if (!pull || pull.result || pull.id !== id || nowMs()-pull.at > 15000) return sendError(res,409,'COLLECT_NOT_STARTED','다시 시도해 주세요.');
+      if (nowMs()-pull.at < pull.ms) return sendError(res,409,'COLLECT_TOO_SOON','다시 시도해 주세요.');
+      if (!isResource || resource.state !== 'open' || resource.generation !== pull.generation) { resourcePulls.delete(session.token); return sendError(res,409,'EVENT_GONE','이미 사라졌습니다.'); }
+    } else if (isResource) return sendError(res,409,'COLLECT_NOT_STARTED','채집을 시작해 주세요.');
     if (id.startsWith('quest') && IslandQuests.isOpen(id.slice(5), nowMs())) { // v1.10.37 연계 퀘스트: talking to the islander
       const story = id.slice(5); const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       const week = questWeek();
@@ -3954,18 +3991,19 @@ async function requestHandler(req, res) {
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
     if (claimed.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-    if (claimed.error) return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
+    if (claimed.error) { resourcePulls.delete(session.token); return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.'); }
     if (claimed.action === 'talk') { // v1.10.34: the owner's request -- where the thing lies, for my map; nothing paid
       const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
       return sendJson(res, 200, { ok: true, action: 'talk', points: claimed.points, at: { x: claimed.event.x, z: claimed.event.z }, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
     }
     let outcome;
     try {
-      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());
-      else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
+      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());
+      else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : isResource ? `event:${id}:${pull.generation}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
     if (!outcome.reason && claimed.action === 'item' && IslandFishing.DEX_IDS.has(claimed.item)) await pointStore.dexNote({ userId: account, entry: claimed.item }).catch(() => {}); // v1.10.42 도감
     if (outcome.reason) {
+      resourcePulls.delete(session.token);
       islandEvents.settle(claimed, false, account);
       if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
       if (outcome.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
@@ -3976,10 +4014,17 @@ async function requestHandler(req, res) {
     if (claimed.event?.type) islandProgress(claimed.event.type, account, 1); // v1.10.37 연계 퀘스트 (e.g. beach_trash)
     if (claimed.points || outcome.bonus) notifyPointsChanged([account]); // v1.10.31: or the week's life bonus
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    return sendJson(res, 200, { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
-      points: claimed.points || 0, bonus: outcome.bonus || 0, balance: outcome.balance ?? null, events: at ? islandEvents.nearby(at.x, at.z, account) : [] });
+    const result = { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
+      points: claimed.points || 0, bonus: outcome.bonus || 0, balance: outcome.balance ?? null, events: at ? islandEvents.nearby(at.x, at.z, account) : [] };
+    if (isResource) { resourcePulls.set(session.token,{...pull,requestId:body.requestId,result}); collectionPose(session.token); }
+    return sendJson(res,200,result);
   }
   // Test-only: every event (tests walk to one), and a fresh set.
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'POST') {
+    const body=await parseJson(req); const e=islandEvents.events.get(body.grow);
+    if(e?.state === 'growing') e.readyAt=nowMs();
+    broadcastIslandRemoved(islandEvents.expire()); return sendJson(res,200,{ok:true});
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
   }
@@ -4717,7 +4762,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.49 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.50 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

@@ -41,7 +41,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     'halloween.pumpkinA', 'halloween.pumpkinB', 'halloween.stack', 'halloween.hay', 'halloween.scarecrow', 'halloween.cauldron', 'halloween.broom',
     'halloween.bunting', 'halloween.lights', 'halloween.bat', 'halloween.candyBag', 'halloween.candyBasket',
     'townhall.wall', 'townhall.post', 'townhall.corner', 'townhall.gatePillar', 'townhall.planter', 'townhall.lampA', 'townhall.lampB',
-    ...['spring', 'summer', 'autumn', 'winter'].flatMap((s) => [`tree.harvest.${s}`, `tree.fruitLayer.${s}`]), 'prop.harvest.fruit',
+    ...['spring', 'summer', 'autumn', 'winter'].flatMap((s) => [`tree.harvest.${s}`, `tree.fruitLayer.${s}`]), 'tree.harvest', 'tree.fruitLayer', 'prop.harvest.fruit',
     ...['flowerbed_empty', 'flowerbed_bloom', 'photo_frame', 'fishing_rod', 'watering_can', 'camera_bag'].map((s) => `quest.${s}`),
     'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna'].map((f) => `fish.${f}`)].sort());
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
@@ -77,9 +77,9 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
     for (const season of P.SEASONS) {
       const e = P.entryOf(REGISTRY, id, [], season);
-      assert.match(e.url, new RegExp(`^/assets/island/(seasonal-v2|additions-v1|gaps-v1)/${season}/`), `${id} ${season}`);
+      assert.match(e.url, id.startsWith('tree.') ? new RegExp(`^/assets/island/life-v1/tree_(harvest|fruit_layer)_${season}\\.glb$`) : new RegExp(`^/assets/island/(seasonal-v2|additions-v1|gaps-v1)/${season}/`), `${id} ${season}`);
       await check(id, e.url, season);
-      if (entry.low) { assert.ok(e.lowUrl.includes(`/${season}/`), `${id} ${season} Low`); await check(id, e.lowUrl, `${season} Low`); }
+      if (entry.low) { assert.ok(e.lowUrl.includes(id.startsWith('tree.') ? `_${season}_low.glb` : `/${season}/`), `${id} ${season} Low`); await check(id, e.lowUrl, `${season} Low`); }
     }
     assert.equal(P.entryOf(REGISTRY, id, [], null), null, `${id}: 계절 없이 쓰는 파일은 없음`);
   }
@@ -235,6 +235,16 @@ test('AnimationMixer 계층: 속도에 따라 Idle→Walk→Run으로 교차 전
   assert.equal(anim2.state, 'run'); assert.equal(anim2.clip, 'Walk'); // no Run clip: the walk, faster
   const noClips = P.createAnimator(THREE, (await parse(staticGlb())).scene, [], { idle: 'Idle' }, { walkSpeed: 5.2 });
   noClips.update(0.016, 5); assert.equal(noClips.clip, null); // a model without clips just stands
+});
+
+test('채집 클립: 서버 시간에 맞춰 재생·마지막 자세 유지·완료 즉시 걷기', async () => {
+  const THREE=await three();const root=new THREE.Object3D();const clip=new THREE.AnimationClip('GatherWeed',2.4,[new THREE.NumberKeyframeTrack('.position[x]',[0,2.4],[0,1])]);
+  const idle=new THREE.AnimationClip('Idle',1,[]),walk=new THREE.AnimationClip('Walk',1,[]);
+  const anim=P.createAnimator(THREE,root,[clip,idle,walk],{gather:'GatherWeed',idle:'Idle',walk:'Walk'});
+  anim.play('gather',{ms:900,hold:true});for(let i=0;i<90;i++)anim.update(.01,0);
+  assert.equal(anim.clip,'GatherWeed');anim.update(.5,0);assert.equal(anim.clip,'GatherWeed');
+  assert.ok(root.position.x>.99);anim.finishOnce();anim.update(.016,2);assert.equal(anim.clip,'Walk');
+  anim.play('gather',{ms:900,hold:true});anim.update(.2,0);anim.seekOnce(.9);assert.ok(root.position.x>.99,'프레임 지연에도 서버 경과시점의 최종 자세');anim.finishOnce();anim.update(.016,0);assert.equal(anim.clip,'Idle');anim.dispose();
 });
 
 test('교차 전환 중에는 이전 클립과 새 클립이 함께 섞이고, 끝나면 새 클립만 남는다', async () => {

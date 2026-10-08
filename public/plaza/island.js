@@ -439,7 +439,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const kindOf = (t) => { let r = hash(t.x, t.z); for (let k = 0; k < TREE_KINDS.length; k += 1) { r -= TREE_KINDS[k][1]; if (r <= 0) return k; } return 0; };
   // v1.10.29: stumps come in two models (short, tall), each stump's from its place
   TREE_KINDS.forEach(([name, , parts], k) => {
-    const all = trees.filter((t) => kindOf(t) === k);
+    const all = trees.filter((t) => kindOf(t) === k && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));
     const splits = name === 'stump' ? [0, 1].map((v) => [all.filter((t) => (hash(t.x, t.z, 18) < 0.5 ? 0 : 1) === v), [`nature.tree.stump.${v}`, 'nature.tree.stump', 'nature.tree']]) : [[all, [`nature.tree.${name}`, 'nature.tree']]];
     const geo = mergeColored(parts);
     for (const [list, target] of splits) {
@@ -448,7 +448,11 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target });
     }
   });
-  for (const t of trees) solids.push({ x: t.x, z: t.z, r: 0.75 * t.s });
+  for (const t of globalThis.IslandTerrain.harvestTrees()) {
+    const root=new THREE.Group(); root.position.set(t.x,ground(t.x,t.z),t.z); root.rotation.y=t.yaw; scene.add(root);
+    const fallback=new THREE.Mesh(keep(mergeColored(TREE_KINDS[0][2])),natureMat); root.add(fallback); assets.attach('tree.harvest',root,fallback);
+  }
+  for (const t of trees) solids.push({ x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s });
 
   // Flowers: one mesh, each a little bloom with its colour per copy.
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];

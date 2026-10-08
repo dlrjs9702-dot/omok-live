@@ -2,49 +2,48 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const T = require('../public/plaza/island-terrain.js');
-const { createIslandEvents, TYPES, ACTIVE, GAP, NEAR } = require('../lib/island-events');
+const { createIslandEvents, TYPES, RESOURCE_COUNTS, REGEN_MS, ACTIVE, GAP, NEAR } = require('../lib/island-events');
 
-// v1.10.11 서버 공용 랜덤 이벤트: 15 out (14 everyday finds + 1 NPC event), each on ground that fits it and clear of
-// everything; one taker only; a solved one is replaced elsewhere; a lost thing is returned by whoever carries it.
+// Shared life resources have per-kind slots and cooldowns; NPC requests keep their separate one-active policy.
+// Placement, one taker, shared regrowth, and carried lost things use the same event engine.
 function seeded(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
 
-test('공용 이벤트: 15개 유지, NPC 이벤트 1개, 종류별 상한, 지형에 맞고 서로·시설·나무와 겹치지 않는다', () => {
-  for (const seed of [1, 2, 3]) {
-    const ev = createIslandEvents({ random: seeded(seed) });
-    const list = [...ev.events.values()];
-    assert.equal(list.length, ACTIVE);
-    assert.equal(list.filter((e) => TYPES[e.type].npc).length, 1, 'NPC 이벤트는 하나');
-    for (const [type, def] of Object.entries(TYPES)) if (def.max) assert.ok(list.filter((e) => e.type === type).length <= def.max, type);
-    const places = list.flatMap((e) => [{ x: e.x, z: e.z }, ...(e.npc && (e.npc.x !== e.x || e.npc.z !== e.z) ? [e.npc] : [])]);
-    for (const p of places) {
-      assert.ok(T.walkable(p.x, p.z), '설 수 있는 곳');
-      assert.ok(Math.hypot(p.x, p.z) > T.PLAZA_R + 3, '중앙광장 밖');
-      for (const s of Object.values(T.SPOTS)) assert.ok(Math.hypot(p.x - s.x, p.z - s.z) >= 7, '시설과 떨어짐');
-    }
-    for (let i = 0; i < places.length; i += 1) for (let j = i + 1; j < places.length; j += 1) assert.ok(Math.hypot(places[i].x - places[j].x, places[i].z - places[j].z) >= GAP - 1e-6, '이벤트끼리 겹치지 않음');
-    for (const e of list) {
-      if (e.type === 'beach_trash') assert.ok(T.coastDist(e.x, e.z) < 8, '해안 쓰레기는 해안');
-      if (e.type === 'grass_trash') assert.ok(T.coastDist(e.x, e.z) > 9, '풀밭 쓰레기는 풀밭');
+test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길/충돌 여유', () => {
+  for(const seed of [1,2,3]) {
+    const ev=createIslandEvents({random:seeded(seed),now:()=>Date.parse('2026-10-08T12:00:00+09:00')});
+    const list=[...ev.events.values()]; assert.equal(list.length,ACTIVE);
+    for(const [type,count] of Object.entries(RESOURCE_COUNTS)) assert.equal(list.filter(e=>e.type===type).length,count,type);
+    assert.equal(list.filter(e=>TYPES[e.type].npc).length,1);
+    for(const e of list) if(!e.npc) {
+      assert.ok(T.walkable(e.x,e.z)); assert.ok(T.walkDist(e.x,e.z)>=0.35);
+      assert.ok(!T.inTownhall(e.x,e.z,3));
+      for(const solid of T.natureSolids()) assert.ok(Math.hypot(e.x-solid.x,e.z-solid.z)>solid.r+0.45,'player approach clear');
+      if(e.type==='beach_trash') assert.ok(T.coastDist(e.x,e.z)<8);
+      if(['herb','mushroom'].includes(e.type)) assert.ok(T.nature().trees.some(t=>Math.hypot(e.x-t.x,e.z-t.z)<3.6));
     }
   }
 });
-
-test('공용 이벤트: 한 사람만 가져가고, 해결하면 그 자리를 피해 새로 생겨 15개를 유지한다', () => {
-  const ev = createIslandEvents({ random: seeded(7) });
-  const e = [...ev.events.values()].find((x) => !TYPES[x.type].npc);
-  const at = { x: e.x, z: e.z };
-  assert.equal(ev.claim(e.id, 'guest:a', { x: e.x + 10, z: e.z }).error, 'TOO_FAR');
-  const first = ev.claim(e.id, 'guest:a', at);
-  assert.ok(first.event);
-  assert.equal(ev.claim(e.id, 'guest:b', at).error, 'GONE', '동시에 두 번째는 실패');
-  assert.equal(ev.settle(first, false, 'guest:a'), null); // the bag was full: it stays
-  const again = ev.claim(e.id, 'guest:b', at);
-  assert.ok(again.event, '실패하면 다른 사람이 가져갈 수 있다');
-  assert.equal(ev.settle(again, true, 'guest:b').removed, e.id);
-  assert.equal(ev.size(), ACTIVE);
-  assert.ok(!ev.events.has(e.id));
-  for (const n of ev.events.values()) assert.ok(Math.hypot(n.x - at.x, n.z - at.z) >= 7 || n.createdAt <= e.createdAt);
-  assert.equal(ev.claim(e.id, 'guest:c', at).error, 'GONE');
+test('생활 자원: 한 사람만 획득, 실패 복원, 종류별 재생·세대 변경·같은 나무', () => {
+  let time=Date.parse('2026-10-08T12:00:00+09:00');
+  const ev=createIslandEvents({random:seeded(7),now:()=>time});
+  for(const type of Object.keys(RESOURCE_COUNTS)) {
+    const e=[...ev.events.values()].find(e=>e.type===type),original={x:e.x,z:e.z};
+    const c=ev.claim(e.id,'a',e); assert.ok(c.event); assert.equal(ev.claim(e.id,'b',e).error,'GONE');
+    ev.settle(c,false,'a'); const winner=ev.claim(e.id,'b',e); ev.settle(winner,true,'b');
+    assert.equal(e.state,'growing');assert.equal(ev.claim(e.id,'c',e).error,'GONE');
+    const ownView=()=>ev.nearby(e.x,e.z,'a').find(x=>x.id===e.id);
+    assert.equal(Boolean(ownView()),type==='berry');if(e.tree) assert.equal(ownView().verb,null);
+    time=e.readyAt-1;ev.expire();assert.equal(e.state,'growing');
+    time++;ev.expire();assert.equal(e.state,'open');assert.equal(e.generation,2);
+    if(e.tree) assert.deepEqual({x:e.x,z:e.z},original);else assert.ok(Math.hypot(e.x-original.x,e.z-original.z)>=15);
+  }
+  const restart=createIslandEvents({random:seeded(7),now:()=>time});
+  assert.ok([...restart.events.keys()].every(id=>!ev.events.has(id)),'restart claim IDs never reused');
+});
+test('생활 경제: 단가 유지·공용 재생 공급 244,000P/h 이하, 개인 일일 상한 없음', () => {
+  const I=require('../lib/island-items');let hourly=0;
+  for(const [type,count] of Object.entries(RESOURCE_COUNTS)){const d=TYPES[type];hourly+=count*(d.points || I.priceOf(d.item))*(d.qty||1)*3600000/REGEN_MS[type];}
+  assert.equal(hourly,244000);assert.equal(I.DAILY_CAP,Infinity);
 });
 
 test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고, 돌려주면 끝난다', () => {
@@ -74,7 +73,7 @@ test('공용 이벤트: 분실물은 주운 사람만 주인에게 돌려주고,
   const next = [...ev.events.values()].find((e) => TYPES[e.type].npc);
   t += 26 * 60 * 1000;
   assert.ok(ev.expire().includes(next.id));
-  assert.equal(ev.size(), ACTIVE);
+  assert.equal(ev.size(), ACTIVE - RESOURCE_COUNTS.candy);
 });
 
 test('공용 이벤트: 플레이어에게는 가까운 것만 알린다', () => {
@@ -137,7 +136,7 @@ test('사탕 주머니 이벤트: 10월에만 나오고 11월이 되면 사라�
   const ev = createIslandEvents({ random: seeded(3), now: () => t });
   t = Date.parse('2026-11-01T00:01:00+09:00'); ev.expire();
   assert.equal([...ev.events.values()].filter((e) => e.type === 'candy').length, 0);
-  assert.equal(ev.size(), 15, '빈자리는 다른 이벤트로 채운다');
+  assert.equal(ev.size(), ACTIVE - RESOURCE_COUNTS.candy, '계절 종료시 사탕 슬롯만 제외');
 });
 
 // v1.10.46: the island's October night (decor, bats, moon) is off from 1 November 00:00 in Seoul, on all of October
