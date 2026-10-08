@@ -1468,6 +1468,7 @@
     if (!plazaDialog.open) plazaDialog.showModal();
   }
   plazaDialog.addEventListener('close', () => {
+    if (plazaDialog.open) return; // a queued close from the previous window must not empty a newly opened one
     for (const [node, mark] of plazaHomes) mark.replaceWith(node);
     plazaHomes.clear();
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
@@ -1799,7 +1800,7 @@
   }
   // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
   const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
-  plazaDialog.addEventListener('close', () => lostCard.classList.add('hidden'));
+  plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) lostCard.classList.add('hidden'); });
   function openLostRequest(id, points) {
     const name = plaza.controller?.lostName?.(id) || '물건';
     const ask = document.createElement('p'); ask.className = 'lostRequestLine'; ask.textContent = `「${name}${/[가-힣]/.test(name.slice(-1)) && (name.charCodeAt(name.length - 1) - 0xac00) % 28 ? '을' : '를'} 잃어버렸어요…`;

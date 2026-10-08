@@ -48,6 +48,10 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
 
 test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
   test.setTimeout(180000);
+  const { REGISTRY, wardrobeOf } = require('../../public/plaza/island-assets');
+  const partIds = ['character.base', ...wardrobeOf({}).parts, ...wardrobeOf({gender:'female'}).parts,
+    ...['cat','fox'].flatMap(animal => ['outfit','hat','tail','shoes','necklace'].map(slot => `wear.animal_${animal}_${slot}`))];
+  const models = Object.fromEntries(Object.keys(REGISTRY).map(id => [id, partIds.includes(id) ? REGISTRY[id] : null]));
   const a = await shopper(browser, request, '동물고양이', 1000000, 'male');
   const b = await shopper(browser, request, '동물여우', 1000000, 'female');
   for (const [who, animal] of [[a, 'cat'], [b, 'fox']]) {
@@ -60,7 +64,7 @@ test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 Hig
     }
     const duplicate = await post(request, '/api/skins/buy', who.token, { skinId: `avatar_animal_${animal}_outfit` });
     expect(duplicate.status).toBe(200); expect(duplicate.data.purchased).toBe(false); expect(duplicate.data.balance).toBe(lastBalance);
-    await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); });
+    await who.page.evaluate(registry => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); localStorage.setItem('gc.testIslandAssets',JSON.stringify(registry)); }, models);
     await who.page.reload();
     const worn = ['outfit', 'hat', 'tail', 'shoes', 'necklace'].map((s) => `wear.animal_${animal}_${s}`);
     await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(worn));
@@ -69,8 +73,10 @@ test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 Hig
   }
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit'))), { timeout: 30000 }).toBe(true);
   await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
-  const far = await b.page.evaluate(() => { const p = window.PlazaDebug(); const at = p.doors.climb; p.teleport(at.x, at.z); return at; }); // place() observes player collision; two shoppers start close together.
-  await expect.poll(() => a.page.evaluate((at) => { const o = window.PlazaDebug().others.find((p) => p.look.outfit === 'avatar_animal_fox_outfit'); return o ? Math.hypot(o.x - at.x, o.z - at.z) : Infinity; }, far), { timeout: 30000 }).toBeLessThan(2);
+  // Use a known clear ground approach, and publish it before the local debug warp.
+  const far = (await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
+  const placed = await post(request,'/api/plaza/state',b.token,{...far,yaw:0,moving:false}); expect(placed.status).toBe(200);
+  await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),far);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit') && !w.high)), { timeout: 30000 }).toBe(true);
   await a.page.reload();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit', 'wear.animal_cat_hat']));
@@ -121,6 +127,8 @@ async function island(browser, request, label, registry, { failLoader = false } 
     if (own) localStorage.setItem('gc.testIslandAssets', JSON.stringify(own));
   }, registry);
   await page.reload();
+  await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
+  await page.evaluate(() => window.GameBoot.ready);
   await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
   return { ...who, hits, code, errors };

@@ -21,6 +21,9 @@ async function guest(browser, request, admin, label) {
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(data.html)]);
+  // The lobby opens only after the resource pack; a fresh guest context has no cached pack.
+  await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
+  await page.evaluate(() => window.GameBoot.ready);
   await expect(page.locator('#lobbyView')).toBeVisible();
   return { context, page, label, keyId: data.key.id, token: await page.evaluate(() => document.body.dataset.session) };
 }
