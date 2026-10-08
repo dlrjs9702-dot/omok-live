@@ -11,7 +11,7 @@ test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급�
     await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),x:placed.data.x,z:placed.data.z})}));
     await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),placed.data);
     await expect(page.locator('#plazaHint')).toContainText(kind==='weed'?'잡초':'나무 열매');
-    await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000)); // Keep the short pre-completion action observable on slow software renderers.
+    await page.clock.install();await page.clock.pauseAt(await page.evaluate(()=>Date.now()+10000)); // Browser clock; pause before starting the action, not at a host timestamp that can arrive in the past.
     const started=page.waitForResponse(r=>r.url().endsWith(`/api/island/${kind}/start`));
     const cancelled=page.waitForRequest(r=>r.url().endsWith(`/api/island/${kind}/cancel`),{timeout:10000});
     await page.keyboard.press('Space');expect((await started).status()).toBe(200);
@@ -42,7 +42,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   b.fixtureAt={x:observer.data.x,z:observer.data.z};
   await b.page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),observer.data);
   const placeHarvester=async()=>{
-    a.fixtureAt={x:tree.x+.685,z:tree.z};
+    a.fixtureAt={x:tree.x,z:tree.z}; // the server's walkable approach; distance zero selects the fruit rather than a nearer random weed
     await a.page.evaluate(p=>window.PlazaWarp(p.x,p.z),a.fixtureAt);
     const p=await post(request,'/api/plaza/state',a.token,{...a.fixtureAt,yaw:0,moving:false});expect(p.status).toBe(200);
     a.fixtureAt={x:p.data.x,z:p.data.z};await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),a.fixtureAt);
@@ -87,7 +87,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:10000}).toBe(true);
   await placeHarvester();
   await expect(a.page.locator('#plazaHint')).toContainText('나무 열매');
-  await a.page.clock.install();await a.page.clock.pauseAt(new Date(Date.now()+1000));
+  await a.page.clock.install();await a.page.clock.pauseAt(await a.page.evaluate(()=>Date.now()+10000));
   await a.page.keyboard.press('Space');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe('resource');await a.page.keyboard.press('Escape');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather)).toBe(null);
@@ -180,7 +180,16 @@ async function island(browser, request, label, registry, { failLoader = false } 
   await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
   await page.evaluate(() => window.GameBoot.ready);
   await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
-  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+  try { await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 }); }
+  catch (error) {
+    console.log('ISLAND_BOOT_FAILURE', await page.evaluate(() => ({
+      lobbyHidden: document.getElementById('lobbyView')?.classList.contains('hidden'),
+      plazaClasses: document.getElementById('plazaStage')?.className,
+      plazaError: document.getElementById('plazaError')?.textContent,
+      sceneReady: Boolean(window.PlazaDebug?.()), readyState: document.readyState,
+    })));
+    throw error; // keep the original deadline/failure; no automatic reload or timeout increase
+  }
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
   return { ...who, hits, code, errors };
 }

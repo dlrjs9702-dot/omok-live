@@ -59,6 +59,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   });
   const move = async (who,at) => {
     who.testAt={x:at.x,z:at.z}; // pin periodic requests before awaiting the authoritative warp response
+    await who.page.evaluate(p=>window.PlazaWarp(p.x,p.z),who.testAt); // drain old responses and avoid a cross-island collision path
     const placed=await post(request,'/api/plaza/state',who.token,{x:at.x,z:at.z,yaw:0,moving:false});expect(placed.status).toBe(200);
     who.testAt={x:placed.data.x,z:placed.data.z};
     await who.page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),who.testAt);
