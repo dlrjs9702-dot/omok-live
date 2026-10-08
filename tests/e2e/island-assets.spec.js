@@ -36,21 +36,39 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   const tree=(await get(request,'/api/test/island/events',a.token)).data.events.find(e=>e.type==='berry' && e.state==='open');
   const key=`ev:berry:${tree.id}`;
   for(const who of [a,b]) await who.page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),...(who.fixtureAt||{})})}));
-  const observer=await post(request,'/api/plaza/state',b.token,{x:tree.x,z:tree.z+1.5,yaw:0,moving:false});expect(observer.status).toBe(200);
+  b.fixtureAt={x:tree.x,z:tree.z+3};
+  await b.page.evaluate(p=>window.PlazaWarp(p.x,p.z),b.fixtureAt);
+  const observer=await post(request,'/api/plaza/state',b.token,{...b.fixtureAt,yaw:0,moving:false});expect(observer.status).toBe(200);
   b.fixtureAt={x:observer.data.x,z:observer.data.z};
   await b.page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),observer.data);
-  const placeHarvester=async()=>{const p=await post(request,'/api/plaza/state',a.token,{x:tree.x,z:tree.z,yaw:0,moving:false});expect(p.status).toBe(200);a.fixtureAt={x:p.data.x,z:p.data.z};await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),a.fixtureAt);};
+  const placeHarvester=async()=>{
+    a.fixtureAt={x:tree.x+.685,z:tree.z};
+    await a.page.evaluate(p=>window.PlazaWarp(p.x,p.z),a.fixtureAt);
+    const p=await post(request,'/api/plaza/state',a.token,{...a.fixtureAt,yaw:0,moving:false});expect(p.status).toBe(200);
+    a.fixtureAt={x:p.data.x,z:p.data.z};await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),a.fixtureAt);
+  };
   await placeHarvester();
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 나무 열매 · 따기',{timeout:15000});
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:15000}).toBe(true);
   expect(await a.page.evaluate(t=>window.PlazaDebug().markers.some(m=>Math.hypot(m.x-t.x,m.z-t.z)<1),tree)).toBe(false);
   let release;const gate=new Promise(r=>{release=r;});
-  await a.page.route('**/api/island/resource/finish',async route=>{await gate;await route.continue();});
+  // Hold delivery of the answer, not the finish request: the server's 15 s collection
+  // lease must not expire merely because software-rendered assertions are slow.
+  await a.page.route('**/api/island/resource/finish',async route=>{const response=await route.fetch();await gate;await route.fulfill({response});});
+  await b.page.evaluate(() => {
+    window.__fruitReactionSeen = false;
+    const sample = () => {
+      if (window.PlazaDebug()?.othersActs().some(o => o.act === 'pickFruit' && o.clip === 'PickFruit')) window.__fruitReactionSeen = true;
+      window.__fruitReactionFrame = requestAnimationFrame(sample);
+    };
+    sample();
+  });
   const startResponse=a.page.waitForResponse(r=>r.url().endsWith('/api/island/resource/start'));
   await a.page.keyboard.press('Space');
   const started=await startResponse; expect(await started.json()).toMatchObject({ok:true,anim:'pickFruit'});
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gait),{timeout:10000}).toBe('pickFruit');
-  await expect.poll(()=>b.page.evaluate(()=>window.PlazaDebug().othersActs().some(o=>o.act==='pickFruit' && o.clip==='PickFruit')),{timeout:10000}).toBe(true);
+  await expect.poll(()=>b.page.evaluate(()=>window.__fruitReactionSeen),{timeout:10000}).toBe(true);
+  await b.page.evaluate(() => cancelAnimationFrame(window.__fruitReactionFrame));
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.pending),{timeout:10000}).toBe(true);
   const at=await a.page.evaluate(()=>{const d=window.PlazaDebug();return {x:d.x,z:d.z,yaw:d.camYaw};});
   await a.page.keyboard.down('ArrowRight');await a.page.keyboard.down('KeyD');await a.page.waitForTimeout(250);await a.page.keyboard.up('KeyD');
@@ -106,8 +124,9 @@ test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 Hig
   await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
   // Use a known clear ground approach, and publish it before the local debug warp.
   const far = (await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
+  await b.page.evaluate(at=>window.PlazaWarp(at.x,at.z),far); // re-enter there, rather than walking a segment through the other player
   const placed = await post(request,'/api/plaza/state',b.token,{...far,yaw:0,moving:false}); expect(placed.status).toBe(200);
-  await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),far);
+  await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),placed.data);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit') && !w.high)), { timeout: 30000 }).toBe(true);
   await a.page.reload();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit', 'wear.animal_cat_hat']));
@@ -160,6 +179,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
   await page.reload();
   await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
   await page.evaluate(() => window.GameBoot.ready);
+  await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
   await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
   return { ...who, hits, code, errors };
