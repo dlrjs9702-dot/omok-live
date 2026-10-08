@@ -112,11 +112,16 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   function noteGlass(object) { object?.traverse((o) => { for (const m of [].concat(o.material || [])) if (m.name === 'glass' && !glassMats.has(m)) { glassMats.add(m); lightGlass(m); } }); }
   function setNight(on) { night = Boolean(on); nightGlow.value = night ? 0.9 : 0; for (const m of glassMats) lightGlass(m); }
+  const invalidateOcclusion = (object) => {
+    for (let root = object; root; root = root.parent) if (root.userData.building) {
+      root.userData.occlusionRevision = (root.userData.occlusionRevision || 0) + 1; break;
+    }
+  };
   function swapAttach(rec, object, entry = null) {
     noteGlass(object);
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
-    rec.procedural.visible = !object;
+    rec.procedural.visible = !object; invalidateOcclusion(rec.holder);
     rec.onSwap?.(object ? entry : null);
     rec.snowEntry = object && entry?.snow ? entry : null; rec.snow = null; applySnow(rec);
   }
@@ -164,7 +169,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const group = new THREE.Group(); group.name = 'roofSnow'; group.userData.kind = snow.kind;
       const mesh = new THREE.Mesh(snow.geometry, snow.material); mesh.receiveShadow = true; group.add(mesh);
       if (object.isLOD) place(group, entry); // a LOD's levels carry the entry's scale and turn; a single model carries them itself
-      object.add(group); rec.snow = group; group.visible = lookOf(rec.zone) === 'winter';
+      object.add(group); rec.snow = group; group.visible = lookOf(rec.zone) === 'winter'; invalidateOcclusion(rec.holder);
     }).catch((error) => onError(entry.url, error));
   }
   function applyAttach(rec) {
@@ -535,7 +540,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const object = instance(gltf, hit.entry);
       const anim = P.createAnimator(THREE, object, gltf.animations, hit.entry.animations || {}, { walkSpeed, speeds: hit.entry.speeds });
-      c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown[hit.id] = 'model';
+      c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }
 
@@ -667,7 +672,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       };
       c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };
       c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start
-      c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; shown['character.base'] = 'model';
+      c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
       // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head
       c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
@@ -691,6 +696,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
 
   // Before a character is thrown away: its copy goes, the shared geometry stays for the others.
   function release(c) {
+    invalidateOcclusion(c.root);
     c.anim?.dispose(); if (c.assetRoot) c.root.remove(c.assetRoot);
     for (const rec of c.wearMats || []) dropMaterial(rec);
     for (const key of Object.keys(c.holding || {})) letGo(c, key);
