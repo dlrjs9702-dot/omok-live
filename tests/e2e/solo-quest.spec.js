@@ -52,14 +52,14 @@ test('지뢰찾기: 로비 「지뢰찾기」 → 난이도·판, 오른쪽 클�
 test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 → 다 하면 초록 ✓ → 보고 보상, 멀리 있는 사람 이름표는 보인다', async ({ browser, request }) => {
   test.setTimeout(150000);
   const a = await shopper(browser, request, '부탁손님');
-  const b = await shopper(browser, request, '멀리손님');
-  await islandPage(a.page); await islandPage(b.page);
+  await islandPage(a.page);
   // This story fixture warps between objectives. Keep periodic poses at the fixture position so an old
   // pre-warp response cannot put either person back beside the other and select the greeting instead.
-  for (const who of [a,b]) await who.page.route('**/api/plaza/state', route => {
+  const pin = who => who.page.route('**/api/plaza/state', route => {
     const pose=route.request().postDataJSON();
     return route.continue({postData:JSON.stringify(who.testAt ? {...pose,...who.testAt} : pose)});
   });
+  await pin(a);
   const move = async (who,at) => {
     who.testAt={x:at.x,z:at.z}; // pin periodic requests before awaiting the authoritative warp response
     await who.page.evaluate(p=>window.PlazaWarp(p.x,p.z),who.testAt); // drain old responses and avoid a cross-island collision path
@@ -69,8 +69,6 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   };
   const talkSpot=require('../../lib/island-quests').STORIES.granny.at;
   const standBy=async()=>{await move(a,{x:talkSpot.x-1,z:talkSpot.z});await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().near),{timeout:10000}).toBe('ev:quest_npc:questgranny');};
-  const far=(await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
-  await move(b,far);
   const { page, token } = a;
   const talk=async(alreadyPlaced=false)=>{
     await expect(page.locator('#plazaDialog')).toBeHidden();
@@ -114,6 +112,11 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'bloom', frame: true });
+  // The second account is needed for isolation and far-name checks, not for rendering every story step.
+  const b = await shopper(browser, request, '멀리손님');
+  await islandPage(b.page); await pin(b);
+  const far=(await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
+  await move(b,far);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'empty', frame: false });
   await page.keyboard.press('Escape');
   await page.reload();
