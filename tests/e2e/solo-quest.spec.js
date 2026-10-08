@@ -8,6 +8,9 @@ async function islandPage(page) {
   await page.setViewportSize({ width: 960, height: 680 });
   await page.evaluate(() => {
     localStorage.removeItem('gc.testClassic');
+    // Story/dialogue/account-state checks do not need October's decorative night scene.
+    // Its real models and lighting remain covered by island-assets.spec.js.
+    localStorage.setItem('gc.testHalloween', 'off');
     localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
   });
   await page.reload();
@@ -69,9 +72,10 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   const far=(await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
   await move(b,far);
   const { page, token } = a;
-  const talk=async()=>{
+  const talk=async(alreadyPlaced=false)=>{
     await expect(page.locator('#plazaDialog')).toBeHidden();
-    await standBy();
+    if(!alreadyPlaced) await standBy();
+    else await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().near),{timeout:10000}).toBe('ev:quest_npc:questgranny');
     await page.locator('#plazaStage').focus();
     await expect(page.locator('#plazaStage')).toBeFocused();
     const reply=page.waitForResponse(r=>r.url().endsWith('/api/island/event') && r.request().method()==='POST');
@@ -83,7 +87,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests()), { timeout: 20000 }).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'questgranny', mark: 'new' })]));
   await standBy();
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 10000 });
-  await talk(); // a closed window, selected NPC, focused stage and the actual server reply
+  await talk(true); // already standing here: still verify the selected NPC, focused stage and actual server reply
   await expect(page.locator('#plazaDialog')).toBeVisible({ timeout: 10000 });
   await expect(page.locator('#plazaDialog')).toContainText('정원사 할머니');
   await expect(page.locator('#plazaDialog')).toContainText('잡초 20포기');
@@ -107,7 +111,6 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await page.keyboard.press('Escape');
   await move(a,{x:47,z:38.3});
   await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
-  await standBy();
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'bloom', frame: true });
