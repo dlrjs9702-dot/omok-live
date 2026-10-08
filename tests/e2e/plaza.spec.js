@@ -667,6 +667,25 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
 
+  // Each full-size landmark fades and recovers. Staying behind it neither rebuilds sight
+  // bounds nor creates more ghost materials (the source materials stay on the other statue).
+  for (const spot of [{ x: 12, z: 0 }, { x: 5.5, z: 7.5 }]) {
+    await a.page.evaluate(async (p) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(0); await window.PlazaWarp(p.x, p.z); }, spot);
+    await expect.poll(() => a.page.evaluate(p => window.PlazaDebug().camera.occlusion.active.some(r => r.x === p.x && r.z === p.z + 5), spot)).toBe(true);
+    const samples = await a.page.evaluate(async () => {
+      const frames = [];
+      for (let i = 0; i < 30; i++) { await new Promise(requestAnimationFrame); frames.push(window.PlazaDebug().camera.occlusion); }
+      return frames;
+    });
+    expect(samples.at(-1).builds).toBe(samples[0].builds);
+    expect(samples.slice(-10).map(s => s.materials)).toEqual(Array(10).fill(samples.at(-1).materials));
+    await a.page.evaluate(async () => { const d = window.PlazaDebug(); d.setCamYaw(0); await window.PlazaWarp(-10, 0); });
+    // The scene clock advances at most 50 ms per rendered frame. Two software WebGL
+    // pages need 16 actual frames for the 400 ms hold + 250 ms recovery, not a wall timer.
+    await a.page.evaluate(async () => { for (let i = 0; i < 16; i++) await new Promise(requestAnimationFrame); });
+    await expect.poll(() => a.page.evaluate(p => window.PlazaDebug().camera.occlusion.active.some(r => r.x === p.x && r.z === p.z + 5), spot), { timeout: 3000 }).toBe(false);
+  }
+
   // the donation box: amount, a second press naming it, then the points are gone (burned) and this week's total shows
   const page = b.page;
   const before = (await get(request, '/api/points', b.token)).data.balance;
