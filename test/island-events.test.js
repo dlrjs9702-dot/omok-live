@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const T = require('../public/plaza/island-terrain.js');
 const { createIslandEvents, TYPES, RESOURCE_COUNTS, REGEN_MS, ACTIVE, GAP, NEAR } = require('../lib/island-events');
 
-// v1.10.11 서버 공용 랜덤 이벤트: 15 out (14 everyday finds + 1 NPC event), each on ground that fits it and clear of
-// everything; one taker only; a solved one is replaced elsewhere; a lost thing is returned by whoever carries it.
+// Shared life resources have per-kind slots and cooldowns; NPC requests keep their separate one-active policy.
+// Placement, one taker, shared regrowth, and carried lost things use the same event engine.
 function seeded(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
 
 test('생활 자원: 15개 제한 없이 모든 종류·20개 나무, 지형/길/충돌 여유', () => {

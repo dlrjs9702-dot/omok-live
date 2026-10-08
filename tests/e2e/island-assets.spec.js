@@ -7,7 +7,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   const ids=['character.base','tree.harvest','tree.fruitLayer','prop.harvest.fruit',...wardrobeOf({}).parts,...wardrobeOf({gender:'female'}).parts];
   const registry={__only:true,...Object.fromEntries(ids.map(k=>[k,REGISTRY[k]]))};
   const a=await island(browser,request,'열매가',registry), b=await island(browser,request,'열매나',registry);
-  for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(()=>window.PlazaDebug().assets.shown['character.base']),{timeout:60000}).toBe('model');
+  for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(()=>window.PlazaDebug()?.assets.shown?.['character.base']),{timeout:60000}).toBe('model');
   const tree=(await get(request,'/api/test/island/events',a.token)).data.events.find(e=>e.type==='berry' && e.state==='open');
   const key=`ev:berry:${tree.id}`;
   await b.page.evaluate(t=>window.PlazaDebug().teleport(t.x+5,t.z+5),tree);

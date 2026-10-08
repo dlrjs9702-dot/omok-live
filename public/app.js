@@ -1779,23 +1779,23 @@
   async function pullWeed(key) {
     const id = key.slice('weed:'.length);
     if (!id || weedBusy || islandEventBusy) return;
-    weedBusy = true;
+    weedBusy = true; let started=false; let completed=false;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      await api('/api/island/weed/start', { method: 'POST', body: JSON.stringify({ weedId: id }) });
+      await api('/api/island/weed/start', { method: 'POST', body: JSON.stringify({ weedId: id }) }); started=true;
       const pulled = await new Promise((resolve) => { if (!plaza.controller?.gatherWeed?.(id, resolve)) resolve(false); });
       if (!pulled) return; // called off
       const body = JSON.stringify({ weedId: id, requestId: crypto.randomUUID() });
       let data;
       try { data = await api('/api/island/weed/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; data = await api('/api/island/weed/finish', { method: 'POST', body }); }
-      plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
+      completed=true; plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
       showToast(`🌱 잡초 +1${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       if (data.bonus) loadPoints();
     } catch (error) {
       showToast(error.message);
       if (error.data?.error === 'WEED_GONE') plaza.controller?.removeWeeds?.([id]);
-    } finally { plaza.controller?.finishGather?.(); api('/api/island/weed/cancel', {method:'POST',body:'{}'}).catch(()=>{}); weedBusy = false; }
+    } finally { plaza.controller?.finishGather?.(); if(started && !completed) await api('/api/island/weed/cancel', {method:'POST',body:JSON.stringify({weedId:id})}).catch(()=>{}); weedBusy = false; }
   }
   // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
   const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
@@ -1987,7 +1987,7 @@
   async function solveIslandEvent(key) {
     const id = key.split(':')[2];
     if (!id || islandEventBusy || weedBusy) return;
-    islandEventBusy = true;
+    islandEventBusy = true; let resourceStarted=false; let completed=false;
     if (key.startsWith('ev:lost_owner:')) islandReturning = id;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
@@ -1995,13 +1995,13 @@
       const ev = islandEventsNear.find(e => e.id === id && e.resource);
       let data;
       if (ev) {
-        const spec=await api('/api/island/resource/start',{method:'POST',body:JSON.stringify({id})});
+        const spec=await api('/api/island/resource/start',{method:'POST',body:JSON.stringify({id})}); resourceStarted=true;
         const done=await new Promise(resolve=>{if (!plaza.controller?.gatherResource?.(ev,spec,resolve)) resolve(false);});
         if (!done) return;
         const body=JSON.stringify({id,requestId:crypto.randomUUID()});
         try { data=await api('/api/island/resource/finish',{method:'POST',body}); } catch(error) { if(error.status) throw error; data=await api('/api/island/resource/finish',{method:'POST',body}); }
       } else data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
-      if (ev) plaza.controller?.finishGather?.(true);
+      if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
       if (data.action === 'quest') { showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []); openQuestTalk(data); if (data.reward) loadPoints(); return; } // v1.10.37
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
@@ -2017,7 +2017,7 @@
     } catch (error) {
       showToast(error.message);
       if (error.status === 409 && /사라졌/.test(error.message)) forgetIslandEvents([id]);
-    } finally { plaza.controller?.finishGather?.(); api('/api/island/resource/cancel',{method:'POST',body:'{}'}).catch(()=>{}); islandEventBusy = false; islandReturning = null; }
+    } finally { plaza.controller?.finishGather?.(); if(resourceStarted && !completed) await api('/api/island/resource/cancel',{method:'POST',body:JSON.stringify({id})}).catch(()=>{}); islandEventBusy = false; islandReturning = null; }
   }
 
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 30,000P (v1.10.35) on a second press that names the

@@ -9,7 +9,7 @@ const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 
 // v1.10.11 서버 공용 랜덤 이벤트: everyone shares the same events; a player is told only of those near; one solve
-// each (the second gets 「이미 사라졌습니다」), and a new one keeps the island at 15.
+// each (the second gets 「이미 사라졌습니다」); v1.10.50 resources have separate slots and cooldowns.
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const PASSWORD = 'island-events-test';
 

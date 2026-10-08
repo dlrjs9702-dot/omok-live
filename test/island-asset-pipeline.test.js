@@ -244,7 +244,7 @@ test('채집 클립: 서버 시간에 맞춰 재생·마지막 자세 유지·�
   anim.play('gather',{ms:900,hold:true});for(let i=0;i<90;i++)anim.update(.01,0);
   assert.equal(anim.clip,'GatherWeed');anim.update(.5,0);assert.equal(anim.clip,'GatherWeed');
   assert.ok(root.position.x>.99);anim.finishOnce();anim.update(.016,2);assert.equal(anim.clip,'Walk');
-  anim.play('gather',{ms:900,hold:true});anim.update(.2,0);anim.finishOnce();anim.update(.016,0);assert.equal(anim.clip,'Idle');anim.dispose();
+  anim.play('gather',{ms:900,hold:true});anim.update(.2,0);anim.seekOnce(.9);assert.ok(root.position.x>.99,'프레임 지연에도 서버 경과시점의 최종 자세');anim.finishOnce();anim.update(.016,0);assert.equal(anim.clip,'Idle');anim.dispose();
 });
 
 test('교차 전환 중에는 이전 클립과 새 클립이 함께 섞이고, 끝나면 새 클립만 남는다', async () => {

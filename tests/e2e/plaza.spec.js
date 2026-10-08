@@ -963,6 +963,8 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
   const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
   const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
+  let releaseFinish; const finishGate=new Promise(resolve=>{releaseFinish=resolve;});
+  await page.route('**/api/island/weed/finish',async route=>{await finishGate;await route.continue();});
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().gather?.kind), { timeout: 5000 }).toBe('weed');
@@ -972,6 +974,7 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   await page.keyboard.up('ArrowUp'); await page.keyboard.up('a');
   expect(Math.hypot(held.x - from.x, held.z - from.z)).toBeLessThan(0.05); // not a step
   expect(yaw1).toBeGreaterThan(yaw0 + 0.1); // the camera turned
+  releaseFinish();
   await expect.poll(bagCount, { timeout: 10000 }).toBe(1); // and the pull went on to the end
   await expect.poll(() => page.evaluate((w) => window.PlazaDebug().weeds.at(w), pulledId)).toBe(null);
   expect((await get(request, '/api/island/weeds', a.token)).data.weeds.some(([w]) => w === pulledId)).toBe(false);

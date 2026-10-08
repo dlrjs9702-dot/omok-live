@@ -1069,7 +1069,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the camera still turns; it ends done after `ms`, or called off by a window, leaving the island or endGather(false).
   function startGather({ kind, id = null, ms, anim = 'gather', at = null, onStep = null, waitServer = false, onDone }) {
     if (gather) return false;
-    gather = { kind, id, ms, anim, t: 0, onStep, onDone, waitServer, pending: false };
+    gather = { kind, id, ms, anim, t: 0, startedAt: performance.now(), onStep, onDone, waitServer, pending: false };
     if (at) { me.targetYaw = Math.atan2(at.x - me.root.position.x, at.z - me.root.position.z); if(waitServer) me.root.rotation.y=me.targetYaw; }
     if (anim && !me.anim?.play(anim, waitServer ? { ms, hold: true } : {})) me.hop = 1;
     return true;
@@ -1079,7 +1079,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (isBlocked()) { endGather(false); return; }
     if (gather.waitServer && me.anim && me.anim.state !== gather.anim) me.anim.play(gather.anim,{ms:gather.ms,hold:true,elapsed:gather.t});
     if (gather.pending) return;
-    gather.t += dt; gather.onStep?.(gather.t);
+    gather.t = gather.waitServer ? (performance.now()-gather.startedAt)/1000 : gather.t+dt;
+    if (gather.waitServer) me.anim?.seekOnce?.(gather.t);
+    gather.onStep?.(gather.t);
     if (gather.t * 1000 >= gather.ms) endGather(true);
   }
   function endGather(done) { const g = gather; if (!g) return;
