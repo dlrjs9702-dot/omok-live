@@ -1475,14 +1475,15 @@
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
   function showPlazaHint(facility) {
-    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
-    plazaHint.classList.toggle('hidden', !facility);
     const isTrain = facility?.id?.startsWith('train:');
+    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
+    plazaHint.classList.toggle('hidden', !facility || Boolean(isTrain && !facility.plain));
     trainControls.classList.toggle('hidden', !isTrain);
     if (isTrain) {
       const waiting = facility.id === 'train:platform';
-      trainMainBtn.textContent = waiting ? facility.name : facility.id.startsWith('train:enter:') ? '승강장 올라가기' : facility.id === 'train:board' ? '타기 · ' + facility.name.replace(' 타기', '') : facility.name;
+      trainMainBtn.textContent = facility.plain ? '' : waiting ? facility.name : facility.id.startsWith('train:enter:') ? '승강장 올라가기' : facility.id === 'train:board' ? '타기 · ' + facility.name.replace(' 타기', '') : facility.name;
       trainMainBtn.disabled = Boolean(facility.plain || waiting);
+      trainMainBtn.classList.toggle('hidden', Boolean(facility.plain)); // next-stop countdown has one visible home: plazaHint
       trainMainBtn.onclick = () => trainAction(facility.id.slice(6));
       trainMenuBtn.classList.toggle('hidden', !plaza.controller?.platform?.() || Boolean(facility.plain));
     }

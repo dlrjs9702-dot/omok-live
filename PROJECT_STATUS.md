@@ -11,6 +11,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.52 관광열차 승강장 바닥·안내 중복 수정
+
+- 사용자 제보의 승강장 깜빡임을 실제 압축 High/Low 모델로 조사: stone 기단과 train_cream 바닥의 윗면이 둘 다 약0.000062m로 일치, 상층 연결로는 5.4m 승강장 긴 쪽 끝 대신 중심에서1.6m까지 들어와 같은 높이로1.1m 겹쳤다. 모델 로딩 시 양자화 부모 변환을 고려해 돌 기단만2cm 내리고, 연결로는 회전된3.4×5.4m 바닥의 실제 가까운 모서리에서 끝낸다. 바닥·표식·원점/보행 높이·색상·열차/레일/승강기 위치·운행 규칙 유지. 원본/압축 GLB를 다시 제작하거나 수정하지 않음.
+- 열차 상태를 plazaHint와 trainMainBtn 양쪽에 쓰던 안내를 하나로 표시: 운행/안전대기/승강기 중에는 힌트만, 승하차/승강장 대기에는 기존 버튼만 표시. 숨긴 카운트다운 버튼의 문구도 비움. 메뉴·키보드 SPACE·클릭·승하차 서버 계약 유지, 신규 UI 설명 없음.
+- 두 역 연결로 경계와 실제 압축 High/Low coplanar 재현→2cm 분리·표식/원점·무관 모델/중복 전처리 보존 단위2개 성공. 관련 자동 Chromium 열차1개 retry0(1.4분): 버튼/힌트 단일표시, 탑승/다음역/정차/하차·재탑승/대기 메뉴·승강장 걷기·다른 화면 동기화 통과. 변경JS 구문/diff 및 버전52 고정 문자열 대조 성공、전체 npm729/729(41.1초). PR CI·병합/Render는 진행 중. 모델/등록부 파일 변경 없어 압축 재빌드 대상 없음.
+- 관공서 정문 바닥은 별도 조사 대기이며 같은 원인으로 단정하지 않음. 실제 GPU PC의 시점별 깜빡임·FPS 및 실사용자 다인 실기는 미검증. 기존 데이터/가격/원장·공지 이력 유지, 사용자 공지 v1.10.52만 추가.
+
 ## v1.10.51 광장 동상·공통 가림 판정 최적화
 
 - 최종 GitHub/배포 확인(2026-10-09 KST): [PR #181](https://github.com/dlrjs9702-dot/omok-live/pull/181) squash 병합 main `897e4a2da0dd1f79d6e7bc8d0adc181e84fdfbc6`, 최종 작업 SHA `a2d9450d8c7f0085bdc3441770c02b1dcee37527`. Render `dep-db3t52mq1p3s73ege2vg`가 같은 main SHA로 2026-10-08T17:28:31.977788Z live, v1.10.51 시작·입장키/공지/포인트 PostgreSQL 로그 확인. 2026-10-08 19:30 UTC 운영 health `ok:true/version:1.10.51` 확인. 사용자 공지 v1.10.51 반영. 실제 GPU PC FPS·실사용자 다인 실기 미검증.

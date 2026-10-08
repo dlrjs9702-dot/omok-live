@@ -67,7 +67,8 @@ export function trainScene({ scene, assets, solids, vcMat, sign }) {
     // the walkways, level with each platform: from the lift out to the platform's near side (in the lift's own frame)
     const c = Math.cos(holder.rotation.y); const s = Math.sin(holder.rotation.y);
     for (const p of plats) {
-      const wx = p.x - lx; const wz = p.z - lz; const wl = Math.hypot(wx, wz) || 1; const reach = Math.max(1.4, wl - 1.6);
+      const wx = p.x - lx; const wz = p.z - lz; const wl = Math.hypot(wx, wz) || 1;
+      const reach = wl - R.platformEdgeDistance(p, lx, lz);
       const midK = 1.2 + (reach - 1.2) / 2; const mx = (wx / wl) * midK; const mz = (wz / wl) * midK;
       const lxl = mx * c - mz * s; const lzl = mx * s + mz * c;
       parts.push(part(G.box, DECK, lxl, p.y - ground - 0.1, lzl, { sx: 1.6, sy: 0.2, sz: Math.max(0.2, reach - 1.2), ry: Math.atan2(wx, wz) - holder.rotation.y }));
