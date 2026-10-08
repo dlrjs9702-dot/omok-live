@@ -165,6 +165,15 @@
     // Beyond the deck's end, on the same side of the track: neither shaft nor upper walkway crosses a carriage.
     return { x: p.x + Math.sin(p.yaw) * (station==='B'?-5.5:5.5), z: p.z + Math.cos(p.yaw) * (station==='B'?-5.5:5.5), y: T.heightAt(...STATIONS[station].entry) };
   }
+  // Distance from the centre to the deck's near edge along the approach direction.
+  function platformEdgeDistance(p, x, z) {
+    const dx = x - p.x; const dz = z - p.z; const length = Math.hypot(dx, dz);
+    if (!length) return 0;
+    const c = Math.cos(p.yaw); const s = Math.sin(p.yaw);
+    const ux = Math.abs((dx * c - dz * s) / length);
+    const uz = Math.abs((dx * s + dz * c) / length);
+    return Math.min(ux > 1e-9 ? 1.7 / ux : Infinity, uz > 1e-9 ? 2.7 / uz : Infinity);
+  }
   // v1.10.47 had 84 offshore supports (79 outer, 5 view). Keep 28 total even on the longer rails.
   const PILLARS = [];
   for (const [line,L] of Object.entries(LINES)) {
@@ -200,5 +209,5 @@
     return T.segDist(x,z,...st.entry,lift.x,lift.z)<1+radius || Math.hypot(x-lift.x,z-lift.z)<1.5+radius;
   }));
   T.addTreeBlock((x, z) => liftSites.some(p => Math.hypot(p.x-x,p.z-z)<2.5) || Object.values(LINES).some(({ route: r }) => { for (let i = 0; i < r.S.length; i += 2) { if (Math.abs(r.xs[i] - x) > 5 || Math.abs(r.zs[i] - z) > 5) continue; if (Math.hypot(r.xs[i] - x, r.zs[i] - z) < 5 && r.ys[i] - T.heightAt(x, z) < 11) return true; } return false; }));
-  return { CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
+  return { CYCLE, TRAVEL, DWELL, SURFACE, CLEAR, SEATS, CAR, DOCK, SEA, STATIONS, LINES, TRAINS, PLATFORMS, PILLARS, platformSpot, platformClamp, platformEdgeDistance, liftOf, pointAt, trainAt, timetableAt, createTraffic, setService, carOf, seatAt, docked, nextAt, stationOf: (id) => STATIONS[id] ? { id, ...STATIONS[id], spot: { x: STATIONS[id].entry[0], z: STATIONS[id].entry[1] } } : null };
 }));

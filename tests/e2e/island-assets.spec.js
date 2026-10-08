@@ -1,5 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, post, get, expectNoScriptError } = require('./skin-support');
+// A separate test type preserves the first character reload failure without tracing every 3D test.
+const characterTest = test.extend({ trace: 'retain-on-failure' });
 
 test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급·자원 유지', async ({browser,request}) => {
   test.setTimeout(120000);
@@ -11,7 +13,7 @@ test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급�
     await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),x:placed.data.x,z:placed.data.z})}));
     await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),placed.data);
     await expect(page.locator('#plazaHint')).toContainText(kind==='weed'?'잡초':'나무 열매');
-    await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000)); // Keep the short pre-completion action observable on slow software renderers.
+    await page.clock.install();await page.clock.pauseAt(await page.evaluate(()=>Date.now()+10000)); // Browser clock; pause before starting the action, not at a host timestamp that can arrive in the past.
     const started=page.waitForResponse(r=>r.url().endsWith(`/api/island/${kind}/start`));
     const cancelled=page.waitForRequest(r=>r.url().endsWith(`/api/island/${kind}/cancel`),{timeout:10000});
     await page.keyboard.press('Space');expect((await started).status()).toBe(200);
@@ -42,7 +44,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   b.fixtureAt={x:observer.data.x,z:observer.data.z};
   await b.page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),observer.data);
   const placeHarvester=async()=>{
-    a.fixtureAt={x:tree.x+.685,z:tree.z};
+    a.fixtureAt={x:tree.x,z:tree.z}; // the server's walkable approach; distance zero selects the fruit rather than a nearer random weed
     await a.page.evaluate(p=>window.PlazaWarp(p.x,p.z),a.fixtureAt);
     const p=await post(request,'/api/plaza/state',a.token,{...a.fixtureAt,yaw:0,moving:false});expect(p.status).toBe(200);
     a.fixtureAt={x:p.data.x,z:p.data.z};await a.page.evaluate(t=>window.PlazaDebug().teleport(t.x,t.z),a.fixtureAt);
@@ -87,7 +89,7 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:10000}).toBe(true);
   await placeHarvester();
   await expect(a.page.locator('#plazaHint')).toContainText('나무 열매');
-  await a.page.clock.install();await a.page.clock.pauseAt(new Date(Date.now()+1000));
+  await a.page.clock.install();await a.page.clock.pauseAt(await a.page.evaluate(()=>Date.now()+10000));
   await a.page.keyboard.press('Space');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe('resource');await a.page.keyboard.press('Escape');
   await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather)).toBe(null);
@@ -180,7 +182,16 @@ async function island(browser, request, label, registry, { failLoader = false } 
   await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
   await page.evaluate(() => window.GameBoot.ready);
   await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
-  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+  try { await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 }); }
+  catch (error) {
+    console.log('ISLAND_BOOT_FAILURE', await page.evaluate(() => ({
+      lobbyHidden: document.getElementById('lobbyView')?.classList.contains('hidden'),
+      plazaClasses: document.getElementById('plazaStage')?.className,
+      plazaError: document.getElementById('plazaError')?.textContent,
+      sceneReady: Boolean(window.PlazaDebug?.()), readyState: document.readyState,
+    })));
+    throw error; // keep the original deadline/failure; no automatic reload or timeout increase
+  }
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
   return { ...who, hits, code, errors };
 }
@@ -531,13 +542,31 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
 // v1.10.30 공통 캐릭터: the common-rig body with its gender's clothes; an avatar item with a part is worn on the same
 // skeleton, the face (성형) and a dyed item (염색) change what is worn, the island goes on; an item without a part yet keeps
 // the procedural character (never swapped for something else)
-test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
+characterTest('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
   test.setTimeout(180000);
   const who = await shopper(browser, request, '공통캐릭', 2_000_000, 'female');
   const { page, token } = who;
+  // Look payments use a globally unique ledger request key. Each retry creates a new account.
+  const lookRequest = () => require('node:crypto').randomUUID();
+  const bootFailures = [];
+  page.on('pageerror', error => bootFailures.push({ script: error.message }));
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith('/api/') && response.status() >= 400) bootFailures.push({ path, status: response.status() });
+  });
   const ready = async () => {
     await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+    try {
+      await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+    } catch (error) {
+      console.log('CHARACTER_BOOT_FAILURE', { failures: bootFailures, state: await page.evaluate(() => ({
+        sessionSaved: Boolean(sessionStorage.getItem('gameCenterGuestSession')),
+        gateVisible: !document.getElementById('gateView').classList.contains('hidden'),
+        toast: document.getElementById('toast').textContent,
+        sceneReady: Boolean(window.PlazaDebug?.()),
+      })) });
+      throw error;
+    }
   };
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
@@ -546,14 +575,14 @@ test('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 
   expect(tag.headTop).toBeGreaterThan(1.4); expect(tag.headTop).toBeLessThan(2.4);
   expect(tag.bottom - tag.headTop).toBeGreaterThan(0.05); expect(tag.bottom - tag.headTop).toBeLessThan(0.25);
   // v1.10.35 염색: the base hair, the eyes and the skin (nothing to own)
-  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: `e2e-body-${color}-1` })).status).toBe(200);
+  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: lookRequest() })).status).toBe(200);
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 30000 }).toMatchObject({ hairColor: '#e2c27a', eyeColor: '#34507e', skinColor: '#b07a4d' });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wornColors), { timeout: 90000 }).toMatchObject({ hair: '#e2c27a', eyes: '#34507e', skin: '#b07a4d' });
   for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
   expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
-  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: 'e2e-look-eyes-1' })).status).toBe(200);
-  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: 'e2e-look-dye-1' })).status).toBe(200);
+  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: lookRequest() })).status).toBe(200);
+  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: lookRequest() })).status).toBe(200);
   await ready();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
   expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
