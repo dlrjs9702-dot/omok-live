@@ -183,24 +183,18 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     const tokenOf = { get 1() { return a.token; }, get 2() { return b.token; } };
     await openRoom(a, [b], request);
     const before = await Promise.all([a, b].map(view => balance(request, view.token)));
-    // 항상 '고'를 부르면 끝까지 더 나지 않는 판이 나가리로 끝나기 쉽다.
-    let nagari = null;
-    for (let round = 0; round < 15 && !nagari; round += 1) {
-      await a.page.locator('#gostopStartBtn').click();
-      await expect.poll(async () => (await roomState(request, a.token)).game.status).not.toBe('selecting');
-      let state;
-      for (let guard = 0; guard < 40; guard += 1) {
-        state = await playUntil(request, tokenOf, g => g.phase === 'go-stop');
-        if (state.game.status !== 'playing') break;
-        expect((await api(request, '/api/room/gostop-decide', tokenOf[state.game.turn], { choice: 'go' })).status).toBe(200);
-      }
-      state = await roomState(request, a.token);
-      if (state.game.status === 'draw') { nagari = state; break; }
-      await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
-      await expect(a.page.locator('#gostopStartBtn')).toBeVisible();
-      before.splice(0, 2, ...await Promise.all([a, b].map(view => balance(request, view.token))));
+    // Existing test-only hand reaches a genuine draw through legal moves and two paid bonuses.
+    // Random repeated deals could bankrupt a participant before drawing, or skip this check entirely.
+    expect((await api(request, '/api/test/gostop-fixture', a.token, { fixture: 'first-ppeok' })).status).toBe(200);
+    for (const [seat, cardId] of [['1', 'm05-pi1'], ['2', 'm08-pi1'], ['1', 'm06-pi1'],
+      ['2', 'm09-pi1'], ['1', 'm05-ribbon'], ['1', 'm04-pi2']]) {
+      const played = await api(request, '/api/room/gostop-play', tokenOf[seat], { cardId });
+      expect(played.status, JSON.stringify(played.data)).toBe(200);
     }
-    test.skip(!nagari, '15판 안에 나가리가 나오지 않음(무작위 분배)');
+    const nagari = await roomState(request, a.token);
+    expect(nagari.game.status).toBe('draw');
+    expect(nagari.game.nagariStreak).toBe(1);
+    expect(nagari.game.bonusAwards.map(award => award.paid)).toEqual([700, 1400]);
     await expect(a.page.locator('#gostopResult')).toContainText('나가리');
     await expect(a.page.locator('#gostopResult')).toContainText('다음 판 ×2');
     // v1.7.3: 받는 사람은 이동액의 90%, 내는 사람은 100%.
@@ -216,8 +210,20 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     await expect(a.page.locator('#gostopSetupNote')).toContainText('나가리 ×2 이월');
     await a.page.locator('#gostopStartBtn').click();
-    await expect(a.page.locator('#gostopMeta')).toContainText('나가리 ×2', { timeout: 15_000 }); // the started round reaches the table over the stream (slow CI runners)
-    expect((await roomState(request, a.token)).game.nagariMultiplier).toBe(2);
+    await expect.poll(async () => (await roomState(request, a.token)).game.status).not.toBe('selecting');
+    const started = await roomState(request, a.token);
+    // A legal initial 총통 may finish the freshly dealt hand immediately; its actual payment still uses ×2.
+    if (started.game.status === 'finished') {
+      expect(started.game.result.losers.length).toBeGreaterThan(0);
+      for (const loser of started.game.result.losers) {
+        expect(loser.factors).toContainEqual({ key: 'nagari', multiplier: 2, count: 1 });
+      }
+      await expect(a.page.locator('#gostopResult')).toContainText('나가리 ×2');
+    } else {
+      expect(started.game.status).toBe('playing');
+      expect(started.game.nagariMultiplier).toBe(2);
+      await expect(a.page.locator('#gostopMeta')).toContainText('나가리 ×2', { timeout: 15_000 });
+    }
 
     // 잔액 한도: 서버가 한도를 적용한 정산 결과(계산액 → 실제 지급액)를 그대로 보여준다(표시 검증: 같은 렌더 함수에 결과만 바꿔 전달).
     const current = await roomState(request, a.token);

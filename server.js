@@ -1691,6 +1691,8 @@ function setGostopTestFixture(room, fixture) {
   const zeros = () => Object.fromEntries(seats.map(seat => [seat, 0]));
   Object.assign(game, {
     status: 'playing', round: Number(room.game.round || 1), mode: 'matgo', nagariStreak: room.game.nagariStreak || 0,
+    // Test hands retain the real participants' signature so normal next-round start carries a draw.
+    nagariSignature: seats.map(seat => pointAccountForSeat(room, seat)).sort().join('|'),
     pointsPerScore: room.game.pointsPerScore || 100, seatOrder: seats, firstSeat: '1', turn: '1', phase: 'play',
     deck: ['m05-pi1', 'm05-pi2'], hands: { 1: ['m07-pi1'], 2: ['m08-pi1'] }, floor: ['m06-pi1'],
     floorBonus: {}, captured: { 1: [], 2: [] }, goCount: zeros(), lastGoScore: zeros(), shakes: zeros(),
