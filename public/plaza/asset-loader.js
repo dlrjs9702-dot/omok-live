@@ -10,7 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
-import { preparePlatformSurfaces } from './platform-surfaces.js';
+import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
 
@@ -26,7 +26,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   manager.setURLModifier((url) => (url.startsWith('/') && !url.includes('?') ? assetUrl(url) : url));
   const loader = new GLTFLoader(manager);
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const cache = P.createLoadCache((url) => loader.loadAsync(assetUrl(url)).then(gltf => preparePlatformSurfaces(gltf, url)), (url, error) => onError(url, error));
+  const cache = P.createLoadCache((url) => loader.loadAsync(assetUrl(url)).then(gltf => prepareTownhallSurfaces(preparePlatformSurfaces(gltf, url), url)), (url, error) => onError(url, error));
   const lodBase = new Map(); // LOD level object -> its registered distance
   const lods = [];
   const shown = {}; // target id -> 'loading' | 'model' | 'procedural'
@@ -177,15 +177,23 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     rec.holder.getWorldPosition(placeOf);
     rec.zone = T ? T.seasonZoneAt(placeOf.x, placeOf.z) : -1; // v1.10.27: the season of the zone it stands in
     const hit = P.pick(registry, rec.ids, off, lookOf(rec.zone)); const url = hit?.entry.url || null;
-    if (url === rec.url) return;
+    const selection = JSON.stringify(hit ? [hit.id, hit.entry] : null);
+    if (selection === rec.selection) return;
+    rec.selection = selection;
     rec.url = url;
     if (!hit) { swapAttach(rec, null); return; }
     shown[hit.id] = 'loading';
     build(hit.entry).then((object) => {
-      if (disposed || rec.url !== url || !rec.holder.parent) return;
+      if (disposed || rec.selection !== selection || !rec.holder.parent) {
+        const i = lods.indexOf(object); if (i >= 0) lods.splice(i, 1);
+        return;
+      }
       if (object && rec.holder.userData.fit) object = fitted(object, rec.holder.userData.fit);
       swapAttach(rec, object, hit.entry); shown[hit.id] = object ? 'model' : 'procedural';
-    }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+    }).catch((error) => {
+      if (disposed || rec.selection !== selection) return;
+      shown[hit.id] = 'procedural'; onError(hit.id, error);
+    });
   }
 
   // v1.10.29 a holder with `userData.fit(v)` (a bridge: island.js) gets the model reshaped to the game's own walking
@@ -518,7 +526,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     st.counts = counts;
   }
   // each frame: the one-off clips and the falling flakes
-  function tick(dt, x, z) {
+  function tick(dt, x, z, reduceMotion = false) {
     for (let i = playing.length - 1; i >= 0; i -= 1) {
       const p = playing[i]; p.t += dt; p.mixer.update(dt);
       p.root.getWorldPosition(at); const below = at.y < p.holder.position.y;
@@ -526,7 +534,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       p.below = below;
       if (p.t >= p.dur) { p.mixer.stopAllAction(); p.mixer.uncacheRoot(p.object); p.holder.parent?.remove(p.holder); playing.splice(i, 1); }
     }
-    tickAmbient(dt, x, z);
+    if (reduceMotion && ambientState) { for (const k of Object.values(ambientState.kinds)) k.im.count = 0; ambientState.counts = {}; }
+    else tickAmbient(dt, x, z);
     wearLod(x, z);
   }
 

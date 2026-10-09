@@ -1110,6 +1110,19 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
   // v1.10.45: walking at the hall from the yard stops at the foot of the steps and along the terrace's front, never into it
+  // The lowest sky view must also clear the yard walls, pillars and lamps, while retaining the 4m distance floor.
+  for (const [lx, lz] of [[0, 11], [-7, 13], [7, 13], [0, 17]]) {
+    for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      const view = await page.evaluate(([lx, lz, yaw]) => {
+        const d = window.PlazaDebug(), p = window.IslandTerrain.townhallWorld(lx, lz);
+        d.teleport(p.x, p.z); d.setCamPitch(-d.skyMax); d.setCamYaw(yaw);
+        const now = window.PlazaDebug(); return { camera: now.camera, distance: now.camDist };
+      }, [lx, lz, yaw]);
+      expect(view.camera.inBuilding, `${lx},${lz}@${yaw}`).toBe(false);
+      expect(view.camera.clear).toBeGreaterThan(0.9); expect(view.distance).toBeGreaterThanOrEqual(4);
+    }
+  }
+  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(0); });
   for (const lx of [0, 4.6, -6.5]) {
     await page.evaluate((x) => { const p = window.IslandTerrain.townhallWorld(x, 9.5); window.PlazaDebug().teleport(p.x, p.z); }, lx);
     await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1800); await page.keyboard.up('ArrowUp');

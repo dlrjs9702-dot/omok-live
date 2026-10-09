@@ -154,34 +154,36 @@ const BOX2 = '/assets/island/__e2e/box-winter.glb';
 const debug = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { running: d.running, assets: d.assets, doors: d.doors, x: d.x, z: d.z, near: d.near }; });
 
 async function island(browser, request, label, registry, { failLoader = false } = {}) {
-  const who = await shopper(browser, request, label);
-  const { page, context } = who;
   const hits = {};
-  await context.route('**/assets/island/__e2e/**', (route) => {
-    const url = new URL(route.request().url()).pathname; hits[url] = (hits[url] || 0) + 1;
-    if (url === BOX) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
-    if (url === RIG) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: riggedGlb() });
-    if (url === BOX2) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
-    if (url.endsWith('broken.glb')) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: Buffer.from('glTF but not really') });
-    return route.fulfill({ status: 404, body: 'not found' });
+  const code = [], errors = [], shaderErrors = [];
+  const nulls = Object.fromEntries(Object.keys(require('../../public/plaza/island-assets').REGISTRY).map(id => [id, null]));
+  const own = registry === 'none' ? nulls : registry?.__only ? (({ __only, ...rest }) => ({ ...nulls, ...rest }))(registry) : registry;
+  // Install routes and the selected registry before the first island starts. A full
+  // default island followed by a reload doubles setup and competes with the observer.
+  const who = await shopper(browser, request, label, 0, 'male', async context => {
+    await context.addInitScript(r => {
+      if (!/^https?:$/.test(location.protocol)) return; // the guest handoff starts on an opaque about:blank document
+      localStorage.removeItem('gc.testClassic');
+      if (r && !localStorage.getItem('gc.testIslandAssets')) localStorage.setItem('gc.testIslandAssets', JSON.stringify(r));
+    }, own);
+    await context.route('**/assets/island/__e2e/**', (route) => {
+      const url = new URL(route.request().url()).pathname; hits[url] = (hits[url] || 0) + 1;
+      if (url === BOX) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
+      if (url === RIG) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: riggedGlb() });
+      if (url === BOX2) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
+      if (url.endsWith('broken.glb')) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: Buffer.from('glTF but not really') });
+      return route.fulfill({ status: 404, body: 'not found' });
+    });
+    context.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
+    if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
+    context.on('page', page => {
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error' && /THREE|shader|GLSL|WebGLProgram/.test(m.text())) shaderErrors.push(m.text()); });
+    });
   });
-  const code = [];
-  page.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
-  if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
-  const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-  // 'none': as if nothing were registered (the registered entries are set to null); otherwise added to the registry;
-  // v1.10.29 `__only`: only these entries (every registered one off) -- a test of the general ids (`cottage`,
-  // `nature.flower`) that the real, more specific ones (`cottage.3`, `nature.flower.2`) would otherwise take over
-  await page.evaluate((r) => {
-    localStorage.removeItem('gc.testClassic');
-    const nulls = Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]));
-    const own = r === 'none' ? nulls : r?.__only ? (({ __only, ...rest }) => ({ ...nulls, ...rest }))(r) : r;
-    if (own) localStorage.setItem('gc.testIslandAssets', JSON.stringify(own));
-  }, registry);
-  await page.reload();
-  await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
-  await page.evaluate(() => window.GameBoot.ready);
-  await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
+  const { page } = who;
+  // shopper already waits for the lobby, which opens after GameBoot.ready and
+  // the asynchronous session request. Check the actual scene, without rechecking it.
   try { await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 }); }
   catch (error) {
     console.log('ISLAND_BOOT_FAILURE', await page.evaluate(() => ({
@@ -193,7 +195,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
     throw error; // keep the original deadline/failure; no automatic reload or timeout increase
   }
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
-  return { ...who, hits, code, errors };
+  return { ...who, hits, code, errors, shaderErrors };
 }
 
 // the island still plays: walking, a facility hint, Space opens its window
@@ -211,6 +213,111 @@ async function stillPlays(page) {
 }
 
 let proceduralDoors = null;
+
+test('관공서 실물 High/Low: 기단 보정 뒤 주야간 재질 렌더링과 카메라 안전', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const { REGISTRY } = require('../../public/plaza/island-assets');
+  for (const low of [false, true]) {
+    const entry = REGISTRY['facility.townhall'];
+    const a = await island(browser, request, low ? '관공서Low' : '관공서High', { __only: true,
+      'facility.townhall': { ...entry, url: low ? entry.low.url : entry.url, low: null } });
+    await a.page.evaluate(() => { const d = window.PlazaDebug(), p = window.IslandTerrain.townhallWorld(0, 11); d.teleport(p.x, p.z); d.setCamYaw(Math.PI); });
+    await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.shown['facility.townhall']), { timeout: 30000 }).toBe('model');
+    for (const night of [true, false]) {
+      await a.page.evaluate(on => window.PlazaDebug().halloween.set(on), night);
+      await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().halloween.on())).toBe(night);
+      await a.page.waitForTimeout(300); // compile/render the changed material rather than only inspect loader state
+      expect(await a.page.evaluate(() => window.PlazaDebug().camera.inBuilding)).toBe(false);
+    }
+    expect(a.shaderErrors).toEqual([]); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
+  }
+});
+
+test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
+  const { REGISTRY } = require('../../public/plaza/island-assets');
+  const a = await island(browser, request, '길가', { __only: true, 'deco.layer.edge': REGISTRY['deco.layer.edge'] });
+  const sample = () => a.page.evaluate(() => {
+    const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality, batches: d.assets.batches };
+  });
+  await expect.poll(sample).toMatchObject({ environment: { edgeDecor: { grass: 0 } } });
+  const before = await sample(); expect(before.environment.edgeDecor.tiles).toBeGreaterThan(0);
+  expect(before.environment.edgeDecor.flowers).toBeGreaterThan(0); expect(before.environment.edgeDecor.seasonal).toBeGreaterThan(0);
+  await expect.poll(async () => (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'))?.placed).toBe(true);
+  for (const day of [0, 1, 2, 3]) {
+    await a.page.evaluate(day => window.PlazaDebug().setSeasonDay(day), day);
+    await expect.poll(async () => {
+      const batch = (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'));
+      return Object.values(batch?.zones || {}).every(z => z.url?.includes(`layer_${z.look}_edge.glb`));
+    }).toBe(true);
+  }
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
+test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', async ({ browser, request }) => {
+  const a = await island(browser, request, '정적환경', { __only: true });
+  const sample = () => a.page.evaluate(() => {
+    const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality };
+  });
+  await a.page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(async () => {
+    const { environment } = await sample();
+    return { stillWater: environment.water.flow.every(v => v === 0), bodyScale: environment.ambient.bodyScale };
+  }).toEqual({ stillWater: true, bodyScale: 1 });
+  const before = await a.page.evaluate(() => {
+    const d = window.PlazaDebug(); d.holdQuality(2); d.holdQuality(null);
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
+    return d.environment;
+  });
+  await a.page.clock.install();
+  for (let i = 0; i < 4; i++) await a.page.clock.fastForward(1000);
+  const after = await sample(); expect(after.quality).toBe(2);
+  expect(after.environment.water).toEqual(before.water); expect(after.environment.ambient).toEqual(before.ambient);
+  await a.page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
+test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browser, request }) => {
+  const a = await island(browser, request, '정적입력', { __only: true });
+  await a.page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().environment.ambient.bodyScale)).toBe(1);
+  await a.page.clock.install();
+  await a.page.locator('#plazaStage').focus();
+  const before = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, x: d.x, z: d.z }; });
+  await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
+  const camera = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, goal: d.pitchGoal }; });
+  expect(camera.pitch).toBeLessThan(before.pitch); expect(camera.pitch).toBe(camera.goal);
+  await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
+  expect(await a.page.evaluate(p => { const d = window.PlazaDebug(); return Math.hypot(d.x - p.x, d.z - p.z); }, before)).toBeGreaterThan(0.2);
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
+test('동일 URL 에셋: 변경된 크기·회전·그림자 재적용, 늦은 이전 선택 배제, 다운로드 재사용', async ({ browser, request }) => {
+  const a = await island(browser, request, '변환', { __only: true });
+  await a.page.evaluate(async url => {
+    const THREE = await import('/vendor/three/three.module.js');
+    const { createIslandAssets } = await import('/plaza/asset-loader.js');
+    const root = new THREE.Group(), holder = new THREE.Group(), procedural = new THREE.Group();
+    root.add(holder); holder.add(procedural);
+    const registry = { probe: { url, scale: 1, rotationY: 0, shadows: true } };
+    const loader = createIslandAssets({ registry }); loader.attach('probe', holder, procedural);
+    window.__attachmentProbe = { holder, procedural, registry, loader };
+  }, BOX);
+  const pose = () => a.page.evaluate(() => {
+    const p = window.__attachmentProbe, o = p.holder.children.find(c => c !== p.procedural);
+    let shadows = false; o?.traverse(m => { if (m.isMesh && m.castShadow) shadows = true; });
+    return o ? { scale: o.scale.x, turn: o.rotation.y, shadows, fallback: p.procedural.visible } : null;
+  });
+  await expect.poll(pose).toMatchObject({ scale: 1, turn: 0, shadows: true, fallback: false });
+  await a.page.evaluate(() => {
+    const p = window.__attachmentProbe;
+    p.registry.probe = { ...p.registry.probe, scale: 1.4, rotationY: 0.5 }; p.loader.setDay(1);
+    p.registry.probe = { ...p.registry.probe, scale: 0.7, rotationY: 1.2, shadows: false }; p.loader.setDay(2);
+  });
+  await expect.poll(pose).toMatchObject({ scale: 0.7, turn: 1.2, shadows: false, fallback: false });
+  expect(a.hits[BOX]).toBe(1);
+  await a.page.evaluate(() => { window.__attachmentProbe.loader.dispose(); delete window.__attachmentProbe; });
+  expect(a.errors).toEqual([]); await a.context.close();
+});
 
 test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
   const a = await island(browser, request, '에셋없음', 'none');

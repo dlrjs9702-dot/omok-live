@@ -247,7 +247,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = new THREE.Mesh(g, material); m.receiveShadow = true; scene.add(m); return m;
   };
-  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), (x, z) => (STREAM_HALF + riverExtra(x, z)) * 2 + 0.6, (x, z) => Math.max(-0.58, land(x, z) - 0.45), water); // ends where it meets the sea
+  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), (x, z) => (STREAM_HALF + riverExtra(x, z)) * 2 + 0.6, T.streamWaterHeight, water); // ends where it meets the sea
   // In the plaza the fountain's water runs out along shallow channels toward each stream.
   for (const s of STREAMS) {
     const [ex, ez] = s[0]; const a = Math.atan2(ez, ex);
@@ -260,8 +260,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // pale paving to the hall, warm stone on the shop street, earth up the hill and in the woods, sand to the harbour.
   const paveMat = mat(0xf3e6c8);
   const WALK_COLORS = [0xefe4cc, 0xe8d6b4, 0xdcc59a, 0xefdcb4, 0xd9c391, 0xe8d6ad, 0xdcc59a];
-  const pathMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  const pathMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
   const grassEdge = new THREE.Color(0xa7d483);
+  const plazaPaving = new THREE.Color(0xf3e6c8);
   const pathStrip = (pts, width, base) => {
     const v = []; const col = []; const idx = []; const c0 = new THREE.Color(base); const cm = new THREE.Color(); const ce = new THREE.Color(); const cols = 4;
     for (let i = 0; i < pts.length; i += 1) {
@@ -269,9 +270,12 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
       const dx = b[0] - a[0]; const dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1;
       const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i];
       const mottle = 0.94 + 0.08 * Math.sin(x * 0.7 + z * 0.4) * Math.cos(z * 0.53 - x * 0.2);
-      cm.copy(c0).multiplyScalar(mottle); ce.copy(cm).lerp(grassEdge, 0.55);
-      for (const [o, lift, c] of [[-(width / 2 + 0.35), 0.0, ce], [-(width / 2 - 0.25), 0.06, cm], [width / 2 - 0.25, 0.06, cm], [width / 2 + 0.35, 0.0, ce]]) {
-        const px = x + nx * o; const pz = z + nz * o; v.push(px, ground(px, pz) + lift + 0.01, pz); col.push(c.r, c.g, c.b);
+      const plazaBlend = 1 - smooth(PLAZA_R - 1, PLAZA_R + 6, Math.hypot(x, z));
+      const halfWidth = width / 2 * (1 + 0.35 * plazaBlend);
+      cm.copy(c0).multiplyScalar(mottle).lerp(plazaPaving, plazaBlend);
+      ce.copy(cm).lerp(grassEdge, 0.55 * (1 - plazaBlend));
+      for (const [o, c] of [[-(halfWidth + 0.35), ce], [-(halfWidth - 0.25), cm], [halfWidth - 0.25, cm], [halfWidth + 0.35, ce]]) {
+        const px = x + nx * o; const pz = z + nz * o; v.push(px, T.meshGroundHeight(px, pz) + 0.008, pz); col.push(c.r, c.g, c.b);
       }
       if (i) for (let k = 0; k < cols - 1; k += 1) { const p = (i - 1) * cols + k; const n = i * cols + k; idx.push(p, n + 1, n, p, p + 1, n + 1); }
     }
@@ -493,14 +497,20 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
   // line (decoration only -- nothing here is walked around). Spaced from each curve, so they follow every walk.
-  const edgeStones = []; const edgeGrass = []; const edgeFlowers = [];
-  const busy = (x, z) => Math.hypot(x, z) < PLAZA_R + 1.5 || Math.hypot(x, z + 44) < 10 || onBridge(x, z) || BUILDINGS.some((s) => Math.hypot(x - s.x, z - s.z) < 4.5);
+  const edgeStones = []; const edgeTiles = []; const edgeSeason = []; const edgeFlowers = [];
+  const busy = (x, z) => T.inTownhall(x, z, 2) || Math.hypot(x, z) < PLAZA_R + 1.5 || Math.hypot(x, z + 44) < 10 || onBridge(x, z) || BUILDINGS.some((s) => Math.hypot(x - s.x, z - s.z) < 4.5);
   const along = (pts, step, fn) => { let acc = 0; for (let i = 1; i < pts.length; i += 1) { const [x0, z0] = pts[i - 1]; const [x1, z1] = pts[i]; const l = Math.hypot(x1 - x0, z1 - z0); acc += l; if (acc < step) continue; acc = 0; fn(x1, z1, (x1 - x0) / (l || 1), (z1 - z0) / (l || 1), i); } };
   walkCurves.forEach((w, wi) => along(w.pts, 1.3, (x, z, dx, dz, i) => {
     for (const side of [-1, 1]) {
-      const h = hash(x + side, z, wi); const off = w.w / 2 + 0.1 + hash(z, x, i) * 0.45; const px = x - dz * off * side; const pz = z + dx * off * side;
+      const h = hash(x + side, z, wi); const off = w.w / 2 + 0.1 + hash(z, x, i) * 0.06; const px = x - dz * off * side; const pz = z + dx * off * side;
       if (busy(px, pz) || !walkable(px, pz) || streamDist(px, pz) < STREAM_HALF + 0.6) continue;
-      if (h < 0.2) edgeStones.push({ x: px, z: pz, s: 0.1 + hash(px, pz) * 0.1 }); else if (h < 0.66) edgeGrass.push({ x: px, z: pz, s: 0.7 + hash(pz, px) * 0.4, r: h * 20 }); else if (h < 0.82) edgeFlowers.push({ x: px, z: pz, c: Math.floor(h * 50) % 5 });
+      if (h < 0.2) edgeStones.push({ x: px, z: pz, s: 0.1 + hash(px, pz) * 0.1 });
+      else if (h < 0.66) {
+        const marble = T.inTownhall(px, pz, 8);
+        if (wi === 1 || Math.hypot(px, pz) < 32 || marble) edgeTiles.push({ x: px, z: pz, r: -Math.atan2(dz, dx), marble });
+        else if (h < 0.42 || hash(px, pz, 37) > 0.06) edgeStones.push({ x: px, z: pz, s: 0.16 });
+        else edgeSeason.push({ x: px, z: pz, s: 0.15, r: -Math.atan2(dz, dx), v: 2 });
+      } else if (h < 0.82) edgeFlowers.push({ x: px, z: pz, c: Math.floor(h * 50) % 5 });
     }
   }));
   streamCurves.forEach((st, si) => along(st, 1.1, (x, z, dx, dz, i) => {
@@ -508,7 +518,12 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     for (const side of [-1, 1]) {
       const h = hash(x, z + side, si + 7); const off = STREAM_HALF + 0.35 + hash(x, z, i) * 0.7; const px = x - dz * off * side; const pz = z + dx * off * side;
       if (busy(px, pz) || walkDist(px, pz) < 0.3) continue;
-      if (h < 0.35) edgeStones.push({ x: px, z: pz, s: 0.14 + hash(px, pz) * 0.18 }); else if (h < 0.8) edgeGrass.push({ x: px, z: pz, s: 0.9 + hash(pz, px) * 0.6, r: h * 20 });
+      if (h < 0.35) edgeStones.push({ x: px, z: pz, s: 0.14 + hash(px, pz) * 0.18 });
+      else if (h < 0.6) {
+        if (hash(px, pz, 37) < 0.06) edgeSeason.push({ x: px, z: pz, s: 0.18, r: -Math.atan2(dz, dx), v: 2 });
+        else edgeStones.push({ x: px, z: pz, s: 0.16 });
+      }
+      else if (h < 0.8) edgeFlowers.push({ x: px, z: pz, c: Math.floor(h * 50) % 5 });
     }
   }));
   const bendRocks = [];
@@ -524,8 +539,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
   instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, ground(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
-  instanced(clump, natureMat, edgeGrass, (t) => setM(t.x, ground(t.x, t.z), t.z, t.s, t.s, t.r), { shadow: false, cell: 60, color: (t, c) => c.setHSL(0.03 * (hash(t.x, t.z, 15) - 0.5), 0.15, 0.85 + hash(t.x, t.z, 16) * 0.25) });
-  instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
+  const curb = keep(mergeColored([part(G.box, 0xffffff, 0, 0.05, 0, { sx: 1.5, sy: 0.1, sz: 0.24, shade: [0.82, 1] })]));
+  instanced(curb, natureMat, edgeTiles, (t) => setM(t.x, T.meshGroundHeight(t.x, t.z), t.z, 1, 1, t.r), { shadow: false, cell: 60, color: (t, c) => c.set(t.marble ? 0xe4ddca : 0xc9a786) });
+  instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
   for (const [key, copies] of baked) {
@@ -570,7 +586,8 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
       spots.push({ x, z, v: Math.min(2, Math.floor(hash(x, z, 24) * 3)), r: hash(x, z, 25) * TAU });
     }
     const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })]));
-    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, 1, 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
+    spots.push(...edgeSeason);
+    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, p.s ?? 1, p.s ?? 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
   }
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
@@ -671,7 +688,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     return { turn, shown };
   }
 
-  function step(clock) { flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), edgeDecor: { stones: edgeStones.length, tiles: edgeTiles.length, flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

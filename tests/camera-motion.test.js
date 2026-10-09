@@ -4,6 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const loaded = import(`data:text/javascript;base64,${Buffer.from(fs.readFileSync(path.join(__dirname, '../public/plaza/camera-motion.js'), 'utf8')).toString('base64')}`);
 
+test('하늘 시선: 바닥·건물 보정 뒤에도 위를 보는 각도를 유지하고 기본 시선은 그대로 둔다', async () => {
+  const { cameraSkyAim } = await loaded;
+  const distance = 12, orbit = 1.5, look = orbit + distance;
+  for (const raised of [orbit, 4, 8.5]) {
+    const angle = Math.atan2(cameraSkyAim(look, orbit, raised, Math.PI / 4) - raised, distance);
+    assert.ok(Math.abs(angle - Math.PI / 4) < 1e-12);
+  }
+  assert.equal(cameraSkyAim(1.3, orbit, 8.5, 0), 1.3);
+});
+
 test('카메라: 기본거리의 반미터 감소가 4m 아래로 넘어가지 않고 막힌 끝에서도 멈춘다', async () => {
   const { cameraDistance } = await loaded; const normal = Math.hypot(7.4, 10.8);
   assert.equal(cameraDistance(normal, 4, () => false), normal);

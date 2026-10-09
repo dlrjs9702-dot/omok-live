@@ -204,13 +204,24 @@
     if (out < 5) h = Math.max(h, lerp(PLAZA_H, h, smooth(0, 5, out)));
     return h;
   }
+  const streamDepth = (x, z) => lerp(0.22, 1, smooth(PLAZA_R + 7, PLAZA_R + 19, Math.hypot(x, z)));
+  const streamWaterHeight = (x, z) => Math.max(-0.58, land(x, z) - Math.min(0.45, streamDepth(x, z) * 0.55));
   function ground(x, z) {
     let h = land(x, z);
     const sd = streamDist(x, z);
-    if (sd < STREAM_HALF + 1.4) h = lerp(h - 1, h, smooth(STREAM_HALF - 0.3, STREAM_HALF + 1.4, sd));
+    if (sd < STREAM_HALF + 1.4) h = lerp(h - streamDepth(x, z), h, smooth(STREAM_HALF - 0.3, STREAM_HALF + 1.4, sd));
     const pd = Math.hypot(x - POND.x, z - POND.z);
     if (pd < POND.r + 2) h = lerp(h - 1, h, smooth(POND.r - 0.5, POND.r + 2, pd));
     return h;
+  }
+
+  // Height on the actual 2m terrain triangles, rather than the smooth source surface.
+  function meshGroundHeight(x, z) {
+    const x0 = Math.floor((x + 125) / 2) * 2 - 125, z0 = Math.floor((z + 125) / 2) * 2 - 125;
+    const u = (x - x0) / 2, v = (z - z0) / 2;
+    const a = ground(x0, z0), b = ground(x0 + 2, z0), c = ground(x0, z0 + 2);
+    return u + v <= 1 ? a * (1 - u - v) + b * u + c * v
+      : b * (1 - v) + c * (1 - u) + ground(x0 + 2, z0 + 2) * (u + v - 1);
   }
 
   // Bridges where a walk crosses a stream (found from the curves, so moving a walk moves its bridge).
@@ -433,5 +444,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

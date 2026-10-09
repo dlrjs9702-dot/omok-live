@@ -7,7 +7,7 @@ import { halloweenDecor } from './island-halloween.js';
 import { townhallYard } from './island-townhall.js';
 import { trainScene } from './island-train-scene.js';
 import { createOcclusion } from './occlusion.js';
-import { cameraEase, cameraDistance } from './camera-motion.js';
+import { cameraEase, cameraDistance, cameraSkyAim } from './camera-motion.js';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -719,7 +719,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const train = trainScene({ scene, assets, solids, vcMat, sign }); // v1.10.47 관광열차 (its steps are walked round)
+  const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
+  buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
   doors.mayor = yard.door;
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -974,7 +976,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (camKeys.has('KeyS')) pitchGoal += PITCH_SPEED * speed * dt;
     } else { camHeld = 0; if (isBlocked()) camKeys.clear(); }
     pitchGoal = clampPitch(pitchGoal);
-    const ease = 1 - Math.exp(-dt * 14);
+    const ease = lessMotion?.matches ? 1 : 1 - Math.exp(-dt * 14);
     camYaw += (yawGoal - camYaw) * ease; camPitch = clampPitch(camPitch + (pitchGoal - camPitch) * ease);
   }
   const onDown = (event) => { if (event.button !== 0) return; drag = { x: event.clientX, y: event.clientY, id: event.pointerId }; dragged = false; };
@@ -1393,7 +1395,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85;
       if (!c.root.visible) continue;
       c.targetYaw = w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw;
-      c.lookAt = w.pose.moving ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      c.lookAt = w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
       animate(c, dt, w.speed > 0.3, w.speed);
     }
   }
@@ -1543,10 +1545,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const elev = Math.max(SKY_LOW, CAM_ELEV + camPitch); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
     const inside = (c) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + 0.6);
     const dist = cameraDistance(CAM_DIST, CAM_MIN, (d) => inside(at(d)));
+    snap ||= Boolean(lessMotion?.matches);
     camDist = snap ? dist : camDist + (dist - camDist) * cameraEase(dist < camDist ? 0.25 : 0.05, camDt); // in quickly, back out gently
     const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
     const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
-    const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4), p.z - cos * 2.4);
+    const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);
+    const look = new THREE.Vector3(p.x - sin * 2.4, cameraSkyAim(lookY, p.y + Math.sin(elev) * camDist, want.y, lift), p.z - cos * 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); }
     camPos.y = Math.max(camPos.y, heightAt(camPos.x, camPos.z) + CAM_CLEAR); // easing never dips it into a slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
@@ -1571,7 +1575,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.15 tiers: 2 high (pixel ratio up to 1.5, shadows, registered LOD distances), 1 medium (pixel ratio 1, LOD
   // switches nearer), 0 low (no shadows, nearer still) -- the model LOD part is asset-pipeline.js `lodDistance`.
   let quality = 2; let slowTime = 0; let sampled = 0; let qualityHeld = false; // tests may hold a tier (debug().holdQuality)
+  function resetFrameSample() { last = 0; sampled = 0; slowTime = 0; }
+  document.addEventListener('visibilitychange', resetFrameSample);
   function adaptQuality(dt) {
+    if (document.hidden) { sampled = 0; slowTime = 0; return; }
     if (quality === 0 || qualityHeld) return;
     sampled += dt; slowTime += dt > 1 / 35 ? dt : 0;
     if (sampled < 3) return;
@@ -1786,7 +1793,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     } else delete eventDoors['fish:spot'];
     if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName, plain: Boolean(doorOf(near).plain) } : null); }
     me.lookAt = near ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
-    for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = clock * 2.4; else spin.rotation.y = clock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(clock * 2) * 0.05; } }
+    const ambientClock = lessMotion?.matches ? 0 : clock;
+    for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = ambientClock * 2.4; else spin.rotation.y = ambientClock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(ambientClock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31
     stepFishing(dt); // v1.10.42
     if (photoMode) hideForPhoto(); // v1.10.43 (bubbles are shown again by their own updates)
@@ -1797,15 +1805,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sun.target.position.copy(at).addScaledVector(SUN_U, Math.round(a / texel) * texel - a).addScaledVector(SUN_V, Math.round(b / texel) * texel - b);
     sun.position.copy(sun.target.position).add(SUN_OFF);
     assets.update(me.root.position.x, me.root.position.z); // v1.10.17: near squares of registered nature show their model
-    assets.tick(dt, me.root.position.x, me.root.position.z); // v1.10.29: one-off clips (the whale) and the falling flakes
+    assets.tick(dt, me.root.position.x, me.root.position.z, Boolean(lessMotion?.matches)); // one-off actions keep playing; ambient flakes stop
     for (const c of statueChars) if (c.anim && !c.frozen) { c.anim.play('wave'); c.anim.update(0.7, 0); c.frozen = true; c.root.userData.occlusionRevision = (c.root.userData.occlusionRevision || 0) + 1; } // v1.10.30: a statue's wave, set once
     stepWhale(); stepSea(dt); // v1.10.32: the sea's other sights
     // v1.10.27: the season day by the server clock, checked every few seconds -- at 00:00 KST every season moves one zone
     // clockwise and the models swap in place for whoever is on the island (their files are already in the resource cache)
     if (clock - seasonCheckedAt > 2 && seasonOverride === null) { seasonCheckedAt = clock; setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }
-    island.step(clock); refreshMapBoard(); refreshMinimap(performance.now());
-    drops.forEach((d) => { const t = (clock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
-    lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(clock * 1.5 + i) * 0.05; });
+    island.step(clock, Boolean(lessMotion?.matches)); refreshMapBoard(); refreshMinimap(performance.now());
+    drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, 2.3 + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
+    lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; });
     if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setHalloween(halloweenOverride ?? isHalloween(Date.now() + serverOffset)); }
     decor.step(clock, camera, Boolean(lessMotion?.matches));
     yard.step(dt, me, animate); // v1.10.41 the mayor
@@ -1824,7 +1832,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const turn = angleTo(yaw, target);
     const rate = Math.min(1, dt * 12);
     c.root.rotation.y = yaw + turn * rate;
-    if (c.anim) { c.anim.update(dt, speed); return; } // v1.10.15: a registered model -- Idle/Walk/Run from the same speed
+    if (c.anim) { c.anim.update(dt, speed, { reduceIdle: Boolean(lessMotion?.matches) }); return; } // gait and explicit actions keep playing
     c.roll += (THREE.MathUtils.clamp(-turn * 0.25, -0.18, 0.18) - c.roll) * Math.min(1, dt * 10); // lean into a turn
     c.gait = (c.gait || 0) + (Math.min(1.7, Math.max(0, speed) / SPEED) - (c.gait || 0)) * Math.min(1, dt * 7);
     const walk = Math.min(1, c.gait); const run = Math.max(0, Math.min(1, (c.gait - 1.1) / 0.5));
@@ -1832,7 +1840,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (speed > 0.2) c.phase += dt * speed * 2.1; else c.phase *= Math.max(0, 1 - dt * 8); // the stride matches the ground
     const swing = Math.sin(c.phase) * (0.65 * walk + 0.25 * run);
     c.legL.rotation.x = swing; c.legR.rotation.x = -swing;
-    const idle = (1 - walk) * Math.sin(clock * 2.2 + (c === me ? 0 : 1.7)) * 0.05;
+    const ambientClock = lessMotion?.matches ? 0 : clock;
+    const idle = lessMotion?.matches ? 0 : (1 - walk) * Math.sin(clock * 2.2 + (c === me ? 0 : 1.7)) * 0.05;
     c.armL.rotation.x = -swing * 0.9 + idle; c.armR.rotation.x = swing * 0.9 - idle;
     c.hop = Math.max(0, c.hop - dt * 2.8);
     const hopT = c.hop > 0 ? Math.sin((1 - c.hop) * Math.PI) : 0;
@@ -1844,13 +1853,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const bodyBob = c.groundedWalk ? 0.012 : 0.07;
     c.body.position.y = Math.abs(Math.sin(c.phase)) * bodyBob * walk * (1 + run * 0.6) + hopT * 0.28 - (c.groundedWalk ? FOOT_LIFT : 0);
     c.body.rotation.x = c.lean; c.body.rotation.z = c.roll;
-    c.body.scale.y = 1 + (1 - walk) * Math.sin(clock * 2.2) * 0.012;
+    c.body.scale.y = 1 + (1 - walk) * Math.sin(ambientClock * 2.2) * 0.012;
     // the head turns toward a nearby facility (limited), and nods on interaction
     const wantHead = c.lookAt != null ? THREE.MathUtils.clamp(angleTo(c.root.rotation.y, c.lookAt), -0.7, 0.7) : 0;
     c.headYaw += (wantHead - c.headYaw) * Math.min(1, dt * 6);
     c.head.rotation.y = c.headYaw; c.head.rotation.x = -hopT * 0.25;
-    if (c.cape) c.cape.rotation.x = 0.18 + c.lean * 2.2 + Math.sin(clock * 7 + c.phase) * (0.02 + 0.06 * walk); // the cape trails when walking
-    if (c.halo) c.halo.position.y = 0.8 + Math.sin(clock * 2.4) * 0.04;
+    if (c.cape) c.cape.rotation.x = 0.18 + c.lean * 2.2 + Math.sin(ambientClock * 7 + c.phase) * (lessMotion?.matches ? 0.06 * walk : 0.02 + 0.06 * walk);
+    if (c.halo) c.halo.position.y = 0.8 + Math.sin(ambientClock * 2.4) * 0.04;
   }
 
   const resize = () => {
@@ -1870,6 +1879,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
+    document.removeEventListener('visibilitychange', resetFrameSample);
     occlusion.dispose(); assets.dispose();
     for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
@@ -1890,7 +1900,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), holdQuality: (tier) => { qualityHeld = true; quality = tier; assets.setQuality(tier); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };

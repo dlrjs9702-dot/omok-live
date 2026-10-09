@@ -8,3 +8,8 @@ export function cameraDistance(normal, minimum, inside) {
   while (distance > minimum && inside(distance)) distance = Math.max(minimum, distance - 0.5);
   return distance;
 }
+
+// Raising a sky-facing camera over terrain must preserve its upward viewing angle.
+export function cameraSkyAim(lookY, orbitY, correctedY, lift) {
+  return lookY + (lift > 0 ? Math.max(0, correctedY - orbitY) : 0);
+}
