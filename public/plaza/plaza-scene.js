@@ -2,6 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
+import './remote-motion.js'; // an older page may not include the classic dependency script
 import { buildIsland, building, props, part, mergeColored, heightAt, walkable, SPOTS, COTTAGES, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js';
 import { halloweenDecor } from './island-halloween.js';
 import { townhallYard } from './island-townhall.js';
@@ -22,7 +23,7 @@ const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart th
 // walking islanders are lowered by it so their feet are on the ground, not just their root.
 const FOOT_LIFT = 0.085;
 // v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
-// loaded before the app like island-terrain.js)
+// directly imported too, so an older page can load the current scene)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
 const IslandNpcs = globalThis.IslandNpcs; // v1.10.12 배회 NPC (public/plaza/island-npcs.js)
 // v1.10.15 고품질 에셋 파이프라인 (public/plaza/asset-pipeline.js, island-assets.js; loaded before the app)
@@ -1245,19 +1246,21 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function returnLost(id) {
     returning.add(id); const o = eventObjs.get(`ev:lost_owner:${id}`);
     const t0 = performance.now(); lastReturn = { id, steps: [['give', 0]] }; const step = (name) => lastReturn?.id === id && lastReturn.steps.push([name, Math.round(performance.now() - t0)]);
-    if (!o?.npc) { setCarry(me, null); return; }
+    if (!o?.npc) { setCarry(me, null); returning.delete(id); return; }
     o.leaving = true; delete eventDoors[`ev:lost_owner:${id}`];
     const p = me.root.position; const q = o.root.position;
     me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; o.npc.home.yaw = o.root.rotation.y;
     if (!me.anim?.play('give')) me.hop = 1;
     o.npc.anim?.play('receive');
     setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
-      if (!o.root.parent) return;
+      if (!o.root.parent) { returning.delete(id); return; }
       const stand = me.carryStand; me.carryStand = null; me.carryId = null; me.carrying = false;
       if (stand?.parent) { o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
       assets.handOver(me, o.npc, 'carry'); step('received');
+      // Begin the owner's hold after the actual handover: a delayed Give timer must
+      // not consume Receive's visible time on a busy or backgrounded page.
+      setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 1400);
     }, 700);
-    setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 2100);
   }
   function removeEvent(key, o) {
     scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);

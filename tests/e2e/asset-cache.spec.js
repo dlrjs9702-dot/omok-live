@@ -113,12 +113,19 @@ test('필수 그룹(core·아일랜드 4계절)만 입장 전에 받고, 게임 
   expect(await packKeys(page, FILES)).toEqual([...required, ...cards].sort());
   // a file asked for directly is fetched by the worker and kept once its content matches its revision
   const [plum] = (await groupKeys(page, 'game.halligalli')).filter(key => key.startsWith('/assets/halli/plum.svg'));
-  await page.evaluate(url => fetch(url).then(r => r.text()), plum);
+  const deliveredRev = await page.evaluate(async url => {
+    const body = await (await fetch(url)).arrayBuffer();
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', body));
+    return Array.from(digest.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+  }, plum);
+  expect(deliveredRev).toBe(new URL(plum, 'http://localhost').searchParams.get('rev'));
   await expect.poll(async () => (await packKeys(page, FILES)).includes(plum)).toBe(true);
-  // a wrong revision is never kept under its key
-  await page.evaluate(() => fetch('/assets/halli/lime.svg?rev=0000000000000000').then(r => r.text()));
-  await page.waitForTimeout(300);
+  // An old page's revision must not deliver the latest server bytes, nor keep them under the wrong key.
+  const wrong = await page.evaluate(() => fetch('/assets/halli/lime.svg?rev=0000000000000000')
+    .then(async r => ({ delivered: true, body: await r.text() })).catch(() => ({ delivered: false })));
+  expect(wrong).toEqual({ delivered: false });
   expect((await packKeys(page, FILES)).some(key => key.includes('0000000000000000'))).toBe(false);
+  expect(await page.evaluate(() => fetch('/assets/halli/__missing.svg?rev=0000000000000000').then(r => r.status))).toBe(404);
 
   // kept across loads (still in the manifest), nothing downloaded again
   await page.reload();

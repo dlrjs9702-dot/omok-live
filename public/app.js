@@ -1421,6 +1421,9 @@
   const plaza = { controller: null, loading: null, failed: null };
   const plazaError = document.getElementById('plazaError');
   document.getElementById('plazaRetry').addEventListener('click', () => {
+    // Failed imports remain in this document's module map. A new page gets the current index/import map and restores
+    // the existing login and today's server spot; WebGL/init failures can still retry the renderer in place.
+    if (plaza.failed?.code === 'module') { location.reload(); return; }
     plaza.failed = null;
     syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
   });

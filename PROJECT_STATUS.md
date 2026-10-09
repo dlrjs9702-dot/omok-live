@@ -11,6 +11,29 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.56 캐시 응답·모듈 진입 복구
+
+- 제거 경로 보완 최종 구문/diff·지연 콜백3 및 전체npm742/742(48.4초, patch56-npm-handover-cleanup-confirm.log) 성공. 직전전체는741/742로 재시작 환불 검사에서 임시서버 ECONNREFUSED가 발생했다(patch56-npm-handover-cleanup-final.log). 해당 실제재시작/환불 사례를 단독검사1/1(7.2초, patch56-refund-probe.log)로 확인 후 전체한번 재확인했으며 경제코드/단가/원장을 바꾸지 않았다. 이 간헐실패의 원인해소로 선언하지 않고 경제 재검증에 유지한다. 실제두화면 전달1 retry0 결과는 위 보완과 같은 전달타이밍이며, 최종CI는 제거경로 포함 커밋으로 수행한다.
+
+- 전달 중 NPC가 제거되거나 없어진 경우에는 전달 대기 guard도 정리한다. 지연 콜백 검사3개에 제거된 NPC의 재전달/중복퇴장 방지와 guard 해제를 함께 확인했다. 중간CI37973643809(ed90c2a)는 이 정리 보완 전에 취소했으며 성공으로 집계하지 않는다. 후속 최종커밋의 전체npm/CI 결과는 별도 확인한다.
+
+- 전달 순서 보완 후 변경JS구문/diff·전체npm742/742(patch56-npm-handover-final.log49.0초)·실제Chromium 두 화면 운반/전달1 retry0(patch56-handover-final.log31.2초) 성공. 실제받은 뒤1400ms 유지, 원격 운반 해제·기존지급/의뢰 흐름 유지. 신규공지 v56에 실제 연출 보완 반영. 같은PR의 새 최종CI·병합·Render 확인 전이므로 배포 완료 아님.
+
+- CI37969558723(cdbd02d)은 일반1 npm739/PC73 retry0, 일반2 PC71+팬데믹후속retry1/mobile5, 에셋21+열매retry2 성공이나 광장28통과/운반·전달1건3시도 실패로 병합하지 않았다. 모듈복구15.0초·구페이지15.9초 retry0. 열매는 첫 시도180초 전체기한/재생 표시89행, retry1 running10초 준비 실패 뒤 retry2 통과; 실제 원인 해소로 집계하지 않음. 운반·전달은 실제 받은 뒤 유지>=1200ms 단언에 실패(첫1086ms). 원본 patch56-ci-fixture-games2/assets/plaza-failed.log·에셋/광장 trace 보존. 독립700/2100ms 타이머 때문에 첫 콜백 지연이 Receive 시간을 소비하는 기존 결함을 확인, 실제 handOver 뒤1400ms 유지 후 퇴장하도록 같은v56/PR192에서 보완한다. 신규NPC 기능은 묶음7에 남기고 차단된 공통 회귀만 앞당긴다. 지연0/400/1800ms 실제 콜백 검사3개 성공, 전체npm·관련Chromium·새 최종CI는 이후 확인한다.
+
+- 준비 보완 후 변경JS구문/diff·전체npm739/739(patch56-npm-fixture-final.log48.9초)·관련Chromium7 retry0(patch56-recovery-fixture.log1.2분) 성공. 복구11.4초/구페이지12.3초/실제당일위치9.8초, 첫 실패 설치 전에 정상 섬을 중복 로딩하지 않고 실패→새 문서 복구의 실제 scene/로그인/위치 단언은 유지한다. 워커 런타임 변경 없음으로 이전 캐시16 전 범위 성공 기록 유지, 최종CI에서는 전범위 재검증한다. 기존 기한/커버리지·GLB·세션/포인트 정책 변경 없음.
+
+- PR #192 원격943964e / CI37966862374는 일반1 npm739·PC73 retry0, 에셋22 retry0 성공이나 일반2의 모듈 복구 검사가30초3시도 실패하여 병합하지 않았다. 첫/마지막은 종료 context.close 오류, retry1은 복구 running 확인 중 전체 기한 만료. 팬데믹 기본1건은 retry1, 모바일은 일반2 실패로 해당 실행 미수행. 원본 patch56-ci-games2-failed.log/patch56-ci-games2-failure trace 보존. trace에서 정상 섬 사전 부팅·준비 조회7초·PlazaWarp/leave 대기11초 누적을 확인하고, 실패 라우트를 첫 로드 전에 설치·실제 서버에 당일 위치 저장으로 준비한다. 복구 후 실제 scene/로그인/위치 확인과 별도 당일 이동/새로고침 검사·기존30초/15초 제한·전체CI범위는 유지한다. 이 보완은 검사 준비이며 런타임 세션/위치 정책 변경이 아니다. 후속 검증 결과는 별도 기록한다.
+
+- 최종 변경JS구문/diff·전체npm739/739 성공(patch56-npm-final.log,50.2초). 버전 문자열 package/lock/server/health/고정검사와 신규v56 공지 동기화, 이전 공지/가격/개인파일 유지. 콘텐츠해시 전달은 서버가 자동 계산하므로 수동?v= 없음. PR/CI·병합·Render는 아직 진행 전으로 완료 집계하지 않는다.
+
+- 최종 관련 Chromium23 retry0 성공: 캐시16개 전 범위·브라우저/모듈6·당일위치1(patch56-cache-recovery-final.log21/2.1분, patch56-cache-baselines.log2/4.1초). 정상 cache hit·잘못된rev 제공 차단/404·다중탭·갱신 실패/활성 팩 보존·워커 제어 실패·quota/쓰기 거부·off/rollback·코드해시와 구페이지/새문서 재시도·WebGL 기존 복구 확인. 초기3개와 최종23은 중복이 있으므로26개 별도검사로 집계하지 않는다. 기존 검사 기한/전체 CI 범위 유지. 최종 전체npm은 별도 기록한다.
+
+- 리소스 워커의 cache miss는 성공한 같은 출처 응답의 SHA-256 앞16자리와 요청 rev를 대조한 뒤 화면에 전달한다. 구페이지의 옛 revision에 새 배포의 body를 먼저 제공하던 문제를 보완하며, 일치한 응답만 활성 캐시에 비동기 보관한다. 캐시 hit·HTTP 오류·저장 거부 시 유효 응답·게임 전용 캐시 롤백 정책은 유지한다.
+- plaza-scene은 RemoteMotion을 직접 import해 선행 classic script가 없는 구페이지에서도 이동 의존성을 확보한다. 기존 콘텐츠해시 import map과 UMD/CommonJS 계약을 재사용한다. 모듈 import 실패는 문서를 새로고침해 실패가 남은 module map과 옛 index를 벗어나며 기존 로그인·당일 서버 위치를 복원한다. WebGL/init 실패는 기존 렌더러 재시도를 유지한다.
+- GameBoot의 Web Locks 갱신/그룹 prefetch 직렬화·활성 팩 보존·워커 제어/claim·코드 해시·startAt 위치복원은 이미 구현된 경로로 회귀 검증한다. 사용자 자료·원장·상품 가격·리소스 GLB/압축 산출물 변경 없음. 에셋 재빌드 불필요, 버전56/신규 공지 준비. 실제 GPU PC·실사용자다인 전수실기는 미검증.
+- 초기 변경JS구문/diff와 Chromium3 retry0 성공(patch56-recovery-initial.log): 실제SW의 정상응답 해시/잘못된rev 차단/404 유지, 모듈 실패→다시시도→로그인·당일 위치 보존21.2초, classic RemoteMotion 없는 구페이지 진입12.4초. 기존30초 검사 기한 유지. 최종 전체npm·관련 회귀·PR/main CI·병합·Render는 진행 후 기록한다.
+
 ## v1.10.55 섬 환경·카메라·길 이음
 
 이 절의 최종 결과는 아래 병합·배포/최종 검증 항목이 기준이다. 이어지는 준비·실패 기록의 대기 표현은 당시 이력이며 현재 진행 상태를 뜻하지 않는다.
