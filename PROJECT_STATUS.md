@@ -13,6 +13,8 @@
 
 ## v1.10.57 접속·입퇴장·이동 동기화
 
+- [PR #194](https://github.com/dlrjs9702-dot/omok-live/pull/194), 최종 작업 c6125661d90f5b4b33bbcc01cd9c82203d7877d6 → squash main d3a4ece562a9bd4627e8fde39bcacfea2f775d92. [최종 PR CI37999415090](https://github.com/dlrjs9702-dot/omok-live/actions/runs/37999415090) 네묶음 성공: npm754/754·PC196(일반1 72+retry1 실제통과1/일반2 72/에셋22/광장29)·기존mobile5. 필수PC 생략0, 나가리9.2초 retry0. 최초 고스톱관전자 검사125행은 실제 총통으로 공개된4월패를 숨김으로 가정하여 실패했고 retry1 통과했다; 원본 trace/error-context 및 patch57-ci-nagari-games1.log 보존·경제/게임 후속 재검증 유지, 신규 비밀손패 노출 결함으로 단정하지 않는다. 일반2/에셋/광장 retry0, 에셋17.7분·광장19.9분. Render dep-db4mvgmgekts738g0rag 동일SHA 2026-10-09T22:51:16.854762Z live·시작v57/입장키·공지·포인트PostgreSQL/운영health {"ok":true,"version":"1.10.57"} 확인. 새 공지 반영. 병합후 main CI38001379178 진행·최종문서 병합 전이며 묶음 전체완료 아님. 실제GPU PC·실사용자다인 전수실기 미검증. 아래 준비/실패 당시 대기 표현은 과거 이력이다.
+
 - 나가리 검증 보완 후 서버 보너스2/2·변경JS 구문/diff·전체npm754/754(84.9초, 생략0)·고스톱 규칙/정산 Chromium6 retry0(1.1분) 성공. 나가리 단독5.1초·전체 중10.0초, 실제700/1400P 지급·나가리·재접속·정상 다음판2배 단언 유지. 로그 patch57-nagari-server/nagari-pc/nagari-npm-final/nagari-suite 보존. 새 최종 PR CI는 동일PR194에서 확인한다.
 
 - PR CI37996444922(7ce7805)는 네 작업이 성공으로 표시됐지만 일반1의 나가리 검사가 두 번240초 만료 후 무작위15판 조건으로 생략되어 전수 통과로 집계하지 않는다. 원본 trace/error-context에서 상대0P·참가불가·시작버튼 disabled 확인. 기존 test 전용 first-ppeok 패로 실제 여섯 합법 행동·700/1400P 보너스·나가리·재접속·정상 다음판 ×2를 검증하도록 무작위 반복/동적skip을 제거하고, fixture에 실제 참가자 signature를 유지한다. 다음판 즉시 총통은 실제 정산 factor ×2를 확인하며 게임 규칙·운영 경제·테스트 기한은 바꾸지 않는다. 일반2 팬데믹 방 화면 대기 retry1과 에셋 갈매기 지형범위0.832378 retry1은 해결로 선언하지 않고 후속 검증에 보존한다. 로그 patch57-ci-account-* 및 patch57-account-games1-artifacts 보존. 보완 뒤 전체/관련/최종CI 결과는 확인 후 기록한다.
