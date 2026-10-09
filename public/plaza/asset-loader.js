@@ -177,12 +177,17 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     rec.holder.getWorldPosition(placeOf);
     rec.zone = T ? T.seasonZoneAt(placeOf.x, placeOf.z) : -1; // v1.10.27: the season of the zone it stands in
     const hit = P.pick(registry, rec.ids, off, lookOf(rec.zone)); const url = hit?.entry.url || null;
-    if (url === rec.url) return;
+    const selection = JSON.stringify(hit ? [hit.id, hit.entry] : null);
+    if (selection === rec.selection) return;
+    rec.selection = selection;
     rec.url = url;
     if (!hit) { swapAttach(rec, null); return; }
     shown[hit.id] = 'loading';
     build(hit.entry).then((object) => {
-      if (disposed || rec.url !== url || !rec.holder.parent) return;
+      if (disposed || rec.selection !== selection || !rec.holder.parent) {
+        const i = lods.indexOf(object); if (i >= 0) lods.splice(i, 1);
+        return;
+      }
       if (object && rec.holder.userData.fit) object = fitted(object, rec.holder.userData.fit);
       swapAttach(rec, object, hit.entry); shown[hit.id] = object ? 'model' : 'procedural';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });

@@ -102,8 +102,17 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
         // takes it, the brown door and the green roof hardly (it greyed the door)
         if (m.vertexColors && !m.userData.glowByColor) {
           const before = m.onBeforeCompile; m.userData.glowByColor = true;
-          m.onBeforeCompile = (shader, renderer) => { before?.call(m, shader, renderer); shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#ifdef USE_COLOR\ntotalEmissiveRadiance *= vColor.rgb * vColor.rgb;\n#endif'); };
-          const key = m.customProgramCacheKey.bind(m); m.customProgramCacheKey = () => `${key()}|glowByColor`; m.needsUpdate = true;
+          m.onBeforeCompile = (shader, renderer) => {
+            before?.call(m, shader, renderer);
+            shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+#ifdef USE_COLOR
+float marbleLow = min(vColor.r, min(vColor.g, vColor.b));
+float marbleHigh = max(vColor.r, max(vColor.g, vColor.b));
+float marbleMask = smoothstep(0.45, 0.65, marbleLow) * (1.0 - smoothstep(0.12, 0.24, marbleHigh - marbleLow));
+totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
+#endif`);
+          };
+          const key = m.customProgramCacheKey.bind(m); m.customProgramCacheKey = () => `${key()}|marbleMask`; m.needsUpdate = true;
         }
         const pale = m.color && m.color.r + m.color.g + m.color.b > 1.9; // the marble, not the roof, the windows or the doors
         m.emissive.set(on && pale ? WALL_NIGHT : m.userData.dayEmissive);

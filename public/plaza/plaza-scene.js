@@ -7,7 +7,7 @@ import { halloweenDecor } from './island-halloween.js';
 import { townhallYard } from './island-townhall.js';
 import { trainScene } from './island-train-scene.js';
 import { createOcclusion } from './occlusion.js';
-import { cameraEase, cameraDistance } from './camera-motion.js';
+import { cameraEase, cameraDistance, cameraSkyAim } from './camera-motion.js';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -719,7 +719,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const train = trainScene({ scene, assets, solids, vcMat, sign }); // v1.10.47 관광열차 (its steps are walked round)
+  const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
+  buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
+  buildingRoots.push(yard.group);
   doors.mayor = yard.door;
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -1546,7 +1549,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     camDist = snap ? dist : camDist + (dist - camDist) * cameraEase(dist < camDist ? 0.25 : 0.05, camDt); // in quickly, back out gently
     const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
     const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
-    const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4), p.z - cos * 2.4);
+    const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);
+    const look = new THREE.Vector3(p.x - sin * 2.4, cameraSkyAim(lookY, p.y + Math.sin(elev) * camDist, want.y, lift), p.z - cos * 2.4);
     if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); }
     camPos.y = Math.max(camPos.y, heightAt(camPos.x, camPos.z) + CAM_CLEAR); // easing never dips it into a slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
@@ -1571,7 +1575,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.15 tiers: 2 high (pixel ratio up to 1.5, shadows, registered LOD distances), 1 medium (pixel ratio 1, LOD
   // switches nearer), 0 low (no shadows, nearer still) -- the model LOD part is asset-pipeline.js `lodDistance`.
   let quality = 2; let slowTime = 0; let sampled = 0; let qualityHeld = false; // tests may hold a tier (debug().holdQuality)
+  function resetFrameSample() { last = 0; sampled = 0; slowTime = 0; }
+  document.addEventListener('visibilitychange', resetFrameSample);
   function adaptQuality(dt) {
+    if (document.hidden) { sampled = 0; slowTime = 0; return; }
     if (quality === 0 || qualityHeld) return;
     sampled += dt; slowTime += dt > 1 / 35 ? dt : 0;
     if (sampled < 3) return;
@@ -1870,6 +1877,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
+    document.removeEventListener('visibilitychange', resetFrameSample);
     occlusion.dispose(); assets.dispose();
     for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);

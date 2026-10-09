@@ -212,6 +212,34 @@ async function stillPlays(page) {
 
 let proceduralDoors = null;
 
+test('동일 URL 에셋: 변경된 크기·회전·그림자 재적용, 늦은 이전 선택 배제, 다운로드 재사용', async ({ browser, request }) => {
+  const a = await island(browser, request, '변환', { __only: true });
+  await a.page.evaluate(async url => {
+    const THREE = await import('/vendor/three/three.module.js');
+    const { createIslandAssets } = await import('/plaza/asset-loader.js');
+    const root = new THREE.Group(), holder = new THREE.Group(), procedural = new THREE.Group();
+    root.add(holder); holder.add(procedural);
+    const registry = { probe: { url, scale: 1, rotationY: 0, shadows: true } };
+    const loader = createIslandAssets({ registry }); loader.attach('probe', holder, procedural);
+    window.__attachmentProbe = { holder, procedural, registry, loader };
+  }, BOX);
+  const pose = () => a.page.evaluate(() => {
+    const p = window.__attachmentProbe, o = p.holder.children.find(c => c !== p.procedural);
+    let shadows = false; o?.traverse(m => { if (m.isMesh && m.castShadow) shadows = true; });
+    return o ? { scale: o.scale.x, turn: o.rotation.y, shadows, fallback: p.procedural.visible } : null;
+  });
+  await expect.poll(pose).toMatchObject({ scale: 1, turn: 0, shadows: true, fallback: false });
+  await a.page.evaluate(() => {
+    const p = window.__attachmentProbe;
+    p.registry.probe = { ...p.registry.probe, scale: 1.4, rotationY: 0.5 }; p.loader.setDay(1);
+    p.registry.probe = { ...p.registry.probe, scale: 0.7, rotationY: 1.2, shadows: false }; p.loader.setDay(2);
+  });
+  await expect.poll(pose).toMatchObject({ scale: 0.7, turn: 1.2, shadows: false, fallback: false });
+  expect(a.hits[BOX]).toBe(1);
+  await a.page.evaluate(() => { window.__attachmentProbe.loader.dispose(); delete window.__attachmentProbe; });
+  expect(a.errors).toEqual([]); await a.context.close();
+});
+
 test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
   const a = await island(browser, request, '에셋없음', 'none');
   const d = await debug(a.page);
