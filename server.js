@@ -4125,6 +4125,7 @@ async function requestHandler(req, res) {
       if (done) { // the same request again (its answer was lost): already changed
         if (done.userId !== account) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         await renameGuest(session.guestKeyId, done.name);
+        await pointStore.completeNickname({ userId: account, requestId: body.requestId, name: done.name });
         return sendJson(res, 200, { ok: true, name: done.name, until: new Date(Date.parse(done.changedAt) + NICKNAME_COOLDOWN_MS).toISOString(), balance: done.balanceAfter });
       }
       const keys = await accessStore.list();
@@ -4135,6 +4136,7 @@ async function requestHandler(req, res) {
       if (RESERVED_NICKNAMES.has(wanted) || keys.some((key) => key.id !== mine.id && normalizeNickname(key.label) === wanted)) return sendError(res, 409, 'NAME_TAKEN', '이미 쓰고 있는 이름입니다.');
       const now = nowMs();
       const result = await pointStore.chargeNickname({ userId: account, requestId: body.requestId, name }, now);
+      if (result.reason === 'request') return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (result.reason === 'cooldown') return sendJson(res, 409, { error: 'NICKNAME_COOLDOWN', message: '이름을 바꾼 지 24시간이 지나야 다시 바꿀 수 있습니다.', until: result.until });
       if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
       try {
@@ -4145,6 +4147,7 @@ async function requestHandler(req, res) {
         notifyPointsChanged([account]);
         return sendError(res, 500, 'NICKNAME_FAILED', '이름을 바꾸지 못했습니다. 포인트는 차감되지 않았습니다.');
       }
+      await pointStore.completeNickname({ userId: account, requestId: body.requestId, name });
       notifyPointsChanged([account]);
       return sendJson(res, 200, { ok: true, name, until: new Date(now + NICKNAME_COOLDOWN_MS).toISOString(), balance: result.balance ?? result.balanceAfter });
     });
@@ -4762,6 +4765,7 @@ async function main() {
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
+  await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
