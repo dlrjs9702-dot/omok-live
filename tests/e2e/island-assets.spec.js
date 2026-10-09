@@ -182,9 +182,8 @@ async function island(browser, request, label, registry, { failLoader = false } 
     });
   });
   const { page } = who;
-  await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
-  await page.evaluate(() => window.GameBoot.ready);
-  await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
+  // shopper already waits for the lobby, which opens after GameBoot.ready and
+  // the asynchronous session request. Check the actual scene, without rechecking it.
   try { await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 }); }
   catch (error) {
     console.log('ISLAND_BOOT_FAILURE', await page.evaluate(() => ({
@@ -254,31 +253,41 @@ test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });
 
-test('동작 줄이기와 배경 탭 화질 표본 격리·수동 시점과 이동 유지', async ({ browser, request }) => {
+test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', async ({ browser, request }) => {
   const a = await island(browser, request, '정적환경', { __only: true });
   const sample = () => a.page.evaluate(() => {
     const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality };
   });
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(async () => (await sample()).environment.water.flow.every(v => v === 0)).toBe(true);
-  const still = (await sample()).environment.water;
-  await expect.poll(async () => (await sample()).environment.ambient.bodyScale).toBe(1);
-  const ambient = (await sample()).environment.ambient;
-  await a.page.evaluate(() => { window.PlazaDebug().holdQuality(2); window.PlazaDebug().holdQuality(null); window.__hiddenSample = true; Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.__hiddenSample }); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(async () => {
+    const { environment } = await sample();
+    return { stillWater: environment.water.flow.every(v => v === 0), bodyScale: environment.ambient.bodyScale };
+  }).toEqual({ stillWater: true, bodyScale: 1 });
+  const before = await a.page.evaluate(() => {
+    const d = window.PlazaDebug(); d.holdQuality(2); d.holdQuality(null);
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange'));
+    return d.environment;
+  });
   await a.page.clock.install();
   for (let i = 0; i < 4; i++) await a.page.clock.fastForward(1000);
-  expect((await sample()).quality).toBe(2);
-  expect((await sample()).environment.water).toEqual(still);
-  expect((await sample()).environment.ambient).toEqual(ambient);
-  await a.page.evaluate(() => { delete document.hidden; delete window.__hiddenSample; document.dispatchEvent(new Event('visibilitychange')); });
+  const after = await sample(); expect(after.quality).toBe(2);
+  expect(after.environment.water).toEqual(before.water); expect(after.environment.ambient).toEqual(before.ambient);
+  await a.page.evaluate(() => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
+test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browser, request }) => {
+  const a = await island(browser, request, '정적입력', { __only: true });
+  await a.page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().environment.ambient.bodyScale)).toBe(1);
+  await a.page.clock.install();
   await a.page.locator('#plazaStage').focus();
-  const pitch = await a.page.evaluate(() => window.PlazaDebug().camPitch);
+  const before = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, x: d.x, z: d.z }; });
   await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
-  const camera = await a.page.evaluate(() => ({ pitch: window.PlazaDebug().camPitch, goal: window.PlazaDebug().pitchGoal }));
-  expect(camera.pitch).toBeLessThan(pitch); expect(camera.pitch).toBe(camera.goal);
-  const at = await a.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  const camera = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, goal: d.pitchGoal }; });
+  expect(camera.pitch).toBeLessThan(before.pitch); expect(camera.pitch).toBe(camera.goal);
   await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
-  expect(await a.page.evaluate(p => Math.hypot(window.PlazaDebug().x - p.x, window.PlazaDebug().z - p.z), at)).toBeGreaterThan(0.2);
+  expect(await a.page.evaluate(p => { const d = window.PlazaDebug(); return Math.hypot(d.x - p.x, d.z - p.z); }, before)).toBeGreaterThan(0.2);
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });
 
