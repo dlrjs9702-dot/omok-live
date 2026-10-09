@@ -60,6 +60,20 @@ test('가림: 숨겨진 High/Low·빈 부위 사이·표지판은 가리지 않�
   const gap = createOcclusion(f.camera); gap.update([f.root], f.player, 0.1); assert.equal(gap.debug().faded, 0); gap.dispose();
 });
 
+test('가림: 카메라와 플레이어가 루트 경계 안에 있어도 실제 중간 메시만 판정한다', async () => {
+  const { createOcclusion } = await loaded; const f = fixture();
+  f.camera.position.set(0,1,0); f.player.set(0,0,5); f.mesh.position.set(0,1,2.5);
+  for(const [x,z] of [[-5,-5],[5,10]]) { const corner=f.mesh.clone();corner.position.set(x,1,z);f.root.add(corner); }
+  const manager=createOcclusion(f.camera);manager.update([f.root],f.player,.1);
+  assert.equal(manager.debug().faded,1,'inside union still tests the middle obstacle');manager.dispose();
+  f.root.remove(f.mesh);
+  const gap=createOcclusion(f.camera);gap.update([f.root],f.player,.1);
+  assert.equal(gap.debug().faded,0,'inside the union alone is not an obstruction');gap.dispose();
+  f.mesh.position.set(0,1,0);f.root.add(f.mesh);f.player.set(0,0,.2);
+  const inside=createOcclusion(f.camera);inside.update([f.root],f.player,.1);
+  assert.equal(inside.debug().faded,1,'a camera inside a mesh must not reject its far exit');inside.dispose();
+});
+
 test('가림: 실제 압축 High/Low 리그·동물 의상의 경계 캐시와 재질 복원', async () => {
   const { createOcclusion } = await loaded;
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');

@@ -594,14 +594,16 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
     for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
       await page.evaluate(([x, z, yaw]) => { const d = window.PlazaDebug(); d.setCamYaw(yaw); d.teleport(x, z); }, [x, z, yaw]);
       const c = (await cam()).camera;
+      expect(await page.evaluate(()=>window.PlazaDebug().camDist)).toBeGreaterThanOrEqual(4);
       expect(c.clear, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBeGreaterThan(0.9);
       expect(c.inBuilding, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBe(false);
     }
   }
 
   // looking back at the game hall from its door: the hall between the camera and me is see-through
-  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(Math.PI); d.teleport(d.doors.games.x, d.doors.games.z); });
-  expect((await cam()).camera.faded).toBeGreaterThan(0);
+  await page.evaluate(async () => { const at = window.PlazaDebug().doors.games; await window.PlazaWarp(at.x,at.z); window.PlazaDebug().setCamYaw(Math.PI); });
+  // The 0.25s fade advances on frames; a snap at the same scene clock only records the obstruction.
+  await expect.poll(async () => (await cam()).camera.faded, {timeout:3000}).toBeGreaterThan(0);
   await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(0); d.teleport(d.doors.games.x, d.doors.games.z); });
   await expect.poll(async () => (await cam()).camera.faded, { timeout: 3000 }).toBe(0); // v1.10.45: it eases back after a short hold
 
@@ -1102,6 +1104,51 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   await expect(page.locator('#islandBagCount')).toHaveText('1/7');
   await expectNoScriptError(page);
   await a.context.close();
+});
+
+test('기념사진: 카운트다운·캡처 대기 취소, 재진입과 접속 종료가 이전 촬영을 저장하지 않는다', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a=await intoPlaza(browser,request,'취소사진');const {page}=a;
+  await page.evaluate(()=>window.PlazaWarp(0,7));
+  let downloads=0;let records=0;
+  page.on('download',()=>downloads++);
+  page.on('request',r=>{if(r.url().endsWith('/api/island/photo') && r.method()==='POST') records++;});
+  for(const close of ['escape','button']) {
+    await page.locator('#islandPhotoTab').click();await page.locator('#photoShootBtn').click();
+    await expect(page.locator('#photoCount')).toHaveText('3');
+    if(close==='escape') await page.keyboard.press('Escape');else await page.locator('#photoCloseBtn').click();
+    await expect(page.locator('#photoCount')).toBeHidden();
+    await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().photo())).toEqual({on:false,hidden:0});
+    await page.waitForTimeout(3200); // the old countdown would have saved after three seconds
+    expect(downloads).toBe(0);expect(records).toBe(0);
+  }
+  await page.evaluate(()=>{
+    const canvas=document.querySelector('canvas.plazaCanvas');const original=canvas.toBlob;
+    canvas.toBlob=function(callback,type){canvas.toBlob=original;window.releaseCancelledPhoto=()=>callback(new Blob(['cancelled'],{type}));};
+  });
+  await page.locator('#islandPhotoTab').click();await page.locator('#photoShootBtn').click();
+  await expect.poll(()=>page.evaluate(()=>typeof window.releaseCancelledPhoto)).toBe('function');
+  await page.keyboard.press('Escape');
+  await page.locator('#islandPhotoTab').click();const newDownload=page.waitForEvent('download');
+  expect(await page.evaluate(async()=>{
+    document.getElementById('photoShootBtn').click();window.releaseCancelledPhoto();await Promise.resolve();
+    return !document.getElementById('photoCount').classList.contains('hidden');
+  })).toBe(true); // old finally must not release the new countdown/pose; no CDP delay between these actions
+  const saved=await newDownload;expect(saved.suggestedFilename()).toMatch(/\.png$/);
+  await expect(page.locator('.toast')).toContainText('중앙광장');
+  expect(downloads).toBe(1);expect(records).toBe(1);
+  await page.keyboard.press('Escape');
+  await page.locator('#islandPhotoTab').click();
+  // Photo mode hides the normal header; exercise its real logout handlers while the countdown is pending.
+  let releaseLogout;const logoutGate=new Promise(resolve=>{releaseLogout=resolve;});
+  await page.route('**/api/logout',async route=>{await logoutGate;await route.continue();});
+  await page.evaluate(()=>{document.getElementById('photoShootBtn').click();document.getElementById('logoutBtn').click();document.getElementById('logoutConfirmBtn').click();});
+  await page.waitForTimeout(3200);expect(downloads).toBe(1);expect(records).toBe(1);
+  releaseLogout();
+  await expect(page.locator('#gateView')).toBeVisible();await expect(page.locator('#photoCount')).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/photoMode/);
+  await page.waitForTimeout(3200);expect(downloads).toBe(1);expect(records).toBe(1);
+  await expectNoScriptError(page);await a.context.close();
 });
 
 // v1.10.47 공중 관광열차: by a stop's boarding spot SPACE gets on the train standing there (riding on its seat, the other
