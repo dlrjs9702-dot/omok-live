@@ -34,7 +34,9 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: early.fishId })).data.error, 'FISH_EARLY');
   const cast = (await req('/api/island/fish/start', sa, {})).data;
   await req('/api/test/fish/bite', sa, { species: 'octopus' });
-  const got = (await req('/api/island/fish/finish', sa, { fishId: cast.fishId })).data;
+  const concurrent = await Promise.all(Array.from({ length: 4 }, () => req('/api/island/fish/finish', sa, { fishId: cast.fishId })));
+  const got = concurrent[0].data;
+  for (const reply of concurrent) { assert.equal(reply.status, 200); assert.deepEqual(reply.data, got, '동일 cast 동시 완료는 같은 답·도감 한 번'); }
   assert.deepEqual([got.species, got.name, got.firstTime], ['octopus', '문어', true]);
   assert.deepEqual((await req('/api/island/fish/finish', sa, { fishId: cast.fishId })).data.species, 'octopus', '같은 답');
   const bag = (await req('/api/island/bag', sa)).data.items;

@@ -47,3 +47,13 @@ test('가방: 가득 찬 스택 뒤 빈 칸 사용·다중 스택 정산·부분
   assert.equal(wallets.length, 2);
   assert.deepEqual(wallets.map(e => e.qty), [1, 1]);
 });
+
+test('만료 분실물: 가방 수령 장소와 실제 관공서 정산 기준이 같고 활성 의뢰는 유지', () => {
+  const bag = [{ entryId: 'active', itemId: 'lost', qty: 1, meta: { eventId: 'active-event' } },
+    { entryId: 'expired', itemId: 'lost', qty: 1, meta: { eventId: 'expired-event' } }];
+  assert.deepEqual(I.bagView(bag, Date.now(), ['active-event']).items.map(e => e.at), ['owner', 'office']);
+  const sale = I.sellAt(bag, 'office', 0, ['active-event']);
+  assert.equal(sale.paid, 10000);
+  assert.deepEqual(sale.keep, [bag[0]]);
+  assert.equal(I.bagView(sale.keep, Date.now(), ['active-event']).items[0].at, 'owner');
+});

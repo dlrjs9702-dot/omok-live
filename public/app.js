@@ -718,6 +718,7 @@
     chatPanelHome = { parent: chatPanel.parentElement, next: chatPanel.nextElementSibling };
     pipWindow.document.body.appendChild(chatPanel);
     chatPipWindow = pipWindow;
+    bindInputActivity(pipWindow);
     applyChatLayout();
     pipWindow.addEventListener('pagehide', () => {
       chatPipWindow = null;
@@ -790,6 +791,7 @@
       gameInfoPanelHome = { parent: gameInfoPanel.parentElement, next: gameInfoPanel.nextElementSibling };
       pipWindow.document.body.appendChild(gameInfoPanel);
       gameInfoPipWindow = pipWindow;
+      bindInputActivity(pipWindow);
       if (diceYutStage) watchDiceYutPipScale(pipWindow);
       applyGameInfoLayout();
       pipWindow.addEventListener('pagehide', () => {
@@ -2366,7 +2368,13 @@
     const now = Date.now(); if (!sessionToken || now - inputSentAt < 60 * 1000) return;
     inputSentAt = now; api('/api/session/input', { method: 'POST', body: '{}' }).catch(() => {});
   };
-  for (const type of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart']) window.addEventListener(type, sawInput, { capture: true, passive: true });
+  const inputWindows = new WeakSet();
+  function bindInputActivity(target) {
+    if (inputWindows.has(target)) return;
+    inputWindows.add(target);
+    for (const type of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart']) target.addEventListener(type, sawInput, { capture: true, passive: true });
+  }
+  bindInputActivity(window);
 
   function expireSession(message = '입장 세션이 만료되었습니다. 다시 입장해 주세요.') {
     try { sessionStorage.removeItem('gameCenterGuestSession'); } catch {} // see session-lock.js
@@ -3558,7 +3566,7 @@
   const missionList = document.getElementById('missionList');
   let missionRequest = 0;
 
-  function missionRow(item, { bonus = false } = {}) {
+  function missionRow(item, { bonus = false, event = false } = {}) {
     const row = document.createElement('div');
     row.className = `missionRow${item.done ? ' done' : ''}`;
     row.setAttribute('role', 'listitem');
@@ -3589,7 +3597,7 @@
     } else {
       const note = document.createElement('span');
       note.className = 'count';
-      note.textContent = item.done ? '오늘 받았습니다' : '오늘 첫 승리 1회 · 무승부·공동승리 제외';
+      note.textContent = event ? (item.done ? '받았습니다' : '수령 가능') : item.done ? '오늘 받았습니다' : '오늘 첫 승리 1회 · 무승부·공동승리 제외';
       row.appendChild(note);
     }
     return row;
@@ -3681,7 +3689,7 @@
       eventAccount = account;
       eventSummary.textContent = events.length ? `진행 중 ${events.length}개 · 받음 ${events.filter(ev => ev.claimed).length}개` : '진행 중인 이벤트가 없습니다.';
       eventList.replaceChildren(...events.map((event) => {
-        const row = missionRow({ title: event.title, reward: event.rewardPoints, done: event.claimed }, { bonus: true });
+        const row = missionRow({ title: event.title, reward: event.rewardPoints, done: event.claimed }, { bonus: true, event: true });
         if (event.notice) row.querySelector('.reward').textContent = '안내'; // v1.10.33
         const open = document.createElement('button');
         open.type = 'button';
