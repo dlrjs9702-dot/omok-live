@@ -212,6 +212,35 @@ async function stillPlays(page) {
 
 let proceduralDoors = null;
 
+test('길가 장식·4계절 회전·동작 줄이기와 배경 탭 화질 표본 격리', async ({ browser, request }) => {
+  const { REGISTRY } = require('../../public/plaza/island-assets');
+  const a = await island(browser, request, '길가', { __only: true, 'deco.layer.edge': REGISTRY['deco.layer.edge'] });
+  const sample = () => a.page.evaluate(() => {
+    const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality, batches: d.assets.batches };
+  });
+  await expect.poll(sample).toMatchObject({ environment: { edgeDecor: { grass: 0 } } });
+  const before = await sample(); expect(before.environment.edgeDecor.tiles).toBeGreaterThan(0);
+  expect(before.environment.edgeDecor.flowers).toBeGreaterThan(0); expect(before.environment.edgeDecor.seasonal).toBeGreaterThan(0);
+  await expect.poll(async () => (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'))?.placed).toBe(true);
+  for (const day of [0, 1, 2, 3]) {
+    await a.page.evaluate(day => window.PlazaDebug().setSeasonDay(day), day);
+    await expect.poll(async () => {
+      const batch = (await sample()).batches.find(b => b.ids.includes('deco.layer.edge'));
+      return Object.values(batch?.zones || {}).every(z => z.url?.includes(`layer_${z.look}_edge.glb`));
+    }).toBe(true);
+  }
+  await a.page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(async () => (await sample()).environment.water.flow.every(v => v === 0)).toBe(true);
+  const still = (await sample()).environment.water;
+  await a.page.evaluate(() => { window.PlazaDebug().holdQuality(2); window.PlazaDebug().holdQuality(null); window.__hiddenSample = true; Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.__hiddenSample }); document.dispatchEvent(new Event('visibilitychange')); });
+  await a.page.clock.install();
+  for (let i = 0; i < 4; i++) await a.page.clock.fastForward(1000);
+  expect((await sample()).quality).toBe(2);
+  expect((await sample()).environment.water).toEqual(still);
+  await a.page.evaluate(() => { delete document.hidden; delete window.__hiddenSample; document.dispatchEvent(new Event('visibilitychange')); });
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
 test('동일 URL 에셋: 변경된 크기·회전·그림자 재적용, 늦은 이전 선택 배제, 다운로드 재사용', async ({ browser, request }) => {
   const a = await island(browser, request, '변환', { __only: true });
   await a.page.evaluate(async url => {
