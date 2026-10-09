@@ -63,6 +63,14 @@
   trader: { x: 62, z: -6, face: [62, 4], kind: 'stall' }, // v1.10.10 상점가 상인: buys herbs, berries and mushrooms
   naming: { x: 48.5, z: -3.4, face: [48.5, 4], kind: 'desk' }, // v1.10.9 작명소: a folding desk on the shop street, between the two shops
   };
+  function facilityDoor(id) {
+    const s = SPOTS[id]; if (!s) return null;
+    const depth = { hall: 10, tower: 6.4, townhall: 12.6, shop: 2.7, house: 2.7, office: 2.7, board: .3, donation: .9, mapboard: .3, gate: 1.2, gazebo: 2.4, npc: .9, stall: 1.3, desk: 1.2 }[s.kind];
+    if (depth === undefined) return null;
+    const distance = s.kind === 'townhall' ? 8.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
+    const dx = s.face[0] - s.x; const dz = s.face[1] - s.z; const length = Math.hypot(dx, dz) || 1;
+    return { x: s.x + dx / length * distance, z: s.z + dz / length * distance };
+  }
   const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const SPAWN = { x: 0, z: 8 };
@@ -425,5 +433,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

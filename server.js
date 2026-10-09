@@ -128,6 +128,7 @@ const lobbySocial = { social: createRoomSocial() }; // memory-only, never persis
 const LOBBY_CHAT_MESSAGES = 50;
 const rateLimits = new Map();
 const invitations = new Map(); // inviteId -> {fromToken,toToken,roomId,createdAt}; memory-only
+const islandInviteIntents = new Map(); // short-lived proximity check before making a game room
 const INVITE_TTL_MS = 2 * 60 * 1000;
 let accessStore;
 let announcementStore;
@@ -371,9 +372,10 @@ async function readBody(req) {
 }
 
 async function parseJson(req) {
+  if (Object.hasOwn(req, 'islandParsedJson')) return req.islandParsedJson;
   const raw = await readBody(req);
-  if (!raw) return {};
-  try { return JSON.parse(raw); }
+  if (!raw) return (req.islandParsedJson = {});
+  try { return (req.islandParsedJson = JSON.parse(raw)); }
   catch { throw Object.assign(new Error('bad json'), { status: 400 }); }
 }
 
@@ -2981,9 +2983,25 @@ async function handleRoomAction(req, res, action, session) {
 async function requestHandler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = decodeURIComponent(url.pathname);
+  // World actions keep their existing classic/room entry paths; while on the island, the server checks the door too.
+  const placeActions = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
+  if (req.method === 'POST' && (placeActions[pathname] || pathname === '/api/skins/buy' || (req.headers['x-island-facility'] && ['/api/skins/equip', '/api/skins/title'].includes(pathname)))) {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token);
+    if (at) {
+      const body = await parseJson(req);
+      const skin = body.skinId ? skinById(body.skinId) : null;
+      const avatar = skin?.game === 'avatar' || skin?.family === 'avatar' || body.game === 'avatar';
+      const slot = skin?.slot || body.slot;
+      const shopPlace = ['shop', 'avatar', 'hair', 'accessories'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
+      const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop');
+      const door = IslandTerrain.facilityDoor(place);
+      if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    }
+  }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.53' });
+    return sendJson(res, 200, { ok: true, version: '1.10.54' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3913,6 +3931,18 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true });
   }
   // v1.10.44 게임 초대: from the island -- the room I have just made, to the player I asked (their island id)
+  if (pathname === '/api/island/invite/prepare' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    prunePlazaPresence();
+    const body = await parseJson(req);
+    const target = [...sessions.entries()].find(([token, s]) => token !== session.token && s.plazaId === body.plazaId && !s.currentRoomId);
+    const from = plazaPresence.get(session.token); const to = target && plazaPresence.get(target[0]);
+    if (!from || !to || session.currentRoomId) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    if (Math.hypot(from.x - to.x, from.z - to.z) >= 2.2) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    for (const [token, intent] of islandInviteIntents) if (nowMs() - intent.at > 5 * 60 * 1000 || !sessions.has(token)) islandInviteIntents.delete(token);
+    islandInviteIntents.set(session.token, { target: target[0], at: nowMs() });
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === '/api/island/invite' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3921,7 +3951,11 @@ async function requestHandler(req, res) {
     if (!checkRateLimit('room-invite:' + session.token.slice(0, 12), 12, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_INVITES', '초대를 너무 많이 보냈습니다. 잠시 뒤 다시 시도해 주세요.');
     const body = await parseJson(req);
     const target = [...sessions.entries()].find(([token, s]) => s.plazaId && s.plazaId === body.plazaId && token !== session.token);
-    if (!target) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    const intent = islandInviteIntents.get(session.token);
+    islandInviteIntents.delete(session.token);
+    prunePlazaPresence();
+    if (!target || target[1].currentRoomId || !plazaPresence.has(target[0])) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    if (!intent || intent.target !== target[0] || nowMs() - intent.at > 5 * 60 * 1000) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     pruneInvitations();
     const pending = [...invitations.values()].filter((invite) => invite.toToken === target[0]);
     if (pending.some((invite) => invite.roomId === room.id)) return sendError(res, 409, 'ALREADY_INVITED', '이미 초대를 보냈습니다.');
@@ -4763,7 +4797,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.53 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.54 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

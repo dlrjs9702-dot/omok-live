@@ -38,6 +38,74 @@ async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
   return who;
 }
 
+test('광장 시설: 원거리 클릭은 창을 열지 않고 근처에서만 클릭·SPACE 실행', async ({ browser, request }) => {
+  const a = await intoPlaza(browser, request, '근접 클릭');
+  const { page } = a;
+  try {
+    const door = await page.evaluate(() => window.PlazaDebug().doors.board);
+    await page.evaluate(async (d) => window.PlazaWarp(d.x + 4, d.z), door);
+    await expect.poll(async () => {
+      const p = await state(page); return Math.hypot(p.x - door.x, p.z - door.z);
+    }).toBeGreaterThan(2.4);
+    const far = await page.evaluate(() => window.PlazaDebug().screenOf('board'));
+    await page.mouse.click(far.x, far.y);
+    await expect(page.locator('#plazaDialog')).toBeHidden();
+    await page.evaluate(async (d) => window.PlazaWarp(d.x, d.z), door);
+    await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게시판');
+    const near = await page.evaluate(() => window.PlazaDebug().screenOf('board'));
+    await page.mouse.click(near.x, near.y);
+    await expect(page.locator('#plazaDialogTitle')).toHaveText('게시판');
+    await page.locator('#plazaCloseBtn').click();
+    await page.keyboard.press('Space');
+    await expect(page.locator('#plazaDialog')).toBeVisible();
+    await expectNoScriptError(page);
+  } finally { await a.context.close(); }
+});
+
+test('상점 전환: 이전 목록을 비우고 늦은 응답이 새 상점을 덮지 않는다', async ({ browser, request }) => {
+  const a = await intoPlaza(browser, request, '상점 응답'); const { page } = a;
+  let release; let firstSeen; const pending = new Promise((resolve) => { release = resolve; });
+  const seen = new Promise((resolve) => { firstSeen = resolve; }); let requests = 0;
+  try {
+    await page.route('**/api/skins', async (route) => {
+      const first = ++requests === 1; const response = await route.fetch(); const data = await response.json();
+      data.balance = first ? 111 : 222;
+      if (first) { firstSeen(); await pending; }
+      await route.fulfill({ response, json: data });
+    });
+    await page.evaluate(() => window.PlazaDebug().place('shop'));
+    await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
+    await page.keyboard.press('Space'); await seen;
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.PlazaDebug().place('hair'));
+    await expect(page.locator('#plazaHint')).toHaveText('SPACE · 미용실');
+    await page.keyboard.press('Space');
+    await expect(page.locator('#skinShopTitle')).toHaveText('미용실');
+    await expect(page.locator('#skinShopBalance')).toHaveText('보유 222P');
+    const lateResponse = page.waitForResponse((r) => r.url().endsWith('/api/skins') && r.status() === 200);
+    release(); await lateResponse;
+    await expect(page.locator('#skinShopBalance')).toHaveText('보유 222P');
+    await expectNoScriptError(page);
+  } finally { release(); await a.context.close(); }
+});
+
+test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석·미션은 유지', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '보유 외형', 100000);
+  try {
+    await buyAndEquip(request, a, ['avatar_animal_cat_outfit']);
+    await expect(a.page.locator('#islandFacilityActions')).toBeVisible();
+    await islandPage(a.page);
+    await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+    await expect(a.page.locator('#islandFacilityActions')).toBeHidden();
+    await a.page.locator('#myInfoBtn').click();
+    await a.page.locator('#myInfoDialog button[data-action="unequip"]').click();
+    await expect.poll(async () => (await get(request, '/api/skins', a.token)).data.equipped?.avatar?.outfit || null).toBe(null);
+    await a.page.keyboard.press('Escape');
+    await expect(a.page.locator('#plazaStage')).toBeFocused();
+    await expectNoScriptError(a.page);
+  } finally { await a.context.close(); }
+});
+
 test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 창을 열며 창이 열린 동안 멈춘다', async ({ browser, request }) => {
   test.setTimeout(60000); // a software-rendered 3D page walking to two facilities: about 21-29 s on a CI runner already
   const a = await intoPlaza(browser, request, '광장');
