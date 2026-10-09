@@ -40,3 +40,35 @@ test('광장 화면: 이전 응답은 새 화면을 보정하지 않고 퇴장 �
   calls[2].resolve({ corrected: true, x: 1, z: 8 }); await tick();
   assert.equal(corrected, 1, '현재 방문의 정상 보정은 유지');
 });
+
+test('이전 위치 요청의 늦은 401은 새 로그인 세션을 종료하지 않는다', async () => {
+  let reply; let expired = 0;
+  const context = vm.createContext({
+    sessionToken: 'old', document: { body: { classList: { contains: () => false } } },
+    fetch: () => new Promise(resolve => { reply = resolve; }),
+    expireSession: () => expired++,
+  });
+  vm.runInContext(source.slice(apiBegin, apiEnd) + '\nglobalThis.api = api;', context);
+  const pending = context.api('/api/plaza/state', { method: 'POST', body: '{}' }).catch(e => e);
+  context.sessionToken = 'new';
+  reply({ ok: false, status: 401, json: async () => ({ message: 'old session expired' }) });
+  assert.equal((await pending).status, 401);
+  assert.equal(expired, 0, '새 세션의 인증 상태를 지우지 않는다');
+});
+
+test('시설의 선행 위치 확인 중 로그인 전환이 있어도 지급 요청의 계정을 바꾸지 않는다', async () => {
+  const calls = [];
+  const context = vm.createContext({
+    sessionToken: 'old', document: { body: { classList: { contains: () => true } } },
+    plaza: { controller: { canInteract: () => true, pose: () => ({ x: 0, z: 8 }) } },
+    fetch: (route, options) => new Promise(resolve => calls.push({ route, options, resolve: () => resolve({ ok: true, status: 200, json: async () => ({ ok: true }) }) })),
+    expireSession() {},
+  });
+  vm.runInContext(source.slice(apiBegin, apiEnd) + '\nglobalThis.api = api;', context);
+  const pending = context.api('/api/points/attendance', { method: 'POST', body: '{}' });
+  assert.equal(calls[0].options.headers['X-Session-Token'], 'old');
+  context.sessionToken = 'new'; calls[0].resolve(); await tick();
+  assert.equal(calls[1].route, '/api/points/attendance');
+  assert.equal(calls[1].options.headers['X-Session-Token'], 'old');
+  calls[1].resolve(); await pending;
+});

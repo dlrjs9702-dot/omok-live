@@ -2328,6 +2328,7 @@
   }
 
   async function api(path, options = {}) {
+    const requestToken = sessionToken; // keep the initiating account across awaits
     const headers = { ...(options.headers || {}) };
     if (options.method === 'POST' && document.body.classList.contains('plazaMode')) {
       const places = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
@@ -2343,13 +2344,13 @@
         if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
       }
     }
-    if (sessionToken) headers['X-Session-Token'] = sessionToken;
+    if (requestToken) headers['X-Session-Token'] = requestToken;
     if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
     const res = await fetch(path, { ...options, headers, cache: 'no-store' });
     let data = {};
     try { data = await res.json(); } catch {}
     if (!res.ok) {
-      if (res.status === 401) expireSession(data.message);
+      if (res.status === 401 && requestToken === sessionToken) expireSession(data.message);
       const err = new Error(data.message || '요청을 처리하지 못했습니다.');
       err.status = res.status;
       err.data = data;
