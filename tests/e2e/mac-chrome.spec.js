@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post } = require('./skin-support');
+const { post, get } = require('./skin-support');
 
 // v1.10.23 Mac Chrome 구형 로비 노출 수정 (IDEAS 2026-10-05): Chrome on macOS gets the game island like Windows Chrome;
 // the island's WebGL renderer is retried with safer settings; and if the island still cannot start, a regular user
@@ -30,12 +30,13 @@ const GL_SWITCH = `(() => {
   };
 })();`;
 
-async function macUser(browser, request, label, gl = 'ok', omitMotionScript = false) {
+async function macUser(browser, request, label, gl = 'ok', omitMotionScript = false, prepareContext = null) {
   const admin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
   const issued = (await post(request, '/api/admin/keys', admin, { label })).data;
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, userAgent: MAC_UA, deviceScaleFactor: 2 });
   await context.addInitScript(MAC_HINTS);
   await context.addInitScript(GL_SWITCH);
+  if (prepareContext) await prepareContext(context);
   if (omitMotionScript) await context.route(url => url.pathname === '/' || url.pathname === '/guest-entry', async route => {
     const response = await route.fetch();
     const html = (await response.text()).replace(/<script\b[^>]*src="\/plaza\/remote-motion\.js[^"\n]*"[^>]*><\/script>/g, '');
@@ -100,13 +101,14 @@ test('렌더러 컨텍스트를 끝내 못 만들면 오류 화면, 다시 시�
 });
 
 test('아일랜드 모듈 실패 뒤 다시 시도하면 새 문서로 복구하고 로그인·당일 위치 유지', async ({ browser, request }) => {
-  const { context, page } = await macUser(browser, request, '맥모듈');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
-  await page.evaluate(() => window.PlazaWarp(25, 4));
+  // Fail from the first load, rather than booting two full islands and waiting for a pose/leave before the failure.
+  // The separate plaza position test covers walking/reload; here the real server supplies today's saved spot.
+  const { context, page } = await macUser(browser, request, '맥모듈', 'ok', false,
+    c => c.route('**/plaza/plaza-scene.js*', route => route.fulfill({ status: 500, body: 'no' })));
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('gameCenterGuestSession')).token);
-  await expect.poll(async () => (await request.get('/api/plaza/spot', { headers: { 'X-Session-Token': token } })).json().then(data => data.spot)).toEqual({ x: 25, z: 4 });
-  await context.route('**/plaza/plaza-scene.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
-  await page.reload();
+  const saved = await post(request, '/api/plaza/state', token, { x: 25, z: 4, yaw: 0, moving: false });
+  expect(saved.status).toBe(200);
+  expect((await get(request, '/api/plaza/spot', token)).data.spot).toEqual({ x: 25, z: 4 });
   await expect(page.locator('#plazaError')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => window.PlazaDiagnostics.code)).toBe('module');
   expect(await classicShown(page)).toBe(false);
