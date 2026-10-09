@@ -2251,7 +2251,11 @@
       clearInterval(plazaSendTimer); plazaSendTimer = null; plazaVisit += 1;
       plazaStateRequest?.abort(); plazaStateRequest = null; plazaSending = false;
       if (sessionToken) {
-        const departure = (plazaDeparture || Promise.resolve()).then(() => api('/api/plaza/leave', { method: 'POST', body: '{}' })).catch(() => {});
+        const leavingToken = sessionToken;
+        // Cleanup belongs to that session; a late 401 must not expire a later login.
+        const departure = (plazaDeparture || Promise.resolve()).then(() => fetch('/api/plaza/leave', {
+          method: 'POST', headers: { 'X-Session-Token': leavingToken, 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+        })).catch(() => {});
         plazaDeparture = departure;
         departure.finally(() => { if (plazaDeparture === departure) plazaDeparture = null; });
       }

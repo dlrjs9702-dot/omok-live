@@ -20,7 +20,8 @@
 - 이전 main CI의 관리자 공개 상태 검사 오탐은 실제 비밀 문자열과 금지 필드 검사로 한정하고 타임스탬프 형식을 따로 검사한다. 등반 종료 실패/유한대기/정산 재시도 및 스무고개 같은 단계의 재접속 시계는 기존 구현을 재검증한다.
 - 새 자동 공지와 버전·health·시작 로그를 v1.10.57로 동기화했다. 변경 JavaScript 구문·ESM 구문·diff 검사, 전체 npm752/752(74.8초), 관련 Chromium12 retry0(등반4/무입력1/재접속5=1.1분, 광장 입퇴장·게임관복귀2=51.9초) 성공. 순서 경쟁·SSE16.5초·첫heartbeat 해제·이전문서순서·스무고개 출제자·보간·화면 콜백·등반 실패의 새 회귀10개는 전체 npm에 포함한다.
 - 첫 npm은751/752로 실패했다. 신규 스무고개 검증이 끝난 뒤 열린 테스트 SSE를 서버보다 늦게 닫아 ECONNRESET이 난 테스트 정리 결함이다. 공개 game.paused 필드가 없다는 초기 검증 가정도 바로잡았다. 실제 공개 playing/secret 상태·기존 deadlineAt 동일성을 검사하고 스트림을 먼저 닫은 뒤 단독1/1·최종 전체752/752 성공. 원본 patch57-regression-tests/patch57-final-related/patch57-npm-full와 최종 patch57-twenty-cleanup/patch57-npm-final/patch57-related-pc/patch57-plaza-related 로그를 보존하며 검증 기한·범위를 줄이지 않았다.
-- PR/CI·병합·Render 결과는 확인 후 기록한다. GLB/압축 빌드 변경 없음. 실제 GPU PC/실사용자 다인 전수실기 미검증.
+- 최초 PR CI37993445143는 후속 실제 콜백 검토에서 지연 퇴장이 새 로그인 토큰을 사용하는 재현을 확인하여 중간 실행으로 취소했다. 실제 api 함수까지 실행하는 검증의 fixture→replacement 실패를 patch57-departure-token-probe.log에 보존하고, 퇴장 당시 토큰을 고정한 정리 요청으로 새 로그인에 대한 401 처리가 전파되지 않게 보완했다. 기존752/12 성공은 보완 전 근거이며 최종 전체/관련 검증·PR CI 결과는 아래 확인 후 기록한다.
+- 토큰 고정 최종 보완 뒤 구문/diff·실제 api와 입퇴장 콜백1/1·전체npm752/752(80.5초)·관련광장PC2 retry0(1.0분) 성공. 등반/무입력/게임재접속10개는 앞선1.1분 성공을 보존한다. 최종로그 patch57-npm-token-final/patch57-plaza-token-final, 중간CI37993445143 네묶음 cancelled 확인. 최종 PR CI·병합·Render 결과는 확인 후 기록한다. GLB/압축 빌드 변경 없음. 실제 GPU PC/실사용자 다인 전수실기 미검증.
 
 ## v1.10.56 캐시 응답·모듈 진입 복구
 
