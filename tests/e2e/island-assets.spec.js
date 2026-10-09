@@ -154,32 +154,34 @@ const BOX2 = '/assets/island/__e2e/box-winter.glb';
 const debug = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { running: d.running, assets: d.assets, doors: d.doors, x: d.x, z: d.z, near: d.near }; });
 
 async function island(browser, request, label, registry, { failLoader = false } = {}) {
-  const who = await shopper(browser, request, label);
-  const { page, context } = who;
   const hits = {};
-  await context.route('**/assets/island/__e2e/**', (route) => {
-    const url = new URL(route.request().url()).pathname; hits[url] = (hits[url] || 0) + 1;
-    if (url === BOX) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
-    if (url === RIG) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: riggedGlb() });
-    if (url === BOX2) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
-    if (url.endsWith('broken.glb')) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: Buffer.from('glTF but not really') });
-    return route.fulfill({ status: 404, body: 'not found' });
+  const code = [], errors = [], shaderErrors = [];
+  const nulls = Object.fromEntries(Object.keys(require('../../public/plaza/island-assets').REGISTRY).map(id => [id, null]));
+  const own = registry === 'none' ? nulls : registry?.__only ? (({ __only, ...rest }) => ({ ...nulls, ...rest }))(registry) : registry;
+  // Install routes and the selected registry before the first island starts. A full
+  // default island followed by a reload doubles setup and competes with the observer.
+  const who = await shopper(browser, request, label, 0, 'male', async context => {
+    await context.addInitScript(r => {
+      if (!/^https?:$/.test(location.protocol)) return; // the guest handoff starts on an opaque about:blank document
+      localStorage.removeItem('gc.testClassic');
+      if (r && !localStorage.getItem('gc.testIslandAssets')) localStorage.setItem('gc.testIslandAssets', JSON.stringify(r));
+    }, own);
+    await context.route('**/assets/island/__e2e/**', (route) => {
+      const url = new URL(route.request().url()).pathname; hits[url] = (hits[url] || 0) + 1;
+      if (url === BOX) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
+      if (url === RIG) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: riggedGlb() });
+      if (url === BOX2) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: staticGlb() });
+      if (url.endsWith('broken.glb')) return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: Buffer.from('glTF but not really') });
+      return route.fulfill({ status: 404, body: 'not found' });
+    });
+    context.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
+    if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
+    context.on('page', page => {
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error' && /THREE|shader|GLSL|WebGLProgram/.test(m.text())) shaderErrors.push(m.text()); });
+    });
   });
-  const code = [];
-  page.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
-  if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
-  const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-  const shaderErrors = []; page.on('console', m => { if (m.type() === 'error' && /THREE|shader|GLSL|WebGLProgram/.test(m.text())) shaderErrors.push(m.text()); });
-  // 'none': as if nothing were registered (the registered entries are set to null); otherwise added to the registry;
-  // v1.10.29 `__only`: only these entries (every registered one off) -- a test of the general ids (`cottage`,
-  // `nature.flower`) that the real, more specific ones (`cottage.3`, `nature.flower.2`) would otherwise take over
-  await page.evaluate((r) => {
-    localStorage.removeItem('gc.testClassic');
-    const nulls = Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]));
-    const own = r === 'none' ? nulls : r?.__only ? (({ __only, ...rest }) => ({ ...nulls, ...rest }))(r) : r;
-    if (own) localStorage.setItem('gc.testIslandAssets', JSON.stringify(own));
-  }, registry);
-  await page.reload();
+  const { page } = who;
   await page.waitForFunction(() => Boolean(window.GameBoot?.ready));
   await page.evaluate(() => window.GameBoot.ready);
   await expect(page.locator('#lobbyView')).toBeVisible(); // resource readiness precedes the asynchronous session/room request
@@ -232,7 +234,7 @@ test('관공서 실물 High/Low: 기단 보정 뒤 주야간 재질 렌더링과
   }
 });
 
-test('길가 장식·4계절 회전·동작 줄이기와 배경 탭 화질 표본 격리', async ({ browser, request }) => {
+test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
   const { REGISTRY } = require('../../public/plaza/island-assets');
   const a = await island(browser, request, '길가', { __only: true, 'deco.layer.edge': REGISTRY['deco.layer.edge'] });
   const sample = () => a.page.evaluate(() => {
@@ -249,6 +251,14 @@ test('길가 장식·4계절 회전·동작 줄이기와 배경 탭 화질 표�
       return Object.values(batch?.zones || {}).every(z => z.url?.includes(`layer_${z.look}_edge.glb`));
     }).toBe(true);
   }
+  await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
+});
+
+test('동작 줄이기와 배경 탭 화질 표본 격리·수동 시점과 이동 유지', async ({ browser, request }) => {
+  const a = await island(browser, request, '정적환경', { __only: true });
+  const sample = () => a.page.evaluate(() => {
+    const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality };
+  });
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(async () => (await sample()).environment.water.flow.every(v => v === 0)).toBe(true);
   const still = (await sample()).environment.water;

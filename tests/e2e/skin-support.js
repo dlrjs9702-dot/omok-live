@@ -22,10 +22,11 @@ async function adminToken(request) {
 }
 
 // A guest with an account in a real browser page (lobby), and the points to shop with.
-async function shopper(browser, request, label, points = 0, gender = 'male') {
+async function shopper(browser, request, label, points = 0, gender = 'male', prepareContext = null) {
   const admin = await adminToken(request);
   const issued = (await post(request, '/api/admin/keys', admin, { label })).data;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  if (prepareContext) await prepareContext(context);
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
