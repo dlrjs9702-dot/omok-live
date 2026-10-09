@@ -2,6 +2,7 @@
 // no external assets. Kept apart from the RPG scene (public/rpg/rpg-scene.js): the two share Three.js, nothing else.
 // The scene knows facility ids and names only; what a facility opens is the caller's `onInteract(id)`.
 import * as THREE from '/vendor/three/three.module.js';
+import './remote-motion.js'; // an older page may not include the classic dependency script
 import { buildIsland, building, props, part, mergeColored, heightAt, walkable, SPOTS, COTTAGES, STATUE_SPOTS, RESERVED_LOTS, SPAWN, PLAZA_R } from './island.js';
 import { halloweenDecor } from './island-halloween.js';
 import { townhallYard } from './island-townhall.js';
@@ -22,7 +23,7 @@ const SEPARATE_STEP = 0.06; // already overlapping (network lag): drift apart th
 // walking islanders are lowered by it so their feet are on the ground, not just their root.
 const FOOT_LIFT = 0.085;
 // v1.10.8: how other people move on my screen (an interpolation buffer and a follower; public/plaza/remote-motion.js,
-// loaded before the app like island-terrain.js)
+// directly imported too, so an older page can load the current scene)
 const { createTrack, createFollower } = globalThis.RemoteMotion;
 const IslandNpcs = globalThis.IslandNpcs; // v1.10.12 배회 NPC (public/plaza/island-npcs.js)
 // v1.10.15 고품질 에셋 파이프라인 (public/plaza/asset-pipeline.js, island-assets.js; loaded before the app)

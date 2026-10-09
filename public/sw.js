@@ -46,17 +46,25 @@ async function fromActivePack(key) {
 }
 
 // v1.10.25 groups fetched when used (a game's cards, a skin's files): a `?rev=` file not stored yet is fetched and, once
-// its content matches the revision in its URL, kept under that key -- the same check the page makes, so the cache never
-// holds a file under a revision it does not have. Nothing is kept before the page has prepared the cache.
-async function keep(key, rev, response) {
+// its content matches the revision in its URL, delivered and kept under that key. An old page must never receive the
+// new deploy's bytes under an old revision, even if they would not be cached. HTTP errors remain HTTP errors.
+async function verifiedResponse(request, rev) {
+  const response = await fetch(request);
+  if (!response.ok) return response;
+  if (response.type !== 'basic' || !/^[0-9a-f]{16}$/.test(rev || '')) throw new TypeError('Invalid resource revision');
+  const body = await response.clone().arrayBuffer();
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', body));
+  if (Array.from(digest.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('') !== rev) throw new TypeError('Resource revision mismatch');
+  return response;
+}
+
+// Nothing is kept before the page has prepared the cache. A refused write does not prevent verified delivery.
+async function keep(key, response) {
   try {
-    if (!response.ok || response.type !== 'basic' || !/^[0-9a-f]{16}$/.test(rev || '')) return;
+    if (!response.ok) return;
     const cache = await activeCache();
     if (!cache) return;
-    const body = await response.arrayBuffer();
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', body));
-    if (Array.from(digest.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('') !== rev) return;
-    await cache.put(key, new Response(body, { headers: { 'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream' } }));
+    await cache.put(key, response);
   } catch {}
 }
 
@@ -67,8 +75,8 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate') event.waitUntil(checkServer());
   if (request.method !== 'GET' || !url.searchParams.has('rev')) return;
   const key = url.pathname + url.search;
-  event.respondWith(fromActivePack(key).catch(() => null).then(hit => hit || fetch(request).then(response => {
-    event.waitUntil(keep(key, url.searchParams.get('rev'), response.clone()));
+  event.respondWith(fromActivePack(key).catch(() => null).then(hit => hit || verifiedResponse(request, url.searchParams.get('rev')).then(response => {
+    event.waitUntil(keep(key, response.clone()));
     return response;
   })));
 });

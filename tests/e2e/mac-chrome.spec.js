@@ -30,12 +30,17 @@ const GL_SWITCH = `(() => {
   };
 })();`;
 
-async function macUser(browser, request, label, gl = 'ok') {
+async function macUser(browser, request, label, gl = 'ok', omitMotionScript = false) {
   const admin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
   const issued = (await post(request, '/api/admin/keys', admin, { label })).data;
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, userAgent: MAC_UA, deviceScaleFactor: 2 });
   await context.addInitScript(MAC_HINTS);
   await context.addInitScript(GL_SWITCH);
+  if (omitMotionScript) await context.route(url => url.pathname === '/' || url.pathname === '/guest-entry', async route => {
+    const response = await route.fetch();
+    const html = (await response.text()).replace(/<script\b[^>]*src="\/plaza\/remote-motion\.js[^"\n]*"[^>]*><\/script>/g, '');
+    await route.fulfill({ response, body: html });
+  });
   const page = await context.newPage();
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': nextIp() });
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
@@ -94,12 +99,33 @@ test('렌더러 컨텍스트를 끝내 못 만들면 오류 화면, 다시 시�
   await context.close();
 });
 
-test('아일랜드 코드를 받지 못해도 기존 로비가 아니라 오류 화면(모듈 실패로 진단)', async ({ browser, request }) => {
+test('아일랜드 모듈 실패 뒤 다시 시도하면 새 문서로 복구하고 로그인·당일 위치 유지', async ({ browser, request }) => {
   const { context, page } = await macUser(browser, request, '맥모듈');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
+  await page.evaluate(() => window.PlazaWarp(25, 4));
+  const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('gameCenterGuestSession')).token);
+  await expect.poll(async () => (await request.get('/api/plaza/spot', { headers: { 'X-Session-Token': token } })).json().then(data => data.spot)).toEqual({ x: 25, z: 4 });
   await context.route('**/plaza/plaza-scene.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
   await page.reload();
   await expect(page.locator('#plazaError')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => window.PlazaDiagnostics.code)).toBe('module');
   expect(await classicShown(page)).toBe(false);
+  await context.unroute('**/plaza/plaza-scene.js*');
+  await Promise.all([page.waitForEvent('load'), page.locator('#plazaRetry').click()]);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
+  const restored = await page.evaluate(() => ({ spot: window.PlazaDebug(), token: JSON.parse(sessionStorage.getItem('gameCenterGuestSession')).token }));
+  expect(restored.token).toBe(token);
+  expect(Math.hypot(restored.spot.x - 25, restored.spot.z - 4)).toBeLessThan(0.6);
+  await expect(page.locator('#plazaError')).toBeHidden();
+  await context.close();
+});
+
+test('이동 의존성 스크립트가 없는 구페이지도 현재 아일랜드 모듈로 진입', async ({ browser, request }) => {
+  const { context, page, errors } = await macUser(browser, request, '구페이지이동', 'ok', true);
+  expect(await page.locator('script[src*="/plaza/remote-motion.js"]').count()).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
+  expect(await page.evaluate(() => typeof window.RemoteMotion?.createTrack)).toBe('function');
+  expect(await classicShown(page)).toBe(false);
+  expect(errors).toEqual([]);
   await context.close();
 });
