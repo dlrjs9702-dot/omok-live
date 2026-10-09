@@ -623,9 +623,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npcs.push(npc);
     }
     assets.attach(`facility.${facility.id}`, root, visual, spot.kind === 'mapboard' ? (entry) => mapFace?.(entry) : null);
-    const reach = depth / 2 + 1.3;
-    const out = spot.kind === 'townhall' ? 8.6 : Math.max(1.4, reach) + (spot.kind === 'hall' ? 2.6 : 0); // the hall's door point is past its terrace steps; v1.10.41 the town hall's at the foot of its steps, in the yard
-    if (!facility.decor) doors[facility.id] = { x: x + toCentre.x * out, z: z + toCentre.y * out, name: facility.name };
+    if (!facility.decor) doors[facility.id] = { ...globalThis.IslandTerrain.facilityDoor(facility.id), name: facility.name };
     // v1.10.38: October's pumpkins either side of a building's door (the hall's on its terrace)
     const hwRy = root.rotation.y + Math.PI;
     if (spot.kind === 'hall') for (const lx of [-4.2, 4.2]) hwSpots.push({ kind: 'stack', ...at(lx, 6.3), y: root.position.y + 0.5, ry: hwRy });
@@ -991,7 +989,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         renderer.domElement.style.cursor = 'grabbing'; return;
       }
     }
-    renderer.domElement.style.cursor = !isBlocked() && facilityAt(event) ? 'pointer' : 'grab';
+    renderer.domElement.style.cursor = !isBlocked() && canInteract(facilityAt(event)) ? 'pointer' : 'grab';
   };
   const onUp = (event) => { if (drag?.id === event.pointerId) { drag = null; renderer.domElement.style.cursor = 'grab'; } };
   renderer.domElement.addEventListener('pointerdown', onDown);
@@ -1401,7 +1399,23 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
 
   let near = null; let nearName = null;
+  function canInteract(id) {
+    if (!running || typeof id !== 'string') return false;
+    const door = doorOf(id);
+    if (!door || door.plain) return false;
+    if (id === 'fish:spot') return Boolean(fishing || globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z));
+    if (id.startsWith('player:')) {
+      const other = others.get(id.slice(7));
+      if (!other) return false;
+      return Math.hypot(other.c.root.position.x - me.root.position.x, other.c.root.position.z - me.root.position.z) < 2.2;
+    }
+    if (id.startsWith('seat:') && takenSeats.has(id.slice(5))) return false;
+    if ((riding || platform) && !id.startsWith('train:')) return false;
+    const reach = id.startsWith('train:enter:') ? 2.6 : id.startsWith('seat:') ? 1.6 : id.startsWith('player:') ? 2.2 : door.resource || id.startsWith('weed:') ? WEED_REACH : eventDoors[id] ? EVENT_REACH : REACH;
+    return Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < reach;
+  }
   function interact(id) {
+    if (!canInteract(id)) return;
     if (!id.startsWith('weed:') && !eventDoors[id]?.resource) keys.clear();
     const door = doorOf(id);
     if (door) me.targetYaw = Math.atan2(door.x - me.root.position.x, door.z - me.root.position.z); // turn to face it
@@ -1851,6 +1865,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     setPhotoMode(false); if (gather?.waitServer) endGather(false);
     if (questScenes && (questScenes.departurePending || questScenes.departure !== null)) { questScenes.departurePending = false; questScenes.departure = null; questScenes.boat.visible = false; }
     questDepartureHeld = false; running = false; cancelAnimationFrame(raf); keys.clear();
+    near = null; nearName = null; onNear?.(null);
   }
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
@@ -1984,6 +1999,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const hideForPhoto = () => scene.traverse((o) => { if (o.isSprite && o.visible) { o.visible = false; photoHidden.add(o); } });
   const photoPose = (on = true) => { if (!on) return me.anim?.release?.(); me.targetYaw = Math.atan2(camera.position.x - me.root.position.x, camera.position.z - me.root.position.z); return me.anim?.loop?.('photo'); }; // turned to the camera, held through the countdown and the shot
   function capture() { if (!photoMode) return Promise.resolve(null); hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
-  return { holdQuestDeparture, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+  return { canInteract, holdQuestDeparture, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

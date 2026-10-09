@@ -1495,10 +1495,14 @@
     const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
     const on = view === 'lobby' && plazaFits() && !plazaTestClassic && !classicFallback;
     document.body.classList.toggle('plazaMode', on);
+    const facilityActions = document.getElementById('islandFacilityActions');
+    facilityActions.classList.toggle('hidden', on || view !== 'lobby');
+    facilityActions.setAttribute('aria-hidden', String(on || view !== 'lobby'));
     plazaStage.classList.toggle('hidden', !on);
     (on ? plazaStage : publicRoomsCardEl).append(lobbyInvitations); // room invitations stay visible over the square
     setPlazaPresence(on);
     if (!on) {
+      showPlazaHint(null);
       if (plazaDialog.open) plazaDialog.close();
       plaza.controller?.stop();
       if (view === 'gate' && plaza.controller) { plaza.controller.dispose(); plaza.controller = null; } // the next login may be a different role
@@ -1932,6 +1936,7 @@
   // v1.10.47 관광열차: SPACE by a stop gets on the train standing there (the server checks the stop, the train and a free
   // seat); on board, SPACE at a stop gets off there. A plain hint (the next train's time) does nothing.
   async function trainPlatform(stop, line) {
+    if (!plaza.controller?.platform?.() && !plaza.controller?.canInteract?.(`train:enter:${stop}`)) return;
     try { const r = await api('/api/island/train/platform', { method: 'POST', body: JSON.stringify({ stop, line }) }); plaza.controller?.setPlatform?.({ ...r, stop }); }
     catch (error) { showToast(error.message); }
   }
@@ -1950,6 +1955,7 @@
   }
   async function trainAction(what) {
     if (plaza.controller?.debug?.().train?.().lifting) return;
+    if (what === 'platform' ? !plaza.controller?.platform?.() : what !== 'board' && !plaza.controller?.canInteract?.(`train:${what}`)) return;
     try {
       if (what === 'ride') { const r = await api('/api/island/train/alight', { method: 'POST', body: '{}' }); plaza.controller?.alight?.(r); return; }
       if (what === 'platform') { trainMenu(plaza.controller?.platform?.().station); return; }
@@ -1975,7 +1981,14 @@
     const who = plaza.controller?.debug?.().others?.find((o) => o.id === plazaId);
     const make = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.addEventListener('click', () => { plazaDialog.addEventListener('close', () => fn(), { once: true }); plazaDialog.close(); }); return b; }; // after the window has closed (it puts its sections back then)
     lostCard.replaceChildren(make('인사', 'primary', () => plaza.controller?.emote?.('bow')), make('환호', 'ghost', () => plaza.controller?.emote?.('cheer')),
-      make('게임 초대', 'secondary', () => { islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open(); }));
+      make('게임 초대', 'secondary', async () => {
+        try {
+          if (!plaza.controller?.canInteract?.(`player:${plazaId}`)) throw new Error('가까이 가서 다시 시도해 주세요.');
+          await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) });
+          await api('/api/island/invite/prepare', { method: 'POST', body: JSON.stringify({ plazaId }) });
+          islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
+        } catch (error) { showToast(error.message); }
+      }));
     lostCard.classList.remove('hidden');
     openPlazaWindow(who?.name || '', [lostCard]);
   }
@@ -2299,6 +2312,20 @@
 
   async function api(path, options = {}) {
     const headers = { ...(options.headers || {}) };
+    if (options.method === 'POST' && document.body.classList.contains('plazaMode')) {
+      const places = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
+      let place = places[path];
+      if (path === '/api/skins/buy' || (headers['X-Island-Facility'] && ['/api/skins/equip', '/api/skins/title'].includes(path))) {
+        place = skinShopMode === 'avatar:outfit' ? 'avatar' : skinShopMode === 'avatar:hair' ? 'hair' : skinShopMode === 'avatar:hat' ? 'accessories' : 'shop';
+        headers['X-Island-Facility'] = place;
+      }
+      if (place) {
+        if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
+        const pose = plaza.controller.pose();
+        await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) });
+        if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
+      }
+    }
     if (sessionToken) headers['X-Session-Token'] = sessionToken;
     if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
     const res = await fetch(path, { ...options, headers, cache: 'no-store' });
@@ -3802,6 +3829,7 @@
   // v1.10.32: the slots each character shop sells (잡화점: the five accessory slots, one tab each)
   const SHOP_SLOTS = { 'avatar:outfit': ['outfit'], 'avatar:hair': ['hair'], 'avatar:hat': ['hat', 'cape', 'tail', 'shoes', 'necklace'] };
   let skinShopSlot = null;
+  let skinShopEpoch = 0;
   function renderSkinShop() {
     skinShopBody.textContent = '';
     if (!skinShop) return;
@@ -3910,13 +3938,15 @@
   }
 
   async function loadSkinShop() {
+    const epoch = ++skinShopEpoch; const mode = skinShopMode; const token = sessionToken;
     skinShopStatus.textContent = '';
     try {
       const data = await api('/api/skins');
+      if (epoch !== skinShopEpoch || mode !== skinShopMode || token !== sessionToken || !skinShopDialog.open) return;
       skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, balance: data.balance, dexTitles: data.dexTitles || [] };
       renderSkinShop();
     } catch (error) {
-      if (skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;
+      if (epoch === skinShopEpoch && token === sessionToken && skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;
     }
   }
 
@@ -3926,6 +3956,8 @@
     const button = event.target.closest('button[data-action]');
     if (!button || !skinShop) return;
     const { action, skin: skinId } = button.dataset;
+    const epoch = skinShopEpoch; const shop = skinShop; const token = sessionToken;
+    const current = () => epoch === skinShopEpoch && shop === skinShop && token === sessionToken && skinShopDialog.open;
     skinShopStatus.textContent = '';
     try {
       if (action === 'buy') {
@@ -3938,34 +3970,42 @@
         }
         skinBuyArmed = null;
         const data = await api('/api/skins/buy', { method: 'POST', body: JSON.stringify({ skinId }) });
+        if (!current()) return;
         skinShop.owned.add(skinId);
         skinShop.balance = data.balance;
         skinShopStatus.textContent = '';
       } else if (action === 'equip') {
-        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId }) });
+        const data = await api('/api/skins/equip', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId }) });
+        if (!current()) return;
         skinShop.equipped = data.equipped;
       } else if (action === 'unequip') {
-        const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
+        const data = await api('/api/skins/equip', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
+        if (!current()) return;
         skinShop.equipped = data.equipped;
       } else if (action === 'title') {
-        const data = await api('/api/skins/title', { method: 'POST', body: JSON.stringify({ skinId: skinId || null }) });
+        const data = await api('/api/skins/title', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId: skinId || null }) });
+        if (!current()) return;
         skinShop.equipped = data.equipped;
       }
       if (['equip', 'unequip', 'title'].includes(action)) refreshPlazaAvatar(); // the plaza character wears it at once
       renderSkinShop();
     } catch (error) {
+      if (!current()) return;
       skinBuyArmed = null;
       skinShopStatus.textContent = error.message;
       loadSkinShop();
     }
   });
   function openSkinShop(mode = 'all') {
+    ++skinShopEpoch; clearTimeout(skinBuyTimer);
+    skinShop = null; skinShopBody.replaceChildren(); skinShopBalance.textContent = ''; skinShopStatus.textContent = '';
     skinShopMode = mode; skinBuyArmed = null; skinShopSlot = null;
     document.getElementById('skinShopTitle').textContent = SKIN_SHOP_TITLES[mode];
     skinShopDialog.showModal(); loadSkinShop();
   }
   document.getElementById('skinShopBtn').addEventListener('click', () => openSkinShop('all'));
   document.getElementById('skinShopCloseBtn').addEventListener('click', () => skinShopDialog.close());
+  skinShopDialog.addEventListener('close', () => { if (!skinShopDialog.open) { ++skinShopEpoch; clearTimeout(skinBuyTimer); skinBuyArmed = null; if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); } });
 
   // v1.7.15 point-reward events: the server says which events are open and which this account already
   // claimed; the modal is built from that data (nothing about a specific event is written in the page).
@@ -9211,6 +9251,9 @@
   window.GostopUI.init(roomAction);
   window.PandemicUI.init(roomAction);
   attendanceBtn.addEventListener('click', claimAttendance);
+  for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
+    if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true });
+  });
   pointHistoryBtn.addEventListener('click', () => setPointHistoryOpen(!pointHistoryOpen));
   pointHistoryClose.addEventListener('click', () => { setPointHistoryOpen(false); pointHistoryBtn.focus(); });
   pointHistoryMore.addEventListener('click', () => loadPointHistory());
