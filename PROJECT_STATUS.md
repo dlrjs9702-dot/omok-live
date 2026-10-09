@@ -13,6 +13,10 @@
 
 ## v1.10.56 캐시 응답·모듈 진입 복구
 
+최종 구현·PR/배포 결과는 아래 첫 항목이 기준이다. 이어지는 준비·실패·취소 당시의 대기 표현은 과거 이력이다. 병합 후 main CI와 최종 문서 정리는 아직 진행 중이다.
+
+- [PR #192](https://github.com/dlrjs9702-dot/omok-live/pull/192), 최종 작업 `69b312eedde41f498ed26ac0d9283e6f79413a97`, squash main `10d43174d1552406c10c65f9a021219c0d1dc9ac`. [최종 PR CI37974333985](https://github.com/dlrjs9702-dot/omok-live/actions/runs/37974333985) 네 묶음 성공: npm742/742·PC196(일반1 73/일반2 72/에셋22/광장29)·기존mobile5. 에셋22·전달51.5초·모듈복구19.2초·구페이지19.6초 retry0. 팬데믹후속 방 화면 대기·최초성별창 중 위치변화0.06m(기대<0.01m) 각retry1 이력은 게임10/캐릭터6 재검증에 유지; 해결로 집계하지 않는다. 원본 patch56-ci-cleanup-games1/games2/assets/plaza.log 및 광장retry trace 보존. Render `dep-db4jipbrjlhs738pncu0` 동일SHA 2026-10-09T18:59:30.669072Z(한국10월10일03:59) live, 시작v56/입장키·공지·포인트PostgreSQL·실제운영health `{"ok":true,"version":"1.10.56"}` 확인. 새 공지 반영. 실제GPU PC·실사용자다인 전수실기 미검증. 병합 후 main CI37977033199·최종 문서 PR/비공개 기록 정리는 진행 중이므로 패치 전체 완료 아님.
+
 - 제거 경로 보완 최종 구문/diff·지연 콜백3 및 전체npm742/742(48.4초, patch56-npm-handover-cleanup-confirm.log) 성공. 직전전체는741/742로 재시작 환불 검사에서 임시서버 ECONNREFUSED가 발생했다(patch56-npm-handover-cleanup-final.log). 해당 실제재시작/환불 사례를 단독검사1/1(7.2초, patch56-refund-probe.log)로 확인 후 전체한번 재확인했으며 경제코드/단가/원장을 바꾸지 않았다. 이 간헐실패의 원인해소로 선언하지 않고 경제 재검증에 유지한다. 실제두화면 전달1 retry0 결과는 위 보완과 같은 전달타이밍이며, 최종CI는 제거경로 포함 커밋으로 수행한다.
 
 - 전달 중 NPC가 제거되거나 없어진 경우에는 전달 대기 guard도 정리한다. 지연 콜백 검사3개에 제거된 NPC의 재전달/중복퇴장 방지와 guard 해제를 함께 확인했다. 중간CI37973643809(ed90c2a)는 이 정리 보완 전에 취소했으며 성공으로 집계하지 않는다. 후속 최종커밋의 전체npm/CI 결과는 별도 확인한다.
