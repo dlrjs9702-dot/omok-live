@@ -13,6 +13,13 @@
 
 ## v1.10.56 캐시 응답·모듈 진입 복구
 
+- [main CI37977033199](https://github.com/dlrjs9702-dot/omok-live/actions/runs/37977033199) 동일 코드SHA의 최종 네묶음 성공: npm742/742·PC196·기존mobile5. 일반1은 최초 npm741/742·PC미수행으로 실패했다. admin-presence105행의 전체JSON /123|456/ 검사에 updatedAt의18:59:20.123Z가 걸린 오탐을 확인했고 비밀필드 노출은 없었다. 동일 관리자 검사 단독2/2 성공 후 실패일반1 job만1회 재검증하여 npm742/PC73 retry0(8.6분) 성공; 코드/기한/범위 변경 없이 원본 patch56-main-games1.log와 단독probe/rerun 로그 보존. 나머지 원실행 일반2 PC71+팬데믹후속retry1/mobile5·에셋22/20.1분·광장29/15.8분은 유지했다. 에셋/광장 retry0. 타임스탬프 오탐은 다음 세션검증 묶음에서 검사 범위를 바로잡고 비밀필드 검증을 유지한다. 팬데믹과 성별창의 간헐실패는 후속 재검증에 남긴다.
+- IDEAS 묶음3 여섯행은 기존 다중탭/워커/해시 위치 복원의 재검증과 신규응답검증·직접모듈 의존성·새문서 재시도의 실제 구현을 구분한다. 제작원본/에셋 수량·이전 연결 상태는 유지하고 모션 계약에는 기존 Give/Receive의 실제 전달 후 유지시간만 반영했다. 문서 #193은 코드/버전/공지 변경 없이 실제 squash 메시지 [skip render]/[skip ci]로 병합하며 이벤트 영수증은 STATUS에 기록한다. 실제GPU PC/실사용자다인 전체실기 미검증.
+
+최종 구현·PR/배포 결과는 아래 첫 항목이 기준이다. 이어지는 준비·실패·취소 당시의 대기 표현은 과거 이력이다. 최종 문서 병합·Render 배포 건너뛰기 영수증은 비공개 STATUS가 기준이다.
+
+- [PR #192](https://github.com/dlrjs9702-dot/omok-live/pull/192), 최종 작업 `69b312eedde41f498ed26ac0d9283e6f79413a97`, squash main `10d43174d1552406c10c65f9a021219c0d1dc9ac`. [최종 PR CI37974333985](https://github.com/dlrjs9702-dot/omok-live/actions/runs/37974333985) 네 묶음 성공: npm742/742·PC196(일반1 73/일반2 72/에셋22/광장29)·기존mobile5. 에셋22·전달51.5초·모듈복구19.2초·구페이지19.6초 retry0. 팬데믹후속 방 화면 대기·최초성별창 중 위치변화0.06m(기대<0.01m) 각retry1 이력은 게임10/캐릭터6 재검증에 유지; 해결로 집계하지 않는다. 원본 patch56-ci-cleanup-games1/games2/assets/plaza.log 및 광장retry trace 보존. Render `dep-db4jipbrjlhs738pncu0` 동일SHA 2026-10-09T18:59:30.669072Z(한국10월10일03:59) live, 시작v56/입장키·공지·포인트PostgreSQL·실제운영health `{"ok":true,"version":"1.10.56"}` 확인. 새 공지 반영. 실제GPU PC·실사용자다인 전수실기 미검증. 병합 후 main CI 결과는 아래 항목을 따른다. 최종 문서는 #193에서 정리한다.
+
 - 제거 경로 보완 최종 구문/diff·지연 콜백3 및 전체npm742/742(48.4초, patch56-npm-handover-cleanup-confirm.log) 성공. 직전전체는741/742로 재시작 환불 검사에서 임시서버 ECONNREFUSED가 발생했다(patch56-npm-handover-cleanup-final.log). 해당 실제재시작/환불 사례를 단독검사1/1(7.2초, patch56-refund-probe.log)로 확인 후 전체한번 재확인했으며 경제코드/단가/원장을 바꾸지 않았다. 이 간헐실패의 원인해소로 선언하지 않고 경제 재검증에 유지한다. 실제두화면 전달1 retry0 결과는 위 보완과 같은 전달타이밍이며, 최종CI는 제거경로 포함 커밋으로 수행한다.
 
 - 전달 중 NPC가 제거되거나 없어진 경우에는 전달 대기 guard도 정리한다. 지연 콜백 검사3개에 제거된 NPC의 재전달/중복퇴장 방지와 guard 해제를 함께 확인했다. 중간CI37973643809(ed90c2a)는 이 정리 보완 전에 취소했으며 성공으로 집계하지 않는다. 후속 최종커밋의 전체npm/CI 결과는 별도 확인한다.
