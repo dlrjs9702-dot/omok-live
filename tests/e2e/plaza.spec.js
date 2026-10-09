@@ -200,12 +200,12 @@ test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일�
 // v1.9.2 광장 V2: 상점의 광장 아바타 탭(헤어·의상·모자, 칭호)과 광장 캐릭터가 같은 모습이고, 장착하면 바로 바뀐다.
 test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호가 광장 캐릭터와 이름표에 바로 나온다', async ({ browser, request }) => {
   test.setTimeout(60000); // a software-rendered 3D page through the shop: 18-29 s on a CI runner, at the default 30 s on a slow one
-  const a = await intoPlaza(browser, request, '아바타', 7_000_000);
+  const a = await shopper(browser, request, '아바타', 7_000_000);
   const { page } = a;
   await buyAndEquip(request, a, ['avatar_hair_6', 'avatar_outfit_5', 'omok_l1']);
   expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_4' })).status).toBe(200); // owned, not worn yet
   expect((await post(request, '/api/skins/title', a.token, { skinId: 'omok_l1' })).status).toBe(200);
-  await page.reload();
+  await islandPage(page);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 8000 }).toEqual({ hair: 'avatar_hair_6', outfit: 'avatar_outfit_5', gender: 'male' }); // v1.10.3: the look carries the chosen body
   expect(await page.evaluate(() => window.PlazaDebug().title)).toBe('천상 바둑');
