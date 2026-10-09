@@ -109,14 +109,14 @@
       get state() { return state; },
       get clip() { return current?.getClip().name || null; },
       weights: () => Object.fromEntries(Object.entries(actions).map(([name, action]) => [name, action.isRunning() ? action.getEffectiveWeight() : 0])),
-      update(dt, speed) {
+      update(dt, speed, { reduceIdle = false } = {}) {
         speed = Math.max(0, speed || 0);
         if (once && !onceHeld && !once.isRunning()) { once = null; state = held || 'idle'; fadeTo(held ? actions[held] : actionFor('idle')); }
         if (!once && !held) {
           const next = nextGait(state, speed, walkSpeed);
           if (next !== state) { state = next; fadeTo(actionFor(next)); }
           const moving = current === actions.run ? 'run' : 'walk';
-          if (current) current.timeScale = state === 'idle' ? 1 : Math.min(2, Math.max(0.5, speed / groundSpeed[moving]));
+          if (current) current.timeScale = state === 'idle' ? (reduceIdle ? 0 : 1) : Math.min(2, Math.max(0.5, speed / groundSpeed[moving]));
         }
         mixer.update(dt);
       },
@@ -345,7 +345,7 @@
       // v1.10.29: a model playing its clip once (a whale breaching), the seasonal falling flakes, and their per-frame step
       once: (targetIds, where, options) => call('once', [targetIds, where, options]),
       ambient: (parent) => call('ambient', [parent]),
-      tick: (dt, x, z) => { if (impl) impl.tick(dt, x, z); },
+      tick: (dt, x, z, reduceMotion = false) => { if (impl) impl.tick(dt, x, z, reduceMotion); },
       release: (character) => { if (impl) impl.release(character); },
       dispose() { disposed = true; queue.length = 0; impl?.dispose(); },
       debug: () => ({ registered: ids, loader: impl ? 'ready' : failed ? 'failed' : ids.length ? 'loading' : 'none', day, ...(impl?.debug() || {}) }),

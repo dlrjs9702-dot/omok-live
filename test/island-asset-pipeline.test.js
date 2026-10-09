@@ -237,6 +237,21 @@ test('AnimationMixer 계층: 속도에 따라 Idle→Walk→Run으로 교차 전
   noClips.update(0.016, 5); assert.equal(noClips.clip, null); // a model without clips just stands
 });
 
+test('동작 줄이기: 실제 mixer의 Idle만 정지하고 걷기·반응·교차 전환은 유지', async () => {
+  const THREE = await three(), root = new THREE.Object3D();
+  const clip = (name, lo) => new THREE.AnimationClip(name, 1, [new THREE.NumberKeyframeTrack('.position[x]', [0, 1], [lo, lo + 1])]);
+  const anim = P.createAnimator(THREE, root, [clip('Idle', 0), clip('Walk', 2), clip('Wave', 4)], { idle: 'Idle', walk: 'Walk', wave: 'Wave' }, { walkSpeed: 5.2, fade: 0.1 });
+  const reduced = { reduceIdle: true };
+  anim.update(0.2, 0, reduced); const idle = root.position.x; anim.update(0.3, 0, reduced);
+  assert.equal(root.position.x, idle);
+  anim.update(0.3, 5.2, reduced); assert.equal(anim.state, 'walk'); assert.ok(root.position.x > 2);
+  anim.update(0.3, 0, reduced); const stopped = root.position.x; anim.update(0.3, 0, reduced);
+  assert.equal(anim.state, 'idle'); assert.equal(root.position.x, stopped); assert.equal(anim.weights().walk, 0, '걷기 fade 완료');
+  anim.play('wave'); anim.update(0.3, 0, reduced); assert.equal(anim.state, 'wave'); assert.ok(root.position.x > 4);
+  anim.update(1, 0, reduced); anim.update(0.3, 0, reduced);
+  anim.update(0.3, 0); assert.ok(root.position.x > stopped, '설정 해제하면 Idle 재생 복구'); anim.dispose();
+});
+
 test('채집 클립: 서버 시간에 맞춰 재생·마지막 자세 유지·완료 즉시 걷기', async () => {
   const THREE=await three();const root=new THREE.Object3D();const clip=new THREE.AnimationClip('GatherWeed',2.4,[new THREE.NumberKeyframeTrack('.position[x]',[0,2.4],[0,1])]);
   const idle=new THREE.AnimationClip('Idle',1,[]),walk=new THREE.AnimationClip('Walk',1,[]);

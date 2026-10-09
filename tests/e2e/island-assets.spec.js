@@ -252,12 +252,23 @@ test('길가 장식·4계절 회전·동작 줄이기와 배경 탭 화질 표�
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(async () => (await sample()).environment.water.flow.every(v => v === 0)).toBe(true);
   const still = (await sample()).environment.water;
+  await expect.poll(async () => (await sample()).environment.ambient.bodyScale).toBe(1);
+  const ambient = (await sample()).environment.ambient;
   await a.page.evaluate(() => { window.PlazaDebug().holdQuality(2); window.PlazaDebug().holdQuality(null); window.__hiddenSample = true; Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.__hiddenSample }); document.dispatchEvent(new Event('visibilitychange')); });
   await a.page.clock.install();
   for (let i = 0; i < 4; i++) await a.page.clock.fastForward(1000);
   expect((await sample()).quality).toBe(2);
   expect((await sample()).environment.water).toEqual(still);
+  expect((await sample()).environment.ambient).toEqual(ambient);
   await a.page.evaluate(() => { delete document.hidden; delete window.__hiddenSample; document.dispatchEvent(new Event('visibilitychange')); });
+  await a.page.locator('#plazaStage').focus();
+  const pitch = await a.page.evaluate(() => window.PlazaDebug().camPitch);
+  await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
+  const camera = await a.page.evaluate(() => ({ pitch: window.PlazaDebug().camPitch, goal: window.PlazaDebug().pitchGoal }));
+  expect(camera.pitch).toBeLessThan(pitch); expect(camera.pitch).toBe(camera.goal);
+  const at = await a.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
+  expect(await a.page.evaluate(p => Math.hypot(window.PlazaDebug().x - p.x, window.PlazaDebug().z - p.z), at)).toBeGreaterThan(0.2);
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });
 

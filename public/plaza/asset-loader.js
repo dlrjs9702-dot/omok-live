@@ -526,7 +526,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     st.counts = counts;
   }
   // each frame: the one-off clips and the falling flakes
-  function tick(dt, x, z) {
+  function tick(dt, x, z, reduceMotion = false) {
     for (let i = playing.length - 1; i >= 0; i -= 1) {
       const p = playing[i]; p.t += dt; p.mixer.update(dt);
       p.root.getWorldPosition(at); const below = at.y < p.holder.position.y;
@@ -534,7 +534,8 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       p.below = below;
       if (p.t >= p.dur) { p.mixer.stopAllAction(); p.mixer.uncacheRoot(p.object); p.holder.parent?.remove(p.holder); playing.splice(i, 1); }
     }
-    tickAmbient(dt, x, z);
+    if (reduceMotion && ambientState) { for (const k of Object.values(ambientState.kinds)) k.im.count = 0; ambientState.counts = {}; }
+    else tickAmbient(dt, x, z);
     wearLod(x, z);
   }
 
