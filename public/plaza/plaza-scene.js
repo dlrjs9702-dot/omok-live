@@ -1257,8 +1257,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const stand = me.carryStand; me.carryStand = null; me.carryId = null; me.carrying = false;
       if (stand?.parent) { o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
       assets.handOver(me, o.npc, 'carry'); step('received');
+      // Begin the owner's hold after the actual handover: a delayed Give timer must
+      // not consume Receive's visible time on a busy or backgrounded page.
+      setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 1400);
     }, 700);
-    setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 2100);
   }
   function removeEvent(key, o) {
     scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);
