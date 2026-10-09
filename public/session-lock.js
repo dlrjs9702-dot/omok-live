@@ -29,16 +29,24 @@
   // page has sent its heartbeat) from this page's own (server.js requestSessionRelease)
   const page = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).slice(0, 64);
 
+  let sequence = Date.now();
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('gameCenterGuestPage') || 'null');
+    if (saved?.token === token && Number.isSafeInteger(saved.sequence)) sequence = Math.max(sequence, saved.sequence + 1);
+    sessionStorage.setItem('gameCenterGuestPage', JSON.stringify({ token, sequence }));
+  } catch {}
+
   async function heartbeat() {
     if (stopped) return;
     try {
       const res = await fetch('/api/session/heartbeat', {
         method: 'POST',
         headers: { 'X-Session-Token': token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page }),
+        body: JSON.stringify({ page, sequence }),
         cache: 'no-store',
         keepalive: true,
       });
+      if (res.status === 409) stop();
       if (res.status === 401) { stop(); try { sessionStorage.removeItem(STORAGE_KEY); } catch {} }
     } catch {}
   }
@@ -53,7 +61,7 @@
     if (stopped) return;
     stop();
     try {
-      const payload = new Blob([JSON.stringify({ sessionToken: token, page })], { type: 'application/json' });
+      const payload = new Blob([JSON.stringify({ sessionToken: token, page, sequence })], { type: 'application/json' });
       navigator.sendBeacon('/api/session/release', payload);
     } catch {}
   }

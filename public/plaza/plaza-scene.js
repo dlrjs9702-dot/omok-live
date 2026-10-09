@@ -866,7 +866,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       animate(o.c, dt, o.act !== 'sit' && f.speed > 0.4, o.act === 'sit' ? 0 : f.speed);
     }
   }
-  const pose = () => ({ x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat }); // v1.10.44 act
+  const pose = () => ({ t: Number.isFinite(clockRtt) ? Math.round(Date.now() + serverOffset) : undefined, x: liftRide?.to.x ?? me.root.position.x, z: liftRide?.to.z ?? me.root.position.z, yaw: me.root.rotation.y, moving: keys.size > 0 && !isBlocked() && !riding && !liftRide, act: myAct.act, actN: myAct.n, seat: myAct.seat }); // v1.10.44 act
 
   // v1.10.30 공통 캐릭터: put a character in the common-rig look (island-assets wardrobeOf -> asset-loader wear) --
   // a player by their look (gender, the items worn, face, dyes), a keeper, visitor or islander in its own colours

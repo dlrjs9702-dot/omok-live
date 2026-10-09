@@ -102,7 +102,8 @@ test('administrator sees per-person online, game and spectator status without le
   assert.equal(live.data.entries.find(row => row.label === '관리자').status, 'lobby');
   const serialized = JSON.stringify(live.data);
   assert.doesNotMatch(serialized, /"sessionToken"|"roomCode"|"secrets"|"mySecret"|"tokenHash"/);
-  assert.doesNotMatch(serialized, /123|456/);
+  assert.doesNotMatch(JSON.stringify(live.data.entries), /"(?:123|456)"/); // timestamps may legitimately contain these digits
+  assert.ok(Number.isFinite(Date.parse(live.data.updatedAt)));
   assert.equal((await req('/api/room/guess', a.session, { guess: '456' })).status, 200);
   const ended = await req('/api/admin/presence', admin, undefined, 'GET');
   assert.equal(ended.data.counts.playing, 0);

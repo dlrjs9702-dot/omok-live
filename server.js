@@ -41,6 +41,7 @@ const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도�
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
+const { poseTime } = require('./lib/plaza-pose-time');
 const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관광열차
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
@@ -534,12 +535,19 @@ function sessionHasLiveStream(token) {
 // while without another request (a slow PC preparing the game resources), and the deferred release used to end the
 // session it had just resumed (「입장 세션이 만료되었습니다」). A release from a page that no longer holds the lease
 // (a newer page has sent its heartbeat) is ignored; one without a page id is handled as before.
-function requestSessionRelease(token, page = '') {
+function requestSessionRelease(token, page = '', sequence = 0) {
   const session = sessions.get(token);
   if (!session) return;
   // Admin sessions are not kept in the page across reloads, so there is nothing to resume.
   if (session.role !== 'guest') { releaseSessionToken(token); return; }
-  if (page && session.leasePage && session.leasePage !== page) return;
+  session.leasePages ||= new Set();
+  session.closedLeasePages ||= new Set();
+  // A known former document cannot release a newer lease. An unseen document may
+  // have closed before its first heartbeat body arrived; remember its closure.
+  session.closedLeasePages.add(page);
+  if (sequence && sequence < (session.leaseSequence || 0)) return;
+  if (sequence) session.leaseSequence = sequence;
+  if (page && session.leasePage && session.leasePage !== page && session.leasePages.has(page)) return;
   session.releaseRequestedAt = nowMs();
   setTimeout(() => {
     const current = sessions.get(token);
@@ -872,15 +880,16 @@ function plazaSeparate(token, x, z, prev) {
 let plazaDirty = false;
 function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
-  // v1.10.8: t = when the server took that pose (ms), so each screen spaces the poses by when they happened, not by
-  // when its snapshot arrived
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, x, z, yaw, moving, t: at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
+  // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
+  // Authoritative freshness and interactions still use entry.at, the server receipt time.
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
 }
-function dropPlazaPresence(token) { weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
+  const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
     const session = sessions.get(token);
-    if (!session || session.currentRoomId || now - entry.at > PLAZA_STALE_MS) dropPlazaPresence(token);
+    if (!session || session.currentRoomId || (now - entry.at > PLAZA_STALE_MS && !liveLobby.has(token))) dropPlazaPresence(token);
   }
   for (const token of plazaLastPos.keys()) { const session = sessions.get(token); if (!session || session.currentRoomId) plazaLastPos.delete(token); }
 }
@@ -1682,6 +1691,8 @@ function setGostopTestFixture(room, fixture) {
   const zeros = () => Object.fromEntries(seats.map(seat => [seat, 0]));
   Object.assign(game, {
     status: 'playing', round: Number(room.game.round || 1), mode: 'matgo', nagariStreak: room.game.nagariStreak || 0,
+    // Test hands retain the real participants' signature so normal next-round start carries a draw.
+    nagariSignature: seats.map(seat => pointAccountForSeat(room, seat)).sort().join('|'),
     pointsPerScore: room.game.pointsPerScore || 100, seatOrder: seats, firstSeat: '1', turn: '1', phase: 'play',
     deck: ['m05-pi1', 'm05-pi2'], hands: { 1: ['m07-pi1'], 2: ['m08-pi1'] }, floor: ['m06-pi1'],
     floorBonus: {}, captured: { 1: [], 2: [] }, goCount: zeros(), lastGoScore: zeros(), shakes: zeros(),
@@ -3001,7 +3012,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.56' });
+    return sendJson(res, 200, { ok: true, version: '1.10.57' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3432,11 +3443,17 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/api/session/heartbeat' && req.method === 'POST') {
-    const session = requireSession(req, res);
-    if (!session) return;
+    const session = getSession(req, { touch: false });
+    if (!session) return sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다.');
     const body = await parseJson(req).catch(() => ({}));
-    session.leaseSeenAt = nowMs();
-    if (body.page) session.leasePage = String(body.page).slice(0, 64); // v1.10.29: which page (tab load) holds the lease
+    if (sessions.get(session.token) !== session) return sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다.');
+    const page = String(body.page || '').slice(0, 64);
+    const sequence = Number.isSafeInteger(body.sequence) && body.sequence > 0 ? body.sequence : 0;
+    if ((sequence && sequence < (session.leaseSequence || 0)) || (page && page !== session.leasePage && session.leasePages?.has(page))) return sendError(res, 409, 'PAGE_REPLACED', '새 페이지에서 이어 하고 있습니다.');
+    if (page && session.closedLeasePages?.has(page)) return sendError(res, 409, 'PAGE_CLOSED', '닫힌 페이지입니다.');
+    session.lastSeen = session.leaseSeenAt = nowMs();
+    if (sequence) session.leaseSequence = sequence;
+    if (page) { session.leasePage = page; (session.leasePages ||= new Set()).add(page); }
     return sendJson(res, 200, { ok: true });
   }
 
@@ -3457,7 +3474,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/session/release' && req.method === 'POST') {
     const body = await parseJson(req);
     const token = String(body.sessionToken || '');
-    if (token) requestSessionRelease(token, String(body.page || '').slice(0, 64));
+    if (token) requestSessionRelease(token, String(body.page || '').slice(0, 64), Number.isSafeInteger(body.sequence) && body.sequence > 0 ? body.sequence : 0);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -3529,7 +3546,10 @@ async function requestHandler(req, res) {
     if (!session) return;
     if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
     if (!checkRateLimit(`plaza:${session.token}`, 900, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const generation = session.plazaGeneration || 0;
     const body = await parseJson(req);
+    if (sessions.get(session.token) !== session) return sendError(res, 401, 'AUTH_REQUIRED', '입장 권한이 없습니다.');
+    if (getCurrentRoom(session) || generation !== (session.plazaGeneration || 0)) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.');
     const num = (value, limit) => (Number.isFinite(Number(value)) ? Math.max(-limit, Math.min(limit, Number(value))) : 0);
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
@@ -3553,10 +3573,12 @@ async function requestHandler(req, res) {
       plazaLastPos.set(session.token, spot);
       notePlazaSpot(account, spot.x, spot.z);
     }
+    const receivedAt = nowMs();
+    const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
     plazaPresence.set(session.token, {
       id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
-      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: nowMs(),
+      yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
@@ -4797,7 +4819,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.56 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.57 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

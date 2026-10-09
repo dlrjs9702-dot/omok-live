@@ -2206,17 +2206,21 @@
   // standing); everyone's poses come back on the lobby stream as `plaza` snapshots and are drawn by the scene.
   let plazaSendTimer = null; let plazaLastSent = null; let plazaLastSentAt = 0; let plazaSending = false; let plazaMyId = null;
   let plazaPlayers = [];
+  let plazaVisit = 0; let plazaStateRequest = null; let plazaDeparture = null;
   function plazaPresenceTick() {
     const c = plaza.controller;
-    if (!c?.pose || plazaSending || !document.body.classList.contains('plazaMode')) return;
+    if (!c?.pose || plazaSending || plazaDeparture || !document.body.classList.contains('plazaMode')) return;
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
       || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once
     if (!changed && now - plazaLastSentAt < 3000) return;
     plazaSending = true; plazaLastSent = p; plazaLastSentAt = now;
-    const sentAt = Date.now();
-    api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) })
+    const sentAt = Date.now(); const visit = plazaVisit;
+    const abort = new AbortController();
+    plazaStateRequest = abort;
+    api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: abort.signal })
       .then((data) => {
+        if (visit !== plazaVisit || c !== plaza.controller || !plazaSendTimer) return;
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting
@@ -2233,7 +2237,7 @@
         if (Array.isArray(data.events)) showIslandEvents(data.events); // v1.10.11: the events near me
         if (Array.isArray(data.quests)) showQuestTracker(data.quests); // v1.10.37
       })
-      .catch(() => {}).finally(() => { plazaSending = false; });
+      .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
   function showPlazaPlayers() {
     plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
@@ -2242,10 +2246,19 @@
     if (mine && Boolean(mine.hoguking) !== plazaHoguking) { plazaHoguking = Boolean(mine.hoguking); applyPlazaAvatar(); } // v1.10.5
   }
   function setPlazaPresence(on) {
-    if (on && !plazaSendTimer) { plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
+    if (on && !plazaSendTimer) { plazaVisit += 1; plazaLastSent = null; plazaSendTimer = setInterval(plazaPresenceTick, 125); }
     if (!on && plazaSendTimer) {
-      clearInterval(plazaSendTimer); plazaSendTimer = null;
-      if (sessionToken) api('/api/plaza/leave', { method: 'POST', body: '{}' }).catch(() => {});
+      clearInterval(plazaSendTimer); plazaSendTimer = null; plazaVisit += 1;
+      plazaStateRequest?.abort(); plazaStateRequest = null; plazaSending = false;
+      if (sessionToken) {
+        const leavingToken = sessionToken;
+        // Cleanup belongs to that session; a late 401 must not expire a later login.
+        const departure = (plazaDeparture || Promise.resolve()).then(() => fetch('/api/plaza/leave', {
+          method: 'POST', headers: { 'X-Session-Token': leavingToken, 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+        })).catch(() => {});
+        plazaDeparture = departure;
+        departure.finally(() => { if (plazaDeparture === departure) plazaDeparture = null; });
+      }
       plaza.controller?.setOthers?.([]);
     }
   }
@@ -2255,6 +2268,7 @@
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
   window.PlazaWarp = async (x, z) => {
+    if (plazaDeparture) await plazaDeparture;
     while (plazaSending) await new Promise((resolve) => setTimeout(resolve, 20)); // no update in flight across the warp
     plazaSending = true;
     try { await api('/api/plaza/leave', { method: 'POST', body: '{}' }); plaza.controller?.debug().teleport(x, z); }
@@ -2314,6 +2328,7 @@
   }
 
   async function api(path, options = {}) {
+    const requestToken = sessionToken; // keep the initiating account across awaits
     const headers = { ...(options.headers || {}) };
     if (options.method === 'POST' && document.body.classList.contains('plazaMode')) {
       const places = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
@@ -2329,13 +2344,13 @@
         if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
       }
     }
-    if (sessionToken) headers['X-Session-Token'] = sessionToken;
+    if (requestToken) headers['X-Session-Token'] = requestToken;
     if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
     const res = await fetch(path, { ...options, headers, cache: 'no-store' });
     let data = {};
     try { data = await res.json(); } catch {}
     if (!res.ok) {
-      if (res.status === 401) expireSession(data.message);
+      if (res.status === 401 && requestToken === sessionToken) expireSession(data.message);
       const err = new Error(data.message || '요청을 처리하지 못했습니다.');
       err.status = res.status;
       err.data = data;
