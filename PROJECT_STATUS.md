@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.57 접속·입퇴장·이동 동기화
+
+- 준비 중인 통합 패치다. 열린 로비 SSE가 있으면 위치 전송만 15초 멈췄다는 이유로 캐릭터를 지우지 않는다. 실제 SSE 종료·방 이동·로그아웃의 채집/좌석/열차 정리는 유지한다.
+- 느린 위치 본문을 읽는 동안 광장을 떠나거나 방에 들어가면 이전 입장 세대의 요청을 거부한다. 화면은 위치 요청을 취소하고 이전 방문 응답을 무시하며, 퇴장 응답 후 다음 방문의 위치 전송을 시작한다.
+- 문서별 단조 증가 순서를 heartbeat와 pagehide에 함께 전송한다. 첫 heartbeat보다 해제가 먼저 와도 닫힌 문서로 기억하며, 새 문서 뒤에 온 이전 문서의 해제·heartbeat는 새 세션 사용을 덮지 않는다. 기존 해제 유예/좌석/재접속 정책은 유지한다.
+- 원격 보간은 서버 시계에 맞춘 전송 시각을 사용한다. 5초 밖·비수치 값은 서버 수신 시각으로 복구하고 미래·역행을 제한한다. 위치 충돌·상호작용·채집·지급·세션 만료는 계속 실제 서버 수신 시각으로 판정한다.
+- 이전 main CI의 관리자 공개 상태 검사 오탐은 실제 비밀 문자열과 금지 필드 검사로 한정하고 타임스탬프 형식을 따로 검사한다. 등반 종료 실패/유한대기/정산 재시도 및 스무고개 같은 단계의 재접속 시계는 기존 구현을 재검증한다.
+- 새 자동 공지와 버전·health·시작 로그를 v1.10.57로 동기화했다. 변경 JavaScript 구문·ESM 구문·diff 검사, 전체 npm752/752(74.8초), 관련 Chromium12 retry0(등반4/무입력1/재접속5=1.1분, 광장 입퇴장·게임관복귀2=51.9초) 성공. 순서 경쟁·SSE16.5초·첫heartbeat 해제·이전문서순서·스무고개 출제자·보간·화면 콜백·등반 실패의 새 회귀10개는 전체 npm에 포함한다.
+- 첫 npm은751/752로 실패했다. 신규 스무고개 검증이 끝난 뒤 열린 테스트 SSE를 서버보다 늦게 닫아 ECONNRESET이 난 테스트 정리 결함이다. 공개 game.paused 필드가 없다는 초기 검증 가정도 바로잡았다. 실제 공개 playing/secret 상태·기존 deadlineAt 동일성을 검사하고 스트림을 먼저 닫은 뒤 단독1/1·최종 전체752/752 성공. 원본 patch57-regression-tests/patch57-final-related/patch57-npm-full와 최종 patch57-twenty-cleanup/patch57-npm-final/patch57-related-pc/patch57-plaza-related 로그를 보존하며 검증 기한·범위를 줄이지 않았다.
+- PR/CI·병합·Render 결과는 확인 후 기록한다. GLB/압축 빌드 변경 없음. 실제 GPU PC/실사용자 다인 전수실기 미검증.
+
 ## v1.10.56 캐시 응답·모듈 진입 복구
 
 - [main CI37977033199](https://github.com/dlrjs9702-dot/omok-live/actions/runs/37977033199) 동일 코드SHA의 최종 네묶음 성공: npm742/742·PC196·기존mobile5. 일반1은 최초 npm741/742·PC미수행으로 실패했다. admin-presence105행의 전체JSON /123|456/ 검사에 updatedAt의18:59:20.123Z가 걸린 오탐을 확인했고 비밀필드 노출은 없었다. 동일 관리자 검사 단독2/2 성공 후 실패일반1 job만1회 재검증하여 npm742/PC73 retry0(8.6분) 성공; 코드/기한/범위 변경 없이 원본 patch56-main-games1.log와 단독probe/rerun 로그 보존. 나머지 원실행 일반2 PC71+팬데믹후속retry1/mobile5·에셋22/20.1분·광장29/15.8분은 유지했다. 에셋/광장 retry0. 타임스탬프 오탐은 다음 세션검증 묶음에서 검사 범위를 바로잡고 비밀필드 검증을 유지한다. 팬데믹과 성별창의 간헐실패는 후속 재검증에 남긴다.
