@@ -88,7 +88,7 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   await req('/api/island/resource/start',winner,{id:one.id});await req('/api/island/resource/cancel',winner,{});
   assert.equal((await req('/api/island/resource/finish',winner,{id:one.id,requestId:crypto.randomUUID()})).data.error,'COLLECT_NOT_STARTED');
   const tree=(await all()).find(e=>e.type==='berry');await stand(a,tree);await stand(b,{x:0,z:8});
-  const fruit=await req('/api/island/resource/start',a,{id:tree.id});assert.equal(fruit.data.anim,'pickFruit');assert.equal(fruit.data.ms,1800);
+  const fruit=await req('/api/island/resource/start',a,{id:tree.id});assert.equal(fruit.status,200,JSON.stringify(fruit.data));assert.equal(fruit.data.anim,'pickFruit');assert.equal(fruit.data.ms,1800);
   await sleep(1850);const picked=await req('/api/island/resource/finish',a,{id:tree.id,requestId:crypto.randomUUID()});assert.equal(picked.status,200,JSON.stringify(picked.data));
   assert.equal(picked.data.item.qty,1);assert.equal(picked.data.events.find(e=>e.id===tree.id).available,false);
   await req('/api/test/island/events',a,{grow:tree.id});const regrown=(await all()).find(e=>e.id===tree.id);assert.deepEqual([regrown.x,regrown.z],[tree.x,tree.z]);
