@@ -169,6 +169,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
   page.on('request', (r) => { if (/asset-loader\.js|\/vendor\/three\/addons\//.test(r.url())) code.push(new URL(r.url()).pathname); });
   if (failLoader) await context.route('**/plaza/asset-loader.js*', (route) => route.fulfill({ status: 500, body: 'no' }));
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  const shaderErrors = []; page.on('console', m => { if (m.type() === 'error' && /THREE|shader|GLSL|WebGLProgram/.test(m.text())) shaderErrors.push(m.text()); });
   // 'none': as if nothing were registered (the registered entries are set to null); otherwise added to the registry;
   // v1.10.29 `__only`: only these entries (every registered one off) -- a test of the general ids (`cottage`,
   // `nature.flower`) that the real, more specific ones (`cottage.3`, `nature.flower.2`) would otherwise take over
@@ -193,7 +194,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
     throw error; // keep the original deadline/failure; no automatic reload or timeout increase
   }
   await expect.poll(() => debug(page).then((d) => d?.running), { timeout: 10000 }).toBe(true);
-  return { ...who, hits, code, errors };
+  return { ...who, hits, code, errors, shaderErrors };
 }
 
 // the island still plays: walking, a facility hint, Space opens its window
@@ -211,6 +212,25 @@ async function stillPlays(page) {
 }
 
 let proceduralDoors = null;
+
+test('관공서 실물 High/Low: 기단 보정 뒤 주야간 재질 렌더링과 카메라 안전', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const { REGISTRY } = require('../../public/plaza/island-assets');
+  for (const low of [false, true]) {
+    const entry = REGISTRY['facility.townhall'];
+    const a = await island(browser, request, low ? '관공서Low' : '관공서High', { __only: true,
+      'facility.townhall': { ...entry, url: low ? entry.low.url : entry.url, low: null } });
+    await a.page.evaluate(() => { const d = window.PlazaDebug(), p = window.IslandTerrain.townhallWorld(0, 11); d.teleport(p.x, p.z); d.setCamYaw(Math.PI); });
+    await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.shown['facility.townhall']), { timeout: 30000 }).toBe('model');
+    for (const night of [true, false]) {
+      await a.page.evaluate(on => window.PlazaDebug().halloween.set(on), night);
+      await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().halloween.on())).toBe(night);
+      await a.page.waitForTimeout(300); // compile/render the changed material rather than only inspect loader state
+      expect(await a.page.evaluate(() => window.PlazaDebug().camera.inBuilding)).toBe(false);
+    }
+    expect(a.shaderErrors).toEqual([]); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
+  }
+});
 
 test('길가 장식·4계절 회전·동작 줄이기와 배경 탭 화질 표본 격리', async ({ browser, request }) => {
   const { REGISTRY } = require('../../public/plaza/island-assets');

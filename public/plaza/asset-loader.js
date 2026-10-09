@@ -190,7 +190,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       }
       if (object && rec.holder.userData.fit) object = fitted(object, rec.holder.userData.fit);
       swapAttach(rec, object, hit.entry); shown[hit.id] = object ? 'model' : 'procedural';
-    }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
+    }).catch((error) => {
+      if (disposed || rec.selection !== selection) return;
+      shown[hit.id] = 'procedural'; onError(hit.id, error);
+    });
   }
 
   // v1.10.29 a holder with `userData.fit(v)` (a bridge: island.js) gets the model reshaped to the game's own walking
