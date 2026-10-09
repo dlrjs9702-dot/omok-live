@@ -152,7 +152,7 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
   await a.context.close(); await b.context.close();
 });
 
-test('어부 결과 장면: 기존 주간 이야기 완료 직후 출항, 재접속에는 반복하지 않는다', async ({ browser, request }) => {
+test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 출항, 재접속에는 반복하지 않는다', async ({ browser, request }) => {
   test.setTimeout(150000);
   const a = await shopper(browser, request, '출항손님');
   await islandPage(a.page);
@@ -180,7 +180,16 @@ test('어부 결과 장면: 기존 주간 이야기 완료 직후 출항, 재접
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questfisher'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 10000 }).toMatchObject({ boat: true, departing: true });
+  await expect(page.locator('#plazaDialog')).toContainText('이번 주 이야기 끝');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 10000 }).toMatchObject({ boat: true, departing: false });
+  await page.waitForTimeout(9000); // longer than the eight-second departure: reading cannot spend the scene
+  await expect(page.locator('#plazaDialog')).toBeVisible();
+  expect(await page.evaluate(() => window.PlazaDebug().questScenes())).toMatchObject({ boat: true, departing: false });
+  // A queued close from an earlier dialog cannot start departure under the current one.
+  await page.evaluate(()=>document.getElementById('plazaDialog').dispatchEvent(new Event('close')));
+  expect(await page.evaluate(() => window.PlazaDebug().questScenes())).toMatchObject({ boat: true, departing: false });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes())).toMatchObject({ boat: true, departing: true });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.questScenes()), { timeout: 30000 }).toMatchObject({ boat: false, departing: false });
   await expectNoScriptError(page);

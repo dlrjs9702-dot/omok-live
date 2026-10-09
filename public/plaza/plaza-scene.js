@@ -7,6 +7,7 @@ import { halloweenDecor } from './island-halloween.js';
 import { townhallYard } from './island-townhall.js';
 import { trainScene } from './island-train-scene.js';
 import { createOcclusion } from './occlusion.js';
+import { cameraEase, cameraDistance } from './camera-motion.js';
 
 const TAU = Math.PI * 2;
 const SPEED = 5.2; // units per second (v1.10.0: the island is about 40 seconds of walking across)
@@ -1274,9 +1275,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // Account-local scenery follows the same weekly server document as the existing stories.
     const T = globalThis.IslandTerrain;
     questScenes = { empty: holder('quest.flowerbed_empty', 8, 39), bloom: holder('quest.flowerbed_bloom', 8, 39),
-      frame: holder('quest.photo_frame', 7, 39), boat: holder('sea.boat', T.PIER.x + 4, T.PIER.z + T.PIER.half + 5, -0.6), departure: null };
+      frame: holder('quest.photo_frame', 7, 39), boat: holder('sea.boat', T.PIER.x + 4, T.PIER.z + T.PIER.half + 5, -0.6), departure: null, departurePending: false };
     questScenes.bloom.visible = false; questScenes.frame.visible = false; questScenes.boat.visible = false;
     return questScenes;
+  }
+  let questDepartureHeld = false;
+  function holdQuestDeparture(on) {
+    questDepartureHeld = Boolean(on);
+    if (!on && questScenes?.departurePending) {
+      questScenes.departurePending = false; questScenes.departure = lessMotion?.matches ? null : 0;
+      questScenes.boat.visible = !lessMotion?.matches;
+    }
   }
   function stepQuestScenes(dt) {
     if (!questScenes || questScenes.departure === null) return;
@@ -1327,9 +1336,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         const s = prepareQuestScenes();
         if (ev.story === 'granny') { s.empty.visible = !ev.done; s.bloom.visible = Boolean(ev.done); s.frame.visible = Boolean(ev.done); }
         if (ev.story === 'fisher') {
-          if (o.done === false && ev.done) { s.departure = lessMotion?.matches ? null : 0; s.boat.visible = !lessMotion?.matches; }
-          else if (!ev.done) { s.departure = null; s.boat.visible = true; const T = globalThis.IslandTerrain; s.boat.position.set(T.PIER.x + 4, -0.6, T.PIER.z + T.PIER.half + 5); }
-          else if (s.departure === null) s.boat.visible = false;
+          if (o.done === false && ev.done) { s.departurePending = questDepartureHeld; s.departure = questDepartureHeld || lessMotion?.matches ? null : 0; s.boat.visible = questDepartureHeld || !lessMotion?.matches; }
+          else if (!ev.done) { s.departure = null; s.departurePending = false; s.boat.visible = true; const T = globalThis.IslandTerrain; s.boat.position.set(T.PIER.x + 4, -0.6, T.PIER.z + T.PIER.half + 5); }
+          else if (s.departure === null && !s.departurePending) s.boat.visible = false;
         }
         o.done = Boolean(ev.done);
       }
@@ -1519,13 +1528,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const SKY_LOW = 0.1; const lift = Math.max(0, SKY_LOW - (CAM_ELEV + camPitch));
     const elev = Math.max(SKY_LOW, CAM_ELEV + camPitch); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
     const inside = (c) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + 0.6);
-    let dist = CAM_DIST;
-    while (dist > CAM_MIN && inside(at(dist))) dist -= 0.5;
-    camDist = snap ? dist : camDist + (dist - camDist) * (dist < camDist ? 0.25 : 0.05); // in quickly, back out gently
+    const dist = cameraDistance(CAM_DIST, CAM_MIN, (d) => inside(at(d)));
+    camDist = snap ? dist : camDist + (dist - camDist) * cameraEase(dist < camDist ? 0.25 : 0.05, camDt); // in quickly, back out gently
     const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
     const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
     const look = new THREE.Vector3(p.x - sin * 2.4, p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4), p.z - cos * 2.4);
-    if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, 0.08); camLook.lerp(look, 0.1); }
+    if (snap) { camPos.copy(want); camLook.copy(look); } else { camPos.lerp(want, cameraEase(0.08, camDt)); camLook.lerp(look, cameraEase(0.1, camDt)); }
     camPos.y = Math.max(camPos.y, heightAt(camPos.x, camPos.z) + CAM_CLEAR); // easing never dips it into a slope either
     camera.position.copy(camPos); camera.lookAt(camLook);
     fadeInWay(p);
@@ -1839,7 +1847,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   resize(); placeCamera(true);
 
   function start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); }
-  function stop() { if (gather?.waitServer) endGather(false); running = false; cancelAnimationFrame(raf); keys.clear(); }
+  function stop() {
+    setPhotoMode(false); if (gather?.waitServer) endGather(false);
+    if (questScenes && (questScenes.departurePending || questScenes.departure !== null)) { questScenes.departurePending = false; questScenes.departure = null; questScenes.boat.visible = false; }
+    questDepartureHeld = false; running = false; cancelAnimationFrame(raf); keys.clear();
+  }
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
     stop(); observer.disconnect();
@@ -1971,7 +1983,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let onPhotoEnd = null;
   const hideForPhoto = () => scene.traverse((o) => { if (o.isSprite && o.visible) { o.visible = false; photoHidden.add(o); } });
   const photoPose = (on = true) => { if (!on) return me.anim?.release?.(); me.targetYaw = Math.atan2(camera.position.x - me.root.position.x, camera.position.z - me.root.position.z); return me.anim?.loop?.('photo'); }; // turned to the camera, held through the countdown and the shot
-  function capture() { hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
-  return { trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+  function capture() { if (!photoMode) return Promise.resolve(null); hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
+  return { holdQuestDeparture, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

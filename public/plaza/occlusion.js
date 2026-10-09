@@ -82,12 +82,13 @@ export function createOcclusion(camera) {
         direction.set(p.x, p.y + height, p.z).sub(camera.position);
         const far = direction.length(); ray.set(camera.position, direction.normalize());
         stats.boxTests += 1;
-        if (!ray.intersectBox(rec.box, hit) || hit.distanceToSquared(camera.position) >= far * far) continue;
+        // intersectBox returns the exit when the origin is inside: that exit can be beyond the player.
+        if (!rec.box.containsPoint(ray.origin) && (!ray.intersectBox(rec.box, hit) || hit.distanceToSquared(camera.position) >= far * far)) continue;
         for (const item of rec.meshes) {
           if (!visible(item.mesh, root)) continue;
           // Local boxes retain each mesh's rotation; gaps between separate parts stay open.
           inverse.copy(item.inverse); localRay.copy(ray).applyMatrix4(inverse); stats.boxTests += 1;
-          if (localRay.intersectBox(item.box, hit) && hit.applyMatrix4(item.mesh.matrixWorld).distanceToSquared(camera.position) < far * far) { blocked = true; break; }
+          if (item.box.containsPoint(localRay.origin) || (localRay.intersectBox(item.box, hit) && hit.applyMatrix4(item.mesh.matrixWorld).distanceToSquared(camera.position) < far * far)) { blocked = true; break; }
         }
         if (blocked) break;
       }

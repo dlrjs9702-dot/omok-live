@@ -1467,8 +1467,11 @@
     }
     if (!plazaDialog.open) plazaDialog.showModal();
   }
+  let questDepartureDialog = null;
   plazaDialog.addEventListener('close', () => {
     if (plazaDialog.open) return; // a queued close from the previous window must not empty a newly opened one
+    const departed = questDepartureDialog; questDepartureDialog = null;
+    if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
     for (const [node, mark] of plazaHomes) mark.replaceWith(node);
     plazaHomes.clear();
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
@@ -1876,29 +1879,45 @@
   // v1.10.43 기념사진: 「사진」 (or P) -- the island without name tags or the page around it; 「촬영」 counts three while my
   // character poses, saves the picture as a PNG on this PC and, by a photo spot, keeps the spot in the 기념사진 page
   const photoBar = document.getElementById('photoBar'); const photoCount = document.getElementById('photoCount');
-  let photoBusy = false;
+  let photoShot = null;
+  function cancelPhotoShot() {
+    const shot = photoShot; photoShot = null;
+    if (shot) { clearTimeout(shot.timer); shot.wake?.(false); shot.abort.abort(); shot.controller.photoPose?.(false); }
+    photoCount.classList.add('hidden');
+  }
   function enterPhoto() {
-    if (!plaza.controller?.setPhotoMode?.(true, () => { document.body.classList.remove('photoMode'); photoBar.classList.add('hidden'); })) return;
+    if (!plaza.controller?.setPhotoMode?.(true, () => { cancelPhotoShot(); document.body.classList.remove('photoMode'); photoBar.classList.add('hidden'); })) return;
     document.body.classList.add('photoMode'); photoBar.classList.remove('hidden'); plazaStage.focus({ preventScroll: true });
   }
   const leavePhoto = () => plaza.controller?.setPhotoMode?.(false);
   async function takePhoto() {
-    if (photoBusy) return; photoBusy = true;
+    if (photoShot || !document.body.classList.contains('photoMode')) return;
+    const shot = { controller: plaza.controller, token: sessionToken, abort: new AbortController(), timer: null, wake: null };
+    photoShot = shot;
+    const current = () => photoShot === shot && plaza.controller === shot.controller && sessionToken === shot.token && document.body.classList.contains('photoMode');
     try {
-      plaza.controller?.photoPose?.();
-      for (const n of [3, 2, 1]) { photoCount.textContent = String(n); photoCount.classList.remove('hidden'); await new Promise((r) => setTimeout(r, 1000)); }
+      shot.controller.photoPose?.();
+      for (const n of [3, 2, 1]) {
+        if (!current()) return;
+        photoCount.textContent = String(n); photoCount.classList.remove('hidden');
+        const waited = await new Promise((resolve) => { shot.wake = resolve; shot.timer = setTimeout(() => { shot.wake = null; resolve(true); }, 1000); });
+        if (!waited || !current()) return;
+      }
       photoCount.classList.add('hidden');
-      const blob = await plaza.controller?.capture?.();
-      plaza.controller?.photoPose?.(false);
+      const blob = await shot.controller.capture?.();
+      if (!current()) return;
+      shot.controller.photoPose?.(false);
       if (blob) {
         const a = document.createElement('a'); const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
         a.download = `game-island-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`;
         a.href = URL.createObjectURL(blob); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       }
-      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/photo', { method: 'POST', body: '{}' }).catch(() => null);
+      const p = shot.controller.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: shot.abort.signal }).catch(() => {});
+      if (!current()) return;
+      const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
+      if (!current()) return;
       showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
-    } finally { photoBusy = false; photoCount.classList.add('hidden'); plaza.controller?.photoPose?.(false); }
+    } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
   document.getElementById('photoShootBtn').addEventListener('click', () => takePhoto());
@@ -1990,6 +2009,9 @@
     const id = key.split(':')[2];
     if (!id || islandEventBusy || weedBusy) return;
     islandEventBusy = true; let resourceStarted=false; let completed=false;
+    const departureController = id === 'questfisher' ? plaza.controller : null;
+    let departureDialog = false;
+    departureController?.holdQuestDeparture?.(true); // before any state reply can show the completed story
     if (key.startsWith('ev:lost_owner:')) islandReturning = id;
     try {
       const p = plaza.controller?.pose?.(); // where I stand first, so the server sees me at it
@@ -2005,7 +2027,11 @@
       } else data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
-      if (data.action === 'quest') { showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []); openQuestTalk(data); if (data.reward) loadPoints(); return; } // v1.10.37
+      if (data.action === 'quest') {
+        showIslandEvents(data.events || islandEventsNear); showQuestTracker(data.track || []);
+        if (departureController === plaza.controller && data.story === 'fisher' && data.done && data.reward) { questDepartureDialog = departureController; departureDialog = true; }
+        openQuestTalk(data); if (data.reward) loadPoints(); return;
+      } // v1.10.37
       if (data.action === 'pickup' || data.action === 'item') showToast(`${data.item.icon} ${data.item.name} +${data.item.qty}`);
       else showToast(`+${Number(data.points).toLocaleString('ko-KR')}P${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       // v1.10.31: the character's motion for what the server took -- picked up, a photo taken, given back
@@ -2019,7 +2045,7 @@
     } catch (error) {
       showToast(error.message);
       if (error.status === 409 && /사라졌/.test(error.message)) forgetIslandEvents([id]);
-    } finally { plaza.controller?.finishGather?.(); if(resourceStarted && !completed) await api('/api/island/resource/cancel',{method:'POST',body:JSON.stringify({id})}).catch(()=>{}); islandEventBusy = false; islandReturning = null; }
+    } finally { if (!departureDialog) departureController?.holdQuestDeparture?.(false); plaza.controller?.finishGather?.(); if(resourceStarted && !completed) await api('/api/island/resource/cancel',{method:'POST',body:JSON.stringify({id})}).catch(()=>{}); islandEventBusy = false; islandReturning = null; }
   }
 
   // v1.10.9 작명소: my name now, a new one (Korean letters, digits, spaces), 30,000P (v1.10.35) on a second press that names the
@@ -2357,6 +2383,7 @@
   }
 
   async function logout() {
+    leavePhoto(); // cancel before waiting for the logout request, including a slow/offline response
     try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
     expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
   }

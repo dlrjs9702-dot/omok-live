@@ -12,7 +12,7 @@ const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
 test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 모두 기존 UI로 연결된다', () => {
   const scene = read('public/plaza/plaza-scene.js');
   const imports = [...scene.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1].replace(/\?v=.*/, ''));
-  assert.deepEqual(imports, ['/vendor/three/three.module.js', './island.js', './island-halloween.js', './island-townhall.js', './island-train-scene.js', './occlusion.js'], '광장은 로컬 섬 장면 모듈만 가져온다');
+  assert.deepEqual(imports, ['/vendor/three/three.module.js', './island.js', './island-halloween.js', './island-townhall.js', './island-train-scene.js', './occlusion.js', './camera-motion.js'], '광장은 로컬 섬 장면 모듈만 가져온다');
   assert.deepEqual([...read('public/plaza/occlusion.js').matchAll(/^import .* from '([^']+)'/gm)].map(m => m[1]), ['/vendor/three/three.module.js']);
   for (const f of ['public/plaza/island-townhall.js']) assert.deepEqual([...read(f).matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]), ['/vendor/three/three.module.js', './island.js']);
   const decor = read('public/plaza/island-halloween.js');
