@@ -10,7 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
-import { preparePlatformSurfaces } from './platform-surfaces.js';
+import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
 
@@ -26,7 +26,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   manager.setURLModifier((url) => (url.startsWith('/') && !url.includes('?') ? assetUrl(url) : url));
   const loader = new GLTFLoader(manager);
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const cache = P.createLoadCache((url) => loader.loadAsync(assetUrl(url)).then(gltf => preparePlatformSurfaces(gltf, url)), (url, error) => onError(url, error));
+  const cache = P.createLoadCache((url) => loader.loadAsync(assetUrl(url)).then(gltf => prepareTownhallSurfaces(preparePlatformSurfaces(gltf, url), url)), (url, error) => onError(url, error));
   const lodBase = new Map(); // LOD level object -> its registered distance
   const lods = [];
   const shown = {}; // target id -> 'loading' | 'model' | 'procedural'

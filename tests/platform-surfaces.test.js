@@ -7,6 +7,32 @@ const R = require('../public/plaza/island-train');
 const source = fs.readFileSync(path.join(__dirname, '../public/plaza/platform-surfaces.js'), 'utf8');
 const loaded = import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 
+test('관공서: 실제 High/Low 기단·첫 계단 겹침 분리, 다른 부위·원점·재처리 보존', async () => {
+  const { prepareTownhallSurfaces } = await loaded;
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready;
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  for (const low of [false, true]) {
+    const url = '/assets/island/townhall-v2/townhall_marble' + (low ? '_low' : '') + '.glb';
+    const bytes = fs.readFileSync(path.join(__dirname, '../public', url));
+    const gltf = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    gltf.scene.updateMatrixWorld(true); const meshes = [];
+    gltf.scene.traverse(m => { if (m.isMesh) meshes.push(m); });
+    const ray = new THREE.Raycaster(new THREE.Vector3(0, 2, 6.1), new THREE.Vector3(0, -1, 0));
+    const top = name => ray.intersectObjects(meshes.filter(m => m.material.name === name))[0]?.point.y;
+    const step = top('marble'), slab = top('marble_trim');
+    assert.ok(Math.abs(step - slab) < 0.001, '현재 원본의 실제 겹침 재현');
+    const snapshot = meshes.filter(m => m.material.name !== 'marble_trim').map(m => [m, m.geometry, m.matrixWorld.clone()]);
+    prepareTownhallSurfaces(gltf, '/unrelated.glb'); assert.equal(top('marble_trim'), slab);
+    prepareTownhallSurfaces(gltf, url);
+    assert.equal(top('marble'), step, '첫 계단 높이 보존');
+    assert.ok(step - top('marble_trim') > 0.019 && step - top('marble_trim') < 0.022, '기단 윗면만2cm 아래');
+    for (const [m, geometry, matrix] of snapshot) { assert.equal(m.geometry, geometry); assert.ok(m.matrixWorld.equals(matrix)); }
+    const lowered = top('marble_trim'); prepareTownhallSurfaces(gltf, url); assert.equal(top('marble_trim'), lowered);
+  }
+});
+
 test('승강장: 두 역 연결로는 긴 쪽 바닥 모서리에서 끝나며 내부에 겹치지 않는다', () => {
   for (const p of R.PLATFORMS) {
     const lift = R.liftOf(p.station); const distance = Math.hypot(lift.x - p.x, lift.z - p.z);
