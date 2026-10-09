@@ -53,5 +53,11 @@ for (const delay of [0, 400, 1800]) {
     assert.equal(context.returning.size, 0);
     assert.deepEqual(Array.from(context.lastReturn.steps, s => s[0]), ['give', 'received', 'gone']);
     assert.equal(context.lastReturn.steps[2][1] - context.lastReturn.steps[1][1], 1400);
+    // A callback whose owner was removed must also release the pending guard.
+    vm.runInContext('returnLost("item");', context);
+    advance(700 + delay + 2100);
+    assert.equal(context.returning.size, 0);
+    assert.equal(handovers, 1, '제거된 NPC에게 다시 전달하지 않는다');
+    assert.equal(removals, 1);
   });
 }

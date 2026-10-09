@@ -1246,14 +1246,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function returnLost(id) {
     returning.add(id); const o = eventObjs.get(`ev:lost_owner:${id}`);
     const t0 = performance.now(); lastReturn = { id, steps: [['give', 0]] }; const step = (name) => lastReturn?.id === id && lastReturn.steps.push([name, Math.round(performance.now() - t0)]);
-    if (!o?.npc) { setCarry(me, null); return; }
+    if (!o?.npc) { setCarry(me, null); returning.delete(id); return; }
     o.leaving = true; delete eventDoors[`ev:lost_owner:${id}`];
     const p = me.root.position; const q = o.root.position;
     me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; o.npc.home.yaw = o.root.rotation.y;
     if (!me.anim?.play('give')) me.hop = 1;
     o.npc.anim?.play('receive');
     setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
-      if (!o.root.parent) return;
+      if (!o.root.parent) { returning.delete(id); return; }
       const stand = me.carryStand; me.carryStand = null; me.carryId = null; me.carrying = false;
       if (stand?.parent) { o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
       assets.handOver(me, o.npc, 'carry'); step('received');
