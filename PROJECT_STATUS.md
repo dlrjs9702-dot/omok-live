@@ -11,6 +11,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.56 캐시 응답·모듈 진입 복구
+
+- 최종 변경JS구문/diff·전체npm739/739 성공(patch56-npm-final.log,50.2초). 버전 문자열 package/lock/server/health/고정검사와 신규v56 공지 동기화, 이전 공지/가격/개인파일 유지. 콘텐츠해시 전달은 서버가 자동 계산하므로 수동?v= 없음. PR/CI·병합·Render는 아직 진행 전으로 완료 집계하지 않는다.
+
+- 최종 관련 Chromium23 retry0 성공: 캐시16개 전 범위·브라우저/모듈6·당일위치1(patch56-cache-recovery-final.log21/2.1분, patch56-cache-baselines.log2/4.1초). 정상 cache hit·잘못된rev 제공 차단/404·다중탭·갱신 실패/활성 팩 보존·워커 제어 실패·quota/쓰기 거부·off/rollback·코드해시와 구페이지/새문서 재시도·WebGL 기존 복구 확인. 초기3개와 최종23은 중복이 있으므로26개 별도검사로 집계하지 않는다. 기존 검사 기한/전체 CI 범위 유지. 최종 전체npm은 별도 기록한다.
+
+- 리소스 워커의 cache miss는 성공한 같은 출처 응답의 SHA-256 앞16자리와 요청 rev를 대조한 뒤 화면에 전달한다. 구페이지의 옛 revision에 새 배포의 body를 먼저 제공하던 문제를 보완하며, 일치한 응답만 활성 캐시에 비동기 보관한다. 캐시 hit·HTTP 오류·저장 거부 시 유효 응답·게임 전용 캐시 롤백 정책은 유지한다.
+- plaza-scene은 RemoteMotion을 직접 import해 선행 classic script가 없는 구페이지에서도 이동 의존성을 확보한다. 기존 콘텐츠해시 import map과 UMD/CommonJS 계약을 재사용한다. 모듈 import 실패는 문서를 새로고침해 실패가 남은 module map과 옛 index를 벗어나며 기존 로그인·당일 서버 위치를 복원한다. WebGL/init 실패는 기존 렌더러 재시도를 유지한다.
+- GameBoot의 Web Locks 갱신/그룹 prefetch 직렬화·활성 팩 보존·워커 제어/claim·코드 해시·startAt 위치복원은 이미 구현된 경로로 회귀 검증한다. 사용자 자료·원장·상품 가격·리소스 GLB/압축 산출물 변경 없음. 에셋 재빌드 불필요, 버전56/신규 공지 준비. 실제 GPU PC·실사용자다인 전수실기는 미검증.
+- 초기 변경JS구문/diff와 Chromium3 retry0 성공(patch56-recovery-initial.log): 실제SW의 정상응답 해시/잘못된rev 차단/404 유지, 모듈 실패→다시시도→로그인·당일 위치 보존21.2초, classic RemoteMotion 없는 구페이지 진입12.4초. 기존30초 검사 기한 유지. 최종 전체npm·관련 회귀·PR/main CI·병합·Render는 진행 후 기록한다.
+
 ## v1.10.55 섬 환경·카메라·길 이음
 
 이 절의 최종 결과는 아래 병합·배포/최종 검증 항목이 기준이다. 이어지는 준비·실패 기록의 대기 표현은 당시 이력이며 현재 진행 상태를 뜻하지 않는다.
