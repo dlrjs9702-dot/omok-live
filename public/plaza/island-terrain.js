@@ -204,10 +204,12 @@
     if (out < 5) h = Math.max(h, lerp(PLAZA_H, h, smooth(0, 5, out)));
     return h;
   }
+  const streamDepth = (x, z) => lerp(0.22, 1, smooth(PLAZA_R + 7, PLAZA_R + 19, Math.hypot(x, z)));
+  const streamWaterHeight = (x, z) => Math.max(-0.58, land(x, z) - Math.min(0.45, streamDepth(x, z) * 0.55));
   function ground(x, z) {
     let h = land(x, z);
     const sd = streamDist(x, z);
-    if (sd < STREAM_HALF + 1.4) h = lerp(h - 1, h, smooth(STREAM_HALF - 0.3, STREAM_HALF + 1.4, sd));
+    if (sd < STREAM_HALF + 1.4) h = lerp(h - streamDepth(x, z), h, smooth(STREAM_HALF - 0.3, STREAM_HALF + 1.4, sd));
     const pd = Math.hypot(x - POND.x, z - POND.z);
     if (pd < POND.r + 2) h = lerp(h - 1, h, smooth(POND.r - 0.5, POND.r + 2, pd));
     return h;
@@ -433,5 +435,5 @@
 
   // v1.10.38 10월 할로윈 (v1.10.46: shared, so its edges are tested): October in Asia/Seoul, by the server's clock
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

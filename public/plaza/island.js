@@ -247,7 +247,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = new THREE.Mesh(g, material); m.receiveShadow = true; scene.add(m); return m;
   };
-  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), (x, z) => (STREAM_HALF + riverExtra(x, z)) * 2 + 0.6, (x, z) => Math.max(-0.58, land(x, z) - 0.45), water); // ends where it meets the sea
+  for (const s of streamCurves) ribbon(s.filter(([x, z]) => coastDist(x, z) > -1.5), (x, z) => (STREAM_HALF + riverExtra(x, z)) * 2 + 0.6, T.streamWaterHeight, water); // ends where it meets the sea
   // In the plaza the fountain's water runs out along shallow channels toward each stream.
   for (const s of STREAMS) {
     const [ex, ez] = s[0]; const a = Math.atan2(ez, ex);
