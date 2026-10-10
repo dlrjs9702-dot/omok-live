@@ -890,7 +890,7 @@ test('늦은 캐릭터 실물: 앉은 자세·꼬리 복구와 Low 없는 고양
     const ears = c.headTop; c.tuckTail(false); c.anim.release();
     return { ears, tucked, tail: c.tailTucked };
   });
-  expect(sample.ears).toBeGreaterThan(2); expect(sample.tucked).toBeGreaterThan(0); expect(sample.tail).toBe(false);
+  expect(sample.ears).toBeGreaterThan(2.2); // actual body 2.059, hair 2.098, cat ears 2.255: omission must fail expect(sample.tucked).toBeGreaterThan(0); expect(sample.tail).toBe(false);
   await a.page.evaluate(() => window.__lateWear.loader.dispose());
   expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });
