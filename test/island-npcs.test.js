@@ -39,3 +39,16 @@ test('배회 NPC: 서는 곳은 시설 입구에서 떨어져 있고, 왔던 곳
   const spread = new Set(Array.from({ length: P.COUNT }, (_, n) => { const p = P.at(n, 1_000_000); return `${Math.round(p.x / 10)},${Math.round(p.z / 10)}`; }));
   assert.ok(spread.size >= 7, '한곳에 몰리지 않음');
 });
+
+test('배회 NPC: 닫힌 마지막 구간도 14~55m이며 주기 경계에서 바로 되돌아가지 않는다', () => {
+  for (let n = 0; n < P.COUNT; n += 1) {
+    const stops = P.round(n).parts.filter(p => !p.moving).map(p => p.pts[0]);
+    for (let k = 0; k < stops.length; k += 1) {
+      const a = stops[k], b = stops[(k + 1) % stops.length], next = stops[(k + 2) % stops.length];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      assert.ok(distance >= 14 && distance <= 55, `NPC${n} 구간${k}: ${distance.toFixed(3)}m`);
+      assert.ok(Math.hypot(a.x - next.x, a.z - next.z) >= 10, `NPC${n} 구간${k}: 주기 경계 즉시 되돌림 없음`);
+      assert.ok(P.findPath(a, b), `NPC${n} 구간${k}: 실제 연결 경로 있음`);
+    }
+  }
+});

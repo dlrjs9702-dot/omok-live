@@ -152,6 +152,15 @@
       const d = Math.hypot(next.x - last.x, next.z - last.z);
       if (d < 14 || d > 55 || route.includes(next)) continue;
       if (before && Math.hypot(next.x - before.x, next.z - before.z) < 10) continue; // never straight back
+      const first = route[0];
+      // Every possible final stop (5–7 stops) must close by the same rules as an ordinary leg.
+      // Keep earlier stops away from the first too: last -> first must not reverse the preceding leg.
+      if (route.length >= 2 && Math.hypot(next.x - first.x, next.z - first.z) < 10) continue;
+      if (route.length >= 4) {
+        const closing = Math.hypot(next.x - first.x, next.z - first.z);
+        const second = route[1];
+        if (closing < 14 || closing > 55 || Math.hypot(next.x - second.x, next.z - second.z) < 10 || !findPath(next, first)) continue;
+      }
       if (!findPath(last, next)) continue; // across water with no bridge near: somewhere else
       route.push(next);
     }
