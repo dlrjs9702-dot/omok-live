@@ -1394,6 +1394,7 @@ test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async (
   await expectNoScriptError(a.page); await a.context.close();
 });
 test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
+  test.setTimeout(90000); // v1.10.60: 23-29 s on the CI runner, over the default 30 s now and then (main run 38025855881 too)
   const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
   const { page, token } = a;
   // Native keyboard activation exercises the same UI handler without waiting for two
