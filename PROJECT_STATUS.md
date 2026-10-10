@@ -13,6 +13,12 @@
 
 ## v1.10.59 캐릭터 꾸미기·착장 표시 보완
 
+최신 결과는 아래 PR199 보완·배포 항목을 기준으로 하며, 이어지는 준비/실패/당시 대기는 과거 이력으로 보존한다. 아직 main 최종 CI와 순수 문서 최종 병합은 확인 전이다.
+
+- PR #199 최종 작업 SHA `63e3dd344b7d8225572d507b2cb3ed82234ad62a`, CI38034246564 네 작업 성공: npm767/767(생략0), PC200(일반1 73 retry0, 일반2 70+팬데믹/윷 커서 각retry1, 에셋23+열매retry2, 광장31 retry0), 모바일5. 의상 UI Enter 결제→무료복구16.5초·성형30이미지11.7초 retry0이며 각30초 상한 유지. 코드/가격/원장/공지 버전은 변경하지 않았다.
+- 에셋 첫 열매 시도는 canvas15초 미발견/sceneReady true/진단null·부팅실패 문구, 두 번째는180초 총기한 초과, 세 번째1.9분에 통과했다. 전체 에셋22분·최종 공통캐릭터2분 retry0. 첫 실패 상세/화면과 retry1 trace는 patch59-keyboard-pr-assets-artifacts·로그/trace-review에 보존, 원인 해소로 단정하지 않는다. 일반2 팬데믹 roomView5초 hidden·윷 START 커서5초 pointer 대신 auto는 묶음10 재검증에 유지한다.
+- PR #199 squash main `93acc69a6bf2202dbd9e7b75dd43c7a2c6566035`. 같은 SHA Render `dep-db4us3jbc2fs738849a0` 2026-10-10T07:50:13.817092Z live/시작59·PostgreSQL·실제 health59 정상. main CI38035750575는 진행 중으로 확인 후 최종 결과를 반영한다. 사용자 공지는 기존v59 항목을 유지한다. 실제 GPU PC·실사용자다인 전수 미검증.
+
 - PR #198 최종 작업 SHA `8d82445dd123cad7597fc28657a256b62f6fc754`, CI38024313496 네 작업 성공: npm767/767(생략0), PC200(일반1 73 retry0, 일반2 71+팬데믹 roomView5초 retry1, 에셋24 retry0, 광장30+일반 자원 toast5초 retry1), 모바일5. 분리한 성형30 이미지17.7초·의상 결제/무료복구29.5초는 최종 첫 시도 성공/각30초 상한 유지. 일반 자원 실패는 SPACE 뒤 toast 미표시이며 재시도 성공을 원인 해소로 집계하지 않는다. 원본 patch59-split-*에 보존한다.
 - PR #198 squash main `fdb0df8bb2b1b1ceea04b9bb3c11e068bbf31a0a` 병합. main CI38025855881은 일반1/2·에셋 성공, 광장 의상 염색/무료복구만 세 번30초 초과로 실패(기존29+일반자원retry1 성공). main trace상 결제/색 저장은 성공, 각 pointer click 약4초 뒤 원색복구 단계에서 총기한 종료. 실제 UI 버튼의 키보드 Enter로 같은 계정 결제→복구를 확인하도록 보완하며 가시성·활성/5000차감·저장·추가차감없음과30초 상한을 유지한다. 원본 patch59-main-plaza-artifacts/log/trace-timing 보존. 보완 로컬 UI1/1 retry0 13.5초·구문/diff 성공, 최초 전체npm은 낚시 임시서버61997 연결거부로766/767 실패(실제낚시전/원인미확정), 격리 낚시3/3 후 전체767/767(73.6초/생략0) 성공; 첫실패 원본·격리/최종로그 patch59-main-keyboard-npm/patch59-fishing-isolated/patch59-keyboard-final-npm 보존; 보완 최종HEAD CI/배포/최종문서 전. Render `dep-db4sbf49v7es738ha1g0` 같은 SHA로 2026-10-10T04:58:09.383787Z live, 시작59/입장키·공지·포인트 PostgreSQL 로그 및 실제 health {"ok":true,"version":"1.10.59"} 확인. 아직 최종 문서 완료가 아니다. 아래 준비·중간 CI의 대기/실패 표현은 당시 이력이며 최신 결과와 구분한다.
 - 실제 공통 캐릭터 GLB에서 눈·코·입 30종의 128×128 WebP 썸네일을 생성하고 성형외과 선택 버튼에 연결했다. `build-avatar-thumbs.py --faces`는 기존 상품 썸네일 빌드와 독립적으로 재생성한다. 원본 모델과 제작 자료는 수정하지 않았다.
