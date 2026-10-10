@@ -3236,7 +3236,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/avatar/look-shop' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name })) }])),
+    return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name, image: `/assets/shop/faces/${part}_${id}.webp` })) }])),
       palette: DYE_PALETTE, dyeable: [...DYEABLE], bodyDyes: BODY_DYES, skinTones: SKIN_TONES });
   }
   if ((pathname === '/api/avatar/surgery' || pathname === '/api/avatar/dye') && req.method === 'POST') {

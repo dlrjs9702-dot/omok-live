@@ -570,7 +570,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function wearMaterial(source, want, clear = false) {
     const key = `${source.uuid}|${want || ''}|${clear ? 'clear' : ''}`;
     let rec = wearMats.get(key);
-    if (!rec) { const material = source.clone(); if (want) material.color.set(want); if (clear) material.fog = false; made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
+    if (!rec) { const material = P.tintMaterial(THREE, source, want); if (clear) material.fog = false; made.push(material); rec = { key, material, refs: 0 }; wearMats.set(key, rec); }
     rec.refs += 1; return rec;
   }
   function dropMaterial(rec) {

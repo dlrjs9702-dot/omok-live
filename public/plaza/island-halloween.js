@@ -159,22 +159,15 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   }
   // v1.10.46: the bat model drawn instanced, as the Codex pack suggests -- its Flap sampled once into POSES poses, each of
   // its meshes (body, left wing, right wing) one InstancedMesh: 3 draws for every bat, no mixer per bat
-  const POSES = 32; let batParts = null; // [{ im, poses: Matrix4[] }]
+  const POSES = 32; let batParts = null; let batLod = null; const batHigh = new Uint8Array(FLOCKS * PER).fill(1); let batsLow = 0; // [{ im, poses: Matrix4[] }]
   const batTemplate = new THREE.Group(); batTemplate.visible = false; group.add(batTemplate);
   const dropParts = () => { for (const p of batParts || []) { group.remove(p.im); p.im.dispose(); } batParts = null; };
   assets.attach('halloween.bat', batTemplate, new THREE.Group(), (entry) => {
     dropParts(); bats.visible = true;
     const holder = batTemplate.children[batTemplate.children.length - 1]; // the model (a LOD of High and Low)
-    const src = entry && holder ? (holder.isLOD ? holder.levels[0].object : holder) : null; if (!src) return;
-    const clip = src.animations?.[0]; const mixer = clip ? new THREE.AnimationMixer(src) : null; mixer?.clipAction(clip).play();
-    const meshes = []; src.traverse((o) => { if (o.isMesh) meshes.push(o); });
-    const inv = new THREE.Matrix4();
-    batParts = meshes.map((m) => ({ im: new THREE.InstancedMesh(m.geometry, m.material, FLOCKS * PER), poses: [] }));
-    for (let k = 0; k < POSES; k += 1) {
-      mixer?.setTime(clip ? (k / POSES) * clip.duration : 0); holder.updateMatrixWorld(true); inv.copy(holder.matrixWorld).invert();
-      meshes.forEach((m, i) => batParts[i].poses.push(inv.clone().multiply(m.matrixWorld)));
-    }
-    mixer?.stopAllAction();
+    const sources = entry && holder ? (holder.isLOD ? holder.levels.map((level) => level.object) : [holder]) : []; if (!sources.length) return;
+    batLod = holder.isLOD ? holder : null;
+    batParts = globalThis.AssetPipeline.sampleRigidPoses(THREE, holder, sources, POSES).map(({ mesh, level, poses }) => ({ im: new THREE.InstancedMesh(mesh.geometry, mesh.material, FLOCKS * PER), level, poses }));
     for (const p of batParts) { p.im.frustumCulled = false; p.im.castShadow = false; group.add(p.im); }
     bats.visible = false;
   });
@@ -202,7 +195,7 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
     const t = still ? 0 : clock;
     wispAt.forEach((w, i) => { wisps.setMatrixAt(i, m4.makeTranslation(w.x + Math.sin(t * 0.4 + w.p) * 0.8, w.y + Math.sin(t * 0.9 + w.p) * 0.35, w.z + Math.cos(t * 0.33 + w.p) * 0.8)); });
     wisps.instanceMatrix.needsUpdate = true;
-    lastClock = clock; batsFlying = 0; batSeen.length = 0;
+    lastClock = clock; batsFlying = 0; batsLow = 0; batSeen.length = 0;
     for (const fl of flights) {
       if (fl.start === null || clock > fl.start + fl.dur) { fl.start = null; if (clock >= fl.next) launch(fl, clock, camera.position); }
       const u = fl.start === null ? -1 : (clock - fl.start) * BAT_SPEED; const ry = fl.dir ? Math.atan2(-fl.dir.x, -fl.dir.z) : 0; // its front (-z) along the way
@@ -215,17 +208,20 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
         batSeen.push({ x: +x.toFixed(1), y: +y.toFixed(1), z: +z.toFixed(1) }); bv.set(x, y, z); bq.setFromAxisAngle(UP, ry + Math.sin(clock * 0.9 + w.bob) * 0.25); // a little weaving
         if (batParts) {
           bm.compose(bv, bq, one); const pose = Math.floor(((clock * 2.5 + w.flap) % 1) * POSES) % POSES;
-          for (const p of batParts) p.im.setMatrixAt(i, m4.multiplyMatrices(bm, p.poses[pose]));
+          const near = batLod?.levels[1]?.distance;
+          batHigh[i] = near === undefined || globalThis.AssetPipeline.highState(Boolean(batHigh[i]), camera.position.distanceTo(bv), near) ? 1 : 0;
+          const level = batHigh[i] ? 0 : 1; if (level) batsLow += 1;
+          for (const p of batParts) p.im.setMatrixAt(i, p.level === level ? m4.multiplyMatrices(bm, p.poses[pose]) : ZERO);
         } else {
           const flap = 0.35 + 0.65 * Math.abs(Math.sin(clock * 11 + i));
           bats.setMatrixAt(i, bm.compose(bv, bq, bv.clone().set(1.6 * flap, 1.6, 1.6)));
         }
       }
     }
-    bats.instanceMatrix.needsUpdate = true; for (const p of batParts || []) p.im.instanceMatrix.needsUpdate = true;
+    bats.instanceMatrix.needsUpdate = true; for (const p of batParts || []) { p.im.instanceMatrix.needsUpdate = true; p.im.visible = p.level === 0 ? batsFlying > batsLow : batsLow > 0; }
   }
   const setOn = (on) => { group.visible = on; };
   const dispose = () => { dropParts(); for (const g of made) g.dispose(); glowMat.dispose(); shadeMat.dispose(); wispMat.dispose(); scene.remove(group); };
   const launchBats = (at = null) => { through = at; for (const f of flights) { f.next = 0; f.start = null; } }; // tests: every flock off now
-  return { group, step, setOn, dispose, launchBats, debug: () => ({ shown: group.visible, batModels: batParts ? FLOCKS * PER : 0, batsFlapping: batParts ? FLOCKS * PER : 0, batsFlying, batSeen: batSeen.slice(), batInstanced: batParts ? batParts.length : 0, flights: flights.map((f) => ({ on: f.start !== null, from: f.from, dir: f.dir, y: f.y })), kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
+  return { group, step, setOn, dispose, launchBats, debug: () => ({ shown: group.visible, batModels: batParts ? FLOCKS * PER : 0, batsFlapping: batParts ? FLOCKS * PER : 0, batsFlying, batsLow, batPoseLevels: batParts ? new Set(batParts.map((p) => p.level)).size : 0, batSeen: batSeen.slice(), batInstanced: batParts ? batParts.length : 0, flights: flights.map((f) => ({ on: f.start !== null, from: f.from, dir: f.dir, y: f.y })), kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
 }

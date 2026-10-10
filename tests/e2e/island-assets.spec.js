@@ -814,6 +814,7 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   // v1.10.39: the Codex decor pack in place of the stand-ins, the bats beating their wings
   await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return ['pumpkinA', 'pumpkinB', 'stack', 'hay', 'scarecrow', 'cauldron', 'broom', 'bunting', 'lights'].map((k) => s[`halloween.${k}`]); }), { timeout: 90000 }).toEqual(Array(9).fill('model'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsFlapping), { timeout: 60000 }).toBe(15);
+  expect(await page.evaluate(() => window.PlazaDebug().halloween.decor().batPoseLevels)).toBe(2);
   // v1.10.46: drawn instanced (body, two wings), flying a straight way across and on -- never hanging in one place
   expect((await page.evaluate(() => window.PlazaDebug().halloween.decor())).batInstanced).toBeGreaterThanOrEqual(2);
   await page.evaluate(() => window.PlazaDebug().halloween.launchBats());
@@ -821,6 +822,8 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   const ways = (await page.evaluate(() => window.PlazaDebug().halloween.decor().flights)).filter((f) => f.on);
   expect(ways.length).toBe(3);
   for (const f of ways) expect(Math.hypot(f.dir.x, f.dir.z)).toBeCloseTo(1, 3);
+  await page.evaluate(() => window.PlazaDebug().halloween.launchBats({ x: 250, z: 250 }));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().batsLow), { timeout: 15000 }).toBe(15);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
@@ -858,4 +861,34 @@ test('관광열차 실물: 4객차·2승강장 High/Low 로드와 문 열기·�
   await shift(280);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 1).opened), { timeout: 12000 }).toBe(false);
   await post(request, '/api/test/train-shift', a.token, { ms: 0 }); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
+});
+
+test('늦은 캐릭터 실물: 앉은 자세·꼬리 복구와 Low 없는 고양이 귀 이름표 높이', async ({ browser, request }) => {
+  const a = await island(browser, request, '늦은착장', { __only: true });
+  let release; const gate = new Promise(resolve => { release = resolve; }); let arrived;
+  const requested = new Promise(resolve => { arrived = resolve; });
+  await a.page.route('**/body_core.glb?appearanceProbe=1', async route => { arrived(); await gate; await route.continue(); });
+  await a.page.evaluate(async () => {
+    const THREE = await import('/vendor/three/three.module.js');
+    const { createIslandAssets } = await import('/plaza/asset-loader.js');
+    const { REGISTRY, wardrobeOf } = window.IslandAssets;
+    const parent = new THREE.Group(), root = new THREE.Group(), body = new THREE.Group(); parent.add(root); root.add(body);
+    const c = { root, body, player: true }; const errors = [];
+    const loader = createIslandAssets({ registry: REGISTRY, assetUrl: url => `${url}?appearanceProbe=1`, onError: (id, e) => errors.push(`${id}:${e.message}`) });
+    window.__lateWear = { c, loader, errors };
+    loader.wear(c, wardrobeOf({ hat: 'avatar_hat_2', tail: 'avatar_tail_1' }));
+  });
+  await requested;
+  await a.page.evaluate(() => { window.__lateWear.c.tailTucked = true; }); release();
+  const ready = () => a.page.evaluate(() => ({ clip: window.__lateWear.c.anim?.clip, errors: window.__lateWear.errors }));
+  await expect.poll(ready, { timeout: 30000 }).toEqual({ clip: 'SitIdle', errors: [] });
+  const sample = await a.page.evaluate(() => {
+    const { c, loader } = window.__lateWear; loader.tick(0.2, 0, 0);
+    let tucked = 0; c.assetRoot.traverse(m => { if (m.userData.sit && m.geometry === m.userData.sit) tucked++; });
+    const ears = c.headTop; c.tuckTail(false); c.anim.release();
+    return { ears, tucked, tail: c.tailTucked };
+  });
+  expect(sample.ears).toBeGreaterThan(2); expect(sample.tucked).toBeGreaterThan(0); expect(sample.tail).toBe(false);
+  await a.page.evaluate(() => window.__lateWear.loader.dispose());
+  expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });

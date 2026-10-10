@@ -1571,6 +1571,7 @@
       b.textContent = lookArmed === key ? (cost ? `한 번 더 누르면 ${cost.toLocaleString('ko-KR')}P` : '한 번 더 누르면 무료') : current ? `${label} · 지금` : label;
       b.disabled = current || skins.balance < cost;
       if (extra.swatch) { const dot = document.createElement('span'); dot.className = 'lookSwatch'; dot.style.background = extra.swatch; b.prepend(dot); }
+      if (extra.image) { const image = document.createElement('img'); image.src = extra.image; image.alt = ''; image.width = 48; image.height = 48; image.loading = 'lazy'; image.decoding = 'async'; image.className = 'lookFaceThumb'; b.prepend(image); }
       Object.assign(b.dataset, extra.data || {});
       return b;
     };
@@ -1579,7 +1580,7 @@
       for (const [part, { label, designs }] of Object.entries(shop.faceParts)) {
         const h = document.createElement('h3'); h.textContent = label;
         const row = document.createElement('div'); row.className = 'lookChoices';
-        for (const d of designs) row.append(choice(d.name, `${part}:${d.id}`, face[part] === d.id, { data: { part, design: d.id } }));
+        for (const d of designs) row.append(choice(d.name, `${part}:${d.id}`, face[part] === d.id, { image: d.image, data: { part, design: d.id } }));
         lookCard.append(h, row);
       }
     } else {

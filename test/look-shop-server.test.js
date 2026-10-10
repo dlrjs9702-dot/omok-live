@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 
 // v1.10.30 성형외과·염색사: a face part (300,000P) or the colour of one owned dyeable item (50,000P, its own colour back
 // costs the same) changed per paid request -- refused without charge when short or not allowed, one charge per request
-// however often it is sent (also at once), clothes are never dyed, and everyone sees the new look.
+// however often it is sent (also at once), v1.10.59 adds outfit main colours; everyone sees the new look.
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 
@@ -43,7 +43,7 @@ test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘�
   assert.deepEqual(same[0].data.avatar.look.face, { eyes: 'heart' });
   assert.equal((await surgery('mouth', 'cat')).status, 200);
   assert.equal(await balance(), 960_000);
-  // dye: only an owned, dyeable item; clothes never
+  // dye: only an owned, dyeable item
   assert.equal((await dye('avatar_hair_1', 'c12')).status, 409); // not owned
   assert.equal((await req('/api/skins/buy', sa, { skinId: 'avatar_hair_1' })).status, 200);
   assert.equal((await req('/api/skins/buy', sa, { skinId: 'avatar_outfit_2' })).status, 200);
@@ -77,7 +77,7 @@ test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘�
 
 // v1.10.32 캐릭터 스킨 상품화: a new character skin is bought once at its tier's price (a second buy charges nothing),
 // worn and taken off for free in its own slot -- the five accessory slots at once -- kept with the account (a new
-// session has it), dyed like the other dyeable items (an outfit never), and shown to everyone in the plaza with the
+// session has it), dyed like the other dyeable items (v1.10.59 includes outfits), and shown to everyone in the plaza with the
 // lost thing a player carries
 test('캐릭터 스킨: 등급 가격 1회 결제·중복 구매 무과금·5칸 동시 장착·해제·재접속 유지·염색·다른 사람에게 보이는 외형과 운반', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wear-'));

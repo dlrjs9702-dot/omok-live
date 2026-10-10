@@ -904,7 +904,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         for (const s of [-1, 1]) { const lock = mesh(new THREE.CapsuleGeometry(0.12, 0.42, 6, 10), mat(hair), s * 0.48, -0.32, -0.04, head); lock.rotation.z = s * 0.12; }
       }
     }
-    for (const slot of ['outfit', 'hair', 'hat']) AVATAR_PARTS[look[slot]]?.(parts);
+    for (const slot of ['outfit', 'hair', 'hat']) {
+      AVATAR_PARTS[look[slot]]?.(parts);
+      if (slot === 'hair') {
+        const color = look.hair ? look.dye?.[look.hair] : look.hairColor;
+        const original = hairCap.material.color.getHex();
+        if (color) head.traverse((o) => { if (o.isMesh && o.material.color?.getHex() === original) tint(o, color); });
+      }
+    }
     for (const ex of [-0.17, 0.17]) {
       const eye = mesh(new THREE.SphereGeometry(0.065, 12, 10), mat(0x2b2220, { roughness: 0.3 }), ex, -0.02, 0.48, head); eye.scale.y = 1.35; eye.castShadow = false;
       const cheek = mesh(new THREE.SphereGeometry(0.08, 12, 8), mat(0xffa6a6), ex * 1.55, -0.16, 0.42, head); cheek.scale.set(1, 0.6, 0.4); cheek.castShadow = false;

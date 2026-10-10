@@ -1688,3 +1688,5 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 body:has(#plazaDialog[open]) .trainControls,body.photoMode .trainControls{display:none}
 
 .skinTitle.selected{background:#1e293b;color:#f8fafc;outline:2px solid #60a5fa;outline-offset:1px}
+
+.lookFaceThumb{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none}

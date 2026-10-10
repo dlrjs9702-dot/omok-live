@@ -25,6 +25,13 @@ for (const item of Object.keys(A.WARDROBE)) {
   out[item] = { slot, urls: plan.parts.map((id) => A.REGISTRY[id].url) };
 }
 out.__body = A.REGISTRY['character.base'].url;
+out.__faces = {};
+for (const [part, designs] of Object.entries(require('./lib/skins.js').FACE_PARTS)) {
+  for (const [design] of designs) {
+    const plan = A.wardrobeOf({ face: { eyes: 'oval', nose: 'button', mouth: 'smile', [part]: design } });
+    out.__faces[`${part}_${design}`] = plan.parts.map(id => A.REGISTRY[id].url);
+  }
+}
 console.log(JSON.stringify(out));
 '''], cwd=ROOT))
 by_out = {e['out']: e['src'] for e in config['files']}
@@ -41,6 +48,18 @@ def parts_of(paths):
 skin = [1.0, 0.7454, 0.552, 1]  # the island's warm skin #ffe0c4 (the game tints the part's paler skin)
 out_dir = ROOT / 'public/assets/shop/avatar'; out_dir.mkdir(parents=True, exist_ok=True)
 body = source(plans.pop('__body'))
+face_plans = plans.pop('__faces')
+if '--faces' in sys.argv:
+    face_dir = ROOT / 'public/assets/shop/faces'; face_dir.mkdir(parents=True, exist_ok=True)
+    for face, urls in face_plans.items():
+        parts, mats = parts_of([body] + [source(u) for u in urls])
+        for material in mats:
+            if material.get('name') == 'skin': material['pbrMetallicRoughness']['baseColorFactor'] = skin
+        # One front camera and crop for all thirty real face models; no invented face designs.
+        full = g.render(parts, mats, (360, 360), azimuth=-90, elevation=6)
+        full.crop((102, 10, 258, 166)).resize((128, 128), Image.Resampling.LANCZOS).save(face_dir / f'{face}.webp', 'WEBP', quality=86, method=6)
+        print(face)
+    sys.exit(0)
 for item, plan in plans.items():
     if '--only' in sys.argv and sys.argv[sys.argv.index('--only') + 1] not in item:
         continue
