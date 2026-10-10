@@ -19,6 +19,8 @@
 - 페이지 `/herosurv/`(`public/herosurv/`): 엔진 파일은 그대로, 내보내기 HTML의 인라인 스크립트·스타일은 `boot.js`·`herosurv.css`로 옮겨 CSP를 지킨다. 게임이 `JavaScriptBridge.eval`로 묻는 고정 식 5개(주소·경로·검색어, Manus 기록 호스트 2개)는 `boot.js`가 답해 `unsafe-eval` 없이 동작한다. Manus 전용 BGM 스니펫 eval만 거부되어 BGM이 없다(소리 없는 PC 기준 유지).
 - 큰 파일 2개(pck 72MB, wasm 39MB → brotli 8MB)는 R2 버킷 `gamecenter-games`에 sha256 이름으로 두고 Worker `gamecenter-games`(`ops/herosurv-assets/`, Workers Cache, 1년 immutable, CORS는 게임센터 주소만)가 내보낸다. 서버는 `HEROSURV_ASSETS`(기본 이 Worker) 주소를 페이지에 넣고 이 페이지 CSP `connect-src`에만 더한다. 빈 값이면 `public/herosurv/` 로컬 사본(gitignore)을 읽는다. 브라우저는 처음 한 번 받고 HTTP 캐시를 쓴다. 서비스워커 선받기 대상(`assets`·`hwatu`)에는 넣지 않았다.
 - 랭킹: 게임이 부르는 `/api/leaderboards/v1/`(guests·me·boards/:id·boards/:id/runs·runs/:id)를 서버가 구현한다. 로비 버튼이 탭의 세션 토큰을 `sessionStorage.herosurvSession`에 넘기고 `boot.js`가 게임의 호출에 `X-Session-Token`을 붙인다. 표시 이름은 게임센터 닉네임(게임이 보내는 이름·메일은 쓰지 않고 저장하지 않음). 판 ID는 서버 메모리, 판당 1회(저장 실패 시 재제출 가능), 실제 경과보다 긴 기록 거부. 계정·보드별 최고 기록만 `herosurv_best`(PostgreSQL)·`herosurv`(JSON)에 둔다. 점수는 게임 보고값이라 포인트·미션과 연결하지 않는다.
+- 게임 위 「나가기」(왼쪽 아래, 게임 화면에서 비어 있는 자리): 확인 창 뒤 `/`로 이동(게스트는 세션 이어짐), 버튼이 포커스를 갖지 않아 게임 키(Space 필살기)는 캔버스에 남는다. 사용자 확인 1~4 성공 뒤 추가 요청.
+- Worker CORS는 항상 `*`: Workers Cache가 Origin과 무관하게 한 사본을 내보내, Origin별 헤더는 처음 채운 요청(헤더 없는 사본)을 따라가 페이지가 「Failed to fetch」로 멈췄다(사용자 실기에서 발견, 재배포 d45cb45d로 해결).
 - Codex 검토 3건 반영: PostgreSQL 동시 첫 기록에서 낮은 점수가 덮어쓰던 문제(upsert 안에서 비교), 저장 실패 뒤 판 ID 소실, 관리자 세션 미전달.
 - 검증: `test/herosurv.test.js` 3/3(JSON·PostgreSQL 저장, API 닉네임·판당1회·시간 초과·남의 판·페이지 CSP). 로컬 서버+실제 게임 파일 Chromium으로 로비→게임→한 판→기록·명예의 전당(닉네임·「나」)·뒤로 가기 로그인 유지, R2 Worker 경유 로드(두 파일 200, sha256 일치, 두 번째 요청 CF-Cache HIT). 전체 npm 784 중 778 — 실패 6건은 이 PC에서 수정 전 main도 같은 기존 실패(원인 미확인). 실제 운영·모바일·다인 실기 미검증.
 

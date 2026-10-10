@@ -82,3 +82,28 @@ body {
 	text-align: center;
 	z-index: 1;
 }
+
+/* v1.10.61 게임센터: the way back to the island, over the game's empty bottom-left corner */
+#herosurv-exit {
+	position: absolute;
+	left: 16px;
+	bottom: 16px;
+	z-index: 2;
+	padding: .55em 1em;
+	border: 1px solid rgba(148, 163, 184, .45);
+	border-radius: 12px;
+	background: rgba(15, 23, 42, .9);
+	color: #f8fafc;
+	font: 800 max(14px, 1.9vh) 'Noto Sans KR', 'Noto Sans', system-ui, sans-serif;
+	cursor: pointer;
+}
+
+#herosurv-exit:hover {
+	background: #1f2937;
+	transform: translateY(-1px);
+}
+
+#herosurv-exit:focus-visible {
+	outline: 2px solid #60a5fa;
+	outline-offset: 2px;
+}

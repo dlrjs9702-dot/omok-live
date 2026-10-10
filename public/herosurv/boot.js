@@ -40,7 +40,18 @@
 	};
 }());
 
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":72447648,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+// The way back to the island (a guest's session resumes there; an admin logs in again). A run in progress is lost, so it
+// asks first. The button never keeps the focus: the game's keys (Space is the special move) stay with the canvas.
+(function () {
+	const exit = document.getElementById('herosurv-exit');
+	exit.addEventListener('mousedown', (event) => event.preventDefault());
+	exit.addEventListener('click', () => {
+		if (confirm('게임을 나가 아일랜드로 돌아갈까요?\n진행 중인 판은 기록되지 않습니다.')) location.href = '/';
+		else document.getElementById('canvas').focus();
+	});
+}());
+
+const GODOT_CONFIG ={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":72447648,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
