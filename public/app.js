@@ -1829,7 +1829,8 @@
     plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
     const meta = document.createElement('p'); meta.className = 'lookMeta';
-    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ' · 이번 주 이야기 끝' : ''}` : data.done ? '이번 주 이야기 끝' : '';
+    const doneText=data.fixed?'이야기 끝':'이번 주 이야기 끝';
+    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
     lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell); lostCard.classList.remove('hidden');
@@ -1868,12 +1869,13 @@
     if (!on) return;
     try {
       const data = await api('/api/island/dex');
-      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : true));
-      document.getElementById('islandBagCount').textContent = on === 'photo' ? `${list.filter((e) => e.count).length}/${list.length}` : `${data.found}/${data.total}`;
+      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : !e.keepsake));
+      const spots = list.filter((e) => !e.keepsake); // v1.10.60: the count is of the photo spots; a story keepsake shows on the page but is not one of them
+      document.getElementById('islandBagCount').textContent = on === 'photo' ? `${spots.filter((e) => e.count).length}/${spots.length}` : `${data.found}/${data.total}`;
       dex.replaceChildren(...list.map((e) => {
         if (e.kind === 'photo') {
           const cell = document.createElement('div'); cell.className = `islandDexCell islandPhotoCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-          const icon = document.createElement('img'); icon.src = `/assets/dex/${e.id}.png`; icon.alt = ''; icon.width = 64; icon.height = 64;
+          const icon = document.createElement('img'); icon.src = `/assets/dex/${e.icon || e.id}.png`; icon.alt = ''; icon.width = 64; icon.height = 64;
           const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
           const day = document.createElement('small'); day.textContent = e.first ? new Date(e.first).toLocaleDateString('ko-KR') : '';
           cell.append(icon, name, day); return cell;
@@ -2044,6 +2046,7 @@
         const body=JSON.stringify({id,requestId:crypto.randomUUID()});
         try { data=await api('/api/island/resource/finish',{method:'POST',body}); } catch(error) { if(error.status) throw error; data=await api('/api/island/resource/finish',{method:'POST',body}); }
       } else data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
+      plaza.controller?.setResidents?.(data.residents);
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
       if (data.action === 'quest') {
@@ -2224,6 +2227,7 @@
     api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: abort.signal })
       .then((data) => {
         if (visit !== plazaVisit || c !== plaza.controller || !plazaSendTimer) return;
+        plaza.controller?.setResidents?.(data.residents);
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting

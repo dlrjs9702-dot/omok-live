@@ -39,3 +39,45 @@ test('배회 NPC: 서는 곳은 시설 입구에서 떨어져 있고, 왔던 곳
   const spread = new Set(Array.from({ length: P.COUNT }, (_, n) => { const p = P.at(n, 1_000_000); return `${Math.round(p.x / 10)},${Math.round(p.z / 10)}`; }));
   assert.ok(spread.size >= 7, '한곳에 몰리지 않음');
 });
+
+test('배회 NPC: 닫힌 마지막 구간도 14~55m이며 주기 경계에서 바로 되돌아가지 않는다', () => {
+  for (let n = 0; n < P.COUNT; n += 1) {
+    const stops = P.round(n).parts.filter(p => !p.moving).map(p => p.pts[0]);
+    for (let k = 0; k < stops.length; k += 1) {
+      const a = stops[k], b = stops[(k + 1) % stops.length], next = stops[(k + 2) % stops.length];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      assert.ok(distance >= 14 && distance <= 55, `NPC${n} 구간${k}: ${distance.toFixed(3)}m`);
+      assert.ok(Math.hypot(a.x - next.x, a.z - next.z) >= 10, `NPC${n} 구간${k}: 주기 경계 즉시 되돌림 없음`);
+      assert.ok(P.findPath(a, b), `NPC${n} 구간${k}: 실제 연결 경로 있음`);
+    }
+  }
+});
+
+
+test('주민 대기: 모든 화면의 예약 위치를 유지하고 다른 사람은 회피하며 늦은 해제도 순간이동하지 않는다', () => {
+  let held=true;
+  const poseAt=(n,ms)=>n===0&&held ? {x:10,z:10,yaw:0,moving:false,held:true}
+    : {x:n===0?10+(ms-1000)/1000:10.2,z:10,yaw:Math.PI/2,moving:n===0};
+  const make=()=>P.createWalkers({walkable:()=>true,solidsNear:()=>[],poseAt});
+  const a=make(), b=make(); a.add(0,0); b.add(0,0); a.add(1,0);
+  for(let ms=0;ms<=1000;ms+=100) {
+    a.step(ms,.1,[{x:10,z:10,r:.5}]); b.step(ms,.1);
+    assert.equal(a.list[0].x,10); assert.equal(a.list[0].z,10);
+    assert.equal(b.list[0].x,10); assert.equal(a.list[0].speed,0);
+    assert.ok(Math.hypot(a.list[1].x-10,a.list[1].z-10)>=P.WALKER.SEP-.01);
+  }
+  held=false; a.step(10000,.1);
+  assert.equal(a.resyncs(),0); assert.ok(Math.hypot(a.list[0].x-10,a.list[0].z-10)<=P.WALKER.TOP+.01);
+});
+
+
+test('주민 지정: 로컬 회피 위치에서 공용 대기 위치까지 속도 제한을 지켜 접근한다',()=>{
+  let held=false;
+  const walkers=P.createWalkers({walkable:()=>true,solidsNear:()=>[],poseAt:()=>
+    ({x:held?14:10,z:10,yaw:Math.PI/2,moving:false,held})});
+  const w=walkers.add(0,0);walkers.step(0,.1);held=true;
+  for(let t=100;t<=1200;t+=100) {
+    const x=w.x;walkers.step(t,.1);assert.ok(w.x-x<=P.WALKER.TOP*.1+.001);assert.equal(w.warped,false);
+  }
+  assert.equal(w.x,14);assert.equal(w.z,10);assert.equal(w.arrived,true);assert.equal(walkers.resyncs(),0);
+});

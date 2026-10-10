@@ -147,3 +147,67 @@ test('할로윈 화면: 10월 내내 켜지고 11월 1일 0시(서울)에 꺼진
   assert.equal(T.isHalloween(Date.parse('2026-11-01T00:00:00+09:00')), false);
   assert.equal(T.isHalloween(Date.parse('2026-09-30T23:59:59+09:00')), false);
 });
+
+
+test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내며 지급 실패/반환/만료도 예약과 일치한다', () => {
+  let time=Date.parse('2026-10-08T12:00:00+09:00');
+  const ev=createIslandEvents({random:seeded(19),now:()=>time});
+  const e=ev.spawnLost(); assert.ok(e);
+  assert.ok(Number.isInteger(e.resident) && e.resident>=0 && e.resident<10);
+  const ownerA=ev.nearby(e.npc.x,e.npc.z,'a').find(v=>v.id===e.id&&v.kind==='lost_owner');
+  const ownerB=ev.nearby(e.npc.x,e.npc.z,'b').find(v=>v.id===e.id&&v.kind==='lost_owner');
+  assert.deepEqual(ownerA,ownerB);
+  assert.equal(ownerA.resident,e.resident);
+  assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
+  assert.ok(T.walkable(ownerA.x,ownerA.z));
+  assert.ok(!T.onBridge(ownerA.x,ownerA.z),'다리를 피한 공용 대기');
+  const grab=ev.claim(e.id,'a',e); ev.settle(grab,false,'a');
+  assert.equal(e.state,'open'); assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
+  const picked=ev.claim(e.id,'a',e); ev.settle(picked,true,'a');
+  assert.equal(ev.claim(e.id,'b',e.npc).error,'GONE');
+  time+=1000;
+  const returned=ev.claim(e.id,'a',e.npc); assert.equal(returned.action,'return');
+  ev.settle(returned,true,'a');
+  assert.equal(ev.events.has(e.id),false);
+  assert.equal(ev.residents()[e.resident].hold.returning,true);
+  assert.equal([...ev.events.values()].filter(v=>TYPES[v.type].npc).length,1);
+  time+=2100;
+  assert.notEqual(ev.residents()[e.resident].hold?.eventId,e.id);
+  const next=ev.spawnLost(); assert.ok(next);
+  const take=ev.claim(next.id,'a',next); ev.settle(take,true,'a');
+  time+=15*60*1000+1; ev.expire();
+  assert.equal(ev.events.has(next.id),false);
+  assert.notEqual(ev.residents()[next.resident].hold?.eventId,next.id);
+  assert.equal(ev.nearby(next.npc.x,next.npc.z,'a').some(v=>v.id===next.id),false);
+});
+
+test('주민 이벤트: 사진 부탁도 기존10명 예약을 쓰고 서버 재시작은 새 이벤트만 만든다', () => {
+  const now=()=>Date.parse('2026-10-08T12:00:00+09:00');
+  let found=false;
+  for(let seed=1;seed<20&&!found;seed++) {
+    const ev=createIslandEvents({random:seeded(seed),now});
+    const e=[...ev.events.values()].find(v=>v.type==='photo');
+    if(!e) continue;
+    found=true;
+    const a=ev.nearby(e.x,e.z,'a').find(v=>v.id===e.id);
+    const b=ev.nearby(e.x,e.z,'b').find(v=>v.id===e.id);
+    assert.deepEqual(a,b); assert.equal(a.resident,e.resident);
+    assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
+    const claim=ev.claim(e.id,'a',e);
+    assert.equal(ev.claim(e.id,'b',e).error,'GONE');
+    ev.settle(claim,true,'a');
+    assert.notEqual(ev.residents()[e.resident].hold?.eventId,e.id);
+    const restart=createIslandEvents({random:seeded(seed),now});
+    assert.ok(restart.residents().every(r=>r.hold?.eventId!==e.id));
+  }
+  assert.ok(found,'실제 사진 이벤트 검증');
+});
+
+test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고 비워지면 공용 의뢰를 채운다',()=>{
+  const N=require('../public/plaza/island-npcs');const time=Date.parse('2026-10-08T12:00:00+09:00');
+  let people=Array.from({length:N.COUNT},(_,n)=>N.at(n,time));
+  const ev=createIslandEvents({random:seeded(7),now:()=>time,occupied:()=>people});
+  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,0,'플레이어가 서 있는 주민 대기점을 피한다');
+  assert.ok(ev.residents().every(s=>!s.hold));
+  people=[];ev.expire();assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,1,'자리가 비면 다음 조회에서 복구');
+});

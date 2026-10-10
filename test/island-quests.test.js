@@ -116,3 +116,69 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
   doc = Q.note(doc, 'at', { x: 5.5, z: 39, now: oct }); r = Q.talk(doc, 'kid', [], at('kid'), oct);
   assert.deepEqual([r.reward, r.done], [17000, true]);
 });
+
+
+test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유지·같은 주민 중복 없음',()=>{
+  const before=Date.parse('2026-10-11T23:59:59+09:00'), after=before+1000;
+  assert.deepEqual(Q.weeklyStories(before),['granny','fisher','kid']);
+  assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid']);
+  assert.equal(Q.talk({},'granny',[],at('granny'),after).error,'NO_STORY');
+  for(let week=0;week<52;week++) {
+    const now=Date.parse('2026-10-05T00:00:00+09:00')+week*7*86400000;
+    const ids=Q.weeklyStories(now); assert.ok(ids.length>=2&&ids.length<=3);
+    const total=ids.reduce((sum,id)=>sum+Q.STORIES[id].bonus+Q.STORIES[id].steps.reduce((n,s)=>n+s.reward,0),0);
+    assert.ok(total<=80000); // 44k normal weeks, 66k October: existing 22k per story remains
+    for(const doc of [{},{photomemory:{done:true}}]) {
+      const keepers=Q.visibleStories(doc,now).map(id=>Q.STORIES[id].keeper||id);
+      assert.equal(new Set(keepers).size,keepers.length);
+    }
+  }
+});
+
+async function fixedFlow(store, rollback=false) {
+  const U='guest:45454545-4545-4545-8545-454545454545', id='photomemory';
+  const now=Date.parse('2026-10-10T12:00:00+09:00');
+  await store.ensureAccount(U);
+  await store.dexNote({userId:U,entry:'photo_bridge'});
+  for(let i=0;i<16;i++) await store.islandGive({userId:U,claimId:`fixed-full-${i}`,itemId:'wallet',qty:1});
+  const bag=await store.islandBag(U); const start=(await store.getAccount(U)).balance;
+  const pay=(doc,items)=>{const out=Q.talk(doc,id,items,at(id),now);return {...out,payKey:`quest:fixed:${U}:${id}:${out.step}`};};
+  await store.questApply(U,'fixed',pay);
+  for(let step=0;step<3;step++) {
+    await store.questApply(U,'fixed',doc=>({doc:Q.note(doc,step===0?'photo':'at',
+      {qty:3,...(Q.STORIES[id].steps[step].spot||{}),now,scope:'fixed'}),reward:0}));
+    if(step<2) await store.questApply(U,'fixed',pay);
+    else {
+      if(rollback) {
+        const before=(await store.getAccount(U)).balance;
+        await store.pool.query("ALTER TABLE island_dex ADD CONSTRAINT fixed_story_test CHECK(entry <> 'memory_island')");
+        await assert.rejects(store.questApply(U,'fixed',pay));
+        assert.equal((await store.questDoc(U,'fixed')).doc.photomemory.step,2);
+        assert.equal((await store.dexOf(U)).memory_island,undefined);
+        assert.equal(store.cachedBalance(U),before,'실패한 보상의 캐시 잔액도 보존');
+        assert.equal(Number((await store.pool.query('SELECT balance FROM point_accounts WHERE user_id=$1',[U])).rows[0].balance),before);
+        await store.pool.query('ALTER TABLE island_dex DROP CONSTRAINT fixed_story_test');
+      }
+      const both=await Promise.all([store.questApply(U,'fixed',pay),store.questApply(U,'fixed',pay)]);
+      assert.equal(both.reduce((n,r)=>n+r.reward,0),17000);
+    }
+  }
+  assert.equal((await store.getAccount(U)).balance,start+22000);
+  assert.deepEqual(await store.islandBag(U),bag,'16칸이 꽉 차도 기념사진은 가방을 바꾸지 않는다');
+  const mine=await store.dexOf(U);assert.equal(mine.memory_island.count,1);
+  assert.equal(require('../lib/island-fishing').collectionCount(mine),1,'기존 도감 칭호 조건은 변하지 않는다');
+  assert.equal((await store.questDoc(U,'2026-10-12')).doc.photomemory,undefined);
+  assert.equal((await store.questDoc(U,'fixed')).doc.photomemory.done,true,'다음 주에도 고정 최초1회 완료 유지');
+  assert.equal((await store.questApply(U,'fixed',pay)).reward,0);
+}
+test('고정 이야기 JSON: 동시 최종 지급·기념사진 원자성·주간 분리·재시작',async(t)=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'fixed-quest-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+  const file=path.join(dir,'points.json'),store=new JsonPointStore(file);await store.init();await fixedFlow(store);
+  const reload=new JsonPointStore(file);await reload.init();
+  assert.equal((await reload.questDoc('guest:45454545-4545-4545-8545-454545454545','fixed')).doc.photomemory.done,true);
+  assert.equal((await reload.dexOf('guest:45454545-4545-4545-8545-454545454545')).memory_island.count,1);
+});
+test('고정 이야기 PostgreSQL: 동시 최종 지급·기념사진 원자성·주간 분리',async(t)=>{
+  const db=await testDatabase();t.after(()=>db.stop());const store=new PostgresPointStore(db.url);t.after(()=>store.pool.end());
+  await store.init();await fixedFlow(store,true);
+});

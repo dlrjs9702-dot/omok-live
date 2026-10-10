@@ -152,6 +152,15 @@
       const d = Math.hypot(next.x - last.x, next.z - last.z);
       if (d < 14 || d > 55 || route.includes(next)) continue;
       if (before && Math.hypot(next.x - before.x, next.z - before.z) < 10) continue; // never straight back
+      const first = route[0];
+      // Every possible final stop (5–7 stops) must close by the same rules as an ordinary leg.
+      // Keep earlier stops away from the first too: last -> first must not reverse the preceding leg.
+      if (route.length >= 2 && Math.hypot(next.x - first.x, next.z - first.z) < 10) continue;
+      if (route.length >= 4) {
+        const closing = Math.hypot(next.x - first.x, next.z - first.z);
+        const second = route[1];
+        if (closing < 14 || closing > 55 || Math.hypot(next.x - second.x, next.z - second.z) < 10 || !findPath(next, first)) continue;
+      }
       if (!findPath(last, next)) continue; // across water with no bridge near: somewhere else
       route.push(next);
     }
@@ -187,6 +196,16 @@
     return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: true };
   }
 
+  // A server reservation pauses this resident's existing round, rather than creating another NPC.
+  function residentAt(n, ms, state = null) {
+    const hold = state?.hold;
+    if (hold && Number.isFinite(hold.x) && Number.isFinite(hold.z) && Number.isFinite(hold.yaw)) {
+      return { x: hold.x, z: hold.z, yaw: hold.yaw, moving: false, held: true };
+    }
+    const delay = Number.isFinite(state?.delay) && state.delay >= 0 ? state.delay : 0;
+    return at(n, ms - delay);
+  }
+
   // v1.10.16 이동 현실화: how the islanders are drawn walking on a screen. The shared round (`at`) stays the plan every
   // screen agrees on; what is drawn is that point plus a small local offset, which only grows to step around what the
   // coarse route grid does not know (benches, flower beds, a fence, a lamp), around each other and around people, and
@@ -199,7 +218,7 @@
   // MAX_OFF: stuck in a pocket further than this from the round (props packed together) -- put back on the round.
   // TOP: the fastest an islander is ever drawn going (catching up with its round after stepping round something: a jog)
   const WALKER = { R: 0.42, SEP: 0.9, SWEEP: 0.22, RETURN: 2.5, WARP: 1.5, MAX_OFF: 5, TOP: 4 };
-  function createWalkers({ walkable, solidsNear }) {
+  function createWalkers({ walkable, solidsNear, poseAt = at }) {
     const { R, SEP, SWEEP, RETURN, WARP, MAX_OFF, TOP } = WALKER;
     // out of every circle it stands in; a point can be in two (a fence next to a tree), so settle a few times
     function pushOut(x, z, r = R) {
@@ -247,7 +266,7 @@
     const list = [];
     // a new islander starts where its round has it now (not at the origin, walking over to it)
     function add(n, ms) {
-      const pose = at(n, ms); const [x, z] = pushOut(pose.x, pose.z);
+      const pose = poseAt(n, ms); const [x, z] = pose.held ? [pose.x, pose.z] : pushOut(pose.x, pose.z);
       const w = { n, x, z, px: x, pz: z, bx: pose.x, bz: pose.z, pose, speed: 0, heading: null };
       list.push(w); return w;
     }
@@ -260,10 +279,21 @@
       const dt = lastMs === null ? frameDt : Math.min(1, Math.max(0, (ms - lastMs) / 1000)); lastMs = ms;
       const keep = Math.exp(-RETURN * dt);
       for (const w of list) { // 1) the shared route, plus what is left of the offset
-        const pose = at(w.n, ms); w.px = w.x; w.pz = w.z;
+        const pose = poseAt(w.n, ms); w.px = w.x; w.pz = w.z;
+        if (pose.held) {
+          const distance=Math.hypot(pose.x-w.x,pose.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
+          [w.x,w.z]=move(w.x,w.z,w.x+(pose.x-w.x)*scale,w.z+(pose.z-w.z)*scale);
+          w.bx=pose.x; w.bz=pose.z; w.pose=pose;
+          w.speed=dt?Math.hypot(w.x-w.px,w.z-w.pz)/dt:0;
+          w.arrived=Math.hypot(w.x-pose.x,w.z-pose.z)<0.05;
+          w.heading = null; w.warped = false; w.rejoining = false;
+          continue; // approach the same safe server point; never teleport away from local avoidance
+        }
+        if (w.pose.held) w.rejoining = true;
+        if (w.rejoining && Math.hypot(w.x-pose.x,w.z-pose.z)<0.5) w.rejoining = false;
         let tx = pose.x + (w.x - w.bx) * keep; let tz = pose.z + (w.z - w.bz) * keep;
         const want = Math.hypot(tx - w.x, tz - w.z);
-        w.warped = want > WARP || Math.hypot(w.x - w.bx, w.z - w.bz) > MAX_OFF; // a long pause (a hidden tab), or stuck: back on the round at once
+        w.warped = !w.rejoining && (want > WARP || Math.hypot(w.x - w.bx, w.z - w.bz) > MAX_OFF); // a long pause (a hidden tab), or stuck: back on the round at once
         if (want > TOP * dt) { tx = w.x + ((tx - w.x) * TOP * dt) / want; tz = w.z + ((tz - w.z) * TOP * dt) / want; } // never faster than a jog
         if (w.warped) { [w.x, w.z] = pushOut(pose.x, pose.z); w.speed = 0; resyncs += 1; } else [w.x, w.z] = move(w.x, w.z, tx, tz);
         w.bx = pose.x; w.bz = pose.z; w.pose = pose;
@@ -272,7 +302,7 @@
         for (let i = 0; i < list.length; i += 1) for (let j = i + 1; j < list.length; j += 1) {
           const a = list[i]; const b = list[j];
           const dx = a.x - b.x; const dz = a.z - b.z; let d = Math.hypot(dx, dz);
-          if (d >= SEP) continue;
+          if (d >= SEP || (a.pose.held && b.pose.held)) continue;
           let ux; let uz;
           if (d < 1e-5) { const angle = ((a.n * 17 + b.n * 31) % 16) * (Math.PI / 8); ux = Math.cos(angle); uz = Math.sin(angle); d = 0; } else { ux = dx / d; uz = dz / d; }
           const shift = (SEP - d) / 2 + 0.005;
@@ -283,20 +313,22 @@
             const hx = Math.sin(me.pose.yaw); const hz = Math.cos(me.pose.yaw);
             return hx * (other.x - me.x) + hz * (other.z - me.z) > 0 ? [hz * shift, -hx * shift] : [0, 0];
           });
-          [a.x, a.z] = move(a.x, a.z, a.x + ux * shift + ra[0], a.z + uz * shift + ra[1]);
+          if (!a.pose.held) [a.x, a.z] = move(a.x, a.z, a.x + ux * shift + ra[0], a.z + uz * shift + ra[1]);
           // b takes whatever a could not (a against a wall or a prop): the pair still ends SEP apart where there is room
           const left = SEP + 0.005 - Math.hypot(a.x - b.x, a.z - b.z);
-          if (left > 0) [b.x, b.z] = move(b.x, b.z, b.x - ux * left + rb[0], b.z - uz * left + rb[1]);
+          if (left > 0 && !b.pose.held) [b.x, b.z] = move(b.x, b.z, b.x - ux * left + rb[0], b.z - uz * left + rb[1]);
+          else if (left > 0 && !a.pose.held) [a.x,a.z] = move(a.x,a.z,a.x+ux*left,a.z+uz*left);
         }
       }
       for (const w of list) for (const o of people) { // 3) out of people's way
+        if (w.pose.held) continue;
         let dx = w.x - o.x; let dz = w.z - o.z; let d = Math.hypot(dx, dz); const min = R + o.r;
         if (d >= min) continue;
         if (d < 1e-5) { dx = 1; dz = 0; d = 1; }
         [w.x, w.z] = move(w.x, w.z, o.x + (dx / d) * min, o.z + (dz / d) * min);
       }
       for (const w of list) { // the drawn pace and heading pick the walk and the facing
-        if (w.warped) continue;
+        if (w.warped || w.pose.held) continue;
         const moved = Math.hypot(w.x - w.px, w.z - w.pz); const v = dt > 0 ? moved / dt : 0;
         w.speed += (v - w.speed) * Math.min(1, dt * 10);
         if (moved > dt * 0.3) w.heading = Math.atan2(w.x - w.px, w.z - w.pz);
@@ -305,5 +337,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

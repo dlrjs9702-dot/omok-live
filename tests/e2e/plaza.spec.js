@@ -1010,6 +1010,14 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await expect(page.locator('.lostRequest')).toContainText('사례 10,000P');
   await page.locator('.lostRequest button').click();
   await expect(page.locator('#plazaDialog')).toBeHidden();
+  // The event borrows the same resident on both screens: ten walkers, one identity, exact server wait position.
+  for (const who of [a,b]) {
+    await expect.poll(()=>who.page.evaluate(id=>{
+      const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
+      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
+        near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
+    },lost.id)).toEqual({n:lost.npc.resident,reused:true,count:10,near:true});
+  }
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
@@ -1035,6 +1043,13 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   expect(steps.steps.map(([name]) => name)).toEqual(['give', 'received', 'gone']);
   expect(steps.steps[1][1]).toBeGreaterThanOrEqual(650); expect(steps.steps[2][1] - steps.steps[1][1]).toBeGreaterThanOrEqual(1200);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().carry.others), { timeout: 15000 }).toBe(0);
+  for(const who of [a,b]) {
+    await expect.poll(()=>who.page.evaluate(n=>{
+      const d=window.PlazaDebug(),w=d.wanderers.find(w=>w.n===n);
+      return {count:d.wanderers.length,held:w.held,clear:w.clear,walkable:w.walkable,delay:d.residentReservations[n].delay>0};
+    },lost.npc.resident)).toEqual({count:10,held:false,clear:true,walkable:true,delay:true});
+    await expectNoScriptError(who.page);
+  }
   await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });
@@ -1379,6 +1394,7 @@ test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async (
   await expectNoScriptError(a.page); await a.context.close();
 });
 test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
+  test.setTimeout(90000); // v1.10.60: 23-29 s on the CI runner, over the default 30 s now and then (main run 38025855881 too)
   const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
   const { page, token } = a;
   // Native keyboard activation exercises the same UI handler without waiting for two
@@ -1394,4 +1410,49 @@ test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ bro
   await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6 || null).toBe(null);
   expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
   await expectNoScriptError(page); await a.context.close();
+});
+
+
+test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
+  const a=await intoPlaza(browser,request,'사진가첫이야기'),{page}=a;
+  await page.evaluate(()=>window.PlazaWarp(12.8,28));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
+  await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
+  await expect(page.locator('#plazaDialog')).toContainText('사진 부탁');
+  await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
+  await expect.poll(()=>page.evaluate(()=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-12)<.01&&Math.abs(m.z-28)<.01)};})).toEqual({mark:null,position:true});
+  expect((await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'})).status).toBe(200);
+  await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
+  await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toContainText('개울 다리');
+  const state=await page.evaluate(()=>{const d=window.PlazaDebug();return {walkers:d.wanderers.length,photoActors:d.quests().filter(q=>['questphotomemory','questphotographer'].includes(q.id)).length};});
+  expect(state).toEqual({walkers:10,photoActors:1});
+  await expectNoScriptError(page);await a.context.close();
+});
+
+
+test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보고 가방은 비워 둔다',async({browser,request})=>{
+  const a=await intoPlaza(browser,request,'첫나들이기록'),{page}=a;
+  const Q=require('../../lib/island-quests'),story=Q.STORIES.photomemory;
+  const stand=async(p)=>{await page.evaluate(([x,z])=>window.PlazaWarp(x,z),[p.x,p.z]);await post(request,'/api/plaza/state',a.token,{x:p.x,z:p.z,yaw:0});};
+  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory'});
+  await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).status).toBe(200);
+  await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'});
+  expect((await talk()).data.reward).toBe(2000);
+  for(const [i,step] of story.steps.entries()) if(i>0) {
+    await stand(step.spot);
+    await expect.poll(async()=>{
+      const result=await post(request,'/api/plaza/state',a.token,{x:step.spot.x,z:step.spot.z,yaw:0});
+      return result.data.quests?.find(t=>t.story==='photomemory')?.ready;
+    }).toBe(true);
+    await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).data.reward).toBe(i===1?3000:17000);
+  }
+  expect((await get(request,'/api/island/bag',a.token)).data.items).toHaveLength(0);
+  await page.locator('#islandBagTab').click();await page.locator('#islandPhotoBtn').click();
+  const cell=page.locator('.islandPhotoCell').filter({hasText:'첫 섬 나들이'});
+  await expect(cell).toHaveCount(1);await expect(cell.locator('small')).not.toHaveText('');
+  await expect(page.locator('#islandBagCount')).toHaveText('0/7'); // v1.10.60: the keepsake shows but the count is of the seven photo spots
+  await expect.poll(()=>cell.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+  await expectNoScriptError(page);await a.context.close();
 });
