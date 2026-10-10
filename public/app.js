@@ -1692,8 +1692,12 @@
     finally { minesBusy = false; }
   }
   document.getElementById('soloMinesBtn').addEventListener('click', openMines);
-  // v1.10.61 두 세계 영웅전: its own page in this tab (the tab's session goes with it; the browser's back returns here)
-  document.getElementById('soloHerosurvBtn').addEventListener('click', () => { location.href = '/herosurv/'; });
+  // v1.10.61 두 세계 영웅전: its own page in this tab; it ranks by this session (guest or admin), handed over in the tab's
+  // sessionStorage. The browser's back returns here (a guest resumes; an admin, whose login lives only in this page, logs in again).
+  document.getElementById('soloHerosurvBtn').addEventListener('click', () => {
+    try { sessionStorage.setItem('herosurvSession', sessionToken); } catch {}
+    location.href = '/herosurv/';
+  });
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));
   document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });

@@ -3799,17 +3799,19 @@ async function requestHandler(req, res) {
     m = /^runs\/([0-9a-f-]{36})$/.exec(route);
     if (m && req.method === 'PUT') {
       const run = herosurvRuns.get(m[1]);
-      if (!run || run.account !== account) return sendError(res, 404, 'NO_RUN', '끝난 판입니다.');
-      herosurvRuns.delete(m[1]); // one result per run
-      const body = await parseJson(req);
-      const durationMs = Number(body.durationMs);
-      if (durationMs > nowMs() - run.at + 60 * 1000) return sendError(res, 400, 'BAD_RUN', '잘못된 기록입니다.'); // not longer than the run really was
+      if (!run || run.account !== account || run.saving) return sendError(res, 404, 'NO_RUN', '끝난 판입니다.');
+      run.saving = true; // one result per run: used up once saved (or refused), open again if saving failed
       try {
+        const body = await parseJson(req);
+        const durationMs = Number(body.durationMs);
+        if (durationMs > nowMs() - run.at + 60 * 1000) throw new RangeError('longer than the run really was');
         const out = await pointStore.herosurvRun({ userId: account, board: run.board, name: me.displayName, score: Number(body.score), durationMs, meta: body.meta });
+        herosurvRuns.delete(m[1]);
         return sendJson(res, 200, { runId: m[1], score: Number(body.score), accepted: true, personalBest: out.personalBest, trust: 'client_reported' });
       } catch (error) {
-        if (error instanceof TypeError || error instanceof RangeError) return sendError(res, 400, 'BAD_RUN', '잘못된 기록입니다.');
-        throw error;
+        if (!(error instanceof TypeError || error instanceof RangeError)) { run.saving = false; throw error; }
+        herosurvRuns.delete(m[1]);
+        return sendError(res, 400, 'BAD_RUN', '잘못된 기록입니다.');
       }
     }
     return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');

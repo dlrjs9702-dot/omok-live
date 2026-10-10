@@ -43,6 +43,11 @@ test('영웅전 기록: PostgreSQL 저장소 — 같은 동작', async (t) => {
   t.after(() => store.pool.end());
   await store.init();
   await storeBehaves(store);
+  // two first runs of one account at once: the higher one stays, whichever lands last (Codex review)
+  const C = 'guest:33333333-3333-4333-8333-333333333333';
+  const results = await Promise.all([900, 100, 500].map((score) => store.herosurvRun({ userId: C, board: 'heroes-r14', name: '동시', score, durationMs: 1, meta: {} })));
+  assert.equal((await store.herosurvBoard('heroes-r14')).find((r) => r.userId === C).score, 900);
+  assert.ok(results.some((r) => r.personalBest));
 });
 
 test('영웅전 API: 게임센터 닉네임으로 기록·순위, 판마다 한 번, 실제 시간보다 긴 기록 거부', async (t) => {

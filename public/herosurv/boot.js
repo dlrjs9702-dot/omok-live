@@ -17,7 +17,7 @@
 		if (assets && BIG[file]) return realFetch(`${assets}/herosurv/${BIG[file]}`, { ...init, credentials: 'omit' });
 		if (/^\/api\/leaderboards\//.test(new URL(url, location.href).pathname)) {
 			let token = '';
-			try { token = JSON.parse(sessionStorage.getItem('gameCenterGuestSession') || 'null')?.token || ''; } catch {}
+			try { token = sessionStorage.getItem('herosurvSession') || ''; } catch {} // set by the lobby button (app.js)
 			const headers = new Headers(init && init.headers);
 			headers.set('X-Session-Token', token);
 			headers.delete('Authorization'); // the game's own guest token means nothing here
