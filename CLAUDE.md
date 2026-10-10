@@ -13,7 +13,7 @@
 - 코드를 고칠 때는 기록 저장소 `STATUS.md`의 담당과 마지막 원격 SHA를 확인한다. 새 작업에는 세션이 자동 생성한 `claude/…` 브랜치를 사용할 수 있지만, 이어받을 때는 기록된 기존 브랜치를 체크아웃한다. 코드 저장소 `omok-live`의 `main`에는 바로 커밋하지 않는다. 기록 저장소 `gamecenter-notes`는 AGENTS.md §3에 따라 `main`에 직접 커밋한다.
 - 세션이 임시 환경이므로 의미 있는 단계마다 코드를 원격 작업 브랜치에 커밋·푸시한다. `STATUS.md`는 시작·중단·교대·완료 때 갱신한다. 기존 브랜치 이어받기나 PR 수정 등 사용하지 않았던 기능은 그 작업에서 접근 가능 여부를 확인한다.
 - 코드 작업을 시작할 때 작업 규모에 맞는 모델 추천을 한 줄로 적고 현재 세션에서 바로 진행한다. 사용자가 모델 변경을 요구한 경우만 기다린다.
-- 코드 수정 묶음(지시 하나)을 마칠 때마다 작업 브랜치에 푸시하기 전에 codex 플러그인 검토를 1회 실행한다(`node "<플러그인>/scripts/codex-companion.mjs" review --wait --base origin/main --scope branch` 또는 `/codex:review`, 읽기 전용). 결과는 사용자 보고에 한 줄로 남기고, 지적은 Claude가 고친다. 문서만 바뀐 묶음은 생략할 수 있다. 파일을 수정하는 `/codex:rescue`로 코드 작업을 넘기지 않는다(AGENTS.md §8).
+- Codex 검토는 AGENTS.md §8의 시점(위험한 변경은 즉시, 일반 변경은 확인 요청 직전에 묶어서, 번호당 1회)에 codex 플러그인으로 실행한다(`node "<플러그인>/scripts/codex-companion.mjs" review --wait --base origin/main --scope branch` 또는 `/codex:review`, 읽기 전용). 결과는 사용자 보고에 한 줄로 남기고, 지적은 Claude가 고친다. Codex 사용량이 없으면 대신 검토하지 않고 `Codex 검토 대기`로 남긴다. 파일을 수정하는 `/codex:rescue`로 코드 작업을 넘기지 않는다(AGENTS.md §8).
 - Windows에서 한글 파일을 PowerShell 문자열 치환(`-replace`, `Set-Content` 등)으로 수정하지 않는다. 파일 편집 도구를 사용하고 인코딩을 확인한다.
 
 ### 로컬 Windows 터미널

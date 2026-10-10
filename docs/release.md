@@ -30,7 +30,7 @@
    - `npm test` 전체. 의존성 누락 오류(예: `three`)면 `npm ci` 후 재실행
    - 변경 기능 확인 한 가지(관련 `npm run test:e2e` 스펙 또는 로컬 서버 화면 확인). 브라우저 실행 파일 오류면 `npx playwright install chromium`
    - 화면·동작이 바뀌는 묶음: 작업 PC에서 `npm run dev`로 띄워 확인하고, 사용자가 볼 확인 체크리스트(3~5줄)를 PR 본문과 `STATUS.md`에 적는다. 독립된 수정은 번호별 커밋으로 나눈다.
-   - 수정 묶음마다 Codex 읽기 전용 검토 1회(CLAUDE.md), 지적은 고친 뒤 작업 브랜치에 푸시한다(AGENTS.md §8 패치 순환).
+   - Codex 읽기 전용 검토: 위험한 변경은 즉시, 일반 변경은 PR을 열기 직전에 묶어서 번호당 1회. 사용량이 없어 남은 `Codex 검토 대기` 번호가 있으면 PR 전에 다시 시도하고, 안 되면 사용자에게 묻는다(AGENTS.md §8).
    - 실행하지 못한 검증은 사유와 함께 기록한다.
 7. **커밋·PR**: 원격 작업 브랜치에 푸시하고 Draft PR을 만든다. 제목 `[vX.Y.Z] 요약`(문서만: `[docs] 요약`), 본문에는 변경·제외·검증과 비공개 `STATUS.md` 링크만 둔다. `STATUS.md`에 마지막 원격 SHA와 PR 번호를 갱신한다.
 8. **CI**: GitHub Actions `Playwright E2E`(정적 검사, `npm test`, `npm run test:e2e`)가 성공해야 한다. PR에서는 `pull_request`로 한 번만 돈다(작업 브랜치 push로는 돌지 않음, 2026-10-05 #153). 병합 뒤 `main` push로 한 번 더 돈다. 실패하면 병합하지 않는다. 준비되지 않은 중간 변경으로 PR CI를 반복하지 않도록, 묶음을 완성한 뒤 Draft PR을 연다. E2E가 반복해서 35분을 넘거나 40분 제한으로 취소되면 제한만 늘리지 말고 2개 작업으로 나눈다(shard). v1.10.32부터 E2E는 `shard 1/2`·`2/2` 두 작업이 함께 돌고(정적 검사·`npm test`는 1번에서만), 모든 묶음이 성공해야 한다. v1.10.47부터는 일반 PC 2분할·실물 에셋·광장을 각각 실행하는 4묶음으로 나누고, 기존 모바일 프로젝트는 전체 실행한다.
@@ -39,7 +39,7 @@
     - 새 main SHA의 배포가 `live`, 로그에 `omok-live@X.Y.Z start`·`게임 서버 vX.Y.Z 실행`·저장소 PostgreSQL 줄
     - 운영 `https://omok-live.onrender.com/health`가 `{"ok":true,"version":"X.Y.Z"}`
     - 문서 PR은 배포 대신 Render에 건너뛰기(`commit_ignored`) 기록을 확인한다.
-11. **마무리**: 로컬 `main`을 pull하고 작업 브랜치를 `git branch -d`로 지운다(squash라 경고가 나와도 원격 병합 확인 후 삭제되면 정상). 비공개 `STATUS.md`의 항목을 `최근 완료` 맨 위로 옮기고(최신 3개만 유지, 넘치는 것은 `archive/STATUS-이력.md` 맨 위로) `진행 중`을 정리해 푸시한다.
+11. **마무리**: 로컬 `main`을 pull하고 작업 브랜치를 `git branch -d`로 지운다(squash라 경고가 나와도 원격 병합 확인 후 삭제되면 정상). 비공개 `STATUS.md`의 항목을 `최근 완료` 맨 위로 옮기고(최신 3개만 유지, 넘치는 것은 `archive/STATUS-이력.md` 맨 위로) `진행 중`을 정리해 푸시한다. 이번 릴리스로 남은 일이 하나도 없게 된 비공개 `IDEAS.md` 절은 `archive/IDEAS-완료-이력.md`로 옮기고(일부만 끝난 절은 완료 표시만, 계속 유효한 규칙·경제 기준은 `reference/게임-규칙-경제.md`로), 옮긴 절을 가리키는 링크를 고친다.
 
 ## 출력
 - 병합된 `main` 커밋, Render 배포 ID·상태, 갱신된 `PROJECT_STATUS.md`·`STATUS.md`
