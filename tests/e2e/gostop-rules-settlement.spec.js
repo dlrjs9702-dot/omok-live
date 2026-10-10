@@ -143,6 +143,7 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
           await next.page.getByRole('button', { name: '스톱 · 현재 정산' }).click();
         }
         await expect.poll(async () => (await roomState(request, a.token)).game.status, { timeout: 20_000 }).not.toBe('playing');
+        await expect.poll(async () => (await roomState(request, a.token)).game.settlement?.status).toBe('done');
         decided = await roomState(request, a.token);
         break;
       }

@@ -32,17 +32,27 @@ async function issueGuest(request, admin, label) {
 async function enterAsGuest(browser, html) {
   const context = await browser.newContext();
   const page = await context.newPage();
+  const bootErrors = [];
+  page.on('console', message => { if (message.type() === 'warning' || message.type() === 'error') bootErrors.push(message.text()); });
+  page.on('pageerror', error => bootErrors.push(error.message));
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': uniqueIp() });
   // Open the entry file from a blank page (as a downloaded file would be); it auto-submits its
   // form to /guest-entry. The game center page's own CSP would block that inline script.
   await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(html)]);
-  await expect(page.locator('#lobbyView')).toBeVisible();
+  try { await expect(page.locator('#lobbyView')).toBeVisible(); }
+  catch (error) { throw new Error(`${error.message}\n부팅 원본: ${bootErrors.join(' | ')}`); }
   const token = await page.evaluate(() => document.body.dataset.session);
   return { context, page, token };
 }
 
 async function roomState(request, token) {
   return (await api(request, '/api/room', token, undefined, 'GET')).data.state;
+}
+
+// A finished board may be visible while the server is still persisting the payout.
+async function settledRoom(request, token) {
+  await expect.poll(async () => (await roomState(request, token)).game.settlement?.status).toBe('done');
+  return roomState(request, token);
 }
 
 async function playUntil(request, tokenOf, stopWhen, maxSteps = 200) {
@@ -113,6 +123,28 @@ test.describe('포인트와 고스톱·맞고', () => {
     // 6~7) 분배와 비공개: 내 손패만 보이고, 관전자는 손패가 전혀 없다.
     const tokenOf = { 1: a.token, 2: b.token };
     let state = await roomState(request, a.token);
+    const burnOf = g => (g.settlement?.transfers || []).reduce((sum, item) => sum + (item.burned || 0), 0)
+      + (g.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
+    let previousBurn = 0;
+    // A legitimate total-hand win exposes its four cards and ends immediately. Verify that
+    // public result, then use a real next hand for the required click/hidden-hand assertions.
+    for (let dealt = 0; state.game.status === 'finished' && dealt < 8; dealt++) {
+      state = await settledRoom(request, a.token);
+      expect(state.game.result.reason).toBe('chongtong');
+      const revealed = new Set(state.game.lastEvent.revealed);
+      expect(revealed.size).toBe(4);
+      expect(new Set([...revealed].map(id => id.slice(0, 3))).size).toBe(1);
+      const spectator = JSON.stringify(await roomState(request, c.token));
+      for (const view of [a, b]) {
+        const mine = await roomState(request, view.token);
+        for (const card of mine.me.myGostopHand) if (!revealed.has(card.id)) expect(spectator).not.toContain(`"${card.id}"`);
+      }
+      previousBurn += burnOf(state.game);
+      await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
+      await a.page.locator('#gostopStartBtn').click();
+      state = await roomState(request, a.token);
+    }
+    expect(state.game.status, '실제 다음 판에서 직접 클릭 검증이 가능한 손패').toBe('playing');
     expect(state.game.mode).toBe('matgo');
     expect(state.game.pointsPerScore).toBe(10);
     const handA = state.me.myGostopHand.map(card => card.id);
@@ -161,9 +193,10 @@ test.describe('포인트와 고스톱·맞고', () => {
         await expect(c.page.getByRole('button', { name: '스톱' })).toHaveCount(0);
         await decider.page.getByRole('button', { name: '스톱' }).click();
         await expect(decider.page.locator('#gostopResult')).toContainText('승리');
-        settledRound = await roomState(request, a.token);
+        settledRound = await settledRoom(request, a.token);
         break;
       }
+      previousBurn += burnOf(state.game);
       // 나가리 등으로 끝났으면 다음 판을 열고 다시 시작한다.
       await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
       await a.page.locator('#gostopStartBtn').click();
@@ -173,8 +206,7 @@ test.describe('포인트와 고스톱·맞고', () => {
     expect(g.settlement.status).toBe('done');
     const [balanceA, balanceB] = await Promise.all([a, b].map(async view => (await api(request, '/api/points', view.token, undefined, 'GET')).data.balance));
     // v1.7.3: 실제 이동액의 10%는 소각(승자 90%), 뻑 보너스도 같다.
-    const burned = g.settlement.transfers.reduce((sum, item) => sum + (item.burned || 0), 0)
-      + (g.bonusAwards || []).reduce((sum, award) => sum + (award.paid - (award.credited ?? award.paid)), 0);
+    const burned = previousBurn + burnOf(g);
     expect(balanceA + balanceB).toBe(250_000 - burned);
     const paid = g.settlement.transfers.reduce((sum, item) => sum + item.paid, 0);
     expect(paid).toBeGreaterThan(0);
@@ -184,9 +216,20 @@ test.describe('포인트와 고스톱·맞고', () => {
     // 14) 다음 판: 준비 → 다시 시작, 정산은 반복되지 않는다.
     await a.page.locator('#nextRoundBtn:visible, #sideNextRoundBtn:visible').first().click();
     await expect(a.page.locator('#gostopStartBtn')).toBeVisible();
-    await a.page.locator('#gostopStartBtn').click();
-    await expect.poll(async () => (await roomState(request, a.token)).game.status).toBe('playing');
     expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(balanceA);
+    await a.page.locator('#gostopStartBtn').click();
+    let nextHand = await roomState(request, a.token);
+    expect(nextHand.game.round).toBe(g.round + 1);
+    if (nextHand.game.status === 'finished') {
+      nextHand = await settledRoom(request, a.token);
+      expect(nextHand.game.result.reason).toBe('chongtong');
+      expect(nextHand.game.settlement.status).toBe('done');
+      const nextBalances = await Promise.all([a, b].map(async view => (await api(request, '/api/points', view.token, undefined, 'GET')).data.balance));
+      expect(nextBalances[0] + nextBalances[1]).toBe(balanceA + balanceB - burnOf(nextHand.game));
+    } else {
+      expect(nextHand.game.status).toBe('playing');
+      expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(balanceA);
+    }
     expect(errors).toEqual([]);
     for (const view of [a, b, c]) await view.context.close();
   });

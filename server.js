@@ -3012,7 +3012,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.57' });
+    return sendJson(res, 200, { ok: true, version: '1.10.58' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3678,7 +3678,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/bag' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(pointAccountForSession(session)), dailyCap: IslandItems.DAILY_CAP });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(pointAccountForSession(session), islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP });
   }
   if (pathname === '/api/island/sell' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -3828,12 +3828,12 @@ async function requestHandler(req, res) {
     if (!at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandFishing.MOVE_R) { fishCasts.delete(session.token); return sendError(res, 409, 'FISH_GONE', '놓쳤습니다.'); }
     const account = pointAccountForSession(session);
     const itemId = `fish_${c.species}`;
-    const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null }, nowMs());
+    const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
     if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
-    const dex = await pointStore.dexNote({ userId: account, entry: itemId });
+    const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
-    islandProgress('fish', account, 1);
+    if (outcome.applied) islandProgress('fish', account, 1);
     return sendJson(res, 200, c.done);
   }
   if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
@@ -4055,10 +4055,9 @@ async function requestHandler(req, res) {
     }
     let outcome;
     try {
-      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null }, nowMs());
+      if (claimed.action === 'item' || claimed.action === 'pickup') outcome = await pointStore.islandGive({ userId: account, claimId: isResource ? `event:${id}:${pull.generation}` : `event:${id}`, itemId: claimed.item, qty: claimed.qty, meta: claimed.meta || null, dexEntry: IslandFishing.DEX_IDS.has(claimed.item) ? claimed.item : null }, nowMs());
       else outcome = await pointStore.islandReward({ userId: account, claimId: claimed.action === 'return' ? `event-return:${id}` : isResource ? `event:${id}:${pull.generation}` : `event:${id}`, amount: claimed.points, title: claimed.title, takeEventId: claimed.action === 'return' ? id : null }, nowMs());
     } catch (error) { islandEvents.settle(claimed, false, account); throw error; }
-    if (!outcome.reason && claimed.action === 'item' && IslandFishing.DEX_IDS.has(claimed.item)) await pointStore.dexNote({ userId: account, entry: claimed.item }).catch(() => {}); // v1.10.42 도감
     if (outcome.reason) {
       resourcePulls.delete(session.token);
       islandEvents.settle(claimed, false, account);
@@ -4068,7 +4067,7 @@ async function requestHandler(req, res) {
     }
     const done = islandEvents.settle(claimed, true, account);
     if (done?.removed) broadcastIslandRemoved([done.removed]);
-    if (claimed.event?.type) islandProgress(claimed.event.type, account, 1); // v1.10.37 연계 퀘스트 (e.g. beach_trash)
+    if (outcome.applied && claimed.event?.type) islandProgress(claimed.event.type, account, 1); // v1.10.37 연계 퀘스트 (e.g. beach_trash)
     if (claimed.points || outcome.bonus) notifyPointsChanged([account]); // v1.10.31: or the week's life bonus
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     const result = { ok: true, action: claimed.action, item: claimed.item ? IslandItems.itemDef(claimed.item) && { id: claimed.item, name: IslandItems.itemDef(claimed.item).name, icon: IslandItems.itemDef(claimed.item).icon, qty: claimed.qty } : null,
@@ -4125,6 +4124,7 @@ async function requestHandler(req, res) {
       if (done) { // the same request again (its answer was lost): already changed
         if (done.userId !== account) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         await renameGuest(session.guestKeyId, done.name);
+        await pointStore.completeNickname({ userId: account, requestId: body.requestId, name: done.name });
         return sendJson(res, 200, { ok: true, name: done.name, until: new Date(Date.parse(done.changedAt) + NICKNAME_COOLDOWN_MS).toISOString(), balance: done.balanceAfter });
       }
       const keys = await accessStore.list();
@@ -4135,6 +4135,7 @@ async function requestHandler(req, res) {
       if (RESERVED_NICKNAMES.has(wanted) || keys.some((key) => key.id !== mine.id && normalizeNickname(key.label) === wanted)) return sendError(res, 409, 'NAME_TAKEN', '이미 쓰고 있는 이름입니다.');
       const now = nowMs();
       const result = await pointStore.chargeNickname({ userId: account, requestId: body.requestId, name }, now);
+      if (result.reason === 'request') return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (result.reason === 'cooldown') return sendJson(res, 409, { error: 'NICKNAME_COOLDOWN', message: '이름을 바꾼 지 24시간이 지나야 다시 바꿀 수 있습니다.', until: result.until });
       if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '보유 포인트가 부족합니다.');
       try {
@@ -4145,6 +4146,7 @@ async function requestHandler(req, res) {
         notifyPointsChanged([account]);
         return sendError(res, 500, 'NICKNAME_FAILED', '이름을 바꾸지 못했습니다. 포인트는 차감되지 않았습니다.');
       }
+      await pointStore.completeNickname({ userId: account, requestId: body.requestId, name });
       notifyPointsChanged([account]);
       return sendJson(res, 200, { ok: true, name, until: new Date(now + NICKNAME_COOLDOWN_MS).toISOString(), balance: result.balance ?? result.balanceAfter });
     });
@@ -4637,8 +4639,13 @@ async function requestHandler(req, res) {
     // v1.7.32: opening the room still tries to record a finished match (a retry), but a failure no longer hides the
     // room. The player sees the finished board with "정산 처리 중"; starting the next round stays blocked until it is
     // recorded (next-round/rematch keep recordOrError), and the settlement retry broadcasts once it succeeds.
-    try { await recordFinishedMatch(room); }
-    catch (error) { console.error('전적 영구 저장 실패(방 조회는 계속):', error); }
+    const round = room.game.round;
+    require('./lib/room-record-retry').queueRoomRecord(room, {
+      record: recordFinishedMatch,
+      isCurrent: () => rooms.get(room.id) === room && room.game.round === round,
+      onSaved: () => broadcast(room),
+      onError: error => console.error('전적 영구 저장 실패(방 조회는 계속):', error.message),
+    });
     return sendJson(res, 200, { state: roomView(room, session) });
   }
 
@@ -4762,6 +4769,7 @@ async function main() {
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
+  await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
@@ -4819,7 +4827,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.57 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.58 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

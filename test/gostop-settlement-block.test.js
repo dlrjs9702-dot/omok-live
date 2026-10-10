@@ -96,7 +96,14 @@ test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고,
 
   // Once the fault clears, the finished hand (still the same round, never replaced) settles exactly once.
   assert.equal((await api('/api/test/points-fault', admin, { settleFail: 0 })).status, 200);
-  const finished = (await api('/api/room', people[0], undefined, 'GET')).data.state.game;
+  // A view returns immediately; settlement completes through its existing background retry.
+  let finished;
+  const deadline = Date.now() + 5000;
+  do {
+    finished = (await api('/api/room', people[0], undefined, 'GET')).data.state.game;
+    if (finished.settlement?.status === 'done') break;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  } while (Date.now() < deadline);
   assert.deepEqual([finished.status, finished.round, finished.settlement?.status], ['finished', round, 'done']);
   const after = [await balance(0), await balance(1)];
   assert.ok(after[1] > before[1] && after[0] < before[0], '승자(2번 자리)에게 정산되었다');

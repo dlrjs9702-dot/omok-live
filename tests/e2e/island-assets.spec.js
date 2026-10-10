@@ -28,7 +28,7 @@ test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급�
   }
 });
 
-test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·이동 재개·재생·취소', async ({browser,request}) => {
+test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·이동 재개·재생', async ({browser,request}) => {
   test.setTimeout(180000);
   const {REGISTRY,wardrobeOf}=require('../../public/plaza/island-assets');
   const ids=['character.base','tree.harvest','tree.fruitLayer','prop.harvest.fruit',...wardrobeOf({}).parts,...wardrobeOf({gender:'female'}).parts];
@@ -87,14 +87,41 @@ test('열매 직접 수확: 실물 HighLow·PickFruit·원격·완료 대기·�
   // Drop the old removal guard only when a newer server generation is visible.
   await a.page.unroute('**/api/island/resource/finish');
   for(const who of [a,b]) await expect.poll(()=>who.page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key),{timeout:10000}).toBe(true);
-  await placeHarvester();
-  await expect(a.page.locator('#plazaHint')).toContainText('나무 열매');
-  await a.page.clock.install();await a.page.clock.pauseAt(await a.page.evaluate(()=>Date.now()+10000));
-  await a.page.keyboard.press('Space');
-  await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe('resource');await a.page.keyboard.press('Escape');
-  await expect.poll(()=>a.page.evaluate(()=>window.PlazaDebug().gather)).toBe(null);
-  expect((await get(request,'/api/island/bag',a.token)).data.items.find(i=>i.itemId==='berry').qty).toBe(1);
   for(const who of [a,b]){await expectNoScriptError(who.page);await who.context.close();}
+});
+
+// Cancellation is a separate real interaction: two High/Low model contexts already
+// verify animation/rendering above. Do not spend its remaining global deadline on clock setup.
+test('재생된 열매 취소: 새 세대 SPACE·Escape, 서버 자원 유지·추가 지급 없음', async ({browser,request}) => {
+  test.setTimeout(120000);
+  const who=await island(browser,request,'열매취소',{__only:true});const {page,token}=who;
+  const tree=(await get(request,'/api/test/island/events',token)).data.events.find(e=>e.type==='berry' && e.state==='open');
+  const key=`ev:berry:${tree.id}`;
+  let fixtureAt;
+  await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),...(fixtureAt||{})})}));
+  const approach=async()=>{
+    fixtureAt={x:tree.x,z:tree.z};await page.evaluate(p=>window.PlazaWarp(p.x,p.z),fixtureAt);
+    const placed=await post(request,'/api/plaza/state',token,{...fixtureAt,yaw:0,moving:false});expect(placed.status).toBe(200);
+    fixtureAt={x:placed.data.x,z:placed.data.z};await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),fixtureAt);
+  };
+  await approach();
+  expect((await post(request,'/api/island/resource/start',token,{id:tree.id})).status).toBe(200);
+  await new Promise(resolve=>setTimeout(resolve,1850));
+  expect((await post(request,'/api/island/resource/finish',token,{id:tree.id,requestId:require('node:crypto').randomUUID()})).status).toBe(200);
+  await expect.poll(()=>page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key)).toBe(false);
+  expect((await post(request,'/api/test/island/events',token,{grow:tree.id})).status).toBe(200);
+  await expect.poll(()=>page.evaluate(k=>window.PlazaDebug().resources().find(r=>r.key===k)?.fruit,key)).toBe(true);
+  await approach();await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나무 열매 · 따기');
+  await page.clock.install();await page.clock.pauseAt(await page.evaluate(()=>Date.now()+10000));
+  const started=page.waitForResponse(r=>r.url().endsWith('/api/island/resource/start'));
+  await page.keyboard.press('Space');expect((await started).status()).toBe(200);
+  await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe('resource');
+  const cancelled=page.waitForResponse(r=>r.url().endsWith('/api/island/resource/cancel'));
+  await page.keyboard.press('Escape');expect((await cancelled).status()).toBe(200);
+  await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().gather)).toBe(null);
+  expect((await get(request,'/api/island/bag',token)).data.items.find(i=>i.itemId==='berry').qty).toBe(1);
+  expect((await get(request,'/api/test/island/events',token)).data.events.find(e=>e.id===tree.id).state).toBe('open');
+  await expectNoScriptError(page);await who.context.close();
 });
 
 test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
@@ -190,6 +217,7 @@ async function island(browser, request, label, registry, { failLoader = false } 
       lobbyHidden: document.getElementById('lobbyView')?.classList.contains('hidden'),
       plazaClasses: document.getElementById('plazaStage')?.className,
       plazaError: document.getElementById('plazaError')?.textContent,
+      diagnostics: window.PlazaDiagnostics || null,
       sceneReady: Boolean(window.PlazaDebug?.()), readyState: document.readyState,
     })));
     throw error; // keep the original deadline/failure; no automatic reload or timeout increase
