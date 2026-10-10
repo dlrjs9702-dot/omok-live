@@ -1010,6 +1010,14 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await expect(page.locator('.lostRequest')).toContainText('사례 10,000P');
   await page.locator('.lostRequest button').click();
   await expect(page.locator('#plazaDialog')).toBeHidden();
+  // The event borrows the same resident on both screens: ten walkers, one identity, exact server wait position.
+  for (const who of [a,b]) {
+    await expect.poll(()=>who.page.evaluate(id=>{
+      const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
+      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
+        near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
+    },lost.id)).toEqual({n:lost.npc.resident,reused:true,count:10,near:true});
+  }
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
@@ -1035,6 +1043,13 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   expect(steps.steps.map(([name]) => name)).toEqual(['give', 'received', 'gone']);
   expect(steps.steps[1][1]).toBeGreaterThanOrEqual(650); expect(steps.steps[2][1] - steps.steps[1][1]).toBeGreaterThanOrEqual(1200);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().carry.others), { timeout: 15000 }).toBe(0);
+  for(const who of [a,b]) {
+    await expect.poll(()=>who.page.evaluate(n=>{
+      const d=window.PlazaDebug(),w=d.wanderers.find(w=>w.n===n);
+      return {count:d.wanderers.length,held:w.held,clear:w.clear,walkable:w.walkable,delay:d.residentReservations[n].delay>0};
+    },lost.npc.resident)).toEqual({count:10,held:false,clear:true,walkable:true,delay:true});
+    await expectNoScriptError(who.page);
+  }
   await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });

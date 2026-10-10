@@ -2044,6 +2044,7 @@
         const body=JSON.stringify({id,requestId:crypto.randomUUID()});
         try { data=await api('/api/island/resource/finish',{method:'POST',body}); } catch(error) { if(error.status) throw error; data=await api('/api/island/resource/finish',{method:'POST',body}); }
       } else data = await api('/api/island/event', { method: 'POST', body: JSON.stringify({ id, owner: key.startsWith('ev:lost_owner:') }) });
+      plaza.controller?.setResidents?.(data.residents);
       if (ev) { completed=true; plaza.controller?.finishGather?.(true); }
       if (data.action === 'talk') { showIslandEvents(data.events || islandEventsNear); openLostRequest(id, data.points); return; } // v1.10.34 부탁
       if (data.action === 'quest') {
@@ -2224,6 +2225,7 @@
     api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p), signal: abort.signal })
       .then((data) => {
         if (visit !== plazaVisit || c !== plaza.controller || !plazaSendTimer) return;
+        plaza.controller?.setResidents?.(data.residents);
         plaza.controller?.setServerTime?.(data.now, sentAt, Date.now()); // v1.10.12: the islanders walk on the server's clock
         if (data.id && data.id !== plazaMyId) { plazaMyId = data.id; showPlazaPlayers(); }
         if (data.corrected && sentAt > (plaza.controller?.trainChangedAt?.() || 0)) { plaza.controller?.correctTo?.(data.x, data.z); plazaLastSent = null; } // discard a correction sent before boarding/alighting

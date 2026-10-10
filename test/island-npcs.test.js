@@ -52,3 +52,20 @@ test('배회 NPC: 닫힌 마지막 구간도 14~55m이며 주기 경계에서 �
     }
   }
 });
+
+
+test('주민 대기: 모든 화면의 예약 위치를 유지하고 다른 사람은 회피하며 늦은 해제도 순간이동하지 않는다', () => {
+  let held=true;
+  const poseAt=(n,ms)=>n===0&&held ? {x:10,z:10,yaw:0,moving:false,held:true}
+    : {x:n===0?10+(ms-1000)/1000:10.2,z:10,yaw:Math.PI/2,moving:n===0};
+  const make=()=>P.createWalkers({walkable:()=>true,solidsNear:()=>[],poseAt});
+  const a=make(), b=make(); a.add(0,0); b.add(0,0); a.add(1,0);
+  for(let ms=0;ms<=1000;ms+=100) {
+    a.step(ms,.1,[{x:10,z:10,r:.5}]); b.step(ms,.1);
+    assert.equal(a.list[0].x,10); assert.equal(a.list[0].z,10);
+    assert.equal(b.list[0].x,10); assert.equal(a.list[0].speed,0);
+    assert.ok(Math.hypot(a.list[1].x-10,a.list[1].z-10)>=P.WALKER.SEP-.01);
+  }
+  held=false; a.step(10000,.1);
+  assert.equal(a.resyncs(),0); assert.ok(Math.hypot(a.list[0].x-10,a.list[0].z-10)<=P.WALKER.TOP+.01);
+});

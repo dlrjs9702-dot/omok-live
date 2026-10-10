@@ -95,8 +95,8 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
     put(n % 3 === 2 ? 'pumpkinB' : 'pumpkinA', px, pz, Math.atan2(x - px, z - pz) + Math.PI); n += 1; // facing the walk
   }
   // the fields: a scarecrow and a hay bale in each flower field, a witch's broom in the nature area, a cauldron by the pond
-  for (const [x, z] of [[-34, 58], [-58, 30], [20, 40], [-22, -30], [58, 22], [-6, 44]]) { const ry = Math.atan2(-x, -z) + Math.PI; if (fit('scarecrow', x, z, ry)) fit('hay', x + 1.8, z + 0.6, ry + 0.4); }
-  fit('broom', -46, 50, 0.6); fit('broom', -60, -24, 2.1); fit('hay', -44, 40, 1.2);
+  for (const [x, z] of T.HALLOWEEN_FIELDS) { const ry = Math.atan2(-x, -z) + Math.PI; if (fit('scarecrow', x, z, ry)) fit('hay', x + 1.8, z + 0.6, ry + 0.4); }
+  for (const [kind,x,z,ry] of T.HALLOWEEN_EXTRAS) fit(kind,x,z,ry);
   fit('cauldron', T.POND.x + T.POND.r + 1.8, T.POND.z, Math.PI / 2);
   // strings: lights from lamp to lamp round the plaza, bunting between each walk's neighbouring lamps
   const string = (kind, a, b, ya, yb) => {

@@ -1257,22 +1257,33 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!o?.npc) { setCarry(me, null); returning.delete(id); return; }
     o.leaving = true; delete eventDoors[`ev:lost_owner:${id}`];
     const p = me.root.position; const q = o.root.position;
-    me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; o.npc.home.yaw = o.root.rotation.y;
+    me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; if (o.resident != null) {
+      o.npc.returnYaw = Math.atan2(p.x-q.x,p.z-q.z);
+    } else o.npc.home.yaw = o.root.rotation.y;
     if (!me.anim?.play('give')) me.hop = 1;
     o.npc.anim?.play('receive');
-    setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
+    o.giveTimer = setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
       if (!o.root.parent) { returning.delete(id); return; }
       const stand = me.carryStand; me.carryStand = null; me.carryId = null; me.carrying = false;
-      if (stand?.parent) { o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
+      if (stand?.parent) { o.receivedStand = stand; o.npc.root.add(stand); stand.position.set(0.32, 0.8, 0.3); }
       assets.handOver(me, o.npc, 'carry'); step('received');
       // Begin the owner's hold after the actual handover: a delayed Give timer must
       // not consume Receive's visible time on a busy or backgrounded page.
-      setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 1400);
+      o.receiveTimer = setTimeout(() => { if (o.root.parent) removeEvent(`ev:lost_owner:${id}`, o); returning.delete(id); step('gone'); }, 1400);
     }, 700);
   }
   function removeEvent(key, o) {
-    scene.remove(o.root); facilityRoots.splice(facilityRoots.indexOf(o.root), 1);
-    if (o.npc) { npcs.splice(npcs.indexOf(o.npc), 1); disposeCharacter(o.npc); }
+    clearTimeout(o.giveTimer); clearTimeout(o.receiveTimer);
+    scene.remove(o.root); const rootIndex=facilityRoots.indexOf(o.root); if(rootIndex>=0) facilityRoots.splice(rootIndex,1);
+    if (o.resident != null) {
+      const c=o.npc;
+      if(c?.residentKey===key) {
+        delete c.residentKey; delete c.returnYaw; c.waving=false; c.lookAt=null;
+        delete c.root.userData.facility; const index=facilityRoots.indexOf(c.root); if(index>=0) facilityRoots.splice(index,1);
+        disposeTag(c.tag); c.tag=null; assets.letGo(c,'cameraBag'); assets.letGo(c,'carry');
+        o.receivedStand?.removeFromParent(); c.anim?.release?.();
+      }
+    } else if (o.npc) { const index=npcs.indexOf(o.npc); if(index>=0) npcs.splice(index,1); disposeCharacter(o.npc); }
     o.root.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
     eventObjs.delete(key); delete eventDoors[key];
   }
@@ -1305,12 +1316,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     questScenes.boat.position.set(T.PIER.x + 4 + t * 0.4, -0.6, T.PIER.z + T.PIER.half + 5 + t * 2);
     if (t >= 8) { questScenes.boat.visible = false; questScenes.departure = null; }
   }
+  let lastResidentEvents = [];
   function setEvents(list) {
+    lastResidentEvents = list || [];
     const seen = new Set(); let carried = null;
     for (const ev of list || []) {
       if (!ev?.id || !Number.isFinite(ev.x) || !Number.isFinite(ev.z)) continue;
       if (ev.kind === 'carrying') { if (!returning.has(ev.id)) carried = ev; continue; }
       const key = `ev:${ev.kind}:${ev.id}`; seen.add(key);
+      const resident = ['photo','lost_owner'].includes(ev.kind) && Number.isInteger(ev.resident) && ev.resident>=0 && ev.resident<IslandNpcs.COUNT ? ev.resident : null;
+      const borrowed = resident == null ? null : wanderers.find(w=>w.n===resident)?.c;
+      // Never create a replacement while the initial ten characters load, or interrupt an actual handover.
+      if (resident != null && (!borrowed || (borrowed.residentKey && borrowed.residentKey!==key && eventObjs.get(borrowed.residentKey)?.leaving))) continue;
       if (!eventObjs.has(key)) {
         const root = new THREE.Group(); root.position.set(ev.x, heightAt(ev.x, ev.z), ev.z); root.rotation.y = (ev.x * 7 + ev.z * 3) % TAU; scene.add(root);
         let npc = null;
@@ -1328,20 +1345,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         } else if (ev.kind === 'quest_spot') { // where a step asks me to go: only on the map
         } else if (ev.kind === 'photo' || ev.kind === 'lost_owner') { // a visitor: a tourist with a camera, or someone who lost something
           const spec = ev.kind === 'photo' ? { shirt: 0xffd166, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xff8a5c } : { shirt: 0x9ad0ff, hair: 0x8b5a2b, skin: 0xffe0c4 };
-          npc = makeCharacter(spec);
-          root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
+          npc = borrowed || makeCharacter(spec);
+          if (borrowed) {
+            const previous=eventObjs.get(npc.residentKey); if(previous) removeEvent(npc.residentKey,previous);
+            npc.residentKey=key; npc.root.userData.facility=key; facilityRoots.push(npc.root);
+            root.rotation.y=Number.isFinite(ev.yaw)?ev.yaw:0;
+          } else {
+            root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
+            assets.dress(['character.visitor', 'character.islander'], npc); dressUp(npc, { gender: ev.kind === 'photo' ? 'female' : 'male' }, spec);
+          }
           if (ev.kind === 'photo') { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
           if (ev.kind === 'photo') assets.hold(npc, 'quest.camera_bag', 0, { key: 'cameraBag', bone: 'Chest', at: [0.28, -0.5, -0.12], proc: [0.28, 0.65, 0.1] });
           // what they want, at a glance: the tourist's camera; the owner of a lost thing a yellow star 「!」 (v1.10.34)
           if (ev.kind !== 'photo') { npc.tag = makeStarMark(); npc.root.add(npc.tag); } else { npc.tag = makeTag('📷', null); npc.tag.scale.multiplyScalar(0.7); npc.root.add(npc.tag); } fitTag(npc);
-          npcs.push(npc);
+          if (!borrowed) npcs.push(npc);
         } else if (ev.kind === 'berry' && ev.tree) { root.position.set(ev.tree.x,heightAt(ev.tree.x,ev.tree.z),ev.tree.z); root.rotation.y=ev.tree.yaw; const h=new THREE.Group(); root.add(h); const fallback=new THREE.Group(); for(const a of [[.74,1.3,0],[.37,1.42,.64086],[-.37,1.3,.64086],[-.74,1.42,0],[-.37,1.3,-.64086],[.37,1.42,-.64086]]) mesh(new THREE.SphereGeometry(.09,6,4),mat(0xfbbf24),...a,fallback); h.add(fallback); assets.attach('tree.fruitLayer',h,fallback); root.userData.fruit=h; } else { eventModel(ev.kind, root, ev.id); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);
-        eventObjs.set(key, { root, npc });
+        eventObjs.set(key, { root, npc, resident });
       }
       if (ev.verb) eventDoors[key] = { x: ev.x, z: ev.z, name: ev.resource ? `${ev.name} · ${ev.verb}` : ev.verb, resource: ev.resource, tree: ev.tree }; else delete eventDoors[key];
       const o = eventObjs.get(key);
       o.root.userData.facility = ev.verb ? key : null;
+      if(o.resident != null) o.npc.root.userData.facility=ev.verb?key:null;
       if (o.root.userData.fruit) o.root.userData.fruit.visible = ev.available !== false;
       if (ev.kind === 'quest_npc' && ['granny', 'fisher'].includes(ev.story)) {
         const s = prepareQuestScenes();
@@ -1372,6 +1397,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the same follower as other people (remote-motion.js), which also lets one step around me instead of through me.
   const wanderers = []; // { n, c, w } -- w: the islander's walker state (island-npcs.js createWalkers)
   let walkers = null;
+  let residentStates = [];
+  function setResidents(list) {
+    if (!Array.isArray(list) || list.length !== IslandNpcs.COUNT) return;
+    if (!list.every((s,n)=>s?.n===n && Number.isFinite(s.delay) && s.delay>=0 &&
+      (!s.hold || (typeof s.hold.eventId==='string' && Number.isFinite(s.hold.x) && Number.isFinite(s.hold.z) && Number.isFinite(s.hold.yaw))))) return;
+    residentStates = list.map(s=>({...s,hold:s.hold?{...s.hold}:null}));
+  }
+  function residentPose(n,ms) {
+    const o=[...eventObjs.values()].find(o=>o.resident===n && o.leaving);
+    // Keep the recipient visible until the actual delayed Give/Receive timers finish on this screen.
+    if(o) return {x:o.root.position.x,z:o.root.position.z,yaw:o.npc.returnYaw??o.root.rotation.y,moving:false,held:true};
+    return IslandNpcs.residentAt(n,ms,residentStates[n]);
+  }
   let serverOffset = 0; let clockRtt = Infinity; // server ms minus my ms, from the quickest answer seen
   function setServerTime(serverMs, sentAt, receivedAt) {
     const rtt = receivedAt - sentAt;
@@ -1381,7 +1419,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const wanderersTimer = setTimeout(() => { // after the first frames: the islanders' map takes a moment to work out
     if (!IslandNpcs) return;
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
-    walkers = IslandNpcs.createWalkers({ walkable, solidsNear });
+    walkers = IslandNpcs.createWalkers({ walkable, solidsNear, poseAt:residentPose });
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
       const r = IslandNpcs.round(n);
       const c = makeCharacter(r.look); c.groundedWalk = true;
@@ -1391,6 +1429,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       scene.add(c.root); assets.dress('character.islander', c); dressUp(c, { gender: n % 2 ? 'female' : 'male' }, r.look);
       wanderers.push({ n, c, w });
     }
+    setEvents(lastResidentEvents);
   }, 400);
   function stepWanderers(dt) {
     if (!walkers) return;
@@ -1399,12 +1438,23 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // other players and event visitors are circles to give way to
     const people = [{ x: m.x, z: m.z, r: playerRadiusAt(m.x, m.z) }];
     for (const o of others.values()) people.push({ x: o.c.root.position.x, z: o.c.root.position.z, r: playerRadiusAt(o.c.root.position.x, o.c.root.position.z) });
-    for (const o of eventObjs.values()) if (o.npc) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R });
+    for (const o of eventObjs.values()) if (o.npc && o.resident == null) people.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R });
     walkers.step(Date.now() + serverOffset, dt, people);
     for (const { c, w } of wanderers) {
       c.root.position.set(w.x, heightAt(w.x, w.z), w.z); // the exact ground (slopes, bridge decks) every frame
       c.root.visible = Math.hypot(w.x - m.x, w.z - m.z) < 85;
       if (!c.root.visible) continue;
+      if (w.pose.held) {
+        const hold=residentStates[w.n]?.hold;
+        if(hold?.returning && c.returnYaw==null && c.returnEmote!==hold.eventId) {
+          c.returnEmote=hold.eventId; c.anim?.play('receive');
+        }
+        const close=Boolean(c.residentKey && near===c.residentKey);
+        c.targetYaw=c.returnYaw??w.pose.yaw;
+        c.lookAt=close && c.returnYaw==null ? Math.atan2(m.x-w.x,m.z-w.z)-c.targetYaw : null;
+        c.waving=close && c.returnYaw==null; animate(c,dt,false); continue;
+      }
+      c.waving=false; delete c.returnEmote;
       c.targetYaw = w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw;
       c.lookAt = w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
       animate(c, dt, w.speed > 0.3, w.speed);
@@ -1446,7 +1496,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // function so a spatial grid can replace the plain loop if the plaza ever holds many people.
   function otherCircles() {
     const out = [];
-    for (const o of eventObjs.values()) if (o.npc) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
+    for (const o of eventObjs.values()) if (o.npc && o.resident == null) out.push({ x: o.root.position.x, z: o.root.position.z, r: PLAYER_R }); // v1.10.11: event NPCs stand like people
     for (const { c, w } of wanderers) if (c.root.visible && playerRadiusAt(w.x, w.z) === PLAYER_R) out.push({ x: w.x, z: w.z, r: PLAYER_R }); // v1.10.12: and the islanders (never at a door: an islander passing by never blocks an entrance)
     for (const o of others.values()) {
       if (o.ride || o.platform) continue;
@@ -1891,6 +1941,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function dispose() {
     stop(); observer.disconnect();
     document.removeEventListener('visibilitychange', resetFrameSample);
+    for(const [key,o] of [...eventObjs]) removeEvent(key,o);
+    returning.clear();
     occlusion.dispose(); assets.dispose();
     for (const o of others.values()) disposeCharacter(o.c); others.clear(); disposeWanderers();
     window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur);
@@ -1913,7 +1965,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     };
     return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: { ...doors }, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
-      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, wanderers: wanderers.map(({ n, c, w }) => ({ n, x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
+      bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
   // The island map in a window (안내 지도): drawn into the caller's canvas with where I stand now.
@@ -2020,6 +2072,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const hideForPhoto = () => scene.traverse((o) => { if (o.isSprite && o.visible) { o.visible = false; photoHidden.add(o); } });
   const photoPose = (on = true) => { if (!on) return me.anim?.release?.(); me.targetYaw = Math.atan2(camera.position.x - me.root.position.x, camera.position.z - me.root.position.z); return me.anim?.loop?.('photo'); }; // turned to the camera, held through the countdown and the shot
   function capture() { if (!photoMode) return Promise.resolve(null); hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
-  return { canInteract, holdQuestDeparture, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+  return { canInteract, holdQuestDeparture, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

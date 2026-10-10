@@ -160,6 +160,7 @@ test('주민 이벤트: 같은 주민 ID·대기 위치를 모두에게 보내�
   assert.equal(ownerA.resident,e.resident);
   assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
   assert.ok(T.walkable(ownerA.x,ownerA.z));
+  assert.ok(!T.onBridge(ownerA.x,ownerA.z),'다리를 피한 공용 대기');
   const grab=ev.claim(e.id,'a',e); ev.settle(grab,false,'a');
   assert.equal(e.state,'open'); assert.equal(ev.residents()[e.resident].hold.eventId,e.id);
   const picked=ev.claim(e.id,'a',e); ev.settle(picked,true,'a');
