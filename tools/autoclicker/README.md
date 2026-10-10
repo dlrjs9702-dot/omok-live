@@ -1,9 +1,10 @@
 # 오토클릭
 
-Windows 전용. 파이썬(3.8+)만 있으면 되고 추가 설치는 필요 없습니다.
+Windows 전용. `autoclicker.exe`(64비트)는 설치 없이 더블클릭만 하면 실행됩니다.
+(파이썬판 `autoclicker.pyw`도 있지만 파이썬이 필요합니다. exe는 `go/main.go`에서 빌드한 같은 기능입니다.)
 
 ## 실행
-`autoclicker.pyw`를 더블클릭 (또는 `pythonw autoclicker.pyw`).
+`autoclicker.exe`를 더블클릭. 서명되지 않은 파일이라 Windows SmartScreen이 경고하면 "추가 정보 → 실행"을 누르세요.
 
 ## 사용법
 1. **+ 지점 추가** → 번호가 붙은 빨간 원이 화면에 나타납니다. 마우스로 끌어서 클릭할 위치에 놓습니다.
@@ -13,5 +14,5 @@ Windows 전용. 파이썬(3.8+)만 있으면 되고 추가 설치는 필요 없�
 5. **저장 / 불러오기** 로 지점 위치와 간격을 JSON 파일로 보관하고 다음에 바로 불러옵니다.
 
 ## 참고
-- exe로 만들고 싶으면: `pip install pyinstaller` 후 `pyinstaller --onefile --noconsole autoclicker.pyw`
+- exe 다시 빌드: `cd go && GOOS=windows GOARCH=amd64 go build -ldflags "-H windowsgui -s -w" -o ../autoclicker.exe .`
 - 일부 게임·관리자 권한 프로그램에는 클릭이 안 먹을 수 있습니다. 그땐 오토클릭도 관리자 권한으로 실행하세요.
