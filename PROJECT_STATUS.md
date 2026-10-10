@@ -11,7 +11,9 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
-## v1.10.60 주민 의뢰·이야기 순환 (코드 준비, 미배포)
+## v1.10.60 주민 의뢰·이야기 순환
+
+- 최종 CI 보완(Claude Code, 2026-10-10): PR203 CI38045996622 광장 묶음의 기념사진 검사가 가방 사진 탭 「1/7」 대신 「1/8」(3시도 동일). 사진가 기념품 `memory_island`가 사진 탭 목록에 들어가 분모가 늘어난 것 — 탭의 개수는 촬영 장소 7곳만 세고 기념품은 표시만 한다(`public/app.js`), 기념품 검사에 「0/7」 확인 추가. 관련 Chromium 5건(기념사진2·사진가2·운반·전달) retry0 통과, 전체 npm 781/781.
 
 - 의뢰 수락 후 머리 위 상태 마크가 없어지면 주민 지도 위치도 사라지는 기존 문제를 실제 Chromium에서 재현했다(mark:null/position:false). 서버의 계정별 진행 중 여부와 머리 위 상태 마크를 분리해 지도 위치를 유지한다. 기존 미니맵 발견 범위는 유지하며 완료 후 진행 표시를 제거한다. 보완 후 서버3/3·관련 Chromium1/1 retry0(22.2초)·전체 npm781/781(93.82초/생략0)·변경 JS/diff 검사 성공. 기존759 CI는 보완 전 실행이며 최종 HEAD의 네 CI 확인 전 병합하지 않는다.
 
