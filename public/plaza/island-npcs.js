@@ -196,6 +196,16 @@
     return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: true };
   }
 
+  // A server reservation pauses this resident's existing round, rather than creating another NPC.
+  function residentAt(n, ms, state = null) {
+    const hold = state?.hold;
+    if (hold && Number.isFinite(hold.x) && Number.isFinite(hold.z) && Number.isFinite(hold.yaw)) {
+      return { x: hold.x, z: hold.z, yaw: hold.yaw, moving: false, held: true };
+    }
+    const delay = Number.isFinite(state?.delay) && state.delay >= 0 ? state.delay : 0;
+    return at(n, ms - delay);
+  }
+
   // v1.10.16 이동 현실화: how the islanders are drawn walking on a screen. The shared round (`at`) stays the plan every
   // screen agrees on; what is drawn is that point plus a small local offset, which only grows to step around what the
   // coarse route grid does not know (benches, flower beds, a fence, a lamp), around each other and around people, and
@@ -314,5 +324,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));
