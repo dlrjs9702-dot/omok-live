@@ -907,7 +907,7 @@ plazaTicker.unref?.();
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
 // the events near them (with each pose answer), so no screen holds the whole island's list; when one is solved every
 // screen is told at once to drop it (the lobby stream), and a new one appears elsewhere.
-const islandEvents = createIslandEvents({ now: () => nowMs() });
+const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform) });
 function broadcastIslandRemoved(ids) {
   if (!ids.length) return;
   for (const entry of [...lobbyStreams]) {

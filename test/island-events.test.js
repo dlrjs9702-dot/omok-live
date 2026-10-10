@@ -202,3 +202,12 @@ test('주민 이벤트: 사진 부탁도 기존10명 예약을 쓰고 서버 재
   }
   assert.ok(found,'실제 사진 이벤트 검증');
 });
+
+test('주민 예약: 플레이어가 선점한 대기 위치는 고르지 않고 비워지면 공용 의뢰를 채운다',()=>{
+  const N=require('../public/plaza/island-npcs');const time=Date.parse('2026-10-08T12:00:00+09:00');
+  let people=Array.from({length:N.COUNT},(_,n)=>N.at(n,time));
+  const ev=createIslandEvents({random:seeded(7),now:()=>time,occupied:()=>people});
+  assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,0,'플레이어가 서 있는 주민 대기점을 피한다');
+  assert.ok(ev.residents().every(s=>!s.hold));
+  people=[];ev.expire();assert.equal([...ev.events.values()].filter(e=>TYPES[e.type].npc).length,1,'자리가 비면 다음 조회에서 복구');
+});
