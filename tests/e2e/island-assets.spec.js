@@ -764,7 +764,9 @@ test('조합 맞춤: 모자-헤어 덮기, 목걸이·망토 밀어내기, 꼬�
   }
   // v1.10.32 운반 on the common character: the lost thing's model on the chest joint, the arms laid over
   const lost = (await post(request, '/api/test/island/lost', token, {})).data.event;
-  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
+  // Select the actual dropped object at distance zero; an offset can correctly select a nearer random weed.
+  await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [lost.x, lost.z]);
+  await expect.poll(() => page.evaluate(p => { const d = window.PlazaDebug(); return Math.hypot(d.x - p.x, d.z - p.z); }, lost)).toBeLessThan(0.1);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 60000 }).toMatchObject({ mine: lost.id, arms: true, held: true, on: 'Chest' }); // its model may still be coming on a slow runner

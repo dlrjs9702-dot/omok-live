@@ -1326,7 +1326,10 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).tail).toBe(true); // v1.10.46: a tail tucked while seated
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.lift), { timeout: 10000 }).toBeCloseTo(0.28, 1);
   // Updating the appearance while seated keeps the local pose flag and remote seat claim.
-  expect((await post(request, '/api/skins/equip', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
+  const equipped = await post(request, '/api/skins/equip', a.token, { skinId: 'avatar_hat_1' });
+  expect(equipped.status).toBe(200);
+  // The API helper does not run app.js's response handler; forward its actual result through that renderer entry point.
+  await a.page.evaluate(avatar => window.PlazaDebug().setAvatar(avatar), equipped.data.avatar);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().look.hat)).toBe('avatar_hat_1');
   expect(await a.page.evaluate(() => window.PlazaDebug().act())).toMatchObject({ sitting: true, tail: true });
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find(o => o.act === 'sit')?.seat)).toBe(seat.id);
