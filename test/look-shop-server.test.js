@@ -13,7 +13,7 @@ const crypto = require('node:crypto');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 
-test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·의상은 차감 없이 거절, 성공은 요청당 한 번 차감되고 외형에 반영', async (t) => {
+test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘못된 품목은 차감 없이 거절, 성공은 요청당 한 번 차감되고 외형에 반영', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'look-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir);
@@ -49,7 +49,7 @@ test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·의�
   assert.equal((await req('/api/skins/buy', sa, { skinId: 'avatar_outfit_2' })).status, 200);
   assert.equal((await req('/api/skins/equip', sa, { skinId: 'avatar_hair_1' })).status, 200);
   const before = await balance();
-  assert.equal((await dye('avatar_outfit_2', 'c12')).status, 400); // clothes are not dyed
+  assert.equal((await dye('avatar_outfit_999', 'c12')).status, 400); // no such owned outfit
   assert.equal((await dye('avatar_hair_1', 'c99')).status, 400);
   assert.equal(await balance(), before);
   const dyed = await dye('avatar_hair_1', 'c12');
@@ -109,19 +109,22 @@ test('캐릭터 스킨: 등급 가격 1회 결제·중복 구매 무과금·5칸
   assert.equal((await req('/api/skins/equip', sa, { skinId: null, game: 'avatar', slot: 'shoes' })).status, 200);
   look = (await req('/api/skins', sa)).data.avatar.look;
   assert.equal(look.shoes, undefined); assert.equal(look.cape, items.cape);
-  // dyed: a cape yes (5,000P), an outfit no
+  // owned cape and outfit: 5,000P each, shared with other players
   const dyed = await req('/api/avatar/dye', sa, { itemId: items.cape, color: 'c22', requestId: crypto.randomUUID() });
   assert.equal(dyed.status, 200); assert.deepEqual(dyed.data.avatar.look.dye, { [items.cape]: '#34507e' });
   assert.equal((await req('/api/skins/buy', sa, { skinId: 'avatar_outfit_6' })).status, 200);
-  assert.equal((await req('/api/avatar/dye', sa, { itemId: 'avatar_outfit_6', color: 'c22', requestId: crypto.randomUUID() })).status, 400);
-  assert.equal(await balance(), start - spent - 5_000 - price('avatar_outfit_6'));
+  const outfitRequest = crypto.randomUUID();
+  const outfitDyes = await Promise.all([1, 2, 3].map(() => req('/api/avatar/dye', sa, { itemId: 'avatar_outfit_6', color: 'c22', requestId: outfitRequest })));
+  for (const r of outfitDyes) assert.equal(r.status, 200);
+  assert.equal((await req('/api/skins/equip', sa, { skinId: 'avatar_outfit_6' })).status, 200);
+  assert.equal(await balance(), start - spent - 10_000 - price('avatar_outfit_6'));
   // a new session of the same account: the same look
   await server.release(sa); await sleep(1500);
   sa = await server.enter(keyA);
   assert.ok(sa, server.logs());
   look = (await req('/api/skins', sa)).data.avatar.look;
   assert.equal(look.cape, items.cape); assert.equal(look.necklace, items.necklace); assert.equal(look.tail, items.tail); assert.equal(look.hat, items.hat);
-  assert.deepEqual(look.dye, { [items.cape]: '#34507e' });
+  assert.deepEqual(look.dye, { [items.cape]: '#34507e', avatar_outfit_6: '#34507e' });
   // the plaza: someone else sees the look, and the lost thing carried
   const lost = (await req('/api/test/island/lost', sa, {})).data.event;
   assert.ok(lost);
@@ -136,6 +139,6 @@ test('캐릭터 스킨: 등급 가격 1회 결제·중복 구매 무과금·5칸
   while (!/event: plaza\ndata: [^\n]+\n/.test(text)) { const { value, done } = await reader.read(); if (done) break; text += new TextDecoder().decode(value); }
   const players = JSON.parse(text.match(/event: plaza\ndata: ([^\n]+)\n/)[1]).players;
   const a = players.find((p) => p.look?.cape === items.cape);
-  assert.ok(a, 'the other player sees the cape'); assert.equal(a.look.necklace, items.necklace); assert.equal(a.carry, lost.id);
+  assert.ok(a, 'the other player sees the cape'); assert.equal(a.look.necklace, items.necklace); assert.equal(a.carry, lost.id); assert.equal(a.look.dye.avatar_outfit_6, '#34507e');
   ctrl.abort();
 });

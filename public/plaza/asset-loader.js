@@ -624,7 +624,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       place(object, base.entry);
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
-      const high = []; const low = []; const mats = [];
+      const high = []; const low = []; const always = []; const mats = [];
       const worn = {}; // material name -> the colour put on it (tests)
       const own = (m, colors) => { // the shared material in the colours this character wants on it
         const list = [].concat(m.material).map((x) => { const want = colors?.[x.name] || plan.tint?.[x.name]; if (want) worn[x.name] = want; const rec = wearMaterial(x, want, c.player); mats.push(rec); return rec.material; });
@@ -652,7 +652,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
         const tail = p.entry.fit?.slot === 'tail';
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : [], fit, tail); // a part without a Low file shows at every distance
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : always, fit, tail); // a part without a Low file shows at every distance
         if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail);
       });
       c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
@@ -682,11 +682,12 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       };
       c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };
       c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start
+      if (c.tailTucked) { if (!c.noTuck || !anim.loop('rideLook')) anim.loop('sitIdle'); }
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown['character.base'] = 'model';
       c.wardrobe = plan.parts.slice();
       // v1.10.35: how tall it stands with what it wears (the bind pose, a hat counted), for the name tag over its head
       c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
-      for (const m of high) { m.skeleton.update(); m.computeBoundingBox(); top.union(m.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, m.matrixWorld))); }
+      for (const m of [...high, ...always]) { m.skeleton.update(); m.computeBoundingBox(); top.union(m.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, m.matrixWorld))); }
       if (Number.isFinite(top.max.y) && top.max.y > 0.5) { c.headTop = top.max.y; c.onWorn?.(); }
       for (const key of Object.keys(c.holding || {})) if (c.holding[key].object) seat(c, c.holding[key]); // a thing held before the model came: into its hands
       const rec = { c, high, low, isHigh: true }; if (low.length) { for (const m of low) m.visible = false; wearing.push(rec); }

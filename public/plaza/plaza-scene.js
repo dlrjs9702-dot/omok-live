@@ -761,6 +761,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
   function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
+    me.tailTucked = old.tailTucked; me.noTuck = old.noTuck;
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
     disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me); dressUp(me, look);
     if (name) { me.tag = makeTag(name, title, champion, hoguking); me.root.add(me.tag); fitTag(me); }
@@ -779,8 +780,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion), Boolean(p.hoguking)]);
       let o = others.get(p.id);
       if (o && o.key !== key) { // a new look or title: rebuild in place
-        const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; disposeCharacter(o.c);
-        o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.player = true; o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
+        const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; const tucked = o.c.tailTucked; const noTuck = o.c.noTuck; disposeCharacter(o.c);
+        o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.player = true; o.c.tailTucked = tucked; o.c.noTuck = noTuck; o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
         o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.material.fog = false; o.c.root.add(o.c.tag); fitTag(o.c); scene.add(o.c.root); assets.dress('character.player', o.c); dressUp(o.c, p.look || {});
       }
       if (!o) {

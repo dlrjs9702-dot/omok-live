@@ -1686,3 +1686,5 @@ body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint
 .trainControls{position:absolute;z-index:5;left:50%;bottom:82px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}
 .trainControls .primary{background:#2563eb;color:#f8fafc;font-size:1rem;padding:13px 22px;box-shadow:0 4px 16px rgba(0,0,0,.28)}
 body:has(#plazaDialog[open]) .trainControls,body.photoMode .trainControls{display:none}
+
+.skinTitle.selected{background:#1e293b;color:#f8fafc;outline:2px solid #60a5fa;outline-offset:1px}

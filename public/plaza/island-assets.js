@@ -136,14 +136,14 @@
     'wear.face_eyes_cheeks': part('face_eyes_cheeks', 'face', { low: false }), 'wear.hair_cap': part('hair_cap', 'hair', { low: false }), 'wear.hair_long': part('hair_long', 'hair', { low: false }),
     'wear.basic_shirt': part('basic_shirt', 'top', { low: false }), 'wear.female_shirt': part('female_shirt', 'top', { low: false }),
     'wear.basic_pants': part('basic_pants', 'bottom', { low: false }), 'wear.short_skirt': part('short_skirt', 'bottom', { low: false }), 'wear.shoes': part('shoes', 'shoes', { low: false }),
-    'wear.overalls': part('overalls', 'outfit', { low: false }), 'wear.cat_ears': part('cat_ears', 'hat', { low: false, dye: 'hair' }),
+    'wear.overalls': part('overalls', 'outfit', { low: false, dye: 'overalls' }), 'wear.cat_ears': part('cat_ears', 'hat', { low: false, dye: 'hair' }),
   });
   // hair (05 skins pack, and the two older looks remade on the common rig: 무지개 머리 in its five colours, 별빛 머리)
   for (const file of ['hair_twin_tail', 'hair_curly', 'hair_ponytail', 'hair_spiky', 'hair_crew', 'hair_side_part', 'hair_bob', 'hair_straight', 'hair_bun', 'hair_braid']) REGISTRY[`wear.${file}`] = part(file, 'hair', { dye: 'hair' });
   for (const file of ['hair_rainbow', 'hair_starlight']) REGISTRY[`wear.${file}`] = part(file, 'hair');
   // outfits: the whole set of clothes (the 05 outfits with the pelvis filled in, the older four remade)
-  for (const file of ['casual', 'hoodie', 'sailor', 'apron', 'explorer', 'raincoat', 'knight', 'robe', 'dress', 'sports', 'stripes', 'hanbok', 'space']) REGISTRY[`wear.outfit_${file}`] = part(`outfit_${file}`, 'outfit', { replaces: ['top', 'bottom'] });
-  REGISTRY['wear.outfit_royal'] = part('outfit_royal', 'outfit', { replaces: ['top', 'bottom'], hideWith: { cape: ['cape_main', 'cape_trim'] } }); // its cape gives way to a worn one
+  for (const file of ['casual', 'hoodie', 'sailor', 'apron', 'explorer', 'raincoat', 'knight', 'robe', 'dress', 'sports', 'stripes', 'hanbok', 'space']) REGISTRY[`wear.outfit_${file}`] = part(`outfit_${file}`, 'outfit', { dye: file === 'hanbok' ? ['main', 'chima'] : 'main', replaces: ['top', 'bottom'] });
+  REGISTRY['wear.outfit_royal'] = part('outfit_royal', 'outfit', { dye: 'main', replaces: ['top', 'bottom'], hideWith: { cape: ['cape_main', 'cape_trim'] } }); // its cape gives way to a worn one
   // v1.10.40 모자 쓰는 깊이: `seat` [sink, widen] -- the made hats sat on top of the head (their rim at the crown of it,
   // about 2.0, their crown narrower than the head); these come down to about the forehead line, as much wider as the
   // head needs to stay inside (measured from the 05 pack against body_core). Beanie, cap and flower already sat low.
@@ -159,7 +159,7 @@
   // v1.10.36 할로윈 (2026-10-06 Halloween pack): the same rig and fitting; each its own dye material (outfits never dyed)
   const HW = { hair: ['pumpkin_bob', 'moon_buns', 'witch_waves', 'vampire_sweep', 'ghost_curls'], outfit: ['pumpkin', 'witch', 'vampire', 'mummy', 'ghost'],
     hat: ['witch', 'pumpkin', 'bat', 'mummy', 'ghost'], cape: ['bat', 'moon', 'ghost'], tail: ['devil', 'wisp', 'vine'], shoes: ['witch', 'mummy', 'pumpkin'], necklace: ['pumpkin', 'bat', 'moon_key'] };
-  const HW_FIT = { 'hair': { dye: 'hair' }, 'outfit': { replaces: ['top', 'bottom'] }, 'hat_witch': { dye: 'main', cover: 2.04, sink: 0.12, widen: 1.18 }, 'hat_pumpkin': { dye: 'accent', cover: 1.98 }, 'hat_bat': { dye: 'main' },
+  const HW_FIT = { 'hair': { dye: 'hair' }, 'outfit': { dye: 'main', replaces: ['top', 'bottom'] }, 'hat_witch': { dye: 'main', cover: 2.04, sink: 0.12, widen: 1.18 }, 'hat_pumpkin': { dye: 'accent', cover: 1.98 }, 'hat_bat': { dye: 'main' },
     'hat_mummy': { dye: 'trim', cover: 1.87 }, 'hat_ghost': { dye: 'main', cover: 2.03 }, 'cape': { dye: 'main' }, 'tail_devil': { dye: 'rose' }, 'tail_wisp': { dye: 'main' }, 'tail_vine': { dye: 'leaf' },
     'shoes': { dye: 'main', replaces: ['shoes'] }, 'necklace_pumpkin': { dye: 'accent' }, 'necklace_bat': { dye: 'trim' }, 'necklace_moon_key': { dye: 'accent' } };
   for (const [slot, designs] of Object.entries(HW)) for (const d of designs) REGISTRY[`wear.${slot}_hw_${d}`] = part(`${slot}_hw_${d}`, slot, HW_FIT[`${slot}_${d}`] || HW_FIT[slot]);
@@ -198,7 +198,7 @@
       const id = WARDROBE[item];
       for (const replaced of REGISTRY[id].fit?.replaces || []) delete parts[replaced];
       parts[slot] = id;
-      const dye = look.dye?.[item]; if (dye && REGISTRY[id].dye) colors[id] = { [REGISTRY[id].dye]: dye };
+      const dye = look.dye?.[item]; if (dye && REGISTRY[id].dye) colors[id] = Object.fromEntries([].concat(REGISTRY[id].dye).map((name) => [name, dye]));
     }
     if (hat && !parts.hat) { parts.hat = 'wear.hat_fedora'; colors['wear.hat_fedora'] = { main: hat }; } // a keeper's hat
     for (const face of ['eyes', 'nose', 'mouth']) { const d = look.face?.[face]; if (d && REGISTRY[`wear.${face}_${d}`]) { parts[face] = `wear.${face}_${d}`; if (face === 'eyes') delete parts.face; } }
@@ -264,7 +264,7 @@
   const ANIMALS = ['cat', 'dog', 'sheep', 'rabbit', 'bear', 'panda', 'fox', 'hamster', 'pig', 'cow'];
   for (const animal of ANIMALS) for (const slot of ['outfit', 'hat', 'tail', 'shoes', 'necklace']) {
     const id = `wear.animal_${animal}_${slot}`;
-    REGISTRY[id] = part(`animal_${animal}_${slot}`, slot, slot === 'outfit' ? { replaces: ['top', 'bottom'] } : slot === 'hat' ? { cover: 1.95 } : slot === 'shoes' ? { replaces: ['shoes'] } : {});
+    REGISTRY[id] = part(`animal_${animal}_${slot}`, slot, slot === 'outfit' ? { dye: 'main', replaces: ['top', 'bottom'] } : slot === 'hat' ? { cover: 1.95 } : slot === 'shoes' ? { replaces: ['shoes'] } : {});
     WARDROBE[`avatar_animal_${animal}_${slot}`] = id;
   }
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
