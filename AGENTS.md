@@ -62,4 +62,5 @@ GPT와 Claude는 이 규칙을 함께 따른다. 도구별 접근 권한과 조�
 
 - 로컬 기준 작업 폴더는 사용자 PC의 `바탕화면\아일랜드`다. 그 안에 `omok-live`(코드), `gamecenter-notes`(비공개 기록), `assets`(에셋 산출물)를 둔다. 서버 배포는 지금처럼 GitHub `main` 병합 → Render 자동 배포로만 한다.
 - **코드 수정·게임 연결·릴리스는 Claude Code만 한다.** Codex는 Claude 작업의 읽기 전용 검토(Claude Code의 codex 플러그인)와 3D 에셋 제작(작업 양식 [docs/work-brief-template.md](docs/work-brief-template.md)의 주문서 기준, 산출물은 `assets` 폴더)만 맡는다. Codex는 `omok-live` 코드를 직접 수정하지 않는다.
+- **패치 순환:** 시작 준비(원격 최신 반영·`STATUS.md` 담당 기록)는 처음 한 번 → [수정 → 작업 PC에서 실행·관련 자동 테스트 → Codex 읽기 전용 검토 1회(지적이 있으면 고침) → 작업 브랜치에 푸시]를 지시마다 반복 → 지시를 모두 마쳤거나 사용자가 확인하겠다고 하면 Draft PR을 한 번 열고 `STATUS.md`에 `확인대기`와 전체 번호의 체크리스트를 남긴다 → 사용자 확인 → 일부 수정이면 그 번호만 같은 순환으로 고침, "배포해"면 docs/release.md대로 버전·공지·병합·Render 확인. Draft PR을 연 뒤의 푸시는 PR CI를 다시 돌리므로 확인 전 중간 수정으로 PR을 일찍 열지 않는다.
 - Claude 사용량이 끝나면 작업을 Codex에 넘기지 않고 기다린다. 중단 시점은 §4대로 푸시하고 `STATUS.md`에 남긴다.
