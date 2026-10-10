@@ -1049,9 +1049,11 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
   const list = (await get(request, '/api/island/weeds', a.token)).data.weeds; // 1,400 on a fresh island (fewer after other tests pulled some)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.count), { timeout: 15000 }).toBe(list.length);
   const [id, x, z] = list.find(([, wx, wz]) => Math.hypot(wx, wz) > 30 && Math.hypot(wx - 20, wz - 20) > 5);
-  await page.evaluate(([px, pz]) => window.PlazaWarp(px + 0.8, pz), [x, z]);
+  // Stand at the actual weed: the old +0.8m offset could correctly select a nearer coin.
+  await page.evaluate(([px, pz]) => window.PlazaWarp(px, pz), [x, z]);
+  await expect.poll(() => page.evaluate(([px, pz]) => { const d = window.PlazaDebug(); return Math.hypot(d.x - px, d.z - pz); }, [x, z])).toBeLessThan(0.1);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 잡초 · 뽑기');
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toMatch(/^weed:/);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().weeds.near)).toBe(`weed:${id}`);
   const pulledId = (await page.evaluate(() => window.PlazaDebug().weeds.near)).slice(5);
   const bagCount = async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'weed')?.qty || 0;
   let releaseFinish; const finishGate=new Promise(resolve=>{releaseFinish=resolve;});
