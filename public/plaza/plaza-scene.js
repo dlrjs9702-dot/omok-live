@@ -1335,11 +1335,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           const QUEST_LOOKS = { granny: [{ gender: 'female', outfit: 'avatar_outfit_9', hat: 'avatar_hat_1', hairColor: '#b9b8b4' }, { shirt: 0x8fbf6a, hair: 0xb9b8b4, skin: 0xffe0c4, hat: 0xe2c27a }],
             fisher: [{ gender: 'male', outfit: 'avatar_outfit_11', hat: 'avatar_hat_6' }, { shirt: 0xf2c94c, hair: 0x4a3326, skin: 0xffd6b0, hat: 0x34507e }],
             kid: [{ gender: 'male', outfit: 'avatar_outfit_16', hat: 'avatar_hat_14' }, { shirt: 0xf08a24, hair: 0x6b4a2b, skin: 0xffe0c4, hat: 0xf08a24 }] }; // v1.10.39: in a pumpkin costume
-          const [look, spec] = QUEST_LOOKS[ev.story] || QUEST_LOOKS.granny;
+          const [look, spec] = QUEST_LOOKS[ev.story] || [{gender:'female',outfit:'avatar_outfit_16',hat:'avatar_hat_1'},{shirt:0xffd166,hair:0x2b2b2b,skin:0xffdcbc,hat:0xff8a5c}];
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key }; dressUp(npc, look, spec);
           if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
           if (ev.story === 'granny') assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });
+          if (['photographer','photomemory'].includes(ev.story)) assets.hold(npc,'quest.camera_bag',0,{key:'questTool',bone:'Chest',at:[0.28,-0.5,-0.12],proc:[0.28,0.65,0.1]});
           if (ev.story === 'fisher') assets.hold(npc, 'quest.fishing_rod', 0, { key: 'questTool' });
           npcs.push(npc);
         } else if (ev.kind === 'quest_spot') { // where a step asks me to go: only on the map
@@ -1382,6 +1383,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         o.mark = ev.mark || null; disposeTag(o.npc.tag); o.npc.tag = null;
         if (o.mark) { o.npc.tag = o.mark === 'ready' ? makeCheckMark() : makeStarMark(); o.npc.root.add(o.npc.tag); fitTag(o.npc); }
       }
+    }
+    if(questScenes) {
+      if(!(list||[]).some(e=>e.kind==='quest_npc'&&e.story==='granny')) { questScenes.empty.visible=true;questScenes.bloom.visible=false;questScenes.frame.visible=false; }
+      if(!(list||[]).some(e=>e.kind==='quest_npc'&&e.story==='fisher')) { questScenes.boat.visible=false;questScenes.departure=null;questScenes.departurePending=false; }
     }
     for (const [key, o] of eventObjs) if (!seen.has(key) && !o.leaving) removeEvent(key, o); // one being handed its thing goes after
     if (!returning.size) setCarry(me, carried?.id || null);
@@ -1452,7 +1457,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         const close=Boolean(c.residentKey && near===c.residentKey);
         c.targetYaw=c.returnYaw??w.pose.yaw;
         c.lookAt=close && c.returnYaw==null ? Math.atan2(m.x-w.x,m.z-w.z)-c.targetYaw : null;
-        c.waving=close && c.returnYaw==null; animate(c,dt,false); continue;
+        c.waving=close && c.returnYaw==null && w.arrived;
+        animate(c,dt,!w.arrived && w.speed>.3,w.speed); continue;
       }
       c.waving=false; delete c.returnEmote;
       c.targetYaw = w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw;
@@ -1466,6 +1472,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!running || typeof id !== 'string') return false;
     const door = doorOf(id);
     if (!door || door.plain) return false;
+    const actor=eventObjs.get(id);
+    if(actor?.resident!=null && !wanderers.find(w=>w.n===actor.resident)?.w.arrived) return false;
     if (id === 'fish:spot') return Boolean(fishing || globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z));
     if (id.startsWith('player:')) {
       const other = others.get(id.slice(7));

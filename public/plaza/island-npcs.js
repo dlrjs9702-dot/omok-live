@@ -281,9 +281,13 @@
       for (const w of list) { // 1) the shared route, plus what is left of the offset
         const pose = poseAt(w.n, ms); w.px = w.x; w.pz = w.z;
         if (pose.held) {
-          w.x = w.bx = pose.x; w.z = w.bz = pose.z; w.pose = pose;
-          w.speed = 0; w.heading = null; w.warped = false; w.rejoining = false;
-          continue; // reserved positions are server-validated and must agree on every screen
+          const distance=Math.hypot(pose.x-w.x,pose.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
+          [w.x,w.z]=move(w.x,w.z,w.x+(pose.x-w.x)*scale,w.z+(pose.z-w.z)*scale);
+          w.bx=pose.x; w.bz=pose.z; w.pose=pose;
+          w.speed=dt?Math.hypot(w.x-w.px,w.z-w.pz)/dt:0;
+          w.arrived=Math.hypot(w.x-pose.x,w.z-pose.z)<0.05;
+          w.heading = null; w.warped = false; w.rejoining = false;
+          continue; // approach the same safe server point; never teleport away from local avoidance
         }
         if (w.pose.held) w.rejoining = true;
         if (w.rejoining && Math.hypot(w.x-pose.x,w.z-pose.z)<0.5) w.rejoining = false;

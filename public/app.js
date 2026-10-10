@@ -1829,7 +1829,8 @@
     plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
     const meta = document.createElement('p'); meta.className = 'lookMeta';
-    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ' · 이번 주 이야기 끝' : ''}` : data.done ? '이번 주 이야기 끝' : '';
+    const doneText=data.fixed?'이야기 끝':'이번 주 이야기 끝';
+    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
     lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell); lostCard.classList.remove('hidden');
@@ -1868,12 +1869,12 @@
     if (!on) return;
     try {
       const data = await api('/api/island/dex');
-      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : true));
+      const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : !e.keepsake));
       document.getElementById('islandBagCount').textContent = on === 'photo' ? `${list.filter((e) => e.count).length}/${list.length}` : `${data.found}/${data.total}`;
       dex.replaceChildren(...list.map((e) => {
         if (e.kind === 'photo') {
           const cell = document.createElement('div'); cell.className = `islandDexCell islandPhotoCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-          const icon = document.createElement('img'); icon.src = `/assets/dex/${e.id}.png`; icon.alt = ''; icon.width = 64; icon.height = 64;
+          const icon = document.createElement('img'); icon.src = `/assets/dex/${e.icon || e.id}.png`; icon.alt = ''; icon.width = 64; icon.height = 64;
           const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
           const day = document.createElement('small'); day.textContent = e.first ? new Date(e.first).toLocaleDateString('ko-KR') : '';
           cell.append(icon, name, day); return cell;

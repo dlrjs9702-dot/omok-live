@@ -953,8 +953,8 @@ const questCache = new Map(); // account -> { week, doc, bag }
 async function questState(account) {
   const week = questWeek(); const hit = questCache.get(account);
   if (hit?.week === week) return hit;
-  const { doc, bag } = await pointStore.questDoc(account, week);
-  const st = { week, doc, bag, bagAt: nowMs() }; questCache.set(account, st); return st;
+  const [{doc:weekly,bag},{doc:fixed}] = await Promise.all([pointStore.questDoc(account,week),pointStore.questDoc(account,'fixed')]);
+  const st = { week, doc:{...weekly,...fixed}, bag, bagAt: nowMs() }; questCache.set(account, st); return st;
 }
 // the bag changes in many places (finds, sales, weeds); a thing to bring is counted from it, read again every few seconds
 // ponytail: a timed re-read, not a hook on every bag change; per-change invalidation if the bag paths are ever unified
@@ -963,17 +963,20 @@ function questBagFresh(st, account) {
   st.reading = true;
   pointStore.questDoc(account, st.week).then(({ bag }) => { st.bag = bag; st.bagAt = nowMs(); }).catch(() => {}).finally(() => { st.reading = false; });
 }
-async function questApply(account, fn) {
+async function questApply(account, fn, scope = 'week') {
   const st = await questState(account);
-  const out = await pointStore.questApply(account, st.week, fn);
-  if (out?.doc) { st.doc = out.doc; if (out.bag) { st.bag = out.bag.items.map(({ entryId, itemId, qty, meta }) => ({ entryId, itemId, qty, meta })); st.bagAt = nowMs(); } }
+  const out = await pointStore.questApply(account, scope==='fixed'?'fixed':st.week, fn);
+  if (out?.doc) { st.doc = {...st.doc,...out.doc}; if (out.bag) { st.bag = out.bag.items.map(({ entryId, itemId, qty, meta }) => ({ entryId, itemId, qty, meta })); st.bagAt = nowMs(); } }
   return out;
 }
 function islandProgress(kind, account, qty, where = null) {
   const what = kind === 'weed_pull' ? 'weed' : kind;
   questState(account).then((st) => {
     if (!IslandQuests.note(st.doc, what, { qty, ...(where || {}) })) return null; // nothing of mine waits on it
-    return questApply(account, (doc) => { const next = IslandQuests.note(doc, what, { qty, ...(where || {}) }); return next ? { doc: next, reward: 0 } : null; });
+    return Promise.all(['week','fixed'].map(scope=>questApply(account, doc=>{
+      const next=IslandQuests.note(doc,what,{qty,...(where||{}),scope});
+      return next?{doc:next,reward:0}:null;
+    },scope)));
   }).catch((error) => console.error('연계 퀘스트 기록 실패:', error.message));
 }
 // the islanders with a story, for the map and the 「SPACE · 말 걸기」 (always sent: they stand still), and the place the
@@ -982,7 +985,8 @@ function questEntries(account) {
   const st = questCache.get(account); if (!st || st.week !== questWeek()) { questState(account).catch(() => {}); return { entries: [], track: [] }; }
   questBagFresh(st, account);
   const entries = []; const track = [];
-  for (const [id, story] of Object.entries(IslandQuests.STORIES)) {
+  for (const id of IslandQuests.visibleStories(st.doc,nowMs())) {
+    const story=IslandQuests.STORIES[id];
     if (!IslandQuests.isOpen(id, nowMs())) continue; // v1.10.39: the Halloween kid only in October
     const s = st.doc[id] || { step: 0, taken: false, count: 0, done: false };
     entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done) });
@@ -3012,7 +3016,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.59' });
+    return sendJson(res, 200, { ok: true, version: '1.10.60' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3173,7 +3177,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`skins:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
-    const dexTitles = IslandFishing.titlesFor(Object.keys(await pointStore.dexOf(account)).length).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
+    const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account), hoguking: isHoguking(account), dexTitles });
   }
 
@@ -3283,7 +3287,7 @@ async function requestHandler(req, res) {
     let skinId = null; let free = false;
     const dexTitle = IslandFishing.dexTitle(body.skinId); // v1.10.42: a 도감 title, worn in the same slot once its finds are in
     if (dexTitle) {
-      if (Object.keys(await pointStore.dexOf(account)).length < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
+      if (IslandFishing.collectionCount(await pointStore.dexOf(account)) < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
       skinId = dexTitle.id; free = true;
     } else if (body.skinId !== null && body.skinId !== undefined) {
       const skin = skinById(body.skinId);
@@ -3751,7 +3755,8 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req); const account = pointAccountForSession(session);
     await questState(account);
-    const out = await questApply(account, (doc) => { const next = IslandQuests.note(doc, String(body.what), { qty: Number(body.qty) || 1 }); return next ? { doc: next, reward: 0 } : null; });
+    const scope=body.scope==='fixed'?'fixed':'week';
+    const out = await questApply(account, (doc) => { const next = IslandQuests.note(doc, String(body.what), { qty: Number(body.qty) || 1,scope }); return next ? { doc: next, reward: 0 } : null; },scope);
     return sendJson(res, 200, { ok: true, doc: out?.doc || null });
   }
   if (pathname === '/api/island/weeds' && req.method === 'GET') {
@@ -3857,8 +3862,8 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session);
     const mine = await pointStore.dexOf(account);
-    const found = Object.keys(mine).length;
-    return sendJson(res, 200, { ok: true, entries: IslandFishing.DEX.map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null })), found, total: IslandFishing.DEX.length,
+    const found = IslandFishing.collectionCount(mine);
+    return sendJson(res, 200, { ok: true, entries: [...IslandFishing.DEX,...IslandFishing.MEMORIES].map((d) => ({ ...d, count: mine[d.id]?.count || 0, first: mine[d.id]?.first || null })), found, total: IslandFishing.DEX.length,
       titles: IslandFishing.DEX_TITLES.map((t) => ({ ...t, open: found >= t.need })) });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fish/bite' && req.method === 'POST') { // tests: the bite now
@@ -4036,14 +4041,16 @@ async function requestHandler(req, res) {
     } else if (isResource) return sendError(res,409,'COLLECT_NOT_STARTED','채집을 시작해 주세요.');
     if (id.startsWith('quest') && IslandQuests.isOpen(id.slice(5), nowMs())) { // v1.10.37 연계 퀘스트: talking to the islander
       const story = id.slice(5); const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-      const week = questWeek();
-      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; });
+      const week = IslandQuests.scopeOf(story)==='fixed'?'fixed':questWeek();
+      const st=await questState(account);
+      if(!IslandQuests.visibleStories(st.doc,nowMs()).includes(story)) return sendError(res,409,'QUEST_BUSY','지금은 받을 수 없는 부탁입니다.');
+      const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
       if (out?.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
       const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
       if (r.reward) notifyPointsChanged([account]);
       const quests = questEntries(account);
-      return sendJson(res, 200, { ok: true, action: 'quest', story, name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+      return sendJson(res, 200, { ok: true, action: 'quest', story, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
@@ -4827,7 +4834,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.59 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.60 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

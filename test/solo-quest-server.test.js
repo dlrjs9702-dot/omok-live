@@ -87,3 +87,32 @@ test('연계 퀘스트 서버: 말 걸기·진행·보고 보상 한 번·가방
   const history = JSON.stringify((await req('/api/points/history', sa)).data);
   assert.ok(history.includes('"quest"'));
 });
+
+
+test('고정 사진가 서버: 근접·서버 활동/방문·최초 보상·기념사진 탭·재시작 유지',async(t)=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'fixed-story-server-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+  const server=await boot(t,dir),key=await server.issue('사진이야기'),token=await server.enter(key),{req}=server;
+  const balance=async()=> (await req('/api/points',token)).data.balance;
+  const stand=(x,z)=>req('/api/plaza/state',token,{x,z,yaw:0});
+  const talk=()=>req('/api/island/event',token,{id:'questphotomemory'}),at=Q.STORIES.photomemory.at;
+  await stand(0,20);await new Promise(r=>setTimeout(r,300));
+  const initial=(await stand(0,20)).data;
+  assert.equal(initial.events.filter(e=>['photographer','photomemory'].includes(e.story)).length,1);
+  assert.equal((await talk()).status,409,'멀리서는 대화할 수 없다');
+  await stand(at.x+.8,at.z);const first=(await talk()).data;assert.equal(first.reward,0);
+  const start=await balance();
+  await req('/api/test/quest/note',token,{what:'photo',qty:3,scope:'fixed'});
+  assert.equal((await talk()).data.reward,2000);
+  for(const [i,step] of Q.STORIES.photomemory.steps.entries()) if(i>0) {
+    await stand(step.spot.x,step.spot.z);await new Promise(r=>setTimeout(r,300));await stand(step.spot.x,step.spot.z);
+    await stand(at.x+.8,at.z);assert.equal((await talk()).data.reward,i===1?3000:17000);
+  }
+  assert.equal(await balance(),start+22000);assert.equal((await talk()).data.reward,0);
+  const dex=(await req('/api/island/dex',token)).data,photo=dex.entries.find(e=>e.id==='memory_island');
+  assert.equal(photo.kind,'photo');assert.equal(photo.count,1);assert.ok(photo.first);
+  assert.equal(dex.found,0);assert.equal((await req('/api/island/bag',token)).data.items.length,0);
+  await server.stop();const restart=await boot(t,dir),again=await restart.enter(key);
+  assert.equal((await restart.req('/api/island/dex',again)).data.entries.find(e=>e.id==='memory_island').count,1);
+  await restart.req('/api/plaza/state',again,{x:at.x+.8,z:at.z,yaw:0});
+  assert.equal((await restart.req('/api/island/event',again,{id:'questphotomemory'})).data.reward,0);
+});

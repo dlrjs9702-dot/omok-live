@@ -1410,3 +1410,46 @@ test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ bro
   expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
   await expectNoScriptError(page); await a.context.close();
 });
+
+
+test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
+  const a=await intoPlaza(browser,request,'사진가첫이야기'),{page}=a;
+  await page.evaluate(()=>window.PlazaWarp(12.8,28));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
+  await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
+  await expect(page.locator('#plazaDialog')).toContainText('사진 부탁');
+  await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
+  expect((await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'})).status).toBe(200);
+  await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
+  await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toContainText('개울 다리');
+  const state=await page.evaluate(()=>{const d=window.PlazaDebug();return {walkers:d.wanderers.length,photoActors:d.quests().filter(q=>['questphotomemory','questphotographer'].includes(q.id)).length};});
+  expect(state).toEqual({walkers:10,photoActors:1});
+  await expectNoScriptError(page);await a.context.close();
+});
+
+
+test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보고 가방은 비워 둔다',async({browser,request})=>{
+  const a=await intoPlaza(browser,request,'첫나들이기록'),{page}=a;
+  const Q=require('../../lib/island-quests'),story=Q.STORIES.photomemory;
+  const stand=async(p)=>{await page.evaluate(([x,z])=>window.PlazaWarp(x,z),[p.x,p.z]);await post(request,'/api/plaza/state',a.token,{x:p.x,z:p.z,yaw:0});};
+  const talk=()=>post(request,'/api/island/event',a.token,{id:'questphotomemory'});
+  await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).status).toBe(200);
+  await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'});
+  expect((await talk()).data.reward).toBe(2000);
+  for(const [i,step] of story.steps.entries()) if(i>0) {
+    await stand(step.spot);
+    await expect.poll(async()=>{
+      const result=await post(request,'/api/plaza/state',a.token,{x:step.spot.x,z:step.spot.z,yaw:0});
+      return result.data.quests?.find(t=>t.story==='photomemory')?.ready;
+    }).toBe(true);
+    await stand({x:story.at.x+.8,z:story.at.z});expect((await talk()).data.reward).toBe(i===1?3000:17000);
+  }
+  expect((await get(request,'/api/island/bag',a.token)).data.items).toHaveLength(0);
+  await page.locator('#islandBagTab').click();await page.locator('#islandPhotoBtn').click();
+  const cell=page.locator('.islandPhotoCell').filter({hasText:'첫 섬 나들이'});
+  await expect(cell).toHaveCount(1);await expect(cell.locator('small')).not.toHaveText('');
+  await expect.poll(()=>cell.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+  await expectNoScriptError(page);await a.context.close();
+});

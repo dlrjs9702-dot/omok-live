@@ -69,3 +69,15 @@ test('주민 대기: 모든 화면의 예약 위치를 유지하고 다른 사�
   held=false; a.step(10000,.1);
   assert.equal(a.resyncs(),0); assert.ok(Math.hypot(a.list[0].x-10,a.list[0].z-10)<=P.WALKER.TOP+.01);
 });
+
+
+test('주민 지정: 로컬 회피 위치에서 공용 대기 위치까지 속도 제한을 지켜 접근한다',()=>{
+  let held=false;
+  const walkers=P.createWalkers({walkable:()=>true,solidsNear:()=>[],poseAt:()=>
+    ({x:held?14:10,z:10,yaw:Math.PI/2,moving:false,held})});
+  const w=walkers.add(0,0);walkers.step(0,.1);held=true;
+  for(let t=100;t<=1200;t+=100) {
+    const x=w.x;walkers.step(t,.1);assert.ok(w.x-x<=P.WALKER.TOP*.1+.001);assert.equal(w.warped,false);
+  }
+  assert.equal(w.x,14);assert.equal(w.z,10);assert.equal(w.arrived,true);assert.equal(walkers.resyncs(),0);
+});
