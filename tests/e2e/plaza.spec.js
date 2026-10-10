@@ -1379,12 +1379,16 @@ test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async (
 test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
   const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
   const { page, token } = a;
-  await page.locator('[data-item="avatar_outfit_6"]').click();
+  // Native keyboard activation exercises the same UI handler without waiting for two
+  // stable pointer frames on the software-rendered 3D scene (main trace: ~4s/click).
+  const outfit = page.locator('[data-item="avatar_outfit_6"]');
+  await expect(outfit).toBeVisible(); await expect(outfit).toBeEnabled(); await outfit.press('Enter');
   const before = (await get(request, '/api/donation', token)).data.balance;
-  const dye = page.locator('.lookShop [data-color="c12"]'); await dye.click(); await dye.click();
+  const dye = page.locator('.lookShop [data-color="c12"]');
+  await expect(dye).toBeVisible(); await expect(dye).toBeEnabled(); await dye.press('Enter'); await dye.press('Enter');
   await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6).toBe('#eda3b8');
   expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
-  const back = page.locator('.lookShop [data-color=""]'); await expect(back).toBeEnabled(); await back.click(); await back.click();
+  const back = page.locator('.lookShop [data-color=""]'); await expect(back).toBeEnabled(); await expect(back).toBeVisible(); await back.press('Enter'); await back.press('Enter');
   await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6 || null).toBe(null);
   expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
   await expectNoScriptError(page); await a.context.close();
