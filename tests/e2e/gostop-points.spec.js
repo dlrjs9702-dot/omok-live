@@ -49,6 +49,12 @@ async function roomState(request, token) {
   return (await api(request, '/api/room', token, undefined, 'GET')).data.state;
 }
 
+// A finished board may be visible while the server is still persisting the payout.
+async function settledRoom(request, token) {
+  await expect.poll(async () => (await roomState(request, token)).game.settlement?.status).toBe('done');
+  return roomState(request, token);
+}
+
 async function playUntil(request, tokenOf, stopWhen, maxSteps = 200) {
   for (let step = 0; step < maxSteps; step += 1) {
     const anyToken = Object.values(tokenOf)[0];
@@ -123,6 +129,7 @@ test.describe('포인트와 고스톱·맞고', () => {
     // A legitimate total-hand win exposes its four cards and ends immediately. Verify that
     // public result, then use a real next hand for the required click/hidden-hand assertions.
     for (let dealt = 0; state.game.status === 'finished' && dealt < 8; dealt++) {
+      state = await settledRoom(request, a.token);
       expect(state.game.result.reason).toBe('chongtong');
       const revealed = new Set(state.game.lastEvent.revealed);
       expect(revealed.size).toBe(4);
@@ -186,7 +193,7 @@ test.describe('포인트와 고스톱·맞고', () => {
         await expect(c.page.getByRole('button', { name: '스톱' })).toHaveCount(0);
         await decider.page.getByRole('button', { name: '스톱' }).click();
         await expect(decider.page.locator('#gostopResult')).toContainText('승리');
-        settledRound = await roomState(request, a.token);
+        settledRound = await settledRoom(request, a.token);
         break;
       }
       previousBurn += burnOf(state.game);
@@ -211,9 +218,10 @@ test.describe('포인트와 고스톱·맞고', () => {
     await expect(a.page.locator('#gostopStartBtn')).toBeVisible();
     expect((await api(request, '/api/points', a.token, undefined, 'GET')).data.balance).toBe(balanceA);
     await a.page.locator('#gostopStartBtn').click();
-    const nextHand = await roomState(request, a.token);
+    let nextHand = await roomState(request, a.token);
     expect(nextHand.game.round).toBe(g.round + 1);
     if (nextHand.game.status === 'finished') {
+      nextHand = await settledRoom(request, a.token);
       expect(nextHand.game.result.reason).toBe('chongtong');
       expect(nextHand.game.settlement.status).toBe('done');
       const nextBalances = await Promise.all([a, b].map(async view => (await api(request, '/api/points', view.token, undefined, 'GET')).data.balance));
