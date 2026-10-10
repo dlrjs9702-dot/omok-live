@@ -1870,7 +1870,8 @@
     try {
       const data = await api('/api/island/dex');
       const list = data.entries.filter((e) => (on === 'photo' ? e.kind === 'photo' : !e.keepsake));
-      document.getElementById('islandBagCount').textContent = on === 'photo' ? `${list.filter((e) => e.count).length}/${list.length}` : `${data.found}/${data.total}`;
+      const spots = list.filter((e) => !e.keepsake); // v1.10.60: the count is of the photo spots; a story keepsake shows on the page but is not one of them
+      document.getElementById('islandBagCount').textContent = on === 'photo' ? `${spots.filter((e) => e.count).length}/${spots.length}` : `${data.found}/${data.total}`;
       dex.replaceChildren(...list.map((e) => {
         if (e.kind === 'photo') {
           const cell = document.createElement('div'); cell.className = `islandDexCell islandPhotoCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');

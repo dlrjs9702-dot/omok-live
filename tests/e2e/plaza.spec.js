@@ -1451,6 +1451,7 @@ test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보�
   await page.locator('#islandBagTab').click();await page.locator('#islandPhotoBtn').click();
   const cell=page.locator('.islandPhotoCell').filter({hasText:'첫 섬 나들이'});
   await expect(cell).toHaveCount(1);await expect(cell.locator('small')).not.toHaveText('');
+  await expect(page.locator('#islandBagCount')).toHaveText('0/7'); // v1.10.60: the keepsake shows but the count is of the seven photo spots
   await expect.poll(()=>cell.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
   await expectNoScriptError(page);await a.context.close();
 });
