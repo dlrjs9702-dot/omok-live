@@ -52,7 +52,7 @@ const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, N
 const releaseAnnouncements = require('./lib/release-announcements');
 const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
 const { buildAssetManifest } = require('./lib/asset-manifest'); // v1.10.14 game resource pack
-const { buildCodeManifest, prepareIndex, codeCacheHeaders } = require('./lib/code-manifest'); // v1.10.24 code hash URLs
+const { buildCodeManifest, prepareIndex, codeCacheHeaders, hashedUrl } = require('./lib/code-manifest'); // v1.10.24 code hash URLs
 const {
   MAX_CHAT_LENGTH,
   createRoomSocial,
@@ -118,6 +118,9 @@ const MIME = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.avif': 'image/avif',
+  // v1.10.61 두 세계 영웅전: only for a local copy of the big files (public/herosurv, gitignored); the live ones are on R2
+  '.wasm': 'application/wasm',
+  '.pck': 'application/octet-stream',
 };
 
 const sessions = new Map(); // token -> session
@@ -159,6 +162,8 @@ const eventAudience = new Map();
 const rewardTestAccounts = new Set();
 function eventsForAccount(userId) { return eventRegistry.filter(event => !eventAudience.has(event.id) || eventAudience.get(event.id).has(userId)); }
 let indexTemplate = '';
+let herosurvTemplate = '';
+const HEROSURV_ASSETS = (process.env.HEROSURV_ASSETS ?? 'https://gamecenter-games.dlrjs9702.workers.dev').replace(/\/$/, '');
 // v1.10.24 (lib/code-manifest.js): the code files' content hashes and the page's import map CSP hash source
 let codeRevs = new Map();
 let importMapCsp = '';
@@ -239,6 +244,19 @@ function sendIndex(res, bootstrap = {}) {
     'Cache-Control': 'no-store',
   }));
   res.end(html);
+}
+
+// v1.10.61 두 세계 영웅전 page: the asset host it fetches the big files from is the one other origin it may connect to;
+// blob: images are the engine's own (cursor, icon). An empty HEROSURV_ASSETS reads them from public/herosurv (local dev).
+function sendHerosurv(res) {
+  const assetOrigin = HEROSURV_ASSETS ? ` ${new URL(HEROSURV_ASSETS).origin}` : '';
+  res.writeHead(200, securityHeaders({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': Buffer.byteLength(herosurvTemplate),
+    'Cache-Control': 'no-store',
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${assetOrigin}; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+  }));
+  res.end(herosurvTemplate);
 }
 
 // v1.10.14: page requests from a browser outside ALLOWED_BROWSERS get only the Chrome notice. Checked before a guest
@@ -997,6 +1015,13 @@ function questEntries(account) {
 }
 // v1.10.37 혼자 하는 게임: one game a session at a time, on the server (lib/minesweeper.js); gone with the session
 const soloGames = new Map(); // session token -> { id, level, engine }
+// v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
+const herosurvRuns = new Map(); // runId -> { account, board, at }
+const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
+function herosurvPlayerId(account) { // stable, and reveals nothing about the account
+  const h = crypto.createHash('sha256').update(`herosurv:${account}`).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
 const weedTimer = setInterval(() => { weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); }, 60 * 1000);
 weedTimer.unref?.();
 
@@ -3741,6 +3766,54 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true, view, result });
   }
+  // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
+  // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
+  // the game's own guest token and the name it asks for are ignored. Scores are the game's word (no points ride on them).
+  if (pathname.startsWith('/api/leaderboards/v1/')) {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const me = { playerId: herosurvPlayerId(account), displayName: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')) };
+    const route = pathname.slice('/api/leaderboards/v1/'.length);
+    if (route === 'guests' && req.method === 'POST') return sendJson(res, 201, { ...me, token: me.playerId, expiresInSeconds: 31536000 });
+    if (route === 'me' && req.method === 'PUT') return sendJson(res, 200, me);
+    let m = /^boards\/(heroes-r\d{1,3})$/.exec(route);
+    if (m && req.method === 'GET') {
+      const rows = await pointStore.herosurvBoard(m[1]);
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 10));
+      const view = (row, i) => ({ playerId: herosurvPlayerId(row.userId), displayName: row.name, score: row.score, achievedAt: row.at.replace('T', ' ').slice(0, 23),
+        durationMs: row.durationMs, rank: i + 1, meta: row.meta, mine: row.userId === account });
+      const mine = rows.findIndex((row) => row.userId === account);
+      return sendJson(res, 200, { namespace: 'production', boardId: m[1], rulesVersion: m[1].slice(7), trust: 'client_reported', total: rows.length,
+        entries: rows.slice(0, limit).map(view), myRank: mine < 0 ? { rank: null, score: null, ...me } : { rank: mine + 1, score: rows[mine].score, ...me } });
+    }
+    m = /^boards\/(heroes-r\d{1,3})\/runs$/.exec(route);
+    if (m && req.method === 'POST') {
+      if (!checkRateLimit(`herosurv:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+      const now = nowMs();
+      for (const [id, run] of herosurvRuns) if (now - run.at > HEROSURV_RUN_MS) herosurvRuns.delete(id);
+      const runId = crypto.randomUUID();
+      herosurvRuns.set(runId, { account, board: m[1], at: now });
+      return sendJson(res, 201, { runId, expiresInSeconds: HEROSURV_RUN_MS / 1000, rulesVersion: m[1].slice(7), protocolVersion: 1 });
+    }
+    m = /^runs\/([0-9a-f-]{36})$/.exec(route);
+    if (m && req.method === 'PUT') {
+      const run = herosurvRuns.get(m[1]);
+      if (!run || run.account !== account) return sendError(res, 404, 'NO_RUN', '끝난 판입니다.');
+      herosurvRuns.delete(m[1]); // one result per run
+      const body = await parseJson(req);
+      const durationMs = Number(body.durationMs);
+      if (durationMs > nowMs() - run.at + 60 * 1000) return sendError(res, 400, 'BAD_RUN', '잘못된 기록입니다.'); // not longer than the run really was
+      try {
+        const out = await pointStore.herosurvRun({ userId: account, board: run.board, name: me.displayName, score: Number(body.score), durationMs, meta: body.meta });
+        return sendJson(res, 200, { runId: m[1], score: Number(body.score), accepted: true, personalBest: out.personalBest, trust: 'client_reported' });
+      } catch (error) {
+        if (error instanceof TypeError || error instanceof RangeError) return sendError(res, 400, 'BAD_RUN', '잘못된 기록입니다.');
+        throw error;
+      }
+    }
+    return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
+  }
   // Test-only: where the mines are (and the game made older, as if played longer); a quest step's activity noted
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/solo/peek' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -4757,6 +4830,8 @@ async function requestHandler(req, res) {
 
   if (req.method === 'GET') {
     if (pathname === '/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
+    if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
+    if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }
@@ -4768,6 +4843,9 @@ async function main() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   codeRevs = buildCodeManifest(PUBLIC_DIR, VENDOR_FILES);
   ({ html: indexTemplate, csp: importMapCsp } = prepareIndex(await fsp.readFile(path.join(PUBLIC_DIR, 'index.html'), 'utf8'), codeRevs));
+  herosurvTemplate = (await fsp.readFile(path.join(PUBLIC_DIR, 'herosurv', 'index.html'), 'utf8'))
+    .replace(/(src|href)="(\/[^"?#]+\.(?:js|css))"/g, (_, attr, url) => `${attr}="${hashedUrl(codeRevs, url)}"`)
+    .replace('__HEROSURV_ASSETS__', escapeAttr(HEROSURV_ASSETS));
   const pack = buildAssetManifest(PUBLIC_DIR, ext => Boolean(MIME[ext]));
   assetPackVersion = pack.version;
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');

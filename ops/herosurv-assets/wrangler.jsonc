@@ -1,0 +1,9 @@
+// v1.10.61 두 세계 영웅전 asset Worker — https://gamecenter-games.dlrjs9702.workers.dev (see worker.js, docs in ops/herosurv-assets/README.md)
+{
+	"name": "gamecenter-games",
+	"main": "worker.js",
+	"compatibility_date": "2026-10-01",
+	"workers_dev": true,
+	"cache": { "enabled": true },
+	"r2_buckets": [{ "binding": "BUCKET", "bucket_name": "gamecenter-games" }]
+}

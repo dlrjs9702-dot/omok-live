@@ -9,3 +9,7 @@ data/match-records.json
 .DS_Store
 .playwright-mcp/
 graphify-out/
+
+# v1.10.61 두 세계 영웅전: local copy of the big game files (the live ones are on Cloudflare R2)
+public/herosurv/*.wasm
+public/herosurv/*.pck
