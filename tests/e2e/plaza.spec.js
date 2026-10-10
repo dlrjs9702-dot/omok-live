@@ -239,6 +239,8 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await dialog.locator('#skinShopCloseBtn').click();
   await visit('avatar', '옷가게', 30); // v1.10.49: ten animal outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
+  await expect(dialog.locator('.skinTitle.selected')).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('outline-color', 'rgb(96, 165, 250)');
   await dialog.locator('.skinTitle').filter({ hasText: '칭호 없음' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().title), { timeout: 8000 }).toBe(null);
   await expectNoScriptError(page);
@@ -1306,6 +1308,11 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   test.setTimeout(180000);
   const a = await intoPlaza(browser, request, '앉는이');
   const b = await intoPlaza(browser, request, '보는이');
+  const shopDoor = await a.page.evaluate(() => window.PlazaDebug().doors.accessories);
+  const atShop = await post(request, '/api/plaza/state', a.token, { x: shopDoor.x, z: shopDoor.z, yaw: 0, moving: false });
+  expect(atShop.status).toBe(200);
+  await a.page.evaluate(p => window.PlazaWarp(p.x, p.z), atShop.data);
+  expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
   const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id]); }); // a free one (another test's sitter may still hold one)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
@@ -1318,6 +1325,14 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).lift).toBeCloseTo(0.28, 1);
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).tail).toBe(true); // v1.10.46: a tail tucked while seated
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.lift), { timeout: 10000 }).toBeCloseTo(0.28, 1);
+  // Updating the appearance while seated keeps the local pose flag and remote seat claim.
+  const equipped = await post(request, '/api/skins/equip', a.token, { skinId: 'avatar_hat_1' });
+  expect(equipped.status).toBe(200);
+  // The API helper does not run app.js's response handler; forward its actual result through that renderer entry point.
+  await a.page.evaluate(avatar => window.PlazaDebug().setAvatar(avatar), equipped.data.avatar);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().look.hat)).toBe('avatar_hat_1');
+  expect(await a.page.evaluate(() => window.PlazaDebug().act())).toMatchObject({ sitting: true, tail: true });
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find(o => o.act === 'sit')?.seat)).toBe(seat.id);
   // an arrow stands me up and frees the seat on both screens
   await a.page.keyboard.down('ArrowUp'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
@@ -1339,4 +1354,38 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   void aId;
   await expectNoScriptError(a.page); await expectNoScriptError(b.page);
   await a.context.close(); await b.context.close();
+});
+
+
+async function appearanceShop(browser, request, label, door, name, outfit = false) {
+  const a = await shopper(browser, request, label, 1_000_000);
+  if (outfit) await buyAndEquip(request, a, ['avatar_outfit_6']);
+  const { page } = a;
+  await islandPage(page);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await page.evaluate(id => window.PlazaDebug().place(id), door);
+  await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toBeVisible();
+  return a;
+}
+test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async ({ browser, request }) => {
+  const a = await appearanceShop(browser, request, '성형이미지', 'faces', '성형외과');
+  const thumbs = a.page.locator('.lookFaceThumb'); await expect(thumbs).toHaveCount(30);
+  await thumbs.last().scrollIntoViewIfNeeded();
+  await expect.poll(() => thumbs.evaluateAll(images => images.filter(img => img.complete && img.naturalWidth === 128 && img.naturalHeight === 128).length)).toBe(30);
+  await expectNoScriptError(a.page); await a.context.close();
+});
+test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
+  const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
+  const { page, token } = a;
+  await page.locator('[data-item="avatar_outfit_6"]').click();
+  const before = (await get(request, '/api/donation', token)).data.balance;
+  const dye = page.locator('.lookShop [data-color="c12"]'); await dye.click(); await dye.click();
+  await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6).toBe('#eda3b8');
+  expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
+  const back = page.locator('.lookShop [data-color=""]'); await expect(back).toBeEnabled(); await back.click(); await back.click();
+  await expect.poll(async () => (await get(request, '/api/skins', token)).data.avatar.look.dye?.avatar_outfit_6 || null).toBe(null);
+  expect((await get(request, '/api/donation', token)).data.balance).toBe(before - 5000);
+  await expectNoScriptError(page); await a.context.close();
 });

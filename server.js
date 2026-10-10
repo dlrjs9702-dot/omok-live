@@ -3012,7 +3012,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.58' });
+    return sendJson(res, 200, { ok: true, version: '1.10.59' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3236,7 +3236,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/avatar/look-shop' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name })) }])),
+    return sendJson(res, 200, { ok: true, surgeryFee: SURGERY_FEE, dyeFee: DYE_FEE, faceParts: Object.fromEntries(Object.entries(FACE_PARTS).map(([part, list]) => [part, { label: FACE_LABELS[part], designs: list.map(([id, name]) => ({ id, name, image: `/assets/shop/faces/${part}_${id}.webp` })) }])),
       palette: DYE_PALETTE, dyeable: [...DYEABLE], bodyDyes: BODY_DYES, skinTones: SKIN_TONES });
   }
   if ((pathname === '/api/avatar/surgery' || pathname === '/api/avatar/dye') && req.method === 'POST') {
@@ -4827,7 +4827,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.58 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.59 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

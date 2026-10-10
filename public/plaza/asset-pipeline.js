@@ -352,5 +352,28 @@
     };
   }
 
-  return { SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, TAIL_TUCK, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
+  // A dyed strand shows the same colour on its inner faces; source materials remain shared and unchanged.
+  function tintMaterial(THREE, source, color) {
+    const material = source.clone();
+    if (color) { material.color.set(color); if (source.name === 'hair') material.side = THREE.DoubleSide; }
+    return material;
+  }
+  // Rigid animated props are sampled once per LOD, then drawn as instances without a mixer per prop.
+  function sampleRigidPoses(THREE, holder, sources, count = 32) {
+    const parts = []; const inverse = new THREE.Matrix4();
+    sources.forEach((source, level) => {
+      const clip = source.animations?.[0]; const mixer = clip ? new THREE.AnimationMixer(source) : null;
+      mixer?.clipAction(clip).play();
+      const meshes = []; source.traverse((o) => { if (o.isMesh) meshes.push(o); });
+      const sampled = meshes.map((mesh) => ({ mesh, level, poses: [] }));
+      for (let k = 0; k < count; k += 1) {
+        mixer?.setTime(clip ? k / count * clip.duration : 0); holder.updateMatrixWorld(true); inverse.copy(holder.matrixWorld).invert();
+        sampled.forEach((part) => part.poses.push(inverse.clone().multiply(part.mesh.matrixWorld)));
+      }
+      mixer?.stopAllAction(); mixer?.uncacheRoot(source); parts.push(...sampled);
+    });
+    return parts;
+  }
+
+  return { tintMaterial, sampleRigidPoses, SEASONS, NEUTRAL_LOOK, entryOf, pick, enabledIds, createLoadCache, GAIT, nextGait, createAnimator, LOD_SCALE, lodDistance, HIGH_BAND, highState, FIT, TAIL_TUCK, fitWardrobe, applyFit, roofShape, drapeSnow, createLazyAssets };
 });
