@@ -1356,24 +1356,29 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await a.context.close(); await b.context.close();
 });
 
-test('성형 썸네일 30개와 의상 염색·무료 원색 복구', async ({ browser, request }) => {
-  const a = await shopper(browser, request, '성형주색', 1_000_000);
-  const { page, token } = a;
-  await buyAndEquip(request, a, ['avatar_outfit_6']);
+
+async function appearanceShop(browser, request, label, door, name, outfit = false) {
+  const a = await shopper(browser, request, label, 1_000_000);
+  if (outfit) await buyAndEquip(request, a, ['avatar_outfit_6']);
+  const { page } = a;
   await islandPage(page);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
-  const visit = async (id, name) => {
-    await page.evaluate(door => window.PlazaDebug().place(door), id);
-    await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
-    await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-    await expect(page.locator('#plazaDialog')).toBeVisible();
-  };
-  await visit('faces', '성형외과');
-  const thumbs = page.locator('.lookFaceThumb'); await expect(thumbs).toHaveCount(30);
+  await page.evaluate(id => window.PlazaDebug().place(id), door);
+  await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect(page.locator('#plazaDialog')).toBeVisible();
+  return a;
+}
+test('성형 썸네일: 근접 입장과 30개 실제 이미지 로딩', async ({ browser, request }) => {
+  const a = await appearanceShop(browser, request, '성형이미지', 'faces', '성형외과');
+  const thumbs = a.page.locator('.lookFaceThumb'); await expect(thumbs).toHaveCount(30);
   await thumbs.last().scrollIntoViewIfNeeded();
   await expect.poll(() => thumbs.evaluateAll(images => images.filter(img => img.complete && img.naturalWidth === 128 && img.naturalHeight === 128).length)).toBe(30);
-  await page.locator('#plazaCloseBtn').click();
-  await visit('dye', '염색사');
+  await expectNoScriptError(a.page); await a.context.close();
+});
+test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ browser, request }) => {
+  const a = await appearanceShop(browser, request, '의상주색', 'dye', '염색사', true);
+  const { page, token } = a;
   await page.locator('[data-item="avatar_outfit_6"]').click();
   const before = (await get(request, '/api/donation', token)).data.balance;
   const dye = page.locator('.lookShop [data-color="c12"]'); await dye.click(); await dye.click();
