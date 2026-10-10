@@ -989,7 +989,7 @@ function questEntries(account) {
     const story=IslandQuests.STORIES[id];
     if (!IslandQuests.isOpen(id, nowMs())) continue; // v1.10.39: the Halloween kid only in October
     const s = st.doc[id] || { step: 0, taken: false, count: 0, done: false };
-    entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done) });
+    entries.push({ id: `quest${id}`, kind: 'quest_npc', x: story.at.x, z: story.at.z, verb: '말 걸기', mark: IslandQuests.markOf(id, s, st.bag), story: id, name: story.name, done: Boolean(s.done), requested: Boolean(s.taken && !s.done) });
     const t = IslandQuests.trackOf(id, s, st.bag);
     if (t) { track.push(t); if (t.to && !t.ready) entries.push({ id: `questspot${id}`, kind: 'quest_spot', x: t.to.x, z: t.to.z, verb: null }); }
   }

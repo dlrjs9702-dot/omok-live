@@ -1379,6 +1379,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         }
         o.done = Boolean(ev.done);
       }
+      if (ev.kind === 'quest_npc') o.requested = Boolean(ev.requested); // retain an accepted resident position independently of the head mark
       if (ev.kind === 'quest_npc' && o.mark !== (ev.mark || null)) { // its mark follows the story: new, ready, or none under way
         o.mark = ev.mark || null; disposeTag(o.npc.tag); o.npc.tag = null;
         if (o.mark) { o.npc.tag = o.mark === 'ready' ? makeCheckMark() : makeStarMark(); o.npc.root.add(o.npc.tag); fitTag(o.npc); }
@@ -1391,7 +1392,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const [key, o] of eventObjs) if (!seen.has(key) && !o.leaving) removeEvent(key, o); // one being handed its thing goes after
     if (!returning.size) setCarry(me, carried?.id || null);
     carriedOwner = carried ? { x: carried.x, z: carried.z } : null;
-    mapMarkers = [...eventObjs.keys()].filter((key) => (key.startsWith('ev:quest_npc:') ? eventObjs.get(key).mark : (key.startsWith('ev:photo:') || key.startsWith('ev:lost_owner:')) && eventDoors[key] || key.startsWith('ev:lost_item:') || key.startsWith('ev:quest_spot:'))).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
+    mapMarkers = [...eventObjs.keys()].filter((key) => (key.startsWith('ev:quest_npc:') ? (eventObjs.get(key).mark || eventObjs.get(key).requested) : (key.startsWith('ev:photo:') || key.startsWith('ev:lost_owner:')) && eventDoors[key] || key.startsWith('ev:lost_item:') || key.startsWith('ev:quest_spot:'))).map((key) => ({ x: eventObjs.get(key).root.position.x, z: eventObjs.get(key).root.position.z }))
       .concat(carriedOwner ? [carriedOwner] : []); // whose it is: where to take it
     minimapAt = 0;
   }

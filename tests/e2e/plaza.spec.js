@@ -1420,6 +1420,7 @@ test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지
   await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
   await expect(page.locator('#plazaDialog')).toContainText('사진 부탁');
   await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
+  await expect.poll(()=>page.evaluate(()=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-12)<.01&&Math.abs(m.z-28)<.01)};})).toEqual({mark:null,position:true});
   expect((await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'})).status).toBe(200);
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
   await page.locator('#plazaStage').focus();await page.keyboard.press('Space');

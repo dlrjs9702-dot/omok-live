@@ -100,6 +100,8 @@ test('고정 사진가 서버: 근접·서버 활동/방문·최초 보상·기�
   assert.equal(initial.events.filter(e=>['photographer','photomemory'].includes(e.story)).length,1);
   assert.equal((await talk()).status,409,'멀리서는 대화할 수 없다');
   await stand(at.x+.8,at.z);const first=(await talk()).data;assert.equal(first.reward,0);
+  const accepted=(await stand(at.x+.8,at.z)).data.events.find(e=>e.id==='questphotomemory');
+  assert.equal(accepted.mark,null);assert.equal(accepted.requested,true);
   const start=await balance();
   await req('/api/test/quest/note',token,{what:'photo',qty:3,scope:'fixed'});
   assert.equal((await talk()).data.reward,2000);
@@ -108,6 +110,8 @@ test('고정 사진가 서버: 근접·서버 활동/방문·최초 보상·기�
     await stand(at.x+.8,at.z);assert.equal((await talk()).data.reward,i===1?3000:17000);
   }
   assert.equal(await balance(),start+22000);assert.equal((await talk()).data.reward,0);
+  const finished=(await stand(at.x+.8,at.z)).data.events.find(e=>e.id==='questphotomemory');
+  assert.equal(finished.mark,null);assert.equal(finished.requested,false);
   const dex=(await req('/api/island/dex',token)).data,photo=dex.entries.find(e=>e.id==='memory_island');
   assert.equal(photo.kind,'photo');assert.equal(photo.count,1);assert.ok(photo.first);
   assert.equal(dex.found,0);assert.equal((await req('/api/island/bag',token)).data.items.length,0);
