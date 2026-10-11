@@ -28,6 +28,7 @@
       <header class="topbar card islandTopbar">
         <div class="topActions islandTopActions" aria-label="게임 아일랜드 계정 메뉴">
           <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
+          <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
           <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
           <button id="logoutBtn" class="ghost">접속 종료</button>
         </div>
@@ -45,6 +46,7 @@
         <button id="islandChatTab" class="islandChatTab" type="button" aria-expanded="false" aria-controls="islandChatPanel">채팅</button>
         <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
         <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
+        <div id="islandStick" class="islandStick" aria-hidden="true"><span></span></div>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
           <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
