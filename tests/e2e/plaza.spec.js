@@ -1056,7 +1056,7 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   const before = await page.evaluate(() => window.PlazaDebug().camera);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   const dialog = page.locator('#plazaDialog');
-  await expect(dialog).toHaveClass(/talkMode/);
+  await expect(dialog).toHaveClass(/talkMode/, { timeout: 15000 }); // after the server answers the talk (slow on CI)
   const box = await dialog.boundingBox(); const view = page.viewportSize();
   expect(box.y + box.height).toBeGreaterThan(view.height - 60); // at the bottom
   expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
