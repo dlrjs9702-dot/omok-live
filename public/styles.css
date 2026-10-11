@@ -1698,3 +1698,4 @@ body.touchIsland .plazaHint { pointer-events: auto; cursor: pointer; z-index: 3;
 body.photoMode .islandStick { visibility: hidden !important; }
 body.touchIsland .islandChatPanel { width: calc(100% - 28px); height: min(34%, 300px); }
 body.touchIsland .islandChatForm { width: calc(100% - 28px); bottom: 200px; }
+body.plazaMode .chatFloatBtn { display: none; } /* v1.10.62: the game room's narrow-screen 💬·🎮 buttons, not on the island (it has its own chat) */
