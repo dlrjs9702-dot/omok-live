@@ -11,7 +11,7 @@ const root = path.resolve(__dirname, '..');
 
 test('밝은 테마: theme-light-auto.css가 지금의 styles.css에서 다시 만든 것과 같다', () => {
   const fresh = build(fs.readFileSync(path.join(root, 'public', 'styles.css'), 'utf8'));
-  assert.equal(fs.readFileSync(path.join(root, 'public', 'theme-light-auto.css'), 'utf8'), fresh, 'run: node tools/theme-light.js');
+  assert.equal(fs.readFileSync(path.join(root, 'public', 'theme-light-auto.css'), 'utf8').replace(/\r\n/g, '\n'), fresh, 'run: node tools/theme-light.js');
 });
 
 test('밝은 테마: 글자색과 바탕·선 색을 따로 바꾸고, 반투명도와 다른 색은 그대로 둔다', () => {
