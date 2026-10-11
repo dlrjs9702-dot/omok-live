@@ -919,3 +919,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaDialog.talkMode .recordsDialogHead h2{background:#dff1ec;color:#2a5f55}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{color:#7a6650}
 :root[data-theme="light"] .lostRequest:focus{outline:none}
+:root[data-theme="light"] .plazaDialog.talkMode button:focus{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}
+:root[data-theme="light"] .plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}

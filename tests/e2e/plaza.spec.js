@@ -217,6 +217,10 @@ test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일�
   await page.locator('#leaveRoomBtn').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
   await expect.poll(() => state(page).then((s) => s?.running)).toBe(true);
+  // v1.10.63 (사용자 2026-10-12): out of the room straight back to choosing a game -- the 게임관 window
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('게임관');
+  await expect(page.locator('#plazaDialog #publicRoomsCard')).toBeVisible();
+  await page.locator('#plazaCloseBtn').click();
   await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the section went back home
 
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);

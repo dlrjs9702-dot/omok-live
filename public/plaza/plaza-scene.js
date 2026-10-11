@@ -1298,7 +1298,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (o.resident != null) {
       const c=o.npc;
       if(c?.residentKey===key) {
-        delete c.residentKey; delete c.returnYaw; c.waving=false; c.lookAt=null;
+        delete c.residentKey; delete c.returnYaw; delete c.talkYaw; c.waving=false; c.lookAt=null;
         delete c.root.userData.facility; const index=facilityRoots.indexOf(c.root); if(index>=0) facilityRoots.splice(index,1);
         disposeTag(c.tag); c.tag=null; assets.letGo(c,'cameraBag'); assets.letGo(c,'carry');
         o.receivedStand?.removeFromParent(); c.anim?.release?.();
@@ -1476,8 +1476,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           c.returnEmote=hold.eventId; c.anim?.play('receive');
         }
         const close=Boolean(c.residentKey && near===c.residentKey);
-        c.targetYaw=c.returnYaw??w.pose.yaw;
-        c.lookAt=close && c.returnYaw==null ? Math.atan2(m.x-w.x,m.z-w.z)-c.targetYaw : null;
+        c.targetYaw=c.returnYaw??c.talkYaw??w.pose.yaw;
+        c.lookAt=close && c.returnYaw==null && c.talkYaw==null ? Math.atan2(m.x-w.x,m.z-w.z)-c.targetYaw : null; // in a talk the body already faces me: no head turn on top
         c.waving=close && c.returnYaw==null && w.arrived;
         animate(c,dt,!w.arrived && w.speed>.3,w.speed); continue;
       }
@@ -1635,15 +1635,39 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // two-shot from the side. Closing the talk eases back to the player's own view (zoomDist untouched). Reduced motion:
   // the views switch without the glide.
   let lastTalk = null; let talkView = null;
+  // (사용자 2026-10-12) the camera frames the one I talk to where they really stand (their figure, not the spot of the
+  // talk), and they turn to me for the talk: an event visitor's body (put back after), a walking islander by talkYaw
+  // (apart from the hand-over's returnYaw); a shop keeper already turns its head
+  let talkTurned = null; const TALK_GAP = 1.6;
+  const talkFigure = (id) => {
+    const o = eventObjs.get(id);
+    if (o?.npc) return o.resident != null ? o.npc.root : o.root;
+    if (id.startsWith('player:')) return others.get(id.slice(7))?.c.root || null;
+    if (id === 'mayor') return yard.mayor.root;
+    return npcs.find((n) => n.home?.id === id)?.root || null;
+  };
+  function untalk() {
+    const t = talkTurned; talkTurned = null;
+    if (!t) return;
+    if (t.walker) delete t.walker.talkYaw;
+    else if (!t.o.leaving) { t.o.root.rotation.y = t.yaw; if (t.o.npc.home) t.o.npc.home.yaw = t.homeYaw; }
+  }
   function talkCamera(mode) {
-    talkView = null;
+    talkView = null; untalk();
     const t = lastTalk; const p = me.root.position;
-    if (!mode || !t || overview || riding || Math.hypot(t.x - p.x, t.z - p.z) > 6) return false;
-    talkView = { ...t, shot: mode === 'shot' };
-    me.targetYaw = Math.atan2(t.x - p.x, t.z - p.z);
-    const o = eventObjs.get(t.id); // an event islander turns to me as well (a borrowed walker keeps its own turn: its
-    // returnYaw belongs to the hand-over scene)
-    if (o?.npc && !o.leaving && o.resident == null) { const q = o.root.position; o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; }
+    if (!mode || !t || overview || riding) return false;
+    const figure = talkFigure(t.id); const at = figure?.getWorldPosition(new THREE.Vector3()) || { x: t.x, z: t.z };
+    if (Math.hypot(at.x - p.x, at.z - p.z) > 6) return false;
+    // stepping back only from a person standing loose on the island (a gate or a counter keeps its own spot and reach)
+    talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: Boolean(figure) && (eventObjs.has(t.id) || t.id.startsWith('player:')) };
+    me.targetYaw = Math.atan2(at.x - p.x, at.z - p.z);
+    const toMe = Math.atan2(p.x - at.x, p.z - at.z);
+    const o = eventObjs.get(t.id);
+    if (o?.npc && !o.leaving && o.resident != null) { o.npc.talkYaw = toMe; talkTurned = { walker: o.npc }; }
+    else if (o?.npc && !o.leaving) {
+      talkTurned = { o, yaw: o.root.rotation.y, homeYaw: o.npc.home?.yaw };
+      o.root.rotation.y = toMe - o.npc.root.rotation.y; if (o.npc.home) o.npc.home.yaw = o.root.rotation.y;
+    }
     return true;
   }
   function talkPose(p) {
@@ -1651,13 +1675,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const ux = dx / len; const uz = dz / len; const rx = uz; const rz = -ux; // toward them, and to my right
     const ty = heightAt(t.x, t.z);
     let c; let look;
-    if (t.shot) { // the two of us from the side
-      const mx = (p.x + t.x) / 2; const mz = (p.z + t.z) / 2; const side = 3.4 + len * 0.8;
-      c = { x: mx + rx * side, z: mz + rz * side, y: Math.max(p.y, ty) + 1.6 };
-      look = new THREE.Vector3(mx, (p.y + ty) / 2 + 1.1, mz);
-    } else { // over my right shoulder
-      c = { x: p.x - ux * 2.6 + rx * 0.9, z: p.z - uz * 2.6 + rz * 0.9, y: p.y + 2.2 };
-      look = new THREE.Vector3(p.x + ux * len * 0.8, ty + 1.3, p.z + uz * len * 0.8);
+    if (t.shot) { // the moment itself: wider, from further behind and to the side -- both of us, their face toward me
+      c = { x: p.x - ux * 3.4 + rx * 2.6, z: p.z - uz * 3.4 + rz * 2.6, y: p.y + 2.9 };
+      look = new THREE.Vector3((p.x + t.x * 2) / 3, (p.y + ty * 2) / 3 + 0.9, (p.z + t.z * 2) / 3); // faces above the bubble
+    } else { // behind me, past my right shoulder: their face and upper body in the picture, my head at the side
+      c = { x: p.x - ux * 2.7 + rx * 2.4, z: p.z - uz * 2.7 + rz * 2.4, y: p.y + 2.3 };
+      look = new THREE.Vector3(t.x - rx * 0.5, ty + 1.0, t.z - rz * 0.5); // aimed low: their face sits above the speech bubble
     }
     return { want: new THREE.Vector3(c.x, Math.max(c.y, heightAt(c.x, c.z) + CAM_CLEAR), c.z), look };
   }
@@ -1861,6 +1884,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const wx = ix * cos + iz * sin; const wz = -ix * sin + iz * cos;
       tryMove(me.root.position.x + wx * SPEED * dt, me.root.position.z + wz * SPEED * dt);
       me.targetYaw = Math.atan2(wx, wz);
+    } else if (talkView?.step) { // (사용자 2026-10-12) standing right against them, I step back to a talking distance so the
+      // camera behind me sees their face past my head (still within reach of the talk: EVENT_REACH 1.9)
+      const p = me.root.position; const d = Math.hypot(talkView.x - p.x, talkView.z - p.z);
+      if (d > 0.01 && d < TALK_GAP - 0.02) { const s = Math.min(TALK_GAP - d, 2.2 * dt) / d; tryMove(p.x - (talkView.x - p.x) * s, p.z - (talkView.z - p.z) * s); }
     }
     stepPlatform(); stepRide(); stepQuestScenes(dt);
     animate(me, dt, moving);
@@ -1871,7 +1898,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // out of the fog like the figure, even where its place is only roughly right
     for (const o of others.values()) { const far = Math.hypot(o.c.root.position.x - me.root.position.x, o.c.root.position.z - me.root.position.z) > FAR_TAG; if (o.c.bubble) o.c.bubble.visible = !far; }
     for (const npc of npcs) { // the keeper turns to a player who comes close and waves
-      const close = near === npc.home.id;
+      const close = near === npc.home.id && !(talkView && talkView.id === npc.home.id); // in a talk: the body faces me (talkCamera)
       npc.lookAt = close ? Math.atan2(me.root.position.x - npc.home.x, me.root.position.z - npc.home.z) - npc.home.yaw : null;
       npc.waving = close;
       animate(npc, dt, false);
@@ -1927,7 +1954,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (w) { eventDoors['fish:spot'] = { x: w.x, z: w.z, name: fishing ? (fishing.phase === 'bite' ? '당기기' : '그만하기') : '낚시' }; best = 'fish:spot'; } else delete eventDoors['fish:spot'];
     } else delete eventDoors['fish:spot'];
     if (best !== near || (best && doorOf(best)?.name !== nearName)) { near = best; nearName = near ? doorOf(near).name : null; onNear?.(near ? { id: near, name: nearName, plain: Boolean(doorOf(near).plain) } : null); }
-    me.lookAt = near ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
+    me.lookAt = near && !talkView ? Math.atan2(doorOf(near).x - me.root.position.x, doorOf(near).z - me.root.position.z) : null;
     const ambientClock = lessMotion?.matches ? 0 : clock;
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = ambientClock * 2.4; else spin.rotation.y = ambientClock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(ambientClock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31

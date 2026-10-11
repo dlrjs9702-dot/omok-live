@@ -1761,3 +1761,10 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
 @media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
 .lostRequest:focus{outline:none}
+/* v1.10.63 (사용자 2026-10-12): the open-rooms card keeps its padding in the 게임관 window too */
+.plazaDialogBody>.publicRoomsCard{padding:22px}
+@media(max-width:520px){.plazaDialogBody>.publicRoomsCard{padding:14px}}
+/* 주민 대화: what Space/Enter will press is always ringed -- the focused answer or 닫기, or (with the bubble itself
+   focused) its first answer */
+.plazaDialog.talkMode button:focus{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}
+.plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}

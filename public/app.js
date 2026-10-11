@@ -1559,7 +1559,7 @@
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
   for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
   gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
-  // v1.10.63 게임방: the same menu, with 로비로 돌아가기 on top (the room's own buttons stay in its top bar)
+  // v1.10.63 게임방: the same menu, with 게임 선택으로 돌아가기 on top (the room's own buttons stay in its top bar)
   const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
   menuLeaveRoomBtn.addEventListener('click', () => { gameMenuDialog.close(); leaveRoomBtn.click(); });
   window.addEventListener('keydown', (event) => {
@@ -1934,8 +1934,10 @@
     if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) lostCard.querySelector('.talkPending')?.classList.remove('talkPending');
   });
   const talkButtons = () => [...lostCard.querySelectorAll('button:not(:disabled)')];
-  plazaDialog.addEventListener('keydown', (event) => {
-    if (!plazaDialog.classList.contains('talkMode') || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+  // on the document: a click on the island behind the bubble moves the focus out of it, the keys still talk
+  document.addEventListener('keydown', (event) => {
+    if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'Escape') return; // the dialog's own cancel (or, focus outside it, the next listener's menu stays shut: a dialog is open)
     if (event.repeat && event.key !== 'Escape') { event.preventDefault(); return; } // a held Space never runs through the lines
     const buttons = talkButtons();
     if (event.key === ' ' || event.key === 'Enter') {
@@ -9198,7 +9200,11 @@
     const rpgChoice = document.querySelector('.gameChoice[data-game="rpg"]');
     if (rpgChoice) { rpgChoice.disabled = true; rpgChoice.setAttribute('aria-disabled', 'true'); rpgChoice.title = RPG_PC_ONLY; }
   }
-  leaveRoomBtn.addEventListener('click', leaveRoom);
+  // v1.10.63 (사용자 2026-10-12): out of a room back to choosing a game -- on the island the 게임관 window opens at once
+  leaveRoomBtn.addEventListener('click', async () => {
+    await leaveRoom();
+    if (document.body.classList.contains('plazaMode') && !state) PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
+  });
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
   issueFileForm.addEventListener('submit', issueFile);
