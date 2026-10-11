@@ -87,7 +87,7 @@ test('UI: logout requires a second explicit click; lobby return retains session'
   assert.match(html, /id="logoutConfirmBtn"[^>]*>접속 종료<\/button>/);
   assert.match(html, /id="leaveRoomBtn"[^>]*>게임 선택으로<\/button>/);
   assert.match(js, /logoutBtn\.addEventListener\('click', requestLogout\)/);
-  assert.match(js, /roomLogoutBtn\.addEventListener\('click', requestLogout\)/);
+  assert.match(html, /id="roomMenuBtn"/); assert.doesNotMatch(html, /id="roomLogoutBtn"/); // v1.10.64: 접속 종료 only in the Esc menu
   assert.match(js, /logoutCancelBtn\.addEventListener\('click', \(\) => logoutDialog\.close\(\)\)/);
   assert.match(js, /logoutConfirmBtn\.addEventListener\('click', \(\) => \{ logoutDialog\.close\(\); logout\(\); \}\)/);
   assert.match(js, /async function leaveRoom\(\) \{[\s\S]*?api\('\/api\/room\/leave'/);

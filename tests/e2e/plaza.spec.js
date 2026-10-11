@@ -1065,6 +1065,11 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await expect(lines.nth(1)).toBeVisible();
   await expect(dialog).toBeVisible(); // that Space was the next line, not the answer
   expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
+  // v1.10.64: the arrows reach 닫기 too (the answers, then 닫기, round again)
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#plazaCloseBtn')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.lostRequest button').first()).toBeFocused();
   await page.waitForTimeout(900);
   const during = await page.evaluate(() => window.PlazaDebug().camera);
   expect(Math.hypot(during.x - before.x, during.y - before.y, during.z - before.z)).toBeGreaterThan(2);

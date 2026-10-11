@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.64 게임방 조작 정리 (사용자 확인 후속)
+
+- 지시(사용자 2026-10-12, v1.10.63 배포 뒤): ③ 게임방에서 Tab이 게임 밖으로 넘어가지 않게 ④ 게임방 상단 「접속 종료」 제거(Esc 메뉴에만) ⑤ 대화 말풍선 「닫기」도 방향키로 ⑥ 휴대폰 긴 화면 아래 파란 동그라미 제거.
+- Tab: 게임방이 보이고 열린 창이 없을 때, 방 안의 보이는 조작 요소(+ 💬·🎮 떠 있는 버튼)를 한 고리로 — 마지막에서 Tab은 처음으로, 처음에서 Shift+Tab은 마지막으로(app.js `FOCUSABLE`). 중간은 브라우저 기본 순서.
+- 접속 종료: 게임방 상단 버튼을 「☰ 메뉴」(`#roomMenuBtn`, Esc 메뉴를 엶)로 바꿈 — 접속 종료는 메뉴 안에만, 휴대폰은 이 버튼으로 메뉴.
+- 말풍선 방향키: 답들 다음에 「닫기」까지 한 고리(↑↓←→), 숫자 1~9는 답에만. 「닫기」에 초점일 때 Space/Enter는 닫기를 누름.
+- 파란 동그라미: 게임방 좁은 화면용 💬·🎮(`.chatFloatBtn`)을 `body.roomMode`일 때만 보이게(첫 화면·로비·섬에서 숨김; showView가 `roomMode`를 붙임).
+- 검증: e2e 「일반 주소」(PC·모바일: 첫 화면에 💬·🎮 없음), 「게임방: Esc 메뉴와 Enter 채팅」(접속 종료 버튼 없음·☰ 메뉴에 접속 종료·Tab 60번이 방 밖으로 안 나감·Shift+Tab), 「주민 대화」(↑로 닫기, ↓로 첫 답).
+
 ## v1.10.63 통합 UI 개편·아이디 로그인 (Esc 메뉴·밝은 테마·게임 홀·게임방 틀·주민 대화·대화 카메라·아이디·비밀번호)
 
 - 지시(사용자 2026-10-11, IDEAS 「통합 UI」 범위 조정): 계정 표시줄을 없애고 다른 게임처럼 Esc 메뉴, 테마는 어두운 기본·밝게·기기 설정 선택.
@@ -36,14 +45,3 @@
 - 추가 지시(사용자 2026-10-11): ⑧ 전체화면 — 계정 표시줄 「전체화면/창 모드」(페이지 전체 `requestFullscreen`, 창·대화상자 그대로 열림, Esc·뒤로 가기로 나와도 글자 따라감, 지원 안 하는 브라우저는 숨김). ⑨ 확대·축소 — 카메라 거리는 사용자 몫(PC 휠, 휴대폰 두 손가락 벌리기/좁히기, 6~26, 기본 13.1, 브라우저별 `gc.islandZoom` 기억). 건물에 등을 대면 당기던 자동 확대(`cameraDistance`, CAM_MIN)는 지우고, 같은 거리에서 CAM_OVER로 지붕 위로 올라가 건물을 반투명으로(기존 「건물 안 카메라 없음·4m 이상」 검사 그대로 통과). 앞으로의 몰입형 상호작용 카메라(IDEAS 2026-10-10)는 자기 시점으로 갔다가 이 사용자 거리로 돌아오게 하면 된다(`zoomDist`와 실제 `camDist` 분리). 휴대폰 계정 표시줄은 버튼이 늘어 두 줄로 넘치던 것을 한 줄로.
 - 제외: 아이폰(Chrome도 WebKit `CriOS`)은 기존 「Chrome 전용」 입장 규칙으로 막힌 그대로. 수집 대기 중 Esc 취소, 상단 계정 표시줄 축소, 휴대폰 성능(그래픽 등급)은 손대지 않았다.
 - 검증: Pixel 7 크기·터치 에뮬레이션 Chromium에서 진입·성별 선택·스틱 상하좌우 이동(1초 약 5m)·놓으면 정지·두 손가락(스틱+시점) 동시·「앉기」 탭→앉음→스틱으로 일어남·게시판/게임관/옷가게/가방 창 폭(가로 넘침 없음)·채팅 입력/전송. e2e `mobile-island.spec`(모바일 전용) 통과, PC `plaza.spec` 시설·방향키·채팅·시점 4건과 `island-entry`·`rpg-touch-only`·`entry-and-lobby` 양 프로필 통과(이 PC에서는 3D 페이지 병렬 실행 시 시간 초과가 나 1개씩 실행). npm 784 중 778(기존 6건 동일). 실제 휴대폰 미검증.
-
-## v1.10.61 두 세계 영웅전 연결
-
-- 지시(사용자, 2026-10-11): 허가받은 외부 Godot 웹 게임 「두 세계 영웅전」을 게임센터에 직접 운영(B안). 원본 소스 없이 빌드 결과물만 있다(Godot 4.7.2, 스레드 끔).
-- 페이지 `/herosurv/`(`public/herosurv/`): 엔진 파일은 그대로, 내보내기 HTML의 인라인 스크립트·스타일은 `boot.js`·`herosurv.css`로 옮겨 CSP를 지킨다. 게임이 `JavaScriptBridge.eval`로 묻는 고정 식 5개(주소·경로·검색어, Manus 기록 호스트 2개)는 `boot.js`가 답해 `unsafe-eval` 없이 동작한다. Manus 전용 BGM 스니펫 eval만 거부되어 BGM이 없다(소리 없는 PC 기준 유지).
-- 큰 파일 2개(pck 72MB, wasm 39MB → brotli 8MB)는 R2 버킷 `gamecenter-games`에 sha256 이름으로 두고 Worker `gamecenter-games`(`ops/herosurv-assets/`, Workers Cache, 1년 immutable, CORS는 게임센터 주소만)가 내보낸다. 서버는 `HEROSURV_ASSETS`(기본 이 Worker) 주소를 페이지에 넣고 이 페이지 CSP `connect-src`에만 더한다. 빈 값이면 `public/herosurv/` 로컬 사본(gitignore)을 읽는다. 브라우저는 처음 한 번 받고 HTTP 캐시를 쓴다. 서비스워커 선받기 대상(`assets`·`hwatu`)에는 넣지 않았다.
-- 랭킹: 게임이 부르는 `/api/leaderboards/v1/`(guests·me·boards/:id·boards/:id/runs·runs/:id)를 서버가 구현한다. 로비 버튼이 탭의 세션 토큰을 `sessionStorage.herosurvSession`에 넘기고 `boot.js`가 게임의 호출에 `X-Session-Token`을 붙인다. 표시 이름은 게임센터 닉네임(게임이 보내는 이름·메일은 쓰지 않고 저장하지 않음). 판 ID는 서버 메모리, 판당 1회(저장 실패 시 재제출 가능), 실제 경과보다 긴 기록 거부. 계정·보드별 최고 기록만 `herosurv_best`(PostgreSQL)·`herosurv`(JSON)에 둔다. 점수는 게임 보고값이라 포인트·미션과 연결하지 않는다.
-- 게임 위 「나가기」(왼쪽 아래, 게임 화면에서 비어 있는 자리): 확인 창 뒤 `/`로 이동(게스트는 세션 이어짐), 버튼이 포커스를 갖지 않아 게임 키(Space 필살기)는 캔버스에 남는다. 사용자 확인 1~4 성공 뒤 추가 요청.
-- Worker CORS는 항상 `*`: Workers Cache가 Origin과 무관하게 한 사본을 내보내, Origin별 헤더는 처음 채운 요청(헤더 없는 사본)을 따라가 페이지가 「Failed to fetch」로 멈췄다(사용자 실기에서 발견, 재배포 d45cb45d로 해결).
-- Codex 검토 3건 반영: PostgreSQL 동시 첫 기록에서 낮은 점수가 덮어쓰던 문제(upsert 안에서 비교), 저장 실패 뒤 판 ID 소실, 관리자 세션 미전달.
-- 검증: `test/herosurv.test.js` 3/3(JSON·PostgreSQL 저장, API 닉네임·판당1회·시간 초과·남의 판·페이지 CSP). 로컬 서버+실제 게임 파일 Chromium으로 로비→게임→한 판→기록·명예의 전당(닉네임·「나」)·뒤로 가기 로그인 유지, R2 Worker 경유 로드(두 파일 200, sha256 일치, 두 번째 요청 CF-Cache HIT). 전체 npm 784 중 778 — 실패 6건은 이 PC에서 수정 전 main도 같은 기존 실패(원인 미확인). 실제 운영·모바일·다인 실기 미검증.
