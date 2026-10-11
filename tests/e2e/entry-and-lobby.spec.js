@@ -22,7 +22,7 @@ test.describe('게임센터 입장과 로비', () => {
     await expect(page.locator('#gateView')).toBeHidden();
     await expect(page.locator('#gamePicker')).toBeVisible();
 
-    await page.getByRole('button', { name: '다빈치 코드' }).click();
+    await page.getByRole('button', { name: '다빈치 코드', exact: true }).click(); // (a room card's 관전 button may name the game too)
     await expect(page.locator('#selectedGameText')).toHaveText('다빈치 코드 방을 만듭니다.');
   });
 

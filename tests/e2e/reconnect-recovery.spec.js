@@ -40,7 +40,7 @@ async function refresh(view, panel) {
 
 async function openRoom(views, gameType, panel, seats) {
   const [host, ...others] = views;
-  await host.page.locator(`[data-game="${gameType}"]`).click();
+  await host.page.locator(`[data-game="${gameType}"]`).evaluate((b) => b.click()); // v1.10.63: a 협동게임 is under its own tab; picking it brings the tab
   const [created] = await Promise.all([
     host.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),
     host.page.locator('#createRoomBtn').click(),
