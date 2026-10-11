@@ -1722,3 +1722,14 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .gameMenuThemes label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border-radius: 10px; border: 1px solid #334155; cursor: pointer; font-weight: 800; font-size: .86rem; white-space: nowrap; }
 .gameMenuThemes label:has(input:checked) { border-color: #60a5fa; background: rgba(96, 165, 250, .14); }
 .gameMenuThemes label:has(input:focus-visible) { outline: 2px solid #60a5fa; outline-offset: 2px; }
+/* v1.10.63 게임 선택 탭: 멀티게임 / 싱글게임, then 대전게임 / 협동게임 -- only the chosen tab's games and panes show */
+.gameTabs { display: flex; gap: 6px; margin: 12px 0 8px; }
+.gameTab { flex: 1; padding: 10px 8px; border-radius: 12px; background: #0f172a; color: #cbd5e1; border: 1px solid #334155; font-weight: 850; }
+.gameTab[aria-selected="true"] { background: #172554; color: #f8fafc; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96, 165, 250, .2); }
+.gameKindTabs { margin-top: 0; }
+.gameKindTabs .gameTab { padding: 7px 8px; font-size: .86rem; }
+.lobbyCard[data-game-view="single"] [data-game-pane="multi"],
+.lobbyCard[data-game-view="multi"] [data-game-pane="single"],
+.gamePicker[data-kind="versus"] .gameOption[data-kind="coop"],
+.gamePicker[data-kind="coop"] .gameOption[data-kind="versus"] { display: none; }
+.soloGamesPanel { display: grid; gap: 8px; }

@@ -122,62 +122,67 @@
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
             </div>
           </details></div>
-          <details class="gameListPanel" open>
-            <summary class="gameListPanelSummary"><strong>게임 목록</strong><small>접기 / 펼치기</small></summary>
-            <div class="gamePicker" id="gamePicker">
-            <div class="gameOption" data-game-option="omok">
+          <!-- v1.10.63 게임 선택 (사용자 2026-10-11): 멀티게임 / 싱글게임, 멀티게임은 대전게임 / 협동게임 -- a tab shows the games under it -->
+          <div class="gameTabs" role="tablist" aria-label="게임 종류">
+            <button type="button" role="tab" class="gameTab" data-game-mode="multi" aria-selected="true">멀티게임</button>
+            <button type="button" role="tab" class="gameTab" data-game-mode="single" aria-selected="false">싱글게임</button>
+          </div>
+          <div class="gameTabs gameKindTabs" role="tablist" aria-label="멀티게임 종류" data-game-pane="multi">
+            <button type="button" role="tab" class="gameTab" data-game-kind="versus" aria-selected="true">대전게임</button>
+            <button type="button" role="tab" class="gameTab" data-game-kind="coop" aria-selected="false">협동게임</button>
+          </div>
+            <div class="gamePicker" id="gamePicker" data-game-pane="multi" data-kind="versus">
+            <div class="gameOption" data-game-option="omok" data-kind="versus">
               <button type="button" class="gameChoice selected" data-game="omok"><strong>오목</strong></button>
             </div>
-            <div class="gameOption" data-game-option="connect4">
+            <div class="gameOption" data-game-option="connect4" data-kind="versus">
               <button type="button" class="gameChoice" data-game="connect4"><strong>사목 (4목)</strong></button>
             </div>
-            <div class="gameOption" data-game-option="yut">
+            <div class="gameOption" data-game-option="yut" data-kind="versus">
               <button type="button" class="gameChoice" data-game="yut"><strong>윷놀이</strong></button>
             </div>
-            <div class="gameOption" data-game-option="bingo">
+            <div class="gameOption" data-game-option="bingo" data-kind="versus">
               <button type="button" class="gameChoice" data-game="bingo"><strong>빙고</strong></button>
             </div>
-            <div class="gameOption" data-game-option="dots">
+            <div class="gameOption" data-game-option="dots" data-kind="versus">
               <button type="button" class="gameChoice" data-game="dots"><strong>점과 상자</strong></button>
             </div>
-            <div class="gameOption" data-game-option="othello">
+            <div class="gameOption" data-game-option="othello" data-kind="versus">
               <button type="button" class="gameChoice" data-game="othello"><strong>오델로</strong></button>
             </div>
-            <div class="gameOption" data-game-option="baseball">
+            <div class="gameOption" data-game-option="baseball" data-kind="versus">
               <button type="button" class="gameChoice" data-game="baseball"><strong>숫자야구</strong></button>
             </div>
-            <div class="gameOption" data-game-option="pictionary">
+            <div class="gameOption" data-game-option="pictionary" data-kind="versus">
               <button type="button" class="gameChoice" data-game="pictionary"><strong>그림 맞히기</strong></button>
             </div>
-            <div class="gameOption" data-game-option="liar">
+            <div class="gameOption" data-game-option="liar" data-kind="versus">
               <button type="button" class="gameChoice" data-game="liar"><strong>라이어게임</strong></button>
             </div>
-            <div class="gameOption" data-game-option="oldmaid">
+            <div class="gameOption" data-game-option="oldmaid" data-kind="versus">
               <button type="button" class="gameChoice" data-game="oldmaid"><strong>도둑잡기</strong></button>
             </div>
-            <div class="gameOption" data-game-option="twentyquestions">
+            <div class="gameOption" data-game-option="twentyquestions" data-kind="coop">
               <button type="button" class="gameChoice" data-game="twentyquestions"><strong>스무고개</strong></button>
             </div>
-            <div class="gameOption" data-game-option="davinci">
+            <div class="gameOption" data-game-option="davinci" data-kind="versus">
               <button type="button" class="gameChoice" data-game="davinci"><strong>다빈치 코드</strong></button>
             </div>
-            <div class="gameOption" data-game-option="pandemic">
+            <div class="gameOption" data-game-option="pandemic" data-kind="coop">
               <button type="button" class="gameChoice" data-game="pandemic"><strong>팬데믹</strong></button>
             </div>
-            <div class="gameOption" data-game-option="halligalli">
+            <div class="gameOption" data-game-option="halligalli" data-kind="versus">
               <button type="button" class="gameChoice" data-game="halligalli"><strong>할리갈리</strong></button>
             </div>
-            <div class="gameOption" data-game-option="gostop">
+            <div class="gameOption" data-game-option="gostop" data-kind="versus">
               <button type="button" class="gameChoice" data-game="gostop"><strong>고스톱 · 맞고</strong></button>
             </div>
           </div>
-          </details>
-          <details class="developmentGamesPanel soloGamesPanel" open aria-label="혼자 게임">
-            <summary class="developmentGamesHead"><strong>혼자 게임</strong><small>접기 / 펼치기</small></summary>
+          <div class="soloGamesPanel" data-game-pane="single" aria-label="싱글게임">
             <button id="soloMinesBtn" type="button" class="primary soloGameBtn">지뢰찾기</button>
             <button id="soloHerosurvBtn" type="button" class="primary soloGameBtn">두 세계 영웅전</button>
-          </details>
-          <details class="developmentGamesPanel" open aria-label="게임 구현중">
+          </div>
+          <details class="developmentGamesPanel" open aria-label="게임 구현중" data-game-pane="multi">
             <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
             <div class="gamePicker developmentGamePicker">
               <div class="gameOption" data-game-option="cityking">
@@ -188,6 +193,7 @@
               </div>
             </div>
           </details>
+          <div class="roomCreatePane" data-game-pane="multi">
           <p id="selectedGameText" class="selectedGameText hidden">오목 방을 만듭니다.</p>
           <fieldset class="visibilityChoices">
             <legend>방 공개 설정</legend>
@@ -219,6 +225,7 @@
             <input id="roomPasswordInput" inputmode="text" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="9" placeholder="ABCD-EFGH" required />
             <button class="secondary" type="submit">방 입장</button>
           </form>
+          </div>
         </article>
 
         <section id="publicRoomsCard" class="card publicRoomsCard" aria-label="공개 게임방 목록">

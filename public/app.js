@@ -2615,6 +2615,31 @@
     showGameRule(resolvedType);
   }
 
+  // v1.10.63 게임 선택 탭 (사용자 2026-10-11): 멀티게임 / 싱글게임, and under 멀티게임 대전게임 / 협동게임 -- each tab
+  // shows its games below (index.html data-game-pane / data-kind). The last tabs are kept per browser; a first visit
+  // opens on 멀티게임 · 대전게임. Moving to a kind that does not hold the selected game selects its first game, so
+  // 방 만들기 never makes a game that is out of sight.
+  const gamePicker = document.getElementById('gamePicker');
+  const gameCard = gamePicker.closest('.lobbyCard');
+  const gameTab = { mode: 'multi', kind: 'versus' };
+  try {
+    const saved = JSON.parse(localStorage.getItem('gc.gameTab') || 'null');
+    if (['multi', 'single'].includes(saved?.mode)) gameTab.mode = saved.mode;
+    if (['versus', 'coop'].includes(saved?.kind)) gameTab.kind = saved.kind;
+  } catch {}
+  function showGameTab() {
+    gameCard.dataset.gameView = gameTab.mode;
+    gamePicker.dataset.kind = gameTab.kind;
+    for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.setAttribute('aria-selected', String(tab.dataset.gameMode === gameTab.mode));
+    for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.setAttribute('aria-selected', String(tab.dataset.gameKind === gameTab.kind));
+    const shown = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] [data-game="${selectedGameType}"]`);
+    const first = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] .gameChoice`);
+    if (gameTab.mode === 'multi' && !shown && first) selectGame(first.dataset.game);
+    try { localStorage.setItem('gc.gameTab', JSON.stringify(gameTab)); } catch {}
+  }
+  for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.addEventListener('click', () => { gameTab.mode = tab.dataset.gameMode; showGameTab(); });
+  for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
+
   async function createRoom() {
     try {
       const visibility = document.querySelector('input[name="roomVisibility"]:checked')?.value || 'private';
@@ -9376,6 +9401,6 @@
   pointHistoryClose.addEventListener('click', () => { setPointHistoryOpen(false); pointHistoryBtn.focus(); });
   pointHistoryMore.addEventListener('click', () => loadPointHistory());
   selectGame('omok');
-  drawBoard();
+  showGameTab(); // v1.10.63: the remembered 멀티/싱글 and 대전/협동 tabs  drawBoard();
   window.GameBoot.ready.then(loadSession); // v1.10.14: after the Chrome check and the resource pack (public/game-boot.js)
 })();
