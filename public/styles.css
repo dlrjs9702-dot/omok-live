@@ -1703,7 +1703,8 @@ body.plazaMode .chatFloatBtn { display: none; } /* v1.10.62: the game room's nar
    filling the rest (dvh: what the browser's own bars leave), and on a short (sideways) screen a smaller map and stick */
 body.touchIsland.plazaMode .shell { padding-top: 6px; padding-bottom: 6px; }
 body.touchIsland.plazaMode .islandTopbar { min-height: 0; padding: 5px 8px; margin-bottom: 6px; border-radius: 14px; }
-body.touchIsland.plazaMode .islandTopActions button { padding: 6px 10px; font-size: .78rem; }
+body.touchIsland.plazaMode .islandTopActions { max-width: none; flex-wrap: nowrap; }
+body.touchIsland.plazaMode .islandTopActions button { padding: 6px 10px; font-size: .78rem; white-space: nowrap; }
 body.touchIsland .plazaStage { height: calc(100dvh - 64px); min-height: 0; }
 @media (max-height: 500px) {
   body.touchIsland .plazaStage canvas.islandMinimap { width: 112px; height: 112px; }

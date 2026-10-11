@@ -1508,6 +1508,20 @@
   islandStick.addEventListener('pointercancel', endStick);
   islandStick.addEventListener('lostpointercapture', endStick); // never left held if the browser drops the touch
   plazaHint.addEventListener('click', () => { if (touchIsland) plaza.controller?.act?.(); });
+  // v1.10.62 전체화면 (PC·휴대폰): the whole page, so windows and dialogs still open over the island; the button
+  // follows the state (Esc or the phone's back also leave it). Not where the browser has none (iPhone Safari).
+  const fullscreenBtn = byId('fullscreenBtn');
+  if (document.fullscreenEnabled) {
+    fullscreenBtn.classList.remove('hidden');
+    fullscreenBtn.addEventListener('click', () => {
+      const request = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      request?.catch?.(() => showToast('전체화면으로 바꾸지 못했습니다.'));
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const on = Boolean(document.fullscreenElement);
+      fullscreenBtn.textContent = on ? '창 모드' : '전체화면'; fullscreenBtn.setAttribute('aria-pressed', String(on));
+    });
+  }
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
     plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped
