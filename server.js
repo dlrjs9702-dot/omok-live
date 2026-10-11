@@ -30,7 +30,7 @@ const teamColor = (seat) => TEAM_SEATS.includes(String(seat)) ? (Number(seat) % 
 const assignedSeatsFor = (room) => isNumberedSeatGame(room)
   ? seatsFor(room).filter(seat => room.players[seat])
   : ['black', 'white'].filter(color => room.players[color]);
-const { createAccessStore } = require('./lib/access-store');
+const { createAccessStore, hashPassword, verifyPassword, normalizeLoginId, loginIdOk } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
@@ -236,6 +236,7 @@ function sendIndex(res, bootstrap = {}) {
     .replace('__SESSION_TOKEN__', escapeAttr(bootstrap.sessionToken || ''))
     .replace('__SESSION_ROLE__', escapeAttr(bootstrap.role || ''))
     .replace('__SESSION_LABEL__', escapeAttr(bootstrap.label || ''))
+    .replace('__SETUP_TICKET__', escapeAttr(bootstrap.setupTicket || ''))
     .replace('__BROWSERS__', escapeAttr(ALLOWED_BROWSERS.join(' ')))
     .replace('__ASSET_MANIFEST__', () => (assetCacheEnabled ? assetManifestJson.on : assetManifestJson.off));
   res.writeHead(200, securityHeaders({
@@ -572,6 +573,34 @@ function requestSessionRelease(token, page = '', sequence = 0) {
     if (current && releaseStillPending(current)) releaseSessionToken(token);
   }, SESSION_RELEASE_GRACE_MS).unref?.();
 }
+
+// v1.10.63 아이디·비밀번호 로그인 (IDEAS 2026-10-11 확정): a login gives an account token (memory, 12 hours) for the
+// 내 계정 screen; 「게임 접속」 posts it to /guest-entry, which then enters exactly as the entry file does (same account
+// row, same one-place-at-a-time lock). An entry file of an account with no login id yet gets a setup ticket instead
+// (15 minutes): the id and password are set first, then the same entry. Both live only in this process (a restart
+// asks for the login again).
+const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
+const SETUP_TTL_MS = 15 * 60 * 1000;
+const accountTokens = new Map(); // token -> { keyId, exp }
+const setupTickets = new Map(); // ticket -> { keyId, exp }
+const setupNotRequired = process.env.NODE_ENV === 'test'; // tests enter by files; a test turns the setup on per key
+const setupRequiredKeys = new Set();
+function issueTicket(map, keyId, ttl) {
+  const now = nowMs();
+  for (const [t, row] of map) if (row.exp < now) map.delete(t);
+  const token = newSecret(32); map.set(token, { keyId, exp: now + ttl }); return token;
+}
+function ticketOf(map, token) {
+  const row = map.get(String(token || ''));
+  if (!row) return null;
+  if (row.exp < nowMs()) { map.delete(String(token)); return null; }
+  return row;
+}
+const accountOf = (req) => ticketOf(accountTokens, req.headers['x-account-token']);
+function dropAccountTokens(keyId, keep = null) { for (const [t, row] of accountTokens) if (row.keyId === keyId && t !== keep) accountTokens.delete(t); }
+const PASSWORD_MIN = 8; const PASSWORD_MAX = 64;
+const passwordOk = (p) => typeof p === 'string' && p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX;
+const accountView = (key) => ({ loginId: key.loginId, label: key.label, realName: key.realName || '' });
 
 function guestKeyInUse(guestKeyId) {
   const token = activeGuestSessions.get(guestKeyId);
@@ -3053,16 +3082,105 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { enabled: assetCacheEnabled });
   }
 
+  // --- v1.10.63 아이디·비밀번호 로그인·회원가입·내 계정 ---
+  if (pathname === '/api/account/check-id' && req.method === 'POST') {
+    if (!checkRateLimit(`account-check:${clientIp(req)}`, 30, 10 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '확인이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    const loginId = normalizeLoginId((await parseJson(req)).loginId);
+    if (!loginIdOk(loginId)) return sendError(res, 400, 'BAD_LOGIN_ID', '아이디는 영문 소문자·숫자·밑줄(_) 4~20자입니다.');
+    return sendJson(res, 200, { ok: true, loginId, available: !await accessStore.loginTaken(loginId) });
+  }
+  if (pathname === '/api/account/signup' && req.method === 'POST') {
+    if (!checkRateLimit(`account-signup:${clientIp(req)}`, 5, 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '가입 신청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const realName = String(body.realName || '').trim().replace(/\s+/g, ' ');
+    const loginId = normalizeLoginId(body.loginId);
+    const nickname = String(body.nickname || '').trim().replace(/\s+/g, ' ');
+    if (!realName || realName.length > 20) return sendError(res, 400, 'BAD_NAME', '이름을 1~20자로 입력해 주세요.');
+    if (!loginIdOk(loginId)) return sendError(res, 400, 'BAD_LOGIN_ID', '아이디는 영문 소문자·숫자·밑줄(_) 4~20자입니다.');
+    if (!passwordOk(body.password)) return sendError(res, 400, 'BAD_PASSWORD', `비밀번호는 ${PASSWORD_MIN}~${PASSWORD_MAX}자입니다.`);
+    if (!nicknameFormatOk(nickname)) return sendError(res, 400, 'BAD_NICKNAME', `닉네임은 한글·숫자 ${NICKNAME_MAX}자까지입니다.`);
+    const wanted = normalizeNickname(nickname);
+    if (RESERVED_NICKNAMES.has(wanted) || (await accessStore.list()).some((key) => normalizeNickname(key.label) === wanted)) return sendError(res, 409, 'NAME_TAKEN', '이미 쓰고 있는 닉네임입니다.');
+    const row = await accessStore.requestSignup({ realName, loginId, passwordHash: await hashPassword(body.password), label: nickname });
+    if (!row) return sendError(res, 409, 'LOGIN_ID_TAKEN', '이미 사용 중인 아이디입니다.'); // checked again at the save itself
+    return sendJson(res, 201, { ok: true, pending: true });
+  }
+  if (pathname === '/api/account/login' && req.method === 'POST') {
+    const body = await parseJson(req);
+    const loginId = normalizeLoginId(body.loginId);
+    if (!checkRateLimit(`account-login:${clientIp(req)}`, 10, 15 * 60 * 1000) || !checkRateLimit(`account-login-id:${loginId}`, 10, 15 * 60 * 1000)) {
+      return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '로그인 시도가 너무 많습니다. 15분 후 다시 시도해 주세요.');
+    }
+    const key = loginIdOk(loginId) ? await accessStore.findLogin(loginId) : null;
+    if (!key || !await verifyPassword(String(body.password || ''), key.passwordHash)) return sendError(res, 403, 'BAD_LOGIN', '아이디 또는 비밀번호가 올바르지 않습니다.');
+    if (key.pendingAt) return sendError(res, 403, 'PENDING', '관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
+    if (key.revokedAt) return sendError(res, 403, 'REVOKED', '사용이 중지된 계정입니다. 관리자에게 문의해 주세요.');
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account: accountView(key) });
+  }
+  if (pathname === '/api/account/setup' && req.method === 'POST') { // an entry-file account's first id and password
+    if (!checkRateLimit(`account-setup:${clientIp(req)}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const ticket = ticketOf(setupTickets, body.ticket);
+    if (!ticket) return sendError(res, 403, 'SETUP_EXPIRED', '설정 시간이 지났습니다. 입장 파일을 다시 열어 주세요.');
+    const loginId = normalizeLoginId(body.loginId);
+    if (!loginIdOk(loginId)) return sendError(res, 400, 'BAD_LOGIN_ID', '아이디는 영문 소문자·숫자·밑줄(_) 4~20자입니다.');
+    if (!passwordOk(body.password)) return sendError(res, 400, 'BAD_PASSWORD', `비밀번호는 ${PASSWORD_MIN}~${PASSWORD_MAX}자입니다.`);
+    const row = await accessStore.setLogin(ticket.keyId, loginId, await hashPassword(body.password));
+    if (row === false) return sendError(res, 409, 'LOGIN_ID_TAKEN', '이미 사용 중인 아이디입니다.');
+    if (!row) return sendError(res, 409, 'ALREADY_SET', '이미 아이디가 설정된 계정입니다. 로그인해 주세요.');
+    setupTickets.delete(String(body.ticket)); setupRequiredKeys.delete(row.id);
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, row.id, ACCOUNT_TTL_MS), account: accountView(row) });
+  }
+  if (pathname.startsWith('/api/account/') && ['me', 'password', 'entry-file', 'logout'].includes(pathname.slice(13))) {
+    const acct = accountOf(req);
+    const key = acct && await accessStore.get(acct.keyId);
+    if (!key || key.revokedAt || key.pendingAt) { if (acct) accountTokens.delete(String(req.headers['x-account-token'])); return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.'); }
+    const action = pathname.slice(13);
+    if (action === 'me' && req.method === 'GET') return sendJson(res, 200, { ok: true, account: accountView(key) });
+    if (action === 'logout' && req.method === 'POST') { accountTokens.delete(String(req.headers['x-account-token'])); return sendJson(res, 200, { ok: true }); }
+    if (action === 'password' && req.method === 'POST') {
+      if (!checkRateLimit(`account-password:${key.id}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+      const body = await parseJson(req);
+      const full = await accessStore.findLogin(key.loginId);
+      if (!full || !await verifyPassword(String(body.current || ''), full.passwordHash)) return sendError(res, 403, 'BAD_PASSWORD', '현재 비밀번호가 올바르지 않습니다.');
+      if (!passwordOk(body.next)) return sendError(res, 400, 'BAD_PASSWORD', `새 비밀번호는 ${PASSWORD_MIN}~${PASSWORD_MAX}자입니다.`);
+      await accessStore.setPassword(key.id, await hashPassword(body.next));
+      dropAccountTokens(key.id, String(req.headers['x-account-token'])); // other logins of it end
+      return sendJson(res, 200, { ok: true });
+    }
+    if (action === 'entry-file' && req.method === 'POST') { // a new file: the earlier one stops working (the client asked first)
+      if (!checkRateLimit(`account-file:${key.id}`, 5, 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '입장 파일 발급이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
+      const token = newSecret(32);
+      const row = await accessStore.rotateToken(key.id, token);
+      if (!row) return sendError(res, 404, 'KEY_NOT_FOUND', '계정을 찾을 수 없습니다.');
+      return sendJson(res, 200, { ok: true, fileName: safeFilename(row.label), html: makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label }) });
+    }
+    return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/account-setup' && req.method === 'POST') {
+    const body = await parseJson(req); setupRequiredKeys.add(String(body.keyId || ''));
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (pathname === '/guest-entry' && req.method === 'POST') {
     if (browserBlocked(req)) return sendChromeOnly(res);
     if (!checkRateLimit(`guest-entry:${clientIp(req)}`, 20, 10 * 60 * 1000)) {
       return sendSimpleHtml(res, 429, '입장 제한', '입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
     }
     const form = await parseForm(req);
-    const token = String(form.token || '');
-    if (token.length < 30 || token.length > 200) return sendSimpleHtml(res, 403, '입장 거부', '유효하지 않은 입장 파일입니다.');
-    const key = await accessStore.validateAndRecord(token);
-    if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
+    let key;
+    if (form.account) { // v1.10.63 「게임 접속」 from the 내 계정 screen
+      const acct = ticketOf(accountTokens, form.account);
+      key = acct && await accessStore.recordUse(acct.keyId);
+      if (!key) return sendSimpleHtml(res, 403, '입장 거부', '로그인이 만료되었습니다. 다시 로그인해 주세요.');
+    } else {
+      const token = String(form.token || '');
+      if (token.length < 30 || token.length > 200) return sendSimpleHtml(res, 403, '입장 거부', '유효하지 않은 입장 파일입니다.');
+      key = await accessStore.validateAndRecord(token);
+      if (!key) return sendSimpleHtml(res, 403, '입장 거부', '이 입장 파일은 유효하지 않거나 권한이 취소되었습니다.');
+      // an account with no login id sets one first (no skipping); the file goes on working after
+      if (!key.loginId && (!setupNotRequired || setupRequiredKeys.has(key.id))) return sendIndex(res, { setupTicket: issueTicket(setupTickets, key.id, SETUP_TTL_MS), label: key.label });
+    }
     if (guestKeyInUse(key.id)) {
       return sendSimpleHtml(
         res,
@@ -4387,6 +4505,30 @@ async function requestHandler(req, res) {
     if (!requireAdmin(req, res)) return;
     const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id) }));
     return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
+  }
+
+  // v1.10.63 가입 신청: waiting sign-ups, approved (the account is made: its file comes later from 내 계정) or rejected
+  if (pathname === '/api/admin/signups' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    return sendJson(res, 200, { signups: (await accessStore.listPending()).map(({ id, label, loginId, realName, pendingAt }) => ({ id, nickname: label, loginId, realName, pendingAt })) });
+  }
+  const signupMatch = pathname.match(/^\/api\/admin\/signups\/([0-9a-f-]{36})\/(approve|reject)$/i);
+  if (signupMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const row = signupMatch[2] === 'approve' ? await accessStore.approve(signupMatch[1]) : await accessStore.rejectPending(signupMatch[1]);
+    if (!row) return sendError(res, 404, 'SIGNUP_NOT_FOUND', '가입 신청을 찾을 수 없습니다.');
+    if (signupMatch[2] === 'approve') await pointStore.ensureAccount(`guest:${row.id}`);
+    return sendJson(res, 200, { ok: true });
+  }
+  // a forgotten password: the administrator sets a temporary one and tells it to the player (shown once)
+  const resetMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/password-reset$/i);
+  if (resetMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const temporary = crypto.randomBytes(9).toString('base64url').slice(0, 10);
+    const row = await accessStore.setPassword(resetMatch[1], await hashPassword(temporary));
+    if (!row) return sendError(res, 404, 'NO_LOGIN', '아이디가 설정된 계정만 초기화할 수 있습니다.');
+    dropAccountTokens(row.id);
+    return sendJson(res, 200, { ok: true, loginId: row.loginId, password: temporary });
   }
 
   if (pathname === '/api/admin/keys' && req.method === 'POST') {

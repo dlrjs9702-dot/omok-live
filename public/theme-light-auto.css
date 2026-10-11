@@ -921,3 +921,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .lostRequest:focus{outline:none}
 :root[data-theme="light"] .plazaDialog.talkMode button:focus{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}
 :root[data-theme="light"] .plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #23806f;box-shadow:0 0 0 6px rgba(35,128,111,.28)}
+:root[data-theme="light"] .accountForm label small{color:#7a6650}
+:root[data-theme="light"] .accountMessage{color:#166534}
+:root[data-theme="light"] .accountMessage.bad{color:#9b2c2c}
+:root[data-theme="light"] .adminLoginForm{border-top:1px solid #d6c3a5}
+:root[data-theme="light"] .adminLoginForm label{color:#7a6650}
+:root[data-theme="light"] .adminLoginForm input{border:1px solid #d6c3a5;background:#f7efe1;color:#fff}

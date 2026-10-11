@@ -1413,6 +1413,7 @@
   }
 
   function showView(name) {
+    if (name === 'gate') queueMicrotask(() => openAccountGate()); // v1.10.63: login / 내 계정 / id setup
     gateView.classList.toggle('hidden', name !== 'gate');
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
@@ -2491,7 +2492,7 @@
     let data = {};
     try { data = await res.json(); } catch {}
     if (!res.ok) {
-      if (res.status === 401 && requestToken === sessionToken) expireSession(data.message);
+      if (res.status === 401 && requestToken && requestToken === sessionToken) expireSession(data.message); // (not before entering: the 로그인 screen's own calls)
       const err = new Error(data.message || '요청을 처리하지 못했습니다.');
       err.status = res.status;
       err.data = data;
@@ -2577,7 +2578,7 @@
   async function logout() {
     leavePhoto(); // cancel before waiting for the logout request, including a slow/offline response
     try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
-    expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
+    expireSession('나갔습니다. 다시 이용하려면 로그인하거나 입장 파일을 여세요.');
   }
 
   function gameName(type) {
@@ -3127,6 +3128,33 @@
     persistenceBadge.textContent = data.persistence === 'database' ? '영구 DB 저장' : '임시 서버 저장';
     persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
     renderGuestKeys(data.keys || []);
+    renderSignups((await api('/api/admin/signups')).signups || []);
+  }
+  // v1.10.63 가입 신청: 이름 · 아이디 · 원하는 닉네임, 승인(계정이 생김) / 거절
+  function renderSignups(signups) {
+    const list = byId('signupList');
+    list.replaceChildren();
+    if (!signups.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '대기 중인 가입 신청이 없습니다.'; list.append(empty); return; }
+    for (const s of signups) {
+      const row = document.createElement('div'); row.className = 'keyRow compactKeyRow signupRow';
+      const main = document.createElement('div'); main.className = 'keyMain';
+      const name = document.createElement('strong'); name.textContent = s.nickname;
+      const info = document.createElement('small'); info.textContent = `이름 ${s.realName} · 아이디 ${s.loginId} · 신청 ${new Date(s.pendingAt).toLocaleString('ko-KR')}`;
+      main.append(name, info);
+      const actions = document.createElement('div'); actions.className = 'keyActions';
+      for (const [label, cls, act] of [['승인', 'secondary', 'approve'], ['거절', 'danger', 'reject']]) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `${cls} tiny compactAction`; b.textContent = label;
+        b.setAttribute('aria-label', `${s.nickname} 가입 ${label}`);
+        b.addEventListener('click', async () => {
+          if (act === 'reject' && !window.confirm(`${s.nickname}(${s.loginId})의 가입 신청을 거절할까요?`)) return;
+          b.disabled = true;
+          try { await api(`/api/admin/signups/${s.id}/${act}`, { method: 'POST', body: '{}' }); showToast(act === 'approve' ? `${s.nickname} 가입을 승인했습니다.` : '가입 신청을 거절했습니다.'); await loadGuestKeys(); }
+          catch (err) { showToast(err.message, 4000); b.disabled = false; }
+        });
+        actions.append(b);
+      }
+      row.append(main, actions); list.append(row);
+    }
   }
 
   function renderGuestKeys(keys) {
@@ -3207,7 +3235,7 @@
       detail.className = 'keyDetail hidden';
       const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
       const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
-      detail.textContent = `상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
+      detail.textContent = `아이디 ${key.loginId || '미설정'}${key.realName ? ` · 이름 ${key.realName}` : ''} · 상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
       const renameBtn = document.createElement('button');
       renameBtn.type = 'button';
       renameBtn.className = 'ghost tiny compactAction renameAction';
@@ -3219,6 +3247,18 @@
         finally { renameBtn.disabled = false; }
       });
       detail.appendChild(renameBtn);
+      if (key.loginId) { // v1.10.63 비밀번호 분실: a temporary password, shown once to tell the player
+        const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'ghost tiny compactAction'; resetBtn.textContent = '비밀번호 초기화';
+        resetBtn.addEventListener('click', async () => {
+          if (!window.confirm(`${key.label}(${key.loginId})의 비밀번호를 임시 비밀번호로 바꿀까요?`)) return;
+          try { const data = await api(`/api/admin/keys/${key.id}/password-reset`, { method: 'POST', body: '{}' }); window.alert(`아이디 ${data.loginId}
+임시 비밀번호 ${data.password}
+
+본인에게 전달하고, 로그인 뒤 비밀번호를 바꾸게 해 주세요.`); }
+          catch (err) { showToast(err.message, 4000); }
+        });
+        detail.appendChild(resetBtn);
+      }
       const memoEditor = document.createElement('form');
       memoEditor.className = 'keyMemoEditor hidden';
       const memoInput = document.createElement('input');
@@ -9183,6 +9223,110 @@
   }, true);
 
   adminLoginForm.addEventListener('submit', adminLogin);
+
+  // v1.10.63 아이디·비밀번호 로그인 (IDEAS 2026-10-11): the first screen is 로그인 / 회원가입 신청; a login opens 내 계정
+  // (게임 접속 · 입장 파일 받기 · 비밀번호 변경 · 로그아웃). The account token is kept in this tab (sessionStorage) so a
+  // reload or 접속 종료 comes back to 내 계정. An entry file of an account with no login id comes here with a setup
+  // ticket (body data-setup): the id and password first, then the game.
+  const accountGate = byId('accountGate'); const accountPanel = byId('accountPanel'); const accountSetupForm = byId('accountSetupForm');
+  const accountMessage = byId('accountMessage');
+  const ACCOUNT_KEY = 'gc.account';
+  let setupTicket = document.body.dataset.setup || '';
+  const accountToken = { get: () => { try { return sessionStorage.getItem(ACCOUNT_KEY) || ''; } catch { return ''; } },
+    set: (t) => { try { if (t) sessionStorage.setItem(ACCOUNT_KEY, t); else sessionStorage.removeItem(ACCOUNT_KEY); } catch {} } };
+  const say = (text, bad = false) => { accountMessage.textContent = text; accountMessage.classList.toggle('bad', bad); };
+  const accountApi = (path, body, method = 'POST') => api(path, { method, headers: { 'X-Account-Token': accountToken.get() }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  let accountPane = '';
+  function showAccountPane(pane) { // 'login' | 'signup' | 'account' | 'setup'
+    accountPane = pane;
+    accountGate.classList.toggle('hidden', pane === 'account' || pane === 'setup');
+    accountPanel.classList.toggle('hidden', pane !== 'account');
+    accountSetupForm.classList.toggle('hidden', pane !== 'setup');
+    for (const tab of accountGate.querySelectorAll('[data-account-tab]')) tab.setAttribute('aria-selected', String(tab.dataset.accountTab === pane));
+    for (const form of accountGate.querySelectorAll('[data-account-pane]')) form.classList.toggle('hidden', form.dataset.accountPane !== pane);
+  }
+  for (const tab of accountGate.querySelectorAll('[data-account-tab]')) tab.addEventListener('click', () => { say(''); showAccountPane(tab.dataset.accountTab); });
+  function showAccount(account) {
+    byId('accountTitle').textContent = `${account.label}님`;
+    byId('accountSub').textContent = `아이디 ${account.loginId}`;
+    showAccountPane('account');
+  }
+  async function openAccountGate() { // the gate is shown: which part of it
+    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 입장할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
+    if (!accountToken.get()) { if (accountPane !== 'login' && accountPane !== 'signup') showAccountPane('login'); return; } // the tab in use stays
+    try { showAccount((await accountApi('/api/account/me', null, 'GET')).account); }
+    catch { accountToken.set(''); showAccountPane('login'); }
+  }
+  // 중복 확인: the answer belongs to the id it was asked for (a changed id needs asking again; the server checks once more at the end)
+  function idChecker(input, button) {
+    let checked = '';
+    input.addEventListener('input', () => { checked = ''; });
+    button.addEventListener('click', async () => {
+      try {
+        const data = await api('/api/account/check-id', { method: 'POST', body: JSON.stringify({ loginId: input.value }) });
+        checked = data.available ? data.loginId : '';
+        say(data.available ? `「${data.loginId}」은(는) 사용할 수 있는 아이디입니다.` : '이미 사용 중인 아이디입니다.', !data.available);
+      } catch (err) { checked = ''; say(err.message, true); }
+    });
+    return () => checked && checked === input.value.trim().toLowerCase();
+  }
+  const signupIdChecked = idChecker(byId('signupIdInput'), byId('signupCheckBtn'));
+  const setupIdChecked = idChecker(byId('setupIdInput'), byId('setupCheckBtn'));
+  byId('accountLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const data = await api('/api/account/login', { method: 'POST', body: JSON.stringify({ loginId: byId('loginIdInput').value, password: byId('loginPasswordInput').value }) });
+      byId('loginPasswordInput').value = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account);
+    } catch (err) { say(err.message, true); }
+  });
+  byId('accountSignupForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!signupIdChecked()) { say('아이디 중복 확인을 먼저 해 주세요.', true); return; }
+    if (byId('signupPasswordInput').value !== byId('signupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      await api('/api/account/signup', { method: 'POST', body: JSON.stringify({ realName: byId('signupNameInput').value, loginId: byId('signupIdInput').value, password: byId('signupPasswordInput').value, nickname: byId('signupNicknameInput').value }) });
+      event.target.reset(); showAccountPane('login');
+      say('가입 신청을 보냈습니다. 관리자 승인 후 로그인할 수 있습니다.');
+    } catch (err) { say(err.message, true); }
+  });
+  accountSetupForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!setupIdChecked()) { say('아이디 중복 확인을 먼저 해 주세요.', true); return; }
+    if (byId('setupPasswordInput').value !== byId('setupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      const data = await api('/api/account/setup', { method: 'POST', body: JSON.stringify({ ticket: setupTicket, loginId: byId('setupIdInput').value, password: byId('setupPasswordInput').value }) });
+      setupTicket = ''; accountToken.set(data.accountToken); enterWithAccount();
+    } catch (err) { say(err.message, true); }
+  });
+  function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
+  byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  byId('accountLogoutBtn').addEventListener('click', async () => {
+    await accountApi('/api/account/logout').catch(() => {});
+    accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+  });
+  byId('accountPasswordBtn').addEventListener('click', () => {
+    const form = byId('accountPasswordForm'); const open = form.classList.toggle('hidden') === false;
+    byId('accountPasswordBtn').setAttribute('aria-expanded', String(open)); if (open) byId('passwordCurrentInput').focus();
+  });
+  byId('accountPasswordForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (byId('passwordNextInput').value !== byId('passwordNextConfirm').value) { say('새 비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      await accountApi('/api/account/password', { current: byId('passwordCurrentInput').value, next: byId('passwordNextInput').value });
+      event.target.reset(); event.target.classList.add('hidden'); byId('accountPasswordBtn').setAttribute('aria-expanded', 'false');
+      say('비밀번호를 바꿨습니다.');
+    } catch (err) { say(err.message, true); }
+  });
+  // 입장 파일 받기 = 재발급: asked once, since the file got before stops working
+  byId('accountFileBtn').addEventListener('click', async () => {
+    if (!window.confirm('새 파일을 받으면 이전에 받은 입장 파일은 더 이상 쓸 수 없습니다. 새로 받을까요?')) return;
+    try {
+      const data = await accountApi('/api/account/entry-file');
+      const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([data.html], { type: 'text/html' })); link.download = data.fileName;
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      say('새 입장 파일을 받았습니다. 이전 파일은 이제 쓸 수 없습니다.');
+    } catch (err) { say(err.message, true); }
+  });
   logoutBtn.addEventListener('click', requestLogout);
   roomLogoutBtn.addEventListener('click', requestLogout);
   logoutCancelBtn.addEventListener('click', () => logoutDialog.close());
