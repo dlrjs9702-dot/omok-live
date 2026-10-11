@@ -1516,6 +1516,7 @@
     fullscreenBtn.addEventListener('click', () => {
       const request = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: 'hide' });
       request?.catch?.(() => showToast('전체화면으로 바꾸지 못했습니다.'));
+      if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true }); // Space stays the island's (Codex review)
     });
     document.addEventListener('fullscreenchange', () => {
       const on = Boolean(document.fullscreenElement);
