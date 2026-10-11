@@ -1,0 +1,58 @@
+/* v1.10.63 밝은 테마 (IDEAS 2026-10-11 「통합 UI」): cream, ivory, mint and warm brown over the shared UI -- the page,
+   windows, buttons, fields, lists, the island's HUD and the game room's frame. Chosen in the menu (<html data-theme>);
+   the dark theme is styles.css as it is. Each game's own board and card art keeps its colours. Text contrast >= 4.5:1. */
+:root[data-theme="light"] {
+  --l-page: #f4ede0; --l-surface: #fffaf1; --l-inner: #f7efe1; --l-line: #e2d4bd; --l-line2: #d6c3a5;
+  --l-text: #33281d; --l-text2: #5e4d3b; --l-muted: #7a6650;
+  --l-accent: #23806f; --l-accent-text: #1f6f60; --l-accent-soft: rgba(35, 128, 111, .12);
+  --l-warm: #8a5a00; --l-danger-bg: #fde4e1; --l-danger: #9b2c2c;
+  color: var(--l-text); background: var(--l-page); color-scheme: light;
+}
+:root[data-theme="light"] body { background: radial-gradient(circle at 15% 10%, #fffdf7 0, var(--l-page) 45%, #eadfcb 100%); color: var(--l-text); }
+
+/* surfaces */
+:root[data-theme="light"] .card { background: var(--l-surface); border-color: var(--l-line); box-shadow: 0 18px 50px rgba(120, 90, 50, .14); }
+:root[data-theme="light"] .recordsDialog,
+:root[data-theme="light"] .logoutDialog { background: var(--l-surface); color: var(--l-text); border-color: var(--l-line2); box-shadow: 0 18px 60px rgba(90, 65, 35, .28); }
+:root[data-theme="light"] .recordsDialog::backdrop,
+:root[data-theme="light"] .logoutDialog::backdrop { background: rgba(70, 52, 30, .45); }
+:root[data-theme="light"] .keyRow,
+:root[data-theme="light"] .player,
+:root[data-theme="light"] .roleChooser,
+:root[data-theme="light"] .gameMenuSettings,
+:root[data-theme="light"] .infoList div { background: var(--l-inner); border-color: var(--l-line); }
+:root[data-theme="light"] .chatMessages { background: var(--l-inner); border-color: var(--l-line); color: var(--l-text); }
+
+/* text */
+:root[data-theme="light"] .lead,
+:root[data-theme="light"] .muted,
+:root[data-theme="light"] .gameMenuSettings h3 { color: var(--l-text2); }
+:root[data-theme="light"] .smallMuted,
+:root[data-theme="light"] .ruleNote,
+:root[data-theme="light"] .eyebrow,
+:root[data-theme="light"] .emptyState,
+:root[data-theme="light"] .keyRow small,
+:root[data-theme="light"] .player small,
+:root[data-theme="light"] .infoList dt { color: var(--l-muted); }
+
+/* buttons and fields */
+:root[data-theme="light"] .ghost { background: #f3e9d8; color: var(--l-text); border-color: var(--l-line2); }
+:root[data-theme="light"] .primary { background: var(--l-accent); color: #fff; }
+:root[data-theme="light"] .secondary { background: var(--l-accent); color: #fff; }
+:root[data-theme="light"] .danger { background: var(--l-danger-bg); color: var(--l-danger); }
+:root[data-theme="light"] input:not([type=radio]):not([type=checkbox]):not([type=range]),
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea { background: #fffdf8; color: var(--l-text); border-color: var(--l-line2); }
+:root[data-theme="light"] :focus-visible { outline-color: var(--l-accent); }
+:root[data-theme="light"] .badge { background: var(--l-inner); color: var(--l-text2); border-color: var(--l-line2); }
+:root[data-theme="light"] .toast { background: var(--l-surface); color: var(--l-text); border-color: var(--l-line2); box-shadow: 0 12px 40px rgba(90, 65, 35, .25); }
+:root[data-theme="light"] .gameMenuThemes label { border-color: var(--l-line2); }
+:root[data-theme="light"] .gameMenuThemes label:has(input:checked) { border-color: var(--l-accent); background: var(--l-accent-soft); }
+
+/* the island's HUD */
+:root[data-theme="light"] .islandChatTab { background: rgba(255, 250, 241, .92); color: var(--l-text); border-color: var(--l-line2); }
+:root[data-theme="light"] .islandChatPanel { background: rgba(255, 250, 241, var(--island-chat-alpha)); border-color: var(--l-line2); color: var(--l-text); }
+:root[data-theme="light"] .islandChatForm input { background: rgba(255, 253, 248, .96); color: var(--l-text); border-color: var(--l-accent); box-shadow: 0 0 0 3px var(--l-accent-soft); }
+:root[data-theme="light"] .islandStick { background: rgba(255, 250, 241, .45); border-color: rgba(120, 90, 50, .45); }
+:root[data-theme="light"] .islandStick span { background: rgba(255, 253, 248, .95); }
+:root[data-theme="light"] input { accent-color: var(--l-accent); }
