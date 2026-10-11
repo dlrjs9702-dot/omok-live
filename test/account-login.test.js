@@ -144,5 +144,21 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   await release(played.session);
   const again = await entry({ token: guest.key }); // the file still works, now without the setup
   assert.ok(again.session);
+  // a new file from 내 계정 ends the session of the old one (Codex)
+  assert.equal((await call('/api/account/entry-file', {}, set.data.accountToken)).status, 200);
+  assert.equal((await req('/api/session', again.session)).data.authenticated, false);
+
+  // a setup begun with a file the administrator then reissued is over (Codex)
+  const late = await issue('늦은손님');
+  await req('/api/test/account-setup', null, { keyId: late.id });
+  const lateGate = await entry({ token: late.key });
+  assert.equal((await req(`/api/admin/keys/${late.id}/reissue`, admin, {})).status, 200);
+  assert.equal((await call('/api/account/setup', { ticket: lateGate.setup, loginId: 'late_user', password: 'filepass1' })).data.error, 'SETUP_EXPIRED');
+
+  // two sign-ups asking for one nickname: the second approval is refused (Codex)
+  for (const loginId of ['twin_one', 'twin_two']) assert.equal((await call('/api/account/signup', { realName: '쌍둥이', loginId, password: 'secret123', nickname: '쌍둥이' })).status, 201);
+  const twins = (await req('/api/admin/signups', admin)).data.signups.filter((s) => s.nickname === '쌍둥이');
+  assert.equal((await req(`/api/admin/signups/${twins[0].id}/approve`, admin, {})).status, 200);
+  assert.equal((await req(`/api/admin/signups/${twins[1].id}/approve`, admin, {})).data.error, 'NAME_TAKEN');
   void enter;
 });

@@ -85,7 +85,7 @@ test('UI: logout requires a second explicit click; lobby return retains session'
   assert.match(html, /id="logoutDialog"/);
   assert.match(html, /접속을 종료하시겠습니까\? 다시 이용하려면 로그인하거나 입장 파일을 여세요\./);
   assert.match(html, /id="logoutConfirmBtn"[^>]*>접속 종료<\/button>/);
-  assert.match(html, /id="leaveRoomBtn"[^>]*>로비로 돌아가기<\/button>/);
+  assert.match(html, /id="leaveRoomBtn"[^>]*>게임 선택으로<\/button>/);
   assert.match(js, /logoutBtn\.addEventListener\('click', requestLogout\)/);
   assert.match(js, /roomLogoutBtn\.addEventListener\('click', requestLogout\)/);
   assert.match(js, /logoutCancelBtn\.addEventListener\('click', \(\) => logoutDialog\.close\(\)\)/);

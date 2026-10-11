@@ -2115,6 +2115,7 @@ function invalidateGuestSessions(guestKeyId, message = '이 입장 파일의 권
     releaseSessionToken(token, { message });
   }
   activeGuestSessions.delete(guestKeyId);
+  for (const [ticket, row] of setupTickets) if (row.keyId === guestKeyId) setupTickets.delete(ticket); // v1.10.63: a setup begun with the old file ends too (Codex)
 }
 
 function guestPresence(guestKeyId) {
@@ -3153,6 +3154,7 @@ async function requestHandler(req, res) {
       const token = newSecret(32);
       const row = await accessStore.rotateToken(key.id, token);
       if (!row) return sendError(res, 404, 'KEY_NOT_FOUND', '계정을 찾을 수 없습니다.');
+      invalidateGuestSessions(key.id, '새 입장 파일이 발급되어 이 접속은 종료되었습니다.'); // as the administrator's reissue (Codex)
       return sendJson(res, 200, { ok: true, fileName: safeFilename(row.label), html: makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label }) });
     }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
@@ -4515,7 +4517,14 @@ async function requestHandler(req, res) {
   const signupMatch = pathname.match(/^\/api\/admin\/signups\/([0-9a-f-]{36})\/(approve|reject)$/i);
   if (signupMatch && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
-    const row = signupMatch[2] === 'approve' ? await accessStore.approve(signupMatch[1]) : await accessStore.rejectPending(signupMatch[1]);
+    // approving: the nickname is checked again under the 작명소 lock -- two sign-ups may have asked for one name, or
+    // someone may have taken it since (Codex)
+    const row = signupMatch[2] === 'reject' ? await accessStore.rejectPending(signupMatch[1]) : await withNicknameLock(async () => {
+      const wanted = (await accessStore.listPending()).find((s) => s.id === signupMatch[1]);
+      if (wanted && (await accessStore.list()).some((key) => normalizeNickname(key.label) === normalizeNickname(wanted.label))) return 'taken';
+      return accessStore.approve(signupMatch[1]);
+    });
+    if (row === 'taken') return sendError(res, 409, 'NAME_TAKEN', '그 닉네임은 이미 다른 계정이 쓰고 있습니다. 거절하고 다른 닉네임으로 다시 신청하게 해 주세요.');
     if (!row) return sendError(res, 404, 'SIGNUP_NOT_FOUND', '가입 신청을 찾을 수 없습니다.');
     if (signupMatch[2] === 'approve') await pointStore.ensureAccount(`guest:${row.id}`);
     return sendJson(res, 200, { ok: true });
