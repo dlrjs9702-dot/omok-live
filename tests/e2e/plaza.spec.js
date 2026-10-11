@@ -41,6 +41,7 @@ async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
 // v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; Esc opens the menu (not while typing), Esc closes it, the theme
 // chosen there is kept, and a window opened from it replaces it
 test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않음, 테마 선택 유지, 내 정보로 넘어감', async ({ browser, request }) => {
+  test.setTimeout(90000); // a 3D island page: slower on CI
   const a = await intoPlaza(browser, request, '메뉴');
   const { page } = a;
   try {
@@ -1499,6 +1500,7 @@ test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ bro
 
 
 test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
+  test.setTimeout(90000); // a 3D island page: slower on CI
   const a=await intoPlaza(browser,request,'사진가첫이야기'),{page}=a;
   await page.evaluate(()=>window.PlazaWarp(12.8,28));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
