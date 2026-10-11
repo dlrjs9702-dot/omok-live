@@ -1498,10 +1498,15 @@
     if (event.pointerId !== stickPointer) return;
     stickPointer = null; stickKnob.style.transform = ''; plaza.controller?.setStick?.(0, 0);
   }
-  islandStick.addEventListener('pointerdown', (event) => { stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event); event.preventDefault(); });
+  islandStick.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    if (stickPointer !== null) return; // the first finger keeps the stick until it lets go (Codex review)
+    stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event);
+  });
   islandStick.addEventListener('pointermove', (event) => { if (event.pointerId === stickPointer) moveStick(event); });
   islandStick.addEventListener('pointerup', endStick);
   islandStick.addEventListener('pointercancel', endStick);
+  islandStick.addEventListener('lostpointercapture', endStick); // never left held if the browser drops the touch
   plazaHint.addEventListener('click', () => { if (touchIsland) plaza.controller?.act?.(); });
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
