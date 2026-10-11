@@ -1050,6 +1050,8 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  // the owner is what Space talks to (a walking islander or a facility may come nearer for a moment on CI)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 15000 }).toBe(`ev:lost_owner:${lost.id}`);
   await page.waitForTimeout(800); // the camera settles behind me
   const before = await page.evaluate(() => window.PlazaDebug().camera);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');

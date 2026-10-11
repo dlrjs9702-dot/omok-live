@@ -282,6 +282,7 @@ test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
 });
 
 test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', async ({ browser, request }) => {
+  test.setTimeout(90000); // a 3D island page: 16~24 s on CI, near the 30 s default
   const a = await island(browser, request, '정적환경', { __only: true });
   const sample = () => a.page.evaluate(() => {
     const d = window.PlazaDebug(); return { environment: d.environment, quality: d.quality };
@@ -305,6 +306,7 @@ test('동작 줄이기의 정적 환경과 배경 탭 화질 표본 격리', asy
 });
 
 test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browser, request }) => {
+  test.setTimeout(90000); // a 3D island page: 16~24 s on CI, near the 30 s default
   const a = await island(browser, request, '정적입력', { __only: true });
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().environment.ambient.bodyScale)).toBe(1);
