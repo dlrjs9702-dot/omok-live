@@ -985,7 +985,7 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   expect(await a.page.evaluate(t => window.PlazaDebug().markers.some(m => Math.hypot(m.x-t.x,m.z-t.z)<0.01),target)).toBe(false);
   expect(await shownMatchesRange(a.page)).toBe(true);
   await a.page.keyboard.press('Space');
-  await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 5000 });
+  await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 15000 }); // after the gathering motion (slower on CI)
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   expect((await get(request, '/api/test/island/events', a.token)).data.events.find(e=>e.id===target.id).state).toBe('growing');
