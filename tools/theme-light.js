@@ -10,7 +10,7 @@ const path = require('node:path');
 const TEXT = { // dark-theme colour -> light-theme colour, where it is a text colour
   f8fafc: '33281d', e2e8f0: '3d3024', e5e7eb: '3d3024', cbd5e1: '5e4d3b', '94a3b8': '7a6650', '64748b': '7a6650',
   111827: 'fffaf1', '0f172a': 'fffaf1', // dark text on the dark theme's light buttons
-  '60a5fa': '1f6f60', '93c5fd': '1f6f60', '3b82f6': '1f6f60', '38bdf8': '1f6f60', bfdbfe: '2a5f55', dbeafe: '2a5f55',
+  '60a5fa': '1f6f60', '93c5fd': '1f6f60', '3b82f6': '1f6f60', '38bdf8': '1f6f60', bfdbfe: '2a5f55', dbeafe: '2a5f55', eff6ff: '1f6f60',
   fde68a: '8a5a00', fef3c7: '8a5a00', fbbf24: '8a5a00', facc15: '8a5a00', fde047: '8a5a00',
   fecaca: '9b2c2c', fca5a5: '9b2c2c', bbf7d0: '166534', a7f3d0: '166534', '86efac': '166534', '34d399': '15803d',
 };
@@ -21,10 +21,17 @@ const SURFACE = { // ... where it is a background, line, outline or shadow colou
   273449: 'e2d4bd', 263246: 'e2d4bd', 334155: 'd6c3a5', 475569: 'c9b394', '64748b': 'b39c7c', '94a3b8': 'b39c7c',
   f8fafc: '3d3024', e2e8f0: '4a3b2c',
   '60a5fa': '23806f', '3b82f6': '23806f', '2563eb': '23806f', '1d4ed8': '1f6f60', '93c5fd': '7cbfb1', bfdbfe: 'bfe3da', dbeafe: 'e3f2ee',
-  '7f1d1d': 'fde4e1', '450a0a': 'fde4e1', 422006: 'fdf0d2',
+  '7f1d1d': 'fde4e1', '450a0a': 'fde4e1', 422006: 'fdf0d2', '052e16': 'dcfce7', '451a03': 'fef3c7',
 };
 const RGB = { '15,23,42': 'f7efe1', '2,6,23': '3d2f20', '148,163,184': 'b39c7c', '96,165,250': '23806f', '71,85,105': 'c9b394', '30,64,175': '23806f' };
 const SURFACE_PROPS = /^(background|background-color|background-image|border|border-(top|right|bottom|left)(-color)?|border-color|outline|outline-color|box-shadow|fill|stroke)$/;
+const TEXT_PROPS = /^(color|caret-color|-webkit-text-fill-color)$/;
+// each game's own board, card, piece and result art keeps its colours (DESIGN.md): restated as it is, never mapped
+const GAME_ART = /davinci|bingoCell|dice|hwatu|gostop|yut|halli|oldmaid|pandemic|resultEffect|resultMessage|cityBoard|pictionary/i;
+const isDark = (value) => [...value.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some((m) => {
+  const [r, g, b] = m[1] ? [0, 2, 4].map((i) => parseInt(expand(m[1]).slice(i, i + 2), 16)) : [m[2], m[3], m[4]].map(Number);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 90;
+});
 
 const hex = (h) => `#${h}`;
 const expand = (h) => (h.length === 3 ? h.split('').map((c) => c + c).join('') : h).toLowerCase();
@@ -77,27 +84,39 @@ function parse(css) {
   return out;
 }
 
-function emit(rules) {
+function emit(rules, touched) { // touched: the colour properties a light line has set so far
   const lines = [];
   for (const rule of rules) {
-    if (rule.at) { const inner = emit(rule.children); if (inner.length) lines.push(`${rule.at}{${inner.join('')}}`); continue; }
-    const decls = [];
-    for (const decl of splitTop(rule.body, ';')) {
-      const k = decl.indexOf(':'); if (k < 0) continue;
+    if (rule.at) { const inner = emit(rule.children, touched); if (inner.length) lines.push(`${rule.at}{${inner.join('')}}`); continue; }
+    // every colour declaration of the rule is restated (mapped or not) in the same order, so a later rule of
+    // styles.css still overrides an earlier one in the light theme too; a rule only gets a light line when it maps
+    // something itself or overrides a colour property that an earlier light line set
+    const all = splitTop(rule.body, ';').map((decl) => {
+      const k = decl.indexOf(':'); if (k < 0) return null;
       const prop = decl.slice(0, k).trim().toLowerCase(); const value = decl.slice(k + 1).trim();
-      const table = prop === 'color' || prop === 'caret-color' || prop === '-webkit-text-fill-color' ? TEXT : SURFACE_PROPS.test(prop) ? SURFACE : null;
-      if (!table) continue;
-      const mapped = mapValue(value, table);
-      if (mapped !== value) decls.push(`${prop}:${mapped}`);
+      return TEXT_PROPS.test(prop) || SURFACE_PROPS.test(prop) ? { prop, value } : null;
+    }).filter(Boolean);
+    if (!all.length) continue;
+    const art = GAME_ART.test(rule.selector);
+    // a background this rule keeps dark keeps its light text too (it would be dark on dark)
+    const keepsDark = all.some((d) => /^background/.test(d.prop) && isDark(d.value) && mapValue(d.value, SURFACE) === d.value);
+    let changed = false;
+    const decls = all.map(({ prop, value }) => {
+      const mapped = art ? value : TEXT_PROPS.test(prop) ? (keepsDark ? value : mapValue(value, TEXT)) : mapValue(value, SURFACE);
+      if (mapped !== value) changed = true;
+      return `${prop}:${mapped}`;
+    });
+    if (changed || all.some((d) => touched.has(d.prop))) {
+      for (const d of all) touched.add(d.prop);
+      lines.push(`${lightSelector(rule.selector)}{${decls.join(';')}}\n`);
     }
-    if (decls.length) lines.push(`${lightSelector(rule.selector)}{${decls.join(';')}}\n`);
   }
   return lines;
 }
 
 function build(stylesCss) {
   const css = stylesCss.replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, ''); // a Windows checkout may have CRLF
-  return `/* generated by tools/theme-light.js from styles.css -- do not edit; see public/theme-light.css for hand fixes */\n${emit(parse(css)).join('')}`;
+  return `/* generated by tools/theme-light.js from styles.css -- do not edit; see public/theme-light.css for hand fixes */\n${emit(parse(css), new Set()).join('')}`;
 }
 
 module.exports = { build, mapValue, lightSelector, TEXT, SURFACE };

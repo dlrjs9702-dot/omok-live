@@ -23,3 +23,14 @@ test('밝은 테마: 글자색과 바탕·선 색을 따로 바꾸고, 반투명
   assert.equal(mapValue('#fff', TEXT), '#fff'); // white on a coloured button stays
   assert.equal(lightSelector(':root, body .a, .b::backdrop'), ':root[data-theme="light"],:root[data-theme="light"] body .a,:root[data-theme="light"] .b::backdrop');
 });
+
+test('밝은 테마: 뒤 규칙의 덮어쓰기 유지, 게임 그림은 그대로, 어두운 바탕을 유지하는 규칙의 글자는 밝게 (Codex 검토)', () => {
+  const out = build('.cell{color:#f8fafc}.cell{color:#1f2937}.davinciTile{color:#f8fafc;background:#0f172a}.panel{background:#151a20;color:#f8fafc}');
+  const lines = out.split('\n').slice(1).filter(Boolean);
+  assert.deepEqual(lines, [
+    ':root[data-theme="light"] .cell{color:#33281d}',
+    ':root[data-theme="light"] .cell{color:#1f2937}', // the later rule still wins
+    ':root[data-theme="light"] .davinciTile{color:#f8fafc;background:#0f172a}', // game art as it is
+    ':root[data-theme="light"] .panel{background:#151a20;color:#f8fafc}', // light text on a background that stays dark
+  ]);
+});
