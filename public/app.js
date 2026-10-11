@@ -1,6 +1,24 @@
 (() => {
   'use strict';
 
+  // v1.10.63 테마 (IDEAS 2026-10-11): dark by default, light, or the device's own setting -- kept per browser.
+  // <html data-theme> is what the light layer (theme-light.css) keys on; the menu's 환경설정 changes it.
+  const THEMES = ['dark', 'light', 'system'];
+  const themeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  let themeChoice = 'dark';
+  try { const saved = localStorage.getItem('gc.theme'); if (THEMES.includes(saved)) themeChoice = saved; } catch {}
+  function applyTheme() { document.documentElement.dataset.theme = themeChoice === 'system' ? (themeMedia.matches ? 'light' : 'dark') : themeChoice; }
+  applyTheme();
+  themeMedia.addEventListener('change', applyTheme);
+  for (const radio of document.querySelectorAll('input[name="gcTheme"]')) {
+    radio.checked = radio.value === themeChoice;
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      themeChoice = radio.value; applyTheme();
+      try { localStorage.setItem('gc.theme', themeChoice); } catch {}
+    });
+  }
+
   const gateView = document.getElementById('gateView');
   const lobbyView = document.getElementById('lobbyView');
   const roomView = document.getElementById('roomView');
@@ -1525,6 +1543,22 @@
       fullscreenBtn.textContent = on ? '창 모드' : '전체화면'; fullscreenBtn.setAttribute('aria-pressed', String(on));
     });
   }
+  // v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; as in other games, Esc opens one window -- 내 정보, 환경설정
+  // (theme, fullscreen), 관리자 창 for an admin, 접속 종료. The ☰ button opens it where there is no Esc (a phone).
+  // Esc does this only with nothing else to close or cancel: an open window, typing, the photo mode, a gathering.
+  const gameMenuDialog = byId('gameMenuDialog');
+  const openGameMenu = () => { if (!gameMenuDialog.open) gameMenuDialog.showModal(); };
+  byId('gameMenuBtn').addEventListener('click', openGameMenu);
+  byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
+  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
+  gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
+  window.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.isComposing || event.repeat || event.defaultPrevented || lobbyView.classList.contains('hidden')) return;
+    const t = event.target;
+    if (document.querySelector('dialog[open]') || document.body.classList.contains('photoMode') || t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || '')) return;
+    if (plaza.controller?.debug?.()?.gather) return; // Esc there cancels the gathering (plaza-scene)
+    event.preventDefault(); openGameMenu();
+  });
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
     plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped

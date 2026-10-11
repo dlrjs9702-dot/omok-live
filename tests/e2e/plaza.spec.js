@@ -38,6 +38,37 @@ async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
   return who;
 }
 
+// v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; Esc opens the menu (not while typing), Esc closes it, the theme
+// chosen there is kept, and a window opened from it replaces it
+test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않음, 테마 선택 유지, 내 정보로 넘어감', async ({ browser, request }) => {
+  const a = await intoPlaza(browser, request, '메뉴');
+  const { page } = a;
+  try {
+    const menu = page.locator('#gameMenuDialog');
+    await expect(page.locator('.islandTopbar')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark'); // the default
+    await page.locator('#plazaStage').focus();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await page.keyboard.press('Enter'); // the chat input: Esc there cancels the typing, never opens the menu
+    await expect(page.locator('#islandChatInput')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await page.locator('#gameMenuBtn').click();
+    await expect(menu).toBeVisible();
+    await page.locator('input[name="gcTheme"][value="light"]').check();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    await page.locator('#myInfoBtn').click();
+    await expect(page.locator('#myInfoDialog')).toBeVisible();
+    await expect(menu).toBeHidden();
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    await page.evaluate(() => localStorage.removeItem('gc.theme'));
+  } finally { await a.context.close(); }
+});
+
 test('광장 시설: 원거리 클릭은 창을 열지 않고 근처에서만 클릭·SPACE 실행', async ({ browser, request }) => {
   const a = await intoPlaza(browser, request, '근접 클릭');
   const { page } = a;
@@ -97,7 +128,7 @@ test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석
     await islandPage(a.page);
     await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
     await expect(a.page.locator('#islandFacilityActions')).toBeHidden();
-    await a.page.locator('#myInfoBtn').click();
+    await a.page.keyboard.press('Escape'); await a.page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await a.page.locator('#myInfoDialog button[data-action="unequip"]').click();
     await expect.poll(async () => (await get(request, '/api/skins', a.token)).data.equipped?.avatar?.outfit || null).toBe(null);
     await a.page.keyboard.press('Escape');
