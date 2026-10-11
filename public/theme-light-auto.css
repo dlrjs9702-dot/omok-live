@@ -162,6 +162,11 @@
 :root[data-theme="light"] .visibilityChoices small{color:#7a6650}
 :root[data-theme="light"] .publicRoomRow,:root[data-theme="light"] .lobbyInvitationRow,:root[data-theme="light"] .inviteTargetRow{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .publicRoomMain small{color:#7a6650}
+:root[data-theme="light"] .publicRoomRow{border-left:3px solid #d6c3a5}
+:root[data-theme="light"] .publicRoomGame{color:#2a5f55;background:#dff1ec}
+:root[data-theme="light"] .publicRoomStatus{color:#5e4d3b;background:#f3e9d8}
+:root[data-theme="light"] .publicRoomRow[data-status="waiting"] .publicRoomStatus{color:#166534;background:#dcfce7}
+:root[data-theme="light"] .publicRoomRow:focus-within{border-color:#23806f}
 :root[data-theme="light"] .lobbyInvitations{border-top:1px solid #d6c3a5}
 :root[data-theme="light"] .lobbyInvitations>strong{color:#2a5f55}
 :root[data-theme="light"] .roomInvitePanel{border-top:1px solid #e2d4bd;border-bottom:1px solid #e2d4bd}

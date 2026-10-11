@@ -264,6 +264,14 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .publicRoomMain{display:grid;gap:4px;min-width:0}
 .publicRoomMain strong{font-size:.86rem;overflow-wrap:anywhere}
 .publicRoomMain small{color:#94a3b8;font-size:.72rem;line-height:1.4}
+/* v1.10.63 room cards: game badge + status chip on top, a waiting room's edge lit */
+.publicRoomRow{border-left:3px solid #334155}
+.publicRoomRow[data-status="waiting"]{border-left-color:#22c55e}
+.publicRoomHead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.publicRoomGame{font-size:.68rem;font-weight:850;color:#bfdbfe;background:#172554;border-radius:6px;padding:2px 7px}
+.publicRoomStatus{font-style:normal;font-size:.66rem;font-weight:800;color:#cbd5e1;background:#1e293b;border-radius:999px;padding:2px 8px}
+.publicRoomRow[data-status="waiting"] .publicRoomStatus{color:#bbf7d0;background:#052e16}
+.publicRoomRow:focus-within{border-color:#60a5fa}
 .publicRoomRow button,.inviteTargetRow button{flex:0 0 auto;white-space:nowrap}
 .lobbyInvitations{margin-top:14px;padding-top:12px;border-top:1px solid #334155;display:grid;gap:8px}
 .lobbyInvitations>strong{font-size:.85rem;color:#bfdbfe}

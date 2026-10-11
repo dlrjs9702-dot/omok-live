@@ -2651,6 +2651,19 @@
   }
   for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.addEventListener('click', () => { gameTab.mode = tab.dataset.gameMode; showGameTab(); });
   for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
+  // v1.10.63 keyboard in the game hall: arrow keys move among the buttons of one row of tabs, game cards or room cards;
+  // Enter/Space press the focused one (native buttons), Tab still leaves the group
+  const ARROW_GROUPS = '.gameTabs, .gamePicker, .soloGamesPanel, #publicRoomList';
+  document.addEventListener('keydown', event => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    const group = step && event.target.closest?.(ARROW_GROUPS);
+    if (!group || event.altKey || event.ctrlKey || event.metaKey || event.target.matches('input, textarea, select, summary')) return;
+    const buttons = [...group.querySelectorAll('button:not(:disabled)')].filter(button => button.offsetParent);
+    const at = buttons.indexOf(event.target);
+    if (at < 0 || buttons.length < 2) return;
+    event.preventDefault();
+    buttons[(at + step + buttons.length) % buttons.length].focus();
+  });
 
   async function createRoom() {
     try {
@@ -2707,21 +2720,32 @@
       return;
     }
     for (const room of rooms) {
+      // v1.10.63 room card: game badge + status chip, title, players, join/watch
       const row = document.createElement('div');
       row.className = 'publicRoomRow';
+      row.dataset.status = room.status || 'playing';
       const main = document.createElement('div');
       main.className = 'publicRoomMain';
-      const name = document.createElement('strong');
+      const head = document.createElement('span');
+      head.className = 'publicRoomHead';
+      const badge = document.createElement('b');
+      badge.className = 'publicRoomGame';
       const displayedGame = gameDisplayName(room.gameType);
+      badge.textContent = displayedGame;
+      const chip = document.createElement('i');
+      chip.className = 'publicRoomStatus';
+      chip.textContent = room.status === 'waiting' ? '모집 중' : room.status === 'finished' ? '종료' : room.status === 'paused' ? '일시정지' : '진행 중';
+      head.append(badge, chip);
+      const name = document.createElement('strong');
       name.textContent = room.title || `${room.host || '방장'}의 ${displayedGame}방`;
       const info = document.createElement('small');
-      const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : room.status === 'paused' ? '일시정지' : '대국 중';
-      info.textContent = `${displayedGame} · ${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
-      main.append(name, info);
+      info.textContent = `선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
+      main.append(head, name, info);
       const enter = document.createElement('button');
       enter.type = 'button';
       enter.className = room.status === 'waiting' ? 'secondary tiny' : 'ghost tiny';
       enter.textContent = room.status === 'waiting' ? '바로 입장' : '관전하기';
+      enter.setAttribute('aria-label', `${name.textContent} ${enter.textContent}`);
       enter.addEventListener('click', async () => {
         enter.disabled = true;
         try { await joinPublicRoom(room.id); }

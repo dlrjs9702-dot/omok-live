@@ -71,6 +71,48 @@ test.describe('게임센터 입장과 로비', () => {
     await page.evaluate(() => localStorage.removeItem('gc.gameTab'));
   });
 
+  // v1.10.63 게임 홀: room cards (game badge, status chip, players) and arrow keys among tabs, game cards and rooms
+  test('게임 홀: 방 카드와 화살표 키 이동', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
+    await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.72.${testInfo.project.name.length % 250}.${process.pid % 250 + 1}` });
+    const rooms = [
+      { id: 'r1', gameType: 'omok', title: '한 판 해요', status: 'waiting', playerCount: 1, maxPlayers: 2, connectedCount: 1 },
+      { id: 'r2', gameType: 'yut', title: '', host: '길동', status: 'playing', playerCount: 4, maxPlayers: 4, connectedCount: 5 },
+    ];
+    await page.route('**/api/rooms/public', route => route.fulfill({ json: { rooms } }));
+    await page.route('**/api/lobby/events*', route => route.abort()); // its snapshot would replace the rooms above
+    await page.goto('/');
+    await page.locator('#adminPassword').fill(adminPassword);
+    await page.getByRole('button', { name: '관리자로 입장' }).click();
+    await expect(page.locator('#lobbyView')).toBeVisible();
+
+    const cards = page.locator('#publicRoomList .publicRoomRow');
+    await expect(cards).toHaveCount(2);
+    await expect(cards.nth(0)).toHaveAttribute('data-status', 'waiting');
+    await expect(cards.nth(0).locator('.publicRoomGame')).toHaveText('오목 · 1vs1');
+    await expect(cards.nth(0).locator('.publicRoomStatus')).toHaveText('모집 중');
+    await expect(cards.nth(0).locator('button')).toHaveText('바로 입장');
+    await expect(cards.nth(1).locator('strong')).toHaveText('길동의 윷놀이방');
+    await expect(cards.nth(1).locator('small')).toHaveText('선수 4/4 · 접속 5명');
+    await expect(cards.nth(1).locator('button')).toHaveText('관전하기');
+
+    await cards.nth(0).locator('button').focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(cards.nth(1).locator('button')).toBeFocused();
+    await page.keyboard.press('ArrowDown'); // wraps around
+    await expect(cards.nth(0).locator('button')).toBeFocused();
+
+    await page.locator('[data-game-mode="multi"]').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-game-mode="single"]')).toBeFocused();
+    await page.locator('#gamePicker [data-game="omok"]').focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#selectedGameText')).not.toHaveText('오목 방을 만듭니다.');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('#gamePicker [data-game="omok"]')).toBeFocused();
+  });
+
   test('헬스 엔드포인트는 게임 서버 준비 상태를 반환한다', async ({ request }) => {
     const response = await request.get('/health');
 
