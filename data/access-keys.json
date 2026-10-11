@@ -1,3 +1,24 @@
 {
-  "keys": []
+  "keys": [
+    {
+      "id": "606f2328-392a-4227-b98e-efd823858fa4",
+      "label": "나가기시험",
+      "tokenHash": "b0cc3b58d86c9aaca8dcb20a6d6a34ecba1da6fc7da6c9a1f1cd0b58703d399b",
+      "createdAt": "2026-10-10T18:14:25.486Z",
+      "lastUsedAt": "2026-10-10T18:14:25.529Z",
+      "useCount": 1,
+      "revokedAt": null,
+      "adminNote": ""
+    },
+    {
+      "id": "a364f701-33a9-4fda-92d5-ab7b501f17ac",
+      "label": "로컬확인",
+      "tokenHash": "7be94c07e03f3658ffae10795c043573177ac14e0ea66d86cb0fea0e2be9ca74",
+      "createdAt": "2026-10-10T18:06:15.614Z",
+      "lastUsedAt": "2026-10-10T18:14:06.818Z",
+      "useCount": 7,
+      "revokedAt": null,
+      "adminNote": ""
+    }
+  ]
 }
