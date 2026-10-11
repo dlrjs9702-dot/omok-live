@@ -32,6 +32,7 @@ test('스무고개 기록: 대기 질문 고정 → Q+A 한 묶음 → 최신순
   const login = await api(request, '/api/admin/login', null, { password: adminPassword });
   const admin = login.data.sessionToken;
   const [a, b, w] = [await guest(browser, request, admin, '출제'), await guest(browser, request, admin, '도전'), await guest(browser, request, admin, '관전')];
+  await a.page.locator('[data-game-kind="coop"]').click(); // v1.10.63: 스무고개 is under 협동게임
   await a.page.locator('[data-game="twentyquestions"]').click();
   const [created] = await Promise.all([
     a.page.waitForResponse(res => res.url().endsWith('/api/rooms') && res.request().method() === 'POST'),

@@ -45,6 +45,17 @@ test.describe('게임센터 입장과 로비', () => {
     await expect(page.locator('#gamePicker [data-game="omok"]')).toBeHidden();
     await expect(page.locator('#selectedGameText')).toHaveText('스무고개 방을 만듭니다.');
 
+    // a game selected another way (as on coming back from a room) brings its tab along (Codex review)
+    await page.evaluate(() => document.querySelector('#gamePicker [data-game="omok"]').click());
+    await expect(page.locator('[data-game-kind="versus"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#gamePicker [data-game="omok"]')).toBeVisible();
+    // a game in development stays selected across the tabs (it is always in sight under 멀티게임)
+    await page.locator('[data-game="cityking"]').click();
+    await page.locator('[data-game-mode="single"]').click();
+    await page.locator('[data-game-mode="multi"]').click();
+    await expect(page.locator('#selectedGameText')).toContainText('랜드킹');
+    await page.locator('[data-game-kind="coop"]').click();
+
     await page.locator('[data-game-mode="single"]').click();
     await expect(page.locator('#soloMinesBtn')).toBeVisible();
     await expect(page.locator('#createRoomBtn')).toBeHidden();

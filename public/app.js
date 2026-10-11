@@ -2602,6 +2602,7 @@
     gameRulesText.textContent = gameRules[type] || '';
   }
 
+  let gameTabReady = false; // v1.10.63: set once the remembered tabs are shown (startup must not override them)
   function selectGame(type) {
     if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli', 'pandemic', 'gostop', 'rpg'].includes(type) ? type : 'omok';
@@ -2613,6 +2614,7 @@
     gostopStakeChoices.classList.toggle('hidden', selectedGameType !== 'gostop');
     gameRulesSelect.value = resolvedType;
     showGameRule(resolvedType);
+    if (gameTabReady) followSelectedGame(); // v1.10.63
   }
 
   // v1.10.63 게임 선택 탭 (사용자 2026-10-11): 멀티게임 / 싱글게임, and under 멀티게임 대전게임 / 협동게임 -- each tab
@@ -2627,15 +2629,25 @@
     if (['multi', 'single'].includes(saved?.mode)) gameTab.mode = saved.mode;
     if (['versus', 'coop'].includes(saved?.kind)) gameTab.kind = saved.kind;
   } catch {}
-  function showGameTab() {
+  function renderGameTab() {
     gameCard.dataset.gameView = gameTab.mode;
     gamePicker.dataset.kind = gameTab.kind;
     for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.setAttribute('aria-selected', String(tab.dataset.gameMode === gameTab.mode));
     for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.setAttribute('aria-selected', String(tab.dataset.gameKind === gameTab.kind));
-    const shown = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] [data-game="${selectedGameType}"]`);
-    const first = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] .gameChoice`);
-    if (gameTab.mode === 'multi' && !shown && first) selectGame(first.dataset.game);
     try { localStorage.setItem('gc.gameTab', JSON.stringify(gameTab)); } catch {}
+  }
+  // a game selected by any path (a click, coming back from a room, a password join) brings its 대전/협동 tab along
+  function followSelectedGame() {
+    const kind = gamePicker.querySelector(`[data-game="${selectedGameType}"]`)?.closest('.gameOption')?.dataset.kind;
+    if (kind && kind !== gameTab.kind) { gameTab.kind = kind; renderGameTab(); }
+  }
+  // a tab picked: the selected game stays if it is still in sight (in this kind, or one of the games in development)
+  function showGameTab() {
+    const inSight = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] [data-game="${selectedGameType}"]`)
+      || gameCard.querySelector(`.developmentGamePicker [data-game="${selectedGameType}"]`);
+    const first = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] .gameChoice`);
+    if (gameTab.mode === 'multi' && !inSight && first) selectGame(first.dataset.game);
+    renderGameTab();
   }
   for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.addEventListener('click', () => { gameTab.mode = tab.dataset.gameMode; showGameTab(); });
   for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
@@ -9401,6 +9413,7 @@
   pointHistoryClose.addEventListener('click', () => { setPointHistoryOpen(false); pointHistoryBtn.focus(); });
   pointHistoryMore.addEventListener('click', () => loadPointHistory());
   selectGame('omok');
-  showGameTab(); // v1.10.63: the remembered 멀티/싱글 and 대전/협동 tabs  drawBoard();
+  showGameTab(); // v1.10.63: the remembered 멀티/싱글 and 대전/협동 tabs
+  gameTabReady = true;  drawBoard();
   window.GameBoot.ready.then(loadSession); // v1.10.14: after the Chrome check and the resource pack (public/game-boot.js)
 })();
