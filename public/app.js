@@ -1482,7 +1482,9 @@
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
   // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): on a touch-only screen a stick walks (one finger; a drag on the island
   // itself still turns the camera, so both thumbs work at once) and tapping the hint does what Space does.
-  const touchIsland = rpgTouchOnly();
+  // any touch screen (not "only touch"): a phone with a stylus or a paired mouse also reports a fine pointer, and with
+  // no keyboard it would have no way to walk (Codex review on #206). A touch laptop just gets the stick as well.
+  const touchIsland = window.matchMedia('(any-pointer: coarse)').matches;
   document.body.classList.toggle('touchIsland', touchIsland);
   if (touchIsland) byId('islandChatInput').placeholder = '메시지 입력'; // no Enter/Esc keys to name on a phone
   const islandStick = byId('islandStick'); const stickKnob = islandStick.firstElementChild; let stickPointer = null;
