@@ -1641,11 +1641,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!mode || !t || overview || riding || Math.hypot(t.x - p.x, t.z - p.z) > 6) return false;
     talkView = { ...t, shot: mode === 'shot' };
     me.targetYaw = Math.atan2(t.x - p.x, t.z - p.z);
-    const o = eventObjs.get(t.id); // an event islander turns to me as well
-    if (o?.npc && !o.leaving) {
-      const q = o.root.position; o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y;
-      if (o.resident != null) o.npc.returnYaw = Math.atan2(p.x - q.x, p.z - q.z);
-    }
+    const o = eventObjs.get(t.id); // an event islander turns to me as well (a borrowed walker keeps its own turn: its
+    // returnYaw belongs to the hand-over scene)
+    if (o?.npc && !o.leaving && o.resident == null) { const q = o.root.position; o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; }
     return true;
   }
   function talkPose(p) {

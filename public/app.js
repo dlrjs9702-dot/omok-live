@@ -1568,7 +1568,7 @@
     const typing = t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || '');
     const inRoom = !roomView.classList.contains('hidden');
     // the result card: Esc or Enter puts it away at once (clicks pass through it to the board, as before)
-    if ((event.key === 'Escape' || event.key === 'Enter') && !resultEffect.classList.contains('hidden') && !typing) { event.preventDefault(); clearResultEffect(); return; }
+    if ((event.key === 'Escape' || event.key === 'Enter') && !resultEffect.classList.contains('hidden') && !typing && !document.querySelector('dialog[open]')) { event.preventDefault(); clearResultEffect(); return; }
     if (inRoom && event.key === 'Escape' && t === chatInput) { chatInput.blur(); return; } // out of the chat; the next Esc is the menu
     // in a room, Enter with nothing focused goes to the room chat
     if (inRoom && event.key === 'Enter' && !typing && (t === document.body || !t?.closest?.('button, a, summary, [tabindex], label')) && chatInput.offsetParent && !document.querySelector('dialog[open]')) { event.preventDefault(); chatInput.focus(); return; }
