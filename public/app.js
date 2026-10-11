@@ -1,6 +1,24 @@
 (() => {
   'use strict';
 
+  // v1.10.63 테마 (IDEAS 2026-10-11): dark by default, light, or the device's own setting -- kept per browser.
+  // <html data-theme> is what the light layer (theme-light.css) keys on; the menu's 환경설정 changes it.
+  const THEMES = ['dark', 'light', 'system'];
+  const themeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  let themeChoice = 'dark';
+  try { const saved = localStorage.getItem('gc.theme'); if (THEMES.includes(saved)) themeChoice = saved; } catch {}
+  function applyTheme() { document.documentElement.dataset.theme = themeChoice === 'system' ? (themeMedia.matches ? 'light' : 'dark') : themeChoice; }
+  applyTheme();
+  themeMedia.addEventListener('change', applyTheme);
+  for (const radio of document.querySelectorAll('input[name="gcTheme"]')) {
+    radio.checked = radio.value === themeChoice;
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      themeChoice = radio.value; applyTheme();
+      try { localStorage.setItem('gc.theme', themeChoice); } catch {}
+    });
+  }
+
   const gateView = document.getElementById('gateView');
   const lobbyView = document.getElementById('lobbyView');
   const roomView = document.getElementById('roomView');
@@ -1395,6 +1413,7 @@
   }
 
   function showView(name) {
+    if (name === 'gate') queueMicrotask(() => openAccountGate()); // v1.10.63: login / 내 계정 / id setup
     gateView.classList.toggle('hidden', name !== 'gate');
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
@@ -1463,6 +1482,7 @@
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
   function openPlazaWindow(title, nodes) {
+    plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     for (const node of nodes) {
       if (!node || plazaHomes.has(node)) continue;
@@ -1477,6 +1497,8 @@
     if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
     for (const [node, mark] of plazaHomes) mark.replaceWith(node);
     plazaHomes.clear();
+    plazaDialog.classList.remove('talkMode');
+    plaza.controller?.talkCamera?.(false); // back to the player's own view
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
@@ -1525,6 +1547,38 @@
       fullscreenBtn.textContent = on ? '창 모드' : '전체화면'; fullscreenBtn.setAttribute('aria-pressed', String(on));
     });
   }
+  // v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; as in other games, Esc opens one window -- 내 정보, 환경설정
+  // (theme, fullscreen), 관리자 창 for an admin, 접속 종료. The ☰ button opens it where there is no Esc (a phone).
+  // Esc does this only with nothing else to close or cancel: an open window, typing, the photo mode, a gathering.
+  const gameMenuDialog = byId('gameMenuDialog');
+  const openGameMenu = () => {
+    if (gameMenuDialog.open) return;
+    byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
+    gameMenuDialog.showModal();
+  };
+  byId('gameMenuBtn').addEventListener('click', openGameMenu);
+  byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
+  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
+  gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
+  // v1.10.63 게임방: the same menu, with 게임 선택으로 돌아가기 on top (the room's own buttons stay in its top bar)
+  const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
+  menuLeaveRoomBtn.addEventListener('click', () => { gameMenuDialog.close(); leaveRoomBtn.click(); });
+  window.addEventListener('keydown', (event) => {
+    if (event.isComposing || event.repeat || event.defaultPrevented) return;
+    const t = event.target;
+    const typing = t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || '');
+    const inRoom = !roomView.classList.contains('hidden');
+    // the result card: Esc or Enter puts it away at once (clicks pass through it to the board, as before)
+    if ((event.key === 'Escape' || event.key === 'Enter') && !resultEffect.classList.contains('hidden') && !typing && !document.querySelector('dialog[open]')) { event.preventDefault(); clearResultEffect(); return; }
+    if (inRoom && event.key === 'Escape' && t === chatInput) { chatInput.blur(); return; } // out of the chat; the next Esc is the menu
+    // in a room, Enter with nothing focused goes to the room chat
+    if (inRoom && event.key === 'Enter' && !typing && (t === document.body || !t?.closest?.('button, a, summary, [tabindex], label')) && chatInput.offsetParent && !document.querySelector('dialog[open]')) { event.preventDefault(); chatInput.focus(); return; }
+    if (event.key !== 'Escape' || (lobbyView.classList.contains('hidden') && !inRoom)) return;
+    if (document.querySelector('dialog[open]') || document.body.classList.contains('photoMode') || typing) return;
+    if (inRoom && !sideOverlayBackdrop.classList.contains('hidden')) { event.preventDefault(); toggleChatOverlay(false); toggleGameInfoOverlay(false); return; } // a phone's side panel first
+    if (!inRoom && plaza.controller?.debug?.()?.gather) return; // Esc there cancels the gathering (plaza-scene)
+    event.preventDefault(); openGameMenu();
+  });
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
     plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped
@@ -1864,14 +1918,47 @@
   // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
   const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) lostCard.classList.add('hidden'); });
+  // v1.10.63 주민 대화 (IDEAS 2026-10-11): a resident's words come as a speech bubble at the bottom of the island, not a
+  // window over it -- one line at a time. Space/Enter: the next line, then the focused answer; ↑↓ choose an answer;
+  // 1-9 pick one; Esc closes (the dialog's own cancel). Same #plazaDialog underneath, so its closing and sections hold.
+  // shot: a quest taken or done, a reward, a big choice -- the camera's two-shot (else over my shoulder, plaza-scene)
+  function openTalk(name, shot = false) {
+    lostCard.classList.remove('hidden');
+    openPlazaWindow(name, [lostCard]);
+    plazaDialog.classList.add('talkMode');
+    plaza.controller?.talkCamera?.(shot ? 'shot' : 'talk');
+    lostCard.querySelectorAll('.lostRequestLine').forEach((line, i) => line.classList.toggle('talkPending', i > 0));
+    lostCard.tabIndex = -1; lostCard.focus({ preventScroll: true }); // the bubble, not an answer: the Space that opened it
+    // is still going up, and on a focused answer that would press it
+  }
+  plazaDialog.addEventListener('click', (event) => { // a tap on the bubble (not an answer) shows the next line
+    if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) lostCard.querySelector('.talkPending')?.classList.remove('talkPending');
+  });
+  const talkButtons = () => [...lostCard.querySelectorAll('button:not(:disabled)')];
+  // on the document: a click on the island behind the bubble moves the focus out of it, the keys still talk
+  document.addEventListener('keydown', (event) => {
+    if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'Escape') return; // the dialog's own cancel (or, focus outside it, the next listener's menu stays shut: a dialog is open)
+    if (event.repeat && event.key !== 'Escape') { event.preventDefault(); return; } // a held Space never runs through the lines
+    const buttons = talkButtons();
+    if (event.key === ' ' || event.key === 'Enter') {
+      const pending = lostCard.querySelector('.talkPending');
+      if (pending) { event.preventDefault(); pending.classList.remove('talkPending'); return; }
+      if (!buttons.includes(event.target)) { event.preventDefault(); (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); }
+      return; // a focused answer is pressed by the browser
+    }
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
+    if (step && buttons.length) { event.preventDefault(); const at = buttons.indexOf(event.target); buttons[at < 0 ? (step > 0 ? 0 : buttons.length - 1) : (at + step + buttons.length) % buttons.length].focus(); return; }
+    if (/^[1-9]$/.test(event.key) && buttons[Number(event.key) - 1]) { event.preventDefault(); buttons[Number(event.key) - 1].click(); }
+  });
   function openLostRequest(id, points) {
     const name = plaza.controller?.lostName?.(id) || '물건';
     const ask = document.createElement('p'); ask.className = 'lostRequestLine'; ask.textContent = `「${name}${/[가-힣]/.test(name.slice(-1)) && (name.charCodeAt(name.length - 1) - 0xac00) % 28 ? '을' : '를'} 잃어버렸어요…`;
     const more = document.createElement('p'); more.className = 'lostRequestLine'; more.textContent = '이 근처 풀밭 어딘가에 떨어뜨린 것 같아요. 찾아서 가져다주시면 사례할게요!」';
     const meta = document.createElement('p'); meta.className = 'lookMeta'; meta.textContent = `미니맵 ! 표시 · 사례 ${Number(points || 0).toLocaleString('ko-KR')}P`;
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '찾아볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(ask, more, meta, ok); lostCard.classList.remove('hidden');
-    openPlazaWindow('분실물 찾아주기', [lostCard]);
+    lostCard.replaceChildren(ask, more, meta, ok);
+    openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
   function openQuestTalk(data) {
@@ -1882,8 +1969,8 @@
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell); lostCard.classList.remove('hidden');
-    openPlazaWindow(data.name, [lostCard]);
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell);
+    openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
@@ -2046,8 +2133,7 @@
           islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
         } catch (error) { showToast(error.message); }
       }));
-    lostCard.classList.remove('hidden');
-    openPlazaWindow(who?.name || '', [lostCard]);
+    openTalk(who?.name || '');
   }
   async function sendIslandInvite() {
     const to = islandInviteTo; islandInviteTo = null;
@@ -2066,8 +2152,8 @@
         plaza.controller?.setTownhallPass?.(Boolean(data.townhallPass)); plazaDialog.close();
       } catch (error) { showToast(error.message); ok.disabled = false; }
     });
-    lostCard.replaceChildren(line, ok); lostCard.classList.remove('hidden');
-    openPlazaWindow('시장', [lostCard]);
+    lostCard.replaceChildren(line, ok);
+    openTalk('시장');
   }
   const questTracker = document.getElementById('questTracker');
   function showQuestTracker(list) {
@@ -2406,7 +2492,7 @@
     let data = {};
     try { data = await res.json(); } catch {}
     if (!res.ok) {
-      if (res.status === 401 && requestToken === sessionToken) expireSession(data.message);
+      if (res.status === 401 && requestToken && requestToken === sessionToken) expireSession(data.message); // (not before entering: the 로그인 screen's own calls)
       const err = new Error(data.message || '요청을 처리하지 못했습니다.');
       err.status = res.status;
       err.data = data;
@@ -2492,7 +2578,7 @@
   async function logout() {
     leavePhoto(); // cancel before waiting for the logout request, including a slow/offline response
     try { if (sessionToken) await api('/api/logout', { method: 'POST' }); } catch {}
-    expireSession('나갔습니다. 게스트는 다시 입장하려면 전용 파일을 열어야 합니다.');
+    expireSession('나갔습니다. 다시 이용하려면 로그인하거나 입장 파일을 여세요.');
   }
 
   function gameName(type) {
@@ -2568,6 +2654,7 @@
     gameRulesText.textContent = gameRules[type] || '';
   }
 
+  let gameTabReady = false; // v1.10.63: set once the remembered tabs are shown (startup must not override them)
   function selectGame(type) {
     if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
     selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli', 'pandemic', 'gostop', 'rpg'].includes(type) ? type : 'omok';
@@ -2579,7 +2666,56 @@
     gostopStakeChoices.classList.toggle('hidden', selectedGameType !== 'gostop');
     gameRulesSelect.value = resolvedType;
     showGameRule(resolvedType);
+    if (gameTabReady) followSelectedGame(); // v1.10.63
   }
+
+  // v1.10.63 게임 선택 탭 (사용자 2026-10-11): 멀티게임 / 싱글게임, and under 멀티게임 대전게임 / 협동게임 -- each tab
+  // shows its games below (index.html data-game-pane / data-kind). The last tabs are kept per browser; a first visit
+  // opens on 멀티게임 · 대전게임. Moving to a kind that does not hold the selected game selects its first game, so
+  // 방 만들기 never makes a game that is out of sight.
+  const gamePicker = document.getElementById('gamePicker');
+  const gameCard = gamePicker.closest('.lobbyCard');
+  const gameTab = { mode: 'multi', kind: 'versus' };
+  try {
+    const saved = JSON.parse(localStorage.getItem('gc.gameTab') || 'null');
+    if (['multi', 'single'].includes(saved?.mode)) gameTab.mode = saved.mode;
+    if (['versus', 'coop'].includes(saved?.kind)) gameTab.kind = saved.kind;
+  } catch {}
+  function renderGameTab() {
+    gameCard.dataset.gameView = gameTab.mode;
+    gamePicker.dataset.kind = gameTab.kind;
+    for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.setAttribute('aria-selected', String(tab.dataset.gameMode === gameTab.mode));
+    for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.setAttribute('aria-selected', String(tab.dataset.gameKind === gameTab.kind));
+    try { localStorage.setItem('gc.gameTab', JSON.stringify(gameTab)); } catch {}
+  }
+  // a game selected by any path (a click, coming back from a room, a password join) brings its 대전/협동 tab along
+  function followSelectedGame() {
+    const kind = gamePicker.querySelector(`[data-game="${selectedGameType}"]`)?.closest('.gameOption')?.dataset.kind;
+    if (kind && kind !== gameTab.kind) { gameTab.kind = kind; renderGameTab(); }
+  }
+  // a tab picked: the selected game stays if it is still in sight (in this kind, or one of the games in development)
+  function showGameTab() {
+    const inSight = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] [data-game="${selectedGameType}"]`)
+      || gameCard.querySelector(`.developmentGamePicker [data-game="${selectedGameType}"]`);
+    const first = gamePicker.querySelector(`.gameOption[data-kind="${gameTab.kind}"] .gameChoice`);
+    if (gameTab.mode === 'multi' && !inSight && first) selectGame(first.dataset.game);
+    renderGameTab();
+  }
+  for (const tab of gameCard.querySelectorAll('[data-game-mode]')) tab.addEventListener('click', () => { gameTab.mode = tab.dataset.gameMode; showGameTab(); });
+  for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
+  // v1.10.63 keyboard in the game hall: arrow keys move among the buttons of one row of tabs, game cards or room cards;
+  // Enter/Space press the focused one (native buttons), Tab still leaves the group
+  const ARROW_GROUPS = '.gameTabs, .gamePicker, .soloGamesPanel, #publicRoomList';
+  document.addEventListener('keydown', event => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    const group = step && event.target.closest?.(ARROW_GROUPS);
+    if (!group || event.altKey || event.ctrlKey || event.metaKey || event.target.matches('input, textarea, select, summary')) return;
+    const buttons = [...group.querySelectorAll('button:not(:disabled)')].filter(button => button.offsetParent);
+    const at = buttons.indexOf(event.target);
+    if (at < 0 || buttons.length < 2) return;
+    event.preventDefault();
+    buttons[(at + step + buttons.length) % buttons.length].focus();
+  });
 
   async function createRoom() {
     try {
@@ -2636,21 +2772,32 @@
       return;
     }
     for (const room of rooms) {
+      // v1.10.63 room card: game badge + status chip, title, players, join/watch
       const row = document.createElement('div');
       row.className = 'publicRoomRow';
+      row.dataset.status = room.status || 'playing';
       const main = document.createElement('div');
       main.className = 'publicRoomMain';
-      const name = document.createElement('strong');
+      const head = document.createElement('span');
+      head.className = 'publicRoomHead';
+      const badge = document.createElement('b');
+      badge.className = 'publicRoomGame';
       const displayedGame = gameDisplayName(room.gameType);
+      badge.textContent = displayedGame;
+      const chip = document.createElement('i');
+      chip.className = 'publicRoomStatus';
+      chip.textContent = room.status === 'waiting' ? '모집 중' : room.status === 'finished' ? '종료' : room.status === 'paused' ? '일시정지' : '진행 중';
+      head.append(badge, chip);
+      const name = document.createElement('strong');
       name.textContent = room.title || `${room.host || '방장'}의 ${displayedGame}방`;
       const info = document.createElement('small');
-      const status = room.status === 'waiting' ? '상대 모집 중' : room.status === 'finished' ? '대국 종료' : room.status === 'paused' ? '일시정지' : '대국 중';
-      info.textContent = `${displayedGame} · ${status} · 선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
-      main.append(name, info);
+      info.textContent = `선수 ${room.playerCount || 0}/${room.maxPlayers || 2} · 접속 ${room.connectedCount || 0}명`;
+      main.append(head, name, info);
       const enter = document.createElement('button');
       enter.type = 'button';
       enter.className = room.status === 'waiting' ? 'secondary tiny' : 'ghost tiny';
       enter.textContent = room.status === 'waiting' ? '바로 입장' : '관전하기';
+      enter.setAttribute('aria-label', `${name.textContent} ${enter.textContent}`);
       enter.addEventListener('click', async () => {
         enter.disabled = true;
         try { await joinPublicRoom(room.id); }
@@ -2981,6 +3128,33 @@
     persistenceBadge.textContent = data.persistence === 'database' ? '영구 DB 저장' : '임시 서버 저장';
     persistenceBadge.classList.toggle('warn', data.persistence !== 'database');
     renderGuestKeys(data.keys || []);
+    renderSignups((await api('/api/admin/signups')).signups || []);
+  }
+  // v1.10.63 가입 신청: 이름 · 아이디 · 원하는 닉네임, 승인(계정이 생김) / 거절
+  function renderSignups(signups) {
+    const list = byId('signupList');
+    list.replaceChildren();
+    if (!signups.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '대기 중인 가입 신청이 없습니다.'; list.append(empty); return; }
+    for (const s of signups) {
+      const row = document.createElement('div'); row.className = 'keyRow compactKeyRow signupRow';
+      const main = document.createElement('div'); main.className = 'keyMain';
+      const name = document.createElement('strong'); name.textContent = s.nickname;
+      const info = document.createElement('small'); info.textContent = `이름 ${s.realName} · 아이디 ${s.loginId} · 신청 ${new Date(s.pendingAt).toLocaleString('ko-KR')}`;
+      main.append(name, info);
+      const actions = document.createElement('div'); actions.className = 'keyActions';
+      for (const [label, cls, act] of [['승인', 'secondary', 'approve'], ['거절', 'danger', 'reject']]) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `${cls} tiny compactAction`; b.textContent = label;
+        b.setAttribute('aria-label', `${s.nickname} 가입 ${label}`);
+        b.addEventListener('click', async () => {
+          if (act === 'reject' && !window.confirm(`${s.nickname}(${s.loginId})의 가입 신청을 거절할까요?`)) return;
+          b.disabled = true;
+          try { await api(`/api/admin/signups/${s.id}/${act}`, { method: 'POST', body: '{}' }); showToast(act === 'approve' ? `${s.nickname} 가입을 승인했습니다.` : '가입 신청을 거절했습니다.'); await loadGuestKeys(); }
+          catch (err) { showToast(err.message, 4000); b.disabled = false; }
+        });
+        actions.append(b);
+      }
+      row.append(main, actions); list.append(row);
+    }
   }
 
   function renderGuestKeys(keys) {
@@ -3061,7 +3235,7 @@
       detail.className = 'keyDetail hidden';
       const used = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString('ko-KR') : '사용 기록 없음';
       const presence = key.presence?.online ? (key.presence.inRoom ? '접속 중 · 방 참여 중' : '접속 중') : '오프라인';
-      detail.textContent = `상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
+      detail.textContent = `아이디 ${key.loginId || '미설정'}${key.realName ? ` · 이름 ${key.realName}` : ''} · 상태 ${presence} · 최근 사용 ${used} · 총 ${key.useCount || 0}회`;
       const renameBtn = document.createElement('button');
       renameBtn.type = 'button';
       renameBtn.className = 'ghost tiny compactAction renameAction';
@@ -3073,6 +3247,18 @@
         finally { renameBtn.disabled = false; }
       });
       detail.appendChild(renameBtn);
+      if (key.loginId) { // v1.10.63 비밀번호 분실: a temporary password, shown once to tell the player
+        const resetBtn = document.createElement('button'); resetBtn.type = 'button'; resetBtn.className = 'ghost tiny compactAction'; resetBtn.textContent = '비밀번호 초기화';
+        resetBtn.addEventListener('click', async () => {
+          if (!window.confirm(`${key.label}(${key.loginId})의 비밀번호를 임시 비밀번호로 바꿀까요?`)) return;
+          try { const data = await api(`/api/admin/keys/${key.id}/password-reset`, { method: 'POST', body: '{}' }); window.alert(`아이디 ${data.loginId}
+임시 비밀번호 ${data.password}
+
+본인에게 전달하고, 로그인 뒤 비밀번호를 바꾸게 해 주세요.`); }
+          catch (err) { showToast(err.message, 4000); }
+        });
+        detail.appendChild(resetBtn);
+      }
       const memoEditor = document.createElement('form');
       memoEditor.className = 'keyMemoEditor hidden';
       const memoInput = document.createElement('input');
@@ -9037,6 +9223,110 @@
   }, true);
 
   adminLoginForm.addEventListener('submit', adminLogin);
+
+  // v1.10.63 아이디·비밀번호 로그인 (IDEAS 2026-10-11): the first screen is 로그인 / 회원가입 신청; a login opens 내 계정
+  // (게임 접속 · 입장 파일 받기 · 비밀번호 변경 · 로그아웃). The account token is kept in this tab (sessionStorage) so a
+  // reload or 접속 종료 comes back to 내 계정. An entry file of an account with no login id comes here with a setup
+  // ticket (body data-setup): the id and password first, then the game.
+  const accountGate = byId('accountGate'); const accountPanel = byId('accountPanel'); const accountSetupForm = byId('accountSetupForm');
+  const accountMessage = byId('accountMessage');
+  const ACCOUNT_KEY = 'gc.account';
+  let setupTicket = document.body.dataset.setup || '';
+  const accountToken = { get: () => { try { return sessionStorage.getItem(ACCOUNT_KEY) || ''; } catch { return ''; } },
+    set: (t) => { try { if (t) sessionStorage.setItem(ACCOUNT_KEY, t); else sessionStorage.removeItem(ACCOUNT_KEY); } catch {} } };
+  const say = (text, bad = false) => { accountMessage.textContent = text; accountMessage.classList.toggle('bad', bad); };
+  const accountApi = (path, body, method = 'POST') => api(path, { method, headers: { 'X-Account-Token': accountToken.get() }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  let accountPane = '';
+  function showAccountPane(pane) { // 'login' | 'signup' | 'account' | 'setup'
+    accountPane = pane;
+    accountGate.classList.toggle('hidden', pane === 'account' || pane === 'setup');
+    accountPanel.classList.toggle('hidden', pane !== 'account');
+    accountSetupForm.classList.toggle('hidden', pane !== 'setup');
+    for (const tab of accountGate.querySelectorAll('[data-account-tab]')) tab.setAttribute('aria-selected', String(tab.dataset.accountTab === pane));
+    for (const form of accountGate.querySelectorAll('[data-account-pane]')) form.classList.toggle('hidden', form.dataset.accountPane !== pane);
+  }
+  for (const tab of accountGate.querySelectorAll('[data-account-tab]')) tab.addEventListener('click', () => { say(''); showAccountPane(tab.dataset.accountTab); });
+  function showAccount(account) {
+    byId('accountTitle').textContent = `${account.label}님`;
+    byId('accountSub').textContent = `아이디 ${account.loginId}`;
+    showAccountPane('account');
+  }
+  async function openAccountGate() { // the gate is shown: which part of it
+    if (setupTicket) { byId('accountSetupLead').textContent = `${document.body.dataset.label || ''}님, 이제 아이디와 비밀번호로도 로그인합니다. 설정해야 입장할 수 있고, 입장 파일은 앞으로도 그대로 쓸 수 있습니다.`; showAccountPane('setup'); return; }
+    if (!accountToken.get()) { if (accountPane !== 'login' && accountPane !== 'signup') showAccountPane('login'); return; } // the tab in use stays
+    try { showAccount((await accountApi('/api/account/me', null, 'GET')).account); }
+    catch { accountToken.set(''); showAccountPane('login'); }
+  }
+  // 중복 확인: the answer belongs to the id it was asked for (a changed id needs asking again; the server checks once more at the end)
+  function idChecker(input, button) {
+    let checked = '';
+    input.addEventListener('input', () => { checked = ''; });
+    button.addEventListener('click', async () => {
+      try {
+        const data = await api('/api/account/check-id', { method: 'POST', body: JSON.stringify({ loginId: input.value }) });
+        checked = data.available ? data.loginId : '';
+        say(data.available ? `「${data.loginId}」은(는) 사용할 수 있는 아이디입니다.` : '이미 사용 중인 아이디입니다.', !data.available);
+      } catch (err) { checked = ''; say(err.message, true); }
+    });
+    return () => checked && checked === input.value.trim().toLowerCase();
+  }
+  const signupIdChecked = idChecker(byId('signupIdInput'), byId('signupCheckBtn'));
+  const setupIdChecked = idChecker(byId('setupIdInput'), byId('setupCheckBtn'));
+  byId('accountLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const data = await api('/api/account/login', { method: 'POST', body: JSON.stringify({ loginId: byId('loginIdInput').value, password: byId('loginPasswordInput').value }) });
+      byId('loginPasswordInput').value = ''; accountToken.set(data.accountToken); say(''); showAccount(data.account);
+    } catch (err) { say(err.message, true); }
+  });
+  byId('accountSignupForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!signupIdChecked()) { say('아이디 중복 확인을 먼저 해 주세요.', true); return; }
+    if (byId('signupPasswordInput').value !== byId('signupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      await api('/api/account/signup', { method: 'POST', body: JSON.stringify({ realName: byId('signupNameInput').value, loginId: byId('signupIdInput').value, password: byId('signupPasswordInput').value, nickname: byId('signupNicknameInput').value }) });
+      event.target.reset(); showAccountPane('login');
+      say('가입 신청을 보냈습니다. 관리자 승인 후 로그인할 수 있습니다.');
+    } catch (err) { say(err.message, true); }
+  });
+  accountSetupForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!setupIdChecked()) { say('아이디 중복 확인을 먼저 해 주세요.', true); return; }
+    if (byId('setupPasswordInput').value !== byId('setupPasswordConfirm').value) { say('비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      const data = await api('/api/account/setup', { method: 'POST', body: JSON.stringify({ ticket: setupTicket, loginId: byId('setupIdInput').value, password: byId('setupPasswordInput').value }) });
+      setupTicket = ''; accountToken.set(data.accountToken); enterWithAccount();
+    } catch (err) { say(err.message, true); }
+  });
+  function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
+  byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  byId('accountLogoutBtn').addEventListener('click', async () => {
+    await accountApi('/api/account/logout').catch(() => {});
+    accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+  });
+  byId('accountPasswordBtn').addEventListener('click', () => {
+    const form = byId('accountPasswordForm'); const open = form.classList.toggle('hidden') === false;
+    byId('accountPasswordBtn').setAttribute('aria-expanded', String(open)); if (open) byId('passwordCurrentInput').focus();
+  });
+  byId('accountPasswordForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (byId('passwordNextInput').value !== byId('passwordNextConfirm').value) { say('새 비밀번호 확인이 일치하지 않습니다.', true); return; }
+    try {
+      await accountApi('/api/account/password', { current: byId('passwordCurrentInput').value, next: byId('passwordNextInput').value });
+      event.target.reset(); event.target.classList.add('hidden'); byId('accountPasswordBtn').setAttribute('aria-expanded', 'false');
+      say('비밀번호를 바꿨습니다.');
+    } catch (err) { say(err.message, true); }
+  });
+  // 입장 파일 받기 = 재발급: asked once, since the file got before stops working
+  byId('accountFileBtn').addEventListener('click', async () => {
+    if (!window.confirm('새 파일을 받으면 이전에 받은 입장 파일은 더 이상 쓸 수 없습니다. 새로 받을까요?')) return;
+    try {
+      const data = await accountApi('/api/account/entry-file');
+      const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([data.html], { type: 'text/html' })); link.download = data.fileName;
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      say('새 입장 파일을 받았습니다. 이전 파일은 이제 쓸 수 없습니다.');
+    } catch (err) { say(err.message, true); }
+  });
   logoutBtn.addEventListener('click', requestLogout);
   roomLogoutBtn.addEventListener('click', requestLogout);
   logoutCancelBtn.addEventListener('click', () => logoutDialog.close());
@@ -9054,7 +9344,11 @@
     const rpgChoice = document.querySelector('.gameChoice[data-game="rpg"]');
     if (rpgChoice) { rpgChoice.disabled = true; rpgChoice.setAttribute('aria-disabled', 'true'); rpgChoice.title = RPG_PC_ONLY; }
   }
-  leaveRoomBtn.addEventListener('click', leaveRoom);
+  // v1.10.63 (사용자 2026-10-12): out of a room back to choosing a game -- on the island the 게임관 window opens at once
+  leaveRoomBtn.addEventListener('click', async () => {
+    await leaveRoom();
+    if (document.body.classList.contains('plazaMode') && !state) PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
+  });
   joinRoomForm.addEventListener('submit', joinRoom);
   roomPasswordInput.addEventListener('input', formatCodeInput);
   issueFileForm.addEventListener('submit', issueFile);
@@ -9138,6 +9432,7 @@
   davinciStopBtn.addEventListener('click', () => roomAction('stop-davinci', { expectedRevision: state.game.revision }));
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !isDavinciGame() || !davinciHands.querySelector('.davinciPicker')) return;
+    event.preventDefault(); // this Esc closes the picker, not opens the menu
     const g = state.game;
     davinciPickerClosedFor = g.selection ? `${g.revision}:${g.selection.target}:${g.selection.tileId}` : null;
     renderDavinci();
@@ -9342,6 +9637,7 @@
   pointHistoryClose.addEventListener('click', () => { setPointHistoryOpen(false); pointHistoryBtn.focus(); });
   pointHistoryMore.addEventListener('click', () => loadPointHistory());
   selectGame('omok');
-  drawBoard();
+  showGameTab(); // v1.10.63: the remembered 멀티/싱글 and 대전/협동 tabs
+  gameTabReady = true;  drawBoard();
   window.GameBoot.ready.then(loadSession); // v1.10.14: after the Chrome check and the resource pack (public/game-boot.js)
 })();

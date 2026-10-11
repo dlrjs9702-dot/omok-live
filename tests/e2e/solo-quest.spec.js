@@ -21,6 +21,7 @@ test('지뢰찾기: 로비 「지뢰찾기」 → 난이도·판, 오른쪽 클�
   test.setTimeout(150000);
   const a = await shopper(browser, request, '지뢰손님');
   const { page, token } = a;
+  await page.locator('[data-game-mode="single"]').click(); // v1.10.63: 지뢰찾기 is under 싱글게임
   await page.locator('#soloMinesBtn').click();
   await expect(page.locator('#minesDialog')).toBeVisible();
   await expect(page.locator('#minesLevels button')).toHaveText(['초급 2,000P', '중급 4,000P', '고급 8,000P']);
@@ -163,8 +164,8 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('해안 쓰레기 5개');
-  await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click();
-  await page.keyboard.press('Escape');
+  await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click(); // closes the talk
+  await expect(page.locator('#plazaDialog')).toBeHidden(); // (an Esc now would open the menu, v1.10.63)
   await post(request, '/api/test/quest/note', token, { what: 'beach_trash', qty: 5 });
   await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');

@@ -94,7 +94,7 @@ test('스킨 상점: 로비 카드→큰 창, 잔액 부족은 구매 불가, �
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   // v1.9.7 내 정보: 상점과 달리 내가 보유한 스킨만 보이고 구매 버튼은 없으며 여기서 바로 장착을 바꾼다.
-  await a.page.locator('#myInfoBtn').click();
+  await a.page.keyboard.press('Escape'); await a.page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
   const myInfo = a.page.locator('#myInfoDialog');
   await expect(myInfo).toBeVisible();
   await expect(myInfo.locator('.skinCard')).toHaveCount(1);

@@ -67,6 +67,7 @@ async function main() {
         env: {
           ...process.env,
           NODE_ENV: 'test',
+          ISLAND_QUEST_WEEK: '0', // the 정원사·어부 week whatever the date (lib/island-quests.js; also playwright.config.js)
           HOST: '127.0.0.1',
           PORT: String(port),
           ADMIN_PASSWORD: adminPassword,

@@ -72,6 +72,6 @@ test('PostgreSQL은 기존 테이블에 메모 컬럼을 추가하고 매개변�
   assert.match(queries[1].sql, /ADD COLUMN IF NOT EXISTS admin_note/);
   const result = await store.setNote('test-uuid', '관리자 메모');
   assert.equal(result.adminNote, '관리자 메모');
-  assert.deepEqual(queries[2].params, ['test-uuid', '관리자 메모']);
-  assert.match(queries[2].sql, /RETURNING .*admin_note/);
+  assert.deepEqual(queries.at(-1).params, ['test-uuid', '관리자 메모']); // (v1.10.63: init also adds the login columns)
+  assert.match(queries.at(-1).sql, /RETURNING .*admin_note/);
 });

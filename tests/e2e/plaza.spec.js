@@ -38,6 +38,38 @@ async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
   return who;
 }
 
+// v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; Esc opens the menu (not while typing), Esc closes it, the theme
+// chosen there is kept, and a window opened from it replaces it
+test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않음, 테마 선택 유지, 내 정보로 넘어감', async ({ browser, request }) => {
+  test.setTimeout(90000); // a 3D island page: slower on CI
+  const a = await intoPlaza(browser, request, '메뉴');
+  const { page } = a;
+  try {
+    const menu = page.locator('#gameMenuDialog');
+    await expect(page.locator('.islandTopbar')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark'); // the default
+    await page.locator('#plazaStage').focus();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await page.keyboard.press('Enter'); // the chat input: Esc there cancels the typing, never opens the menu
+    await expect(page.locator('#islandChatInput')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await page.locator('#gameMenuBtn').click();
+    await expect(menu).toBeVisible();
+    await page.locator('input[name="gcTheme"][value="light"]').check();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    await page.locator('#myInfoBtn').click();
+    await expect(page.locator('#myInfoDialog')).toBeVisible();
+    await expect(menu).toBeHidden();
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    await page.evaluate(() => localStorage.removeItem('gc.theme'));
+  } finally { await a.context.close(); }
+});
+
 test('광장 시설: 원거리 클릭은 창을 열지 않고 근처에서만 클릭·SPACE 실행', async ({ browser, request }) => {
   const a = await intoPlaza(browser, request, '근접 클릭');
   const { page } = a;
@@ -97,7 +129,7 @@ test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석
     await islandPage(a.page);
     await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
     await expect(a.page.locator('#islandFacilityActions')).toBeHidden();
-    await a.page.locator('#myInfoBtn').click();
+    await a.page.keyboard.press('Escape'); await a.page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await a.page.locator('#myInfoDialog button[data-action="unequip"]').click();
     await expect.poll(async () => (await get(request, '/api/skins', a.token)).data.equipped?.avatar?.outfit || null).toBe(null);
     await a.page.keyboard.press('Escape');
@@ -186,6 +218,10 @@ test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일�
   await page.locator('#leaveRoomBtn').click();
   await expect(page.locator('#lobbyView')).toBeVisible();
   await expect.poll(() => state(page).then((s) => s?.running)).toBe(true);
+  // v1.10.63 (사용자 2026-10-12): out of the room straight back to choosing a game -- the 게임관 window
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('게임관');
+  await expect(page.locator('#plazaDialog #publicRoomsCard')).toBeVisible();
+  await page.locator('#plazaCloseBtn').click();
   await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the section went back home
 
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
@@ -949,7 +985,7 @@ test('일반 자원: 미니맵 ! 없음, 근접 강조·SPACE 채집·다른 화
   expect(await a.page.evaluate(t => window.PlazaDebug().markers.some(m => Math.hypot(m.x-t.x,m.z-t.z)<0.01),target)).toBe(false);
   expect(await shownMatchesRange(a.page)).toBe(true);
   await a.page.keyboard.press('Space');
-  await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 5000 });
+  await expect(a.page.locator('#toast, .toast').first()).toBeVisible({ timeout: 15000 }); // after the gathering motion (slower on CI)
   await expect.poll(() => b.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   await expect.poll(() => a.page.evaluate((k) => window.PlazaDebug().events.includes(k), key), { timeout: 5000 }).toBe(false);
   expect((await get(request, '/api/test/island/events', a.token)).data.events.find(e=>e.id===target.id).state).toBe('growing');
@@ -1003,6 +1039,43 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
+});
+
+// v1.10.63 주민 대화 말풍선 + 몰입형 카메라: a resident's words at the bottom, one line at a time (Space), the camera in
+// close on the two of us while they talk (a request taken: the two-shot), and back to my own view when it closes
+test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카메라가 다가갔다가 돌아온다', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '말벗');
+  const { page } = a;
+  const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  await page.waitForTimeout(800); // the camera settles behind me
+  const before = await page.evaluate(() => window.PlazaDebug().camera);
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  const dialog = page.locator('#plazaDialog');
+  await expect(dialog).toHaveClass(/talkMode/);
+  const box = await dialog.boundingBox(); const view = page.viewportSize();
+  expect(box.y + box.height).toBeGreaterThan(view.height - 60); // at the bottom
+  expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
+  const lines = page.locator('.lostRequest .lostRequestLine');
+  await expect(lines.nth(0)).toBeVisible();
+  await expect(lines.nth(1)).toBeHidden();
+  await page.keyboard.press('Space');
+  await expect(lines.nth(1)).toBeVisible();
+  await expect(dialog).toBeVisible(); // that Space was the next line, not the answer
+  expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
+  await page.waitForTimeout(900);
+  const during = await page.evaluate(() => window.PlazaDebug().camera);
+  expect(Math.hypot(during.x - before.x, during.y - before.y, during.z - before.z)).toBeGreaterThan(2);
+  await page.keyboard.press('1'); // the first answer: 찾아볼게요
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(() => window.PlazaDebug().talkView)).toBeNull();
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => window.PlazaDebug().camera);
+  expect(Math.hypot(after.x - before.x, after.y - before.y, after.z - before.z)).toBeLessThan(1.5);
+  await expectNoScriptError(page);
+  await a.context.close();
 });
 
 // v1.10.32 운반·전달: a lost thing picked up stays in my hands (in front of the chest, the arms holding it) while I stand
@@ -1127,8 +1200,8 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.mouse.click(hallAt.x, hallAt.y); await page.waitForTimeout(500);
   await expect(page.locator('#islandPlaceDialog')).toBeHidden();
   expect(await page.locator('#plazaStage .plazaCanvas').evaluate((c) => c.style.cursor)).not.toBe('pointer');
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-  await page.getByRole('button', { name: '용무가 있습니다' }).click();
+  await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/); // still talking to him (v1.10.63: the speech bubble)
+  await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
   // he steps out of the gate, then aside along the outside of the wall: never back inside the yard behind the wall
   const walk = [];
@@ -1427,6 +1500,7 @@ test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ bro
 
 
 test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
+  test.setTimeout(90000); // a 3D island page: slower on CI
   const a=await intoPlaza(browser,request,'사진가첫이야기'),{page}=a;
   await page.evaluate(()=>window.PlazaWarp(12.8,28));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');

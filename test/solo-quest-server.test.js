@@ -1,4 +1,5 @@
 'use strict';
+process.env.ISLAND_QUEST_WEEK ??= '0'; // the stories of the 정원사·어부 week, whatever today's week is (lib/island-quests.js)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');

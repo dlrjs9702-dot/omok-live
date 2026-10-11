@@ -69,6 +69,13 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   await page.locator('#islandChatTab').tap();
   await expect(page.locator('#islandChatInput')).toBeFocused();
 
+  // no Esc on a phone: the ☰ button opens the menu (v1.10.63)
+  await page.locator('#gameMenuBtn').tap();
+  await expect(page.locator('#gameMenuDialog')).toBeVisible();
+  await expect(page.locator('#logoutBtn')).toBeVisible();
+  await page.locator('#gameMenuCloseBtn').tap();
+  await expect(page.locator('#gameMenuDialog')).toBeHidden();
+
   // turned sideways and back: the whole island stays on the screen (no scrolling), the stick and the map on it
   const viewport = page.viewportSize();
   for (const size of [{ width: viewport.height, height: viewport.width }, viewport]) {

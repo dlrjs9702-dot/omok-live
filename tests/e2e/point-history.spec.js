@@ -33,7 +33,7 @@ test.describe('내 정보 포인트 내역', () => {
     const { context, page } = await enterAsGuest(browser, await issueGuestHtml(request, '내역'));
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.locator('#myInfoBtn').click();
+    await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await expect(page.locator('#myInfoDialog')).toBeVisible();
     await expect(page.locator('#pointBalanceText')).toHaveText('보유 100,000P');
     const panel = page.locator('#pointHistoryPanel');
@@ -84,7 +84,7 @@ test.describe('내 정보 포인트 내역', () => {
 
   test('더 보기: 30건 단위 이어 붙이기, 감소는 −로 표시(서버 응답을 흉내 낸 화면 검증)', async ({ browser, request }) => {
     const { context, page } = await enterAsGuest(browser, await issueGuestHtml(request, '더보기'));
-    await page.locator('#myInfoBtn').click();
+    await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await expect(page.locator('#myInfoDialog')).toBeVisible();
     const item = (seq, delta, before) => ({ seq, at: new Date(Date.now() - seq * 60_000).toISOString(), delta, balanceBefore: before,
       balanceAfter: before + delta, reason: delta > 0 ? 'game_win' : 'game_loss', gameType: 'gostop', mode: seq % 2 ? 'matgo' : 'gostop', detail: null });

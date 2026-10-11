@@ -1,4 +1,5 @@
 'use strict';
+process.env.ISLAND_QUEST_WEEK ??= '0'; // the stories of the 정원사·어부 week, whatever today's week is (lib/island-quests.js)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
@@ -118,7 +119,8 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
 });
 
 
-test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유지·같은 주민 중복 없음',()=>{
+test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유지·같은 주민 중복 없음',(t)=>{
+  const held=process.env.ISLAND_QUEST_WEEK; delete process.env.ISLAND_QUEST_WEEK; t.after(()=>{ process.env.ISLAND_QUEST_WEEK=held; }); // the real rotation here
   const before=Date.parse('2026-10-11T23:59:59+09:00'), after=before+1000;
   assert.deepEqual(Q.weeklyStories(before),['granny','fisher','kid']);
   assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid']);

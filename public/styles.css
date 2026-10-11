@@ -264,6 +264,14 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .publicRoomMain{display:grid;gap:4px;min-width:0}
 .publicRoomMain strong{font-size:.86rem;overflow-wrap:anywhere}
 .publicRoomMain small{color:#94a3b8;font-size:.72rem;line-height:1.4}
+/* v1.10.63 room cards: game badge + status chip on top, a waiting room's edge lit */
+.publicRoomRow{border-left:3px solid #334155}
+.publicRoomRow[data-status="waiting"]{border-left-color:#22c55e}
+.publicRoomHead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.publicRoomGame{font-size:.68rem;font-weight:850;color:#bfdbfe;background:#172554;border-radius:6px;padding:2px 7px}
+.publicRoomStatus{font-style:normal;font-size:.66rem;font-weight:800;color:#cbd5e1;background:#1e293b;border-radius:999px;padding:2px 8px}
+.publicRoomRow[data-status="waiting"] .publicRoomStatus{color:#bbf7d0;background:#052e16}
+.publicRoomRow:focus-within{border-color:#60a5fa}
 .publicRoomRow button,.inviteTargetRow button{flex:0 0 auto;white-space:nowrap}
 .lobbyInvitations{margin-top:14px;padding-top:12px;border-top:1px solid #334155;display:grid;gap:8px}
 .lobbyInvitations>strong{font-size:.85rem;color:#bfdbfe}
@@ -382,7 +390,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .lobbyHighlights .noticeCard{margin:0;min-width:0}
 .lobbySide{display:grid;gap:12px;min-width:0;align-content:start}
 /* v1.7.32: the shop entry is one blue button (same colour as 방 입장), no card or title around it */
-.islandTopbar{justify-content:flex-end}.islandTopActions{margin-left:auto}
+
 .recordsDialog.myInfoDialog{width:min(94vw,980px);max-height:90vh}
 .myInfoSection{padding:12px 0;border-bottom:1px solid #263246}.myInfoSection:last-child{border-bottom:0;padding-bottom:0}.myInfoSectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.myInfoSectionHead h3{font-size:1rem;margin:0 0 8px}.myInfoWallet{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}.myInfoLabel{font-size:.76rem;color:#94a3b8;font-weight:800}.myInfoWallet .pointBalance{font-size:1.2rem;font-weight:900;color:#fde68a}.myInfoDialog .pointHistoryPanel{grid-column:1/-1;margin-top:2px;padding:10px 0 0;border-top:1px solid #263246}.myInfoSkinBody{margin-top:4px}
 .skinShopCard{min-width:0;display:grid}
@@ -1554,7 +1562,7 @@ body.tableGamePlaying #teamPlayers{display:none!important}
 body.plazaMode .shell{width:min(1600px,calc(100% - 24px));padding-bottom:16px}
 body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 #lobbyView>#islandMapCard{display:none}.islandMapCard canvas{display:block;width:auto;max-width:100%;max-height:72vh;margin:0 auto;border-radius:14px}
-.plazaStage{position:relative;height:calc(100vh - 126px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
+.plazaStage{position:relative;height:calc(100vh - 40px);min-height:520px;border-radius:22px;overflow:hidden;background:#bfe6ff;box-shadow:0 24px 70px rgba(0,0,0,.28);outline:none}
 .plazaStage canvas.islandMinimap{position:absolute;top:12px;right:12px;width:176px;height:176px;z-index:2;border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none}
 /* v1.10.3 첫 접속 캐릭터 선택 */
 .recordsDialog.genderDialog{width:min(92vw,420px);text-align:center}.genderDialog h2{margin:0 0 14px;font-size:1.1rem}
@@ -1699,16 +1707,78 @@ body.photoMode .islandStick { visibility: hidden !important; }
 body.touchIsland .islandChatPanel { width: calc(100% - 28px); height: min(34%, 300px); }
 body.touchIsland .islandChatForm { width: calc(100% - 28px); bottom: 200px; }
 body.plazaMode .chatFloatBtn { display: none; } /* v1.10.62: the game room's narrow-screen 💬·🎮 buttons, not on the island (it has its own chat) */
-/* v1.10.62: a phone shows the whole island on its screen, upright or turned sideways -- a slim account bar, the island
+/* v1.10.62: a phone shows the whole island on its screen, upright or turned sideways -- the island
    filling the rest (dvh: what the browser's own bars leave), and on a short (sideways) screen a smaller map and stick */
 body.touchIsland.plazaMode .shell { padding-top: 6px; padding-bottom: 6px; }
-body.touchIsland.plazaMode .islandTopbar { min-height: 0; padding: 5px 8px; margin-bottom: 6px; border-radius: 14px; }
-body.touchIsland.plazaMode .islandTopActions { max-width: none; flex-wrap: nowrap; }
-body.touchIsland.plazaMode .islandTopActions button { padding: 6px 10px; font-size: .78rem; white-space: nowrap; }
-body.touchIsland .plazaStage { height: calc(100dvh - 64px); min-height: 0; }
+body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 @media (max-height: 500px) {
   body.touchIsland .plazaStage canvas.islandMinimap { width: 112px; height: 112px; }
   body.touchIsland .islandStick { width: 96px; height: 96px; bottom: 62px; }
   body.touchIsland .islandStick span { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
   body.touchIsland .plazaHint { bottom: 14px; }
 }
+
+/* v1.10.63 메뉴: the ☰ button where the 채팅 tab was (the tab moves right), and the menu window (Esc) */
+#islandChatTab { left: 62px; }
+.gameMenuBtn { padding: 7px 12px; }
+.gameMenuDialog { width: min(360px, 92vw); }
+.gameMenuList { display: grid; gap: 10px; }
+.gameMenuList > button { width: 100%; }
+.gameMenuSettings { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #0f172a; border: 1px solid #273449; }
+.gameMenuSettings h3 { margin: 0; font-size: .9rem; color: #cbd5e1; }
+.gameMenuThemes { display: flex; gap: 6px; flex-wrap: wrap; }
+.gameMenuThemes label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border-radius: 10px; border: 1px solid #334155; cursor: pointer; font-weight: 800; font-size: .86rem; white-space: nowrap; }
+.gameMenuThemes label:has(input:checked) { border-color: #60a5fa; background: rgba(96, 165, 250, .14); }
+.gameMenuThemes label:has(input:focus-visible) { outline: 2px solid #60a5fa; outline-offset: 2px; }
+/* v1.10.63 게임 선택 탭: 멀티게임 / 싱글게임, then 대전게임 / 협동게임 -- only the chosen tab's games and panes show */
+.gameTabs { display: flex; gap: 6px; margin: 12px 0 8px; }
+.gameTab { flex: 1; padding: 10px 8px; border-radius: 12px; background: #0f172a; color: #cbd5e1; border: 1px solid #334155; font-weight: 850; }
+.gameTab[aria-selected="true"] { background: #172554; color: #f8fafc; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96, 165, 250, .2); }
+.gameKindTabs { margin-top: 0; }
+.gameKindTabs .gameTab { padding: 7px 8px; font-size: .86rem; }
+.lobbyCard[data-game-view="single"] [data-game-pane="multi"],
+.lobbyCard[data-game-view="multi"] [data-game-pane="single"],
+.gamePicker[data-kind="versus"] .gameOption[data-kind="coop"],
+.gamePicker[data-kind="coop"] .gameOption[data-kind="versus"] { display: none; }
+.soloGamesPanel { display: grid; gap: 8px; }
+/* v1.10.63 게임방 공통 틀: a slimmer top bar and card padding leave more room to the board; the result card is
+   put away by Esc/Enter (app.js) */
+#roomView>.topbar{min-height:52px;padding:9px 14px;margin-bottom:12px}
+#roomView .boardCard{padding:14px}
+@media(max-width:520px){#roomView>.topbar{padding:7px 10px;margin-bottom:8px}#roomView .boardCard{padding:10px}}
+/* v1.10.63 주민 대화: a speech bubble at the bottom of the island (the island stays in sight above it), the speaker's
+   name on a tag, lines one by one (app.js openTalk) */
+.plazaDialog.talkMode{width:min(760px,94vw);max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:2px solid #60a5fa;background:rgba(15,23,42,.94);overflow:visible;padding:14px 18px 16px}
+.plazaDialog.talkMode::backdrop{background:transparent}
+.plazaDialog.talkMode::after{content:"";position:absolute;left:46px;top:-11px;width:18px;height:18px;background:inherit;border-left:2px solid #60a5fa;border-top:2px solid #60a5fa;transform:rotate(45deg)}
+.plazaDialog.talkMode .recordsDialogHead h2{flex:0 1 auto;padding:3px 12px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:.86rem}
+.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between}
+.plazaDialog.talkMode .plazaDialogBody{display:block}
+.plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1rem}
+.plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
+.lostRequestLine.talkPending{display:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
+@media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
+.lostRequest:focus{outline:none}
+/* v1.10.63 (사용자 2026-10-12): the open-rooms card keeps its padding in the 게임관 window too */
+.plazaDialogBody>.publicRoomsCard{padding:22px}
+@media(max-width:520px){.plazaDialogBody>.publicRoomsCard{padding:14px}}
+/* 주민 대화: what Space/Enter will press is always ringed -- the focused answer or 닫기, or (with the bubble itself
+   focused) its first answer */
+.plazaDialog.talkMode button:focus{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}
+.plazaDialog.talkMode .lostRequest:focus button.primary{outline:3px solid #60a5fa;outline-offset:3px;box-shadow:0 0 0 6px rgba(96,165,250,.28)}
+/* v1.10.63 아이디·비밀번호 로그인: 로그인/회원가입 tabs, 내 계정, the small 관리자 line at the bottom */
+.accountTabs{margin-top:22px}
+.accountForm{margin-top:14px}
+.accountForm label small{font-weight:600;color:#94a3b8}
+.accountIdRow{display:flex;gap:8px}.accountIdRow input{flex:1;min-width:0}.accountIdRow button{flex:0 0 auto;white-space:nowrap}
+.accountPanel{display:grid;gap:12px;margin-top:22px}
+.accountPanel h2{margin:0}
+.accountActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.accountMessage{min-height:1.2em;margin:12px 0 0;font-size:.86rem;color:#bbf7d0;line-height:1.5}
+.accountMessage.bad{color:#fca5a5}
+.adminLoginForm{display:flex;align-items:center;gap:8px;margin-top:22px;padding-top:14px;border-top:1px solid #334155}
+.adminLoginForm label{font-size:.78rem;font-weight:800;color:#94a3b8;white-space:nowrap}
+.adminLoginForm input{flex:1;min-width:0;border:1px solid #334155;border-radius:10px;padding:8px 10px;background:#0f172a;color:#fff;font-size:.82rem}
+@media(max-width:520px){.accountActions{grid-template-columns:1fr}}
