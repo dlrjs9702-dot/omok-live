@@ -113,6 +113,35 @@ test.describe('게임센터 입장과 로비', () => {
     await expect(page.locator('#gamePicker [data-game="omok"]')).toBeFocused();
   });
 
+  // v1.10.63 게임방 공통 틀: the Esc menu in a room (로비로 돌아가기 on top), Enter to the room chat, Esc out of it
+  test('게임방: Esc 메뉴와 Enter 채팅', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
+    await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.73.${testInfo.project.name.length % 250}.${process.pid % 250 + 1}` });
+    await page.goto('/');
+    await page.locator('#adminPassword').fill(adminPassword);
+    await page.getByRole('button', { name: '관리자로 입장' }).click();
+    await expect(page.locator('#lobbyView')).toBeVisible();
+    await page.locator('#createRoomBtn').click();
+    await expect(page.locator('#roomView')).toBeVisible();
+
+    await page.locator('#statusText').click(); // nothing focused
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#chatInput')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#chatInput')).not.toBeFocused();
+    await expect(page.locator('#gameMenuDialog')).not.toHaveAttribute('open', '');
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
+    await expect(page.locator('#menuLeaveRoomBtn')).toBeVisible();
+    await page.locator('#menuLeaveRoomBtn').click();
+    await expect(page.locator('#lobbyView')).toBeVisible();
+    await expect(page.locator('#gameMenuDialog')).not.toHaveAttribute('open', '');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
+    await expect(page.locator('#menuLeaveRoomBtn')).toBeHidden(); // not in the lobby
+  });
+
   test('헬스 엔드포인트는 게임 서버 준비 상태를 반환한다', async ({ request }) => {
     const response = await request.get('/health');
 

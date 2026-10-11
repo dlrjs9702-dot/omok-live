@@ -1481,6 +1481,7 @@
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
   function openPlazaWindow(title, nodes) {
+    plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
     for (const node of nodes) {
       if (!node || plazaHomes.has(node)) continue;
@@ -1495,6 +1496,8 @@
     if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
     for (const [node, mark] of plazaHomes) mark.replaceWith(node);
     plazaHomes.clear();
+    plazaDialog.classList.remove('talkMode');
+    plaza.controller?.talkCamera?.(false); // back to the player's own view
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
@@ -1547,16 +1550,32 @@
   // (theme, fullscreen), 관리자 창 for an admin, 접속 종료. The ☰ button opens it where there is no Esc (a phone).
   // Esc does this only with nothing else to close or cancel: an open window, typing, the photo mode, a gathering.
   const gameMenuDialog = byId('gameMenuDialog');
-  const openGameMenu = () => { if (!gameMenuDialog.open) gameMenuDialog.showModal(); };
+  const openGameMenu = () => {
+    if (gameMenuDialog.open) return;
+    byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
+    gameMenuDialog.showModal();
+  };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
   for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
   gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
+  // v1.10.63 게임방: the same menu, with 로비로 돌아가기 on top (the room's own buttons stay in its top bar)
+  const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
+  menuLeaveRoomBtn.addEventListener('click', () => { gameMenuDialog.close(); leaveRoomBtn.click(); });
   window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || event.isComposing || event.repeat || event.defaultPrevented || lobbyView.classList.contains('hidden')) return;
+    if (event.isComposing || event.repeat || event.defaultPrevented) return;
     const t = event.target;
-    if (document.querySelector('dialog[open]') || document.body.classList.contains('photoMode') || t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || '')) return;
-    if (plaza.controller?.debug?.()?.gather) return; // Esc there cancels the gathering (plaza-scene)
+    const typing = t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || '');
+    const inRoom = !roomView.classList.contains('hidden');
+    // the result card: Esc or Enter puts it away at once (clicks pass through it to the board, as before)
+    if ((event.key === 'Escape' || event.key === 'Enter') && !resultEffect.classList.contains('hidden') && !typing) { event.preventDefault(); clearResultEffect(); return; }
+    if (inRoom && event.key === 'Escape' && t === chatInput) { chatInput.blur(); return; } // out of the chat; the next Esc is the menu
+    // in a room, Enter with nothing focused goes to the room chat
+    if (inRoom && event.key === 'Enter' && !typing && (t === document.body || !t?.closest?.('button, a, summary, [tabindex], label')) && chatInput.offsetParent && !document.querySelector('dialog[open]')) { event.preventDefault(); chatInput.focus(); return; }
+    if (event.key !== 'Escape' || (lobbyView.classList.contains('hidden') && !inRoom)) return;
+    if (document.querySelector('dialog[open]') || document.body.classList.contains('photoMode') || typing) return;
+    if (inRoom && !sideOverlayBackdrop.classList.contains('hidden')) { event.preventDefault(); toggleChatOverlay(false); toggleGameInfoOverlay(false); return; } // a phone's side panel first
+    if (!inRoom && plaza.controller?.debug?.()?.gather) return; // Esc there cancels the gathering (plaza-scene)
     event.preventDefault(); openGameMenu();
   });
   function showPlazaHint(facility) {
@@ -1898,14 +1917,45 @@
   // v1.10.34 분실물 부탁: the owner says what they lost and asks me to find it; it is on my map from now on
   const lostCard = document.createElement('div'); lostCard.className = 'lostRequest hidden'; document.body.append(lostCard);
   plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) lostCard.classList.add('hidden'); });
+  // v1.10.63 주민 대화 (IDEAS 2026-10-11): a resident's words come as a speech bubble at the bottom of the island, not a
+  // window over it -- one line at a time. Space/Enter: the next line, then the focused answer; ↑↓ choose an answer;
+  // 1-9 pick one; Esc closes (the dialog's own cancel). Same #plazaDialog underneath, so its closing and sections hold.
+  // shot: a quest taken or done, a reward, a big choice -- the camera's two-shot (else over my shoulder, plaza-scene)
+  function openTalk(name, shot = false) {
+    lostCard.classList.remove('hidden');
+    openPlazaWindow(name, [lostCard]);
+    plazaDialog.classList.add('talkMode');
+    plaza.controller?.talkCamera?.(shot ? 'shot' : 'talk');
+    lostCard.querySelectorAll('.lostRequestLine').forEach((line, i) => line.classList.toggle('talkPending', i > 0));
+    lostCard.tabIndex = -1; lostCard.focus({ preventScroll: true }); // the bubble, not an answer: the Space that opened it
+    // is still going up, and on a focused answer that would press it
+  }
+  plazaDialog.addEventListener('click', (event) => { // a tap on the bubble (not an answer) shows the next line
+    if (plazaDialog.classList.contains('talkMode') && !event.target.closest('button')) lostCard.querySelector('.talkPending')?.classList.remove('talkPending');
+  });
+  const talkButtons = () => [...lostCard.querySelectorAll('button:not(:disabled)')];
+  plazaDialog.addEventListener('keydown', (event) => {
+    if (!plazaDialog.classList.contains('talkMode') || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.repeat && event.key !== 'Escape') { event.preventDefault(); return; } // a held Space never runs through the lines
+    const buttons = talkButtons();
+    if (event.key === ' ' || event.key === 'Enter') {
+      const pending = lostCard.querySelector('.talkPending');
+      if (pending) { event.preventDefault(); pending.classList.remove('talkPending'); return; }
+      if (!buttons.includes(event.target)) { event.preventDefault(); (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); }
+      return; // a focused answer is pressed by the browser
+    }
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
+    if (step && buttons.length) { event.preventDefault(); const at = buttons.indexOf(event.target); buttons[at < 0 ? (step > 0 ? 0 : buttons.length - 1) : (at + step + buttons.length) % buttons.length].focus(); return; }
+    if (/^[1-9]$/.test(event.key) && buttons[Number(event.key) - 1]) { event.preventDefault(); buttons[Number(event.key) - 1].click(); }
+  });
   function openLostRequest(id, points) {
     const name = plaza.controller?.lostName?.(id) || '물건';
     const ask = document.createElement('p'); ask.className = 'lostRequestLine'; ask.textContent = `「${name}${/[가-힣]/.test(name.slice(-1)) && (name.charCodeAt(name.length - 1) - 0xac00) % 28 ? '을' : '를'} 잃어버렸어요…`;
     const more = document.createElement('p'); more.className = 'lostRequestLine'; more.textContent = '이 근처 풀밭 어딘가에 떨어뜨린 것 같아요. 찾아서 가져다주시면 사례할게요!」';
     const meta = document.createElement('p'); meta.className = 'lookMeta'; meta.textContent = `미니맵 ! 표시 · 사례 ${Number(points || 0).toLocaleString('ko-KR')}P`;
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '찾아볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    lostCard.replaceChildren(ask, more, meta, ok); lostCard.classList.remove('hidden');
-    openPlazaWindow('분실물 찾아주기', [lostCard]);
+    lostCard.replaceChildren(ask, more, meta, ok);
+    openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
   function openQuestTalk(data) {
@@ -1916,8 +1966,8 @@
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell); lostCard.classList.remove('hidden');
-    openPlazaWindow(data.name, [lostCard]);
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell);
+    openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
   // in the bag (and the 도감), too early or too late it got away. The scene shows the cast, the bite and the catch.
@@ -2080,8 +2130,7 @@
           islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
         } catch (error) { showToast(error.message); }
       }));
-    lostCard.classList.remove('hidden');
-    openPlazaWindow(who?.name || '', [lostCard]);
+    openTalk(who?.name || '');
   }
   async function sendIslandInvite() {
     const to = islandInviteTo; islandInviteTo = null;
@@ -2100,8 +2149,8 @@
         plaza.controller?.setTownhallPass?.(Boolean(data.townhallPass)); plazaDialog.close();
       } catch (error) { showToast(error.message); ok.disabled = false; }
     });
-    lostCard.replaceChildren(line, ok); lostCard.classList.remove('hidden');
-    openPlazaWindow('시장', [lostCard]);
+    lostCard.replaceChildren(line, ok);
+    openTalk('시장');
   }
   const questTracker = document.getElementById('questTracker');
   function showQuestTracker(list) {
@@ -9233,6 +9282,7 @@
   davinciStopBtn.addEventListener('click', () => roomAction('stop-davinci', { expectedRevision: state.game.revision }));
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !isDavinciGame() || !davinciHands.querySelector('.davinciPicker')) return;
+    event.preventDefault(); // this Esc closes the picker, not opens the menu
     const g = state.game;
     davinciPickerClosedFor = g.selection ? `${g.revision}:${g.selection.target}:${g.selection.tileId}` : null;
     renderDavinci();

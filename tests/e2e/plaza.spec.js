@@ -1036,6 +1036,43 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   for (const who of [a, b]) await who.context.close();
 });
 
+// v1.10.63 주민 대화 말풍선 + 몰입형 카메라: a resident's words at the bottom, one line at a time (Space), the camera in
+// close on the two of us while they talk (a request taken: the two-shot), and back to my own view when it closes
+test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카메라가 다가갔다가 돌아온다', async ({ browser, request }) => {
+  test.setTimeout(90000);
+  const a = await intoPlaza(browser, request, '말벗');
+  const { page } = a;
+  const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  await page.waitForTimeout(800); // the camera settles behind me
+  const before = await page.evaluate(() => window.PlazaDebug().camera);
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  const dialog = page.locator('#plazaDialog');
+  await expect(dialog).toHaveClass(/talkMode/);
+  const box = await dialog.boundingBox(); const view = page.viewportSize();
+  expect(box.y + box.height).toBeGreaterThan(view.height - 60); // at the bottom
+  expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
+  const lines = page.locator('.lostRequest .lostRequestLine');
+  await expect(lines.nth(0)).toBeVisible();
+  await expect(lines.nth(1)).toBeHidden();
+  await page.keyboard.press('Space');
+  await expect(lines.nth(1)).toBeVisible();
+  await expect(dialog).toBeVisible(); // that Space was the next line, not the answer
+  expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
+  await page.waitForTimeout(900);
+  const during = await page.evaluate(() => window.PlazaDebug().camera);
+  expect(Math.hypot(during.x - before.x, during.y - before.y, during.z - before.z)).toBeGreaterThan(2);
+  await page.keyboard.press('1'); // the first answer: 찾아볼게요
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(() => window.PlazaDebug().talkView)).toBeNull();
+  await page.waitForTimeout(1200);
+  const after = await page.evaluate(() => window.PlazaDebug().camera);
+  expect(Math.hypot(after.x - before.x, after.y - before.y, after.z - before.z)).toBeLessThan(1.5);
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
 // v1.10.32 운반·전달: a lost thing picked up stays in my hands (in front of the chest, the arms holding it) while I stand
 // and walk, the other players see it in mine; given back, the owner takes it hand to hand and only then goes
 test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 보이며, 주인이 받아 든 뒤 떠난다', async ({ browser, request }) => {
@@ -1158,8 +1195,8 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.mouse.click(hallAt.x, hallAt.y); await page.waitForTimeout(500);
   await expect(page.locator('#islandPlaceDialog')).toBeHidden();
   expect(await page.locator('#plazaStage .plazaCanvas').evaluate((c) => c.style.cursor)).not.toBe('pointer');
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
-  await page.getByRole('button', { name: '용무가 있습니다' }).click();
+  await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/); // still talking to him (v1.10.63: the speech bubble)
+  await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
   // he steps out of the gate, then aside along the outside of the wall: never back inside the yard behind the wall
   const walk = [];

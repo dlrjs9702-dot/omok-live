@@ -1741,3 +1741,23 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .gamePicker[data-kind="versus"] .gameOption[data-kind="coop"],
 .gamePicker[data-kind="coop"] .gameOption[data-kind="versus"] { display: none; }
 .soloGamesPanel { display: grid; gap: 8px; }
+/* v1.10.63 게임방 공통 틀: a slimmer top bar and card padding leave more room to the board; the result card is
+   put away by Esc/Enter (app.js) */
+#roomView>.topbar{min-height:52px;padding:9px 14px;margin-bottom:12px}
+#roomView .boardCard{padding:14px}
+@media(max-width:520px){#roomView>.topbar{padding:7px 10px;margin-bottom:8px}#roomView .boardCard{padding:10px}}
+/* v1.10.63 주민 대화: a speech bubble at the bottom of the island (the island stays in sight above it), the speaker's
+   name on a tag, lines one by one (app.js openTalk) */
+.plazaDialog.talkMode{width:min(760px,94vw);max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:2px solid #60a5fa;background:rgba(15,23,42,.94);overflow:visible;padding:14px 18px 16px}
+.plazaDialog.talkMode::backdrop{background:transparent}
+.plazaDialog.talkMode::after{content:"";position:absolute;left:46px;top:-11px;width:18px;height:18px;background:inherit;border-left:2px solid #60a5fa;border-top:2px solid #60a5fa;transform:rotate(45deg)}
+.plazaDialog.talkMode .recordsDialogHead h2{flex:0 1 auto;padding:3px 12px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:.86rem}
+.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between}
+.plazaDialog.talkMode .plazaDialogBody{display:block}
+.plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1rem}
+.plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
+.lostRequestLine.talkPending{display:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
+@media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
+.lostRequest:focus{outline:none}
