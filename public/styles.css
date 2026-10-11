@@ -1578,7 +1578,7 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 22px;border-radius:999px;background:rgba(255,250,240,.95);border:3px solid #8a6a4a;color:#4a3828;font-weight:950;font-size:1.1rem;letter-spacing:.03em;box-shadow:0 8px 24px rgba(74,56,40,.28);pointer-events:none;white-space:nowrap}
 .plazaStage .lobbyInvitations{position:absolute;z-index:2;top:14px;right:14px;width:min(380px,40%)}
 .recordsDialog.plazaDialog{width:min(1120px,94vw);max-height:90vh}
-.plazaDialogBody{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start}
+.plazaDialogBody{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));align-items:start}
 .plazaDialogBody>*{margin:0!important;min-width:0}
 .plazaDialogBody input[type=radio],.plazaDialogBody input[type=checkbox]{width:auto;padding:0}
 .plazaDialogBody label{font-size:inherit;color:inherit}
@@ -1690,3 +1690,11 @@ body:has(#plazaDialog[open]) .trainControls,body.photoMode .trainControls{displa
 .skinTitle.selected{background:#1e293b;color:#f8fafc;outline:2px solid #60a5fa;outline-offset:1px}
 
 .lookFaceThumb{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none}
+/* v1.10.62 모바일 아일랜드: on a touch-only screen a stick to walk (bottom left, above 가방·사진) and the hint as the action button (= Space) bottom right, both under a thumb */
+.islandStick { display: none; position: absolute; left: 14px; bottom: 70px; z-index: 3; width: 120px; height: 120px; border-radius: 50%; background: rgba(15, 23, 42, .45); border: 1px solid rgba(148, 163, 184, .45); touch-action: none; }
+.islandStick span { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(248, 250, 252, .85); box-shadow: 0 4px 12px rgba(0, 0, 0, .35); pointer-events: none; }
+body.touchIsland .islandStick { display: block; }
+body.touchIsland .plazaHint { pointer-events: auto; cursor: pointer; z-index: 3; left: auto; right: 14px; bottom: 70px; transform: none; max-width: calc(100% - 170px); overflow: hidden; text-overflow: ellipsis; }
+body.photoMode .islandStick { visibility: hidden !important; }
+body.touchIsland .islandChatPanel { width: calc(100% - 28px); height: min(34%, 300px); }
+body.touchIsland .islandChatForm { width: calc(100% - 28px); bottom: 200px; }

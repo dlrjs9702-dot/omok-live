@@ -1438,8 +1438,6 @@
   }
   let plazaTestClassic = false;
   try { plazaTestClassic = Boolean(navigator.webdriver && localStorage.getItem('gc.testClassic') === '1'); } catch {}
-  const plazaWide = window.matchMedia('(min-width: 600px)'); // v1.10.1: a half-screen PC window stays on the island too (the classic lobby is not for regular users)
-  const plazaFits = () => plazaWide.matches && !rpgTouchOnly();
   const byId = (id) => document.getElementById(id);
   const PLAZA_FACILITIES = [
     { id: 'games', name: '게임관', open: () => openPlazaWindow('게임관', [document.querySelector('.lobbyTopGrid > .lobbyCard'), publicRoomsCardEl]) },
@@ -1482,9 +1480,32 @@
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
   });
   document.getElementById('plazaCloseBtn').addEventListener('click', () => plazaDialog.close());
+  // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): on a touch-only screen a stick walks (one finger; a drag on the island
+  // itself still turns the camera, so both thumbs work at once) and tapping the hint does what Space does.
+  const touchIsland = rpgTouchOnly();
+  document.body.classList.toggle('touchIsland', touchIsland);
+  if (touchIsland) byId('islandChatInput').placeholder = '메시지 입력'; // no Enter/Esc keys to name on a phone
+  const islandStick = byId('islandStick'); const stickKnob = islandStick.firstElementChild; let stickPointer = null;
+  function moveStick(event) {
+    const box = islandStick.getBoundingClientRect(); const r = box.width / 2;
+    let dx = event.clientX - box.left - r; let dy = event.clientY - box.top - r;
+    const d = Math.hypot(dx, dy); if (d > r) { dx *= r / d; dy *= r / d; }
+    stickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    const live = d > r * 0.2; // a small dead zone: a thumb resting on the middle does not walk
+    plaza.controller?.setStick?.(live ? dx / r : 0, live ? dy / r : 0);
+  }
+  function endStick(event) {
+    if (event.pointerId !== stickPointer) return;
+    stickPointer = null; stickKnob.style.transform = ''; plaza.controller?.setStick?.(0, 0);
+  }
+  islandStick.addEventListener('pointerdown', (event) => { stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event); event.preventDefault(); });
+  islandStick.addEventListener('pointermove', (event) => { if (event.pointerId === stickPointer) moveStick(event); });
+  islandStick.addEventListener('pointerup', endStick);
+  islandStick.addEventListener('pointercancel', endStick);
+  plazaHint.addEventListener('click', () => { if (touchIsland) plaza.controller?.act?.(); });
   function showPlazaHint(facility) {
     const isTrain = facility?.id?.startsWith('train:');
-    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press
+    plazaHint.textContent = facility ? (facility.plain || facility.id === 'train:platform' || touchIsland ? facility.name : `SPACE · ${facility.name}`) : ''; // v1.10.47: a plain line (when the next train comes) is not a key to press; v1.10.62: on a touch screen the hint itself is tapped
     plazaHint.classList.toggle('hidden', !facility || Boolean(isTrain && !facility.plain));
     trainControls.classList.toggle('hidden', !isTrain);
     if (isTrain) {
@@ -1498,7 +1519,8 @@
   }
   function syncPlaza(view) {
     const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
-    const on = view === 'lobby' && plazaFits() && !plazaTestClassic && !classicFallback;
+    // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): phones and narrow windows are on the island too (touch controls in plaza-scene)
+    const on = view === 'lobby' && !plazaTestClassic && !classicFallback;
     document.body.classList.toggle('plazaMode', on);
     const facilityActions = document.getElementById('islandFacilityActions');
     facilityActions.classList.toggle('hidden', on || view !== 'lobby');
@@ -1540,7 +1562,6 @@
     if (sessionRole !== 'admin') return;
     openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
   });
-  plazaWide.addEventListener('change', () => syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'));
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
@@ -4804,7 +4825,11 @@
     islandChatTab.setAttribute('aria-expanded', String(open));
     if (open) { islandChatTab.classList.remove('unread'); islandChatMessages.scrollTop = islandChatMessages.scrollHeight; }
   }
-  islandChatTab.addEventListener('click', () => { setIslandChatPanel(islandChatPanel.classList.contains('hidden')); plazaStage.focus({ preventScroll: true }); });
+  islandChatTab.addEventListener('click', () => {
+    // v1.10.62 모바일: no Enter on a phone, so the tab also opens the input (and opens it again after a message)
+    if (touchIsland && islandChatForm.classList.contains('hidden')) { setIslandChatPanel(true); islandChatForm.classList.remove('hidden'); islandChatInput.focus(); return; }
+    setIslandChatPanel(islandChatPanel.classList.contains('hidden')); plazaStage.focus({ preventScroll: true });
+  });
   document.getElementById('islandChatClose').addEventListener('click', () => { setIslandChatPanel(false); plazaStage.focus({ preventScroll: true }); });
   const applyIslandChatAlpha = (value) => islandChatPanel.style.setProperty('--island-chat-alpha', String(Math.max(25, Math.min(100, Number(value) || 80)) / 100));
   try { const saved = localStorage.getItem('gc.islandChatAlpha'); if (saved) islandChatOpacity.value = saved; } catch {}
