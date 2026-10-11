@@ -1699,3 +1699,15 @@ body.photoMode .islandStick { visibility: hidden !important; }
 body.touchIsland .islandChatPanel { width: calc(100% - 28px); height: min(34%, 300px); }
 body.touchIsland .islandChatForm { width: calc(100% - 28px); bottom: 200px; }
 body.plazaMode .chatFloatBtn { display: none; } /* v1.10.62: the game room's narrow-screen 💬·🎮 buttons, not on the island (it has its own chat) */
+/* v1.10.62: a phone shows the whole island on its screen, upright or turned sideways -- a slim account bar, the island
+   filling the rest (dvh: what the browser's own bars leave), and on a short (sideways) screen a smaller map and stick */
+body.touchIsland.plazaMode .shell { padding-top: 6px; padding-bottom: 6px; }
+body.touchIsland.plazaMode .islandTopbar { min-height: 0; padding: 5px 8px; margin-bottom: 6px; border-radius: 14px; }
+body.touchIsland.plazaMode .islandTopActions button { padding: 6px 10px; font-size: .78rem; }
+body.touchIsland .plazaStage { height: calc(100dvh - 64px); min-height: 0; }
+@media (max-height: 500px) {
+  body.touchIsland .plazaStage canvas.islandMinimap { width: 112px; height: 112px; }
+  body.touchIsland .islandStick { width: 96px; height: 96px; bottom: 62px; }
+  body.touchIsland .islandStick span { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
+  body.touchIsland .plazaHint { bottom: 14px; }
+}

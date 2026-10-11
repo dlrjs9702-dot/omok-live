@@ -51,4 +51,14 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   // no Enter on a phone: the chat tab opens the input
   await page.locator('#islandChatTab').tap();
   await expect(page.locator('#islandChatInput')).toBeFocused();
+
+  // turned sideways and back: the whole island stays on the screen (no scrolling), the stick and the map on it
+  const viewport = page.viewportSize();
+  for (const size of [{ width: viewport.height, height: viewport.width }, viewport]) {
+    await page.setViewportSize(size);
+    await expect.poll(() => page.evaluate(() => {
+      const bottom = (id) => document.getElementById(id).getBoundingClientRect().bottom;
+      return document.documentElement.scrollHeight <= innerHeight && bottom('plazaStage') <= innerHeight && bottom('islandStick') <= innerHeight;
+    })).toBe(true);
+  }
 });
