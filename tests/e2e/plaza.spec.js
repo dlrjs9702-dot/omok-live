@@ -587,6 +587,19 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   const max = start.max; expect(max).toBeCloseTo((15 * Math.PI) / 180, 5);
   const sky = start.sky; expect(sky).toBeCloseTo((45 * Math.PI) / 180, 5); // v1.10.40 하늘 보기
 
+  // v1.10.62 확대·축소: the wheel moves the camera in (up) and out (down) within its range, and nothing else changes it
+  const zoomNow = () => page.evaluate(() => window.PlazaDebug().zoom);
+  const [zoomMin, zoomMax] = await page.evaluate(() => window.PlazaDebug().zoomRange);
+  const zoom0 = await zoomNow();
+  await page.mouse.move(480, 340);
+  await page.mouse.wheel(0, -300); await expect.poll(zoomNow).toBeLessThan(zoom0);
+  for (let i = 0; i < 20; i += 1) await page.mouse.wheel(0, 400);
+  await expect.poll(zoomNow).toBe(zoomMax);
+  for (let i = 0; i < 20; i += 1) await page.mouse.wheel(0, -400);
+  await expect.poll(zoomNow).toBe(zoomMin);
+  await page.evaluate(() => localStorage.removeItem('gc.islandZoom'));
+  for (let i = 0; i < 40 && (await zoomNow()) < zoom0; i += 1) await page.mouse.wheel(0, 30); // back near the default for the rest
+
   // A turns like dragging left (yaw up), D the other way; on release it stops
   await hold('a', 600);
   await page.waitForTimeout(300);

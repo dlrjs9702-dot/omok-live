@@ -48,6 +48,23 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
   expect(await page.evaluate(() => { const d = document.getElementById('plazaDialog'); return d.scrollWidth <= d.clientWidth; })).toBe(true);
   await page.locator('#plazaCloseBtn').tap();
 
+  // two fingers on the island: apart brings the camera in, together takes it out, and the view does not turn meanwhile
+  const view = () => page.evaluate(() => { const d = window.PlazaDebug(); return { zoom: d.zoom, yaw: d.camYaw }; });
+  const pinch = async (from, to) => {
+    const y = 420; const cx2 = page.viewportSize().width / 2;
+    const at = (s) => [{ x: cx2 - s, y, id: 1 }, { x: cx2 + s, y, id: 2 }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at(from)[0]] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(from) });
+    for (let i = 1; i <= 6; i += 1) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(from + ((to - from) * i) / 6) });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  };
+  const before0 = await view();
+  await pinch(40, 110);
+  const closer = await view();
+  expect(closer.zoom).toBeLessThan(before0.zoom); expect(closer.yaw).toBe(before0.yaw);
+  await pinch(110, 40);
+  expect((await view()).zoom).toBeGreaterThan(closer.zoom);
+
   // no Enter on a phone: the chat tab opens the input
   await page.locator('#islandChatTab').tap();
   await expect(page.locator('#islandChatInput')).toBeFocused();
