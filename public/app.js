@@ -1412,6 +1412,7 @@
     boardOverlay.classList.add(win ? 'resultWin' : 'resultLoss');
   }
 
+  let reflexGames = null; // v1.10.68 순발력 게임 (below, at its button)
   function showView(name) {
     if (name === 'gate') queueMicrotask(() => openAccountGate()); // v1.10.63: login / 내 계정 / id setup
     document.body.classList.toggle('roomMode', name === 'room'); // v1.10.64: the room's 💬·🎮 buttons only in a room
@@ -1420,6 +1421,8 @@
     roomView.classList.toggle('hidden', name !== 'room');
     document.getElementById('climbView').classList.toggle('hidden', name !== 'climb');
     if (name !== 'climb') window.ClimbClient?.stop();
+    document.getElementById('reflexView').classList.toggle('hidden', name !== 'reflex');
+    if (name !== 'reflex') reflexGames?.stop();
     if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
     syncPlaza(name);
   }
@@ -1857,6 +1860,14 @@
   document.getElementById('soloHerosurvBtn').addEventListener('click', () => {
     try { sessionStorage.setItem('herosurvSession', sessionToken); } catch {}
     location.href = '/herosurv/';
+  });
+  // v1.10.68 순발력 게임 (한판마당 자료): its own screen over the island; the module (public/reflex/reflex.js and the
+  // engine under it) loads the first time it is opened (reflexGames is declared by showView)
+  document.getElementById('soloReflexBtn').addEventListener('click', async () => {
+    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onExit: () => { showView('lobby'); loadPoints(); } }); }
+    catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+    showView('reflex');
+    reflexGames.open();
   });
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));

@@ -250,6 +250,7 @@
           <div class="soloGamesPanel" data-game-pane="single" aria-label="싱글게임">
             <button id="soloMinesBtn" type="button" class="primary soloGameBtn">지뢰찾기</button>
             <button id="soloHerosurvBtn" type="button" class="primary soloGameBtn">두 세계 영웅전</button>
+            <button id="soloReflexBtn" type="button" class="primary soloGameBtn">순발력 게임</button>
           </div>
           <details class="developmentGamesPanel" open aria-label="게임 구현중" data-game-pane="multi">
             <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
@@ -365,6 +366,23 @@
       </section>
 
 
+    </section>
+
+    <!-- v1.10.68 순발력 게임 (한판마당 자료, public/reflex): the engine's canvas and HUD (ids the engine looks up), the game
+         list and the result, drawn by public/reflex/reflex.js -->
+    <section id="reflexView" class="reflexView hidden" aria-label="순발력 게임">
+      <div class="reflexFrame">
+        <canvas id="stage"></canvas>
+        <div id="hud" class="hud">
+          <button id="reflexQuitBtn" type="button" class="hudQuit" aria-label="그만하기">✕</button>
+          <div class="hud-center"><div id="hudLabel" class="hud-label"></div><div id="hudScore" class="hud-score"></div></div>
+          <div id="hudRight" class="hud-right" hidden></div>
+          <div class="hud-sub"><div id="hudBar" class="hud-bar" hidden><i></i></div><div id="hudLives" class="hud-lives" hidden></div></div>
+        </div>
+        <div id="banner" class="banner"></div>
+        <div id="reflexMenu" class="reflexMenu"></div>
+        <div id="reflexResult" class="reflexResult hidden" role="status"></div>
+      </div>
     </section>
 
     <!-- v1.9.4 상시 등반 도전: the climb screen (public/climb/climb-client.js); the HUD stays fixed over the scrolling course -->
