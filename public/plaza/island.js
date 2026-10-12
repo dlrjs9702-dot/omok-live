@@ -594,26 +594,22 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   });
   const onGround = (x, z) => T.meshGroundHeight(x, z);
   const placeFlat = (lift) => (p) => setM(p.x, onGround(p.x, p.z) + lift, p.z, p.s ?? 1, 1, p.r);
-  // stand-ins until the models load (and with models off): the same sizes, flat colours
-  const slabG = keep(mergeColored([part(G.box, 0xe9e3d5, 0, 0.02, 0, { sx: 0.98, sy: 0.04, sz: 0.98 })]));
-  const terrazzoG = keep(mergeColored([part(G.box, 0xe6ddcc, 0, 0.02, 0, { sx: 0.98, sy: 0.04, sz: 0.98 }), part(G.ball, 0xd9a58c, 0.2, 0.04, -0.1, { sx: 0.12, sy: 0.02, sz: 0.09 }), part(G.ball, 0x9fb3b8, -0.25, 0.04, 0.2, { sx: 0.1, sy: 0.02, sz: 0.08 })]));
-  const borderG = keep(mergeColored([part(G.box, 0xf1ece0, 0, 0.04, 0, { sx: 1.02, sy: 0.08, sz: 0.3, shade: [0.86, 1] })]));
-  const edgeG = keep(mergeColored([part(G.box, 0xe3d8c2, -0.25, 0.015, -0.12, { sx: 0.42, sy: 0.03, sz: 0.3 }), part(G.box, 0xdcd0b8, 0.24, 0.015, 0.05, { sx: 0.34, sy: 0.03, sz: 0.26 }), part(G.ball, 0xcfc6b6, 0.05, 0.02, 0.24, { sx: 0.14, sy: 0.04, sz: 0.12 })]));
-  const stepG = keep(mergeColored([part(G.cyl, 0xd8cdb6, 0, 0.018, 0, { sx: 0.72, sy: 0.036, sz: 0.66 })]));
-  const discG = keep(mergeColored([part(G.cyl, 0xe9e3d5, 0, 0.02, 0, { sx: 5, sy: 0.04, sz: 5 })]));
-  const planterG = keep(mergeColored([part(G.cyl, 0xb08a6a, 0, 0.2, 0, { sx: 0.6, sy: 0.4, sz: 0.6 }), part(G.ball, 0x6f9a5a, 0, 0.5, 0, { sx: 0.62, sy: 0.4, sz: 0.62 })]));
+  // Without a piece's model (switched off, not registered) nothing stands in: the walk strips above already show each
+  // tier's colour, and thousands of merged stand-ins slowed the island's start on a software-rendered runner
+  const none = keep(mergeColored([part(G.box, 0xe9e3d5, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })])); // under the ground
   const PATH_CELL = 120; // big cells: the pieces are many and flat, so fewer draws matter more than finer culling
-  const PATH = (id) => `path.${id}`;
+  const lay = (id, list, place, { shadow = false, parent = scene } = {}) => { if (list.length && assets?.wants(id)) instanced(none, natureMat, list, place, { shadow, cell: PATH_CELL, target: id, parent }); };
   // ponytail: two variants of each (of the made three or four) -- each variant is a draw per cell; add more if the
   // pattern reads repetitive on a real GPU
-  for (let k = 0; k < 2; k += 1) instanced(slabG, natureMat, pathParts.slab.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`town.slab.${'abc'[k]}`) });
-  instanced(terrazzoG, natureMat, pathParts.terrazzo, placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH('town.terrazzo.a') });
-  instanced(borderG, natureMat, pathParts.border, placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH('town.border.straight') });
-  for (let k = 0; k < 2; k += 1) instanced(edgeG, natureMat, pathParts.edge.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`walk.edge.${'ac'[k]}`) });
-  for (let k = 0; k < 2; k += 1) instanced(stepG, natureMat, pathParts.step.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`trail.step.${'abc'[k]}`) });
-  instanced(discG, natureMat, pathParts.disc.filter((d) => d.town), (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1), { shadow: false, cell: PATH_CELL, target: PATH('junction.disc.town') });
-  instanced(discG, natureMat, pathParts.disc.filter((d) => !d.town), (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1), { shadow: false, cell: PATH_CELL, target: PATH('junction.disc.walk') });
-  instanced(planterG, natureMat, pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { cell: PATH_CELL, target: PATH('gate.planter') });
+  for (let k = 0; k < 2; k += 1) lay(`path.town.slab.${'ab'[k]}`, pathParts.slab.filter((p) => p.v === k), placeFlat(0));
+  lay('path.town.terrazzo.a', pathParts.terrazzo, placeFlat(0));
+  lay('path.town.border.straight', pathParts.border, placeFlat(0));
+  for (let k = 0; k < 2; k += 1) lay(`path.walk.edge.${'ac'[k]}`, pathParts.edge.filter((p) => p.v === k), placeFlat(0));
+  for (let k = 0; k < 2; k += 1) lay(`path.trail.step.${'ab'[k]}`, pathParts.step.filter((p) => p.v === k), placeFlat(0));
+  const onDisc = (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1);
+  lay('path.junction.disc.town', pathParts.disc.filter((d) => d.town), onDisc);
+  lay('path.junction.disc.walk', pathParts.disc.filter((d) => !d.town), onDisc);
+  lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
