@@ -1880,6 +1880,7 @@
   document.getElementById('soloReflexBtn').addEventListener('click', () => openHanpan('reflex'));
   document.getElementById('soloPuzzleBtn').addEventListener('click', () => openHanpan('puzzle'));
   document.getElementById('soloCardsBtn').addEventListener('click', () => openHanpan('cards'));
+  document.getElementById('soloAiBtn').addEventListener('click', () => openHanpan('ai')); // v1.10.71 AI 대전 (연습)
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));
   document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });
