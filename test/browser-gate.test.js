@@ -115,3 +115,19 @@ test('Chrome 전용 서버: Edge·기타는 안내만 받고 입장 파일도 �
   assert.equal(sw.status, 200);
   assert.equal(sw.headers.get('cache-control'), 'no-cache');
 });
+
+// v1.10.65 아이폰 허용 (IDEAS 2026-10-12): Safari and Chrome on an iPhone/iPad are 'ios' (allowed in production); other iOS
+// browsers and in-app views, and Safari on a Mac, are not
+test('브라우저 판별: 아이폰 Safari·Chrome은 ios, 다른 iOS 브라우저·앱 내 브라우저·Mac Safari는 아니다', () => {
+  const iphoneSafari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const iphoneChrome = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1';
+  const ipadSafari = 'Mozilla/5.0 (iPad; CPU OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1';
+  const iphoneFirefox = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/131.0 Mobile/15E148 Safari/605.1.15';
+  const iphoneEdge = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 EdgiOS/130.0.2849.80 Mobile/15E148 Safari/605.1.15';
+  const iphoneKakao = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.9.0';
+  const iphoneWhale = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Whale/3.0.0.0 Mobile/15E148 Safari/604.1';
+  for (const ua of [iphoneSafari, iphoneChrome, ipadSafari]) assert.equal(classifyBrowser({ ua, vendor: 'Apple Computer, Inc.' }), 'ios', ua);
+  assert.equal(classifyBrowser({ ua: iphoneSafari }), 'ios'); // server side: no vendor
+  assert.equal(classifyBrowser({ ua: iphoneEdge }), 'edge');
+  for (const ua of [iphoneFirefox, iphoneKakao, iphoneWhale, UA.safari]) assert.equal(classifyBrowser({ ua }), 'other', ua);
+});

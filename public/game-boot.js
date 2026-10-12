@@ -259,7 +259,7 @@
 
   const ready = browserAllowed()
     ? prepare().then(() => view.classList.add('hidden'))
-    : (show('Google Chrome으로 접속해 주세요'), new Promise(() => {}));
+    : (show('Google Chrome으로 접속해 주세요 (아이폰은 Safari·Chrome)'), new Promise(() => {}));
 
   window.GameBoot = { ready, assetUrl, manifest, prefetch };
 })();
