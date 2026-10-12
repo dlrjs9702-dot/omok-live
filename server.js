@@ -36,6 +36,7 @@ const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
+const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
@@ -1045,6 +1046,7 @@ function questEntries(account) {
 }
 // v1.10.37 혼자 하는 게임: one game a session at a time, on the server (lib/minesweeper.js); gone with the session
 const soloGames = new Map(); // session token -> { id, level, engine }
+const reflexRuns = new Map(); // v1.10.68 순발력 게임: round id -> { account, game, level, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
 const herosurvRuns = new Map(); // runId -> { account, board, at }
 const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
@@ -3072,7 +3074,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.67' });
+    return sendJson(res, 200, { ok: true, version: '1.10.68' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3887,6 +3889,44 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true, view, result });
   }
+  // v1.10.68 순발력 게임 (lib/reflex.js): the round is played in the browser; the server opens it and judges the score it
+  // is sent once (how long the round really took, a score a person can make), paying by level up to the day's cap
+  if (pathname === '/api/solo/reflex' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const records = await pointStore.soloRecords(account);
+    return sendJson(res, 200, { ok: true, points: Reflex.POINTS, cap: Reflex.DAILY_CAP, today: await pointStore.soloDailyPaid(account, kstDate(nowMs())),
+      records: Object.fromEntries(Object.keys(Reflex.GAMES).map((id) => [id, records[id] || {}])) });
+  }
+  if ((pathname === '/api/solo/reflex/start' || pathname === '/api/solo/reflex/finish') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`reflex:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const now = nowMs();
+    if (pathname === '/api/solo/reflex/start') {
+      const level = Reflex.levelOf(body.game, body.level);
+      if (!level) return sendError(res, 400, 'BAD_LEVEL', '고를 수 없는 게임입니다.');
+      for (const [id, run] of reflexRuns) if (now - run.at > Reflex.RUN_MS) reflexRuns.delete(id);
+      const id = crypto.randomUUID();
+      reflexRuns.set(id, { account, game: body.game, level, at: now });
+      return sendJson(res, 200, { ok: true, id });
+    }
+    const run = reflexRuns.get(String(body.id || ''));
+    if (!run || run.account !== account) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    reflexRuns.delete(body.id); // one report a round
+    const score = Number(body.score);
+    const verdict = Reflex.judge(run.game, run.level, score, now - run.at);
+    if (verdict === 'score') return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
+    const G = Reflex.GAMES[run.game];
+    const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
+      points: verdict === 'ok' ? Reflex.POINTS[run.level] : 0, daily: { day: kstDate(now), cap: Reflex.DAILY_CAP },
+      title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
+    if (out.points) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, verdict, points: out.points, best: out.best, newBest: out.newBest, today: out.today, cap: Reflex.DAILY_CAP, balance: out.balance ?? out.balanceAfter });
+  }
   // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
   // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
   // the game's own guest token and the name it asks for are ignored. Scores are the game's word (no points ride on them).
@@ -3945,6 +3985,12 @@ async function requestHandler(req, res) {
     if (!g?.engine.game.mine) return sendError(res, 409, 'NO_GAME', '새 게임을 시작해 주세요.');
     if (Number(body.ageMs) > 0) g.engine.game.startedAt -= Number(body.ageMs);
     return sendJson(res, 200, { ok: true, mines: Array.from(g.engine.game.mine.keys()).filter((i) => g.engine.game.mine[i]) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/reflex/age' && req.method === 'POST') { // a round made older
+    const body = await parseJson(req); const run = reflexRuns.get(String(body.id || ''));
+    if (!run) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    run.at -= Number(body.ageMs) || 0;
+    return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/quest/note' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -5066,7 +5112,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.67 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.68 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

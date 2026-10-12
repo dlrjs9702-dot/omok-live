@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.68 순발력 게임 5종(한판마당 자료)
+
+- 지시(사용자 2026-10-12): 한판마당에서 받은 자료를 아일랜드에 적용 — 여러 번에 나눠 배포, 첫 묶음은 「반응 5종 먼저」(사용자 선택). 결정 근거: 비공개 IDEAS 「한판마당 · 자료 적용 결정」(반응·카드 게임 포인트 지급은 서버 검증 필수, 효과음 기본 켬·끄기 설정).
+- 자료: `public/reflex/js/` 아래는 한판마당 원본 그대로(공통 엔진 `engine.js`·`audio.js`(Web Audio 합성, 음원 파일 없음)·`native.js`·`util.js`·`icons.js`·`levels.js`·`store.js`, 게임 `games/{whack,reaction,colorfind,numbers,rhythm}.js`). 출처·허락·안전 확인은 비공개 `docs/hanpanmadang-share-20261012.md`.
+- 화면: 게임 선택 → 싱글게임 → 「순발력 게임」(`#soloReflexBtn`) → 섬 위 전체 화면 `#reflexView`(PC는 가운데 세로 틀 560px, 휴대폰은 꽉 차게; 두 테마 모두 어둡게). `public/reflex/reflex.js`가 목록(게임 색 카드·자료의 아이콘) → 게임(방법·난이도·포인트·내 최고·시작) → 판(엔진 캔버스·HUD, ✕ 그만두기) → 결과(점수·최고 기록·받은 포인트·통계·다시 하기/다른 게임). 처음 열 때 모듈을 불러온다(`import('/reflex/reflex.js')`). Esc: 판 → 게임, 결과 → 게임, 게임 → 목록, 목록 → 아일랜드. 반응속도는 Space·Enter, 비트 탭은 D F J K도 됨(자료 그대로). 효과음 켬/끔은 기기별 `localStorage gc.settings.sound`(자료의 Settings), 난이도는 `gc.reflexLevels`.
+- 서버(`lib/reflex.js`, `server.js` `/api/solo/reflex`·`/start`·`/finish`): 점수는 브라우저가 계산하므로 서버가 판을 열고(id·시작 시각, 메모리, 1시간) 결과를 한 번만 받는다. 지급 조건 — 실제 걸린 시간 ≥ 게임 최소 시간(두더지·다른 색 15초, 반응속도 7초, 비트 탭 20초, 숫자 터치는 외우기 시간 + 기록 − 2초), 점수가 사람이 낼 수 있는 범위(범위 밖은 400 거부: 반응속도 100ms 미만, 숫자 터치 한 칸 0.1초 미만 등), 최소 노력(두더지 100점·다른 색 5라운드·비트 탭 3,000점 미만은 0P). 지급 쉬움 1,000 / 보통 1,500 / 어려움 2,000P(반응속도는 보통 하나), 다섯 게임 합쳐 계정·서울 날짜당 20,000P. 기록은 지뢰찾기와 같은 `soloClear`(정산 `solo:<판 id>` 한 번, 사유 `solo_game`)에 `higher`(높을수록 좋은 기록)·`daily`(하루 상한)를 더함 — JSON `soloDaily`, PostgreSQL 새 표 `solo_daily(user_id, day, paid)`.
+- 한계(의도): 반응 게임은 판 재생 검증이 불가능해 시간·범위·상한으로만 막는다(조작 시 하루 최대 20,000P). 판 진행 중 서버 재시작이면 그 판은 보상 없음.
+- AGENTS.md §7 「효과음·BGM 넣지 않는다」에 한판마당 게임 예외를 동기화.
+- 검증: `test/reflex-server.test.js`(판정 규칙, JSON·PostgreSQL 저장소 하루 상한·높을수록 기록, API 너무 빠름 0P·범위 밖 400·한 번만·남의 판 409·노력 부족 0P), e2e `reflex.spec.js`(PC·휴대폰 프로필: 목록 5종, 판 중간 그만두기, 반응속도 5라운드 실제 완주 → +1,500P·잔액, Esc/나가기). 다섯 게임 PC 1280×800·휴대폰 390×844 화면 확인(스크린샷). 실제 휴대폰 미검증.
+
 ## v1.10.67 이름 「아일랜드」로 통일·휴대폰 조이스틱 위치·크기
 
 - 지시(사용자 2026-10-12): 모든 곳에서 「게임센터」를 빼고 「아일랜드」로 통일.
@@ -28,10 +38,3 @@
 - 주의: 홈 화면 앱은 브라우저 탭과 저장소가 따로라 처음 한 번 다시 로그인할 수 있다. 실제 아이폰·안드로이드 홈 화면 추가 미검증.
 - 검증: `test/home-app.test.js`(manifest MIME·standalone·maskable, 아이콘 4개 PNG 200), e2e 「메뉴: 홈 화면에 추가 안내」(전체화면 지원 시 버튼, 미지원 시 안내).
 
-## v1.10.65 아이폰 접속 허용
-
-- 지시(사용자 2026-10-12, 최우선·확인 없이 배포): 아이폰에서도 되게(IDEAS 「아이폰 허용」 2026-10-12 확정).
-- 원인: 입장 규칙이 Google Chrome 전용(`public/browser-gate.js` 판별 + `server.js` `ALLOWED_BROWSERS`)인데 아이폰은 Safari·Chrome(`CriOS`) 모두 WebKit이고 Client Hints가 없어 `other`로 막혔다.
-- 변경: user agent가 iPhone/iPad/iPod + AppleWebKit이고 `CriOS/` 또는 `Version/… Safari/`(Safari)면 `ios`로 판별(Edge iOS는 기존대로 `edge`, Firefox·Whale·카카오톡 등 앱 내 브라우저는 `other`). 운영 기본 허용을 `chrome ios`로. 안내 문구에 「아이폰은 Safari·Chrome」. 전체화면 버튼은 `document.fullscreenEnabled`가 없는 아이폰 Safari에서 이미 숨겨진다. 터치 조작(v1.10.62)·`dvh` 높이·아이디 로그인(v1.10.63)은 그대로 쓴다.
-- 제외·주의: iPadOS의 「데스크톱 웹사이트」 모드(Mac Safari로 보임)는 `other`로 남는다. 아이폰에서 입장 파일(.html)을 여는 방식은 확인하지 않았다(아이디 로그인 권장). **실제 아이폰 미검증** — 확인 전 지원 완료로 표시하지 않는다.
-- 검증: `test/browser-gate.test.js` 아이폰 Safari·Chrome·iPad=ios, iOS Edge=edge, iOS Firefox·Whale·카카오톡·Mac Safari=other.

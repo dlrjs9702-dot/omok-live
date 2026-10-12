@@ -1790,3 +1790,58 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .stickEditBar span { flex: 1 0 100%; text-align: center; color: #fde68a; }
 .stickEditBar label { display: flex; align-items: center; gap: 6px; flex: 1; }
 .stickEditBar input[type=range] { flex: 1; accent-color: #facc15; }
+
+/* v1.10.68 순발력 게임 (public/reflex): a portrait game frame over the whole screen, centred on a PC. It stays dark in both
+   themes, like the games' own canvases (colours here are outside tools/theme-light.js's palette on purpose) */
+.reflexView{position:fixed;inset:0;z-index:40;background:#05070f;display:flex;justify-content:center}
+.reflexFrame{position:relative;width:min(100%,560px);height:100%;background:#0b0c1a;overflow:hidden;color:#fff}
+.reflexFrame>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.reflexFrame .hud{position:absolute;left:0;right:0;top:0;z-index:2;display:none;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:10px 14px 0;pointer-events:none}
+.reflexFrame.playing .hud{display:grid}
+.reflexFrame .hud>*{pointer-events:auto}
+.reflexFrame .hud-center{pointer-events:none;text-align:center;grid-column:2}
+.reflexFrame .hud-label{font-size:11px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:.06em;min-height:14px}
+.reflexFrame .hud-score{font-size:32px;font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums}
+.reflexFrame .hud-right{grid-column:3;min-width:44px;height:34px;padding:0 12px;border-radius:99px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;background:rgba(20,22,44,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.reflexFrame .hud-right[hidden],.reflexFrame .hud-bar[hidden],.reflexFrame .hud-lives[hidden]{display:none}
+.reflexFrame .hud-right svg,.reflexFrame .banner svg{width:15px;height:15px}
+.reflexFrame .hud-sub{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:6px;pointer-events:none}
+.reflexFrame .hud-bar{width:min(62%,300px);height:6px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.reflexFrame .hud-bar i{display:block;height:100%;border-radius:99px;background:var(--bar,#fff);transform-origin:left;transition:transform .12s linear}
+.reflexFrame .hud-lives svg{width:18px;height:18px}
+.reflexFrame .hudQuit{width:40px;height:40px;padding:0;border-radius:50%;background:rgba(20,22,44,.6);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.reflexFrame .banner{position:absolute;left:50%;top:96px;z-index:3;transform:translateX(-50%);opacity:0;pointer-events:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:99px;font-size:14px;font-weight:800;white-space:nowrap;background:rgba(61,220,151,.18);color:#3ddc97;transition:opacity .3s}
+.reflexFrame .banner.show{opacity:1}
+.reflexMenu,.reflexResult{position:absolute;inset:0;z-index:4;overflow-y:auto;padding:16px;background:#0b0c1a;display:flex;flex-direction:column;gap:12px}
+.reflexResult{background:rgba(6,7,16,.72);justify-content:center}
+.reflexHead{display:flex;align-items:center;gap:10px}
+.reflexHead strong{flex:1;font-size:1.25rem}
+.reflexMenu .ghost,.reflexResult .ghost{background:#161a33;color:#fff;border:1px solid #2a3060}
+.reflexMenu .primary,.reflexResult .primary{background:var(--c1,#ffd34d);color:#10111f}
+.reflexToday{margin:0;color:rgba(255,255,255,.7);font-size:.85rem}
+.reflexList{display:grid;gap:10px}
+.reflexCard{display:flex;align-items:center;gap:14px;text-align:left;padding:12px;border-radius:18px;color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2))}
+.reflexCard:focus-visible,.reflexLevel:focus-visible,.reflexMenu button:focus-visible,.reflexResult button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.reflexArt{flex:none;width:56px;height:56px;border-radius:14px;background:rgba(0,0,0,.18);display:grid;place-items:center}
+.reflexArt svg{width:46px;height:46px}
+.reflexWords{display:grid;gap:3px}
+.reflexWords small{font-weight:600;color:rgba(255,255,255,.85);line-height:1.35}
+.reflexGame{display:grid;gap:12px}
+.reflexTagline{margin:0;font-weight:800;color:var(--c1)}
+.reflexHow{margin:0;padding-left:20px;display:grid;gap:6px;line-height:1.45;color:rgba(255,255,255,.88)}
+.reflexKeys{color:rgba(255,255,255,.6)}
+.reflexLevels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.reflexLevel{padding:12px 6px;background:#161a33;color:#fff;border:1px solid #2a3060;font-size:.85rem}
+.reflexLevel[aria-checked="true"]{background:var(--c1);color:#10111f;border-color:var(--c1)}
+.reflexPoints,.reflexBest{margin:0;color:rgba(255,255,255,.75)}
+.reflexGo{padding:15px;font-size:1.1rem}
+.reflexStatus{margin:0;color:#ff8a9a;min-height:1.2em}
+.reflexPanel{width:min(100%,420px);margin:0 auto;padding:22px 18px;border-radius:22px;background:#151833;text-align:center;display:grid;gap:10px}
+.reflexPanel h2{margin:0}
+.reflexScore{margin:0;font-size:56px;font-weight:900;line-height:1;color:var(--c1);font-variant-numeric:tabular-nums}
+.reflexPaid{margin:0;font-weight:800;color:#ffd34d;min-height:1.3em}
+.reflexStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.reflexStat{background:rgba(255,255,255,.06);border-radius:12px;padding:10px 4px}
+.reflexStat b{display:block;font-size:1.05rem}
+.reflexStat span{font-size:.72rem;color:rgba(255,255,255,.6)}
+.reflexActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
