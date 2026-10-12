@@ -204,29 +204,66 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await a.context.close();
 });
 
-test('게임 아일랜드: 게임관에서 방을 만들고 돌아와도 아일랜드 유지, 기존 로비 전환 UI 없음', async ({ browser, request }) => {
+// v1.10.73 게임관 전면 개편 (IDEAS #future-gamehall-renewal): Space at the door opens the game hall's own screen (the island
+// sleeps), every game is a card, a card opens its sheet, 방 만들기 there makes the room; out of the room back to the game
+// hall, and 「‹ 섬으로」 (or Esc) back to the island where I was
+test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 → 방 만들기, 나오면 게임관, ‹ 섬으로 아일랜드 유지', async ({ browser, request }) => {
   const a = await intoPlaza(browser, request, '게임관');
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().place('games'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임관');
+  const at = await state(page);
   await page.keyboard.press('Space');
-  await expect(page.locator('#plazaDialog #publicRoomsCard')).toBeVisible();
-  await page.locator('#plazaDialog #createRoomBtn').click();
-  await expect(page.locator('#roomView')).toBeVisible();
+  const hall = page.locator('#gamehallView');
+  await expect(hall).toBeVisible();
+  expect((await state(page)).running).toBe(false); // the island sleeps behind it
   await expect(page.locator('#plazaDialog')).toBeHidden();
-  expect((await state(page)).running).toBe(false); // the square sleeps while in a room
+  const cards = hall.locator('.gameCard');
+  await expect(cards).toHaveCount(await page.evaluate(() => window.GamehallCatalog.GAMES.length));
+  await expect(hall.locator('.gamehallToday')).toContainText('오늘의 게임');
+  await expect(hall.locator('[data-sum="week"]')).toHaveText('0판');
+  await expect(hall.locator('.gameChoice, [data-game-mode]')).toHaveCount(0); // no 멀티/싱글 tabs, no old buttons
+  // a chip shows its games only; arrow keys walk the chips
+  await hall.locator('.gamehallChip[data-cat="ai"]').click();
+  await expect(cards).toHaveCount(3);
+  await page.keyboard.press('ArrowLeft');
+  await expect(hall.locator('.gamehallChip[data-cat="solo"]')).toBeFocused();
+  await hall.locator('.gamehallChip[data-cat="all"]').click();
+  // the 오목 card: its sheet, 방 만들기 with 오목's own options only, the room
+  await hall.locator('.gameCard[data-game="omok"]').click();
+  const sheet = page.locator('#gameSheet');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator('#gameSheetName')).toHaveText('오목');
+  await expect(sheet.locator('.gameSheetHow li')).toHaveCount(3);
+  await expect(sheet.locator('.gameSheetActions button')).toHaveText(['빠른 시작', '방 만들기', 'AI 연습']);
+  await sheet.getByRole('button', { name: '방 만들기' }).click();
+  await expect(sheet.locator('#omokModeChoices')).toBeVisible();
+  await expect(sheet.locator('#baseballDigitChoices')).toBeHidden();
+  await expect(sheet.locator('#gostopStakeChoices')).toBeHidden();
+  await sheet.locator('#createRoomBtn').click();
+  await expect(page.locator('#roomView')).toBeVisible();
+  await expect(hall).toBeHidden();
+  await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the form went back home
   await page.locator('#leaveRoomBtn').click();
-  await expect(page.locator('#lobbyView')).toBeVisible();
+  await expect(hall).toBeVisible(); // back to choosing a game
+  // AI 연습 opens that game's page (practice), and its 「‹ 게임관」 comes back here
+  await hall.locator('.gameCard[data-game="connect4"]').click();
+  await sheet.getByRole('button', { name: 'AI 연습' }).click();
+  await expect(page.locator('#reflexView .reflexHead strong')).toHaveText('사목');
+  await page.locator('.reflexHead button', { hasText: '게임관' }).click();
+  await expect(hall).toBeVisible();
+  // Esc closes a sheet, then leaves for the island where I stood
+  await hall.locator('.gameCard[data-game="baseball"]').click();
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(hall).toBeHidden();
   await expect.poll(() => state(page).then((s) => s?.running)).toBe(true);
-  // v1.10.63 (사용자 2026-10-12): out of the room straight back to choosing a game -- the 게임관 window
-  await expect(page.locator('#plazaDialogTitle')).toHaveText('게임관');
-  await expect(page.locator('#plazaDialog #publicRoomsCard')).toBeVisible();
-  await page.locator('#plazaCloseBtn').click();
-  await expect(page.locator('.lobbyTopGrid #createRoomBtn')).toHaveCount(1); // the section went back home
-
+  const back = await state(page);
+  expect(Math.hypot(back.x - at.x, back.z - at.z)).toBeLessThan(0.5);
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await page.reload();
-  await expect(page.locator('#lobbyView')).toBeVisible();
   await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await expectNoScriptError(page);
@@ -330,10 +367,13 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.games; await window.PlazaWarp(d.x, d.z); });
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 게임관'); // the next frame marks it as near (a starved runner pressed too early and the window never opened)
   await a.page.keyboard.press('Space');
-  await a.page.locator('#plazaDialog #createRoomBtn').click();
+  await a.page.locator('.gameCard[data-game="omok"]').click(); // v1.10.73: the game hall's screen, 오목's sheet
+  await a.page.getByRole('button', { name: '방 만들기' }).click();
+  await a.page.locator('#gameSheet #createRoomBtn').click();
   await expect(a.page.locator('#roomView')).toBeVisible();
   await expect.poll(() => seen(b, aId), { timeout: 10000 }).toBeNull();
   await a.page.locator('#leaveRoomBtn').click();
+  await a.page.locator('#gamehallBackBtn').click(); // out of the game hall, back on the island
   await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
 
   // b reloads (a reconnect): a is still there.
@@ -1031,11 +1071,14 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
     }
     await a.page.waitForTimeout(500);
   }
-  // standing right where an islander is: it steps out of my way instead of walking through me
-  const target = (await islanders(a.page))[0];
+  // standing right where an islander is: it steps out of my way instead of walking through me -- one the island's request
+  // has not taken (v1.10.73: a resident held for a photo or lost-thing request stays at its place by design; picking
+  // islander 0 failed whenever the open request held it, as in the 2026-10-11 CI run past midnight -- reproduced at
+  // 00:02 and 14:00 KST alike)
+  const target = (await islanders(a.page)).find((w) => !w.held);
   await a.page.evaluate(({ x, z }) => window.PlazaDebug().teleport(x, z), target);
   await a.page.waitForTimeout(400);
-  const gap = await a.page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers[0]; return { d: Math.hypot(w.x - d.x, w.z - d.z), min: d.wandererR + d.radiusAt(d.x, d.z) }; });
+  const gap = await a.page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); return { d: Math.hypot(w.x - d.x, w.z - d.z), min: d.wandererR + d.radiusAt(d.x, d.z) }; }, target.n);
   expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
@@ -1081,6 +1124,37 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await page.waitForTimeout(1200);
   const after = await page.evaluate(() => window.PlazaDebug().camera);
   expect(Math.hypot(after.x - before.x, after.y - before.y, after.z - before.z)).toBeLessThan(1.5);
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.73 (IDEAS #bug-event-resident-stuck): a resident taken for a request walks there on the route grid -- from the
+// far side of the plaza on October's night (pumpkins out), round the jack-o'-lantern -- and the talk opens on arrival;
+// a screen that was paused when the request began (a hidden tab, the game hall) shows them at the place at once
+test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 도착하고, 멈췄던 화면은 바로 그 자리에', async ({ browser, request }) => {
+  test.setTimeout(150000);
+  const a = await intoPlaza(browser, request, '의뢰손님');
+  const { page } = a;
+  await page.evaluate(() => window.PlazaDebug().halloween.set(true));
+  const gap = (n) => page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); const h = d.residentReservations[n].hold; return h ? Math.hypot(w.x - h.x, w.z - h.z) : null; }, n);
+  const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  expect(lost?.npc).toBeTruthy();
+  const n = lost.npc.resident;
+  await expect.poll(() => gap(n), { timeout: 15000 }).not.toBeNull();
+  await page.evaluate(({ n, x, z }) => { const r = Math.hypot(x, z); window.PlazaDebug().placeWanderer(n, (-x / r) * 7, (-z / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z });
+  await expect.poll(() => gap(n), { timeout: 60000, intervals: [1000] }).toBeLessThan(0.05);
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 1, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  // paused: no frames while the request is taken, then a resident far from its place is drawn right at it
+  await page.evaluate(() => { const raf = window.requestAnimationFrame; const held = []; window.__thaw = () => { window.requestAnimationFrame = raf; for (const cb of held.splice(0)) raf(cb); }; window.requestAnimationFrame = (cb) => { held.push(cb); return 0; }; });
+  const next = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  expect(next?.npc).toBeTruthy();
+  await page.evaluate(({ n, x, z }) => window.PlazaDebug().placeWanderer(n, x + 30, z), { n: next.npc.resident, x: next.npc.x, z: next.npc.z });
+  await expect.poll(() => gap(next.npc.resident), { timeout: 15000 }).not.toBeNull(); // heard while paused
+  await page.waitForTimeout(1200);
+  const frame = page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
+  await page.evaluate(() => window.__thaw()); await frame;
+  expect(await gap(next.npc.resident)).toBeLessThan(0.05);
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -1454,11 +1528,13 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '인사', exact: true }).click();
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'bow')), { timeout: 15000 }).toBe(true);
-  // 게임 초대: the game hall's window, a room, and the invite
+  // 게임 초대: the game hall (v1.10.73 its own screen), a game's sheet, a room, and the invite
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '게임 초대' }).click();
-  await expect(a.page.locator('#plazaDialog #createRoomBtn')).toBeVisible({ timeout: 10000 });
-  await a.page.locator('#plazaDialog #createRoomBtn').click();
+  await expect(a.page.locator('#gamehallView')).toBeVisible({ timeout: 10000 });
+  await a.page.locator('.gameCard[data-game="omok"]').click();
+  await a.page.getByRole('button', { name: '방 만들기' }).click();
+  await a.page.locator('#gameSheet #createRoomBtn').click();
   await expect(a.page.locator('.toast')).toContainText('초대', { timeout: 15000 });
   await expect.poll(async () => (await get(request, '/api/invitations', b.token)).data.items?.length || 0, { timeout: 15000 }).toBe(1);
   void aId;

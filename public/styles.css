@@ -1744,6 +1744,12 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 /* v1.10.63 게임방 공통 틀: a slimmer top bar and card padding leave more room to the board; the result card is
    put away by Esc/Enter (app.js) */
 #roomView>.topbar{min-height:52px;padding:9px 14px;margin-bottom:12px}
+/* v1.10.73 게임방 틀 (DESIGN.md 「게임관·게임방」): the same bar as the game hall -- ‹ 게임관, the game's colour tile, title */
+.roomBarTitle{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.roomBarTitle .logo{font-size:1.05rem}
+.gameArt.roomGameArt{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--g1),var(--g2))}
+.gameArt.roomGameArt svg{width:26px;height:26px}
+#seatLabel{display:inline-block;margin:0 0 4px;padding:2px 10px;border-radius:999px;background:#0f172a;border:1px solid #334155;color:#cbd5e1;font-size:.72rem}
 #roomView .boardCard{padding:14px}
 @media(max-width:520px){#roomView>.topbar{padding:7px 10px;margin-bottom:8px}#roomView .boardCard{padding:10px}}
 /* v1.10.63 주민 대화: a speech bubble at the bottom of the island (the island stays in sight above it), the speaker's
@@ -1794,7 +1800,7 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 /* v1.10.68 순발력 게임 (public/reflex): a portrait game frame over the whole screen, centred on a PC. It stays dark in both
    themes, like the games' own canvases (colours here are outside tools/theme-light.js's palette on purpose) */
 .reflexView{position:fixed;inset:0;z-index:40;background:#05070f;display:flex;justify-content:center}
-.reflexFrame{position:relative;width:min(100%,560px);height:100%;background:#0b0c1a;overflow:hidden;color:#fff}
+.reflexFrame{position:relative;width:min(100%,560px);height:100%;background:#0b1220;overflow:hidden;color:#fff}
 .reflexFrame>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .reflexFrame .hud{position:absolute;left:0;right:0;top:0;z-index:2;display:none;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:10px 14px 0;pointer-events:none}
 .reflexFrame.playing .hud{display:grid}
@@ -1812,39 +1818,39 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .reflexFrame .hudQuit{width:40px;height:40px;padding:0;border-radius:50%;background:rgba(20,22,44,.6);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
 .reflexFrame .banner{position:absolute;left:50%;top:96px;z-index:3;transform:translateX(-50%);opacity:0;pointer-events:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:99px;font-size:14px;font-weight:800;white-space:nowrap;background:rgba(61,220,151,.18);color:#3ddc97;transition:opacity .3s}
 .reflexFrame .banner.show{opacity:1}
-.reflexMenu,.reflexResult{position:absolute;inset:0;z-index:4;overflow-y:auto;padding:16px;background:#0b0c1a;display:flex;flex-direction:column;gap:12px}
+/* v1.10.73 (DESIGN.md 「게임관·게임방」): the menus and results in the shared palette (the light theme follows); the game's
+   own canvas, HUD and banner keep their colours */
+.reflexMenu,.reflexResult{position:absolute;inset:0;z-index:4;overflow-y:auto;padding:16px;background:#0b1220;color:#f8fafc;display:flex;flex-direction:column;gap:12px}
 .reflexResult{background:rgba(6,7,16,.72);justify-content:center}
 .reflexHead{display:flex;align-items:center;gap:10px}
 .reflexHead strong{flex:1;font-size:1.25rem}
-.reflexMenu .ghost,.reflexResult .ghost{background:#161a33;color:#fff;border:1px solid #2a3060}
-.reflexMenu .primary,.reflexResult .primary{background:var(--c1,#ffd34d);color:#10111f}
-.reflexToday{margin:0;color:rgba(255,255,255,.7);font-size:.85rem}
+.reflexToday{margin:0;color:#cbd5e1;font-size:.85rem}
 .reflexList{display:grid;gap:10px}
 .reflexCard{display:flex;align-items:center;gap:14px;text-align:left;padding:12px;border-radius:18px;color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2))}
-.reflexCard:focus-visible,.reflexLevel:focus-visible,.reflexMenu button:focus-visible,.reflexResult button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.reflexCard:focus-visible,.reflexLevel:focus-visible,.reflexMenu button:focus-visible,.reflexResult button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
 .reflexArt{flex:none;width:56px;height:56px;border-radius:14px;background:rgba(0,0,0,.18);display:grid;place-items:center}
 .reflexArt svg{width:46px;height:46px}
 .reflexWords{display:grid;gap:3px}
 .reflexWords small{font-weight:600;color:rgba(255,255,255,.85);line-height:1.35}
 .reflexGame{display:grid;gap:12px}
-.reflexTagline{margin:0;font-weight:800;color:var(--c1)}
-.reflexHow{margin:0;padding-left:20px;display:grid;gap:6px;line-height:1.45;color:rgba(255,255,255,.88)}
-.reflexKeys{color:rgba(255,255,255,.6)}
+.reflexTagline{margin:0;font-weight:800;color:#f8fafc}
+.reflexHow{margin:0;padding-left:20px;display:grid;gap:6px;line-height:1.45;color:#cbd5e1}
+.reflexKeys{color:#94a3b8}
 .reflexLevels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .reflexModes{grid-template-columns:1fr 1fr}
-.reflexLevel{padding:12px 6px;background:#161a33;color:#fff;border:1px solid #2a3060;font-size:.85rem}
-.reflexLevel[aria-checked="true"]{background:var(--c1);color:#10111f;border-color:var(--c1)}
-.reflexPoints,.reflexBest{margin:0;color:rgba(255,255,255,.75)}
+.reflexLevel{padding:12px 6px;background:#0f172a;color:#f8fafc;border:1px solid #334155;font-size:.85rem}
+.reflexLevel[aria-checked="true"]{background:#2563eb;color:#fff;border-color:#2563eb}
+.reflexPoints,.reflexBest{margin:0;color:#cbd5e1}
 .reflexGo{padding:15px;font-size:1.1rem}
-.reflexStatus{margin:0;color:#ff8a9a;min-height:1.2em}
-.reflexPanel{width:min(100%,420px);margin:0 auto;padding:22px 18px;border-radius:22px;background:#151833;text-align:center;display:grid;gap:10px}
+.reflexStatus{margin:0;color:#fecaca;min-height:1.2em}
+.reflexPanel{width:min(100%,420px);margin:0 auto;padding:22px 18px;border-radius:22px;background:#111827;color:#f8fafc;text-align:center;display:grid;gap:10px}
 .reflexPanel h2{margin:0}
-.reflexScore{margin:0;font-size:56px;font-weight:900;line-height:1;color:var(--c1);font-variant-numeric:tabular-nums}
-.reflexPaid{margin:0;font-weight:800;color:#ffd34d;min-height:1.3em}
+.reflexScore{margin:0;font-size:56px;font-weight:900;line-height:1;color:#fde68a;font-variant-numeric:tabular-nums}
+.reflexPaid{margin:0;font-weight:800;color:#fbbf24;min-height:1.3em}
 .reflexStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.reflexStat{background:rgba(255,255,255,.06);border-radius:12px;padding:10px 4px}
+.reflexStat{background:#0f172a;border-radius:12px;padding:10px 4px}
 .reflexStat b{display:block;font-size:1.05rem}
-.reflexStat span{font-size:.72rem;color:rgba(255,255,255,.6)}
+.reflexStat span{font-size:.72rem;color:#94a3b8}
 .reflexActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* v1.10.69 게임 안내 (한판마당 자료): example figure, mistakes and tips under a game's rule */
@@ -1871,3 +1877,60 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .rankingList b{margin-right:4px}
 .rankingEmpty{color:#94a3b8}
 .rankingMe{margin:8px 0 0;font-weight:800}
+/* v1.10.73 게임관 전면 개편 (DESIGN.md 「게임관·게임방」): the game hall's own screen in the shared palette; a game's two
+   colours only on its card, banner and icon (--g1, --g2 from public/gamehall-catalog.js, white text on both) */
+.gamehallView{position:fixed;inset:0;z-index:30;overflow-y:auto;background:radial-gradient(circle at 15% 10%,#1f2937 0,#0b1220 42%,#050914 100%);color:#f8fafc}
+.gamehallBar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(15,23,42,.94);border-bottom:1px solid #263246}
+.gamehallBar h1{flex:1;margin:0;font-size:1.1rem;font-weight:900}
+.gamehallBody{width:min(100%,1180px);margin:0 auto;padding:12px 12px 28px;display:grid;gap:12px}
+.gamehallToday{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;text-align:left;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2));min-height:92px}
+.gamehallTodayWords{display:grid;gap:2px}
+.gamehallTodayWords small{font-size:.7rem;font-weight:900;letter-spacing:.12em;color:#fff;opacity:.9}
+.gamehallTodayWords strong{font-size:1.35rem;font-weight:900}
+.gamehallTodayWords span{font-size:.84rem;font-weight:700}
+.gameArt{flex:none;width:56px;height:56px;border-radius:14px;background:rgba(0,0,0,.2);display:grid;place-items:center;color:#fff}
+.gameArt svg{width:42px;height:42px}
+.gamehallSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0}
+.gamehallSummary div{padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449;text-align:center}
+.gamehallSummary dt{font-size:.7rem;color:#94a3b8}
+.gamehallSummary dd{margin:2px 0 0;font-size:1.05rem;font-weight:900;font-variant-numeric:tabular-nums}
+.gamehallChips{display:flex;gap:6px;overflow-x:auto;padding:2px;scrollbar-width:thin}
+.gamehallChip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#0f172a;color:#cbd5e1;border:1px solid #334155;font-size:.8rem}
+.gamehallChip span{font-size:.68rem;color:#94a3b8}
+.gamehallChip[aria-selected="true"]{background:#f8fafc;color:#111827;border-color:#f8fafc}
+.gamehallChip[aria-selected="true"] span{color:#334155}
+.gamehallGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.gameCard{position:relative;display:grid;justify-items:start;align-content:start;gap:6px;min-height:150px;padding:14px;border-radius:22px;text-align:left;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
+.gameCard strong{font-size:1rem;font-weight:900}
+.gameCard small{font-size:.7rem;font-weight:700;color:#fff;line-height:1.35}
+.gameCard.soon{opacity:.7}
+.gameCardFlag{position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.35);font-style:normal;font-size:.66rem;font-weight:900}
+.gamehallToday:focus-visible,.gameCard:focus-visible,.gamehallChip:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+.gamehallRooms{display:grid;gap:10px}
+.gamehallRooms .joinForm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gameSheet{width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:0 0 16px;border:1px solid #334155;border-radius:22px;background:#111827;color:#f8fafc;overflow-y:auto}
+.gameSheet::backdrop{background:rgba(2,6,23,.6)}
+.gameSheetHead{display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
+.gameSheetHead>div{flex:1;display:grid;gap:2px}
+.gameSheetHead h2{margin:0;font-size:1.2rem;font-weight:900}
+.gameSheetHead small{font-size:.74rem;font-weight:700;color:#fff}
+.gameSheetHead .ghost{background:rgba(0,0,0,.25);color:#fff;border-color:rgba(255,255,255,.35)}
+.gameSheet>:not(.gameSheetHead){margin-left:16px;margin-right:16px}
+.gameSheetIntro{margin-top:14px;margin-bottom:0;font-weight:800}
+.gameSheetHow{margin-top:8px;margin-bottom:0;padding-left:20px;display:grid;gap:4px;font-size:.84rem;line-height:1.45;color:#cbd5e1}
+.gameSheetActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.gameSheetActions button{flex:1 1 120px}
+.gameSheetCreate{margin-top:12px;padding-top:12px;border-top:1px solid #273449}
+.gameSheetCreate .divider,.gameSheetCreate .joinForm,.gameSheetCreate .selectedGameText{display:none}
+.gameSheetRooms{margin-top:14px}
+.gameSheetRooms h3{margin:0 0 6px;font-size:.84rem}
+.gameSheetGuide{margin-top:14px}
+@media (max-width:520px){.gamehallGrid{grid-template-columns:repeat(2,1fr)}.gameCard{min-height:132px;border-radius:16px;padding:12px}.gamehallToday{border-radius:16px}.gameArt{width:48px;height:48px}.gameArt svg{width:36px;height:36px}}
+/* v1.10.73 게임방 틀 · 카드 게임: each table's own status line is the same bar over its felt (the table art stays);
+   the room's top bar already shows my points, so 고스톱's copy goes */
+.gamePanelHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border-radius:12px;background:rgba(15,23,42,.88);border:1px solid #273449;color:#f8fafc;font-size:.84rem;font-weight:800;text-shadow:none}
+.gamePanelHead strong{font-size:.9rem}
+.halliPanel #halliStatus.gamePanelHead{color:#f8fafc;text-shadow:none}
+.gostopMyPoints{display:none}
+/* v1.10.73 게임방 틀 · 말 게임: 윷의 던진 결과 줄, 팬데믹의 진행 표시도 같은 바 */
+.yutThrowSummary.gamePanelHead{justify-content:space-between}

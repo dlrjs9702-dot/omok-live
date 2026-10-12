@@ -58,6 +58,7 @@
   // seasonal falling flakes, the far scenery at sea and the whale. The ground's own seasonal colours are not files: they
   // are painted on the terrain (island.js setSeasonDay) in the palette of these sheets.
   const GAPS = '/assets/island/gaps-v1';
+  const GC = '/assets/island/ground-cover-v1'; // v1.10.73
   const seasonalGaps = (file) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${GAPS}/${s}/${file.replace(/\{s\}/g, s)}`]));
   const gapsProp = (name, extra = {}) => ({ url: `${GAPS}/props/${name}.glb`, low: { url: `${GAPS}/props/${name}_low.glb` }, ...extra });
   const sea = (name, scale) => ({ url: `${GAPS}/sea/${name}.glb`, low: { url: `${GAPS}/sea/${name}_low.glb` }, scale, haze: 0.55, near: 150, shadows: false });
@@ -105,6 +106,25 @@
     'prop.mailbox.0': gapsProp('mailbox_blue', { scale: 0.92, rotationY: Math.PI, near: 30 }),
     'prop.mailbox.1': gapsProp('mailbox_red', { scale: 0.92, rotationY: Math.PI, near: 30 }),
     'prop.steppingStone': gapsProp('stepping_stone', { scale: 0.85, near: 25, shadows: false }),
+    // v1.10.73 마을 환경정비사업 ① 길 3단계 (assets/24, Codex 2026-10-12): pieces laid along each walk's centre line by
+    // island.js -- 마을 길 slabs, terrazzo and a continuous border, 산책로 edge bands, 오솔길 stepping stones, junction
+    // discs and the planters where the town's walk meets the walks outside. 1 unit = 1 m, +x along the walk, origin on
+    // the ground at the piece's centre (the files' node scale is their quantization: placed through a parent).
+    // The pieces used (of the 24 made: the third slab, two terrazzi, two edge bands, the flagstones, the third stone,
+    // the deck, the border cap and the pillar wait for a place -- IDEAS #future-path-tiers)
+    ...Object.fromEntries(['town.slab.a', 'town.slab.b', 'town.terrazzo.a', 'town.border.straight', 'walk.edge.a', 'walk.edge.c', 'trail.step.a', 'trail.step.b',
+      'junction.disc.town', 'junction.disc.walk', 'gate.planter']
+      .map((id) => [`path.${id}`, { url: `/assets/island/path-tiers-v1/${id}.glb`, low: { url: `/assets/island/path-tiers-v1/${id}_low.glb` }, near: 30, shadows: false }])),
+    // v1.10.73 마을 환경정비사업 ② 땅 다듬기 (assets/25): flat cover on open grass in each zone's season (spring petals,
+    // summer clover, autumn leaves, winter snow), moss under the trees, and near the woods low ferns, shrubs and flower
+    // clumps (a winter zone's clump is a bare shrub). island.js shows them by quality tier (1: flat, 2: + low).
+    'ground.season': { seasons: { spring: `${GC}/flat.petals.a.glb`, summer: `${GC}/flat.clover.a.glb`, autumn: `${GC}/flat.leaves.a.glb`, winter: `${GC}/flat.snow.a.glb` },
+      low: { seasons: { spring: `${GC}/flat.petals.a_low.glb`, summer: `${GC}/flat.clover.a_low.glb`, autumn: `${GC}/flat.leaves.a_low.glb`, winter: `${GC}/flat.snow.a_low.glb` } }, near: 25, shadows: false },
+    'ground.moss': { url: `${GC}/flat.moss.a.glb`, low: { url: `${GC}/flat.moss.a_low.glb` }, near: 25, shadows: false },
+    'ground.fern': { url: `${GC}/low.fern.a.glb`, low: { url: `${GC}/low.fern.a_low.glb` }, near: 25, shadows: false },
+    'ground.shrub': { url: `${GC}/low.shrub.a.glb`, low: { url: `${GC}/low.shrub.a_low.glb` }, near: 25, shadows: false },
+    'ground.flowers': { seasons: { spring: `${GC}/low.flowers.a.glb`, summer: `${GC}/low.flowers.a.glb`, autumn: `${GC}/low.flowers.a.glb`, winter: `${GC}/low.shrub.b.glb` },
+      low: { seasons: { spring: `${GC}/low.flowers.a_low.glb`, summer: `${GC}/low.flowers.a_low.glb`, autumn: `${GC}/low.flowers.a_low.glb`, winter: `${GC}/low.shrub.b_low.glb` } }, near: 25, shadows: false },
     'prop.pierDeck': gapsProp('pier_deck', { near: 45 }), 'prop.pierPost': gapsProp('pier_post', { near: 45 }), // fitted to the pier (island.js)
     'fx.petal': { url: `${GAPS}/props/atmosphere_petal.glb` }, 'fx.leaf': { url: `${GAPS}/props/atmosphere_leaf.glb` }, 'fx.snow': { url: `${GAPS}/props/atmosphere_snowflake.glb` },
     'sea.coastLong': sea('distant_coast_long', 3), 'sea.coastCove': sea('distant_coast_cove', 3), 'sea.ridgeSoft': sea('mountain_ridge_soft', 2.2), 'sea.ridgeRugged': sea('mountain_ridge_rugged', 2.2),

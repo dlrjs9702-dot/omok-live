@@ -45,7 +45,7 @@ test('file-backed records survive reopening, reject duplicate rounds and recover
   const second = { ...match, id:'room-omok:2', outcomes: match.outcomes.map(item => ({...item,result:'draw'})) };
   assert.equal(await store.recordMatch(second), true);
   const reopened = new JsonMatchStore(file); await reopened.init();
-  assert.deepEqual(await reopened.stats('guest-black'), { total:{played:2,wins:1,losses:0,draws:1,winRate:50},
+  assert.deepEqual(await reopened.stats('guest-black'), { total:{played:2,wins:1,losses:0,draws:1,winRate:50,week:2},
     byGame:{omok:{played:2,wins:1,losses:0,draws:1,winRate:50}} });
   const third = { ...match, id:'room-omok:3' };
   store.filePath = path.join(dir,'missing','unwritable.json');
@@ -53,8 +53,9 @@ test('file-backed records survive reopening, reject duplicate rounds and recover
   store.filePath = file;
   assert.equal(await store.recordMatch(third), true);
   assert.equal((await (async () => { const again = new JsonMatchStore(file); await again.init(); return again.stats('guest-black'); })()).total.played,3);
-  assert.deepEqual(tally([{ gameType:'liar', outcomes:[{id:'same',result:'loss'}] }], 'same').total,
-    {played:1,wins:0,losses:1,draws:0,winRate:0});
+  assert.deepEqual(tally([{ gameType:'liar', at:'2026-10-12T03:00:00Z', outcomes:[{id:'same',result:'loss'}] }], 'same', Date.parse('2026-10-18T14:59:00Z')).total,
+    {played:1,wins:0,losses:1,draws:0,winRate:0,week:1}); // v1.10.73: Monday 0:00 Seoul -- still this week until Sunday 23:59
+  assert.equal(tally([{ gameType:'liar', at:'2026-10-11T14:59:00Z', outcomes:[{id:'same',result:'loss'}] }], 'same', Date.parse('2026-10-12T03:00:00Z')).total.week, 0); // Sunday 23:59 Seoul: last week
 });
 
 test('head-to-head only tallies direct two-person matches between exactly those two players', () => {

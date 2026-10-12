@@ -896,3 +896,22 @@ test('늦은 캐릭터 실물: 앉은 자세·꼬리 복구와 Low 없는 고양
   await a.page.evaluate(() => window.__lateWear.loader.dispose());
   expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });
+
+// v1.10.73 마을 환경정비사업 (IDEAS #future-village-renewal): the path tiers are laid (marble border, edge bands, stepping
+// stones, junction discs) and the ground cover follows the quality tier -- 0 nothing, 1 flat cover, 2 + low plants
+test('마을 환경정비사업: 길 3단계 조각이 깔리고, 땅 장식은 화질 0·1·2에 따라 없음·납작·입체까지', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await island(browser, request, '정비확인', null);
+  const { page } = a;
+  const env = () => page.evaluate(() => window.PlazaDebug().environment);
+  const first = await env();
+  expect(first.edgeDecor.paths).toMatchObject({ slab: expect.any(Number), border: expect.any(Number), edge: expect.any(Number), step: expect.any(Number), disc: expect.any(Number) });
+  for (const k of ['slab', 'terrazzo', 'border', 'edge', 'step', 'disc', 'planter']) expect(first.edgeDecor.paths[k], k).toBeGreaterThan(0);
+  expect(first.groundCover.season).toBeGreaterThan(50); expect(first.groundCover.fern).toBeGreaterThan(10);
+  for (const [tier, flat, low] of [[0, false, false], [1, true, false], [2, true, true]]) {
+    await page.evaluate((t) => window.PlazaDebug().holdQuality(t), tier);
+    expect(await env().then((e) => [e.groundCover.flat, e.groundCover.low]), `화질 ${tier}`).toEqual([flat, low]);
+  }
+  await expectNoScriptError(page);
+  await a.context.close();
+});

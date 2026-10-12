@@ -88,8 +88,8 @@
 :root[data-theme="light"] .noticeTab:focus-visible,:root[data-theme="light"] .helpDisclosure summary:focus-visible,:root[data-theme="light"] .gameRuleDetails summary:focus-visible,:root[data-theme="light"] .announcementDetails summary:focus-visible,:root[data-theme="light"] .roomRuleDetails summary:focus-visible{outline:2px solid #23806f}
 :root[data-theme="light"] .noticeCount{color:#2a5f55;background:#dff1ec}
 :root[data-theme="light"] .noticePanel{border-top:1px solid #e2d4bd}
-:root[data-theme="light"] .announcementRow{border:1px solid #e2d4bd;background:#0e1729}
-:root[data-theme="light"] .announcementRow.isPinned{border-color:#c9b394;background:linear-gradient(135deg,#172033,#fffaf1)}
+:root[data-theme="light"] .announcementRow{border:1px solid #e2d4bd;background:#f7efe1}
+:root[data-theme="light"] .announcementRow.isPinned{border-color:#c9b394;background:linear-gradient(135deg,#fdf0d2,#fffaf1)}
 :root[data-theme="light"] .announcementPin{background:#f59e0b;color:#1f2937}
 :root[data-theme="light"] .announcementHead time{color:#7a6650}
 :root[data-theme="light"] .announcementDetails summary,:root[data-theme="light"] .helpDisclosure summary,:root[data-theme="light"] .gameRuleDetails summary,:root[data-theme="light"] .roomRuleDetails summary{color:#1f6f60}
@@ -315,7 +315,7 @@
 :root[data-theme="light"] .oldmaidSeat.finalGlow .oldmaidSeatInfo{outline:3px solid #ef4444;box-shadow:0 0 0 6px rgba(239,68,68,.3)}
 :root[data-theme="light"] .oldmaidMyHandCards .oldmaidFace.pairGlow{box-shadow:0 0 0 3px rgba(250,204,21,.9),0 0 22px 6px rgba(250,204,21,.75)}
 :root[data-theme="light"] .sideTab{background:#f7efe1;color:#7a6650;border:1px solid #e2d4bd}
-:root[data-theme="light"] .sideTab:hover:not(.active){background:#141f36;color:#cbd5e1}
+:root[data-theme="light"] .sideTab:hover:not(.active){background:#efe4d0;color:#5e4d3b}
 :root[data-theme="light"] .sideTab.active{background:#dff1ec;color:#3d3024;border-color:#23806f;box-shadow:0 0 0 1px rgba(59,130,246,.35)}
 :root[data-theme="light"] .sideTabBadge{background:#ef4444;color:#fff}
 :root[data-theme="light"] .chatPanelTitle{color:#3d3024}
@@ -328,7 +328,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .chatMessages .chatMessage:not(.system){border:0}
 :root[data-theme="light"] .chatMessages .chatMessageHead strong{color:#5e4d3b}
 :root[data-theme="light"] .chatMessages .chatMessageText{background:#f3e9d8}
-:root[data-theme="light"] .chatMessages .chatMessage.mine .chatMessageText{background:#214b83}
+:root[data-theme="light"] .chatMessages .chatMessage.mine .chatMessageText{background:#cfe9e2}
 :root[data-theme="light"] .chatMessages .chatMessageBody time{color:#7a6650}
 :root[data-theme="light"] .chatMessages .chatMessage.system{border-bottom:0}
 :root[data-theme="light"] .chatJumpBtn{background:#1f6f60;color:#1f6f60}
@@ -364,11 +364,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .cityTileDetails dt{color:#7a6650}
 :root[data-theme="light"] .cityActionPanel{background:rgba(10,16,32,.88);border:1px solid rgba(179,156,124,.28)}
 :root[data-theme="light"] .cityActionPanel .cityLastRoll{color:#5e4d3b}
-:root[data-theme="light"] .cityActionPanel .cityBuyRow,:root[data-theme="light"] .cityActionPanel .cityBuildRow{border:1px solid #23806f;background:#14274a}
+:root[data-theme="light"] .cityActionPanel .cityBuyRow,:root[data-theme="light"] .cityActionPanel .cityBuildRow{border:1px solid #23806f;background:#dff1ec}
 :root[data-theme="light"] .cityActionPanel .cityBuyRow span,:root[data-theme="light"] .cityActionPanel .cityBuildRow span{color:#2a5f55}
 :root[data-theme="light"] .cityTileDetailsToggle summary{background:#f3e9d8;border:1px solid #d6c3a5;color:#5e4d3b}
 :root[data-theme="light"] .cityTileDetailsToggle summary:before{color:#7a6650}
-:root[data-theme="light"] #cityControls .cityBuildRow{border:1px solid #23806f;background:#14274a}
+:root[data-theme="light"] #cityControls .cityBuildRow{border:1px solid #23806f;background:#dff1ec}
 :root[data-theme="light"] #cityControls .cityBuildRow span{color:#2a5f55}
 :root[data-theme="light"] .logoutDialog{border:1px solid #c9b394;background:#f7efe1;color:#33281d;box-shadow:0 22px 80px #0009}
 :root[data-theme="light"] .logoutDialog::backdrop{background:#020617cc}
@@ -376,7 +376,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pauseDialog::backdrop{background:#020617cc}
 :root[data-theme="light"] .pauseDialog h2{color:#8a5a00}
 :root[data-theme="light"] .pauseDialog p{color:#8a5a00}
-:root[data-theme="light"] .chatLockNotice{background:#3f2d0b;border:1px solid #b45309;color:#fde68a}
+:root[data-theme="light"] .chatLockNotice{background:#fdf0d2;border:1px solid #b45309;color:#8a5a00}
 :root[data-theme="light"] .gameConfigChooser{border:1px solid #d6c3a5;background:#f7efe1}
 :root[data-theme="light"] .gameConfigRow{color:#3d3024}
 :root[data-theme="light"] .gameConfigChooser small{color:#7a6650}
@@ -439,7 +439,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .halliTransferRow strong{color:#14532d}
 :root[data-theme="light"] .halliTransferResult.penalty .halliTransferRow strong{color:#991b1b}
 :root[data-theme="light"] .halliTransferArrow{color:#475569}
-:root[data-theme="light"] .myActionTimer{border:1px solid #23806f;background:#0f2749;box-shadow:0 5px 18px rgba(247,239,225,.24)}
+:root[data-theme="light"] .myActionTimer{border:1px solid #23806f;background:#dff1ec;box-shadow:0 5px 18px rgba(247,239,225,.24)}
 :root[data-theme="light"] .myActionTimerLabel{color:#2a5f55}
 :root[data-theme="light"] .myActionTimerClock{color:#fef08a}
 :root[data-theme="light"] .myActionTimerResult{color:#2a5f55}
@@ -763,7 +763,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .rpgTouchNotice{color:#5e4d3b}
 :root[data-theme="light"] .skinTab{border:1px solid #d6c3a5;background:#f7efe1;color:#5e4d3b}
 :root[data-theme="light"] .skinTab[aria-selected="true"]{background:#f3e9d8;border-color:#23806f;color:#33281d}
-:root[data-theme="light"] .recordsBadge{border:1px solid #d4a72c;background:#3b2f0b;color:#fde68a}
+:root[data-theme="light"] .recordsBadge{border:1px solid #d4a72c;background:#fdf0d2;color:#8a5a00}
 :root[data-theme="light"] .pandemicPanel{border:1px solid #334155;background:linear-gradient(155deg,#101d32,#0b1324)}
 :root[data-theme="light"] .pandemicSetup select{border:1px solid #475569;background:#0f172a;color:#fff}
 :root[data-theme="light"] .pdChip{background:#f7efe1;border:1px solid #d6c3a5;color:#3d3024}
@@ -913,6 +913,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gameMenuThemes label:has(input:focus-visible){outline:2px solid #23806f}
 :root[data-theme="light"] .gameTab{background:#f7efe1;color:#5e4d3b;border:1px solid #d6c3a5}
 :root[data-theme="light"] .gameTab[aria-selected="true"]{background:#dff1ec;color:#33281d;border-color:#23806f;box-shadow:0 0 0 2px rgba(35,128,111,.2)}
+:root[data-theme="light"] .gameArt.roomGameArt{background:linear-gradient(135deg,var(--g1),var(--g2))}
+:root[data-theme="light"] #seatLabel{background:#f7efe1;border:1px solid #d6c3a5;color:#5e4d3b}
 :root[data-theme="light"] .plazaDialog.talkMode{border:2px solid #23806f;background:rgba(247,239,225,.94)}
 :root[data-theme="light"] .plazaDialog.talkMode::backdrop{background:transparent}
 :root[data-theme="light"] .plazaDialog.talkMode::after{background:inherit;border-left:2px solid #23806f;border-top:2px solid #23806f}
@@ -932,34 +934,32 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .stickEditBar{background:rgba(247,239,225,.92);border:1px solid #d6c3a5;color:#3d3024}
 :root[data-theme="light"] .stickEditBar span{color:#8a5a00}
 :root[data-theme="light"] .reflexView{background:#05070f}
-:root[data-theme="light"] .reflexFrame{background:#0b0c1a;color:#fff}
+:root[data-theme="light"] .reflexFrame{background:#f4ede0;color:#fff}
 :root[data-theme="light"] .reflexFrame .hud-label{color:rgba(255,255,255,.6)}
 :root[data-theme="light"] .reflexFrame .hud-right{background:rgba(20,22,44,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
 :root[data-theme="light"] .reflexFrame .hud-bar{background:rgba(255,255,255,.14)}
 :root[data-theme="light"] .reflexFrame .hud-bar i{background:var(--bar,#fff)}
 :root[data-theme="light"] .reflexFrame .hudQuit{background:rgba(20,22,44,.6);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
 :root[data-theme="light"] .reflexFrame .banner{background:rgba(61,220,151,.18);color:#3ddc97}
-:root[data-theme="light"] .reflexMenu,:root[data-theme="light"] .reflexResult{background:#0b0c1a}
+:root[data-theme="light"] .reflexMenu,:root[data-theme="light"] .reflexResult{background:#f4ede0;color:#33281d}
 :root[data-theme="light"] .reflexResult{background:rgba(6,7,16,.72)}
-:root[data-theme="light"] .reflexMenu .ghost,:root[data-theme="light"] .reflexResult .ghost{background:#161a33;color:#fff;border:1px solid #2a3060}
-:root[data-theme="light"] .reflexMenu .primary,:root[data-theme="light"] .reflexResult .primary{background:var(--c1,#ffd34d);color:#10111f}
-:root[data-theme="light"] .reflexToday{color:rgba(255,255,255,.7)}
+:root[data-theme="light"] .reflexToday{color:#5e4d3b}
 :root[data-theme="light"] .reflexCard{color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2))}
-:root[data-theme="light"] .reflexCard:focus-visible,:root[data-theme="light"] .reflexLevel:focus-visible,:root[data-theme="light"] .reflexMenu button:focus-visible,:root[data-theme="light"] .reflexResult button:focus-visible{outline:3px solid #fff}
+:root[data-theme="light"] .reflexCard:focus-visible,:root[data-theme="light"] .reflexLevel:focus-visible,:root[data-theme="light"] .reflexMenu button:focus-visible,:root[data-theme="light"] .reflexResult button:focus-visible{outline:3px solid #23806f}
 :root[data-theme="light"] .reflexArt{background:rgba(0,0,0,.18)}
 :root[data-theme="light"] .reflexWords small{color:rgba(255,255,255,.85)}
-:root[data-theme="light"] .reflexTagline{color:var(--c1)}
-:root[data-theme="light"] .reflexHow{color:rgba(255,255,255,.88)}
-:root[data-theme="light"] .reflexKeys{color:rgba(255,255,255,.6)}
-:root[data-theme="light"] .reflexLevel{background:#161a33;color:#fff;border:1px solid #2a3060}
-:root[data-theme="light"] .reflexLevel[aria-checked="true"]{background:var(--c1);color:#10111f;border-color:var(--c1)}
-:root[data-theme="light"] .reflexPoints,:root[data-theme="light"] .reflexBest{color:rgba(255,255,255,.75)}
-:root[data-theme="light"] .reflexStatus{color:#ff8a9a}
-:root[data-theme="light"] .reflexPanel{background:#151833}
-:root[data-theme="light"] .reflexScore{color:var(--c1)}
-:root[data-theme="light"] .reflexPaid{color:#ffd34d}
-:root[data-theme="light"] .reflexStat{background:rgba(255,255,255,.06)}
-:root[data-theme="light"] .reflexStat span{color:rgba(255,255,255,.6)}
+:root[data-theme="light"] .reflexTagline{color:#33281d}
+:root[data-theme="light"] .reflexHow{color:#5e4d3b}
+:root[data-theme="light"] .reflexKeys{color:#7a6650}
+:root[data-theme="light"] .reflexLevel{background:#f7efe1;color:#33281d;border:1px solid #d6c3a5}
+:root[data-theme="light"] .reflexLevel[aria-checked="true"]{background:#23806f;color:#fff;border-color:#23806f}
+:root[data-theme="light"] .reflexPoints,:root[data-theme="light"] .reflexBest{color:#5e4d3b}
+:root[data-theme="light"] .reflexStatus{color:#9b2c2c}
+:root[data-theme="light"] .reflexPanel{background:#fffaf1;color:#33281d}
+:root[data-theme="light"] .reflexScore{color:#8a5a00}
+:root[data-theme="light"] .reflexPaid{color:#8a5a00}
+:root[data-theme="light"] .reflexStat{background:#f7efe1}
+:root[data-theme="light"] .reflexStat span{color:#7a6650}
 :root[data-theme="light"] .gameGuideCase{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .gameGuideFig{color:#5e4d3b}
 :root[data-theme="light"] .gameGuideCase figcaption{color:#5e4d3b}
@@ -971,3 +971,27 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .rankingList li{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .rankingList li.me{border-color:#23806f;background:#dff1ec}
 :root[data-theme="light"] .rankingEmpty{color:#7a6650}
+:root[data-theme="light"] .gamehallView{background:radial-gradient(circle at 15% 10%,#efe4d0 0,#f4ede0 42%,#eadfcb 100%);color:#33281d}
+:root[data-theme="light"] .gamehallBar{background:rgba(247,239,225,.94);border-bottom:1px solid #e2d4bd}
+:root[data-theme="light"] .gamehallToday{color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
+:root[data-theme="light"] .gamehallTodayWords small{color:#fff}
+:root[data-theme="light"] .gameArt{background:rgba(0,0,0,.2);color:#fff}
+:root[data-theme="light"] .gamehallSummary div{background:#f7efe1;border:1px solid #e2d4bd}
+:root[data-theme="light"] .gamehallSummary dt{color:#7a6650}
+:root[data-theme="light"] .gamehallChip{background:#f7efe1;color:#5e4d3b;border:1px solid #d6c3a5}
+:root[data-theme="light"] .gamehallChip span{color:#7a6650}
+:root[data-theme="light"] .gamehallChip[aria-selected="true"]{background:#3d3024;color:#fffaf1;border-color:#3d3024}
+:root[data-theme="light"] .gamehallChip[aria-selected="true"] span{color:#334155}
+:root[data-theme="light"] .gameCard{color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
+:root[data-theme="light"] .gameCard small{color:#fff}
+:root[data-theme="light"] .gameCardFlag{background:rgba(0,0,0,.35)}
+:root[data-theme="light"] .gamehallToday:focus-visible,:root[data-theme="light"] .gameCard:focus-visible,:root[data-theme="light"] .gamehallChip:focus-visible{outline:3px solid #23806f}
+:root[data-theme="light"] .gameSheet{border:1px solid #d6c3a5;background:#fffaf1;color:#33281d}
+:root[data-theme="light"] .gameSheet::backdrop{background:rgba(61,47,32,.6)}
+:root[data-theme="light"] .gameSheetHead{color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2))}
+:root[data-theme="light"] .gameSheetHead small{color:#fff}
+:root[data-theme="light"] .gameSheetHead .ghost{background:rgba(0,0,0,.25);color:#fff;border-color:rgba(255,255,255,.35)}
+:root[data-theme="light"] .gameSheetHow{color:#5e4d3b}
+:root[data-theme="light"] .gameSheetCreate{border-top:1px solid #e2d4bd}
+:root[data-theme="light"] .gamePanelHead{background:rgba(247,239,225,.88);border:1px solid #e2d4bd;color:#33281d}
+:root[data-theme="light"] .halliPanel #halliStatus.gamePanelHead{color:#f8fafc}

@@ -382,6 +382,40 @@
 
     <!-- v1.10.68 순발력 게임 (한판마당 자료, public/reflex): the engine's canvas and HUD (ids the engine looks up), the game
          list and the result, drawn by public/reflex/reflex.js -->
+    <!-- v1.10.73 게임관 전면 개편 (IDEAS #future-gamehall-renewal): the island's game hall is its own screen -- the bar, 오늘의
+         게임, my summary, category chips and one card per game (public/gamehall-catalog.js); a card opens its sheet -->
+    <section id="gamehallView" class="gamehallView hidden" aria-label="게임관">
+      <header class="gamehallBar">
+        <button id="gamehallBackBtn" type="button" class="ghost tiny">‹ 섬으로</button>
+        <h1>게임관</h1>
+        <button id="gamehallSoundBtn" type="button" class="ghost tiny" aria-pressed="true">🔊 효과음</button>
+        <button id="gamehallMenuBtn" type="button" class="ghost tiny" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴">☰</button>
+      </header>
+      <div class="gamehallBody">
+        <button id="gamehallToday" type="button" class="gamehallToday"></button>
+        <dl id="gamehallSummary" class="gamehallSummary">
+          <div><dt>포인트</dt><dd data-sum="points">-</dd></div>
+          <div><dt>이번 주</dt><dd data-sum="week">-</dd></div>
+          <div><dt>승률</dt><dd data-sum="rate">-</dd></div>
+        </dl>
+        <div id="gamehallChips" class="gamehallChips" role="tablist" aria-label="게임 분류"></div>
+        <div id="gamehallGrid" class="gamehallGrid" role="tabpanel"></div>
+        <div id="gamehallRooms" class="gamehallRooms hidden" role="tabpanel"></div>
+      </div>
+      <dialog id="gameSheet" class="gameSheet" aria-labelledby="gameSheetName">
+        <div class="gameSheetHead">
+          <span id="gameSheetArt" class="gameArt"></span>
+          <div><h2 id="gameSheetName"></h2><small id="gameSheetMeta"></small></div>
+          <button id="gameSheetClose" type="button" class="ghost tiny" aria-label="닫기">✕</button>
+        </div>
+        <p id="gameSheetIntro" class="gameSheetIntro"></p>
+        <ol id="gameSheetHow" class="gameSheetHow"></ol>
+        <div id="gameSheetActions" class="gameSheetActions"></div>
+        <div id="gameSheetCreate" class="gameSheetCreate hidden"></div>
+        <section id="gameSheetRoomsBox" class="gameSheetRooms hidden" aria-label="이 게임의 공개방"><h3>공개방</h3><div id="gameSheetRooms" class="publicRoomList"></div></section>
+        <details id="gameSheetGuideBox" class="gameRuleDetails gameSheetGuide"><summary>게임 안내</summary><p id="gameSheetRule" class="gameRulesText"></p><div id="gameSheetGuide" class="gameGuide"></div></details>
+      </dialog>
+    </section>
     <section id="reflexView" class="reflexView hidden" aria-label="순발력 게임">
       <div class="reflexFrame">
         <canvas id="stage"></canvas>
@@ -421,15 +455,17 @@
            so collapsing or hiding those (display:none) never silences them -->
       <div id="chatAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
       <div id="twentyAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
-      <header class="topbar card">
-        <div>
+      <!-- v1.10.73 게임방 틀 (DESIGN.md 「게임관·게임방」): ‹ 게임관 on the left, the game's own colour tile, the title, chips -->
+      <header class="topbar card roomBar">
+        <div class="roomBarTitle">
+          <button id="leaveRoomBtn" class="ghost">‹ 게임관</button>
+          <span id="roomGameArt" class="gameArt roomGameArt" aria-hidden="true"></span>
           <span id="roomGameLogo" class="logo">오목</span>
           <small id="roomIdentityLabel" class="smallMuted"></small>
           <small id="roomPointBadge" class="pointBadge hidden"></small><small id="roomPointRule" class="pointBadge pointRuleBadge hidden"></small>
         </div>
         <div class="topActions">
           <button id="turnNotifyBtn" class="ghost turnNotifyBtn hidden" type="button" aria-pressed="false">내 차례 알림 · 꺼짐</button>
-          <button id="leaveRoomBtn" class="ghost">게임 선택으로</button>
           <button id="newRoomBtn" class="ghost hidden">새 방</button>
           <button id="roomMenuBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰ 메뉴</button> <!-- v1.10.64: 접속 종료 only in the menu -->
         </div>
@@ -508,7 +544,7 @@
           </div>
 
           <section id="yutControls" class="yutControls hidden" aria-label="윷놀이 조작">
-            <div class="yutThrowSummary">
+            <div class="yutThrowSummary gamePanelHead">
               <span id="yutLastThrow" class="yutLastThrow">윷을 던질 차례입니다</span>
             </div>
             <p id="yutHint" class="yutHint">파랑과 빨강이 정해지면 파랑부터 시작합니다.</p>
@@ -527,7 +563,7 @@
             <div id="rpgStage" class="rpgStage"></div>
           </section>
           <section id="gostopPanel" class="gostopPanel hidden" aria-label="고스톱 · 맞고">
-            <div class="gostopHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
+            <div class="gostopHead gamePanelHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
             <div id="gostopSetup" class="gostopSetup hidden">
               <label for="gostopStakeSelect">점당</label>
               <select id="gostopStakeSelect" aria-label="점당 포인트"><option value="10">10P</option><option value="50">50P</option><option value="100">100P</option></select>
@@ -560,7 +596,7 @@
               <button id="pandemicStartBtn" type="button" class="primary">팬데믹 시작</button>
               <small id="pandemicSetupNote"></small>
             </div>
-            <div id="pandemicHud" class="pandemicHud"></div>
+            <div id="pandemicHud" class="pandemicHud gamePanelHead"></div>
             <div id="pandemicMapWrap" class="pandemicMapWrap">
               <svg id="pandemicMap" class="pandemicMap" viewBox="0 0 1200 620" role="img" aria-label="세계지도"></svg>
               <svg id="pandemicMini" class="pandemicMini" viewBox="0 0 1200 620" aria-hidden="true"></svg>
@@ -571,7 +607,7 @@
             <div id="pandemicLog" class="pandemicLog" aria-live="polite"></div>
           </section>
           <section id="davinciPanel" class="davinciPanel hidden" aria-label="다빈치 코드">
-            <p id="davinciStatus" aria-live="polite"></p>
+            <p id="davinciStatus" class="gamePanelHead" aria-live="polite"></p>
             <div id="davinciHands"></div>
             <div id="davinciPrivate"></div>
             <div class="davinciActions">
@@ -582,7 +618,7 @@
             </div>
           </section>
           <section id="halliPanel" class="halliPanel hidden" aria-label="할리갈리">
-            <p id="halliStatus" aria-live="polite"></p>
+            <p id="halliStatus" class="gamePanelHead" aria-live="polite"></p>
             <div id="halliCards" class="halliCards"></div>
             <div class="halliActions">
               <button id="halliFlipBtn" type="button" class="primary">카드 뒤집기</button>
@@ -653,7 +689,7 @@
 
 
           <section id="oldmaidPanel" class="oldmaidPanel hidden" aria-label="도둑잡기">
-            <div class="oldmaidHeader">
+            <div class="oldmaidHeader gamePanelHead">
               <strong id="oldmaidStatus">참가자를 기다리는 중</strong>
               <div class="oldmaidHeaderActions">
                 <label class="oldmaidEffectsToggle"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 연출 효과</label>
@@ -1142,7 +1178,7 @@
   <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog" aria-labelledby="gameMenuTitle">
     <div class="recordsDialogHead"><h2 id="gameMenuTitle">메뉴</h2><button id="gameMenuCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="gameMenuList">
-      <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임 선택으로 돌아가기</button>
+      <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임관으로 돌아가기</button>
       <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
       <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
@@ -1246,6 +1282,7 @@
   <script src="/pandemic-map.js"></script>
   <script src="/pandemic-ui.js"></script>
   <script src="/game-guides.js"></script>
+  <script src="/gamehall-catalog.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
