@@ -1528,11 +1528,13 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '인사', exact: true }).click();
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'bow')), { timeout: 15000 }).toBe(true);
-  // 게임 초대: the game hall's window, a room, and the invite
+  // 게임 초대: the game hall (v1.10.73 its own screen), a game's sheet, a room, and the invite
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   await a.page.getByRole('button', { name: '게임 초대' }).click();
-  await expect(a.page.locator('#plazaDialog #createRoomBtn')).toBeVisible({ timeout: 10000 });
-  await a.page.locator('#plazaDialog #createRoomBtn').click();
+  await expect(a.page.locator('#gamehallView')).toBeVisible({ timeout: 10000 });
+  await a.page.locator('.gameCard[data-game="omok"]').click();
+  await a.page.getByRole('button', { name: '방 만들기' }).click();
+  await a.page.locator('#gameSheet #createRoomBtn').click();
   await expect(a.page.locator('.toast')).toContainText('초대', { timeout: 15000 });
   await expect.poll(async () => (await get(request, '/api/invitations', b.token)).data.items?.length || 0, { timeout: 15000 }).toBe(1);
   void aId;

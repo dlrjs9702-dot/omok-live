@@ -23,6 +23,8 @@ test('게임관 카드: 두 색 모두 흰 글자 대비 4.5:1 이상, 그림이
     assert.equal(g.how.length, 3, `${g.id} 방법 3줄`);
     assert.equal([g.room, g.set, g.launch].filter(Boolean).length, 1, `${g.id} 여는 곳 하나`);
   }
+  const design = fs.readFileSync(path.join(root, 'DESIGN.md'), 'utf8'); // DESIGN.md: a game's colours are in its table first
+  for (const g of GAMES) assert.ok(design.includes(`| ${g.name} | \`${g.colors[0]}\` · \`${g.colors[1]}\` |`), `DESIGN.md 색 표: ${g.name}`);
   const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
   const rooms = new Set([...html.matchAll(/class="gameChoice[^"]*" data-game="([a-z0-9]+)"/g)].map((m) => m[1]));
   assert.deepEqual([...rooms].sort(), GAMES.filter((g) => g.room).map((g) => g.room).sort());
