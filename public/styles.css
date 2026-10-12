@@ -1926,3 +1926,9 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .gameSheetRooms h3{margin:0 0 6px;font-size:.84rem}
 .gameSheetGuide{margin-top:14px}
 @media (max-width:520px){.gamehallGrid{grid-template-columns:repeat(2,1fr)}.gameCard{min-height:132px;border-radius:16px;padding:12px}.gamehallToday{border-radius:16px}.gameArt{width:48px;height:48px}.gameArt svg{width:36px;height:36px}}
+/* v1.10.73 게임방 틀 · 카드 게임: each table's own status line is the same bar over its felt (the table art stays);
+   the room's top bar already shows my points, so 고스톱's copy goes */
+.gamePanelHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border-radius:12px;background:rgba(15,23,42,.88);border:1px solid #273449;color:#f8fafc;font-size:.84rem;font-weight:800;text-shadow:none}
+.gamePanelHead strong{font-size:.9rem}
+.halliPanel #halliStatus.gamePanelHead{color:#f8fafc;text-shadow:none}
+.gostopMyPoints{display:none}

@@ -993,3 +993,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gameSheetHead .ghost{background:rgba(0,0,0,.25);color:#fff;border-color:rgba(255,255,255,.35)}
 :root[data-theme="light"] .gameSheetHow{color:#5e4d3b}
 :root[data-theme="light"] .gameSheetCreate{border-top:1px solid #e2d4bd}
+:root[data-theme="light"] .gamePanelHead{background:rgba(247,239,225,.88);border:1px solid #e2d4bd;color:#33281d}
+:root[data-theme="light"] .halliPanel #halliStatus.gamePanelHead{color:#f8fafc}

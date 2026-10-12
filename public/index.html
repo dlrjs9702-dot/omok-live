@@ -563,7 +563,7 @@
             <div id="rpgStage" class="rpgStage"></div>
           </section>
           <section id="gostopPanel" class="gostopPanel hidden" aria-label="고스톱 · 맞고">
-            <div class="gostopHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
+            <div class="gostopHead gamePanelHead"><strong id="gostopTitle">고스톱 · 맞고</strong><span id="gostopMeta"></span><span id="gostopMyPoints" class="gostopMyPoints"></span></div>
             <div id="gostopSetup" class="gostopSetup hidden">
               <label for="gostopStakeSelect">점당</label>
               <select id="gostopStakeSelect" aria-label="점당 포인트"><option value="10">10P</option><option value="50">50P</option><option value="100">100P</option></select>
@@ -607,7 +607,7 @@
             <div id="pandemicLog" class="pandemicLog" aria-live="polite"></div>
           </section>
           <section id="davinciPanel" class="davinciPanel hidden" aria-label="다빈치 코드">
-            <p id="davinciStatus" aria-live="polite"></p>
+            <p id="davinciStatus" class="gamePanelHead" aria-live="polite"></p>
             <div id="davinciHands"></div>
             <div id="davinciPrivate"></div>
             <div class="davinciActions">
@@ -618,7 +618,7 @@
             </div>
           </section>
           <section id="halliPanel" class="halliPanel hidden" aria-label="할리갈리">
-            <p id="halliStatus" aria-live="polite"></p>
+            <p id="halliStatus" class="gamePanelHead" aria-live="polite"></p>
             <div id="halliCards" class="halliCards"></div>
             <div class="halliActions">
               <button id="halliFlipBtn" type="button" class="primary">카드 뒤집기</button>
@@ -689,7 +689,7 @@
 
 
           <section id="oldmaidPanel" class="oldmaidPanel hidden" aria-label="도둑잡기">
-            <div class="oldmaidHeader">
+            <div class="oldmaidHeader gamePanelHead">
               <strong id="oldmaidStatus">참가자를 기다리는 중</strong>
               <div class="oldmaidHeaderActions">
                 <label class="oldmaidEffectsToggle"><input type="checkbox" id="oldmaidEffectsToggle" checked /> 연출 효과</label>
