@@ -1422,6 +1422,8 @@
     document.getElementById('climbView').classList.toggle('hidden', name !== 'climb');
     if (name !== 'climb') window.ClimbClient?.stop();
     document.getElementById('reflexView').classList.toggle('hidden', name !== 'reflex');
+    document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
+    if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
     if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
     syncPlaza(name);
@@ -1463,7 +1465,7 @@
   try { plazaTestClassic = Boolean(navigator.webdriver && localStorage.getItem('gc.testClassic') === '1'); } catch {}
   const byId = (id) => document.getElementById(id);
   const PLAZA_FACILITIES = [
-    { id: 'games', name: '게임관', open: () => openPlazaWindow('게임관', [document.querySelector('.lobbyTopGrid > .lobbyCard'), publicRoomsCardEl]) },
+    { id: 'games', name: '게임관', open: () => openGamehall() }, // v1.10.73: its own screen
     { id: 'shop', name: '게임 스킨 상점', open: () => openSkinShop('game') }, // v1.10.1: two shops on the shop street
     // v1.10.30 상점가 꾸미기 점포 세분화 (사용자 확정 2026-10-05): clothes, hair and accessories each their own shop,
     // the face at the 성형외과, colours at the 염색사 (the former character-skin shop is the clothes shop)
@@ -1867,20 +1869,159 @@
   // v1.10.69 퍼즐 (스도쿠·네모로직·다리 잇기·회로 연결): the same screen with the puzzle list
   // v1.10.70 카드 게임 · 「‹ 뒤로」 (사용자 2026-10-12): back to choosing a game -- on the island the 게임관 window opens again
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
-  async function openHanpan(which) {
-    const onBack = () => {
-      showView('lobby'); loadPoints();
-      if (document.body.classList.contains('plazaMode')) PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
-    };
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack }); }
-    catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+  let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
+  async function loadHanpan(onBack) {
+    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack() }); }
+    catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
+    hanpanBack = () => { loadPoints(); onBack(); };
     showView('reflex');
-    reflexGames.open(which);
+    return true;
   }
+  async function openHanpan(which) { // the classic lobby's lists
+    if (await loadHanpan(() => { showView('lobby'); if (document.body.classList.contains('plazaMode')) PLAZA_FACILITIES.find((f) => f.id === 'games')?.open(); })) reflexGames.open(which);
+  }
+  // v1.10.73 게임 실행 규약 (IDEAS #future-gamehall-renewal): the game hall and, later, the island's quests open a solo
+  // game the same way -- GameLaunch.play(game, { level, goal, place: 'gamehall' | 'quest' }) answers { game, level, score,
+  // done, run } when the round ends ({ done: false } if left). From the game hall 「‹ 게임관」 comes back there; from a
+  // quest, back to the island. Reward rules stay as they are (AI practice pays nothing; quests are not connected yet).
+  async function playGame(game, opts = {}) {
+    const place = opts.place === 'quest' ? 'quest' : 'gamehall';
+    if (!(await loadHanpan(() => (place === 'gamehall' ? openGamehall() : showView('lobby'))))) return { game, done: false };
+    return reflexGames.play(game, { ...opts, place });
+  }
+  window.GameLaunch = { play: playGame };
   document.getElementById('soloReflexBtn').addEventListener('click', () => openHanpan('reflex'));
   document.getElementById('soloPuzzleBtn').addEventListener('click', () => openHanpan('puzzle'));
   document.getElementById('soloCardsBtn').addEventListener('click', () => openHanpan('cards'));
   document.getElementById('soloAiBtn').addEventListener('click', () => openHanpan('ai')); // v1.10.71 AI 대전 (연습)
+
+  // v1.10.73 게임관 전면 개편 (IDEAS #future-gamehall-renewal, 사용자 확정 2026-10-12): from the island the game hall is its
+  // own screen -- ‹ 섬으로 · 게임관 · 효과음 · ☰, 오늘의 게임, my summary (points, games this week, win rate), category
+  // chips and one card per game (public/gamehall-catalog.js). A card opens its sheet: what it is, how in three lines,
+  // [빠른 시작]/[방 만들기]/[AI 연습] or [시작], that game's open rooms and its guide. 방 만들기 shows the room form with
+  // that game's own options (selectGame). The classic lobby (an administrator's fallback, tests) keeps its old layout.
+  const HALL = window.GamehallCatalog;
+  const gamehallView = byId('gamehallView'); const gameSheet = byId('gameSheet');
+  const hallChips = byId('gamehallChips'); const hallGrid = byId('gamehallGrid'); const hallRooms = byId('gamehallRooms');
+  let hallCat = 'all'; let sheetGame = null; let hallIcons = null; // icons.js and store.js of the 한판마당 screens
+  try { const saved = localStorage.getItem('gc.hallCat'); if (saved === 'rooms' || HALL.CATEGORIES.some(([id]) => id === saved)) hallCat = saved; } catch {}
+  const hallBorrowed = new Map(); // a lobby section shown in the game hall -> the marker where it lives
+  function hallBorrow(node, into) {
+    if (!hallBorrowed.has(node)) { const mark = document.createComment('gamehall'); node.before(mark); hallBorrowed.set(node, mark); }
+    into.append(node);
+  }
+  function hallReturn() { for (const [node, mark] of hallBorrowed) mark.replaceWith(node); hallBorrowed.clear(); }
+  const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const gameArtHtml = (g) => (g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  const catName = (id) => HALL.CATEGORIES.find(([c]) => c === id)?.[1] || id;
+  const paintColors = (node, g) => { node.style.setProperty('--g1', g.colors[0]); node.style.setProperty('--g2', g.colors[1]); };
+  const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
+
+  async function openGamehall() {
+    if (plazaDialog.open) plazaDialog.close();
+    showView('gamehall');
+    try { hallIcons ||= { ...(await import('/reflex/js/icons.js')), ...(await import('/reflex/js/store.js')) }; } catch {}
+    paintSoundBtn(); renderGamehall();
+    loadPublicRooms().catch(() => {});
+    Promise.all([api('/api/points').catch(() => null), api('/api/records/me').catch(() => null)]).then(([points, records]) => {
+      const sum = (k) => gamehallView.querySelector(`[data-sum="${k}"]`);
+      if (points) sum('points').textContent = `${Number(points.balance || 0).toLocaleString('ko-KR')}P`;
+      if (records?.total) { sum('week').textContent = `${records.total.week || 0}판`; sum('rate').textContent = records.total.played ? `${Math.round(records.total.winRate)}%` : '-'; }
+    });
+    (hallGrid.querySelector('.gameCard') || byId('gamehallToday')).focus({ preventScroll: true });
+  }
+  function closeGamehall() { // back to the island, in front of the game hall where I came in
+    if (gameSheet.open) gameSheet.close();
+    hallReturn();
+    showView('lobby');
+  }
+  function renderGamehall() {
+    const today = HALL.todayGame(Date.now());
+    const banner = byId('gamehallToday'); paintColors(banner, today);
+    const art = hallEl('span', 'gameArt'); art.innerHTML = gameArtHtml(today);
+    const words = hallEl('span', 'gamehallTodayWords'); words.append(hallEl('small', null, '오늘의 게임'), hallEl('strong', null, today.name), hallEl('span', null, today.intro));
+    banner.replaceChildren(art, words); banner.onclick = () => openGameSheet(today);
+    hallChips.replaceChildren();
+    const chip = (id, name, count) => {
+      const b = hallEl('button', 'gamehallChip'); b.type = 'button'; b.setAttribute('role', 'tab'); b.dataset.cat = id;
+      b.setAttribute('aria-selected', String(hallCat === id)); b.append(name, hallEl('span', null, String(count)));
+      b.addEventListener('click', () => { hallCat = id; try { localStorage.setItem('gc.hallCat', id); } catch {} renderGamehall(); hallChips.querySelector(`[data-cat="${id}"]`)?.focus(); });
+      hallChips.append(b);
+    };
+    for (const [id, name] of HALL.CATEGORIES) chip(id, name, HALL.GAMES.filter((g) => HALL.inCategory(g, id) && (id === 'all' || !g.soon)).length);
+    chip('rooms', '공개방', (lobbyState.rooms || []).length);
+    hallGrid.classList.toggle('hidden', hallCat === 'rooms'); hallRooms.classList.toggle('hidden', hallCat !== 'rooms');
+    if (hallCat === 'rooms') { hallBorrow(publicRoomsCardEl, hallRooms); hallBorrow(joinRoomForm, hallRooms); return; }
+    hallGrid.replaceChildren();
+    const list = HALL.GAMES.filter((g) => HALL.inCategory(g, hallCat) && (hallCat === 'all' || !g.soon));
+    for (const g of [...list.filter((x) => !x.soon), ...list.filter((x) => x.soon)]) { // 준비 중 at the end
+      const card = hallEl('button', 'gameCard'); card.type = 'button'; card.dataset.game = g.id; paintColors(card, g);
+      card.classList.toggle('soon', Boolean(g.soon));
+      const art = hallEl('span', 'gameArt'); art.innerHTML = gameArtHtml(g);
+      card.append(art, hallEl('strong', null, g.name), hallEl('small', null, `${g.cats.map(catName).join(' · ')} · ${g.players}`));
+      if (g.soon) card.append(hallEl('em', 'gameCardFlag', '준비 중'));
+      card.addEventListener('click', () => openGameSheet(g));
+      hallGrid.append(card);
+    }
+  }
+  function renderGamehallRooms() {
+    if (gamehallView.classList.contains('hidden')) return;
+    const count = hallChips.querySelector('[data-cat="rooms"] span'); if (count) count.textContent = String((lobbyState.rooms || []).length);
+    if (!gameSheet.open || !sheetGame?.room) return;
+    const rooms = roomsOf(sheetGame);
+    byId('gameSheetRooms').replaceChildren(...rooms.map(publicRoomRow));
+    byId('gameSheetRoomsBox').classList.toggle('hidden', !rooms.length);
+  }
+  function openGameSheet(g) {
+    sheetGame = g; paintColors(gameSheet, g); hallReturn();
+    byId('gameSheetArt').innerHTML = gameArtHtml(g);
+    byId('gameSheetName').textContent = g.name;
+    byId('gameSheetMeta').textContent = `${g.cats.map(catName).join(' · ')} · ${g.players}${g.soon ? ' · 준비 중' : ''}`;
+    byId('gameSheetIntro').textContent = g.intro;
+    byId('gameSheetHow').replaceChildren(...g.how.map((line) => hallEl('li', null, line)));
+    const actions = byId('gameSheetActions'); actions.replaceChildren();
+    const act = (label, cls, fn) => { const b = hallEl('button', cls, label); b.type = 'button'; b.addEventListener('click', fn); actions.append(b); return b; };
+    const create = byId('gameSheetCreate'); create.classList.add('hidden');
+    if (g.room) {
+      if (!g.soon) act('빠른 시작', 'primary', () => quickStart(g));
+      act('방 만들기', g.soon ? 'primary' : 'secondary', () => {
+        selectGame(g.room); hallBorrow(document.querySelector('.roomCreatePane'), create); create.classList.remove('hidden');
+        create.querySelector('input:checked, input, button')?.focus();
+      });
+    }
+    if (g.ai) act('AI 연습', 'ghost', () => { gameSheet.close(); playGame(g.ai); });
+    if (g.set) act('시작', 'primary', () => { gameSheet.close(); playGame(g.id); });
+    if (g.launch) act('시작', 'primary', () => { gameSheet.close(); if (g.launch === 'mines') openMines(); else byId('soloHerosurvBtn').click(); });
+    byId('gameSheetRule').textContent = g.room ? gameRules[g.room] || '' : '';
+    renderGameGuide(byId('gameSheetGuide'), g.room || (g.launch === 'mines' ? 'minesweeper' : g.id));
+    const guide = byId('gameSheetGuideBox'); guide.open = false;
+    guide.classList.toggle('hidden', !byId('gameSheetRule').textContent && !byId('gameSheetGuide').childElementCount);
+    if (!gameSheet.open) gameSheet.showModal();
+    renderGamehallRooms();
+    actions.querySelector('button')?.focus();
+  }
+  // 빠른 시작: the first room of this game still taking players, otherwise a new public room with the usual settings
+  async function quickStart(g) {
+    const open = roomsOf(g).find((r) => r.status === 'waiting' && (r.playerCount || 0) < (r.maxPlayers || 2));
+    if (open) { try { await joinPublicRoom(open.id); return; } catch (error) { showToast(error.message); } }
+    for (const [name, value] of [['roomVisibility', 'public'], ['roomAi', ''], ['omokMode', '1v1']]) { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; }
+    selectGame(g.room);
+    await createRoom();
+  }
+  gameSheet.addEventListener('close', () => { hallReturn(); sheetGame = null; if (hallCat === 'rooms' && !gamehallView.classList.contains('hidden')) renderGamehall(); });
+  byId('gameSheetClose').addEventListener('click', () => gameSheet.close());
+  byId('gamehallBackBtn').addEventListener('click', closeGamehall);
+  byId('gamehallMenuBtn').addEventListener('click', () => openGameMenu());
+  function paintSoundBtn() { // the 한판마당 screens' own sound setting (public/reflex/js/store.js)
+    const on = hallIcons?.Settings?.get('sound') !== false;
+    const b = byId('gamehallSoundBtn'); b.textContent = on ? '🔊 효과음' : '🔇 효과음'; b.setAttribute('aria-pressed', String(on));
+  }
+  byId('gamehallSoundBtn').addEventListener('click', () => { hallIcons?.Settings?.toggle('sound'); paintSoundBtn(); });
+  // Esc on the game hall: the sheet closes itself (a dialog); with nothing open, back to the island
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || gamehallView.classList.contains('hidden') || document.querySelector('dialog[open]') || event.target.matches?.('input, textarea')) return;
+    event.preventDefault(); closeGamehall();
+  });
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));
   document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });
@@ -2819,7 +2960,7 @@
   for (const tab of gameCard.querySelectorAll('[data-game-kind]')) tab.addEventListener('click', () => { gameTab.kind = tab.dataset.gameKind; showGameTab(); });
   // v1.10.63 keyboard in the game hall: arrow keys move among the buttons of one row of tabs, game cards or room cards;
   // Enter/Space press the focused one (native buttons), Tab still leaves the group
-  const ARROW_GROUPS = '.gameTabs, .gamePicker, .soloGamesPanel, #publicRoomList';
+  const ARROW_GROUPS = '.gameTabs, .gamePicker, .soloGamesPanel, #publicRoomList, .gamehallChips, .gamehallGrid, .gameSheetActions'; // v1.10.73: the game hall's chips, cards and sheet buttons
   document.addEventListener('keydown', event => {
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
     const group = step && event.target.closest?.(ARROW_GROUPS);
@@ -2887,6 +3028,7 @@
   // No room codes, session tokens, or baseball secrets are ever placed in lobby cards.
   function renderPublicRooms() {
     publicRoomList.replaceChildren();
+    renderGamehallRooms(); // v1.10.73: the game hall's own lists of these rooms
     const rooms = Array.isArray(lobbyState.rooms) ? lobbyState.rooms : [];
     if (!rooms.length) {
       const empty = document.createElement('p');
@@ -2895,8 +3037,11 @@
       publicRoomList.appendChild(empty);
       return;
     }
-    for (const room of rooms) {
-      // v1.10.63 room card: game badge + status chip, title, players, join/watch
+    for (const room of rooms) publicRoomList.appendChild(publicRoomRow(room));
+  }
+  // v1.10.63 room card: game badge + status chip, title, players, join/watch (v1.10.73: also in the game hall's sheet)
+  function publicRoomRow(room) {
+    {
       const row = document.createElement('div');
       row.className = 'publicRoomRow';
       row.dataset.status = room.status || 'playing';
@@ -2929,7 +3074,7 @@
         finally { enter.disabled = false; }
       });
       row.append(main, enter);
-      publicRoomList.appendChild(row);
+      return row;
     }
   }
 

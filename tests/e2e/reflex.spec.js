@@ -285,3 +285,36 @@ test('게임방 AI: 오목 방을 AI 상대로 만들고 두면 AI가 받아 둔
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.73 게임 실행 규약 (IDEAS #future-gamehall-renewal): a quest opens a game at its level at once and gets its result
+// (a time goal: at most); leaving before the end answers done:false and goes back to the island, not the game hall
+test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작해 결과를 돌려주고, 나가면 done:false', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, '규약');
+  const { page } = a;
+  const play = (opts) => page.evaluate((o) => { window.__res = null; window.GameLaunch.play('reaction', o).then((r) => { window.__res = r; }); }, opts);
+  await play({ place: 'quest', level: 'easy', goal: 60000 });
+  await expect(page.locator('#hud')).toBeVisible(); // started at once: no level choice
+  const stage = page.locator('#stage');
+  const green = () => page.evaluate(() => { const c = document.getElementById('stage'); const [r, g] = c.getContext('2d').getImageData(Math.floor(c.width / 2), Math.floor(c.height * 0.85), 1, 1).data; return g > 150 && r < 120; });
+  for (let round = 0; round < 5; round += 1) {
+    await expect.poll(green, { timeout: 10000, intervals: [50] }).toBe(true);
+    await page.waitForTimeout(150);
+    await stage.click();
+    await page.waitForTimeout(400);
+    await stage.click();
+  }
+  await expect.poll(() => page.evaluate(() => window.__res), { timeout: 15000 }).toMatchObject({ game: 'reaction', level: 'easy', done: true });
+  const res = await page.evaluate(() => window.__res);
+  expect(res.score).toBeGreaterThan(0); expect(typeof res.run).toBe('string'); // the server's round, to check it by
+  // left on its own page: done:false, back where the quest was (not the game hall)
+  await play({ place: 'quest', level: 'easy', goal: 1 });
+  await expect(page.locator('#hud')).toBeVisible();
+  await page.locator('#reflexQuitBtn').click();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__res)).toEqual({ game: 'reaction', done: false });
+  await expect(page.locator('#reflexView')).toBeHidden();
+  await expect(page.locator('#gamehallView')).toBeHidden();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
