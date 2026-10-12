@@ -928,3 +928,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .adminLoginForm label{color:#7a6650}
 :root[data-theme="light"] .adminLoginForm input{border:1px solid #d6c3a5;background:#f7efe1;color:#fff}
 :root[data-theme="light"] .homeAppHint{color:#5e4d3b}
+:root[data-theme="light"] body.stickEdit .islandStick{outline:2px dashed #facc15}
+:root[data-theme="light"] .stickEditBar{background:rgba(247,239,225,.92);border:1px solid #d6c3a5;color:#3d3024}
+:root[data-theme="light"] .stickEditBar span{color:#8a5a00}

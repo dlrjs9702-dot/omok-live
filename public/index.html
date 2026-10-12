@@ -110,6 +110,8 @@
         <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
         <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
         <div id="islandStick" class="islandStick" aria-hidden="true"><span></span></div>
+        <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
+        <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조이스틱 위치·크기 조정"><span>조이스틱을 끌어서 옮기세요</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="4" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
           <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
@@ -1109,6 +1111,7 @@
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
         <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
+        <button id="stickEditBtn" type="button" class="ghost hidden">조이스틱 위치·크기</button>
         <p id="homeAppHint" class="homeAppHint hidden">전체화면처럼 쓰려면: Safari 아래 공유 버튼 → 「홈 화면에 추가」. 홈 화면의 섬 아이콘으로 열면 주소창 없이 꽉 찬 화면이 됩니다.</p>
       </section>
       <button id="logoutBtn" type="button" class="danger">접속 종료</button>

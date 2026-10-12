@@ -86,3 +86,56 @@ test('모바일 아일랜드: 조이스틱으로 걷고, 근처 안내를 눌러
     })).toBe(true);
   }
 });
+
+// v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): 메뉴 → 환경설정 → 「조이스틱 위치·크기」, drag the stick, size it, 완료;
+// kept after a reload; 기본값 puts it back. Nothing walks while adjusting.
+test('모바일 조이스틱: 위치 옮기기·크기 바꾸기, 새로고침 뒤 유지, 기본값으로 되돌리기', async ({ page, request }) => {
+  test.setTimeout(90000);
+  const admin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const issued = (await post(request, '/api/admin/keys', admin, { label: '조이스틱조정' })).data;
+  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+  await post(request, '/api/avatar/gender', JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token, { gender: 'male' });
+  await page.locator('#lobbyView').waitFor({ state: 'visible' });
+  await page.evaluate(() => {
+    localStorage.removeItem('gc.testClassic');
+    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+  const stick = page.locator('#islandStick');
+  const start = await stick.boundingBox();
+  await page.locator('#gameMenuBtn').click();
+  await page.locator('#stickEditBtn').click();
+  await expect(page.locator('#stickEditBar')).toBeVisible();
+
+  const before = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+  const cdp = await page.context().newCDPSession(page);
+  const cx = start.x + start.width / 2; const cy = start.y + start.height / 2;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + 120, y: cy - 150, id: 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const moved = await stick.boundingBox();
+  expect(moved.x - start.x).toBeGreaterThan(100);
+  expect(start.y - moved.y).toBeGreaterThan(130);
+  const after = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeLessThan(0.2); // adjusting, not walking
+
+  await page.locator('#stickSizeInput').fill('160');
+  await expect.poll(async () => Math.round((await stick.boundingBox()).width)).toBe(160);
+  await page.locator('#stickDoneBtn').click();
+  await expect(page.locator('#stickEditBar')).toBeHidden();
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+  const kept = await stick.boundingBox();
+  expect(Math.round(kept.width)).toBe(160);
+  expect(Math.abs(kept.x + kept.width / 2 - (moved.x + moved.width / 2))).toBeLessThan(4);
+
+  await page.locator('#gameMenuBtn').click();
+  await page.locator('#stickEditBtn').click();
+  await page.locator('#stickResetBtn').click();
+  await page.locator('#stickDoneBtn').click();
+  const reset = await stick.boundingBox();
+  expect(Math.round(reset.width)).toBe(Math.round(start.width));
+  expect(Math.abs(reset.x - start.x)).toBeLessThan(2);
+});

@@ -1523,12 +1523,59 @@
     if (event.pointerId !== stickPointer) return;
     stickPointer = null; stickKnob.style.transform = ''; plaza.controller?.setStick?.(0, 0);
   }
+  // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): where its centre sits (a share of the island screen, so a turned phone
+  // keeps it in the same corner) and how big it is, kept on this device; 메뉴 → 환경설정 → 「조이스틱 위치·크기」 opens the
+  // adjusting: the stick is dragged to its place and the slider sizes it, nothing walks meanwhile.
+  const STICK_KEY = 'gc.stick'; const STICK_MIN = 80; const STICK_MAX = 180;
+  let stickPlace = null; // { x, y, size } or null (the default corner and size)
+  try { const saved = JSON.parse(localStorage.getItem(STICK_KEY) || 'null'); if (saved && [saved.x, saved.y, saved.size].every(Number.isFinite)) stickPlace = saved; } catch {}
+  const clampStick = (p) => ({ x: Math.min(0.95, Math.max(0.05, p.x)), y: Math.min(0.95, Math.max(0.05, p.y)), size: Math.min(STICK_MAX, Math.max(STICK_MIN, Math.round(p.size))) });
+  function applyStick() {
+    const s = islandStick.style;
+    if (!stickPlace) { for (const k of ['left', 'top', 'bottom', 'width', 'height', '--stick-knob']) s.removeProperty(k); return; }
+    const { x, y, size } = stickPlace;
+    s.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; s.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; s.bottom = 'auto';
+    s.width = s.height = `${size}px`; s.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
+  }
+  function saveStick() { try { if (stickPlace) localStorage.setItem(STICK_KEY, JSON.stringify(stickPlace)); else localStorage.removeItem(STICK_KEY); } catch {} }
+  applyStick();
+  const stickEditBar = byId('stickEditBar'); const stickSizeInput = byId('stickSizeInput');
+  const stickEditing = () => document.body.classList.contains('stickEdit');
+  function currentStick() { // the stick's place now, whether saved or the CSS default
+    const stage = plazaStage.getBoundingClientRect(); const box = islandStick.getBoundingClientRect();
+    return { x: (box.left + box.width / 2 - stage.left) / stage.width, y: (box.top + box.height / 2 - stage.top) / stage.height, size: box.width };
+  }
+  function setStickEditing(on) {
+    document.body.classList.toggle('stickEdit', on); stickEditBar.classList.toggle('hidden', !on);
+    if (on) { plaza.controller?.setStick?.(0, 0); stickSizeInput.value = String(Math.round(currentStick().size)); }
+  }
+  byId('stickEditBtn').classList.toggle('hidden', !touchIsland);
+  byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
+  byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
+  byId('stickResetBtn').addEventListener('click', () => { stickPlace = null; applyStick(); saveStick(); stickSizeInput.value = String(Math.round(currentStick().size)); });
+  stickSizeInput.addEventListener('input', () => { stickPlace = clampStick({ ...currentStick(), size: Number(stickSizeInput.value) }); applyStick(); saveStick(); });
+  let stickDrag = null;
   islandStick.addEventListener('pointerdown', (event) => {
     event.preventDefault();
+    if (stickEditing()) { // adjusting: the finger carries the stick
+      if (stickDrag) return;
+      const now = currentStick(); const stage = plazaStage.getBoundingClientRect();
+      stickDrag = { id: event.pointerId, dx: now.x - (event.clientX - stage.left) / stage.width, dy: now.y - (event.clientY - stage.top) / stage.height, size: now.size };
+      islandStick.setPointerCapture(event.pointerId); return;
+    }
     if (stickPointer !== null) return; // the first finger keeps the stick until it lets go (Codex review)
     stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event);
   });
-  islandStick.addEventListener('pointermove', (event) => { if (event.pointerId === stickPointer) moveStick(event); });
+  islandStick.addEventListener('pointermove', (event) => {
+    if (stickDrag?.id === event.pointerId) {
+      const stage = plazaStage.getBoundingClientRect();
+      stickPlace = clampStick({ x: (event.clientX - stage.left) / stage.width + stickDrag.dx, y: (event.clientY - stage.top) / stage.height + stickDrag.dy, size: stickDrag.size });
+      applyStick(); return;
+    }
+    if (event.pointerId === stickPointer) moveStick(event);
+  });
+  const endStickDrag = (event) => { if (stickDrag?.id === event.pointerId) { stickDrag = null; saveStick(); } };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) islandStick.addEventListener(type, endStickDrag);
   islandStick.addEventListener('pointerup', endStick);
   islandStick.addEventListener('pointercancel', endStick);
   islandStick.addEventListener('lostpointercapture', endStick); // never left held if the browser drops the touch
