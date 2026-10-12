@@ -1932,3 +1932,5 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .gamePanelHead strong{font-size:.9rem}
 .halliPanel #halliStatus.gamePanelHead{color:#f8fafc;text-shadow:none}
 .gostopMyPoints{display:none}
+/* v1.10.73 게임방 틀 · 말 게임: 윷의 던진 결과 줄, 팬데믹의 진행 표시도 같은 바 */
+.yutThrowSummary.gamePanelHead{justify-content:space-between}
