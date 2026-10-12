@@ -1050,11 +1050,13 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  // the owner is what Space talks to (a walking islander or a facility may come nearer for a moment on CI)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 15000 }).toBe(`ev:lost_owner:${lost.id}`);
   await page.waitForTimeout(800); // the camera settles behind me
   const before = await page.evaluate(() => window.PlazaDebug().camera);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   const dialog = page.locator('#plazaDialog');
-  await expect(dialog).toHaveClass(/talkMode/);
+  await expect(dialog).toHaveClass(/talkMode/, { timeout: 15000 }); // after the server answers the talk (slow on CI)
   const box = await dialog.boundingBox(); const view = page.viewportSize();
   expect(box.y + box.height).toBeGreaterThan(view.height - 60); // at the bottom
   expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
@@ -1065,6 +1067,11 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await expect(lines.nth(1)).toBeVisible();
   await expect(dialog).toBeVisible(); // that Space was the next line, not the answer
   expect(await page.evaluate(() => window.PlazaDebug().talkView)).toMatchObject({ shot: true });
+  // v1.10.64: the arrows reach 닫기 too (the answers, then 닫기, round again)
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#plazaCloseBtn')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.lostRequest button').first()).toBeFocused();
   await page.waitForTimeout(900);
   const during = await page.evaluate(() => window.PlazaDebug().camera);
   expect(Math.hypot(during.x - before.x, during.y - before.y, during.z - before.z)).toBeGreaterThan(2);

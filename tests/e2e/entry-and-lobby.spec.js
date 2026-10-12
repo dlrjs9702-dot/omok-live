@@ -11,6 +11,9 @@ test.describe('게임센터 입장과 로비', () => {
     await expect(page.locator('#adminLoginForm')).toBeVisible();
     await expect(page.locator('#adminPassword')).toHaveAttribute('type', 'password');
     await expect(page.locator('#lobbyView')).toBeHidden();
+    // v1.10.64: the game room's 💬·🎮 round buttons are not on the first screen (a tall phone showed them)
+    await expect(page.locator('#chatFloatBtn')).toBeHidden();
+    await expect(page.locator('#gameInfoFloatBtn')).toBeHidden();
   });
 
   test('관리자는 로비에 들어가 게임을 선택할 수 있다', async ({ page }) => {
@@ -124,6 +127,17 @@ test.describe('게임센터 입장과 로비', () => {
     await page.locator('#createRoomBtn').click();
     await expect(page.locator('#roomView')).toBeVisible();
 
+    // v1.10.64: no 접속 종료 in the room's bar -- the menu has it (☰ 메뉴 here, for a phone)
+    await expect(page.locator('#roomLogoutBtn')).toHaveCount(0);
+    await page.locator('#roomMenuBtn').click();
+    await expect(page.locator('#gameMenuDialog #logoutBtn')).toBeVisible();
+    await page.keyboard.press('Escape');
+    // v1.10.64: Tab goes round the room only -- past the last control back to the first, Shift+Tab the other way
+    const ringEnds = () => page.evaluate(() => { const el = document.activeElement; return { inRoom: Boolean(el?.closest('#roomView') || el?.matches('.chatFloatBtn')), id: el?.id || el?.textContent?.trim().slice(0, 12) }; });
+    await page.locator('#roomMenuBtn').focus();
+    for (let i = 0; i < 60; i += 1) { await page.keyboard.press('Tab'); expect((await ringEnds()).inRoom).toBe(true); }
+    await page.locator('#statusText').click(); await page.keyboard.press('Shift+Tab');
+    expect((await ringEnds()).inRoom).toBe(true);
     await page.locator('#statusText').click(); // nothing focused
     await page.keyboard.press('Enter');
     await expect(page.locator('#chatInput')).toBeFocused();

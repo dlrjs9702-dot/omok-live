@@ -24,7 +24,9 @@ async function adminToken(request) {
 // A guest with an account in a real browser page (lobby), and the points to shop with.
 async function shopper(browser, request, label, points = 0, gender = 'male', prepareContext = null) {
   const admin = await adminToken(request);
-  const issued = (await post(request, '/api/admin/keys', admin, { label })).data;
+  let issued = (await post(request, '/api/admin/keys', admin, { label })).data;
+  // a long run (a 40-minute shard) outlives the cached admin session (30 minutes without input): log in again
+  if (!issued.html) { cachedAdmin = null; issued = (await post(request, '/api/admin/keys', await adminToken(request), { label })).data; }
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   if (prepareContext) await prepareContext(context);
   const page = await context.newPage();

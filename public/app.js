@@ -40,7 +40,7 @@
   const myInfoCloseBtn = document.getElementById('myInfoCloseBtn');
   const myInfoSkinBody = document.getElementById('myInfoSkinBody');
   const myInfoSkinStatus = document.getElementById('myInfoSkinStatus');
-  const roomLogoutBtn = document.getElementById('roomLogoutBtn');
+
   const logoutDialog = document.getElementById('logoutDialog');
   const logoutCancelBtn = document.getElementById('logoutCancelBtn');
   const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
@@ -1414,6 +1414,7 @@
 
   function showView(name) {
     if (name === 'gate') queueMicrotask(() => openAccountGate()); // v1.10.63: login / 내 계정 / id setup
+    document.body.classList.toggle('roomMode', name === 'room'); // v1.10.64: the room's 💬·🎮 buttons only in a room
     gateView.classList.toggle('hidden', name !== 'gate');
     lobbyView.classList.toggle('hidden', name !== 'lobby');
     roomView.classList.toggle('hidden', name !== 'room');
@@ -1944,11 +1945,14 @@
     if (event.key === ' ' || event.key === 'Enter') {
       const pending = lostCard.querySelector('.talkPending');
       if (pending) { event.preventDefault(); pending.classList.remove('talkPending'); return; }
-      if (!buttons.includes(event.target)) { event.preventDefault(); (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); }
-      return; // a focused answer is pressed by the browser
+      if (!buttons.includes(event.target) && event.target !== byId('plazaCloseBtn')) { event.preventDefault(); (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); }
+      return; // a focused answer (or 닫기) is pressed by the browser
     }
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
-    if (step && buttons.length) { event.preventDefault(); const at = buttons.indexOf(event.target); buttons[at < 0 ? (step > 0 ? 0 : buttons.length - 1) : (at + step + buttons.length) % buttons.length].focus(); return; }
+    if (step) { // the answers, then 닫기 (v1.10.64: 닫기 by the arrows too, not only by Tab)
+      const ring = [...buttons, byId('plazaCloseBtn')];
+      event.preventDefault(); const at = ring.indexOf(event.target); ring[at < 0 ? (step > 0 ? 0 : ring.length - 1) : (at + step + ring.length) % ring.length].focus(); return;
+    }
     if (/^[1-9]$/.test(event.key) && buttons[Number(event.key) - 1]) { event.preventDefault(); buttons[Number(event.key) - 1].click(); }
   });
   function openLostRequest(id, points) {
@@ -9328,7 +9332,20 @@
     } catch (err) { say(err.message, true); }
   });
   logoutBtn.addEventListener('click', requestLogout);
-  roomLogoutBtn.addEventListener('click', requestLogout);
+  // v1.10.64 (사용자 2026-10-12): in a room Tab goes round the room's own controls -- from the last back to the first
+  // (Shift+Tab the other way), never out to the browser's bar or the hidden pages. An open window keeps its own Tab.
+  const FOCUSABLE = 'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey || roomView.classList.contains('hidden') || document.querySelector('dialog[open]')) return;
+    const ring = [...roomView.querySelectorAll(FOCUSABLE), ...document.querySelectorAll('.chatFloatBtn')]
+      .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[inert], details:not([open]) > :not(summary)'));
+    if (!ring.length) return;
+    const at = ring.indexOf(document.activeElement);
+    const next = at < 0 ? (event.shiftKey ? ring.length - 1 : 0) : event.shiftKey && at === 0 ? ring.length - 1 : !event.shiftKey && at === ring.length - 1 ? 0 : null;
+    if (next === null) return; // inside the ring: the browser's own order
+    event.preventDefault(); ring[next].focus();
+  });
+  byId('roomMenuBtn').addEventListener('click', () => openGameMenu()); // v1.10.64: the room's 접속 종료 is in the menu (Esc, or this on a phone)
   logoutCancelBtn.addEventListener('click', () => logoutDialog.close());
   logoutConfirmBtn.addEventListener('click', () => { logoutDialog.close(); logout(); });
   createRoomBtn.addEventListener('click', createRoom);

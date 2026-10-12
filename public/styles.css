@@ -1706,7 +1706,7 @@ body.touchIsland .plazaHint { pointer-events: auto; cursor: pointer; z-index: 3;
 body.photoMode .islandStick { visibility: hidden !important; }
 body.touchIsland .islandChatPanel { width: calc(100% - 28px); height: min(34%, 300px); }
 body.touchIsland .islandChatForm { width: calc(100% - 28px); bottom: 200px; }
-body.plazaMode .chatFloatBtn { display: none; } /* v1.10.62: the game room's narrow-screen 💬·🎮 buttons, not on the island (it has its own chat) */
+body:not(.roomMode) .chatFloatBtn { display: none; } /* the game room's narrow-screen 💬·🎮 buttons: only in a room (v1.10.62 not on the island; v1.10.64 not on the first screen or the lobby either) */
 /* v1.10.62: a phone shows the whole island on its screen, upright or turned sideways -- the island
    filling the rest (dvh: what the browser's own bars leave), and on a short (sideways) screen a smaller map and stick */
 body.touchIsland.plazaMode .shell { padding-top: 6px; padding-bottom: 6px; }
