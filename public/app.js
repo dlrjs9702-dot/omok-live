@@ -5541,7 +5541,8 @@
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
     // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
     const pointRule = state.points?.policy === 'entry' ? `참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
-      : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각` : '';
+      : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각`
+      : state.points?.policy === 'practice' ? 'AI 연습 · 포인트·전적 없음' : ''; // v1.10.72
     roomPointRule.classList.toggle('hidden', !pointRule);
     roomPointRule.textContent = pointRule;
     roomPointRule.title = state.points?.policy === 'entry'

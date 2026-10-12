@@ -1234,7 +1234,8 @@ function scheduleAiMove(room) {
   RoomAi.think(room.gameType, g, ai.seat, ai.level).then(async (move) => {
     await new Promise((resolve) => setTimeout(resolve, Math.max(0, 500 - (nowMs() - started))));
     ai.thinking = false;
-    if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.status !== 'playing' || g.turn !== ai.seat) return;
+    syncGamePause(room, false); // the person may have dropped while the AI thought (Codex review): then the idle tick asks again
+    if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.status !== 'playing' || g.turn !== ai.seat || g.paused) return;
     const verdict = move && (getGame(room.gameType)).applyMove(g, move.x, move.y, ai.seat, nowIso());
     if (!verdict?.legal) { console.error('AI 착수 실패:', room.gameType, JSON.stringify(move)); return; }
     if (verdict.passed) appendSystemMessage(room, `${verdict.passed === 'black' ? '흑' : '백'}은 둘 수 있는 곳이 없어 자동으로 패스했습니다.`);
@@ -1526,8 +1527,9 @@ function publicRoom(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   return {
     // v1.7.3: the room's point rule and this game's entry state (no balances, no account ids).
-    points: { policy: pointPolicy(room.gameType), entryFee: pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
-      burnPercent: pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
+    // v1.10.72: an AI room is free practice (Codex review: it showed the entry rule it does not charge)
+    points: { policy: room.ai ? 'practice' : pointPolicy(room.gameType), entryFee: !room.ai && pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
+      burnPercent: room.ai ? 0 : pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
       entry: room.entry ? { n: room.entry.n, status: room.entry.status, fee: room.entry.fee, pool: room.entry.pool, players: room.entry.participants.length,
         each: room.entry.each ?? null, winners: room.entry.winnerCount ?? null, burned: room.entry.burned ?? null } : null },
     visibility: room.visibility,

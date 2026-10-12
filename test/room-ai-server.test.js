@@ -24,6 +24,7 @@ test('게임방 AI: 자리를 고르면 AI가 맞은편에, 두면 AI가 받아 
   assert.equal((await req('/api/rooms', a, { gameType: 'connect4', ai: 'genius' })).status, 400);
   const created = (await req('/api/rooms', a, { gameType: 'connect4', visibility: 'public', ai: 'normal' })).data.state;
   assert.equal(created.visibility, 'private', 'AI 방은 비공개 연습');
+  assert.deepEqual([created.points.policy, created.points.entryFee], ['practice', 0]); // shown as free practice (Codex review)
   const before = await balance();
   assert.equal((await req('/api/room/choose-role', a, { choice: 'white' })).status, 200); // the AI takes 흑(빨강) and moves first
   const room = () => req('/api/room', a).then((r) => r.data.state);
