@@ -30,7 +30,7 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   assert.deepEqual(ids.sort(), ['accessories', 'admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'dye', 'faces', 'games', 'hair', 'map', 'missions', 'naming', 'records', 'shop', 'townhall', 'trader']);
   const terrain = read('public/plaza/island-terrain.js'); // v1.10.7: the facility spots moved with the island's shape
   for (const id of ids) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
-  for (const target of ['openSkinShop', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'lobbyCard']) {
+  for (const target of ['openSkinShop', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'openGamehall']) { // v1.10.73: the game hall is its own screen
     assert.match(facilities + app.match(/const publicRoomsCardEl = .*/)[0], new RegExp(target), `${target} 재사용`);
   }
 
