@@ -156,6 +156,26 @@ test.describe('게임센터 입장과 로비', () => {
     await expect(page.locator('#menuLeaveRoomBtn')).toBeHidden(); // not in the lobby
   });
 
+  // v1.10.66 홈 화면 앱: where the page cannot go fullscreen (an iPhone) the menu shows how to add the island icon instead
+  test('메뉴: 전체화면이 없는 곳에서는 홈 화면에 추가 안내, 있는 곳에서는 전체화면 버튼', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name.includes('mobile'), 'PC 전용 검증');
+    for (const fullscreen of [true, false]) {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      if (!fullscreen) await page.addInitScript(() => Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: () => false }));
+      await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `100.76.${fullscreen ? 1 : 2}.${process.pid % 250 + 1}` });
+      await page.goto('/');
+      await page.locator('#adminPassword').fill(adminPassword);
+      await page.getByRole('button', { name: '관리자로 입장' }).click();
+      await expect(page.locator('#lobbyView')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#gameMenuDialog')).toHaveAttribute('open', '');
+      await expect(page.locator('#fullscreenBtn')).toBeVisible({ visible: fullscreen });
+      await expect(page.locator('#homeAppHint')).toBeVisible({ visible: !fullscreen });
+      await context.close();
+    }
+  });
+
   test('헬스 엔드포인트는 게임 서버 준비 상태를 반환한다', async ({ request }) => {
     const response = await request.get('/health');
 

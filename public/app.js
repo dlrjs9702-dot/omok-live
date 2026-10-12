@@ -1548,6 +1548,10 @@
       fullscreenBtn.textContent = on ? '창 모드' : '전체화면'; fullscreenBtn.setAttribute('aria-pressed', String(on));
     });
   }
+  // v1.10.66 홈 화면 앱: where a page cannot go fullscreen (an iPhone), the menu tells how to get the same -- the island
+  // icon on the home screen opens without the address bar. Not shown once opened that way.
+  const homeApp = window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || navigator.standalone === true;
+  byId('homeAppHint').classList.toggle('hidden', Boolean(document.fullscreenEnabled || homeApp));
   // v1.10.63 메뉴 (IDEAS 2026-10-11): no account bar; as in other games, Esc opens one window -- 내 정보, 환경설정
   // (theme, fullscreen), 관리자 창 for an admin, 접속 종료. The ☰ button opens it where there is no Esc (a phone).
   // Esc does this only with nothing else to close or cancel: an open window, typing, the photo mode, a gathering.
