@@ -1031,11 +1031,14 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
     }
     await a.page.waitForTimeout(500);
   }
-  // standing right where an islander is: it steps out of my way instead of walking through me
-  const target = (await islanders(a.page))[0];
+  // standing right where an islander is: it steps out of my way instead of walking through me -- one the island's request
+  // has not taken (v1.10.73: a resident held for a photo or lost-thing request stays at its place by design; picking
+  // islander 0 failed whenever the open request held it, as in the 2026-10-11 CI run past midnight -- reproduced at
+  // 00:02 and 14:00 KST alike)
+  const target = (await islanders(a.page)).find((w) => !w.held);
   await a.page.evaluate(({ x, z }) => window.PlazaDebug().teleport(x, z), target);
   await a.page.waitForTimeout(400);
-  const gap = await a.page.evaluate(() => { const d = window.PlazaDebug(); const w = d.wanderers[0]; return { d: Math.hypot(w.x - d.x, w.z - d.z), min: d.wandererR + d.radiusAt(d.x, d.z) }; });
+  const gap = await a.page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); return { d: Math.hypot(w.x - d.x, w.z - d.z), min: d.wandererR + d.radiusAt(d.x, d.z) }; }, target.n);
   expect(gap.d).toBeGreaterThan(gap.min - 0.05);
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
