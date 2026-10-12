@@ -23,7 +23,8 @@ test('순발력 판정: 최소 시간·사람 점수 범위·최소 노력', () 
   assert.equal(Reflex.judge('reaction', 'normal', 50, 20000), 'score'); // nobody reacts in 50 ms
   assert.equal(Reflex.judge('reaction', 'normal', 240, 20000), 'ok');
   assert.equal(Reflex.judge('numbers', 'normal', 1000, 60000), 'score'); // 25 numbers in a second
-  assert.equal(Reflex.judge('numbers', 'normal', 12000, 9000), 'fast'); // shorter than preview + time
+  assert.equal(Reflex.judge('numbers', 'normal', 12000, 5000), 'fast'); // shorter than preview + 0.1 s a number
+  assert.equal(Reflex.judge('numbers', 'normal', 20000, 15000), 'ok'); // 10 s played + 10 wrong taps (penalty is not real time)
   assert.equal(Reflex.judge('numbers', 'normal', 12000, 16500), 'ok');
   assert.equal(Reflex.judge('rhythm', 'easy', 2.5, 61000), 'score');
 });

@@ -23,7 +23,7 @@ export function mount({ api, onExit }) {
   const frame = view.querySelector('.reflexFrame');
   const menu = document.getElementById('reflexMenu');
   const result = document.getElementById('reflexResult');
-  let info = null; let game = null; let runId = null; let shown = 'list';
+  let info = null; let game = null; let runId = null; let shown = 'list'; let startSeq = 0;
   const levels = {}; // game id -> the level last played
   try { Object.assign(levels, JSON.parse(localStorage.getItem('gc.reflexLevels') || '{}')); } catch {}
 
@@ -46,7 +46,7 @@ export function mount({ api, onExit }) {
   }
 
   function showList() {
-    shown = 'list'; game = null;
+    shown = 'list'; game = null; startSeq += 1;
     const list = el('div', 'reflexList');
     for (const g of GAMES) {
       const b = button('reflexCard', '', () => showGame(g));
@@ -61,7 +61,7 @@ export function mount({ api, onExit }) {
   }
 
   function showGame(g) {
-    shown = 'game'; game = g;
+    shown = 'game'; game = g; startSeq += 1;
     const box = el('div', 'reflexGame');
     box.style.setProperty('--c1', g.color);
     const how = el('ul', 'reflexHow');
@@ -88,12 +88,15 @@ export function mount({ api, onExit }) {
 
   async function start(g, status) {
     unlockAudio(); // the first press opens the sound (phones need a touch first)
-    try { runId = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level: levelOf(g) }) })).id; }
-    catch (error) { status.textContent = error.message; return; }
-    shown = 'play'; game = g;
+    const seq = ++startSeq; const level = levelOf(g); // a screen change or a later press makes this answer stale (Codex review)
+    let id;
+    try { id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) })).id; }
+    catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
+    if (seq !== startSeq || view.classList.contains('hidden')) return;
+    runId = id; shown = 'play'; game = g;
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
-    startGame(g, { best: bestOf(g), level: levelOf(g) });
+    startGame(g, { best: bestOf(g), level });
   }
 
   async function finish(g, r) {
@@ -134,7 +137,7 @@ export function mount({ api, onExit }) {
     showGame(game);
   }
   function exit() { stop(); onExit(); }
-  function stop() { stopGame(); runId = null; frame.classList.remove('playing'); }
+  function stop() { stopGame(); runId = null; startSeq += 1; frame.classList.remove('playing'); }
 
   document.getElementById('reflexQuitBtn').addEventListener('click', quit);
   document.addEventListener('keydown', (event) => {
@@ -150,7 +153,10 @@ export function mount({ api, onExit }) {
     async open() {
       stop(); result.classList.add('hidden'); menu.classList.remove('hidden');
       showList();
-      try { info = await api('/api/solo/reflex'); showList(); } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); }
+      try { // the list is usable meanwhile: redraw only what still shows (Codex review)
+        info = await api('/api/solo/reflex');
+        if (shown === 'list') showList(); else if (shown === 'game') showGame(game);
+      } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); }
     },
     stop,
   };
