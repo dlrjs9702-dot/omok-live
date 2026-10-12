@@ -259,7 +259,11 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // ground (no flat board with a cut edge), with a faint mottling along it; the areas differ a little in colour --
   // pale paving to the hall, warm stone on the shop street, earth up the hill and in the woods, sand to the harbour.
   const paveMat = mat(0xf3e6c8);
-  const WALK_COLORS = [0xefe4cc, 0xe8d6b4, 0xdcc59a, 0xefdcb4, 0xd9c391, 0xe8d6ad, 0xdcc59a];
+  // v1.10.73 길 3단계: 마을 길 (the hall, the shop street, and the climb and harbour walks within TOWN_R of the plaza),
+  // 산책로 (the ring, those two walks beyond the town), 오솔길 (the nature area, the gazebo) -- one colour each
+  const TOWN_R = 32;
+  const tierAt = (wi, x, z) => (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
+  const TIER_COLOR = { town: 0xe7e1d3, walk: 0xe6d8bd, trail: 0xcdb48c };
   const pathMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
   const grassEdge = new THREE.Color(0xa7d483);
   const plazaPaving = new THREE.Color(0xf3e6c8);
@@ -284,9 +288,12 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const m = new THREE.Mesh(g, pathMat); m.receiveShadow = true; scene.add(m); return m;
   };
   for (const [wi, w] of walkCurves.entries()) {
-    let run = [];
-    const flush = () => { if (run.length > 1) pathStrip(run, w.w, WALK_COLORS[wi % WALK_COLORS.length]); run = []; };
-    for (const p of w.pts) { if (onBridge(p[0], p[1]) || streamDist(p[0], p[1]) < STREAM_HALF + 0.4) flush(); else run.push(p); }
+    let run = []; let tier = null;
+    const flush = () => { if (run.length > 1) pathStrip(run, tier === 'trail' ? w.w * 0.6 : w.w, TIER_COLOR[tier]); run = run.slice(-1); };
+    for (const p of w.pts) {
+      if (onBridge(p[0], p[1]) || streamDist(p[0], p[1]) < STREAM_HALF + 0.4) { flush(); run = []; continue; }
+      const t = tierAt(wi, p[0], p[1]); if (tier && t !== tier) flush(); tier = t; run.push(p);
+    }
     flush();
   }
   // v1.10.13: every building off the plaza gets a short path from its door to the nearest walk (doors no longer open
@@ -302,7 +309,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     const n = Math.max(2, Math.ceil(Math.hypot(end[0] - door[0], end[1] - door[1]) / 0.8));
     const pts = Array.from({ length: n + 1 }, (_, k) => [door[0] + ((end[0] - door[0]) * k) / n, door[1] + ((end[1] - door[1]) * k) / n]);
     if (pts.some(([x, z]) => streamDist(x, z) < STREAM_HALF + 0.4)) continue;
-    pathStrip(pts, 1.7, WALK_COLORS[best.wi % WALK_COLORS.length]);
+    pathStrip(pts, 1.7, TIER_COLOR[tierAt(best.wi, best.x, best.z)]);
   }
   const disc = (x, z, r, material, lift = 0.04, seg = 48) => { const m = new THREE.Mesh(keep(new THREE.CircleGeometry(r, seg)), material); m.rotation.x = -Math.PI / 2; m.position.set(x, land(x, z) + lift, z); m.receiveShadow = true; scene.add(m); return m; };
   disc(0, 0, PLAZA_R, paveMat, 0.03, 64);
@@ -500,19 +507,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const edgeStones = []; const edgeTiles = []; const edgeSeason = []; const edgeFlowers = [];
   const busy = (x, z) => T.inTownhall(x, z, 2) || Math.hypot(x, z) < PLAZA_R + 1.5 || Math.hypot(x, z + 44) < 10 || onBridge(x, z) || BUILDINGS.some((s) => Math.hypot(x - s.x, z - s.z) < 4.5);
   const along = (pts, step, fn) => { let acc = 0; for (let i = 1; i < pts.length; i += 1) { const [x0, z0] = pts[i - 1]; const [x1, z1] = pts[i]; const l = Math.hypot(x1 - x0, z1 - z0); acc += l; if (acc < step) continue; acc = 0; fn(x1, z1, (x1 - x0) / (l || 1), (z1 - z0) / (l || 1), i); } };
-  walkCurves.forEach((w, wi) => along(w.pts, 1.3, (x, z, dx, dz, i) => {
-    for (const side of [-1, 1]) {
-      const h = hash(x + side, z, wi); const off = w.w / 2 + 0.1 + hash(z, x, i) * 0.06; const px = x - dz * off * side; const pz = z + dx * off * side;
-      if (busy(px, pz) || !walkable(px, pz) || streamDist(px, pz) < STREAM_HALF + 0.6) continue;
-      if (h < 0.2) edgeStones.push({ x: px, z: pz, s: 0.1 + hash(px, pz) * 0.1 });
-      else if (h < 0.66) {
-        const marble = T.inTownhall(px, pz, 8);
-        if (wi === 1 || Math.hypot(px, pz) < 32 || marble) edgeTiles.push({ x: px, z: pz, r: -Math.atan2(dz, dx), marble });
-        else if (h < 0.42 || hash(px, pz, 37) > 0.06) edgeStones.push({ x: px, z: pz, s: 0.16 });
-        else edgeSeason.push({ x: px, z: pz, s: 0.15, r: -Math.atan2(dz, dx), v: 2 });
-      } else if (h < 0.82) edgeFlowers.push({ x: px, z: pz, c: Math.floor(h * 50) % 5 });
-    }
-  }));
+  // v1.10.73: the walks' own edges are the path tiers below (the stream banks keep their soft scatter)
   streamCurves.forEach((st, si) => along(st, 1.1, (x, z, dx, dz, i) => {
     if (coastDist(x, z) < 3) return;
     for (const side of [-1, 1]) {
@@ -539,8 +534,76 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
   instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, ground(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
-  const curb = keep(mergeColored([part(G.box, 0xffffff, 0, 0.05, 0, { sx: 1.5, sy: 0.1, sz: 0.24, shade: [0.82, 1] })]));
-  instanced(curb, natureMat, edgeTiles, (t) => setM(t.x, T.meshGroundHeight(t.x, t.z), t.z, 1, 1, t.r), { shadow: false, cell: 60, color: (t, c) => c.set(t.marble ? 0xe4ddca : 0xc9a786) });
+  // v1.10.73 마을 환경정비사업 ① 길 3단계 (IDEAS #future-path-tiers): laid along each walk's one centre line instead of the
+  // random kerb tiles, pebbles and flowers -- 마을 길 (the hall, the shop street, and the walks within TOWN_R of the plaza):
+  // marble slabs with a terrazzo slab here and there and a continuous marble border on both sides; 산책로 (the ring and
+  // the walks beyond the town): an edge band that breaks into the grass; 오솔길 (the nature area, the gazebo): stepping
+  // stones. A junction outside the plaza is one round disc; where the town's walk turns into a 산책로 a pair of planters
+  // marks the way in. Decoration only: nothing here is walked round (the kerbs' old rule).
+  const pathParts = { slab: [], terrazzo: [], border: [], edge: [], step: [], disc: [], planter: [] };
+  const opening = (wi, x, z, pad) => walkCurves.some((o, oi) => oi !== wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < o.w / 2 + pad)); // another walk joins here
+  const offPath = (x, z) => Math.hypot(x, z) < PLAZA_R + 0.6 || Math.hypot(x, z + 44) < 9.4 || onBridge(x, z) || streamDist(x, z) < STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5);
+  // junctions: where one walk meets another outside the plaza (joins and crossings), one disc each
+  walkCurves.forEach((w, wi) => w.pts.forEach(([x, z]) => {
+    if (offPath(x, z) || pathParts.disc.some((d) => Math.hypot(d.x - x, d.z - z) < 7)) return;
+    const other = walkCurves.findIndex((o, oi) => oi > wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < 0.9));
+    if (other >= 0) pathParts.disc.push({ x, z, town: tierAt(wi, x, z) === 'town' || tierAt(other, x, z) === 'town' });
+  }));
+  const nearDisc = (x, z, r) => pathParts.disc.some((d) => Math.hypot(d.x - x, d.z - z) < r);
+  walkCurves.forEach((w, wi) => {
+    let s = 0; let n = 0; let was = null;
+    for (let i = 1; i < w.pts.length; i += 1) {
+      const [x0, z0] = w.pts[i - 1]; const [x1, z1] = w.pts[i]; const l = Math.hypot(x1 - x0, z1 - z0); if (!l) continue;
+      const dx = (x1 - x0) / l; const dz = (z1 - z0) / l; const r = -Math.atan2(dz, dx);
+      for (; s <= l; s += 0.9, n += 1) {
+        const x = x0 + dx * s; const z = z0 + dz * s; const tier = tierAt(wi, x, z);
+        if (was && was !== tier && (was === 'town' || tier === 'town')) for (const side of [-1, 1]) { const o = w.w / 2 + 0.9; pathParts.planter.push({ x: x - dz * o * side, z: z + dx * o * side, r }); }
+        was = tier;
+        if (offPath(x, z) || nearDisc(x, z, 2.2)) continue;
+        if (tier === 'town') {
+          const cols = Math.max(1, Math.round(w.w - 0.4)); // 3.2 m: three 1 m slabs and the borders
+          for (let c = 0; c < cols; c += 1) {
+            const o = c - (cols - 1) / 2; const px = x - dz * o; const pz = z + dx * o;
+            (c === (cols >> 1) && n % 8 === 4 ? pathParts.terrazzo : pathParts.slab).push({ x: px, z: pz, r: r + (hash(pz, px, 4) < 0.5 ? 0 : Math.PI), v: Math.floor(hash(px, pz, 5) * 2) }); // two slabs, either way round
+          }
+          for (const side of [-1, 1]) {
+            const o = cols / 2 + 0.15; const px = x - dz * o * side; const pz = z + dx * o * side;
+            if (!opening(wi, px, pz, 0.4) && walkable(px, pz)) pathParts.border.push({ x: px, z: pz, r });
+          }
+        } else if (tier === 'walk') {
+          for (const side of [-1, 1]) {
+            const o = w.w / 2 + 0.05; const px = x - dz * o * side; const pz = z + dx * o * side;
+            if (!opening(wi, px, pz, 0.3) && walkable(px, pz)) pathParts.edge.push({ x: px, z: pz, r: side > 0 ? r : r + Math.PI, v: Math.floor(hash(px, pz, 6) * 2) });
+          }
+        } else {
+          const o = (hash(x, z, 8) - 0.5) * 0.5; pathParts.step.push({ x: x - dz * o, z: z + dx * o, r: hash(x, z, 9) * TAU, v: Math.floor(hash(x, z, 7) * 2), s: 0.92 + hash(z, x, 3) * 0.16 });
+        }
+      }
+      s -= l;
+    }
+  });
+  const onGround = (x, z) => T.meshGroundHeight(x, z);
+  const placeFlat = (lift) => (p) => setM(p.x, onGround(p.x, p.z) + lift, p.z, p.s ?? 1, 1, p.r);
+  // stand-ins until the models load (and with models off): the same sizes, flat colours
+  const slabG = keep(mergeColored([part(G.box, 0xe9e3d5, 0, 0.02, 0, { sx: 0.98, sy: 0.04, sz: 0.98 })]));
+  const terrazzoG = keep(mergeColored([part(G.box, 0xe6ddcc, 0, 0.02, 0, { sx: 0.98, sy: 0.04, sz: 0.98 }), part(G.ball, 0xd9a58c, 0.2, 0.04, -0.1, { sx: 0.12, sy: 0.02, sz: 0.09 }), part(G.ball, 0x9fb3b8, -0.25, 0.04, 0.2, { sx: 0.1, sy: 0.02, sz: 0.08 })]));
+  const borderG = keep(mergeColored([part(G.box, 0xf1ece0, 0, 0.04, 0, { sx: 1.02, sy: 0.08, sz: 0.3, shade: [0.86, 1] })]));
+  const edgeG = keep(mergeColored([part(G.box, 0xe3d8c2, -0.25, 0.015, -0.12, { sx: 0.42, sy: 0.03, sz: 0.3 }), part(G.box, 0xdcd0b8, 0.24, 0.015, 0.05, { sx: 0.34, sy: 0.03, sz: 0.26 }), part(G.ball, 0xcfc6b6, 0.05, 0.02, 0.24, { sx: 0.14, sy: 0.04, sz: 0.12 })]));
+  const stepG = keep(mergeColored([part(G.cyl, 0xd8cdb6, 0, 0.018, 0, { sx: 0.72, sy: 0.036, sz: 0.66 })]));
+  const discG = keep(mergeColored([part(G.cyl, 0xe9e3d5, 0, 0.02, 0, { sx: 5, sy: 0.04, sz: 5 })]));
+  const planterG = keep(mergeColored([part(G.cyl, 0xb08a6a, 0, 0.2, 0, { sx: 0.6, sy: 0.4, sz: 0.6 }), part(G.ball, 0x6f9a5a, 0, 0.5, 0, { sx: 0.62, sy: 0.4, sz: 0.62 })]));
+  const PATH_CELL = 120; // big cells: the pieces are many and flat, so fewer draws matter more than finer culling
+  const PATH = (id) => `path.${id}`;
+  // ponytail: two variants of each (of the made three or four) -- each variant is a draw per cell; add more if the
+  // pattern reads repetitive on a real GPU
+  for (let k = 0; k < 2; k += 1) instanced(slabG, natureMat, pathParts.slab.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`town.slab.${'abc'[k]}`) });
+  instanced(terrazzoG, natureMat, pathParts.terrazzo, placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH('town.terrazzo.a') });
+  instanced(borderG, natureMat, pathParts.border, placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH('town.border.straight') });
+  for (let k = 0; k < 2; k += 1) instanced(edgeG, natureMat, pathParts.edge.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`walk.edge.${'ac'[k]}`) });
+  for (let k = 0; k < 2; k += 1) instanced(stepG, natureMat, pathParts.step.filter((p) => p.v === k), placeFlat(0), { shadow: false, cell: PATH_CELL, target: PATH(`trail.step.${'abc'[k]}`) });
+  instanced(discG, natureMat, pathParts.disc.filter((d) => d.town), (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1), { shadow: false, cell: PATH_CELL, target: PATH('junction.disc.town') });
+  instanced(discG, natureMat, pathParts.disc.filter((d) => !d.town), (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1), { shadow: false, cell: PATH_CELL, target: PATH('junction.disc.walk') });
+  instanced(planterG, natureMat, pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { cell: PATH_CELL, target: PATH('gate.planter') });
   instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
@@ -690,5 +753,5 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), edgeDecor: { stones: edgeStones.length, tiles: edgeTiles.length, flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

@@ -105,6 +105,15 @@
     'prop.mailbox.0': gapsProp('mailbox_blue', { scale: 0.92, rotationY: Math.PI, near: 30 }),
     'prop.mailbox.1': gapsProp('mailbox_red', { scale: 0.92, rotationY: Math.PI, near: 30 }),
     'prop.steppingStone': gapsProp('stepping_stone', { scale: 0.85, near: 25, shadows: false }),
+    // v1.10.73 마을 환경정비사업 ① 길 3단계 (assets/24, Codex 2026-10-12): pieces laid along each walk's centre line by
+    // island.js -- 마을 길 slabs, terrazzo and a continuous border, 산책로 edge bands, 오솔길 stepping stones, junction
+    // discs and the planters where the town's walk meets the walks outside. 1 unit = 1 m, +x along the walk, origin on
+    // the ground at the piece's centre (the files' node scale is their quantization: placed through a parent).
+    // The pieces used (of the 24 made: the third slab, two terrazzi, two edge bands, the flagstones, the third stone,
+    // the deck, the border cap and the pillar wait for a place -- IDEAS #future-path-tiers)
+    ...Object.fromEntries(['town.slab.a', 'town.slab.b', 'town.terrazzo.a', 'town.border.straight', 'walk.edge.a', 'walk.edge.c', 'trail.step.a', 'trail.step.b',
+      'junction.disc.town', 'junction.disc.walk', 'gate.planter']
+      .map((id) => [`path.${id}`, { url: `/assets/island/path-tiers-v1/${id}.glb`, low: { url: `/assets/island/path-tiers-v1/${id}_low.glb` }, near: 30, shadows: false }])),
     'prop.pierDeck': gapsProp('pier_deck', { near: 45 }), 'prop.pierPost': gapsProp('pier_post', { near: 45 }), // fitted to the pier (island.js)
     'fx.petal': { url: `${GAPS}/props/atmosphere_petal.glb` }, 'fx.leaf': { url: `${GAPS}/props/atmosphere_leaf.glb` }, 'fx.snow': { url: `${GAPS}/props/atmosphere_snowflake.glb` },
     'sea.coastLong': sea('distant_coast_long', 3), 'sea.coastCove': sea('distant_coast_cove', 3), 'sea.ridgeSoft': sea('mountain_ridge_soft', 2.2), 'sea.ridgeRugged': sea('mountain_ridge_rugged', 2.2),
