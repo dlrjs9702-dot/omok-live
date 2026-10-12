@@ -1865,14 +1865,21 @@
   // v1.10.68 순발력 게임 (한판마당 자료): its own screen over the island; the module (public/reflex/reflex.js and the
   // engine under it) loads the first time it is opened (reflexGames is declared by showView)
   // v1.10.69 퍼즐 (스도쿠·네모로직·다리 잇기·회로 연결): the same screen with the puzzle list
+  // v1.10.70 카드 게임 · 「‹ 뒤로」 (사용자 2026-10-12): back to choosing a game -- on the island the 게임관 window opens again
+  // (on its 싱글게임 tab, the one last shown), as when leaving a room
   async function openHanpan(which) {
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onExit: () => { showView('lobby'); loadPoints(); } }); }
+    const onBack = () => {
+      showView('lobby'); loadPoints();
+      if (document.body.classList.contains('plazaMode')) PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
+    };
+    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack }); }
     catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
     showView('reflex');
     reflexGames.open(which);
   }
   document.getElementById('soloReflexBtn').addEventListener('click', () => openHanpan('reflex'));
   document.getElementById('soloPuzzleBtn').addEventListener('click', () => openHanpan('puzzle'));
+  document.getElementById('soloCardsBtn').addEventListener('click', () => openHanpan('cards'));
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));
   document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });

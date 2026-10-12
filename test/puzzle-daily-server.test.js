@@ -32,6 +32,10 @@ test('오늘의 문제 API: 처음 맞힌 한 번만 지급, 틀린 판·지난 
   const info = (await req('/api/solo/puzzle', sa)).data;
   assert.deepEqual([info.points.easy, info.points.hard], [2000, 5000]);
   assert.deepEqual(Object.keys(info.records), ['sudoku', 'nonogram', 'hashi', 'circuit']);
+  const other = await server.enter(await server.issue('다른퍼즐러'));
+  assert.match(info.uid, /^[0-9a-f]{16}$/); // each account's own progress in the browser (Codex review)
+  assert.notEqual((await req('/api/solo/puzzle', other)).data.uid, info.uid);
+  assert.equal((await req('/api/solo/puzzle', sa)).data.uid, info.uid);
   const date = kstDate(Date.now());
   const sol = await PuzzleDaily.answer('sudoku', 'easy', date);
   const finish = (body) => req('/api/solo/puzzle/finish', sa, { game: 'sudoku', level: 'easy', ...body });

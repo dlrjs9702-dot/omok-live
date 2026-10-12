@@ -38,6 +38,7 @@ const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
+const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
@@ -1049,6 +1050,7 @@ function questEntries(account) {
 const soloGames = new Map(); // session token -> { id, level, engine }
 const reflexRuns = new Map(); // v1.10.68 순발력 게임: round id -> { account, game, level, at } (memory only)
 const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|level|date' -> when it was first opened (memory only)
+const cardRuns = new Map(); // v1.10.70 카드 게임: round id -> { account, game, level, seed, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
 const herosurvRuns = new Map(); // runId -> { account, board, at }
 const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
@@ -3076,7 +3078,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.69' });
+    return sendJson(res, 200, { ok: true, version: '1.10.70' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3917,7 +3919,7 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, id });
     }
     const run = reflexRuns.get(String(body.id || ''));
-    if (!run || run.account !== account) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    if (!run || run.account !== account || now - run.at > Reflex.RUN_MS) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.'); // v1.10.70 also too old
     reflexRuns.delete(body.id); // one report a round
     const score = Number(body.score);
     const verdict = Reflex.judge(run.game, run.level, score, now - run.at);
@@ -3936,7 +3938,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const records = await pointStore.soloRecords(pointAccountForSession(session));
-    return sendJson(res, 200, { ok: true, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
+    // uid (v1.10.70, Codex review): a name for this account's puzzle progress kept in the browser, so two accounts on one
+    // browser never share a day's puzzle (says nothing about the account)
+    const uid = crypto.createHash('sha256').update(`puzzle-uid|${pointAccountForSession(session)}`).digest('hex').slice(0, 16);
+    return sendJson(res, 200, { ok: true, uid, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
       records: Object.fromEntries(Object.keys(PuzzleDaily.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/puzzle/start' || pathname === '/api/solo/puzzle/finish') && req.method === 'POST') {
@@ -3968,6 +3973,50 @@ async function requestHandler(req, res) {
       title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제` });
     if (out.applied && out.points) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, already: !out.applied, fast, points: out.applied ? out.points : 0, best: out.best, newBest: Boolean(out.applied && out.newBest) });
+  }
+  // v1.10.70 카드 게임 (lib/cards.js): the server deals (the round's seed) and pays a clear only after playing its action
+  // log again with the page's own game code; a time record is the server's own (from the deal to the report -- the page's
+  // clock could be sent smaller, Codex review)
+  if (pathname === '/api/solo/cards' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    const records = await pointStore.soloRecords(account);
+    return sendJson(res, 200, { ok: true, points: Object.fromEntries(Object.entries(Cards.GAMES).map(([id, g]) => [id, g.points])), cap: Cards.DAILY_CAP,
+      today: await pointStore.soloDailyPaid(account, `cards:${kstDate(nowMs())}`), records: Object.fromEntries(Object.keys(Cards.GAMES).map((id) => [id, records[id] || {}])) });
+  }
+  if ((pathname === '/api/solo/cards/start' || pathname === '/api/solo/cards/finish') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`cards:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const now = nowMs();
+    if (pathname === '/api/solo/cards/start') {
+      const G = Cards.GAMES[body.game];
+      if (!G || !Object.hasOwn(G.levels, body.level)) return sendError(res, 400, 'BAD_LEVEL', '고를 수 없는 게임입니다.');
+      for (const [id, run] of cardRuns) if (now - run.at > Cards.RUN_MS) cardRuns.delete(id);
+      const id = crypto.randomUUID(); const seed = crypto.randomBytes(4).readUInt32LE(0);
+      cardRuns.set(id, { account, game: body.game, level: body.level, seed, at: now });
+      return sendJson(res, 200, { ok: true, id, seed });
+    }
+    const run = cardRuns.get(String(body.id || ''));
+    if (run && now - run.at > Cards.RUN_MS) cardRuns.delete(body.id); // too old to report, whoever else plays (Codex review)
+    if (!run || run.account !== account || now - run.at > Cards.RUN_MS) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    if (typeof body.log !== 'string' || body.log.length > 46000) return sendError(res, 400, 'BAD_LOG', '잘못된 기록입니다.');
+    let out;
+    try { out = await Cards.replay({ game: run.game, level: run.level, seed: run.seed, log: body.log }); }
+    catch { return sendError(res, 503, 'TRY_LATER', '잠시 후 다시 시도해 주세요.'); } // the round stays open: the page may send it again
+    cardRuns.delete(body.id); // one report a round
+    if (!out.won) return sendError(res, 400, 'NOT_CLEARED', '기록을 확인하지 못했습니다.');
+    const G = Cards.GAMES[run.game]; const elapsed = now - run.at;
+    const score = G.higher ? out.score : elapsed; // spider: the replay's own score; the others: the server's clock
+    if (!Number.isSafeInteger(score) || score < 0) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
+    const fast = elapsed < Cards.MIN_MS;
+    const paid = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
+      points: fast ? 0 : G.points[run.level], daily: { day: `cards:${kstDate(now)}`, cap: Cards.DAILY_CAP }, title: `${G.name} ${G.levels[run.level]}` });
+    if (paid.points) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, fast, score, points: paid.points, best: paid.best, newBest: paid.newBest, today: paid.today, cap: Cards.DAILY_CAP });
   }
   // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
   // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
@@ -4027,6 +4076,13 @@ async function requestHandler(req, res) {
     if (!g?.engine.game.mine) return sendError(res, 409, 'NO_GAME', '새 게임을 시작해 주세요.');
     if (Number(body.ageMs) > 0) g.engine.game.startedAt -= Number(body.ageMs);
     return sendJson(res, 200, { ok: true, mines: Array.from(g.engine.game.mine.keys()).filter((i) => g.engine.game.mine[i]) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/cards/run' && req.method === 'POST') { // a deal fixed, made older
+    const body = await parseJson(req); const run = cardRuns.get(String(body.id || ''));
+    if (!run) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    if (Number.isSafeInteger(body.seed)) run.seed = body.seed;
+    run.at -= Number(body.ageMs) || 0;
+    return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/reflex/age' && req.method === 'POST') { // a round made older
     const body = await parseJson(req); const run = reflexRuns.get(String(body.id || ''));
@@ -5154,7 +5210,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.69 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.70 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

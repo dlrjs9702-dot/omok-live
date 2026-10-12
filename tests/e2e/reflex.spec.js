@@ -3,7 +3,7 @@ const { get, shopper, expectNoScriptError } = require('./skin-support');
 
 // v1.10.68 순발력 게임 (한판마당 자료): 싱글게임 → 「순발력 게임」 → 다섯 게임 목록 → 반응속도 다섯 라운드를 실제로 하고
 // 결과·포인트, 판 중간에 그만두면 보고하지 않음, 나가면 아일랜드로. PC(마우스·Esc)와 휴대폰(터치) 모두.
-test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → 나가기', async ({ browser, request, isMobile }) => {
+test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → 뒤로', async ({ browser, request, isMobile }) => {
   test.setTimeout(120000);
   const a = await shopper(browser, request, '번개손');
   const { page, token } = a;
@@ -46,7 +46,7 @@ test('순발력 게임: 목록 → 반응속도 완주 → 결과·+1,500P → �
 
   await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
   await expect(page.locator('.reflexToday')).toHaveText('오늘 받은 포인트 1,500P / 20,000P');
-  if (isMobile) await page.locator('.reflexHead button', { hasText: '나가기' }).click();
+  if (isMobile) await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
   else await page.keyboard.press('Escape');
   await expect(page.locator('#reflexView')).toBeHidden();
   await expectNoScriptError(page);
@@ -68,6 +68,9 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
   await page.locator('.reflexCard', { hasText: '스도쿠' }).click();
   await expect(page.locator('.reflexModes .reflexLevel[aria-checked="true"]')).toHaveText('오늘의 문제');
   await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel').first()).toHaveText('쉬움 · 2,000P');
+  // v1.10.70 (Codex review): the first send fails -- the solved board stays in this account's 보낼 기록함 and goes again
+  let blocked = false;
+  await page.route('**/api/solo/puzzle/finish', (route) => { if (blocked) return route.continue(); blocked = true; return route.abort(); });
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
   await page.waitForTimeout(500); // the puzzle is made
@@ -82,7 +85,15 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
     await page.keyboard.press('ArrowDown');
   }
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText(/이번 기록은 포인트가 없어요/);
+  await expect(page.locator('.reflexPaid')).toHaveText(/다시 열면 다시 보내요/);
+  const uid = (await get(request, '/api/solo/puzzle', token)).data.uid;
+  const box = () => page.evaluate((u) => JSON.parse(localStorage.getItem(`gc.outbox.${u}`) || '[]').length, uid);
+  expect(await box()).toBe(1);
+  expect((await get(request, '/api/solo/puzzle', token)).data.records.sudoku).toEqual({});
+  await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
+  await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
+  await page.locator('#soloPuzzleBtn').click(); // opening 퍼즐 again sends what was left
+  await expect.poll(box).toBe(0);
   expect((await get(request, '/api/solo/puzzle', token)).data.records.sudoku.easy.clears).toBe(1);
   await expectNoScriptError(page);
   await a.context.close();
@@ -106,6 +117,107 @@ test('게임 안내: 규칙 설명 아래 예시 그림·실수·요령, 지뢰�
   await page.locator('#minesDialog .gameGuideDetails summary').click();
   await expect(page.locator('#minesGuide figcaption')).toContainText('1-2-1');
   await page.screenshot({ path: test.info().outputPath('mines-guide.png') });
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.70 카드 게임: 싱글게임 → 「카드 게임」 → 스파이더 1벌을 화면의 게임 코드로 끝까지 두면(테스트 봇이 게임의 doMove·deal·undo를
+// 부름 — 화면이 기록하는 것과 같은 길), 서버가 그 기록을 다시 두어 이긴 판인지 확인하고 기록한다. 금방 끝난 판이라 포인트는 없다.
+// 「‹ 뒤로」는 게임 선택(게임관 싱글게임)으로 돌아간다.
+test('카드 게임: 스파이더를 끝까지 두면 서버가 다시 두어 확인·기록, 뒤로는 게임 선택으로', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, '카드손');
+  const { page, token } = a;
+  await page.locator('[data-game-mode="single"]').click();
+  await page.locator('#soloCardsBtn').click();
+  await expect(page.locator('.reflexCard strong')).toHaveText(['카드놀이', '프리셀', '스파이더 카드놀이']);
+  await page.locator('.reflexCard', { hasText: '카드놀이' }).first().click();
+  await expect(page.locator('.reflexLevel')).toHaveText(['1장 넘기기 · 2,000P', '3장 넘기기 · 4,000P']);
+  await page.locator('.reflexHead button', { hasText: '목록' }).click();
+  await page.locator('.reflexCard', { hasText: '스파이더' }).click();
+  let won = false;
+  for (let tries = 0; tries < 30 && !won; tries += 1) {
+    await page.locator('.reflexGo').click();
+    await expect(page.locator('#hud')).toBeVisible();
+    won = await page.evaluate(async () => {
+      const g = (await import('/reflex/js/games/spider.js')).default; const { E } = await import('/reflex/js/engine.js');
+      const T = g._T; const tabs = () => T.piles.filter((p) => p.kind === 'tab'); const seen = new Set();
+      const key = () => tabs().map((p) => p.cards.map((c) => `${c.r}${c.up ? '' : '?'}`).join('.')).join('|');
+      seen.add(key());
+      for (let step = 0; step < 3000 && E.state === 'play'; step += 1) {
+        let best = null;
+        for (const p of tabs()) for (let i = 0; i < p.cards.length; i += 1) {
+          if (!g.run(p, i)) continue;
+          const cd = p.cards[i]; const par = p.cards[i - 1];
+          const parentOk = par && par.up && par.r === cd.r + 1; const parentSame = parentOk && par.s === cd.s; const reveals = par && !par.up;
+          for (const q of tabs()) {
+            if (q === p) continue;
+            const top = q.cards[q.cards.length - 1]; let sc = 0;
+            if (!top) sc = i > 0 && !parentOk ? 1 + (reveals ? 2 : 0) : 0;
+            else if (top.up && top.r === cd.r + 1) { const same = top.s === cd.s; if (parentSame || (parentOk && !same)) continue; sc = (same ? 5 : 2) + (reveals ? 3 : 0) + (i === 0 ? 1 : 0); }
+            if (sc > 0 && (!best || sc > best.sc)) best = { sc, p, i, q };
+          }
+        }
+        if (best) { g.doMove(best.p, best.i, best.q); const k = key(); if (seen.has(k)) g.undo(); else { seen.add(k); continue; } }
+        if (!T.get('stock').cards.length || tabs().some((p) => !p.cards.length)) break;
+        g.deal(); seen.add(key());
+      }
+      return E.state !== 'play';
+    });
+    if (!won) await page.locator('#reflexQuitBtn').click();
+  }
+  expect(won).toBe(true);
+  await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('.reflexPaid')).toHaveText(/이번 판은 포인트가 없어요/);
+  expect((await get(request, '/api/solo/cards', token)).data.records.spider.easy.clears).toBe(1);
+  await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
+  await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
+  await expect(page.locator('#reflexView')).toBeHidden();
+  await expect(page.locator('#soloCardsBtn')).toBeVisible(); // back at choosing a game (싱글게임)
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.70 카드놀이: 화면의 카드놀이를 봇이 게임 함수로 두다가, 남은 카드를 게임이 스스로 올리는 마무리는 화면의 실제 update()에
+// 맡긴다 — 그 자동 이동을 화면이 적은 기록(a)까지 서버가 다시 두어 이긴 판으로 확인한다.
+test('카드놀이: 게임이 스스로 마무리한 판도 서버가 다시 두어 확인·기록', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, '카드놀이손');
+  const { page, token } = a;
+  await page.locator('[data-game-mode="single"]').click();
+  await page.locator('#soloCardsBtn').click();
+  await page.locator('.reflexCard', { hasText: '카드놀이' }).first().click();
+  let won = false;
+  for (let tries = 0; tries < 40 && !won; tries += 1) {
+    await page.locator('.reflexGo').click();
+    await expect(page.locator('#hud')).toBeVisible();
+    won = await page.evaluate(async () => {
+      const g = (await import('/reflex/js/games/klondike.js')).default; const { E } = await import('/reflex/js/engine.js');
+      const T = g._T; const tabs = () => T.piles.filter((p) => p.kind === 'tab'); const founds = () => T.piles.filter((p) => p.kind === 'found');
+      let idle = 0;
+      for (let step = 0; step < 3000 && E.state === 'play' && !g._s.auto; step += 1) {
+        let move = null;
+        for (const p of [T.get('waste'), ...tabs()]) { const top = p.cards[p.cards.length - 1]; if (!top) continue; const f = founds().find((q) => g.canDrop([top], q)); if (f) { move = [p, p.cards.length - 1, f]; break; } }
+        if (!move) for (const p of tabs()) {
+          const i0 = p.cards.findIndex((c) => c.up); if (i0 < 0 || (i0 === 0 && p.cards[0].r === 13)) continue;
+          const q = tabs().find((t) => t !== p && g.canDrop(p.cards.slice(i0), t) && (t.cards.length || p.cards[i0].r === 13));
+          if (q) { move = [p, i0, q]; break; }
+        }
+        if (!move) { const w = T.get('waste'); const top = w.cards[w.cards.length - 1]; const q = top && tabs().find((t) => g.canDrop([top], t)); if (q) move = [w, w.cards.length - 1, q]; }
+        if (move) { g.doMove(...move); idle = 0; continue; }
+        if (++idle > 60) break;
+        g.flip();
+      }
+      if (!g._s.auto && E.state === 'play') return false;
+      for (let i = 0; i < 100 && E.state === 'play'; i += 1) await new Promise((r) => setTimeout(r, 100)); // the game finishes it itself
+      return E.state !== 'play';
+    });
+    if (!won) await page.locator('#reflexQuitBtn').click();
+  }
+  expect(won).toBe(true);
+  await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('.reflexPaid')).toHaveText(/이번 판은 포인트가 없어요/);
+  expect((await get(request, '/api/solo/cards', token)).data.records.klondike.easy.clears).toBe(1);
   await expectNoScriptError(page);
   await a.context.close();
 });
