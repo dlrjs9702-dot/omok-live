@@ -2775,6 +2775,7 @@
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
     omokModeChoices.classList.toggle('hidden', selectedGameType !== 'omok');
+    syncRoomAiChoices();
     baseballDigitChoices.classList.toggle('hidden', selectedGameType !== 'baseball');
     gostopStakeChoices.classList.toggle('hidden', selectedGameType !== 'gostop');
     gameRulesSelect.value = resolvedType;
@@ -2830,8 +2831,16 @@
     buttons[(at + step + buttons.length) % buttons.length].focus();
   });
 
+  // v1.10.72 게임방 AI 자리: offered for 오목 1vs1 · 사목 · 오델로 (an AI room is private practice: no points, no record)
+  // (looked up each time: selectGame may run before this point at start-up)
+  const roomAiLevel = () => (document.getElementById('roomAiChoices').classList.contains('hidden') ? '' : document.querySelector('input[name="roomAi"]:checked')?.value || '');
+  function syncRoomAiChoices() {
+    document.getElementById('roomAiChoices').classList.toggle('hidden', !(['connect4', 'othello'].includes(selectedGameType) || (selectedGameType === 'omok' && omokMode() === '1v1')));
+  }
+  for (const radio of document.querySelectorAll('input[name="omokMode"]')) radio.addEventListener('change', syncRoomAiChoices);
   async function createRoom() {
     try {
+      const ai = roomAiLevel();
       const visibility = document.querySelector('input[name="roomVisibility"]:checked')?.value || 'private';
       const digitCount = Number(document.querySelector('input[name="baseballDigitCount"]:checked')?.value || 3);
       const data = await api('/api/rooms', { method: 'POST', body: JSON.stringify({
@@ -2840,11 +2849,13 @@
         title: roomTitleInput.value,
         ...(selectedGameType === 'baseball' ? { digitCount } : {}),
         ...(selectedGameType === 'gostop' ? { pointsPerScore: Number(document.querySelector('input[name="gostopStake"]:checked')?.value || 100) } : {}),
+        ...(ai ? { ai } : {}),
       }) });
       roomTitleInput.value = '';
       enterRoomState(data.state);
       sendIslandInvite(); // v1.10.44: the room made for an island invite
-      showToast(visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
+      showToast(ai ? 'AI 방을 만들었습니다. 자리를 고르면 AI가 맞은편에 앉아요 (연습 · 포인트·전적 없음).'
+        : visibility === 'public' ? '공개방을 만들었습니다. 로비 목록에서 바로 참여할 수 있어요.' : `비공개방 생성 완료 · 비밀번호 ${data.state.me.roomCode}`);
     } catch (err) { showToast(err.message); }
   }
 
@@ -5530,7 +5541,8 @@
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
     // v1.7.3: the room's point rule beside my balance (server-provided, never computed here).
     const pointRule = state.points?.policy === 'entry' ? `참가 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P · 승자 ${100 - state.points.burnPercent}%`
-      : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각` : '';
+      : state.points?.policy === 'settlement' ? `정산 ${state.points.burnPercent}% 소각`
+      : state.points?.policy === 'practice' ? 'AI 연습 · 포인트·전적 없음' : ''; // v1.10.72
     roomPointRule.classList.toggle('hidden', !pointRule);
     roomPointRule.textContent = pointRule;
     roomPointRule.title = state.points?.policy === 'entry'

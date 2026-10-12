@@ -281,6 +281,14 @@
             <label><input type="radio" name="omokMode" value="1v1" checked /> 1vs1 · 기본</label>
             <label><input type="radio" name="omokMode" value="2v2" /> 2vs2 · 팀전</label>
           </fieldset>
+          <!-- v1.10.72 게임방 AI 자리: 오목(1vs1)·사목·오델로 — the server plays the other seat; no entry points, no record -->
+          <fieldset id="roomAiChoices" class="baseballDigitChoices hidden" aria-label="상대">
+            <legend>상대</legend>
+            <label><input type="radio" name="roomAi" value="" checked /> 사람</label>
+            <label><input type="radio" name="roomAi" value="easy" /> AI 쉬움</label>
+            <label><input type="radio" name="roomAi" value="normal" /> AI 보통</label>
+            <label><input type="radio" name="roomAi" value="hard" /> AI 어려움</label>
+          </fieldset>
           <fieldset id="baseballDigitChoices" class="baseballDigitChoices hidden">
             <legend>숫자야구 자릿수</legend>
             <label><input type="radio" name="baseballDigitCount" value="3" checked /> 3자리</label>

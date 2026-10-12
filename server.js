@@ -40,6 +40,7 @@ const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
+const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
@@ -1216,6 +1217,37 @@ function makeRoom(hostSession, requestedGameType = 'omok', visibility = 'private
 
 function touchRoom(room) { room.updatedAt = nowIso(); }
 
+// v1.10.72 게임방 AI 자리 (lib/room-ai.js): the AI is a participant with no session (always connected, no point account,
+// no record id); it takes the seat across from the person when they choose one. Its move goes through the same game
+// engine as a person's, a short moment after the person's turn so it does not feel instant.
+function seatRoomAi(room, level) {
+  const token = `ai:${room.id}`;
+  room.ai = { level, token, seat: 'white' };
+  room.participants[token] = { sessionToken: token, identity: 'ai', label: `AI · ${RoomAi.LEVELS[level]}`, ai: true, role: 'ai', rejoinable: false,
+    connected: true, joinedAt: nowIso(), lastSeen: nowIso(), choice: null };
+}
+function scheduleAiMove(room) {
+  const ai = room.ai; const g = room.game;
+  if (!ai || ai.thinking || g.status !== 'playing' || g.paused || g.turn !== ai.seat || room.players[ai.seat] !== ai.token) return;
+  ai.thinking = true;
+  const round = g.round; const moves = g.moves.length; const started = nowMs();
+  RoomAi.think(room.gameType, g, ai.seat, ai.level).then(async (move) => {
+    await new Promise((resolve) => setTimeout(resolve, Math.max(0, 500 - (nowMs() - started))));
+    ai.thinking = false;
+    syncGamePause(room, false); // the person may have dropped while the AI thought (Codex review): then the idle tick asks again
+    if (rooms.get(room.id) !== room || room.game !== g || g.round !== round || g.moves.length !== moves || g.status !== 'playing' || g.turn !== ai.seat || g.paused) return;
+    const verdict = move && (getGame(room.gameType)).applyMove(g, move.x, move.y, ai.seat, nowIso());
+    if (!verdict?.legal) { console.error('AI 착수 실패:', room.gameType, JSON.stringify(move)); return; }
+    if (verdict.passed) appendSystemMessage(room, `${verdict.passed === 'black' ? '흑' : '백'}은 둘 수 있는 곳이 없어 자동으로 패스했습니다.`);
+    touchRoom(room); broadcast(room);
+    scheduleAiMove(room); // 오델로: the person may have had to pass
+  }).catch((error) => {
+    ai.thinking = false;
+    console.error('AI 계산 실패:', error.message);
+    setTimeout(() => scheduleAiMove(room), 3000).unref?.();
+  });
+}
+
 function registerParticipant(room, session) {
   const isNew = !room.participants[session.token];
   let reclaimedSeat = null;
@@ -1313,6 +1345,7 @@ function syncGamePause(room, allowTimeouts = true) {
   const disconnected = assignedSeatsFor(room).filter(seat => {
     const token = room.players[seat];
     const person = token && room.participants[token];
+    if (person?.ai) return false; // v1.10.72: the AI seat is always there
     return !person?.connected || sessions.get(token)?.currentRoomId !== room.id;
   });
 
@@ -1420,7 +1453,7 @@ function syncGamePause(room, allowTimeouts = true) {
       room.turnWatch.since += Date.now() - room.turnWatch.pausedAt;
       room.turnWatch.pausedAt = null;
     }
-    if (!turnSeat) {
+    if (!turnSeat || (room.ai && turnSeat === room.ai.seat)) { // v1.10.72: no idle clock on the AI's own turn
       room.turnWatch = null;
     } else if (!room.turnWatch || room.turnWatch.seat !== turnSeat) {
       room.turnWatch = { seat: turnSeat, since: Date.now() };
@@ -1440,6 +1473,7 @@ async function tickIdleRooms() {
     if (room.game.status !== 'playing' || isPictionary(room) || isLiar(room) || isDavinci(room) || isHalli(room) || isPandemic(room)) continue;
     const wasPaused = room.game.paused;
     const pauseResult = syncGamePause(room);
+    if (room.ai) scheduleAiMove(room); // v1.10.72: e.g. the person came back after a pause on the AI's turn
     if (pauseResult?.gameFinished) {
       try { await recordFinishedMatch(room); }
       catch (error) { console.error('스무고개 시간초과 전적 저장 실패:', error); }
@@ -1493,8 +1527,9 @@ function publicRoom(room) {
   const gameEngine = getGame(room.gameType) || getGame('omok');
   return {
     // v1.7.3: the room's point rule and this game's entry state (no balances, no account ids).
-    points: { policy: pointPolicy(room.gameType), entryFee: pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
-      burnPercent: pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
+    // v1.10.72: an AI room is free practice (Codex review: it showed the entry rule it does not charge)
+    points: { policy: room.ai ? 'practice' : pointPolicy(room.gameType), entryFee: !room.ai && pointPolicy(room.gameType) === 'entry' ? ENTRY_FEE : 0,
+      burnPercent: room.ai ? 0 : pointPolicy(room.gameType) === 'entry' ? ENTRY_BURN_PERCENT : pointPolicy(room.gameType) === 'settlement' ? SETTLEMENT_BURN_PERCENT : 0,
       entry: room.entry ? { n: room.entry.n, status: room.entry.status, fee: room.entry.fee, pool: room.entry.pool, players: room.entry.participants.length,
         each: room.entry.each ?? null, winners: room.entry.winnerCount ?? null, burned: room.entry.burned ?? null } : null },
     visibility: room.visibility,
@@ -1644,6 +1679,7 @@ function prepareNextRound(room) {
 // The game engine, never the client, supplies the final result. An individual match
 // (including a three-round liar match) has one stable id across retries and reconnects.
 async function recordFinishedMatch(room) {
+  if (room.ai) return false; // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
   if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
@@ -1915,7 +1951,7 @@ async function applyGostopSettlement(room, match) {
 // system could not finish the game. Every step has its own store id, so retries, duplicate
 // finishes and reconnects can never charge, pay or refund twice.
 function entrySnapshot(room) {
-  if (pointPolicy(room.gameType) !== 'entry' || room.game.status !== 'selecting') return null;
+  if (room.ai || pointPolicy(room.gameType) !== 'entry' || room.game.status !== 'selecting') return null; // v1.10.72: AI rooms take no entry
   return {
     game: structuredClone(room.game),
     choices: Object.fromEntries(Object.entries(room.participants).map(([token, p]) => [token, p.choice])),
@@ -2486,13 +2522,19 @@ async function handleRoomAction(req, res, action, session) {
     // Account creation yields to other requests. Recheck the room after it completes so a
     // competing seat choice (or a started hand) cannot be overwritten by this request.
     if (room.game.status !== 'selecting') return sendError(res, 409, 'ROUND_STARTED', '대국이 시작된 뒤에는 역할을 바꿀 수 없습니다.');
-    if (choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
+    // v1.10.72 AI 방: one person plays, on either side; the AI moves across (a second person may only watch)
+    const aiRoomSeat = Boolean(room.ai && choice !== 'spectator');
+    if (aiRoomSeat && Object.values(room.players).some((token) => token && token !== room.ai.token && token !== session.token)) {
+      return sendError(res, 409, 'ROLE_TAKEN', 'AI 방에서는 한 사람만 둡니다.');
+    }
+    if (!aiRoomSeat && choice !== 'spectator' && room.players[choice] && room.players[choice] !== session.token) {
       return sendError(res, 409, 'ROLE_TAKEN', isNumberedSeatGame(room) ? `${choice}번 자리는 이미 선택됐습니다.` : `${choice === 'black' ? '흑' : '백'}은 다른 사람이 이미 선택했습니다.`);
     }
     const oldSeat = findSeat(room, session.token);
     if (oldSeat && oldSeat !== choice) room.players[oldSeat] = null;
     if (choice === 'spectator') participant.choice = 'spectator';
     else {
+      if (aiRoomSeat) { const other = choice === 'black' ? 'white' : 'black'; room.players[other] = room.ai.token; room.ai.seat = other; room.participants[room.ai.token].choice = other; }
       room.players[choice] = session.token;
       participant.choice = choice;
     }
@@ -3049,6 +3091,7 @@ async function handleRoomAction(req, res, action, session) {
   if (!(await recordOrError(room, res))) return;
   touchRoom(room);
   broadcast(room);
+  if (room.ai) scheduleAiMove(room); // v1.10.72: the AI's turn now (a start with AI first, or after the person's move)
   return sendJson(res, 200, {
     ok: true,
     state: roomView(room, session),
@@ -3079,7 +3122,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.71' });
+    return sendJson(res, 200, { ok: true, version: '1.10.72' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5004,7 +5047,11 @@ async function requestHandler(req, res) {
       pointsPerScore = Number(body.pointsPerScore);
       if (!getGame('gostop').STAKES.includes(pointsPerScore)) return sendError(res, 400, 'BAD_STAKE', '점당 포인트는 10P, 50P, 100P 중에서 선택해 주세요.');
     }
-    const room = makeRoom(session, gameType, visibility, { title, digitCount, pointsPerScore });
+    // v1.10.72 게임방 AI 자리: 오목·사목·오델로 with the server playing the other seat (a private practice room)
+    const aiLevel = body.ai == null || body.ai === '' ? null : String(body.ai);
+    if (aiLevel && (!RoomAi.GAMES.has(gameType) || !Object.hasOwn(RoomAi.LEVELS, aiLevel))) return sendError(res, 400, 'BAD_AI', 'AI와 둘 수 없는 게임입니다.');
+    const room = makeRoom(session, gameType, aiLevel ? 'private' : visibility, { title, digitCount, pointsPerScore });
+    if (aiLevel) seatRoomAi(room, aiLevel);
     rooms.set(room.id, room);
     session.currentRoomId = room.id;
     registerParticipant(room, session);
@@ -5230,7 +5277,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.71 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.72 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
