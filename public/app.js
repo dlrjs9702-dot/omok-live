@@ -1855,6 +1855,7 @@
     finally { minesBusy = false; }
   }
   document.getElementById('soloMinesBtn').addEventListener('click', openMines);
+  renderGameGuide(document.getElementById('minesGuide'), 'minesweeper');
   // v1.10.61 두 세계 영웅전: its own page in this tab; it ranks by this session (guest or admin), handed over in the tab's
   // sessionStorage. The browser's back returns here (a guest resumes; an admin, whose login lives only in this page, logs in again).
   document.getElementById('soloHerosurvBtn').addEventListener('click', () => {
@@ -1863,12 +1864,15 @@
   });
   // v1.10.68 순발력 게임 (한판마당 자료): its own screen over the island; the module (public/reflex/reflex.js and the
   // engine under it) loads the first time it is opened (reflexGames is declared by showView)
-  document.getElementById('soloReflexBtn').addEventListener('click', async () => {
+  // v1.10.69 퍼즐 (스도쿠·네모로직·다리 잇기·회로 연결): the same screen with the puzzle list
+  async function openHanpan(which) {
     try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onExit: () => { showView('lobby'); loadPoints(); } }); }
     catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
     showView('reflex');
-    reflexGames.open();
-  });
+    reflexGames.open(which);
+  }
+  document.getElementById('soloReflexBtn').addEventListener('click', () => openHanpan('reflex'));
+  document.getElementById('soloPuzzleBtn').addEventListener('click', () => openHanpan('puzzle'));
   document.getElementById('minesCloseBtn').addEventListener('click', () => minesDialog.close());
   minesDialog.addEventListener('close', () => clearInterval(minesTimer));
   document.getElementById('minesLevels').addEventListener('click', (event) => { const b = event.target.closest('button[data-level]'); if (b) newMines(b.dataset.level); });
@@ -2729,6 +2733,30 @@
 });
   function showGameRule(type) {
     gameRulesText.textContent = gameRules[type] || '';
+    renderGameGuide(document.getElementById('gameGuideMore'), type);
+  }
+  // v1.10.69 게임 안내 (한판마당 자료, public/game-guides.js): 상황 예시 그림 · 자주 하는 실수 · 잘하는 요령 under the rule
+  function renderGameGuide(box, type) {
+    const g = window.GameGuides?.[type];
+    box.replaceChildren();
+    if (!g) return;
+    const add = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    for (const c of g.cases) {
+      const fig = add('figure', 'gameGuideCase');
+      const pic = add('div', 'gameGuideFig'); pic.innerHTML = c.svg; // our own constant figures (no outside data)
+      const cap = add('figcaption'); cap.append(add('strong', null, c.title), add('span', null, c.text));
+      fig.append(pic, cap); box.append(fig);
+    }
+    if (g.mistakes.length) {
+      box.append(add('h4', null, '자주 하는 실수'));
+      const list = add('ul', 'gameGuideList');
+      for (const [m, fix] of g.mistakes) { const li = add('li'); li.append(add('strong', null, m), add('span', null, fix)); list.append(li); }
+      box.append(list);
+    }
+    box.append(add('h4', null, '잘하는 요령'));
+    const tips = add('ul', 'gameGuideList');
+    for (const t of g.tips) tips.append(add('li', null, t));
+    box.append(tips);
   }
 
   let gameTabReady = false; // v1.10.63: set once the remembered tabs are shown (startup must not override them)

@@ -37,6 +37,7 @@ const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-resu
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
 const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게임
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
+const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
@@ -1047,6 +1048,7 @@ function questEntries(account) {
 // v1.10.37 혼자 하는 게임: one game a session at a time, on the server (lib/minesweeper.js); gone with the session
 const soloGames = new Map(); // session token -> { id, level, engine }
 const reflexRuns = new Map(); // v1.10.68 순발력 게임: round id -> { account, game, level, at } (memory only)
+const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|level|date' -> when it was first opened (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
 const herosurvRuns = new Map(); // runId -> { account, board, at }
 const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
@@ -3074,7 +3076,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.68' });
+    return sendJson(res, 200, { ok: true, version: '1.10.69' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3926,6 +3928,46 @@ async function requestHandler(req, res) {
       title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
     if (out.points) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, verdict, points: out.points, best: out.best, newBest: out.newBest, today: out.today, cap: Reflex.DAILY_CAP, balance: out.balance ?? out.balanceAfter });
+  }
+  // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
+  // puzzle left and resumed still counts its whole time) and sends the solved board; the first right answer of the game,
+  // level and day pays once (the settlement id is made from them), unless it came sooner than a person solves one
+  if (pathname === '/api/solo/puzzle' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const records = await pointStore.soloRecords(pointAccountForSession(session));
+    return sendJson(res, 200, { ok: true, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
+      records: Object.fromEntries(Object.keys(PuzzleDaily.GAMES).map((id) => [id, records[id] || {}])) });
+  }
+  if ((pathname === '/api/solo/puzzle/start' || pathname === '/api/solo/puzzle/finish') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`puzzle:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const { game, level } = body;
+    if (!Object.hasOwn(PuzzleDaily.GAMES, game) || !Object.hasOwn(PuzzleDaily.LEVELS, level)) return sendError(res, 400, 'BAD_LEVEL', '고를 수 없는 게임입니다.');
+    const now = nowMs();
+    if (pathname === '/api/solo/puzzle/start') {
+      for (const [k, at] of puzzleStarts) if (now - at > 2 * 86400e3) puzzleStarts.delete(k);
+      const key = `${account}|${game}|${level}|${kstDate(now)}`;
+      if (!puzzleStarts.has(key)) puzzleStarts.set(key, now);
+      return sendJson(res, 200, { ok: true });
+    }
+    const proof = body.proof || {}; const score = Number(body.score);
+    const date = String(proof.date || '');
+    if (date !== kstDate(now) && date !== kstDate(now - 86400e3)) return sendError(res, 400, 'BAD_DATE', '지난 날의 문제입니다.');
+    if (!Number.isSafeInteger(score) || score < 0 || score > 864e5) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
+    const right = await PuzzleDaily.verify(game, level, proof);
+    if (right === null) return sendError(res, 503, 'TRY_LATER', '잠시 후 다시 시도해 주세요.');
+    if (!right) return sendError(res, 400, 'WRONG_ANSWER', '정답이 아닙니다.');
+    const startedAt = puzzleStarts.get(`${account}|${game}|${level}|${date}`); // unknown after a restart: the time it claims decides
+    const fast = score < PuzzleDaily.MIN_MS[level] || (startedAt !== undefined && now - startedAt < PuzzleDaily.MIN_MS[level]);
+    const claim = crypto.createHash('sha256').update(`puzzle|${account}|${game}|${level}|${date}`).digest('hex').slice(0, 40);
+    const out = await pointStore.soloClear({ userId: account, gameId: `pz-${claim}`, game, level, ms: score, points: fast ? 0 : PuzzleDaily.POINTS[level],
+      title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제` });
+    if (out.applied && out.points) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, already: !out.applied, fast, points: out.applied ? out.points : 0, best: out.best, newBest: Boolean(out.applied && out.newBest) });
   }
   // v1.10.61 두 세계 영웅전 (/herosurv/, a Godot build we host as is): the game's own online leaderboard API, answered
   // here so its 명예의 전당 lists game-center accounts by nickname. The page adds the session header to the game's calls;
@@ -5112,7 +5154,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.68 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.69 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

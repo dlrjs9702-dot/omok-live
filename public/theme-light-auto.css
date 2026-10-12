@@ -960,3 +960,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .reflexPaid{color:#ffd34d}
 :root[data-theme="light"] .reflexStat{background:rgba(255,255,255,.06)}
 :root[data-theme="light"] .reflexStat span{color:rgba(255,255,255,.6)}
+:root[data-theme="light"] .gameGuideCase{background:#f7efe1;border:1px solid #e2d4bd}
+:root[data-theme="light"] .gameGuideFig{color:#5e4d3b}
+:root[data-theme="light"] .gameGuideCase figcaption{color:#5e4d3b}
+:root[data-theme="light"] .gameGuideList{color:#5e4d3b}
+:root[data-theme="light"] .gameGuideList strong{color:#33281d}
