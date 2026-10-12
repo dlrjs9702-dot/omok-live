@@ -3919,7 +3919,7 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, id });
     }
     const run = reflexRuns.get(String(body.id || ''));
-    if (!run || run.account !== account) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    if (!run || run.account !== account || now - run.at > Reflex.RUN_MS) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.'); // v1.10.70 also too old
     reflexRuns.delete(body.id); // one report a round
     const score = Number(body.score);
     const verdict = Reflex.judge(run.game, run.level, score, now - run.at);
@@ -3972,7 +3972,8 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, already: !out.applied, fast, points: out.applied ? out.points : 0, best: out.best, newBest: Boolean(out.applied && out.newBest) });
   }
   // v1.10.70 카드 게임 (lib/cards.js): the server deals (the round's seed) and pays a clear only after playing its action
-  // log again with the page's own game code; time records are the page's clock, never longer than the round really was
+  // log again with the page's own game code; a time record is the server's own (from the deal to the report -- the page's
+  // clock could be sent smaller, Codex review)
   if (pathname === '/api/solo/cards' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3997,7 +3998,8 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, id, seed });
     }
     const run = cardRuns.get(String(body.id || ''));
-    if (!run || run.account !== account) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    if (run && now - run.at > Cards.RUN_MS) cardRuns.delete(body.id); // too old to report, whoever else plays (Codex review)
+    if (!run || run.account !== account || now - run.at > Cards.RUN_MS) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
     if (typeof body.log !== 'string' || body.log.length > 46000) return sendError(res, 400, 'BAD_LOG', '잘못된 기록입니다.');
     let out;
     try { out = await Cards.replay({ game: run.game, level: run.level, seed: run.seed, log: body.log }); }
@@ -4005,9 +4007,8 @@ async function requestHandler(req, res) {
     cardRuns.delete(body.id); // one report a round
     if (!out.won) return sendError(res, 400, 'NOT_CLEARED', '기록을 확인하지 못했습니다.');
     const G = Cards.GAMES[run.game]; const elapsed = now - run.at;
-    const ms = Math.round(Number(body.ms));
-    const score = G.higher ? out.score : ms; // spider: the replay's own score; the others: the page's clock
-    if (!Number.isSafeInteger(score) || score < 0 || (!G.higher && ms > elapsed + 5000)) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
+    const score = G.higher ? out.score : elapsed; // spider: the replay's own score; the others: the server's clock
+    if (!Number.isSafeInteger(score) || score < 0) return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
     const fast = elapsed < Cards.MIN_MS;
     const paid = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher,
       points: fast ? 0 : G.points[run.level], daily: { day: `cards:${kstDate(now)}`, cap: Cards.DAILY_CAP }, title: `${G.name} ${G.levels[run.level]}` });

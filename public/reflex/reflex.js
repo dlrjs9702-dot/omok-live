@@ -185,7 +185,7 @@ export function mount({ api, onBack }) {
     result.replaceChildren(box); result.classList.remove('hidden');
     again.focus();
     if (set === SETS.puzzle) return r.proof && sendPuzzle(g, score, r.proof, line);
-    if (set === SETS.cards) return sendCards(g, id, score, log, line);
+    if (set === SETS.cards) return sendCards(g, id, log, line);
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
       if (info) { (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best }; info.today = out.today ?? info.today; }
@@ -211,10 +211,10 @@ export function mount({ api, onBack }) {
     } catch (error) { line.textContent = error.message; }
   }
 
-  async function sendCards(g, id, ms, log, line) { // a cleared deal: the server plays it again before it pays
+  async function sendCards(g, id, log, line) { // a cleared deal: the server plays it again before it pays
     if (log.length > LOG_MAX) { line.textContent = '너무 긴 판이라 기록하지 못했어요'; return; }
     try {
-      const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, ms, log: log.join(';') }) });
+      const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, log: log.join(';') }) });
       if (info) { (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best }; info.today = out.today ?? info.today; }
       const parts = [];
       if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }

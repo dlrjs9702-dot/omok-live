@@ -65,3 +65,24 @@ test('카드 재생: 클론다이크 — 게임이 스스로 올리는 마무리
   assert.deepEqual(await Cards.replay({ game: 'klondike', level: 'easy', seed, log: r.log }), { won: true, score: 0 }); // its time is the page's clock
   assert.equal((await Cards.replay({ game: 'klondike', level: 'easy', seed, log: r.log.replace(/(^|;)a,[^;]*$/, '') })).won, false, '마지막 한 장이 빠지면 아님');
 });
+
+test('카드 API: 시간 기록은 서버 시계(보낸 시간 무시), 3시간 지난 판은 끝난 판 (Codex 검토)', async (t) => {
+  const { playKlondike } = await import('../test-support/klondike-bot.mjs');
+  let r = null; let seed = 0;
+  while (!r?.won && seed < 300) r = playKlondike(++seed);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cards-time-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir); const { req } = server;
+  const sa = await server.enter(await server.issue('시간손')); assert.ok(sa, server.logs());
+  const round = async (ageMs) => {
+    const id = (await req('/api/solo/cards/start', sa, { game: 'klondike', level: 'easy' })).data.id;
+    await req('/api/test/cards/run', sa, { id, seed, ageMs });
+    return id;
+  };
+  const old = await round(3 * 60 * 60 * 1000 + 1000);
+  assert.equal((await req('/api/solo/cards/finish', sa, { id: old, log: r.log })).status, 409);
+  const fair = await round(120000);
+  const out = (await req('/api/solo/cards/finish', sa, { id: fair, ms: 0, log: r.log })).data;
+  assert.ok(out.score >= 120000 && out.score < 130000, String(out.score));
+  assert.equal(out.points, 2000);
+});
