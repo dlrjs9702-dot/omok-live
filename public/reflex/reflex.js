@@ -9,6 +9,9 @@
 // again with the same game code (/api/solo/cards, lib/card-worker.mjs). The actions are noted here as they happen: the
 // game's own moves, a turn of the stock, a dealt row, an undo, and the moves up the game makes by itself.
 // The list's 「‹ 뒤로」 goes back to choosing a game (사용자 2026-10-12: 나가기 alone went straight to the island).
+// v1.10.71 AI 대전 (한판마당 자료 04, 사용자 2026-10-12 「연습으로」): 오목·사목·오델로 against the material's AI in the
+// browser, 쉬움·보통·어려움 — practice only: nothing goes to the server, no points, no records. A game's own settings
+// (오목 규칙, 먼저 두기, 퍼즐 문제) show as choices from its `options`.
 import { E, startGame, stopGame } from './js/engine.js';
 import { Settings, Stats } from './js/store.js';
 import { readQueue, dropRecord } from './js/outbox.js';
@@ -28,11 +31,15 @@ import klondike from './js/games/klondike.js';
 import freecell from './js/games/freecell.js';
 import spider from './js/games/spider.js';
 import { Table } from './js/games/cards.js';
+import gomoku from './js/games/gomoku.js';
+import connect4 from './js/games/connect4.js';
+import reversi from './js/games/reversi.js';
 
 const SETS = {
   reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm], info: '/api/solo/reflex' },
   puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit], info: '/api/solo/puzzle' },
   cards: { title: '카드 게임', games: [klondike, freecell, spider], info: '/api/solo/cards' },
+  ai: { title: 'AI 대전', games: [gomoku, connect4, reversi], info: null }, // practice: no server
 };
 const LOG_MAX = 5000; // actions in a round the server takes (a longer round is played, not paid)
 let cardLog = null; let inMove = false;
@@ -56,7 +63,6 @@ function noteActions(g) {
   wrap('doMove', (from, idx, to) => `m,${from.id},${idx},${to.id}`);
   wrap('flip', () => 'f'); wrap('deal', () => 'd'); wrap('undo', () => 'u');
 }
-const MODES = [['daily', '오늘의 문제'], ['random', '새 문제 (연습)']];
 const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움' };
 const KEYS = { reaction: 'Space · Enter', rhythm: 'D F J K' }; // the games' own keys on a PC
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
@@ -72,8 +78,10 @@ export function mount({ api, onBack }) {
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const button = (cls, text, onClick) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', onClick); return b; };
-  const levelOf = (g) => (g.levels ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
-  const modeOf = (g) => (g.options ? levels[`${g.id}.mode`] || 'daily' : null); // the puzzles: 오늘의 문제 or 새 문제
+  const levelOf = (g) => (g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
+  const optionOf = (g, o) => (o.items.some(([v]) => v === levels[`${g.id}.${o.id}`]) ? levels[`${g.id}.${o.id}`] : o.def);
+  const optionsOf = (g) => Object.fromEntries((g.options || []).map((o) => [o.id, optionOf(g, o)]));
+  const modeOf = (g) => optionsOf(g).mode ?? null; // the puzzles: 오늘의 문제 (daily) or 새 문제
   const remember = (key, value) => { levels[key] = value; try { localStorage.setItem('gc.reflexLevels', JSON.stringify(levels)); } catch {} };
   const bestOf = (g) => info?.records?.[g.id]?.[levelOf(g)]?.best ?? null;
   const pointsOf = (g, level) => (set === SETS.cards ? info?.points?.[g.id]?.[level] : info?.points?.[level]) ?? 0;
@@ -89,7 +97,7 @@ export function mount({ api, onBack }) {
   }
   function todayLine() {
     if (set === SETS.puzzle) return el('p', 'reflexToday', '오늘의 문제는 처음 푼 한 번만 포인트');
-    if (set === SETS.cards && !info) return el('p', 'reflexToday', '');
+    if ((set === SETS.cards && !info) || set === SETS.ai) return el('p', 'reflexToday', set === SETS.ai ? '연습 · 포인트 없음' : '');
     return el('p', 'reflexToday', info ? `오늘 받은 포인트 ${won(info.today)} / ${won(info.cap)}` : '');
   }
 
@@ -116,20 +124,20 @@ export function mount({ api, onBack }) {
     for (const [, line] of g.howto) how.append(el('li', null, line));
     if (KEYS[g.id]) how.append(el('li', 'reflexKeys', `키보드: ${KEYS[g.id]}`));
     box.append(el('p', 'reflexTagline', g.tagline), how);
-    if (g.levels) {
-      const pick = el('div', 'reflexLevels'); pick.setAttribute('role', 'radiogroup'); pick.setAttribute('aria-label', g.levelTitle || '난이도');
+    if (g.levels || g.mode === 'versus') {
+      const pick = el('div', 'reflexLevels'); pick.setAttribute('role', 'radiogroup'); pick.setAttribute('aria-label', g.mode === 'versus' ? 'AI 난이도' : g.levelTitle || '난이도');
       for (const id of g.levelIds || ['easy', 'normal', 'hard']) {
-        const label = LEVEL_NAMES[id];
-        const paid = !g.options || modeOf(g) === 'daily'; // practice puzzles pay nothing
+        const label = g.mode === 'versus' ? `AI ${LEVEL_NAMES[id]}` : LEVEL_NAMES[id];
+        const paid = set !== SETS.ai && (set !== SETS.puzzle || modeOf(g) === 'daily'); // practice pays nothing
         const b = button('reflexLevel', paid ? `${g.levelNames?.[id] || label} · ${won(pointsOf(g, id))}` : g.levelNames?.[id] || label, () => { remember(g.id, id); showGame(g); });
         b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(levelOf(g) === id));
         pick.append(b);
       }
-      if (g.options) {
-        const modes = el('div', 'reflexLevels reflexModes'); modes.setAttribute('role', 'radiogroup'); modes.setAttribute('aria-label', '문제');
-        for (const [id, label] of MODES) {
-          const b = button('reflexLevel', label, () => { remember(`${g.id}.mode`, id); showGame(g); });
-          b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(modeOf(g) === id));
+      for (const o of g.options || []) {
+        const modes = el('div', 'reflexLevels reflexModes'); modes.setAttribute('role', 'radiogroup'); modes.setAttribute('aria-label', o.title);
+        for (const [id, label] of o.items) {
+          const b = button('reflexLevel', label, () => { remember(`${g.id}.${o.id}`, id); showGame(g); });
+          b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(optionOf(g, o) === id));
           modes.append(b);
         }
         box.append(modes);
@@ -137,7 +145,7 @@ export function mount({ api, onBack }) {
       box.append(pick);
     } else box.append(el('p', 'reflexPoints', `완주 ${won(info?.points?.normal ?? 0)}`));
     const best = bestOf(g);
-    box.append(el('p', 'reflexBest', best == null ? '아직 기록 없음' : `내 최고 ${fmtScore(best, g.unit)}`));
+    if (set !== SETS.ai) box.append(el('p', 'reflexBest', best == null ? '아직 기록 없음' : `내 최고 ${fmtScore(best, g.unit)}`));
     const status = el('p', 'reflexStatus'); status.setAttribute('role', 'alert');
     const go = button('primary reflexGo', '시작', () => start(g, status));
     box.append(go, status);
@@ -161,7 +169,7 @@ export function mount({ api, onBack }) {
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
-    startGame(g, { best: bestOf(g), level, opts: mode ? { mode } : seed != null ? { seed } : {} });
+    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(seed != null ? { seed } : {}) } });
   }
 
   async function finish(g, r) {
@@ -174,7 +182,7 @@ export function mount({ api, onBack }) {
     box.style.setProperty('--c1', g.color);
     box.append(el('h2', null, r.title || g.name));
     if (score != null) box.append(el('p', 'reflexScore', fmtScore(score, g.unit)));
-    const line = el('p', 'reflexPaid', set !== SETS.puzzle || r.proof ? '기록 확인 중…' : '');
+    const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');
     box.append(line);
     if (r.stats?.length) {
       const stats = el('div', 'reflexStats');
@@ -188,6 +196,7 @@ export function mount({ api, onBack }) {
     again.focus();
     if (set === SETS.puzzle) return r.proof && sendPuzzle(g, score, r.proof, line, r.rec);
     if (set === SETS.cards) return sendCards(g, id, log, line);
+    if (set === SETS.ai) return; // practice: not sent
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
       if (info) { (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best }; info.today = out.today ?? info.today; }
@@ -264,6 +273,7 @@ export function mount({ api, onBack }) {
       set = SETS[which] || SETS.reflex; info = null;
       showList();
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
+        if (!set.info) return;
         const want = set; const got = await api(set.info);
         if (want !== set) return; // opened the other set meanwhile
         info = got;

@@ -39,6 +39,7 @@ const Minesweeper = require('./lib/minesweeper'); // v1.10.37 혼자 하는 게�
 const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
+const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
@@ -3078,7 +3079,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.70' });
+    return sendJson(res, 200, { ok: true, version: '1.10.71' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4840,6 +4841,25 @@ async function requestHandler(req, res) {
     }
   }
 
+  // v1.10.71 게임별 랭킹 (lib/game-ranking.js): this week's (Seoul Monday) or all-time board of one game, top 20 and me
+  if (pathname === '/api/records/ranking' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const game = String(url.searchParams.get('game') || '');
+    if (!/^[a-z0-9]{2,20}$/.test(game)) return sendError(res, 400, 'BAD_GAME', '고를 수 없는 게임입니다.');
+    const all = url.searchParams.get('week') === 'all';
+    try {
+      const rows = GameRanking.board(await matchStore.matchesOf(game, all ? '1970-01-01T00:00:00.000Z' : new Date(GameRanking.weekStart(nowMs())).toISOString()));
+      const names = new Map((await recordPlayers()).map((p) => [p.id, p.label]));
+      const me = recordIdentity(session);
+      const view = (r) => ({ rank: r.rank, label: names.get(r.id) || '(떠난 플레이어)', w: r.w, d: r.d, l: r.l, n: r.n, me: r.id === me });
+      const mine = rows.find((r) => r.id === me);
+      return sendJson(res, 200, { ok: true, game, week: all ? 'all' : 'this', min: GameRanking.MIN_GAMES, top: rows.slice(0, 20).map(view), me: mine ? view(mine) : null });
+    } catch (error) {
+      console.error('랭킹 조회 실패:', error);
+      return sendError(res, 503, 'RECORDS_UNAVAILABLE', '랭킹을 불러오지 못했습니다.');
+    }
+  }
   // Head-to-head only ever looks at matches with exactly two outcomes (see lib/match-records.js),
   // so multiplayer games and 2v2 team matches are excluded without any extra bookkeeping here.
   const headToHeadLookup = pathname.match(/^\/api\/records\/(admin:[A-Za-z0-9_-]{10,40}|[0-9a-f-]{36})\/versus-me$/i);
@@ -5210,7 +5230,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.70 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.71 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
