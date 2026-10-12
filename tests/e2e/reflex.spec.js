@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { get, shopper, expectNoScriptError } = require('./skin-support');
+const { get, post, shopper, expectNoScriptError } = require('./skin-support');
 
 // v1.10.68 순발력 게임 (한판마당 자료): 싱글게임 → 「순발력 게임」 → 다섯 게임 목록 → 반응속도 다섯 라운드를 실제로 하고
 // 결과·포인트, 판 중간에 그만두면 보고하지 않음, 나가면 아일랜드로. PC(마우스·Esc)와 휴대폰(터치) 모두.
@@ -265,6 +265,23 @@ test('랭킹: 내 전적의 「랭킹」에서 게임·기간을 고른다', asy
   await expect(page.locator('.rankingWeeks [data-week="all"]')).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('#rankingMe')).toHaveText('10판을 두면 순위에 올라요.');
   await page.locator('#rankingCloseBtn').click();
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
+// v1.10.72 게임방 AI 자리: 오목 방 만들기에서 「상대 · AI 보통」 → 흑을 고르면 AI가 백에 앉고, 두면 서버의 AI가 받아 둔다
+test('게임방 AI: 오목 방을 AI 상대로 만들고 두면 AI가 받아 둔다', async ({ browser, request }) => {
+  const a = await shopper(browser, request, 'AI방손');
+  const { page, token } = a;
+  await page.evaluate(() => document.querySelector('[data-game="omok"]').click());
+  await expect(page.locator('#roomAiChoices')).toBeVisible();
+  await page.locator('input[name="roomAi"][value="normal"]').check();
+  await page.locator('#createRoomBtn').click();
+  await expect(page.locator('#roomView')).toBeVisible();
+  await page.locator('#chooseBlackBtn').click();
+  await expect(page.locator('#roomView')).toContainText('AI · 보통');
+  expect((await post(request, '/api/room/move', token, { x: 7, y: 7 })).status).toBe(200);
+  await expect.poll(async () => (await get(request, '/api/room', token)).data.state.game.board.flat().filter(Boolean).length, { timeout: 10000 }).toBe(2);
   await expectNoScriptError(page);
   await a.context.close();
 });
