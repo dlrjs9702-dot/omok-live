@@ -122,14 +122,26 @@ test('모바일 조이스틱: 위치 옮기기·크기 바꾸기, 새로고침 �
 
   await page.locator('#stickSizeInput').fill('160');
   await expect.poll(async () => Math.round((await stick.boundingBox()).width)).toBe(160);
+  // dragged against the left edge, the whole stick stays on the screen (Codex review)
+  const big = await stick.boundingBox();
+  const stage = await page.locator('#plazaStage').boundingBox();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: big.x + big.width / 2, y: big.y + big.height / 2, id: 2 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 2, y: big.y + big.height / 2, id: 2 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const edge = await stick.boundingBox();
+  expect(edge.x).toBeGreaterThanOrEqual(stage.x);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: edge.x + edge.width / 2, y: edge.y + edge.height / 2, id: 3 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: big.x + big.width / 2, y: big.y + big.height / 2, id: 3 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await page.locator('#stickDoneBtn').click();
   await expect(page.locator('#stickEditBar')).toBeHidden();
+  const moved2 = await stick.boundingBox();
 
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
   const kept = await stick.boundingBox();
   expect(Math.round(kept.width)).toBe(160);
-  expect(Math.abs(kept.x + kept.width / 2 - (moved.x + moved.width / 2))).toBeLessThan(4);
+  expect(Math.abs(kept.x + kept.width / 2 - (moved2.x + moved2.width / 2))).toBeLessThan(4);
 
   await page.locator('#gameMenuBtn').click();
   await page.locator('#stickEditBtn').click();

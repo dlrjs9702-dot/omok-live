@@ -1534,9 +1534,15 @@
     const s = islandStick.style;
     if (!stickPlace) { for (const k of ['left', 'top', 'bottom', 'width', 'height', '--stick-knob']) s.removeProperty(k); return; }
     const { x, y, size } = stickPlace;
-    s.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; s.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; s.bottom = 'auto';
-    s.width = s.height = `${size}px`; s.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
+    // the whole stick stays on the island screen, whatever its size or the phone's turn (Codex review): the saved
+    // place is a share, and here it is held inside by the stick's radius in pixels
+    const W = plazaStage.clientWidth; const H = plazaStage.clientHeight; const half = size / 2 + 4;
+    const fit = (v, len) => (len > 2 * half ? Math.min(len - half, Math.max(half, v * len)) : len / 2);
+    if (W && H) { s.left = `${Math.round(fit(x, W) - size / 2)}px`; s.top = `${Math.round(fit(y, H) - size / 2)}px`; }
+    else { s.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; s.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; }
+    s.bottom = 'auto'; s.width = s.height = `${size}px`; s.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
   }
+  window.addEventListener('resize', () => { if (stickPlace) applyStick(); }); // a turned phone: back inside
   function saveStick() { try { if (stickPlace) localStorage.setItem(STICK_KEY, JSON.stringify(stickPlace)); else localStorage.removeItem(STICK_KEY); } catch {} }
   applyStick();
   const stickEditBar = byId('stickEditBar'); const stickSizeInput = byId('stickSizeInput');
@@ -1549,7 +1555,10 @@
     document.body.classList.toggle('stickEdit', on); stickEditBar.classList.toggle('hidden', !on);
     if (on) { plaza.controller?.setStick?.(0, 0); stickSizeInput.value = String(Math.round(currentStick().size)); }
   }
-  byId('stickEditBtn').classList.toggle('hidden', !touchIsland);
+  // only on the island itself (a room's menu has no stick to adjust -- Codex review); leaving the island ends it
+  const stickEditable = () => touchIsland && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
+
+  new MutationObserver(() => { if (stickEditing() && !stickEditable()) setStickEditing(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
   byId('stickResetBtn').addEventListener('click', () => { stickPlace = null; applyStick(); saveStick(); stickSizeInput.value = String(Math.round(currentStick().size)); });
@@ -1606,6 +1615,8 @@
   const openGameMenu = () => {
     if (gameMenuDialog.open) return;
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
+    // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
+    byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
     gameMenuDialog.showModal();
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
