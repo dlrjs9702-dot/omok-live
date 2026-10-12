@@ -78,7 +78,7 @@ const DATABASE_URL = process.env.DATABASE_URL || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 // v1.10.14: the game center is Google Chrome only. Tests also admit Playwright's unbranded Chromium and plain HTTP
 // clients ('other'); Edge is never admitted. ALLOWED_BROWSERS (space separated) overrides, e.g. for the gate test.
-const ALLOWED_BROWSERS = String(process.env.ALLOWED_BROWSERS || (process.env.NODE_ENV === 'test' ? 'chrome chromium other' : 'chrome')).split(/\s+/).filter(Boolean);
+const ALLOWED_BROWSERS = String(process.env.ALLOWED_BROWSERS || (process.env.NODE_ENV === 'test' ? 'chrome chromium other' : 'chrome ios')).split(/\s+/).filter(Boolean);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : 'dev-admin');
 const MAX_BODY = 48 * 1024;
 const SESSION_IDLE_MS = Math.max(10, Number(process.env.SESSION_IDLE_MINUTES || 60)) * 60 * 1000;
@@ -265,7 +265,7 @@ function sendHerosurv(res) {
 function browserBlocked(req) {
   return !ALLOWED_BROWSERS.includes(classifyBrowser({ brands: parseSecChUa(req.headers['sec-ch-ua']), ua: req.headers['user-agent'] }));
 }
-function sendChromeOnly(res) { sendSimpleHtml(res, 403, 'Chrome 전용', 'Google Chrome으로 접속해 주세요.'); }
+function sendChromeOnly(res) { sendSimpleHtml(res, 403, 'Chrome 전용', 'Google Chrome으로 접속해 주세요. 아이폰은 Safari나 Chrome으로 접속할 수 있습니다.'); }
 
 function sendSimpleHtml(res, status, title, message) {
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>${escapeAttr(title)}</title><style>body{font-family:system-ui,sans-serif;background:#111827;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.box{max-width:460px;padding:30px;background:#1f2937;border-radius:20px;text-align:center}p{color:#d1d5db;line-height:1.6}</style></head><body><div class="box"><h1>${escapeAttr(title)}</h1><p>${escapeAttr(message)}</p></div></body></html>`;
@@ -3071,7 +3071,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.64' });
+    return sendJson(res, 200, { ok: true, version: '1.10.65' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5065,7 +5065,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.64 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.65 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

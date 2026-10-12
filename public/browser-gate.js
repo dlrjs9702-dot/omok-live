@@ -7,6 +7,8 @@
   const GREASE = /^not.a.brand$/i; // "Not A(Brand", "Not;A=Brand", ... (random filler brands)
   const OTHER_CHROMIUM = /\b(?:Edg|EdgA|EdgiOS|Edge|OPR|Opera|Whale|SamsungBrowser|YaBrowser|Vivaldi|UCBrowser|CriOS|FxiOS|Firefox)\//;
 
+  const IOS_OTHER = /\b(?:FxiOS|OPiOS|OPT|Whale|YaBrowser|SamsungBrowser|DuckDuckGo|GSA|KAKAOTALK|NAVER|Line|FBAN|FBAV|Instagram)\b/;
+
   function classifyBrowser({ brands, ua = '', vendor } = {}) {
     if (Array.isArray(brands) && brands.length) {
       const names = brands.map(item => String(item?.brand ?? item)).filter(name => !GREASE.test(name));
@@ -17,6 +19,10 @@
     }
     ua = String(ua);
     if (/\bEdg(?:e|A|iOS)?\//.test(ua)) return 'edge';
+    // v1.10.65 아이폰 허용 (IDEAS 2026-10-12): Safari and Chrome (CriOS) on an iPhone/iPad -- both WebKit underneath, and
+    // there are no client hints there. Other iOS browsers and in-app views (Firefox, Whale, KakaoTalk...) stay 'other'.
+    if (/\b(?:iPhone|iPad|iPod)\b/.test(ua) && /\bAppleWebKit\//.test(ua) && !IOS_OTHER.test(ua)
+      && (/\bCriOS\//.test(ua) || /\bVersion\/\d[\d.]*\b.*\bSafari\//.test(ua))) return 'ios';
     if (/\bHeadlessChrome\//.test(ua)) return 'chromium';
     if (/\bChrome\/\d/.test(ua) && !OTHER_CHROMIUM.test(ua) && (vendor === undefined || vendor === 'Google Inc.')) return 'chrome';
     return 'other';

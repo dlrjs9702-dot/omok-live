@@ -339,7 +339,7 @@ const brands = list => `Object.defineProperty(Navigator.prototype, 'userAgentDat
 test('Microsoft Edge는 게임에 들어가지 못하고 Chrome 안내만 본다', async ({ page }) => {
   await page.addInitScript(brands(['Microsoft Edge', 'Chromium', 'Not?A_Brand']));
   await page.goto('/');
-  await expect(page.locator('#bootTitle')).toHaveText('Google Chrome으로 접속해 주세요');
+  await expect(page.locator('#bootTitle')).toHaveText('Google Chrome으로 접속해 주세요 (아이폰은 Safari·Chrome)'); // v1.10.65
   await expect(page.locator('#bootRetry')).toBeHidden();
   await expect(page.locator('#bootPercent')).toBeHidden();
   expect(await pending(page)).toBe(true);
