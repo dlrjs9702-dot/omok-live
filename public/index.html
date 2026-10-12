@@ -455,15 +455,17 @@
            so collapsing or hiding those (display:none) never silences them -->
       <div id="chatAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
       <div id="twentyAnnounce" class="srOnly" role="status" aria-live="polite" aria-atomic="true"></div>
-      <header class="topbar card">
-        <div>
+      <!-- v1.10.73 게임방 틀 (DESIGN.md 「게임관·게임방」): ‹ 게임관 on the left, the game's own colour tile, the title, chips -->
+      <header class="topbar card roomBar">
+        <div class="roomBarTitle">
+          <button id="leaveRoomBtn" class="ghost">‹ 게임관</button>
+          <span id="roomGameArt" class="gameArt roomGameArt" aria-hidden="true"></span>
           <span id="roomGameLogo" class="logo">오목</span>
           <small id="roomIdentityLabel" class="smallMuted"></small>
           <small id="roomPointBadge" class="pointBadge hidden"></small><small id="roomPointRule" class="pointBadge pointRuleBadge hidden"></small>
         </div>
         <div class="topActions">
           <button id="turnNotifyBtn" class="ghost turnNotifyBtn hidden" type="button" aria-pressed="false">내 차례 알림 · 꺼짐</button>
-          <button id="leaveRoomBtn" class="ghost">게임 선택으로</button>
           <button id="newRoomBtn" class="ghost hidden">새 방</button>
           <button id="roomMenuBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="gameMenuDialog" aria-label="메뉴 (Esc)">☰ 메뉴</button> <!-- v1.10.64: 접속 종료 only in the menu -->
         </div>
@@ -1176,7 +1178,7 @@
   <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog" aria-labelledby="gameMenuTitle">
     <div class="recordsDialogHead"><h2 id="gameMenuTitle">메뉴</h2><button id="gameMenuCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="gameMenuList">
-      <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임 선택으로 돌아가기</button>
+      <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임관으로 돌아가기</button>
       <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
       <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">

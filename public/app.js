@@ -2908,6 +2908,18 @@
     box.append(tips);
   }
 
+  // v1.10.73 게임방 틀: the room's top bar shows the game's own colour tile and icon, as its card in the game hall
+  let roomArtType = null; let roomIcons = null;
+  async function paintRoomArt(type) {
+    const g = window.GamehallCatalog?.GAMES.find((x) => x.room === (type === 'omok2v2' ? 'omok' : type));
+    const tile = document.getElementById('roomGameArt');
+    if (!g) { tile.classList.add('hidden'); roomArtType = null; return; }
+    if (roomArtType === type) return;
+    roomArtType = type; tile.classList.remove('hidden');
+    tile.style.setProperty('--g1', g.colors[0]); tile.style.setProperty('--g2', g.colors[1]);
+    if (!g.svg) try { roomIcons ||= await import('/reflex/js/icons.js'); } catch {}
+    if (roomArtType === type) tile.innerHTML = g.svg ? `<svg viewBox="0 0 64 64">${window.GamehallCatalog.SVG[g.svg]}</svg>` : roomIcons?.art(g.art) || '';
+  }
   let gameTabReady = false; // v1.10.63: set once the remembered tabs are shown (startup must not override them)
   function selectGame(type) {
     if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
@@ -5681,6 +5693,7 @@
     const roomLabel = state.title || gameLabel;
     roomIdentityLabel.textContent = state.title ? `${gameLabel} · ${identityText()}` : identityText();
     roomGameLogo.textContent = roomLabel;
+    paintRoomArt(state.gameType);
     const myPoints = state.me?.pointBalance;
     roomPointBadge.classList.toggle('hidden', myPoints === null || myPoints === undefined);
     if (myPoints !== null && myPoints !== undefined) roomPointBadge.textContent = `내 포인트 ${Number(myPoints).toLocaleString('ko-KR')}P`;
