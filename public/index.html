@@ -189,6 +189,7 @@
                   <option value="rpg">잿빛 원정</option>
               </select>
               <p id="gameRulesText" class="gameRulesText" aria-live="polite">15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.</p>
+              <div id="gameGuideMore" class="gameGuide"></div>
             </div>
           </details></div>
           <!-- v1.10.63 게임 선택 (사용자 2026-10-11): 멀티게임 / 싱글게임, 멀티게임은 대전게임 / 협동게임 -- a tab shows the games under it -->
@@ -251,6 +252,7 @@
             <button id="soloMinesBtn" type="button" class="primary soloGameBtn">지뢰찾기</button>
             <button id="soloHerosurvBtn" type="button" class="primary soloGameBtn">두 세계 영웅전</button>
             <button id="soloReflexBtn" type="button" class="primary soloGameBtn">순발력 게임</button>
+            <button id="soloPuzzleBtn" type="button" class="primary soloGameBtn">퍼즐</button>
           </div>
           <details class="developmentGamesPanel" open aria-label="게임 구현중" data-game-pane="multi">
             <summary class="developmentGamesHead"><strong>게임 구현중</strong><small>접기 / 펼치기</small></summary>
@@ -1045,6 +1047,7 @@
     <div class="minesBar"><span id="minesLeft">💣 0</span><span id="minesTime">⏱ 0:00</span><span id="minesBest"></span></div>
     <div id="minesBoard" class="minesBoard" role="grid" aria-label="지뢰찾기 판"></div>
     <p id="minesStatus" class="minesStatus" role="status" aria-live="polite"></p>
+    <details class="gameGuideDetails"><summary>요령</summary><div id="minesGuide" class="gameGuide"></div></details>
   </dialog>
   <div id="photoBar" class="photoBar hidden"><button id="photoShootBtn" type="button" class="secondary">촬영</button><button id="photoCloseBtn" type="button" class="ghost">닫기</button></div>
   <div id="photoCount" class="photoCount hidden" aria-live="polite"></div>
@@ -1221,6 +1224,7 @@
   <script src="/gostop-ui.js"></script>
   <script src="/pandemic-map.js"></script>
   <script src="/pandemic-ui.js"></script>
+  <script src="/game-guides.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
