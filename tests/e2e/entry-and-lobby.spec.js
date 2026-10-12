@@ -6,7 +6,7 @@ test.describe('게임센터 입장과 로비', () => {
   test('일반 주소는 관리자 입장 화면을 제공한다', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page).toHaveTitle('게임센터');
+    await expect(page).toHaveTitle('아일랜드');
     await expect(page.locator('#gateView')).toBeVisible();
     await expect(page.locator('#adminLoginForm')).toBeVisible();
     await expect(page.locator('#adminPassword')).toHaveAttribute('type', 'password');
