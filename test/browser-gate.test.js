@@ -126,7 +126,9 @@ test('브라우저 판별: 아이폰 Safari·Chrome은 ios, 다른 iOS 브라우
   const iphoneEdge = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 EdgiOS/130.0.2849.80 Mobile/15E148 Safari/605.1.15';
   const iphoneKakao = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.9.0';
   const iphoneWhale = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Whale/3.0.0.0 Mobile/15E148 Safari/604.1';
-  for (const ua of [iphoneSafari, iphoneChrome, ipadSafari]) assert.equal(classifyBrowser({ ua, vendor: 'Apple Computer, Inc.' }), 'ios', ua);
+  // v1.10.66: opened from the home-screen icon (standalone) there is no Safari token (Codex review)
+  const iphoneHomeApp = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+  for (const ua of [iphoneSafari, iphoneChrome, ipadSafari, iphoneHomeApp]) assert.equal(classifyBrowser({ ua, vendor: 'Apple Computer, Inc.' }), 'ios', ua);
   assert.equal(classifyBrowser({ ua: iphoneSafari }), 'ios'); // server side: no vendor
   assert.equal(classifyBrowser({ ua: iphoneEdge }), 'edge');
   for (const ua of [iphoneFirefox, iphoneKakao, iphoneWhale, UA.safari]) assert.equal(classifyBrowser({ ua }), 'other', ua);

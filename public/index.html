@@ -7,6 +7,14 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <title>게임센터</title>
+  <!-- v1.10.66 홈 화면 앱: 「홈 화면에 추가」(Android 「앱 설치」)로 섬 아이콘이 생기고, 그 아이콘으로 열면 주소창 없이 열린다 -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/island.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="게임센터" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/theme-light-auto.css" />
   <link rel="stylesheet" href="/theme-light.css" />
@@ -1101,6 +1109,7 @@
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
         <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
+        <p id="homeAppHint" class="homeAppHint hidden">전체화면처럼 쓰려면: Safari 아래 공유 버튼 → 「홈 화면에 추가」. 홈 화면의 섬 아이콘으로 열면 주소창 없이 꽉 찬 화면이 됩니다.</p>
       </section>
       <button id="logoutBtn" type="button" class="danger">접속 종료</button>
     </div>
