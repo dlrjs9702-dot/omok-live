@@ -3938,7 +3938,10 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const records = await pointStore.soloRecords(pointAccountForSession(session));
-    return sendJson(res, 200, { ok: true, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
+    // uid (v1.10.70, Codex review): a name for this account's puzzle progress kept in the browser, so two accounts on one
+    // browser never share a day's puzzle (says nothing about the account)
+    const uid = crypto.createHash('sha256').update(`puzzle-uid|${pointAccountForSession(session)}`).digest('hex').slice(0, 16);
+    return sendJson(res, 200, { ok: true, uid, points: PuzzleDaily.POINTS, date: kstDate(nowMs()),
       records: Object.fromEntries(Object.keys(PuzzleDaily.GAMES).map((id) => [id, records[id] || {}])) });
   }
   if ((pathname === '/api/solo/puzzle/start' || pathname === '/api/solo/puzzle/finish') && req.method === 'POST') {

@@ -68,6 +68,9 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
   await page.locator('.reflexCard', { hasText: '스도쿠' }).click();
   await expect(page.locator('.reflexModes .reflexLevel[aria-checked="true"]')).toHaveText('오늘의 문제');
   await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel').first()).toHaveText('쉬움 · 2,000P');
+  // v1.10.70 (Codex review): the first send fails -- the solved board stays in this account's 보낼 기록함 and goes again
+  let blocked = false;
+  await page.route('**/api/solo/puzzle/finish', (route) => { if (blocked) return route.continue(); blocked = true; return route.abort(); });
   await page.locator('.reflexGo').click();
   await expect(page.locator('#hud')).toBeVisible();
   await page.waitForTimeout(500); // the puzzle is made
@@ -82,7 +85,15 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
     await page.keyboard.press('ArrowDown');
   }
   await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.reflexPaid')).toHaveText(/이번 기록은 포인트가 없어요/);
+  await expect(page.locator('.reflexPaid')).toHaveText(/다시 열면 다시 보내요/);
+  const uid = (await get(request, '/api/solo/puzzle', token)).data.uid;
+  const box = () => page.evaluate((u) => JSON.parse(localStorage.getItem(`gc.outbox.${u}`) || '[]').length, uid);
+  expect(await box()).toBe(1);
+  expect((await get(request, '/api/solo/puzzle', token)).data.records.sudoku).toEqual({});
+  await page.locator('.reflexActions button', { hasText: '다른 게임' }).click();
+  await page.locator('.reflexHead button', { hasText: '뒤로' }).click();
+  await page.locator('#soloPuzzleBtn').click(); // opening 퍼즐 again sends what was left
+  await expect.poll(box).toBe(0);
   expect((await get(request, '/api/solo/puzzle', token)).data.records.sudoku.easy.clears).toBe(1);
   await expectNoScriptError(page);
   await a.context.close();

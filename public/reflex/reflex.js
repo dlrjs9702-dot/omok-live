@@ -10,7 +10,8 @@
 // game's own moves, a turn of the stock, a dealt row, an undo, and the moves up the game makes by itself.
 // The list's 「‹ 뒤로」 goes back to choosing a game (사용자 2026-10-12: 나가기 alone went straight to the island).
 import { E, startGame, stopGame } from './js/engine.js';
-import { Settings } from './js/store.js';
+import { Settings, Stats } from './js/store.js';
+import { readQueue, dropRecord } from './js/outbox.js';
 import { unlockAudio, sfx } from './js/audio.js';
 import { art } from './js/icons.js';
 import { fmtScore } from './js/util.js';
@@ -146,6 +147,7 @@ export function mount({ api, onBack }) {
 
   async function start(g, status) {
     unlockAudio(); // the first press opens the sound (phones need a touch first)
+    if (set === SETS.puzzle && !info) { status.textContent = '불러오는 중이에요. 잠시 후 다시 눌러 주세요.'; return; } // whose progress, first
     const seq = ++startSeq; const level = levelOf(g); // a screen change or a later press makes this answer stale (Codex review)
     const mode = modeOf(g);
     let id = null; let seed = null;
@@ -184,7 +186,7 @@ export function mount({ api, onBack }) {
     box.lastChild.append(again, button('ghost', '다른 게임', () => { stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
     result.replaceChildren(box); result.classList.remove('hidden');
     again.focus();
-    if (set === SETS.puzzle) return r.proof && sendPuzzle(g, score, r.proof, line);
+    if (set === SETS.puzzle) return r.proof && sendPuzzle(g, score, r.proof, line, r.rec);
     if (set === SETS.cards) return sendCards(g, id, log, line);
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
@@ -198,9 +200,13 @@ export function mount({ api, onBack }) {
     } catch (error) { line.textContent = error.message; }
   }
 
-  async function sendPuzzle(g, score, proof, line) { // 오늘의 문제, solved for the first time on this device
+  // v1.10.70 (Codex review): puzzle-kit writes a solved 오늘의 문제 into this account's 보낼 기록함 (js/outbox.js) before it
+  // marks the day done; it leaves the box once the server has answered for good, so a failed send goes again next time
+  const settled = (error) => error.status && error.status < 500 && error.status !== 429;
+  async function sendPuzzle(g, score, proof, line, rec) { // 오늘의 문제, solved for the first time on this device
     try {
       const out = await api('/api/solo/puzzle/finish', { method: 'POST', body: JSON.stringify({ game: g.id, level: levelOf(g), score, proof }) });
+      if (rec) dropRecord(Stats.uid, rec.rid);
       if (info && out.best != null) (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best };
       const parts = [];
       if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
@@ -208,7 +214,16 @@ export function mount({ api, onBack }) {
       else if (out.already) parts.push('오늘의 문제는 이미 기록했어요');
       else parts.push('이번 기록은 포인트가 없어요');
       line.textContent = parts.join(' · ');
-    } catch (error) { line.textContent = error.message; }
+    } catch (error) {
+      if (rec && settled(error)) dropRecord(Stats.uid, rec.rid);
+      line.textContent = settled(error) ? error.message : '기록을 보내지 못했어요 · 퍼즐을 다시 열면 다시 보내요';
+    }
+  }
+  async function resendPuzzles() { // what an earlier send left in the box
+    for (const r of readQueue(Stats.uid)) {
+      try { await api('/api/solo/puzzle/finish', { method: 'POST', body: JSON.stringify({ game: r.game, level: r.lv, score: r.score, proof: r.pz }) }); dropRecord(Stats.uid, r.rid); }
+      catch (error) { if (settled(error)) dropRecord(Stats.uid, r.rid); else return; }
+    }
   }
 
   async function sendCards(g, id, log, line) { // a cleared deal: the server plays it again before it pays
@@ -252,6 +267,7 @@ export function mount({ api, onBack }) {
         const want = set; const got = await api(set.info);
         if (want !== set) return; // opened the other set meanwhile
         info = got;
+        if (set === SETS.puzzle) { Stats.load(info.uid); resendPuzzles(); } // this account's own progress (Codex review)
         if (shown === 'list') showList(); else if (shown === 'game') showGame(game);
       } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); }
     },
