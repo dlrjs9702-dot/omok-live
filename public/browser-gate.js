@@ -22,7 +22,10 @@
     // v1.10.65 아이폰 허용 (IDEAS 2026-10-12): Safari and Chrome (CriOS) on an iPhone/iPad -- both WebKit underneath, and
     // there are no client hints there. Other iOS browsers and in-app views (Firefox, Whale, KakaoTalk...) stay 'other'.
     if (/\b(?:iPhone|iPad|iPod)\b/.test(ua) && /\bAppleWebKit\//.test(ua) && !IOS_OTHER.test(ua)
-      && (/\bCriOS\//.test(ua) || /\bVersion\/\d[\d.]*\b.*\bSafari\//.test(ua))) return 'ios';
+      && (/\bCriOS\//.test(ua) || /\bVersion\/\d[\d.]*\b.*\bSafari\//.test(ua)
+        // v1.10.66: opened from the home-screen icon (standalone) the UA ends at "Mobile/…" with no Safari token; an in-app
+        // view adds its own name after it (or is one of IOS_OTHER)
+        || /\bMobile\/\w+$/.test(ua.trim()))) return 'ios';
     if (/\bHeadlessChrome\//.test(ua)) return 'chromium';
     if (/\bChrome\/\d/.test(ua) && !OTHER_CHROMIUM.test(ua) && (vendor === undefined || vendor === 'Google Inc.')) return 'chrome';
     return 'other';

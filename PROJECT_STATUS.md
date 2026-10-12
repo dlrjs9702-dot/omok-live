@@ -16,7 +16,7 @@
 ## v1.10.66 홈 화면 앱(아이폰·안드로이드)
 
 - 지시(사용자 2026-10-12): 아이폰은 페이지 전체화면이 안 되므로 「홈 화면에 추가」로 앱처럼 열리게, 안드로이드도 같이. 아이콘은 기존 에셋에 섬 그림이 없으면 섬 그림으로 — 기존 미리보기는 에셋 견본판, 게임 안내 지도는 글자·선로가 섞여 있어, 섬 실제 해안선·개울·연못·광장(`island-terrain.js`)으로 새로 그림. 바다색 네모 위 섬(아이폰은 항상 둥근 네모, 안드로이드 런처는 모양을 자르므로 네모가 바다).
-- 변경: `public/manifest.webmanifest`(standalone — 상단 표시줄은 남기는 앱 모드, 시작 `/`, 아이콘 192·512·maskable 512), `index.html` manifest·아이콘·아이폰 웹앱 meta, 서버 MIME `.webmanifest`. 아이콘 생성 `tools/make-app-icons.js`(섬 모양 SVG → Playwright로 PNG, 섬 모양이 바뀌면 다시 실행). 메뉴 환경설정: 전체화면을 못 하는 곳(`document.fullscreenEnabled` 없음 = 아이폰)에는 전체화면 버튼 대신 「홈 화면에 추가」 안내, 홈 화면으로 연 상태(`display-mode: standalone`)에서는 숨김. 안드로이드 Chrome은 기존 전체화면 버튼 그대로.
+- 변경: `public/manifest.webmanifest`(standalone — 상단 표시줄은 남기는 앱 모드, 시작 `/`, 아이콘 192·512·maskable 512), `index.html` manifest·아이콘·아이폰 웹앱 meta, 서버 MIME `.webmanifest`. 아이콘 생성 `tools/make-app-icons.js`(섬 모양 SVG → Playwright로 PNG, 섬 모양이 바뀌면 다시 실행). 메뉴 환경설정: 전체화면을 못 하는 곳(`document.fullscreenEnabled` 없음 = 아이폰)에는 전체화면 버튼 대신 「홈 화면에 추가」 안내, 홈 화면으로 연 상태(`display-mode: standalone`)에서는 숨김. 안드로이드 Chrome은 기존 전체화면 버튼 그대로. Codex 지적 반영: 아이폰 홈 화면 앱의 user agent는 `Mobile/…`로 끝나고 Safari 표시가 없어 v1.10.65 판별기가 막았으므로 그 형태도 `ios`로(앱 내 브라우저는 뒤에 자기 이름이 붙어 제외).
 - 주의: 홈 화면 앱은 브라우저 탭과 저장소가 따로라 처음 한 번 다시 로그인할 수 있다. 실제 아이폰·안드로이드 홈 화면 추가 미검증.
 - 검증: `test/home-app.test.js`(manifest MIME·standalone·maskable, 아이콘 4개 PNG 200), e2e 「메뉴: 홈 화면에 추가 안내」(전체화면 지원 시 버튼, 미지원 시 안내).
 
