@@ -72,13 +72,28 @@
     grid = { blocked, cost };
     return grid;
   }
-  const free = (i, j) => i >= 0 && j >= 0 && i < N && j < N && !grid.blocked[j * N + i];
+  // `extra` (a screen's own path to an event's place): more cells it may not step on -- what the shared grid does not
+  // know, as October night's pumpkins. It never changes the rounds, which every screen and the server must agree on.
+  let extra = null;
+  const free = (i, j) => i >= 0 && j >= 0 && i < N && j < N && !grid.blocked[j * N + i] && !extra?.(j * N + i);
+  // the nearest free cell to a point standing in a blocked one (squeezed between props), up to two cells off
+  function freeNear(i, j) {
+    if (free(i, j)) return [i, j];
+    for (let r = 1; r <= 2; r += 1) for (let dj = -r; dj <= r; dj += 1) for (let di = -r; di <= r; di += 1) if (Math.max(Math.abs(di), Math.abs(dj)) === r && free(i + di, j + dj)) return [i + di, j + dj];
+    return null;
+  }
 
   // A* over the grid (8 directions, no corner cutting), then the corners cut where the straight line stays clear.
-  function findPath(a, b) {
+  function findPath(a, b, blockedCell = null) {
     buildGrid();
-    const [si, sj] = cellOf(a.x, a.z); const [ti, tj] = cellOf(b.x, b.z);
-    if (!free(si, sj) || !free(ti, tj)) return null;
+    extra = blockedCell;
+    try { return search(a, b); } finally { extra = null; }
+  }
+  function search(a, b) {
+    const s0 = cellOf(a.x, a.z); const t0 = cellOf(b.x, b.z);
+    const sc = extra ? freeNear(...s0) : s0; const tc = extra ? freeNear(...t0) : t0;
+    if (!sc || !tc || !free(...sc) || !free(...tc)) return null;
+    const [si, sj] = sc; const [ti, tj] = tc;
     const start = sj * N + si; const goal = tj * N + ti;
     const g = new Float32Array(N * N).fill(Infinity); const from = new Int32Array(N * N).fill(-1); const closed = new Uint8Array(N * N);
     const heap = []; // [f, id]
@@ -103,7 +118,8 @@
     const cells = []; for (let id = goal; id >= 0; id = from[id]) { cells.push(id); if (id === start) break; }
     cells.reverse();
     const pts = cells.map((id) => centre(id % N, Math.floor(id / N)));
-    pts[0] = { x: a.x, z: a.z }; pts[pts.length - 1] = { x: b.x, z: b.z };
+    if (extra) { pts.unshift({ x: a.x, z: a.z }); pts.push({ x: b.x, z: b.z }); } // moved off a squeezed start or end: keep the cell centre between
+    else { pts[0] = { x: a.x, z: a.z }; pts[pts.length - 1] = { x: b.x, z: b.z }; }
     return smoothPath(pts);
   }
   function clearLine(p, q) {
@@ -273,22 +289,50 @@
     // One frame. `people` are other circles to give way to ({x, z, r}: me, other players, event visitors).
     let resyncs = 0; // times an islander was put back on its round (a paused tab, or stuck)
     let lastMs = null;
+    // v1.10.73 (IDEAS #bug-event-resident-stuck): the way to a held place on the route grid, with this screen's own
+    // solids (October night's pumpkins) kept off it too. A cell is blocked where a solid comes within an islander of it.
+    const blockedCell = ({ x, z }) => !walkable(x, z) || solidsNear(x, z).some((s) => Math.hypot(Math.max(0, Math.abs(x - s.x) - CELL / 2), Math.max(0, Math.abs(z - s.z) - CELL / 2)) < s.r + R);
+    function pathTo(w, x, z) {
+      const cells = new Map(); const at = (id) => { if (!cells.has(id)) cells.set(id, blockedCell(centre(id % N, Math.floor(id / N)))); return cells.get(id); };
+      const pts = findPath({ x: w.x, z: w.z }, { x, z }, at) || findPath({ x: w.x, z: w.z }, { x, z });
+      w.route = pts ? pts.slice(1) : [{ x, z }]; w.routeTo = `${x},${z}`; w.routeCheck = { t: 0, d: Infinity };
+    }
+    // along the route: the next corner, passed once close to it
+    function routeTarget(w) {
+      while (w.route.length > 1 && Math.hypot(w.route[0].x - w.x, w.route[0].z - w.z) < 0.35) w.route.shift();
+      return w.route[0];
+    }
     function step(ms, frameDt, people = []) {
       // the time that really passed on the server clock the rounds run on (a scene caps its frame step for animation;
       // on a slow PC that cap would leave the islanders falling ever further behind their rounds)
+      // v1.10.73: more than a second with no frame (a hidden tab, the scene stopped for the game hall) is a pause: what
+      // the islanders did meanwhile is put right at once, as every screen that kept drawing has it
+      const paused = lastMs !== null && ms - lastMs > 1000;
       const dt = lastMs === null ? frameDt : Math.min(1, Math.max(0, (ms - lastMs) / 1000)); lastMs = ms;
       const keep = Math.exp(-RETURN * dt);
       for (const w of list) { // 1) the shared route, plus what is left of the offset
         const pose = poseAt(w.n, ms); w.px = w.x; w.pz = w.z;
         if (pose.held) {
-          const distance=Math.hypot(pose.x-w.x,pose.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
-          [w.x,w.z]=move(w.x,w.z,w.x+(pose.x-w.x)*scale,w.z+(pose.z-w.z)*scale);
+          // v1.10.73: on the route grid to the held place (the server's safe point, the same on every screen); a straight
+          // walk crossed the plaza and wedged between the jack-o'-lantern's base, a bench and the pumpkins. A screen that
+          // was paused when the place was taken puts the islander there (the others have long since seen them arrive).
+          // Within MAX_OFF (as the round keeps it) the islander steps straight there as before; further, or after 1.5 s
+          // without headway (wedged on the way), it takes the route grid from where it stands.
+          if (paused) { [w.x, w.z] = [pose.x, pose.z]; w.route = null; resyncs += 1; }
+          const left = Math.hypot(pose.x - w.x, pose.z - w.z); const key = `${pose.x},${pose.z}`;
+          if (w.routeTo !== key) { w.route = null; w.routeTo = key; w.routeCheck = { t: 0, d: left }; if (left > MAX_OFF) pathTo(w, pose.x, pose.z); }
+          else if ((w.routeCheck.t += dt) >= 1.5) { if (left > 0.05 && left > w.routeCheck.d - 0.2) pathTo(w, pose.x, pose.z); else w.routeCheck = { t: 0, d: left }; }
+          if (left < 0.6) w.route = null;
+          const goal = w.route ? routeTarget(w) : pose;
+          const distance=Math.hypot(goal.x-w.x,goal.z-w.z), scale=distance?Math.min(1,TOP*dt/distance):1;
+          [w.x,w.z]=move(w.x,w.z,w.x+(goal.x-w.x)*scale,w.z+(goal.z-w.z)*scale);
           w.bx=pose.x; w.bz=pose.z; w.pose=pose;
           w.speed=dt?Math.hypot(w.x-w.px,w.z-w.pz)/dt:0;
           w.arrived=Math.hypot(w.x-pose.x,w.z-pose.z)<0.05;
-          w.heading = null; w.warped = false; w.rejoining = false;
+          w.heading = distance > 0.05 ? Math.atan2(goal.x - w.x, goal.z - w.z) : null; w.warped = false; w.rejoining = false;
           continue; // approach the same safe server point; never teleport away from local avoidance
         }
+        w.route = null; w.routeTo = null;
         if (w.pose.held) w.rejoining = true;
         if (w.rejoining && Math.hypot(w.x-pose.x,w.z-pose.z)<0.5) w.rejoining = false;
         let tx = pose.x + (w.x - w.bx) * keep; let tz = pose.z + (w.z - w.bz) * keep;

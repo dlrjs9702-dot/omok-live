@@ -1085,6 +1085,37 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await a.context.close();
 });
 
+// v1.10.73 (IDEAS #bug-event-resident-stuck): a resident taken for a request walks there on the route grid -- from the
+// far side of the plaza on October's night (pumpkins out), round the jack-o'-lantern -- and the talk opens on arrival;
+// a screen that was paused when the request began (a hidden tab, the game hall) shows them at the place at once
+test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 도착하고, 멈췄던 화면은 바로 그 자리에', async ({ browser, request }) => {
+  test.setTimeout(150000);
+  const a = await intoPlaza(browser, request, '의뢰손님');
+  const { page } = a;
+  await page.evaluate(() => window.PlazaDebug().halloween.set(true));
+  const gap = (n) => page.evaluate((n) => { const d = window.PlazaDebug(); const w = d.wanderers.find((o) => o.n === n); const h = d.residentReservations[n].hold; return h ? Math.hypot(w.x - h.x, w.z - h.z) : null; }, n);
+  const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  expect(lost?.npc).toBeTruthy();
+  const n = lost.npc.resident;
+  await expect.poll(() => gap(n), { timeout: 15000 }).not.toBeNull();
+  await page.evaluate(({ n, x, z }) => { const r = Math.hypot(x, z); window.PlazaDebug().placeWanderer(n, (-x / r) * 7, (-z / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z });
+  await expect.poll(() => gap(n), { timeout: 60000, intervals: [1000] }).toBeLessThan(0.05);
+  await page.evaluate(([x, z]) => window.PlazaWarp(x + 1, z), [lost.npc.x, lost.npc.z]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  // paused: no frames while the request is taken, then a resident far from its place is drawn right at it
+  await page.evaluate(() => { const raf = window.requestAnimationFrame; const held = []; window.__thaw = () => { window.requestAnimationFrame = raf; for (const cb of held.splice(0)) raf(cb); }; window.requestAnimationFrame = (cb) => { held.push(cb); return 0; }; });
+  const next = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
+  expect(next?.npc).toBeTruthy();
+  await page.evaluate(({ n, x, z }) => window.PlazaDebug().placeWanderer(n, x + 30, z), { n: next.npc.resident, x: next.npc.x, z: next.npc.z });
+  await expect.poll(() => gap(next.npc.resident), { timeout: 15000 }).not.toBeNull(); // heard while paused
+  await page.waitForTimeout(1200);
+  const frame = page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
+  await page.evaluate(() => window.__thaw()); await frame;
+  expect(await gap(next.npc.resident)).toBeLessThan(0.05);
+  await expectNoScriptError(page);
+  await a.context.close();
+});
+
 // v1.10.32 운반·전달: a lost thing picked up stays in my hands (in front of the chest, the arms holding it) while I stand
 // and walk, the other players see it in mine; given back, the owner takes it hand to hand and only then goes
 test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 보이며, 주인이 받아 든 뒤 떠난다', async ({ browser, request }) => {
