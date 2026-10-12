@@ -40,5 +40,5 @@ test('입장 파일은 토큰을 URL 쿼리에 넣지 않고 POST 한다', () =>
 
 test('게스트 파일명과 라벨을 안전하게 만든다', () => {
   assert.equal(sanitizeLabel('  우성\n<PC>  '), '우성PC');
-  assert.equal(safeFilename('우성/PC'), '게임센터 - 우성_PC.html');
+  assert.equal(safeFilename('우성/PC'), '아일랜드 - 우성_PC.html');
 });

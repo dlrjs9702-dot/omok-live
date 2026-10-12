@@ -732,7 +732,7 @@
     // native-PIP popup: every rule it applies is generic (.side, .sideActions, ...), and this
     // window needs the exact same "fill the window, no mobile-breakpoint hiding" treatment.
     pipWindow.document.documentElement.classList.add('sidePipLayout');
-    pipWindow.document.title = `채팅 · ${state?.gameName || '게임센터'}`;
+    pipWindow.document.title = `채팅 · ${state?.gameName || '아일랜드'}`;
     chatPanelHome = { parent: chatPanel.parentElement, next: chatPanel.nextElementSibling };
     pipWindow.document.body.appendChild(chatPanel);
     chatPipWindow = pipWindow;
@@ -805,7 +805,7 @@
         pipWindow.document.head.appendChild(clone);
       }
       pipWindow.document.documentElement.classList.add('sidePipLayout');
-      pipWindow.document.title = `게임 진행 · ${state?.gameName || '게임센터'}`;
+      pipWindow.document.title = `게임 진행 · ${state?.gameName || '아일랜드'}`;
       gameInfoPanelHome = { parent: gameInfoPanel.parentElement, next: gameInfoPanel.nextElementSibling };
       pipWindow.document.body.appendChild(gameInfoPanel);
       gameInfoPipWindow = pipWindow;
@@ -1523,12 +1523,68 @@
     if (event.pointerId !== stickPointer) return;
     stickPointer = null; stickKnob.style.transform = ''; plaza.controller?.setStick?.(0, 0);
   }
+  // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): where its centre sits (a share of the island screen, so a turned phone
+  // keeps it in the same corner) and how big it is, kept on this device; 메뉴 → 환경설정 → 「조이스틱 위치·크기」 opens the
+  // adjusting: the stick is dragged to its place and the slider sizes it, nothing walks meanwhile.
+  const STICK_KEY = 'gc.stick'; const STICK_MIN = 80; const STICK_MAX = 180;
+  let stickPlace = null; // { x, y, size } or null (the default corner and size)
+  try { const saved = JSON.parse(localStorage.getItem(STICK_KEY) || 'null'); if (saved && [saved.x, saved.y, saved.size].every(Number.isFinite)) stickPlace = saved; } catch {}
+  const clampStick = (p) => ({ x: Math.min(0.95, Math.max(0.05, p.x)), y: Math.min(0.95, Math.max(0.05, p.y)), size: Math.min(STICK_MAX, Math.max(STICK_MIN, Math.round(p.size))) });
+  function applyStick() {
+    const s = islandStick.style;
+    if (!stickPlace) { for (const k of ['left', 'top', 'bottom', 'width', 'height', '--stick-knob']) s.removeProperty(k); return; }
+    const { x, y, size } = stickPlace;
+    // the whole stick stays on the island screen, whatever its size or the phone's turn (Codex review): the saved
+    // place is a share, and here it is held inside by the stick's radius in pixels
+    const W = plazaStage.clientWidth; const H = plazaStage.clientHeight; const half = size / 2 + 4;
+    const fit = (v, len) => (len > 2 * half ? Math.min(len - half, Math.max(half, v * len)) : len / 2);
+    if (W && H) { s.left = `${Math.round(fit(x, W) - size / 2)}px`; s.top = `${Math.round(fit(y, H) - size / 2)}px`; }
+    else { s.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; s.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; }
+    s.bottom = 'auto'; s.width = s.height = `${size}px`; s.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
+  }
+  window.addEventListener('resize', () => { if (stickPlace) applyStick(); }); // a turned phone: back inside
+  function saveStick() { try { if (stickPlace) localStorage.setItem(STICK_KEY, JSON.stringify(stickPlace)); else localStorage.removeItem(STICK_KEY); } catch {} }
+  applyStick();
+  const stickEditBar = byId('stickEditBar'); const stickSizeInput = byId('stickSizeInput');
+  const stickEditing = () => document.body.classList.contains('stickEdit');
+  function currentStick() { // the stick's place now, whether saved or the CSS default
+    const stage = plazaStage.getBoundingClientRect(); const box = islandStick.getBoundingClientRect();
+    return { x: (box.left + box.width / 2 - stage.left) / stage.width, y: (box.top + box.height / 2 - stage.top) / stage.height, size: box.width };
+  }
+  function setStickEditing(on) {
+    document.body.classList.toggle('stickEdit', on); stickEditBar.classList.toggle('hidden', !on);
+    if (on) { plaza.controller?.setStick?.(0, 0); stickSizeInput.value = String(Math.round(currentStick().size)); }
+  }
+  // only on the island itself (a room's menu has no stick to adjust -- Codex review); leaving the island ends it
+  const stickEditable = () => touchIsland && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
+
+  new MutationObserver(() => { if (stickEditing() && !stickEditable()) setStickEditing(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
+  byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
+  byId('stickResetBtn').addEventListener('click', () => { stickPlace = null; applyStick(); saveStick(); stickSizeInput.value = String(Math.round(currentStick().size)); });
+  stickSizeInput.addEventListener('input', () => { stickPlace = clampStick({ ...currentStick(), size: Number(stickSizeInput.value) }); applyStick(); saveStick(); });
+  let stickDrag = null;
   islandStick.addEventListener('pointerdown', (event) => {
     event.preventDefault();
+    if (stickEditing()) { // adjusting: the finger carries the stick
+      if (stickDrag) return;
+      const now = currentStick(); const stage = plazaStage.getBoundingClientRect();
+      stickDrag = { id: event.pointerId, dx: now.x - (event.clientX - stage.left) / stage.width, dy: now.y - (event.clientY - stage.top) / stage.height, size: now.size };
+      islandStick.setPointerCapture(event.pointerId); return;
+    }
     if (stickPointer !== null) return; // the first finger keeps the stick until it lets go (Codex review)
     stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event);
   });
-  islandStick.addEventListener('pointermove', (event) => { if (event.pointerId === stickPointer) moveStick(event); });
+  islandStick.addEventListener('pointermove', (event) => {
+    if (stickDrag?.id === event.pointerId) {
+      const stage = plazaStage.getBoundingClientRect();
+      stickPlace = clampStick({ x: (event.clientX - stage.left) / stage.width + stickDrag.dx, y: (event.clientY - stage.top) / stage.height + stickDrag.dy, size: stickDrag.size });
+      applyStick(); return;
+    }
+    if (event.pointerId === stickPointer) moveStick(event);
+  });
+  const endStickDrag = (event) => { if (stickDrag?.id === event.pointerId) { stickDrag = null; saveStick(); } };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) islandStick.addEventListener(type, endStickDrag);
   islandStick.addEventListener('pointerup', endStick);
   islandStick.addEventListener('pointercancel', endStick);
   islandStick.addEventListener('lostpointercapture', endStick); // never left held if the browser drops the touch
@@ -1559,6 +1615,8 @@
   const openGameMenu = () => {
     if (gameMenuDialog.open) return;
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
+    // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
+    byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
     gameMenuDialog.showModal();
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
@@ -2655,7 +2713,7 @@
     "halligalli": "2~6명이 순서대로 카드를 공개합니다. 공개된 카드 맨 위의 한 과일 합이 정확히 5개면 종을 먼저 치세요. 맞히면 공개 카드를 전부 가져오고, 틀리면 다른 참가자에게 카드 한 장씩 줍니다. 카드가 없어도 자기 차례 전 종으로 카드를 얻으면 생존합니다. 방장이 정한 5분 또는 10분이 끝나면 뒷면 카드가 가장 많은 사람이 승리하며 공동 승리할 수 있습니다.",
     "pandemic": "2~4명이 힘을 모으는 협력 게임입니다. 모두 함께 승리하거나 함께 패배합니다. 파랑·노랑·검정·빨강 네 가지 질병의 치료제를 모두 개발하면 승리하고, 확산이 8번 일어나거나 질병 큐브가 부족하거나 플레이어 카드 2장을 뽑을 수 없으면 패배합니다. 각자 서로 다른 직업(비상 대책 설계자·운항관리자·위생병·건축 전문가·검역 전문가·연구자·과학자)을 받습니다. 차례마다 행동을 최대 4번 하고(이동·연구소 건설·질병 치료·정보 공유·치료제 개발), 플레이어 카드 2장을 뽑은 뒤(전염 카드가 나오면 즉시 처리), 감염률만큼 도시를 감염시킵니다. 손패는 7장까지이며 이벤트 카드는 행동을 쓰지 않고 누구의 차례에도 쓸 수 있습니다. 난이도는 전염 카드 4·5·6장입니다. 원작: 팬데믹(Pandemic, Z-Man Games).",
     "davinci": "2~4명 개인전. 타일 색은 모두 볼 수 있고 숫자는 본인 것만 볼 수 있습니다. 0~11의 흑·백 타일을 숫자 오름차순, 같은 숫자는 흑·백 순으로 정렬합니다. 차례마다 한 장을 뽑고 상대 타일 숫자를 추측합니다. 맞히면 계속 추측하거나 멈추고, 틀리면 뽑은 타일을 공개합니다. 더미가 비면 틀렸을 때 자기 타일을 공개합니다. 마지막 생존자가 승리합니다.",
-    "gostop": "2명은 맞고(각 10장·바닥 8장), 3명은 고스톱(각 7장·바닥 6장)입니다. 넷마블 대박맞고 계열 대박모드로 맞고 7점·고스톱 3점부터 고/스톱을 고르며 1고 +1점 ×2, 2고 +2점 ×4 … 7고 ×128입니다. 광·열끗·고도리·띠·홍단·청단·초단·피 점수와 9월 국진(열끗/쌍피 선택), 쪽·따닥·판쓸이·뻑·자뻑·흔들기·폭탄·콩알탄·보너스피, 총통·3뻑 10점 승리, 피박·광박·멍박·고박, 나가리(다음 판 ×2)를 적용합니다. 방장이 정한 점당 10/50/100P로 게임센터 포인트만 정산하며 실제 돈과는 관계없습니다. 화투 그림: Louie Mantia Jr.·Marcus Richert·Spenĉjo(Wikimedia Commons, CC BY-SA 4.0).",
+    "gostop": "2명은 맞고(각 10장·바닥 8장), 3명은 고스톱(각 7장·바닥 6장)입니다. 넷마블 대박맞고 계열 대박모드로 맞고 7점·고스톱 3점부터 고/스톱을 고르며 1고 +1점 ×2, 2고 +2점 ×4 … 7고 ×128입니다. 광·열끗·고도리·띠·홍단·청단·초단·피 점수와 9월 국진(열끗/쌍피 선택), 쪽·따닥·판쓸이·뻑·자뻑·흔들기·폭탄·콩알탄·보너스피, 총통·3뻑 10점 승리, 피박·광박·멍박·고박, 나가리(다음 판 ×2)를 적용합니다. 방장이 정한 점당 10/50/100P로 아일랜드 포인트만 정산하며 실제 돈과는 관계없습니다. 화투 그림: Louie Mantia Jr.·Marcus Richert·Spenĉjo(Wikimedia Commons, CC BY-SA 4.0).",
     "rpg": "1~4인 협동 3D 로그라이크 액션 RPG입니다. 수호자·사냥꾼·비술사 중 하나를 골라 방향키로 직접 움직이고 Space로 기본 공격, Q/W/E/R로 스킬, Shift로 대시합니다. 방의 몬스터를 모두 물리치면 레벨업 스킬·능력치·아이템을 고르고 다음 방으로 갑니다. 여덟 번째 방의 보스를 쓰러뜨리면 원정 성공이며, 한 판이 끝나면 성장은 초기화됩니다."
 });
   function showGameRule(type) {
@@ -4415,7 +4473,7 @@
     lastResultEffectKey = null;
     clearResultEffect();
     resetTurnAlertTracking();
-    setBaseDocumentTitle('게임센터');
+    setBaseDocumentTitle('아일랜드');
     lobbyChatAnnouncer.reset();
     islandBubbleSeen = null; // the first snapshot after coming back is only a baseline (no old bubbles)
     showView('lobby');
@@ -4794,7 +4852,7 @@
   // snapshot after entering a room is only a baseline, so a reconnect never looks like a new turn.
   const TURN_ALERT_PREFIX = '● 내 차례! | ';
   const TURN_NOTIFY_KEY = 'turnNotifyPref';
-  let baseDocumentTitle = document.title || '게임센터';
+  let baseDocumentTitle = document.title || '아일랜드';
   let turnAlertActive = false;
   let turnAlertBaselineReady = false;
   const seenTurnAlertKeys = new Set();
@@ -4908,7 +4966,7 @@
     closeTurnNotification();
     try {
       // One tag, so the OS replaces rather than stacks; clicking only refocuses this same tab.
-      const notification = new Notification('게임센터 · 내 차례', { body: request.body, tag: 'gamecenter-my-turn' });
+      const notification = new Notification('아일랜드 · 내 차례', { body: request.body, tag: 'gamecenter-my-turn' });
       notification.onclick = () => {
         try { window.focus(); } catch {}
         notification.close();
@@ -5432,7 +5490,7 @@
       ? `게임이 시작될 때 참가자마다 ${Number(state.points.entryFee).toLocaleString('ko-KR')}P가 차감됩니다. 모인 포인트의 ${100 - state.points.burnPercent}%는 승자가 나눠 받고 ${state.points.burnPercent}%는 소각됩니다. 관전과 같은 판 재접속은 차감하지 않습니다.`
       : state.points?.policy === 'settlement' ? `정산으로 실제 이동하는 포인트의 ${state.points.burnPercent}%는 소각되고 나머지를 승자가 받습니다.` : '';
     rulesText.textContent = state.rules || '';
-    setBaseDocumentTitle(`${roomLabel} · 게임센터`);
+    setBaseDocumentTitle(`${roomLabel} · 아일랜드`);
     newRoomBtn.classList.toggle('hidden', !isHost);
     hostRoomCodeBox.classList.toggle('hidden', !isHost);
     hostRoomCode.textContent = state.me?.roomCode || '----';

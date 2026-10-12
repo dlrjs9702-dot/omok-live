@@ -1,6 +1,6 @@
 {
-  "name": "게임센터",
-  "short_name": "게임센터",
+  "name": "아일랜드",
+  "short_name": "아일랜드",
   "description": "게임 아일랜드에서 친구들과 보드게임",
   "lang": "ko",
   "start_url": "/",

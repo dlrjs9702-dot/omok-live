@@ -100,7 +100,7 @@ test.describe('백그라운드 내 차례 알림', () => {
     page.on('pageerror', error => errors.push(error.message));
     const white = await browserLogin(page);
     const code = await createRoom(page, 'othello');
-    expect(await page.title()).toBe('오델로 · 게임센터');
+    expect(await page.title()).toBe('오델로 · 아일랜드');
     const black = await apiLogin(request);
     expect((await api(request, '/api/rooms/join', black, { code })).status).toBe(200);
 
@@ -130,29 +130,29 @@ test.describe('백그라운드 내 차례 알림', () => {
 
     // 1) 상대 차례: 알림 없음.
     await settle(page);
-    expect(await page.title()).toBe('오델로 · 게임센터');
+    expect(await page.title()).toBe('오델로 · 아일랜드');
     expect(await notes(page)).toHaveLength(0);
 
     // 2) 숨김 상태에서 내 차례 시작 → 제목 변경 + 시스템 알림 1회(비공개 정보 없는 짧은 문구).
     let move = started.data.state.game.legalMoves[0];
     expect((await api(request, '/api/room/move', black, { x: move.x, y: move.y })).status).toBe(200);
-    await expect(page).toHaveTitle(`${PREFIX}오델로 · 게임센터`);
-    expect(await notes(page)).toEqual([{ title: '게임센터 · 내 차례', body: '오델로에서 착수할 차례입니다.', closed: false }]);
+    await expect(page).toHaveTitle(`${PREFIX}오델로 · 아일랜드`);
+    expect(await notes(page)).toEqual([{ title: '아일랜드 · 내 차례', body: '오델로에서 착수할 차례입니다.', closed: false }]);
 
     // 4) 같은 차례 상태의 재수신(채팅 등): 중복 알림 없음.
     expect((await api(request, '/api/room/chat', black, { text: '안녕하세요' })).status).toBe(200);
     await settle(page);
     expect(await notes(page)).toHaveLength(1);
-    await expect(page).toHaveTitle(`${PREFIX}오델로 · 게임센터`);
+    await expect(page).toHaveTitle(`${PREFIX}오델로 · 아일랜드`);
 
     // 3) 탭 복귀 → 원래 제목, 알림 닫힘. 다시 숨겨도 같은 차례로는 재알림하지 않는다.
     await setHidden(page, false);
-    await expect(page).toHaveTitle('오델로 · 게임센터');
+    await expect(page).toHaveTitle('오델로 · 아일랜드');
     expect((await notes(page))[0].closed).toBe(true);
     await setHidden(page, true);
     expect((await api(request, '/api/room/chat', black, { text: '다시' })).status).toBe(200);
     await settle(page);
-    expect(await page.title()).toBe('오델로 · 게임센터');
+    expect(await page.title()).toBe('오델로 · 아일랜드');
     expect(await notes(page)).toHaveLength(1);
 
     // 5) 내가 두고 상대가 두면 다음 실제 차례 → 새 알림.
@@ -162,12 +162,12 @@ test.describe('백그라운드 내 차례 알림', () => {
     current = await roomState(request, black);
     move = current.game.legalMoves[0];
     expect((await api(request, '/api/room/move', black, { x: move.x, y: move.y })).status).toBe(200);
-    await expect(page).toHaveTitle(`${PREFIX}오델로 · 게임센터`);
+    await expect(page).toHaveTitle(`${PREFIX}오델로 · 아일랜드`);
     expect(await notes(page)).toHaveLength(2);
 
     // 7) 일시정지(상대 이탈): 알림 상태 해제, 일시정지 중에는 새 알림 없음.
     expect((await api(request, '/api/room/leave', black, {})).status).toBe(200);
-    await expect(page).toHaveTitle('오델로 · 게임센터', { timeout: 15_000 });
+    await expect(page).toHaveTitle('오델로 · 아일랜드', { timeout: 15_000 });
     expect((await notes(page))[1].closed).toBe(true);
     expect(await notes(page)).toHaveLength(2);
     expect((await api(request, '/api/rooms/join', black, { code })).status).toBe(200);
@@ -177,10 +177,10 @@ test.describe('백그라운드 내 차례 알림', () => {
     // 8) 종료(기권): 알림 상태가 남지 않는다.
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await settle(page);
-    expect(await page.title()).toBe('오델로 · 게임센터');
+    expect(await page.title()).toBe('오델로 · 아일랜드');
 
     // 6) 관전자: 어떤 차례에도 제목·시스템 알림 없음.
-    expect(await spectator.title()).toBe('오델로 · 게임센터');
+    expect(await spectator.title()).toBe('오델로 · 아일랜드');
     expect(await notes(spectator)).toHaveLength(0);
     expect(await spectator.evaluate(() => window.__permissionRequests)).toBe(0);
     expect(errors).toEqual([]);
@@ -210,7 +210,7 @@ test.describe('백그라운드 내 차례 알림', () => {
     await expect(page.locator('#blackPlayer')).toHaveClass(/currentActor/);
     await settle(page);
     expect(await page.evaluate(() => document.visibilityState)).toBe('hidden');
-    expect(await page.title()).toBe('오델로 · 게임센터');
+    expect(await page.title()).toBe('오델로 · 아일랜드');
     expect(await notes(page)).toHaveLength(0);
     expect(await page.evaluate(() => window.__permissionRequests)).toBe(0);
   });
