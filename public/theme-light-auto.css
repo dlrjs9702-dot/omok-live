@@ -965,3 +965,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gameGuideCase figcaption{color:#5e4d3b}
 :root[data-theme="light"] .gameGuideList{color:#5e4d3b}
 :root[data-theme="light"] .gameGuideList strong{color:#33281d}
+:root[data-theme="light"] .rankingControls select{background:#f7efe1;color:#33281d;border:1px solid #d6c3a5}
+:root[data-theme="light"] .rankingWeeks button{background:#f3e9d8;color:#3d3024;border:1px solid #d6c3a5}
+:root[data-theme="light"] .rankingWeeks button[aria-checked="true"]{background:#23806f;color:#fff;border-color:#23806f}
+:root[data-theme="light"] .rankingList li{background:#f7efe1;border:1px solid #e2d4bd}
+:root[data-theme="light"] .rankingList li.me{border-color:#23806f;background:#dff1ec}
+:root[data-theme="light"] .rankingEmpty{color:#7a6650}

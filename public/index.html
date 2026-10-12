@@ -143,7 +143,7 @@
       </section>
       <div class="lobbySide">
       <section id="myRecordsCard" class="card myRecordsCard" aria-label="내 전적">
-        <div class="recordsHead"><h2>내 전적</h2><button id="otherRecordsBtn" class="ghost tiny" type="button">다른 플레이어 조회</button></div>
+        <div class="recordsHead"><h2>내 전적</h2><button id="rankingBtn" class="ghost tiny" type="button">랭킹</button><button id="otherRecordsBtn" class="ghost tiny" type="button">다른 플레이어 조회</button></div>
         <strong id="myRecordsName">전적을 불러오는 중</strong>
         <div id="myRecordsBadges" class="recordsBadges hidden"></div>
         <p id="myRecordsSummary" class="recordsSummary">0전 · 0승 0패 0무 · 승률 0%</p>
@@ -997,6 +997,17 @@
     <div id="recordsSearchResults" class="recordsSearchResults" aria-live="polite"></div>
     <section id="recordsProfile" aria-live="polite"><strong id="recordsProfileName">플레이어를 선택하세요.</strong><div id="recordsProfileBadges" class="recordsBadges hidden"></div><p id="recordsProfileSummary" class="recordsSummary"></p><label for="recordsProfileGame">게임별 전적</label><select id="recordsProfileGame"><option value="all">전체 게임</option></select><p id="recordsProfileDetail" class="recordsDetail"></p></section>
     <section id="recordsHeadToHead" class="recordsHeadToHead hidden" aria-live="polite"><h3>나와의 상대 전적</h3><p id="h2hSummary" class="recordsSummary"></p><label for="h2hGame">게임별 상대 전적</label><select id="h2hGame"><option value="all">전체 게임</option></select><p id="h2hDetail" class="recordsDetail"></p></section>
+  </dialog>
+  <!-- v1.10.71 게임별 랭킹 (한판마당 자료 03 공식): a game, this week or all time, top 20 and my place -->
+  <dialog id="rankingDialog" class="recordsDialog rankingDialog" aria-labelledby="rankingTitle">
+    <div class="recordsDialogHead"><h2 id="rankingTitle">랭킹</h2><button id="rankingCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div class="rankingControls">
+      <select id="rankingGame" aria-label="게임"></select>
+      <div class="rankingWeeks" role="radiogroup" aria-label="기간"><button type="button" role="radio" data-week="this" aria-checked="true">이번 주</button><button type="button" role="radio" data-week="all" aria-checked="false">전체</button></div>
+    </div>
+    <p class="smallMuted">10판 이상 · 승률과 판수를 함께 반영 · 무승부는 반 승 · 이번 주는 월요일 0시에 새로 시작</p>
+    <ol id="rankingList" class="rankingList" aria-live="polite"></ol>
+    <p id="rankingMe" class="rankingMe"></p>
   </dialog>
   <dialog id="myInfoDialog" class="recordsDialog myInfoDialog" aria-labelledby="myInfoTitle">
     <div class="recordsDialogHead"><h2 id="myInfoTitle">내 정보</h2><button id="myInfoCloseBtn" type="button" class="ghost tiny">닫기</button></div>

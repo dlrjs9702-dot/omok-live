@@ -251,3 +251,20 @@ test('AI 대전: 오목을 두면 AI가 받아 두고, 연습이라 서버로 �
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// v1.10.71 게임별 랭킹: 내 전적 「랭킹」 → 게임·이번 주/전체, 아직 10판을 둔 사람이 없으면 안내
+test('랭킹: 내 전적의 「랭킹」에서 게임·기간을 고른다', async ({ browser, request }) => {
+  const a = await shopper(browser, request, '랭킹손');
+  const { page } = a;
+  await page.locator('#rankingBtn').click();
+  await expect(page.locator('#rankingDialog')).toBeVisible();
+  await expect(page.locator('#rankingList')).toContainText('아직 10판 넘게 둔 사람이 없어요');
+  await expect(page.locator('#rankingMe')).toHaveText('10판을 두면 순위에 올라요.');
+  await page.locator('#rankingGame').selectOption('othello');
+  await page.locator('.rankingWeeks [data-week="all"]').click();
+  await expect(page.locator('.rankingWeeks [data-week="all"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#rankingMe')).toHaveText('10판을 두면 순위에 올라요.');
+  await page.locator('#rankingCloseBtn').click();
+  await expectNoScriptError(page);
+  await a.context.close();
+});

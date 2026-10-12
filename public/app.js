@@ -9310,6 +9310,37 @@
   }
 
   otherRecordsBtn.addEventListener('click', () => openPlayerRecords());
+  // v1.10.71 게임별 랭킹: the games are those of the rule picker (each room game); the server counts the records
+  const rankingDialog = document.getElementById('rankingDialog');
+  const rankingGame = document.getElementById('rankingGame');
+  let rankingWeek = 'this';
+  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)));
+  async function loadRanking() {
+    const list = document.getElementById('rankingList'); const mine = document.getElementById('rankingMe');
+    const game = rankingGame.value; const week = rankingWeek;
+    list.replaceChildren(); mine.textContent = '불러오는 중…';
+    let data;
+    try { data = await api(`/api/records/ranking?game=${encodeURIComponent(game)}&week=${week}`); }
+    catch (error) { mine.textContent = error.message; return; }
+    if (game !== rankingGame.value || week !== rankingWeek) return; // changed meanwhile
+    const line = (r) => `${r.label} · ${r.w}승 ${r.d}무 ${r.l}패 (${r.n}판)`;
+    list.replaceChildren(...data.top.map((r) => {
+      const li = document.createElement('li'); li.className = r.me ? 'me' : '';
+      const place = document.createElement('b'); place.textContent = `${r.rank}위`;
+      li.append(place, document.createTextNode(` ${line(r)}`));
+      return li;
+    }));
+    if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
+    mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : `${data.min}판을 두면 순위에 올라요.`;
+  }
+  document.getElementById('rankingBtn').addEventListener('click', () => { rankingGame.value = gameRulesSelect.value; rankingDialog.showModal(); loadRanking(); });
+  document.getElementById('rankingCloseBtn').addEventListener('click', () => rankingDialog.close());
+  rankingGame.addEventListener('change', loadRanking);
+  for (const b of document.querySelectorAll('.rankingWeeks [data-week]')) b.addEventListener('click', () => {
+    rankingWeek = b.dataset.week;
+    for (const x of document.querySelectorAll('.rankingWeeks [data-week]')) x.setAttribute('aria-checked', String(x === b));
+    loadRanking();
+  });
   recordsCloseBtn.addEventListener('click', () => recordsDialog.close());
   recordsSearchForm.addEventListener('submit', searchRecordPlayers);
   announcementTab.addEventListener('click', () => {
