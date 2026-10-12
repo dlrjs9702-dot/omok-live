@@ -9333,7 +9333,10 @@
     if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
     mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : `${data.min}판을 두면 순위에 올라요.`;
   }
-  document.getElementById('rankingBtn').addEventListener('click', () => { rankingGame.value = gameRulesSelect.value; rankingDialog.showModal(); loadRanking(); });
+  document.getElementById('rankingBtn').addEventListener('click', () => {
+    rankingGame.value = [...rankingGame.options].some((o) => o.value === gameRulesSelect.value) ? gameRulesSelect.value : 'omok'; // 랜드킹·잿빛 원정: no board (Codex review)
+    rankingDialog.showModal(); loadRanking();
+  });
   document.getElementById('rankingCloseBtn').addEventListener('click', () => rankingDialog.close());
   rankingGame.addEventListener('change', loadRanking);
   for (const b of document.querySelectorAll('.rankingWeeks [data-week]')) b.addEventListener('click', () => {

@@ -71,8 +71,9 @@ export function gmForbidden(b, i, depth = 0) {
   try {
     let five = false, over = false;
     for (const [dx, dy] of GM_DIRS) { const n = gmRun(b, x, y, dx, dy, 1); if (n === 5) five = true; else if (n > 5) over = true; }
-    if (five) return ''; // 정확히 5목이면 언제나 둘 수 있다 (이긴다)
+    // 아일랜드 v1.10.71 (Codex 검토): 우리 오목(lib/game.js)은 다른 방향에 장목이 함께 생기면 5목이어도 금수 — 장목을 먼저 본다
     if (over) return '6';
+    if (five) return ''; // 정확히 5목이면 언제나 둘 수 있다 (이긴다)
     const f = GM_DIRS.map(([dx, dy]) => gmFours(b, x, y, dx, dy).size);
     if (f.reduce((a, v) => a + v, 0) >= 2) return '44';
     let threes = 0;
