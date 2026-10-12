@@ -88,8 +88,8 @@
 :root[data-theme="light"] .noticeTab:focus-visible,:root[data-theme="light"] .helpDisclosure summary:focus-visible,:root[data-theme="light"] .gameRuleDetails summary:focus-visible,:root[data-theme="light"] .announcementDetails summary:focus-visible,:root[data-theme="light"] .roomRuleDetails summary:focus-visible{outline:2px solid #23806f}
 :root[data-theme="light"] .noticeCount{color:#2a5f55;background:#dff1ec}
 :root[data-theme="light"] .noticePanel{border-top:1px solid #e2d4bd}
-:root[data-theme="light"] .announcementRow{border:1px solid #e2d4bd;background:#0e1729}
-:root[data-theme="light"] .announcementRow.isPinned{border-color:#c9b394;background:linear-gradient(135deg,#172033,#fffaf1)}
+:root[data-theme="light"] .announcementRow{border:1px solid #e2d4bd;background:#f7efe1}
+:root[data-theme="light"] .announcementRow.isPinned{border-color:#c9b394;background:linear-gradient(135deg,#fdf0d2,#fffaf1)}
 :root[data-theme="light"] .announcementPin{background:#f59e0b;color:#1f2937}
 :root[data-theme="light"] .announcementHead time{color:#7a6650}
 :root[data-theme="light"] .announcementDetails summary,:root[data-theme="light"] .helpDisclosure summary,:root[data-theme="light"] .gameRuleDetails summary,:root[data-theme="light"] .roomRuleDetails summary{color:#1f6f60}
@@ -315,7 +315,7 @@
 :root[data-theme="light"] .oldmaidSeat.finalGlow .oldmaidSeatInfo{outline:3px solid #ef4444;box-shadow:0 0 0 6px rgba(239,68,68,.3)}
 :root[data-theme="light"] .oldmaidMyHandCards .oldmaidFace.pairGlow{box-shadow:0 0 0 3px rgba(250,204,21,.9),0 0 22px 6px rgba(250,204,21,.75)}
 :root[data-theme="light"] .sideTab{background:#f7efe1;color:#7a6650;border:1px solid #e2d4bd}
-:root[data-theme="light"] .sideTab:hover:not(.active){background:#141f36;color:#cbd5e1}
+:root[data-theme="light"] .sideTab:hover:not(.active){background:#efe4d0;color:#5e4d3b}
 :root[data-theme="light"] .sideTab.active{background:#dff1ec;color:#3d3024;border-color:#23806f;box-shadow:0 0 0 1px rgba(59,130,246,.35)}
 :root[data-theme="light"] .sideTabBadge{background:#ef4444;color:#fff}
 :root[data-theme="light"] .chatPanelTitle{color:#3d3024}
@@ -328,7 +328,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .chatMessages .chatMessage:not(.system){border:0}
 :root[data-theme="light"] .chatMessages .chatMessageHead strong{color:#5e4d3b}
 :root[data-theme="light"] .chatMessages .chatMessageText{background:#f3e9d8}
-:root[data-theme="light"] .chatMessages .chatMessage.mine .chatMessageText{background:#214b83}
+:root[data-theme="light"] .chatMessages .chatMessage.mine .chatMessageText{background:#cfe9e2}
 :root[data-theme="light"] .chatMessages .chatMessageBody time{color:#7a6650}
 :root[data-theme="light"] .chatMessages .chatMessage.system{border-bottom:0}
 :root[data-theme="light"] .chatJumpBtn{background:#1f6f60;color:#1f6f60}
@@ -364,11 +364,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .cityTileDetails dt{color:#7a6650}
 :root[data-theme="light"] .cityActionPanel{background:rgba(10,16,32,.88);border:1px solid rgba(179,156,124,.28)}
 :root[data-theme="light"] .cityActionPanel .cityLastRoll{color:#5e4d3b}
-:root[data-theme="light"] .cityActionPanel .cityBuyRow,:root[data-theme="light"] .cityActionPanel .cityBuildRow{border:1px solid #23806f;background:#14274a}
+:root[data-theme="light"] .cityActionPanel .cityBuyRow,:root[data-theme="light"] .cityActionPanel .cityBuildRow{border:1px solid #23806f;background:#dff1ec}
 :root[data-theme="light"] .cityActionPanel .cityBuyRow span,:root[data-theme="light"] .cityActionPanel .cityBuildRow span{color:#2a5f55}
 :root[data-theme="light"] .cityTileDetailsToggle summary{background:#f3e9d8;border:1px solid #d6c3a5;color:#5e4d3b}
 :root[data-theme="light"] .cityTileDetailsToggle summary:before{color:#7a6650}
-:root[data-theme="light"] #cityControls .cityBuildRow{border:1px solid #23806f;background:#14274a}
+:root[data-theme="light"] #cityControls .cityBuildRow{border:1px solid #23806f;background:#dff1ec}
 :root[data-theme="light"] #cityControls .cityBuildRow span{color:#2a5f55}
 :root[data-theme="light"] .logoutDialog{border:1px solid #c9b394;background:#f7efe1;color:#33281d;box-shadow:0 22px 80px #0009}
 :root[data-theme="light"] .logoutDialog::backdrop{background:#020617cc}
@@ -376,7 +376,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .pauseDialog::backdrop{background:#020617cc}
 :root[data-theme="light"] .pauseDialog h2{color:#8a5a00}
 :root[data-theme="light"] .pauseDialog p{color:#8a5a00}
-:root[data-theme="light"] .chatLockNotice{background:#3f2d0b;border:1px solid #b45309;color:#fde68a}
+:root[data-theme="light"] .chatLockNotice{background:#fdf0d2;border:1px solid #b45309;color:#8a5a00}
 :root[data-theme="light"] .gameConfigChooser{border:1px solid #d6c3a5;background:#f7efe1}
 :root[data-theme="light"] .gameConfigRow{color:#3d3024}
 :root[data-theme="light"] .gameConfigChooser small{color:#7a6650}
@@ -439,7 +439,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .halliTransferRow strong{color:#14532d}
 :root[data-theme="light"] .halliTransferResult.penalty .halliTransferRow strong{color:#991b1b}
 :root[data-theme="light"] .halliTransferArrow{color:#475569}
-:root[data-theme="light"] .myActionTimer{border:1px solid #23806f;background:#0f2749;box-shadow:0 5px 18px rgba(247,239,225,.24)}
+:root[data-theme="light"] .myActionTimer{border:1px solid #23806f;background:#dff1ec;box-shadow:0 5px 18px rgba(247,239,225,.24)}
 :root[data-theme="light"] .myActionTimerLabel{color:#2a5f55}
 :root[data-theme="light"] .myActionTimerClock{color:#fef08a}
 :root[data-theme="light"] .myActionTimerResult{color:#2a5f55}
@@ -763,7 +763,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .rpgTouchNotice{color:#5e4d3b}
 :root[data-theme="light"] .skinTab{border:1px solid #d6c3a5;background:#f7efe1;color:#5e4d3b}
 :root[data-theme="light"] .skinTab[aria-selected="true"]{background:#f3e9d8;border-color:#23806f;color:#33281d}
-:root[data-theme="light"] .recordsBadge{border:1px solid #d4a72c;background:#3b2f0b;color:#fde68a}
+:root[data-theme="light"] .recordsBadge{border:1px solid #d4a72c;background:#fdf0d2;color:#8a5a00}
 :root[data-theme="light"] .pandemicPanel{border:1px solid #334155;background:linear-gradient(155deg,#101d32,#0b1324)}
 :root[data-theme="light"] .pandemicSetup select{border:1px solid #475569;background:#0f172a;color:#fff}
 :root[data-theme="light"] .pdChip{background:#f7efe1;border:1px solid #d6c3a5;color:#3d3024}
