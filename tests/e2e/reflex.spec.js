@@ -293,7 +293,7 @@ test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작�
   const a = await shopper(browser, request, '규약');
   const { page } = a;
   const play = (opts) => page.evaluate((o) => { window.__res = null; window.GameLaunch.play('reaction', o).then((r) => { window.__res = r; }); }, opts);
-  await play({ place: 'quest', level: 'easy', goal: 60000 });
+  await play({ place: 'quest', level: 'hard', goal: 60000 }); // not the remembered level (Codex review: it was lost)
   await expect(page.locator('#hud')).toBeVisible(); // started at once: no level choice
   const stage = page.locator('#stage');
   const green = () => page.evaluate(() => { const c = document.getElementById('stage'); const [r, g] = c.getContext('2d').getImageData(Math.floor(c.width / 2), Math.floor(c.height * 0.85), 1, 1).data; return g > 150 && r < 120; });
@@ -304,7 +304,7 @@ test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작�
     await page.waitForTimeout(400);
     await stage.click();
   }
-  await expect.poll(() => page.evaluate(() => window.__res), { timeout: 15000 }).toMatchObject({ game: 'reaction', level: 'easy', done: true });
+  await expect.poll(() => page.evaluate(() => window.__res), { timeout: 15000 }).toMatchObject({ game: 'reaction', level: 'hard', done: true });
   const res = await page.evaluate(() => window.__res);
   expect(res.score).toBeGreaterThan(0); expect(typeof res.run).toBe('string'); // the server's round, to check it by
   // left on its own page: done:false, back where the quest was (not the game hall)
@@ -315,6 +315,11 @@ test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작�
   await expect.poll(() => page.evaluate(() => window.__res)).toEqual({ game: 'reaction', done: false });
   await expect(page.locator('#reflexView')).toBeHidden();
   await expect(page.locator('#gamehallView')).toBeHidden();
+  // a puzzle starts once this account's progress is in (Codex review: it waited for it and never started)
+  await page.evaluate(() => { window.__res = null; window.GameLaunch.play('sudoku', { place: 'quest', level: 'easy' }).then((r) => { window.__res = r; }); });
+  await expect(page.locator('#reflexView .reflexFrame')).toHaveClass(/playing/, { timeout: 15000 });
+  await page.locator('#reflexQuitBtn').click(); await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__res)).toEqual({ game: 'sudoku', done: false });
   await expectNoScriptError(page);
   await a.context.close();
 });

@@ -79,6 +79,7 @@ export function mount({ api, onBack }) {
   const result = document.getElementById('reflexResult');
   let set = SETS.reflex; let info = null; let game = null; let runId = null; let shown = 'list'; let startSeq = 0;
   let direct = false; let launch = null; // launch: { place, goal, level, resolve } of a play() call
+  let runLevel = null; // the level the round was started at (kept for its result: Codex review)
   const levels = {}; // game id -> the level last played
   try { Object.assign(levels, JSON.parse(localStorage.getItem('gc.reflexLevels') || '{}')); } catch {}
 
@@ -171,7 +172,7 @@ export function mount({ api, onBack }) {
       else if (mode === 'daily') await api('/api/solo/puzzle/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) });
     } catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
     if (seq !== startSeq || view.classList.contains('hidden')) return;
-    runId = id; shown = 'play'; game = g;
+    runId = id; runLevel = level; shown = 'play'; game = g;
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
@@ -185,7 +186,8 @@ export function mount({ api, onBack }) {
     const log = cardLog; cardLog = null;
     const score = r.score == null ? null : Math.round(r.score); // a practice puzzle has none
     // the 게임 실행 규약's answer: an AI game is done when won; otherwise the goal reached (a time: at most the goal)
-    settle({ game: g.id, level: levelOf(g), score, outcome: r.outcome, run: id,
+    const level = runLevel ?? levelOf(g);
+    settle({ game: g.id, level, score, outcome: r.outcome, run: id,
       done: g.mode === 'versus' ? r.outcome === 'win' : launch?.goal == null || (score != null && (g.lowerBetter ? score <= launch.goal : score >= launch.goal)) });
     const box = el('div', 'reflexPanel');
     box.style.setProperty('--c1', g.color);
@@ -203,12 +205,12 @@ export function mount({ api, onBack }) {
     box.lastChild.append(again, button('ghost', direct ? '게임관으로' : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
     result.replaceChildren(box); result.classList.remove('hidden');
     again.focus();
-    if (set === SETS.puzzle) return r.proof && sendPuzzle(g, score, r.proof, line, r.rec);
-    if (set === SETS.cards) return sendCards(g, id, log, line);
+    if (set === SETS.puzzle) return r.proof && sendPuzzle(g, level, score, r.proof, line, r.rec);
+    if (set === SETS.cards) return sendCards(g, level, id, log, line);
     if (set === SETS.ai) return; // practice: not sent
     try {
       const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
-      if (info) { (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best }; info.today = out.today ?? info.today; }
+      if (info) { (info.records[g.id] ||= {})[level] = { best: out.best }; info.today = out.today ?? info.today; }
       const parts = [];
       if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
       if (out.points) parts.push(`+${won(out.points)}`);
@@ -221,11 +223,11 @@ export function mount({ api, onBack }) {
   // v1.10.70 (Codex review): puzzle-kit writes a solved 오늘의 문제 into this account's 보낼 기록함 (js/outbox.js) before it
   // marks the day done; it leaves the box once the server has answered for good, so a failed send goes again next time
   const settled = (error) => error.status && error.status < 500 && error.status !== 429;
-  async function sendPuzzle(g, score, proof, line, rec) { // 오늘의 문제, solved for the first time on this device
+  async function sendPuzzle(g, level, score, proof, line, rec) { // 오늘의 문제, solved for the first time on this device
     try {
-      const out = await api('/api/solo/puzzle/finish', { method: 'POST', body: JSON.stringify({ game: g.id, level: levelOf(g), score, proof }) });
+      const out = await api('/api/solo/puzzle/finish', { method: 'POST', body: JSON.stringify({ game: g.id, level, score, proof }) });
       if (rec) dropRecord(Stats.uid, rec.rid);
-      if (info && out.best != null) (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best };
+      if (info && out.best != null) (info.records[g.id] ||= {})[level] = { best: out.best };
       const parts = [];
       if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
       if (out.points) parts.push(`+${won(out.points)}`);
@@ -244,11 +246,11 @@ export function mount({ api, onBack }) {
     }
   }
 
-  async function sendCards(g, id, log, line) { // a cleared deal: the server plays it again before it pays
+  async function sendCards(g, level, id, log, line) { // a cleared deal: the server plays it again before it pays
     if (log.length > LOG_MAX) { line.textContent = '너무 긴 판이라 기록하지 못했어요'; return; }
     try {
       const out = await api('/api/solo/cards/finish', { method: 'POST', body: JSON.stringify({ id, log: log.join(';') }) });
-      if (info) { (info.records[g.id] ||= {})[levelOf(g)] = { best: out.best }; info.today = out.today ?? info.today; }
+      if (info) { (info.records[g.id] ||= {})[level] = { best: out.best }; info.today = out.today ?? info.today; }
       const parts = [];
       if (out.newBest) { parts.push('최고 기록!'); sfx.best(); }
       if (out.points) parts.push(`+${won(out.points)}`);
@@ -283,15 +285,17 @@ export function mount({ api, onBack }) {
       set = SETS[which] || SETS.reflex; info = null;
       const one = set.games.find((g) => g.id === gameId); direct = Boolean(one);
       if (one) showGame(one); else showList();
-      if (one && launch?.place === 'quest') start(one, menu.querySelector('.reflexStatus')); // a quest's round: no choosing
+      const quest = one && launch?.place === 'quest'; // a quest's round: no choosing, it starts once the info is in
+      const go = () => start(one, menu.querySelector('.reflexStatus'));
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
-        if (!set.info) return;
+        if (!set.info) { if (quest) go(); return; }
         const want = set; const got = await api(set.info);
         if (want !== set) return; // opened the other set meanwhile
         info = got;
         if (set === SETS.puzzle) { Stats.load(info.uid); resendPuzzles(); } // this account's own progress (Codex review)
+        if (quest) { go(); return; }
         if (shown === 'list') showList(); else if (shown === 'game') showGame(game);
-      } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); }
+      } catch (error) { menu.append(el('p', 'reflexStatus', error.message)); if (quest) settle({ game: one.id, done: false }); }
     },
     stop,
     // the 게임 실행 규약 (above): which set holds the game, opened on it; the answer comes when its round ends
