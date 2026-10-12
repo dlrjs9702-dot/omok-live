@@ -2920,6 +2920,69 @@
       "sha256": "ba936c06aed95afdada55f43f5982698c4a1fb061391b904092890186b61a353",
       "lowSrc": "paths:02. Low/walk.edge.c.glb",
       "lowSha256": "82b8b5b4585af96ad416c141d68b5968f6c98d7c27d00db65c4f4b688ca5d101"
+    },
+    {
+      "out": "ground-cover-v1/flat.petals.a.glb",
+      "src": "ground:01. High/flat.petals.a.glb",
+      "sha256": "3281e91e0f09a25ebe4ef228a10bff2b1a482144f08abb5fc1189f95b91c4641",
+      "lowSrc": "ground:02. Low/flat.petals.a.glb",
+      "lowSha256": "943c6e04d3f82075ec17181a77472ee25d400a8f3ce91d9798e9e95581ed9fc5"
+    },
+    {
+      "out": "ground-cover-v1/flat.clover.a.glb",
+      "src": "ground:01. High/flat.clover.a.glb",
+      "sha256": "3a559cf62fcfac42fd09f5680519f0006dbbdcb1f939f0985900c14ba03755bf",
+      "lowSrc": "ground:02. Low/flat.clover.a.glb",
+      "lowSha256": "77551ceb2d905effb8d1939312b02d06ceafcec50a46994ef8ae622444883ce5"
+    },
+    {
+      "out": "ground-cover-v1/flat.leaves.a.glb",
+      "src": "ground:01. High/flat.leaves.a.glb",
+      "sha256": "987d5c62bf1c30f41e035e659ce2f735f5889d9a56a1f2e68cd122c54956fa51",
+      "lowSrc": "ground:02. Low/flat.leaves.a.glb",
+      "lowSha256": "9b07ac349e8609640d809df88a3fea9d6aebd9fe1c9bd0d6b6769e3e74908fbc"
+    },
+    {
+      "out": "ground-cover-v1/flat.snow.a.glb",
+      "src": "ground:01. High/flat.snow.a.glb",
+      "sha256": "f579320fa4f30e188e6858c7427b5b39fa3cca435f938f42178ddbb7c1ef4b84",
+      "lowSrc": "ground:02. Low/flat.snow.a.glb",
+      "lowSha256": "8f5b1ebd3c672b0369cc6f1f39156eb3ddf1d5dbf173e451b0b53d3827ce72c8"
+    },
+    {
+      "out": "ground-cover-v1/flat.moss.a.glb",
+      "src": "ground:01. High/flat.moss.a.glb",
+      "sha256": "c25f45c493cd6108763c82a11283c433e0d1092e54bde7af7fb86f5f0c9c7c67",
+      "lowSrc": "ground:02. Low/flat.moss.a.glb",
+      "lowSha256": "d67f998774825c83c2eaf6fa63bf8a2f774cd24cdd1fbfb3e8cc69c1f28ff8d9"
+    },
+    {
+      "out": "ground-cover-v1/low.fern.a.glb",
+      "src": "ground:01. High/low.fern.a.glb",
+      "sha256": "3baa53548a6eca21bd371e18eb647a6217c27bd27db8ec4b2839fa2138d06bfd",
+      "lowSrc": "ground:02. Low/low.fern.a.glb",
+      "lowSha256": "b161baf27670f22fa4e781949ed562c8195246d1942f440107d684cd4f87e1ca"
+    },
+    {
+      "out": "ground-cover-v1/low.shrub.a.glb",
+      "src": "ground:01. High/low.shrub.a.glb",
+      "sha256": "4a98ae8f279b349eed7a7f4870cff5a2a12ad0a396b551dcdb0d1cc52761e8c9",
+      "lowSrc": "ground:02. Low/low.shrub.a.glb",
+      "lowSha256": "5b47caf3c53c791bb0da804825d98e18ed8c5d94d67569280f45c7fbdbc1d33e"
+    },
+    {
+      "out": "ground-cover-v1/low.shrub.b.glb",
+      "src": "ground:01. High/low.shrub.b.glb",
+      "sha256": "71aac7a5423d4ae74afb7d03adfea8a3d99ee7603297768e280ba69d9c768600",
+      "lowSrc": "ground:02. Low/low.shrub.b.glb",
+      "lowSha256": "c82b878814dbc7dcedde61f526802f3d20e4a0e157b9425dbb9bb8c9a94ddd67"
+    },
+    {
+      "out": "ground-cover-v1/low.flowers.a.glb",
+      "src": "ground:01. High/low.flowers.a.glb",
+      "sha256": "29282848fe160b9f78d790e59583405c518ddc8cc98d8f2216fa931cf19e4d51",
+      "lowSrc": "ground:02. Low/low.flowers.a.glb",
+      "lowSha256": "bc7b37ac84548cc5b3adb3e6713198a4725f15f1f35a0ef6c4980b10eeabedd7"
     }
   ],
   "sources": {
@@ -2936,6 +2999,7 @@
     "train": "22. Game Island tourism train 2026-10-07",
     "animals": "18. Game Island animal sets 2026-10-07",
     "life": "20. Game Island life assets 2026-10-07",
-    "paths": "24. Game Island path tiers 2026-10-12"
+    "paths": "24. Game Island path tiers 2026-10-12",
+    "ground": "25. Game Island ground cover 2026-10-12"
   }
 }

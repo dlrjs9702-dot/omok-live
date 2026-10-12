@@ -200,16 +200,26 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   }
 
   // Terrain: one mesh with vertex colours (grass, sand by the sea, rock on the cliffs).
+  // v1.10.73 숲 바닥: how wooded a spot is (the trees within 6 m), for the darker floor and the ground cover
+  const treeBuckets = new Map();
+  for (const t of nature().trees) { const k = `${Math.floor(t.x / 8)},${Math.floor(t.z / 8)}`; if (!treeBuckets.has(k)) treeBuckets.set(k, []); treeBuckets.get(k).push(t); }
+  function forestAt(x, z) {
+    let f = 0; const bx = Math.floor(x / 8); const bz = Math.floor(z / 8);
+    for (let a = -1; a <= 1; a += 1) for (let b = -1; b <= 1; b += 1) for (const t of treeBuckets.get(`${bx + a},${bz + b}`) || []) { const d = Math.hypot(t.x - x, t.z - z); if (d < 6) f += 1 - d / 6; }
+    return Math.min(1, f / 2);
+  }
   const SIZE = 250; const SEG = 125;
   const geo = keep(new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG)); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
   const grass = new THREE.Color(0x9fd67f); const grass2 = new THREE.Color(0x8cc96c); const sand = new THREE.Color(0xf1dfae);
   const rock = new THREE.Color(0xb7ad9e); const wet = new THREE.Color(0xd8c48f); const c = new THREE.Color();
   const grassy = new Float32Array(pos.count); // v1.10.29: how much of a vertex is grass (the season paints that part)
+  const forestFloor = new THREE.Color(0x6f8a4c); // v1.10.73 숲 바닥: darker, mossy ground under the trees
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i); const z = pos.getZ(i); const h = ground(x, z); pos.setY(i, h);
     const cd = coastDist(x, z); const cliff = cliffAt(x, z); let g = 1;
     c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13));
+    const woods = forestAt(x, z); if (woods > 0) c.lerp(forestFloor, 0.55 * woods);
     if (cd < 8 && cliff < 0.5) { const a = smooth(8, 4, cd); c.lerp(cd < 2.5 ? wet : sand, a); g *= 1 - a; }
     if (cliff > 0.4 && cd < 4) { const a = smooth(4, 1, cd); c.lerp(rock, a); g *= 1 - a; }
     if (h < -0.4) { c.copy(wet); g = 0; }
@@ -398,7 +408,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const groups = []; // { target, cells: [{ x, z, parent, procedural: [InstancedMesh], matrices, colors, shadow }] }
   // v1.10.29 `extra`: [[geometry, material, shadow]] more procedural meshes drawn with the same matrices (a lamp's bulb,
   // its geometry already lifted onto the pole) -- a model replaces all of them together.
-  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [] } = {}) => {
+  const instanced = (geometry, material, list, place, { shadow = true, cell = 40, color = null, target = null, extra = [], parent = scene } = {}) => { // v1.10.73 parent: a group shown by quality
     const g = target && assets?.wants(target) ? { target, cells: [] } : null;
     if (material === natureMat && !g) {
       for (const item of list) {
@@ -420,9 +430,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
         if (color) { const c = color(item, tint); im.setColorAt(i, c); colors.push(c.clone()); }
         matrices.push(m4.clone());
       });
-      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
-      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; scene.add(e); return e; });
-      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent: scene, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
+      im.computeBoundingSphere(); im.castShadow = shadow; im.receiveShadow = true; parent.add(im);
+      const more = extra.map(([geo, mat2, cast]) => { keep(geo); const e = new THREE.InstancedMesh(geo, mat2, items.length); matrices.forEach((mm, i) => e.setMatrixAt(i, mm)); e.computeBoundingSphere(); e.castShadow = cast; parent.add(e); return e; });
+      if (g) { const [cx, cz] = key.split(',').map(Number); g.cells.push({ x: (cx + 0.5) * cell, z: (cz + 0.5) * cell, parent, procedural: [im, ...more], matrices, colors: color ? colors : null, shadow }); }
     }
     if (g) groups.push(g);
   };
@@ -652,6 +662,37 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     spots.push(...edgeSeason);
     LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, p.s ?? 1, p.s ?? 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
   }
+  let coverCount = null;
+  // v1.10.73 마을 환경정비사업 ② 땅 다듬기 (IDEAS #future-ground-cover): by quality tier -- 0 the ground's colours only
+  // (the woods' floor is painted darker under the trees above), 1 + flat cover (open grass: its zone's season --
+  // petals, clover, leaves, snow; under the trees: moss), 2 + low plants near the woods (ferns, shrubs, flower clumps).
+  // Never a tuft of grass (the weeds you pull look like that). Off the walks, water, banks, shores, yards, the plaza and
+  // the pond, on level ground, from fixed spots; decoration only. With the models off nothing is drawn.
+  const coverFlat = new THREE.Group(); const coverLow = new THREE.Group(); scene.add(coverFlat, coverLow);
+  const COVER = ['ground.season', 'ground.moss', 'ground.fern', 'ground.shrub', 'ground.flowers'];
+  if (assets && COVER.some((id) => assets.wants(id))) {
+    const flat = { season: [], moss: [] }; const low = { fern: [], shrub: [], flowers: [] };
+    for (let gx = -118; gx <= 118; gx += 3.5) for (let gz = -118; gz <= 118; gz += 3.5) {
+      const x = gx + (hash(gx, gz, 41) - 0.5) * 2.6; const z = gz + (hash(gz, gx, 42) - 0.5) * 2.6;
+      if (Math.hypot(x, z) < T.SEASON_NEUTRAL_R + 3 || !walkable(x, z) || coastDist(x, z) < 5 || cliffAt(x, z) > 0.2) continue;
+      if (walkDist(x, z) < 3 || streamDist(x, z) < STREAM_HALF + 1.6 || onBridge(x, z) || T.inTownhall(x, z, 2) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < 6) || Math.hypot(x - POND.x, z - POND.z) < POND.r + 2.5) continue;
+      const h = ground(x, z); if ([[1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]].some(([dx, dz]) => Math.abs(ground(x + dx, z + dz) - h) > 0.12)) continue;
+      const woods = forestAt(x, z); const r = hash(x, z, 43) * TAU; const s = 0.85 + hash(z, x, 44) * 0.4; const k = hash(x, z, 45);
+      if (trees.some((t) => Math.hypot(t.x - x, t.z - z) < 1.3)) continue; // not on a trunk
+      if (woods > 0.25) {
+        if (k < 0.5) flat.moss.push({ x, z, r, s: s * 1.3 });
+        else if (k < 0.78) low.fern.push({ x, z, r, s });
+        else if (k < 0.88) low.shrub.push({ x, z, r, s: s * 0.9 });
+      } else if (k < 0.45) flat.season.push({ x, z, r, s: s * 1.2 });
+      else if (k < 0.52 && woods > 0.05) low.flowers.push({ x, z, r, s });
+    }
+    const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })])); // under the ground: nothing without a model
+    const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent });
+    lay(flat.season, 'ground.season', coverFlat); lay(flat.moss, 'ground.moss', coverFlat);
+    lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
+    coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
+  }
+  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; };
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
   // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well
@@ -753,5 +794,5 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
 
   function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
