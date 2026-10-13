@@ -2983,6 +2983,1098 @@
       "sha256": "29282848fe160b9f78d790e59583405c518ddc8cc98d8f2216fa931cf19e4d51",
       "lowSrc": "ground:02. Low/low.flowers.a.glb",
       "lowSha256": "bc7b37ac84548cc5b3adb3e6713198a4725f15f1f35a0ef6c4980b10eeabedd7"
+    },
+    {
+      "out": "characters/wear-ip/hellokitty_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/hellokitty.outfit.high.glb",
+      "sha256": "0fc45a7f0dcf1bc2a45b0dd73ec9d8960cdd808ce38851868799c02aee091009",
+      "lowSrc": "skinsx2:ip-characters/outfit/hellokitty.outfit.low.glb",
+      "lowSha256": "748cbbf604b20edcd69be4d14ea55cca3cebe2c7566dfe5d52f3f35c62136910"
+    },
+    {
+      "out": "characters/wear-ip/hellokitty_hat.glb",
+      "src": "skinsx2:ip-characters/hat/hellokitty.hat.high.glb",
+      "sha256": "8a233d5af6f769248a19cd24eb902f019615abc6dbf877c1bffc03ed35692648",
+      "lowSrc": "skinsx2:ip-characters/hat/hellokitty.hat.low.glb",
+      "lowSha256": "4de6d4603fcd25c9d80a442d3b8cf551f1b99f13648fc7bdd829c7972b2a9fbd"
+    },
+    {
+      "out": "characters/wear-ip/hellokitty_tail.glb",
+      "src": "skinsx2:ip-characters/tail/hellokitty.tail.high.glb",
+      "sha256": "4271ea867e26821832a1907e955e0ab251aa5ddce49d5d274cda21daca1b3ed0",
+      "lowSrc": "skinsx2:ip-characters/tail/hellokitty.tail.low.glb",
+      "lowSha256": "7d97697167a3271006c6e06f8580bfef32cee2afa5a80e24d36e49542b37169d"
+    },
+    {
+      "out": "characters/wear-ip/hellokitty_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/hellokitty.necklace.high.glb",
+      "sha256": "2d6943b82c51c9550fe5e024f38e816c96c1efbf1fec2f650715b5e5a32d0f36",
+      "lowSrc": "skinsx2:ip-characters/necklace/hellokitty.necklace.low.glb",
+      "lowSha256": "e0cd36071eabd513da49d44810e5fbfa334f6d4471e8dd66f8cf70fcafaf3546"
+    },
+    {
+      "out": "characters/wear-ip/kuromi_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/kuromi.outfit.high.glb",
+      "sha256": "3f3725ca74fcc842396ee941f59115f1a8d35fa6ec680811717542fa5999200c",
+      "lowSrc": "skinsx2:ip-characters/outfit/kuromi.outfit.low.glb",
+      "lowSha256": "e48c899c09202e4271a647b108cbf5fffd8074da326e967b98e8f3160b1a72cb"
+    },
+    {
+      "out": "characters/wear-ip/kuromi_hat.glb",
+      "src": "skinsx2:ip-characters/hat/kuromi.hat.high.glb",
+      "sha256": "201c2728e0ccf5da848b08eacaef0418f335d2342dc8696ba2b6afa13a70dccc",
+      "lowSrc": "skinsx2:ip-characters/hat/kuromi.hat.low.glb",
+      "lowSha256": "770a74762777ceba766886c269f7aea1168e31f5a5de63984e3dd8a51b0ae52c"
+    },
+    {
+      "out": "characters/wear-ip/kuromi_tail.glb",
+      "src": "skinsx2:ip-characters/tail/kuromi.tail.high.glb",
+      "sha256": "bbee462f5d20db27bcea31eb44089583ebdebf46dcbb2bd4163c5a67df389e08",
+      "lowSrc": "skinsx2:ip-characters/tail/kuromi.tail.low.glb",
+      "lowSha256": "c92d7c771b3a3ef604c189c9ebeac601d819dff9884e9407cb54d2077f135e06"
+    },
+    {
+      "out": "characters/wear-ip/kuromi_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/kuromi.necklace.high.glb",
+      "sha256": "a079c0d79deff1bcf9d02f4274a22e386a76e69f89863302425e9d592c979435",
+      "lowSrc": "skinsx2:ip-characters/necklace/kuromi.necklace.low.glb",
+      "lowSha256": "3f54266f16e79ae0403327f092247562a5d1afcda14c9a22b553501c59500ca7"
+    },
+    {
+      "out": "characters/wear-ip/mymelody_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/mymelody.outfit.high.glb",
+      "sha256": "01a06dbaa4ef9ec033549c3d7fe5087417d51dfd145cf83ca0ebc0c9be36bf64",
+      "lowSrc": "skinsx2:ip-characters/outfit/mymelody.outfit.low.glb",
+      "lowSha256": "ffddaf3bf98e925b7ac944729a05770b9e25b03fe58d7fbc0b49591308ca7e1c"
+    },
+    {
+      "out": "characters/wear-ip/mymelody_hat.glb",
+      "src": "skinsx2:ip-characters/hat/mymelody.hat.high.glb",
+      "sha256": "fabced56f1ced47dcfe380ed14e5df9edecef1369e6c1424a4c6aab7c786e290",
+      "lowSrc": "skinsx2:ip-characters/hat/mymelody.hat.low.glb",
+      "lowSha256": "dfa28e5a3d8866ec90a5f63d758750f3589418ab466a3781193b997149716924"
+    },
+    {
+      "out": "characters/wear-ip/mymelody_tail.glb",
+      "src": "skinsx2:ip-characters/tail/mymelody.tail.high.glb",
+      "sha256": "541fc325bf7e438f67e6f6d6807cf2ebbdaafa23823e798f797d5176791147a9",
+      "lowSrc": "skinsx2:ip-characters/tail/mymelody.tail.low.glb",
+      "lowSha256": "175e3075c3269d8c001f65dfda684c322134476342ae1b16e12b614d29635ed5"
+    },
+    {
+      "out": "characters/wear-ip/mymelody_shoes.glb",
+      "src": "skinsx2:ip-characters/shoes/mymelody.shoes.high.glb",
+      "sha256": "34daae79c707d76dbd8e4c8e165b1248050e3a9c827597a8d3787338cb595996",
+      "lowSrc": "skinsx2:ip-characters/shoes/mymelody.shoes.low.glb",
+      "lowSha256": "dcd210b21af11978fe9b87d674175fa9728fc2988156824e02744ee28cffff40"
+    },
+    {
+      "out": "characters/wear-ip/cinnamoroll_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/cinnamoroll.outfit.high.glb",
+      "sha256": "2e0fee767b4fbb5ff2ff3a98f0a551daefca74432f53517340d1a6e2c395d4da",
+      "lowSrc": "skinsx2:ip-characters/outfit/cinnamoroll.outfit.low.glb",
+      "lowSha256": "4ef0a063bed672443d1f11d19ff08f39ad8be0d495d258165bbd6f0306a994b0"
+    },
+    {
+      "out": "characters/wear-ip/cinnamoroll_hat.glb",
+      "src": "skinsx2:ip-characters/hat/cinnamoroll.hat.high.glb",
+      "sha256": "3f5ee202cf5e5d6d3934c8380853bf90602523e70af8398c36803a8c21eca644",
+      "lowSrc": "skinsx2:ip-characters/hat/cinnamoroll.hat.low.glb",
+      "lowSha256": "3ccd71816ac87f592c9e0e8b94d875dcc330560cea397ff1ca34090242ec5c3f"
+    },
+    {
+      "out": "characters/wear-ip/cinnamoroll_tail.glb",
+      "src": "skinsx2:ip-characters/tail/cinnamoroll.tail.high.glb",
+      "sha256": "4600f38dde1d956dd5a06563a2918b5d9c69a52e6d6bdb097453c92b99db4957",
+      "lowSrc": "skinsx2:ip-characters/tail/cinnamoroll.tail.low.glb",
+      "lowSha256": "5e8883be39bfba24d9a940a422ac1e31b1a2c21759231518abb60614b5260fd2"
+    },
+    {
+      "out": "characters/wear-ip/cinnamoroll_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/cinnamoroll.necklace.high.glb",
+      "sha256": "c3cbc86ec7f64d94ee4b9e525b1d58aecd0934fbfc90238887561f2d0f752012",
+      "lowSrc": "skinsx2:ip-characters/necklace/cinnamoroll.necklace.low.glb",
+      "lowSha256": "ba8b6692d6b410c4b974377a7b1ca829bf9301fb19b4350fc893fa1a94e17605"
+    },
+    {
+      "out": "characters/wear-ip/pompompurin_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/pompompurin.outfit.high.glb",
+      "sha256": "0af7d75cdb84aefedbf66755e1b0a84a480e7f96ccae32d952ea3712133fc3e2",
+      "lowSrc": "skinsx2:ip-characters/outfit/pompompurin.outfit.low.glb",
+      "lowSha256": "be4eabbd94305409c3e1df3f8eebffde7d05d10213fc3b66ac5b61b1768f7328"
+    },
+    {
+      "out": "characters/wear-ip/pompompurin_hat.glb",
+      "src": "skinsx2:ip-characters/hat/pompompurin.hat.high.glb",
+      "sha256": "de60f60ffa0473038a1ac8b8897d98a0107ce373a5e931de6e19ca3185e93eec",
+      "lowSrc": "skinsx2:ip-characters/hat/pompompurin.hat.low.glb",
+      "lowSha256": "b6701a5a0d7ef81e2944d12b99add3d0f3a4a3aab9fe00a56da2579af36212cd"
+    },
+    {
+      "out": "characters/wear-ip/pompompurin_tail.glb",
+      "src": "skinsx2:ip-characters/tail/pompompurin.tail.high.glb",
+      "sha256": "179bea7d9c2d6e19a63b0aaf731fd02461235f8fb2e999f0d7d45d5a7ef3bb2f",
+      "lowSrc": "skinsx2:ip-characters/tail/pompompurin.tail.low.glb",
+      "lowSha256": "446c2e8becfe781ebe06fa33f5608c81dd7aa67ecd3a008890db63ae23720a6e"
+    },
+    {
+      "out": "characters/wear-ip/pompompurin_shoes.glb",
+      "src": "skinsx2:ip-characters/shoes/pompompurin.shoes.high.glb",
+      "sha256": "0562541aca5d22c63410ee0e6e2615a8590d4cbcaa0a258c1324f5061f14f9e8",
+      "lowSrc": "skinsx2:ip-characters/shoes/pompompurin.shoes.low.glb",
+      "lowSha256": "635273e8a1881a760d82d3aed7d73196b5952f103dddd2183d52e735264a6d47"
+    },
+    {
+      "out": "characters/wear-ip/superman_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/superman.outfit.high.glb",
+      "sha256": "16d52b8eb6e7c33b3f6a53ca5421c2b7a0041d847bead2d7f34e7aeed61d322d",
+      "lowSrc": "skinsx2:ip-characters/outfit/superman.outfit.low.glb",
+      "lowSha256": "a60d43a16a9039befdead3b28f5bac18d5a3ae52035e184f132b33af3569cbe6"
+    },
+    {
+      "out": "characters/wear-ip/superman_hat.glb",
+      "src": "skinsx2:ip-characters/hat/superman.hat.high.glb",
+      "sha256": "2cfef85b8abe6a861be9c0ed34979e87c10beee98a8b2767fcebac8180c407e4",
+      "lowSrc": "skinsx2:ip-characters/hat/superman.hat.low.glb",
+      "lowSha256": "6cc185afb32aa663aa77c9db5c43126176f0fcdb505a706bc0653a5490e91de4"
+    },
+    {
+      "out": "characters/wear-ip/superman_cape.glb",
+      "src": "skinsx2:ip-characters/cape/superman.cape.high.glb",
+      "sha256": "887011ffa5121b418eb8287f732d1cffdee73e85976fd1516315132c69e4ccee",
+      "lowSrc": "skinsx2:ip-characters/cape/superman.cape.low.glb",
+      "lowSha256": "887011ffa5121b418eb8287f732d1cffdee73e85976fd1516315132c69e4ccee"
+    },
+    {
+      "out": "characters/wear-ip/superman_shoes.glb",
+      "src": "skinsx2:ip-characters/shoes/superman.shoes.high.glb",
+      "sha256": "311c0f818499eb364d087d26c3a43c518f546c46e9f387189677698cefc9f41b",
+      "lowSrc": "skinsx2:ip-characters/shoes/superman.shoes.low.glb",
+      "lowSha256": "a0bbec8e9a96e70bf157f8513ad71450fdfe9412175223b7319f66a0a4fbd5b8"
+    },
+    {
+      "out": "characters/wear-ip/batman_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/batman.outfit.high.glb",
+      "sha256": "bb73bdbb39b0e4bba8d452725f64cb8f3a450303965df69f621a409a051b318d",
+      "lowSrc": "skinsx2:ip-characters/outfit/batman.outfit.low.glb",
+      "lowSha256": "32da691bd8a86a5ac4ba2c0375a15207d470e32186c23a88512c5493c0d98c60"
+    },
+    {
+      "out": "characters/wear-ip/batman_hat.glb",
+      "src": "skinsx2:ip-characters/hat/batman.hat.high.glb",
+      "sha256": "4048634462ab945cfdf8fe2c2581694e0fb924313864c67667b155b7d7dc1476",
+      "lowSrc": "skinsx2:ip-characters/hat/batman.hat.low.glb",
+      "lowSha256": "e6a7e998b1932138dd4b3a2618c9381b0ae2d94a8e03299cea7f19e1516b9a3d"
+    },
+    {
+      "out": "characters/wear-ip/batman_cape.glb",
+      "src": "skinsx2:ip-characters/cape/batman.cape.high.glb",
+      "sha256": "893f0a183fbe808a3ce493205583e34248714c79948749f57180cfb45a5b52d4",
+      "lowSrc": "skinsx2:ip-characters/cape/batman.cape.low.glb",
+      "lowSha256": "893f0a183fbe808a3ce493205583e34248714c79948749f57180cfb45a5b52d4"
+    },
+    {
+      "out": "characters/wear-ip/batman_shoes.glb",
+      "src": "skinsx2:ip-characters/shoes/batman.shoes.high.glb",
+      "sha256": "15982fec8b033a3974c1b2d9af203c9ec040a4687da55e755b26631efe9cf91f",
+      "lowSrc": "skinsx2:ip-characters/shoes/batman.shoes.low.glb",
+      "lowSha256": "60270aca97089d9a48bd6924264eea6b4eb792ed01c669ec0414b5f027185a54"
+    },
+    {
+      "out": "characters/wear-ip/ironman_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/ironman.outfit.high.glb",
+      "sha256": "b9f0e427ff140ed48fd0bed3bc2ee62d08b90381235a7864bf79392aa9841b42",
+      "lowSrc": "skinsx2:ip-characters/outfit/ironman.outfit.low.glb",
+      "lowSha256": "8aedb8e34e44f4fe1926751d225e4c03765e7e77111ffc0e44d9e793f4c56f5b"
+    },
+    {
+      "out": "characters/wear-ip/ironman_hat.glb",
+      "src": "skinsx2:ip-characters/hat/ironman.hat.high.glb",
+      "sha256": "3812576a5cdbb282c6f9fc9615be8bec0726e7adc6c2f6d9d4dce76069917785",
+      "lowSrc": "skinsx2:ip-characters/hat/ironman.hat.low.glb",
+      "lowSha256": "93653ee5a7eac19fe069f6fe89d886aadde24ce72da4b0b48dc507cd12d1f7ed"
+    },
+    {
+      "out": "characters/wear-ip/ironman_cape.glb",
+      "src": "skinsx2:ip-characters/cape/ironman.cape.high.glb",
+      "sha256": "c7c204a2a9a989edb7cf730dc754c2fda236ead0bd5224ff1489552de9213769",
+      "lowSrc": "skinsx2:ip-characters/cape/ironman.cape.low.glb",
+      "lowSha256": "cba419ec5df7a8191033d5828674e1df4e59269e43fdc0eb5abb9b9ad9316cde"
+    },
+    {
+      "out": "characters/wear-ip/ironman_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/ironman.necklace.high.glb",
+      "sha256": "5c6104b8047127ce2e35afe7c77ba4bbb03458d522453270d7263d575dd5b923",
+      "lowSrc": "skinsx2:ip-characters/necklace/ironman.necklace.low.glb",
+      "lowSha256": "4ef92e2e5a8252804ffc7faa333bdc96fd858ecf92d4ea0e8f23160f8087f259"
+    },
+    {
+      "out": "characters/wear-ip/spiderman_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/spiderman.outfit.high.glb",
+      "sha256": "8a9f481570cbcd568f3e98292a7d21863ea28be969015773273f60a143d7425e",
+      "lowSrc": "skinsx2:ip-characters/outfit/spiderman.outfit.low.glb",
+      "lowSha256": "0ec924b951c22d26c7921bb92f9f8d433d4a64fa80affbcb392698bbe01fa26a"
+    },
+    {
+      "out": "characters/wear-ip/spiderman_hat.glb",
+      "src": "skinsx2:ip-characters/hat/spiderman.hat.high.glb",
+      "sha256": "4c143888e03e25e44d6e0d486b2e7790b39e83c8a7b547bfe7e1ced22a2cc714",
+      "lowSrc": "skinsx2:ip-characters/hat/spiderman.hat.low.glb",
+      "lowSha256": "7f6e61362a9ed19c3db0356a3b207eec11ad51b60b75ba7056324aa6ca4d3a9e"
+    },
+    {
+      "out": "characters/wear-ip/spiderman_cape.glb",
+      "src": "skinsx2:ip-characters/cape/spiderman.cape.high.glb",
+      "sha256": "1e3c8c2df2d8e1a0316c222ea48c95f244a4bbfffc2af233e2d05625808a9275",
+      "lowSrc": "skinsx2:ip-characters/cape/spiderman.cape.low.glb",
+      "lowSha256": "1a6cd111e1130830b38dd48ada0ce907bbee9cee7126bb7b7da3cf3504f80fc5"
+    },
+    {
+      "out": "characters/wear-ip/spiderman_shoes.glb",
+      "src": "skinsx2:ip-characters/shoes/spiderman.shoes.high.glb",
+      "sha256": "438816791a2eb1021d83c9653dc31fb25b06f752c5d7a1457a54cf6129988a0f",
+      "lowSrc": "skinsx2:ip-characters/shoes/spiderman.shoes.low.glb",
+      "lowSha256": "c0cec7dc03b29900207e6b760fd7d7c62e475b7525d6d879c238b863eb54dfae"
+    },
+    {
+      "out": "characters/wear-ip/captainamerica_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/captainamerica.outfit.high.glb",
+      "sha256": "b8e94a999fd59feffc0dd973ee22329800deb8b701390e599edbe9425e91a9fe",
+      "lowSrc": "skinsx2:ip-characters/outfit/captainamerica.outfit.low.glb",
+      "lowSha256": "7697205a9b102a77ed950560efcbf246e768ecfb1f651aff9ac485df001f9b27"
+    },
+    {
+      "out": "characters/wear-ip/captainamerica_hat.glb",
+      "src": "skinsx2:ip-characters/hat/captainamerica.hat.high.glb",
+      "sha256": "c173d99ac3fb63beb6cbe4ccba8e7b97e02d3e91475e9002f79afa5307a92e3f",
+      "lowSrc": "skinsx2:ip-characters/hat/captainamerica.hat.low.glb",
+      "lowSha256": "bc0a7970c4cb581f1a17f03f77b45729cd42cd4b53f28bfae284b95661740d71"
+    },
+    {
+      "out": "characters/wear-ip/captainamerica_cape.glb",
+      "src": "skinsx2:ip-characters/cape/captainamerica.cape.high.glb",
+      "sha256": "a72d8533402543a034dae5044b6a3be7ef41dfe0c14c52d1be639a3ebff5d72e",
+      "lowSrc": "skinsx2:ip-characters/cape/captainamerica.cape.low.glb",
+      "lowSha256": "01a30c571949f9fe30fef3e45127c614af16434fda147625aab19d6e97d6a1f2"
+    },
+    {
+      "out": "characters/wear-ip/captainamerica_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/captainamerica.necklace.high.glb",
+      "sha256": "52657b1dbeb4d2ac88f406977d627358d8e8e312201f38e956420d4880b70988",
+      "lowSrc": "skinsx2:ip-characters/necklace/captainamerica.necklace.low.glb",
+      "lowSha256": "13124284703b174e06d39e736d84d7ac4dc3187f7bdd30966bff005493c79def"
+    },
+    {
+      "out": "characters/wear-ip/pikachu_outfit.glb",
+      "src": "skinsx2:ip-characters/outfit/pikachu.outfit.high.glb",
+      "sha256": "671e777339d8600eb8880138d4ca0750bbc8ce5c3961e28ec6b250919b764183",
+      "lowSrc": "skinsx2:ip-characters/outfit/pikachu.outfit.low.glb",
+      "lowSha256": "2123e2d20bc1a9b44d4278b039189a31f6c806b2aad72d133ee8158bdc76cb3e"
+    },
+    {
+      "out": "characters/wear-ip/pikachu_hat.glb",
+      "src": "skinsx2:ip-characters/hat/pikachu.hat.high.glb",
+      "sha256": "7ee09401bfb851478a3f0885f527f543d8ff90eab563dfd4a3701e6b807422b7",
+      "lowSrc": "skinsx2:ip-characters/hat/pikachu.hat.low.glb",
+      "lowSha256": "774397c9869c6ad80ec93bd25284b56ae984170155b6a2090059d28384cb544b"
+    },
+    {
+      "out": "characters/wear-ip/pikachu_tail.glb",
+      "src": "skinsx2:ip-characters/tail/pikachu.tail.high.glb",
+      "sha256": "83b59671a2e385f4967d9e2d27afcb7b76495a6f8f9e98b7a314e6fb7525dbcd",
+      "lowSrc": "skinsx2:ip-characters/tail/pikachu.tail.low.glb",
+      "lowSha256": "83b59671a2e385f4967d9e2d27afcb7b76495a6f8f9e98b7a314e6fb7525dbcd"
+    },
+    {
+      "out": "characters/wear-ip/pikachu_necklace.glb",
+      "src": "skinsx2:ip-characters/necklace/pikachu.necklace.high.glb",
+      "sha256": "124565517b1faebb6473daced1c039542f894a90d5de7b82a00d13a5e79179bd",
+      "lowSrc": "skinsx2:ip-characters/necklace/pikachu.necklace.low.glb",
+      "lowSha256": "2c99d9051e6c15b9ba7859a9787dc34a53c690aaf4a5af2271ae7ee56f0581be"
+    },
+    {
+      "out": "characters/wear/x2_hair_tide_sweep.glb",
+      "src": "skinsx2:general/hair/tide-sweep.high.glb",
+      "sha256": "b49cddbf8777a02012076690ba5d96a7f96fb460aa5fdbd9344d33d08d0037e0",
+      "lowSrc": "skinsx2:general/hair/tide-sweep.low.glb",
+      "lowSha256": "93feb64b63bef91f720cc37cf017187fa53c931ee8f7f3a5bb56365a74d22b44"
+    },
+    {
+      "out": "characters/wear/x2_hair_coral_curls.glb",
+      "src": "skinsx2:general/hair/coral-curls.high.glb",
+      "sha256": "b3220bbadde87d5ecc6c39906e94e3eb96fcab64c0320bd86c44d3a55ad85576",
+      "lowSrc": "skinsx2:general/hair/coral-curls.low.glb",
+      "lowSha256": "e44a581b631c05e1c60e5d133731809429ef96bf99a28362227a80bf5731c2c9"
+    },
+    {
+      "out": "characters/wear/x2_hair_kelp_ribbons.glb",
+      "src": "skinsx2:general/hair/kelp-ribbons.high.glb",
+      "sha256": "713a52784e39eb1671948d78c4b41bed05b75c81cf2de96f2f022744c0e771e9",
+      "lowSrc": "skinsx2:general/hair/kelp-ribbons.low.glb",
+      "lowSha256": "263a8886536eae14c7c9c28057172c4ab91f5ea59f955522d37688063ddc76b2"
+    },
+    {
+      "out": "characters/wear/x2_hair_comet_fan.glb",
+      "src": "skinsx2:general/hair/comet-fan.high.glb",
+      "sha256": "3a7dbaed893387f5eade96846510a9466ff307c7c2cc14ba5740bb84777fe817",
+      "lowSrc": "skinsx2:general/hair/comet-fan.low.glb",
+      "lowSha256": "118cb4f2fcc8c2498e8a6d18e532a0f54b01c6f320180b60689c42fb2d9de073"
+    },
+    {
+      "out": "characters/wear/x2_hair_nebula_coils.glb",
+      "src": "skinsx2:general/hair/nebula-coils.high.glb",
+      "sha256": "4d2b4b77eeaddee1061a83df93067950e60cd86c9c73317770f02b2248542ad3",
+      "lowSrc": "skinsx2:general/hair/nebula-coils.low.glb",
+      "lowSha256": "1ed2dbe8a7038fa4b818f9ac326e8b7bc901b809f6ab2b1edee0917d7cc3510a"
+    },
+    {
+      "out": "characters/wear/x2_hair_meteor_ridge.glb",
+      "src": "skinsx2:general/hair/meteor-ridge.high.glb",
+      "sha256": "d51087ef2a50ee26a7c0cd1423638268f5248afa57fd6f941ef7eccd82a8babe",
+      "lowSrc": "skinsx2:general/hair/meteor-ridge.low.glb",
+      "lowSha256": "dad97fcfbb9ba634db379bb56e1203e078fa83ba8c791b98c50df6174af2d46a"
+    },
+    {
+      "out": "characters/wear/x2_hair_rice_terrace.glb",
+      "src": "skinsx2:general/hair/rice-terrace.high.glb",
+      "sha256": "9abcb11b44a797a2211f1dfc493b2e903dd0e695fabdf9ad9644dc318cd04b4b",
+      "lowSrc": "skinsx2:general/hair/rice-terrace.low.glb",
+      "lowSha256": "56d62fd04e90c3e59040130f04a13739dd7023064c06aeb51c2f5b47c712b5fb"
+    },
+    {
+      "out": "characters/wear/x2_hair_tea_whisk.glb",
+      "src": "skinsx2:general/hair/tea-whisk.high.glb",
+      "sha256": "8b70519342ecf1c0cc7b674fff6c27c89d5c6b72ce8ad1427ffae2b488956900",
+      "lowSrc": "skinsx2:general/hair/tea-whisk.low.glb",
+      "lowSha256": "834d9091bc27c49aef3ebedff45b79078a875429cb7116e9d34ae120ba75bf5b"
+    },
+    {
+      "out": "characters/wear/x2_hair_maple_fold.glb",
+      "src": "skinsx2:general/hair/maple-fold.high.glb",
+      "sha256": "46a099d1480d440ce03d08d2b38d5ab49f586aab07c9babd3470eaf95f82751b",
+      "lowSrc": "skinsx2:general/hair/maple-fold.low.glb",
+      "lowSha256": "5ef522d4ccec25eba61a2903c32ddd5d69f72056a814b9618a51c9ed0321cec4"
+    },
+    {
+      "out": "characters/wear/x2_hair_snowdrift.glb",
+      "src": "skinsx2:general/hair/snowdrift.high.glb",
+      "sha256": "e688a6c4cb890d4e0f79f0e9a84b79ff08a177924826d5d33e453230332dce56",
+      "lowSrc": "skinsx2:general/hair/snowdrift.low.glb",
+      "lowSha256": "b187939ea8de118d1354ffaab3aad7995090bcd78b9e094d0f80bee8d0cf7750"
+    },
+    {
+      "out": "characters/wear/x2_hair_chestnut_swirl.glb",
+      "src": "skinsx2:general/hair/chestnut-swirl.high.glb",
+      "sha256": "3ec4a0df49bf6dbbc8dfc8c048704485e8491ba2d6ea37e8eeb67fcc0ba4cf7a",
+      "lowSrc": "skinsx2:general/hair/chestnut-swirl.low.glb",
+      "lowSha256": "361e54418e7062bb63269db22fec3cc900883e8249965ebe512dca140d2eb73d"
+    },
+    {
+      "out": "characters/wear/x2_hair_bamboo_stack.glb",
+      "src": "skinsx2:general/hair/bamboo-stack.high.glb",
+      "sha256": "e0ebd14f895baa32ef50cc2153255150d90444dac60d8eeec51cb8f261c2d4f4",
+      "lowSrc": "skinsx2:general/hair/bamboo-stack.low.glb",
+      "lowSha256": "f0faf49575c644ee568f40c84c0b38e9b2f8748442d518afc4b3b5cc6f32dead"
+    },
+    {
+      "out": "characters/wear/x2_hair_cloud_step.glb",
+      "src": "skinsx2:general/hair/cloud-step.high.glb",
+      "sha256": "f9663a9b8554bd52bb5c80c680b9dc1c7e8325b1460b9b074b760f1ed99d3322",
+      "lowSrc": "skinsx2:general/hair/cloud-step.low.glb",
+      "lowSha256": "15dc035ca68e4575333416b24d01c84cca0e8aaba3a7dcfdae7e881599811f2e"
+    },
+    {
+      "out": "characters/wear/x2_hair_potter_knot.glb",
+      "src": "skinsx2:general/hair/potter-knot.high.glb",
+      "sha256": "ed030a4194d92ac80fcd909db1878851cc9d5f94563c4f336a678c5f0b25b7fa",
+      "lowSrc": "skinsx2:general/hair/potter-knot.low.glb",
+      "lowSha256": "198b8239cef1dab68cd0cb994e4b500958e3d837ae50609b30b4a3167af5f254"
+    },
+    {
+      "out": "characters/wear/x2_hair_ribbon_weave.glb",
+      "src": "skinsx2:general/hair/ribbon-weave.high.glb",
+      "sha256": "574ff19cc8ae171af32ae5d210c824ff6508b8d3a654329281252f117b7c22b8",
+      "lowSrc": "skinsx2:general/hair/ribbon-weave.low.glb",
+      "lowSha256": "b1ed77f821e6f9ed737bf10fa804966068bd27850e6cff509f33629156e22787"
+    },
+    {
+      "out": "characters/wear/x2_hair_ramen_loop.glb",
+      "src": "skinsx2:general/hair/ramen-loop.high.glb",
+      "sha256": "396eb3a453ce39d4575294247f332213be5ebf0a7e2cc2879269e6b8698f78a9",
+      "lowSrc": "skinsx2:general/hair/ramen-loop.low.glb",
+      "lowSha256": "926c9ebdc07fbc469c6a529b7d655f485be00d6bc89820677a9f82f611daea01"
+    },
+    {
+      "out": "characters/wear/x2_hair_sprout_part.glb",
+      "src": "skinsx2:general/hair/sprout-part.high.glb",
+      "sha256": "7a3d3acdb1ae6c2784f7e5b56f84c91efdbafddd258f4d4cfd0ee7a18d71a72e",
+      "lowSrc": "skinsx2:general/hair/sprout-part.low.glb",
+      "lowSha256": "e3d19af13c46e6fd7fb218fc96ea23eb467087e2d9870cfbaccc62111c48d524"
+    },
+    {
+      "out": "characters/wear/x2_outfit_tidal_surveyor.glb",
+      "src": "skinsx2:general/outfit/tidal-surveyor.high.glb",
+      "sha256": "3125dd021b923cd91d23ec5f4d300676de9c3f169985b04f0e924dc0c4230341",
+      "lowSrc": "skinsx2:general/outfit/tidal-surveyor.low.glb",
+      "lowSha256": "3125dd021b923cd91d23ec5f4d300676de9c3f169985b04f0e924dc0c4230341"
+    },
+    {
+      "out": "characters/wear/x2_outfit_coral_diver.glb",
+      "src": "skinsx2:general/outfit/coral-diver.high.glb",
+      "sha256": "a048c81cf0498c0bb7b58b8b82f74abea684c7ce132a581ebf8f2be34da5fd06",
+      "lowSrc": "skinsx2:general/outfit/coral-diver.low.glb",
+      "lowSha256": "45b79946baaae1c61e7ebe134124efde71893c3246b835bdc28dda8863fac739"
+    },
+    {
+      "out": "characters/wear/x2_outfit_tea_master.glb",
+      "src": "skinsx2:general/outfit/tea-master.high.glb",
+      "sha256": "c4e9f09813063400638034aa1abb63166ef3f9b442e8ac123730b3c1d3093c49",
+      "lowSrc": "skinsx2:general/outfit/tea-master.low.glb",
+      "lowSha256": "ff7fa782cace1ecf41aa36427c5eb7514be0beffdc22be2c51298524199f8a0a"
+    },
+    {
+      "out": "characters/wear/x2_outfit_potter_smock.glb",
+      "src": "skinsx2:general/outfit/potter-smock.high.glb",
+      "sha256": "97a7fefd9d7e71a54aba9e42f7a4afe15105ad781990f5e4d8916d6eb72d8e19",
+      "lowSrc": "skinsx2:general/outfit/potter-smock.low.glb",
+      "lowSha256": "ad21247fad1d92ca4bc2d3b3bdc73610a320e8d2a1d487b37e03316196480d0b"
+    },
+    {
+      "out": "characters/wear/x2_outfit_star_cartographer.glb",
+      "src": "skinsx2:general/outfit/star-cartographer.high.glb",
+      "sha256": "06bb14e71c12a2212ed37107bac470013b70b9e71361c49f10b4ad56418b4403",
+      "lowSrc": "skinsx2:general/outfit/star-cartographer.low.glb",
+      "lowSha256": "dad40f12a6c90b5fc145ff927599e5d774aa01ad88cc93ac5a06bb7d6fadc2cb"
+    },
+    {
+      "out": "characters/wear/x2_outfit_moon_courier.glb",
+      "src": "skinsx2:general/outfit/moon-courier.high.glb",
+      "sha256": "6ec19401a92c24282434d54d9f0cd011934070f7c08f7c48942d10d3c07ea6fb",
+      "lowSrc": "skinsx2:general/outfit/moon-courier.low.glb",
+      "lowSha256": "d4459cb4164e8e862dcb8a606caef7795b268bc7bfa62dbbb395e189f7761f93"
+    },
+    {
+      "out": "characters/wear/x2_outfit_bamboo_weaver.glb",
+      "src": "skinsx2:general/outfit/bamboo-weaver.high.glb",
+      "sha256": "4b857af2ec6b069abe3280a0304196589e0791148df1cf89033d1927a33d26c7",
+      "lowSrc": "skinsx2:general/outfit/bamboo-weaver.low.glb",
+      "lowSha256": "e498086999f7c75d9a675ed3cef2eacf4566cbfce69b4fa56ab01031eaae4f16"
+    },
+    {
+      "out": "characters/wear/x2_outfit_rain_gauge.glb",
+      "src": "skinsx2:general/outfit/rain-gauge.high.glb",
+      "sha256": "76c5933c811e7c6dc6bf3f2c80592db3d7bbb6848f6dfd668b7697733d175233",
+      "lowSrc": "skinsx2:general/outfit/rain-gauge.low.glb",
+      "lowSha256": "6613b238e339a1aa6e87b33e49f9c530f9ccb9d7399d9f687a019930d21d6dfc"
+    },
+    {
+      "out": "characters/wear/x2_outfit_orchard_keeper.glb",
+      "src": "skinsx2:general/outfit/orchard-keeper.high.glb",
+      "sha256": "13c1c82e76b2ca37e25a6b4d8dfdc3f836509d3f0afafbcb9a852d59adf2feaf",
+      "lowSrc": "skinsx2:general/outfit/orchard-keeper.low.glb",
+      "lowSha256": "27170ac9915f7b30ea559828d99036f7dd81aba0eaa333872894c389f13365bc"
+    },
+    {
+      "out": "characters/wear/x2_outfit_snow_rescuer.glb",
+      "src": "skinsx2:general/outfit/snow-rescuer.high.glb",
+      "sha256": "cc0d0126bef07174385528afe95ff3f160098be7f59e02ad6cbcdcad71b2d920",
+      "lowSrc": "skinsx2:general/outfit/snow-rescuer.low.glb",
+      "lowSha256": "0741d52fb937d3e19da4b1d15b1f71a68586692b0ab658a327242f876862a0ad"
+    },
+    {
+      "out": "characters/wear/x2_outfit_reef_chemist.glb",
+      "src": "skinsx2:general/outfit/reef-chemist.high.glb",
+      "sha256": "2fe5ffa05fd72a965a2fd5a3cfe6608976f10ed068b7b5c2a19f125b37e67a36",
+      "lowSrc": "skinsx2:general/outfit/reef-chemist.low.glb",
+      "lowSha256": "fe8789a1fb5bef0d790cda944631c3b4c3dbd970ca38e38146d155adeb5961d9"
+    },
+    {
+      "out": "characters/wear/x2_outfit_bakery_proof.glb",
+      "src": "skinsx2:general/outfit/bakery-proof.high.glb",
+      "sha256": "f6707a93c9b6d2e86df2ae89bec0207c83ba683d82246f6a8a5ee7f08b35e594",
+      "lowSrc": "skinsx2:general/outfit/bakery-proof.low.glb",
+      "lowSha256": "02c07818bbe5ccaeab61f80f2ff7fea940a7f8cc3de92f0536bf8f06c4749646"
+    },
+    {
+      "out": "characters/wear/x2_outfit_noodle_chef.glb",
+      "src": "skinsx2:general/outfit/noodle-chef.high.glb",
+      "sha256": "52c9e001b26519ec5225c59608f2b42471316d951434259ad29e91573dfbe9c7",
+      "lowSrc": "skinsx2:general/outfit/noodle-chef.low.glb",
+      "lowSha256": "b1c6b24dfe059437ad6e7a99653ca2d47d7e9313dea79cb2c5b47dea85fec182"
+    },
+    {
+      "out": "characters/wear/x2_outfit_lantern_maker.glb",
+      "src": "skinsx2:general/outfit/lantern-maker.high.glb",
+      "sha256": "0d5b4455b738f03bfbe858a0bb6a168f54f45e1973a490f19769036080c6dcab",
+      "lowSrc": "skinsx2:general/outfit/lantern-maker.low.glb",
+      "lowSha256": "4823fdc596e4cefd09710be118f019086e97977c7030e0894cd53e3f1ebae6ed"
+    },
+    {
+      "out": "characters/wear/x2_outfit_kite_festival.glb",
+      "src": "skinsx2:general/outfit/kite-festival.high.glb",
+      "sha256": "b25ab3a2ca1b0251ef378c1152d1404c919353c17522005f504eecdba9e586bb",
+      "lowSrc": "skinsx2:general/outfit/kite-festival.low.glb",
+      "lowSha256": "98010795a55eb10c095002542936b2627f8572093069199f88a4a1d76b272fe8"
+    },
+    {
+      "out": "characters/wear/x2_outfit_harbor_pilot.glb",
+      "src": "skinsx2:general/outfit/harbor-pilot.high.glb",
+      "sha256": "a9ee0341b88c270e2d9efde9a1760e0cbdbe1fe832a587310a0f0490aecd41eb",
+      "lowSrc": "skinsx2:general/outfit/harbor-pilot.low.glb",
+      "lowSha256": "5496d85625268778cd33cf4284e056671856c7abe82ac6f4e97ccb498072b1f8"
+    },
+    {
+      "out": "characters/wear/x2_outfit_forest_listener.glb",
+      "src": "skinsx2:general/outfit/forest-listener.high.glb",
+      "sha256": "4c7a861baab2158409ae36bcde45711fa3b769032647831c49a751fd1c429697",
+      "lowSrc": "skinsx2:general/outfit/forest-listener.low.glb",
+      "lowSha256": "c317a1881f9b19de447c480f6c9c29d4ecf320499ae2f231435dee87a6bcc67a"
+    },
+    {
+      "out": "characters/wear/x2_outfit_solstice_coat.glb",
+      "src": "skinsx2:general/outfit/solstice-coat.high.glb",
+      "sha256": "3867ec3b1e5ac33a10798634e462ee37eca3258509f2ae9aa8744b4c5fee4435",
+      "lowSrc": "skinsx2:general/outfit/solstice-coat.low.glb",
+      "lowSha256": "efe97aef5dce8b9f022e2098e7aeaa26fd5a37d5fcc67978b7bf6ea09a29717d"
+    },
+    {
+      "out": "characters/wear/x2_outfit_observatory_tech.glb",
+      "src": "skinsx2:general/outfit/observatory-tech.high.glb",
+      "sha256": "c875be0efcb999013e129512a3fb45665a33bb35f2a5da17fb0606c2a668ba2c",
+      "lowSrc": "skinsx2:general/outfit/observatory-tech.low.glb",
+      "lowSha256": "dd82421da080455ff65b8d1361a1c6baa74b115c1fb1e2018baef2c90446e85a"
+    },
+    {
+      "out": "characters/wear/x2_hat_tide_compass.glb",
+      "src": "skinsx2:general/hat/tide-compass.high.glb",
+      "sha256": "e9e35935adee843012ad27615b9347ab55c154a83c4e0d73dc4886610a1bd7ad",
+      "lowSrc": "skinsx2:general/hat/tide-compass.low.glb",
+      "lowSha256": "2c4ac8a6841360e83f4cf840505562a4a68290ad5cb6d239d387d07d48bbc4d9"
+    },
+    {
+      "out": "characters/wear/x2_hat_coral_tiara.glb",
+      "src": "skinsx2:general/hat/coral-tiara.high.glb",
+      "sha256": "d87caab75a2a3118d249cbe7f46b2d0c7e7509d23d80cd1732010e8fc689b1d9",
+      "lowSrc": "skinsx2:general/hat/coral-tiara.low.glb",
+      "lowSha256": "3a094ee0279436e874cbcf7b623223d13cc49f752c00068e8a8fb44d0feb76d7"
+    },
+    {
+      "out": "characters/wear/x2_hat_tea_lid.glb",
+      "src": "skinsx2:general/hat/tea-lid.high.glb",
+      "sha256": "b5a583e3dc3754fd93ab4e97b6a357d0fed84f5462e6a5e1176a1c0d86e99565",
+      "lowSrc": "skinsx2:general/hat/tea-lid.low.glb",
+      "lowSha256": "9c7f07cef94e914c02789a974427cfe73a0e74e11f64cb470b93a6cee87ce416"
+    },
+    {
+      "out": "characters/wear/x2_hat_bamboo_canopy.glb",
+      "src": "skinsx2:general/hat/bamboo-canopy.high.glb",
+      "sha256": "7ad81cdbf3c7170ce50b2f88c516709f492555b7b7aa3bf4b526a74f57c40a09",
+      "lowSrc": "skinsx2:general/hat/bamboo-canopy.low.glb",
+      "lowSha256": "0d92ae10fbb0ecad4b292ae7d936dbbf3c97e925a7da61f27d41c0d06e9744f7"
+    },
+    {
+      "out": "characters/wear/x2_hat_comet_visor.glb",
+      "src": "skinsx2:general/hat/comet-visor.high.glb",
+      "sha256": "07f11745ead17b953fee5ced6dc80ec7cc9faa5f3911ad374a3c1ad7cc33802b",
+      "lowSrc": "skinsx2:general/hat/comet-visor.low.glb",
+      "lowSha256": "cf2149cb19aaa16f958629048c5a0d660cf1c51b8c1a96768f535d64a1f55833"
+    },
+    {
+      "out": "characters/wear/x2_hat_moon_dial.glb",
+      "src": "skinsx2:general/hat/moon-dial.high.glb",
+      "sha256": "225b548cc05149f07c90b48dc1f29f08a4e36f50300357abcc432d14b191371b",
+      "lowSrc": "skinsx2:general/hat/moon-dial.low.glb",
+      "lowSha256": "cae6b735e4990d9f9a0a9646bb7cf80e69c3e377765980753c9788472e28ca75"
+    },
+    {
+      "out": "characters/wear/x2_hat_orchard_basket.glb",
+      "src": "skinsx2:general/hat/orchard-basket.high.glb",
+      "sha256": "5b5127f621f4a23d26fcf25cf15dc65bc69b02999bb4b90223d73bfd47bd82b0",
+      "lowSrc": "skinsx2:general/hat/orchard-basket.low.glb",
+      "lowSha256": "15ced3a5db54effba4e34cce6d93e77e828ae2e3eda76e1021bf2441a617fab4"
+    },
+    {
+      "out": "characters/wear/x2_hat_snow_beacon.glb",
+      "src": "skinsx2:general/hat/snow-beacon.high.glb",
+      "sha256": "efc69b3b9fafabd19647dda8d6f4bd665113a99c41aa1f3b75bd8d499b9af971",
+      "lowSrc": "skinsx2:general/hat/snow-beacon.low.glb",
+      "lowSha256": "eefe642a9afa68628a18406daedd9a45c4bd159f554c35793931a8fcbf22d421"
+    },
+    {
+      "out": "characters/wear/x2_hat_pottery_bowl.glb",
+      "src": "skinsx2:general/hat/pottery-bowl.high.glb",
+      "sha256": "c2b687c91202170dc449ef1a77da3445ee14d7a018f25df0dc3c6a26dd1d6a7d",
+      "lowSrc": "skinsx2:general/hat/pottery-bowl.low.glb",
+      "lowSha256": "c76bb7be80e17b4917c95d7648d73ca83ae364a1843199ee5715b1354f35a67d"
+    },
+    {
+      "out": "characters/wear/x2_hat_noodle_nest.glb",
+      "src": "skinsx2:general/hat/noodle-nest.high.glb",
+      "sha256": "2dcdf8901bec6473aac933bddee6392e1401357faed80a0d5ee62864208b6ad9",
+      "lowSrc": "skinsx2:general/hat/noodle-nest.low.glb",
+      "lowSha256": "217bfc0ccc32974f191aaf6320050f8af88bc3518d417c2d80edd333e6162d14"
+    },
+    {
+      "out": "characters/wear/x2_hat_kite_fold.glb",
+      "src": "skinsx2:general/hat/kite-fold.high.glb",
+      "sha256": "801477d491294df214ef3b9b46056aa13468616a4719a884694b499efb5723b4",
+      "lowSrc": "skinsx2:general/hat/kite-fold.low.glb",
+      "lowSha256": "838ff0c629df3cbb0abf100d78eb686411ae3fc8b8b2637376a0dc9b858c481f"
+    },
+    {
+      "out": "characters/wear/x2_hat_lantern_cage.glb",
+      "src": "skinsx2:general/hat/lantern-cage.high.glb",
+      "sha256": "fd37b16c5288ca3503a844bb9fd6888a18a07442332eec20cdcbdd5533ed4744",
+      "lowSrc": "skinsx2:general/hat/lantern-cage.low.glb",
+      "lowSha256": "e7ab19c39740c85bd81a6155115db808daf8c7d16c960a5d5edc8d5b7ad308a6"
+    },
+    {
+      "out": "characters/wear/x2_hat_harbor_light.glb",
+      "src": "skinsx2:general/hat/harbor-light.high.glb",
+      "sha256": "e8a17e044b1daf960a29f8353cf23d76ef466a85a16ae9629dc8a2f64225c226",
+      "lowSrc": "skinsx2:general/hat/harbor-light.low.glb",
+      "lowSha256": "1a9da21af23f2ac2e6ccdc2280d9f9007b3271f0a79a3baf9f8b23fd29f92856"
+    },
+    {
+      "out": "characters/wear/x2_hat_mushroom_gills.glb",
+      "src": "skinsx2:general/hat/mushroom-gills.high.glb",
+      "sha256": "7d1b222811aa0a631c683f670e9f877648d32a6b7edda8e2125c93e4ca708599",
+      "lowSrc": "skinsx2:general/hat/mushroom-gills.low.glb",
+      "lowSha256": "2bfd4bd9a16829531f9673cb26004e46f23dfc555fe466e1882d8a7ccc76d9a3"
+    },
+    {
+      "out": "characters/wear/x2_hat_rice_sheaf.glb",
+      "src": "skinsx2:general/hat/rice-sheaf.high.glb",
+      "sha256": "b374383d55ab671d7b4641bc2c9fb62fe6f6e6abcb858ce6ab886c7f27695179",
+      "lowSrc": "skinsx2:general/hat/rice-sheaf.low.glb",
+      "lowSha256": "77afddceceb5415a68668dda7b72cb908aada1365aed68c59314bb3289f3131a"
+    },
+    {
+      "out": "characters/wear/x2_hat_planet_ring.glb",
+      "src": "skinsx2:general/hat/planet-ring.high.glb",
+      "sha256": "12b13c4ee6fa8b77112b96d972b2cceff6edf7b11ecd8900b81fb8771483857f",
+      "lowSrc": "skinsx2:general/hat/planet-ring.low.glb",
+      "lowSha256": "b966f125525978102c057df46e3bf8d3cd5cb233099dbea9b60e85b2bb93523e"
+    },
+    {
+      "out": "characters/wear/x2_cape_tide_sail.glb",
+      "src": "skinsx2:general/cape/tide-sail.high.glb",
+      "sha256": "d660f22e5370039af244cbffd9fb06138ecc1e8f13a725451dfff7e516c2dc3c",
+      "lowSrc": "skinsx2:general/cape/tide-sail.low.glb",
+      "lowSha256": "9840b007642b680217674aedc579a4a99d29312ff36436c4dcd3de9de42b38b4"
+    },
+    {
+      "out": "characters/wear/x2_cape_bamboo_screen.glb",
+      "src": "skinsx2:general/cape/bamboo-screen.high.glb",
+      "sha256": "c2ed0bb0aabf00e6271dc0c33356b796ab02e5d3d7eb8c022bd09156c871bae8",
+      "lowSrc": "skinsx2:general/cape/bamboo-screen.low.glb",
+      "lowSha256": "c2ed0bb0aabf00e6271dc0c33356b796ab02e5d3d7eb8c022bd09156c871bae8"
+    },
+    {
+      "out": "characters/wear/x2_cape_nebula_panel.glb",
+      "src": "skinsx2:general/cape/nebula-panel.high.glb",
+      "sha256": "5a5a3afd5e1b8ba5bb25bdd18826aa47652fd74d484b32f5563614707984fd9b",
+      "lowSrc": "skinsx2:general/cape/nebula-panel.low.glb",
+      "lowSha256": "bd2177aa93a802490f3a6678efe066f5e50153d9f858502162099444e9d02467"
+    },
+    {
+      "out": "characters/wear/x2_cape_kite_rig.glb",
+      "src": "skinsx2:general/cape/kite-rig.high.glb",
+      "sha256": "5f7c51859107298519b7307b338542209be3ac45f96358dc069b0856d34e7ff7",
+      "lowSrc": "skinsx2:general/cape/kite-rig.low.glb",
+      "lowSha256": "9058df83990a741d147d0f0c130580d608ad497df615d626d5dedf989d09ffad"
+    },
+    {
+      "out": "characters/wear/x2_cape_snow_quilt.glb",
+      "src": "skinsx2:general/cape/snow-quilt.high.glb",
+      "sha256": "2212e698e92a094c1576da6bb5fc1eb16b502a531a2eb45725c615e85e387675",
+      "lowSrc": "skinsx2:general/cape/snow-quilt.low.glb",
+      "lowSha256": "2212e698e92a094c1576da6bb5fc1eb16b502a531a2eb45725c615e85e387675"
+    },
+    {
+      "out": "characters/wear/x2_cape_orchard_leaves.glb",
+      "src": "skinsx2:general/cape/orchard-leaves.high.glb",
+      "sha256": "0ba97db5642988dd0c827602b466613d4df4dcfc4ab954bd74144f0556523084",
+      "lowSrc": "skinsx2:general/cape/orchard-leaves.low.glb",
+      "lowSha256": "89ff10420f74543efaffb7cafa24ecee08c9e930faf50ce45c028866b01c861d"
+    },
+    {
+      "out": "characters/wear/x2_cape_harbor_map.glb",
+      "src": "skinsx2:general/cape/harbor-map.high.glb",
+      "sha256": "3a03d939e6ecbd99a74fb18e7787fb786d783102732919c7dd9226fec0d8f0d9",
+      "lowSrc": "skinsx2:general/cape/harbor-map.low.glb",
+      "lowSha256": "82489d6b32f8e143e0e3bc610a5ad566f7ed0d9702df435d315cfcd2c703476a"
+    },
+    {
+      "out": "characters/wear/x2_cape_tea_fold.glb",
+      "src": "skinsx2:general/cape/tea-fold.high.glb",
+      "sha256": "01a67f8870773d2bfccf4bccd61671028047755d57152d0dfe9e484f0110e58a",
+      "lowSrc": "skinsx2:general/cape/tea-fold.low.glb",
+      "lowSha256": "01a67f8870773d2bfccf4bccd61671028047755d57152d0dfe9e484f0110e58a"
+    },
+    {
+      "out": "characters/wear/x2_tail_comet_stream.glb",
+      "src": "skinsx2:general/tail/comet-stream.high.glb",
+      "sha256": "afd7b8fcbeb51824de554f0ea47f0de2f63b50a6593cb44d3cac19703f4c5d26",
+      "lowSrc": "skinsx2:general/tail/comet-stream.low.glb",
+      "lowSha256": "f43639510cbbccd5ab783a43239c77929311644ab72e653d896ac170f3d87ca2"
+    },
+    {
+      "out": "characters/wear/x2_tail_kelp_fan.glb",
+      "src": "skinsx2:general/tail/kelp-fan.high.glb",
+      "sha256": "41b3ee7b1d66def538d4f55845a3c35e6dd811b31c9ac441c0dac92366f496f7",
+      "lowSrc": "skinsx2:general/tail/kelp-fan.low.glb",
+      "lowSha256": "d4fca419401177552edf8fc6afaca527bc4c99cebdc97b5af05e50cde73e6053"
+    },
+    {
+      "out": "characters/wear/x2_tail_coral_chain.glb",
+      "src": "skinsx2:general/tail/coral-chain.high.glb",
+      "sha256": "332592299cacc9ddbe240d636789e7ff1848888a9d15dcc2edc33e09c1e8b77c",
+      "lowSrc": "skinsx2:general/tail/coral-chain.low.glb",
+      "lowSha256": "7965ea9647ed52249876551fab711fd3f8c7ea87a50a90dcf8411f77cc389134"
+    },
+    {
+      "out": "characters/wear/x2_tail_bubble_trail.glb",
+      "src": "skinsx2:general/tail/bubble-trail.high.glb",
+      "sha256": "63faa2e8744386ebc0dff233b4a9faccf798d5b8c5dbfa14a65afd7ec28cf097",
+      "lowSrc": "skinsx2:general/tail/bubble-trail.low.glb",
+      "lowSha256": "3903f9ff48fb9ed145f2f9ca779b8188d8d3f779ea453ba56db735d3005a1b85"
+    },
+    {
+      "out": "characters/wear/x2_tail_bamboo_joint.glb",
+      "src": "skinsx2:general/tail/bamboo-joint.high.glb",
+      "sha256": "d0e49512d2bb2be0c9d338d94277aba26b2cbf6bed257ea8e06828a334390aa4",
+      "lowSrc": "skinsx2:general/tail/bamboo-joint.low.glb",
+      "lowSha256": "b7339ed4c448e437e898ab3bcaeee6153f29094d5d2c755d6f7f2e6efb07cb5d"
+    },
+    {
+      "out": "characters/wear/x2_tail_rice_tassel.glb",
+      "src": "skinsx2:general/tail/rice-tassel.high.glb",
+      "sha256": "45ff05474f443dad5c6cc27b4b94f3a42d32f858d1a3fbe814ad63d96776af08",
+      "lowSrc": "skinsx2:general/tail/rice-tassel.low.glb",
+      "lowSha256": "faef80f50a7a943810493c7ff0bbd482f5b5d6ea72d9c51efc9c8c8593af5741"
+    },
+    {
+      "out": "characters/wear/x2_tail_tea_whorl.glb",
+      "src": "skinsx2:general/tail/tea-whorl.high.glb",
+      "sha256": "f85cd5fdd2fe59e6414496ec1cb2284050abd3bc6c174b762c26190697935010",
+      "lowSrc": "skinsx2:general/tail/tea-whorl.low.glb",
+      "lowSha256": "66b686454e053415d944260934b90bf3c456b95c51a708e75b466c22f17a789b"
+    },
+    {
+      "out": "characters/wear/x2_tail_kite_ribbon.glb",
+      "src": "skinsx2:general/tail/kite-ribbon.high.glb",
+      "sha256": "aab2fcaa117099289a393e3304bb5d5443c432dce6cb1acfd24d549acdf93ba4",
+      "lowSrc": "skinsx2:general/tail/kite-ribbon.low.glb",
+      "lowSha256": "e66d242b2dd27e53bf6ae47cff608392cb928e9437ccb36f0a8b60dd50899061"
+    },
+    {
+      "out": "characters/wear/x2_tail_lantern_string.glb",
+      "src": "skinsx2:general/tail/lantern-string.high.glb",
+      "sha256": "faab59605ffbfd27a7bfef80baea1f50383ec098b7cb13daad9c4b07a46e4f91",
+      "lowSrc": "skinsx2:general/tail/lantern-string.low.glb",
+      "lowSha256": "d56defcd4efaaea507ff3c80224541858c87479e4de9e7aac8f2d5f9e9f1e446"
+    },
+    {
+      "out": "characters/wear/x2_tail_snow_puff.glb",
+      "src": "skinsx2:general/tail/snow-puff.high.glb",
+      "sha256": "12ff67d539a8cfe77cf02ec3faddc8ebb6bffa9de846a81396afa07020ae3252",
+      "lowSrc": "skinsx2:general/tail/snow-puff.low.glb",
+      "lowSha256": "ef1b4349f73c62c33a42101999b0fdcbba3a84ba9e09bc270ebf2d0afd26c337"
+    },
+    {
+      "out": "characters/wear/x2_tail_meteor_chain.glb",
+      "src": "skinsx2:general/tail/meteor-chain.high.glb",
+      "sha256": "8c5083a3a6d56a6e9ac3e82d6fd4c0d9cc9b0f73705493837696312a82104300",
+      "lowSrc": "skinsx2:general/tail/meteor-chain.low.glb",
+      "lowSha256": "b8f1ae805d921b5f9636b05215c0935f54f1fd4518c29d0b5057228a13e29239"
+    },
+    {
+      "out": "characters/wear/x2_tail_planet_orbit.glb",
+      "src": "skinsx2:general/tail/planet-orbit.high.glb",
+      "sha256": "82a4be88ffaa4617bd2cf4720f2692355052868265c269472376a07b7c6d4d7e",
+      "lowSrc": "skinsx2:general/tail/planet-orbit.low.glb",
+      "lowSha256": "3c005c8312f05b482e2d96524a35a56deb4288d5260c1ea5592cae7e65e80457"
+    },
+    {
+      "out": "characters/wear/x2_tail_noodle_twist.glb",
+      "src": "skinsx2:general/tail/noodle-twist.high.glb",
+      "sha256": "e963221cfbf2545790045e2fe09406d0e0c1aa73abf02ba22bc983466da5eab3",
+      "lowSrc": "skinsx2:general/tail/noodle-twist.low.glb",
+      "lowSha256": "f1928d6d50630b1e1f1b291a7415f0f708e078364eb0537cd4e83f5ad075d28b"
+    },
+    {
+      "out": "characters/wear/x2_tail_leaf_cascade.glb",
+      "src": "skinsx2:general/tail/leaf-cascade.high.glb",
+      "sha256": "e8ebf1efaa1757193bfb4e4f1fbce5902ac0e48e059302538f736a76c925296f",
+      "lowSrc": "skinsx2:general/tail/leaf-cascade.low.glb",
+      "lowSha256": "b1d816f5887ab1970defccf631b42bca7906fdeca072a39e8665ea62f0fc6af4"
+    },
+    {
+      "out": "characters/wear/x2_tail_harbor_rope.glb",
+      "src": "skinsx2:general/tail/harbor-rope.high.glb",
+      "sha256": "86dbec19e6a1d91ee6ff7d718fd81f776eb89d758029f7affdc899872bd8c413",
+      "lowSrc": "skinsx2:general/tail/harbor-rope.low.glb",
+      "lowSha256": "1baf1000bff0a933b8131fc1a39ca1d91cdc29ae8c591f4fbc2d1001fb89f31b"
+    },
+    {
+      "out": "characters/wear/x2_tail_cloud_drift.glb",
+      "src": "skinsx2:general/tail/cloud-drift.high.glb",
+      "sha256": "25dde5db5ef0aeb16a3198a66c4e99a6aa795aee734fbce567fccc1beed6b4bb",
+      "lowSrc": "skinsx2:general/tail/cloud-drift.low.glb",
+      "lowSha256": "93c1a7cf69f5b8beeef62b80438becc46d8369cfeb943cb1842a5fa4e3d2c5e2"
+    },
+    {
+      "out": "characters/wear/x2_tail_gear_link.glb",
+      "src": "skinsx2:general/tail/gear-link.high.glb",
+      "sha256": "e8e03924e5ec9ab920b0d2c90ed428b7761e9a06a6452fda6c168ef54f8a40b0",
+      "lowSrc": "skinsx2:general/tail/gear-link.low.glb",
+      "lowSha256": "7d68c97b308af7e830feed28ae0f36f37979ccf7f4b9b2c278800b7d4245a462"
+    },
+    {
+      "out": "characters/wear/x2_shoes_tidal_deck.glb",
+      "src": "skinsx2:general/shoes/tidal-deck.high.glb",
+      "sha256": "2d31abe345a440597c527ce80269612106e45eee0d0508204ff805eb7625c4ea",
+      "lowSrc": "skinsx2:general/shoes/tidal-deck.low.glb",
+      "lowSha256": "9eb87e1141b73e80b36324511db53c2cf6371d4d420062682648efe8aa442980"
+    },
+    {
+      "out": "characters/wear/x2_shoes_coral_fin.glb",
+      "src": "skinsx2:general/shoes/coral-fin.high.glb",
+      "sha256": "00e7a72263fee2520cfaf96083e2bb578ce8c03b40d2241ebf770c9d36dc1201",
+      "lowSrc": "skinsx2:general/shoes/coral-fin.low.glb",
+      "lowSha256": "120e195d32bcd97b12b50b0729eca2cc721ad2030bbb877c9815ee535034f26e"
+    },
+    {
+      "out": "characters/wear/x2_shoes_tea_clog.glb",
+      "src": "skinsx2:general/shoes/tea-clog.high.glb",
+      "sha256": "11ef2cdc6376f6a44d8f069ca887b8e8d598ea68b2086d2943cf737b0ec6119f",
+      "lowSrc": "skinsx2:general/shoes/tea-clog.low.glb",
+      "lowSha256": "3edf7f522fcfc6fb399218b4502107baebdf98ceb5f328e3c36f4c41bb008ba5"
+    },
+    {
+      "out": "characters/wear/x2_shoes_pottery_heel.glb",
+      "src": "skinsx2:general/shoes/pottery-heel.high.glb",
+      "sha256": "ae4851f3b8001c8e62f09b4a8cd3d14d9c754b33eb98704231d12568259a6488",
+      "lowSrc": "skinsx2:general/shoes/pottery-heel.low.glb",
+      "lowSha256": "433fcb867c789b1e63e2ce780553511d0a6b3b203ed78c70bbe8b9a179f02e34"
+    },
+    {
+      "out": "characters/wear/x2_shoes_comet_toe.glb",
+      "src": "skinsx2:general/shoes/comet-toe.high.glb",
+      "sha256": "fb2362d5eeb8e90c89c1788e9d600ad834f7c138542f6fe35d88b691f6c7878d",
+      "lowSrc": "skinsx2:general/shoes/comet-toe.low.glb",
+      "lowSha256": "0eb893e91215fdfa8a61dc07d89394864d31b8e06709adacd955452802fc492c"
+    },
+    {
+      "out": "characters/wear/x2_shoes_moon_step.glb",
+      "src": "skinsx2:general/shoes/moon-step.high.glb",
+      "sha256": "118fb5dcc4340ad7292338664f50f9d484ffa21c3edbb842c2a23271a96f5c74",
+      "lowSrc": "skinsx2:general/shoes/moon-step.low.glb",
+      "lowSha256": "3fd94afb7412ed3148e6f47a12b1281e3b294a327622c9f98aed60887ba62519"
+    },
+    {
+      "out": "characters/wear/x2_shoes_bamboo_lattice.glb",
+      "src": "skinsx2:general/shoes/bamboo-lattice.high.glb",
+      "sha256": "2e04bbc876d6c2480ab8eb10525e3106a066c6705b5c03c84a859b47de7bfba9",
+      "lowSrc": "skinsx2:general/shoes/bamboo-lattice.low.glb",
+      "lowSha256": "fce304293a8fa4f3f238745d1e60e8fa6f982f0ce92ecded7aa3a34517058fdd"
+    },
+    {
+      "out": "characters/wear/x2_shoes_rain_channel.glb",
+      "src": "skinsx2:general/shoes/rain-channel.high.glb",
+      "sha256": "b1d27d8b33f545c81ee7f55bdbe4dd5a81b1b6f77f60a371982b651cc7e7e26e",
+      "lowSrc": "skinsx2:general/shoes/rain-channel.low.glb",
+      "lowSha256": "1d8467c802462978f8fbc0dde8db79e8dcc56c998cd5922a706148f25af506a9"
+    },
+    {
+      "out": "characters/wear/x2_shoes_orchard_seed.glb",
+      "src": "skinsx2:general/shoes/orchard-seed.high.glb",
+      "sha256": "a424f354a3b4ac9e1cd39a431cd1bed655342ce440ce9ce2a086fcc9ae93e80b",
+      "lowSrc": "skinsx2:general/shoes/orchard-seed.low.glb",
+      "lowSha256": "c86949197b1eca438736ffe620a9379a8e34185fde13bd14aa6a2ec055aef919"
+    },
+    {
+      "out": "characters/wear/x2_shoes_snow_cleat.glb",
+      "src": "skinsx2:general/shoes/snow-cleat.high.glb",
+      "sha256": "39946921c0d1da266551bf572711d5807f627aac5cf28bfad7762072c2a5dd5b",
+      "lowSrc": "skinsx2:general/shoes/snow-cleat.low.glb",
+      "lowSha256": "b3d6848249d88a6f013ff5046d6c85510c65c879a01714f422f52b62c26045f2"
+    },
+    {
+      "out": "characters/wear/x2_shoes_reef_sample.glb",
+      "src": "skinsx2:general/shoes/reef-sample.high.glb",
+      "sha256": "c8616217457a7c864da70ddceb48665e81585adcfeda7a439eec4da8ae1c8f49",
+      "lowSrc": "skinsx2:general/shoes/reef-sample.low.glb",
+      "lowSha256": "6f30606a494d5177a278b1298d115e7c08bf0492b9e78fd81f1bc7acfba599dc"
+    },
+    {
+      "out": "characters/wear/x2_shoes_bakery_puff.glb",
+      "src": "skinsx2:general/shoes/bakery-puff.high.glb",
+      "sha256": "03dd83195ab0fdab503de6f9b9d69303d074b7c08d759152afd80bda8ce22657",
+      "lowSrc": "skinsx2:general/shoes/bakery-puff.low.glb",
+      "lowSha256": "2efe6de84a4afde4cd84916cc9dca29d02f4f3089407de5720067ae5ac29a386"
+    },
+    {
+      "out": "characters/wear/x2_shoes_noodle_knot.glb",
+      "src": "skinsx2:general/shoes/noodle-knot.high.glb",
+      "sha256": "aa6b08de6026d368e63f6f1a7fbfcb84feb9bc17b470bb2599882e71549eec9e",
+      "lowSrc": "skinsx2:general/shoes/noodle-knot.low.glb",
+      "lowSha256": "ce6be2c823d65cb24d22ca8d23d157a5d7e37119682d3c6f829e5c52d7d1e01b"
+    },
+    {
+      "out": "characters/wear/x2_shoes_lantern_sole.glb",
+      "src": "skinsx2:general/shoes/lantern-sole.high.glb",
+      "sha256": "6cca4f3c76fe199feac2e5c2f2512602759bac16f407160739fdf277867b87f2",
+      "lowSrc": "skinsx2:general/shoes/lantern-sole.low.glb",
+      "lowSha256": "6b5e02d4865b540ae1fd1dc5b5c0d12ffaf7b9eb6835cccddddfc2433fe8a4c8"
+    },
+    {
+      "out": "characters/wear/x2_shoes_kite_tab.glb",
+      "src": "skinsx2:general/shoes/kite-tab.high.glb",
+      "sha256": "a1d0514e827f3f5f0e4a3d4a31c8df40a7c2b178c0e2a6d1dc8863adba2320e2",
+      "lowSrc": "skinsx2:general/shoes/kite-tab.low.glb",
+      "lowSha256": "ea3095e7a56180947dae9b834d86a7312bf1c99e028b8166090c7dbf4574f4aa"
+    },
+    {
+      "out": "characters/wear/x2_shoes_harbor_loop.glb",
+      "src": "skinsx2:general/shoes/harbor-loop.high.glb",
+      "sha256": "4002aac7911e064d6a6540807070b2c194273c88baa589e7708ecfae08020355",
+      "lowSrc": "skinsx2:general/shoes/harbor-loop.low.glb",
+      "lowSha256": "6a1000a69ad625df6f93e387386c5dea6af59993b51c5a76eb22d821faf6771a"
+    },
+    {
+      "out": "characters/wear/x2_shoes_forest_tone.glb",
+      "src": "skinsx2:general/shoes/forest-tone.high.glb",
+      "sha256": "52c3c4f1f1f5ad5f0baa976c620e61a859de7610270ba73234df7c3a8453e64b",
+      "lowSrc": "skinsx2:general/shoes/forest-tone.low.glb",
+      "lowSha256": "c0188bc2faf786becfdf23e44b8dfd980321e821dd377e890a1afb94b9c734b6"
+    },
+    {
+      "out": "characters/wear/x2_necklace_tide_gauge.glb",
+      "src": "skinsx2:general/necklace/tide-gauge.high.glb",
+      "sha256": "d914b1f39d07de882a257f5a02ff51b5aaff0fee36c7bc47e4b431d75d35732b",
+      "lowSrc": "skinsx2:general/necklace/tide-gauge.low.glb",
+      "lowSha256": "07268a2031146bbd7309c6bc1316b807832386e56f8b6e4a96bd0c86719bfedb"
+    },
+    {
+      "out": "characters/wear/x2_necklace_coral_branch.glb",
+      "src": "skinsx2:general/necklace/coral-branch.high.glb",
+      "sha256": "5ced42768acb1cfb5bd4a9e9c57e6e7e52a7ee4dd94b19bb1e36cf13a46da354",
+      "lowSrc": "skinsx2:general/necklace/coral-branch.low.glb",
+      "lowSha256": "d0a82fae3cd40c937ec9e561da878dcccde1aedeae41ead826f3a70f4b8808fb"
+    },
+    {
+      "out": "characters/wear/x2_necklace_tea_cup.glb",
+      "src": "skinsx2:general/necklace/tea-cup.high.glb",
+      "sha256": "6363e8dfd774b369f0eb2c59ff86c78d7017525386909eb3d3380533faa54f92",
+      "lowSrc": "skinsx2:general/necklace/tea-cup.low.glb",
+      "lowSha256": "6eaeca22a7e3944e464574754e5a63dc490402221e02b496b4a5356b9c3f803b"
+    },
+    {
+      "out": "characters/wear/x2_necklace_pottery_vase.glb",
+      "src": "skinsx2:general/necklace/pottery-vase.high.glb",
+      "sha256": "76da27498a6b4deba3c89f6e852979b6330130a6faee9997b298600743e48ad1",
+      "lowSrc": "skinsx2:general/necklace/pottery-vase.low.glb",
+      "lowSha256": "2981ab4304282fb9a0d6bdf1540c657b6f78946aec4526deed47035e9ed4b98f"
+    },
+    {
+      "out": "characters/wear/x2_necklace_comet_arc.glb",
+      "src": "skinsx2:general/necklace/comet-arc.high.glb",
+      "sha256": "f84050c7be3edc68ea23cdb80e7de7ce1e8d222daa84de7039ef6c6c57b1217d",
+      "lowSrc": "skinsx2:general/necklace/comet-arc.low.glb",
+      "lowSha256": "65af4f2b067726b4cd678c707a26af136d3bb9b3d89492e1611e5b00a0446ae0"
+    },
+    {
+      "out": "characters/wear/x2_necklace_moon_dial.glb",
+      "src": "skinsx2:general/necklace/moon-dial.high.glb",
+      "sha256": "4160100e1bd32642e591717066da4cfc8b45ceb757dc2b72d6b6a200da562486",
+      "lowSrc": "skinsx2:general/necklace/moon-dial.low.glb",
+      "lowSha256": "52e2afb6c7511f0b0e61c2e57bc835ada8a93faf1c51004f6ad89b34726f6053"
+    },
+    {
+      "out": "characters/wear/x2_necklace_bamboo_knot.glb",
+      "src": "skinsx2:general/necklace/bamboo-knot.high.glb",
+      "sha256": "27a37cfe65a67d0373d22983186e91e1861138b8bd8f7efef58608fc633b95a0",
+      "lowSrc": "skinsx2:general/necklace/bamboo-knot.low.glb",
+      "lowSha256": "fd00cb0a03e4b82864cb63e987e2819e27526f7223f01efcc4369bfac77fac6b"
+    },
+    {
+      "out": "characters/wear/x2_necklace_rain_vial.glb",
+      "src": "skinsx2:general/necklace/rain-vial.high.glb",
+      "sha256": "26b04c4a837163b92ffc1d023cdf2e8ac2d9aac0c1e8f0d03958ac8cf1045e64",
+      "lowSrc": "skinsx2:general/necklace/rain-vial.low.glb",
+      "lowSha256": "3df3a3a5bb8f28753ce82582d1e0ff784c982e4c67abff76770f26d05ba06303"
+    },
+    {
+      "out": "characters/wear/x2_necklace_orchard_seed.glb",
+      "src": "skinsx2:general/necklace/orchard-seed.high.glb",
+      "sha256": "7523cef67b409da4b19f99777bd5d34ae603b76586795f8d9a57224b59441182",
+      "lowSrc": "skinsx2:general/necklace/orchard-seed.low.glb",
+      "lowSha256": "4ed234bb17eec7a9c61489fa09dd90425712f8c2c532e3f6357094782b9f609f"
+    },
+    {
+      "out": "characters/wear/x2_necklace_snow_crystal.glb",
+      "src": "skinsx2:general/necklace/snow-crystal.high.glb",
+      "sha256": "8f9196eef6e3eb109c090a473ae764bd681199949758091c54baa3e870a5590e",
+      "lowSrc": "skinsx2:general/necklace/snow-crystal.low.glb",
+      "lowSha256": "12fc1b1cb7cdc47c19db4e9906f1bc374d220b38206594558d788a1d654797ae"
+    },
+    {
+      "out": "characters/wear/x2_necklace_reef_window.glb",
+      "src": "skinsx2:general/necklace/reef-window.high.glb",
+      "sha256": "a767da1bf07aaebb23530ec0bd7e4e31e284fae9401b0edec40ea3caa1bf486a",
+      "lowSrc": "skinsx2:general/necklace/reef-window.low.glb",
+      "lowSha256": "1b9c92f3a02e62a0c5f018a19e8217da392b63534ddeff4278dd6efb69b2c291"
+    },
+    {
+      "out": "characters/wear/x2_necklace_bakery_wheat.glb",
+      "src": "skinsx2:general/necklace/bakery-wheat.high.glb",
+      "sha256": "801d64afed2ce231168b209c990e3e726e3cdca8e1ab96d2527d26266bf287f1",
+      "lowSrc": "skinsx2:general/necklace/bakery-wheat.low.glb",
+      "lowSha256": "095473c8ce6febc83035a7fc5ab256642f98b7e31cf1f297c0b59d44384cfb57"
+    },
+    {
+      "out": "characters/wear/x2_necklace_noodle_bowl.glb",
+      "src": "skinsx2:general/necklace/noodle-bowl.high.glb",
+      "sha256": "d85dd1857a6c9c804d2f3ca7905c4b8ea9a6862e12ea9ae45128385f4d78aa4a",
+      "lowSrc": "skinsx2:general/necklace/noodle-bowl.low.glb",
+      "lowSha256": "963dfdb546fbd51c5107bba9d7ca1ca0b3659171afc5712dcefdfa8f4679384c"
+    },
+    {
+      "out": "characters/wear/x2_necklace_lantern_mini.glb",
+      "src": "skinsx2:general/necklace/lantern-mini.high.glb",
+      "sha256": "6ac089403dbe0050e7a15cf0889b8467b374b4aafe7841980b4f20481c130c36",
+      "lowSrc": "skinsx2:general/necklace/lantern-mini.low.glb",
+      "lowSha256": "c98f403fec49938f6fdb5c30710379713cba2baccdb137a48050082223a5cde3"
+    },
+    {
+      "out": "characters/wear/x2_necklace_kite_diamond.glb",
+      "src": "skinsx2:general/necklace/kite-diamond.high.glb",
+      "sha256": "ef477dba8a6f5cfddaa2493585bd9982b91760634088255b4899d575ff34c697",
+      "lowSrc": "skinsx2:general/necklace/kite-diamond.low.glb",
+      "lowSha256": "fe6cf06621ed5adf10b2348d1281a102467565ddb9af7f89bb420487e1c54d34"
+    },
+    {
+      "out": "characters/wear/x2_necklace_harbor_wheel.glb",
+      "src": "skinsx2:general/necklace/harbor-wheel.high.glb",
+      "sha256": "a1be9524ba555dc12335910b1c6ec2c24bd319ef40222624b5e3274410625aab",
+      "lowSrc": "skinsx2:general/necklace/harbor-wheel.low.glb",
+      "lowSha256": "65f75d92f8a6d74328c631c6a34c89f7fe2c7745c94b8e5a652cd58dcbbb4e82"
+    },
+    {
+      "out": "characters/wear/x2_necklace_forest_acorn.glb",
+      "src": "skinsx2:general/necklace/forest-acorn.high.glb",
+      "sha256": "19720583767a8c5f986ccffa597c8de6e83f7b40ba91b8fdb3cfea5f5f7d8d43",
+      "lowSrc": "skinsx2:general/necklace/forest-acorn.low.glb",
+      "lowSha256": "24073f278275090641b662e393d9c047d75127fb44756d0fc0955ca9ff466de8"
+    },
+    {
+      "out": "characters/wear/x2_necklace_orbit_instrument.glb",
+      "src": "skinsx2:general/necklace/orbit-instrument.high.glb",
+      "sha256": "842ff661932dd6fc9cc6ebe60649cd822a60a514b77df59d78d2113594652a71",
+      "lowSrc": "skinsx2:general/necklace/orbit-instrument.low.glb",
+      "lowSha256": "fadf9b8e21059cf478977652d11de92a619ca43bd08cc10e3118271a520b1de4"
     }
   ],
   "sources": {
@@ -3000,6 +4092,7 @@
     "animals": "18. Game Island animal sets 2026-10-07",
     "life": "20. Game Island life assets 2026-10-07",
     "paths": "24. Game Island path tiers 2026-10-12",
-    "ground": "25. Game Island ground cover 2026-10-12"
+    "ground": "25. Game Island ground cover 2026-10-12",
+    "skinsx2": "27. Game Island skins x2 2026-10-13"
   }
 }

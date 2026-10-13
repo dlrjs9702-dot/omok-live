@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.74 스킨 2배 — 꾸미기 156종·캐릭터 게임 스킨 연결
+
+- 지시(사용자 2026-10-13): Codex 27번 묶음(Blender 다듬기 전 원본)을 연결, 농부(26)는 연결하지 않음, 통과하면 바로 배포.
+- 아바타 156(`public/plaza/skins-x2.js` 한 목록을 `lib/skins.js` 카탈로그와 `island-assets.js` 옷장이 함께 읽음): 일반 112 `avatar_x2_<칸>_<이름>`(파일 `characters/wear/x2_*`, 등급은 칸마다 일반·고급·희귀·전설 섞임, 주색 `primary` 염색), 캐릭터 44 `avatar_ip_<캐릭터>_<칸>`(파일 `characters/wear-ip/` 폴더째 삭제 가능, 일반 등급 없음 — 의상 전설·쿠로미 두건 전설, 염색 안 함). 맞춤은 동물 세트와 같은 규칙(의상 위·아래 대체, 모자 cover 1.95, 신발 대체). 원본 SHA는 `tools/assets/island-models.json`(gltfpack, 기존 파일은 바이트 동일).
+- 캐릭터 게임 스킨 10(`public/skin-art-ip.js` 한 파일에 그림 33장 전부): SVG를 Path2D로 바로 그림(이미지 로딩 없음 → 판 텍스처 캐시가 빈 그림을 담지 않음), 말의 `id="side"`는 편 색. 연결: 오목(헬로키티·슈퍼맨 말, 헬로키티 테마)·사목(마이멜로디·아이언맨 말, 마이멜로디 테마)·오델로(쿠로미 말)·윷놀이(쿠로미 전설 말 ↔ 쿠로미 테마 짝, 배트맨 말). 나머지 9게임(카드 뒷면·모서리 표시·커서·배지 등 게임마다 쓰는 자리가 다름) 그림은 파일에 있고 연결은 다음 단계.
+- IP 장치: 카탈로그 `ip`(산리오/DC/마블/포켓몬)·`character`, 상점에 「○○ 캐릭터」 표시, 서버 `IP_SKINS=off`면 카탈로그에서 빠져 상점·외형·방 어디에도 안 나옴(착용 중이면 기본 모습). 삭제 시 환불은 삭제할 때 구현(IDEAS 필수 항목).
+- 검증: `test/skins.test.js`(캐릭터 54개 모두 소유자·일반 아님, `IP_SKINS=off`면 0, 가격, 짝), `test/avatar-appearance-models.test.js`(새 의상 19 실제 GLB의 `primary`만 염색, 캐릭터 의상은 염색 목록 밖), 운영 등록부(새 부품 156 파일·메시), 화면 확인(쿠로미·배트맨·일반 세트 착용, 캐릭터 말 편 색, 쿠로미 윷판 테마). 실제 휴대폰·GPU 미검증.
+
 ## v1.10.73 결함 3건·게임관 전면 개편·마을 환경정비사업
 
 - 지시(사용자 2026-10-12): 한 브랜치에서 ① 결함 3건 → ② 게임관 UI 전면 개편(게임방 틀까지) → ③ 마을 환경정비사업(길 3단계·땅 다듬기, 버섯 군락 제외)을 이어서, 묶음마다 PR CI 확인, 버전·공지는 마지막에 한 번.
@@ -34,12 +42,3 @@
 - Codex 검토 2건 반영: ① AI가 생각하는 동안 사람이 끊겨 방이 일시정지되어도 그대로 두던 것 → 두기 직전 `syncGamePause` 후 일시정지면 두지 않음(재접속 뒤 유휴 틱이 다시 부름) ② AI 방에도 참가 포인트 규칙이 보이던 것 → 방 정보 `points.policy: practice`(참가비 0), 화면 「AI 연습 · 포인트·전적 없음」.
 - 화면: 방 만들기 「상대」 사람 / AI 쉬움 / 보통 / 어려움(오목 1vs1·사목·오델로일 때만, `#roomAiChoices`). 게임판·스킨은 평소 방 그대로.
 - 검증: `test/room-ai-server.test.js`(빙고·없는 난이도 400, 비공개, 백을 고르면 AI가 흑으로 먼저 둠, 둘째 사람 자리 409, 두면 AI가 받아 둠, 기권 뒤 전적 0판·잔액 그대로, 다음 판에 다시 앉음), e2e 「게임방 AI」(오목 방 UI로 AI 보통 → 흑 → 두면 2수, PC·휴대폰 프로필). 실제 휴대폰 미검증.
-
-## v1.10.71 AI 대전·게임별 랭킹(한판마당 자료 4차)
-
-- 지시(사용자 2026-10-12): 마지막 묶음 — 오목 AI는 「연습으로 둔다」(포인트 없음). 같은 묶음의 랭킹과 함께. 윷놀이 AI 대신 두기는 설계 결정 필요로 보류(아래).
-- AI 대전: `public/reflex/js/games/{gomoku,connect4,reversi,ai-core,rules,chess-core,go-core,turnnet}.js` 원본(ai-core·rules가 체스·바둑 코어를 import해서 함께). `public/reflex/js/cosmetics.js`는 우리 것(자료에 없는 꾸미기 상점 대신 늘 기본 바둑판·흑백 돌). 고친 곳: `reversi.js` 이름 「리버시」→「오델로」. 싱글게임 → 「AI 대전」(`#soloAiBtn`) → reflex.js `open('ai')`. AI 난이도 쉬움·보통·어려움(`E.level`), 게임의 `options`를 그대로 고르기로(오목 규칙 렌주룰/3수 교환·먼저 두기, 사목·오델로 먼저 두기 — reflex.js가 퍼즐의 「문제」 고르기도 같은 길로 일반화). AI 계산은 브라우저(자료 그대로). 결과는 서버로 보내지 않음(포인트·전적 없음). 사목 색은 자료 그대로 노랑/분홍(우리 방 게임은 빨강/노랑).
-- 게임별 랭킹: `lib/game-ranking.js`(자료 `ranking-excerpt.js`의 `weekStart`·`wilson` 그대로 + 순위 정렬), 전적 저장소 `matchesOf(game, since)`(JSON·PostgreSQL, 색인 `game_match_history_game_at_idx`), `GET /api/records/ranking?game=&week=this|all` → 상위 20·내 순위. 10판 이상, 무승부 반 승, 윌슨 하한 → 판수 → 그 기록에 먼저 도달(마지막 판 시각), 같은 점수 같은 순위, 이번 주 = 서울 월요일 0시부터. 화면: 내 전적 「랭킹」 → 게임(규칙 설명의 게임 목록, 랜드킹·잿빛 원정 제외)·이번 주/전체. 이름은 전적 조회와 같은 플레이어 목록(입장 키 닉네임).
-- Codex 검토 2건 반영: ① 자료 `rules.js` `gmForbidden`이 한 수로 5목과 다른 방향 장목이 함께 생기면 5목을 먼저 봐서 승리로 처리 — 우리 오목(`lib/game.js`)은 장목 금수라 장목을 먼저 보게 고침(주석 「아일랜드 v1.10.71」, `test/hanpan-gomoku-rules.test.js`, 자료의 렌주 시험 `gomoku-renju.mjs`도 그대로 통과) ② 게임 선택이 랜드킹·잿빛 원정일 때 랭킹 창이 빈 게임으로 열려 오류 → 오목으로.
-- 보류 — 윷놀이 AI 대신 두기: 우리 윷은 2인(1:1)이고, 한판마당도 1:1 대결은 AI가 대신 두지 않고 재접속을 기다린다(대신 두기는 2~4인 여럿이 판만). 1:1에서 대신 두면 자리 비운 사람이 참가 포인트·전적을 AI 덕에 얻을 수 있고, 자료의 `yutAi`는 한판마당 윷 규칙 형식이라 우리 규칙(빽도·지름길·완주 직전 칸)에 맞춘 연결이 필요 — 사용자 결정 대기.
-- 검증: `test/game-ranking.test.js`(공식·순위·같은 순위·주 경계, JSON·PostgreSQL 기간 조회, API), e2e 「AI 대전」(오목 두면 AI가 받아 둠·서버로 안 보냄)·「랭킹」(PC·휴대폰 프로필). 실제 휴대폰 미검증.

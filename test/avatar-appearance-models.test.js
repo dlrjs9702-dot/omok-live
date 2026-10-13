@@ -14,8 +14,10 @@ async function model(url) {
 }
 test('판매 의상 전체: High/Low 실제 주색만 염색하고 장식·원본 재질을 보존한다', async () => {
   const THREE = await import('three');
-  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit');
-  assert.equal(outfits.length, 30);
+  // v1.10.74: + the 19 original outfits of 스킨 2배 (their dye material `primary`); the 11 character outfits keep their colours
+  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit' && !s.ip);
+  assert.equal(outfits.length, 30 + 19);
+  for (const s of SKINS.filter(x => x.ip)) assert.ok(!DYEABLE.has(s.id), s.id);
   for (const item of outfits) {
     assert.ok(DYEABLE.has(item.id), item.id);
     const plain = wardrobeOf({ outfit: item.id });
@@ -23,7 +25,7 @@ test('판매 의상 전체: High/Low 실제 주색만 염색하고 장식·원�
     const id = plan.parts.find(part => !plain.colors[part] && plan.colors[part]);
     assert.ok(id, item.id);
     const channels = Object.keys(plan.colors[id]);
-    assert.deepEqual(channels, id === 'wear.outfit_hanbok' ? ['main', 'chima'] : id === 'wear.overalls' ? ['overalls'] : ['main'], item.id);
+    assert.deepEqual(channels, id === 'wear.outfit_hanbok' ? ['main', 'chima'] : id === 'wear.overalls' ? ['overalls'] : id.startsWith('wear.x2_') ? ['primary'] : ['main'], item.id);
     const entry = REGISTRY[id];
     for (const url of [entry.url, entry.low?.url].filter(Boolean)) {
       const gltf = await model(url); const names = new Set();

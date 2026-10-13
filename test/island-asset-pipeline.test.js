@@ -49,7 +49,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna'].map((f) => `fish.${f}`)].sort());
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
   // shoes, necklaces 10 each) and the 30 face designs
-  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50); // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit
+  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50 + 112 + 44); // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit; v1.10.74 + 스킨 2배 112 + 캐릭터 44
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('path.')).length, 11); // the pieces in use
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   const parsed = new Map();

@@ -287,6 +287,17 @@
     REGISTRY[id] = part(`animal_${animal}_${slot}`, slot, slot === 'outfit' ? { dye: 'main', replaces: ['top', 'bottom'] } : slot === 'hat' ? { cover: 1.95 } : slot === 'shoes' ? { replaces: ['shoes'] } : {});
     WARDROBE[`avatar_animal_${animal}_${slot}`] = id;
   }
+  // v1.10.74 스킨 2배 (Codex 27, plaza/skins-x2.js): the same rig and fitting; each part's own `primary` dye material
+  // (only the original designs are dyeable, lib/skins.js DYEABLE); the character parts from their own folder wear-ip/
+  const X2 = typeof module === 'object' && module.exports ? require('./skins-x2.js') : globalThis.SkinsX2;
+  const X2_FIT = (slot) => (slot === 'outfit' ? { dye: 'primary', replaces: ['top', 'bottom'] } : slot === 'hat' ? { dye: 'primary', cover: 1.95 } : slot === 'shoes' ? { dye: 'primary', replaces: ['shoes'] } : { dye: 'primary' });
+  for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
+    REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;
+  }
+  for (const [character, , , parts] of X2?.IP_ITEMS || []) for (const [slot] of parts) {
+    const id = `wear.ip_${character}_${slot}`; const { dye, ...fit } = X2_FIT(slot);
+    REGISTRY[id] = { url: `${CH}/wear-ip/${character}_${slot}.glb`, low: { url: `${CH}/wear-ip/${character}_${slot}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_ip_${character}_${slot}`] = id;
+  }
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
   const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
