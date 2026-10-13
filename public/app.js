@@ -4295,7 +4295,7 @@
         name.className = 'skinName'; name.textContent = skin.name;
         const meta = document.createElement('span');
         meta.className = 'skinMeta';
-        meta.textContent = skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel;
+        meta.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74: a character skin names its owner
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.skin = skin.id;
@@ -4441,7 +4441,7 @@
         name.textContent = skin.name;
         const meta = document.createElement('span');
         meta.className = 'skinMeta';
-        const tier = document.createElement('span'); tier.textContent = skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel;
+        const tier = document.createElement('span'); tier.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74
         const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
         meta.append(tier, price);
         const button = document.createElement('button');

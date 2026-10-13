@@ -42,7 +42,8 @@ async function serverFixture(t) {
   let ready = false;
   for (let i = 0; i < 120; i++) {
     if (child.exitCode !== null) break;
-    try { if ((await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
+    // A parallel fixture can bind the released port before our child does. Never accept its health response.
+    try { if (logs.includes(`실행: ${base}`) && (await fetch(base + '/health')).ok) { ready = true; break; } } catch {}
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   assert.ok(ready, logs);
@@ -55,7 +56,7 @@ async function serverFixture(t) {
     return { status: res.status, data: await res.json() };
   }
   const login = await req('/api/admin/login', null, { password: 'team-test-password' });
-  assert.equal(login.status, 200);
+  assert.equal(login.status, 200, JSON.stringify(login.data));
   const admin = login.data.sessionToken;
   async function enter(key) {
     const res = await fetch(base + '/guest-entry', { method: 'POST',

@@ -12,6 +12,46 @@ const crypto = require('node:crypto');
 // however often it is sent (also at once), v1.10.59 adds outfit main colours; everyone sees the new look.
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+test('신규 꾸미기 염색: 주색 저장·요청당 한 번 차감·재입장 복구, 고정색 목걸이 거절은 무과금', async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'look-x2-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const server = await boot(t, dir);
+  const { req } = server;
+  const key = await server.issue('신규염색');
+  const token = await server.enter(key);
+  const { SKINS } = require('../lib/skins');
+  const hair = SKINS.find(s => s.id.startsWith('avatar_x2_hair_'));
+  const necklace = SKINS.find(s => s.id.startsWith('avatar_x2_necklace_'));
+  await req('/api/test/points-credit', token, { amount: 1_000_000 });
+  for (const item of [hair, necklace]) {
+    assert.equal((await req('/api/skins/buy', token, { skinId: item.id })).status, 200);
+    assert.equal((await req('/api/skins/equip', token, { skinId: item.id })).status, 200);
+  }
+  const balance = async () => (await req('/api/donation', token)).data.balance;
+  const before = await balance();
+  const shop = (await req('/api/avatar/look-shop', token)).data;
+  assert.ok(shop.dyeable.includes(hair.id));
+  for (const item of SKINS.filter(s => s.id.startsWith('avatar_x2_necklace_'))) assert.ok(!shop.dyeable.includes(item.id));
+  const rejected = await req('/api/avatar/dye', token, { itemId: necklace.id, color: 'c12', requestId: crypto.randomUUID() });
+  assert.equal(rejected.status, 400);
+  assert.equal(await balance(), before);
+  const body = { itemId: hair.id, color: 'c12', requestId: crypto.randomUUID() };
+  for (let i = 0; i < 2; i++) {
+    const dyed = await req('/api/avatar/dye', token, body);
+    assert.equal(dyed.status, 200, JSON.stringify(dyed.data));
+    assert.equal(dyed.data.avatar.look.dye[hair.id], '#eda3b8');
+  }
+  assert.equal(await balance(), before - 5_000);
+  await server.release(token); await sleep(1500);
+  const newToken = await server.enter(key);
+  assert.ok(newToken, server.logs());
+  assert.equal((await req('/api/skins', newToken)).data.avatar.look.dye[hair.id], '#eda3b8');
+  const back = await req('/api/avatar/dye', newToken, { itemId: hair.id, color: null, requestId: crypto.randomUUID() });
+  assert.equal(back.status, 200);
+  assert.equal(back.data.avatar.look.dye, undefined);
+  assert.equal((await req('/api/donation', newToken)).data.balance, before - 5_000);
+});
+
 
 test('성형외과·염색사: 잔액 부족·잘못된 선택·미보유·잘못된 품목은 차감 없이 거절, 성공은 요청당 한 번 차감되고 외형에 반영', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'look-'));

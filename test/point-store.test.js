@@ -310,6 +310,15 @@ async function exercise(t, makeStore) {
     assert.ok((await store.history(L)).items.some((item) => item.reason === 'dye' && item.memo === '양갈래 머리 · 기본색'));
     await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0004', kind: 'surgery', slot: 'dye_avatar_hair_1', value: 'eyes_dot', price: 300_000 }), RangeError);
     await assert.rejects(store.chargeLook({ userId: L, requestId: 'look-0005', kind: 'surgery', slot: 'face_eyes', value: null, price: 300_000 }), RangeError);
+    const x2 = require('../lib/skins').SKINS.find(s => s.id.startsWith('avatar_x2_hair_'));
+    const change = { userId: L, requestId: 'look-x2-0001', kind: 'dye', slot: `dye_${x2.id}`, value: 'c12', price: 5_000 };
+    assert.equal((await store.chargeLook(change)).balance, 95_000);
+    assert.equal((await store.chargeLook(change)).applied, false);
+    assert.equal((await store.getAccount(L)).balance, 95_000, 'new ids keep one charge per request');
+    assert.equal((await store.skinState(L)).equipped.avatar[`dye_${x2.id}`], 'c12');
+    await assert.rejects(store.chargeLook({ ...change, requestId: 'look-x2-0002', slot: 'dye_avatar_x2_hair_missing' }), RangeError);
+    const fixed = require('../lib/skins').SKINS.find(s => s.id.startsWith('avatar_x2_necklace_'));
+    await assert.rejects(store.chargeLook({ ...change, requestId: 'look-x2-0003', slot: `dye_${fixed.id}` }), RangeError);
   });
 
   await t.test('v1.10.31 잡초·주간 생활활동: 한 포기는 한 번만(동시·재요청), 999개 한 칸, 자정 보충은 하루 한 번, 10회째 50,000P 한 번', async () => {

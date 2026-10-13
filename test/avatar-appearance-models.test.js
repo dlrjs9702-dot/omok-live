@@ -12,10 +12,39 @@ async function model(url) {
   const buffer = fs.readFileSync(path.join(__dirname, '../public', url));
   return new Promise((resolve, reject) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength), '', resolve, reject));
 }
+
+test('스킨 확장 염색 목록은 High/Low 모델의 실제 재질과 일치하고 고정색 목걸이는 제외한다', () => {
+  const items = SKINS.filter(s => s.id.startsWith('avatar_x2_'));
+  assert.equal(items.length, 112);
+  for (const item of items) {
+    const plan = wardrobeOf({ [item.slot]: item.id, dye: { [item.id]: '#eda3b8' } });
+    const id = plan.parts.find(part => part.startsWith(`wear.x2_${item.slot}_`));
+    assert.ok(id, item.id);
+    const entry = REGISTRY[id];
+    if (item.slot === 'necklace') {
+      assert.equal(DYEABLE.has(item.id), false, item.id);
+      assert.equal(entry.dye, undefined, item.id);
+      assert.equal(plan.colors[id], undefined, item.id);
+    } else {
+      assert.ok(DYEABLE.has(item.id), item.id);
+      assert.deepEqual(Object.keys(plan.colors[id]), ['primary']);
+    }
+    for (const url of [entry.url, entry.low.url]) {
+      const buffer = fs.readFileSync(path.join(__dirname, '../public', url));
+      const jsonLength = buffer.readUInt32LE(12);
+      const json = JSON.parse(buffer.subarray(20, 20 + jsonLength).toString('utf8'));
+      const names = json.materials.map(material => material.name);
+      if (item.slot === 'necklace') assert.deepEqual(names, ['fixed'], url);
+      else assert.ok(names.includes('primary'), url);
+    }
+  }
+});
 test('판매 의상 전체: High/Low 실제 주색만 염색하고 장식·원본 재질을 보존한다', async () => {
   const THREE = await import('three');
-  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit');
-  assert.equal(outfits.length, 30);
+  // v1.10.74: + the 19 original outfits of 스킨 2배 (their dye material `primary`); the 11 character outfits keep their colours
+  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit' && !s.ip);
+  assert.equal(outfits.length, 30 + 19);
+  for (const s of SKINS.filter(x => x.ip)) assert.ok(!DYEABLE.has(s.id), s.id);
   for (const item of outfits) {
     assert.ok(DYEABLE.has(item.id), item.id);
     const plain = wardrobeOf({ outfit: item.id });
@@ -23,7 +52,7 @@ test('판매 의상 전체: High/Low 실제 주색만 염색하고 장식·원�
     const id = plan.parts.find(part => !plain.colors[part] && plan.colors[part]);
     assert.ok(id, item.id);
     const channels = Object.keys(plan.colors[id]);
-    assert.deepEqual(channels, id === 'wear.outfit_hanbok' ? ['main', 'chima'] : id === 'wear.overalls' ? ['overalls'] : ['main'], item.id);
+    assert.deepEqual(channels, id === 'wear.outfit_hanbok' ? ['main', 'chima'] : id === 'wear.overalls' ? ['overalls'] : id.startsWith('wear.x2_') ? ['primary'] : ['main'], item.id);
     const entry = REGISTRY[id];
     for (const url of [entry.url, entry.low?.url].filter(Boolean)) {
       const gltf = await model(url); const names = new Set();

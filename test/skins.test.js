@@ -20,7 +20,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(TIERS.premium.price, 200_000);
   assert.equal(TIERS.theme.price, 300_000);
   assert.equal(TIERS.legend.price, 600_000);
-  const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok').length;
+  const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok' && !s.ip).length; // v1.10.74: character skins counted on their own
   assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 2], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 2(테마마다 하나)');
   assert.deepEqual(SKINS.filter(s => s.legacy).map(s => s.id).sort(), ['omok_common_amber', 'omok_common_bronze', 'omok_common_jade', 'omok_common_obsidian', 'omok_common_porcelain']);
   assert.equal(SKINS.filter(s => s.tier === 'theme').every(s => s.slot === 'theme'), true);
@@ -38,7 +38,12 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar');
-  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17, 30, 27, 13, 23, 23, 23]); // v1.10.36: + 할로윈 27
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 11, 27 + 16 + 11, 13 + 8 + 5, 23 + 17 + 6, 23 + 17 + 5, 23 + 18 + 6]); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
+  // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
+  const ip = avatar.filter(s => s.ip);
+  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 10); // + the character game pieces and themes (public/skin-art-ip.js)
+  assert.ok(ip.every(s => ['산리오', 'DC', '마블', '포켓몬'].includes(s.ip) && s.tier !== 'common' && s.id.startsWith('avatar_ip_')));
+  assert.equal(require('node:child_process').execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./lib/skins').SKINS.filter(s => s.ip || s.id.startsWith('avatar_ip_')).length))"], { env: { ...process.env, IP_SKINS: 'off' }, cwd: require('node:path').join(__dirname, '..') }).toString(), '0');
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
   assert.equal(older.length, 16);
   const PRICE = { common: 50_000, premium: 100_000, rare: 200_000, legend: 400_000 };
@@ -47,13 +52,14 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(halloween.length, 27); // v1.10.36 할로윈 (sold for good), the same price list
   for (const s of halloween) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => halloween.filter(s => s.tier === t).length), [5, 15, 5, 2]);
-  const fresh = avatar.filter(s => !older.includes(s) && !halloween.includes(s) && !s.id.startsWith('avatar_animal_'));
+  const fresh = avatar.filter(s => !older.includes(s) && !halloween.includes(s) && !s.id.startsWith('avatar_animal_') && !s.id.startsWith('avatar_x2_') && !s.ip); // v1.10.74 스킨 2배: below
   const animals = avatar.filter(s => s.id.startsWith('avatar_animal_'));
   assert.equal(animals.length, 50);
   for (const s of animals) assert.equal(s.price, ['outfit', 'hat'].includes(s.slot) ? 100000 : 50000);
   assert.equal(fresh.length, 63);
   for (const s of fresh) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
+  for (const s of avatar.filter(x => x.id.startsWith('avatar_x2_') || x.ip)) assert.equal(s.price, PRICE[s.tier], s.id); // v1.10.74: the same prices by tier
   assert.equal(new Set(fresh.map(s => s.name)).size, 63);
   assert.equal(fresh.filter(s => s.tier === 'rare').every(s => s.tierLabel === '희귀'), true);
   assert.deepEqual(badgesOf(avatar.map(s => s.id)), [], '아바타는 프로필 배지가 아니다');
@@ -67,11 +73,11 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(skinById('nope'), null);
   assert.deepEqual(catalogView().map(f => f.family), [...Object.keys(ACTIVE_FAMILIES), 'avatar']);
   for (const family of catalogView().filter(f => f.family !== 'avatar')) { // 그림이 있는 게임마다 일반 5·고급 3·방 테마 2·전설 1 (오목만 S1 재질 5종이 더 있다)
-    const tiers = tier => family.skins.filter(s => s.tier === tier).length;
+    const tiers = tier => family.skins.filter(s => s.tier === tier && !s.ip).length; // v1.10.74: the character skins on top (a character theme without its legend has no pair)
     // v1.8.7 오목 → v1.9.2 모든 게임: 테마마다 짝 전설(전설 2)
     const twoLegends = true; // v1.9.2: every game has two legends, one per room theme
     assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, twoLegends ? 2 : 1], family.family);
-    if (twoLegends) for (const skin of family.skins.filter(s => s.tier === 'legend' || s.tier === 'theme')) assert.ok(skin.pair, `${skin.id} 짝`);
+    if (twoLegends) for (const skin of family.skins.filter(s => (s.tier === 'legend' || s.tier === 'theme') && !s.ip)) assert.ok(skin.pair, `${skin.id} 짝`);
     assert.equal(tiers('common'), family.family === 'omok' ? 10 : 5, family.family);
   }
 });
@@ -148,7 +154,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
-  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 17);
+  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 17 + 3); // v1.10.74: + 헬로키티·슈퍼맨 말, 헬로키티 테마
   assert.deepEqual(shop.data.owned, []);
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 
