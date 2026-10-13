@@ -19,6 +19,9 @@ test('팬데믹 4인+관전: 예측·버리기·공중 수송 재접속과 결�
       await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
       const token = JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token;
       people.push({ context, page, token });
+      // The larger asset pack must finish before this page can load its session and room.
+      await page.evaluate(() => window.GameBoot.ready);
+      await expect(page.locator('#lobbyView')).toBeVisible();
       expect((await post(request, '/api/test/points-credit', token, { amount: 10000 })).status).toBe(200);
     }
     const [a, b, c, d, watcher] = people;

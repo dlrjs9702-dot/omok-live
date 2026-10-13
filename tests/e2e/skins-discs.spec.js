@@ -31,8 +31,8 @@ test('사목 스킨: 방장 테마와 각자 칩이 모든 화면에 같고, 전
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '사목' }).click();
-  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(12);
+  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '희귀', '방 테마', '전설']);
+  await expect(dialog.locator('.skinCard')).toHaveCount(15); // v1.10.74: three character skins
   await expect(dialog.locator('.skinCard.equipped')).toHaveCount(2);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
@@ -66,7 +66,7 @@ test('오델로 스킨: 방장 테마와 각자 디스크가 모든 화면에 �
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '오델로' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(12);
+  await expect(dialog.locator('.skinCard')).toHaveCount(13); // v1.10.74: character disc
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   await twoPlayerRoom(request, a, b, 'othello');
