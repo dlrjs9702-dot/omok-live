@@ -35,12 +35,12 @@ test('오목 스킨: 상점 탭·등급 구역, 방장 테마와 각자 돌 스�
   await buyAndEquip(request, b, ['omok_c1']);
   const call = (who, route, data) => post(request, route, who.token, data);
 
-  // 상점: 탭과 등급 구역(일반·고급·방 테마·전설), 17장.
+  // 상점: 캐릭터 추가 후 등급 구역(일반·고급·희귀·방 테마·전설), 20장.
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await expect(dialog.getByRole('tab', { name: '오목' })).toHaveAttribute('aria-selected', 'true');
-  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(17);
+  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '희귀', '방 테마', '전설']);
+  await expect(dialog.locator('.skinCard')).toHaveCount(20);
   await expect(dialog.locator('.skinCard.equipped')).toHaveCount(2); // 방 테마 + 전설(칸이 다르다)
   await dialog.getByRole('button', { name: '닫기' }).click();
 
@@ -122,7 +122,7 @@ test('오목 전설: 네 줄 특수 연출은 4목에서만, 전설 승리는 �
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '오목' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(17);
+  await expect(dialog.locator('.skinCard')).toHaveCount(20);
   await dialog.getByRole('button', { name: '닫기' }).click();
   await twoPlayerRoom(request, a, b, 'omok');
   await a.page.evaluate(() => { // 전설 정의의 특수 연출 호출을 센다(그리기는 그대로)
