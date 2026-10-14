@@ -228,7 +228,9 @@
     const eyes = parts.eyes || parts.face;
     if (look.eyeColor && eyes) colors[eyes] = { ...colors[eyes], eyes: look.eyeColor, ink: look.eyeColor, rose: look.eyeColor, accent: look.eyeColor };
     // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
-    return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) } };
+    const transformation = TRANSFORMATIONS?.match(look);
+    return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) },
+      ...(transformation ? { transformation: `character.transform.${transformation.id}` } : {}) };
   }
 
   // v1.10.36 10월 할로윈: the plaza's landmark in the fountain's place (pedestal, and the jack-o'-lantern on it at 1.05)
@@ -290,6 +292,10 @@
   // v1.10.74 스킨 2배 (Codex 27, plaza/skins-x2.js): the same rig and fitting; each part's own `primary` dye material
   // (only the original designs are dyeable, lib/skins.js DYEABLE); the character parts from their own folder wear-ip/
   const X2 = typeof module === 'object' && module.exports ? require('./skins-x2.js') : globalThis.SkinsX2;
+  const TRANSFORMATIONS = typeof module === 'object' && module.exports ? require('./character-transformations.js') : globalThis.CharacterTransformations;
+  for (const c of TRANSFORMATIONS?.characters || []) REGISTRY[`character.transform.${c.id}`] = {
+    url: c.url, low: { url: c.lowUrl }, near: 22, rotationY: Math.PI, nativeRig: c.rig, character: c.id,
+  };
   const X2_FIT = (slot) => (slot === 'outfit' ? { dye: 'primary', replaces: ['top', 'bottom'] } : slot === 'hat' ? { dye: 'primary', cover: 1.95 } : slot === 'shoes' ? { dye: 'primary', replaces: ['shoes'] } : slot === 'necklace' ? {} : { dye: 'primary' });
   for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
     REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;

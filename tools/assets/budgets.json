@@ -1,16 +1,54 @@
 {
   "$comment": "v1.10.26 게임 아일랜드 GLB 예산 (test/glb-budget.test.js). 상한은 성능 기준이 아니라 현재 대표 에셋 실측 최댓값(2026-10-05, gltfpack 출력: 메시 1·노드 1·재질 최대 8(정자·화단)·삼각형 최대 12,568(tree_v2))이다. 더 큰 에셋을 넣을 때는 실제 GPU PC 측정 후 이 값을 의도적으로 올린다. v1.10.29: 재질 8 → 13(추가본 주민 집·시설의 최댓값, v1.10.30 성형외과 14; 장면은 단색 재질 모델을 정점색 메시 하나로 합쳐 그리므로 그리기 호출은 늘지 않는다).",
-  "requiredExtensions": ["KHR_mesh_quantization", "EXT_meshopt_compression"],
-  "allowedExtensions": ["KHR_mesh_quantization", "EXT_meshopt_compression"],
-  "trainCarriage": { "meshes": 11, "nodes": 46 },
+  "requiredExtensions": [
+    "KHR_mesh_quantization",
+    "EXT_meshopt_compression"
+  ],
+  "allowedExtensions": [
+    "KHR_mesh_quantization",
+    "EXT_meshopt_compression"
+  ],
+  "trainCarriage": {
+    "meshes": 11,
+    "nodes": 46
+  },
   "$trainCarriage": "v1.10.47: 세 객차만 별도 문·바퀴·앵커 노드를 보존한다(High/Low 각 메시11·노드46). 삼각형·재질·텍스처 상한은 공통 예산 그대로. 실제 GPU PC 실측 미검증.",
   "animatedNodes": 2,
   "$animatedNodes": "v1.10.29: 애니메이션이 있는 정적 모델(입자 FallLoop·고래·물보라)은 움직이는 루트 노드 + 양자화 보정 노드로 2개",
-  "rig": ["Root","Hips","Spine","Chest","Neck","Head","Shoulder.L","UpperArm.L","LowerArm.L","Hand.L","Shoulder.R","UpperArm.R","LowerArm.R","Hand.R","UpperLeg.L","LowerLeg.L","Foot.L","UpperLeg.R","LowerLeg.R","Foot.R"],
-  "character": { "meshes": 5, "triangles": 16464 },
+  "rig": [
+    "Root",
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R"
+  ],
+  "character": {
+    "meshes": 5,
+    "triangles": 16464
+  },
   "$character": "v1.10.30: 캐릭터 몸체·착용 모듈(characters/)은 공통 20관절(rig, 순서까지)을 그대로 두고 메시 3·삼각형 16,464(몸체 High 실측) 이하. 모션 파일은 메시 없이 클립 1개. v1.10.32: 메시 3 → 5(05 의상은 재질별 4, 기존 무지개 머리는 5색 5 -- 재질마다 그리기 호출 1이라 캐릭터당 최대 그리기 호출의 상한).",
-  "landmark": { "triangles": 33000 },
-  "flapping": { "meshes": 3, "nodes": 6 },
+  "landmark": {
+    "triangles": 33000
+  },
+  "flapping": {
+    "meshes": 3,
+    "nodes": 6
+  },
   "$flapping": "v1.10.39: halloween-decor-v1/bat(High/Low)는 날개 두 쪽이 Flap으로 따로 도는 모델이라 몸·왼날개·오른날개 메시 3과 노드 6(루트·양자화 보정 포함). 섬에 15마리.",
   "$landmark": "v1.10.36: halloween-v1/ 광장 랜드마크(대형 잭오랜턴 High 32,764)는 섬에 하나뿐인 모델(그리기 호출 1~3)이라 삼각형만 따로 33,000 이하. 멀리서는 Low(13,556). 실제 GPU PC 실측은 아직.",
   "max": {
@@ -19,5 +57,11 @@
     "materials": 14,
     "triangles": 12568,
     "textures": 0
-  }
+  },
+  "fileOverrides": {
+    "additions-v1/facilities/faces.glb": {
+      "materials": 15
+    }
+  },
+  "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files."
 }

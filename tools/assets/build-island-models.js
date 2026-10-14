@@ -23,6 +23,7 @@ const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'island-models.js
 const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
 const src = arg('--src');
 const only = arg('--only');
+const sourceFilter = arg('--source');
 if (!src) { console.error('--src "<asset folder>" 가 필요합니다'); process.exit(2); }
 const gltfpack = path.join(path.dirname(require.resolve('gltfpack/package.json')), 'cli.js');
 const lowName = (out) => out.replace(/\.glb$/, '_low.glb');
@@ -35,8 +36,9 @@ function source(ref, sha256) {
   return file;
 }
 
-function pack(input, output, options) {
+function pack(input, output, options, precompressed = false) {
   fs.mkdirSync(path.dirname(output), { recursive: true });
+  if (precompressed) { fs.copyFileSync(input, output); return; } // verified native rest/inverse binds remain exact
   // the WebAssembly gltfpack on Windows Node 24 may die on exit (libuv `UV_HANDLE_CLOSING` assertion) after it has
   // written the file: a run that failed still counts when it wrote a whole GLB (the length in its header) just now
   fs.rmSync(output, { force: true });
@@ -49,10 +51,11 @@ function pack(input, output, options) {
 let built = 0;
 for (const file of config.files) {
   if (only && !file.out.includes(only)) continue;
+  if (sourceFilter && !file.src.startsWith(`${sourceFilter}:`)) continue;
   const output = path.join(root, config.outDir, file.out);
   const keep = file.args || []; // v1.10.47: e.g. -kn, a model whose named nodes the game moves (a carriage's wheels, doors, seat anchors)
-  pack(source(file.src, file.sha256), output, [...config.profiles.high, ...keep]);
-  if (file.lowSrc) pack(source(file.lowSrc, file.lowSha256), path.join(root, config.outDir, lowName(file.out)), [...config.profiles.high, ...keep]);
+  pack(source(file.src, file.sha256), output, [...config.profiles.high, ...keep], file.precompressed);
+  if (file.lowSrc) pack(source(file.lowSrc, file.lowSha256), path.join(root, config.outDir, lowName(file.out)), [...config.profiles.high, ...(file.lowArgs || []), ...keep], file.precompressed);
   else if (file.low) pack(source(file.src, file.sha256), path.join(root, config.outDir, lowName(file.out)), config.profiles.low.map((o) => (o === '{ratio}' ? String(file.low) : o)));
   built += 1;
   console.log(`${file.out}${file.lowSrc ? ' (+ low 제작본)' : file.low ? ` (+ low ${file.low})` : ''}`);
