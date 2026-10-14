@@ -644,7 +644,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds });
       stagedAnim = anim;
       const carryClip = clips.find(clip => clip.name === base.entry.animations?.carry);
-      const arms = (carryClip?.tracks || []).filter(t => /^(Shoulder|UpperArm|ForeArm|Hand).*\.quaternion$/.test(t.name))
+      const arms = (carryClip?.tracks || []).filter(t => /^(Shoulder|UpperArm|LowerArm|Hand).*\.quaternion$/.test(t.name))
         .map(t => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
       const update = anim.update.bind(anim); let carrying = false;
       const hips = bones.get('Hips'); const hipAt = new THREE.Vector3(); const originY = object.position.y;

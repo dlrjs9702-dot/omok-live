@@ -4937,7 +4937,12 @@
         || previous.game?.settlement?.status !== next.game?.settlement?.status);
   }
 
+  function characterPairActive() {
+    return ['yut','dots','connect4'].includes(state?.gameType) && Object.values(state?.players || {}).some(player => window.SkinLooks?.def?.(player?.skin)?.characterSides);
+  }
+
   function choiceKo(choice) {
+    if (characterPairActive() && ['black','white'].includes(choice)) return choice === 'black' ? '흑' : '백';
     if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame() || isHalliGame() || isPandemicGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
     if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
@@ -4947,6 +4952,7 @@
   }
 
   function seatKo(value) {
+    if (characterPairActive() && ['black','white'].includes(value)) return value === 'black' ? '흑' : '백';
     if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame() || isPandemicGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
     if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
@@ -5616,6 +5622,12 @@
       : city ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 주사위를 굴립니다.'
       : '매 판 새로 선택합니다. 흑·백이 모두 정해지면 나머지 참가자는 자동 관전됩니다.';
     roleChooser.classList.toggle('hidden', !selecting);
+    for (const [button, ink] of [[chooseBlackBtn,'#282132'],[chooseWhiteBtn,'#fff9ef']]) button.querySelector('.stoneMini').style.background = characterPairActive() ? ink : '';
+    if (characterPairActive()) {
+      chooseBlackBtn.lastChild.nodeValue = '흑 선택'; chooseWhiteBtn.lastChild.nodeValue = '백 선택';
+      const help = roleChooser.querySelector('small');
+      help.textContent = connect4 ? help.textContent.replaceAll('빨강','흑').replaceAll('노랑','백') : help.textContent.replaceAll('파랑','흑').replaceAll('빨강','백');
+    }
     chooseBlackBtn.disabled = Boolean(state.players.black && seat !== 'black');
     chooseWhiteBtn.disabled = Boolean(state.players.white && seat !== 'white');
     chooseBlackBtn.classList.toggle('selected', choice === 'black');
@@ -5738,8 +5750,8 @@
     const scores = !pictionary && !liar && !twenty && g.scores;
     gameScoreRow.classList.toggle('hidden', !scores);
     gameScoreText.textContent = scores ? (state.gameType === 'yut'
-      ? `파랑 완주 ${scores.black} · 빨강 완주 ${scores.white}`
-      : state.gameType === 'dots' ? `파랑 상자 ${scores.black} · 빨강 상자 ${scores.white}`
+      ? `${seatKo('black')} 완주 ${scores.black} · ${seatKo('white')} 완주 ${scores.white}`
+      : state.gameType === 'dots' ? `${seatKo('black')} 상자 ${scores.black} · ${seatKo('white')} 상자 ${scores.white}`
         : state.gameType === 'cityking' ? `파랑 자산 ${scores.black} · 빨강 자산 ${scores.white}`
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
@@ -8266,8 +8278,8 @@
     const done = color => (g.pieces?.[color] || []).filter(piece => piece.status === 'finished').length;
     ctx.textAlign = 'left';
     ctx.font = '850 18px system-ui, sans-serif';
-    ctx.fillStyle = '#1d4ed8'; ctx.fillText(`파랑 집 ${home('black')} · 완주 ${done('black')}`, 120, 690);
-    ctx.fillStyle = '#b91c1c'; ctx.fillText(`빨강 집 ${home('white')} · 완주 ${done('white')}`, 390, 690);
+    ctx.fillStyle = characterPairActive() ? '#282132' : '#1d4ed8'; ctx.fillText(`${seatKo('black')} 집 ${home('black')} · 완주 ${done('black')}`, 120, 690);
+    ctx.fillStyle = characterPairActive() ? '#282132' : '#b91c1c'; ctx.fillText(`${seatKo('white')} 집 ${home('white')} · 완주 ${done('white')}`, 390, 690);
   }
 
   function dotsLayout() {
