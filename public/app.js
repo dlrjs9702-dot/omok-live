@@ -8757,6 +8757,10 @@
   // A lacquered wooden 말: coloured face, darker rim, a highlight and a carved number.
   function drawYutToken(x, y, fill, label, color) {
     ctx.save();
+    const nativeSkin = state?.players?.[color]?.skin;
+    if (window.SkinLooks.def(nativeSkin)?.shape === 'character') {
+      ctx.translate(x, y); window.SkinLooks.paintStone(ctx, 19, nativeSkin, color, label); ctx.restore(); return;
+    }
     ctx.fillStyle = 'rgba(30,16,4,.35)';
     ctx.beginPath(); ctx.ellipse(x + 2, y + 4, 19, 17, 0, 0, Math.PI * 2); ctx.fill();
     const skinId = state?.players?.[color]?.skin;
