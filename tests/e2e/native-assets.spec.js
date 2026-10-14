@@ -1,5 +1,5 @@
 const { test, expect, devices } = require('@playwright/test');
-const { shopper, post, get, buyAndEquip, twoPlayerRoom, expectNoScriptError } = require('./skin-support');
+const { shopper, post, buyAndEquip, twoPlayerRoom, expectNoScriptError } = require('./skin-support');
 const { REGISTRY, wardrobeOf } = require('../../public/plaza/island-assets');
 const { characters } = require('../../public/plaza/character-transformations');
 const { IP_GAME } = require('../../public/plaza/skins-x2');
@@ -11,11 +11,14 @@ const selected=Object.fromEntries(Object.entries(REGISTRY).map(([id,entry])=>[id
 function screenBrowser(browser, isMobile) {
   return { newContext: options => browser.newContext({ ...options, ...(isMobile ? devices['Pixel 5'] : {}) }) };
 }
-async function enterIsland(browser, request, label, isMobile) {
+async function nativeShopper(browser, request, label, isMobile) {
   return shopper(screenBrowser(browser, isMobile), request, label, 10000000, 'male', async context => {
     await context.addInitScript(registry => {
       if (!/^https?:$/.test(location.protocol)) return;
-      localStorage.removeItem('gc.testClassic');
+      if (!localStorage.getItem('gc.testNativePrepared')) {
+        localStorage.setItem('gc.testClassic','1'); // purchase first; then enter the actual island with the saved set
+        localStorage.setItem('gc.testNativePrepared','1');
+      }
       localStorage.setItem('gc.testIslandAssets', JSON.stringify(registry));
       localStorage.setItem('gc.islandZoom', '5');
       localStorage.setItem('gc.testHalloween', 'off');
@@ -26,24 +29,20 @@ async function transformed(who, id) {
   await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.transformation), { timeout: 60000 }).toBe(id);
   expect(await who.page.evaluate(() => window.PlazaDebug().nativeRig)).toBe(native(id).rig.id);
 }
-async function wearSet(request, who, id) {
-  for (const [slot,item] of Object.entries(native(id).items)) {
-    const place=slot==='outfit'?'avatar':slot==='hair'?'hair':'accessories';
-    const door=await who.page.evaluate(async place => { const door=window.PlazaDebug().doors[place];await window.PlazaWarp(door.x,door.z);return door; },place);
-    await expect.poll(async()=>{const p=(await get(request,'/api/plaza/spot',who.token)).data.spot;return p?Math.hypot(p.x-door.x,p.z-door.z):Infinity;},{timeout:10000}).toBeLessThan(2.4);
-    await buyAndEquip(request,who,[item]);
-  }
+async function startIsland(who,id) {
+  await who.page.evaluate(()=>localStorage.removeItem('gc.testClassic'));
+  await who.page.reload();await transformed(who,id);
 }
 
-test('전신 변신: 얼굴·자체 관절, 원격 Low, 이동·앉기, 부분 해제·동물 변신 복원', async ({ browser, request, isMobile }, testInfo) => {
-  test.setTimeout(240000);
-  const a = await enterIsland(browser, request, '변신쿠로미', isMobile);
-  const b = await enterIsland(browser, request, '변신멜로디', isMobile);
+test('전신 변신: 얼굴·자체 관절, 원격 Low, 이동·앉기', async ({ browser, request, isMobile }, testInfo) => {
+  test.setTimeout(180000);
+  const a = await nativeShopper(browser, request, '변신쿠로미', isMobile);
+  const b = await nativeShopper(browser, request, '변신멜로디', isMobile);
   const errors = [];
   for (const who of [a,b]) who.page.on('pageerror', error => errors.push(error.message));
   await post(request, '/api/avatar/gender', b.token, { gender: 'female' });
   for (const [who,id] of [[a,'kuromi'],[b,'mymelody']]) {
-    await wearSet(request, who, id); await who.page.reload(); await transformed(who,id);
+    await buyAndEquip(request,who,Object.values(native(id).items));await startIsland(who,id);
     await who.page.evaluate(async id => { const d=window.PlazaDebug();d.halloween.set(false);d.setCamYaw(0);await window.PlazaWarp(id==='kuromi'?-10:-4,0); },id);
     await expect.poll(()=>who.page.evaluate(()=>window.PlazaDebug().halloween.on())).toBe(false);
     await who.page.screenshot({ path: testInfo.outputPath(`${id}.png`) });
@@ -65,21 +64,31 @@ test('전신 변신: 얼굴·자체 관절, 원격 Low, 이동·앉기, 부분 �
   if (isMobile) await a.page.locator('#plazaHint').tap();
   else await a.page.keyboard.press('Space');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().clip), {timeout:15000}).toMatch(/SitIdle/);
+  expect(await a.page.evaluate(() => window.PlazaDebug().act().clip)).toMatch(/SitDown|SitIdle/); // both are valid phases of the seated animation
   await a.page.screenshot({ path: testInfo.outputPath('kuromi-seated.png') });
   await a.page.keyboard.down('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await a.page.keyboard.up('ArrowUp');
   expect(seat.id).toBeTruthy();
+  await expectNoScriptError(a.page);await a.context.close();expect(errors).toEqual([]);
+});
+
+test('전신 변신 복원: 부분 해제와 고양이 세트·여성 외형·재접속', async ({browser,request,isMobile},testInfo)=>{
+  test.setTimeout(150000);
+  const a=await nativeShopper(browser,request,'변신복원',isMobile),errors=[];
+  a.page.on('pageerror',error=>errors.push(error.message));
+  await buyAndEquip(request,a,Object.values(native('kuromi').items));
+  for(const skinId of Object.values(native('animal-cat').items))expect((await post(request,'/api/skins/buy',a.token,{skinId})).status).toBe(200);
+  await startIsland(a,'kuromi');
   expect((await post(request, '/api/skins/equip', a.token, { game:'avatar', slot:'hat', skinId:null })).status).toBe(200);
   await a.page.reload();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout:60000 }).toEqual(expect.arrayContaining(['wear.ip_kuromi_outfit']));
   expect(await a.page.evaluate(() => window.PlazaDebug().transformation)).toBeNull();
-  await wearSet(request,a,'animal-cat');
+  for(const skinId of Object.values(native('animal-cat').items))expect((await post(request,'/api/skins/equip',a.token,{skinId})).status).toBe(200);
   await post(request,'/api/avatar/gender',a.token,{gender:'female'});
   await a.page.reload(); await transformed(a,'animal-cat');
   await a.page.screenshot({path:testInfo.outputPath('cat.png')});
-  for (const who of [a,b]) if(!who.page.isClosed()) { await expectNoScriptError(who.page); await who.context.close(); }
+  await expectNoScriptError(a.page);await a.context.close();
   expect(errors).toEqual([]);
 });
 

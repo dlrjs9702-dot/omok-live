@@ -92,7 +92,7 @@ test('점과 상자 스킨: 상점 탭·구역, 방장 테마와 각자 선이 �
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '점과 상자' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(12);
+  await expect(dialog.locator('.skinCard')).toHaveCount(15);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   await twoPlayerRoom(request, a, b, 'dots');
