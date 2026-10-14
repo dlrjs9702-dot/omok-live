@@ -1,0 +1,58 @@
+// v1.10.75: canonical faces and side-specific character silhouettes. All removable IP vector art stays here.
+(function () {
+  const S = window.SkinLooks;
+  if (!S || typeof DOMParser === 'undefined') return;
+  const { TAU } = S.h;
+  const SVG = /* SVG_DATA */;
+  const PAIRS = /* PAIRS_DATA */;
+  const THEMES = /* THEMES_DATA */;
+  /* SVG_PARSER */
+  const familyOf = family => family === 'halli' ? 'halligalli' : family;
+  const keyOf = (pair, color) => color === 'white' ? pair.white : pair.black;
+  const ACCENT = { kuromi:'#282132',mymelody:'#e5a7c5',hellokitty:'#ec3859',cinnamoroll:'#4c9bbe',pompompurin:'#dca94f',pikachu:'#f4c83f',superman:'#2b61a7',batman:'#323a4b',ironman:'#b62638',spiderman:'#c7263b',captainamerica:'#275dab' };
+  function pairPreview(pair) { return (ctx,w,h) => { ctx.fillStyle='#e9e1cf';ctx.fillRect(0,0,w,h);const n=Math.min(w/2,h)*.86;for(const [x,color] of [[w*.27,'black'],[w*.73,'white']])paint(ctx,keyOf(pair,color),x-n/2,(h-n)/2,n); }; }
+  function portrait(pair) { return (ctx,w,h=w) => { const n=Math.min(w,h)*.86;paint(ctx,pair.id+'.piece',(w-n)/2,(h-n)/2,n); }; }
+  function corner(pair) { return (ctx,w,h) => { ctx.fillStyle='#fbf7ef';ctx.fillRect(0,0,w,h);const n=Math.min(w,h)*.30;paint(ctx,pair.id+'.piece',w-n-3,h-n-3,n); }; }
+  function yutBadge(ctx,r,label) {
+    if(!label)return;ctx.save();ctx.fillStyle='#fbf7ef';ctx.strokeStyle='#282132';ctx.lineWidth=Math.max(1,r*.08);
+    const w=Math.max(r*.7,String(label).length*r*.4);ctx.beginPath();ctx.roundRect(-w/2,r*.63,w,r*.50,r*.15);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#282132';ctx.font=`900 ${r*.36}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,0,r*.88);ctx.restore();
+  }
+  function piece(pair) {
+    const family=familyOf(pair.game),id=family+'_ip_'+pair.id.split('.')[0],base=S.def(family+'_c1')||{},accent=ACCENT[pair.id.split('.')[0]],draw=portrait(pair);
+    const def={...base,preview:pairPreview(pair),characterSides:{black:pair.darkCharacter,white:pair.lightCharacter},canonicalColors:true};
+    if(['omok','othello','connect4','yut'].includes(family)) {
+      def.shape='character';def.stone=(ctx,r,color,label)=>{paint(ctx,keyOf(pair,color),-r*1.12,-r*1.12,r*2.24);if(family==='yut')yutBadge(ctx,r,label);};
+    } else if(family==='dots') {
+      def.line=(ctx,x1,y1,x2,y2,color)=>{const dark=color!=='white';ctx.save();ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle='#282132';ctx.lineWidth=12;ctx.stroke();ctx.strokeStyle=ACCENT[dark?pair.darkCharacter:pair.lightCharacter];ctx.lineWidth=8;ctx.stroke();const n=Math.min(24,Math.hypot(x2-x1,y2-y1)*.45);paint(ctx,keyOf(pair,color),(x1+x2-n)/2,(y1+y2-n)/2,n);ctx.restore();};
+    } else if(family==='bingo') {
+      def.mark=(ctx,size)=>draw(ctx,size,size);def.text={color:'#27212d',shadow:'0 1px 1px rgba(255,255,255,.9)'};
+    } else if(['gostop','oldmaid'].includes(family)) {
+      def.art=draw;def.back={...base.back,backgroundImage:S.h.img('ip:'+id+':back',84,118,(ctx,w,h)=>{ctx.fillStyle='#fbf7ef';ctx.fillRect(0,0,w,h);draw(ctx,w,h);}),backgroundSize:'100% 100%',borderColor:accent};
+      def.seat={...base.seat,borderColor:accent};
+    } else if(family==='halligalli') {
+      def.card={...base.card,backgroundColor:'#fbf7ef',backgroundImage:S.h.img('ip:'+id+':card',160,220,corner(pair)),backgroundSize:'100% 100%',borderColor:accent};
+      def.text={color:'#27212d',bg:'#fbf7ef',border:accent};
+    } else if(family==='davinci') {
+      def.deco=(ctx,color)=>paint(ctx,keyOf(pair,color),28,78,32); // reserve the center for numbers and revealed state
+      def.tile=(color,revealed)=>{const pal=base.pal[color];return {...base.tile(color,revealed),backgroundImage:`${S.h.img('ip:'+id+':tile:'+color+':'+revealed,88,120,ctx=>def.deco(ctx,color))}, linear-gradient(145deg,${pal[0]},${pal[1]})`};};
+    } else if(family==='pictionary') {
+      def.cursor=(ctx,size)=>draw(ctx,size,size); // the game builds the cursor URL; selected brush color/strokes stay intact
+    } else if(['liar','baseball'].includes(family)) {
+      def.row={...base.row,backgroundColor:'#fbf7ef',backgroundImage:S.h.img('ip:'+id+':row',480,100,(ctx,w,h)=>paint(ctx,pair.id+'.piece',w-74,14,72)),backgroundPosition:'right center',backgroundSize:'auto 100%',backgroundRepeat:'no-repeat',borderColor:accent,color:'#27212d'};
+      if(family==='liar'){def.row.paddingRight='74px';def.who={color:'#5d3552'};def.text={color:'#27212d',bg:'#fbf7ef',who:'#5d3552'};}
+      else def.digit={...base.digit,color:'#27212d',textShadow:'none'};
+    }
+    return [id,def];
+  }
+  function theme(row) {
+    const family=familyOf(row.game),base=S.def(family+'_t1')||{},background=(ctx,w,h)=>paint(ctx,row.key,0,0,Math.max(w,h));
+    const def={...base,preview:background};
+    if(['omok','othello','connect4','yut','dots'].includes(family))def.board={...base.board,paint:background};
+    else if(family==='pictionary')def.paper=background;
+    else def.panel=background;
+    return [family+'_ipt_'+row.character,def];
+  }
+  S.define(Object.fromEntries([...PAIRS.map(piece),...THEMES.map(theme)]));
+  window.SkinArtIp={keys:Object.keys(SVG),pairs:PAIRS,paint};
+}());

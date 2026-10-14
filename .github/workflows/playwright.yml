@@ -80,7 +80,7 @@ jobs:
         run: |
           case "$PLAYWRIGHT_TEST_GROUP" in
             games-*) npm run test:e2e -- --project=chromium --shard=${PLAYWRIGHT_TEST_GROUP#games-}/2 ;;
-            assets) npm run test:e2e -- --project=chromium tests/e2e/island-assets.spec.js ;;
+            assets) npm run test:e2e -- --project=chromium tests/e2e/island-assets.spec.js tests/e2e/native-assets.spec.js ;;
             plaza) npm run test:e2e -- --project=chromium tests/e2e/plaza.spec.js ;;
           esac
           if [ "$PLAYWRIGHT_TEST_GROUP" = "games-2" ]; then PLAYWRIGHT_TEST_GROUP= npm run test:e2e -- --project=mobile-chromium; fi

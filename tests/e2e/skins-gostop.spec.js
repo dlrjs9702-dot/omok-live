@@ -31,8 +31,8 @@ test('고스톱 스킨: 방장 테마가 모든 화면에 같고, 상대 손패 
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '고스톱·맞고' }).click();
-  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '방 테마', '전설']);
-  await expect(dialog.locator('.skinCard')).toHaveCount(12);
+  await expect(dialog.locator('.skinFamily h3')).toHaveText(['일반', '고급', '희귀', '방 테마', '전설']);
+  await expect(dialog.locator('.skinCard')).toHaveCount(14);
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'gostop' });

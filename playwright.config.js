@@ -14,7 +14,7 @@ module.exports = defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.js',
   // Keep the expensive 3D suites in independent CI jobs; the two general shards exclude both.
-  testIgnore: process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') ? ['**/island-assets.spec.js', '**/plaza.spec.js'] : [],
+  testIgnore: process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') ? ['**/island-assets.spec.js', '**/native-assets.spec.js', '**/plaza.spec.js'] : [],
   timeout: 30_000,
   expect: {
     timeout: 5_000,

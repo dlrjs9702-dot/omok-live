@@ -41,7 +41,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 11, 27 + 16 + 11, 13 + 8 + 5, 23 + 17 + 6, 23 + 17 + 5, 23 + 18 + 6]); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
   // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
   const ip = avatar.filter(s => s.ip);
-  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 10); // + the character game pieces and themes (public/skin-art-ip.js)
+  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 33); // 22 character game pairs + 11 themes
   assert.ok(ip.every(s => ['산리오', 'DC', '마블', '포켓몬'].includes(s.ip) && s.tier !== 'common' && s.id.startsWith('avatar_ip_')));
   assert.equal(require('node:child_process').execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./lib/skins').SKINS.filter(s => s.ip || s.id.startsWith('avatar_ip_')).length))"], { env: { ...process.env, IP_SKINS: 'off' }, cwd: require('node:path').join(__dirname, '..') }).toString(), '0');
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));

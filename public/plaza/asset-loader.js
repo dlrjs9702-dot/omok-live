@@ -609,10 +609,85 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     return fittedOf.get(key);
   }
   const wearing = []; // characters with a High/Low pair: { c, high: [meshes], low: [meshes], isHigh }
+  // Complete identities keep their own bones. Only Low meshes bind to the same character's High bones.
+  // Ordinary skin/eye/hair/dye colors never replace a character's fixed face or exterior.
+  function wearNative(c, plan, base, native) {
+    const token = {}; c.assetPending = token; shown[native.id] = 'loading';
+    const mats = []; let installed = false; let stagedObject = null; let stagedAnim = null;
+    const urls = [native.entry.url, native.entry.lowUrl, ...Object.values(base.entry.clips || {})].filter(Boolean);
+    Promise.all(urls.map(url => cache.get(url))).then(loaded => {
+      if (disposed || c.assetPending !== token || !c.root.parent) return;
+      const byUrl = new Map(urls.map((url, i) => [url, loaded[i]]));
+      if (!byUrl.get(native.entry.url) || !byUrl.get(native.entry.lowUrl)) {
+        shown[native.id] = 'procedural'; wear(c, { ...plan, transformation: null }); return;
+      }
+      const object = cloneObject(byUrl.get(native.entry.url).scene); stagedObject = object; place(object, native.entry);
+      const bones = new Map(); object.traverse(o => { if (o.isBone) bones.set(o.name, o); });
+      const high = []; const low = [];
+      const prepare = (mesh) => {
+        mesh.frustumCulled = false; mesh.castShadow = true;
+        const list = [].concat(mesh.material).map(source => { const rec = wearMaterial(source, null, c.player); mats.push(rec); return rec.material; });
+        mesh.material = Array.isArray(mesh.material) ? list : list[0];
+      };
+      object.traverse(o => { if (o.isSkinnedMesh) { prepare(o); high.push(o); } });
+      if (!high.length) throw new Error(`native character has no skinned meshes: ${native.id}`);
+      const lowCopy = cloneObject(byUrl.get(native.entry.lowUrl).scene); lowCopy.updateMatrixWorld(true);
+      const lowMeshes = []; lowCopy.traverse(o => { if (o.isSkinnedMesh) lowMeshes.push(o); });
+      for (const mesh of lowMeshes) {
+        const bound = mesh.skeleton.bones.map(b => bones.get(b.name));
+        if (bound.some(b => !b)) throw new Error(`native Low rig mismatch: ${native.id}`);
+        const bind = mesh.bindMatrix.clone(); const inverse = mesh.skeleton.boneInverses.map(m => m.clone());
+        mesh.removeFromParent(); object.add(mesh); mesh.bind(new THREE.Skeleton(bound, inverse), bind); prepare(mesh); low.push(mesh); mesh.visible = false;
+      }
+      const clips = Object.values(base.entry.clips || {}).map(url => byUrl.get(url)?.animations?.[0]).filter(Boolean)
+        .map(clip => globalThis.CharacterTransformations.retargetClip(clip, native.entry.nativeRig));
+      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds });
+      stagedAnim = anim;
+      const carryClip = clips.find(clip => clip.name === base.entry.animations?.carry);
+      const arms = (carryClip?.tracks || []).filter(t => /^(Shoulder|UpperArm|LowerArm|Hand).*\.quaternion$/.test(t.name))
+        .map(t => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
+      const update = anim.update.bind(anim); let carrying = false;
+      const hips = bones.get('Hips'); const hipAt = new THREE.Vector3(); const originY = object.position.y;
+      const syncSeat = () => {
+        if (!c.tailTucked || !hips) { object.position.y = originY; return; }
+        object.updateWorldMatrix(true, true); hips.getWorldPosition(hipAt); object.worldToLocal(hipAt);
+        object.position.y = originY + hipAt.y * (1 / native.entry.nativeRig.proportions.bodyY - 1) * object.scale.y;
+      };
+      anim.update = (dt, speed, options) => {
+        if (carrying) { for (const [bone, , kept] of arms) bone.quaternion.copy(kept); carrying = false; }
+        update(dt, speed, options);
+        if (c.carrying && !['Nod', 'Clap', 'Bow', 'PickFruit'].includes(anim.clip)) {
+          for (const [bone, pose, kept] of arms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(pose.evaluate(0)); } carrying = true;
+        }
+        syncSeat();
+      };
+      c.tuckTail = on => { c.tailTucked = Boolean(on); syncSeat(); }; // native tails move with the character's own hips/rest
+      if (c.tailTucked) { if (!c.noTuck || !anim.loop('rideLook')) anim.loop('sitIdle'); }
+      c.assetRoot = object; c.anim = anim; c.wearMats = mats; c.wornColors = {}; c.fitted = {};
+      c.transformation = native.entry.character; c.nativeRig = native.entry.nativeRig.id; c.wardrobe = plan.parts.slice();
+      c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[native.id] = 'model';
+      c.root.updateMatrixWorld(true); const toRoot = c.root.matrixWorld.clone().invert(); const top = new THREE.Box3();
+      for (const mesh of high) { mesh.skeleton.update(); mesh.computeBoundingBox(); top.union(mesh.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRoot, mesh.matrixWorld))); }
+      if (Number.isFinite(top.max.y) && top.max.y > .5) { c.headTop = top.max.y; c.onWorn?.(); }
+      for (const rec of Object.values(c.holding || {})) if (rec.object) seat(c, rec);
+      wearing.push({ c, high, low, isHigh: true });
+      installed = true;
+    }).catch(error => {
+      if (!installed) {
+        stagedObject?.removeFromParent(); stagedAnim?.dispose?.();
+        if (c.assetRoot === stagedObject) { c.assetRoot = null; c.anim = null; c.wearMats = []; c.transformation = null; c.nativeRig = null; c.body.visible = true; }
+        for (const rec of mats) dropMaterial(rec);
+      }
+      onError(native.id, error);
+      if (!disposed && c.assetPending === token && c.root.parent) { shown[native.id] = 'procedural'; wear(c, { ...plan, transformation: null }); }
+    });
+  }
   function wear(c, plan) {
     const base = P.pick(registry, 'character.base', off, null); if (!base || !plan) return;
     const parts = plan.parts.map((id) => P.pick(registry, id, off, null));
     if (parts.some((p) => !p)) return; // a part switched off: the procedural character stays
+    const native = plan.transformation && P.pick(registry, plan.transformation, off, null);
+    if (native) { wearNative(c, plan, base, native); return; }
     const token = {}; c.assetPending = token; shown['character.base'] = 'loading';
     const urls = [base.entry.url, base.entry.lowUrl, ...parts.flatMap((p) => [p.entry.url, p.entry.lowUrl])].filter(Boolean);
     const clipUrls = Object.values(base.entry.clips || {});
@@ -712,6 +787,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     for (const rec of c.wearMats || []) dropMaterial(rec);
     for (const key of Object.keys(c.holding || {})) letGo(c, key);
     c.anim = null; c.assetRoot = null; c.assetPending = null; c.wardrobe = null; c.wearMats = null; c.fitted = null;
+    c.transformation = null; c.nativeRig = null;
   }
 
   function setQuality(next) {
@@ -751,5 +827,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }
