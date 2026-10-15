@@ -192,6 +192,61 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('캐릭터 체형: 무료·보유 전체 착용 확인·캐릭터별 보존·다른 외형 동시 저장', async () => {
+    const userId = 'guest:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const { transformationById, avatarLookOf, skinById } = require('../lib/skins');
+    const choose = (characterId, mode) => store.setAvatarTransformation({ userId, characterId, mode });
+    const equip = (slot, skinId) => store.equipSkin({ userId, game: 'avatar', slot, skinId });
+    const own = async (characterId) => {
+      for (const skinId of Object.values(transformationById(characterId).items)) {
+        const skin = skinById(skinId);
+        assert.equal((await store.buySkin({ userId, skinId, price: skin.price, title: skin.name })).applied, true);
+      }
+    };
+    const wear = async (characterId) => {
+      for (const [slot, skinId] of Object.entries(transformationById(characterId).items)) assert.equal((await equip(slot, skinId)).ok, true);
+    };
+    await store.ensureAccount(userId);
+    await store.adminGrant({ grantId: 'admin-grant:transform-test', userId, amount: 5_000_000, category: 'event', memo: '' });
+    assert.deepEqual(await choose('kuromi', 'native'), { ok: false, reason: 'not-owned' });
+    await own('kuromi');
+    assert.deepEqual(await choose('kuromi', 'current'), { ok: false, reason: 'incomplete' });
+    await wear('kuromi');
+    await store.setAvatarGender({ userId, gender: 'female' });
+    await store.buySkin({ userId, skinId: 'avatar_hair_1', price: skinById('avatar_hair_1').price });
+    await Promise.all([
+      choose('kuromi', 'current'),
+      equip('hair', 'avatar_hair_1'),
+      store.chargeLook({ userId, requestId: 'transform-face-1', kind: 'surgery', slot: 'face_eyes', value: 'eyes_heart', price: 300_000, title: '눈' }),
+      store.chargeLook({ userId, requestId: 'transform-dye-01', kind: 'dye', slot: 'dye_base_hair', value: 'c12', price: 50_000, title: '머리색' }),
+    ]);
+    let state = await store.skinState(userId);
+    assert.equal(state.equipped.avatar.gender, 'female');
+    assert.equal(state.equipped.avatar.hair, 'avatar_hair_1');
+    assert.equal(state.equipped.avatar.face_eyes, 'eyes_heart');
+    assert.equal(state.equipped.avatar.dye_base_hair, 'c12');
+    assert.equal(avatarLookOf(state.equipped).look.transformationModes.kuromi, 'current');
+    const balance = (await store.getAccount(userId)).balance;
+    const ledger = await store.ledger(userId, 1000);
+    await Promise.all([choose('kuromi', 'native'), choose('kuromi', 'native')]);
+    assert.equal((await store.getAccount(userId)).balance, balance);
+    assert.deepEqual(await store.ledger(userId, 1000), ledger, '체형 변경은 결제·원장 기록이 없다');
+    await equip('hat', null);
+    assert.deepEqual(await choose('kuromi', 'current'), { ok: false, reason: 'incomplete' });
+    assert.equal((await store.skinState(userId)).equipped.avatar.transformation_kuromi, 'native', '파츠를 벗어도 선택 유지');
+    await wear('kuromi');
+    assert.equal(avatarLookOf((await store.skinState(userId)).equipped).look.transformationModes.kuromi, 'native');
+    await own('animal-cat'); await wear('animal-cat');
+    assert.equal((await choose('animal-cat', 'current')).ok, true);
+    state = await store.skinState(userId);
+    assert.deepEqual(avatarLookOf(state.equipped).look.transformationModes, { kuromi: 'native', 'animal-cat': 'current' });
+    await own('ironman'); await wear('ironman');
+    await assert.rejects(choose('ironman', 'native'), RangeError);
+    assert.equal((await choose('ironman', 'current')).ok, true);
+    await assert.rejects(choose('kuromi', 'giant'), RangeError);
+    await assert.rejects(choose('__proto__', 'native'), RangeError);
+  });
+
   await t.test('v1.10.10 이벤트 인벤토리: 받기 한 번·스택·가득 참·장소별 정산·일일 한도·같은 요청 한 번', async () => {
     const I = 'guest:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
     const Items = require('../lib/island-items');
@@ -411,6 +466,8 @@ test('JSON 포인트 저장소', async (t) => {
   const reloaded = new JsonPointStore(file, { initialGrant: INITIAL_GRANT });
   await reloaded.init();
   assert.equal((await reloaded.getAccount(B)).balance, 0);
+  assert.deepEqual(require('../lib/skins').avatarLookOf((await reloaded.skinState('guest:cccccccc-cccc-4ccc-8ccc-cccccccccccc')).equipped).look.transformationModes,
+    { kuromi: 'native', ironman: 'current', 'animal-cat': 'current' }, '재시작 뒤 캐릭터별 체형 유지');
   await fs.rm(dir, { recursive: true, force: true });
 });
 

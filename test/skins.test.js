@@ -100,7 +100,7 @@ test('스킨 모양: 모든 스킨에서 흑·백 돌의 명도 차이가 충분
   assert.equal(SkinLooks.look(null, 'white'), SkinLooks.CLASSIC.white);
 });
 
-async function boot(t) {
+async function boot(t, extraEnv = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skins-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const port = await new Promise((resolve, reject) => {
@@ -111,7 +111,7 @@ async function boot(t) {
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: PASSWORD, NODE_ENV: 'test' },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DATA_DIR: dir, DATABASE_URL: '', ADMIN_PASSWORD: PASSWORD, NODE_ENV: 'test', ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let logs = '';
@@ -140,11 +140,78 @@ async function boot(t) {
     const issued = await req('/api/admin/keys', admin, { label });
     const key = issued.data.html.match(/name="token" value="([^"]+)"/)[1];
     const res = await fetch(base + '/guest-entry', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: key }).toString() });
-    return { label, id: issued.data.key.id, session: (await res.text()).match(/data-session="([^"]+)"/)?.[1] };
+    return { label, id: issued.data.key.id, key, session: (await res.text()).match(/data-session="([^"]+)"/)?.[1] };
   }
   const grant = (person, amount) => req(`/api/admin/keys/${person.id}/points`, admin, { requestId: crypto.randomUUID(), category: 'event', amount });
-  return { req, guest, grant, logs: () => logs };
+  async function relogin(person) {
+    assert.equal((await req('/api/logout', person.session, {})).status, 200);
+    const res = await fetch(base + '/guest-entry', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: person.key }).toString() });
+    return (await res.text()).match(/data-session="([^"]+)"/)?.[1];
+  }
+  async function plaza(token) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(base + '/api/lobby/events', { headers: { 'X-Session-Token': token }, signal: controller.signal });
+      let text = '';
+      for await (const chunk of res.body) {
+        text += Buffer.from(chunk).toString();
+        const snapshot = text.match(/event: plaza\ndata: ([^\n]+)\n\n/);
+        if (snapshot) return JSON.parse(snapshot[1]);
+      }
+      throw new Error('Missing plaza snapshot');
+    } finally { clearTimeout(timeout); controller.abort(); }
+  }
+  return { req, guest, grant, relogin, plaza, logs: () => logs };
 }
+
+test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·사람형 제한·잘못된 요청 거절', { timeout: 60000 }, async t => {
+  const fx = await boot(t);
+  const a = await fx.guest('체형선택');
+  const body = { characterId: 'kuromi', mode: 'current' };
+  assert.equal((await fx.req('/api/avatar/transformation', null, body)).status, 401);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, null)).status, 404, 'null JSON is rejected without a server error');
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { characterId: '__proto__', mode: 'native' })).status, 404);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'giant' })).status, 400);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { characterId: 'ironman', mode: 'native' })).status, 400);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'SKIN_NOT_OWNED');
+  await fx.grant(a, 3_000_000);
+  const character = require('../lib/skins').transformationById('kuromi');
+  for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/buy', a.session, { skinId })).status, 200);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'TRANSFORMATION_INCOMPLETE');
+  for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/equip', a.session, { skinId })).status, 200);
+  const balance = (await fx.req('/api/points', a.session)).data.balance;
+  const history = (await fx.req('/api/points/history', a.session)).data;
+  const pose = await fx.req('/api/plaza/state', a.session, { x: 0, z: 0, yaw: 0, moving: false });
+  const changed = await fx.req('/api/avatar/transformation', a.session, { ...body, price: 999999 });
+  assert.deepEqual([changed.status, changed.data.avatar.look.transformationModes.kuromi], [200, 'current']);
+  assert.equal(changed.data.equipped.avatar.transformation_kuromi, 'current');
+  assert.equal((await fx.plaza(a.session)).players.find(p => p.id === pose.data.id).look.transformationModes.kuromi, 'current', '다음 위치 전송 전 광장에도 새 체형 공유');
+  assert.equal((await fx.req('/api/points', a.session)).data.balance, balance);
+  assert.deepEqual((await fx.req('/api/points/history', a.session)).data, history);
+  await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'hat' });
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'native' })).status, 409);
+  const session = await fx.relogin(a);
+  assert.ok(session);
+  const restored = await fx.req('/api/skins', session);
+  assert.equal(restored.data.avatar.look.transformationModes.kuromi, 'current');
+  assert.equal(restored.data.avatar.look.hat, undefined);
+  assert.equal((await fx.req('/api/skins/equip', session, { skinId: character.items.hat })).status, 200);
+  assert.equal((await fx.req('/api/avatar/transformation', session, { ...body, mode: 'native' })).data.avatar.look.transformationModes.kuromi, 'native');
+});
+
+test('캐릭터 체형 IP 비활성: API와 공개 외형에서 제외하고 동물은 유지', { timeout: 60000 }, async t => {
+  const fx = await boot(t, { IP_SKINS: 'off' });
+  const a = await fx.guest('기본동물');
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { characterId: 'kuromi', mode: 'current' })).status, 404);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { characterId: 'animal-cat', mode: 'current' })).data.error, 'SKIN_NOT_OWNED');
+  const { execFileSync } = require('node:child_process');
+  const sanitized = JSON.parse(execFileSync(process.execPath, ['-e', "process.stdout.write(JSON.stringify(require('./lib/skins').avatarLookOf({avatar:{transformation_kuromi:'native','transformation_animal-cat':'current',face_eyes:'eyes_heart',dye_base_hair:'c12'}})))"],
+    { cwd: path.resolve(__dirname, '..'), env: { ...process.env, IP_SKINS: 'off' } }).toString());
+  assert.deepEqual(sanitized.look.transformationModes, { 'animal-cat': 'current' });
+  assert.deepEqual(sanitized.look.face, { eyes: 'heart' });
+  assert.equal(typeof sanitized.look.hairColor, 'string');
+});
 
 test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장착 거절, 방의 모두에게 같은 스킨이 보인다', { timeout: 60000 }, async t => {
   const fx = await boot(t);

@@ -43,7 +43,7 @@ const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
-const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor } = require('./lib/skins');
+const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
 const IslandTerrain = require('./public/plaza/island-terrain.js');
 const { poseTime } = require('./lib/plaza-pose-time');
@@ -3122,7 +3122,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.75' });
+    return sendJson(res, 200, { ok: true, version: '1.10.76' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3414,6 +3414,29 @@ async function requestHandler(req, res) {
     const room = getCurrentRoom(session);
     if (room) broadcast(room); // the room sees the change at once
     return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
+  }
+
+  // Existing character parts unlock a free body choice; the store checks the owned full set atomically.
+  if (pathname === '/api/avatar/transformation' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`transformation:${account}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const character = transformationById(body?.characterId);
+    if (!character) return sendError(res, 404, 'TRANSFORMATION_NOT_FOUND', '사용할 수 없는 캐릭터입니다.');
+    if (!transformationModeAllowed(character, body?.mode)) return sendError(res, 400, 'BAD_TRANSFORMATION_MODE', '사용할 수 없는 체형입니다.');
+    const result = await pointStore.setAvatarTransformation({ userId: account, characterId: character.id, mode: body.mode });
+    if (!result.ok) return sendError(res, 409, result.reason === 'not-owned' ? 'SKIN_NOT_OWNED' : 'TRANSFORMATION_INCOMPLETE', '캐릭터의 모든 파츠를 착용해 주세요.');
+    await loadEquippedSkins(account);
+    const equipped = equippedSkinCache.get(account) || result.equipped;
+    const avatar = avatarLookOf(equipped);
+    for (const entry of plazaPresence.values()) if (entry.account === account) {
+      entry.look = avatar.look; entry.title = avatar.title; plazaDirty = true;
+    }
+    const room = getCurrentRoom(session);
+    if (room) broadcast(room);
+    return sendJson(res, 200, { ok: true, equipped, avatar });
   }
 
   // v1.9.2 광장 칭호: the name of an owned legend skin shown under the player's name in the plaza (null takes it off).
@@ -5277,7 +5300,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.75 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.76 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
