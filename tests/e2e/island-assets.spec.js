@@ -607,7 +607,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   expect(bridges.length).toBe(4);
   for (const b of bridges) expect(b.url).toContain(`/${b.look}/bridge_${b.look}_v1.glb`);
   expect(d.assets.attaches.filter((x) => x.ids.includes('prop.fence')).length).toBeGreaterThanOrEqual(18); // two runs per cottage
-  // every model file of every season is in the active pack of the resource cache
+  // Required island files of every season are ready before entry; complete transformations are fetched when worn.
   const cached = await page.evaluate(async () => {
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
@@ -617,8 +617,21 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '.glb');
     expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '_low.glb');
   }
-  const config = require('../../tools/assets/island-models.json');
-  expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
+  const manifest = await page.evaluate(() => window.GameBoot.manifest);
+  const requiredGroups = new Set(manifest.required || ['core']);
+  const islandAssets = manifest.assets.filter(asset => asset.url.startsWith('/assets/island/'));
+  const requiredIsland = islandAssets.filter(asset => requiredGroups.has(asset.group || 'core')).map(asset => asset.url);
+  expect(requiredIsland.length).toBeGreaterThan(0);
+  expect(cached.slice().sort()).toEqual(requiredIsland.slice().sort());
+  const transformations = require('../../tools/assets/transformation-choices-import.json');
+  const transformationPaths = transformations.files.map(file => '/assets/island/' + file.out);
+  expect(new Set(transformationPaths).size).toBe(transformations.GLBs);
+  const optionalTransformations = islandAssets.filter(asset => asset.group === 'island.transformations');
+  expect(optionalTransformations.map(asset => asset.url).sort()).toEqual(transformationPaths.slice().sort());
+  for (const asset of optionalTransformations) {
+    expect(requiredGroups.has(asset.group), asset.url + ' stays optional').toBe(false);
+    expect(cached, asset.url + ' is not downloaded before a set is worn').not.toContain(asset.url);
+  }
   for (const [url] of files) expect(cached).toContain(url);
   for (const b of d.assets.batches) {
     expect(b.placed).toBe(true); expect(b.parts).toBe(b.ids[0].startsWith('halloween.') ? b.parts : 1); // v1.10.39: the Halloween decor keeps its glowing material apart (not flattened)
