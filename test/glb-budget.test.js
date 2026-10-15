@@ -42,7 +42,14 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
       if (f.startsWith('characters/motions/')) { assert.equal(info.meshes, 0, f); assert.equal(info.animations, 1, f); continue; }
       assert.equal(info.joints.length, 1, `${f}: one skin`);
       assert.deepEqual(info.joints[0], budgets.rig, `${f}: 공통 20관절`);
-      assert.ok(info.meshes <= budgets.character.meshes && info.materials <= budgets.max.materials && info.triangles <= budgets.character.triangles, `${f}: ${JSON.stringify(info)}`);
+      const exception=budgets.fileOverrides?.[f];
+      const triangleLimit=exception?.triangles??budgets.character.triangles;
+      if(triangleLimit>budgets.character.triangles){
+        assert.match(exception.reason,/User-authorized transformation fidelity exception/,`${f}: scoped fidelity exception required`);
+        const hash=require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(outDir,f))).digest('hex');
+        assert.equal(hash,exception.sourceSha256,`${f}: exception applies only to the verified model bytes`);
+      }
+      assert.ok(info.meshes <= budgets.character.meshes && info.materials <= budgets.max.materials && info.triangles <= triangleLimit, `${f}: ${JSON.stringify(info)}`);
       continue;
     }
     for (const [key, max] of Object.entries(budgets.max)) {

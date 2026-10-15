@@ -4075,170 +4075,298 @@
     },
     {
       "out": "characters/ip-characters/hellokitty.glb",
-      "src": "overhaul:ip-characters/full-characters/hellokitty.high.glb",
-      "sha256": "0f3ea9987019e742904e1005d03806c0a9208a56f268e84359ed4232cc2e67c4",
-      "lowSrc": "overhaul:ip-characters/full-characters/hellokitty.low.glb",
-      "lowSha256": "e396bf552fabf3c5d21bff88fa044509c95883563d32f6eed7a56b7063b7334e",
+      "src": "transformationChoices:ip-characters/models/hellokitty.native.high.glb",
+      "sha256": "bcaf7a237cec291231fc8656ce2823f72666c1f85bb2ae2faab9706fc144a896",
+      "lowSrc": "transformationChoices:ip-characters/models/hellokitty.native.low.glb",
+      "lowSha256": "c7a2baef315818ea4ee703bc69b508a7ca5e2eba5491652b7d4f97d1788831e7",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/kuromi.glb",
-      "src": "overhaul:ip-characters/full-characters/kuromi.high.glb",
-      "sha256": "76198bbd51ef35767042b24f0b56fe0e25acf4536516327214167bc0c55adfc8",
-      "lowSrc": "overhaul:ip-characters/full-characters/kuromi.low.glb",
-      "lowSha256": "83eaf9ae66097250e1364520484375fe6390c62d86a6ffdfc467b191ec3e9918",
+      "src": "transformationChoices:ip-characters/models/kuromi.native.high.glb",
+      "sha256": "85fd0850fefd219455f0379f29a2090a43c5b479fbdf1cfc94eb26fe4d5fe096",
+      "lowSrc": "transformationChoices:ip-characters/models/kuromi.native.low.glb",
+      "lowSha256": "1fccdfffec5b1ff56c25a4ce5f5247a24e1a2e2b80c647f531fe4720db57a5f6",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/mymelody.glb",
-      "src": "overhaul:ip-characters/full-characters/mymelody.high.glb",
-      "sha256": "fad92aee262e23cb99682f84ddb63de99fc76a7402f212a506d59a713dd8fd31",
-      "lowSrc": "overhaul:ip-characters/full-characters/mymelody.low.glb",
-      "lowSha256": "2fa22a1182187edef697e0ce051745b0bc46ccb6adefc5fed607a49b69318971",
+      "src": "transformationChoices:ip-characters/models/mymelody.native.high.glb",
+      "sha256": "20ef6324fe18c9b930c96459ed3992e15ad1fe147e3715e2bedbe6f0326312fc",
+      "lowSrc": "transformationChoices:ip-characters/models/mymelody.native.low.glb",
+      "lowSha256": "e20c4c83717b24874653b537ba45cfba1959c1271259d0a732e4283a0728da76",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/cinnamoroll.glb",
-      "src": "overhaul:ip-characters/full-characters/cinnamoroll.high.glb",
-      "sha256": "c5dbb5b2e9d73a80967ab5e5a16d6e4c7f2cade381b6bde8152c93fc5ecf5b9d",
-      "lowSrc": "overhaul:ip-characters/full-characters/cinnamoroll.low.glb",
-      "lowSha256": "8f15184ebe10b5ede1a5f0a1f544c1174aa3a87cd21f6309359980e7e9cd1b9e",
+      "src": "transformationChoices:ip-characters/models/cinnamoroll.native.high.glb",
+      "sha256": "89806729d843b2204c2184ef9e0e4e39c2b80ebb21736825180f4a224fcb7b43",
+      "lowSrc": "transformationChoices:ip-characters/models/cinnamoroll.native.low.glb",
+      "lowSha256": "df68017ad8004b298eeed019a1680b9da7991335394a9fc039eba3988e5418b4",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/pompompurin.glb",
-      "src": "overhaul:ip-characters/full-characters/pompompurin.high.glb",
-      "sha256": "9d61607ec0a8e14cc59f7e21d57d755447fba82949a8a36ff4b5cdd56a7e7eaf",
-      "lowSrc": "overhaul:ip-characters/full-characters/pompompurin.low.glb",
-      "lowSha256": "b75a4e65340e44c0901d66d8a41c5390779258dd713eddca6ab0539e61d5d6bc",
+      "src": "transformationChoices:ip-characters/models/pompompurin.native.high.glb",
+      "sha256": "f9e78f99b76fe50b75461d06b6a7386cdbfd75b488722ede86734cd9049e11e3",
+      "lowSrc": "transformationChoices:ip-characters/models/pompompurin.native.low.glb",
+      "lowSha256": "d240ec852752a184f0b2f32d9dfe11a17ac47653012a47092522c5b8187dd4e9",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/superman.glb",
-      "src": "overhaul:ip-characters/full-characters/superman.high.glb",
-      "sha256": "c730b881e8ad31aeb7b3043145fbd7a61dc5dc1aa2a51af4357cd653bff42bfc",
-      "lowSrc": "overhaul:ip-characters/full-characters/superman.low.glb",
-      "lowSha256": "69a81e5a91ab0de979fa1603401285c77ff3a6537f45205a9e26fd497a861a6f",
+      "src": "transformationChoices:ip-characters/models/superman.current.high.glb",
+      "sha256": "5fc4ed0ab326851340548ca68856fe1c11bd44434a50acd74ae52cb93b5c55c5",
+      "lowSrc": "transformationChoices:ip-characters/models/superman.current.low.glb",
+      "lowSha256": "19340ddb597b2b0dc1e56f015fd22bcbfc98a1488fda97b35787d2ee75d43f54",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/batman.glb",
-      "src": "overhaul:ip-characters/full-characters/batman.high.glb",
-      "sha256": "06bd9a42a27d6c63b8fed2a73eb9d0da29b326df41c08438db772d48776b4ed3",
-      "lowSrc": "overhaul:ip-characters/full-characters/batman.low.glb",
-      "lowSha256": "f31bcd3fc2c39368cca9b78251bfdcc994d55a159712e3f40d6ba4c1fced7429",
+      "src": "transformationChoices:ip-characters/models/batman.current.high.glb",
+      "sha256": "b36f4fecc31072a5873af9313909e0efcb1eb9ae3d7b43eb09c86d7bd3b7dca8",
+      "lowSrc": "transformationChoices:ip-characters/models/batman.current.low.glb",
+      "lowSha256": "f49ed496f1d1599a897b9c3f9465bba2434b559531df5527d4eb635f27beeac6",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/ironman.glb",
-      "src": "overhaul:ip-characters/full-characters/ironman.high.glb",
-      "sha256": "2f9580d61b495a888e523fe6678a153a51e0c80836a657a79a2a36387f62696c",
-      "lowSrc": "overhaul:ip-characters/full-characters/ironman.low.glb",
-      "lowSha256": "01af7a4487132bfc130ed1cec45afa1852e889d814ae569e7ff03ddf11465c58",
+      "src": "transformationChoices:ip-characters/models/ironman.current.high.glb",
+      "sha256": "dcef3fe8ccf2d49b260d454e44276a790431e6f07493a840a3692a098934250b",
+      "lowSrc": "transformationChoices:ip-characters/models/ironman.current.low.glb",
+      "lowSha256": "52c48ec99bb39bc1fef4ef155e97a9784cf0102e6e7a6036900841f324a04b1d",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/spiderman.glb",
-      "src": "overhaul:ip-characters/full-characters/spiderman.high.glb",
-      "sha256": "6b4fe176b4ae213b9e376e9dfc7c5cbf9438a3a98e11904e902ac12e0de92b12",
-      "lowSrc": "overhaul:ip-characters/full-characters/spiderman.low.glb",
-      "lowSha256": "89381fe8bf86b7722713912f81846b449774566f96dc85740c41bab66b226040",
+      "src": "transformationChoices:ip-characters/models/spiderman.current.high.glb",
+      "sha256": "6ff616ba32257e46c0b5071170c59dba9c04499e7ff342bd38683cd19b760161",
+      "lowSrc": "transformationChoices:ip-characters/models/spiderman.current.low.glb",
+      "lowSha256": "a1da160d6a986ed58a0e677ca76de7e4ec31811796ca54ae372672adab0fc022",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/captainamerica.glb",
-      "src": "overhaul:ip-characters/full-characters/captainamerica.high.glb",
-      "sha256": "b62a6457a720083bae27a7989d0f15c5f1e561ad03b600b98698019922208d7b",
-      "lowSrc": "overhaul:ip-characters/full-characters/captainamerica.low.glb",
-      "lowSha256": "4d6f2bedf0a5ba63298f9f0ec72af71dd467f13778016f2ae27f50b8d4d3da2f",
+      "src": "transformationChoices:ip-characters/models/captainamerica.current.high.glb",
+      "sha256": "163d1e9c81124457ea7a85e988520514215a16ccaaa435e753b4908326ffcfc2",
+      "lowSrc": "transformationChoices:ip-characters/models/captainamerica.current.low.glb",
+      "lowSha256": "d5fa5ee9081110976f53d7ed837eeb8fc17ca7f344fa741c48c924ef13fe8f16",
       "precompressed": true
     },
     {
       "out": "characters/ip-characters/pikachu.glb",
-      "src": "overhaul:ip-characters/full-characters/pikachu.high.glb",
-      "sha256": "8e53495ba832bc45795d3160e336d0613754389a6de1cec4e02b58606d64492f",
-      "lowSrc": "overhaul:ip-characters/full-characters/pikachu.low.glb",
-      "lowSha256": "c8aa8c6a8e681f6cc2526496fd225e7ee194c6876dcb0c07c29c6364230ce9b9",
+      "src": "transformationChoices:ip-characters/models/pikachu.native.high.glb",
+      "sha256": "65649983561b380d35fb979bcefb652532417eb1c9babd4b06c6b148622f33e8",
+      "lowSrc": "transformationChoices:ip-characters/models/pikachu.native.low.glb",
+      "lowSha256": "fe2344f32c471ccb6c5f1a12a0e8595ba475db17cb1b666987f6e306bbbaaafc",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-cat.glb",
-      "src": "overhaul:general/animals/full-characters/cat.high.glb",
-      "sha256": "f21702788d90443d59d535756cfceaae78f00989d2380f8d188e764953354938",
-      "lowSrc": "overhaul:general/animals/full-characters/cat.low.glb",
-      "lowSha256": "567f4bd6567d7015a633c2713297332f0cb7dbfab2b9043200339980c9fe2e78",
+      "src": "transformationChoices:animals/models/cat.native.high.glb",
+      "sha256": "622bf860437f8be9854da37b6c6198a486081839607831f3ba77306959a99d8e",
+      "lowSrc": "transformationChoices:animals/models/cat.native.low.glb",
+      "lowSha256": "0542ff2956440062be55c1595d7c43a40c8e41fce82aee0e91ab300378912133",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-dog.glb",
-      "src": "overhaul:general/animals/full-characters/dog.high.glb",
-      "sha256": "d369fc17760db2c43098aad47e588f3f64fd49d8ac86b2ec0b2c4707bb1104ee",
-      "lowSrc": "overhaul:general/animals/full-characters/dog.low.glb",
-      "lowSha256": "078fb152c5a8616dabb1d532923172977e76e5c814f0b29e27d578afdf701694",
+      "src": "transformationChoices:animals/models/dog.native.high.glb",
+      "sha256": "09af13ac2d73f836255da06680d843b805d518da79fd5aedd12b29e4984637c9",
+      "lowSrc": "transformationChoices:animals/models/dog.native.low.glb",
+      "lowSha256": "de6118cc30919ee1139d645319731ba194a8029555d28f74943340d082360b8e",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-sheep.glb",
-      "src": "overhaul:general/animals/full-characters/sheep.high.glb",
-      "sha256": "d29959c4de5c2f7313f3c092a8b052a4e0bd5d468e63cec36cb4580f8d8b6fba",
-      "lowSrc": "overhaul:general/animals/full-characters/sheep.low.glb",
-      "lowSha256": "9f78d1c38e80b8d721e6dfe403072db3c42664c3f16912fa9cf7d99195b45a40",
+      "src": "transformationChoices:animals/models/sheep.native.high.glb",
+      "sha256": "7d4816c368ebcf104e086f07eb582464af09b3444e87ee50d23318dbcf74f237",
+      "lowSrc": "transformationChoices:animals/models/sheep.native.low.glb",
+      "lowSha256": "2691e78c29a08d6c08a4f025658628ac90c8e0588b3749680d7ba74456560bcb",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-rabbit.glb",
-      "src": "overhaul:general/animals/full-characters/rabbit.high.glb",
-      "sha256": "69ad5be024932b97b4b1aaf2146c160239e512f01598821b486ecc4136f050ef",
-      "lowSrc": "overhaul:general/animals/full-characters/rabbit.low.glb",
-      "lowSha256": "a3c38a184108eaaa47a4b749e970bf217ec9ca376343b802a951799828ca59f3",
+      "src": "transformationChoices:animals/models/rabbit.native.high.glb",
+      "sha256": "18e580e29ee03d859b3434e5fde5f7439fe46b98f6d193601cc59a8631130743",
+      "lowSrc": "transformationChoices:animals/models/rabbit.native.low.glb",
+      "lowSha256": "b93d32f296d26ce88b5ac82fa32eec6eb993feb08a75a514d5be303953742524",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-bear.glb",
-      "src": "overhaul:general/animals/full-characters/bear.high.glb",
-      "sha256": "2f87b39fd28005ad2268f0403536b52e49f9d0fd9c42aea37c55e25ae013fe96",
-      "lowSrc": "overhaul:general/animals/full-characters/bear.low.glb",
-      "lowSha256": "9826d2f82621ec2a0ea11c1cafa2db6c265167fd196c10efa73f6b073f906610",
+      "src": "transformationChoices:animals/models/bear.native.high.glb",
+      "sha256": "eee3ac739bbfd8fa27f1ac3323d506b56660311c58ea6f2003c3bdc342c5c800",
+      "lowSrc": "transformationChoices:animals/models/bear.native.low.glb",
+      "lowSha256": "faa19c32862c834f1b96e1560f7dc787451ad9d4264fc49c93e828ebf7a28a70",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-panda.glb",
-      "src": "overhaul:general/animals/full-characters/panda.high.glb",
-      "sha256": "731e0981c24e440d1d7eb55d6cbc645eadc2f0d6f260688f9b166ed55d17e7c5",
-      "lowSrc": "overhaul:general/animals/full-characters/panda.low.glb",
-      "lowSha256": "5af9ada7726a66a2d7189c07f85271e21db2f21bf141ac649f6abba3d7b9fa4f",
+      "src": "transformationChoices:animals/models/panda.native.high.glb",
+      "sha256": "dc96c594bce0dfead971c15aca4920b8a4f044fe9075a3bc876693cf8eeb5876",
+      "lowSrc": "transformationChoices:animals/models/panda.native.low.glb",
+      "lowSha256": "534fab4c745c6dd3eb04799a31b35da89ba6bb5722daa4c19b576d1d964f7dc4",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-fox.glb",
-      "src": "overhaul:general/animals/full-characters/fox.high.glb",
-      "sha256": "49eaa30ad7cd62a06e160381d174061c637465e68fa80586b81470281b17e351",
-      "lowSrc": "overhaul:general/animals/full-characters/fox.low.glb",
-      "lowSha256": "f18806a627c5aa07ceaaea9c4a37f85276ba5bb4ce962554bf5c49a47922a404",
+      "src": "transformationChoices:animals/models/fox.native.high.glb",
+      "sha256": "ee67d7166c54222b828ae7ebd8816e775f9645aa45928d2430d5981b15488f56",
+      "lowSrc": "transformationChoices:animals/models/fox.native.low.glb",
+      "lowSha256": "76c98dfeca9d64119ad0131d62f11f65c0381b99984c72ac0b5eea90befbdf61",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-hamster.glb",
-      "src": "overhaul:general/animals/full-characters/hamster.high.glb",
-      "sha256": "a4a7c894a8f2ac0e46cbd87bbdd3b4fad2c6b66c1a65cd17cd7cd99884e3aa8b",
-      "lowSrc": "overhaul:general/animals/full-characters/hamster.low.glb",
-      "lowSha256": "28f4cbd549d9318314ab3814c2c0393605925ab0b211af5a706033403315a2b7",
+      "src": "transformationChoices:animals/models/hamster.native.high.glb",
+      "sha256": "4be2d904a50cad81915e6ece188006a39f4f19fdfc7f251aff40fc15cd24fcc6",
+      "lowSrc": "transformationChoices:animals/models/hamster.native.low.glb",
+      "lowSha256": "48508c67dfde8a040972b04c30ae76f784344deb66ba66a55cd5d4c7b09eea4a",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-pig.glb",
-      "src": "overhaul:general/animals/full-characters/pig.high.glb",
-      "sha256": "bdad867c9c5e1d4d7433030ec31967b0558242d2854c9166d2b7aeaec8b2dc17",
-      "lowSrc": "overhaul:general/animals/full-characters/pig.low.glb",
-      "lowSha256": "a88b8f5e8f000756ad0b2804f2a421fdd9c0223b9b780a3bd6fe8e7221440112",
+      "src": "transformationChoices:animals/models/pig.native.high.glb",
+      "sha256": "f989e726d1cbfce168011c0c11ea181f545ddf443453782796dfba278a06c453",
+      "lowSrc": "transformationChoices:animals/models/pig.native.low.glb",
+      "lowSha256": "c228879d59a302ab040e7e55ccd8f2faa7d3699f8a3a92754d9990dd9fd393b3",
       "precompressed": true
     },
     {
       "out": "characters/native/animal-cow.glb",
-      "src": "overhaul:general/animals/full-characters/cow.high.glb",
-      "sha256": "301cd2dcf61d0c1dee56f1db7266c045ec238c84666581b949a96a402628542c",
-      "lowSrc": "overhaul:general/animals/full-characters/cow.low.glb",
-      "lowSha256": "2442b3280218fc4fc3760c094c20fbce56d70120354e859d130886500a7b152e",
+      "src": "transformationChoices:animals/models/cow.native.high.glb",
+      "sha256": "b4f7d65648961fa51bdb1876923b86199649303166cb65ad16f2a7edb55a7e26",
+      "lowSrc": "transformationChoices:animals/models/cow.native.low.glb",
+      "lowSha256": "ce002aa841a60240b49f3244d24c53ecbe1132edda4a1f43124dfeebd4e358b2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/kuromi_current.glb",
+      "src": "transformationChoices:ip-characters/models/kuromi.current.high.glb",
+      "sha256": "d795befde6d8ed149cdd611fa188e2f10bb289ac07628d34674edb5fde89d2ae",
+      "lowSrc": "transformationChoices:ip-characters/models/kuromi.current.low.glb",
+      "lowSha256": "2e2cd615f91d447042bad8baa3b53812d8ad1576ae02ecc21f64f5a57bcb7a88",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/hellokitty_current.glb",
+      "src": "transformationChoices:ip-characters/models/hellokitty.current.high.glb",
+      "sha256": "7dde30f807218d38c06e6f6100646b9b672b66b433c24815155e9e2d00579c19",
+      "lowSrc": "transformationChoices:ip-characters/models/hellokitty.current.low.glb",
+      "lowSha256": "ce4c350057d06bfdd873750b8e6495d11d510caa01a36dee4c6ab032bf94f0f7",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/mymelody_current.glb",
+      "src": "transformationChoices:ip-characters/models/mymelody.current.high.glb",
+      "sha256": "e546f4c185ced206855859c6bda0d689deeb48e7c4ec90d500258dee5421da4b",
+      "lowSrc": "transformationChoices:ip-characters/models/mymelody.current.low.glb",
+      "lowSha256": "e701dafc41124860d4309ba286533840158fffb7605ad877e32e173dc16eef13",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/cinnamoroll_current.glb",
+      "src": "transformationChoices:ip-characters/models/cinnamoroll.current.high.glb",
+      "sha256": "33b7faf824dcd8e00c93953c2e5dd85e909fecb847288740518f19da0fe80e83",
+      "lowSrc": "transformationChoices:ip-characters/models/cinnamoroll.current.low.glb",
+      "lowSha256": "7cb4bc9ccfbe6f1ec5e072b59d5b7d053171e14c2f3c2734870eb7d8fc8b983e",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pompompurin_current.glb",
+      "src": "transformationChoices:ip-characters/models/pompompurin.current.high.glb",
+      "sha256": "7a5e0ae53601ddac32d9d2fbd24c83241047abac4c0b65100206b48e68f634cd",
+      "lowSrc": "transformationChoices:ip-characters/models/pompompurin.current.low.glb",
+      "lowSha256": "7c50aa83c1c06136d09dea6b25e7af36ce59831fbdddcd8e8d85c21a9506668a",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pikachu_current.glb",
+      "src": "transformationChoices:ip-characters/models/pikachu.current.high.glb",
+      "sha256": "6e2d0e245f4b399e576af9312f43696d229941a85a94e9c781ad0808c2488adf",
+      "lowSrc": "transformationChoices:ip-characters/models/pikachu.current.low.glb",
+      "lowSha256": "00bd5421e539d16bb361b102d4def4ac3525fcedb4b973d3e33d327e3edbb8c2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-cat_current.glb",
+      "src": "transformationChoices:animals/models/cat.current.high.glb",
+      "sha256": "79c47857ada332dadcc2c676b53422fcc83ede163146b172cf1880a84b8e8b67",
+      "lowSrc": "transformationChoices:animals/models/cat.current.low.glb",
+      "lowSha256": "6d73c9ad52ad622f1a4cf58a0273aa39f7b3abbe5bb289a060a33f0ad41b6ea2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-dog_current.glb",
+      "src": "transformationChoices:animals/models/dog.current.high.glb",
+      "sha256": "1fd7a927ec36bcc8e7525d6227a2d9b426c8a4833b5debd1e58145f21f71a0b1",
+      "lowSrc": "transformationChoices:animals/models/dog.current.low.glb",
+      "lowSha256": "f82cbd12edfc34a00ba932fc9c1d8527c6f9071c4cacfd50ece40a3e6e606719",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-sheep_current.glb",
+      "src": "transformationChoices:animals/models/sheep.current.high.glb",
+      "sha256": "f6d351fbe51d2cceff151ac2064c6f1c36cf6e290d54d31e7631eb0172174ac3",
+      "lowSrc": "transformationChoices:animals/models/sheep.current.low.glb",
+      "lowSha256": "7e2f8378a1ddf13ed9f604f70d3438c35e03c30ef5d5df9290bd46772b71ba96",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-rabbit_current.glb",
+      "src": "transformationChoices:animals/models/rabbit.current.high.glb",
+      "sha256": "e5853344008470209ca794a42a424d45ba68a648bebc229082704e71d09d8e86",
+      "lowSrc": "transformationChoices:animals/models/rabbit.current.low.glb",
+      "lowSha256": "7f727f6df2b8b15124017437734140699dabd3c8ce79a93edea5321d1deb12f9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-bear_current.glb",
+      "src": "transformationChoices:animals/models/bear.current.high.glb",
+      "sha256": "0e7687e01fa8a9599afadd01bdee8c8449c8cfb57d988c54e229a60ead21dc81",
+      "lowSrc": "transformationChoices:animals/models/bear.current.low.glb",
+      "lowSha256": "4c4acf97028808e8921224222d3cb84dbcc14a3fede0e3097c68d9c3aea659bc",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-panda_current.glb",
+      "src": "transformationChoices:animals/models/panda.current.high.glb",
+      "sha256": "287acc77a4e7db78dd6f316eb94d6369cc0bb394955a1005bc88a01919831451",
+      "lowSrc": "transformationChoices:animals/models/panda.current.low.glb",
+      "lowSha256": "a2924917702c24431dcde612bf59fa66511194f39cd6874b35db70adbfd5bf27",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-fox_current.glb",
+      "src": "transformationChoices:animals/models/fox.current.high.glb",
+      "sha256": "4c12dffd7d66c32fdf17b38344de500ccf15a0314bc53a2433d21b8a090243d2",
+      "lowSrc": "transformationChoices:animals/models/fox.current.low.glb",
+      "lowSha256": "85b535d0adb9fae2478625e2f4aefbb4ad14670738c80f8638299b5bcaafe3a9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-hamster_current.glb",
+      "src": "transformationChoices:animals/models/hamster.current.high.glb",
+      "sha256": "86817a0103af2a1879dd5f9e9a2155121b434339cb979523780484492e79cdbd",
+      "lowSrc": "transformationChoices:animals/models/hamster.current.low.glb",
+      "lowSha256": "fdd980865dd69d6198dd511846c7f9d9c1654c4d13e449beadfefa0874b18bbf",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-pig_current.glb",
+      "src": "transformationChoices:animals/models/pig.current.high.glb",
+      "sha256": "109805579f282bd12ea8e684c5a690461f5311c10d03d9da2598521e26bda367",
+      "lowSrc": "transformationChoices:animals/models/pig.current.low.glb",
+      "lowSha256": "044384c231f7361a9cd59a265df871d7c546a34b487df73001e39fa20046b3fa",
+      "precompressed": true
+    },
+    {
+      "out": "characters/native/animal-cow_current.glb",
+      "src": "transformationChoices:animals/models/cow.current.high.glb",
+      "sha256": "6e31e21d0c661a14a5b1cfe2c00ee334c7f3689e373b88916ed89e8b838e0f00",
+      "lowSrc": "transformationChoices:animals/models/cow.current.low.glb",
+      "lowSha256": "292c034ec021f4a102d47e205fe43a1de5e83c9be09ff08f80aa3c5c016dfc63",
       "precompressed": true
     }
   ],
@@ -4259,6 +4387,7 @@
     "paths": "24. Game Island path tiers 2026-10-12",
     "ground": "25. Game Island ground cover 2026-10-12",
     "skinsx2": "27. Game Island skins x2 2026-10-13",
-    "overhaul": "28. Game Island asset overhaul 2026-10-14"
+    "overhaul": "28. Game Island asset overhaul 2026-10-14",
+    "transformationChoices": "30. Game Island transformation choices 2026-10-14"
   }
 }

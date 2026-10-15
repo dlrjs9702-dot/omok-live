@@ -23,7 +23,20 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
   const fs = require('node:fs'); const path = require('node:path');
   const { buildAssetManifest } = require('../lib/asset-manifest');
   const FACILITIES = ['games', 'climb', 'shop', 'avatar', 'records', 'admin', 'townhall', 'board', 'missions', 'map', 'donate', 'attendance', 'trader', 'naming'];
-  assert.deepEqual(Object.keys(REGISTRY).sort(), [...require('../public/plaza/character-transformations.js').characters.map(c => `character.transform.${c.id}`), 'facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.fruit', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
+  const HUMAN_TRANSFORMS = ['ironman', 'superman', 'batman', 'spiderman', 'captainamerica'];
+  const NONHUMAN_TRANSFORMS = ['kuromi', 'hellokitty', 'mymelody', 'cinnamoroll', 'pompompurin', 'pikachu',
+    ...['cat', 'dog', 'sheep', 'rabbit', 'bear', 'panda', 'fox', 'hamster', 'pig', 'cow'].map(id => `animal-${id}`)];
+  const TRANSFORMS = [...HUMAN_TRANSFORMS, ...NONHUMAN_TRANSFORMS];
+  const transformAliases = TRANSFORMS.map(id => `character.transform.${id}`);
+  const transformModes = [...TRANSFORMS.map(id => `character.transform.${id}.current`), ...NONHUMAN_TRANSFORMS.map(id => `character.transform.${id}.native`)];
+  assert.equal(transformAliases.length, 21);
+  assert.equal(transformModes.length, 37);
+  assert.deepEqual(require('../public/plaza/character-transformations.js').characters.map(c => c.id).sort(), [...TRANSFORMS].sort());
+  for (const id of TRANSFORMS) {
+    const mode = HUMAN_TRANSFORMS.includes(id) ? 'current' : 'native';
+    assert.equal(REGISTRY[`character.transform.${id}`], REGISTRY[`character.transform.${id}.${mode}`], `${id} 기본 체형 별칭`);
+  }
+  assert.deepEqual(Object.keys(REGISTRY).sort(), [...transformAliases, ...transformModes, 'facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.fruit', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
     'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.bridge', 'prop.fence', 'prop.lamp', 'prop.planter',
     ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`),
     // v1.10.29 gap assets (gaps-v1)
@@ -52,9 +65,12 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50 + 112 + 44); // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit; v1.10.74 + 스킨 2배 112 + 캐릭터 44
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('path.')).length, 11); // the pieces in use
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
+  assert.ok(!pack.required.includes('island.transformations'), '캐릭터 체형은 선택할 때 받는 묶음');
   const parsed = new Map();
   const check = async (id, url, what) => {
-    assert.ok(pack.assets.some((a) => a.url === url), `${id} ${what} 리소스 팩`);
+    const asset = pack.assets.find((a) => a.url === url);
+    assert.ok(asset, `${id} ${what} 리소스 팩`);
+    if (id.startsWith('character.transform.')) assert.equal(asset.group, 'island.transformations', `${id} ${what} 선택형 묶음`);
     if (!parsed.has(url)) {
       const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
       let meshes = 0; gltf.scene.traverse((o) => { if (o.isMesh) meshes += 1; });
