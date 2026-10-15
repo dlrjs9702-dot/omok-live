@@ -221,6 +221,8 @@
 :root[data-theme="light"] .myInfoDialog .pointHistoryPanel{border-top:1px solid #e2d4bd}
 :root[data-theme="light"] .skinShopBalance{color:#8a5a00}
 :root[data-theme="light"] .skinShopStatus{color:#9b2c2c}
+:root[data-theme="light"] .skinTransformation{border:1px solid #e2d4bd;background:#f7efe1}
+:root[data-theme="light"] .skinTransformationChoices button[aria-pressed="true"]{background:#3d3024;color:#fffaf1;border-color:#3d3024}
 :root[data-theme="light"] .skinFamily h3{color:#3d3024}
 :root[data-theme="light"] .skinCard{border:1px solid #e2d4bd;background:#f7efe1}
 :root[data-theme="light"] .skinCard.equipped{border-color:#23806f;box-shadow:0 0 0 1px #60a5fa66}

@@ -61,7 +61,298 @@
   "fileOverrides": {
     "additions-v1/facilities/faces.glb": {
       "materials": 15
+    },
+    "characters/ip-characters/ironman.glb": {
+      "triangles": 69590,
+      "sourceSha256": "dcef3fe8ccf2d49b260d454e44276a790431e6f07493a840a3692a098934250b",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/ironman_low.glb": {
+      "triangles": 22876,
+      "sourceSha256": "52c48ec99bb39bc1fef4ef155e97a9784cf0102e6e7a6036900841f324a04b1d",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/superman.glb": {
+      "triangles": 47402,
+      "sourceSha256": "5fc4ed0ab326851340548ca68856fe1c11bd44434a50acd74ae52cb93b5c55c5",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/superman_low.glb": {
+      "triangles": 16520,
+      "sourceSha256": "19340ddb597b2b0dc1e56f015fd22bcbfc98a1488fda97b35787d2ee75d43f54",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/batman.glb": {
+      "triangles": 54722,
+      "sourceSha256": "b36f4fecc31072a5873af9313909e0efcb1eb9ae3d7b43eb09c86d7bd3b7dca8",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/batman_low.glb": {
+      "triangles": 16948,
+      "sourceSha256": "f49ed496f1d1599a897b9c3f9465bba2434b559531df5527d4eb635f27beeac6",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/spiderman.glb": {
+      "triangles": 64330,
+      "sourceSha256": "6ff616ba32257e46c0b5071170c59dba9c04499e7ff342bd38683cd19b760161",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/spiderman_low.glb": {
+      "triangles": 24404,
+      "sourceSha256": "a1da160d6a986ed58a0e677ca76de7e4ec31811796ca54ae372672adab0fc022",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/captainamerica.glb": {
+      "triangles": 68930,
+      "sourceSha256": "163d1e9c81124457ea7a85e988520514215a16ccaaa435e753b4908326ffcfc2",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/captainamerica_low.glb": {
+      "triangles": 23470,
+      "sourceSha256": "d5fa5ee9081110976f53d7ed837eeb8fc17ca7f344fa741c48c924ef13fe8f16",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/kuromi_current.glb": {
+      "triangles": 44406,
+      "sourceSha256": "d795befde6d8ed149cdd611fa188e2f10bb289ac07628d34674edb5fde89d2ae",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/kuromi.glb": {
+      "triangles": 58664,
+      "sourceSha256": "85fd0850fefd219455f0379f29a2090a43c5b479fbdf1cfc94eb26fe4d5fe096",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/kuromi_low.glb": {
+      "triangles": 17232,
+      "sourceSha256": "1fccdfffec5b1ff56c25a4ce5f5247a24e1a2e2b80c647f531fe4720db57a5f6",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/hellokitty_current.glb": {
+      "triangles": 37452,
+      "sourceSha256": "7dde30f807218d38c06e6f6100646b9b672b66b433c24815155e9e2d00579c19",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/hellokitty.glb": {
+      "triangles": 49576,
+      "sourceSha256": "bcaf7a237cec291231fc8656ce2823f72666c1f85bb2ae2faab9706fc144a896",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/mymelody_current.glb": {
+      "triangles": 52868,
+      "sourceSha256": "e546f4c185ced206855859c6bda0d689deeb48e7c4ec90d500258dee5421da4b",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/mymelody.glb": {
+      "triangles": 67146,
+      "sourceSha256": "20ef6324fe18c9b930c96459ed3992e15ad1fe147e3715e2bedbe6f0326312fc",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/mymelody_low.glb": {
+      "triangles": 17054,
+      "sourceSha256": "e20c4c83717b24874653b537ba45cfba1959c1271259d0a732e4283a0728da76",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/cinnamoroll_current.glb": {
+      "triangles": 20286,
+      "sourceSha256": "33b7faf824dcd8e00c93953c2e5dd85e909fecb847288740518f19da0fe80e83",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/cinnamoroll.glb": {
+      "triangles": 34544,
+      "sourceSha256": "89806729d843b2204c2184ef9e0e4e39c2b80ebb21736825180f4a224fcb7b43",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/pompompurin_current.glb": {
+      "triangles": 25342,
+      "sourceSha256": "7a5e0ae53601ddac32d9d2fbd24c83241047abac4c0b65100206b48e68f634cd",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/pompompurin.glb": {
+      "triangles": 81664,
+      "sourceSha256": "f9e78f99b76fe50b75461d06b6a7386cdbfd75b488722ede86734cd9049e11e3",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/pompompurin_low.glb": {
+      "triangles": 26128,
+      "sourceSha256": "d240ec852752a184f0b2f32d9dfe11a17ac47653012a47092522c5b8187dd4e9",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/pikachu_current.glb": {
+      "triangles": 19856,
+      "sourceSha256": "6e2d0e245f4b399e576af9312f43696d229941a85a94e9c781ad0808c2488adf",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/ip-characters/pikachu.glb": {
+      "triangles": 36636,
+      "sourceSha256": "65649983561b380d35fb979bcefb652532417eb1c9babd4b06c6b148622f33e8",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cat_current.glb": {
+      "triangles": 49105,
+      "sourceSha256": "79c47857ada332dadcc2c676b53422fcc83ede163146b172cf1880a84b8e8b67",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cat_current_low.glb": {
+      "triangles": 17879,
+      "sourceSha256": "6d73c9ad52ad622f1a4cf58a0273aa39f7b3abbe5bb289a060a33f0ad41b6ea2",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cat.glb": {
+      "triangles": 66159,
+      "sourceSha256": "622bf860437f8be9854da37b6c6198a486081839607831f3ba77306959a99d8e",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cat_low.glb": {
+      "triangles": 23059,
+      "sourceSha256": "0542ff2956440062be55c1595d7c43a40c8e41fce82aee0e91ab300378912133",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-dog_current.glb": {
+      "triangles": 42286,
+      "sourceSha256": "1fd7a927ec36bcc8e7525d6227a2d9b426c8a4833b5debd1e58145f21f71a0b1",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-dog.glb": {
+      "triangles": 59344,
+      "sourceSha256": "09af13ac2d73f836255da06680d843b805d518da79fd5aedd12b29e4984637c9",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-dog_low.glb": {
+      "triangles": 18516,
+      "sourceSha256": "de6118cc30919ee1139d645319731ba194a8029555d28f74943340d082360b8e",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-sheep_current.glb": {
+      "triangles": 45934,
+      "sourceSha256": "f6d351fbe51d2cceff151ac2064c6f1c36cf6e290d54d31e7631eb0172174ac3",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-sheep.glb": {
+      "triangles": 66881,
+      "sourceSha256": "7d4816c368ebcf104e086f07eb582464af09b3444e87ee50d23318dbcf74f237",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-sheep_low.glb": {
+      "triangles": 21936,
+      "sourceSha256": "2691e78c29a08d6c08a4f025658628ac90c8e0588b3749680d7ba74456560bcb",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-rabbit_current.glb": {
+      "triangles": 43391,
+      "sourceSha256": "e5853344008470209ca794a42a424d45ba68a648bebc229082704e71d09d8e86",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-rabbit.glb": {
+      "triangles": 60440,
+      "sourceSha256": "18e580e29ee03d859b3434e5fde5f7439fe46b98f6d193601cc59a8631130743",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-rabbit_low.glb": {
+      "triangles": 18529,
+      "sourceSha256": "b93d32f296d26ce88b5ac82fa32eec6eb993feb08a75a514d5be303953742524",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-bear_current.glb": {
+      "triangles": 43726,
+      "sourceSha256": "0e7687e01fa8a9599afadd01bdee8c8449c8cfb57d988c54e229a60ead21dc81",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-bear.glb": {
+      "triangles": 60784,
+      "sourceSha256": "eee3ac739bbfd8fa27f1ac3323d506b56660311c58ea6f2003c3bdc342c5c800",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-bear_low.glb": {
+      "triangles": 18644,
+      "sourceSha256": "faa19c32862c834f1b96e1560f7dc787451ad9d4264fc49c93e828ebf7a28a70",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-panda_current.glb": {
+      "triangles": 46065,
+      "sourceSha256": "287acc77a4e7db78dd6f316eb94d6369cc0bb394955a1005bc88a01919831451",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-panda_current_low.glb": {
+      "triangles": 16599,
+      "sourceSha256": "a2924917702c24431dcde612bf59fa66511194f39cd6874b35db70adbfd5bf27",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-panda.glb": {
+      "triangles": 62976,
+      "sourceSha256": "dc96c594bce0dfead971c15aca4920b8a4f044fe9075a3bc876693cf8eeb5876",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-panda_low.glb": {
+      "triangles": 21641,
+      "sourceSha256": "534fab4c745c6dd3eb04799a31b35da89ba6bb5722daa4c19b576d1d964f7dc4",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-fox_current.glb": {
+      "triangles": 41937,
+      "sourceSha256": "4c12dffd7d66c32fdf17b38344de500ccf15a0314bc53a2433d21b8a090243d2",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-fox.glb": {
+      "triangles": 58991,
+      "sourceSha256": "ee67d7166c54222b828ae7ebd8816e775f9645aa45928d2430d5981b15488f56",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-fox_low.glb": {
+      "triangles": 18099,
+      "sourceSha256": "76c98dfeca9d64119ad0131d62f11f65c0381b99984c72ac0b5eea90befbdf61",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-hamster_current.glb": {
+      "triangles": 42079,
+      "sourceSha256": "86817a0103af2a1879dd5f9e9a2155121b434339cb979523780484492e79cdbd",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-hamster.glb": {
+      "triangles": 59085,
+      "sourceSha256": "4be2d904a50cad81915e6ece188006a39f4f19fdfc7f251aff40fc15cd24fcc6",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-hamster_low.glb": {
+      "triangles": 17569,
+      "sourceSha256": "48508c67dfde8a040972b04c30ae76f784344deb66ba66a55cd5d4c7b09eea4a",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-pig_current.glb": {
+      "triangles": 39904,
+      "sourceSha256": "109805579f282bd12ea8e684c5a690461f5311c10d03d9da2598521e26bda367",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-pig.glb": {
+      "triangles": 56959,
+      "sourceSha256": "f989e726d1cbfce168011c0c11ea181f545ddf443453782796dfba278a06c453",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-pig_low.glb": {
+      "triangles": 16610,
+      "sourceSha256": "c228879d59a302ab040e7e55ccd8f2faa7d3699f8a3a92754d9990dd9fd393b3",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cow_current.glb": {
+      "triangles": 95628,
+      "sourceSha256": "6e31e21d0c661a14a5b1cfe2c00ee334c7f3689e373b88916ed89e8b838e0f00",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cow_current_low.glb": {
+      "triangles": 39261,
+      "sourceSha256": "292c034ec021f4a102d47e205fe43a1de5e83c9be09ff08f80aa3c5c016dfc63",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cow.glb": {
+      "triangles": 94037,
+      "sourceSha256": "b4f7d65648961fa51bdb1876923b86199649303166cb65ad16f2a7edb55a7e26",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/native/animal-cow_low.glb": {
+      "triangles": 38048,
+      "sourceSha256": "ce002aa841a60240b49f3244d24c53ecbe1132edda4a1f43124dfeebd4e358b2",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
     }
   },
-  "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files."
+  "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
+  "$transformationChoices": "Pack30 explicit fidelity exception applies only to listed transformation file hashes and measured triangle counts. Human5 current only, nonhuman16 current/native; GPU performance remains unverified."
 }

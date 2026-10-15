@@ -607,7 +607,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   expect(bridges.length).toBe(4);
   for (const b of bridges) expect(b.url).toContain(`/${b.look}/bridge_${b.look}_v1.glb`);
   expect(d.assets.attaches.filter((x) => x.ids.includes('prop.fence')).length).toBeGreaterThanOrEqual(18); // two runs per cottage
-  // every model file of every season is in the active pack of the resource cache
+  // Required island files of every season are ready before entry; complete transformations are fetched when worn.
   const cached = await page.evaluate(async () => {
     const pointer = await caches.match('/active', { cacheName: 'gc-res:meta' }); const { cache } = await pointer.json();
     return (await (await caches.open(cache)).keys()).map((r) => new URL(r.url).pathname).filter((p) => p.startsWith('/assets/island/'));
@@ -617,8 +617,21 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '.glb');
     expect(cached).toContain('/assets/island/additions-v1/' + season + '/flower_' + c + '_' + season + '_low.glb');
   }
-  const config = require('../../tools/assets/island-models.json');
-  expect(cached.length).toBe(config.files.length + config.files.filter((f) => f.low || f.lowSrc).length); // v1.10.29: every island model (High and Low, all four seasons) is in the pack before entry
+  const manifest = await page.evaluate(() => window.GameBoot.manifest);
+  const requiredGroups = new Set(manifest.required || ['core']);
+  const islandAssets = manifest.assets.filter(asset => asset.url.startsWith('/assets/island/'));
+  const requiredIsland = islandAssets.filter(asset => requiredGroups.has(asset.group || 'core')).map(asset => asset.url);
+  expect(requiredIsland.length).toBeGreaterThan(0);
+  expect(cached.slice().sort()).toEqual(requiredIsland.slice().sort());
+  const transformations = require('../../tools/assets/transformation-choices-import.json');
+  const transformationPaths = transformations.files.map(file => '/assets/island/' + file.out);
+  expect(new Set(transformationPaths).size).toBe(transformations.GLBs);
+  const optionalTransformations = islandAssets.filter(asset => asset.group === 'island.transformations');
+  expect(optionalTransformations.map(asset => asset.url).sort()).toEqual(transformationPaths.slice().sort());
+  for (const asset of optionalTransformations) {
+    expect(requiredGroups.has(asset.group), asset.url + ' stays optional').toBe(false);
+    expect(cached, asset.url + ' is not downloaded before a set is worn').not.toContain(asset.url);
+  }
   for (const [url] of files) expect(cached).toContain(url);
   for (const b of d.assets.batches) {
     expect(b.placed).toBe(true); expect(b.parts).toBe(b.ids[0].startsWith('halloween.') ? b.parts : 1); // v1.10.39: the Halloween decor keeps its glowing material apart (not flattened)
@@ -676,13 +689,18 @@ test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 
   await a.context.close();
 });
 
-// v1.10.30 공통 캐릭터: the common-rig body with its gender's clothes; an avatar item with a part is worn on the same
-// skeleton, the face (성형) and a dyed item (염색) change what is worn, the island goes on; an item without a part yet keeps
-// the procedural character (never swapped for something else)
-characterTest('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색 반영, 대응 모듈 없는 상품은 생성형 유지', async ({ browser, request }) => {
-  test.setTimeout(180000);
-  const who = await shopper(browser, request, '공통캐릭', 2_000_000, 'female');
-  const { page, token } = who;
+// Independent common-avatar scenarios: prepare the saved look through the existing classic API path, then boot
+// one island per case. Recreating the entire software-rendered world four times hid these assertions behind one
+// shared timeout on CI. Clothing changes within a running island use the real wardrobe UI without another reload.
+async function commonCharacter(browser, request, label, check) {
+  const who = await shopper(browser, request, label, 2_000_000, 'female', async context => {
+    await context.addInitScript(() => {
+      if (!/^https?:$/.test(location.protocol) || localStorage.getItem('gc.testCommonPrepared')) return;
+      localStorage.setItem('gc.testClassic', '1');
+      localStorage.setItem('gc.testCommonPrepared', '1');
+    });
+  });
+  const { page } = who;
   // Look payments use a globally unique ledger request key. Each retry creates a new account.
   const lookRequest = () => require('node:crypto').randomUUID();
   const bootFailures = [];
@@ -705,35 +723,52 @@ characterTest('공통 캐릭터: 성별 기본형 조립, 헤어·성형·염색
       throw error;
     }
   };
-  await ready();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
-  // v1.10.35: the name tag stands just over the worn model's head (it was a fixed 2.53 over the feet)
-  const tag = await page.evaluate(() => window.PlazaDebug().tagLayout);
-  expect(tag.headTop).toBeGreaterThan(1.4); expect(tag.headTop).toBeLessThan(2.4);
-  expect(tag.bottom - tag.headTop).toBeGreaterThan(0.05); expect(tag.bottom - tag.headTop).toBeLessThan(0.25);
-  // v1.10.35 염색: the base hair, the eyes and the skin (nothing to own)
-  const visit = async (id) => page.evaluate(async (key) => { const d = window.PlazaDebug().doors[key]; await window.PlazaWarp(d.x, d.z); }, id);
-  await visit('dye');
-  for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: lookRequest() })).status).toBe(200);
-  await ready();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 30000 }).toMatchObject({ hairColor: '#e2c27a', eyeColor: '#34507e', skinColor: '#b07a4d' });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wornColors), { timeout: 90000 }).toMatchObject({ hair: '#e2c27a', eyes: '#34507e', skin: '#b07a4d' });
-  await visit('hair');
-  for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
-  expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
-  await visit('faces');
-  expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: lookRequest() })).status).toBe(200);
-  await visit('dye');
-  expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: lookRequest() })).status).toBe(200);
-  await ready();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
-  expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
-  // v1.10.32: an older item without a part until now (무지개 머리) is the common character too, its own remade part
-  expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_5' })).status).toBe(200);
-  await ready();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_rainbow', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
-  await expectNoScriptError(page);
-  await who.context.close();
+  try {
+    await check({ ...who, ready, lookRequest });
+    await expectNoScriptError(page);
+  } finally { await who.context.close(); }
+}
+
+characterTest('공통 캐릭터: 여성 기본형 모듈 조립과 이름표 높이', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  await commonCharacter(browser, request, '공통기본형', async ({ page, ready }) => {
+    await ready();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.face_eyes_cheeks', 'wear.hair_long', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes']);
+    // The name tag stands just over the worn model's head (it was a fixed 2.53 over the feet).
+    const tag = await page.evaluate(() => window.PlazaDebug().tagLayout);
+    expect(tag.headTop).toBeGreaterThan(1.4); expect(tag.headTop).toBeLessThan(2.4);
+    expect(tag.bottom - tag.headTop).toBeGreaterThan(0.05); expect(tag.bottom - tag.headTop).toBeLessThan(0.25);
+  });
+});
+
+characterTest('공통 캐릭터: 기본 헤어·눈·피부 염색 저장과 실제 모델 색', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  await commonCharacter(browser, request, '공통기본염색', async ({ page, token, ready, lookRequest }) => {
+    for (const [itemId, color] of [['base_hair', 'c05'], ['eyes', 'c22'], ['skin', 's09']]) expect((await post(request, '/api/avatar/dye', token, { itemId, color, requestId: lookRequest() })).status).toBe(200);
+    await ready();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 30000 }).toMatchObject({ hairColor: '#e2c27a', eyeColor: '#34507e', skinColor: '#b07a4d' });
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().wornColors), { timeout: 90000 }).toMatchObject({ hair: '#e2c27a', eyes: '#34507e', skin: '#b07a4d' });
+  });
+});
+
+characterTest('공통 캐릭터: 구매 헤어·성형·아이템 염색 복원과 무지개 헤어 즉시 교체', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  await commonCharacter(browser, request, '공통헤어성형', async ({ page, token, ready, lookRequest }) => {
+    for (const id of ['avatar_hair_1', 'avatar_hair_5']) expect((await post(request, '/api/skins/buy', token, { skinId: id })).status).toBe(200);
+    expect((await post(request, '/api/skins/equip', token, { skinId: 'avatar_hair_1' })).status).toBe(200);
+    expect((await post(request, '/api/avatar/surgery', token, { part: 'eyes', design: 'heart', requestId: lookRequest() })).status).toBe(200);
+    expect((await post(request, '/api/avatar/dye', token, { itemId: 'avatar_hair_1', color: 'c12', requestId: lookRequest() })).status).toBe(200);
+    await ready();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_twin_tail', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
+    expect(await page.evaluate(() => window.PlazaDebug().look.dye)).toEqual({ avatar_hair_1: '#eda3b8' });
+    // The remade rainbow part replaces the current hair on this same live skeleton, retaining the heart eyes.
+    await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click();
+    const equipped = page.waitForResponse(response => new URL(response.url()).pathname === '/api/skins/equip' && response.request().method() === 'POST');
+    await page.locator('#myInfoSkinBody button[data-skin="avatar_hair_5"]').click();
+    expect((await equipped).status()).toBe(200);
+    await page.locator('#myInfoCloseBtn').click();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(['wear.hair_rainbow', 'wear.female_shirt', 'wear.short_skirt', 'wear.shoes', 'wear.eyes_heart']);
+  });
 });
 
 // v1.10.32 캐릭터 조합 맞춤: the parts that meet where they are worn give way, from their own shapes -- the beanie's crown

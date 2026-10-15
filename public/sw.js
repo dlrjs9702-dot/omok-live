@@ -74,6 +74,9 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') event.waitUntil(checkServer());
   if (request.method !== 'GET' || !url.searchParams.has('rev')) return;
+  // Only public pack files may enter the resource cache. API responses, pages and executable code remain network
+  // traffic even when a caller adds a revision query; complete transformation GLBs use this same lazy path.
+  if (!/^\/(?:assets|hwatu)\//.test(url.pathname) || !/\.(?:json|svg|png|ico|webmanifest|glb|gltf|bin|jpe?g|webp|avif|wasm|pck)$/i.test(url.pathname)) return;
   const key = url.pathname + url.search;
   event.respondWith(fromActivePack(key).catch(() => null).then(hit => hit || verifiedResponse(request, url.searchParams.get('rev')).then(response => {
     event.waitUntil(keep(key, response.clone()));

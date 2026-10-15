@@ -230,7 +230,7 @@
     // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
     const transformation = TRANSFORMATIONS?.match(look);
     return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) },
-      ...(transformation ? { transformation: `character.transform.${transformation.id}` } : {}) };
+      ...(transformation ? { transformation: `character.transform.${transformation.id}.${TRANSFORMATIONS.modeOf(transformation, look)}` } : {}) };
   }
 
   // v1.10.36 10월 할로윈: the plaza's landmark in the fountain's place (pedestal, and the jack-o'-lantern on it at 1.05)
@@ -293,9 +293,13 @@
   // (only the original designs are dyeable, lib/skins.js DYEABLE); the character parts from their own folder wear-ip/
   const X2 = typeof module === 'object' && module.exports ? require('./skins-x2.js') : globalThis.SkinsX2;
   const TRANSFORMATIONS = typeof module === 'object' && module.exports ? require('./character-transformations.js') : globalThis.CharacterTransformations;
-  for (const c of TRANSFORMATIONS?.characters || []) REGISTRY[`character.transform.${c.id}`] = {
-    url: c.url, low: { url: c.lowUrl }, near: 22, rotationY: Math.PI, nativeRig: c.rig, character: c.id,
-  };
+  for (const c of TRANSFORMATIONS?.characters || []) {
+    for (const [mode, variant] of Object.entries(c.variants)) REGISTRY[`character.transform.${c.id}.${mode}`] = {
+      url: variant.url, low: { url: variant.lowUrl }, near: 22, rotationY: Math.PI,
+      nativeRig: variant.rig, character: c.id, transformationMode: mode,
+    };
+    REGISTRY[`character.transform.${c.id}`] = REGISTRY[`character.transform.${c.id}.${c.defaultVariant}`];
+  }
   const X2_FIT = (slot) => (slot === 'outfit' ? { dye: 'primary', replaces: ['top', 'bottom'] } : slot === 'hat' ? { dye: 'primary', cover: 1.95 } : slot === 'shoes' ? { dye: 'primary', replaces: ['shoes'] } : slot === 'necklace' ? {} : { dye: 'primary' });
   for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
     REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;

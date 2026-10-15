@@ -4244,6 +4244,71 @@
   const skinShopDialog = document.getElementById('skinShopDialog');
   let myInfoSkins = null; // { catalog, owned: Set, equipped } — 구매 기능 없이 보유 스킨만 표시
   let myInfoSkinFamily = null;
+  let transformationPending = false;
+
+  function applySkinEquipment(data) {
+    for (const skins of [myInfoSkins, skinShop]) {
+      if (!skins) continue;
+      skins.equipped = data.equipped;
+      skins.avatar = data.avatar;
+    }
+    plazaAvatar = data.avatar || plazaAvatar;
+    applyPlazaAvatar();
+    plazaLastSent = null;
+  }
+
+  function renderTransformationChoice(skins) {
+    const transformations = window.CharacterTransformations;
+    const look = skins.avatar?.look || skins.equipped?.avatar || {};
+    const character = transformations?.match(look);
+    if (!character || character.human || !character.variants?.current || !character.variants?.native) return null;
+    const mode = transformations.modeOf(character, look);
+    const row = document.createElement('div');
+    row.className = 'skinTransformation';
+    const name = document.createElement('strong');
+    name.textContent = character.label;
+    const choices = document.createElement('div');
+    choices.className = 'skinTransformationChoices';
+    choices.setAttribute('role', 'group');
+    choices.setAttribute('aria-label', `${character.label} 체형`);
+    choices.setAttribute('aria-busy', String(transformationPending));
+    for (const [value, label] of [['current', '우리 체형'], ['native', '고유 체형']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `ghost tiny${value === mode ? ' selected' : ''}`;
+      button.dataset.action = 'transformation';
+      button.dataset.character = character.id;
+      button.dataset.mode = value;
+      button.setAttribute('aria-pressed', String(value === mode));
+      button.disabled = transformationPending;
+      button.textContent = label;
+      choices.append(button);
+    }
+    row.append(name, choices);
+    return row;
+  }
+
+  async function changeTransformation(button, status) {
+    if (transformationPending) return;
+    const { character: characterId, mode } = button.dataset;
+    if (button.getAttribute('aria-pressed') === 'true') return;
+    const token = sessionToken;
+    transformationPending = true;
+    status.textContent = '';
+    if (myInfoSkins) renderMyInfoSkins();
+    if (skinShop) renderSkinShop();
+    try {
+      const data = await api('/api/avatar/transformation', { method: 'POST', body: JSON.stringify({ characterId, mode }) });
+      if (token !== sessionToken) return;
+      applySkinEquipment(data);
+    } catch (error) {
+      if (token === sessionToken) status.textContent = error.message;
+    } finally {
+      transformationPending = false;
+      if (myInfoSkins) renderMyInfoSkins();
+      if (skinShop) renderSkinShop();
+    }
+  }
 
   function renderMyInfoSkins() {
     myInfoSkinBody.replaceChildren();
@@ -4273,6 +4338,10 @@
     myInfoSkinBody.append(tabs);
     const family = families.find((item) => item.family === myInfoSkinFamily);
     if (!family) return;
+    if (family.family === 'avatar') {
+      const choice = renderTransformationChoice(myInfoSkins);
+      if (choice) myInfoSkinBody.append(choice);
+    }
     for (const tierKey of SKIN_TIER_ORDER) {
       const skins = family.skins.filter((skin) => skin.tier === tierKey);
       if (!skins.length) continue;
@@ -4299,6 +4368,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.skin = skin.id;
+        button.disabled = transformationPending;
         if (equipped) {
           button.className = 'ghost';
           button.textContent = '장착 중 · 해제';
@@ -4322,7 +4392,7 @@
     myInfoSkinStatus.textContent = '';
     try {
       const data = await api('/api/skins');
-      myInfoSkins = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped };
+      myInfoSkins = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, avatar: data.avatar };
       renderMyInfoSkins();
     } catch (error) {
       if (myInfoDialog.open) myInfoSkinStatus.textContent = `보유 스킨을 불러오지 못했습니다 · ${error.message}`;
@@ -4334,17 +4404,18 @@
     if (tab && myInfoSkins) { myInfoSkinFamily = tab.dataset.family; renderMyInfoSkins(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !myInfoSkins) return;
+    if (button.dataset.action === 'transformation') { await changeTransformation(button, myInfoSkinStatus); return; }
+    if (transformationPending) return;
     myInfoSkinStatus.textContent = '';
     const { action, skin: skinId } = button.dataset;
     try {
       if (action === 'equip') {
         const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId }) });
-        myInfoSkins.equipped = data.equipped;
+        applySkinEquipment(data);
       } else if (action === 'unequip') {
         const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
-        myInfoSkins.equipped = data.equipped;
+        applySkinEquipment(data);
       }
-      await refreshPlazaAvatar();
       renderMyInfoSkins();
       if (skinShop) { skinShop.equipped = myInfoSkins.equipped; renderSkinShop(); }
     } catch (error) {
@@ -4398,6 +4469,10 @@
     skinShopBody.append(tabs);
     const family = families.find(f => f.family === skinShopFamily);
     if (!family) return;
+    if (family.family === 'avatar') {
+      const choice = renderTransformationChoice(skinShop);
+      if (choice) skinShopBody.append(choice);
+    }
     // character skins: one slot at a time (v1.10.30 one shop per kind; v1.10.32 a tab per slot where a shop has several)
     let slotOnly = null;
     if (family.family === 'avatar') {
@@ -4447,6 +4522,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.skin = skin.id;
+        button.disabled = transformationPending;
         if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
         else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
         else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
@@ -4478,6 +4554,7 @@
       button.dataset.action = 'title';
       button.dataset.skin = skin.id || '';
       button.textContent = skin.name;
+      button.disabled = transformationPending;
       list.append(button);
     }
     section.append(heading, list);
@@ -4490,7 +4567,7 @@
     try {
       const data = await api('/api/skins');
       if (epoch !== skinShopEpoch || mode !== skinShopMode || token !== sessionToken || !skinShopDialog.open) return;
-      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, balance: data.balance, dexTitles: data.dexTitles || [] };
+      skinShop = { catalog: data.catalog, owned: new Set(data.owned), equipped: data.equipped, avatar: data.avatar, balance: data.balance, dexTitles: data.dexTitles || [] };
       renderSkinShop();
     } catch (error) {
       if (epoch === skinShopEpoch && token === sessionToken && skinShopDialog.open) skinShopStatus.textContent = `상점을 불러오지 못했습니다 · ${error.message}`;
@@ -4502,6 +4579,8 @@
     if (tab && skinShop) { if (tab.dataset.slot) skinShopSlot = tab.dataset.slot; else skinShopFamily = tab.dataset.family; skinBuyArmed = null; renderSkinShop(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !skinShop) return;
+    if (button.dataset.action === 'transformation') { await changeTransformation(button, skinShopStatus); return; }
+    if (transformationPending) return;
     const { action, skin: skinId } = button.dataset;
     const epoch = skinShopEpoch; const shop = skinShop; const token = sessionToken;
     const current = () => epoch === skinShopEpoch && shop === skinShop && token === sessionToken && skinShopDialog.open;
@@ -4524,17 +4603,16 @@
       } else if (action === 'equip') {
         const data = await api('/api/skins/equip', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId }) });
         if (!current()) return;
-        skinShop.equipped = data.equipped;
+        applySkinEquipment(data);
       } else if (action === 'unequip') {
         const data = await api('/api/skins/equip', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId: null, game: button.dataset.game, slot: button.dataset.slot }) });
         if (!current()) return;
-        skinShop.equipped = data.equipped;
+        applySkinEquipment(data);
       } else if (action === 'title') {
         const data = await api('/api/skins/title', { method: 'POST', headers: { 'X-Island-Facility': 'shop' }, body: JSON.stringify({ skinId: skinId || null }) });
         if (!current()) return;
-        skinShop.equipped = data.equipped;
+        applySkinEquipment(data);
       }
-      if (['equip', 'unequip', 'title'].includes(action)) refreshPlazaAvatar(); // the plaza character wears it at once
       renderSkinShop();
     } catch (error) {
       if (!current()) return;
@@ -5955,7 +6033,7 @@
     } else if (g.status === 'selecting') {
       boardOverlay.classList.remove('resultWin', 'resultLoss');
       const choice = state.me?.choice;
-      if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : state.gameType === 'connect4' ? '빨강 · 노랑 · 관전 중 역할을 선택하세요' : ['yut','dots'].includes(state.gameType) ? '파랑 · 빨강 · 관전 중 역할을 선택하세요' : '흑 · 백 · 관전 중 역할을 선택하세요';
+      if (!choice) boardOverlay.textContent = team || city ? '1 · 2 · 3 · 4번 또는 관전을 선택하세요' : `${choiceKo('black')} · ${choiceKo('white')} · 관전 중 역할을 선택하세요`;
       else if (choice === 'spectator') boardOverlay.textContent = '관전자로 대기 중입니다';
       else boardOverlay.textContent = `${choiceKo(choice)} 선택 완료 · 다른 플레이어를 기다리는 중`;
       boardOverlay.classList.remove('hidden');
@@ -6181,7 +6259,7 @@
       yutMoveTrackingStarted = true;
     }
 
-    if (g.status === 'selecting') yutHint.textContent = '파랑과 빨강이 정해지면 파랑부터 시작합니다.';
+    if (g.status === 'selecting') yutHint.textContent = `${seatKo('black')}과 ${seatKo('white')}이 정해지면 ${seatKo('black')}부터 시작합니다.`;
     else if (g.status === 'finished') yutHint.textContent = `${seatKo(g.winner)}이 말 4개를 모두 완주했습니다.`;
     else if (!seat) yutHint.textContent = `${seatKo(g.turn)}의 진행을 관전하고 있습니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;
     else if (g.turn !== seat) yutHint.textContent = `${seatKo(g.turn)} 차례입니다.${g.lastPass ? ` · ${seatKo(g.lastPass)} 자동 패스(빽도로 물릴 말 없음)` : ''}`;

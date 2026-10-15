@@ -52,10 +52,19 @@ test('리소스 매니페스트 그룹: 아일랜드 등록 모델 파일은 4�
   assert.ok(urls.size >= 32);
   for (const url of urls) {
     assert.ok(byUrl.has(url), `${url} 매니페스트에 있음`);
-    assert.equal(byUrl.get(url).group, 'island', url);
+    assert.equal(byUrl.get(url).group, groupOf(url), url);
   }
   for (const season of ['spring', 'summer', 'autumn', 'winter']) assert.ok([...urls].some(u => u.includes(`/${season}/`)), season);
-  assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => a.group === 'island'));
+  assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => ['island', 'island.transformations'].includes(a.group)));
+  const transformations = require('../public/plaza/character-transformations');
+  const completeUrls = transformations.characters.flatMap(c => Object.values(c.variants).flatMap(v => [v.url, v.lowUrl]));
+  assert.equal(new Set(completeUrls).size, 74);
+  for (const url of completeUrls) {
+    assert.equal(byUrl.get(url)?.group, 'island.transformations', url);
+    assert.equal(REQUIRED_GROUPS.includes(byUrl.get(url)?.group), false, 'unused complete models are not an entry download');
+  }
+  assert.equal(groupOf('/assets/island/characters/body_core.glb'), 'island');
+  assert.equal(groupOf('/assets/island/characters/wear-ip/kuromi_hat.glb'), 'island');
   assert.ok(manifest.assets.filter(a => a.url.startsWith('/hwatu/')).every(a => a.group === 'game.gostop'));
   assert.equal(groupOf('/assets/halli/banana.svg'), 'game.halligalli');
   assert.equal(groupOf('/assets/davinci/table.svg'), 'game.davinci');
