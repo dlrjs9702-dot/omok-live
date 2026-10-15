@@ -402,6 +402,11 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .skinShopBalance{font-weight:800;color:#fde68a;font-size:.95rem}
 .skinShopStatus{min-height:1.2em;margin:6px 0;font-size:.85rem;color:#fca5a5}
 .skinShopBody{display:grid;gap:18px}
+.skinTransformation{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid #273449;border-radius:12px;background:#0f172a;margin-bottom:10px}
+.skinTransformation strong{font-size:.84rem}
+.skinTransformationChoices{display:flex;gap:6px}
+.skinTransformationChoices button{min-height:44px;font-size:.78rem}
+.skinTransformationChoices button[aria-pressed="true"]{background:#f8fafc;color:#111827;border-color:#f8fafc}
 .skinFamily h3{margin:0 0 10px;font-size:1.02rem;color:#e2e8f0}
 .skinGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
 .skinCard{display:grid;gap:8px;padding:12px;border:1px solid #273449;border-radius:12px;background:#0f172a}
