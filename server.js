@@ -3428,6 +3428,7 @@ async function requestHandler(req, res) {
     if (!transformationModeAllowed(character, body?.mode)) return sendError(res, 400, 'BAD_TRANSFORMATION_MODE', '사용할 수 없는 체형입니다.');
     const result = await pointStore.setAvatarTransformation({ userId: account, characterId: character.id, mode: body.mode });
     if (!result.ok) return sendError(res, 409, result.reason === 'not-owned' ? 'SKIN_NOT_OWNED' : 'TRANSFORMATION_INCOMPLETE', '캐릭터의 모든 파츠를 착용해 주세요.');
+    equippedSkinCache.set(account, result.equipped);
     await loadEquippedSkins(account);
     const equipped = equippedSkinCache.get(account) || result.equipped;
     const avatar = avatarLookOf(equipped);
