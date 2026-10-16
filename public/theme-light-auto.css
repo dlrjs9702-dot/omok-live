@@ -997,3 +997,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gameSheetCreate{border-top:1px solid #e2d4bd}
 :root[data-theme="light"] .gamePanelHead{background:rgba(247,239,225,.88);border:1px solid #e2d4bd;color:#33281d}
 :root[data-theme="light"] .halliPanel #halliStatus.gamePanelHead{color:#f8fafc}
+:root[data-theme="light"] .messengerRoomList button[aria-current="true"]{outline:2px solid #23806f}
+:root[data-theme="light"] .messengerUnread{background:#ef4444;color:#fff}
