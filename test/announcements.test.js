@@ -8,16 +8,7 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { JsonAnnouncementStore, PostgresAnnouncementStore } = require('../lib/announcement-store');
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('announcement JSON storage survives reinitialization and supports edits and deletion', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-notices-store-'));

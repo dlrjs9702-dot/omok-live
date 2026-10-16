@@ -79,16 +79,7 @@ test('full board without a winning line is a draw', () => {
   assert.deepEqual(connect4.publicState(g).legalColumns, []);
 });
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const socket = net.createServer();
-    socket.once('error', reject);
-    socket.listen(0, '127.0.0.1', () => {
-      const port = socket.address().port;
-      socket.close(() => resolve(port));
-    });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('Connect Four server supports public join, spectators, turn enforcement, real gravity, victory, rematch and existing guest files', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'connect4-server-'));
@@ -136,7 +127,7 @@ test('Connect Four server supports public join, spectators, turn enforcement, re
   const challenger = await login();
   const watcher = await login();
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.76');
+  assert.equal(health.data.version, '1.10.77');
   const entry = await req('/api/admin/keys', host, { label: '사목손님' });
   assert.equal(entry.status, 201);
   assert.match(entry.data.html, /사목손님/);

@@ -8,13 +8,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort() {
-  const server = net.createServer();
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  await new Promise(resolve => server.close(resolve));
-  return port;
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 // IDEAS backlog 4: the next hand of 고스톱·맞고 must not start until the finished hand's points are settled.
 test('고스톱 정산이 실패하는 동안 다음 판은 시작되지 않고, 복구 뒤 정산은 한 번만 반영된다', { timeout: 40_000 }, async t => {

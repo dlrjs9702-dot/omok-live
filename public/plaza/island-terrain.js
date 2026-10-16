@@ -394,19 +394,34 @@
   }
   // Things a character walks around, with their radius (the same circles the browser uses).
   // A small deterministic subset; both server and renderer use the same trunk and approach.
+  // v1.10.77 (IDEAS #future-life 「모든 과일나무 채집」): which drawn kind each tree is, decided here once for the renderer
+  // and the server alike (it was island.js's own pick, so 12 trees bore fruit nobody could pick)
+  const TREE_SHARES = [['round', 0.3], ['tiered', 0.18], ['pine', 0.16], ['tall', 0.12], ['blossom', 0.06], ['fruit', 0.06], ['sapling', 0.08], ['stump', 0.04]];
+  const treeHash = (x, z) => { const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return v - Math.floor(v); };
+  function treeKind(t) { let r = treeHash(t.x, t.z); for (const [kind, share] of TREE_SHARES) { r -= share; if (r <= 0) return kind; } return 'round'; }
   let harvestNature = null; let harvestCache = null;
+  // The trees fruit is picked from: the 20 spaced ones of v1.10.50 (same places, same order) and every other tree drawn
+  // as a fruit tree. Each needs a free spot to stand at its trunk; a fruit-kind tree without one is drawn plain.
   function harvestTrees() {
     const n = nature(); if (harvestNature === n) return harvestCache;
     const out = [];
-    for (const t of n.trees) {
+    const approachOf = (t) => {
       const p = { x: t.x, z: t.z + 0.685 };
-      if (Math.hypot(p.x,p.z)<PLAZA_R+4) continue;
-      if (!walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || streamDist(p.x, p.z) < STREAM_HALF + 2 || inTownhall(p.x, p.z, 3)) continue;
-      if (n.trees.some(o => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some(o => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) continue;
-      if (BUILDINGS.some(b => b.kind !== 'townhall' && Math.hypot(p.x-b.x,p.z-b.z)<(b.kind === 'hall' ? 14 : 7)) || STATUE_SPOTS.some(b => Math.hypot(p.x-b.x,p.z-b.z)<3) || n.lampSpots.some(b => Math.hypot(p.x-b.x,p.z-b.z)<1.2)) continue;
-      if (out.some(o => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue;
-      out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
+      if (Math.hypot(p.x,p.z)<PLAZA_R+4) return null;
+      if (!walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || streamDist(p.x, p.z) < STREAM_HALF + 2 || inTownhall(p.x, p.z, 3)) return null;
+      if (n.trees.some(o => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some(o => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) return null;
+      if (BUILDINGS.some(b => b.kind !== 'townhall' && Math.hypot(p.x-b.x,p.z-b.z)<(b.kind === 'hall' ? 14 : 7)) || STATUE_SPOTS.some(b => Math.hypot(p.x-b.x,p.z-b.z)<3) || n.lampSpots.some(b => Math.hypot(p.x-b.x,p.z-b.z)<1.2)) return null;
+      return p;
+    };
+    const add = (t, p) => out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
+    for (const t of n.trees) {
       if (out.length === 20) break;
+      const p = approachOf(t); if (!p || out.some(o => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue;
+      add(t, p);
+    }
+    for (const t of n.trees) {
+      if (treeKind(t) !== 'fruit' || out.some(o => Math.hypot(o.x - t.x, o.z - t.z) < 5)) continue; // events keep 4 m apart (island-events GAP)
+      const p = approachOf(t); if (p) add(t, p);
     }
     harvestNature = n; harvestCache = out; return out;
   }
@@ -447,5 +462,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

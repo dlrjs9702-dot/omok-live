@@ -12,13 +12,7 @@ const { spawn } = require('node:child_process');
 // AFK_TIMEOUT_MS/AFK_TICK_MS are overridable via env purely so this test doesn't have to wait a
 // real minute; production always uses the 60s/5s defaults.
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => { const port = s.address().port; s.close(() => resolve(port)); });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 async function serverFixture(t, extraEnv = {}) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afk-timeout-'));

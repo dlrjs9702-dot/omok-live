@@ -81,12 +81,7 @@ test('head-to-head only tallies direct two-person matches between exactly those 
   assert.deepEqual(headToHead(matches, 'guest-black', 'nobody').total, { played:0, wins:0, losses:0, draws:0, winRate:0 });
 });
 
-async function freePort() {
-  return new Promise((resolve,reject) => {
-    const socket=net.createServer(); socket.once('error',reject);
-    socket.listen(0,'127.0.0.1', () => socket.close(() => resolve(socket.address()?.port)));
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('authenticated records: completion, duplicate guard, rematch, rename, reissue, team and no secrets', { timeout:35000 }, async t => {
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'match-records-api-'));

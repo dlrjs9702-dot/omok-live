@@ -85,7 +85,8 @@
     // last tree kinds, the second bush, a flower model per colour, the islanders' houses, every facility building and
     // the lamp. Houses and facilities face -z like the others (rotationY: Math.PI) and keep the game's sign, door,
     // keeper, collision and interaction; the far level (`low`) shows past `near`.
-    ...Object.fromEntries([['pine', 0.95], ['fruit', 0.95], ['sapling', 1]].map(([kind, scale]) => [`nature.tree.${kind}`, { seasons: seasonalAdd(`tree_${kind}_{s}.glb`), low: { seasons: seasonalAdd(`tree_${kind}_{s}_low.glb`) }, scale, near: 35 }])),
+    // v1.10.77: no `fruit` -- every tree that bears fruit is a harvest tree (tree.harvest); the plain fruit tree is gone
+    ...Object.fromEntries([['pine', 0.95], ['sapling', 1]].map(([kind, scale]) => [`nature.tree.${kind}`, { seasons: seasonalAdd(`tree_${kind}_{s}.glb`), low: { seasons: seasonalAdd(`tree_${kind}_{s}_low.glb`) }, scale, near: 35 }])),
     'nature.bush.1': { seasons: seasonalAdd('bush_mounded_{s}.glb'), low: { seasons: seasonalAdd('bush_mounded_{s}_low.glb') }, scale: 1.05, near: 22, shadows: false },
     // flowers at every distance -- their colours make the island colourful from afar; the far file is the pipeline's
     // own simplification of the same flower (about 160-520 triangles), lighter than the artist's Low

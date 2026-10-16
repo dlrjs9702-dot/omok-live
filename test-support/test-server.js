@@ -10,11 +10,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const PASSWORD = 'look-test';
 
 async function boot(t, dir) {
-  const port = await new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
-  });
+  const port = await require('./free-port')(); // v1.10.77: claimed, never shared across parallel test files
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),

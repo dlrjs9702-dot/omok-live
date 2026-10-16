@@ -8,13 +8,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort() {
-  const server = net.createServer();
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  await new Promise(resolve => server.close(resolve));
-  return port;
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 // v1.7.0: GET /api/points/history is the caller's own ledger only, newest first, paged, read-only.
 test('로비 포인트 내역 API: 본인 조회·정렬·페이지·격리·읽기 전용', { timeout: 40_000 }, async (t) => {

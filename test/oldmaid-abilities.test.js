@@ -189,13 +189,7 @@ test('Old Maid special-ability actions are wired through the server and privacy-
   assert.match(js, /myOldMaidAbility/);
 });
 
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => { const port = srv.address().port; srv.close(() => resolve(port)); });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('special-mode room over HTTP: ability use is authorized, one-shot, and never leaks another seat\'s reveal', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(require('node:os').tmpdir(), 'oldmaid-ability-'));

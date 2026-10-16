@@ -36,7 +36,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     const mode = HUMAN_TRANSFORMS.includes(id) ? 'current' : 'native';
     assert.equal(REGISTRY[`character.transform.${id}`], REGISTRY[`character.transform.${id}.${mode}`], `${id} 기본 체형 별칭`);
   }
-  assert.deepEqual(Object.keys(REGISTRY).sort(), [...transformAliases, ...transformModes, 'facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.fruit', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
+  assert.deepEqual(Object.keys(REGISTRY).sort(), [...transformAliases, ...transformModes, 'facility.chat', 'nature.bush', 'nature.bush.1', 'nature.rock.0', 'nature.rock.1', 'nature.rock.2', 'nature.tree.blossom', 'nature.tree.pine', 'nature.tree.round', 'nature.tree.sapling', 'nature.tree.stump', 'nature.tree.stump.1',
     'nature.tree.tall', 'nature.tree.tiered', 'prop.bench', 'prop.bridge', 'prop.fence', 'prop.lamp', 'prop.planter',
     ...[0, 1, 2, 3, 4].map((c) => `nature.flower.${c}`), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `cottage.${i}`), ...FACILITIES.map((f) => `facility.${f}`),
     // v1.10.29 gap assets (gaps-v1)

@@ -10,13 +10,7 @@ const { spawn } = require('node:child_process');
 // IDEAS backlog 6: a seated player whose page merely dropped or refreshed keeps the seat through the next round
 // (the rematch) and gets it back on re-entry; only an explicit 접속 종료 (logout) gives the seat up once that match ended.
 
-async function freePort() {
-  const s = net.createServer();
-  await new Promise(resolve => s.listen(0, '127.0.0.1', resolve));
-  const { port } = s.address();
-  await new Promise(resolve => s.close(resolve));
-  return port;
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 async function serverFixture(t) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'seat-retention-'));
