@@ -3510,7 +3510,20 @@
       grantBtn.textContent = '포인트 지급';
       grantBtn.setAttribute('aria-label', `${key.label} 포인트 지급`);
       grantBtn.addEventListener('click', () => openPointGrant(key));
-      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, revokeBtn);
+      const messengerBtn = document.createElement('button'); // v1.10.78 메신저 허용 (IDEAS #future-messenger)
+      messengerBtn.className = 'ghost tiny compactAction';
+      messengerBtn.type = 'button';
+      const messengerLabel = () => { messengerBtn.textContent = key.messenger ? '메신저 해제' : '메신저 허용'; messengerBtn.setAttribute('aria-pressed', String(Boolean(key.messenger))); };
+      messengerLabel();
+      messengerBtn.addEventListener('click', async () => {
+        messengerBtn.disabled = true;
+        try {
+          const data = await api(`/api/admin/keys/${key.id}/messenger`, { method: 'POST', body: JSON.stringify({ allowed: !key.messenger }) });
+          key.messenger = data.messenger; messengerLabel();
+          showToast(`${key.label}: 메신저 ${key.messenger ? '허용' : '해제'}`);
+        } catch (err) { showToast(err.message, 4000); } finally { messengerBtn.disabled = false; }
+      });
+      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, revokeBtn);
 
       const detail = document.createElement('div');
       detail.className = 'keyDetail hidden';
@@ -9658,6 +9671,7 @@
   }
   for (const tab of accountGate.querySelectorAll('[data-account-tab]')) tab.addEventListener('click', () => { say(''); showAccountPane(tab.dataset.accountTab); });
   function showAccount(account) {
+    messenger.show(account.messenger === true);
     byId('accountTitle').textContent = `${account.label}님`;
     byId('accountSub').textContent = `아이디 ${account.loginId}`;
     showAccountPane('account');
@@ -9711,9 +9725,92 @@
   });
   function enterWithAccount() { byId('accountEntryToken').value = accountToken.get(); byId('accountEntryForm').submit(); } // the same entry as a file's
   byId('accountPlayBtn').addEventListener('click', enterWithAccount);
+  // v1.10.78 메신저 (IDEAS #future-messenger): group rooms for the accounts an administrator lets in -- the server checks
+  // every call; the button only shows for them. No stream here: the open room is asked again every 3 seconds and the
+  // room list every 10 (only while the window is open). Unread = the room's last number past the one last seen here.
+  const messenger = (() => {
+    const dialog = byId('messengerDialog'); const body = dialog.querySelector('.messengerBody'); const list = byId('messengerRoomList');
+    const box = byId('messengerMessages'); const pick = byId('messengerPick');
+    const SEEN = 'gc.messengerSeen'; const seen = (() => { try { return JSON.parse(localStorage.getItem(SEEN)) || {}; } catch { return {}; } })();
+    const markSeen = (id, seq) => { if ((seen[id] || 0) >= seq) return; seen[id] = seq; try { localStorage.setItem(SEEN, JSON.stringify(seen)); } catch {} };
+    let state = { rooms: [], people: [], me: '' }; let current = null; let last = 0; let timers = []; let picking = null;
+    const fail = (err) => { if (err.status === 401 || err.status === 403) { close(); say(err.message, true); } else showToast(err.message, 4000); };
+    function renderRooms() {
+      list.replaceChildren(...state.rooms.map((room) => {
+        const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
+        const name = document.createElement('span'); name.textContent = `${room.name} (${room.members.length})`; b.append(name);
+        const unread = room.seq - (seen[room.id] || 0);
+        if (unread > 0 && room.id !== current?.id) { const n = document.createElement('span'); n.className = 'messengerUnread'; n.textContent = unread > 99 ? '99+' : unread; b.append(n); }
+        b.setAttribute('aria-current', String(room.id === current?.id)); b.addEventListener('click', () => openRoom(room)); li.append(b); return li;
+      }));
+      if (!state.rooms.length) list.innerHTML = '<li class="smallMuted">아직 대화방이 없습니다.</li>';
+    }
+    async function refresh() { try { state = await accountApi('/api/messenger', null, 'GET'); renderRooms(); } catch (err) { fail(err); } }
+    function line(msg) {
+      const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '');
+      const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who);
+      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText'; text.textContent = msg.text;
+      const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); row.append(text, time);
+      item.append(head, row); return item;
+    }
+    async function pull() {
+      if (!current) return; const id = current.id;
+      try {
+        const data = await accountApi(`/api/messenger/rooms/${id}/messages?after=${last}`, null, 'GET');
+        if (current?.id !== id) return;
+        current = data.room; byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
+        if (!last) box.replaceChildren();
+        const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+        for (const msg of data.messages) { if (msg.seq <= last) continue; box.append(line(msg)); last = msg.seq; }
+        if (!box.children.length) box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
+        if (atEnd || !data.messages.length || data.messages.at(-1).from === state.me) box.scrollTop = box.scrollHeight;
+        markSeen(id, current.seq);
+      } catch (err) { if (err.status === 404) { current = null; body.classList.remove('inRoom'); refresh(); } else fail(err); }
+    }
+    function openRoom(room) { current = room; last = 0; box.replaceChildren(); body.classList.add('inRoom'); renderRooms(); pull(); byId('messengerInput').focus(); }
+    function showPick(mode) { // 'new' | 'invite'
+      picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
+      byId('messengerPickTitle').textContent = mode === 'new' ? '새 대화방' : `「${current.name}」에 초대`;
+      byId('messengerPickName').classList.toggle('hidden', mode !== 'new'); byId('messengerPickName').value = '';
+      const people = state.people.filter((p) => !inRoom.has(p.id));
+      byId('messengerPeople').replaceChildren(...people.map((p) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = p.id; l.append(c, p.label); return l; }));
+      if (!people.length) byId('messengerPeople').innerHTML = '<p class="smallMuted">함께할 수 있는 사람이 없습니다. 메신저는 관리자가 허용한 계정끼리 씁니다.</p>';
+      body.classList.add('picking'); pick.classList.remove('hidden');
+    }
+    function hidePick() { picking = null; body.classList.remove('picking'); pick.classList.add('hidden'); }
+    pick.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const members = [...byId('messengerPeople').querySelectorAll('input:checked')].map((c) => c.value);
+      try {
+        if (picking === 'new') { const data = await accountApi('/api/messenger/rooms', { name: byId('messengerPickName').value, members }); hidePick(); await refresh(); openRoom(data.room); }
+        else { await accountApi(`/api/messenger/rooms/${current.id}/members`, { members }); hidePick(); pull(); refresh(); }
+      } catch (err) { fail(err); }
+    });
+    byId('messengerPickCancel').addEventListener('click', hidePick);
+    byId('messengerNewBtn').addEventListener('click', () => showPick('new'));
+    byId('messengerInviteBtn').addEventListener('click', () => current && showPick('invite'));
+    byId('messengerBackBtn').addEventListener('click', () => { current = null; body.classList.remove('inRoom'); renderRooms(); });
+    byId('messengerLeaveBtn').addEventListener('click', async () => {
+      if (!current || !window.confirm(`「${current.name}」에서 나갈까요? 마지막 사람이 나가면 대화가 지워집니다.`)) return;
+      try { await accountApi(`/api/messenger/rooms/${current.id}/leave`); current = null; body.classList.remove('inRoom'); box.replaceChildren(); refresh(); } catch (err) { fail(err); }
+    });
+    byId('messengerForm').addEventListener('submit', async (event) => {
+      event.preventDefault(); const input = byId('messengerInput'); const text = input.value.trim(); if (!text || !current) return;
+      try { await accountApi(`/api/messenger/rooms/${current.id}/messages`, { text }); input.value = ''; pull(); } catch (err) { fail(err); }
+    });
+    function close() { for (const t of timers) clearInterval(t); timers = []; if (dialog.open) dialog.close(); }
+    dialog.addEventListener('close', close);
+    byId('messengerCloseBtn').addEventListener('click', close);
+    byId('accountMessengerBtn').addEventListener('click', async () => {
+      current = null; hidePick(); body.classList.remove('inRoom'); box.innerHTML = '<p class="emptyState">대화방을 고르거나 새로 만드세요.</p>';
+      dialog.showModal(); await refresh();
+      timers = [setInterval(pull, 3000), setInterval(refresh, 10000)];
+    });
+    return { show: (on) => byId('accountMessengerBtn').classList.toggle('hidden', !on), close };
+  })();
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});
-    accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
+    messenger.close(); messenger.show(false); accountToken.set(''); say('로그아웃했습니다.'); showAccountPane('login');
   });
   byId('accountPasswordBtn').addEventListener('click', () => {
     const form = byId('accountPasswordForm'); const open = form.classList.toggle('hidden') === false;

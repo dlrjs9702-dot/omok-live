@@ -94,7 +94,7 @@ test('계정 API: 가입 신청 → 승인 대기 → 승인 → 로그인 → �
   const login = await call('/api/account/login', { loginId: 'PLAYER_1', password: 'secret123' });
   assert.equal(login.status, 200);
   const account = login.data.accountToken;
-  assert.deepEqual((await call('/api/account/me', undefined, account)).data.account, { loginId: 'player_1', label: '철수', realName: '김철수' });
+  assert.deepEqual((await call('/api/account/me', undefined, account)).data.account, { loginId: 'player_1', label: '철수', realName: '김철수', messenger: false });
   assert.equal((await call('/api/account/me')).status, 401);
 
   // 게임 접속: the same entry as a file -- and one place at a time

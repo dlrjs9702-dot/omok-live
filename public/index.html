@@ -58,6 +58,7 @@
         <h2 id="accountTitle">내 계정</h2>
         <p id="accountSub" class="smallMuted"></p>
         <button id="accountPlayBtn" class="primary big" type="button">게임 접속</button>
+        <button id="accountMessengerBtn" class="secondary hidden" type="button" aria-haspopup="dialog" aria-controls="messengerDialog">메신저</button>
         <div class="accountActions">
           <button id="accountFileBtn" class="ghost" type="button">입장 파일 받기</button>
           <button id="accountPasswordBtn" class="ghost" type="button" aria-expanded="false" aria-controls="accountPasswordForm">비밀번호 변경</button>
@@ -1149,6 +1150,28 @@
   <dialog id="plazaDialog" class="recordsDialog plazaDialog" aria-labelledby="plazaDialogTitle">
     <div class="recordsDialogHead"><h2 id="plazaDialogTitle"></h2><button id="plazaCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="plazaDialogBody" class="plazaDialogBody"></div>
+  </dialog>
+  <!-- v1.10.78 메신저 (IDEAS #future-messenger): 내 계정의 단체 대화, 관리자가 허용한 계정만 (app.js messenger) -->
+  <dialog id="messengerDialog" class="recordsDialog messengerDialog" aria-labelledby="messengerTitle">
+    <div class="recordsDialogHead"><h2 id="messengerTitle">메신저</h2><button id="messengerCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div class="messengerBody">
+      <section class="messengerRooms" aria-label="대화방">
+        <button id="messengerNewBtn" type="button" class="secondary tiny">새 대화방</button>
+        <ul id="messengerRoomList" class="messengerRoomList"></ul>
+      </section>
+      <section id="messengerRoom" class="messengerRoom" aria-label="대화">
+        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
+        <p id="messengerMembers" class="smallMuted"></p>
+        <div id="messengerMessages" class="chatMessages messengerMessages" role="log" aria-live="polite"><p class="emptyState">대화방을 고르거나 새로 만드세요.</p></div>
+        <form id="messengerForm" class="messengerForm"><input id="messengerInput" type="text" maxlength="500" autocomplete="off" placeholder="메시지 입력" aria-label="메시지 입력" /><button class="primary" type="submit">보내기</button></form>
+      </section>
+      <form id="messengerPick" class="messengerPick hidden">
+        <strong id="messengerPickTitle">새 대화방</strong>
+        <input id="messengerPickName" type="text" maxlength="20" placeholder="방 이름 (20자)" aria-label="방 이름" />
+        <div id="messengerPeople" class="messengerPeople"></div>
+        <div class="noticeFormActions"><button class="primary" type="submit">확인</button><button id="messengerPickCancel" class="ghost" type="button">취소</button></div>
+      </form>
+    </div>
   </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>

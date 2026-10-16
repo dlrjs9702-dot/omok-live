@@ -32,6 +32,7 @@ const assignedSeatsFor = (room) => isNumberedSeatGame(room)
   : ['black', 'white'].filter(color => room.players[color]);
 const { createAccessStore, hashPassword, verifyPassword, normalizeLoginId, loginIdOk } = require('./lib/access-store');
 const { createAnnouncementStore } = require('./lib/announcement-store');
+const { createMessengerStore } = require('./lib/messenger-store');
 const { createMatchStore } = require('./lib/match-records');
 const { buildMatchResult, matchSeats, winningSeats } = require('./lib/match-result');
 const { toastLines, weeklyToastLines, weekStart } = require('./lib/missions');
@@ -142,6 +143,7 @@ const islandInviteIntents = new Map(); // short-lived proximity check before mak
 const INVITE_TTL_MS = 2 * 60 * 1000;
 let accessStore;
 let announcementStore;
+let messengerStore;
 let matchStore;
 let pointStore;
 // v1.7.30 skins: each account's equipped skins, kept in memory so the (synchronous) room view can share them with
@@ -586,6 +588,7 @@ function requestSessionRelease(token, page = '', sequence = 0) {
 // (15 minutes): the id and password are set first, then the same entry. Both live only in this process (a restart
 // asks for the login again).
 const ACCOUNT_TTL_MS = 12 * 60 * 60 * 1000;
+const MESSENGER_ROOM_MAX = 30; const MESSENGER_ROOMS_MAX = 20; const MESSENGER_TEXT_MAX = 500; // v1.10.78 메신저
 const SETUP_TTL_MS = 15 * 60 * 1000;
 const accountTokens = new Map(); // token -> { keyId, exp }
 const setupTickets = new Map(); // ticket -> { keyId, exp }
@@ -607,6 +610,7 @@ function dropAccountTokens(keyId, keep = null) { for (const [t, row] of accountT
 const PASSWORD_MIN = 8; const PASSWORD_MAX = 64;
 const passwordOk = (p) => typeof p === 'string' && p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX;
 const accountView = (key) => ({ loginId: key.loginId, label: key.label, realName: key.realName || '' });
+const accountOut = async (key) => ({ ...accountView(key), messenger: (await messengerStore.allowedIds()).includes(key.id) }); // v1.10.78: shows 메신저
 
 function guestKeyInUse(guestKeyId) {
   const token = activeGuestSessions.get(guestKeyId);
@@ -3122,7 +3126,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.77' });
+    return sendJson(res, 200, { ok: true, version: '1.10.78' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3167,7 +3171,7 @@ async function requestHandler(req, res) {
     if (!key || !await verifyPassword(String(body.password || ''), key.passwordHash)) return sendError(res, 403, 'BAD_LOGIN', '아이디 또는 비밀번호가 올바르지 않습니다.');
     if (key.pendingAt) return sendError(res, 403, 'PENDING', '관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
     if (key.revokedAt) return sendError(res, 403, 'REVOKED', '사용이 중지된 계정입니다. 관리자에게 문의해 주세요.');
-    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account: accountView(key) });
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, key.id, ACCOUNT_TTL_MS), account: await accountOut(key) });
   }
   if (pathname === '/api/account/setup' && req.method === 'POST') { // an entry-file account's first id and password
     if (!checkRateLimit(`account-setup:${clientIp(req)}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -3181,14 +3185,14 @@ async function requestHandler(req, res) {
     if (row === false) return sendError(res, 409, 'LOGIN_ID_TAKEN', '이미 사용 중인 아이디입니다.');
     if (!row) return sendError(res, 409, 'ALREADY_SET', '이미 아이디가 설정된 계정입니다. 로그인해 주세요.');
     setupTickets.delete(String(body.ticket)); setupRequiredKeys.delete(row.id);
-    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, row.id, ACCOUNT_TTL_MS), account: accountView(row) });
+    return sendJson(res, 200, { ok: true, accountToken: issueTicket(accountTokens, row.id, ACCOUNT_TTL_MS), account: await accountOut(row) });
   }
   if (pathname.startsWith('/api/account/') && ['me', 'password', 'entry-file', 'logout'].includes(pathname.slice(13))) {
     const acct = accountOf(req);
     const key = acct && await accessStore.get(acct.keyId);
     if (!key || key.revokedAt || key.pendingAt) { if (acct) accountTokens.delete(String(req.headers['x-account-token'])); return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.'); }
     const action = pathname.slice(13);
-    if (action === 'me' && req.method === 'GET') return sendJson(res, 200, { ok: true, account: accountView(key) });
+    if (action === 'me' && req.method === 'GET') return sendJson(res, 200, { ok: true, account: await accountOut(key) });
     if (action === 'logout' && req.method === 'POST') { accountTokens.delete(String(req.headers['x-account-token'])); return sendJson(res, 200, { ok: true }); }
     if (action === 'password' && req.method === 'POST') {
       if (!checkRateLimit(`account-password:${key.id}`, 10, 15 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.');
@@ -3208,6 +3212,63 @@ async function requestHandler(req, res) {
       invalidateGuestSessions(key.id, '새 입장 파일이 발급되어 이 접속은 종료되었습니다.'); // as the administrator's reissue (Codex)
       return sendJson(res, 200, { ok: true, fileName: safeFilename(row.label), html: makeGuestFile({ baseUrl: publicBaseUrl(req), token, label: row.label }) });
     }
+    return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
+  }
+  // v1.10.78 메신저 (IDEAS #future-messenger): group chat on 내 계정 for the accounts an administrator lets in. Every
+  // call checks the login and the permission here (a hidden button is not the check); a room is reached only by its
+  // members. The page asks again every few seconds while it is open (no stream on the start page).
+  if (pathname === '/api/messenger' || pathname.startsWith('/api/messenger/')) {
+    const acct = accountOf(req);
+    const key = acct && await accessStore.get(acct.keyId);
+    if (!key || key.revokedAt || key.pendingAt) return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.');
+    const allowed = new Set(await messengerStore.allowedIds());
+    if (!allowed.has(key.id)) return sendError(res, 403, 'MESSENGER_DENIED', '메신저는 관리자가 허용한 계정만 쓸 수 있습니다.');
+    const keys = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt);
+    const labelOf = new Map(keys.map((k) => [k.id, k.label]));
+    const people = keys.filter((k) => allowed.has(k.id) && k.id !== key.id).map((k) => ({ id: k.id, label: k.label }));
+    const view = (room) => ({ id: room.id, name: room.name, seq: room.seq, lastAt: room.lastAt, members: room.members.map((id) => ({ id, label: labelOf.get(id) || '(떠난 계정)' })) });
+    const invitees = (list) => { // other permitted accounts only
+      if (!Array.isArray(list) || list.length > MESSENGER_ROOM_MAX) return null;
+      const ids = [...new Set(list.map(String))].filter((id) => id !== key.id);
+      return ids.every((id) => people.some((p) => p.id === id)) ? ids : null;
+    };
+    if (pathname === '/api/messenger' && req.method === 'GET') {
+      const rooms = (await messengerStore.roomsOf(key.id)).sort((a, b) => String(b.lastAt).localeCompare(String(a.lastAt)));
+      return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people });
+    }
+    if (pathname === '/api/messenger/rooms' && req.method === 'POST') {
+      if (!checkRateLimit('messenger-room:' + key.id, 10, 60 * 60 * 1000)) return sendError(res, 429, 'RATE_LIMIT', '방을 너무 많이 만들고 있습니다. 잠시 뒤 다시 시도해 주세요.');
+      const body = await parseJson(req);
+      const name = String(body.name || '').trim().replace(/\s+/g, ' ');
+      if (!name || name.length > 20) return sendError(res, 400, 'BAD_ROOM_NAME', '방 이름은 1~20자로 입력해 주세요.');
+      const members = invitees(body.members);
+      if (!members || !members.length || members.length + 1 > MESSENGER_ROOM_MAX) return sendError(res, 400, 'BAD_MEMBERS', `함께할 사람을 1~${MESSENGER_ROOM_MAX - 1}명 골라 주세요.`);
+      if ((await messengerStore.roomsOf(key.id)).length >= MESSENGER_ROOMS_MAX) return sendError(res, 409, 'TOO_MANY_ROOMS', `방은 ${MESSENGER_ROOMS_MAX}개까지 들어갈 수 있습니다.`);
+      return sendJson(res, 201, { ok: true, room: view(await messengerStore.createRoom(name, key.id, members)) });
+    }
+    const m = pathname.match(/^\/api\/messenger\/rooms\/([0-9a-f-]{36})\/(messages|members|leave)$/i);
+    const room = m && await messengerStore.room(m[1]);
+    if (!room || !room.members.includes(key.id)) return sendError(res, 404, 'ROOM_NOT_FOUND', '대화방을 찾을 수 없습니다.');
+    if (m[2] === 'messages' && req.method === 'GET') {
+      const after = Math.max(0, Math.floor(Number(url.searchParams.get('after')) || 0));
+      return sendJson(res, 200, { ok: true, room: view(room), messages: (await messengerStore.messages(room.id, after)).map((x) => ({ ...x, label: labelOf.get(x.from) || '(떠난 계정)' })) });
+    }
+    if (m[2] === 'messages' && req.method === 'POST') {
+      if (!checkRateLimit('messenger-post:' + key.id, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
+      const body = await parseJson(req);
+      const text = String(body.text || '').trim();
+      if (!text) return sendError(res, 400, 'EMPTY_CHAT', '메시지를 입력해 주세요.');
+      if (text.length > MESSENGER_TEXT_MAX) return sendError(res, 400, 'CHAT_TOO_LONG', `메시지는 ${MESSENGER_TEXT_MAX}자까지 보낼 수 있습니다.`);
+      return sendJson(res, 201, { ok: true, message: { ...await messengerStore.post(room.id, key.id, text), label: key.label } });
+    }
+    if (m[2] === 'members' && req.method === 'POST') {
+      const body = await parseJson(req);
+      const members = invitees(body.members);
+      if (!members || !members.length) return sendError(res, 400, 'BAD_MEMBERS', '초대할 사람을 골라 주세요.');
+      if (new Set([...room.members, ...members]).size > MESSENGER_ROOM_MAX) return sendError(res, 409, 'ROOM_FULL', `한 방은 ${MESSENGER_ROOM_MAX}명까지입니다.`);
+      return sendJson(res, 200, { ok: true, room: view(await messengerStore.addMembers(room.id, members)) });
+    }
+    if (m[2] === 'leave' && req.method === 'POST') { await messengerStore.leave(room.id, key.id); return sendJson(res, 200, { ok: true }); }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/account-setup' && req.method === 'POST') {
@@ -4718,7 +4779,8 @@ async function requestHandler(req, res) {
 
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
-    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id) }));
+    const messenger = new Set(await messengerStore.allowedIds());
+    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id) }));
     return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
   }
 
@@ -4763,6 +4825,15 @@ async function requestHandler(req, res) {
     const fileName = safeFilename(label);
     const html = makeGuestFile({ baseUrl: publicBaseUrl(req), token, label });
     return sendJson(res, 201, { key: row, fileName, html });
+  }
+
+  const messengerMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/messenger$/i); // v1.10.78 메신저 허용
+  if (messengerMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!await accessStore.get(messengerMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
+    await messengerStore.setAllowed(messengerMatch[1], body.allowed === true);
+    return sendJson(res, 200, { ok: true, messenger: body.allowed === true });
   }
 
   const noteMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/note$/i);
@@ -5240,6 +5311,7 @@ async function main() {
   assetManifestJson.on = JSON.stringify({ enabled: true, ...pack, assetsOff: islandAssetsOff }).replace(/</g, '\\u003c');
   accessStore = await createAccessStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   announcementStore = await createAnnouncementStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
+  messengerStore = await createMessengerStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   matchStore = await createMatchStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL });
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
@@ -5301,7 +5373,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.77 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.78 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {
