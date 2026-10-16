@@ -7,7 +7,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort(){return new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',reject);s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));});});}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('liar server keeps roles/word private and restores phase on reconnect', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-liar-'));

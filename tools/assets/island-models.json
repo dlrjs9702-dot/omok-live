@@ -52,13 +52,6 @@
       "low": 0.08
     },
     {
-      "out": "additions-v1/autumn/tree_fruit_autumn.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/03. Autumn/tree_fruit_autumn.glb",
-      "sha256": "88be39a27ee81d32cc3e8f7332e948a6a07a6b29353afecc5e5a373400a4196c",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/01. Nature/03. Autumn/tree_fruit_autumn.glb",
-      "lowSha256": "da3df095bcace88d35757331908510f904d695011a3f5935ac2bd5d29e668fdc"
-    },
-    {
       "out": "additions-v1/autumn/tree_pine_autumn.glb",
       "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/03. Autumn/tree_pine_autumn.glb",
       "sha256": "230964414e78a7fbab83f8df5b2b6296ae527dfc8082e115c1ec32c7c006e2e5",
@@ -309,13 +302,6 @@
       "low": 0.08
     },
     {
-      "out": "additions-v1/spring/tree_fruit_spring.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/01. Spring/tree_fruit_spring.glb",
-      "sha256": "73c201125208a3964c3cd16f8c63ace475d63d8c5e9384bfa761044d9b8ddef0",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/01. Nature/01. Spring/tree_fruit_spring.glb",
-      "lowSha256": "4d1327e3c641c353048690816f49649084edc1eb68dc2342a79a38c6b4365e9c"
-    },
-    {
       "out": "additions-v1/spring/tree_pine_spring.glb",
       "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/01. Spring/tree_pine_spring.glb",
       "sha256": "a3928fc6e9c17a31e87bae69b3ada7e0ee9efce5ab2ada12f0bef2b5420cc889",
@@ -367,13 +353,6 @@
       "low": 0.08
     },
     {
-      "out": "additions-v1/summer/tree_fruit_summer.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/02. Summer/tree_fruit_summer.glb",
-      "sha256": "1f4ad5baec3f61699a54913cb35e49f4fb4adf77dd7ff3d6c3eafe676d152bc0",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/01. Nature/02. Summer/tree_fruit_summer.glb",
-      "lowSha256": "00e258a72d6e94922294267ac4ad70620f3ec497d25af0cfa68cb7d165e3b1c4"
-    },
-    {
       "out": "additions-v1/summer/tree_pine_summer.glb",
       "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/02. Summer/tree_pine_summer.glb",
       "sha256": "b6251be2f15bb544ebec3367a342b2c202a0696e8a50ad4d2162e50aa750bdb7",
@@ -423,13 +402,6 @@
       "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/04. Winter/flower_4_winter.glb",
       "sha256": "b4b126c12e5ef254011a6af00f16e0001b78842f6b7da59d24265694655a578f",
       "low": 0.08
-    },
-    {
-      "out": "additions-v1/winter/tree_fruit_winter.glb",
-      "src": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/01. Nature/04. Winter/tree_fruit_winter.glb",
-      "sha256": "0a62352cf699b0fde212f856896cdb40309b9da1dce999861df6ada130d60248",
-      "lowSrc": "overhaul:refined/02. Game Island additions 2026-10-05/02. Finished assets/05. Low LOD/01. Nature/04. Winter/tree_fruit_winter.glb",
-      "lowSha256": "af8a22eb93d137b83f37907e329476ba9651b78561891e8db09f69fab528c3c7"
     },
     {
       "out": "additions-v1/winter/tree_pine_winter.glb",

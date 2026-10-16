@@ -1618,7 +1618,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
   const CAM_DIST = Math.hypot(OFFSET.y, OFFSET.z); const CAM_ELEV = Math.atan2(OFFSET.y, OFFSET.z); // the default view: 13.1 away, 34.4° up
-  const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST;
+  const CAM_CLEAR = 1.0; const CAM_OVER = 7.5; let camDist = CAM_DIST; let camOver = 0; // camOver: how far the over-a-wall lift is in (v1.10.77)
   // v1.10.62 확대·축소 (사용자 2026-10-11): how far the camera stands is the player's own choice -- the mouse wheel on a PC,
   // two fingers apart / together on a phone -- and nothing else changes it (it no longer comes in by a building: there it
   // rises over the walls at the same distance, so things keep their size). Kept per browser. A later interaction camera
@@ -1699,12 +1699,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // lifts its aim (the look point raised as far as that angle) -- the sky and the moon above, me at the bottom
     const SKY_LOW = 0.1; const lift = Math.max(0, SKY_LOW - (CAM_ELEV + camPitch));
     const elev = Math.max(SKY_LOW, CAM_ELEV + camPitch); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
-    const inside = (c) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + 0.6);
+    // v1.10.77 시점 튐 (사용자 영상 2026-10-12): the lift used to snap to CAM_OVER the moment the camera's spot touched a
+    // circle and drop the moment it left -- brushing a house's edge on a walk threw the view up for a second. Now it eases
+    // in and out (camOver 0..1), and once lifted it stays until the spot is clear by a wider margin.
+    const inside = (c, pad) => buildingSolids.some((s) => Math.hypot(c.x - s.x, c.z - s.z) < s.r + pad);
     const dist = zoomDist; // v1.10.62: the player's zoom; a wall behind me lifts the camera (CAM_OVER below), never pulls it in
     snap ||= Boolean(lessMotion?.matches);
     camDist = snap ? dist : camDist + (dist - camDist) * cameraEase(0.2, camDt);
-    const c = at(camDist); const over = inside(c) ? p.y + CAM_OVER : -Infinity;
-    const want = new THREE.Vector3(c.x, Math.max(p.y + Math.sin(elev) * camDist, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
+    const c = at(camDist); const wantOver = inside(c, camOver > 0.5 ? 1.8 : 0.6) ? 1 : 0;
+    camOver = snap ? wantOver : camOver + (wantOver - camOver) * cameraEase(0.035, camDt);
+    const orbitY = p.y + Math.sin(elev) * camDist;
+    const over = orbitY + Math.max(0, p.y + CAM_OVER - orbitY) * camOver;
+    const want = new THREE.Vector3(c.x, Math.max(orbitY, heightAt(c.x, c.z) + CAM_CLEAR, over), c.z); // v1.10.0: follow the player across the island
     const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);
     const look = new THREE.Vector3(p.x - sin * 2.4, cameraSkyAim(lookY, p.y + Math.sin(elev) * camDist, want.y, lift), p.z - cos * 2.4);
     if (talkView) { const v = talkPose(p); want.copy(v.want); look.copy(v.look); }

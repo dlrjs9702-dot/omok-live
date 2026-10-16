@@ -13,13 +13,7 @@ const { spawn } = require('node:child_process');
 // free-for-all (any one seat disconnecting -> all still-connected seats recorded as wins).
 // The omok2v2 team-unit case is covered in test/omok-team.test.js, next to the rest of its suite.
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => { const port = s.address().port; s.close(() => resolve(port)); });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 async function serverFixture(t) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'conn-drop-'));

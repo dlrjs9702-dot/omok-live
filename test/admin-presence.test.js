@@ -7,16 +7,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('administrator sees per-person online, game and spectator status without leaking private game data', { timeout: 25000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-presence-'));

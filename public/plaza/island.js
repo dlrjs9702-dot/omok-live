@@ -457,7 +457,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     ['sapling', 0.08, [trunk(0.9, 0.11), crown(SPH, 0x8ad27a, 0, 1.15, 0, 0.95, 0.9)]],
     ['stump', 0.04, [part(new THREE.CylinderGeometry(0.42, 0.5, 0.45, 9), 0xa9774f, 0, 0.22, 0, { shade: [0.8, 1] }), part(new THREE.CylinderGeometry(0.36, 0.36, 0.02, 9), 0xe8c99a, 0, 0.455, 0), crown(SPH, 0x7cbf5c, 0.55, 0.12, 0.2, 0.45, 0.3)]],
   ];
-  const kindOf = (t) => { let r = hash(t.x, t.z); for (let k = 0; k < TREE_KINDS.length; k += 1) { r -= TREE_KINDS[k][1]; if (r <= 0) return k; } return 0; };
+  // v1.10.77: the kind comes from island-terrain (one rule with the server's fruit trees); a fruit-kind tree that is not
+  // a harvest tree (no free spot at its trunk) is drawn plain, so no tree shows fruit that cannot be picked
+  const kindOf = (t) => { const name = globalThis.IslandTerrain.treeKind(t); const k = TREE_KINDS.findIndex(([n]) => n === name); return name === 'fruit' ? 0 : Math.max(0, k); };
   // v1.10.29: stumps come in two models (short, tall), each stump's from its place
   TREE_KINDS.forEach(([name, , parts], k) => {
     const all = trees.filter((t) => kindOf(t) === k && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));

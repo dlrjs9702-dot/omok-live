@@ -8,16 +8,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const socket = net.createServer();
-    socket.once('error', reject);
-    socket.listen(0, '127.0.0.1', () => {
-      const port = socket.address().port;
-      socket.close(() => resolve(port));
-    });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 async function serverFixture(t) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'host-reconnect-'));

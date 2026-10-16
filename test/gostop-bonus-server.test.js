@@ -8,13 +8,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-async function freePort() {
-  const server = net.createServer();
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  await new Promise(resolve => server.close(resolve));
-  return port;
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 for (const count of [2, 3]) test(`${count}인 첫뻑→2연뻑→자뻑: 즉시 포인트 정산과 중복 방지`, { timeout: 30_000 }, async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gostop-bonus-'));

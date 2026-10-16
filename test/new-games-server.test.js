@@ -7,16 +7,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
-  });
-}
+const freePort = require('../test-support/free-port'); // v1.10.77: one port per test, never shared across parallel files
 
 test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room actions', { timeout: 30000 }, async t => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-center-new-games-'));
@@ -131,5 +122,5 @@ test('Yut Nori, Dots and Boxes, and Land King use protected multiplayer room act
   assert.ok(cityRoll.data.state.game.lastRoll.total >= 2);
 
   const health = await req('/health', null, undefined, 'GET');
-  assert.equal(health.data.version, '1.10.76');
+  assert.equal(health.data.version, '1.10.77');
 });
