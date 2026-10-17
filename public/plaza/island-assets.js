@@ -326,5 +326,13 @@
     seasons: Object.fromEntries(['spring','summer','autumn','winter'].map(s => [s, REGISTRY[`tree.${kind}.${s}`].url])),
     low: { seasons: Object.fromEntries(['spring','summer','autumn','winter'].map(s => [s, REGISTRY[`tree.${kind}.${s}`].low.url])) } };
   for (const name of ['flowerbed_empty', 'flowerbed_bloom', 'photo_frame', 'fishing_rod', 'watering_can', 'camera_bag']) REGISTRY[`quest.${name}`] = life(`quest_${name}`);
+  // v1.10.80 농부 × 두더지 잡기 (assets 26 farmer-v1): the farmer (the common rig, moved by the common motion files:
+  // `motions`), the field's four stages (the same floor, one shown -- the week's shared progress), the helpers' sign and
+  // the farmer's mallet (its grip 0.13 m over its floor: plaza-scene holds it there)
+  const farm = (file) => ({ url: `/assets/island/farmer-v1/${file}.glb`, low: { url: `/assets/island/farmer-v1/${file}_low.glb` }, near: 35 });
+  for (const s of [0, 1, 2, 3]) REGISTRY[`farm.field.${s}`] = farm(`field_stage${s}`);
+  REGISTRY['farm.sign'] = farm('sign_helpers');
+  REGISTRY['farm.mallet'] = { url: `${CH}/props/mallet.glb`, low: { url: `${CH}/props/mallet_low.glb` } };
+  REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

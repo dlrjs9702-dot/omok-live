@@ -1704,7 +1704,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
-      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
+      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -2196,6 +2196,9 @@
     openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
+  function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
+  setInterval(refreshFarm, 15000);
   function openQuestTalk(data) {
     plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
@@ -2204,7 +2207,17 @@
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell);
+    // v1.10.80 농부 부탁: a game step opens its round right here (GameLaunch, back to the island after); a paid round at the
+    // goal is the step done -- then a word with the farmer hands it in
+    const game = data.minigame ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = '도와줄게요'; b.addEventListener('click', async () => {
+      plazaDialog.close(); const m = data.minigame;
+      const r = await window.GameLaunch.play(m.game, { level: m.level, goal: m.goal, place: 'quest' });
+      if (r?.done) showToast('밭을 지켰어요! 농부에게 다시 말을 걸어 주세요.', 4000);
+      else if (r?.score != null) showToast(`${Number(m.goal).toLocaleString('ko-KR')}점이 필요해요. 다시 도전해 보세요!`, 4000);
+    }); return [b]; })() : [];
+    if (game.length) ok.className = 'ghost';
+    if (data.story === 'farmer') refreshFarm();
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ...game, ok, ...sell);
     openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is
@@ -2265,7 +2278,7 @@
   let photoShot = null;
   function cancelPhotoShot() {
     const shot = photoShot; photoShot = null;
-    if (shot) { clearTimeout(shot.timer); shot.wake?.(false); shot.abort.abort(); shot.controller.photoPose?.(false); }
+    if (shot) { clearTimeout(shot.timer); shot.wake?.(false); shot.abort.abort(); if (!shot.now) shot.controller.photoPose?.(false); } // an instant shot never touched the motion
     photoCount.classList.add('hidden');
   }
   function enterPhoto() {
@@ -2273,14 +2286,19 @@
     document.body.classList.add('photoMode'); photoBar.classList.remove('hidden'); plazaStage.focus({ preventScroll: true });
   }
   const leavePhoto = () => plaza.controller?.setPhotoMode?.(false);
-  async function takePhoto() {
+  // v1.10.81 기념사진 2버튼 (IDEAS #future-photo-action, 사용자 확정 2026-10-08): 「즉시 촬영」 takes the frame as it is now --
+  // the pose, the place, what is in hand, mid-pull or mid-cast -- with no countdown and nothing stopped or moved;
+  // 「포즈 촬영」 is the 3-2-1 self-timer with PhotoPose as before, held back while an action of mine is under way (pulling,
+  // fishing, seated, on the train) so it never cuts into one. Both save the PNG and keep the photo spot the same way.
+  async function takePhoto({ now = false } = {}) {
     if (photoShot || !document.body.classList.contains('photoMode')) return;
-    const shot = { controller: plaza.controller, token: sessionToken, abort: new AbortController(), timer: null, wake: null };
+    if (!now && plaza.controller?.actionBusy?.()) { showToast('하던 행동이 끝나면 포즈 촬영할 수 있어요. 지금 모습은 「즉시 촬영」으로 찍어 보세요.', 4000); return; }
+    const shot = { controller: plaza.controller, token: sessionToken, abort: new AbortController(), timer: null, wake: null, now };
     photoShot = shot;
     const current = () => photoShot === shot && plaza.controller === shot.controller && sessionToken === shot.token && document.body.classList.contains('photoMode');
     try {
-      shot.controller.photoPose?.();
-      for (const n of [3, 2, 1]) {
+      if (!now) shot.controller.photoPose?.();
+      for (const n of now ? [] : [3, 2, 1]) {
         if (!current()) return;
         photoCount.textContent = String(n); photoCount.classList.remove('hidden');
         const waited = await new Promise((resolve) => { shot.wake = resolve; shot.timer = setTimeout(() => { shot.wake = null; resolve(true); }, 1000); });
@@ -2289,7 +2307,7 @@
       photoCount.classList.add('hidden');
       const blob = await shot.controller.capture?.();
       if (!current()) return;
-      shot.controller.photoPose?.(false);
+      if (!now) shot.controller.photoPose?.(false);
       if (blob) {
         const a = document.createElement('a'); const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
         a.download = `game-island-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`;
@@ -2300,10 +2318,11 @@
       const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
       if (!current()) return;
       showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
-    } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); shot.controller.photoPose?.(false); } }
+    } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); if (!now) shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
   document.getElementById('photoShootBtn').addEventListener('click', () => takePhoto());
+  document.getElementById('photoNowBtn').addEventListener('click', () => takePhoto({ now: true }));
   document.getElementById('photoCloseBtn').addEventListener('click', () => leavePhoto());
   window.addEventListener('keydown', (event) => {
     if (!document.body.classList.contains('plazaMode') || event.isComposing || event.repeat) return;
@@ -5483,7 +5502,7 @@
       time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       const text = document.createElement('div');
       text.className = 'chatMessageText';
-      text.textContent = row.text;
+      text.textContent = row.channel === 'train' ? `🚃 ${row.text}` : row.text; // v1.10.82: said on the train (its riders only)
       body.append(text, time);
       item.appendChild(body);
       item.setAttribute('aria-label', `${row.label || '게스트'}: ${row.text}`);

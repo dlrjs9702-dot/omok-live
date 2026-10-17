@@ -1418,6 +1418,33 @@ test('기념사진: 카운트다운·캡처 대기 취소, 재진입과 접속 �
   await expectNoScriptError(page);await a.context.close();
 });
 
+// v1.10.81 기념사진 2버튼 (IDEAS #future-photo-action): 「즉시 촬영」 saves at once and keeps what I am doing (seated here);
+// 「포즈 촬영」 waits for it to end (a word, nothing stopped); standing, it is the countdown and PhotoPose as before
+test('기념사진 2버튼: 앉은 채 즉시 촬영(자세 유지·카운트다운 없음), 포즈 촬영은 행동 뒤', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const a = await intoPlaza(browser, request, '즉시사진'); const { page } = a;
+  const seat = await page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id]); });
+  await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
+  await page.locator('#islandPhotoTab').click();
+  await expect(page.locator('body')).toHaveClass(/photoMode/);
+  const download = page.waitForEvent('download');
+  await page.locator('#photoNowBtn').click();
+  await expect(page.locator('#photoCount')).toBeHidden(); // no countdown
+  expect((await download).suggestedFilename()).toMatch(/\.png$/);
+  expect(await page.evaluate(() => window.PlazaDebug().act())).toMatchObject({ sitting: true }); // still seated
+  await page.locator('#photoShootBtn').click();
+  await expect(page.locator('.toast')).toContainText('즉시 촬영');
+  await expect(page.locator('#photoCount')).toBeHidden();
+  await page.keyboard.press('ArrowUp'); // the photo mode holds me: still seated
+  expect(await page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('body')).not.toHaveClass(/photoMode/);
+  await expectNoScriptError(page); await a.context.close();
+});
+
 // v1.10.47 공중 관광열차: by a stop's boarding spot SPACE gets on the train standing there (riding on its seat, the other
 // screen draws me there too), the hint tells the next stop between stops, and SPACE at the next stop gets off onto its spot
 test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 보이며, 다음 정류장에서 내린다', async ({ browser, request }) => {
