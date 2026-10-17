@@ -771,6 +771,42 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
 
+  // v1.10.89 상점 미리보기 (사용자 2026-10-17): my character in a look (mine with one item changed) on its own small canvas
+  // -- a second renderer of its own (the island's is not touched), the same asset cache and wardrobe as on the island;
+  // it turns slowly in Idle. Stood where I stand (the wardrobe's near/far band is measured from there), in its own scene.
+  let tryOnView = null;
+  function tryOn(canvas, look) {
+    if (tryOnView?.canvas !== canvas) {
+      tryOnClose();
+      let r; try { r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); } catch { return false; }
+      r.outputColorSpace = renderer.outputColorSpace; r.toneMapping = renderer.toneMapping; r.toneMappingExposure = renderer.toneMappingExposure;
+      r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(canvas.clientWidth || canvas.width, canvas.clientHeight || canvas.height, false);
+      const s = new THREE.Scene(); s.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.4));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(2, 5, 4); s.add(sun); s.add(sun.target);
+      const cam = new THREE.PerspectiveCamera(30, (canvas.clientWidth || canvas.width) / (canvas.clientHeight || canvas.height), 0.1, 50);
+      const v = tryOnView = { canvas, renderer: r, scene: s, camera: cam, sun, c: null, key: '', yaw: 0.4, last: performance.now(), raf: 0 };
+      const loop = (now) => {
+        if (tryOnView !== v) return; if (!canvas.isConnected) { tryOnClose(); return; }
+        const dt = Math.min(0.1, (now - v.last) / 1000); v.last = now; v.yaw += dt * 0.7;
+        if (v.c) { v.c.root.rotation.y = v.yaw; v.c.anim?.update(dt, 0); }
+        r.render(s, cam); v.raf = requestAnimationFrame(loop);
+      };
+      v.raf = requestAnimationFrame(loop);
+    }
+    const v = tryOnView; const key = JSON.stringify(look || {});
+    if (key !== v.key) {
+      v.key = key; if (v.c) disposeCharacter(v.c);
+      const p = me.root.position; v.c = makeCharacter({ ...ME_BASE, look }); v.c.root.position.set(p.x, 0, p.z);
+      v.scene.add(v.c.root); dressUp(v.c, look || {});
+      v.camera.position.set(p.x, 1.3, p.z + 5.4); v.camera.lookAt(p.x, 1.05, p.z); v.sun.position.set(p.x + 2, 5, p.z + 4); v.sun.target.position.set(p.x, 1, p.z);
+    }
+    return true;
+  }
+  function tryOnClose() {
+    const v = tryOnView; if (!v) return; tryOnView = null; cancelAnimationFrame(v.raf);
+    if (v.c) disposeCharacter(v.c); v.renderer.dispose(); v.renderer.forceContextLoss?.();
+  }
+
   // v1.9.3 V3: everyone else in the plaza. The server's snapshots move a target; each frame the character glides
   // toward it (so ~7 updates a second still look smooth) and plays the same walk/idle animation as mine.
   const others = new Map(); // id -> { c, target: { x, z, yaw, moving }, key }
@@ -809,6 +845,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (['gather','pickup','pickFruit'].includes(o.act) && !['gather','pickup','pickFruit'].includes(p.act)) { o.c.anim?.finishOnce?.(); assets.letGo(o.c,'fruit'); }
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
       if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
+      remoteFish(o, p); // v1.10.89
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
       o.collect = p.actTarget ? {target:p.actTarget,at:p.actAt} : null; o.act = p.act || null; o.actN = p.actN || 0; o.seat = p.seat || null;
       // v1.10.47: riding the train -- drawn on their seat by the same clock (the server only says which train and seat)
@@ -946,6 +983,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (event.code === 'Space' && event.target.closest?.('button')) return;
     if (event.key.startsWith('Arrow')) { keys.add(event.key); event.preventDefault(); return; }
     if (event.key === 'Shift') { if (!event.repeat) { shifts.add(event.code); paceDown(); } return; } // (Codex: either Shift, until both are up)
+    if (event.key === 'Escape' && actLocked()) actLock = 0; // v1.10.89: Esc lets a motion's hold go too (Codex review)
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
@@ -1046,7 +1084,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // within WEED_REACH is offered (a soft ring round it, 「SPACE · 잡초 뽑기」); pulling plays GatherWeed for about a
   // second -- moving, a window opening or leaving the island in that time calls it off -- and only the server's answer
   // takes the weed away (for everyone: removeWeeds).
-  const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 900; const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
+  const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 1400; const WEED_LIFT = 620; /* v1.10.89 assets 37: 1.4 s, the weed comes up at the clip's lift event (0.62 s) */ const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
   let weedCells = []; const weedById = new Map(); let weedGrid = new Map(); let weedKey = null; let gather = null;
   const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
   weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
@@ -1108,6 +1146,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.40 채집 상호작용 공통 시스템 (IDEAS 잡초 채집 후속 확정 2026-10-07): one gathering at a time, any kind --
   // { kind, id, ms, anim, at, onStep(t), onDone(ok) }. While it runs I stay where I stand (the arrows do nothing, step()),
   // the camera still turns; it ends done after `ms`, or called off by a window, leaving the island or endGather(false).
+  // v1.10.89 행동 중 이동 잠금 (IDEAS #future-action-move-lock): a one-off motion (an emote, standing up, a hand-over, a
+  // pick-up) holds me where I stand until its clip has played out -- the arrows stay pressed and move me the moment it
+  // ends. The clip's own length (a short default without one), never past 3 s; a window, Esc or leaving lets go at once.
+  let actLock = 0;
+  const actLocked = () => performance.now() < actLock;
+  function lockForClip(played) { actLock = performance.now() + Math.min(3000, (played && me.anim?.onceLeft?.() * 1000) || 900); }
   function startGather({ kind, id = null, ms, anim = 'gather', at = null, onStep = null, waitServer = false, onDone }) {
     if (gather) return false;
     gather = { kind, id, ms, anim, t: 0, startedAt: performance.now(), onStep, onDone, waitServer, pending: false };
@@ -1161,16 +1205,36 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     return best;
   }
+  // v1.10.89 원격 낚시 (IDEAS #future-remote-action-animation): my phase goes out as the act 'fish:<phase>' (the server
+  // takes it only while it holds my cast, and names the catch itself); the others play the same rod and clips
+  function fishAct(phase) { if (phase) { myAct.act = `fish:${phase}`; myAct.seat = null; } else if (myAct.act?.startsWith('fish:')) myAct.act = null; }
+  function remoteFish(o, p) {
+    const was = o.act?.startsWith('fish:') ? o.act.slice(5) : null; const now = p.act?.startsWith('fish:') ? p.act.slice(5) : null;
+    if (was === now) return;
+    const c = o.c;
+    if (!now) { clearTimeout(o.fishTimer); assets.letGo(c, 'rod'); assets.letGo(c, 'catch'); c.noTuck = false; c.anim?.release?.(); return; }
+    if (!was) { c.noTuck = true; assets.hold(c, 'fishing.rod', 0, { key: 'rod' }); const w = waterFrom(p.x, p.z); if (w) c.root.rotation.y = Math.atan2(w.x - p.x, w.z - p.z); }
+    if (now === 'cast') c.anim?.play('fishCast');
+    else if (now === 'wait') c.anim?.loop?.('fishWait');
+    else if (now === 'reel') { c.anim?.play('fishBite'); c.anim?.loop?.('fishReel'); }
+    else if (now === 'miss') { c.anim?.release?.(); c.anim?.play('fishMiss'); }
+    else if (now === 'catch') {
+      c.anim?.release?.(); c.anim?.play('fishCatch'); clearTimeout(o.fishTimer);
+      o.fishTimer = setTimeout(() => { if (o.act !== 'fish:catch') return; assets.letGo(c, 'rod');
+        o.fishTimer = setTimeout(() => { if (o.act !== 'fish:catch' || !p.fish) return; const fit = FISH_HOLD[p.fish] || FISH_HOLD.default; assets.hold(c, `fish.${p.fish}`, 0, { key: 'catch', at: fit.at, rot: fit.rot }); }, 260); }, 420);
+    }
+  }
   function fishBegin({ biteIn, window: biteMs }, onEnd) {
     const water = waterFrom(me.root.position.x, me.root.position.z); if (!water || fishing) return false;
     const ok = startGather({ kind: 'fish', ms: Infinity, anim: 'fishCast', at: water, onDone: () => fishStop(false) });
     if (!ok) return false;
     fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, landed: false };
+    fishAct('cast');
     me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
     return true;
   }
   function fishStop(release = true) {
-    const f = fishing; if (!f) return; fishing = null;
+    const f = fishing; if (!f) return; fishing = null; fishAct(null);
     fishLine.visible = false; bobberHolder.visible = false; if (f.mark) { disposeTag(f.mark); f.mark = null; }
     assets.letGo(me, 'rod'); assets.letGo(me, 'catch'); me.noTuck = false; me.anim?.release?.();
     if (release && gather?.kind === 'fish') { gather.onDone = () => {}; endGather(false); }
@@ -1179,7 +1243,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the server's answer: the fish (species) or none (missed)
   function fishResult(species) {
     const f = fishing; if (!f) return;
-    f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species;
+    f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species; fishAct(f.phase);
     me.anim?.release?.(); me.anim?.play(species ? 'fishCatch' : 'fishMiss');
     if (f.mark) { disposeTag(f.mark); f.mark = null; }
   }
@@ -1188,8 +1252,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     f.t = (performance.now() - f.start) / 1000; // real time: the bite is the server's, a slow frame rate must not show it late
     const sea = SEA_Y + 0.02;
     if (f.phase === 'cast' && f.t >= 0.48 && !f.landed) { f.landed = true; bobberHolder.visible = true; fishLine.visible = true; bobberHolder.position.set(f.water.x, sea, f.water.z); }
-    if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); }
-    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
+    if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); fishAct('wait'); }
+    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; fishAct('reel'); me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
     if (f.phase === 'bite' && f.t >= f.biteEnd + 0.8) fishResult(null); // nobody pulled: it got away
     if (f.phase === 'catch') {
       const t = f.t - f.t0;
@@ -1212,7 +1276,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const w = weedById.get(id); if (!w) return false;
     const matrix = w.cell.matrices[w.i].clone();
     return startGather({ kind: 'weed', id, ms: WEED_MS, at: w, waitServer: true,
-      onStep: (t) => { const g = weedById.get(id); if (g) weedMatrix(g, new THREE.Matrix4().makeTranslation(0, Math.min(1, (t * 1000) / WEED_MS) * 0.18, 0).multiply(matrix)); }, // the weed gives a little
+      onStep: (t) => { const g = weedById.get(id); if (g) weedMatrix(g, new THREE.Matrix4().makeTranslation(0, Math.min(1, Math.max(0, t * 1000 - WEED_LIFT) / (WEED_MS - WEED_LIFT)) * 0.18, 0).multiply(matrix)); }, // the weed gives, from the lift on
       onDone: (ok) => { const g = weedById.get(id); if (g && !ok) weedMatrix(g, matrix); done(ok); } }); // let go: back as it was
   }
   const eventDoors = {}; // key -> { x, z, name } (only what I can act on)
@@ -1290,7 +1354,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     me.targetYaw = Math.atan2(q.x - p.x, q.z - p.z); o.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z) - o.npc.root.rotation.y; if (o.resident != null) {
       o.npc.returnYaw = Math.atan2(p.x-q.x,p.z-q.z);
     } else o.npc.home.yaw = o.root.rotation.y;
-    if (!me.anim?.play('give')) me.hop = 1;
+    const gave = me.anim?.play('give'); if (!gave) me.hop = 1; lockForClip(gave);
     o.npc.anim?.play('receive');
     o.giveTimer = setTimeout(() => { // Give's release, Receive's grip: into the owner's hand
       if (!o.root.parent) { returning.delete(id); return; }
@@ -1357,6 +1421,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setFarm(view) {
     const f = prepareFarm(); const stage = Math.max(0, Math.min(3, Number(view?.stage) || 0)); const names = (view?.names || []).slice(0, 8);
     f.fields.forEach((root, s) => { root.visible = s === stage; }); f.stage = stage;
+    // v1.10.89 밭 수확: a grown field is harvested from its middle (SPACE · 밭 · 수확), until I have this week's
+    const F = globalThis.IslandTerrain.FARM;
+    if (stage === 3 && !view?.harvested) eventDoors['farm:harvest'] = { x: F.x, z: F.z, name: '밭 · 수확', resource: true }; else delete eventDoors['farm:harvest'];
     const key = names.join('|'); if (f.names === key) return; f.names = key;
     const ctx = f.canvas.getContext('2d'); ctx.clearRect(0, 0, 512, 228);
     ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('이번 주 밭을 지켜 준 사람들', 256, 46);
@@ -1987,8 +2054,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function step(dt) {
     let ix = 0; let iz = 0;
+    if (isBlocked()) actLock = 0;
     if (sitting && !photoMode && !isBlocked() && (stick || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].some((k) => keys.has(k)))) standUp(); // v1.10.44: an arrow stands me up
-    if (!isBlocked() && !gather && !riding && !liftRide && !photoMode) { // v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
+    if (!isBlocked() && !gather && !actLocked() && !riding && !liftRide && !photoMode) { // v1.10.40: gathering holds me in place (the keys stay pressed for after); v1.10.47 so does the train
       if (keys.has('ArrowLeft')) ix -= 1; if (keys.has('ArrowRight')) ix += 1;
       if (keys.has('ArrowUp')) iz -= 1; if (keys.has('ArrowDown')) iz += 1;
       if (stick) { ix += stick.x; iz += stick.y; }
@@ -2162,7 +2230,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   const disposeWanderers = () => { clearTimeout(wanderersTimer); for (const w of wanderers) disposeCharacter(w.c); wanderers.length = 0; };
   function dispose() {
-    stop(); observer.disconnect();
+    tryOnClose(); stop(); observer.disconnect();
     document.removeEventListener('visibilitychange', resetFrameSample);
     for(const [key,o] of [...eventObjs]) removeEvent(key,o);
     returning.clear();
@@ -2186,8 +2254,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
-      teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: () => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast' || fishing.phase === 'bite')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + 1.5; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+      tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
       bubble: me.bubble?.userData.text || null, render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }, camYaw, minimap: { turn: minimapTurn, markers: minimapShown }, events: Object.fromEntries(Object.entries(eventDoors).map(([k, d]) => [k, { ...d }])), events: [...eventObjs.keys()], lastReturn, residentReservations:residentStates.map(s=>({...s,hold:s.hold?{...s.hold}:null})), eventResidents:[...eventObjs].filter(([,o])=>o.resident!=null).map(([key,o])=>({key,n:o.resident,x:o.npc.root.position.x,z:o.npc.root.position.z,leaving:Boolean(o.leaving),reused:wanderers.some(w=>w.c===o.npc)})), placeWanderer:(n,x,z)=>{const o=wanderers.find(o=>o.n===n); if(o) Object.assign(o.w,{x,z,route:null,routeTo:null});}, wanderers: wanderers.map(({ n, c, w }) => ({ n,held:Boolean(w.pose.held), x: w.x, y: c.root.position.y, z: w.z, visible: c.root.visible, speed: w.speed, grounded: Math.abs(c.root.position.y - heightAt(w.x, w.z)) < 1e-4, walkable: walkable(w.x, w.z), clear: walkers.clear(w.x, w.z), bx: w.bx, bz: w.bz, baseClear: walkers.clear(w.bx, w.bz) && walkable(w.bx, w.bz), off: Math.hypot(w.x - w.bx, w.z - w.bz), resyncs: walkers.resyncs() })), wandererR: IslandNpcs?.WALKER.R, wandererSep: IslandNpcs?.WALKER.SEP, serverNow: () => Date.now() + serverOffset, markers: mapMarkers.map((m) => ({ ...m })), walkable, heightAt, bridges: island.bridges, pier: island.pier, spawn: SPAWN, overview: (on) => { overview = Boolean(on); placeCamera(true); }, setCamYaw: (y) => { camYaw = y; yawGoal = y; placeCamera(true); }, camPitch, pitchGoal, pitchMax: PITCH_MAX, skyMax: SKY_MAX, camDist, zoom: zoomDist, zoomRange: [ZOOM_MIN, ZOOM_MAX], setCamPitch: (v) => { camPitch = clampPitch(v); pitchGoal = camPitch; placeCamera(true); },
       camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z, clear: camera.position.y - heightAt(camera.position.x, camera.position.z),faded: occlusion.debug().faded, occlusion: occlusion.debug(), inBuilding: camera.position.y < me.root.position.y + CAM_OVER - 0.05 && buildingSolids.some((s) => Math.hypot(camera.position.x - s.x, camera.position.z - s.z) < s.r) }, radiusAt: playerRadiusAt, others: [...others].map(([id, o]) => ({ id, x: o.c.root.position.x, z: o.c.root.position.z, tag: Boolean(o.c.tag), champion: Boolean(o.champion), hoguking: Boolean(o.hoguking), bubble: o.c.bubble?.userData.text || null, look: o.look || {} })) };
   }
@@ -2198,7 +2266,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const setStatuesPublic = (list) => setStatues(list);
   const setEventsPublic = (list) => setEvents(list);
   // v1.10.31: an event's motion when the server took it (pick up, give back, a photo), the weed in hand
-  const playMine = (name) => Boolean(me.anim?.play(name));
+  const playMine = (name) => { const played = Boolean(me.anim?.play(name)); lockForClip(played); return played; };
   const holdWeed = () => assets.hold(me, 'prop.weedRooted', 900);
   const holdBasket = () => assets.hold(me, 'prop.event.basket', 1400); // v1.10.32: picking herbs, berries, mushrooms
   const setMapMarkers = (list) => { mapMarkers = Array.isArray(list) ? list.filter((m) => Number.isFinite(m?.x) && Number.isFinite(m?.z)) : []; minimapAt = 0; };
@@ -2218,7 +2286,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const trainNow = () => Date.now() + serverOffset + trainShift;
   function board(id, seat) {
     if (riding || !R.TRAINS.some((t) => t.id === id) || !R.SEATS[seat]) return false;
-    if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.();
+    if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0;
     trainChangedAt = Date.now(); platform = null; liftRide = null; riding = { id, seat, at: Date.now(), from: me.root.position.clone() }; keys.clear(); me.anim?.play?.('sitDown'); me.anim?.loop?.('rideLook') || me.anim?.loop?.('sitIdle'); // RideLookAround: seated, looking about
     me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true); stepRide();
     return true;
@@ -2240,7 +2308,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function setPlatform(result) {
     trainChangedAt = Date.now(); const prev = platform; platform = result.platform || null;
-    if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop();
+    if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop(); actLock = 0;
     const station = platform?.station || prev?.station || result.stop;
     const target = platform ? R.platformSpot(platform.line, platform.station, platform.slot) : { x: result.x, y: heightAt(result.x, result.z), z: result.z };
     const from = me.root.position.clone(); const lift = R.liftOf(station);
@@ -2270,12 +2338,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function standUp(release = true) {
     if (!sitting) return; const s = sitting.seat; sitting = null;
-    myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.(); me.anim?.play('standUp');
+    myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.(); lockForClip(me.anim?.play('standUp'));
     me.root.position.set(s.x + Math.sin(s.yaw) * 1.0, heightAt(s.x, s.z), s.z + Math.cos(s.yaw) * 1.0); // a step forward, off the bench
     if (release && gather?.kind === 'sit') { gather.onDone = () => {}; endGather(false); }
     onInteract?.('seat:stand');
   }
-  function emote(kind) { if (gather || fishing || me.carrying || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; me.anim?.play(kind) || (me.hop = 1); myAct.act = kind; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; }
+  function emote(kind) { if (gather || fishing || me.carrying || actLocked() || !['wave', 'cheer', 'nod', 'clap', 'bow'].includes(kind)) return false; const played = me.anim?.play(kind); if (!played) me.hop = 1; lockForClip(played); myAct.act = kind; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === kind) myAct.act = null; }, kind === 'clap' ? 1800 : 1500); return true; }
   // v1.10.43 기념사진 모드 (IDEAS ③): I stay put (the camera turns, up to the sky), every name tag and bubble hidden; the
   // shot is the canvas alone (no page UI), drawn and read in the same task, saved as a PNG on the PC (nothing uploaded)
   let photoMode = false; const photoHidden = new Set();
@@ -2296,6 +2364,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setSpace, space: () => mySpace, setFarm, setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

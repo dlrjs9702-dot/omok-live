@@ -1334,19 +1334,29 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   const a = await intoPlaza(browser, request, '낚시꾼');
   const { page } = a;
   await page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x, d.pier.z + 9); });
+  const b = await intoPlaza(browser, request, '구경꾼'); // v1.10.89 원격 낚시: someone close by sees it
+  await b.page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x + 2.5, d.pier.z + 10); });
+  const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 10000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.phase), { timeout: 10000 }).toMatch(/cast|wait/);
+  await expect.poll(seen, { timeout: 10000 }).toMatch(/^fish:(cast|wait)$/);
   const from = await state(page);
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
   const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05); // fishing holds me in place
   expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
   await page.evaluate(() => window.PlazaDebug().fishBiteNow());
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 당기기');
+  await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
+  // (a slow runner may spend the 1.5 s window on that look: the bite again, then the pull)
+  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow());
   await page.keyboard.press('Space');
+  await expect.poll(seen, { timeout: 5000 }).toBe('fish:catch'); // the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
+  await expect.poll(seen, { timeout: 8000 }).toBe(null); await b.context.close();
   await page.keyboard.press('KeyI'); await page.locator('#islandDexBtn').click();
   await expect(page.locator('#islandBagCount')).toHaveText('1/18'); // v1.10.43: + the 7 photo spots
   await expect(page.locator('.islandDexCell:not(.unfound)')).toHaveText(/고등어/);

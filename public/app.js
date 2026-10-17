@@ -1475,7 +1475,7 @@
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
-    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
+    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard'), titleHall()]) }, // v1.10.89 + 칭호 명예의 전당
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
@@ -1487,6 +1487,47 @@
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
+  // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
+  // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
+  // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
+  let titleHallCard = null;
+  function titleHall() {
+    if (titleHallCard) return titleHallCard;
+    const home = document.createElement('div'); home.hidden = true; document.body.append(home);
+    const card = titleHallCard = document.createElement('section'); card.className = 'card noticeCard titleHallCard'; card.setAttribute('aria-label', '칭호 명예의 전당');
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'noticeTab'; toggle.id = 'titleHallTab'; toggle.textContent = '🏆 칭호 명예의 전당'; toggle.setAttribute('aria-expanded', 'false');
+    const panel = document.createElement('div'); panel.className = 'titleHallPanel hidden'; panel.id = 'titleHallPanel'; toggle.setAttribute('aria-controls', panel.id);
+    card.append(toggle, panel); home.append(card);
+    let titles = []; let pick = 'champion'; let shown = 20;
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const draw = () => {
+      panel.replaceChildren();
+      const tabs = el('div', 'skinTabs'); tabs.setAttribute('role', 'tablist');
+      for (const t of titles) { const b = el('button', 'skinTab', t.name); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(t.id === pick)); b.addEventListener('click', () => { pick = t.id; shown = 20; draw(); }); tabs.append(b); }
+      panel.append(tabs);
+      const t = titles.find((x) => x.id === pick); if (!t) return;
+      const now = t.entries.find((e) => e.current);
+      panel.append(el('p', 'titleHallHead', `${t.name} · ${t.kind} · ${t.about}`), el('p', 'smallMuted', now ? `현재: ${now.names.join(', ')}` : '현재 보유자 없음'));
+      if (!t.entries.length) { panel.append(el('p', 'emptyState', '아직 수여 기록이 없습니다.')); return; }
+      panel.append(el('p', 'smallMuted', `기록 시작: ${t.since}`));
+      const list = el('ol', 'titleHallList');
+      for (const e of t.entries.slice(0, shown)) {
+        const li = el('li', `titleHallRow${e.current ? ' current' : ''}${e.mine ? ' mine' : ''}`);
+        li.append(el('strong', '', `${e.n}대`), el('span', '', e.names.join(', ')), el('span', 'smallMuted', `${e.start.slice(5).replace('-', '/')} ~ ${e.end.slice(5).replace('-', '/')}`));
+        if (e.current) li.append(el('span', 'titleHallNow', '현재'));
+        list.append(li);
+      }
+      panel.append(list);
+      if (t.entries.length > shown) { const more = el('button', 'ghost tiny', `더 보기 (${t.entries.length - shown})`); more.type = 'button'; more.addEventListener('click', () => { shown += 20; draw(); }); panel.append(more); }
+    };
+    toggle.addEventListener('click', async () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(open)); panel.classList.toggle('hidden', !open);
+      if (!open) return;
+      panel.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
+      try { titles = (await api('/api/island/titles')).titles; shown = 20; draw(); } catch (error) { panel.replaceChildren(el('p', 'emptyState', error.message)); }
+    });
+    return card;
+  }
   function openPlazaWindow(title, nodes) {
     plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
@@ -1730,7 +1771,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2181,6 +2222,20 @@
   // id, sent once more if the answer was lost) and everyone's island drops it.
   let weedBusy = false;
   async function loadWeeds() { try { const data = await api('/api/island/weeds'); plaza.controller?.setWeeds?.(data.weeds); } catch {} }
+  // v1.10.89 밭 수확: the grown field gives each one 밭 채소 a week (sold at the 상인)
+  let harvestBusy = false;
+  async function harvestFarm() {
+    if (harvestBusy) return; harvestBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      await api('/api/island/farm/harvest', { method: 'POST', body: '{}' });
+      plaza.controller?.playMine?.('pickup'); showToast('🥕 밭 채소 +1 · 상인에게 팔 수 있어요');
+      plaza.controller?.setFarm?.({ ...(await api('/api/island/farm')), harvested: true });
+    } catch (error) {
+      showToast(error.message);
+      if (error.data?.error === 'HARVESTED') api('/api/island/farm').then((v) => plaza.controller?.setFarm?.({ ...v, harvested: true })).catch(() => {});
+    } finally { harvestBusy = false; }
+  }
   async function pullWeed(key) {
     const id = key.slice('weed:'.length);
     if (!id || weedBusy || islandEventBusy) return;
@@ -4446,6 +4501,83 @@
     }
   }
 
+  // v1.10.89 분류·검색 (사용자 2026-10-17 「내가 산 것도, 상점도 찾기 힘들다」): one filter bar for 상점 and 내 정보 -- name
+  // search, 등급, (character skins) 시리즈, (상점) 보유 여부 -- each window keeping its own choice; the search redraws the
+  // cards only (the box keeps the focus and a Korean word being typed)
+  const SKIN_SERIES = [['basic', '기본'], ['animal', '동물 세트'], ['x2', '추가 의상'], ['ip', '캐릭터']];
+  const seriesOf = (skin) => (skin.ip ? 'ip' : /^avatar_animal_/.test(skin.id) ? 'animal' : /^avatar_x2_/.test(skin.id) ? 'x2' : 'basic');
+  const skinFilters = { shop: { q: '', tier: '', series: '', own: '' }, mine: { q: '', tier: '', series: '', own: '' } };
+  const skinResults = { shop: null, mine: null }; // the cards' redraw of each window (the search calls it)
+  function filterSkins(skins, f, owned) {
+    const q = f.q.trim().toLowerCase();
+    return skins.filter((s) => (!f.tier || s.tier === f.tier) && (!f.series || seriesOf(s) === f.series) && (!f.own || (f.own === 'owned') === owned.has(s.id))
+      && (!q || [s.name, s.slotLabel, s.ip, s.character].some((t) => String(t || '').toLowerCase().includes(q))));
+  }
+  function skinFilterBar(view, skins, { own = false } = {}) {
+    const f = skinFilters[view];
+    const bar = document.createElement('div'); bar.className = 'skinFilterBar';
+    const search = document.createElement('input'); search.type = 'search'; search.className = 'skinSearch'; search.placeholder = '이름 검색';
+    search.setAttribute('aria-label', '이름으로 찾기'); search.value = f.q; search.dataset.view = view;
+    const count = document.createElement('span'); count.className = 'skinCount';
+    const top = document.createElement('div'); top.className = 'skinFilterTop'; top.append(search, count); bar.append(top);
+    const chips = (key, label, options) => {
+      if (f[key] && !options.some(([value]) => value === f[key])) f[key] = ''; // not in this list (another tab): all
+      if (options.length < 2) return;
+      const group = document.createElement('div'); group.className = 'skinChips'; group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
+      for (const [value, text] of [['', `${label} 전체`], ...options]) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `ghost tiny skinChip${f[key] === value ? ' selected' : ''}`;
+        b.dataset.filter = key; b.dataset.value = value; b.setAttribute('aria-pressed', String(f[key] === value)); b.textContent = text; group.append(b);
+      }
+      bar.append(group);
+    };
+    chips('tier', '등급', SKIN_TIER_ORDER.filter((t) => skins.some((s) => s.tier === t)).map((t) => [t, skins.find((s) => s.tier === t).tierLabel]));
+    chips('series', '시리즈', SKIN_SERIES.filter(([k]) => skins.some((s) => seriesOf(s) === k)));
+    if (own) chips('own', '보유', [['missing', '안 산 것'], ['owned', '산 것']]);
+    return bar;
+  }
+  function slotTabsOf(skins, current, { all = false } = {}) { // character skins: a tab per 부위 (and 전체 in 내 정보)
+    const slots = [...new Set(skins.map((s) => s.slot))];
+    const tabs = document.createElement('div'); tabs.className = 'skinTabs skinSlotTabs'; tabs.setAttribute('role', 'tablist');
+    for (const slot of [...(all ? [''] : []), ...slots]) {
+      const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(slot === current)); tab.dataset.slot = slot;
+      const label = slot ? skins.find((s) => s.slot === slot).slotLabel || slot : '전체'; tab.textContent = all ? `${label} ${slot ? skins.filter((s) => s.slot === slot).length : skins.length}` : label; // (내 정보 counts what I have)
+      tabs.append(tab);
+    }
+    return tabs;
+  }
+  // v1.10.89 파츠 미리보기: my character with the item on (what I wear stays), turning, in 3D from the island's own parts
+  // (plaza-scene tryOn) -- above the cards, kept through the redraws, gone with the window
+  const tryOnHosts = { shop: 'skinShopTryOn', mine: 'myInfoTryOn' };
+  const canTryOn = (skin) => skin.id.startsWith('avatar_') && skin.slot && typeof plaza.controller?.tryOn === 'function';
+  function showTryOn(view, skins, skin) {
+    const box = document.getElementById(tryOnHosts[view]);
+    const look = { ...(skins.avatar?.look || {}), [skin.slot]: skin.id };
+    let canvas = box.querySelector('canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas'); canvas.setAttribute('role', 'img');
+      const cap = document.createElement('div'); cap.className = 'skinTryOnCap';
+      const name = document.createElement('strong'); const note = document.createElement('span'); note.className = 'smallMuted'; note.textContent = '지금 입은 옷에 이 파츠만 바꿔 입은 모습';
+      const close = document.createElement('button'); close.type = 'button'; close.className = 'ghost tiny'; close.textContent = '미리보기 닫기';
+      close.addEventListener('click', () => hideTryOn(view));
+      cap.append(name, note, close); box.replaceChildren(canvas, cap);
+    }
+    box.classList.remove('hidden');
+    box.querySelector('.skinTryOnCap strong').textContent = `${skin.name} · ${skin.slotLabel || ''}`;
+    canvas.setAttribute('aria-label', `${skin.name}을(를) 입은 내 캐릭터`);
+    if (!plaza.controller.tryOn(canvas, look)) { hideTryOn(view); return; }
+  }
+  function hideTryOn(view) {
+    const box = document.getElementById(tryOnHosts[view]); if (!box || box.classList.contains('hidden')) return;
+    box.classList.add('hidden'); box.replaceChildren(); plaza.controller?.tryOnClose?.();
+  }
+  function skinCardButtons(card, skin, view, skins) {
+    if (!canTryOn(skin)) return;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny skinTryOnBtn'; b.textContent = '미리보기';
+    b.setAttribute('aria-label', `${skin.name} 미리보기`); b.addEventListener('click', () => showTryOn(view, skins, skin)); card.append(b);
+  }
+
+  let myInfoSkinSlot = '';
   function renderMyInfoSkins() {
     myInfoSkinBody.replaceChildren();
     if (!myInfoSkins) return;
@@ -4468,7 +4600,7 @@
       tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
       tab.setAttribute('aria-selected', String(family.family === myInfoSkinFamily));
       tab.dataset.family = family.family;
-      tab.textContent = family.name;
+      tab.textContent = `${family.name} ${family.skins.length}`; // v1.10.89: how many in each
       tabs.append(tab);
     }
     myInfoSkinBody.append(tabs);
@@ -4478,50 +4610,66 @@
       const choice = renderTransformationChoice(myInfoSkins);
       if (choice) myInfoSkinBody.append(choice);
     }
-    for (const tierKey of SKIN_TIER_ORDER) {
-      const skins = family.skins.filter((skin) => skin.tier === tierKey);
-      if (!skins.length) continue;
-      const section = document.createElement('section');
-      section.className = 'skinFamily';
-      const heading = document.createElement('h3');
-      heading.textContent = skins[0].tierLabel;
-      const grid = document.createElement('div');
-      grid.className = 'skinGrid';
-      for (const skin of skins) {
-        const equipped = myInfoSkins.equipped?.[family.family]?.[skin.slot] === skin.id;
-        const card = document.createElement('div');
-        card.className = `skinCard${equipped ? ' equipped' : ''}`;
-        const preview = document.createElement('canvas');
-        preview.width = 260; preview.height = 130;
-        preview.setAttribute('role', 'img');
-        preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-        window.SkinLooks?.paintPreview(preview, skin.id);
-        const name = document.createElement('span');
-        name.className = 'skinName'; name.textContent = skin.name;
-        const meta = document.createElement('span');
-        meta.className = 'skinMeta';
-        meta.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74: a character skin names its owner
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.dataset.skin = skin.id;
-        button.disabled = transformationPending;
-        if (equipped) {
-          button.className = 'ghost';
-          button.textContent = '장착 중 · 해제';
-          button.dataset.action = 'unequip';
-          button.dataset.slot = skin.slot;
-          button.dataset.game = family.family;
-        } else {
-          button.className = 'secondary';
-          button.textContent = '장착';
-          button.dataset.action = 'equip';
-        }
-        card.append(preview, name, meta, button);
-        grid.append(card);
-      }
-      section.append(heading, grid);
-      myInfoSkinBody.append(section);
+    let skinsHere = family.skins;
+    if (family.family === 'avatar') { // v1.10.89: 부위 tabs (전체 first)
+      if (myInfoSkinSlot && !skinsHere.some((s) => s.slot === myInfoSkinSlot)) myInfoSkinSlot = '';
+      myInfoSkinBody.append(slotTabsOf(skinsHere, myInfoSkinSlot, { all: true }));
+      if (myInfoSkinSlot) skinsHere = skinsHere.filter((s) => s.slot === myInfoSkinSlot);
     }
+    myInfoSkinBody.append(skinFilterBar('mine', skinsHere));
+    const results = document.createElement('div'); results.className = 'skinResults'; myInfoSkinBody.append(results);
+    const fill = () => {
+      results.replaceChildren();
+      const shown = filterSkins(skinsHere, skinFilters.mine, myInfoSkins.owned);
+      myInfoSkinBody.querySelector('.skinCount').textContent = `${shown.length}개`;
+      if (!shown.length) { const p = document.createElement('p'); p.className = 'emptyState'; p.textContent = '조건에 맞는 스킨이 없습니다.'; results.append(p); }
+      for (const tierKey of SKIN_TIER_ORDER) {
+        const skins = shown.filter((skin) => skin.tier === tierKey);
+        if (!skins.length) continue;
+        const section = document.createElement('section');
+        section.className = 'skinFamily';
+        const heading = document.createElement('h3');
+        heading.textContent = skins[0].tierLabel;
+        const grid = document.createElement('div');
+        grid.className = 'skinGrid';
+        for (const skin of skins) {
+          const equipped = myInfoSkins.equipped?.[family.family]?.[skin.slot] === skin.id;
+          const card = document.createElement('div');
+          card.className = `skinCard${equipped ? ' equipped' : ''}`;
+          const preview = document.createElement('canvas');
+          preview.width = 260; preview.height = 130;
+          preview.setAttribute('role', 'img');
+          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+          window.SkinLooks?.paintPreview(preview, skin.id);
+          const name = document.createElement('span');
+          name.className = 'skinName'; name.textContent = skin.name;
+          const meta = document.createElement('span');
+          meta.className = 'skinMeta';
+          meta.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74: a character skin names its owner
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.skin = skin.id;
+          button.disabled = transformationPending;
+          if (equipped) {
+            button.className = 'ghost';
+            button.textContent = '장착 중 · 해제';
+            button.dataset.action = 'unequip';
+            button.dataset.slot = skin.slot;
+            button.dataset.game = family.family;
+          } else {
+            button.className = 'secondary';
+            button.textContent = '장착';
+            button.dataset.action = 'equip';
+          }
+          card.append(preview, name, meta, button);
+          skinCardButtons(card, skin, 'mine', myInfoSkins);
+          grid.append(card);
+        }
+        section.append(heading, grid);
+        results.append(section);
+      }
+    };
+    skinResults.mine = fill; fill();
   }
 
   async function loadMyInfoSkins() {
@@ -4537,7 +4685,9 @@
 
   myInfoSkinBody.addEventListener('click', async (event) => {
     const tab = event.target.closest('button.skinTab');
-    if (tab && myInfoSkins) { myInfoSkinFamily = tab.dataset.family; renderMyInfoSkins(); return; }
+    if (tab && myInfoSkins) { if (tab.dataset.slot !== undefined) myInfoSkinSlot = tab.dataset.slot; else { myInfoSkinFamily = tab.dataset.family; myInfoSkinSlot = ''; } renderMyInfoSkins(); return; }
+    const chip = event.target.closest('button.skinChip');
+    if (chip && myInfoSkins) { skinFilters.mine[chip.dataset.filter] = chip.dataset.value; renderMyInfoSkins(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !myInfoSkins) return;
     if (button.dataset.action === 'transformation') { await changeTransformation(button, myInfoSkinStatus); return; }
@@ -4560,6 +4710,11 @@
     }
   });
 
+  for (const [body, view] of [[myInfoSkinBody, 'mine'], [document.getElementById('skinShopBody'), 'shop']]) { // v1.10.89: the search redraws the cards only
+    body.addEventListener('input', (event) => { if (!event.target.matches('input.skinSearch')) return; skinFilters[view].q = event.target.value; skinResults[view]?.(); });
+  }
+  myInfoDialog.addEventListener('close', () => hideTryOn('mine'));
+  skinShopDialog.addEventListener('close', () => hideTryOn('shop'));
   myInfoBtn.addEventListener('click', () => {
     setPointHistoryOpen(false);
     myInfoDialog.showModal();
@@ -4615,60 +4770,60 @@
       const slots = SHOP_SLOTS[skinShopMode] || [...new Set(family.skins.map(skin => skin.slot))];
       if (!slots.includes(skinShopSlot)) skinShopSlot = slots[0];
       slotOnly = skinShopSlot;
-      if (slots.length > 1) {
-        const slotTabs = document.createElement('div');
-        slotTabs.className = 'skinTabs skinSlotTabs'; slotTabs.setAttribute('role', 'tablist');
-        for (const slot of slots) {
-          const tab = document.createElement('button');
-          tab.type = 'button'; tab.className = 'skinTab'; tab.setAttribute('role', 'tab');
-          tab.setAttribute('aria-selected', String(slot === slotOnly)); tab.dataset.slot = slot;
-          tab.textContent = family.skins.find(skin => skin.slot === slot)?.slotLabel || slot;
-          slotTabs.append(tab);
+      if (slots.length > 1) skinShopBody.append(slotTabsOf(family.skins.filter(skin => slots.includes(skin.slot)), slotOnly));
+    }
+    const skinsHere = family.skins.filter(skin => !slotOnly || skin.slot === slotOnly);
+    skinShopBody.append(skinFilterBar('shop', skinsHere, { own: true })); // v1.10.89 검색·등급·시리즈·보유
+    const results = document.createElement('div'); results.className = 'skinResults'; skinShopBody.append(results);
+    const fill = () => {
+      results.replaceChildren();
+      const shown = filterSkins(skinsHere, skinFilters.shop, skinShop.owned);
+      skinShopBody.querySelector('.skinCount').textContent = `${shown.length}개`;
+      if (!shown.length) { const p = document.createElement('p'); p.className = 'emptyState'; p.textContent = '조건에 맞는 스킨이 없습니다.'; results.append(p); }
+      for (const tierKey of SKIN_TIER_ORDER) {
+        const skins = shown.filter(skin => skin.tier === tierKey);
+        if (!skins.length) continue;
+        const section = document.createElement('section');
+        section.className = 'skinFamily';
+        const heading = document.createElement('h3');
+        heading.textContent = skins[0].tierLabel;
+        const grid = document.createElement('div');
+        grid.className = 'skinGrid';
+        for (const skin of skins) {
+          const owned = skinShop.owned.has(skin.id);
+          const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
+          const card = document.createElement('div');
+          card.className = `skinCard${equipped ? ' equipped' : ''}`;
+          const preview = document.createElement('canvas');
+          preview.width = 260; preview.height = 130;
+          preview.setAttribute('role', 'img');
+          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+          window.SkinLooks?.paintPreview(preview, skin.id);
+          const name = document.createElement('span');
+          name.className = 'skinName';
+          name.textContent = skin.name;
+          const meta = document.createElement('span');
+          meta.className = 'skinMeta';
+          const tier = document.createElement('span'); tier.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74
+          const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
+          meta.append(tier, price);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.skin = skin.id;
+          button.disabled = transformationPending;
+          if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
+          else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
+          else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
+          else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
+          card.append(preview, name, meta, button);
+          skinCardButtons(card, skin, 'shop', skinShop);
+          grid.append(card);
         }
-        skinShopBody.append(slotTabs);
+        section.append(heading, grid);
+        results.append(section);
       }
-    }
-    for (const tierKey of SKIN_TIER_ORDER) {
-      const skins = family.skins.filter(skin => skin.tier === tierKey && (!slotOnly || skin.slot === slotOnly));
-      if (!skins.length) continue;
-      const section = document.createElement('section');
-      section.className = 'skinFamily';
-      const heading = document.createElement('h3');
-      heading.textContent = skins[0].tierLabel;
-      const grid = document.createElement('div');
-      grid.className = 'skinGrid';
-      for (const skin of skins) {
-        const owned = skinShop.owned.has(skin.id);
-        const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
-        const card = document.createElement('div');
-        card.className = `skinCard${equipped ? ' equipped' : ''}`;
-        const preview = document.createElement('canvas');
-        preview.width = 260; preview.height = 130;
-        preview.setAttribute('role', 'img');
-        preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-        window.SkinLooks?.paintPreview(preview, skin.id);
-        const name = document.createElement('span');
-        name.className = 'skinName';
-        name.textContent = skin.name;
-        const meta = document.createElement('span');
-        meta.className = 'skinMeta';
-        const tier = document.createElement('span'); tier.textContent = `${skin.slotLabel ? `${skin.tierLabel} · ${skin.slotLabel}` : skin.tierLabel}${skin.ip ? ` · ${skin.ip} 캐릭터` : ''}`; // v1.10.74
-        const price = document.createElement('span'); price.textContent = owned ? '보유 중' : skinPrice(skin.price);
-        meta.append(tier, price);
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.dataset.skin = skin.id;
-        button.disabled = transformationPending;
-        if (equipped) { button.className = 'ghost'; button.textContent = '장착 중 · 해제'; button.dataset.action = 'unequip'; button.dataset.slot = skin.slot; button.dataset.game = family.family; }
-        else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
-        else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
-        else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
-        card.append(preview, name, meta, button);
-        grid.append(card);
-      }
-      section.append(heading, grid);
-      skinShopBody.append(section);
-    }
+    };
+    skinResults.shop = fill; fill();
     if (family.family === 'avatar' && (!slotOnly || slotOnly === 'outfit')) skinShopBody.append(renderTitlePicker());
   }
 
@@ -4713,6 +4868,8 @@
   skinShopBody.addEventListener('click', async (event) => {
     const tab = event.target.closest('button.skinTab');
     if (tab && skinShop) { if (tab.dataset.slot) skinShopSlot = tab.dataset.slot; else skinShopFamily = tab.dataset.family; skinBuyArmed = null; renderSkinShop(); return; }
+    const chip = event.target.closest('button.skinChip');
+    if (chip && skinShop) { skinFilters.shop[chip.dataset.filter] = chip.dataset.value; skinBuyArmed = null; renderSkinShop(); return; }
     const button = event.target.closest('button[data-action]');
     if (!button || !skinShop) return;
     if (button.dataset.action === 'transformation') { await changeTransformation(button, skinShopStatus); return; }

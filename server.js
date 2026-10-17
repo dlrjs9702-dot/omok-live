@@ -52,6 +52,7 @@ const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관�
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
+const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -888,12 +889,46 @@ function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
 
+// v1.10.89 낚시왕 (IDEAS #future-fishing-dex, 사용자 2026-10-16): a week's (Seoul Monday to Monday) 1st by the points the
+// harbour fisherman paid, closed once after it ends, holds 「낚시왕」 the week after (a title worn in the title slot,
+// shown only while it is theirs). A tie: who reached the total first, then the account id. None sold: nobody. From the
+// week of 2026-10-12 on (no earlier week is made up).
+const FISHKING_TITLE = 'title_fishking'; const FISHKING_FIRST_WEEK = '2026-10-12';
+let fishkingCache = { week: null, id: null }; let fishkingSettling = null;
+async function settleFishkingWeeks(now = nowMs()) {
+  if (fishkingSettling) return fishkingSettling;
+  fishkingSettling = (async () => {
+    // every week from the first, oldest first; a closed one is skipped, so a failed run leaves no week out (Codex review)
+    for (let week = FISHKING_FIRST_WEEK, last = previousWeek(climbWeekOf(now)); week <= last; week = nextWeekOf(week)) {
+      const key = `fishking_week:${week}`;
+      if (await pointStore.settlementOf(key)) continue;
+      const rows = (await pointStore.fishSalesWeek(new Date(weekStartMs(week)).toISOString(), new Date(weekStartMs(nextWeekOf(week))).toISOString()))
+        .sort((a, b) => b.total - a.total || String(a.lastAt).localeCompare(String(b.lastAt)) || a.userId.localeCompare(b.userId));
+      const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
+      const ranking = rows.slice(0, 10).map((r, i) => ({ userId: r.userId, name: labels.get(r.userId) || (r.userId === 'admin' ? '관리자' : '게스트'), total: r.total, rank: i + 1 }));
+      await pointStore.settleTitleWeek(key, { kind: 'fishking_week', week, fishking: ranking[0]?.userId || null, ranking });
+    }
+    await refreshFishking(now);
+  })().catch((error) => console.error('낚시왕 주간 결산 실패:', error.message)).finally(() => { fishkingSettling = null; });
+  return fishkingSettling;
+}
+async function refreshFishking(now = nowMs()) {
+  const week = previousWeek(climbWeekOf(now));
+  const id = (await pointStore.settlementOf(`fishking_week:${week}`))?.fishking || null;
+  if (fishkingCache.week === week && fishkingCache.id === id) return;
+  fishkingCache = { week, id }; refreshTaxLooks(); // name tags follow at once
+}
+function isFishking(account, now = nowMs()) {
+  return Boolean(account) && fishkingCache.week === previousWeek(climbWeekOf(now)) && fishkingCache.id === account;
+}
+
 function isChampion(account, now = nowMs()) {
   return championCache.week === previousWeek(climbWeekOf(now)) && championCache.ids.has(account);
 }
 const climbWeekTicker = setInterval(() => {
   if (championCache.week !== previousWeek(climbWeekOf(nowMs()))) refreshChampions().catch(() => {}); // Monday 00:00: last week's champions expire at once
   settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
+  settleFishkingWeeks(); // v1.10.89 낚시왕
   settleClimbWeeks();
 }, 60 * 1000);
 climbWeekTicker.unref?.();
@@ -966,6 +1001,7 @@ const taxDebt = new Map(); // account -> what it owes
 const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
+  if (equipped?.avatar?.title === FISHKING_TITLE) shown.title = isFishking(account) ? '낚시왕' : null; // v1.10.89
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
@@ -1003,7 +1039,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null })) };
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -1188,6 +1224,17 @@ const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species,
 const SEATS = new Map(IslandTerrain.plazaProps().seats.map((s) => [s.id, s]));
 const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
+// v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
+// the fish shown on a catch is the server's own result, never the page's word
+const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss']);
+function fishActOf(token, act) {
+  if (!FISH_ACTS.has(act)) return null;
+  const c = fishCasts.get(token);
+  if (act === 'fish:miss') return { act, fish: null };
+  if (!c) return null;
+  if (act === 'fish:catch') return c.done?.species ? { act, fish: c.done.species } : null;
+  return { act, fish: null };
+}
 // v1.10.47 관광열차: who is on which train's seat (session token -> { k, seat, from: the stop they got on at }). The trains
 // themselves are the shared timetable (island-train.js) on the server clock; `trainShift` moves that clock in tests only.
 const trainVisitors = new Map();
@@ -3200,7 +3247,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.88' });
+    return sendJson(res, 200, { ok: true, version: '1.10.89' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3562,6 +3609,7 @@ async function requestHandler(req, res) {
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
     const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
+    if (isFishking(account)) dexTitles.unshift({ id: FISHKING_TITLE, name: '낚시왕' }); // v1.10.89 (this week)
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
@@ -3694,7 +3742,10 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     let skinId = null; let free = false;
     const dexTitle = IslandFishing.dexTitle(body.skinId); // v1.10.42: a 도감 title, worn in the same slot once its finds are in
-    if (dexTitle) {
+    if (body.skinId === FISHKING_TITLE) { // v1.10.89: this week's 낚시왕 only
+      if (!isFishking(account)) return sendError(res, 409, 'SKIN_NOT_OWNED', '이번 주 낚시왕만 쓸 수 있는 칭호입니다.');
+      skinId = FISHKING_TITLE; free = true;
+    } else if (dexTitle) {
       if (IslandFishing.collectionCount(await pointStore.dexOf(account)) < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
       skinId = dexTitle.id; free = true;
     } else if (body.skinId !== null && body.skinId !== undefined) {
@@ -4002,7 +4053,9 @@ async function requestHandler(req, res) {
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       space: townhallInside.has(session.token) ? 'townhall' : 'island', // v1.10.84
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
-      ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null }; const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
+      ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
+        const fishing = fishActOf(session.token, body.act); if (fishing) return { ...fishing, actN: 0, seat: null }; // v1.10.89
+        const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
@@ -4870,6 +4923,28 @@ async function requestHandler(req, res) {
     await settleDonationWeeks(now);
     return sendJson(res, 200, { ok: true, donation: donationCache });
   }
+  // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): each server-given title's holders, 1대 from the first week
+  // recorded -- a week's champions (ties together) and its 호구왕 hold the title the week after it closed. Names as they
+  // were that week; the account ids stay here (`mine` only marks my own rows)
+  if (pathname === '/api/island/titles' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const me = pointAccountForSession(session); const now = nowMs(); const current = previousWeek(climbWeekOf(now));
+    const weeks = await pointStore.titleWeeks();
+    const titles = [['champion', '챔피언', '등반 도전 주간 1위'], ['hoguking', '호구왕', '기부 주간 1위'], ['fishking', '낚시왕', '어부 판매 주간 1위']].map(([id, name, about]) => {
+      const list = weeks.filter((w) => w.title === id && w.holders.length);
+      return { id, name, about, kind: '주간', since: list[0]?.at?.slice(0, 10) || null,
+        entries: list.map((w, i) => ({ n: i + 1, names: w.holders.map((h) => h.name), mine: w.holders.some((h) => h.id === me), week: w.week,
+          start: nextWeekOf(w.week), end: new Date(Date.parse(`${nextWeekOf(nextWeekOf(w.week))}T00:00:00Z`) - 86400000).toISOString().slice(0, 10), current: w.week === current })) };
+    });
+    return sendJson(res, 200, { ok: true, titles });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fishking/settle' && req.method === 'POST') { // v1.10.89
+    const body = await parseJson(req); const now = Number(body.now) || nowMs();
+    await settleFishkingWeeks(now);
+    if (body.asCurrent) { const r = await pointStore.settlementOf(`fishking_week:${previousWeek(climbWeekOf(now))}`); fishkingCache = { week: previousWeek(climbWeekOf(nowMs())), id: r?.fishking || null }; refreshTaxLooks(); } // (tests: that week as if it had just closed)
+    return sendJson(res, 200, { ok: true, fishking: fishkingCache });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
     const body = await parseJson(req);
     const now = Number(body.now) || nowMs();
@@ -4915,9 +4990,26 @@ async function requestHandler(req, res) {
   // the central plaza (a new day, or the first visit).
   // v1.10.80 농부 밭 (IDEAS #future-island-minigames C안): the field everyone sees -- its stage from how many helped this
   // week (0 holes, 1 filled, 2 sprouts, 3 grown), and their names for the sign. A new week starts at 0 by itself.
+  // v1.10.89 밭 수확 (IDEAS #future-island-minigames: 「늦게 온 사람도 자기 수확은 각자」): when this week's field is grown
+  // (stage 3), each account takes one 밭 채소 a week, standing in the field (once per week: the claim)
+  if (pathname === '/api/island/farm/harvest' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-harvest:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const F = IslandTerrain.FARM;
+    if (!at || townhallInside.has(session.token) || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있습니다.');
+    const week = questWeek(); const farm = await islandFarm();
+    if (islandFarmView?.week !== week) return sendError(res, 409, 'TRY_AGAIN', '다시 시도해 주세요.'); // the week turned meanwhile: the field and the claim must be the same week (Codex review)
+    if (farm.stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
+    const account = pointAccountForSession(session);
+    const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${week}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
+    return sendJson(res, 200, { ok: true, bag: out.bag });
+  }
   if (pathname === '/api/island/farm' && req.method === 'GET') {
-    if (!requireSession(req, res)) return;
-    return sendJson(res, 200, { ok: true, ...(await islandFarm()) });
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    return sendJson(res, 200, { ok: true, ...(await islandFarm()), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89
   }
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
     const session = requireSession(req, res);
@@ -5524,6 +5616,7 @@ async function main() {
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
+  settleFishkingWeeks(); // v1.10.89 낚시왕
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
@@ -5578,7 +5671,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.88 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.89 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

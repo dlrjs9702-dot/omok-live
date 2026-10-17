@@ -2028,3 +2028,19 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .messengerMeta{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:1px;flex:none}
 .chatMessage.mine .messengerMeta{align-items:flex-end}
 .messengerReadCount{border:0;background:none;padding:0;color:#eab308;font-weight:900;font-size:.72rem;cursor:pointer;line-height:1}
+/* v1.10.89 상점·내 정보: 검색·분류 칩 · 파츠 미리보기 */
+.skinFilterBar{display:grid;gap:6px;margin:6px 0 10px}
+.skinFilterTop{display:flex;gap:8px;align-items:center}.skinSearch{flex:1;min-width:0;max-width:320px}.skinCount{font-size:.78rem;opacity:.75;white-space:nowrap}
+.skinChips{display:flex;flex-wrap:wrap;gap:4px}.skinChip.selected{background:#2563eb;color:#fff;border-color:#2563eb}
+.skinTryOn{display:flex;gap:12px;align-items:center;margin:6px 0;padding:8px;border-radius:12px;background:#1e293b;position:sticky;top:0;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.skinTryOn.hidden{display:none}.skinTryOn canvas{width:180px;height:225px;flex:none;border-radius:10px;background:radial-gradient(circle at 50% 40%,#e0f2fe,#93c5fd)}
+.skinTryOnCap{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
+.skinTryOnBtn{margin-top:4px}
+@media (max-width:560px){.skinTryOn canvas{width:132px;height:165px}}
+/* v1.10.89 칭호 명예의 전당 */
+.titleHallCard{margin-top:10px}.titleHallPanel{display:grid;gap:6px;padding:8px 2px}.titleHallPanel.hidden{display:none}.titleHallPanel p{margin:0}
+.titleHallHead{font-weight:800}
+.titleHallList{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:46vh;overflow-y:auto}
+.titleHallRow{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:8px;background:rgba(148,163,184,.12)}.titleHallRow span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.titleHallRow.current{outline:2px solid #f59e0b}.titleHallRow.mine strong{color:#60a5fa}
+.titleHallNow{font-size:.72rem;font-weight:900;color:#f59e0b}

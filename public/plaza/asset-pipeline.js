@@ -131,6 +131,7 @@
         state = name; once = action; fadeTo(action); action.time = Math.min(action.getClip().duration, elapsed * action.timeScale); return true;
       },
       seekOnce(elapsed) { if (once && onceHeld) { const time=Math.min(once.getClip().duration,Math.max(0,elapsed)*once.timeScale); mixer.update(Math.max(0,(time-once.time)/once.timeScale)); } },
+      onceLeft() { return once && !onceHeld && once.isRunning() ? (once.getClip().duration - once.time) / (once.timeScale || 1) : 0; }, // v1.10.89: seconds left of a one-off clip
       finishOnce() { onceHeld = false; once?.stop(); once = null; state = ''; current = null; },
       loop(name) { const action = actions[name]; if (!action) return false; action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = 1; held = name; if (!once) { state = name; fadeTo(action); } return true; },
       release() { held = null; if (!once) { state = 'idle'; fadeTo(actionFor('idle')); } },

@@ -146,6 +146,14 @@ test('주간 챔피언: 지난주 공동 1위 둘 다 챔피언, 3위는 아님,
   const [va, vb, vc] = [await view(a), await view(b), await view(c)];
   assert.deepEqual([va.champion, vb.champion, vc.champion], [true, true, false]);
   assert.deepEqual(va.champions.names.sort(), ['공동일등A', '공동일등B']);
+  // v1.10.89 칭호 명예의 전당: the week is 1대 (both, as named then), current; no account id on the board
+  const hall = async (who) => (await fx.req('/api/island/titles', who.session)).data.titles;
+  const champ = (await hall(a)).find((x) => x.id === 'champion');
+  assert.deepEqual([champ.entries.length, champ.entries[0].n, champ.entries[0].current, champ.entries[0].mine], [1, 1, true, true]);
+  assert.deepEqual(champ.entries[0].names.sort(), ['공동일등A', '공동일등B']);
+  assert.ok(!('holders' in champ.entries[0]));
+  assert.equal((await hall(c)).find((x) => x.id === 'champion').entries[0].mine, false);
+  assert.equal((await hall(c)).find((x) => x.id === 'hoguking').entries.length, 0);
   const after = async (who) => (await fx.req('/api/points', who.session)).data.balance;
   assert.equal(await after(a) - before[a.label], 1_000_000);
   assert.equal(await after(b) - before[b.label], 1_000_000);
