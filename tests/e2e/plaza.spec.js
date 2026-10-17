@@ -1358,7 +1358,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   await expect.poll(seen, { timeout: 8000 }).toBe(null); await b.context.close();
   await page.keyboard.press('KeyI'); await page.locator('#islandDexBtn').click();
-  await expect(page.locator('#islandBagCount')).toHaveText('1/18'); // v1.10.43: + the 7 photo spots
+  await expect(page.locator('#islandBagCount')).toHaveText('1/31'); // v1.10.43: + the 7 photo spots; v1.10.90 + 13 fish
   await expect(page.locator('.islandDexCell:not(.unfound)')).toHaveText(/고등어/);
   await expectNoScriptError(page);
   await a.context.close();

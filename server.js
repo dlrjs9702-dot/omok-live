@@ -4532,7 +4532,8 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-fish:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || !IslandFishing.canFish(at.x, at.z)) return sendError(res, 409, 'NOT_FISHING_SPOT', '물가에서 낚시할 수 있습니다.');
-    const now = nowMs(); const c = IslandFishing.cast(now);
+    const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const season = IslandTerrain.seasonAt(at.x, at.z, now) || 'summer'; // v1.10.90: the river or the sea, and that spot's season today
+    const c = IslandFishing.cast(now, Math.random, { water, season });
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
     return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS });
