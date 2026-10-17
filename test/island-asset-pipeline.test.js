@@ -61,7 +61,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     // v1.10.80 농부 × 두더지 잡기 (assets 26): the field's four stages, the helpers' sign, the farmer and his mallet
     ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.mallet', 'character.farmer',
     'ground.season', 'ground.moss', 'ground.fern', 'ground.shrub', 'ground.flowers', // ② 땅 다듬기 (assets/25)
-    'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna'].map((f) => `fish.${f}`)].sort());
+    'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna', 'crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish'].map((f) => `fish.${f}`)].sort()); // v1.10.90 +13 (assets 40)
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
   // shoes, necklaces 10 each) and the 30 face designs
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50 + 112 + 44); // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit; v1.10.74 + 스킨 2배 112 + 캐릭터 44

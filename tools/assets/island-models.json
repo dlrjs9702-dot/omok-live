@@ -436,8 +436,9 @@
     },
     {
       "out": "characters/motions/GatherWeed.glb",
-      "src": "motion36:motions/GatherWeed.glb",
-      "sha256": "ef3cc683d6d83fa9d1124b941ac7a368d35d9859d264bdf8d588aada310b631e"
+      "src": "weed37:GatherWeed.glb",
+      "sha256": "3db795ff79eb04ee6e361e34018b361b73e8e15166ce4d3dddaa0db8043ef9dd",
+      "precompressed": true
     },
     {
       "out": "characters/motions/Give.glb",
@@ -4442,6 +4443,110 @@
       "lowSrc": "farmer:02. Low/prop_mallet_low.glb",
       "lowSha256": "7c18119e539a9149c0bab23d5cd2dbc27c76ad455e1ca5f32646bb48fcbbf6d5",
       "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_crucian_carp.glb",
+      "src": "fishdex40:High/fish_crucian_carp.glb",
+      "sha256": "e1e318f8b77edfbd1491bc550525ade7cf037202bfcff1280b0eb861fce5aa01",
+      "lowSrc": "fishdex40:Low/fish_crucian_carp_low.glb",
+      "lowSha256": "315916b3164bd6f3a96231f35d4aee46e9deb23335025b5792f09e0974718128",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_carp.glb",
+      "src": "fishdex40:High/fish_carp.glb",
+      "sha256": "c52d1df8307e1ea7d69e656f36a02e8afa793892eb7387ced1189f45d6045609",
+      "lowSrc": "fishdex40:Low/fish_carp_low.glb",
+      "lowSha256": "ff7b536bad08504438b2b3c77df0d7fb4b632e6587c59ea42d440cecd692d7d6",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_pale_chub.glb",
+      "src": "fishdex40:High/fish_pale_chub.glb",
+      "sha256": "b649f7086e42f46b7fcfa3f9734719b7eb24021165e0011c6752333bd4f5461f",
+      "lowSrc": "fishdex40:Low/fish_pale_chub_low.glb",
+      "lowSha256": "c74263804623cdd6c055d87ef55dd80861b1bec0b76d9a3c17d5f6be2cc63243",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_sweetfish.glb",
+      "src": "fishdex40:High/fish_sweetfish.glb",
+      "sha256": "eb5647bdad68d89df67d2e3b63b913f9b8bdd54e448ca54268c0687c57eb229d",
+      "lowSrc": "fishdex40:Low/fish_sweetfish_low.glb",
+      "lowSha256": "16f1f4550afc4cc525822fcf8ebd0764d066cf5d82be8b8064af7704bb7e3b4f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_catfish.glb",
+      "src": "fishdex40:High/fish_catfish.glb",
+      "sha256": "f2c8efbc2068a428b31a02ba3b09a7abeb36a62f234753e04265054c12ed26a3",
+      "lowSrc": "fishdex40:Low/fish_catfish_low.glb",
+      "lowSha256": "755a2546f00a0cde48027a9ea19a1acb352ab71521f3b64f41f7df8e9c52b658",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_mandarin_fish.glb",
+      "src": "fishdex40:High/fish_mandarin_fish.glb",
+      "sha256": "bb4e52d8254c5ea8ead777ee8ec4de09ceb04af59bf591657d5b3dbde3b9d206",
+      "lowSrc": "fishdex40:Low/fish_mandarin_fish_low.glb",
+      "lowSha256": "e8a2b52e1020fda219c5ed1cd96193ab07412ccd0fbc4485afdd5cb9981d0256",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_eel.glb",
+      "src": "fishdex40:High/fish_eel.glb",
+      "sha256": "1d867909681917bb5b4258f854a5a85c9a5cb0c2986cd1c06b1e67130322ac7c",
+      "lowSrc": "fishdex40:Low/fish_eel_low.glb",
+      "lowSha256": "5e6b8357915ec4aa143c24cf60cb00f85c8cab9258b4c0a26cb5a6527ca640c8",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_smelt.glb",
+      "src": "fishdex40:High/fish_smelt.glb",
+      "sha256": "b2ab48c949a34cad4b8e5b92bf49ba5dbee38759206031bd9761742c998b0bab",
+      "lowSrc": "fishdex40:Low/fish_smelt_low.glb",
+      "lowSha256": "c83cb90ef6cd5e712fe27baa08608e1016fcccea4b46bc11643be2191bd0c426",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_mullet.glb",
+      "src": "fishdex40:High/fish_mullet.glb",
+      "sha256": "3d16973778b5357ffb858fbed810aff79f1b4444e875540bbb93356ea159fa79",
+      "lowSrc": "fishdex40:Low/fish_mullet_low.glb",
+      "lowSha256": "3930839ad321184d51c0d1bb839dc10960632dd79e099919bdd90a15aef02658",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_flatfish.glb",
+      "src": "fishdex40:High/fish_flatfish.glb",
+      "sha256": "f440b1529dddc2b24ea1c24aa5de7f1981f5cbeb5f33ae41f0754cc544a0498d",
+      "lowSrc": "fishdex40:Low/fish_flatfish_low.glb",
+      "lowSha256": "d5dd843473fad623a2904d1901458d605ceacf14a716ecf33479949974e46b1c",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_sea_bass.glb",
+      "src": "fishdex40:High/fish_sea_bass.glb",
+      "sha256": "cbcdc88354bb38f04c7459484db7b731b78668add6d1cce0f6c1a8c32917b603",
+      "lowSrc": "fishdex40:Low/fish_sea_bass_low.glb",
+      "lowSha256": "27ae524ff9833cd799567406798a42eb3d0b4815c9f3c4c54b975b9dd593215f",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_gizzard_shad.glb",
+      "src": "fishdex40:High/fish_gizzard_shad.glb",
+      "sha256": "c70e576d63dfe2f035c2ff2066be6dd0002aed6467fb51faaee0104bb7f99061",
+      "lowSrc": "fishdex40:Low/fish_gizzard_shad_low.glb",
+      "lowSha256": "faa57645b8d57080e8ef3b660324175cc2e505cf1891e288c2cb98f7ff20b0ab",
+      "precompressed": true
+    },
+    {
+      "out": "fishing-v1/fish_rockfish.glb",
+      "src": "fishdex40:High/fish_rockfish.glb",
+      "sha256": "e6c87b2f53075932dc2f038cf636a4fd598285f8c93b439a338ed4b7ee5f0756",
+      "lowSrc": "fishdex40:Low/fish_rockfish_low.glb",
+      "lowSha256": "f96a071083d007d2396a6c1597cf464b6612496d1d4f092b8c493a6254873c23",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4464,6 +4569,8 @@
     "overhaul": "28. Game Island asset overhaul 2026-10-14",
     "transformationChoices": "30. Game Island transformation choices 2026-10-14",
     "motion36": "36. Game Island expressive motion repair 2026-10-15/delivery",
-    "farmer": "26. Game Island farmer quest 2026-10-12"
+    "farmer": "26. Game Island farmer quest 2026-10-12",
+    "weed37": "37. Game Island weed pull motion 2026-10-17",
+    "fishdex40": "40. Game Island fishing dex 13 2026-10-18"
   }
 }

@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.90 스킨 2배·IP 환불, 낚시 도감 21종, 잡초 게시판·제초왕, UI 그림, 메신저 보완, 섬 시간대, 에셋 점검실·운영 스위치
+
+- 지시(사용자 2026-10-17): 「기록된 구현을 하나씩 계속」; IDEAS 스킨 2배, IP 스킨 정리, 낚시 도감 확장(assets 40), 잡초 게시판, UI 그림(assets 38), 메신저 보완, 섬 시간대, `#future-admin-console` ①②③.
+- 스킨 2배(`public/skin-art-*.js`, `lib/skins.js`): 14게임 일반 c6–c10·고급 p4–p6·방 테마 t3·전설 l3(t3과 짝). IP 환불: `IP_SKINS=off`면 시작 때 `refundSkins(IP_SKIN_IDS)`(산 값 1회 환불, 원장 `ip_skin_refund:<skin>:<user>`, 소유·장착 제거, PG도 같은 키로 한 번만).
+- 낚시(`lib/island-fishing.js`): 13종 추가 21종, 강/바다×계절 출현표 `TABLE`, `island-terrain` `fishWater`로 개울가 자리, 도감 칭호 3은 18종 유지·`dex_title_4` 대도감 완성(31). 모델·아이콘 assets 40.
+- 잡초(`lib/island-weeds.js` `targetFor`·`wilt`): 전날 뽑은 양 <140→1,680, <350→1,400, 그 외 1,120; 하루 이상 비면 0으로 본다. 게시판 `GET /api/island/weeds/board`(오늘 순위, 어제 섬 실적, 어제 수훈 2명 `weedday:` 결산), 주간 칭호 일반화(`WEEKLY_TITLES` 낚시왕·제초왕).
+- UI 그림(assets 38): 게임관 카드 31, 오늘의 게임 테두리, 가방·판매 아이템 그림. 메신저: 5분 안 삭제(`unsend`), 대화방 고정(PG `messenger_pins` 새 표), 섬 새 메시지 알림.
+- 섬 시간대(`plaza-scene` `LIGHTS`·`phaseAt`): 실제 시각 자동 또는 관리자 고정(`/api/admin/island/time`, SSE `islandTime`), 할로윈 장식과 밤 분리. 에셋 점검실(`public/admin/asset-inspector.js`): 등록 모델·모션·그림 미리보기, 메모 서버 저장(최대 300), 수정 요청 → Codex 주문서 초안. 운영 스위치(`/api/admin/switches`): 새 가입 신청·메신저. 관리자 세계값 저장은 한 번에 하나씩(`worldEdit`).
+- 검증: 단위 skins·ip-skin-refund·island-fishing·island-items·island-weeds-server·messenger·asset-pipeline, e2e river-fishing·weed-board·island-time·asset-inspector·plaza 낚시, Codex 검토 반영(스위치·메모 동시 저장, 건너뛴 날 잡초, PG 중복 환불). 실제 휴대폰·GPU 미검증.
+
 ## v1.10.89 상점 미리보기·분류, 행동 중 이동 잠금, 잡초 뽑기 모션·310P
 
 - 지시(사용자 2026-10-17): 「상점 창에서 각 파츠 미리보기를 다음 패치에. 내 정보에서 산 것들도 분류를 더 자세히, 상점도」; IDEAS `#future-action-move-lock`, `#future-weed-motion`(납품가 200→310P 같은 릴리스).
@@ -34,12 +44,3 @@
 - 화면(`public/app.js` messenger): 목록에 마지막 메시지·시간·안 읽은 수·🔕, 「1:1 대화」, 방 머리 「이름」·「알림 끄기」, 메시지 옆 안 읽은 사람 수(마우스 올리면 이름, 휴대폰은 눌러서), 날짜 구분선, 같은 사람 연속 메시지는 이름 한 번, 가운데 시스템 문구, 나가기 확인창 「나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다」. 메신저 버튼 알림은 서버의 안 읽은 수(알림 끈 방 제외) — 기기별 `gc.messengerSeen`은 더 쓰지 않음.
 - 남긴 것: 실시간(SSE) 대신 지금의 3초·10초 폴링 유지, 섬·게임 안 새 메시지 알림, 메시지 삭제(제안), 대화 목록 고정(선택). 업데이트 직후 기존 방은 서버 읽음 기록이 없어 한 번 전부 안 읽음으로 보임.
 - 검증: `test/messenger.test.js`(JSON·PostgreSQL 읽음·1:1 동시 열기 한 방·재입장·시스템 문구·이름·알림, API 읽음·1:1·나가기 뒤 기록 유지·재입장 문구·허용 해제 active), e2e `messenger.spec.js` PC·휴대폰(시스템 문구, 「1」이 상대가 읽으면 사라짐, 서버 안 읽은 수 2, 목록 미리보기, 1:1 방 이름·초대 숨김, 나가기 경고 문구), 화면 확인. 실제 휴대폰 미검증.
-
-## v1.10.87 메신저 보완 (IDEAS 대조)
-
-- 지시(사용자 2026-10-17): 「메신저 관련 사항 다 구현했는지 확인하고 부족하면 이어서」. IDEAS `#future-messenger` 대조 결과 보완 3가지.
-- 보관: 「부담이 크면 7일, 아니면 계속 보관」 — 가족 규모 단체 대화(메시지 500자)는 부담이 작아 **전부 보관**으로(방마다 최근 1,000개만 두던 정리 제거, 방이 없어질 때만 함께 삭제). `lib/messenger-store.js`.
-- 기록 조회: `GET /api/messenger/rooms/:id/messages?before=번호` → 그 앞 100개(`older`, JSON·PostgreSQL), 대화방 위 「이전 대화 더 보기」(보던 자리 유지).
-- 알림: 내 계정 화면의 「메신저」 버튼에 안 읽은 새 메시지 수(창이 닫혀 있는 동안 30초마다, 이 기기에서 본 번호 기준).
-- 그대로 둔 결정(v1.10.78): 관리자 계정별 허용, 허용자끼리 방 만들기·초대, 한 방 30명·한 사람 20방·500자, 채팅만(통화·파일 없음).
-- 검증: `test/messenger.test.js`(전부 보관·이전 대화 100개씩), e2e `messenger.spec.js` PC·휴대폰(버튼의 「새 메시지 1」 포함). 실제 휴대폰 미검증.

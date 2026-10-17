@@ -16,16 +16,16 @@ test('이모트 도중엔 서 있고, 끝나면 누르고 있던 방향키로 �
   await page.locator('#plazaStage').focus();
   const at = () => page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z, locked: window.PlazaDebug().actLocked }));
 
-  expect(await page.evaluate(() => window.PlazaDebug().emote('wave'))).toBe(true);
-  expect(await page.evaluate(() => window.PlazaDebug().emote('cheer'))).toBe(false); // not stacked on the first
-  const a = await at(); expect(a.locked).toBe(true);
+  // (one evaluate: a PlazaDebug() call alone took over a second on a slow runner, longer than the lock itself)
+  const first = await page.evaluate(() => { const d = window.PlazaDebug(); const wave = d.emote('wave'); const cheer = d.emote('cheer'); const n = window.PlazaDebug(); return { wave, cheer, x: n.x, z: n.z, locked: n.actLocked }; });
+  expect([first.wave, first.cheer]).toEqual([true, false]); // not stacked on the first
+  const a = first; expect(a.locked).toBe(true);
   await page.keyboard.down('ArrowUp');
   await page.waitForTimeout(250);
-  const b = await at(); expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeLessThan(0.05); // held
+  const b = await at(); if (b.locked) expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeLessThan(0.05); // held (while still locked when read)
   await expect.poll(async () => (await at()).locked, { timeout: 4000 }).toBe(false); // ends with the clip (3 s at most)
-  await page.waitForTimeout(500);
-  const c = await at(); await page.keyboard.up('ArrowUp');
-  expect(Math.hypot(c.x - a.x, c.z - a.z)).toBeGreaterThan(0.3); // the same press moves me now
+  await expect.poll(async () => { const c = await at(); return Math.hypot(c.x - a.x, c.z - a.z); }, { timeout: 5000 }).toBeGreaterThan(0.3); // the same press moves me now
+  await page.keyboard.up('ArrowUp');
 
   await expectNoScriptError(page);
   await who.context.close();

@@ -14,7 +14,9 @@ module.exports = defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.js',
   // Keep the expensive 3D suites in independent CI jobs; the two general shards exclude both.
-  testIgnore: process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') ? ['**/island-assets.spec.js', '**/native-assets.spec.js', '**/plaza.spec.js'] : [],
+  // v1.10.90: the newer island 3D specs (run in the CI plaza job) left the games shards too (games-2 went past 40 minutes)
+  testIgnore: [...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') ? ['**/island-assets.spec.js', '**/native-assets.spec.js', '**/plaza.spec.js'] : []),
+    ...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') || process.env.PLAYWRIGHT_SKIP_ISLAND === '1' ? ['**/river-fishing.spec.js', '**/weed-board.spec.js', '**/island-time.spec.js', '**/asset-inspector.spec.js', '**/shop-browse.spec.js', '**/title-hall.spec.js', '**/action-lock.spec.js'] : [])],
   timeout: 30_000,
   expect: {
     timeout: 5_000,

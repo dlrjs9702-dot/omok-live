@@ -1490,6 +1490,29 @@
   // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
   // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
   // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
+  // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
+  // island pulls and today's weeds, yesterday's two best hand-ins, this week's hand-ins and last week's 제초왕
+  let weedBoardCard = null;
+  function weedBoard() {
+    if (!weedBoardCard) { const home = document.createElement('div'); home.hidden = true; document.body.append(home); weedBoardCard = document.createElement('section'); weedBoardCard.className = 'card weedBoardCard'; weedBoardCard.id = 'weedBoardCard'; home.append(weedBoardCard); }
+    const card = weedBoardCard; const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    card.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
+    const list = (title, b, unit) => {
+      const box = el('div', 'weedBoardList'); box.append(el('h3', '', `${title} · 섬 전체 ${b.total.toLocaleString('ko-KR')}${unit}`));
+      if (!b.top.length) { box.append(el('p', 'smallMuted', '아직 없어요.')); return box; }
+      const ol = el('ol'); for (const r of b.top) { const li = el('li', r.mine ? 'mine' : ''); li.append(el('strong', '', `${r.rank}위`), el('span', '', r.name), el('span', 'smallMuted', `${r.total}${unit}`)); ol.append(li); }
+      box.append(ol); if (b.me && !b.top.some((r) => r.mine)) box.append(el('p', 'smallMuted', `내 순위: ${b.me.rank}위 · ${b.me.total}${unit}`));
+      return box;
+    };
+    api('/api/island/weeds/board').then((d) => {
+      const head = el('div', 'weedBoardHead');
+      head.append(el('p', '', d.island.yesterdayPulled == null ? `오늘 잡초 ${d.island.weeds.toLocaleString('ko-KR')}포기` : `어제 섬 전체 ${d.island.yesterdayPulled.toLocaleString('ko-KR')}포기 뽑음 · 오늘 잡초 ${d.island.weeds.toLocaleString('ko-KR')}포기`));
+      head.append(el('p', 'weedBoardMerit', d.merit.length ? `어제의 납품 수훈 · ${d.merit.map((m) => `${m.rank}위 ${m.name} ${m.total}포기`).join(' · ')}` : '어제의 납품 수훈 · 어제 납품 없음'));
+      head.append(el('p', 'smallMuted', `지난주 제초왕: ${d.lastWeekKing || '없음'} · 이번 주 납품 1위가 다음 주 「제초왕」`));
+      card.replaceChildren(head, list('오늘 뽑은 순위', d.today.pulls, '포기'), list('오늘 납품 순위', d.today.submits, '포기'), list('이번 주 납품 순위', d.week, '포기'));
+    }).catch((error) => card.replaceChildren(el('p', 'emptyState', error.message)));
+    return card;
+  }
   let titleHallCard = null;
   function titleHall() {
     if (titleHallCard) return titleHallCard;
@@ -1771,12 +1794,12 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1784,6 +1807,23 @@
     if (sessionRole !== 'admin') return;
     openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
   });
+  // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): a folded card in the 관리자 창; the viewer module loads on opening
+  let inspectorCard = null; let inspector = null;
+  function assetInspectorCard() {
+    if (inspectorCard) return inspectorCard;
+    const home = adminPanel; // (inside the admin panel: the lobby and the 관리자 창 alike)
+    inspectorCard = document.createElement('section'); inspectorCard.className = 'noticeCard'; inspectorCard.id = 'assetInspectorCard';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'noticeTab'; toggle.id = 'assetInspectorTab'; toggle.textContent = '🔎 에셋 점검'; toggle.setAttribute('aria-expanded', 'false');
+    const host = document.createElement('div'); host.className = 'hidden'; host.id = 'assetInspectorHost';
+    inspectorCard.append(toggle, host); home.append(inspectorCard);
+    toggle.addEventListener('click', async () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(open)); host.classList.toggle('hidden', !open);
+      if (!open) { host.replaceChildren(); inspector = null; return; }
+      try { const mod = await import('/admin/asset-inspector.js'); inspector = mod.mountInspector(host, { api, toast: (m) => showToast(m, 3000) }); window.AssetInspector = inspector; } catch (error) { host.textContent = `에셋 점검을 열지 못했습니다 · ${error.message}`; }
+    });
+    return inspectorCard;
+  }
+  assetInspectorCard();
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
@@ -1990,7 +2030,10 @@
   }
   function hallReturn() { for (const [node, mark] of hallBorrowed) mark.replaceWith(node); hallBorrowed.clear(); }
   const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  const gameArtHtml = (g) => (g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  // v1.10.90 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
+  const HALL_CARDS = new Set(HALL.GAMES.map((g) => g.id));
+  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async">`
+    : g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
   const catName = (id) => HALL.CATEGORIES.find(([c]) => c === id)?.[1] || id;
   const paintColors = (node, g) => { node.style.setProperty('--g1', g.colors[0]); node.style.setProperty('--g2', g.colors[1]); };
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
@@ -2112,6 +2155,15 @@
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
   let islandPlace = null; let islandPlaceRequest = null;
   const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '어부', verb: '판매' } }; // v1.10.42 어부: fish
+  // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
+  // old emoji) -- the bag and the sale lists; toasts keep the emoji
+  const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
+  function itemIcon(item) {
+    const id = ITEM_ALIAS[item.itemId] || item.itemId;
+    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : null;
+    if (!src) return document.createTextNode(item.icon);
+    const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
+  }
   function drawIslandBag(bag) {
     const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
     for (let i = 0; i < (bag.slots || 16); i += 1) {
@@ -2121,7 +2173,7 @@
         slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId;
         const name = document.createElement('span'); name.textContent = item.name;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
-        slot.append(item.icon, name, qty);
+        slot.append(itemIcon(item), name, qty);
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
@@ -2138,7 +2190,7 @@
     let total = 0;
     for (const item of mine) {
       const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem');
-      const what = document.createElement('span'); what.textContent = `${item.icon} ${item.name} ×${item.qty}`;
+      const what = document.createElement('span'); what.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
       const worth = document.createElement('strong'); worth.textContent = `${(item.qty * item.price).toLocaleString('ko-KR')}P`;
       row.append(what, worth); list.append(row); total += item.qty * item.price;
     }
@@ -2347,6 +2399,20 @@
   for (const b of byId('bankForm').querySelectorAll('button[type=button]')) b.addEventListener('click', () => bankMove(b.dataset.bank));
   byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
+  let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
+  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
+  const opsBox = byId('opsSwitches');
+  const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };
+  opsBox?.addEventListener('change', async (event) => {
+    const c = event.target.closest('input[data-switch]'); if (!c) return;
+    try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
+  });
+  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.90 관리자: 섬 시간대
+    event.preventDefault(); const mode = byId('islandTimeSelect').value;
+    try { await api('/api/admin/island/time', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 시간대: ${byId('islandTimeSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
+  });
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
   function openQuestTalk(data) {
@@ -4171,6 +4237,7 @@
     if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
     if (item.reason === 'bank_withdraw') return '예금 찾기';
     if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
+    if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'tax_payment') return '체납 세금 납부';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
@@ -5200,6 +5267,7 @@
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
+    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
@@ -10020,7 +10088,7 @@
       list.replaceChildren(...state.rooms.map((room) => {
         const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
         const main = document.createElement('span'); main.className = 'messengerRoomMain';
-        const name = document.createElement('strong'); name.textContent = room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`;
+        const name = document.createElement('strong'); name.textContent = `${room.pinned ? '📌 ' : ''}${room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`}`; // v1.10.90 고정
         const preview = document.createElement('span'); preview.className = 'messengerPreview'; preview.textContent = room.last ? room.last.text : '';
         main.append(name, preview);
         const side = document.createElement('span'); side.className = 'messengerRoomSide';
@@ -10037,7 +10105,7 @@
       if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
       const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
       if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
-      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText'; text.textContent = msg.text;
+      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); text.textContent = msg.deleted ? '삭제된 메시지입니다' : msg.text;
       const meta = document.createElement('span'); meta.className = 'messengerMeta';
       // 안 읽은 사람 수 (카톡의 「1」): the members (still let in) besides the sender whose last read is before this line
       const waiting = current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq);
@@ -10048,6 +10116,14 @@
         meta.append(n);
       }
       const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
+      if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // v1.10.90 메시지 삭제: mine, within 5 minutes, for everyone
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerUnsend'; del.textContent = '삭제'; del.setAttribute('aria-label', '이 메시지 삭제');
+        del.addEventListener('click', async () => {
+          if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
+          try { await accountApi(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
+        });
+        meta.append(del);
+      }
       row.append(text, meta); item.append(row); return item;
     }
     function render() {
@@ -10066,6 +10142,7 @@
       const group = current.kind !== 'dm';
       byId('messengerInviteBtn').classList.toggle('hidden', !group); byId('messengerRenameBtn').classList.toggle('hidden', !group);
       byId('messengerMuteBtn').textContent = current.muted ? '알림 켜기' : '알림 끄기';
+      byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정'; // v1.10.90
     }
     async function pull() {
       if (!current) return; const id = current.id;
@@ -10109,6 +10186,17 @@
       } catch {}
     }
     setInterval(badge, 30000);
+    // v1.10.90 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
+    let islandSeen = null;
+    async function islandNotice() {
+      if (msgBtn.classList.contains('hidden') || dialog.open || !document.body.classList.contains('plazaMode')) { islandSeen = null; return; }
+      try {
+        const rooms = (await accountApi('/api/messenger', null, 'GET')).rooms; const now = Object.fromEntries(rooms.map((r) => [r.id, r.unread]));
+        if (islandSeen) for (const r of rooms) if (!r.muted && r.unread > (islandSeen[r.id] || 0) && r.last && !r.last.system) showToast(`💬 ${r.name} · ${r.last.label}: ${r.last.text.slice(0, 40)}`, 4000);
+        islandSeen = now;
+      } catch {}
+    }
+    setInterval(islandNotice, 15000);
     dialog.addEventListener('close', () => { msgBtn.textContent = '메신저'; msgBtn.classList.remove('hasUnread'); badge(); });
     function openRoom(room) { current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); body.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
     function showPick(mode) { // 'new' | 'invite' | 'dm'
@@ -10137,6 +10225,10 @@
     byId('messengerRenameBtn').addEventListener('click', async () => {
       const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
       try { await accountApi(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
+    });
+    byId('messengerPinBtn').addEventListener('click', async () => { // v1.10.90 대화방 고정 (mine: the top of my list)
+      if (!current) return;
+      try { current = (await accountApi(`/api/messenger/rooms/${current.id}/pin`, { on: !current.pinned })).room; showHead(); refresh(); } catch (err) { fail(err); }
     });
     byId('messengerMuteBtn').addEventListener('click', async () => {
       if (!current) return;

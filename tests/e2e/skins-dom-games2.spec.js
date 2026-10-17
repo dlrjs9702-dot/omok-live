@@ -67,7 +67,7 @@ test('그림 맞히기 스킨: 방장 테마와 출제자의 도구가 모든 �
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '그림 맞히기' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(15);
+  await expect(dialog.locator('.skinCard')).toHaveCount(25); /* v1.10.90 스킨 2배 +10 */
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'pictionary' });
@@ -100,7 +100,7 @@ test('스무고개 스킨: 방장 테마가 모든 화면에 같고, 각 질문 
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '스무고개' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(12);
+  await expect(dialog.locator('.skinCard')).toHaveCount(22); /* v1.10.90 스킨 2배 +10 */
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'twentyquestions' });
