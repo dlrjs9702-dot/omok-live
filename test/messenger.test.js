@@ -118,3 +118,23 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.equal((await call('/api/messenger', undefined, kid.token)).data.rooms.length, 0);
   assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].seq, 2);
 });
+
+// Codex review (v1.10.79): after a number, the next ones from it (no gap past 100 unread); the room cap holds with two
+// invites at once; a failed write does not stop the next
+test('메신저 저장소: 밀린 메시지 100개 넘어도 빠짐없이, 동시 초대도 인원 제한, 저장 실패 뒤에도 계속 저장', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-fix-'));
+  const store = new JsonMessengerStore(path.join(dir, 'messenger.json'));
+  await store.init();
+  const room = await store.createRoom('밀림', 'a', ['b']);
+  for (let i = 0; i < 150; i += 1) await store.post(room.id, 'a', `m${i}`);
+  const first = await store.messages(room.id, 10);
+  assert.deepEqual([first[0].seq, first.at(-1).seq], [11, 110]); // from 11 on, not the last 100
+  assert.equal((await store.messages(room.id)).at(-1).seq, 150);
+  const both = await Promise.all([store.addMembers(room.id, ['c'], 3), store.addMembers(room.id, ['d'], 3)]);
+  assert.deepEqual(both.map((r) => r && r.members.length), [3, false]);
+  store.queue = Promise.reject(new Error('disk full')); store.queue.catch(() => {});
+  await store.post(room.id, 'b', '다시'); // goes on
+  const again = new JsonMessengerStore(path.join(dir, 'messenger.json')); await again.init();
+  assert.equal((await again.room(room.id)).seq, 151);
+  await fs.rm(dir, { recursive: true, force: true });
+});

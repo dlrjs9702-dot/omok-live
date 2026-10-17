@@ -88,13 +88,16 @@
   // `names` maps states to clip names (more states -- wave, interact, emotes -- can be added and started with play());
   // a missing clip falls back run -> walk -> idle. `speeds` are the ground speeds the walk/run clips were made for, so
   // the stride matches the ground. THREE is passed in (the page's module, or `three` in tests).
-  function createAnimator(THREE, rootObject, clips, names = {}, { walkSpeed = 1, speeds = {}, fade = 0.25 } = {}) {
+  // v1.10.79 느리게 걷기 (assets 36 SlowWalk): with a `slow` clip and its speed, a walk well under the normal one plays it
+  // (between the two speeds, a 10% band each way). `rates`: each loop's playback rate at the speed it was made for.
+  function createAnimator(THREE, rootObject, clips, names = {}, { walkSpeed = 1, speeds = {}, rates = {}, fade = 0.25 } = {}) {
     const mixer = new THREE.AnimationMixer(rootObject);
     const byName = new Map((clips || []).map((clip) => [clip.name, clip]));
     const actions = {};
     for (const [state, clipName] of Object.entries(names)) { const clip = byName.get(clipName); if (clip) actions[state] = mixer.clipAction(clip); }
     const actionFor = (state) => actions[state] || (state === 'run' ? actions.walk || actions.idle : actions.idle) || null;
-    const groundSpeed = { walk: speeds.walk || walkSpeed, run: speeds.run || walkSpeed * 1.6 };
+    const groundSpeed = { slow: speeds.slow || 1, walk: speeds.walk || walkSpeed, run: speeds.run || walkSpeed * 1.6 };
+    const slowBelow = (groundSpeed.slow + groundSpeed.walk) / 2;
     let state = 'idle'; let current = actionFor('idle'); current?.play();
     let onceHeld = false;
     let once = null; // a one-off clip (play) holds until it has finished
@@ -113,10 +116,11 @@
         speed = Math.max(0, speed || 0);
         if (once && !onceHeld && !once.isRunning()) { once = null; state = held || 'idle'; fadeTo(held ? actions[held] : actionFor('idle')); }
         if (!once && !held) {
-          const next = nextGait(state, speed, walkSpeed);
+          let next = nextGait(state === 'slow' ? 'walk' : state, speed, walkSpeed);
+          if (next === 'walk' && actions.slow && speeds.slow && speed < slowBelow * (state === 'slow' ? 1.1 : 0.9)) next = 'slow';
           if (next !== state) { state = next; fadeTo(actionFor(next)); }
-          const moving = current === actions.run ? 'run' : 'walk';
-          if (current) current.timeScale = state === 'idle' ? (reduceIdle ? 0 : 1) : Math.min(2, Math.max(0.5, speed / groundSpeed[moving]));
+          const moving = current === actions.run ? 'run' : current === actions.slow ? 'slow' : 'walk';
+          if (current) current.timeScale = state === 'idle' ? (reduceIdle ? 0 : 1) : (rates[moving] || 1) * Math.min(2, Math.max(0.5, speed / groundSpeed[moving]));
         }
         mixer.update(dt);
       },

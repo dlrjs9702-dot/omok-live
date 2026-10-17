@@ -34,14 +34,17 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
   assert.ok(files.length >= 32);
   for (const f of files) {
     const info = glbInfo(path.join(outDir, f));
-    for (const ext of budgets.requiredExtensions) assert.ok(info.extensions.includes(ext), `${f}: ${ext} 필요(빌드 파이프라인 출력)`);
+    const unquantized = budgets.fileOverrides?.[f]?.unquantized; // v1.10.79 (budgets $motion36): only those exact bytes
+    if (unquantized) assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(outDir, f))).digest('hex'), budgets.fileOverrides[f].sourceSha256, `${f}: unquantized only for the verified bytes`);
+    for (const ext of budgets.requiredExtensions) assert.ok(info.extensions.includes(ext) || (unquantized && ext === 'KHR_mesh_quantization'), `${f}: ${ext} 필요(빌드 파이프라인 출력)`);
     for (const ext of info.extensions) assert.ok(budgets.allowedExtensions.includes(ext), `${f}: 허용되지 않은 확장 ${ext}`);
     // v1.10.30 a character body, a wardrobe part or a motion: the common 20-joint rig kept whole (no node or mesh
     // merging past it), every joint name in its order
     if (f.startsWith('characters/') && !f.startsWith('characters/props/')) { // (hand-held props are still models)
       if (f.startsWith('characters/motions/')) { assert.equal(info.meshes, 0, f); assert.equal(info.animations, 1, f); continue; }
-      assert.equal(info.joints.length, 1, `${f}: one skin`);
-      assert.deepEqual(info.joints[0], budgets.rig, `${f}: 공통 20관절`);
+      if (!unquantized) assert.equal(info.joints.length, 1, `${f}: one skin`); // (v1.10.79: the delivered bytes keep a mesh -- and its skin -- per material)
+      const runtimeName = (n) => n.replace(/\./g, ''); // three.js drops the dots from node names (Shoulder.L -> ShoulderL)
+      for (const joints of info.joints) assert.deepEqual(unquantized ? joints.map(runtimeName) : joints, unquantized ? budgets.rig.map(runtimeName) : budgets.rig, `${f}: 공통 20관절`);
       const exception=budgets.fileOverrides?.[f];
       const triangleLimit=exception?.triangles??budgets.character.triangles;
       if(triangleLimit>budgets.character.triangles){
@@ -49,7 +52,7 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
         const hash=require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(outDir,f))).digest('hex');
         assert.equal(hash,exception.sourceSha256,`${f}: exception applies only to the verified model bytes`);
       }
-      assert.ok(info.meshes <= budgets.character.meshes && info.materials <= budgets.max.materials && info.triangles <= triangleLimit, `${f}: ${JSON.stringify(info)}`);
+      assert.ok(info.meshes <= (unquantized ? info.materials : budgets.character.meshes) && info.materials <= budgets.max.materials && info.triangles <= triangleLimit, `${f}: ${JSON.stringify(info)}`);
       continue;
     }
     for (const [key, max] of Object.entries(budgets.max)) {

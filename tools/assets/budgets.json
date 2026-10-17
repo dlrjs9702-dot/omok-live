@@ -351,8 +351,41 @@
       "triangles": 38048,
       "sourceSha256": "ce002aa841a60240b49f3244d24c53ecbe1132edda4a1f43124dfeebd4e358b2",
       "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+    },
+    "characters/body_sports.glb": {
+      "unquantized": true,
+      "sourceSha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d"
+    },
+    "characters/body_sports_low.glb": {
+      "unquantized": true,
+      "sourceSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f"
+    },
+    "characters/body_hoodie.glb": {
+      "unquantized": true,
+      "sourceSha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d"
+    },
+    "characters/body_hoodie_low.glb": {
+      "unquantized": true,
+      "sourceSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f"
+    },
+    "characters/wear/outfit_sports.glb": {
+      "unquantized": true,
+      "sourceSha256": "ea64e16543d54b1c51ace5506c9a5268f999eec7db893078513aae30dce37fc1"
+    },
+    "characters/wear/outfit_sports_low.glb": {
+      "unquantized": true,
+      "sourceSha256": "2006aa04585f59267a69922095061b79cf23af43a06af9e6cb2517b0b872a49e"
+    },
+    "characters/wear/outfit_hoodie.glb": {
+      "unquantized": true,
+      "sourceSha256": "0f104c66e54679c4a00c11440ecf44c4ece29bc90d243416995e5b243fe3f9f5"
+    },
+    "characters/wear/outfit_hoodie_low.glb": {
+      "unquantized": true,
+      "sourceSha256": "bbcc8eebdab1d2bee3e0205368b544b95069f8e86084b426112f6f8114da7b3e"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
-  "$transformationChoices": "Pack30 explicit fidelity exception applies only to listed transformation file hashes and measured triangle counts. Human5 current only, nonhuman16 current/native; GPU performance remains unverified."
+  "$transformationChoices": "Pack30 explicit fidelity exception applies only to listed transformation file hashes and measured triangle counts. Human5 current only, nonhuman16 current/native; GPU performance remains unverified.",
+  "$motion36": "v1.10.79 assets 36: the shoulder-repaired 운동복·후드 bodies and outfits are delivered meshopt-compressed with float positions and sparse weight edits; repacking would undo the verified weights, so these exact bytes (sha) are kept without KHR_mesh_quantization."
 }

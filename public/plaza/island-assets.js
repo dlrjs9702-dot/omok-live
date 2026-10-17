@@ -144,11 +144,16 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround', 'Nod', 'Clap', 'PickFruit'];
+  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround', 'Nod', 'Clap', 'PickFruit',
+    'SlowWalk', 'IdleLookAround', 'NoticeNeighbor', 'GreetingSmall']; // v1.10.79 assets 36
+  // v1.10.79 3인칭 동작·어깨 정비 (assets 36): the motions hold the arms where they belong (no runtime arm tuck any more);
+  // the shoulders' skin weights were repaired on the bare body and on 운동복·후드 together with a body made for each
+  // (`body`: worn with that outfit, `bare`: worn with no clothes) -- every other outfit keeps the original body.
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
+    bare: { url: `${CH}/body_bare.glb`, lowUrl: `${CH}/body_bare_low.glb` },
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
-    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss' },
-    speeds: { walk: 5.2, run: 8.3 }, armTuck: 0.4 }; // radians the upper arms are brought in toward the body (asset-loader wear)
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
+    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1.7201344052996752, walk: 1.3148706575937297, run: 1.2603893452887727 } }; // the ground speed each loop was made for, and its playback rate there
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
   // pieces that give way to a worn slot (`hideWith`)
@@ -164,6 +169,7 @@
   for (const file of ['hair_rainbow', 'hair_starlight']) REGISTRY[`wear.${file}`] = part(file, 'hair');
   // outfits: the whole set of clothes (the 05 outfits with the pelvis filled in, the older four remade)
   for (const file of ['casual', 'hoodie', 'sailor', 'apron', 'explorer', 'raincoat', 'knight', 'robe', 'dress', 'sports', 'stripes', 'hanbok', 'space']) REGISTRY[`wear.outfit_${file}`] = part(`outfit_${file}`, 'outfit', { dye: file === 'hanbok' ? ['main', 'chima'] : 'main', replaces: ['top', 'bottom'] });
+  for (const file of ['sports', 'hoodie']) REGISTRY[`wear.outfit_${file}`].body = { url: `${CH}/body_${file}.glb`, lowUrl: `${CH}/body_${file}_low.glb` }; // v1.10.79 the body made for it
   REGISTRY['wear.outfit_royal'] = part('outfit_royal', 'outfit', { dye: 'main', replaces: ['top', 'bottom'], hideWith: { cape: ['cape_main', 'cape_trim'] } }); // its cape gives way to a worn one
   // v1.10.40 모자 쓰는 깊이: `seat` [sink, widen] -- the made hats sat on top of the head (their rim at the crown of it,
   // about 2.0, their crown narrower than the head); these come down to about the forehead line, as much wider as the
