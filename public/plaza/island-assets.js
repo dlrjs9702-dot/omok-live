@@ -234,8 +234,10 @@
     if (look.hairColor && (parts.hair === 'wear.hair_cap' || parts.hair === 'wear.hair_long')) colors[parts.hair] = { hair: look.hairColor };
     const eyes = parts.eyes || parts.face;
     if (look.eyeColor && eyes) colors[eyes] = { ...colors[eyes], eyes: look.eyeColor, ink: look.eyeColor, rose: look.eyeColor, accent: look.eyeColor };
+    // v1.10.86 체납자 (사용자 2026-10-17): the server puts the 줄무늬 outfit on, here in white with black stripes
+    if (look.prisoner && parts.outfit === 'wear.outfit_stripes') colors['wear.outfit_stripes'] = { main: '#f4f4f4', stripe: '#161616', trim: '#d9d9d9' };
     // the island's own warm skin (the procedural characters'): the part's paler skin read olive under the island's light
-    const transformation = TRANSFORMATIONS?.match(look);
+    const transformation = look.prisoner ? null : TRANSFORMATIONS?.match(look);
     return { parts: Object.values(parts), colors, tint: { skin: look.skinColor || SKIN, ...(tint || {}) },
       ...(transformation ? { transformation: `character.transform.${transformation.id}.${TRANSFORMATIONS.modeOf(transformation, look)}` } : {}) };
   }

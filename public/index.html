@@ -1178,6 +1178,24 @@
       </form>
     </div>
   </dialog>
+  <!-- v1.10.86 관공서 세금 창구 (app.js openTax) -->
+  <dialog id="taxDialog" class="recordsDialog taxDialog" aria-labelledby="taxTitle">
+    <div class="recordsDialogHead"><h2 id="taxTitle">세금 창구</h2><button id="taxCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div id="islandTaxRow" class="islandTaxRow"><p id="islandTaxText"></p><button id="islandTaxPay" type="button" class="secondary hidden">체납 세금 납부</button></div>
+    <p id="taxStatus" class="smallMuted" role="status" aria-live="polite"></p>
+  </dialog>
+  <!-- v1.10.85 관공서 예금 창구 (app.js openBank) -->
+  <dialog id="bankDialog" class="recordsDialog bankDialog" aria-labelledby="bankTitle">
+    <div class="recordsDialogHead"><h2 id="bankTitle">예금 창구</h2><button id="bankCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <div class="bankSums"><div><small>지갑</small><strong id="bankWallet">-</strong></div><div><small>예금</small><strong id="bankDeposit">-</strong></div></div>
+    <p class="smallMuted" id="bankRate">예금에는 매일 자정(한국 시간) 하루 4% 이자가 붙습니다.</p>
+    <form id="bankForm" class="bankForm" autocomplete="off">
+      <input id="bankAmount" type="number" inputmode="numeric" min="1" step="1" placeholder="금액 (P)" aria-label="금액" />
+      <div class="bankButtons"><button type="submit" class="primary" data-bank="in">맡기기</button><button type="button" class="secondary" data-bank="out">찾기</button></div>
+      <div class="bankButtons"><button type="button" class="ghost" data-bank="allIn">전부 맡기기</button><button type="button" class="ghost" data-bank="allOut">전부 찾기</button></div>
+    </form>
+    <p id="bankStatus" class="smallMuted" role="status" aria-live="polite"></p>
+  </dialog>
   <dialog id="missionDialog" class="recordsDialog missionDialog" aria-labelledby="missionDialogTitle">
     <div class="recordsDialogHead"><h2 id="missionDialogTitle">미션</h2><button id="missionCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="missionTabs" role="tablist" aria-label="미션 종류">

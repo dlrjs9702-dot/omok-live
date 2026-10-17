@@ -1730,7 +1730,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2105,6 +2105,29 @@
     islandPlaceSubmit.textContent = `${ISLAND_PLACES[islandPlace].verb} +${total.toLocaleString('ko-KR')}P`;
     islandPlaceSubmit.disabled = !mine.length;
   }
+  // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
+  const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
+  async function openTax() {
+    taxStatus.textContent = '';
+    const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+    await drawTax(); if (!taxDialog.open) taxDialog.showModal();
+  }
+  document.getElementById('taxCloseBtn').addEventListener('click', () => taxDialog.close());
+  async function drawTax() {
+    try {
+      const t = await api('/api/island/tax'); const P = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+      document.getElementById('islandTaxText').textContent = t.debt > 0 ? `체납 세금 ${P(t.debt)} — 다 내기 전까지 체납자입니다.` : `체납 없음 · 오늘 밤 주민세 약 ${P(t.nextTax)} (재산의 ${Math.round(t.rate * 100)}%, 최소 ${P(t.minimum)})`;
+      document.getElementById('islandTaxPay').classList.toggle('hidden', !(t.debt > 0));
+    } catch (error) { taxStatus.textContent = error.message; }
+  }
+  document.getElementById('islandTaxPay').addEventListener('click', async () => {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
+      taxStatus.textContent = r.paid ? `세금 ${Number(r.paid).toLocaleString('ko-KR')}P 납부${r.debt ? ` · 남은 체납 ${Number(r.debt).toLocaleString('ko-KR')}P` : ' · 체납 완납'}` : '낼 포인트가 없습니다.';
+      loadPoints(); refreshPlazaAvatar(); drawTax();
+    } catch (error) { taxStatus.textContent = error.message; }
+  });
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = '';
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
@@ -2239,6 +2262,35 @@
       plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;
+  // anything in or out at any time (the server checks I am at the window, and pays each request once)
+  const bankDialog = byId('bankDialog'); let bankNow = null; let bankBusy = false;
+  const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+  function showBank(v) {
+    bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다. 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+  }
+  async function openBank() {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      showBank(await api('/api/island/bank')); byId('bankStatus').textContent = ''; byId('bankAmount').value = ''; bankDialog.showModal();
+    } catch (error) { showToast(error.message); }
+  }
+  async function bankMove(kind) {
+    if (bankBusy || !bankNow) return;
+    const typed = Math.floor(Number(byId('bankAmount').value));
+    const amount = kind === 'allIn' ? bankNow.balance : kind === 'allOut' ? -bankNow.deposit : kind === 'in' ? typed : -typed;
+    if (!Number.isSafeInteger(amount) || amount === 0) { byId('bankStatus').textContent = kind.startsWith('all') ? '옮길 포인트가 없습니다.' : '금액을 입력해 주세요.'; return; }
+    bankBusy = true;
+    try {
+      const r = await api('/api/island/bank', { method: 'POST', body: JSON.stringify({ amount, requestId: crypto.randomUUID() }) });
+      showBank(r); byId('bankAmount').value = ''; loadPoints();
+      byId('bankStatus').textContent = amount > 0 ? `${fmtP(amount)} 맡겼습니다.` : `${fmtP(-amount)} 찾았습니다.`;
+    } catch (error) { byId('bankStatus').textContent = error.message; } finally { bankBusy = false; }
+  }
+  byId('bankForm').addEventListener('submit', (event) => { event.preventDefault(); bankMove('in'); });
+  for (const b of byId('bankForm').querySelectorAll('button[type=button]')) b.addEventListener('click', () => bankMove(b.dataset.bank));
+  byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
@@ -2702,7 +2754,7 @@
     }
   }
   function applyPlazaAvatar() {
-    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
+    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, delinquent: Boolean(plazaAvatar?.delinquent), name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
@@ -4061,6 +4113,10 @@
     if (item.reason === 'solo_game') return '혼자 게임 보상'; // v1.10.37
     if (item.reason === 'quest') return '섬 주민 부탁'; // v1.10.37
     if (item.reason === 'daily_attendance') return '출석체크';
+    if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
+    if (item.reason === 'bank_withdraw') return '예금 찾기';
+    if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
+    if (item.reason === 'tax_payment') return '체납 세금 납부';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
         const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
@@ -9826,14 +9882,44 @@
         const data = await accountApi(`/api/messenger/rooms/${id}/messages?after=${last}`, null, 'GET');
         if (current?.id !== id) return;
         current = data.room; byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
-        if (!last) box.replaceChildren();
+        const firstPage = !last;
+        if (firstPage) box.replaceChildren();
         const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
         for (const msg of data.messages) { if (msg.seq <= last) continue; box.append(line(msg)); last = msg.seq; }
+        if (firstPage && data.messages.length && data.messages[0].seq > 1) moreButton(data.messages[0].seq); // v1.10.87 이전 대화
         if (!box.children.length) box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
         if (atEnd || !data.messages.length || data.messages.at(-1).from === state.me) box.scrollTop = box.scrollHeight;
         markSeen(id, current.seq);
       } catch (err) { if (err.status === 404) { current = null; body.classList.remove('inRoom'); refresh(); } else fail(err); }
     }
+    // v1.10.87 이전 대화: 100 at a time from the top, the view held where it was
+    function moreButton(firstSeq) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny messengerMore'; b.textContent = '이전 대화 더 보기';
+      b.addEventListener('click', async () => {
+        const id = current?.id; if (!id) return; b.disabled = true;
+        try {
+          const data = await accountApi(`/api/messenger/rooms/${id}/messages?before=${firstSeq}`, null, 'GET');
+          if (current?.id !== id) return;
+          const height = box.scrollHeight; b.remove();
+          box.prepend(...data.messages.map(line));
+          if (data.messages.length && data.messages[0].seq > 1) moreButton(data.messages[0].seq);
+          box.scrollTop += box.scrollHeight - height;
+        } catch (err) { b.disabled = false; fail(err); }
+      });
+      box.prepend(b);
+    }
+    // v1.10.87 알림: the 메신저 button counts what is unread in my rooms (asked every 30 s while it shows and the window is shut)
+    const msgBtn = byId('accountMessengerBtn');
+    async function badge() {
+      if (msgBtn.classList.contains('hidden') || dialog.open || byId('accountPanel').classList.contains('hidden')) return;
+      try {
+        const data = await accountApi('/api/messenger', null, 'GET');
+        const unread = data.rooms.reduce((n, r) => n + Math.max(0, r.seq - (seen[r.id] || 0)), 0);
+        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${unread > 99 ? '99+' : unread}` : '메신저'; msgBtn.classList.toggle('hasUnread', unread > 0);
+      } catch {}
+    }
+    setInterval(badge, 30000);
+    dialog.addEventListener('close', () => { msgBtn.textContent = '메신저'; msgBtn.classList.remove('hasUnread'); badge(); });
     function openRoom(room) { current = room; last = 0; box.replaceChildren(); body.classList.add('inRoom'); renderRooms(); pull(); byId('messengerInput').focus(); }
     function showPick(mode) { // 'new' | 'invite'
       picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
@@ -9873,7 +9959,7 @@
       dialog.showModal(); await refresh();
       timers = [setInterval(pull, 3000), setInterval(refresh, 10000)];
     });
-    return { show: (on) => byId('accountMessengerBtn').classList.toggle('hidden', !on), close };
+    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); }, close }; // (after the account panel shows)
   })();
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});

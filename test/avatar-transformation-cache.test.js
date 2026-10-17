@@ -28,7 +28,7 @@ function fixture({ latest, readError } = {}) {
     pathname: '/api/avatar/transformation', req: { method: 'POST' }, res: {},
     requireSession: () => ({ token: 'viewer' }), pointAccountForSession: () => account,
     checkRateLimit: () => true, parseJson: async () => ({ characterId: 'kuromi', mode: 'current' }),
-    transformationById, transformationModeAllowed, avatarLookOf,
+    transformationById, transformationModeAllowed, avatarLookOf, lookFor: (account, equipped) => avatarLookOf(equipped), // v1.10.86 (no tax owed here)
     pointStore: {
       setAvatarTransformation: async () => { saves++; return { ok: true, equipped: saved }; },
       skinState: async () => { reads++; if (readError) throw readError; return { equipped: latest || saved }; },

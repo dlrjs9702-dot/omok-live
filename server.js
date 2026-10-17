@@ -55,6 +55,7 @@ const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb')
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
+const PointStore = require('./lib/point-store'); // v1.10.86 주민세 constants
 const releaseAnnouncements = require('./lib/release-announcements');
 const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
 const { buildAssetManifest } = require('./lib/asset-manifest'); // v1.10.14 game resource pack
@@ -958,11 +959,51 @@ let plazaDirty = false;
 // v1.10.84 관공서 실내 (IslandTerrain.TOWNHALL_ROOM): who is in the 민원실 (session tokens). Inside, a pose stays in the
 // room; leaving the island or the visit ends it -- a new visit starts outside the hall's door.
 const townhallInside = new Set();
+// v1.10.86 주민세 (사용자 2026-10-17): every account pays each Seoul day 3% of what it has (wallet + deposit), at least
+// 20,000P (lib/point-store.js taxCollect); what it cannot pay is owed, up to 200,000P. Anyone owing is a 체납자: that title
+// over any other, and the 줄무늬 outfit in white and black over whatever is worn, until it is paid at the 민원 창구.
+const taxDebt = new Map(); // account -> what it owes
+const PRISON_OUTFIT = 'avatar_outfit_2';
+function lookFor(account, equipped) {
+  const shown = avatarLookOf(equipped);
+  if (!(taxDebt.get(account) > 0)) return shown;
+  const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
+  return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
+}
+let taxDay = null; let taxRunning = null;
+function collectTaxes(now = nowMs(), forced = null) {
+  const day = forced || kstDate(now);
+  if (taxDay === day || taxRunning) return taxRunning;
+  taxRunning = (async () => {
+    // the days since the last one collected, oldest first (a server asleep through days takes each of them -- Codex
+    // review), at most the last 30; the very first run takes today only
+    const last = forced ? null : await pointStore.taxLastDay();
+    const days = [];
+    for (let d = day, n = 0; n < 30 && (!last || d > last); n += 1) { days.unshift(d); if (!last) break; d = kstDate(Date.parse(`${d}T12:00:00+09:00`) - 86400000); }
+    const changed = new Set();
+    for (const d of days) for (const key of await accessStore.list()) { // every account (a revoked one too -- Codex review)
+      const account = `guest:${key.id}`;
+      const out = await pointStore.taxCollect(account, d);
+      if (out.applied) changed.add(account);
+      taxDebt.set(account, out.debt || 0);
+    }
+    taxDay = day;
+    if (changed.size) { notifyPointsChanged([...changed]); refreshTaxLooks(); }
+  })().catch((error) => console.error('주민세 징수 실패:', error.message)).finally(() => { taxRunning = null; });
+  return taxRunning;
+}
+function refreshTaxLooks() { // who is on the island shows the change at once
+  for (const entry of plazaPresence.values()) {
+    const shown = lookFor(entry.account, equippedSkinCache.get(entry.account));
+    entry.look = shown.look; entry.title = shown.title; entry.delinquent = Boolean(shown.delinquent);
+  }
+  plazaDirty = true;
+}
 function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -3159,7 +3200,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.84' });
+    return sendJson(res, 200, { ok: true, version: '1.10.87' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3284,7 +3325,8 @@ async function requestHandler(req, res) {
     if (!room || !room.members.includes(key.id)) return sendError(res, 404, 'ROOM_NOT_FOUND', '대화방을 찾을 수 없습니다.');
     if (m[2] === 'messages' && req.method === 'GET') {
       const after = Math.max(0, Math.floor(Number(url.searchParams.get('after')) || 0));
-      return sendJson(res, 200, { ok: true, room: view(room), messages: (await messengerStore.messages(room.id, after)).map((x) => ({ ...x, label: labelOf.get(x.from) || '(떠난 계정)' })) });
+      const before = Math.max(0, Math.floor(Number(url.searchParams.get('before')) || 0)); // v1.10.87 이전 대화
+      return sendJson(res, 200, { ok: true, room: view(room), messages: (await (before ? messengerStore.older(room.id, before) : messengerStore.messages(room.id, after))).map((x) => ({ ...x, label: labelOf.get(x.from) || '(떠난 계정)' })) });
     }
     if (m[2] === 'messages' && req.method === 'POST') {
       if (!checkRateLimit('messenger-post:' + key.id, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
@@ -3305,6 +3347,9 @@ async function requestHandler(req, res) {
     }
     if (m[2] === 'leave' && req.method === 'POST') { await messengerStore.leave(room.id, key.id); return sendJson(res, 200, { ok: true }); }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tax' && req.method === 'POST') { // v1.10.86: a day's tax now
+    const body = await parseJson(req); taxDay = null; await collectTaxes(nowMs(), String(body.day || '')); return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/account-setup' && req.method === 'POST') {
     const body = await parseJson(req); setupRequiredKeys.add(String(body.keyId || ''));
@@ -3470,7 +3515,7 @@ async function requestHandler(req, res) {
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
     const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
-    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: avatarLookOf(state.equipped), champion: isChampion(account), hoguking: isHoguking(account), dexTitles });
+    return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
@@ -3509,7 +3554,7 @@ async function requestHandler(req, res) {
     equippedSkinCache.set(account, result.equipped);
     const room = getCurrentRoom(session);
     if (room) broadcast(room); // the room sees the change at once
-    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
+    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: lookFor(account, result.equipped) });
   }
 
   // Existing character parts unlock a free body choice; the store checks the owned full set atomically.
@@ -3527,7 +3572,7 @@ async function requestHandler(req, res) {
     equippedSkinCache.set(account, result.equipped);
     await loadEquippedSkins(account);
     const equipped = equippedSkinCache.get(account) || result.equipped;
-    const avatar = avatarLookOf(equipped);
+    const avatar = lookFor(account, equipped);
     for (const entry of plazaPresence.values()) if (entry.account === account) {
       entry.look = avatar.look; entry.title = avatar.title; plazaDirty = true;
     }
@@ -3548,7 +3593,7 @@ async function requestHandler(req, res) {
     const result = await pointStore.setAvatarGender({ userId: account, gender: body.gender });
     equippedSkinCache.set(account, result.equipped);
     if (!result.chosen && result.gender !== body.gender) return sendError(res, 409, 'GENDER_FIXED', '이미 선택한 성별은 바꿀 수 없습니다.');
-    return sendJson(res, 200, { ok: true, gender: result.gender, avatar: avatarLookOf(result.equipped) });
+    return sendJson(res, 200, { ok: true, gender: result.gender, avatar: lookFor(account, result.equipped) });
   }
 
   // v1.10.30 성형외과·염색사: what can be chosen and what it costs; a paid change of one face part or one item's colour,
@@ -3591,7 +3636,7 @@ async function requestHandler(req, res) {
     const equipped = result.equipped || (await pointStore.skinState(account)).equipped;
     equippedSkinCache.set(account, equipped);
     if (result.applied) notifyPointsChanged([account]);
-    return sendJson(res, 200, { ok: true, balance: result.balance ?? result.balanceAfter, equipped, avatar: avatarLookOf(equipped) });
+    return sendJson(res, 200, { ok: true, balance: result.balance ?? result.balanceAfter, equipped, avatar: lookFor(account, equipped) });
   }
 
   if (pathname === '/api/skins/title' && req.method === 'POST') {
@@ -3613,7 +3658,7 @@ async function requestHandler(req, res) {
     const result = await pointStore.equipSkin({ userId: account, game: 'avatar', slot: 'title', skinId, free });
     if (!result.ok) return sendError(res, 409, 'SKIN_NOT_OWNED', '보유한 전설 스킨만 칭호로 쓸 수 있습니다.');
     equippedSkinCache.set(account, result.equipped);
-    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: avatarLookOf(result.equipped) });
+    return sendJson(res, 200, { ok: true, equipped: result.equipped, avatar: lookFor(account, result.equipped) });
   }
 
   const eventClaimMatch = pathname.match(/^\/api\/events\/([a-z0-9_]{3,60})\/claim$/);
@@ -3873,7 +3918,7 @@ async function requestHandler(req, res) {
     const num = (value, limit) => (Number.isFinite(Number(value)) ? Math.max(-limit, Math.min(limit, Number(value))) : 0);
     session.plazaId ||= crypto.randomUUID().slice(0, 8);
     const account = pointAccountForSession(session);
-    const { look, title } = avatarLookOf(equippedSkinCache.get(account));
+    const { look, title, delinquent } = lookFor(account, equippedSkinCache.get(account));
     const collecting = [resourcePulls.get(session.token), weedPulls.get(session.token)].find(p => p && !p.result && nowMs() - p.at < 15000);
     if (!collecting) { const r=resourcePulls.get(session.token); if(r && nowMs()-r.at>15000) resourcePulls.delete(session.token); const w = weedPulls.get(session.token); if (w && !w.result) weedPulls.delete(session.token); }
     const wanted = { x: Math.round(num(body.x, PLAZA_BOUND) * 100) / 100, z: Math.round(num(body.z, PLAZA_BOUND) * 100) / 100 };
@@ -3903,7 +3948,7 @@ async function requestHandler(req, res) {
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
     plazaPresence.set(session.token, {
-      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
@@ -4031,6 +4076,40 @@ async function requestHandler(req, res) {
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'townhall' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
   }
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): at the 예금 window inside the 민원실 -- the wallet and the deposit (4% a day,
+  // lib/point-store.js bankAccrue), and putting in or taking out any amount (once per request id)
+  if (pathname === '/api/island/bank' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
+    if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
+    const account = pointAccountForSession(session);
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())) });
+    if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const amount = Number(body.amount);
+    if (!Number.isSafeInteger(amount) || amount === 0 || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '금액을 확인해 주세요.');
+    const out = await pointStore.bankMove(account, amount, body.requestId, nowMs());
+    if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT', amount > 0 ? '지갑 포인트가 부족합니다.' : '예금이 부족합니다.', { balance: out.balance, deposit: out.deposit });
+    if (out.reason === 'limit') return sendError(res, 409, 'BANK_LIMIT', '더 맡기거나 찾을 수 없는 금액입니다.', { balance: out.balance, deposit: out.deposit });
+    if (out.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, ...out });
+  }
+  // v1.10.86 주민세: what I owe and today's estimate; paying it at the 세금 창구 inside the hall
+  if (pathname === '/api/island/tax' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const account = pointAccountForSession(session);
+    if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); return sendJson(res, 200, { ok: true, debt: taxDebt.get(account) || 0, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
+    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.tax.lx, R.tax.lz);
+    if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
+    const body = await parseJson(req);
+    if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const out = await pointStore.taxPay(account, body.requestId, nowMs());
+    taxDebt.set(account, out.debt);
+    if (out.applied) { notifyPointsChanged([account]); refreshTaxLooks(); }
+    return sendJson(res, 200, { ok: true, ...out });
+  }
   if (pathname === '/api/island/sell' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -4040,7 +4119,7 @@ async function requestHandler(req, res) {
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 3; })(); // v1.10.84
+    const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 1.8; })(); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
     if (!atCounter && (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
@@ -5394,6 +5473,7 @@ async function main() {
   // v1.10.35: new accounts start at 0P; the test server keeps an opening 100,000P so its shop tests can buy
   pointStore = await createPointStore({ dataDir: DATA_DIR, databaseUrl: DATABASE_URL, initialGrant: process.env.NODE_ENV === 'test' ? 100_000 : undefined });
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
+  for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
@@ -5451,7 +5531,10 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.84 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.87 실행: http://${HOST}:${PORT}`));
+  // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
+  // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
+  if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
 }
 
 main().catch((err) => {

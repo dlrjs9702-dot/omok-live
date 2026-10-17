@@ -188,8 +188,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     sprite.center.set(0.5, 0); sprite.scale.set(0.75, 0.75, 1); sprite.renderOrder = 2; sprite.userData.mark = 'star';
     return sprite;
   }
-  function makeTag(name, title, champion = false, hoguking = false) {
-    const pills = [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
+  function makeTag(name, title, champion = false, hoguking = false, delinquent = false) {
+    const pills = delinquent ? [{ text: '체납자', from: '#ef4444', to: '#7f1d1d', ink: '#ffffff' }] // v1.10.86: over every other title while owing
+      : [champion && { text: '챔피언', from: '#ffd86b', to: '#f0b429', ink: '#4a2a00' }, hoguking && { text: '호구왕', from: '#c4a5ff', to: '#8b5cf6', ink: '#ffffff' }].filter(Boolean);
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 104 + (pills.length ? 58 : 0) + (title ? 64 : 0);
     const c = canvas.getContext('2d'); c.textAlign = 'center'; c.textBaseline = 'middle';
     const font = (px) => `800 ${px}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
@@ -761,12 +762,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   me.root.position.y = heightAt(me.root.position.x, me.root.position.z);
   scene.add(me.root); assets.dress('character.player', me);
   // v1.9.2: wear an avatar look and show a name tag; the character is rebuilt in place (position and facing kept).
-  function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false } = {}) {
+  function setAvatar({ look = {}, name = '', title = null, champion = false, hoguking = false, delinquent = false } = {}) {
     const old = me; me = makeCharacter({ ...ME_BASE, look });
     me.tailTucked = old.tailTucked; me.noTuck = old.noTuck;
     me.root.position.copy(old.root.position); me.root.rotation.y = old.root.rotation.y; me.targetYaw = old.targetYaw;
     disposeCharacter(old); scene.add(me.root); assets.dress('character.player', me); dressUp(me, look);
-    if (name) { me.tag = makeTag(name, title, champion, hoguking); me.root.add(me.tag); fitTag(me); }
+    if (name) { me.tag = makeTag(name, delinquent ? null : title, champion, hoguking, delinquent); me.root.add(me.tag); fitTag(me); }
     me.look = look; me.title = title; me.champion = Boolean(champion); me.hoguking = Boolean(hoguking);
   }
 
@@ -779,17 +780,17 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const p of list || []) {
       if (!p?.id) continue;
       seen.add(p.id);
-      const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion), Boolean(p.hoguking)]);
+      const key = JSON.stringify([p.look || {}, p.name, p.title || null, Boolean(p.champion), Boolean(p.hoguking), Boolean(p.delinquent)]);
       let o = others.get(p.id);
       if (o && o.key !== key) { // a new look or title: rebuild in place
         const pos = o.c.root.position.clone(); const yaw = o.c.root.rotation.y; const tucked = o.c.tailTucked; const noTuck = o.c.noTuck; disposeCharacter(o.c);
         o.c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); o.c.player = true; o.c.tailTucked = tucked; o.c.noTuck = noTuck; o.c.root.position.copy(pos); o.c.root.rotation.y = yaw; o.key = key;
-        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); o.c.tag.material.fog = false; o.c.root.add(o.c.tag); fitTag(o.c); scene.add(o.c.root); assets.dress('character.player', o.c); dressUp(o.c, p.look || {});
+        o.c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking, p.delinquent); o.c.tag.material.fog = false; o.c.root.add(o.c.tag); fitTag(o.c); scene.add(o.c.root); assets.dress('character.player', o.c); dressUp(o.c, p.look || {});
       }
       if (!o) {
         const c = makeCharacter({ ...OTHER_BASE, look: p.look || {} }); c.player = true; // v1.10.37: seen from far (asset-loader wearMaterial)
         c.root.position.set(p.x, heightAt(p.x, p.z), p.z); c.root.rotation.y = p.yaw;
-        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking); c.tag.material.fog = false; c.root.add(c.tag); fitTag(c); scene.add(c.root); assets.dress('character.player', c); dressUp(c, p.look || {});
+        c.tag = makeTag(p.name || '', p.title || null, p.champion, p.hoguking, p.delinquent); c.tag.material.fog = false; c.root.add(c.tag); fitTag(c); scene.add(c.root); assets.dress('character.player', c); dressUp(c, p.look || {});
         o = { c, key, champion: Boolean(p.champion), track: createTrack(), follow: createFollower({ maxSpeed: SPEED * 1.6 }) }; others.set(p.id, o);
       }
       // v1.10.8: every pose goes into their track (stamped with the server time it was taken); the newest one and its
@@ -1390,18 +1391,31 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     ctx.fillStyle = '#3f7d68'; ctx.fillRect(0, 0, 512, 128); ctx.fillStyle = '#fffaf1'; ctx.font = 'bold 72px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('민원실', 256, 66);
     const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.75), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, 2.55, -D / 2 + 0.17); g.add(sign);
+    // v1.10.85 the two windows' small plates on the counter: 민원 (left) and 예금 (right)
+    for (const [lx, word, bg] of [[ROOM.desk.lx, '민원', '#3f7d68'], [ROOM.tax.lx, '세금', '#7f1d1d'], [ROOM.bank.lx, '예금', '#b45309']]) {
+      const c2 = document.createElement('canvas'); c2.width = 256; c2.height = 96; const x2 = c2.getContext('2d');
+      x2.fillStyle = bg; x2.fillRect(0, 0, 256, 96); x2.fillStyle = '#fffaf1'; x2.font = 'bold 60px sans-serif'; x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillText(word, 128, 52);
+      const t2 = new THREE.CanvasTexture(c2); t2.colorSpace = THREE.SRGBColorSpace;
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.42), new THREE.MeshBasicMaterial({ map: t2 })); plate.position.set(lx, 1.42, C.z + 0.04); g.add(plate);
+      mesh(new THREE.BoxGeometry(1.14, 0.46, 0.04), mat(0x8a6a48), lx, 1.42, C.z + 0.01, g);
+    }
     // benches to wait on (decoration), plants by the door
     for (const s of [-1, 1]) { const b = new THREE.Group(); b.position.set(s * 5.4, 0, 0.8); b.rotation.y = s * -Math.PI / 2; g.add(b); const f = new THREE.Group(); mesh(new THREE.BoxGeometry(1.8, 0.1, 0.5), mat(0x9c6b3f), 0, 0.45, 0, f); b.add(f); assets.attach('prop.bench', b, f); }
     for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 2.4, 0, D / 2 - 0.9); g.add(p); const f = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.5, 10), mat(0x9c6b3f), 0, 0.25, 0, f); mesh(new THREE.SphereGeometry(0.45, 10, 8), mat(0x5fa36a), 0, 0.85, 0, f); p.add(f); assets.attach('prop.planter', p, f); }
     // the clerk behind the counter, facing the room
-    const clerkRoot = new THREE.Group(); clerkRoot.position.set(0, 0, C.z - 1.2); g.add(clerkRoot);
-    const clerk = makeCharacter({ shirt: 0x3f7d68, hair: 0x2b2b2b, skin: 0xffdcbc }); clerkRoot.add(clerk.root); dressUp(clerk, { gender: 'female', outfit: 'npc_outfit_suit' }, { shirt: 0x3f7d68 });
+    const clerks = [[ROOM.desk.lx, 'room:desk', 'female', 0x3f7d68], [ROOM.tax.lx, 'room:tax', 'male', 0x7f1d1d], [ROOM.bank.lx, 'room:bank', 'female', 0xb45309]].map(([lx, id, gender, shirt]) => {
+      const at = new THREE.Group(); at.position.set(lx, 0, C.z - 1.2); g.add(at);
+      const c = makeCharacter({ shirt, hair: 0x2b2b2b, skin: 0xffdcbc }); at.add(c.root); dressUp(c, { gender, outfit: 'npc_outfit_suit' }, { shirt });
+      return Object.assign(c, { home: { x: ROOM.x + lx, z: ROOM.z + C.z - 1.2, yaw: 0, id } });
+    });
     for (const [lx, lz] of [[-4, 0.5], [4, 0.5], [0, -3]]) { const light = new THREE.PointLight(0xfff1d6, 18, 16, 1.2); light.position.set(lx, 3.2, lz); g.add(light); } // a lit hall at any hour
-    room = { group: g, clerk }; npcs.push(Object.assign(clerk, { home: { x: ROOM.x, z: ROOM.z + C.z - 1.2, yaw: 0, id: 'room:desk' } }));
+    room = { group: g, clerks }; npcs.push(...clerks);
     return room;
   }
   doors['room:desk'] = { ...roomAt(ROOM.desk.lx, ROOM.desk.lz), name: '민원 창구' };
   doors['room:exit'] = { ...roomAt(ROOM.exit.lx, ROOM.exit.lz), name: '나가기' };
+  doors['room:bank'] = { ...roomAt(ROOM.bank.lx, ROOM.bank.lz), name: '예금 창구' }; // v1.10.85
+  doors['room:tax'] = { ...roomAt(ROOM.tax.lx, ROOM.tax.lz), name: '세금 창구' }; // v1.10.86
   if (doors.townhall) { doors.townhall.mapName = doors.townhall.name; doors.townhall.name = '관공서 들어가기'; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
     mySpace = space === 'townhall' ? 'townhall' : 'island';

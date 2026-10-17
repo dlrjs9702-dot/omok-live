@@ -2002,3 +2002,16 @@ body.touchIsland .plazaHint { left: 50%; right: auto; transform: translateX(-50%
 .recordsDialog.minesDialog{--g1:#475569;--g2:#334155}
 /* v1.10.84 관공서 실내: no island map inside the 민원실 */
 body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
+/* v1.10.85 관공서 예금 창구 */
+.recordsDialog.bankDialog{--g1:#b45309;--g2:#92400e;width:min(92vw,420px)}
+.bankSums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.bankSums>div{display:grid;gap:2px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #273449}
+.bankSums small{color:#94a3b8;font-size:.72rem}.bankSums strong{font-size:1.15rem;font-weight:900;color:#fde68a}
+.bankForm{display:grid;gap:8px;margin-top:8px}.bankButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* v1.10.86 주민세: the 민원 창구 tax line */
+.islandTaxRow{display:grid;gap:8px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #273449}
+.islandTaxRow p{margin:0;font-size:.82rem;color:#fde68a}
+.recordsDialog.taxDialog{--g1:#991b1b;--g2:#7f1d1d;width:min(92vw,420px)} /* v1.10.86 세금 창구 */
+/* v1.10.87 메신저: 이전 대화 · 안 읽은 알림 */
+.messengerMore{display:block;margin:4px auto 8px}
+#accountMessengerBtn.hasUnread{box-shadow:0 0 0 2px #ef4444 inset;font-weight:900}
