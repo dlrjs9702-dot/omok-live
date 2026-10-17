@@ -897,6 +897,9 @@ function isHoguking(account, now = nowMs()) {
 // v1.10.91 운영 스위치 (IDEAS #future-admin-console ②): what the administrator turns on and off without a deploy --
 // 새 가입 신청 받기, 메신저 (everyone's). Kept on the server; read once and then from memory.
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
+// world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
+let worldQueue = Promise.resolve();
+function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
@@ -1112,7 +1115,7 @@ async function weedState(now = nowMs()) {
     // v1.10.91: the day before's pulls set today's total (IslandWeeds.targetFor); short of it grows, over it wilts
     let grown = []; let wilt = [];
     if (state.day !== null) {
-      const target = IslandWeeds.targetFor(state.pulled); const out = IslandWeeds.active(state).length; const day = IslandTerrain.seasonDay(now);
+      const target = IslandWeeds.targetFor(state.day === kstDate(now - 86400e3) ? state.pulled : 0); /* (a skipped day pulled nothing) */ const out = IslandWeeds.active(state).length; const day = IslandTerrain.seasonDay(now);
       if (out < target) grown = IslandWeeds.grow(day, target - out, state); else if (out > target) wilt = IslandWeeds.wilt(day, out - target, state);
     }
     const before = state.day;
@@ -5063,9 +5066,10 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/admin/asset-notes' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
-    const notes = (await pointStore.worldValue('assetNotes')) || {};
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, notes });
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, notes: (await pointStore.worldValue('assetNotes')) || {} });
     const body = await parseJson(req);
+    return worldEdit(async () => {
+    const notes = (await pointStore.worldValue('assetNotes')) || {};
     const id = String(body.id || ''); const status = ['', 'check', 'fix', 'ok'].includes(body.status) ? body.status : null;
     if (!/^[\w.:/-]{2,160}$/.test(id) || status === null) return sendError(res, 400, 'BAD_NOTE', '잘못된 메모입니다.');
     const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
@@ -5077,13 +5081,15 @@ async function requestHandler(req, res) {
     }
     await pointStore.setWorldValue('assetNotes', notes);
     return sendJson(res, 200, { ok: true, notes });
+    });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.91 운영 스위치
     if (!requireAdmin(req, res)) return;
     if (req.method === 'POST') {
-      const body = await parseJson(req); const now = await opsSwitches(); const next = { ...now };
-      for (const k of Object.keys(OPS_DEFAULTS)) if (typeof body[k] === 'boolean') next[k] = body[k];
-      await pointStore.setWorldValue('switches', next); opsCache = next;
+      const body = await parseJson(req);
+      await worldEdit(async () => { const next = { ...(await opsSwitches()) };
+        for (const k of Object.keys(OPS_DEFAULTS)) if (typeof body[k] === 'boolean') next[k] = body[k];
+        await pointStore.setWorldValue('switches', next); opsCache = next; });
     }
     return sendJson(res, 200, { ok: true, switches: await opsSwitches() });
   }
