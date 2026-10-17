@@ -31,6 +31,16 @@ async function storeBehaves(store) {
   assert.equal((await store.taxDebts())[U], TAX_DEBT_MAX, '체납은 최대 20만');
   assert.equal((await store.taxPay(U, 'pay-0001')).applied, false, '낼 포인트가 없으면 그대로');
   const R = await store.bankMove(U, 0, 'x', Date.now()).catch((e) => e); assert.ok(R instanceof RangeError);
+  // paid from the deposit alone, then the same request sent again: nothing taken twice (Codex review)
+  const V = 'guest:00000000-0000-4000-8000-0000000000c2'; const day = Date.parse('2026-11-01T12:00:00+09:00');
+  await store.ensureAccount(V); await store.bankMove(V, 30000, 'v-in-0001', day);
+  await store.taxCollect(V, '2026-11-01'); await store.taxCollect(V, '2026-11-02'); // 20,000; then 10,400 (with a day's interest) + 9,600 owed
+  assert.equal((await store.taxDebts())[V], 9600);
+  await store.claimAttendance(V, day); const w = (await store.getAccount(V)).balance; await store.bankMove(V, w, 'v-in-0002', day);
+  const paid = await store.taxPay(V, 'v-pay-0001', day); assert.deepEqual([paid.applied, paid.paid, paid.debt], [true, 9600, 0]);
+  const before = await store.bankView(V, day);
+  assert.equal((await store.taxPay(V, 'v-pay-0001', day)).applied, false);
+  assert.deepEqual(await store.bankView(V, day), before);
 }
 
 test('주민세 저장소: JSON·PostgreSQL 같은 동작(하루 한 번·체납 상한)', async (t) => {

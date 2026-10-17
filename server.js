@@ -975,16 +975,20 @@ function collectTaxes(now = nowMs(), forced = null) {
   const day = forced || kstDate(now);
   if (taxDay === day || taxRunning) return taxRunning;
   taxRunning = (async () => {
-    const changed = [];
-    for (const key of await accessStore.list()) {
-      if (key.revokedAt) continue;
+    // the days since the last one collected, oldest first (a server asleep through days takes each of them -- Codex
+    // review), at most the last 30; the very first run takes today only
+    const last = forced ? null : await pointStore.taxLastDay();
+    const days = [];
+    for (let d = day, n = 0; n < 30 && (!last || d > last); n += 1) { days.unshift(d); if (!last) break; d = kstDate(Date.parse(`${d}T12:00:00+09:00`) - 86400000); }
+    const changed = new Set();
+    for (const d of days) for (const key of await accessStore.list()) { // every account (a revoked one too -- Codex review)
       const account = `guest:${key.id}`;
-      const out = await pointStore.taxCollect(account, day);
-      if (out.applied) changed.push(account);
+      const out = await pointStore.taxCollect(account, d);
+      if (out.applied) changed.add(account);
       taxDebt.set(account, out.debt || 0);
     }
     taxDay = day;
-    if (changed.length) { notifyPointsChanged(changed); refreshTaxLooks(); }
+    if (changed.size) { notifyPointsChanged([...changed]); refreshTaxLooks(); }
   })().catch((error) => console.error('주민세 징수 실패:', error.message)).finally(() => { taxRunning = null; });
   return taxRunning;
 }
