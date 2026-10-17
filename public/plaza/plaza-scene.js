@@ -932,9 +932,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // Input: arrows move, Space interacts; both Space and a click on a facility call `interact`.
   // v1.10.62 모바일: a touch stick (app.js) walks like the arrows, relative to the view ({x, y}: right / toward me, -1..1)
   const keys = new Set(); let stick = null;
-  let pace = 'walk'; let paceDownAt = 0; let paceRun = false; let paceTimer = 0;
+  const shifts = new Set(); let pace = 'walk'; let paceDownAt = 0; let paceRun = false; let paceTimer = 0;
   const paceDown = () => { if (paceDownAt) return; paceDownAt = performance.now(); clearTimeout(paceTimer); paceTimer = setTimeout(() => { if (paceDownAt) paceRun = true; }, RUN_HOLD_MS); };
-  const paceUp = () => { if (!paceDownAt) return; if (!paceRun) pace = pace === 'walk' ? 'slow' : 'walk'; paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
+  const paceUp = () => { if (!paceDownAt) return; if (!paceRun) pace = pace === 'walk' ? 'slow' : 'walk'; shifts.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
   const paceSpeed = () => (paceRun ? RUN_SPEED : pace === 'slow' ? SLOW_SPEED : SPEED);
   const isTyping = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
   const isBlocked = () => Boolean(blocked?.()) || !running;
@@ -942,7 +942,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (isBlocked() || isTyping(event.target)) return;
     if (event.code === 'Space' && event.target.closest?.('button')) return;
     if (event.key.startsWith('Arrow')) { keys.add(event.key); event.preventDefault(); return; }
-    if (event.key === 'Shift') { if (!event.repeat) paceDown(); return; }
+    if (event.key === 'Shift') { if (!event.repeat) { shifts.add(event.code); paceDown(); } return; } // (Codex: either Shift, until both are up)
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
@@ -951,7 +951,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!event.repeat && near) interact(near);
     }
   };
-  const onKeyUp = (event) => { keys.delete(event.key); camKeys.delete(event.code); if (event.key === 'Shift') paceUp(); };
+  const onKeyUp = (event) => { keys.delete(event.key); camKeys.delete(event.code); if (event.key === 'Shift') { shifts.delete(event.code); if (!shifts.size) paceUp(); } };
   const onBlur = () => { keys.clear(); camKeys.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
