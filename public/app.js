@@ -1794,13 +1794,13 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
-      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
+      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -2626,9 +2626,36 @@
     openTalk('시장');
   }
   const questTracker = document.getElementById('questTracker');
-  function showQuestTracker(list) {
-    questTracker.replaceChildren(...list.map((t) => { const p = document.createElement('p'); p.textContent = t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`; return p; }));
-    questTracker.classList.toggle('hidden', !list.length);
+  let questTrack = []; let errandTrack = []; // v1.10.91: the day's errands under way share the tracker
+  function showQuestTracker(list = questTrack) {
+    questTrack = list;
+    const lines = [...list.map((t) => (t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`)), ...errandTrack.map((e) => `심부름 · ${e.label}`)];
+    questTracker.replaceChildren(...lines.map((text) => { const p = document.createElement('p'); p.textContent = text; return p; }));
+    questTracker.classList.toggle('hidden', !lines.length);
+  }
+  // v1.10.91 주민 대화·심부름: any islander standing by me talks -- their own words, or the day's errand (asked, a thing
+  // brought, someone found); the stars over their heads and the tracker follow the server's view
+  function showErrands(view) {
+    if (!view) return;
+    plaza.controller?.setResidentMarks?.(view.marks || {}); errandTrack = view.track || []; showQuestTracker();
+  }
+  function refreshErrands() { if (document.body.classList.contains('plazaMode')) api('/api/island/errands').then(showErrands).catch(() => {}); }
+  setInterval(refreshErrands, 20000);
+  let residentBusy = false;
+  async function talkResident(n) {
+    if (residentBusy) return; residentBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) });
+      showErrands(data);
+      const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
+      const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
+      meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
+      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.errand && !data.reward ? '알겠어요' : '확인'; ok.addEventListener('click', () => plazaDialog.close());
+      lostCard.replaceChildren(...lines, meta, ok);
+      openTalk(data.name, Boolean(data.reward));
+      if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
+    } catch (error) { showToast(error.message); } finally { residentBusy = false; }
   }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {

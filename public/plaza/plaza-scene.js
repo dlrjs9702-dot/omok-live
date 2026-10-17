@@ -1698,8 +1698,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         animate(c,dt,!w.arrived && w.speed>.3,w.speed); continue;
       }
       c.waving=false; delete c.returnEmote;
-      c.targetYaw = w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw;
-      c.lookAt = w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      c.targetYaw = c.talkYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk)
+      c.lookAt = c.talkYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
       animate(c, dt, w.speed > 0.3, w.speed);
     }
   }
@@ -1719,7 +1719,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     if (id.startsWith('seat:') && takenSeats.has(id.slice(5))) return false;
     if ((riding || platform) && !id.startsWith('train:')) return false;
-    const reach = id.startsWith('train:enter:') ? 2.6 : id.startsWith('seat:') ? 1.6 : id.startsWith('player:') ? 2.2 : door.resource || id.startsWith('weed:') ? WEED_REACH : eventDoors[id] ? EVENT_REACH : REACH;
+    const reach = id.startsWith('train:enter:') ? 2.6 : id.startsWith('seat:') ? 1.6 : id.startsWith('player:') || id.startsWith('resident:') ? 2.2 : door.resource || id.startsWith('weed:') ? WEED_REACH : eventDoors[id] ? EVENT_REACH : REACH;
     return Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < reach;
   }
   function interact(id) {
@@ -1860,6 +1860,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const o = eventObjs.get(id);
     if (o?.npc) return o.resident != null ? o.npc.root : o.root;
     if (id.startsWith('player:')) return others.get(id.slice(7))?.c.root || null;
+    if (id.startsWith('resident:')) return wanderers.find((w) => w.n === Number(id.slice(9)))?.c.root || null; // v1.10.91
     if (id === 'mayor') return yard.mayor.root;
     return npcs.find((n) => n.home?.id === id)?.root || null;
   };
@@ -1876,11 +1877,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const figure = talkFigure(t.id); const at = figure?.getWorldPosition(new THREE.Vector3()) || { x: t.x, z: t.z };
     if (Math.hypot(at.x - p.x, at.z - p.z) > 6) return false;
     // stepping back only from a person standing loose on the island (a gate or a counter keeps its own spot and reach)
-    talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: Boolean(figure) && (eventObjs.has(t.id) || t.id.startsWith('player:')) };
+    talkView = { id: t.id, x: at.x, z: at.z, shot: mode === 'shot', step: Boolean(figure) && (eventObjs.has(t.id) || t.id.startsWith('player:') || t.id.startsWith('resident:')) };
     me.targetYaw = Math.atan2(at.x - p.x, at.z - p.z);
     const toMe = Math.atan2(p.x - at.x, p.z - at.z);
     const o = eventObjs.get(t.id);
-    if (o?.npc && !o.leaving && o.resident != null) { o.npc.talkYaw = toMe; talkTurned = { walker: o.npc }; }
+    const walker = t.id.startsWith('resident:') ? wanderers.find((w) => w.n === Number(t.id.slice(9)))?.c : null; // v1.10.91
+    if (walker) { walker.talkYaw = toMe; talkTurned = { walker }; }
+    else if (o?.npc && !o.leaving && o.resident != null) { o.npc.talkYaw = toMe; talkTurned = { walker: o.npc }; }
     else if (o?.npc && !o.leaving) {
       talkTurned = { o, yaw: o.root.rotation.y, homeYaw: o.npc.home?.yaw };
       o.root.rotation.y = toMe - o.npc.root.rotation.y; if (o.npc.home) o.npc.home.yaw = o.root.rotation.y;
@@ -2165,8 +2168,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
     }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
-    for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:')) delete eventDoors[k];
+    for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
+    if (!best && !gather && !fishing) { // v1.10.91 주민 대화: an islander standing by me (not one an event holds) talks
+      const m = me.root.position; let who = null; let wd = 2.2;
+      for (const { n, c, w } of wanderers) { if (w.pose.held || !c.root.visible || (!w.arrived && w.speed > 0.3 && c.talkYaw == null)) continue; const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd) { who = { n, w }; wd = d; } }
+      if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.WALKERS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
+    }
     if (!best && !gather && !fishing) {
       const m = me.root.position; let seat = null; let sd = 1.6;
       for (const s of SEATS) { const d = Math.hypot(s.x - m.x, s.z - m.z); if (d < sd && !takenSeats.has(s.id)) { seat = s; sd = d; } }
@@ -2400,7 +2408,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const actionBusy = () => Boolean(gather || fishing || sitting || riding || liftRide); // v1.10.81: 포즈 촬영 waits for these
   const photoPose = (on = true) => { if (!on) return me.anim?.release?.(); me.targetYaw = Math.atan2(camera.position.x - me.root.position.x, camera.position.z - me.root.position.z); return me.anim?.loop?.('photo'); }; // turned to the camera, held through the countdown and the shot
   function capture() { if (!photoMode) return Promise.resolve(null); hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
-  return { setSpace, space: () => mySpace, setFarm, setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  // v1.10.91 주민 심부름: a yellow star over an islander with an ask for me, a check over one I bring news or a thing to
+  let residentMarks = {};
+  function setResidentMarks(marks = {}) {
+    residentMarks = { ...marks };
+    for (const { n, c } of wanderers) {
+      const want = marks[n] || null;
+      if (c.tag && !c.tag.userData.errand) continue; // (an event's own mark on a held islander comes first)
+      if ((c.errandMark || null) === want && (!want || c.tag)) continue;
+      if (c.tag?.userData.errand) { disposeTag(c.tag); c.tag = null; }
+      c.errandMark = want;
+      if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
+    }
+  }
+  return { setSpace, space: () => mySpace, setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

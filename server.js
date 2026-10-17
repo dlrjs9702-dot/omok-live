@@ -43,6 +43,9 @@ const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
+const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
+const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
+const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
@@ -896,6 +899,17 @@ function isHoguking(account, now = nowMs()) {
 // total first, then the account id. Nobody: no title. From the week of 2026-10-12 on (no earlier week is made up).
 // v1.10.90 운영 스위치 (IDEAS #future-admin-console ②): what the administrator turns on and off without a deploy --
 // 새 가입 신청 받기, 메신저 (everyone's). Kept on the server; read once and then from memory.
+// v1.10.91 주민 심부름: where each account is in today's errands (memory; what was paid stays paid in the store)
+// ponytail: in memory, a restart forgets an errand under way (ask again); keep it in the store if that ever matters
+const errandStages = new Map(); // `<day>|<account>` -> { [errand id]: stage }
+async function errandView(account) {
+  const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day);
+  for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
+  const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
+  return { marks: IslandErrands.marks(errands, stages, done), track: IslandErrands.track(errands, stages, done), done: done.size, total: errands.length };
+}
+// the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
+function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
@@ -4805,12 +4819,14 @@ async function requestHandler(req, res) {
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
       const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
       if (r.reward) notifyPointsChanged([account]);
+      const keeperN = IslandCast.keeperN(story); let keeperLevel = 1; // v1.10.91 호감도: a talk a day, a story step
+      if (keeperN != null) { keeperLevel = IslandCast.levelOf((await pointStore.affinityOf(account))[keeperN] || 0); await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: keeperN, delta: IslandCast.GAIN.talk, daily: true }, ...(r.paid ? [{ n: keeperN, delta: IslandCast.GAIN.story }] : [])]); }
       if (story === 'farmer' && r.paid) islandFarmAt = 0; // the field may grow at once
       const quests = questEntries(account);
       // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
       const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
       const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, goal: stepNow.need } : null;
-      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
@@ -5052,6 +5068,35 @@ async function requestHandler(req, res) {
   // were when the day closed, kept once), this week's hand-ins and last week's 제초왕. Names only, never an account id.
   // v1.10.90 섬 시간대 (IDEAS #future-admin-console ①): 'auto' (Seoul's clock) or one held by the administrator; everyone's
   // island follows at once (SSE islandTime)
+  // v1.10.91 주민 대화·심부름 (사용자 2026-10-18): any walking islander talks (their own words, or the day's errand for me);
+  // the server checks I stand by them where they are now (the same seeded rounds as the browser)
+  if (pathname === '/api/island/errands' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, ...(await errandView(pointAccountForSession(session))) });
+  }
+  if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const n = Number(body.n);
+    if (!Number.isInteger(n) || !IslandCast.WALKERS[n]) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    const state = islandEvents.residents()[n];
+    if (state?.hold) return sendError(res, 409, 'RESIDENT_BUSY', '지금은 다른 일로 바빠 보여요.');
+    const at = IslandNpcs.residentAt(n, nowMs(), state);
+    if (!pos || Math.hypot(pos.x - at.x, pos.z - at.z) > 4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const account = pointAccountForSession(session); const day = kstDate(nowMs());
+    const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
+    const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
+    const r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n);
+    let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
+    if (r) {
+      errandStages.set(key, r.stages);
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: r.pay.reward, title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = r.pay.reward; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+    }
+    const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
+    const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];
+    const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0;
+    return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), affinity: { points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name }, ...(await errandView(account)) });
+  }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
