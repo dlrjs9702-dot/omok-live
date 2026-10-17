@@ -898,9 +898,10 @@ let fishkingCache = { week: null, id: null }; let fishkingSettling = null;
 async function settleFishkingWeeks(now = nowMs()) {
   if (fishkingSettling) return fishkingSettling;
   fishkingSettling = (async () => {
-    for (let week = previousWeek(climbWeekOf(now)), n = 0; week >= FISHKING_FIRST_WEEK && n < 8; week = previousWeek(week), n += 1) {
+    // every week from the first, oldest first; a closed one is skipped, so a failed run leaves no week out (Codex review)
+    for (let week = FISHKING_FIRST_WEEK, last = previousWeek(climbWeekOf(now)); week <= last; week = nextWeekOf(week)) {
       const key = `fishking_week:${week}`;
-      if (await pointStore.settlementOf(key)) break; // closed (and the ones before it)
+      if (await pointStore.settlementOf(key)) continue;
       const rows = (await pointStore.fishSalesWeek(new Date(weekStartMs(week)).toISOString(), new Date(weekStartMs(nextWeekOf(week))).toISOString()))
         .sort((a, b) => b.total - a.total || String(a.lastAt).localeCompare(String(b.lastAt)) || a.userId.localeCompare(b.userId));
       const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
@@ -4997,9 +4998,11 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-harvest:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const F = IslandTerrain.FARM;
     if (!at || townhallInside.has(session.token) || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있습니다.');
-    if ((await islandFarm()).stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
+    const week = questWeek(); const farm = await islandFarm();
+    if (islandFarmView?.week !== week) return sendError(res, 409, 'TRY_AGAIN', '다시 시도해 주세요.'); // the week turned meanwhile: the field and the claim must be the same week (Codex review)
+    if (farm.stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
     const account = pointAccountForSession(session);
-    const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${questWeek()}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
+    const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${week}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
     if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
