@@ -744,10 +744,29 @@ function invitationsFor(session) {
     });
 }
 
+// v1.10.82 근거리·같은 열차 채팅 (IDEAS #future-local-chat, 사용자 확정 2026-10-08): an island message goes to who was within
+// LOCAL_CHAT_M of the sender when it was sent (on the ground), or to who rode the same train -- fixed then (`to`, session
+// tokens): it stays with whoever got it and never reaches anyone else, the stream and its history alike. A message
+// from outside the island (the classic lobby) has no `to` and goes to everyone, as before.
+const LOCAL_CHAT_M = 20;
+function chatAudience(session) {
+  const at = plazaPresence.get(session.token); if (!at) return { to: null, channel: null };
+  const ride = trainRiders.get(session.token); const to = new Set([session.token]);
+  for (const [token, p] of plazaPresence) {
+    if (token === session.token) continue; const other = trainRiders.get(token);
+    if (ride ? other?.id === ride.id : !other && Math.hypot(p.x - at.x, p.z - at.z) <= LOCAL_CHAT_M) to.add(token);
+  }
+  return { to, channel: ride ? 'train' : 'near' };
+}
+function lobbyMessagesFor(session) {
+  const visible = new Set(lobbySocial.social.messages.filter((m) => !m.to || (session && m.to.has(session.token))).map((m) => m.id));
+  const channel = new Map(lobbySocial.social.messages.filter((m) => m.channel).map((m) => [m.id, m.channel]));
+  return publicChatMessages(lobbySocial).filter((m) => visible.has(m.id)).map((m) => (channel.has(m.id) ? { ...m, channel: channel.get(m.id) } : m)).slice(-LOBBY_CHAT_MESSAGES);
+}
 function publicLobbyState(session = null) {
   return {
     connectedCount: lobbyPeers().length,
-    messages: publicChatMessages(lobbySocial).slice(-LOBBY_CHAT_MESSAGES),
+    messages: lobbyMessagesFor(session),
     rooms: listPublicRooms(),
     invitations: invitationsFor(session),
     me: { chatId: chatIdFor(session) },
@@ -3136,7 +3155,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.81' });
+    return sendJson(res, 200, { ok: true, version: '1.10.82' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3791,7 +3810,7 @@ async function requestHandler(req, res) {
     const text = String(body.text || '').trim();
     if (!text) return sendError(res, 400, 'EMPTY_CHAT', '메시지를 입력해 주세요.');
     if (text.length > MAX_CHAT_LENGTH) return sendError(res, 400, 'CHAT_TOO_LONG', '채팅은 ' + MAX_CHAT_LENGTH + '자까지 입력할 수 있습니다.');
-    appendChatMessage(lobbySocial, session, text, chatIdFor(session));
+    Object.assign(appendChatMessage(lobbySocial, session, text, chatIdFor(session)), chatAudience(session)); // v1.10.82
     trimLobbyMessages();
     broadcastLobby();
     return sendJson(res, 200, { ok: true });
@@ -5396,7 +5415,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.81 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.82 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

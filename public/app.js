@@ -5502,7 +5502,7 @@
       time.textContent = Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       const text = document.createElement('div');
       text.className = 'chatMessageText';
-      text.textContent = row.text;
+      text.textContent = row.channel === 'train' ? `🚃 ${row.text}` : row.text; // v1.10.82: said on the train (its riders only)
       body.append(text, time);
       item.appendChild(body);
       item.setAttribute('aria-label', `${row.label || '게스트'}: ${row.text}`);

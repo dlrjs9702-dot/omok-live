@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.82 섬 채팅 근거리·같은 열차 (묶음 9)
+
+- 지시(사용자 2026-10-17 3순위, IDEAS `#future-local-chat` 2026-10-08 확정): 섬 일반 채팅은 가까운 사람에게만, 열차에서는 같은 열차 승객끼리만. 거리 20m는 IDEAS의 시험 기준값(최종 확정 아님) 그대로.
+- 서버(`server.js` `chatAudience`·`lobbyMessagesFor`): 섬 위(plazaPresence)에서 보낸 글은 보낸 순간 수신자 집합(`to`, 세션)을 고정 — 지상은 20m 안 지상 사용자, 탑승 중이면 같은 열차 ID 승객(`trainRiders`), 송신자 포함. 대기방 상태 SSE·재접속 이력이 수신자별로 걸러짐(화면에서만 숨기지 않음). 섬 밖(대기방) 글은 `to` 없이 모두. 받은 글은 멀어져도 남고, 늦게 가까워져도 지난 글은 안 보임.
+- 화면(`app.js`): 열차 채팅은 🚃 표시. 말풍선·알림은 같은 상태를 쓰므로 범위가 같음.
+- 검증: `test/local-chat.test.js`(지상 12m 수신·45m 미수신·탑승자 미수신, 같은 열차 2명만, 대기방 글 모두, 멀어져도 받은 글 유지), 채팅 e2e(chat-announce·모바일 섬·광장 채팅), Codex 검토 결함 없음. 실제 휴대폰 미검증.
+
 ## v1.10.81 기념사진 2버튼 (묶음 8)
 
 - 지시(사용자 2026-10-17 3순위, IDEAS `#future-photo-action` 2026-10-08 확정): 「즉시 촬영」·「포즈 촬영」 두 버튼.
@@ -29,13 +36,3 @@
 - 에셋(assets 26, 납품 바이트 그대로): 농부(공통 리그 — 몸에 든 옛 동작 대신 assets 36 동작 파일로 움직임, `asset-loader` `dress` `motions`), 밭 4단계, 팻말(이름은 캔버스 글자판), 뿅망치(손). 손 작물 2종은 수확 단계 때.
 - 한판마당 퀘스트 판: 그만두기(✕·Esc)·결과 「섬으로」가 바로 섬으로(`public/reflex/reflex.js` `questMode`).
 - 검증: `test/farmer-quest-server.test.js`(150점·너무 빠른 판 불인정, 230점 완료·보고, 4명 → 3단계·이름, 도운 사람 목록 JSON·PostgreSQL), `test/island-quests.test.js` 주간 순환, `tests/e2e/farmer.spec.js`(농부 모델·밭 0단계·말 걸기 → 도와줄게요 → 두더지 잡기 → Esc 섬으로, 다른 사람 도움으로 1단계), 한판마당 e2e 9, 화면 확인. 실제 휴대폰 미검증.
-
-## v1.10.79 3인칭 동작·어깨 정비 연결(assets 36)
-
-- 지시(사용자 2026-10-17 2순위): assets 36 HANDOFF 기준으로 지원 복장·기본 사회행동부터 연결, 확인 없이 배포.
-- 동작(`tools/assets/island-models.json` 출처 `motion36`, gltfpack): 기존 28개 교체 + 느리게 걷기·둘러보기·알아보기·짧은 인사 4개. 새 클립이 팔 자세를 직접 가지므로 런타임 armTuck 제거(`asset-loader.js`). WalkStart/Stop·선회(초안, 루트 이동)·농사/음식/도구 등 소품이 필요한 자유 모션·CarryWalk/Run·SitTalk는 연결하지 않음(파일도 넣지 않음).
-- 몸·옷 짝(`wardrobe-contract.json`): 운동복·후드는 전용 몸(`body_sports/hoodie`)과 가중치 수정 옷, 옷 없음은 `body_bare`, 나머지 59의상은 기존 `body_core`(`island-assets.js` `body`/`bare`, `asset-loader` `wear`). 납품 바이트 그대로 복사(precompressed) — 양자화 없는 meshopt·재질별 메시라 `budgets.json` `$motion36` 해시 고정 예외.
-- 이동 3단계(`plaza-scene.js`): 1.0/4.2/6.2, Shift 탭 = 느리게↔보통, 0.3초 홀드 = 뛰기(놓으면 이전 걸음), 휴대폰 `#islandPaceBtn` 같은 규칙. 애니메이터(`asset-pipeline.js`)에 `slow` 상태·클립별 재생률(`rates`). 다른 사람은 위치 속도로 같은 걸음이 보임.
-- 메신저 후속(v1.10.78 Codex 검토, 플러그인 실행 오류라 diff를 직접 넘겨 검토): PostgreSQL 번호 증가와 메시지 저장을 한 트랜잭션으로(동시 전송 시 메시지 건너뜀), 밀린 메시지는 받은 번호 다음부터 100개씩(최신 100개만 주던 누락), JSON 저장 실패 뒤에도 다음 저장 계속, 방 인원 제한을 저장소에서 확인(동시 초대 31명). 시험 `test/messenger.test.js`.
-- 시설 관리인: 다가가면 짧은 인사(20초에 한 번), 비어 있을 때 가끔 둘러보기 — 평소 대기 위에서만.
-- 검증: 단위(GLB 예산·등록부·파이프라인), e2e `motion36.spec.js`(Shift 탭/홀드 걸음·클립·거리, 운동복 전용 몸), 기존 섬 에셋·광장 e2e. 실제 휴대폰·GPU·다른 59의상 교차 미검증.
