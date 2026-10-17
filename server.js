@@ -754,6 +754,7 @@ function chatAudience(session) {
   const ride = trainRiders.get(session.token); const to = new Set([session.token]);
   for (const [token, p] of plazaPresence) {
     if (token === session.token) continue; const other = trainRiders.get(token);
+    if ((p.space || 'island') !== (at.space || 'island')) continue; // v1.10.84: the 민원실 and the island never mix
     if (ride ? other?.id === ride.id : !other && Math.hypot(p.x - at.x, p.z - at.z) <= LOCAL_CHAT_M) to.add(token);
   }
   return { to, channel: ride ? 'train' : 'near' };
@@ -954,13 +955,16 @@ function plazaSeparate(token, x, z, prev) {
   return { x: Math.round(clamp(x) * 100) / 100, z: Math.round(clamp(z) * 100) / 100 };
 }
 let plazaDirty = false;
+// v1.10.84 관공서 실내 (IslandTerrain.TOWNHALL_ROOM): who is in the 민원실 (session tokens). Inside, a pose stays in the
+// room; leaving the island or the visit ends it -- a new visit starts outside the hall's door.
+const townhallInside = new Set();
 function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -3155,7 +3159,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.83' });
+    return sendJson(res, 200, { ok: true, version: '1.10.84' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3880,11 +3884,18 @@ async function requestHandler(req, res) {
     if (ride) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
+    } else if (townhallInside.has(session.token)) {
+      // a pose from before going in (still on the island) arrives late: where I am stays (it never drags me to a wall)
+      const here = plazaPresence.get(session.token);
+      spot = IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandTerrain.roomClamp(body.x, body.z) : { x: here.x, z: here.z };
+      Object.assign(wanted, IslandTerrain.roomClamp(body.x, body.z)); // (the room is past the island's bound: 'corrected' only when it really moved me)
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('townhall')); // a visit cut off inside comes back at the hall's door
     } else if (platform) {
       spot = IslandTrain.platformClamp(platform.line, platform.station, wanted.x, wanted.z);
       const entry = IslandTrain.stationOf(platform.station).spot; plazaLastPos.set(session.token, entry); notePlazaSpot(account, entry.x, entry.z);
     } else {
-      spot = collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
+      const late = IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) && plazaPresence.get(session.token); // v1.10.84: a pose from the room after going out
+      spot = late ? { x: late.x, z: late.z } : collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
       plazaLastPos.set(session.token, spot);
       notePlazaSpot(account, spot.x, spot.z);
@@ -3897,6 +3908,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
+      space: townhallInside.has(session.token) ? 'townhall' : 'island', // v1.10.84
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null }; const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
@@ -3996,6 +4008,29 @@ async function requestHandler(req, res) {
     if (!session) return;
     return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(pointAccountForSession(session), islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP });
   }
+  // v1.10.84 관공서 실내: SPACE at the hall's door (in the yard, past the mayor) goes in; at the room's door, out to the
+  // hall's door. The server moves the position itself, so a pose can never put anyone in or out.
+  if ((pathname === '/api/island/townhall/enter' || pathname === '/api/island/townhall/leave') && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM;
+    if (!at) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const entering = pathname.endsWith('/enter');
+    if (entering) {
+      const door = IslandTerrain.facilityDoor('townhall');
+      if (townhallInside.has(session.token)) return sendError(res, 409, 'ALREADY_INSIDE', '이미 안에 있습니다.');
+      if (trainRiders.has(session.token) || trainVisitors.has(session.token) || !passesGate(session) || Math.hypot(at.x - door.x, at.z - door.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      freeSeat(session.token); townhallInside.add(session.token);
+    } else {
+      const exit = IslandTerrain.roomWorld(R.exit.lx, R.exit.lz);
+      if (!townhallInside.has(session.token) || Math.hypot(at.x - exit.x, at.z - exit.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      townhallInside.delete(session.token);
+    }
+    const spot = entering ? IslandTerrain.roomWorld(R.entry.lx, R.entry.lz) : IslandTerrain.facilityDoor('townhall');
+    plazaPresence.set(session.token, { ...at, x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100, space: entering ? 'townhall' : 'island', moving: false, at: nowMs(), act: null, seat: null });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: entering ? 'townhall' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
+  }
   if (pathname === '/api/island/sell' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -4005,8 +4040,9 @@ async function requestHandler(req, res) {
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    if (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
-    if (place === 'office' && !(IslandTerrain.inTownhallYard(at.x, at.z) && passesGate(session))) return sendError(res, 409, 'TOO_FAR', '관공서 안으로 들어가서 다시 시도해 주세요.'); // v1.10.45: in the yard, past the mayor (not over the wall from outside)
+    const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 3; })(); // v1.10.84
+    if (!atCounter && (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
     if (result.reason === 'nothing') return sendError(res, 409, 'NOTHING_TO_SELL', '맡길 물건이 없습니다.');
@@ -5415,7 +5451,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.83 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.84 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

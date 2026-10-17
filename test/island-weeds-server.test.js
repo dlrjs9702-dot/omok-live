@@ -97,7 +97,10 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const far = first.weeds.find(([, wx, wz]) => Math.hypot(wx - x, wz - z) > 20);
   assert.equal((await R()('/api/island/weed/start', sa, { weedId: far[0] })).data.error, 'TOO_FAR');
   // the town hall: 300P a weed
-  const hall = { x: -24, z: 6 }; await stand(winner, hall.x + 3, hall.z + 3);
+  // v1.10.84: at the 민원 창구 inside the hall (in at its door, to the counter)
+  const T = require('../public/plaza/island-terrain'); const hallDoor = T.facilityDoor('townhall'); await stand(winner, hallDoor.x, hallDoor.z);
+  assert.equal((await R()('/api/island/townhall/enter', winner, {})).status, 200);
+  const counter = T.roomWorld(T.TOWNHALL_ROOM.desk.lx, T.TOWNHALL_ROOM.desk.lz); await stand(winner, counter.x, counter.z);
   const before = (await R()('/api/donation', winner)).data.balance;
   const sold = await R()('/api/island/sell', winner, { place: 'office', requestId: crypto.randomUUID() });
   const price = require('../lib/island-items').priceOf('weed'); // 300P (900P on a 제초 요청 day: the server's clock)

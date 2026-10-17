@@ -296,6 +296,20 @@
   let natureCache = null; const treeBlocks = []; // v1.10.47: places a tree must not stand (under the train's rail)
   function addTreeBlock(fn) { treeBlocks.push(fn); natureCache = null; }
   const natureBlocks = [];
+  // v1.10.84 관공서 실내 (IDEAS 2026-10-07 「관공서 실내 공간」): a separate room, the 1층 민원실, set far off the island (past
+  // the fog, so neither place shows in the other) -- its own coordinates for the server's positions too. Local layout:
+  // the door on +z (the way in and out), the counter across the back (-z) with the clerk behind it, benches at the sides.
+  const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 16, d: 11, entry: Object.freeze({ lx: 0, lz: 3.4 }), exit: Object.freeze({ lx: 0, lz: 4.7 }), desk: Object.freeze({ lx: 0, lz: -1.9 }), counter: Object.freeze({ x0: -3.4, x1: 3.4, z: -2.5 }) });
+  const roomWorld = (lx, lz) => ({ x: TOWNHALL_ROOM.x + lx, z: TOWNHALL_ROOM.z + lz });
+  const inRoom = (x, z, pad = 0) => Math.abs(x - TOWNHALL_ROOM.x) <= TOWNHALL_ROOM.w / 2 + pad && Math.abs(z - TOWNHALL_ROOM.z) <= TOWNHALL_ROOM.d / 2 + pad;
+  // where one may stand inside: within the walls (0.6 m off them) and in front of the counter
+  function roomClamp(x, z) {
+    const R = TOWNHALL_ROOM; const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    let lx = Math.max(-R.w / 2 + 0.6, Math.min(R.w / 2 - 0.6, fin(x, R.x + R.entry.lx) - R.x));
+    let lz = Math.max(-R.d / 2 + 0.6, Math.min(R.d / 2 - 0.6, fin(z, R.z + R.entry.lz) - R.z));
+    if (lx > R.counter.x0 - 0.4 && lx < R.counter.x1 + 0.4 && lz < R.counter.z + 0.4) lz = R.counter.z + 0.4;
+    return { x: Math.round((R.x + lx) * 100) / 100, z: Math.round((R.z + lz) * 100) / 100 };
+  }
   // v1.10.80 농부 밭 (IDEAS #future-island-minigames): the 8 x 5 m field beside the village lane (its models' floor centre,
   // the long side along x), the farmer at its corner by the walk, the helpers' sign at its west end. What grew there
   // (a tree, two bushes) gives way -- taken out after the seeded scenery, so nothing else moves. Its tufts stay: the
@@ -468,5 +482,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { FARM, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

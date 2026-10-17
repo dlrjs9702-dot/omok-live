@@ -1481,7 +1481,7 @@
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'naming', name: '작명소', open: () => openNaming() }, // v1.10.9 작명소
-    { id: 'townhall', name: '관공서', open: () => openIslandPlace('office') }, // v1.10.10 이벤트 인벤토리
+    { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
@@ -1699,10 +1699,11 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
+      document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
@@ -2196,6 +2197,17 @@
     openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
+  // where I stand now; the island's map is put away inside (body.townhallRoom)
+  let townhallBusy = false;
+  async function townhallDoor(entering) {
+    if (townhallBusy) return; townhallBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api(entering ? '/api/island/townhall/enter' : '/api/island/townhall/leave', { method: 'POST', body: '{}' });
+      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
+    } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
+  }
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);

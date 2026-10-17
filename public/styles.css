@@ -1991,3 +1991,5 @@ body.photoMode .islandPaceBtn { visibility: hidden !important; }
 .recordsDialog.namingDialog{--g1:#7c4a1e;--g2:#9a3412}
 .recordsDialog.messengerDialog{--g1:#0369a1;--g2:#075985}
 .recordsDialog.minesDialog{--g1:#475569;--g2:#334155}
+/* v1.10.84 관공서 실내: no island map inside the 민원실 */
+body.townhallRoom .plazaStage canvas.islandMinimap{display:none}

@@ -971,7 +971,11 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.locator('#islandBagCloseBtn').click();
   const before = (await get(request, '/api/points', a.token)).data.balance;
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
+  await page.keyboard.press('Space'); // v1.10.84: in, to the 민원실 -- its counter settles
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('townhall');
+  await page.evaluate(() => window.PlazaDebug().place('room:desk'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 민원 창구');
   await page.keyboard.press('Space');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
   await page.locator('#islandPlaceSubmit').click();
@@ -979,6 +983,10 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
+  await page.evaluate(() => window.PlazaDebug().place('room:exit'));
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나가기');
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');
   await page.evaluate(() => window.PlazaDebug().place('trader'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
@@ -1294,7 +1302,7 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await page.waitForTimeout(1500);
   const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
   expect(await page.evaluate(([x, z]) => window.IslandTerrain.inTownhallYard(x, z), inside)).toBe(true);
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서');
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
   // v1.10.45: walking at the hall from the yard stops at the foot of the steps and along the terrace's front, never into it
   // The lowest sky view must also clear the yard walls, pillars and lamps, while retaining the 4m distance floor.
   for (const [lx, lz] of [[0, 11], [-7, 13], [7, 13], [0, 17]]) {

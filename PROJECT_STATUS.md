@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.84 관공서 실내 — 1층 민원실
+
+- 지시(사용자 2026-10-17 3순위, IDEAS 「관공서 실내 공간」 2026-10-07 확정): 본섬과 좌표·렌더링이 분리된 공용 3D 실내, 1층 민원실 하나, 정산·분실물 반납을 실내 창구로.
+- 공간(`island-terrain.js` `TOWNHALL_ROOM`·`roomClamp`): 섬 밖 (0, -330), 16×11m, 문은 +z·창구는 뒤쪽. 서버(`server.js` `townhallInside`): `POST /api/island/townhall/enter`(관공서 문 앞 2.4m·시장 허가·열차 아님) / `leave`(방 문 앞)로 서버가 직접 옮김, 실내 포즈는 방 안으로만(늦게 온 다른 공간 포즈는 무시), presence `space`, 접속이 끊기면 다음 방문은 관공서 문 앞. 관공서 정산(`/api/island/sell` office)은 실내 창구 3m 안에서만(Codex 검토 P2 — 문 앞 정산 막음). 채팅은 같은 공간끼리만.
+- 화면(`plaza-scene.js` `buildRoom`·`setSpace`): 대리석 벽·초록 카펫·창구와 직원·「민원실」 현판·대기 벤치·화분·조명(밤에도 밝게), 앞벽은 낮게(카메라가 넘어봄). SPACE · 관공서 들어가기 → SPACE · 민원 창구(기존 관공서 창) → SPACE · 나가기. 실내에서는 섬 장면·지도를 숨기고(성능), 다른 사람은 같은 공간만 보임.
+- 검증: `test/townhall-room.test.js`(문 앞 아닌 입장 거절·문 앞 정산 거절, 섬 좌표 포즈는 방 안으로, 창구 정산, 창구에서 퇴장 거절·문에서 퇴장), 잡초 정산 시험 실내 흐름으로 갱신, e2e 가방·관공서·상인과 시장 정문, 실내 스크린샷. Codex 검토 P2 반영. 실제 휴대폰 미검증.
+
 ## v1.10.83 섬 창 디자인 통일 (통합 UI 6~8)
 
 - 지시(사용자 2026-10-17 3순위): 게임관 밖 창(게시판류·상점류·가방·내 정보·HUD)을 게임관 스타일로.
@@ -25,10 +32,3 @@
 - 서버(`server.js` `chatAudience`·`lobbyMessagesFor`): 섬 위(plazaPresence)에서 보낸 글은 보낸 순간 수신자 집합(`to`, 세션)을 고정 — 지상은 20m 안 지상 사용자, 탑승 중이면 같은 열차 ID 승객(`trainRiders`), 송신자 포함. 대기방 상태 SSE·재접속 이력이 수신자별로 걸러짐(화면에서만 숨기지 않음). 섬 밖(대기방) 글은 `to` 없이 모두. 받은 글은 멀어져도 남고, 늦게 가까워져도 지난 글은 안 보임.
 - 화면(`app.js`): 열차 채팅은 🚃 표시. 말풍선·알림은 같은 상태를 쓰므로 범위가 같음.
 - 검증: `test/local-chat.test.js`(지상 12m 수신·45m 미수신·탑승자 미수신, 같은 열차 2명만, 대기방 글 모두, 멀어져도 받은 글 유지), 채팅 e2e(chat-announce·모바일 섬·광장 채팅), Codex 검토 결함 없음. 실제 휴대폰 미검증.
-
-## v1.10.81 기념사진 2버튼 (묶음 8)
-
-- 지시(사용자 2026-10-17 3순위, IDEAS `#future-photo-action` 2026-10-08 확정): 「즉시 촬영」·「포즈 촬영」 두 버튼.
-- 즉시 촬영(`app.js` `takePhoto({ now })`): 카운트다운·PhotoPose 없이 누른 순간의 프레임을 캡처 — 동작·소품·위치를 건드리지 않음(취소·종료 때도 동작 해제 안 함). 포즈 촬영은 기존 3-2-1·PhotoPose 그대로, 채집·낚시·앉기·기차 중이면 안내만(`plaza-scene.js` `actionBusy`, 진행 중 행동을 끊지 않음).
-- 사진 모드(`plaza-scene.js` `setPhotoMode`): 채집 잠금(`gather` kind photo)을 쓰던 것을 별도 `photoMode` 상태로 — 풀 뽑기·낚시·앉기 도중에도 열리고 그 진행은 그대로(서버 판정·보상 무관), 사진 모드는 이동·SPACE 상호작용·화살표로 일어서기만 막음. PNG 저장·포토 스팟 기록·취소/재진입/로그아웃 처리는 두 버튼 공통.
-- 검증: e2e `plaza.spec.js` 기념사진 3개(새: 앉은 채 즉시 촬영 — 카운트다운 없음·앉은 채 유지·PNG, 포즈 촬영 안내, 화살표로 안 일어남; 기존 촬영·취소/재진입/로그아웃), Codex 검토 결함 없음. 실제 휴대폰 미검증.
