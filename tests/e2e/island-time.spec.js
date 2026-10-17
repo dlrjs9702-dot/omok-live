@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, adminToken, expectNoScriptError } = require('./skin-support');
 
-// v1.10.91 섬 시간대 (IDEAS #future-admin-console ①): the administrator holds the island at a time of day and everyone's
+// v1.10.90 섬 시간대 (IDEAS #future-admin-console ①): the administrator holds the island at a time of day and everyone's
 // island follows at once; Halloween's decorations stay with October (only its purple tints the night). PC 전용 (the
 // same scene on a phone).
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');

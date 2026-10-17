@@ -3,7 +3,7 @@ const { uniqueIp } = require('./skin-support');
 
 const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-password';
 
-// v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③): the administrator sees every registered model by kind (turned in
+// v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): the administrator sees every registered model by kind (turned in
 // its own scene), plays a motion on the base body frame by frame, and leaves a note (status, memo, view) the server
 // keeps; the 수정 요청 notes become a draft Codex order. PC 전용 (the same panel on a phone).
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');

@@ -890,11 +890,11 @@ function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
 
-// v1.10.89 낚시왕 (IDEAS #future-fishing-dex) · v1.10.91 제초왕 (IDEAS #future-weed-board): a week's (Seoul Monday to
+// v1.10.89 낚시왕 (IDEAS #future-fishing-dex) · v1.10.90 제초왕 (IDEAS #future-weed-board): a week's (Seoul Monday to
 // Monday) 1st -- by the points the harbour fisherman paid / by the weeds handed in at the town hall -- closed once after it
 // ends, holds the title the week after (worn in the title slot, shown only while it is theirs). A tie: who reached the
 // total first, then the account id. Nobody: no title. From the week of 2026-10-12 on (no earlier week is made up).
-// v1.10.91 운영 스위치 (IDEAS #future-admin-console ②): what the administrator turns on and off without a deploy --
+// v1.10.90 운영 스위치 (IDEAS #future-admin-console ②): what the administrator turns on and off without a deploy --
 // 새 가입 신청 받기, 메신저 (everyone's). Kept on the server; read once and then from memory.
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
@@ -946,7 +946,7 @@ function isChampion(account, now = nowMs()) {
 const climbWeekTicker = setInterval(() => {
   if (championCache.week !== previousWeek(climbWeekOf(nowMs()))) refreshChampions().catch(() => {}); // Monday 00:00: last week's champions expire at once
   settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
-  settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.91 제초왕
+  settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.90 제초왕
   settleClimbWeeks();
 }, 60 * 1000);
 climbWeekTicker.unref?.();
@@ -1019,7 +1019,7 @@ const taxDebt = new Map(); // account -> what it owes
 const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
-  const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? weekly[1].name : null; // v1.10.89 낚시왕 · v1.10.91 제초왕
+  const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? weekly[1].name : null; // v1.10.89 낚시왕 · v1.10.90 제초왕
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
@@ -1112,7 +1112,7 @@ async function weedState(now = nowMs()) {
   let state = await pointStore.islandWeeds();
   const today = kstDate(now);
   if (state.day !== today) {
-    // v1.10.91: the day before's pulls set today's total (IslandWeeds.targetFor); short of it grows, over it wilts
+    // v1.10.90: the day before's pulls set today's total (IslandWeeds.targetFor); short of it grows, over it wilts
     let grown = []; let wilt = [];
     if (state.day !== null) {
       const target = IslandWeeds.targetFor(state.day === kstDate(now - 86400e3) ? state.pulled : 0); /* (a skipped day pulled nothing) */ const out = IslandWeeds.active(state).length; const day = IslandTerrain.seasonDay(now);
@@ -3270,7 +3270,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.89' });
+    return sendJson(res, 200, { ok: true, version: '1.10.90' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3290,7 +3290,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, loginId, available: !await accessStore.loginTaken(loginId) });
   }
   if (pathname === '/api/account/signup' && req.method === 'POST') {
-    if ((await opsSwitches()).signups === false) return sendError(res, 403, 'SIGNUPS_CLOSED', '지금은 가입 신청을 받지 않습니다. 나중에 다시 신청해 주세요.'); // v1.10.91 운영 스위치
+    if ((await opsSwitches()).signups === false) return sendError(res, 403, 'SIGNUPS_CLOSED', '지금은 가입 신청을 받지 않습니다. 나중에 다시 신청해 주세요.'); // v1.10.90 운영 스위치
     if (!checkRateLimit(`account-signup:${clientIp(req)}`, 5, 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '가입 신청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
     const realName = String(body.realName || '').trim().replace(/\s+/g, ' ');
@@ -3368,7 +3368,7 @@ async function requestHandler(req, res) {
     if (!key || key.revokedAt || key.pendingAt) return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.');
     const allowed = new Set(await messengerStore.allowedIds());
     if (!allowed.has(key.id)) return sendError(res, 403, 'MESSENGER_DENIED', '메신저는 관리자가 허용한 계정만 쓸 수 있습니다.');
-    if ((await opsSwitches()).messenger === false) return sendError(res, 403, 'MESSENGER_OFF', '메신저를 잠시 쉬고 있습니다.'); // v1.10.91 운영 스위치
+    if ((await opsSwitches()).messenger === false) return sendError(res, 403, 'MESSENGER_OFF', '메신저를 잠시 쉬고 있습니다.'); // v1.10.90 운영 스위치
     const keys = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt);
     const labelOf = new Map(keys.map((k) => [k.id, k.label]));
     const people = keys.filter((k) => allowed.has(k.id) && k.id !== key.id).map((k) => ({ id: k.id, label: k.label }));
@@ -3388,7 +3388,7 @@ async function requestHandler(req, res) {
       return ids.every((id) => people.some((p) => p.id === id)) ? ids : null;
     };
     if (pathname === '/api/messenger' && req.method === 'GET') {
-      const rooms = (await messengerStore.roomsOf(key.id)).sort((a, b) => Number((b.pinned || []).includes(key.id)) - Number((a.pinned || []).includes(key.id)) || String(b.lastAt).localeCompare(String(a.lastAt))); // v1.10.91: pinned first
+      const rooms = (await messengerStore.roomsOf(key.id)).sort((a, b) => Number((b.pinned || []).includes(key.id)) - Number((a.pinned || []).includes(key.id)) || String(b.lastAt).localeCompare(String(a.lastAt))); // v1.10.90: pinned first
       return sendJson(res, 200, { ok: true, me: key.id, rooms: rooms.map(view), people });
     }
     if (pathname === '/api/messenger/rooms' && req.method === 'POST') {
@@ -3460,12 +3460,12 @@ async function requestHandler(req, res) {
       if (name !== room.name) { await messengerStore.rename(room.id, name); await say(room, `${nameOf(key.id)}님이 방 이름을 「${name}」(으)로 바꿨습니다.`); }
       return sendJson(res, 200, { ok: true, room: view(await messengerStore.room(room.id)) });
     }
-    if (m[2] === 'pin' && req.method === 'POST') { // v1.10.91 대화방 고정 (mine only: my list's top)
+    if (m[2] === 'pin' && req.method === 'POST') { // v1.10.90 대화방 고정 (mine only: my list's top)
       const body = await parseJson(req);
       await messengerStore.setPinned(room.id, key.id, body.on === true);
       return sendJson(res, 200, { ok: true, room: view(await messengerStore.room(room.id)) });
     }
-    if (m[2] === 'unsend' && req.method === 'POST') { // v1.10.91 메시지 삭제: my own line, within 5 minutes, for everyone
+    if (m[2] === 'unsend' && req.method === 'POST') { // v1.10.90 메시지 삭제: my own line, within 5 minutes, for everyone
       const body = await parseJson(req); const seq = Math.floor(Number(body.seq));
       const msg = Number.isSafeInteger(seq) && seq > 0 ? await messengerStore.messageAt(room.id, seq) : null;
       if (!msg || msg.system || msg.from !== key.id) return sendError(res, 404, 'MESSAGE_NOT_FOUND', '지울 수 있는 메시지가 아닙니다.');
@@ -3647,7 +3647,7 @@ async function requestHandler(req, res) {
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
     const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
-    dexTitles.unshift(...heldWeeklyTitles(account)); // v1.10.89 낚시왕 · v1.10.91 제초왕 (this week)
+    dexTitles.unshift(...heldWeeklyTitles(account)); // v1.10.89 낚시왕 · v1.10.90 제초왕 (this week)
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
@@ -3781,7 +3781,7 @@ async function requestHandler(req, res) {
     let skinId = null; let free = false;
     const dexTitle = IslandFishing.dexTitle(body.skinId); // v1.10.42: a 도감 title, worn in the same slot once its finds are in
     const weekly = weeklyTitleOf(body.skinId);
-    if (weekly) { // v1.10.89 낚시왕 · v1.10.91 제초왕: this week's holder only
+    if (weekly) { // v1.10.89 낚시왕 · v1.10.90 제초왕: this week's holder only
       if (!holdsWeekly(weekly[0], account)) return sendError(res, 409, 'SKIN_NOT_OWNED', `이번 주 ${weekly[1].name}만 쓸 수 있는 칭호입니다.`);
       skinId = weekly[1].title; free = true;
     } else if (dexTitle) {
@@ -5047,16 +5047,16 @@ async function requestHandler(req, res) {
     if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
-  // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
+  // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
   // the island's totals), yesterday's island pull count and today's weeds, yesterday's two best hand-ins (named as they
   // were when the day closed, kept once), this week's hand-ins and last week's 제초왕. Names only, never an account id.
-  // v1.10.91 섬 시간대 (IDEAS #future-admin-console ①): 'auto' (Seoul's clock) or one held by the administrator; everyone's
+  // v1.10.90 섬 시간대 (IDEAS #future-admin-console ①): 'auto' (Seoul's clock) or one held by the administrator; everyone's
   // island follows at once (SSE islandTime)
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
   }
-  // v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③): the drawn pictures the game uses, and the administrator's notes on
+  // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): the drawn pictures the game uses, and the administrator's notes on
   // assets (status, memo, a small JPEG of the view, the view itself), kept on the server
   if (pathname === '/api/admin/assets/pictures' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
@@ -5083,7 +5083,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, notes });
     });
   }
-  if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.91 운영 스위치
+  if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
     if (!requireAdmin(req, res)) return;
     if (req.method === 'POST') {
       const body = await parseJson(req);
@@ -5729,7 +5729,7 @@ async function main() {
     const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
     if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }
   }
-  settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.91 제초왕
+  settleWeeklyTitles(); // v1.10.89 낚시왕 · v1.10.90 제초왕
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
@@ -5784,7 +5784,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.89 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.90 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

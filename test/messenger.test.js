@@ -49,7 +49,7 @@ async function storeBehaves(store) {
   const back = await store.dmRoom('a', 'b');
   assert.deepEqual([back.room.id, back.joined, back.room.members.sort().join()], [d1.room.id, ['b'], 'a,b']);
   assert.equal((await store.messages(back.room.id)).length, 1);
-  // v1.10.91: pin (mine), unsend (the text gone, the line kept), a system line never
+  // v1.10.90: pin (mine), unsend (the text gone, the line kept), a system line never
   await store.setPinned(back.room.id, 'a', true); await store.setPinned(back.room.id, 'a', true);
   assert.deepEqual((await store.room(back.room.id)).pinned, ['a']);
   await store.setPinned(back.room.id, 'a', false); assert.deepEqual((await store.room(back.room.id)).pinned, []);
@@ -157,7 +157,7 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.deepEqual([left.room.name, left.messages.map((m) => m.text)], ['아빠', ['둘만', '아빠님이 나갔습니다.']]); // mom keeps the lines
   const again = (await call('/api/messenger/dm', { with: dad.id }, mom.token)).data.room;
   assert.deepEqual([again.id, again.members.length, again.last.text], [dm.id, 2, '아빠님이 들어왔습니다.']);
-  // v1.10.91: unsend (mine, 5 minutes) shows as deleted for everyone; pin puts the room first in my list only
+  // v1.10.90: unsend (mine, 5 minutes) shows as deleted for everyone; pin puts the room first in my list only
   const mine = (await call(`/api/messenger/rooms/${dm.id}/messages`, { text: '잘못 보냄' }, mom.token)).data.message;
   assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, dad.token)).data.error, 'MESSAGE_NOT_FOUND'); // not dad's
   assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, mom.token)).status, 200);
@@ -207,7 +207,7 @@ test('메신저 저장소: 밀린 메시지 100개 넘어도 빠짐없이, 동�
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-// v1.10.91 운영 스위치: the administrator closes sign-ups and turns the messenger off for everyone, then back on
+// v1.10.90 운영 스위치: the administrator closes sign-ups and turns the messenger off for everyone, then back on
 test('운영 스위치: 가입 신청 멈춤·메신저 끄기, 관리자만', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'switches-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));

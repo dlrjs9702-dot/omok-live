@@ -305,7 +305,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const lessMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const DAY = { background: 0xbfe6ff, fog: 0xd7efff, sky: 0xfff4dc, ground: 0x8cc970, hemi: 1.05, sun: 0xfff0d2, sunI: 1.75 };
   const NIGHT = { background: 0x0d1630, fog: 0x231a3d, sky: 0x6a5fa8, ground: 0x23304a, hemi: 0.6, sun: 0x9fb4ff, sunI: 0.55 }; // v1.10.38: a purple haze
-  // v1.10.91 섬 시간대 (IDEAS #future-admin-console ①, 사용자 확정): morning, day, evening and night, by Seoul's clock
+  // v1.10.90 섬 시간대 (IDEAS #future-admin-console ①, 사용자 확정): morning, day, evening and night, by Seoul's clock
   // (자동) or held at one by the administrator; Halloween's decorations follow October alone, its purple only tints the night
   const LIGHTS = {
     morning: { background: 0xffd9c2, fog: 0xffe6d6, sky: 0xffe1c7, ground: 0x9cc77a, hemi: 0.95, sun: 0xffc9a0, sunI: 1.35 },
@@ -1103,7 +1103,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
   weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
   const gridKey = (x, z) => `${Math.floor(x / WEED_GRID)},${Math.floor(z / WEED_GRID)}`;
-  // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): a notice board by the town hall's gate, off the path (the farm sign's
+  // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): a notice board by the town hall's gate, off the path (the farm sign's
   // model, its face toward the plaza); SPACE opens the rankings (app.js)
   let weedBoard = null;
   function prepareWeedBoard() {

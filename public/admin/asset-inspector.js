@@ -1,4 +1,4 @@
-// v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③, 사용자 확정): every asset the game has registered, by kind -- 3D
+// v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③, 사용자 확정): every asset the game has registered, by kind -- 3D
 // models turned and zoomed in their own small scene (High/Low, the season's file, beside a base character for size, day or
 // night light), motions played on the base body (play/stop, speed, frame by frame, the clip's events), the drawn pictures
 // (game cards, item icons, 도감) -- and a note on each (status, memo, the view at that moment) that the server keeps; the

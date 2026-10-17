@@ -1490,7 +1490,7 @@
   // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
   // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
   // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
-  // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
+  // v1.10.90 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
   // island pulls and today's weeds, yesterday's two best hand-ins, this week's hand-ins and last week's 제초왕
   let weedBoardCard = null;
   function weedBoard() {
@@ -1807,7 +1807,7 @@
     if (sessionRole !== 'admin') return;
     openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
   });
-  // v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③): a folded card in the 관리자 창; the viewer module loads on opening
+  // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): a folded card in the 관리자 창; the viewer module loads on opening
   let inspectorCard = null; let inspector = null;
   function assetInspectorCard() {
     if (inspectorCard) return inspectorCard;
@@ -2030,7 +2030,7 @@
   }
   function hallReturn() { for (const [node, mark] of hallBorrowed) mark.replaceWith(node); hallBorrowed.clear(); }
   const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  // v1.10.91 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
+  // v1.10.90 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
   const HALL_CARDS = new Set(HALL.GAMES.map((g) => g.id));
   const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async">`
     : g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
@@ -2155,7 +2155,7 @@
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
   let islandPlace = null; let islandPlaceRequest = null;
   const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '어부', verb: '판매' } }; // v1.10.42 어부: fish
-  // v1.10.91 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
+  // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
   function itemIcon(item) {
@@ -2400,8 +2400,8 @@
   byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
-  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.91
-  // v1.10.91 운영 스위치: read when the admin panel shows, each box saved as it changes
+  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
   const opsBox = byId('opsSwitches');
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };
   opsBox?.addEventListener('change', async (event) => {
@@ -2409,7 +2409,7 @@
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
-  byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.91 관리자: 섬 시간대
+  byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.90 관리자: 섬 시간대
     event.preventDefault(); const mode = byId('islandTimeSelect').value;
     try { await api('/api/admin/island/time', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 시간대: ${byId('islandTimeSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
   });
@@ -5267,7 +5267,7 @@
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
-    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.91 섬 시간대
+    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
@@ -10088,7 +10088,7 @@
       list.replaceChildren(...state.rooms.map((room) => {
         const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
         const main = document.createElement('span'); main.className = 'messengerRoomMain';
-        const name = document.createElement('strong'); name.textContent = `${room.pinned ? '📌 ' : ''}${room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`}`; // v1.10.91 고정
+        const name = document.createElement('strong'); name.textContent = `${room.pinned ? '📌 ' : ''}${room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`}`; // v1.10.90 고정
         const preview = document.createElement('span'); preview.className = 'messengerPreview'; preview.textContent = room.last ? room.last.text : '';
         main.append(name, preview);
         const side = document.createElement('span'); side.className = 'messengerRoomSide';
@@ -10116,7 +10116,7 @@
         meta.append(n);
       }
       const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
-      if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // v1.10.91 메시지 삭제: mine, within 5 minutes, for everyone
+      if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // v1.10.90 메시지 삭제: mine, within 5 minutes, for everyone
         const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerUnsend'; del.textContent = '삭제'; del.setAttribute('aria-label', '이 메시지 삭제');
         del.addEventListener('click', async () => {
           if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
@@ -10142,7 +10142,7 @@
       const group = current.kind !== 'dm';
       byId('messengerInviteBtn').classList.toggle('hidden', !group); byId('messengerRenameBtn').classList.toggle('hidden', !group);
       byId('messengerMuteBtn').textContent = current.muted ? '알림 켜기' : '알림 끄기';
-      byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정'; // v1.10.91
+      byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정'; // v1.10.90
     }
     async function pull() {
       if (!current) return; const id = current.id;
@@ -10186,7 +10186,7 @@
       } catch {}
     }
     setInterval(badge, 30000);
-    // v1.10.91 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
+    // v1.10.90 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
     let islandSeen = null;
     async function islandNotice() {
       if (msgBtn.classList.contains('hidden') || dialog.open || !document.body.classList.contains('plazaMode')) { islandSeen = null; return; }
@@ -10226,7 +10226,7 @@
       const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
       try { await accountApi(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
     });
-    byId('messengerPinBtn').addEventListener('click', async () => { // v1.10.91 대화방 고정 (mine: the top of my list)
+    byId('messengerPinBtn').addEventListener('click', async () => { // v1.10.90 대화방 고정 (mine: the top of my list)
       if (!current) return;
       try { current = (await accountApi(`/api/messenger/rooms/${current.id}/pin`, { on: !current.pinned })).room; showHead(); refresh(); } catch (err) { fail(err); }
     });

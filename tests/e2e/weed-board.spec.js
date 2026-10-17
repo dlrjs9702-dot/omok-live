@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { shopper, expectNoScriptError } = require('./skin-support');
 
-// v1.10.91 잡초 게시판 (IDEAS #future-weed-board): a board by the town hall's gate opens today's pull / hand-in rankings,
+// v1.10.90 잡초 게시판 (IDEAS #future-weed-board): a board by the town hall's gate opens today's pull / hand-in rankings,
 // yesterday's island count and today's weeds, the week's hand-ins and last week's 제초왕. PC and phone.
 test('잡초 게시판: 관공서 앞 게시판에서 순위·섬 잡초 수·제초왕 안내', async ({ browser, request }) => {
   test.setTimeout(120000);

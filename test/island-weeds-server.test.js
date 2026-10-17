@@ -106,7 +106,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const price = require('../lib/island-items').priceOf('weed'); // 300P (900P on a 제초 요청 day: the server's clock)
   assert.equal(sold.status, 200); assert.equal(sold.data.paid, price);
   assert.equal((await R()('/api/donation', winner)).data.balance, before + price);
-  // v1.10.91 잡초 게시판: today's pull and hand-in rankings (the winner: 1 and 1), names only; 제초왕 for the week's 1st
+  // v1.10.90 잡초 게시판: today's pull and hand-in rankings (the winner: 1 and 1), names only; 제초왕 for the week's 1st
   const boardOf = async (s) => (await R()('/api/island/weeds/board', s)).data;
   const board = await boardOf(winner);
   assert.deepEqual([board.today.pulls.total, board.today.submits.total, board.week.total], [1, 1, 1]);
@@ -128,7 +128,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   server = await boot(t, dir);
   sa = await server.enter(ka);
   const after = await weeds(sa);
-  // v1.10.91: 1 pulled the day before (0~139) -> today's total is 1,680, the 281 short of it grow somewhere new
+  // v1.10.90: 1 pulled the day before (0~139) -> today's total is 1,680, the 281 short of it grow somewhere new
   assert.equal(after.weeds.length, 1680, '적게 뽑은 다음 날은 1,680포기');
   assert.ok(!after.weeds.some(([w]) => w === id));
   assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 281);
