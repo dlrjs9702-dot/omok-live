@@ -280,11 +280,17 @@
     return streamDist(x, z) > STREAM_HALF + 0.25;
   }
   // v1.10.42 낚시: the pier, the breakwater, or the shore's edge by the water (not the cliffs) -- where a cast may start
-  function canFish(x, z) {
-    if (!walkable(x, z)) return false;
-    if (inRect(PIER, x, z, 0.2) || inRect(BREAKWATER, x, z, 0.2)) return true;
-    return coastDist(x, z) < 5 && cliffAt(x, z) < 0.35 && !onBridge(x, z);
+  // v1.10.90 낚시 도감: 'sea' (the pier, the breakwater, the shore by the sea) or 'river' (a stream's bank, off the
+  // bridges and away from the plaza) -- or null where no line reaches water
+  function fishWater(x, z) {
+    if (!walkable(x, z)) return null;
+    if (inRect(PIER, x, z, 0.2) || inRect(BREAKWATER, x, z, 0.2)) return 'sea';
+    if (onBridge(x, z)) return null;
+    if (coastDist(x, z) < 5 && cliffAt(x, z) < 0.35) return 'sea';
+    const d = streamDist(x, z); if (d > STREAM_HALF + .05 && d < STREAM_HALF + 2.4 && Math.hypot(x, z) > PLAZA_R + 6) return 'river';
+    return null;
   }
+  function canFish(x, z) { return fishWater(x, z) !== null; }
   const ISLAND_RADIUS = 130; // the server's outer bound for positions
 
   // --- building the scene -----------------------------------------------------------------------------------------------
@@ -483,5 +489,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

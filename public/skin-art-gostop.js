@@ -67,6 +67,37 @@
     ctx.fillStyle = '#05091c'; ctx.beginPath(); ctx.moveTo(w * .2, h * .55); ctx.lineTo(w * .5, h * .38); ctx.lineTo(w * .8, h * .55); ctx.lineTo(w * .74, h * .58); ctx.lineTo(w * .26, h * .58); ctx.fill(); ctx.fillRect(w * .3, h * .58, 6, h * .22); ctx.fillRect(w * .66, h * .58, 6, h * .22);
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five backs, three premiums, a legend and its room (봉황 화투 ↔
+  // 궁궐 연회장). Every back stays dark next to the light hwatu faces.
+  const plum = (c, w, h) => { bg(c, w, h, '#3a1418', '#1a080a'); rim(c, w, h, '#e8b8c0'); c.strokeStyle = '#5a3a2a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(6, h - 10); c.quadraticCurveTo(w / 2, h / 2 + 6, w - 8, 12); c.stroke(); c.fillStyle = '#f4c8d0'; for (const [x, y] of [[14, h - 20], [w / 2, h / 2 + 2], [w - 14, 22], [w / 2 + 8, h / 2 - 8]]) for (let k = 0; k < 5; k += 1) { const a = k * TAU / 5; c.beginPath(); c.arc(x + Math.cos(a) * 3, y + Math.sin(a) * 3, 2.2, 0, TAU); c.fill(); } };
+  const celadon = (c, w, h) => { bg(c, w, h, '#1e3a34', '#0c1c18'); rim(c, w, h, '#9ad0bc'); c.strokeStyle = 'rgba(180,230,210,.7)'; c.lineWidth = 1.4; c.beginPath(); c.ellipse(w / 2, h / 2, 13, 18, 0, 0, TAU); c.stroke(); c.fillStyle = '#e8f4ee'; c.beginPath(); c.moveTo(w / 2 - 10, h / 2); c.lineTo(w / 2 + 2, h / 2 - 4); c.lineTo(w / 2 + 10, h / 2 - 12); c.lineTo(w / 2 + 6, h / 2 - 2); c.lineTo(w / 2 + 2, h / 2 + 4); c.closePath(); c.fill(); c.strokeStyle = '#e8f4ee'; c.beginPath(); c.moveTo(w / 2 - 2, h / 2 + 2); c.lineTo(w / 2 - 6, h / 2 + 10); c.stroke(); };
+  const fan = (c, w, h) => { bg(c, w, h, '#14204a', '#080e24'); rim(c, w, h, '#e0b254'); c.save(); c.translate(w / 2, h / 2 + 12); for (let i = 0; i < 9; i += 1) { const a = -Math.PI + i * Math.PI / 8; c.fillStyle = i % 2 ? '#c8243e' : '#2a5ab8'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 20, a, a + Math.PI / 8); c.closePath(); c.fill(); } c.fillStyle = '#e0b254'; c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill(); c.restore(); };
+  const saekdong = (c, w, h) => { bg(c, w, h, '#1a1a24', '#0a0a10'); const cols = ['#c8243e', '#e8a23a', '#e8d84a', '#3a9a5a', '#2a5ab8', '#8a3ab8']; c.save(); c.globalAlpha = .75; cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(8 + i * ((w - 16) / 6), 10, (w - 16) / 6, h - 20); }); c.restore(); c.fillStyle = 'rgba(10,10,16,.55)'; c.fillRect(8, h / 2 - 8, w - 16, 16); rim(c, w, h, '#f4ead0'); };
+  const lotus = (c, w, h) => { bg(c, w, h, '#123a3a', '#061a1a'); rim(c, w, h, '#f0b8c8'); c.save(); c.translate(w / 2, h / 2 + 6); for (let i = -2; i <= 2; i += 1) { c.save(); c.rotate(i * .32); c.fillStyle = i % 2 ? '#f4b8c8' : '#f8d8e0'; c.beginPath(); c.ellipse(0, -10, 5, 12, 0, 0, TAU); c.fill(); c.restore(); } c.fillStyle = '#3a8a6a'; c.beginPath(); c.ellipse(0, 6, 16, 4, 0, 0, TAU); c.fill(); c.restore(); };
+  const dancheong = (c, w, h) => { bg(c, w, h, '#1a3a2a', '#0a1c14'); rim(c, w, h, '#e8a23a'); const cols = ['#c8243e', '#2a7aa8', '#e8a23a', '#f4ead0']; for (let i = 0; i < 4; i += 1) { c.strokeStyle = cols[i]; c.lineWidth = 2.4; c.beginPath(); c.arc(w / 2, h / 2, 6 + i * 4, 0, TAU); c.stroke(); } for (let i = 0; i < 8; i += 1) { const a = i * TAU / 8; c.fillStyle = cols[i % 4]; c.beginPath(); c.arc(w / 2 + Math.cos(a) * 21, h / 2 + Math.sin(a) * 21, 2.4, 0, TAU); c.fill(); } };
+  const fireCircle = (c, w, h) => { bg(c, w, h, '#1a0a20', '#08020c'); rim(c, w, h, '#ffb050'); c.strokeStyle = 'rgba(255,150,50,.85)'; c.lineWidth = 3; c.beginPath(); c.arc(w / 2, h / 2, 14, 0, TAU * .85); c.stroke(); c.fillStyle = '#ffe080'; c.beginPath(); c.arc(w / 2 + 14, h / 2 - 7, 3.4, 0, TAU); c.fill(); const R = rng(5); for (let i = 0; i < 10; i += 1) { c.fillStyle = `rgba(255,${180 + (R() * 60 | 0)},80,${.4 + R() * .5})`; c.fillRect(R() * w, R() * h, 1.6, 1.6); } };
+  const snowHanji = (c, w, h) => { bg(c, w, h, '#24344a', '#101a28'); rim(c, w, h, '#e8f0f8'); c.strokeStyle = 'rgba(240,248,255,.8)'; c.lineWidth = 1.4; for (const [x, y, s] of [[w / 2, h / 2, 12], [12, 14, 5], [w - 12, h - 14, 5]]) for (let i = 0; i < 6; i += 1) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s); c.stroke(); } };
+  // 봉황 화투 (legend) ↔ 궁궐 연회장 (room)
+  const phoenix = (c, w, h) => { bg(c, w, h, '#5a0a14', '#22030a'); rim(c, w, h, '#ffd86b'); c.fillStyle = '#ffd86b'; c.beginPath(); c.moveTo(w / 2, h / 2 - 16); c.quadraticCurveTo(w / 2 + 4, h / 2 - 6, w / 2 + 18, h / 2 - 12); c.quadraticCurveTo(w / 2 + 8, h / 2, w / 2 + 2, h / 2 + 4); c.quadraticCurveTo(w / 2 + 14, h / 2 + 18, w / 2 + 6, h / 2 + 26); c.quadraticCurveTo(w / 2, h / 2 + 12, w / 2 - 6, h / 2 + 26); c.quadraticCurveTo(w / 2 - 14, h / 2 + 18, w / 2 - 2, h / 2 + 4); c.quadraticCurveTo(w / 2 - 8, h / 2, w / 2 - 18, h / 2 - 12); c.quadraticCurveTo(w / 2 - 4, h / 2 - 6, w / 2, h / 2 - 16); c.fill(); c.fillStyle = '#c8243e'; c.beginPath(); c.arc(w / 2, h / 2 - 14, 2.4, 0, TAU); c.fill(); };
+  const phoenixFx = (ctx, w, h, t) => { const R = rng(17); for (let i = 0; i < 10; i += 1) { const a = R() * TAU; const d = 10 + 70 * t * (.5 + R()); ctx.save(); ctx.translate(w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d - 20 * t); ctx.rotate(a); ctx.fillStyle = `rgba(255,${150 + (R() * 80 | 0)},60,${1 - t})`; ctx.beginPath(); ctx.ellipse(0, 0, 7 * (1 - t) + 2, 2.4, 0, 0, TAU); ctx.fill(); ctx.restore(); } };
+  const phoenixSpecial = (ctx, w, h, t) => { // 뻑·쪽·따닥 etc.: a pair of golden wings sweeps across the table
+    const k = clamp01(t / .6); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .75) / .25);
+    for (const s of [-1, 1]) { ctx.save(); ctx.translate(w / 2, h / 2); ctx.scale(s, 1); ctx.rotate(-.6 + k * .9); const g = ctx.createLinearGradient(0, 0, w * .4, 0); g.addColorStop(0, 'rgba(255,216,107,.9)'); g.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); for (let i = 0; i <= 5; i += 1) ctx.quadraticCurveTo(w * .1 * i, -h * .25 + i * 4, w * .08 * (i + 1), -h * .08 + i * 6); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    ctx.restore();
+  };
+  const phoenixWin = (ctx, w, h, t) => { // the phoenix rises over the table in a ring of fire
+    const k = clamp01(t / .5); const cx = w / 2; const cy = h * (.7 - .3 * k); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.min(w, h) * .45); g.addColorStop(0, 'rgba(255,200,90,.6)'); g.addColorStop(1, 'rgba(255,90,40,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.translate(cx - 23, cy - 34); ctx.scale(1, 1); phoenix(ctx, BW, BH); ctx.restore();
+  };
+  function palaceHall(ctx, w, h) { // 궁궐 연회장: red pillars, a dancheong beam and a polished floor
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(0, 0, w, h);
+    const fl = ctx.createLinearGradient(0, h * .55, 0, h); fl.addColorStop(0, '#6a4a2a'); fl.addColorStop(1, '#3a2412'); ctx.fillStyle = fl; ctx.fillRect(0, h * .55, w, h * .45);
+    for (const x of [w * .06, w * .94]) { ctx.fillStyle = '#9a1a1a'; ctx.fillRect(x - 12, 0, 24, h); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x + 4, 0, 8, h); }
+    const cols = ['#2a7aa8', '#3a9a5a', '#e8a23a', '#c8243e']; ctx.fillStyle = '#1a4a3a'; ctx.fillRect(0, 0, w, 34); for (let x = 0; x < w; x += 24) { ctx.fillStyle = cols[(x / 24 | 0) % 4]; ctx.beginPath(); ctx.arc(x + 12, 17, 8, 0, TAU); ctx.fill(); ctx.fillStyle = '#f4ead0'; ctx.beginPath(); ctx.arc(x + 12, 17, 3, 0, TAU); ctx.fill(); }
+    for (let i = 0; i < 4; i += 1) { const x = w * (.25 + i * .17); const lg = ctx.createRadialGradient(x, 60, 2, x, 60, 30); lg.addColorStop(0, 'rgba(255,200,120,.6)'); lg.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 30, 30, 60, 60); ctx.fillStyle = '#c8243e'; ctx.beginPath(); ctx.ellipse(x, 60, 7, 10, 0, 0, TAU); ctx.fill(); }
+  }
+
   function previewBacks(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#0a5a30'; ctx.fillRect(0, 0, w, h); const ch = h * .78; const cw = ch * BW / BH;
     [.2, .4, .6].forEach((fx, i) => { ctx.save(); ctx.translate(w * fx - cw / 2, (h - ch) / 2 + i * 2); ctx.scale(cw / BW, ch / BH); d.art(ctx, BW, BH); ctx.restore(); });
@@ -86,5 +117,12 @@
     gostop_t2: theme(moonPavilion, { borderColor: '#9fb4ff', boxShadow: 'inset 0 0 0 3px #0a1438, 0 0 14px rgba(159,180,255,.4)' }),
     gostop_l1: back('l1', royal, '#ffd86b', royalFx, { special: royalSpecial, win: royalWin, legend: true }),
     gostop_l2: back('l2', moonlit, '#c8d4ff', moonFx, { special: moonSpecial, win: moonWin, legend: true }),
+    // v1.10.90 스킨 2배
+gostop_c6: back('c6', plum, '#e8b8c0', burst('232,184,192')), gostop_c7: back('c7', celadon, '#9ad0bc', burst('154,208,188')), gostop_c8: back('c8', fan, '#e0b254', burst('224,178,84')),
+    gostop_c9: back('c9', saekdong, '#f4ead0', burst('244,234,208')), gostop_c10: back('c10', lotus, '#f0b8c8', burst('240,184,200')),
+    gostop_p4: back('p4', dancheong, '#e8a23a', burst('232,162,58'), { special: burst('42,122,168') }), gostop_p5: back('p5', fireCircle, '#ffb050', brush('255,150,50'), { special: burst('255,176,80') }),
+    gostop_p6: back('p6', snowHanji, '#e8f0f8', burst('232,240,248'), { special: brush('200,220,255') }),
+    gostop_t3: theme(palaceHall, { borderColor: '#e8a23a', boxShadow: 'inset 0 0 0 3px #2a1a10, 0 0 0 2px #c8243e' }),
+    gostop_l3: back('l3', phoenix, '#ffd86b', phoenixFx, { special: phoenixSpecial, win: phoenixWin, legend: true }), // 봉황 화투 ↔ 궁궐 연회장
   });
 }());

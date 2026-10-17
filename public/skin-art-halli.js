@@ -74,6 +74,42 @@
   function fruitMarket(ctx, w, h) { const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fff0c4'); g.addColorStop(1, '#ffd8a0'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 44) { ctx.fillStyle = x % 88 ? '#e0453f' : '#ffffff'; ctx.fillRect(x, 0, 44, 26); } const R = rng(55); ctx.globalAlpha = .4; for (let i = 0; i < 26; i += 1) { ctx.fillStyle = ['#e0453f', '#f2c14e', '#7bc043', '#8e44ad'][i % 4]; ctx.beginPath(); ctx.arc(R() * w, 60 + R() * (h - 70), 8 + R() * 10, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; }
   function picnic(ctx, w, h) { ctx.fillStyle = '#7bc96f'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = 'rgba(255,255,255,.55)'; for (let y = 0; y < h; y += 40) for (let x = (y / 40) % 2 ? 0 : 40; x < w; x += 80) ctx.fillRect(x, y, 40, 40); ctx.fillStyle = '#ffe566'; ctx.beginPath(); ctx.arc(w - 50, 46, 26, 0, TAU); ctx.fill(); }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five frames, three premiums, a legend and its room (딸기 축제 ↔
+  // 딸기 농장). Name and counts keep 4.5:1 on every frame.
+  const storybook = frame('#fbf3df', tile('storybook', 40, 40, (c, w, h) => { c.strokeStyle = 'rgba(60,110,190,.18)'; c.lineWidth = 1.4; c.strokeRect(4.5, 4.5, w - 9, h - 9); }), '#3a6ab8', '#16264a');
+  const lemonade = frame('#fff3a0', tile('lemonade', 16, 16, (c) => { c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(0, 0, 8, 16); }), '#e0b020', '#3a2a00');
+  const forest = frame('#1f3d26', tile('forest', 30, 30, (c) => { c.fillStyle = 'rgba(140,220,120,.16)'; c.beginPath(); c.ellipse(8, 8, 6, 3, .6, 0, TAU); c.ellipse(22, 22, 6, 3, -.6, 0, TAU); c.fill(); }), '#8ad07a', '#effff0');
+  const jelly = frame('#ffd6ea', tile('jelly', 20, 20, (c) => { c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(6, 6, 3, 1.6, -.6, 0, TAU); c.fill(); }), '#e85aa0', '#3a0a24', '0 4px 0 #c03a80');
+  const arcadeTicket = frame('#ffb04a', tile('ticket', 14, 30, (c, w, h) => { c.fillStyle = 'rgba(120,40,0,.18)'; c.beginPath(); c.arc(0, h / 2, 4, 0, TAU); c.fill(); }), '#c84a10', '#2a0e00', '0 0 0 2px #fff3e0 inset');
+  const iceCandy = frame('#163a5a', tile('icecandy', 24, 24, (c) => { c.strokeStyle = 'rgba(180,230,255,.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(12, 2); c.lineTo(12, 22); c.moveTo(2, 12); c.lineTo(22, 12); c.stroke(); }), '#9fe0ff', '#f0faff', '0 0 12px rgba(159,224,255,.5)');
+  const rainbowCard = frame('#ffffff', tile('rainbow', 60, 12, (c, w) => { ['#ff6b6b', '#ffb84a', '#ffe94a', '#5fd07a', '#5fa8ff', '#a98bff'].forEach((col, i) => { c.fillStyle = col; c.globalAlpha = .28; c.fillRect(i * w / 6, 0, w / 6, 12); }); }), '#a98bff', '#1a1430', '0 0 0 3px #ffe94a');
+  const starlight = frame('#141c44', tile('starlight', 36, 36, (c) => { c.fillStyle = 'rgba(255,230,140,.35)'; starPath(c, 10, 10, 3, 1.2, 4); c.fill(); starPath(c, 26, 24, 2, .8, 4); c.fill(); }), '#ffd86b', '#fff6dc', '0 0 12px rgba(255,216,107,.45)');
+  // 딸기 축제 (legend) ↔ 딸기 농장 (room)
+  const strawberry = (ctx, x, y, s) => { ctx.fillStyle = '#e8253e'; ctx.beginPath(); ctx.moveTo(x, y + s); ctx.bezierCurveTo(x - s * 1.1, y + s * .2, x - s * .8, y - s * .6, x, y - s * .5); ctx.bezierCurveTo(x + s * .8, y - s * .6, x + s * 1.1, y + s * .2, x, y + s); ctx.fill(); ctx.fillStyle = '#ffe9a0'; for (const [dx, dy] of [[-.3, 0], [.3, 0], [0, .35], [-.2, -.25], [.2, -.25]]) { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, s * .06, 0, TAU); ctx.fill(); } ctx.fillStyle = '#3a9a3a'; for (let k = -2; k <= 2; k += 1) { ctx.beginPath(); ctx.ellipse(x + k * s * .16, y - s * .55, s * .12, s * .26, k * .5, 0, TAU); ctx.fill(); } };
+  const berry = frame('#fff0f2', tile('berry', 30, 30, (c) => { c.fillStyle = 'rgba(232,37,62,.16)'; c.beginPath(); c.arc(8, 8, 3, 0, TAU); c.arc(22, 22, 3, 0, TAU); c.fill(); }), '#e8253e', '#4a0a14', '0 0 0 3px #3a9a3a, 0 0 12px rgba(232,37,62,.35)');
+  berry.legend = true;
+  berry.fx = (ctx, w, h, t) => { shock('232,37,62')(ctx, w, h, t); const R = rng(14); for (let i = 0; i < 8; i += 1) { const a = R() * TAU; const d = 20 + 60 * t * (.5 + R()); ctx.save(); ctx.globalAlpha = 1 - t; strawberry(ctx, w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d + 14 * t * t, 7); ctx.restore(); } };
+  berry.special = (ctx, w, h, t) => { // five or more taken: a giant strawberry bounces onto the plot and bursts into small ones
+    const k = clamp01(t / .4); const s = Math.min(w, h) * .2; const y = h * .5 - Math.abs(Math.sin(k * Math.PI * 2)) * h * .2 * (1 - k);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    if (t < .55) strawberry(ctx, w / 2, y, s); else { const R = rng(3); const u = clamp01((t - .55) / .3); for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; strawberry(ctx, w / 2 + Math.cos(a) * s * 2 * u, h / 2 + Math.sin(a) * s * 2 * u, s * .3); } }
+    ctx.restore();
+  };
+  berry.win = (ctx, w, h, t) => { // a strawberry cake rises in the middle and berries rain round it
+    const k = clamp01(t / .45); const cx = w / 2; const cy = h * .6; const s = Math.min(w, h) * .18 * k;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    const R = rng(21); for (let i = 0; i < 24; i += 1) strawberry(ctx, R() * w, ((R() * h) + t * h * 1.2) % h, 8);
+    ctx.fillStyle = '#fff6e8'; ctx.fillRect(cx - s * 1.4, cy - s * .6, s * 2.8, s * 1.2); ctx.fillStyle = '#ffd0d8'; ctx.fillRect(cx - s * 1.4, cy - s * .1, s * 2.8, s * .2);
+    ctx.fillStyle = '#fffaf2'; ctx.beginPath(); ctx.ellipse(cx, cy - s * .6, s * 1.4, s * .3, 0, 0, TAU); ctx.fill();
+    for (const dx of [-.8, 0, .8]) strawberry(ctx, cx + dx * s, cy - s * .8, s * .3);
+    ctx.restore();
+  };
+  function strawberryFarm(ctx, w, h) { // 딸기 농장: green rows of strawberry plants under a pale sky
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#dff3ff'); g.addColorStop(.35, '#bfe6a8'); g.addColorStop(1, '#6aa84a'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    for (let y = h * .4; y < h; y += 40) { ctx.fillStyle = 'rgba(120,80,40,.45)'; ctx.fillRect(0, y + 18, w, 8); const R = rng(Math.round(y)); for (let x = 10; x < w; x += 34) { ctx.fillStyle = '#3a8a3a'; ctx.beginPath(); ctx.ellipse(x, y + 10, 12, 8, 0, 0, TAU); ctx.fill(); if (R() > .4) strawberry(ctx, x + 6, y + 16, 5); } }
+    ctx.strokeStyle = '#e8253e'; ctx.lineWidth = 4; ctx.strokeRect(4, 4, w - 8, h - 8);
+  }
+
   function previewCard(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); const cw = w * .4; const ch = h * .74;
     [w * .27, w * .73].forEach((cx, i) => { const x = cx - cw / 2; const y = (h - ch) / 2; ctx.fillStyle = d.card.backgroundColor.startsWith('rgba') ? '#1e466e' : d.card.backgroundColor; ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 10); ctx.fill(); ctx.strokeStyle = d.card.border.split(' ').pop(); ctx.lineWidth = 3; ctx.stroke();
@@ -91,5 +127,10 @@
     halligalli_t2: theme(picnic, { borderColor: '#3f8f3a', boxShadow: 'inset 0 0 0 3px #7bc96f, 0 0 0 2px #3f8f3a' }),
     halligalli_l1: piece(golden),
     halligalli_l2: piece(melon),
+    // v1.10.90 스킨 2배
+halligalli_c6: piece(storybook), halligalli_c7: piece(lemonade), halligalli_c8: piece(forest), halligalli_c9: piece(jelly), halligalli_c10: piece(arcadeTicket),
+    halligalli_p4: piece(iceCandy, shock('159,224,255')), halligalli_p5: piece(rainbowCard, burst('169,139,255')), halligalli_p6: piece(starlight, shock('255,216,107')),
+    halligalli_t3: theme(strawberryFarm, { borderColor: '#e8253e', boxShadow: 'inset 0 0 0 3px #fff0f2, 0 0 0 2px #3a9a3a' }),
+    halligalli_l3: piece(berry), // 딸기 축제 ↔ 딸기 농장
   });
 }());

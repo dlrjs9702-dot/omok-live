@@ -129,6 +129,79 @@
     ctx.fillStyle = 'rgba(227,184,74,.12)'; for (let y = 30; y < h; y += 60) for (let x = 30; x < w; x += 60) { starPath(ctx, x, y, 7, 3, 4); ctx.fill(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five marks, three premiums, a legend and its room (회전목마 ↔
+  // 놀이공원). Every mark keeps the number readable: open in the middle.
+  function heartSticker(ctx, s) { // 하트 스티커: a ring of little hearts
+    const heart = (x, y, k, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y + k * .5); ctx.bezierCurveTo(x - k, y - k * .1, x - k * .5, y - k * .9, x, y - k * .35); ctx.bezierCurveTo(x + k * .5, y - k * .9, x + k, y - k * .1, x, y + k * .5); ctx.fill(); };
+    for (let i = 0; i < 10; i += 1) { const a = i * TAU / 10; heart(s / 2 + Math.cos(a) * s * .36, s / 2 + Math.sin(a) * s * .36, s * .1, i % 2 ? '#ff6b9a' : '#ff9fbf'); }
+  }
+  function starStamp(ctx, s) { // 별 도장: a star outline stamped in ink
+    ctx.save(); ctx.strokeStyle = 'rgba(37,99,235,.6)'; ctx.lineWidth = s * .05; ctx.lineJoin = 'round'; starPath(ctx, s / 2, s / 2 + s * .03, s * .5, s * .27, 5); ctx.stroke(); ctx.restore();
+  }
+  function crayonCircle(ctx, s) { // 크레용 동그라미: a quick crayon loop round the number
+    ctx.save(); ctx.strokeStyle = 'rgba(234,88,12,.85)'; ctx.lineWidth = s * .06; ctx.lineCap = 'round'; ctx.beginPath();
+    for (let a = 0; a <= TAU * 1.12; a += .12) { const k = s * (.38 + Math.sin(a * 3) * .02 + a * .006); const x = s / 2 + Math.cos(a - .6) * k; const y = s / 2 + Math.sin(a - .6) * k * .9; if (a) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.stroke(); ctx.restore();
+  }
+  function checkMark(ctx, s) { // 체크 표시: a fat green tick in the corner
+    ctx.save(); ctx.strokeStyle = 'rgba(22,163,74,.9)'; ctx.lineWidth = s * .09; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(s * .58, s * .74); ctx.lineTo(s * .7, s * .86); ctx.lineTo(s * .92, s * .58); ctx.stroke();
+    ctx.strokeStyle = 'rgba(22,163,74,.35)'; ctx.lineWidth = s * .03; ctx.strokeRect(s * .06, s * .06, s * .88, s * .88); ctx.restore();
+  }
+  function donutMark(ctx, s) { // 도넛 마커: a glazed ring with sprinkles
+    ctx.save(); ctx.lineWidth = s * .14; ctx.strokeStyle = 'rgba(214,140,90,.85)'; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * .37, 0, TAU); ctx.stroke();
+    ctx.lineWidth = s * .09; ctx.strokeStyle = 'rgba(255,150,190,.9)'; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * .37, 0, TAU); ctx.stroke();
+    const R = rng(4); ctx.lineWidth = s * .025; for (let i = 0; i < 14; i += 1) { const a = R() * TAU; const x = s / 2 + Math.cos(a) * s * .37; const y = s / 2 + Math.sin(a) * s * .37; ctx.strokeStyle = ['#ffd84a', '#5fd0ff', '#ffffff'][i % 3]; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x + 3, y + 2); ctx.stroke(); }
+    ctx.restore();
+  }
+  function splash(ctx, s) { // 물감 튀김: a splash ring of paint
+    const R = rng(8); ctx.save(); ctx.fillStyle = 'rgba(124,58,237,.82)';
+    for (let i = 0; i < 18; i += 1) { const a = i * TAU / 18 + R() * .2; const k = s * (.34 + R() * .1); ctx.beginPath(); ctx.arc(s / 2 + Math.cos(a) * k, s / 2 + Math.sin(a) * k, s * (.04 + R() * .05), 0, TAU); ctx.fill(); }
+    ctx.lineWidth = s * .07; ctx.strokeStyle = 'rgba(124,58,237,.75)'; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * .36, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  function splashFx(ctx, w, h, t) { const R = rng(13); for (let i = 0; i < 12; i += 1) { const a = R() * TAU; const k = 20 + t * 40 * (.5 + R()); ctx.fillStyle = ['rgba(124,58,237,', 'rgba(236,72,153,', 'rgba(14,165,233,'][i % 3] + (1 - t) + ')'; ctx.beginPath(); ctx.arc(w / 2 + Math.cos(a) * k, h / 2 + Math.sin(a) * k, 4 * (1 - t) + 1, 0, TAU); ctx.fill(); } }
+  function clover(ctx, s) { // 네잎클로버: a four-leaf clover in each corner
+    ctx.save(); ctx.fillStyle = 'rgba(34,139,60,.88)';
+    for (const [cx, cy] of [[.17, .17], [.83, .17], [.17, .83], [.83, .83]]) for (let k = 0; k < 4; k += 1) { const a = k * Math.PI / 2 + Math.PI / 4; ctx.beginPath(); ctx.arc(s * cx + Math.cos(a) * s * .05, s * cy + Math.sin(a) * s * .05, s * .055, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(34,139,60,.5)'; ctx.lineWidth = s * .03; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * .4, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  function cloverFx(ctx, w, h, t) { for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6 + t * 2; const k = 18 + t * 36; ctx.save(); ctx.translate(w / 2 + Math.cos(a) * k, h / 2 + Math.sin(a) * k - t * 20); ctx.rotate(a); ctx.fillStyle = `rgba(74,190,100,${1 - t})`; ctx.beginPath(); ctx.ellipse(0, 0, 6, 3.4, 0, 0, TAU); ctx.fill(); ctx.restore(); } }
+  function crownMark(ctx, s) { // 반짝 왕관: a little crown on top and a golden frame
+    ctx.save(); ctx.strokeStyle = 'rgba(217,165,32,.9)'; ctx.lineWidth = s * .05; ctx.beginPath(); ctx.roundRect(s * .08, s * .14, s * .84, s * .78, s * .12); ctx.stroke();
+    ctx.fillStyle = '#f2c230'; ctx.beginPath(); ctx.moveTo(s * .32, s * .2); ctx.lineTo(s * .3, s * .02); ctx.lineTo(s * .41, s * .1); ctx.lineTo(s * .5, -s * .01); ctx.lineTo(s * .59, s * .1); ctx.lineTo(s * .7, s * .02); ctx.lineTo(s * .68, s * .2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e2405a'; ctx.beginPath(); ctx.arc(s * .5, s * .12, s * .03, 0, TAU); ctx.fill(); ctx.restore();
+  }
+  function crownFx(ctx, w, h, t) { for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6 - Math.PI / 2; const k = 22 + t * 30; ctx.fillStyle = `rgba(255,224,110,${1 - t})`; starPath(ctx, w / 2 + Math.cos(a) * k, h / 2 + Math.sin(a) * k, 7 * (1 - t) + 2, 2, 4); ctx.fill(); } }
+  // 회전목마 (legend) ↔ 놀이공원 (room): a ring of marquee bulbs with a pennant, the lights chase on every line
+  function carousel(ctx, s) {
+    ctx.save(); ctx.strokeStyle = 'rgba(214,40,90,.85)'; ctx.lineWidth = s * .06; ctx.beginPath(); ctx.arc(s / 2, s / 2, s * .4, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; const x = s / 2 + Math.cos(a) * s * .4; const y = s / 2 + Math.sin(a) * s * .4; const g = ctx.createRadialGradient(x, y, 0, x, y, s * .06); g.addColorStop(0, '#fffbe0'); g.addColorStop(1, i % 2 ? '#ffd23f' : '#ff8a3d'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s * .05, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#e2405a'; ctx.beginPath(); ctx.moveTo(s * .5, s * .02); ctx.lineTo(s * .64, s * .07); ctx.lineTo(s * .5, s * .12); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function carouselFx(ctx, w, h, t) { for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12 + t * 3; const on = (i + Math.floor(t * 12)) % 3 === 0; ctx.fillStyle = on ? `rgba(255,240,150,${1 - t})` : `rgba(255,140,60,${(1 - t) * .5})`; ctx.beginPath(); ctx.arc(w / 2 + Math.cos(a) * (30 + t * 10), h / 2 + Math.sin(a) * (30 + t * 10), on ? 4 : 2.6, 0, TAU); ctx.fill(); } }
+  function carouselSpecial(ctx, w, h, t, cells) { // a new line: a run of lights chases along its cells
+    cells.forEach((c, i) => {
+      const on = clamp01(t * 1.5 - i * .1); if (on <= 0 || on >= 1) return; const a = Math.sin(on * Math.PI);
+      ctx.strokeStyle = `rgba(255,210,63,${a})`; ctx.lineWidth = 4; ctx.setLineDash([3, 6]); ctx.lineDashOffset = -t * 60; ctx.strokeRect(c.x + 3, c.y + 3, c.w - 6, c.h - 6); ctx.setLineDash([]);
+    });
+  }
+  function carouselWin(ctx, w, h, t) { // fireworks over the park
+    const R = rng(44);
+    for (let b = 0; b < 4; b += 1) {
+      const start = b * .18; const k = clamp01((t - start) / .5); if (k <= 0 || k >= 1) continue;
+      const cx = w * (.2 + R() * .6); const cy = h * (.2 + R() * .4); const col = ['255,107,154', '255,216,74', '107,200,255', '182,146,255'][b];
+      for (let i = 0; i < 14; i += 1) { const a = i * TAU / 14; const d = 10 + 60 * Math.sqrt(k); ctx.fillStyle = `rgba(${col},${1 - k})`; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d + k * k * 20, 3.4, 0, TAU); ctx.fill(); }
+    }
+  }
+  function themePark(ctx, w, h) { // 놀이공원: a sunset sky over a Ferris wheel, a carousel roof and bunting
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ffb36b'); g.addColorStop(.6, '#ff7aa2'); g.addColorStop(1, '#7a4ab8'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(60,30,90,.55)'; ctx.lineWidth = 3; const cx = w * .82; const cy = h * .5; const R0 = Math.min(w, h) * .38;
+    ctx.beginPath(); ctx.arc(cx, cy, R0, 0, TAU); ctx.stroke(); for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R0, cy + Math.sin(a) * R0); ctx.stroke(); ctx.fillStyle = ['#ffd23f', '#6bc8ff', '#ff6b9a'][i % 3]; ctx.fillRect(cx + Math.cos(a) * R0 - 6, cy + Math.sin(a) * R0, 12, 10); }
+    ctx.fillStyle = 'rgba(60,30,90,.6)'; ctx.beginPath(); ctx.moveTo(w * .02, h); ctx.lineTo(w * .02, h * .72); ctx.lineTo(w * .14, h * .56); ctx.lineTo(w * .26, h * .72); ctx.lineTo(w * .26, h); ctx.fill();
+    for (let x = 0; x < w; x += 40) { ctx.fillStyle = ['#ff6b9a', '#ffd23f', '#6bc8ff', '#7be0a0'][(x / 40 | 0) % 4]; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 34, 0); ctx.lineTo(x + 17, 22); ctx.fill(); }
+  }
+
   function previewMark(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#fdf6e3'; ctx.fillRect(0, 0, w, h); const cell = h * .62;
     [[w * .3, '7'], [w * .7, '23']].forEach(([cx, n], i) => { const x = cx - cell / 2; const y = (h - cell) / 2; ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#cbb98d'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, cell, cell, 12); ctx.fill(); ctx.stroke();
@@ -149,5 +222,10 @@
     bingo_t2: theme(casino, { backgroundColor: '#0c4d31', borderColor: '#e3b84a', color: '#f5d77a' }, { boxShadow: 'inset 0 0 0 2px #e3b84a,0 10px 24px rgba(0,0,0,.5)' }),
     bingo_l1: mark(jackpotMark, DARK, jackpotFx, { legend: true, special: jackpotSpecial, win: jackpotWin }),
     bingo_l2: mark(pennant, DARK, pennantFx, { legend: true, special: buntingSpecial, win: cheerWin }),
+    // v1.10.90 스킨 2배
+bingo_c6: mark(heartSticker, DARK), bingo_c7: mark(starStamp, DARK), bingo_c8: mark(crayonCircle, DARK), bingo_c9: mark(checkMark, DARK), bingo_c10: mark(donutMark, DARK),
+    bingo_p4: mark(splash, DARK, splashFx), bingo_p5: mark(clover, DARK, cloverFx), bingo_p6: mark(crownMark, DARK, crownFx),
+    bingo_t3: theme(themePark, { backgroundColor: '#fff7fb', borderColor: '#ff7aa2', color: '#4a2a5a' }, { boxShadow: 'inset 0 0 0 2px #ffb36b,0 10px 24px rgba(0,0,0,.35)' }),
+    bingo_l3: mark(carousel, DARK, carouselFx, { legend: true, special: carouselSpecial, win: carouselWin }), // 회전목마 ↔ 놀이공원
   });
 }());

@@ -184,6 +184,126 @@
     ctx.strokeStyle = 'rgba(255,205,120,.6)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w / 2, h / 2, w * .205, 0, TAU); ctx.stroke();
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five emblems, three premiums, a legend and its room (장미 문장 ↔
+  // 정원 미로). The disc stays round with the dark face black and the light face white.
+  function note(ctx, r, c) { // 음표 인장
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.fillStyle = ink(c); ctx.strokeStyle = ink(c); ctx.lineWidth = r * .09;
+    ctx.beginPath(); ctx.ellipse(-r * .24, r * .3, r * .17, r * .12, -.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(r * .26, r * .18, r * .17, r * .12, -.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-r * .1, r * .28); ctx.lineTo(-r * .1, -r * .4); ctx.lineTo(r * .4, -r * .52); ctx.lineTo(r * .4, r * .16); ctx.stroke();
+    ctx.lineWidth = r * .14; ctx.beginPath(); ctx.moveTo(-r * .1, -r * .36); ctx.lineTo(r * .4, -r * .48); ctx.stroke();
+  }
+  function anchor(ctx, r, c) { // 닻 문장
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.strokeStyle = ink(c); ctx.lineWidth = r * .1; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, -r * .44, r * .11, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r * .33); ctx.lineTo(0, r * .5); ctx.moveTo(-r * .26, -r * .18); ctx.lineTo(r * .26, -r * .18); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, r * .12, r * .4, .25, Math.PI - .25); ctx.stroke();
+    ctx.fillStyle = ink(c); for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .42, r * .2); ctx.lineTo(s * r * .5, r * .02); ctx.lineTo(s * r * .3, r * .14); ctx.closePath(); ctx.fill(); }
+  }
+  function leaf(ctx, r, c) { // 나뭇잎 문양
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.fillStyle = dk(c) ? '#5a9a4a' : '#4a8a3a';
+    ctx.beginPath(); ctx.moveTo(0, -r * .56); ctx.bezierCurveTo(r * .5, -r * .3, r * .4, r * .3, 0, r * .5); ctx.bezierCurveTo(-r * .4, r * .3, -r * .5, -r * .3, 0, -r * .56); ctx.fill();
+    ctx.strokeStyle = dk(c) ? '#1c1c24' : '#f1f1ee'; ctx.lineWidth = r * .05;
+    ctx.beginPath(); ctx.moveTo(0, -r * .45); ctx.lineTo(0, r * .55); for (const y of [-.2, .05, .28]) { ctx.moveTo(0, y * r); ctx.lineTo(-r * .2, (y - .14) * r); ctx.moveTo(0, y * r); ctx.lineTo(r * .2, (y - .14) * r); } ctx.stroke();
+  }
+  function heart(ctx, r, c) { // 하트 인장
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.fillStyle = dk(c) ? '#e2546a' : '#d23a56';
+    ctx.beginPath(); ctx.moveTo(0, r * .46); ctx.bezierCurveTo(-r * .62, 0, -r * .36, -r * .52, 0, -r * .22); ctx.bezierCurveTo(r * .36, -r * .52, r * .62, 0, 0, r * .46); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.ellipse(-r * .2, -r * .18, r * .09, r * .05, -.6, 0, TAU); ctx.fill();
+  }
+  function key(ctx, r, c) { // 열쇠 문장
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.strokeStyle = ink(c); ctx.fillStyle = ink(c); ctx.lineWidth = r * .1;
+    ctx.beginPath(); ctx.arc(-r * .28, 0, r * .2, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * .08, 0); ctx.lineTo(r * .52, 0); ctx.stroke();
+    ctx.fillRect(r * .3, 0, r * .08, r * .2); ctx.fillRect(r * .44, 0, r * .08, r * .16);
+  }
+  function compass(ctx, r, c) { // 나침반
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c, .9); ring(ctx, r, c, .7);
+    ctx.fillStyle = ink(c); ctx.font = `bold ${Math.round(r * .2)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N', 0, -r * .8);
+    ctx.fillStyle = '#d23a3a'; ctx.beginPath(); ctx.moveTo(0, -r * .58); ctx.lineTo(r * .12, 0); ctx.lineTo(-r * .12, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = dk(c) ? '#d8dce6' : '#3a4250'; ctx.beginPath(); ctx.moveTo(0, r * .58); ctx.lineTo(r * .12, 0); ctx.lineTo(-r * .12, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = ink(c); ctx.beginPath(); ctx.arc(0, 0, r * .07, 0, TAU); ctx.fill();
+  }
+  function compassFx(ctx, r, t) { // a needle sweeps round and four points flash
+    ctx.save(); ctx.rotate(t * TAU * 1.5); ctx.strokeStyle = `rgba(255,90,90,${1 - t})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * (1.2 + t)); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.fillStyle = `rgba(255,230,150,${1 - t})`; for (let i = 0; i < 4; i += 1) { const a = i * Math.PI / 2; starPath(ctx, Math.cos(a) * r * 1.5, Math.sin(a) * r * 1.5, r * .22, r * .06, 4); ctx.fill(); } ctx.restore();
+  }
+  function hourglass(ctx, r, c) { // 모래시계
+    face(ctx, r, c, DARK, LIGHT); ring(ctx, r, c);
+    ctx.strokeStyle = ink(c); ctx.lineWidth = r * .07; ctx.beginPath(); ctx.moveTo(-r * .32, -r * .5); ctx.lineTo(r * .32, -r * .5); ctx.moveTo(-r * .32, r * .5); ctx.lineTo(r * .32, r * .5); ctx.stroke();
+    ctx.strokeStyle = dk(c) ? 'rgba(220,230,255,.6)' : 'rgba(60,70,90,.55)'; ctx.lineWidth = r * .05;
+    ctx.beginPath(); ctx.moveTo(-r * .26, -r * .46); ctx.quadraticCurveTo(-r * .24, -r * .06, 0, 0); ctx.quadraticCurveTo(r * .24, -r * .06, r * .26, -r * .46); ctx.moveTo(-r * .26, r * .46); ctx.quadraticCurveTo(-r * .24, r * .06, 0, 0); ctx.quadraticCurveTo(r * .24, r * .06, r * .26, r * .46); ctx.stroke();
+    ctx.fillStyle = '#e8b84a'; ctx.beginPath(); ctx.moveTo(-r * .16, -r * .26); ctx.lineTo(r * .16, -r * .26); ctx.lineTo(0, -r * .04); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-r * .22, r * .44); ctx.quadraticCurveTo(0, r * .14, r * .22, r * .44); ctx.closePath(); ctx.fill();
+  }
+  function hourglassFx(ctx, r, t) { // golden sand spills round in a ring
+    ctx.save(); ctx.fillStyle = `rgba(240,200,90,${1 - t})`;
+    for (let i = 0; i < 24; i += 1) { const a = i * TAU / 24 + t; const k = r * (1.1 + 1.3 * t + (i % 3) * .1); ctx.fillRect(Math.cos(a) * k, Math.sin(a) * k, 2, 2); }
+    ctx.restore();
+  }
+  function mirror(ctx, r, c) { // 거울 디스크: a polished face that catches the light
+    face(ctx, r, c, ['#7a8294', '#2a3040', '#05070c'], ['#ffffff', '#eef2f8', '#b8c2d2']);
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r * .9, 0, TAU); ctx.clip();
+    const g = ctx.createLinearGradient(-r, -r, r, r); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.42, 'rgba(255,255,255,0)'); g.addColorStop(.5, dk(c) ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.95)'); g.addColorStop(.58, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 2); ctx.restore();
+    ring(ctx, r, c, .9, 'rgba(200,210,230,.6)', 'rgba(120,130,150,.6)');
+  }
+  function mirrorFx(ctx, r, t) { // a glint and shards of light
+    ctx.save(); ctx.globalAlpha = 1 - t; ctx.fillStyle = '#fff';
+    starPath(ctx, -r * .4, -r * .4, r * (.6 + t), r * .08, 4); ctx.fill();
+    for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6; const k = r * (1.2 + 1.4 * t); ctx.beginPath(); ctx.moveTo(Math.cos(a) * k, Math.sin(a) * k); ctx.lineTo(Math.cos(a + .2) * (k + r * .3), Math.sin(a + .2) * (k + r * .3)); ctx.lineTo(Math.cos(a - .1) * (k + r * .25), Math.sin(a - .1) * (k + r * .25)); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  // 장미 문장 (legend) ↔ 정원 미로 (room)
+  function rose(ctx, r, c) {
+    const d = dk(c);
+    ctx.save(); ctx.shadowColor = d ? 'rgba(255,90,120,.45)' : 'rgba(255,170,190,.7)'; ctx.shadowBlur = r * .3;
+    face(ctx, r, c, ['#3a1a2a', '#1a0814', '#050105'], ['#ffffff', '#fff4f6', '#e2c8d0']); ctx.restore();
+    ctx.strokeStyle = d ? '#e8b84a' : '#c99b34'; ctx.lineWidth = Math.max(1.4, r * .07); ctx.beginPath(); ctx.arc(0, 0, r * .9, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#3a8a4a'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * r * .34, r * .32, r * .2, r * .1, s * .6, 0, TAU); ctx.fill(); }
+    for (const [k, col] of [[.48, d ? '#c8243e' : '#e24a64'], [.34, d ? '#e2405a' : '#f06a84'], [.2, d ? '#ff6a84' : '#ff94a8']]) {
+      ctx.fillStyle = col; ctx.beginPath();
+      for (let i = 0; i < 5; i += 1) { const a = i * TAU / 5 + k * 4; ctx.moveTo(0, 0); ctx.arc(Math.cos(a) * r * k * .5, Math.sin(a) * r * k * .5 - r * .05, r * k * .55, 0, TAU); }
+      ctx.fill();
+    }
+  }
+  function roseFx(ctx, r, t) { // petals swirl up
+    ctx.save();
+    for (let i = 0; i < 8; i += 1) { const a = i * TAU / 8 + t * 3; const k = r * (1 + 1.6 * t); ctx.save(); ctx.translate(Math.cos(a) * k, Math.sin(a) * k - t * r * .8); ctx.rotate(a); ctx.globalAlpha = 1 - t; ctx.fillStyle = i % 2 ? '#e24a64' : '#ff94a8'; ctx.beginPath(); ctx.ellipse(0, 0, r * .18, r * .1, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+    ctx.restore();
+  }
+  function roseSpecial(ctx, pts, r, t) { // a vine grows from the placed disc over the turned ones, a bud on each
+    if (!pts.length) return;
+    const fade = t < .8 ? 1 : (1 - t) / .2; const grow = clamp01(t / .6) * Math.max(1, pts.length - 1);
+    ctx.save(); ctx.strokeStyle = `rgba(60,140,70,${fade})`; ctx.lineWidth = r * .12; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i += 1) { const f = clamp01(grow - (i - 1)); if (f <= 0) break; const a = pts[i - 1]; const b = pts[i]; ctx.quadraticCurveTo((a.x + b.x) / 2 + r * .6, (a.y + b.y) / 2 - r * .6, a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f); }
+    ctx.stroke();
+    pts.forEach((p, i) => { if (grow < i) return; ctx.fillStyle = `rgba(230,70,100,${fade})`; ctx.beginPath(); ctx.arc(p.x + r * .5, p.y - r * .5, r * .2, 0, TAU); ctx.fill(); });
+    ctx.restore();
+  }
+  function roseWin(ctx, pts, r, t) { // roses bloom over the winner's line and petals rain
+    if (!pts.length) return;
+    ctx.save();
+    pts.forEach((p, i) => { const b = clamp01((t - i * .06) / .4); if (b <= 0) return; ctx.save(); ctx.translate(p.x, p.y); ctx.scale(b, b); ctx.globalAlpha = t > .85 ? (1 - t) / .15 : 1; rose(ctx, r * .7, 'white'); ctx.restore(); });
+    const R = rng(3); ctx.fillStyle = 'rgba(240,90,120,.8)';
+    for (let i = 0; i < 30; i += 1) { const p = pts[i % pts.length]; const y = p.y - r * 3 + ((t * 2 + R()) % 1) * r * 6; ctx.globalAlpha = (1 - t) * .9; ctx.beginPath(); ctx.ellipse(p.x + (R() - .5) * r * 4, y, r * .14, r * .08, R() * 3, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  function paintMaze(ctx, w, h) { // 정원 미로: a lawn board framed by clipped hedges and a gravel path
+    const g = ctx.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#5fa04e'); g.addColorStop(1, '#4a8a3c'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const R = rng(12); ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 400; i += 1) { const x = R() * w; const y = R() * h; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R() - .5) * 3, y - 4); ctx.stroke(); }
+    const stripe = w / 8; ctx.fillStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 8; i += 2) ctx.fillRect(i * stripe, 0, stripe, h); // mown stripes
+    ctx.fillStyle = '#2f5f2a'; for (const k of [0, 1]) { ctx.fillRect(0, k ? h - 6 : 0, w, 6); ctx.fillRect(k ? w - 6 : 0, 0, 6, h); }
+    ctx.fillStyle = '#e24a64'; for (let i = 0; i < 16; i += 1) { const x = i % 2 ? (i * 47) % w : (i % 4 < 2 ? 3 : w - 3); const y = i % 2 ? (i % 4 === 1 ? 3 : h - 3) : (i * 59) % h; ctx.beginPath(); ctx.arc(x, y, 2.4, 0, TAU); ctx.fill(); }
+  }
+
   function previewPiece(ctx, w, h, skinId) {
     ctx.fillStyle = '#0f6b3a'; ctx.fillRect(0, 0, w, h); const r = Math.min(w, h) * .34;
     for (const [cx, color] of [[w * .28, 'black'], [w * .72, 'white']]) { ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(cx + 2, h / 2 + 4, r, r * .96, 0, 0, TAU); ctx.fill(); ctx.translate(cx, h / 2); S.paintStone(ctx, r, skinId, color); ctx.restore(); }
@@ -205,5 +325,10 @@
     othello_t2: theme(eclipseSky, 'rgba(190,200,230,.6)', '#ffd98a'),
     othello_l1: legend(eclipse, eclipseFx, eclipseSpecial, eclipseWin),
     othello_l2: legend(watch, watchFx, watchSpecial, watchWin),
+    // v1.10.90 스킨 2배
+othello_c6: piece(note), othello_c7: piece(anchor), othello_c8: piece(leaf), othello_c9: piece(heart), othello_c10: piece(key),
+    othello_p4: piece(compass, compassFx), othello_p5: piece(hourglass, hourglassFx), othello_p6: piece(mirror, mirrorFx),
+    othello_t3: theme(paintMaze, 'rgba(20,50,20,.75)', '#f4e7a1'),
+    othello_l3: legend(rose, roseFx, roseSpecial, roseWin), // 장미 문장 ↔ 정원 미로
   });
 }());

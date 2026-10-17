@@ -86,6 +86,42 @@
     ctx.fillStyle = 'rgba(240,193,78,.35)'; for (const [x, y] of [[.12, .15], [.88, .18], [.5, .9]]) { ctx.beginPath(); ctx.ellipse(w * x, h * y, 26, 16, 0, 0, TAU); ctx.fill(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five bubbles, three premiums, a legend and its room (구미호 가면
+  // ↔ 구미호 숲). Bubbles keep 4.5:1 text contrast.
+  const loveLetter = bubble('#ffeef3', tile('lr-love', 40, 40, (c, w, h) => { c.fillStyle = 'rgba(230,80,120,.14)'; const x = w - 10; const y = h - 10; c.beginPath(); c.moveTo(x, y + 4); c.bezierCurveTo(x - 7, y - 1, x - 4, y - 7, x, y - 3); c.bezierCurveTo(x + 4, y - 7, x + 7, y - 1, x, y + 4); c.fill(); }), '#e57aa0', '#3a0f1e', '#b8245a');
+  const paperPlane = bubble('#eef6ff', tile('lr-plane', 60, 40, (c, w, h) => { c.strokeStyle = 'rgba(60,110,180,.18)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, h); c.lineTo(w, 0); c.stroke(); }), '#6a9ad0', '#0f2238', '#1d4e8a');
+  const fortune = bubble('#fbf1dc', tile('lr-fortune', 60, 30, (c, w, h) => { c.fillStyle = 'rgba(214,150,70,.14)'; c.beginPath(); c.ellipse(w - 14, h / 2, 10, 7, 0, 0, TAU); c.fill(); }), '#d29a4a', '#2a1a06', '#a0461a', {}, 'Georgia,serif');
+  const classNote = bubble('#fffef6', tile('lr-classnote', 40, 22, (c, w, h) => { c.strokeStyle = 'rgba(80,140,200,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h - 1); c.lineTo(w, h - 1); c.stroke(); }), '#9ab0c8', '#1a2230', '#2a4a8a', { borderRadius: '4px 14px 14px 14px' }, '"Segoe Print","Comic Sans MS",system-ui,sans-serif');
+  const explorer = bubble('#ece2c4', tile('lr-explorer', 50, 50, (c, w, h) => { c.strokeStyle = 'rgba(110,80,30,.18)'; c.lineWidth = 1.2; c.beginPath(); c.arc(w - 14, h - 14, 9, 0, TAU); c.moveTo(w - 14, h - 26); c.lineTo(w - 14, h - 2); c.moveTo(w - 26, h - 14); c.lineTo(w - 2, h - 14); c.stroke(); }), '#8a6a32', '#231a08', '#6a4210', {}, 'Georgia,serif');
+  const spyRadio = bubble('#0d1a14', tile('lr-spyradio', 40, 30, (c, w, h) => { c.strokeStyle = 'rgba(90,240,150,.16)'; c.lineWidth = 1.2; for (const k of [6, 11, 16]) { c.beginPath(); c.arc(4, h / 2, k, -.6, .6); c.stroke(); } }), '#4ad98a', '#e2ffef', '#7cf0a8', { boxShadow: '0 0 10px rgba(74,217,138,.35)' }, '"Consolas","Courier New",monospace');
+  const iceCrystal = bubble('#e8f6ff', tile('lr-ice', 40, 40, (c, w, h) => { c.strokeStyle = 'rgba(80,150,210,.22)'; c.lineWidth = 1.2; for (let i = 0; i < 6; i += 1) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(w - 12, h - 12); c.lineTo(w - 12 + Math.cos(a) * 8, h - 12 + Math.sin(a) * 8); c.stroke(); } }), '#6ab4e8', '#0b2236', '#1a5a9a', { boxShadow: '0 0 10px rgba(106,180,232,.4)' });
+  const goldInvite = bubble('#fffaf0', tile('lr-invite', 40, 40, (c, w, h) => { c.strokeStyle = 'rgba(200,160,60,.35)'; c.lineWidth = 1; c.strokeRect(3.5, 3.5, w - 7, h - 7); }), '#d4a43a', '#2a1e06', '#9a6a10', { boxShadow: 'inset 0 0 0 1px rgba(212,164,58,.5)' }, 'Georgia,serif');
+  spyRadio.fx = glint('120,255,170'); iceCrystal.fx = glint('180,225,255'); goldInvite.fx = glint('255,214,102');
+  // 구미호 가면 (legend) ↔ 구미호 숲 (room)
+  const gumiho = bubble('#2a1414', tile('lr-gumiho', 70, 44, (c, w, h) => { c.fillStyle = 'rgba(255,170,90,.18)'; c.beginPath(); c.moveTo(w - 30, h - 8); c.lineTo(w - 34, h - 26); c.lineTo(w - 24, h - 18); c.lineTo(w - 16, h - 26); c.lineTo(w - 6, h - 18); c.lineTo(w - 2, h - 26); c.lineTo(w - 6, h - 8); c.closePath(); c.fill(); }), '#f08a4a', '#ffeedd', '#ffb07a', { boxShadow: '0 0 12px rgba(240,138,74,.35)' }, 'Georgia,serif');
+  gumiho.legend = true; gumiho.fx = glint('255,170,100');
+  gumiho.special = (ctx, w, h, t) => { // the liar revealed: nine tails fan out behind a fox mask, 「라이어!」
+    const cx = w / 2; const cy = h * .55; const k = clamp01(t / .4); const s = Math.min(w, h) * .12;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    for (let i = 0; i < 9; i += 1) { const a = -Math.PI / 2 + (i - 4) * .3 * k; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); const g = ctx.createLinearGradient(0, 0, 0, -s * 3); g.addColorStop(0, '#f08a4a'); g.addColorStop(1, '#fff3e6'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -s * 1.6 * k, s * .4, s * 1.6 * k, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+    ctx.fillStyle = '#fff6ee'; ctx.strokeStyle = '#b8401a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - s, cy - s * .5); ctx.lineTo(cx - s * .7, cy - s * 1.3); ctx.lineTo(cx - s * .2, cy - s * .7); ctx.lineTo(cx + s * .2, cy - s * .7); ctx.lineTo(cx + s * .7, cy - s * 1.3); ctx.lineTo(cx + s, cy - s * .5); ctx.quadraticCurveTo(cx, cy + s * 1.1, cx - s, cy - s * .5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#d22a1a'; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + sx * s * .38, cy - s * .2, s * .16, s * .06, sx * .5, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#ffd6b0'; ctx.strokeStyle = '#5a1a08'; ctx.lineWidth = 4; ctx.font = `900 ${Math.round(s * .9)}px Georgia,serif`; ctx.textAlign = 'center'; ctx.strokeText('라이어!', cx, cy + s * 1.7); ctx.fillText('라이어!', cx, cy + s * 1.7);
+    ctx.restore();
+  };
+  gumiho.win = (ctx, w, h, t) => { // fox fires drift up and circle the panel
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    for (let i = 0; i < 9; i += 1) { const a = i * TAU / 9 + t * 3; const r = Math.min(w, h) * (.2 + .15 * clamp01(t / .5)); const x = w / 2 + Math.cos(a) * r * 1.6; const y = h / 2 + Math.sin(a) * r - t * 20; const g = ctx.createRadialGradient(x, y, 0, x, y, 16); g.addColorStop(0, 'rgba(180,230,255,.95)'); g.addColorStop(.5, 'rgba(100,170,255,.5)'); g.addColorStop(1, 'rgba(100,170,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 16, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  };
+  function gumihoForest(ctx, w, h) { // 구미호 숲: a moonlit bamboo grove, blue fox fires among the stems
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0e1a2a'); g.addColorStop(1, '#1a2a22'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const mg = ctx.createRadialGradient(w * .8, h * .18, 4, w * .8, h * .18, 60); mg.addColorStop(0, 'rgba(255,248,220,.9)'); mg.addColorStop(.3, 'rgba(255,248,220,.35)'); mg.addColorStop(1, 'rgba(255,248,220,0)'); ctx.fillStyle = mg; ctx.fillRect(0, 0, w, h);
+    const R = rng(61);
+    for (let i = 0; i < 14; i += 1) { const x = R() * w; ctx.fillStyle = `rgba(40,80,50,${.5 + R() * .4})`; ctx.fillRect(x, 0, 7, h); ctx.fillStyle = 'rgba(20,40,25,.6)'; for (let y = 30 + R() * 30; y < h; y += 50) ctx.fillRect(x - 1, y, 9, 3); }
+    for (let i = 0; i < 6; i += 1) { const x = R() * w; const y = h * (.4 + R() * .5); const fg = ctx.createRadialGradient(x, y, 0, x, y, 12); fg.addColorStop(0, 'rgba(150,210,255,.8)'); fg.addColorStop(1, 'rgba(150,210,255,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, 12, 0, TAU); ctx.fill(); }
+  }
+
   function previewRow(ctx, w, h, skinId, keepBackdrop) {
     const d = S.def(skinId); if (!keepBackdrop) { ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); }
     [[.08, '1차 · 민수', '바다에서 먹어요'], [.5, '2차 · 지은', '여름에 많이 먹죠']].forEach(([fy, who, text]) => {
@@ -107,5 +143,10 @@
     liar_t2: theme(masquerade, { borderColor: '#f0c14e', boxShadow: 'inset 0 0 0 3px #3a0f2e, 0 0 14px rgba(240,193,78,.4)' }),
     liar_l1: piece(king),
     liar_l2: piece(lamp),
+    // v1.10.90 스킨 2배
+liar_c6: piece(loveLetter), liar_c7: piece(paperPlane), liar_c8: piece(fortune), liar_c9: piece(classNote), liar_c10: piece(explorer),
+    liar_p4: piece(spyRadio), liar_p5: piece(iceCrystal), liar_p6: piece(goldInvite),
+    liar_t3: theme(gumihoForest, { borderColor: '#f08a4a', boxShadow: 'inset 0 0 0 3px #10201a, 0 0 14px rgba(150,210,255,.35)' }),
+    liar_l3: piece(gumiho), // 구미호 가면 ↔ 구미호 숲
   });
 }());

@@ -175,6 +175,106 @@
     for (let i = 0; i < 5; i += 1) { const x = R() * (w - 90); const y = R() * (h - 90); ctx.fillStyle = 'rgba(8,60,52,.9)'; ctx.fillRect(x, y, 70, 50); ctx.strokeStyle = 'rgba(120,255,230,.45)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, 70, 50); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five commons, three premiums, a legend and its page (별자리 지도
+  // ↔ 밤하늘 지도). Blue stays the first player's and red the second's in every line.
+  function ribbon(ctx, x1, y1, x2, y2, c) { // 리본: a satin ribbon with a bow at the middle
+    const P = pal(c); const g = geom(x1, y1, x2, y2);
+    ctx.strokeStyle = P.mid; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.beginPath();
+    for (let d = 0; d <= g.len; d += 4) { const off = Math.sin(d / 14) * 2.5; const x = x1 + g.ux * d + g.nx * off; const y = y1 + g.uy * d + g.ny * off; if (d) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+    stroke(ctx, x1, y1 - 2, x2, y2 - 2, 2.5, 'rgba(255,255,255,.55)');
+    const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2; ctx.fillStyle = P.main;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + g.ux * s * 12 + g.nx * 9, my + g.uy * s * 12 + g.ny * 9); ctx.lineTo(mx + g.ux * s * 12 - g.nx * 9, my + g.uy * s * 12 - g.ny * 9); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = P.light; ctx.beginPath(); ctx.arc(mx, my, 4, 0, TAU); ctx.fill();
+  }
+  function zipper(ctx, x1, y1, x2, y2, c) { // 지퍼: two rows of teeth on a tape
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 14, P.main);
+    along(x1, y1, x2, y2, 6, (x, y, g, i) => { const s = i % 2 ? 1 : -1; ctx.fillStyle = '#d6dbe4'; ctx.fillRect(x - 2.2 + g.nx * s * 2, y - 2.2 + g.ny * s * 2, 4.4, 4.4); });
+  }
+  function fence(ctx, x1, y1, x2, y2, c) { // 나무 울타리: two rails and painted posts
+    const P = pal(c); const tone = c === 'white' ? '#a8653a' : '#6a7f8a';
+    stroke(ctx, x1, y1 - 3, x2, y2 - 3, 4, tone); stroke(ctx, x1, y1 + 3, x2, y2 + 3, 4, tone);
+    along(x1, y1, x2, y2, 22, (x, y, g) => { ctx.save(); ctx.translate(x, y); ctx.rotate(g.ang); ctx.fillStyle = P.mid; ctx.fillRect(-3.5, -9, 7, 18); ctx.beginPath(); ctx.moveTo(-3.5, -9); ctx.lineTo(0, -13); ctx.lineTo(3.5, -9); ctx.fill(); ctx.restore(); });
+  }
+  function yarn(ctx, x1, y1, x2, y2, c) { // 털실: a knitted cord
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 12, P.main);
+    along(x1, y1, x2, y2, 8, (x, y, g) => { ctx.strokeStyle = P.light; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(x - g.ux * 3 - g.nx * 5, y - g.uy * 3 - g.ny * 5); ctx.lineTo(x + g.ux * 1, y + g.uy * 1); ctx.lineTo(x - g.ux * 3 + g.nx * 5, y - g.uy * 3 + g.ny * 5); ctx.stroke(); });
+  }
+  function pearls(ctx, x1, y1, x2, y2, c) { // 진주 목걸이: beads on a thread
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 2, P.deep);
+    along(x1, y1, x2, y2, 11, (x, y) => { const g = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, 6); g.addColorStop(0, '#ffffff'); g.addColorStop(.5, P.light); g.addColorStop(1, P.main); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 5.4, 0, TAU); ctx.fill(); });
+  }
+  function rainbow(ctx, x1, y1, x2, y2, c) { // 무지개 길: the side's colour edged with a rainbow
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 15, P.main);
+    const g = geom(x1, y1, x2, y2); ['#ff5f5f', '#ffb84a', '#ffe94a', '#5fd07a', '#5fa8ff'].forEach((col, i) => { const off = (i - 2) * 2.2; stroke(ctx, x1 + g.nx * off, y1 + g.ny * off, x2 + g.nx * off, y2 + g.ny * off, 1.6, col); });
+  }
+  function rainbowFx(ctx, x1, y1, x2, y2, c, t) { // a bright head runs along and leaves sparkles
+    const x = x1 + (x2 - x1) * t; const y = y1 + (y2 - y1) * t;
+    ctx.save(); ctx.fillStyle = `rgba(255,255,255,${1 - t * .5})`; starPath(ctx, x, y, 12, 4, 4); ctx.fill();
+    ['#ff5f5f', '#ffe94a', '#5fd07a', '#5fa8ff'].forEach((col, i) => { ctx.fillStyle = col; ctx.globalAlpha = 1 - t; ctx.beginPath(); ctx.arc(x - (x2 - x1) * .1 * i * t, y - 8 - i * 3, 2.4, 0, TAU); ctx.fill(); });
+    ctx.restore();
+  }
+  function ice(ctx, x1, y1, x2, y2, c) { // 얼음 기둥: a clear icy bar tinted with the side's colour
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 14, P.light); stroke(ctx, x1, y1, x2, y2, 8, 'rgba(255,255,255,.65)'); stroke(ctx, x1, y1 + 4, x2, y2 + 4, 3, P.mid);
+    along(x1, y1, x2, y2, 18, (x, y, g) => { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x - g.nx * 6, y - g.ny * 6); ctx.lineTo(x + g.ux * 4, y + g.uy * 4); ctx.stroke(); });
+  }
+  function iceFx(ctx, x1, y1, x2, y2, c, t) { // frost crystals spring up at both ends
+    ctx.save(); ctx.strokeStyle = `rgba(220,240,255,${1 - t})`; ctx.lineWidth = 2;
+    for (const [x, y] of [[x1, y1], [x2, y2]]) for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6; const k = 6 + 18 * t; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * k, y + Math.sin(a) * k); ctx.stroke(); }
+    ctx.restore();
+  }
+  function vine(ctx, x1, y1, x2, y2, c) { // 꽃 넝쿨: a green vine with flowers in the side's colour
+    const P = pal(c); const g = geom(x1, y1, x2, y2);
+    ctx.strokeStyle = '#3a8a4a'; ctx.lineWidth = 5; ctx.beginPath(); for (let d = 0; d <= g.len; d += 4) { const off = Math.sin(d / 10) * 4; const x = x1 + g.ux * d + g.nx * off; const y = y1 + g.uy * d + g.ny * off; if (d) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+    along(x1, y1, x2, y2, 20, (x, y, g2, i) => { const s = i % 2 ? 1 : -1; const fx = x + g2.nx * s * 7; const fy = y + g2.ny * s * 7; ctx.fillStyle = P.mid; for (let k = 0; k < 5; k += 1) { const a = k * TAU / 5; ctx.beginPath(); ctx.arc(fx + Math.cos(a) * 3.4, fy + Math.sin(a) * 3.4, 2.8, 0, TAU); ctx.fill(); } ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(fx, fy, 2, 0, TAU); ctx.fill(); });
+  }
+  function vineFx(ctx, x1, y1, x2, y2, c, t) { // petals pop out along it
+    const P = pal(c); ctx.save(); ctx.globalAlpha = 1 - t;
+    along(x1, y1, x2, y2, 30, (x, y, g, i) => { ctx.fillStyle = i % 2 ? P.light : '#ffd23f'; ctx.beginPath(); ctx.ellipse(x + g.nx * (8 + 14 * t) * (i % 2 ? 1 : -1), y + g.ny * (8 + 14 * t) * (i % 2 ? 1 : -1), 4, 2.4, i, 0, TAU); ctx.fill(); });
+    ctx.restore();
+  }
+  // 별자리 지도 (legend) ↔ 밤하늘 지도 (page)
+  function starLine(ctx, x1, y1, x2, y2, c) { // a constellation line: a soft glow, the side's colour, a star at each end
+    const P = pal(c); stroke(ctx, x1, y1, x2, y2, 12, c === 'white' ? 'rgba(251,113,133,.25)' : 'rgba(56,189,248,.25)'); stroke(ctx, x1, y1, x2, y2, 4, P.mid);
+    for (const [x, y] of [[x1, y1], [x2, y2]]) { ctx.fillStyle = '#fff6c8'; starPath(ctx, x, y, 7, 2.6, 4); ctx.fill(); }
+    along(x1, y1, x2, y2, 26, (x, y) => { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill(); });
+  }
+  function starLineFx(ctx, x1, y1, x2, y2, c, t) { // a shooting star draws the line in
+    const x = x1 + (x2 - x1) * t; const y = y1 + (y2 - y1) * t;
+    ctx.save(); const g = ctx.createLinearGradient(x1, y1, x, y); g.addColorStop(0, 'rgba(255,246,200,0)'); g.addColorStop(1, `rgba(255,246,200,${1 - t * .4})`);
+    ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x, y); ctx.stroke(); ctx.fillStyle = '#fffbe6'; starPath(ctx, x, y, 10, 3, 4); ctx.fill(); ctx.restore();
+  }
+  function constellationBox(ctx, bx, by, size, c) { // a claimed box: a little constellation in the owner's colour (the letter stays)
+    const P = pal(c); const R = rng(Math.round(bx * 7 + by * 13));
+    ctx.save(); ctx.fillStyle = c === 'white' ? 'rgba(239,68,68,.14)' : 'rgba(37,99,235,.16)'; ctx.fillRect(bx, by, size, size);
+    const pts = Array.from({ length: 4 }, () => ({ x: bx + size * (.2 + R() * .55), y: by + size * (.3 + R() * .5) }));
+    ctx.strokeStyle = P.light; ctx.lineWidth = 1.6; ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+    for (const p of pts) { ctx.fillStyle = '#fff6c8'; starPath(ctx, p.x, p.y, size * .07, size * .025, 4); ctx.fill(); }
+    ctx.fillStyle = P.main; ctx.font = `900 ${Math.round(size * .2)}px system-ui, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(c === 'white' ? 'R' : 'P', bx + size * .84, by + size * .26);
+    ctx.restore();
+  }
+  function constellationSpecial(ctx, boxes, t, c) { // two boxes at once: a shooting star crosses between them
+    const pts = boxes.map(mid); if (pts.length < 2) return; const u = clamp01(t);
+    const x = pts[0].x + (pts[1].x - pts[0].x) * u; const y = pts[0].y + (pts[1].y - pts[0].y) * u - Math.sin(u * Math.PI) * 30;
+    ctx.save(); ctx.globalAlpha = Math.sin(u * Math.PI); ctx.fillStyle = '#fffbe6'; starPath(ctx, x, y, 14, 4, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,246,200,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+  }
+  function constellationWin(ctx, boxes, t, c, size) { // the winner's boxes light up one by one, then the sky turns for a moment
+    const P = pal(c); const on = clamp01(t / .6) * boxes.length;
+    ctx.save();
+    boxes.forEach((b, i) => { const a = clamp01(on - i); if (a <= 0) return; const p = mid(b); const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, b.size * .7); g.addColorStop(0, `rgba(255,246,200,${.55 * a})`); g.addColorStop(1, 'rgba(255,246,200,0)'); ctx.fillStyle = g; ctx.fillRect(b.x, b.y, b.size, b.size); });
+    const spin = clamp01((t - .55) / .45);
+    if (spin > 0 && spin < 1) { ctx.translate(size.w / 2, size.h / 2); ctx.rotate(spin * .6); ctx.strokeStyle = P.neon; ctx.globalAlpha = Math.sin(spin * Math.PI) * .5; ctx.lineWidth = 2; for (let k = 1; k <= 3; k += 1) { ctx.beginPath(); ctx.arc(0, 0, Math.min(size.w, size.h) * .15 * k, 0, TAU); ctx.stroke(); } }
+    ctx.restore();
+  }
+  function nightChart(ctx, w, h) { // 밤하늘 지도: a deep-blue star chart with faint grid circles
+    const g = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.max(w, h) * .7); g.addColorStop(0, '#1d2f6a'); g.addColorStop(1, '#0b1438'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(170,190,255,.14)'; ctx.lineWidth = 1.2; for (let k = 1; k <= 4; k += 1) { ctx.beginPath(); ctx.arc(w / 2, h / 2, Math.min(w, h) * .14 * k, 0, TAU); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
+    const R = rng(19); for (let i = 0; i < 160; i += 1) { ctx.fillStyle = `rgba(255,255,255,${.15 + R() * .5})`; ctx.beginPath(); ctx.arc(R() * w, R() * h, .5 + R() * 1.1, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(230,200,120,.5)'; ctx.lineWidth = 3; ctx.strokeRect(6, 6, w - 12, h - 12);
+  }
+
   function previewLine(ctx, w, h, skinId) {
     ctx.fillStyle = '#fbf6e8'; ctx.fillRect(0, 0, w, h); const d = S.def(skinId);
     for (const [x, y] of [[w * .14, h * .3], [w * .86, h * .3], [w * .14, h * .7], [w * .86, h * .7]]) { ctx.fillStyle = '#374151'; ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill(); }
@@ -196,5 +296,10 @@
     dots_t2: theme(pcb, ['rgba(80,255,220,.3)', '#7ffff0']),
     dots_l1: line(circuit, circuitFx, { box: cell, legend: true, special: circuitSpecial, win: circuitWin }),
     dots_l2: line(magicCrayon, magicCrayonFx, { box: doodleBox, legend: true, special: doodleSpecial, win: doodleWin }),
+    // v1.10.90 스킨 2배
+dots_c6: line(ribbon), dots_c7: line(zipper), dots_c8: line(fence), dots_c9: line(yarn), dots_c10: line(pearls),
+    dots_p4: line(rainbow, rainbowFx), dots_p5: line(ice, iceFx), dots_p6: line(vine, vineFx),
+    dots_t3: theme(nightChart, ['rgba(200,215,255,.3)', '#e0e8ff']),
+    dots_l3: line(starLine, starLineFx, { box: constellationBox, legend: true, special: constellationSpecial, win: constellationWin }), // 별자리 지도 ↔ 밤하늘 지도
   });
 }());

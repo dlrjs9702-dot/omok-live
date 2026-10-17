@@ -117,6 +117,61 @@
     ctx.fillStyle = 'rgba(120,130,200,.12)'; for (let i = 0; i < 30; i += 1) { starPath(ctx, hash(i, 1, 1) * w, hash(i, 2, 2) * h, 5 + hash(i, 3, 3) * 6, 1.5, 4); ctx.fill(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five hands, three premiums, a legend and its paper (수채화 붓 ↔
+  // 수채화 스케치북). Every stroke is painted in the drawer's own colour.
+  function chalk(ctx, x1, y1, x2, y2, c, w) { // 분필: dusty and broken
+    along(x1, y1, x2, y2, 1.5, (x, y) => { for (let k = 0; k < 4; k += 1) { if (hash(x, y, k) < .3) continue; ctx.fillStyle = c; ctx.globalAlpha = .45 + hash(y, x, k) * .4; ctx.fillRect(x + (hash(x, y, k + 9) - .5) * w * 1.1, y + (hash(y, x, k + 11) - .5) * w * 1.1, 1.6, 1.6); } }); ctx.globalAlpha = 1;
+  }
+  function highlighter(ctx, x1, y1, x2, y2, c, w) { // 형광펜: a wide, see-through flat tip
+    const [nx, ny] = normal(x1, y1, x2, y2); ctx.globalAlpha = .38; ctx.fillStyle = c; ctx.beginPath();
+    ctx.moveTo(x1 + nx * w, y1 + ny * w); ctx.lineTo(x2 + nx * w, y2 + ny * w); ctx.lineTo(x2 - nx * w, y2 - ny * w); ctx.lineTo(x1 - nx * w, y1 - ny * w); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  function felt(ctx, x1, y1, x2, y2, c, w) { // 사인펜: solid with a little bleed
+    line(ctx, x1, y1, x2, y2, w * 1.2, c, .25); line(ctx, x1, y1, x2, y2, w * .8, c, 1);
+  }
+  function stipple(ctx, x1, y1, x2, y2, c, w) { // 점묘 펜: round dots
+    along(x1, y1, x2, y2, Math.max(2, w * .55), (x, y) => { ctx.fillStyle = c; ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(x + (hash(x, y, 1) - .5) * w * .4, y + (hash(y, x, 2) - .5) * w * .4, w * (.25 + hash(x, y, 3) * .2), 0, TAU); ctx.fill(); }); ctx.globalAlpha = 1;
+  }
+  function ribbonBrush(ctx, x1, y1, x2, y2, c, w) { // 리본 붓: the width twists along the stroke
+    const [nx, ny] = normal(x1, y1, x2, y2); const k = Math.abs(Math.sin((x1 + y1) / 18)) * .8 + .2;
+    ctx.fillStyle = c; ctx.globalAlpha = .92; ctx.beginPath(); ctx.moveTo(x1 + nx * w * k, y1 + ny * w * k); ctx.lineTo(x2 + nx * w * k, y2 + ny * w * k); ctx.lineTo(x2 - nx * w * k * .3, y2 - ny * w * k * .3); ctx.lineTo(x1 - nx * w * k * .3, y1 - ny * w * k * .3); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  function heartPen(ctx, x1, y1, x2, y2, c, w) { // 하트 펜: a line with little hearts now and then
+    line(ctx, x1, y1, x2, y2, w * .7, c, 1);
+    along(x1, y1, x2, y2, 4, (x, y) => { if (hash(Math.round(x), Math.round(y), 5) > .16) return; const k = w * 1.7; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x, y + k * .5); ctx.bezierCurveTo(x - k, y - k * .1, x - k * .5, y - k * .9, x, y - k * .35); ctx.bezierCurveTo(x + k * .5, y - k * .9, x + k, y - k * .1, x, y + k * .5); ctx.fill(); });
+  }
+  function bubbleBrush(ctx, x1, y1, x2, y2, c, w) { // 버블 붓: soap bubbles in the colour
+    line(ctx, x1, y1, x2, y2, w * .5, c, .5);
+    along(x1, y1, x2, y2, 3, (x, y) => { if (hash(Math.round(x), Math.round(y), 2) > .25) return; ctx.strokeStyle = c; ctx.lineWidth = 1.4; ctx.globalAlpha = .9; const r = w * (.4 + hash(x, y, 3) * .5); ctx.beginPath(); ctx.arc(x + (hash(x, y, 4) - .5) * w, y + (hash(y, x, 5) - .5) * w, r, 0, TAU); ctx.stroke(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x - r * .3, y - r * .3, r * .2, 0, TAU); ctx.fill(); }); ctx.globalAlpha = 1;
+  }
+  function flamePen(ctx, x1, y1, x2, y2, c, w) { // 불꽃 펜: a glowing line with sparks thrown off
+    ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = w * 1.4; line(ctx, x1, y1, x2, y2, w * .9, c, 1); ctx.restore();
+    line(ctx, x1, y1, x2, y2, Math.max(1, w * .3), '#fffbe8', .7);
+    along(x1, y1, x2, y2, 5, (x, y) => { if (hash(x, y, 7) > .3) return; ctx.fillStyle = c; ctx.globalAlpha = .8; ctx.fillRect(x + (hash(x, y, 8) - .5) * w * 2.4, y - hash(y, x, 9) * w * 1.6, 1.8, 1.8); }); ctx.globalAlpha = 1;
+  }
+  // 수채화 붓 (legend) ↔ 수채화 스케치북 (paper)
+  function watercolor(ctx, x1, y1, x2, y2, c, w) { // soft washes and a darker rim, the colour pooling at the edge
+    line(ctx, x1, y1, x2, y2, w * 2.2, c, .12); line(ctx, x1, y1, x2, y2, w * 1.5, c, .2);
+    const [nx, ny] = normal(x1, y1, x2, y2); const o = w * .7;
+    line(ctx, x1 + nx * o, y1 + ny * o, x2 + nx * o, y2 + ny * o, Math.max(1, w * .18), c, .35);
+    if (hash(Math.round(x2), Math.round(y2), 3) < .05) { ctx.fillStyle = c; ctx.globalAlpha = .18; ctx.beginPath(); ctx.arc(x2, y2, w * 1.6, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; } // a bloom where it rested
+  }
+  function dropsSpecial(ctx, w, h, t) { // the answer found: colour drops fall and bloom over the paper
+    const cols = ['232,90,120', '90,160,232', '120,200,140', '250,190,80'];
+    for (let i = 0; i < 16; i += 1) { const k = clamp01(t * 1.5 - hash(i, 1, 2) * .5); if (k <= 0 || k >= 1) continue; const x = hash(i, 2, 3) * w; const y = hash(i, 3, 4) * h; ctx.fillStyle = `rgba(${cols[i % 4]},${(1 - k) * .45})`; ctx.beginPath(); ctx.arc(x, y, 8 + k * 40, 0, TAU); ctx.fill(); }
+  }
+  function washWin(ctx, w, h, t) { // a rainbow wash sweeps over the paper and the frame
+    const k = clamp01(t / .7); const g = ctx.createLinearGradient(0, 0, w, 0);
+    ['232,90,120', '250,190,80', '120,200,140', '90,160,232', '160,110,220'].forEach((col, i) => g.addColorStop(i / 4, `rgba(${col},${.3 * (1 - clamp01((t - .7) / .3))})`));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w * k, h);
+    ctx.strokeStyle = `rgba(255,255,255,${Math.sin(k * Math.PI) * .9})`; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8);
+  }
+  function watercolorPaper(ctx, w, h) { // cold-press paper, soft washes at the corners
+    ctx.fillStyle = '#fbf8f1'; ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 220; i += 1) { ctx.fillStyle = `rgba(150,140,120,${hash(i, 1, 1) * .06})`; ctx.beginPath(); ctx.arc(hash(i, 2, 2) * w, hash(i, 3, 3) * h, 1 + hash(i, 4, 4) * 2, 0, TAU); ctx.fill(); }
+    for (const [x, y, col] of [[0, 0, '232,150,170'], [w, 0, '150,190,232'], [0, h, '170,215,170'], [w, h, '250,210,140']]) { const g = ctx.createRadialGradient(x, y, 0, x, y, Math.min(w, h) * .35); g.addColorStop(0, `rgba(${col},.35)`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }
+  }
+
   function previewBrush(ctx, w, h, skinId) {
     const d = S.def(skinId); const paper = d.paper; if (paper) paper(ctx, w, h); else { ctx.fillStyle = '#fffdf6'; ctx.fillRect(0, 0, w, h); }
     const seg = d.seg || S.def('pictionary_c1').seg; const pts = []; for (let i = 0; i <= 40; i += 1) { const t = i / 40; pts.push([w * (.1 + .8 * t), h * (.5 + Math.sin(t * TAU * 1.2) * .22)]); }
@@ -135,5 +190,13 @@
     pictionary_t2: paper(nightPaper, { boxShadow: '0 0 0 10px #2a3158, 0 0 0 12px #8f9bff, 0 0 26px rgba(120,140,255,.6)' }, '#2a3158'),
     pictionary_l1: tool(dream, { cursor: pencilIcon('#7c3aed', '#ffd54a'), legend: true, special: dreamWin, win: dreamFinal }),
     pictionary_l2: tool(palette, { cursor: pencilIcon('#c99a2e', '#e11d48'), legend: true, special: splashSpecial, win: paletteWin }),
+    // v1.10.90 스킨 2배
+pictionary_c6: tool(chalk, { cursor: pencilIcon('#f5f5f0', '#d9d9cc') }), pictionary_c7: tool(highlighter, { cursor: pencilIcon('#facc15', '#facc15') }),
+    pictionary_c8: tool(felt, { cursor: pencilIcon('#2563eb', '#1e293b') }), pictionary_c9: tool(stipple, { cursor: pencilIcon('#0f766e', '#0f172a') }),
+    pictionary_c10: tool(ribbonBrush, { cursor: pencilIcon('#db2777', '#f9a8d4') }),
+    pictionary_p4: tool(heartPen, { cursor: pencilIcon('#e11d48', '#fda4af') }), pictionary_p5: tool(bubbleBrush, { cursor: pencilIcon('#0ea5e9', '#e0f2fe') }),
+    pictionary_p6: tool(flamePen, { cursor: pencilIcon('#ea580c', '#fde047') }),
+    pictionary_t3: paper(watercolorPaper, { boxShadow: '0 0 0 10px #e8e2d4, 0 0 0 12px #b8ae98, 0 10px 24px rgba(0,0,0,.35)' }, '#e8e2d4'),
+    pictionary_l3: tool(watercolor, { cursor: pencilIcon('#7dd3fc', '#f472b6'), legend: true, special: dropsSpecial, win: washWin }), // 수채화 붓 ↔ 수채화 스케치북
   });
 }());

@@ -49,6 +49,16 @@ async function storeBehaves(store) {
   const back = await store.dmRoom('a', 'b');
   assert.deepEqual([back.room.id, back.joined, back.room.members.sort().join()], [d1.room.id, ['b'], 'a,b']);
   assert.equal((await store.messages(back.room.id)).length, 1);
+  // v1.10.90: pin (mine), unsend (the text gone, the line kept), a system line never
+  await store.setPinned(back.room.id, 'a', true); await store.setPinned(back.room.id, 'a', true);
+  assert.deepEqual((await store.room(back.room.id)).pinned, ['a']);
+  await store.setPinned(back.room.id, 'a', false); assert.deepEqual((await store.room(back.room.id)).pinned, []);
+  const sent = await store.post(back.room.id, 'a', '지울 말');
+  assert.equal((await store.messageAt(back.room.id, sent.seq)).text, '지울 말');
+  await store.unsend(back.room.id, sent.seq);
+  assert.equal((await store.messageAt(back.room.id, sent.seq)).text, '');
+  const sys = await store.post(back.room.id, 'a', '알림', true); await store.unsend(back.room.id, sys.seq);
+  assert.equal((await store.messageAt(back.room.id, sys.seq)).text, '알림');
   await store.leave(back.room.id, 'b');
   const [, raced] = await Promise.all([store.leave(back.room.id, 'a'), store.dmRoom('a', 'b')]); // the last out vs reopening
   const got = await store.room(raced.room.id);
@@ -147,6 +157,16 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.deepEqual([left.room.name, left.messages.map((m) => m.text)], ['아빠', ['둘만', '아빠님이 나갔습니다.']]); // mom keeps the lines
   const again = (await call('/api/messenger/dm', { with: dad.id }, mom.token)).data.room;
   assert.deepEqual([again.id, again.members.length, again.last.text], [dm.id, 2, '아빠님이 들어왔습니다.']);
+  // v1.10.90: unsend (mine, 5 minutes) shows as deleted for everyone; pin puts the room first in my list only
+  const mine = (await call(`/api/messenger/rooms/${dm.id}/messages`, { text: '잘못 보냄' }, mom.token)).data.message;
+  assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, dad.token)).data.error, 'MESSAGE_NOT_FOUND'); // not dad's
+  assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, mom.token)).status, 200);
+  const seenByDad = (await call(`/api/messenger/rooms/${dm.id}/messages`, undefined, dad.token)).data.messages.find((x) => x.seq === mine.seq);
+  assert.deepEqual([seenByDad.text, seenByDad.deleted], ['', true]);
+  assert.equal((await call('/api/messenger', undefined, dad.token)).data.rooms.find((r) => r.id === dm.id).last.text, '삭제된 메시지입니다');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/pin`, { on: true }, mom.token)).data.room.pinned, true);
+  assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].id, room.id);
+  assert.equal((await call('/api/messenger', undefined, dad.token)).data.rooms.find((r) => r.id === room.id).pinned, false);
 
   // the kid: let in later, not a member until invited
   await req(`/api/admin/keys/${kid.id}/messenger`, admin, { allowed: true });
@@ -185,4 +205,29 @@ test('메신저 저장소: 밀린 메시지 100개 넘어도 빠짐없이, 동�
   const again = new JsonMessengerStore(path.join(dir, 'messenger.json')); await again.init();
   assert.equal((await again.room(room.id)).seq, 151);
   await fs.rm(dir, { recursive: true, force: true });
+});
+
+// v1.10.90 운영 스위치: the administrator closes sign-ups and turns the messenger off for everyone, then back on
+test('운영 스위치: 가입 신청 멈춤·메신저 끄기, 관리자만', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'switches-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const { req, base } = await boot(t, dir);
+  const call = async (route, body, account) => { const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Forwarded-For': `10.91.0.${Math.floor(Math.random() * 200) + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); return { status: res.status, data: await res.json().catch(() => ({})) }; };
+  const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
+  assert.equal((await req('/api/admin/switches', null, { signups: false })).status, 401);
+  assert.deepEqual((await req('/api/admin/switches', admin)).data.switches, { signups: true, messenger: true });
+  assert.equal((await req('/api/admin/switches', admin, { signups: false })).data.switches.signups, false);
+  assert.equal((await call('/api/account/signup', { realName: '닫힘', loginId: 'closed_1', password: 'secret123', nickname: '닫힘' })).data.error, 'SIGNUPS_CLOSED');
+  await req('/api/admin/switches', admin, { signups: true });
+  assert.equal((await call('/api/account/signup', { realName: '열림', loginId: 'open_1', password: 'secret123', nickname: '열림' })).status < 400, true);
+  const signup = (await req('/api/admin/signups', admin)).data.signups.find((s) => s.loginId === 'open_1');
+  await req(`/api/admin/signups/${signup.id}/approve`, admin, {});
+  const login = (await call('/api/account/login', { loginId: 'open_1', password: 'secret123' })).data;
+  const id = (await req('/api/admin/keys', admin)).data.keys.find((k) => k.loginId === 'open_1').id;
+  await req(`/api/admin/keys/${id}/messenger`, admin, { allowed: true });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).status, 200);
+  await req('/api/admin/switches', admin, { messenger: false });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).data.error, 'MESSENGER_OFF');
+  await req('/api/admin/switches', admin, { messenger: true });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).status, 200);
 });

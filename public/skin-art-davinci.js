@@ -98,6 +98,47 @@
     ctx.fillStyle = 'rgba(200,210,225,.4)'; for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; ctx.beginPath(); ctx.arc(w / 2 + Math.cos(a) * Math.min(w, h) * .42, h / 2 + Math.sin(a) * Math.min(w, h) * .42, 6, 0, TAU); ctx.fill(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five decorations, three premiums, a legend and its room (시계탑
+  // 암호 ↔ 시계탑 기계실). The decoration keeps to the edges; the centre stays clear for the digit.
+  const constellation = (ctx, dark) => { ctx.fillStyle = ink(dark, .6); ctx.strokeStyle = ink(dark, .3); ctx.lineWidth = 1.2; const pts = [[10, 12], [22, 8], [30, 18], [W - 24, H - 10], [W - 12, H - 20], [W - 20, H - 30]];
+    ctx.beginPath(); ctx.moveTo(10, 12); ctx.lineTo(22, 8); ctx.lineTo(30, 18); ctx.moveTo(W - 24, H - 10); ctx.lineTo(W - 12, H - 20); ctx.lineTo(W - 20, H - 30); ctx.stroke(); for (const [x, y] of pts) { starPath(ctx, x, y, 3.4, 1.2, 4); ctx.fill(); } };
+  const woodBlock = (ctx, dark) => { ctx.strokeStyle = ink(dark, .22); ctx.lineWidth = 1.4; for (let k = 0; k < 4; k += 1) { ctx.beginPath(); ctx.moveTo(0, 6 + k * 5); ctx.bezierCurveTo(W * .3, 2 + k * 5, W * .7, 10 + k * 5, W, 6 + k * 5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, H - 6 - k * 5); ctx.bezierCurveTo(W * .3, H - 10 - k * 5, W * .7, H - 2 - k * 5, W, H - 6 - k * 5); ctx.stroke(); } };
+  const keycap = (ctx, dark) => { ctx.strokeStyle = ink(dark, .35); ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(6, 6, W - 12, H - 12, 10); ctx.stroke(); ctx.fillStyle = ink(dark, .12); ctx.fillRect(6, H - 18, W - 12, 12); };
+  const chessTile = (ctx, dark) => { ctx.fillStyle = ink(dark, .2); for (let i = 0; i < 4; i += 1) for (let j = 0; j < 2; j += 1) { if ((i + j) % 2) continue; ctx.fillRect(i * 10, j * 10, 10, 10); ctx.fillRect(W - 40 + i * 10, H - 20 + j * 10, 10, 10); } };
+  const shell = (ctx, dark) => { ctx.strokeStyle = ink(dark, .4); ctx.lineWidth = 1.6; for (const [x, y, r] of [[14, 14, 0], [W - 14, H - 14, Math.PI]]) { ctx.save(); ctx.translate(x, y); ctx.rotate(r); ctx.beginPath(); ctx.arc(0, 0, 10, Math.PI * .1, Math.PI * .9); ctx.closePath(); ctx.stroke(); for (let k = 0; k < 5; k += 1) { const a = Math.PI * (.15 + k * .175); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10); ctx.stroke(); } ctx.restore(); } };
+  const iceCube = (ctx, dark) => { ctx.strokeStyle = dark ? 'rgba(170,225,255,.6)' : 'rgba(40,110,170,.45)'; ctx.lineWidth = 2; ctx.strokeRect(5, 5, W - 10, H - 10); ctx.lineWidth = 1.4; for (const [x, y] of [[5, 5], [W - 5, H - 5]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (x < W / 2 ? 14 : -14), y + (y < H / 2 ? 14 : -14)); ctx.stroke(); } ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(10, 10, 6, 18); };
+  const neonTile = (ctx, dark) => { ctx.save(); ctx.shadowColor = '#ff3ea5'; ctx.shadowBlur = 8; ctx.strokeStyle = dark ? 'rgba(255,90,190,.85)' : 'rgba(200,30,130,.75)'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.roundRect(5, 5, W - 10, H - 10, 10); ctx.stroke(); ctx.restore(); };
+  const nacre = (ctx, dark) => { const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, 'rgba(255,170,220,.25)'); g.addColorStop(.3, 'rgba(255,170,220,0)'); g.addColorStop(.7, 'rgba(150,220,255,0)'); g.addColorStop(1, 'rgba(150,220,255,.28)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = ink(dark, .45); for (const [x, y] of [[12, 12], [W - 12, 12], [12, H - 12], [W - 12, H - 12]]) for (let k = 0; k < 4; k += 1) { const a = k * Math.PI / 2; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 4, y + Math.sin(a) * 4, 3, 1.6, a, 0, TAU); ctx.fill(); } };
+  // 시계탑 암호 (legend) ↔ 시계탑 기계실 (room)
+  const clockTile = (ctx, dark, revealed) => {
+    ctx.strokeStyle = dark ? 'rgba(230,190,110,.85)' : 'rgba(140,100,30,.85)'; ctx.lineWidth = 2.4; ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.fillStyle = ctx.strokeStyle; ctx.font = 'bold 10px Georgia,serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const [x, y, t] of [[W / 2, 12, 'XII'], [W - 12, H / 2, 'III'], [W / 2, H - 12, 'VI'], [12, H / 2, 'IX']]) ctx.fillText(t, x, y);
+    if (!revealed) for (const [x, y] of [[14, 14], [W - 14, H - 14]]) { ctx.beginPath(); for (let i = 0; i < 8; i += 1) { const a = i * TAU / 8; ctx.lineTo(x + Math.cos(a) * 6, y + Math.sin(a) * 6); ctx.lineTo(x + Math.cos(a + .2) * 4, y + Math.sin(a + .2) * 4); } ctx.closePath(); ctx.stroke(); }
+  };
+  const clockFx = (ctx, w, h, t) => { ctx.save(); ctx.translate(w / 2, h / 2); ctx.strokeStyle = `rgba(240,200,120,${1 - t})`; ctx.lineWidth = 3; ctx.rotate(t * TAU); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -30); ctx.stroke(); ctx.rotate(-t * TAU * 1.08); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -20); ctx.stroke(); ctx.restore(); };
+  const clockSpecial = (ctx, w, h, t) => { // the guessed tile chimes: a clock face rings out from it, its hands spin to the hour
+    const cx = w / 2; const cy = h / 2; const R = Math.min(w, h) * .4;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    for (let k = 0; k < 2; k += 1) { const u = clamp01(t * 1.3 - k * .25); if (u <= 0 || u >= 1) continue; ctx.strokeStyle = `rgba(240,200,120,${1 - u})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, R * (.6 + u), 0, TAU); ctx.stroke(); }
+    ctx.translate(cx, cy); ctx.strokeStyle = '#f0c878'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.rotate(clamp01(t / .6) * TAU * 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -R * .7); ctx.stroke(); ctx.restore();
+  };
+  const clockWin = (ctx, w, h, t) => { // a great clock face rises over the panel and strikes twelve in a flash of light
+    const k = clamp01(t / .45); const cx = w / 2; const cy = h / 2; const R = Math.min(w, h) * .32 * k;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = '#f6ecd2'; ctx.strokeStyle = '#8a6a2a'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3a2a10'; for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; ctx.beginPath(); ctx.arc(cx + Math.sin(a) * R * .82, cy - Math.cos(a) * R * .82, Math.max(1, R * .04), 0, TAU); ctx.fill(); }
+    const hand = (1 - clamp01((t - .3) / .4)) * Math.PI; ctx.strokeStyle = '#3a2a10'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(-hand) * R * .7, cy - Math.cos(-hand) * R * .7); ctx.stroke(); ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(-hand * .5) * R * .45, cy - Math.cos(-hand * .5) * R * .45); ctx.stroke();
+    const f = clamp01((t - .65) / .2); if (f > 0) { ctx.fillStyle = `rgba(255,240,190,${Math.sin(f * Math.PI) * .6})`; ctx.fillRect(0, 0, w, h); }
+    ctx.restore();
+  };
+  function clockRoom(ctx, w, h) { // 시계탑 기계실: brass gears turning behind a dark panel
+    ctx.fillStyle = '#231a10'; ctx.fillRect(0, 0, w, h); const R = rng(47);
+    for (let i = 0; i < 7; i += 1) { const x = R() * w; const y = R() * h; const r = 24 + R() * 50; const n = 10 + (r / 6 | 0); ctx.fillStyle = `rgba(190,140,60,${.18 + R() * .15})`; ctx.beginPath(); for (let k = 0; k < n * 2; k += 1) { const a = k * Math.PI / n; const rr = k % 2 ? r : r * .86; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.fillStyle = '#231a10'; ctx.beginPath(); ctx.arc(x, y, r * .3, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(230,190,110,.5)'; ctx.lineWidth = 3; ctx.strokeRect(5, 5, w - 10, h - 10);
+  }
+
   function previewTile(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); const th = h * .78; const tw = th * .72;
     [[w * .3, 'black', '7', true], [w * .55, 'white', '3', true], [w * .8, 'black', '?', false]].forEach(([cx, color, n, rev]) => {
@@ -125,5 +166,16 @@
     davinci_t2: theme(vaultRoom, { borderColor: '#c8d2e1', boxShadow: 'inset 0 0 0 3px #2b323c, 0 0 14px rgba(200,210,225,.3)' }),
     davinci_l1: { ...piece(sealed, 'l1', sealFx, P('#2b1f5e', '#0f0a2c', '#ffeaa8', '#f0c14e', '#fff8df', '#f1dca2', '#3a2a00', '#c9a24a')), legend: true, special: sealSpecial, win: sealWin },
     davinci_l2: { ...piece(vaultDoor, 'l2', vaultFx, P('#2c3542', '#11161d', '#ffffff', '#c8d2e1', '#f6f8fb', '#dfe5ee', '#16202c', '#8a96a8')), legend: true, special: vaultSpecial, win: vaultWin },
+    // v1.10.90 스킨 2배
+davinci_c6: piece(constellation, 'c6', null, P('#1e2a55', '#0b1230', '#ffffff', '#8fa6e0', '#f2f4ff', '#dde3f6', '#141c3a', '#8a98c8')),
+    davinci_c7: piece(woodBlock, 'c7', null, P('#4a2f1a', '#24160a', '#ffffff', '#a8825a', '#fbf0d8', '#ecd6a8', '#2a1a08', '#b8925a')),
+    davinci_c8: piece(keycap, 'c8', null, P('#33363d', '#17191d', '#ffffff', '#9aa0aa', '#f7f7f5', '#e2e2de', '#1a1c20', '#a8aab0')),
+    davinci_c9: piece(chessTile, 'c9', null, P('#2a2a2a', '#101010', '#ffffff', '#8a8a8a', '#fbfaf5', '#e8e4d6', '#181818', '#b0aa98')),
+    davinci_c10: piece(shell, 'c10', null, P('#1f3f4a', '#0a1d24', '#ffffff', '#7ab8c8', '#fff6ee', '#f6e2d0', '#2a1a10', '#d8a888')),
+    davinci_p4: piece(iceCube, 'p4', burst('170,225,255'), P('#16405a', '#071e2c', '#ffffff', '#7ac8f0', '#f2fbff', '#d6eefa', '#0a2436', '#78b8e0')),
+    davinci_p5: piece(neonTile, 'p5', burst('255,90,190'), P('#2a0f30', '#120514', '#ffffff', '#ff5abe', '#fff2fa', '#f6dcec', '#2a0a20', '#d070a8')),
+    davinci_p6: piece(nacre, 'p6', burst('255,200,235'), P('#2a2a40', '#12121e', '#ffffff', '#c8b8e8', '#fffaff', '#efe6f6', '#1e1428', '#c0a8d8')),
+    davinci_t3: theme(clockRoom, { borderColor: '#e6be6e', boxShadow: 'inset 0 0 0 3px #231a10, 0 0 0 2px #e6be6e' }),
+    davinci_l3: { ...piece(clockTile, 'l3', clockFx, P('#3a2a14', '#1a1206', '#fff3d6', '#e6be6e', '#fbf3df', '#efdcb0', '#2a1c06', '#b8903a')), legend: true, special: clockSpecial, win: clockWin }, // 시계탑 암호 ↔ 시계탑 기계실
   });
 }());

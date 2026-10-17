@@ -373,6 +373,10 @@
             <button class="primary" type="submit">입장 파일 발급</button>
           </form>
           <div class="adminMeta"><span id="persistenceBadge" class="badge">저장소 확인 중</span></div>
+          <!-- v1.10.90 섬 환경 (IDEAS #future-admin-console ①): the island's time of day for everyone -->
+          <form id="islandTimeForm" class="joinForm islandTimeForm"><label for="islandTimeSelect">섬 시간대</label><select id="islandTimeSelect"><option value="auto">자동 (서울 시각)</option><option value="morning">아침</option><option value="day">낮</option><option value="evening">저녁</option><option value="night">밤</option></select><button class="secondary" type="submit">적용</button></form>
+          <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
+          <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
           <h3 class="keySectionTitle">가입 신청</h3>
           <div id="signupList" class="keyList"></div>
           <h3 class="keySectionTitle">활성 입장 파일</h3>
@@ -1167,7 +1171,7 @@
         <ul id="messengerRoomList" class="messengerRoomList"></ul>
       </section>
       <section id="messengerRoom" class="messengerRoom" aria-label="대화">
-        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerRenameBtn" type="button" class="ghost tiny">이름</button><button id="messengerMuteBtn" type="button" class="ghost tiny">알림 끄기</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
+        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerRenameBtn" type="button" class="ghost tiny">이름</button><button id="messengerPinBtn" type="button" class="ghost tiny">고정</button><button id="messengerMuteBtn" type="button" class="ghost tiny">알림 끄기</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
         <p id="messengerMembers" class="smallMuted"></p>
         <div id="messengerMessages" class="chatMessages messengerMessages" role="log" aria-live="polite"><p class="emptyState">대화방을 고르거나 새로 만드세요.</p></div>
         <form id="messengerForm" class="messengerForm"><input id="messengerInput" type="text" maxlength="500" autocomplete="off" placeholder="메시지 입력" aria-label="메시지 입력" /><button class="primary" type="submit">보내기</button></form>

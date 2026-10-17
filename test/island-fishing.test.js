@@ -12,14 +12,23 @@ const { boot } = require('../test-support/test-server');
 // before the bite or after it; the fish into the bag and the 도감 once per cast; 도감 titles worn like legend titles.
 test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, 도감 칭호', () => {
   let s = 7; const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  const by = {}; let ev = 0; const N = 50000;
-  for (let i = 0; i < N; i += 1) { const id = F.draw(rnd); by[F.SPECIES[id].grade] = (by[F.SPECIES[id].grade] || 0) + 1; ev += F.SPECIES[id].price; }
-  for (const [g, p] of [['common', 0.6], ['normal', 0.28], ['rare', 0.11], ['big', 0.01]]) assert.ok(Math.abs(by[g] / N - p) < 0.012, g);
-  assert.ok(ev / N > 1200 && ev / N < 1700, `기대값 ${ev / N}`);
+  // v1.10.90: eight tables (river/sea x four seasons); each draws only its own fish, every one of the 21 is somewhere,
+  // 대왕 참치 only in summer/autumn seas; a cast pays about 700~1,850P by table, about 1,100P on average
+  const evs = []; const seen = new Set();
+  for (const water of ['river', 'sea']) for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    const list = F.listFor(water, season); let ev = 0; const N = 20000;
+    for (let i = 0; i < N; i += 1) { const id = F.draw(rnd, { water, season }); assert.ok(list.includes(id), `${water} ${season} ${id}`); seen.add(id); ev += F.SPECIES[id].price; }
+    assert.ok(ev / N > 650 && ev / N < 1950, `${water} ${season} 기대값 ${ev / N}`); evs.push(ev / N);
+    assert.equal(list.includes('giant_tuna'), water === 'sea' && ['summer', 'autumn'].includes(season));
+  }
+  assert.equal(seen.size, 21); assert.equal(Object.keys(F.SPECIES).length, 21);
+  const avg = evs.reduce((a, b) => a + b, 0) / evs.length; assert.ok(avg > 1000 && avg < 1400, `평균 ${avg}`);
+  assert.equal(F.waterAt(T.PIER.x, T.PIER.z), 'sea');
   assert.equal(F.canFish(T.PIER.x, T.PIER.z), true); assert.equal(F.canFish(0, 8), false); assert.equal(F.canFish(30, 30), false);
   const c = { biteAt: 10_000 };
   assert.deepEqual([F.judge(c, 9000), F.judge(c, 10_500), F.judge(c, 10_000 + F.BITE_MS + F.LATE_MS + 1)], ['early', 'ok', 'late']);
-  assert.deepEqual(F.titlesFor(3), []); assert.deepEqual(F.titlesFor(F.DEX.length).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3']);
+  assert.deepEqual(F.titlesFor(3), []); assert.deepEqual(F.titlesFor(F.DEX.length).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3', 'dex_title_4']);
+  assert.deepEqual(F.titlesFor(18).map((t) => t.id), ['dex_title_1', 'dex_title_2', 'dex_title_3'], '도감 완성은 예전 18개 그대로(이미 받은 사람 유지)');
 });
 
 test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도감에 한 번, 이르면 실패, 어부에게 판매, 도감 칭호', async (t) => {

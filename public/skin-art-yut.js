@@ -231,6 +231,125 @@
     ctx.strokeStyle = '#9fb4ff'; ctx.lineWidth = 3; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2 - 40);
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five commons, three premiums with a trail, a legend and its mat
+  // (호랑이 장군 ↔ 단풍 산길). Team colour stays the body colour and the number its plate.
+  function penguin(ctx, r, c, label) { // 펭귄
+    body(ctx, r, c);
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, r * .15, r * .52, r * .62, 0, 0, TAU); ctx.fill();
+    eyes(ctx, r, -.32, .22, .1);
+    ctx.fillStyle = '#ffa41c'; ctx.beginPath(); ctx.moveTo(-r * .13, -r * .14); ctx.lineTo(r * .13, -r * .14); ctx.lineTo(0, r * .04); ctx.fill();
+    ctx.fillStyle = team(c).dark; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * r * .84, r * .12, r * .12, r * .32, s * .3, 0, TAU); ctx.fill(); }
+    badge(ctx, r, label);
+  }
+  function bear(ctx, r, c, label) { // 꼬마 곰
+    const T = team(c);
+    for (const s of [-1, 1]) { ctx.fillStyle = T.main; ctx.beginPath(); ctx.arc(s * r * .62, -r * .7, r * .26, 0, TAU); ctx.fill(); ctx.fillStyle = T.light; ctx.beginPath(); ctx.arc(s * r * .62, -r * .7, r * .13, 0, TAU); ctx.fill(); }
+    body(ctx, r, c);
+    ctx.fillStyle = '#f5e2c8'; ctx.beginPath(); ctx.ellipse(0, r * .02, r * .3, r * .22, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#10131a'; ctx.beginPath(); ctx.ellipse(0, -r * .06, r * .1, r * .07, 0, 0, TAU); ctx.fill();
+    eyes(ctx, r, -.3, .3, .1);
+    badge(ctx, r, label);
+  }
+  function frog(ctx, r, c, label) { // 개구리
+    const T = team(c);
+    for (const s of [-1, 1]) { ctx.fillStyle = T.main; ctx.beginPath(); ctx.arc(s * r * .42, -r * .66, r * .28, 0, TAU); ctx.fill(); }
+    body(ctx, r, c);
+    eyes(ctx, r, -.66, .42, .16);
+    ctx.strokeStyle = T.deep; ctx.lineWidth = r * .07; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, -r * .12, r * .4, .3, Math.PI - .3); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,170,190,.7)'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * r * .52, -r * .02, r * .12, r * .07, 0, 0, TAU); ctx.fill(); }
+    badge(ctx, r, label);
+  }
+  function kitty(ctx, r, c, label) { // 고양이
+    const T = team(c);
+    for (const s of [-1, 1]) { ctx.fillStyle = T.main; ctx.beginPath(); ctx.moveTo(s * r * .82, -r * .32); ctx.lineTo(s * r * .66, -r * 1.06); ctx.lineTo(s * r * .18, -r * .8); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#ffc0d0'; ctx.beginPath(); ctx.moveTo(s * r * .7, -r * .48); ctx.lineTo(s * r * .62, -r * .88); ctx.lineTo(s * r * .34, -r * .74); ctx.closePath(); ctx.fill(); }
+    body(ctx, r, c);
+    eyes(ctx, r, -.24, .3, .11);
+    ctx.fillStyle = '#ff8aa8'; ctx.beginPath(); ctx.moveTo(-r * .08, -r * .04); ctx.lineTo(r * .08, -r * .04); ctx.lineTo(0, r * .06); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = r * .04; for (const s of [-1, 1]) for (const dy of [-.04, .06]) { ctx.beginPath(); ctx.moveTo(s * r * .2, r * dy); ctx.lineTo(s * r * .66, r * (dy - .06)); ctx.stroke(); }
+    badge(ctx, r, label);
+  }
+  function fish(ctx, r, c, label) { // 물고기
+    const T = team(c);
+    ctx.fillStyle = T.dark; ctx.beginPath(); ctx.moveTo(r * .62, 0); ctx.lineTo(r * 1.05, -r * .42); ctx.lineTo(r * 1.05, r * .42); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = sphere(ctx, r, [T.light, T.main, T.dark], .5); ctx.beginPath(); ctx.ellipse(-r * .06, 0, r * .8, r * .62, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = T.light; ctx.lineWidth = r * .06; for (const x of [-.1, .14, .38]) { ctx.beginPath(); ctx.arc(x * r, 0, r * .3, -1, 1); ctx.stroke(); }
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-r * .5, -r * .14, r * .14, 0, TAU); ctx.fill(); ctx.fillStyle = '#10131a'; ctx.beginPath(); ctx.arc(-r * .5, -r * .14, r * .07, 0, TAU); ctx.fill();
+    badge(ctx, r, label);
+  }
+  function pirate(ctx, r, c, label) { // 해적선
+    const T = team(c);
+    ctx.fillStyle = '#f8f1dc'; ctx.beginPath(); ctx.moveTo(0, -r * 1.02); ctx.quadraticCurveTo(r * .62, -r * .6, r * .02, -r * .12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#10131a'; ctx.fillRect(-r * .04, -r * 1.06, r * .08, r * .98); ctx.fillStyle = T.main; ctx.beginPath(); ctx.moveTo(0, -r * 1.06); ctx.lineTo(-r * .34, -r * .96); ctx.lineTo(0, -r * .86); ctx.fill();
+    ctx.fillStyle = sphere(ctx, r, [T.light, T.main, T.dark], .5); ctx.beginPath(); ctx.moveTo(-r * .92, -r * .1); ctx.lineTo(r * .92, -r * .1); ctx.quadraticCurveTo(r * .7, r * .74, 0, r * .78); ctx.quadraticCurveTo(-r * .7, r * .74, -r * .92, -r * .1); ctx.fill();
+    ctx.fillStyle = T.deep; for (const x of [-.4, 0, .4]) { ctx.beginPath(); ctx.arc(x * r, r * .18, r * .08, 0, TAU); ctx.fill(); }
+    badge(ctx, r, label);
+  }
+  function wakeTrail(ctx, pts, r, c) { // little waves behind the ship
+    pts.forEach((p, i) => { const a = (i + 1) / pts.length; ctx.strokeStyle = `rgba(255,255,255,${a * .55})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x - r * .3, p.y + r * .3, r * .3 * a, Math.PI, TAU); ctx.arc(p.x + r * .3, p.y + r * .3, r * .3 * a, Math.PI, TAU); ctx.stroke(); });
+  }
+  function balloon(ctx, r, c, label) { // 열기구
+    const T = team(c);
+    ctx.fillStyle = '#8a5a2a'; ctx.fillRect(-r * .26, r * .5, r * .52, r * .4);
+    ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = r * .04; ctx.beginPath(); ctx.moveTo(-r * .5, r * .2); ctx.lineTo(-r * .24, r * .52); ctx.moveTo(r * .5, r * .2); ctx.lineTo(r * .24, r * .52); ctx.stroke();
+    ctx.fillStyle = sphere(ctx, r, [T.light, T.main, T.dark], .5); ctx.beginPath(); ctx.arc(0, -r * .28, r * .78, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = r * .1; for (const k of [-.34, .34]) { ctx.beginPath(); ctx.ellipse(0, -r * .28, Math.abs(k) * r, r * .78, 0, 0, TAU); ctx.stroke(); }
+    badge(ctx, r, label);
+  }
+  function puffTrail(ctx, pts, r, c) { // small puffs of warm air
+    pts.forEach((p, i) => { const a = (i + 1) / pts.length; ctx.fillStyle = `rgba(255,236,210,${a * .4})`; ctx.beginPath(); ctx.arc(p.x, p.y - r * .2 * a, r * .45 * a, 0, TAU); ctx.fill(); });
+  }
+  function dragon(ctx, r, c, label) { // 꼬마 용
+    const T = team(c);
+    ctx.fillStyle = T.dark; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .5, -r * .2); ctx.lineTo(s * r * 1.1, -r * .7); ctx.lineTo(s * r * .96, -r * .1); ctx.lineTo(s * r * 1.1, r * .2); ctx.closePath(); ctx.fill(); }
+    body(ctx, r, c, .86);
+    ctx.fillStyle = '#ffd84a'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * .28, -r * .7); ctx.lineTo(s * r * .42, -r * 1.04); ctx.lineTo(s * r * .5, -r * .66); ctx.fill(); }
+    eyes(ctx, r, -.28, .28, .11);
+    ctx.fillStyle = T.light; ctx.beginPath(); ctx.ellipse(0, r * .12, r * .28, r * .18, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = T.deep; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(s * r * .1, r * .08, r * .04, 0, TAU); ctx.fill(); }
+    badge(ctx, r, label);
+  }
+  function sparkTrail(ctx, pts, r, c) { // a few embers
+    pts.forEach((p, i) => { const a = (i + 1) / pts.length; ctx.fillStyle = `rgba(255,${150 + i * 10},60,${a * .7})`; starPath(ctx, p.x + Math.sin(i * 2) * r * .3, p.y + Math.cos(i * 3) * r * .3, r * .22 * a, r * .07, 4); ctx.fill(); });
+  }
+  // 호랑이 장군 (legend) ↔ 단풍 산길 (mat)
+  function tiger(ctx, r, c, label) {
+    const T = team(c);
+    ctx.save(); ctx.shadowColor = 'rgba(255,170,40,.6)'; ctx.shadowBlur = r * .3;
+    for (const s of [-1, 1]) { ctx.fillStyle = '#f29a1c'; ctx.beginPath(); ctx.arc(s * r * .62, -r * .7, r * .24, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = sphere(ctx, r, ['#ffd27a', '#f29a1c', '#b8600a'], .5); ctx.beginPath(); ctx.arc(0, 0, r * .92, 0, TAU); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#2a1608'; for (const [x, y, a] of [[-.62, -.2, .3], [.62, -.2, -.3], [-.7, .18, .1], [.7, .18, -.1], [0, -.7, 0]]) { ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0, 0, r * .2, r * .06, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+    ctx.fillStyle = '#fff6e6'; ctx.beginPath(); ctx.ellipse(0, r * .18, r * .38, r * .28, 0, 0, TAU); ctx.fill();
+    eyes(ctx, r, -.24, .3, .11);
+    ctx.fillStyle = '#2a1608'; ctx.beginPath(); ctx.moveTo(-r * .1, r * .04); ctx.lineTo(r * .1, r * .04); ctx.lineTo(0, r * .16); ctx.fill();
+    ctx.fillStyle = T.main; ctx.beginPath(); ctx.moveTo(-r * .5, -r * .86); ctx.lineTo(r * .5, -r * .86); ctx.lineTo(r * .36, -r * 1.12); ctx.lineTo(0, -r * .98); ctx.lineTo(-r * .36, -r * 1.12); ctx.closePath(); ctx.fill(); // the general's helmet crest
+    badge(ctx, r, label);
+  }
+  function pawTrail(ctx, pts, r, c) { // paw prints
+    pts.forEach((p, i) => { if (i % 2) return; const a = (i + 1) / pts.length; ctx.fillStyle = `rgba(90,50,20,${a * .5})`; ctx.beginPath(); ctx.ellipse(p.x, p.y + r * .1, r * .18, r * .14, 0, 0, TAU); ctx.fill(); for (const [dx, dy] of [[-.16, -.16], [0, -.24], [.16, -.16]]) { ctx.beginPath(); ctx.arc(p.x + dx * r, p.y + dy * r, r * .06, 0, TAU); ctx.fill(); } });
+  }
+  function roarSpecial(ctx, pts, r, t, c, label) { // a catch: the roar's shock rings and 어흥!
+    const p = pts[0];
+    for (let i = 0; i < 3; i += 1) { const tt = clamp01(t * 1.3 - i * .18); if (tt <= 0 || tt >= 1) continue; ctx.strokeStyle = `rgba(242,154,28,${1 - tt})`; ctx.lineWidth = r * .3 * (1 - tt) + 2; ctx.beginPath(); ctx.arc(p.x, p.y, r * (1 + 3 * tt), 0, TAU); ctx.stroke(); }
+    if (t < .85) { ctx.save(); ctx.globalAlpha = t < .7 ? 1 : (.85 - t) / .15; ctx.fillStyle = '#fff6e6'; ctx.strokeStyle = '#7a3a08'; ctx.lineWidth = 4; ctx.font = `900 ${Math.round(r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; const y = p.y - r * (1.6 + t); ctx.strokeText('어흥!', p.x, y); ctx.fillText('어흥!', p.x, y); ctx.restore(); }
+  }
+  function tigerWin(ctx, pts, r, t, c, size) { // claw marks rake across the mat, then a golden burst at the finish
+    const { w, h } = size; const p = pts[0];
+    ctx.save();
+    const rake = clamp01(t / .5);
+    if (rake > 0) { ctx.strokeStyle = `rgba(242,154,28,${t > .8 ? (1 - t) / .2 : .85})`; ctx.lineWidth = r * .4; ctx.lineCap = 'round'; for (let k = -1; k <= 1; k += 1) { ctx.beginPath(); ctx.moveTo(w * .15 + k * r * .9, h * .2); ctx.lineTo(w * .15 + k * r * .9 + (w * .7) * rake, h * .2 + (h * .55) * rake); ctx.stroke(); } }
+    const burst = clamp01((t - .45) / .55);
+    if (burst > 0 && burst < 1) { const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * (2 + 6 * burst)); g.addColorStop(0, `rgba(255,214,120,${1 - burst})`); g.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r * (2 + 6 * burst), 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  function autumn(ctx, w, h) { // 단풍 산길: a mountain path under maple trees, a hanji sheet for the board
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#c86a2a'); g.addColorStop(1, '#8a3a1a'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const R = rng(64);
+    for (let i = 0; i < 36; i += 1) { const x = R() * w; const y = R() * h; ctx.save(); ctx.translate(x, y); ctx.rotate(R() * TAU); ctx.globalAlpha = .75; ctx.fillStyle = ['#e2401c', '#f29a1c', '#ffd23f', '#b8241c'][i % 4]; starPath(ctx, 0, 0, 6 + R() * 4, 2.5, 5); ctx.fill(); ctx.restore(); }
+    const inset = 26; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#f6ead0'; ctx.fillRect(inset, inset, w - inset * 2, h - inset * 2 - 40); ctx.restore();
+    ctx.strokeStyle = '#8a3a1a'; ctx.lineWidth = 3; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2 - 40);
+  }
+
   // ---- shop pictures ----
   function previewPiece(ctx, w, h, skinId) {
     ctx.fillStyle = '#b8914f'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#f3e7c4'; ctx.fillRect(8, 8, w - 16, h - 16);
@@ -255,5 +374,10 @@
     yut_t2: theme(moon, 'rgba(180,200,255,.9)', '#2a3566'),
     yut_l1: piece(guardian, guardianTrail, { legend: true, special: guardianSpecial, win: guardianWin }),
     yut_l2: piece(rabbit, moonDust, { legend: true, special: mortarSpecial, win: fullMoonWin }),
+    // v1.10.90 스킨 2배
+yut_c6: piece(penguin), yut_c7: piece(bear), yut_c8: piece(frog), yut_c9: piece(kitty), yut_c10: piece(fish),
+    yut_p4: piece(pirate, wakeTrail), yut_p5: piece(balloon, puffTrail), yut_p6: piece(dragon, sparkTrail),
+    yut_t3: theme(autumn, 'rgba(90,30,10,.85)', '#fff3d6'),
+    yut_l3: piece(tiger, pawTrail, { legend: true, special: roarSpecial, win: tigerWin }), // 호랑이 장군 ↔ 단풍 산길
   });
 }());

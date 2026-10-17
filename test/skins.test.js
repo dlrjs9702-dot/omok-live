@@ -21,7 +21,7 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   assert.equal(TIERS.theme.price, 300_000);
   assert.equal(TIERS.legend.price, 600_000);
   const count = tier => SKINS.filter(s => s.tier === tier && s.family === 'omok' && !s.ip).length; // v1.10.74: character skins counted on their own
-  assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [10, 3, 2, 2], '새 일반 5 + S1 재질 5(계속 판매), 고급 3, 테마 2, 전설 2(테마마다 하나)');
+  assert.deepEqual(['common', 'premium', 'theme', 'legend'].map(count), [15, 6, 3, 3], '새 일반 5 + S1 재질 5(계속 판매) + v1.10.90 일반 5, 고급 3+3, 테마 2+1, 전설 2+1(테마마다 하나)');
   assert.deepEqual(SKINS.filter(s => s.legacy).map(s => s.id).sort(), ['omok_common_amber', 'omok_common_bronze', 'omok_common_jade', 'omok_common_obsidian', 'omok_common_porcelain']);
   assert.equal(SKINS.filter(s => s.tier === 'theme').every(s => s.slot === 'theme'), true);
   assert.equal(SKINS.find(s => s.tier === 'legend').slot, 'piece');
@@ -76,9 +76,9 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
     const tiers = tier => family.skins.filter(s => s.tier === tier && !s.ip).length; // v1.10.74: the character skins on top (a character theme without its legend has no pair)
     // v1.8.7 오목 → v1.9.2 모든 게임: 테마마다 짝 전설(전설 2)
     const twoLegends = true; // v1.9.2: every game has two legends, one per room theme
-    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [3, 2, twoLegends ? 2 : 1], family.family);
+    assert.deepEqual(['premium', 'theme', 'legend'].map(tiers), [6, 3, twoLegends ? 3 : 1], family.family); // v1.10.90 스킨 2배: +3 고급, +1 테마, +1 전설
     if (twoLegends) for (const skin of family.skins.filter(s => (s.tier === 'legend' || s.tier === 'theme') && !s.ip)) assert.ok(skin.pair, `${skin.id} 짝`);
-    assert.equal(tiers('common'), family.family === 'omok' ? 10 : 5, family.family);
+    assert.equal(tiers('common'), family.family === 'omok' ? 15 : 10, family.family); // v1.10.90: +5 일반
   }
 });
 
@@ -221,7 +221,7 @@ test('스킨 구매·장착: 부족하면 거절, 1회만 결제, 미보유 장�
 
   const shop = await fx.req('/api/skins', a.session);
   assert.equal(shop.status, 200);
-  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 17 + 3); // v1.10.74: + 헬로키티·슈퍼맨 말, 헬로키티 테마
+  assert.equal(shop.data.catalog.find(f => f.family === 'omok').skins.length, 17 + 3 + 10); // v1.10.74: + 헬로키티·슈퍼맨 말, 헬로키티 테마; v1.10.90 스킨 2배 +10
   assert.deepEqual(shop.data.owned, []);
   assert.equal((await fx.req('/api/skins', null)).status, 401, '세션 없이는 불가');
 
