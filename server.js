@@ -3278,8 +3278,8 @@ async function requestHandler(req, res) {
       const skin = body.skinId ? skinById(body.skinId) : null;
       const avatar = skin?.game === 'avatar' || skin?.family === 'avatar' || body.game === 'avatar';
       const slot = skin?.slot || body.slot;
-      const shopPlace = ['shop', 'avatar', 'hair', 'accessories'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
-      const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop');
+      const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
+      const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       const door = IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     }
@@ -3667,6 +3667,15 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
+  // v1.10.91 변신 의상실: every transformation on sale, mine or not, the one chosen and each one's body (current/native)
+  if (pathname === '/api/transformations' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const st = await pointStore.skinState(pointAccountForSession(session)); const owned = new Set(st.owned); const avatar = st.equipped.avatar || {};
+    const list = SkinCatalog.SKINS.filter((s) => s.slot === 'transform').map((s) => { const c = transformationById(s.transform);
+      return { skinId: s.id, character: s.transform, name: s.name, price: s.price, ip: s.ip || null, owned: owned.has(s.id), chosen: avatar.transform === s.id,
+        modes: c ? Object.keys(c.variants || {}) : [], mode: avatar[`transformation_${s.transform}`] || c?.defaultVariant || null }; });
+    return sendJson(res, 200, { ok: true, list });
+  }
   if (pathname === '/api/skins/buy' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3717,7 +3726,7 @@ async function requestHandler(req, res) {
     if (!character) return sendError(res, 404, 'TRANSFORMATION_NOT_FOUND', '사용할 수 없는 캐릭터입니다.');
     if (!transformationModeAllowed(character, body?.mode)) return sendError(res, 400, 'BAD_TRANSFORMATION_MODE', '사용할 수 없는 체형입니다.');
     const result = await pointStore.setAvatarTransformation({ userId: account, characterId: character.id, mode: body.mode });
-    if (!result.ok) return sendError(res, 409, result.reason === 'not-owned' ? 'SKIN_NOT_OWNED' : 'TRANSFORMATION_INCOMPLETE', '캐릭터의 모든 파츠를 착용해 주세요.');
+    if (!result.ok) return sendError(res, 409, result.reason === 'not-owned' ? 'SKIN_NOT_OWNED' : 'TRANSFORMATION_INCOMPLETE', '변신을 먼저 골라 주세요.'); // v1.10.91: chosen at the 변신 NPC
     equippedSkinCache.set(account, result.equipped);
     await loadEquippedSkins(account);
     const equipped = equippedSkinCache.get(account) || result.equipped;
@@ -5784,6 +5793,12 @@ async function main() {
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
+  // v1.10.91 변신 따로 판매 A안: the set owners get their transformation (idempotent; new owners of a whole set after this buy it)
+  if (!(await pointStore.worldValue('transformGrant'))) {
+    const sets = SkinCatalog.SKINS.filter((s) => s.slot === 'transform').map((s) => ({ tf: s.id, items: require('./public/plaza/character-transformations.js').find(s.transform).items }));
+    const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
+    if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
+  }
   if (!SkinCatalog.IP_ON) { // v1.10.90 IP 스킨 정리: switched off -> what was paid for them goes back, once
     const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
     if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }

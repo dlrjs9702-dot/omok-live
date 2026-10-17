@@ -11,7 +11,8 @@ function modeOf(character, look = {}) {
   return supportsMode(character, requested) ? requested : character.defaultVariant;
 }
 const selected = (character, look = {}) => character?.variants[modeOf(character, look)] || null;
-function match(look = {}) { return DATA.characters.find(c => Object.entries(c.items).every(([slot, id]) => look[slot] === id)) || null; }
+// v1.10.91 (사용자 2026-10-18): the transformation chosen at the 변신 NPC (look.transform), not the parts worn
+function match(look = {}) { return look.transform ? find(look.transform) : null; }
 
 // Every native joint has its own rest and delta scale. The ordinary avatar keeps its exact common rest.
 // Tracks are cloned and renamed for the loaded GLTF bones: Three strips dots from exported node names.

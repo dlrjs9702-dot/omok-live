@@ -1034,3 +1034,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .inspectList button.note-ok{border-left:4px solid #22c55e}
 :root[data-theme="light"] .inspectCanvas{background:#bfe6ff}
 :root[data-theme="light"] .opsSwitches{border:1px solid rgba(179,156,124,.35)}
+:root[data-theme="light"] .economyBox{border:1px solid rgba(179,156,124,.35)}
+:root[data-theme="light"] .economyBox fieldset{border:0}
+:root[data-theme="light"] .tfRow{border:1px solid rgba(179,156,124,.3)}
+:root[data-theme="light"] .tfRow.chosen{border-color:#8b5cf6;background:rgba(139,92,246,.08)}

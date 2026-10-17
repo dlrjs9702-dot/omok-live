@@ -10,10 +10,10 @@ const { testDatabase } = require('../test-support/pg-database');
 
 // v1.10.90 IP 스킨 정리 (IDEAS #future-skins-double ③): the list of every character skin (the one place to look when they
 // are removed), and the refund: what each owner paid, once, the skins out of the bag and the slots.
-test('IP 스킨 목록: 캐릭터 게임 말·테마 33 + 아바타 44, 모두 ip 표시', () => {
-  assert.equal(IP_SKIN_IDS.length, 77);
-  assert.equal(new Set(IP_SKIN_IDS).size, 77);
-  assert.ok(IP_SKIN_IDS.every((id) => /_(ip|ipt)_/.test(id)));
+test('IP 스킨 목록: 캐릭터 게임 말·테마 33 + 아바타 44 + 변신 11(v1.10.91), 모두 ip 표시', () => {
+  assert.equal(IP_SKIN_IDS.length, 88);
+  assert.equal(new Set(IP_SKIN_IDS).size, 88);
+  assert.ok(IP_SKIN_IDS.every((id) => /_(ip|ipt|tf)_/.test(id)));
 });
 
 async function behaves(store) {

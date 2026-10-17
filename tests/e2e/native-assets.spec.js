@@ -5,6 +5,9 @@ const { characters } = require('../../public/plaza/character-transformations');
 const { IP_GAME } = require('../../public/plaza/skins-x2');
 
 const native = id => characters.find(c => c.id === id);
+// v1.10.91 (사용자 2026-10-18 A안): a set's parts and, apart, its transformation (bought and chosen at the 변신 의상실)
+const tfOf = id => `avatar_tf_${id.replace(/-/g, '_')}`;
+const withTf = id => [...Object.values(native(id).items), tfOf(id)];
 const used=new Set(['character.base',...['male','female'].flatMap(gender=>wardrobeOf({gender}).parts),
   ...['kuromi','mymelody','animal-cat'].flatMap(id=>['character.transform.'+id,...['current','native'].map(mode=>`character.transform.${id}.${mode}`),...['male','female'].flatMap(gender=>wardrobeOf({gender,...native(id).items}).parts)])]);
 const selected=Object.fromEntries(Object.entries(REGISTRY).map(([id,entry])=>[id,used.has(id)?entry:null]));
@@ -43,7 +46,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   for (const who of [a,b]) who.page.on('pageerror', error => errors.push(error.message));
   await post(request, '/api/avatar/gender', b.token, { gender: 'female' });
   for (const [who,id] of [[a,'kuromi'],[b,'mymelody']]) {
-    await buyAndEquip(request,who,Object.values(native(id).items));
+    await buyAndEquip(request,who,withTf(id));
     const mode = who === a ? 'current' : 'native';
     expect((await post(request,'/api/avatar/transformation',who.token,{characterId:id,mode})).status).toBe(200);
     await startIsland(who,id,mode);
@@ -81,14 +84,14 @@ test('전신 변신 복원: 부분 해제와 고양이 세트·여성 외형·�
   test.setTimeout(150000);
   const a=await nativeShopper(browser,request,'변신복원',isMobile),errors=[];
   a.page.on('pageerror',error=>errors.push(error.message));
-  await buyAndEquip(request,a,Object.values(native('kuromi').items));
-  for(const skinId of Object.values(native('animal-cat').items))expect((await post(request,'/api/skins/buy',a.token,{skinId})).status).toBe(200);
+  await buyAndEquip(request,a,withTf('kuromi'));
+  for(const skinId of withTf('animal-cat'))expect((await post(request,'/api/skins/buy',a.token,{skinId})).status).toBe(200);
   await startIsland(a,'kuromi');
-  expect((await post(request, '/api/skins/equip', a.token, { game:'avatar', slot:'hat', skinId:null })).status).toBe(200);
+  expect((await post(request, '/api/skins/equip', a.token, { game:'avatar', slot:'transform', skinId:null })).status).toBe(200); // the transformation off (the parts stay)
   await a.page.reload();
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout:60000 }).toEqual(expect.arrayContaining(['wear.ip_kuromi_outfit']));
   expect(await a.page.evaluate(() => window.PlazaDebug().transformation)).toBeNull();
-  for(const skinId of Object.values(native('animal-cat').items))expect((await post(request,'/api/skins/equip',a.token,{skinId})).status).toBe(200);
+  for(const skinId of withTf('animal-cat'))expect((await post(request,'/api/skins/equip',a.token,{skinId})).status).toBe(200);
   await post(request,'/api/avatar/gender',a.token,{gender:'female'});
   await a.page.reload(); await transformed(a,'animal-cat');
   await a.page.screenshot({path:testInfo.outputPath('cat.png')});
@@ -97,11 +100,11 @@ test('전신 변신 복원: 부분 해제와 고양이 세트·여성 외형·�
 });
 
 test('변신 체형 선택: 상점·내 정보, 저장·무료 변경·부분 해제·사람형 제한', async ({browser,request,isMobile},testInfo)=>{
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const classic = context=>context.addInitScript(()=>{if(/^https?:$/.test(location.protocol))localStorage.setItem('gc.testClassic','1');});
   const a=await shopper(screenBrowser(browser,isMobile),request,'체형선택',10000000,'female',classic);
   const errors=[];a.page.on('pageerror',error=>errors.push(error.message));
-  await buyAndEquip(request,a,Object.values(native('kuromi').items));
+  await buyAndEquip(request,a,withTf('kuromi'));
   const before=(await get(request,'/api/skins',a.token)).data;
   const openShop=async()=>{
     await a.page.locator('#skinShopBtn').click();
@@ -140,11 +143,15 @@ test('변신 체형 선택: 상점·내 정보, 저장·무료 변경·부분 �
   await choose(group,'고유 체형');
   await expect(group.getByRole('button',{name:'고유 체형',exact:true})).toHaveAttribute('aria-pressed','true');
   const hat=a.page.locator(`#myInfoSkinBody button[data-skin="${native('kuromi').items.hat}"]`);
-  await hat.click();await expect(group).toHaveCount(0);
-  await hat.click();await expect(group.getByRole('button',{name:'고유 체형',exact:true})).toHaveAttribute('aria-pressed','true');
+  await hat.click();await expect(group.getByRole('button',{name:'고유 체형',exact:true})).toHaveAttribute('aria-pressed','true'); // a part off: still transformed (v1.10.91)
+  await hat.click();
+  expect((await post(request,'/api/skins/equip',a.token,{game:'avatar',slot:'transform',skinId:null})).status).toBe(200); // the transformation off, then on again: its body kept
+  expect((await get(request,'/api/skins',a.token)).data.avatar.look.transform).toBeUndefined();
+  expect((await post(request,'/api/skins/equip',a.token,{skinId:tfOf('kuromi')})).status).toBe(200);
+  const back=(await get(request,'/api/skins',a.token)).data.avatar.look; expect([back.transform,back.transformationModes.kuromi]).toEqual(['kuromi','native']);
   expect((await get(request,'/api/skins',a.token)).data.balance).toBe(before.balance);
   await a.page.locator('#myInfoCloseBtn').click();
-  await buyAndEquip(request,a,Object.values(native('ironman').items));
+  await buyAndEquip(request,a,withTf('ironman'));
   await a.page.reload();await openShop();
   await expect(a.page.locator('#skinShopBody .skinTransformation')).toHaveCount(0);
   await expectNoScriptError(a.page);expect(errors).toEqual([]);await a.context.close();
