@@ -1576,7 +1576,7 @@
   function setStickEditing(on) {
     document.body.classList.toggle('stickEdit', on); stickEditBar.classList.toggle('hidden', !on);
     if (on) { plaza.controller?.setStick?.(0, 0); plaza.controller?.setRun?.(false); selectCtl('stick'); }
-    else for (const c of Object.values(CONTROLS)) c.el.classList.remove('ctlSelected');
+    else { if (ctlDrag) saveCtl(CONTROLS[ctlDrag.id]); ctlDrag = null; for (const c of Object.values(CONTROLS)) c.el.classList.remove('ctlSelected'); } // (a finger still on a control stops carrying it)
   }
   // only on the island itself (a room's menu has no stick to adjust -- Codex review); leaving the island ends it
   const stickEditable = () => touchIsland && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
@@ -1597,9 +1597,9 @@
     c.el.setPointerCapture(event.pointerId); return true;
   }
   function dragMove(event) {
-    if (ctlDrag?.pointer !== event.pointerId) return false;
+    if (ctlDrag?.pointer !== event.pointerId || !stickEditing()) return false;
     const c = CONTROLS[ctlDrag.id]; const stage = plazaStage.getBoundingClientRect();
-    c.place = clampCtl(c, { x: (event.clientX - stage.left) / stage.width + ctlDrag.dx, y: (event.clientY - stage.top) / stage.height + ctlDrag.dy, size: ctlDrag.size });
+    c.place = clampCtl(c, { x: (event.clientX - stage.left) / stage.width + ctlDrag.dx, y: (event.clientY - stage.top) / stage.height + ctlDrag.dy, size: c.place?.size ?? ctlDrag.size }); // (the slider may have sized it meanwhile)
     applyCtl(c); return true;
   }
   const dragEnd = (event) => { if (ctlDrag?.pointer === event.pointerId) { saveCtl(CONTROLS[ctlDrag.id]); ctlDrag = null; } };
