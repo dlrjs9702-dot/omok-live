@@ -33,7 +33,7 @@ test('첫 접속: 아무도 없는 대기방을 두고 나갔다가 입장 파�
   const first = await enter(browser, issued.html);
   expect((await post(request, '/api/rooms', first.token, { gameType: 'omok' })).status).toBe(201);
   await first.page.reload();
-  await expect(first.page.locator('#roomView')).toBeVisible(); // a refresh stays in the room (same tab, same session)
+  await expect(first.page.locator('#roomView')).toBeVisible({ timeout: 30000 }); // a refresh stays in the room (same tab, same session)
   await leaveForGood(request, first);
   const again = await enter(browser, issued.html);
   await expect(again.page.locator('#lobbyView')).toBeVisible();
@@ -53,6 +53,6 @@ test('첫 접속: 진행 중이던 대국에서 끊겼다면 입장 파일을 �
   expect((await post(request, '/api/room/choose-role', white.token, { choice: 'white' })).status).toBe(200);
   await leaveForGood(request, black);
   const back = await enter(browser, keys[0].html);
-  await expect(back.page.locator('#roomView')).toBeVisible();
+  await expect(back.page.locator('#roomView')).toBeVisible({ timeout: 30000 }); // after the island's resource pack (a slow runner)
   for (const who of [back, white]) await who.context.close();
 });

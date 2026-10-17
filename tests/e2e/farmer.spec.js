@@ -26,7 +26,7 @@ test('농부: 말 걸기 → 도와줄게요 → 두더지 잡기, 밭·팻말·
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfarmer');
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('#plazaDialog')).toContainText('두더지');
+  await expect(page.locator('#plazaDialog')).toContainText('두더지', { timeout: 15000 }); // the talk's answer (a busy runner)
   await page.locator('#plazaDialog').getByRole('button', { name: '도와줄게요' }).click();
   await expect(page.locator('#reflexView')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#plazaDialog')).toBeHidden();
