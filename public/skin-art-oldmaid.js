@@ -73,6 +73,45 @@
   function mansion(ctx, w, h) { ctx.fillStyle = '#2b1a12'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; for (let x = 0; x < w; x += 70) ctx.strokeRect(x + 6, 14, 58, h - 28); const g = ctx.createRadialGradient(w / 2, 0, 10, w / 2, 0, w * .6); g.addColorStop(0, 'rgba(255,214,140,.35)'); g.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }
   function nightTrain(ctx, w, h) { ctx.fillStyle = '#0b1230'; ctx.fillRect(0, 0, w, h); const R = rng(19); for (let i = 0; i < 40; i += 1) { ctx.fillStyle = `rgba(255,${200 + (R() * 50 | 0)},120,${.3 + R() * .5})`; ctx.fillRect(R() * w, R() * h * .7, 18 + R() * 40, 1.6); } ctx.fillStyle = '#1a2246'; ctx.fillRect(0, h * .72, w, h * .28); ctx.fillStyle = 'rgba(255,220,150,.5)'; for (let x = 10; x < w; x += 90) ctx.fillRect(x, h * .78, 60, 40); }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five backs, three premiums, a legend and its room (마술사의 모자
+  // ↔ 마술 극장). Every back stays a dark back next to the light faces.
+  const starry = (c, w, h) => { bgFill(c, w, h, '#1a2550', '#0a1030'); frame(c, w, h, '#e8c35a'); const R = rng(8); c.fillStyle = '#f2d77a'; for (let i = 0; i < 14; i += 1) { starPath(c, 8 + R() * (w - 16), 8 + R() * (h - 16), 2 + R() * 2.4, 1, 5); c.fill(); } };
+  const candy = (c, w, h) => { bgFill(c, w, h, '#5a0e1a', '#2a0610'); c.save(); c.beginPath(); c.rect(4, 4, w - 8, h - 8); c.clip(); c.strokeStyle = 'rgba(255,240,240,.3)'; c.lineWidth = 4; for (let i = -h; i < w + h; i += 12) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + h, h); c.stroke(); } c.restore(); frame(c, w, h, '#f4d6dc'); };
+  const owl = (c, w, h) => { bgFill(c, w, h, '#1d3a2a', '#0b1c12'); frame(c, w, h, '#c8b06a'); c.fillStyle = '#6a5232'; c.beginPath(); c.ellipse(w / 2, h / 2 + 4, 15, 18, 0, 0, TAU); c.fill(); for (const s of [-1, 1]) { c.fillStyle = '#f4ead0'; c.beginPath(); c.arc(w / 2 + s * 6, h / 2 - 2, 5.5, 0, TAU); c.fill(); c.fillStyle = '#1a1208'; c.beginPath(); c.arc(w / 2 + s * 6, h / 2 - 2, 2.4, 0, TAU); c.fill(); c.fillStyle = '#6a5232'; c.beginPath(); c.moveTo(w / 2 + s * 4, h / 2 - 12); c.lineTo(w / 2 + s * 11, h / 2 - 19); c.lineTo(w / 2 + s * 12, h / 2 - 9); c.fill(); } c.fillStyle = '#e0a83a'; c.beginPath(); c.moveTo(w / 2 - 2.4, h / 2 + 3); c.lineTo(w / 2 + 2.4, h / 2 + 3); c.lineTo(w / 2, h / 2 + 7); c.fill(); };
+  const plaid = (c, w, h) => { bgFill(c, w, h, '#1e2a3a', '#101822'); c.save(); c.beginPath(); c.rect(4, 4, w - 8, h - 8); c.clip(); for (let x = 0; x < w; x += 14) { c.fillStyle = 'rgba(200,60,60,.28)'; c.fillRect(x, 0, 5, h); } for (let y = 0; y < h; y += 14) { c.fillStyle = 'rgba(200,60,60,.22)'; c.fillRect(0, y, w, 5); } c.strokeStyle = 'rgba(240,220,170,.25)'; c.lineWidth = 1; for (let x = 7; x < w; x += 14) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); } c.restore(); frame(c, w, h, '#e0c890'); };
+  const crane = (c, w, h) => { bgFill(c, w, h, '#14244a', '#081028'); frame(c, w, h, '#d8e2f4'); c.fillStyle = '#f4f6fb'; c.beginPath(); c.moveTo(w / 2, h / 2 - 2); c.lineTo(w / 2 - 18, h / 2 - 12); c.lineTo(w / 2 - 4, h / 2 + 4); c.closePath(); c.fill(); c.fillStyle = '#dfe6f2'; c.beginPath(); c.moveTo(w / 2, h / 2 - 2); c.lineTo(w / 2 + 18, h / 2 - 12); c.lineTo(w / 2 + 4, h / 2 + 4); c.closePath(); c.fill(); c.fillStyle = '#f4f6fb'; c.beginPath(); c.moveTo(w / 2 - 4, h / 2 + 4); c.lineTo(w / 2 + 4, h / 2 + 4); c.lineTo(w / 2 + 10, h / 2 + 14); c.lineTo(w / 2 + 13, h / 2 + 11); c.lineTo(w / 2, h / 2 + 12); c.closePath(); c.fill(); c.fillStyle = '#c8243e'; c.beginPath(); c.arc(w / 2 + 12, h / 2 + 11, 1.6, 0, TAU); c.fill(); };
+  const galaxyBack = (c, w, h) => { bgFill(c, w, h, '#1a0a3a', '#06020f'); const g = c.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w * .6); g.addColorStop(0, 'rgba(210,150,255,.6)'); g.addColorStop(.4, 'rgba(120,80,220,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); const R = rng(4); for (let i = 0; i < 30; i += 1) { c.fillStyle = `rgba(255,255,255,${.3 + R() * .6})`; c.fillRect(R() * w, R() * h, 1.2, 1.2); } frame(c, w, h, '#c8a8ff'); };
+  const flameBack = (c, w, h) => { bgFill(c, w, h, '#3a0a04', '#140200'); for (let i = 0; i < 3; i += 1) { const g = c.createLinearGradient(0, h, 0, h * .3); g.addColorStop(0, 'rgba(255,120,30,.75)'); g.addColorStop(1, 'rgba(255,220,80,0)'); c.fillStyle = g; c.beginPath(); const x = w * (.3 + i * .2); c.moveTo(x - 10, h - 6); c.quadraticCurveTo(x - 12, h * .55, x, h * (.3 + i * .05)); c.quadraticCurveTo(x + 12, h * .55, x + 10, h - 6); c.fill(); } frame(c, w, h, '#ffb050'); };
+  const iceBack = (c, w, h) => { bgFill(c, w, h, '#0e2a44', '#04121e'); c.strokeStyle = 'rgba(180,230,255,.55)'; c.lineWidth = 1.4; for (let i = 0; i < 6; i += 1) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(w / 2, h / 2); c.lineTo(w / 2 + Math.cos(a) * 18, h / 2 + Math.sin(a) * 18); c.stroke(); for (const k of [8, 13]) { c.beginPath(); c.moveTo(w / 2 + Math.cos(a) * k, h / 2 + Math.sin(a) * k); c.lineTo(w / 2 + Math.cos(a + .5) * (k + 4), h / 2 + Math.sin(a + .5) * (k + 4)); c.stroke(); } } frame(c, w, h, '#a8d8ff'); };
+  // 마술사의 모자 (legend) ↔ 마술 극장 (room)
+  const magicHat = (c, w, h) => { bgFill(c, w, h, '#2a0a1a', '#0e020a'); frame(c, w, h, '#e8c35a'); c.fillStyle = '#0a0a0e'; c.fillRect(w / 2 - 11, h / 2 - 16, 22, 22); c.fillRect(w / 2 - 17, h / 2 + 4, 34, 4); c.fillStyle = '#b8243e'; c.fillRect(w / 2 - 11, h / 2 + 1, 22, 3); c.strokeStyle = '#e8c35a'; c.lineWidth = 2; c.beginPath(); c.moveTo(w / 2 + 6, h / 2 + 14); c.lineTo(w / 2 + 18, h / 2 + 26); c.stroke(); c.fillStyle = '#f4f1e8'; starPath(c, w / 2 - 14, h / 2 - 20, 4, 1.5, 4); c.fill(); starPath(c, w / 2 + 16, h / 2 - 14, 3, 1.2, 4); c.fill(); };
+  const hatFx = (ctx, w, h, t) => { // sparkles burst from the hat's brim
+    for (let i = 0; i < 10; i += 1) { const a = -Math.PI / 2 + (i - 4.5) * .3; const d = 6 + 50 * t; ctx.fillStyle = `rgba(255,230,140,${1 - t})`; starPath(ctx, w / 2 + Math.cos(a) * d, h / 2 + Math.sin(a) * d, 4 * (1 - t) + 1, 1, 4); ctx.fill(); }
+  };
+  const rabbitSpecial = (ctx, w, h, t) => { // a pair is out: a white rabbit pops out of the hat, doves fly off
+    const cx = w / 2; const base = h * .65; const up = Math.sin(clamp01(t / .5) * Math.PI / 2) * h * .25;
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    ctx.fillStyle = '#f8f6f0'; ctx.beginPath(); ctx.ellipse(cx, base - up, 16, 14, 0, 0, TAU); ctx.fill(); for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + s * 7, base - up - 22, 5, 14, s * .2, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#e88aa0'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + s * 7, base - up - 22, 2.4, 9, s * .2, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#1a1a1a'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + s * 5, base - up - 3, 1.8, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#0a0a0e'; ctx.fillRect(cx - 24, base, 48, 30); ctx.fillRect(cx - 32, base - 2, 64, 6);
+    for (let i = 0; i < 3; i += 1) { const k = clamp01((t - .3 - i * .1) / .5); if (k <= 0) continue; ctx.fillStyle = `rgba(255,255,255,${1 - k})`; ctx.beginPath(); ctx.ellipse(cx + (i - 1) * 30 * k + (i - 1) * 10, base - 40 - 60 * k, 8, 4, 0, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  };
+  const curtainWin = (ctx, w, h, t) => { // the curtains part and confetti falls over the stage
+    const k = clamp01(t / .4); ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .85) / .15);
+    ctx.fillStyle = '#9a1428'; ctx.fillRect(0, 0, w * .5 * (1 - k), h); ctx.fillRect(w - w * .5 * (1 - k), 0, w * .5 * (1 - k), h);
+    const R = rng(6); for (let i = 0; i < 40; i += 1) { const x = R() * w; const y = ((R() * h) + t * h) % h; ctx.fillStyle = ['#ffd23f', '#ff6b9a', '#6bc8ff', '#ffffff'][i % 4]; ctx.fillRect(x, y, 4, 7); }
+    ctx.restore();
+  };
+  function magicTheater(ctx, w, h) { // 마술 극장: velvet curtains, a gold proscenium, a spotlight on the boards
+    ctx.fillStyle = '#1a0a10'; ctx.fillRect(0, 0, w, h);
+    const sp = ctx.createRadialGradient(w / 2, h * .75, 10, w / 2, h * .75, w * .45); sp.addColorStop(0, 'rgba(255,236,190,.35)'); sp.addColorStop(1, 'rgba(255,236,190,0)'); ctx.fillStyle = sp; ctx.fillRect(0, 0, w, h);
+    for (const s of [0, 1]) { const x0 = s ? w * .84 : 0; ctx.fillStyle = '#8a1224'; ctx.fillRect(x0, 0, w * .16, h); ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 3; for (let x = x0 + 8; x < x0 + w * .16; x += 14) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); } }
+    ctx.fillStyle = '#8a1224'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(w, 30); for (let x = w; x >= 0; x -= 40) ctx.quadraticCurveTo(x - 20, 52, x - 40, 30); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 4; ctx.strokeRect(4, 4, w - 8, h - 8);
+  }
+
   function previewCards(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); const ch = h * .8; const cw = ch * CW / CH;
     [[w * .22, true], [w * .44, true], [w * .66, true]].forEach(([cx], i) => { const x = cx - cw / 2 + (i === 2 ? 4 : 0); const y = (h - ch) / 2; ctx.save(); ctx.translate(x, y); ctx.scale(cw / CW, ch / CH); d.art(ctx, CW, CH); ctx.restore(); });
@@ -89,5 +128,10 @@
     oldmaid_t2: theme(nightTrain, { borderColor: '#7aa0ff', boxShadow: 'inset 0 0 0 3px #0b1230, 0 0 14px rgba(122,160,255,.4)' }),
     oldmaid_l1: back('l1', duo, '#f0c14e', { fx: shadowHand, win: spotlight, special: lensSpecial, legend: true }),
     oldmaid_l2: back('l2', ticket, '#e8c35a', { fx: punchFx, win: expressWin, special: arriveSpecial, legend: true }),
+    // v1.10.90 스킨 2배
+oldmaid_c6: back('c6', starry, '#e8c35a'), oldmaid_c7: back('c7', candy, '#f4d6dc'), oldmaid_c8: back('c8', owl, '#c8b06a'), oldmaid_c9: back('c9', plaid, '#e0c890'), oldmaid_c10: back('c10', crane, '#d8e2f4'),
+    oldmaid_p4: back('p4', galaxyBack, '#c8a8ff', { fx: pulse('200,168,255') }), oldmaid_p5: back('p5', flameBack, '#ffb050', { fx: pulse('255,176,80') }), oldmaid_p6: back('p6', iceBack, '#a8d8ff', { fx: pulse('168,216,255') }),
+    oldmaid_t3: theme(magicTheater, { borderColor: '#e8c35a', boxShadow: 'inset 0 0 0 3px #1a0a10, 0 0 14px rgba(232,195,90,.4)' }),
+    oldmaid_l3: back('l3', magicHat, '#e8c35a', { fx: hatFx, win: curtainWin, special: rabbitSpecial, legend: true }), // 마술사의 모자 ↔ 마술 극장
   });
 }());
