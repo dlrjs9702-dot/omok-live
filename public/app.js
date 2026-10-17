@@ -10056,7 +10056,7 @@
       list.replaceChildren(...state.rooms.map((room) => {
         const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost';
         const main = document.createElement('span'); main.className = 'messengerRoomMain';
-        const name = document.createElement('strong'); name.textContent = room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`;
+        const name = document.createElement('strong'); name.textContent = `${room.pinned ? '📌 ' : ''}${room.kind === 'dm' ? room.name : `${room.name} (${room.members.length})`}`; // v1.10.91 고정
         const preview = document.createElement('span'); preview.className = 'messengerPreview'; preview.textContent = room.last ? room.last.text : '';
         main.append(name, preview);
         const side = document.createElement('span'); side.className = 'messengerRoomSide';
@@ -10073,7 +10073,7 @@
       if (msg.system) { const p = document.createElement('p'); p.className = 'messengerSystem'; p.textContent = msg.text; return p; }
       const item = document.createElement('div'); item.className = 'chatMessage' + (msg.from === state.me ? ' mine' : '') + (same ? ' same' : '');
       if (!same) { const head = document.createElement('div'); head.className = 'chatMessageHead'; const who = document.createElement('strong'); who.textContent = msg.label; head.append(who); item.append(head); }
-      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText'; text.textContent = msg.text;
+      const row = document.createElement('div'); row.className = 'chatMessageBody'; const text = document.createElement('div'); text.className = 'chatMessageText' + (msg.deleted ? ' deleted' : ''); text.textContent = msg.deleted ? '삭제된 메시지입니다' : msg.text;
       const meta = document.createElement('span'); meta.className = 'messengerMeta';
       // 안 읽은 사람 수 (카톡의 「1」): the members (still let in) besides the sender whose last read is before this line
       const waiting = current.members.filter((m) => m.active && m.id !== msg.from && (current.reads[m.id] || 0) < msg.seq);
@@ -10084,6 +10084,14 @@
         meta.append(n);
       }
       const time = document.createElement('time'); time.textContent = new Date(msg.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); meta.append(time);
+      if (msg.from === state.me && !msg.deleted && Date.now() - Date.parse(msg.at) < 5 * 60 * 1000) { // v1.10.91 메시지 삭제: mine, within 5 minutes, for everyone
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'messengerUnsend'; del.textContent = '삭제'; del.setAttribute('aria-label', '이 메시지 삭제');
+        del.addEventListener('click', async () => {
+          if (!window.confirm('이 메시지를 모두에게서 삭제할까요?')) return;
+          try { await accountApi(`/api/messenger/rooms/${current.id}/unsend`, { seq: msg.seq }); msg.text = ''; msg.deleted = true; render(); } catch (err) { fail(err); }
+        });
+        meta.append(del);
+      }
       row.append(text, meta); item.append(row); return item;
     }
     function render() {
@@ -10102,6 +10110,7 @@
       const group = current.kind !== 'dm';
       byId('messengerInviteBtn').classList.toggle('hidden', !group); byId('messengerRenameBtn').classList.toggle('hidden', !group);
       byId('messengerMuteBtn').textContent = current.muted ? '알림 켜기' : '알림 끄기';
+      byId('messengerPinBtn').textContent = current.pinned ? '고정 해제' : '고정'; // v1.10.91
     }
     async function pull() {
       if (!current) return; const id = current.id;
@@ -10145,6 +10154,17 @@
       } catch {}
     }
     setInterval(badge, 30000);
+    // v1.10.91 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
+    let islandSeen = null;
+    async function islandNotice() {
+      if (msgBtn.classList.contains('hidden') || dialog.open || !document.body.classList.contains('plazaMode')) { islandSeen = null; return; }
+      try {
+        const rooms = (await accountApi('/api/messenger', null, 'GET')).rooms; const now = Object.fromEntries(rooms.map((r) => [r.id, r.unread]));
+        if (islandSeen) for (const r of rooms) if (!r.muted && r.unread > (islandSeen[r.id] || 0) && r.last && !r.last.system) showToast(`💬 ${r.name} · ${r.last.label}: ${r.last.text.slice(0, 40)}`, 4000);
+        islandSeen = now;
+      } catch {}
+    }
+    setInterval(islandNotice, 15000);
     dialog.addEventListener('close', () => { msgBtn.textContent = '메신저'; msgBtn.classList.remove('hasUnread'); badge(); });
     function openRoom(room) { current = room; last = 0; msgs = []; readsKey = ''; box.replaceChildren(); body.classList.add('inRoom'); showHead(); renderRooms(); pull(); byId('messengerInput').focus(); }
     function showPick(mode) { // 'new' | 'invite' | 'dm'
@@ -10173,6 +10193,10 @@
     byId('messengerRenameBtn').addEventListener('click', async () => {
       const name = current && window.prompt('새 방 이름 (20자)', current.name); if (!name) return;
       try { await accountApi(`/api/messenger/rooms/${current.id}/name`, { name }); pull(); refresh(); } catch (err) { fail(err); }
+    });
+    byId('messengerPinBtn').addEventListener('click', async () => { // v1.10.91 대화방 고정 (mine: the top of my list)
+      if (!current) return;
+      try { current = (await accountApi(`/api/messenger/rooms/${current.id}/pin`, { on: !current.pinned })).room; showHead(); refresh(); } catch (err) { fail(err); }
     });
     byId('messengerMuteBtn').addEventListener('click', async () => {
       if (!current) return;

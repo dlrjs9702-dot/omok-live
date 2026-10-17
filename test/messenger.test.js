@@ -49,6 +49,16 @@ async function storeBehaves(store) {
   const back = await store.dmRoom('a', 'b');
   assert.deepEqual([back.room.id, back.joined, back.room.members.sort().join()], [d1.room.id, ['b'], 'a,b']);
   assert.equal((await store.messages(back.room.id)).length, 1);
+  // v1.10.91: pin (mine), unsend (the text gone, the line kept), a system line never
+  await store.setPinned(back.room.id, 'a', true); await store.setPinned(back.room.id, 'a', true);
+  assert.deepEqual((await store.room(back.room.id)).pinned, ['a']);
+  await store.setPinned(back.room.id, 'a', false); assert.deepEqual((await store.room(back.room.id)).pinned, []);
+  const sent = await store.post(back.room.id, 'a', '지울 말');
+  assert.equal((await store.messageAt(back.room.id, sent.seq)).text, '지울 말');
+  await store.unsend(back.room.id, sent.seq);
+  assert.equal((await store.messageAt(back.room.id, sent.seq)).text, '');
+  const sys = await store.post(back.room.id, 'a', '알림', true); await store.unsend(back.room.id, sys.seq);
+  assert.equal((await store.messageAt(back.room.id, sys.seq)).text, '알림');
   await store.leave(back.room.id, 'b');
   const [, raced] = await Promise.all([store.leave(back.room.id, 'a'), store.dmRoom('a', 'b')]); // the last out vs reopening
   const got = await store.room(raced.room.id);
@@ -147,6 +157,16 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.deepEqual([left.room.name, left.messages.map((m) => m.text)], ['아빠', ['둘만', '아빠님이 나갔습니다.']]); // mom keeps the lines
   const again = (await call('/api/messenger/dm', { with: dad.id }, mom.token)).data.room;
   assert.deepEqual([again.id, again.members.length, again.last.text], [dm.id, 2, '아빠님이 들어왔습니다.']);
+  // v1.10.91: unsend (mine, 5 minutes) shows as deleted for everyone; pin puts the room first in my list only
+  const mine = (await call(`/api/messenger/rooms/${dm.id}/messages`, { text: '잘못 보냄' }, mom.token)).data.message;
+  assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, dad.token)).data.error, 'MESSAGE_NOT_FOUND'); // not dad's
+  assert.equal((await call(`/api/messenger/rooms/${dm.id}/unsend`, { seq: mine.seq }, mom.token)).status, 200);
+  const seenByDad = (await call(`/api/messenger/rooms/${dm.id}/messages`, undefined, dad.token)).data.messages.find((x) => x.seq === mine.seq);
+  assert.deepEqual([seenByDad.text, seenByDad.deleted], ['', true]);
+  assert.equal((await call('/api/messenger', undefined, dad.token)).data.rooms.find((r) => r.id === dm.id).last.text, '삭제된 메시지입니다');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/pin`, { on: true }, mom.token)).data.room.pinned, true);
+  assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].id, room.id);
+  assert.equal((await call('/api/messenger', undefined, dad.token)).data.rooms.find((r) => r.id === room.id).pinned, false);
 
   // the kid: let in later, not a member until invited
   await req(`/api/admin/keys/${kid.id}/messenger`, admin, { allowed: true });
