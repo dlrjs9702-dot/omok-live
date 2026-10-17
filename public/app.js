@@ -4294,6 +4294,7 @@
     if (item.reason === 'bank_withdraw') return '예금 찾기';
     if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
+    if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '체납 세금 납부';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
