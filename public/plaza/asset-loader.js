@@ -661,7 +661,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       if (!low.length) throw new Error(`native Low character has no skinned meshes: ${native.id}`);
       const clips = Object.values(base.entry.clips || {}).map(url => byUrl.get(url)?.animations?.[0]).filter(Boolean)
         .map(clip => globalThis.CharacterTransformations.retargetClip(clip, native.entry.nativeRig, undefined, bones));
-      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds });
+      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds, rates: base.entry.rates });
       stagedAnim = anim;
       const carryClip = clips.find(clip => clip.name === base.entry.animations?.carry);
       const arms = (carryClip?.tracks || []).filter(t => /^(Shoulder|UpperArm|LowerArm|Hand).*\.quaternion$/.test(t.name))
@@ -710,13 +710,17 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     const native = plan.transformation && P.pick(registry, plan.transformation, off, null);
     if (native && !off.includes(`character.transform.${native.entry.character}`)) { wearNative(c, plan, base, native); return; }
     const token = {}; c.assetPending = token; shown['character.base'] = 'loading';
-    const urls = [base.entry.url, base.entry.lowUrl, ...parts.flatMap((p) => [p.entry.url, p.entry.lowUrl])].filter(Boolean);
+    // v1.10.79: the body worn under this outfit -- its own (운동복·후드), the bare one with no clothes, else the common one
+    const clothed = parts.some((p) => ['outfit', 'top', 'bottom'].includes(p.entry.fit?.slot));
+    const body = parts.map((p) => p.entry.body).find(Boolean) || (!clothed && base.entry.bare) || base.entry;
+    c.bodyUrl = body.url;
+    const urls = [body.url, body.lowUrl, ...parts.flatMap((p) => [p.entry.url, p.entry.lowUrl])].filter(Boolean);
     const clipUrls = Object.values(base.entry.clips || {});
     Promise.all([...urls, ...clipUrls].map((url) => cache.get(url))).then((loaded) => {
       if (disposed || c.assetPending !== token || !c.root.parent) return;
       const byUrl = new Map([...urls, ...clipUrls].map((url, i) => [url, loaded[i]]));
       if (urls.some((url) => !byUrl.get(url))) { console.warn('wear: missing', urls.filter((url) => !byUrl.get(url))); shown['character.base'] = 'procedural'; return; } // a file failed: procedural
-      const object = cloneObject(byUrl.get(base.entry.url).scene);
+      const object = cloneObject(byUrl.get(body.url).scene);
       place(object, base.entry);
       const bones = new Map(); let rootBone = null;
       object.traverse((o) => { if (o.isBone) { bones.set(o.name, o); if (!o.parent?.isBone) rootBone = o; } });
@@ -743,7 +747,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
         }
       };
       object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } });
-      const lowBody = base.entry.lowUrl ? byUrl.get(base.entry.lowUrl) : null;
+      const lowBody = body.lowUrl ? byUrl.get(body.lowUrl) : null;
       if (lowBody) adopt(lowBody, null, low, null);
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
@@ -753,27 +757,19 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       });
       c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);
-      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds }); // v1.10.41 c.animNames: a character's own idle (the mayor's GuardIdle)
-      // the clips hold the upper arms about 43° out from the body (it read as a gorilla's stance on the island): after
-      // the mixer each upper arm is turned `armTuck` down toward the body, in its parent's space -- about 20° out in every
-      // clip, the clips and joints untouched. The turn of the frame before is taken off first: a clip without an arm
-      // track (Idle) does not set the arm again, and the turn must not pile up.
-      const tuck = [[bones.get('UpperArmL') || bones.get('UpperArm.L'), 1], [bones.get('UpperArmR') || bones.get('UpperArm.R'), -1]].filter(([b]) => b)
-        .map(([bone, side]) => { const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * (base.entry.armTuck ?? 0)); return [bone, q, q.clone().invert()]; });
+      const anim = P.createAnimator(THREE, object, clips, { ...(base.entry.animations || {}), ...(c.animNames || {}) }, { walkSpeed, speeds: base.entry.speeds, rates: base.entry.rates }); // v1.10.41 c.animNames: a character's own idle (the mayor's GuardIdle)
+      // (v1.10.79: the runtime arm tuck is gone -- the assets 36 clips hold the arms in themselves)
       // v1.10.32 운반: while `c.carrying`, the arms hold the thing in front -- CarryIdle's arms over whatever the legs do
       // (Idle, Walk, Run): after the frame's pose the shoulders, arms and hands take that clip's (it holds still); the
       // next frame first puts back what they had, so the tuck and the mixer go on as if nothing had been laid over them
       const carryClip = clips.find((clip) => clip.name === base.entry.animations?.carry);
       const carryArms = (carryClip?.tracks || []).filter((t) => /^(Shoulder|UpperArm|LowerArm|Hand)\.?[LR]\.quaternion$/.test(t.name))
         .map((t) => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
-      const play = anim.update.bind(anim); let tucked = false; let laid = false;
+      const play = anim.update.bind(anim); let laid = false;
       anim.update = (dt, speed) => {
         if (laid) { for (const [bone, , kept] of carryArms) bone.quaternion.copy(kept); laid = false; }
-        if (tucked) for (const [bone, , undo] of tuck) bone.quaternion.premultiply(undo);
         play(dt, speed);
         const posed = ['Nod', 'Clap', 'Bow', 'PickFruit'].includes(anim.clip);
-        tucked = !c.noTuck && !posed; // v1.10.41/42: not over clips that pose the arms themselves (the mayor's, fishing)
-        if (tucked) for (const [bone, q] of tuck) bone.quaternion.premultiply(q);
         if (c.carrying && !posed && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
       };
       c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };

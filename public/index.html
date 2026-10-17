@@ -111,6 +111,8 @@
         <button id="islandBagTab" class="islandChatTab islandBagTab" type="button" aria-haspopup="dialog" aria-controls="islandBagDialog">가방</button>
         <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
         <div id="islandStick" class="islandStick" aria-hidden="true"><span></span></div>
+        <!-- v1.10.79 이동 3단계: tapped = 느리게/보통 걷기, held = 뛰기 (Shift on a PC) -->
+        <button id="islandPaceBtn" class="islandPaceBtn" type="button" aria-label="걸음 바꾸기 (누르고 있으면 뛰기)">걷기</button>
         <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
         <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조이스틱 위치·크기 조정"><span>조이스틱을 끌어서 옮기세요</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="4" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">

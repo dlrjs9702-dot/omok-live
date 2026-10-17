@@ -1964,3 +1964,9 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
   .messengerBody.inRoom .messengerRooms,.messengerBody:not(.inRoom) .messengerRoom{display:none}
   .messengerBack{display:inline-flex}
 }
+
+/* v1.10.79 이동 3단계: the 걸음 button over the stick (touch screens) */
+.islandPaceBtn { display: none; position: absolute; left: 14px; bottom: 200px; z-index: 3; min-width: 64px; padding: 8px 12px; border-radius: 999px; background: rgba(15, 23, 42, .6); color: #f8fafc; border: 1px solid rgba(148, 163, 184, .45); touch-action: none; user-select: none; }
+body.touchIsland .islandPaceBtn { display: block; }
+body.photoMode .islandPaceBtn { visibility: hidden !important; }
+@media (max-height: 500px) { body.touchIsland .islandPaceBtn { bottom: 166px; } }

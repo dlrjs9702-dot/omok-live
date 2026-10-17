@@ -1569,6 +1569,11 @@
   byId('stickResetBtn').addEventListener('click', () => { stickPlace = null; applyStick(); saveStick(); stickSizeInput.value = String(Math.round(currentStick().size)); });
   stickSizeInput.addEventListener('input', () => { stickPlace = clampStick({ ...currentStick(), size: Number(stickSizeInput.value) }); applyStick(); saveStick(); });
   let stickDrag = null;
+  // v1.10.79 이동 3단계: the 걸음 button is the PC's Shift -- a tap switches 느리게/보통, held it runs until let go
+  const paceBtn = byId('islandPaceBtn'); const PACE_LABEL = { slow: '느리게', walk: '걷기', run: '뛰기' };
+  const showPace = () => { paceBtn.textContent = PACE_LABEL[plaza.controller?.pace?.()] || '걷기'; };
+  paceBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); paceBtn.setPointerCapture(event.pointerId); plaza.controller?.paceDown?.(); setTimeout(showPace, 320); });
+  for (const type of ['pointerup', 'pointercancel']) paceBtn.addEventListener(type, () => { plaza.controller?.paceUp?.(); showPace(); });
   islandStick.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     if (stickEditing()) { // adjusting: the finger carries the stick

@@ -426,78 +426,78 @@
     },
     {
       "out": "characters/motions/CarryIdle.glb",
-      "src": "character:02. Motions/CarryIdle.glb",
-      "sha256": "221dd7d8c17279a264c2a83330a694336a5756fab5e4240921d7cda433fcf80f"
+      "src": "motion36:motions/CarryIdle.glb",
+      "sha256": "28e911640d2e02370f9739a0e231a9860360b266c4e22e50d865cfe4c434503f"
     },
     {
       "out": "characters/motions/Cheer.glb",
-      "src": "character:02. Motions/Cheer.glb",
-      "sha256": "c6f295e829452fb189989b74405768a080635aac0559a56efcf0f599ced73f1e"
+      "src": "motion36:motions/Cheer.glb",
+      "sha256": "b60b565a74f5eec2aeb1de4065d6a826782d49445b1bb9cdc78ce69ebce9478d"
     },
     {
       "out": "characters/motions/GatherWeed.glb",
-      "src": "character:02. Motions/GatherWeed.glb",
-      "sha256": "0fd2aee0e9494d818225bf3e27738660f1e266ef68cd75fdf0ba11bba625412e"
+      "src": "motion36:motions/GatherWeed.glb",
+      "sha256": "ef3cc683d6d83fa9d1124b941ac7a368d35d9859d264bdf8d588aada310b631e"
     },
     {
       "out": "characters/motions/Give.glb",
-      "src": "character:02. Motions/Give.glb",
-      "sha256": "f59de311cb39be63750c549877066fcc3ae01d783d32e971b5e62859d44ec344"
+      "src": "motion36:motions/Give.glb",
+      "sha256": "fc53463a00b2091ac5990908e1cbd9a3cecc20d0827e3ef9f7f69147db6bf11f"
     },
     {
       "out": "characters/motions/Idle.glb",
-      "src": "character:02. Motions/Idle.glb",
-      "sha256": "7b9070726e2e267f1595ccfa3a0b4d38a89bd0dbb70a312e0d9bbd12fca3bf2c"
+      "src": "motion36:motions/Idle.glb",
+      "sha256": "134342ac5f5f9376358f319551518dc75aab66b29a43887e82cb85c3929b6dfc"
     },
     {
       "out": "characters/motions/Interact.glb",
-      "src": "character:02. Motions/Interact.glb",
-      "sha256": "623697d6cf9aacbb9c911256bf6fa8e76b9610e6eede63cba8bfaec5fe7c374c"
+      "src": "motion36:motions/Interact.glb",
+      "sha256": "e6ef0415617f0cc8d498c6300eecc2e8c0f9c6b5ef41ec60c42dc475a57b862e"
     },
     {
       "out": "characters/motions/PhotoPose.glb",
-      "src": "character:02. Motions/PhotoPose.glb",
-      "sha256": "c0be82d638a94d4b5a43def0a5cbecfa68cc5ec2115ac305718f33b8fc5a8b18"
+      "src": "motion36:motions/PhotoPose.glb",
+      "sha256": "d37012ac6a29d4149de34ac1895dd8bc8c55b4e6e31b1a626963e5e11a5650f3"
     },
     {
       "out": "characters/motions/Pickup.glb",
-      "src": "character:02. Motions/Pickup.glb",
-      "sha256": "090854862c023b405279743f984a4af93fd61a6090bbd811f8581f2003695f06"
+      "src": "motion36:motions/Pickup.glb",
+      "sha256": "d2d690566fdbcbe560af1debc1eef2065ff20bf81cdd9ec5a1304e999473fa37"
     },
     {
       "out": "characters/motions/Receive.glb",
-      "src": "character:02. Motions/Receive.glb",
-      "sha256": "b9773b90cfd9100fa463bd8063ced397b7b5bf336753d78726ce7d9112737327"
+      "src": "motion36:motions/Receive.glb",
+      "sha256": "160b5d62a9baaae62e660244c5f2431d9b7d134773a35de8c9f4f349cf84f56e"
     },
     {
       "out": "characters/motions/Run.glb",
-      "src": "character:02. Motions/Run.glb",
-      "sha256": "aa54d5c7203de909c63d9860851b08a74f6923d657390e795884c5ec07e8bbd9"
+      "src": "motion36:motions/Run.glb",
+      "sha256": "5608717d706248dbddd9c358e4df5024c0568472c9b960b0639eef8b813e7445"
     },
     {
       "out": "characters/motions/SitDown.glb",
-      "src": "character:02. Motions/SitDown.glb",
-      "sha256": "bb45b3b01a9be4cb23a85afe3cf2c02bede7470ccdb3904cb37d234b59645bf1"
+      "src": "motion36:motions/SitDown.glb",
+      "sha256": "9faa19422dcb863d55d4f9b9dabc50c2ab003deab60225ff9a71522cf48106a8"
     },
     {
       "out": "characters/motions/SitIdle.glb",
-      "src": "character:02. Motions/SitIdle.glb",
-      "sha256": "36fcf91af8d6402d0bc8096319d37e26e6588022e47487a1cafbc5ef11038e3a"
+      "src": "motion36:motions/SitIdle.glb",
+      "sha256": "d11a9c1479ec111037ba100235d18f555ef19732d22da79dbaecfd76dc4c2f66"
     },
     {
       "out": "characters/motions/StandUp.glb",
-      "src": "character:02. Motions/StandUp.glb",
-      "sha256": "1a27537a87a13d4e5ddfce6da4f342fc5770d55c40992c693581d209930bcec2"
+      "src": "motion36:motions/StandUp.glb",
+      "sha256": "ee620f01975cca0d122c003341b89ceb36aee4df87199284fb3d5a98045f3ee3"
     },
     {
       "out": "characters/motions/Walk.glb",
-      "src": "character:02. Motions/Walk.glb",
-      "sha256": "5f379d867d364b29b4e866c2d3ccf8d140d1cfac8f4b9618725dd2a2874fe44e"
+      "src": "motion36:motions/Walk.glb",
+      "sha256": "9745a61d9660b03b36876c0bb308c98e36a316bc558c85d4b5361bf849d876c2"
     },
     {
       "out": "characters/motions/Wave.glb",
-      "src": "character:02. Motions/Wave.glb",
-      "sha256": "38b60dc9729a0ce1f738d93e59fe64d38ef795e46d15739e51b3a9c6a87c3fd3"
+      "src": "motion36:motions/Wave.glb",
+      "sha256": "3761cc01997f6e7ab48765a652c5e1b9e7aa6b11517084a54be8f702c53e0328"
     },
     {
       "out": "characters/props/berries.glb",
@@ -1682,10 +1682,11 @@
     },
     {
       "out": "characters/wear/outfit_hoodie.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_hoodie_high.glb",
-      "sha256": "62b0931908e4061023a235e9aa95e61fce8edd4a1791d4c1cfedc54d62b11243",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_hoodie_low.glb",
-      "lowSha256": "2ff23683d76fede9a4c131c153988d1b3b5e62364c85ccb8fce3450c87da2de5"
+      "src": "motion36:wardrobe/outfit_hoodie.glb",
+      "sha256": "0f104c66e54679c4a00c11440ecf44c4ece29bc90d243416995e5b243fe3f9f5",
+      "lowSrc": "motion36:wardrobe/outfit_hoodie_low.glb",
+      "lowSha256": "bbcc8eebdab1d2bee3e0205368b544b95069f8e86084b426112f6f8114da7b3e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_sailor.glb",
@@ -1738,10 +1739,11 @@
     },
     {
       "out": "characters/wear/outfit_sports.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_sports_high.glb",
-      "sha256": "61cfc6f62d2fb85b547a20174c6b1bd372e8abda59b1d5bf3cfc555e3fe68d71",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_sports_low.glb",
-      "lowSha256": "c33183ad12dbd23110cc9471923bf1334bcd7a5375a062f574808a9a1e937022"
+      "src": "motion36:wardrobe/outfit_sports.glb",
+      "sha256": "ea64e16543d54b1c51ace5506c9a5268f999eec7db893078513aae30dce37fc1",
+      "lowSrc": "motion36:wardrobe/outfit_sports_low.glb",
+      "lowSha256": "2006aa04585f59267a69922095061b79cf23af43a06af9e6cb2517b0b872a49e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/hair_rainbow.glb",
@@ -2208,18 +2210,18 @@
     },
     {
       "out": "characters/motions/GuardIdle.glb",
-      "src": "mayor:04. Motions/GuardIdle.glb",
-      "sha256": "1eeb064c7c531798846d0648a3432c90fa40f590afb6a2bab2e225ff17dc37e1"
+      "src": "motion36:motions/GuardIdle.glb",
+      "sha256": "9b8c1f280cee0ce390285818458e337188d005ae5ec62e0bd14346896535ac4b"
     },
     {
       "out": "characters/motions/Bow.glb",
-      "src": "mayor:04. Motions/Bow.glb",
-      "sha256": "46a420fce28114361fe2a2b327fa971d14d448bd2e40dd8e5386003cf077345f"
+      "src": "motion36:motions/Bow.glb",
+      "sha256": "2ac1c0b6d9671e0c3b0453201368b677ed290dff888a298542fd5f8029e79684"
     },
     {
       "out": "characters/motions/Usher.glb",
-      "src": "mayor:04. Motions/Usher.glb",
-      "sha256": "0718903a1323f077fa26ebdae8173822aff648ce724deb0ecafb68887074e91d"
+      "src": "motion36:motions/Usher.glb",
+      "sha256": "9fa59abea4f04bfe0efb1fd34157b6263ae59d2ad5485c587746b471373eadf2"
     },
     {
       "out": "fishing-v1/fish_anchovy.glb",
@@ -2293,33 +2295,33 @@
     },
     {
       "out": "characters/motions/FishCast.glb",
-      "src": "fishing:03. Motions/FishCast.glb",
-      "sha256": "33c2ebf44608051ca15ead227a04aa2b1979bd22f377b116c2f028f8c4ae0e28"
+      "src": "motion36:motions/FishCast.glb",
+      "sha256": "82986048a4e45fc233d9817a363fa997cd8f49949c5eec108b3ce4bb58fbf20d"
     },
     {
       "out": "characters/motions/FishWait.glb",
-      "src": "fishing:03. Motions/FishWait.glb",
-      "sha256": "81502e5cc1406261142cb6997e64e28fdf2f581597917ac874ad87cbbc4471fe"
+      "src": "motion36:motions/FishWait.glb",
+      "sha256": "ee88a35618442e15c7543fbe7a2934b1c075a4aa0fe75deb6163394ce1b6cb82"
     },
     {
       "out": "characters/motions/FishReel.glb",
-      "src": "fishing:03. Motions/FishReel.glb",
-      "sha256": "5c4c68417fb9dec11ac5550b6992f861889843be19a1b095b908bb33439e403c"
+      "src": "motion36:motions/FishReel.glb",
+      "sha256": "c6a654d09ac35c15513511cf529c60f02a7ef909922ceb6614095029fb9bca02"
     },
     {
       "out": "characters/motions/FishCatch.glb",
-      "src": "fishing:03. Motions/FishCatch.glb",
-      "sha256": "9170ffcdd0cff0f06e1fb359cfe19d2894d0cc2b328a11716eecea2db4afad4c"
+      "src": "motion36:motions/FishCatch.glb",
+      "sha256": "1353966d49f4882d05f540530f5c82258379ee1c62d0430718b0065f29cd9890"
     },
     {
       "out": "characters/motions/FishBite.glb",
-      "src": "fishing:03. Motions/FishBite.glb",
-      "sha256": "d39b191b2bc6d600c0fe0316c61307f6d57218b2e5c8a91436cecfdf2ac18e7d"
+      "src": "motion36:motions/FishBite.glb",
+      "sha256": "fc7085cd2803f5b630b83699ffd3e368298f5270b9a98939ede9a4c6da571fa5"
     },
     {
       "out": "characters/motions/FishMiss.glb",
-      "src": "fishing:03. Motions/FishMiss.glb",
-      "sha256": "74a62652d2670e52c3ac7152dcd63b7f0db0ba73d7ed1877538f2be1b72a4732"
+      "src": "motion36:motions/FishMiss.glb",
+      "sha256": "b711355b46432665fd0bf96f15e7520293873884410b4a63a010ab11f7ceaf20"
     },
     {
       "out": "train-v1/train_carriage.glb",
@@ -2340,8 +2342,8 @@
     },
     {
       "out": "characters/motions/RideLookAround.glb",
-      "src": "train:05. Motions/RideLookAround.glb",
-      "sha256": "78655bd74d580b0725c96de6983ff2d26e6b78c3a7c10322b390408b1f8d8e8f"
+      "src": "motion36:motions/RideLookAround.glb",
+      "sha256": "d1118b06f5cc73f05566d7df4f74a415016ee1e399313cb37702fbe9e893d753"
     },
     {
       "out": "characters/wear/animal_cat_outfit.glb",
@@ -2758,18 +2760,18 @@
     },
     {
       "out": "characters/motions/PickFruit.glb",
-      "src": "life:02. Motions/PickFruit.glb",
-      "sha256": "0f8acdf566411ab37b5e989f2b0028724d57793a1228b8a2055f8a904bf5f8ba"
+      "src": "motion36:motions/PickFruit.glb",
+      "sha256": "38a271cf4db63a8f7f1cf251b22eef968141c8807f27c20fa1850d2964cdfd0d"
     },
     {
       "out": "characters/motions/Nod.glb",
-      "src": "life:02. Motions/Nod.glb",
-      "sha256": "846f91f15e63ae368daf569d2f16f8dbf43270e99513d1d717fc86cc8fc8d9fc"
+      "src": "motion36:motions/Nod.glb",
+      "sha256": "37f49322b742d5d7af688173ecf2d1d49df0ba91e198abd40d833b9250093b7e"
     },
     {
       "out": "characters/motions/Clap.glb",
-      "src": "life:02. Motions/Clap.glb",
-      "sha256": "15ffeb21aacbcc823246f700eac048228c2136f7ef877f2edff1690f1a994054"
+      "src": "motion36:motions/Clap.glb",
+      "sha256": "26af73e6a6f2b5a36f04024b43d2b39b214817f023f063c26ef426db5ecda16b"
     },
     {
       "out": "life-v1/quest_camera_bag.glb",
@@ -4340,6 +4342,50 @@
       "lowSrc": "transformationChoices:animals/models/cow.current.low.glb",
       "lowSha256": "292c034ec021f4a102d47e205fe43a1de5e83c9be09ff08f80aa3c5c016dfc63",
       "precompressed": true
+    },
+    {
+      "out": "characters/motions/SlowWalk.glb",
+      "src": "motion36:motions/SlowWalk.glb",
+      "sha256": "5afe64b0e7669cde90ce2459031f5c8c62069317846735f32a03160cc91f424c"
+    },
+    {
+      "out": "characters/motions/IdleLookAround.glb",
+      "src": "motion36:motions/IdleLookAround.glb",
+      "sha256": "7003b0d63157c82074890d4c4a3a367e4c6226bbeaa51d2f63879abcc8ca5348"
+    },
+    {
+      "out": "characters/motions/NoticeNeighbor.glb",
+      "src": "motion36:motions/NoticeNeighbor.glb",
+      "sha256": "1fe33d7ee0187487c71ddd6c1408b75d6f0203afbf73242f26e3bc263767523c"
+    },
+    {
+      "out": "characters/motions/GreetingSmall.glb",
+      "src": "motion36:motions/GreetingSmall.glb",
+      "sha256": "40c33dceeb91c06dba798dc5e145b430baec2df7e6c747dbb9f1de15f6beb4f2"
+    },
+    {
+      "out": "characters/body_bare.glb",
+      "src": "motion36:wardrobe/body_core.glb",
+      "sha256": "e941403f2b4eedb592a09056239ceb798a67e0fea094201129dec2bc9dbdf585",
+      "lowSrc": "motion36:wardrobe/body_core_low.glb",
+      "lowSha256": "028b79720a554bffdf1b0fbe04e7f0cb6ed60af3557479fce3d4b913785f2129",
+      "precompressed": true
+    },
+    {
+      "out": "characters/body_sports.glb",
+      "src": "motion36:wardrobe/body_sports.glb",
+      "sha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d",
+      "lowSrc": "motion36:wardrobe/body_sports_low.glb",
+      "lowSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f",
+      "precompressed": true
+    },
+    {
+      "out": "characters/body_hoodie.glb",
+      "src": "motion36:wardrobe/body_hoodie.glb",
+      "sha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d",
+      "lowSrc": "motion36:wardrobe/body_hoodie_low.glb",
+      "lowSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4360,6 +4406,7 @@
     "ground": "25. Game Island ground cover 2026-10-12",
     "skinsx2": "27. Game Island skins x2 2026-10-13",
     "overhaul": "28. Game Island asset overhaul 2026-10-14",
-    "transformationChoices": "30. Game Island transformation choices 2026-10-14"
+    "transformationChoices": "30. Game Island transformation choices 2026-10-14",
+    "motion36": "36. Game Island expressive motion repair 2026-10-15/delivery"
   }
 }

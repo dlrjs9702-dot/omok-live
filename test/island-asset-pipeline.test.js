@@ -92,6 +92,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');
+      for (const body of [entry.body, entry.bare].filter(Boolean)) { await check(id, body.url, 'body High'); await check(id, body.lowUrl, 'body Low'); } // v1.10.79 the bodies worn under 운동복·후드 and with no clothes
       continue;
     }
     assert.deepEqual(Object.keys(entry.seasons), P.SEASONS, `${id} 사계절`);
