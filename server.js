@@ -889,12 +889,45 @@ function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
 
+// v1.10.89 낚시왕 (IDEAS #future-fishing-dex, 사용자 2026-10-16): a week's (Seoul Monday to Monday) 1st by the points the
+// harbour fisherman paid, closed once after it ends, holds 「낚시왕」 the week after (a title worn in the title slot,
+// shown only while it is theirs). A tie: who reached the total first, then the account id. None sold: nobody. From the
+// week of 2026-10-12 on (no earlier week is made up).
+const FISHKING_TITLE = 'title_fishking'; const FISHKING_FIRST_WEEK = '2026-10-12';
+let fishkingCache = { week: null, id: null }; let fishkingSettling = null;
+async function settleFishkingWeeks(now = nowMs()) {
+  if (fishkingSettling) return fishkingSettling;
+  fishkingSettling = (async () => {
+    for (let week = previousWeek(climbWeekOf(now)), n = 0; week >= FISHKING_FIRST_WEEK && n < 8; week = previousWeek(week), n += 1) {
+      const key = `fishking_week:${week}`;
+      if (await pointStore.titleWeekResult(key)) break; // closed (and the ones before it)
+      const rows = (await pointStore.fishSalesWeek(new Date(weekStartMs(week)).toISOString(), new Date(weekStartMs(nextWeekOf(week))).toISOString()))
+        .sort((a, b) => b.total - a.total || String(a.lastAt).localeCompare(String(b.lastAt)) || a.userId.localeCompare(b.userId));
+      const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
+      const ranking = rows.slice(0, 10).map((r, i) => ({ userId: r.userId, name: labels.get(r.userId) || (r.userId === 'admin' ? '관리자' : '게스트'), total: r.total, rank: i + 1 }));
+      await pointStore.settleTitleWeek(key, { kind: 'fishking_week', week, fishking: ranking[0]?.userId || null, ranking });
+    }
+    await refreshFishking(now);
+  })().catch((error) => console.error('낚시왕 주간 결산 실패:', error.message)).finally(() => { fishkingSettling = null; });
+  return fishkingSettling;
+}
+async function refreshFishking(now = nowMs()) {
+  const week = previousWeek(climbWeekOf(now));
+  const id = (await pointStore.titleWeekResult(`fishking_week:${week}`))?.fishking || null;
+  if (fishkingCache.week === week && fishkingCache.id === id) return;
+  fishkingCache = { week, id }; refreshTaxLooks(); // name tags follow at once
+}
+function isFishking(account, now = nowMs()) {
+  return Boolean(account) && fishkingCache.week === previousWeek(climbWeekOf(now)) && fishkingCache.id === account;
+}
+
 function isChampion(account, now = nowMs()) {
   return championCache.week === previousWeek(climbWeekOf(now)) && championCache.ids.has(account);
 }
 const climbWeekTicker = setInterval(() => {
   if (championCache.week !== previousWeek(climbWeekOf(nowMs()))) refreshChampions().catch(() => {}); // Monday 00:00: last week's champions expire at once
   settleDonationWeeks(); // v1.10.5: closes last week's donations (Monday 00:00) and swaps the statues (00:30)
+  settleFishkingWeeks(); // v1.10.89 낚시왕
   settleClimbWeeks();
 }, 60 * 1000);
 climbWeekTicker.unref?.();
@@ -967,6 +1000,7 @@ const taxDebt = new Map(); // account -> what it owes
 const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
+  if (equipped?.avatar?.title === FISHKING_TITLE) shown.title = isFishking(account) ? '낚시왕' : null; // v1.10.89
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
@@ -3574,6 +3608,7 @@ async function requestHandler(req, res) {
     const state = await pointStore.skinState(account);
     const { balance } = await pointStore.getAccount(account);
     const dexTitles = IslandFishing.titlesFor(IslandFishing.collectionCount(await pointStore.dexOf(account))).map(({ id, name }) => ({ id, name })); // v1.10.42 도감 칭호
+    if (isFishking(account)) dexTitles.unshift({ id: FISHKING_TITLE, name: '낚시왕' }); // v1.10.89 (this week)
     return sendJson(res, 200, { ok: true, catalog: catalogView(), owned: state.owned, equipped: state.equipped, balance, avatar: lookFor(account, state.equipped), champion: isChampion(account), hoguking: isHoguking(account), delinquent: taxDebt.get(account) > 0, debt: taxDebt.get(account) || 0, dexTitles });
   }
 
@@ -3706,7 +3741,10 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     let skinId = null; let free = false;
     const dexTitle = IslandFishing.dexTitle(body.skinId); // v1.10.42: a 도감 title, worn in the same slot once its finds are in
-    if (dexTitle) {
+    if (body.skinId === FISHKING_TITLE) { // v1.10.89: this week's 낚시왕 only
+      if (!isFishking(account)) return sendError(res, 409, 'SKIN_NOT_OWNED', '이번 주 낚시왕만 쓸 수 있는 칭호입니다.');
+      skinId = FISHKING_TITLE; free = true;
+    } else if (dexTitle) {
       if (IslandFishing.collectionCount(await pointStore.dexOf(account)) < dexTitle.need) return sendError(res, 409, 'SKIN_NOT_OWNED', '도감을 더 채우면 쓸 수 있는 칭호입니다.');
       skinId = dexTitle.id; free = true;
     } else if (body.skinId !== null && body.skinId !== undefined) {
@@ -4892,13 +4930,19 @@ async function requestHandler(req, res) {
     if (!session) return;
     const me = pointAccountForSession(session); const now = nowMs(); const current = previousWeek(climbWeekOf(now));
     const weeks = await pointStore.titleWeeks();
-    const titles = [['champion', '챔피언', '등반 도전 주간 1위'], ['hoguking', '호구왕', '기부 주간 1위']].map(([id, name, about]) => {
+    const titles = [['champion', '챔피언', '등반 도전 주간 1위'], ['hoguking', '호구왕', '기부 주간 1위'], ['fishking', '낚시왕', '어부 판매 주간 1위']].map(([id, name, about]) => {
       const list = weeks.filter((w) => w.title === id && w.holders.length);
       return { id, name, about, kind: '주간', since: list[0]?.at?.slice(0, 10) || null,
         entries: list.map((w, i) => ({ n: i + 1, names: w.holders.map((h) => h.name), mine: w.holders.some((h) => h.id === me), week: w.week,
           start: nextWeekOf(w.week), end: new Date(Date.parse(`${nextWeekOf(nextWeekOf(w.week))}T00:00:00Z`) - 86400000).toISOString().slice(0, 10), current: w.week === current })) };
     });
     return sendJson(res, 200, { ok: true, titles });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fishking/settle' && req.method === 'POST') { // v1.10.89
+    const body = await parseJson(req); const now = Number(body.now) || nowMs();
+    await settleFishkingWeeks(now);
+    if (body.asCurrent) { const r = await pointStore.titleWeekResult(`fishking_week:${previousWeek(climbWeekOf(now))}`); fishkingCache = { week: previousWeek(climbWeekOf(nowMs())), id: r?.fishking || null }; refreshTaxLooks(); } // (tests: that week as if it had just closed)
+    return sendJson(res, 200, { ok: true, fishking: fishkingCache });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
     const body = await parseJson(req);
@@ -5554,6 +5598,7 @@ async function main() {
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
+  settleFishkingWeeks(); // v1.10.89 낚시왕
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
     let created = 0;
