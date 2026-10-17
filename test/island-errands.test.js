@@ -51,6 +51,8 @@ async function affinityBehaves(store, reopen) {
   for (let k = 0; k < 101; k += 1) await store.affinityAdd(a, '2026-10-19', [{ n: 3, delta: 10 }]);
   assert.equal((await store.affinityOf(a))[3], 999);
   await assert.rejects(store.affinityAdd(a, '2026-10-19', [{ n: 2, delta: 50 }]));
+  await Promise.all([1, 2, 3].map(() => store.affinityAdd(b, '2026-10-19', [{ n: 7, delta: 1, daily: true }]))); // two talks at once: once (Codex)
+  assert.deepEqual(await store.affinityOf(b), { 7: 1 });
   if (reopen) assert.deepEqual(await (await reopen()).affinityOf(a), { 2: 5, 3: 999 });
 }
 test('호감도 저장(JSON): 하루 첫 대화는 한 번만, 심부름은 매번, 상한, 계정별·재시작 유지', async () => {

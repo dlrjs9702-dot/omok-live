@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.91 주민 대화·호감도·심부름, 경제 값 관리, 변신 의상실(변신 따로 판매 A안)
+
+- 지시(사용자 2026-10-18): 「주민들에게 이름과 설정, 설정에 맞는 대사, 퀘스트가 없어도 대화(기존 대화 카메라 그대로), 주민끼리 찾기·가져다주기·사다 주기」, 「호감도에 따라 대사 4단계」, 「경제 수치 열 수 있게」, 「포차코는 다른 캐릭터와 같은 가격, 기존 이용자 A안」.
+- 주민(`public/plaza/island-cast.js`): 걷는 주민 10명(n 0~9) 이름·역할·설정·4단계 대사(+아침·밤), 이야기 주민 5명(n 10~14) 대사. `{me}`는 이용자 이름. 말 걸기: 서 있는 주민 2.2m 안에서 `resident:<n>`(대화 카메라·마주 보기), 서버 `POST /api/island/resident/talk`이 같은 시드로 주민 위치를 계산해 4m 안 확인.
+- 심부름(`lib/island-errands.js`): 서울 하루 3개(같은 날 모두 같음, 부탁하는 주민 서로 다름) 찾기(대상에게 들은 뒤 부탁한 주민에게 알리면 2,000P)·전하기(대상에게 말하면 1,500P), `claimEvent`로 계정당 하루 1회 지급, 진행 단계는 메모리(재시작 시 다시 부탁받음). 머리 위 ★/✓, 추적창 「심부름 · …」. 「사다 주기」는 잡화점과 함께.
+- 호감도(`affinityOf`/`affinityAdd`, JSON `island.affinity`, PG 새 표 `resident_affinity`): 하루 첫 대화 +1, 심부름 부탁한 주민 +3·받은 주민 +2, 이야기 단계 +2, 단계 기준 5·15·30, 상한 999. 대화창 아래 「아는 사이 ♥♥」.
+- 경제 값 관리(`lib/economy.js`, `/api/admin/economy`): 생활 자원·물고기 판매가, 지뢰찾기 보상, 심부름 보상을 관리자 창 표에서 변경(범위 1~기본×10, 확인창, 변경 이력 200개·되돌리기, 서버 `worldValue('economy')`). 은행·세금·퀘스트 단계·원장은 코드에 둠.
+- 변신 따로 판매 A안(`lib/skins.js` `avatar_tf_*` slot `transform`, 가격 = 세트 파츠 합): 파츠 착용만으로는 변신하지 않고 `look.transform`이 정함(`character-transformations.js` `match`). 시작 때 1회 `grantTransformations`: 세트 전부 보유 계정에 변신 무료 지급, 세트를 다 입고 있던 계정은 변신 선택(`worldValue('transformGrant')`). 상점가 입구(28, 10)의 「변신 의상실」(임시 부스, assets 42로 교체 예정) `/api/transformations`, 상점 목록에서는 제외. 기존 「잡화점」(모자·장식) 이름은 「소품 가게」.
+- CI: 새 섬 e2e(resident-talk·transform-shop)는 plaza 작업에. 검증: 단위(errands·economy·transform-grant JSON/PG·skins·native-transformations·point-store) Windows 전용 6건 외 통과, e2e resident-talk·transform-shop(PC·휴대폰)·economy-admin·native-assets 통과. 실제 휴대폰·GPU 미검증.
+
 ## v1.10.90 스킨 2배·IP 환불, 낚시 도감 21종, 잡초 게시판·제초왕, UI 그림, 메신저 보완, 섬 시간대, 에셋 점검실·운영 스위치
 
 - 지시(사용자 2026-10-17): 「기록된 구현을 하나씩 계속」; IDEAS 스킨 2배, IP 스킨 정리, 낚시 도감 확장(assets 40), 잡초 게시판, UI 그림(assets 38), 메신저 보완, 섬 시간대, `#future-admin-console` ①②③.
@@ -35,12 +45,3 @@
 - 낚시왕(IDEAS `#future-fishing-dex`): 그 주(서울 월~월) 어부 판매 지급 합계 1위(동률: 먼저 도달, 계정 ID), 다음 한 주 칭호 `title_fishking`(칭호 칸 착용·보유 중에만 표시), 판매 기록에서 집계(`fishSalesWeek`), 결산은 한 번(`settleTitleWeek`), 2026-10-12 주부터. 낚시 도감 13종 에셋은 assets 40 제작 완료(연결은 다음).
 - 밭 수확(IDEAS `#future-island-minigames`): 밭 3단계일 때 밭 안에서 SPACE · 밭 · 수확 → 계정마다 주 1회 「밭 채소」(상인 3,000P), `POST /api/island/farm/harvest`, `GET /api/island/farm`의 `harvested`.
 - 검증: e2e `shop-browse.spec.js`(PC·휴대폰: 보유·검색·없음 안내·3D 미리보기 모델 로드·내 정보 부위 탭), `action-lock.spec.js`(PC: 이모트 중 정지·연타 무시·끝나면 누른 방향키로 이동), `title-hall.spec.js`(PC·휴대폰), `plaza.spec.js` 낚시(구경하는 사람 화면에 단계·잡은 물고기), 단위 `island-items`·`island-weeds-server`·`climb-server`(명예의 전당)·`island-fishing`(낚시왕·집계)·`farmer-quest-server`(수확), 화면 확인. 실제 휴대폰·GPU 미검증.
-
-## v1.10.88 메신저 카카오톡처럼
-
-- 지시(사용자 2026-10-17): IDEAS `#future-messenger-kakao` 구현, 보관은 A안(서버에 전부 보관·기기 저장 없음, v1.10.87과 같음).
-- 저장(`lib/messenger-store.js`, JSON·PostgreSQL 같은 동작): 계정별 마지막 읽은 번호(`setRead`, 앞으로만·방 회원만), 1:1 방(`dmRoom`, 두 사람당 한 방 — PostgreSQL은 쌍 잠금; 나간 사람이 다시 열리면 재입장 `joined`), 시스템 문구(`post(..., system)`; PostgreSQL은 기존 표를 바꾸지 않고 보낸 사람 앞에 `!`), 방의 마지막 메시지(`last`), 이름 바꾸기·알림 끄기. 새 표 `messenger_reads`·`messenger_mutes`·`messenger_dm`(기존 표 변경 없음).
-- 서버(`/api/messenger*`): 방 보기에 `kind`·`unread`·`muted`·`reads`·`last`·회원 `active`(허용 해제·권한 취소는 안 읽은 사람 셈에서 뺌). 대화를 받으면 그 번호까지 읽음, 내가 보낸 줄은 읽음. `POST /api/messenger/dm`(1:1, 이름 = 상대), 초대·만들기·나가기·이름 변경 때 시스템 문구, `POST …/name`(단체만)·`…/mute`, 1:1 방 초대 막음, 이미 있는 사람 초대 막음.
-- 화면(`public/app.js` messenger): 목록에 마지막 메시지·시간·안 읽은 수·🔕, 「1:1 대화」, 방 머리 「이름」·「알림 끄기」, 메시지 옆 안 읽은 사람 수(마우스 올리면 이름, 휴대폰은 눌러서), 날짜 구분선, 같은 사람 연속 메시지는 이름 한 번, 가운데 시스템 문구, 나가기 확인창 「나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다」. 메신저 버튼 알림은 서버의 안 읽은 수(알림 끈 방 제외) — 기기별 `gc.messengerSeen`은 더 쓰지 않음.
-- 남긴 것: 실시간(SSE) 대신 지금의 3초·10초 폴링 유지, 섬·게임 안 새 메시지 알림, 메시지 삭제(제안), 대화 목록 고정(선택). 업데이트 직후 기존 방은 서버 읽음 기록이 없어 한 번 전부 안 읽음으로 보임.
-- 검증: `test/messenger.test.js`(JSON·PostgreSQL 읽음·1:1 동시 열기 한 방·재입장·시스템 문구·이름·알림, API 읽음·1:1·나가기 뒤 기록 유지·재입장 문구·허용 해제 active), e2e `messenger.spec.js` PC·휴대폰(시스템 문구, 「1」이 상대가 읽으면 사라짐, 서버 안 읽은 수 2, 목록 미리보기, 1:1 방 이름·초대 숨김, 나가기 경고 문구), 화면 확인. 실제 휴대폰 미검증.
