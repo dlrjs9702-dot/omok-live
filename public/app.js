@@ -1730,7 +1730,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2105,6 +2105,29 @@
     islandPlaceSubmit.textContent = `${ISLAND_PLACES[islandPlace].verb} +${total.toLocaleString('ko-KR')}P`;
     islandPlaceSubmit.disabled = !mine.length;
   }
+  // v1.10.86 주민세: the 세금 창구 (its own clerk) -- what I owe (체납) and paying it; tonight's tax as a guide
+  const taxRow = document.getElementById('islandTaxRow'); const taxDialog = document.getElementById('taxDialog'); const taxStatus = document.getElementById('taxStatus');
+  async function openTax() {
+    taxStatus.textContent = '';
+    const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+    await drawTax(); if (!taxDialog.open) taxDialog.showModal();
+  }
+  document.getElementById('taxCloseBtn').addEventListener('click', () => taxDialog.close());
+  async function drawTax() {
+    try {
+      const t = await api('/api/island/tax'); const P = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+      document.getElementById('islandTaxText').textContent = t.debt > 0 ? `체납 세금 ${P(t.debt)} — 다 내기 전까지 체납자입니다.` : `체납 없음 · 오늘 밤 주민세 약 ${P(t.nextTax)} (재산의 ${Math.round(t.rate * 100)}%, 최소 ${P(t.minimum)})`;
+      document.getElementById('islandTaxPay').classList.toggle('hidden', !(t.debt > 0));
+    } catch (error) { taxStatus.textContent = error.message; }
+  }
+  document.getElementById('islandTaxPay').addEventListener('click', async () => {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api('/api/island/tax', { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID() }) });
+      taxStatus.textContent = r.paid ? `세금 ${Number(r.paid).toLocaleString('ko-KR')}P 납부${r.debt ? ` · 남은 체납 ${Number(r.debt).toLocaleString('ko-KR')}P` : ' · 체납 완납'}` : '낼 포인트가 없습니다.';
+      loadPoints(); refreshPlazaAvatar(); drawTax();
+    } catch (error) { taxStatus.textContent = error.message; }
+  });
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = '';
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
@@ -2731,7 +2754,7 @@
     }
   }
   function applyPlazaAvatar() {
-    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
+    plaza.controller?.setAvatar?.({ look: plazaAvatar?.look || {}, title: plazaAvatar?.title || null, champion: plazaChampion, hoguking: plazaHoguking, delinquent: Boolean(plazaAvatar?.delinquent), name: sessionRole === 'admin' ? '관리자' : (sessionLabel || '게스트') });
   }
   window.PlazaDebug = () => (plaza.controller ? { ...plaza.controller.debug(), myId: plazaMyId } : null);
   // For tests: stand somewhere else as if entering the plaza again there (leave, then the next pose starts fresh).
@@ -4092,6 +4115,8 @@
     if (item.reason === 'daily_attendance') return '출석체크';
     if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
     if (item.reason === 'bank_withdraw') return '예금 찾기';
+    if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
+    if (item.reason === 'tax_payment') return '체납 세금 납부';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
         const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';

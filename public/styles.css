@@ -2008,3 +2008,7 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .bankSums>div{display:grid;gap:2px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #273449}
 .bankSums small{color:#94a3b8;font-size:.72rem}.bankSums strong{font-size:1.15rem;font-weight:900;color:#fde68a}
 .bankForm{display:grid;gap:8px;margin-top:8px}.bankButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* v1.10.86 주민세: the 민원 창구 tax line */
+.islandTaxRow{display:grid;gap:8px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #273449}
+.islandTaxRow p{margin:0;font-size:.82rem;color:#fde68a}
+.recordsDialog.taxDialog{--g1:#991b1b;--g2:#7f1d1d;width:min(92vw,420px)} /* v1.10.86 세금 창구 */

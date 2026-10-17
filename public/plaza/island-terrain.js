@@ -296,11 +296,11 @@
   let natureCache = null; const treeBlocks = []; // v1.10.47: places a tree must not stand (under the train's rail)
   function addTreeBlock(fn) { treeBlocks.push(fn); natureCache = null; }
   const natureBlocks = [];
-  // (v1.10.85: the counter has two windows -- 민원 on the left, 예금 on the right)
+  // (v1.10.85/86: the counter has three windows, each with its own clerk -- 민원 (left), 세금 (middle), 예금 (right))
   // v1.10.84 관공서 실내 (IDEAS 2026-10-07 「관공서 실내 공간」): a separate room, the 1층 민원실, set far off the island (past
   // the fog, so neither place shows in the other) -- its own coordinates for the server's positions too. Local layout:
   // the door on +z (the way in and out), the counter across the back (-z) with the clerk behind it, benches at the sides.
-  const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 16, d: 11, entry: Object.freeze({ lx: 0, lz: 3.4 }), exit: Object.freeze({ lx: 0, lz: 4.7 }), desk: Object.freeze({ lx: -1.7, lz: -1.9 }), bank: Object.freeze({ lx: 1.7, lz: -1.9 }), counter: Object.freeze({ x0: -3.4, x1: 3.4, z: -2.5 }) });
+  const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 16, d: 11, entry: Object.freeze({ lx: 0, lz: 3.4 }), exit: Object.freeze({ lx: 0, lz: 4.7 }), desk: Object.freeze({ lx: -2.3, lz: -1.9 }), tax: Object.freeze({ lx: 0, lz: -1.9 }), bank: Object.freeze({ lx: 2.3, lz: -1.9 }), counter: Object.freeze({ x0: -3.4, x1: 3.4, z: -2.5 }) });
   const roomWorld = (lx, lz) => ({ x: TOWNHALL_ROOM.x + lx, z: TOWNHALL_ROOM.z + lz });
   const inRoom = (x, z, pad = 0) => Math.abs(x - TOWNHALL_ROOM.x) <= TOWNHALL_ROOM.w / 2 + pad && Math.abs(z - TOWNHALL_ROOM.z) <= TOWNHALL_ROOM.d / 2 + pad;
   // where one may stand inside: within the walls (0.6 m off them) and in front of the counter
