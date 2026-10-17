@@ -58,6 +58,8 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     ...['flowerbed_empty', 'flowerbed_bloom', 'photo_frame', 'fishing_rod', 'watering_can', 'camera_bag'].map((s) => `quest.${s}`),
     // v1.10.73 마을 환경정비사업 ① 길 3단계 (assets/24): the 11 path pieces in use
     ...Object.keys(REGISTRY).filter((id) => id.startsWith('path.')),
+    // v1.10.80 농부 × 두더지 잡기 (assets 26): the field's four stages, the helpers' sign, the farmer and his mallet
+    ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.mallet', 'character.farmer',
     'ground.season', 'ground.moss', 'ground.fern', 'ground.shrub', 'ground.flowers', // ② 땅 다듬기 (assets/25)
     'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna'].map((f) => `fish.${f}`)].sort());
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
@@ -88,7 +90,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1|halloween-decor-v1|townhall-v2|fishing-v1|train-v1|life-v1|path-tiers-v1|ground-cover-v1)\//, id); // v1.10.32 + snowcaps, the sea sights
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1|halloween-decor-v1|townhall-v2|fishing-v1|train-v1|life-v1|path-tiers-v1|ground-cover-v1|farmer-v1)\//, id); // v1.10.32 + snowcaps, the sea sights
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');

@@ -563,11 +563,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   function dress(ids, c) {
     const hit = P.pick(registry, ids, off, null); if (!hit) return; // characters have no season
     c.assetPending = hit.id; shown[hit.id] = 'loading';
-    cache.get(hit.entry.url).then((gltf) => {
+    // v1.10.80 `motions`: a whole character on the common rig moved by the common motion files (the farmer)
+    const base = hit.entry.motions ? registry['character.base'] : null; const clipUrls = Object.values(base?.clips || {});
+    Promise.all([cache.get(hit.entry.url), ...clipUrls.map((url) => cache.get(url))]).then(([gltf, ...motions]) => {
       if (disposed || c.assetPending !== hit.id || !c.root.parent) return;
       if (!gltf) { shown[hit.id] = 'procedural'; return; }
       const object = instance(gltf, hit.entry);
-      const anim = P.createAnimator(THREE, object, gltf.animations, hit.entry.animations || {}, { walkSpeed, speeds: hit.entry.speeds });
+      const clips = base ? motions.map((m) => m?.animations?.[0]).filter(Boolean) : gltf.animations;
+      const anim = P.createAnimator(THREE, object, clips, base ? base.animations : hit.entry.animations || {}, { walkSpeed, speeds: (base || hit.entry).speeds, rates: base?.rates });
       c.assetRoot = object; c.anim = anim; c.root.add(object); c.body.visible = false; invalidateOcclusion(c.root); shown[hit.id] = 'model';
     }).catch((error) => { shown[hit.id] = 'procedural'; onError(hit.id, error); });
   }

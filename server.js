@@ -1020,6 +1020,16 @@ function questBagFresh(st, account) {
   st.reading = true;
   pointStore.questDoc(account, st.week).then(({ bag }) => { st.bag = bag; st.bagAt = nowMs(); }).catch(() => {}).finally(() => { st.reading = false; });
 }
+let islandFarmAt = 0; let islandFarmView = null; // v1.10.80: asked again at most every 10 s (and at once after a helped round)
+async function islandFarm() {
+  const week = questWeek();
+  if (islandFarmView?.week === week && nowMs() - islandFarmAt < 10000) return islandFarmView.view;
+  const ids = await pointStore.questHelpers(week, 'farmer');
+  const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
+  const names = ids.map((id) => (id === 'admin' ? '관리자' : labels.get(id))).filter(Boolean);
+  islandFarmView = { week, view: { stage: Math.min(3, names.length), names } }; islandFarmAt = nowMs();
+  return islandFarmView.view;
+}
 async function questApply(account, fn, scope = 'week') {
   const st = await questState(account);
   const out = await pointStore.questApply(account, scope==='fixed'?'fixed':st.week, fn);
@@ -3126,7 +3136,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.79' });
+    return sendJson(res, 200, { ok: true, version: '1.10.80' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4060,6 +4070,7 @@ async function requestHandler(req, res) {
       points: verdict === 'ok' ? Reflex.POINTS[run.level] : 0, daily: { day: kstDate(now), cap: Reflex.DAILY_CAP },
       title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
     if (out.points) notifyPointsChanged([account]);
+    if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a paid round counts
     return sendJson(res, 200, { ok: true, verdict, points: out.points, best: out.best, newBest: out.newBest, today: out.today, cap: Reflex.DAILY_CAP, balance: out.balance ?? out.balanceAfter });
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
@@ -4520,8 +4531,12 @@ async function requestHandler(req, res) {
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
       const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
       if (r.reward) notifyPointsChanged([account]);
+      if (story === 'farmer' && r.paid) islandFarmAt = 0; // the field may grow at once
       const quests = questEntries(account);
-      return sendJson(res, 200, { ok: true, action: 'quest', story, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+      // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
+      const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
+      const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, goal: stepNow.need } : null;
+      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.say, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
@@ -4717,6 +4732,12 @@ async function requestHandler(req, res) {
   }
   // v1.10.7 당일 위치: where my island starts -- today's last spot (checked and moved to standable ground), or null for
   // the central plaza (a new day, or the first visit).
+  // v1.10.80 농부 밭 (IDEAS #future-island-minigames C안): the field everyone sees -- its stage from how many helped this
+  // week (0 holes, 1 filled, 2 sprouts, 3 grown), and their names for the sign. A new week starts at 0 by itself.
+  if (pathname === '/api/island/farm' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    return sendJson(res, 200, { ok: true, ...(await islandFarm()) });
+  }
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -5375,7 +5396,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.79 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.80 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

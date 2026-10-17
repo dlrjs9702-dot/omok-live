@@ -1704,7 +1704,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
-      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby');
+      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -2196,6 +2196,9 @@
     openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
+  function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
+  setInterval(refreshFarm, 15000);
   function openQuestTalk(data) {
     plaza.controller?.emote?.(data.done && data.reward ? 'clap' : 'nod');
     const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${data.say}」`;
@@ -2204,7 +2207,17 @@
     meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P${data.done ? ` · ${doneText}` : ''}` : data.done ? doneText : '';
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.done || data.waiting ? '확인' : '할게요'; ok.addEventListener('click', () => plazaDialog.close());
     const sell = data.story === 'fisher' ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = '물고기 팔기'; b.addEventListener('click', () => { plazaDialog.close(); openIslandPlace('fisher'); }); return [b]; })() : []; // v1.10.42
-    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ok, ...sell);
+    // v1.10.80 농부 부탁: a game step opens its round right here (GameLaunch, back to the island after); a paid round at the
+    // goal is the step done -- then a word with the farmer hands it in
+    const game = data.minigame ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = '도와줄게요'; b.addEventListener('click', async () => {
+      plazaDialog.close(); const m = data.minigame;
+      const r = await window.GameLaunch.play(m.game, { level: m.level, goal: m.goal, place: 'quest' });
+      if (r?.done) showToast('밭을 지켰어요! 농부에게 다시 말을 걸어 주세요.', 4000);
+      else if (r?.score != null) showToast(`${Number(m.goal).toLocaleString('ko-KR')}점이 필요해요. 다시 도전해 보세요!`, 4000);
+    }); return [b]; })() : [];
+    if (game.length) ok.className = 'ghost';
+    if (data.story === 'farmer') refreshFarm();
+    lostCard.replaceChildren(line, ...(meta.textContent ? [meta] : []), ...game, ok, ...sell);
     openTalk(data.name, !data.waiting); // a step taken, paid or ended; only "how is it going" stays over the shoulder
   }
   // v1.10.42 낚시: SPACE by the water casts (the server picks the fish and the bite); SPACE again pulls in -- in time it is

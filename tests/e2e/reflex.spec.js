@@ -310,15 +310,14 @@ test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작�
   // left on its own page: done:false, back where the quest was (not the game hall)
   await play({ place: 'quest', level: 'easy', goal: 1 });
   await expect(page.locator('#hud')).toBeVisible();
-  await page.locator('#reflexQuitBtn').click();
-  await page.keyboard.press('Escape');
+  await page.locator('#reflexQuitBtn').click(); // v1.10.80: a quest's round left goes straight back (no menu between)
   await expect.poll(() => page.evaluate(() => window.__res)).toEqual({ game: 'reaction', done: false });
   await expect(page.locator('#reflexView')).toBeHidden();
   await expect(page.locator('#gamehallView')).toBeHidden();
   // a puzzle starts once this account's progress is in (Codex review: it waited for it and never started)
   await page.evaluate(() => { window.__res = null; window.GameLaunch.play('sudoku', { place: 'quest', level: 'easy' }).then((r) => { window.__res = r; }); });
   await expect(page.locator('#reflexView .reflexFrame')).toHaveClass(/playing/, { timeout: 15000 });
-  await page.locator('#reflexQuitBtn').click(); await page.keyboard.press('Escape');
+  await page.locator('#reflexQuitBtn').click();
   await expect.poll(() => page.evaluate(() => window.__res)).toEqual({ game: 'sudoku', done: false });
   await expectNoScriptError(page);
   await a.context.close();
