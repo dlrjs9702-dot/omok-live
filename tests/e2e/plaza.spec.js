@@ -1349,6 +1349,9 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await page.evaluate(() => window.PlazaDebug().fishBiteNow());
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 당기기');
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
+  // (a slow runner may spend the 1.5 s window on that look: the bite again, then the pull)
+  expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow());
   await page.keyboard.press('Space');
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:catch'); // the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
