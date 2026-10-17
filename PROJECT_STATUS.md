@@ -13,6 +13,19 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.89 상점 미리보기·분류, 행동 중 이동 잠금, 잡초 뽑기 모션·310P
+
+- 지시(사용자 2026-10-17): 「상점 창에서 각 파츠 미리보기를 다음 패치에. 내 정보에서 산 것들도 분류를 더 자세히, 상점도」; IDEAS `#future-action-move-lock`, `#future-weed-motion`(납품가 200→310P 같은 릴리스).
+- 상점·내 정보(`public/app.js` `skinFilterBar`·`filterSkins`·`slotTabsOf`): 이름 검색(카드만 다시 그려 한글 입력 유지), 등급·시리즈(기본·동물 세트·추가 의상·캐릭터)·보유(상점만) 칩, 개수 표시, 내 정보 광장 아바타에 부위 탭(전체·부위별 개수), 게임 탭에도 개수. 조건에 맞는 것이 없으면 안내.
+- 파츠 미리보기(`plaza-scene.js` `tryOn`·`tryOnClose`): 섬과 같은 부품·캐시로 내 캐릭터(지금 입은 것 + 그 파츠)를 별도 작은 캔버스의 두 번째 렌더러에 그려 천천히 돈다(Idle). 상점·내 정보 위쪽 고정 칸, 창을 닫으면 정리. 섬이 켜진 경우만 버튼(고전 화면은 기존 그림 미리보기).
+- 이동 잠금(`plaza-scene.js` `actLock`, `asset-pipeline` `onceLeft`): 이모트·일어서기·건네기·줍기 클립이 끝날 때까지 이동 안 받음(클립 길이, 없으면 0.9초, 최대 3초), 그동안 이모트 연타 무시, 창·Esc·열차/승강장 이동 때 즉시 해제. 낚시 마무리는 원래 채집 잠금 안.
+- 잡초: assets 37 `GatherWeed.glb`(1.4초, 쥐기 0.49·들기 0.62초) 교체, `WEED_MS`·서버 `PULL_MS` 1400, 잡초가 들리는 시점을 lift 이벤트에 맞춤, 납품가 310P(`lib/island-items.js`, 제초 요청 날 930P).
+- 원격 낚시(IDEAS `#future-remote-action-animation`): 낚는 사람의 단계를 act `fish:cast|wait|reel|catch|miss`로 보냄(바뀌면 즉시), 서버는 그 사람의 낚싯대가 물에 있을 때만 받고 잡은 물고기는 서버 결과(`fishActOf`). 다른 화면은 낚싯대·같은 클립·잡은 물고기 들기(`remoteFish`). 찌·줄은 원격에 그리지 않음.
+- 칭호 명예의 전당(IDEAS `#future-title-history`): 저장된 주간 결산(`point_settlements`의 `climb_week`·`donation_week`·`fishking_week`)에서 챔피언·호구왕·낚시왕 역대 수상자(`titleWeeks`, 그 주 이름, 계정 ID 비공개), `GET /api/island/titles`, 게시판 공지 아래 접힌 칸(칭호 탭·1대부터·현재·20개씩 더 보기·기록 시작일). 기록 이전은 만들지 않음.
+- 낚시왕(IDEAS `#future-fishing-dex`): 그 주(서울 월~월) 어부 판매 지급 합계 1위(동률: 먼저 도달, 계정 ID), 다음 한 주 칭호 `title_fishking`(칭호 칸 착용·보유 중에만 표시), 판매 기록에서 집계(`fishSalesWeek`), 결산은 한 번(`settleTitleWeek`), 2026-10-12 주부터. 낚시 도감 13종 에셋은 assets 40 제작 완료(연결은 다음).
+- 밭 수확(IDEAS `#future-island-minigames`): 밭 3단계일 때 밭 안에서 SPACE · 밭 · 수확 → 계정마다 주 1회 「밭 채소」(상인 3,000P), `POST /api/island/farm/harvest`, `GET /api/island/farm`의 `harvested`.
+- 검증: e2e `shop-browse.spec.js`(PC·휴대폰: 보유·검색·없음 안내·3D 미리보기 모델 로드·내 정보 부위 탭), `action-lock.spec.js`(PC: 이모트 중 정지·연타 무시·끝나면 누른 방향키로 이동), `title-hall.spec.js`(PC·휴대폰), `plaza.spec.js` 낚시(구경하는 사람 화면에 단계·잡은 물고기), 단위 `island-items`·`island-weeds-server`·`climb-server`(명예의 전당)·`island-fishing`(낚시왕·집계)·`farmer-quest-server`(수확), 화면 확인. 실제 휴대폰·GPU 미검증.
+
 ## v1.10.88 메신저 카카오톡처럼
 
 - 지시(사용자 2026-10-17): IDEAS `#future-messenger-kakao` 구현, 보관은 A안(서버에 전부 보관·기기 저장 없음, v1.10.87과 같음).
@@ -30,11 +43,3 @@
 - 알림: 내 계정 화면의 「메신저」 버튼에 안 읽은 새 메시지 수(창이 닫혀 있는 동안 30초마다, 이 기기에서 본 번호 기준).
 - 그대로 둔 결정(v1.10.78): 관리자 계정별 허용, 허용자끼리 방 만들기·초대, 한 방 30명·한 사람 20방·500자, 채팅만(통화·파일 없음).
 - 검증: `test/messenger.test.js`(전부 보관·이전 대화 100개씩), e2e `messenger.spec.js` PC·휴대폰(버튼의 「새 메시지 1」 포함). 실제 휴대폰 미검증.
-
-## v1.10.86 주민세·세금 창구
-
-- 결정(사용자 2026-10-17): 주민세 재산의 3%를 하루 단위, 최소 20,000P, 모든 계정에서; 최대 체납 200,000P; 체납자는 「체납자」 칭호 강제·흰색/검은색 줄무늬 옷 강제; 체납 세금은 관공서 창구에서 직접 납부; 세금·예금 창구는 별도 NPC 창구.
-- 저장(`lib/point-store.js` `taxSplit`·`taxCollect`·`taxPay`·`taxDebts`): 재산 = 지갑 + 예금(그날 이자까지), 세액 = max(20,000, 재산×3% 내림). 지갑 먼저·예금 다음·남은 것은 체납(200,000P까지만 쌓임, 넘는 것은 걷지 않음). 하루 한 번(JSON 키, PostgreSQL 새 표 `tax_days`·`tax_debts`), 원장 `resident_tax`·`tax_payment`.
-- 서버(`server.js` `collectTaxes`): 한국 시간 날짜가 바뀌면(5분마다 확인) 모든 계정(권한 취소 계정 포함)에서 그날 세금; 서버가 잠든 동안 지난 날짜도 깨어날 때 하루씩 차례로(최대 30일, Codex 검토). 납부 요청은 예금만으로 낸 경우도 한 번만(PostgreSQL 원장 표시, Codex 검토). `lookFor`: 체납 중이면 장착 칭호 대신 「체납자」, 의상은 줄무늬(`avatar_outfit_2`, `look.prisoner` → 바탕 흰색·줄 검정, 변신 해제). `/api/island/tax` GET(체납·오늘 밤 예상)·POST(세금 창구 1.8m 안에서 납부).
-- 화면: 민원실 창구를 민원(정산)·세금·예금 세 칸, 직원 셋·명패 셋(창구마다 1.8m 안에서만). `#taxDialog`, 이름표 빨간 「체납자」 표식. 포인트 내역 「주민세」·「체납 세금 납부」.
-- 검증: `test/resident-tax.test.js`(세액 계산, JSON·PostgreSQL 하루 한 번·체납 상한, 서버 전 계정 징수·체납자 칭호·줄무늬·세금 창구 납부로 해제), 예금·관공서 실내·잡초 정산 시험 갱신, e2e 관공서 흐름, 화면 확인(줄무늬 옷·체납자 표식·세 창구). 실제 휴대폰 미검증.

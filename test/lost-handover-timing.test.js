@@ -32,6 +32,7 @@ for (const delay of [0, 400, 1800]) {
       assets: { handOver: () => { handovers++; } },
       setCarry() { throw new Error('owner exists'); },
       removeEvent: () => { removals++; owner.root.parent = null; },
+      lockForClip: () => {}, // v1.10.89 행동 중 이동 잠금 (scene-local)
     });
     vm.runInContext(callback + '\nreturnLost("item");', context);
     const advance = (time) => {
