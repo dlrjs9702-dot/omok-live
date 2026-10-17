@@ -2013,7 +2013,10 @@
   }
   function hallReturn() { for (const [node, mark] of hallBorrowed) mark.replaceWith(node); hallBorrowed.clear(); }
   const hallEl = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  const gameArtHtml = (g) => (g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
+  // v1.10.91 assets 38: every game's own card picture (128×128 SVG, cream/sky/gold over its gradient); the drawn icon only if it is missing
+  const HALL_CARDS = new Set(HALL.GAMES.map((g) => g.id));
+  const gameArtHtml = (g) => (HALL_CARDS.has(g.id) ? `<img src="/assets/gamehall/cards/${g.id}.svg" alt="" width="64" height="64" decoding="async">`
+    : g.svg ? `<svg viewBox="0 0 64 64" aria-hidden="true">${HALL.SVG[g.svg]}</svg>` : hallIcons?.art(g.art) || '');
   const catName = (id) => HALL.CATEGORIES.find(([c]) => c === id)?.[1] || id;
   const paintColors = (node, g) => { node.style.setProperty('--g1', g.colors[0]); node.style.setProperty('--g2', g.colors[1]); };
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
@@ -2135,6 +2138,15 @@
   const islandPlaceStatus = document.getElementById('islandPlaceStatus');
   let islandPlace = null; let islandPlaceRequest = null;
   const ISLAND_PLACES = { office: { title: '관공서', verb: '정산' }, merchant: { title: '상인', verb: '판매' }, fisher: { title: '어부', verb: '판매' } }; // v1.10.42 어부: fish
+  // v1.10.91 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
+  // old emoji) -- the bag and the sale lists; toasts keep the emoji
+  const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
+  function itemIcon(item) {
+    const id = ITEM_ALIAS[item.itemId] || item.itemId;
+    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : null;
+    if (!src) return document.createTextNode(item.icon);
+    const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
+  }
   function drawIslandBag(bag) {
     const grid = document.getElementById('islandBagGrid'); grid.replaceChildren();
     for (let i = 0; i < (bag.slots || 16); i += 1) {
@@ -2144,7 +2156,7 @@
         slot.title = item.name; slot.setAttribute('aria-label', `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId;
         const name = document.createElement('span'); name.textContent = item.name;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
-        slot.append(item.icon, name, qty);
+        slot.append(itemIcon(item), name, qty);
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
@@ -2161,7 +2173,7 @@
     let total = 0;
     for (const item of mine) {
       const row = document.createElement('div'); row.className = 'islandPlaceRow'; row.setAttribute('role', 'listitem');
-      const what = document.createElement('span'); what.textContent = `${item.icon} ${item.name} ×${item.qty}`;
+      const what = document.createElement('span'); what.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
       const worth = document.createElement('strong'); worth.textContent = `${(item.qty * item.price).toLocaleString('ko-KR')}P`;
       row.append(what, worth); list.append(row); total += item.qty * item.price;
     }

@@ -2049,3 +2049,8 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .weedBoardList h3{margin:0 0 4px;font-size:.9rem}.weedBoardList ol{list-style:none;margin:0;padding:0;display:grid;gap:3px}
 .weedBoardList li{display:flex;gap:8px;align-items:center;padding:4px 8px;border-radius:8px;background:rgba(148,163,184,.12)}.weedBoardList li span:nth-child(2){flex:1}
 .weedBoardList li.mine{outline:2px solid #60a5fa}
+/* v1.10.91 assets 38: game card pictures, the today frame, item pictures */
+.gameArt img{width:64px;height:64px;display:block}
+.gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}
+.itemIcon{width:32px;height:32px;vertical-align:middle;flex:none}
+.islandPlaceRow span{display:inline-flex;align-items:center;gap:4px}
