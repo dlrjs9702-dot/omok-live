@@ -115,6 +115,68 @@
     ctx.fillStyle = '#e0b32a'; for (let x = -h; x < w; x += 24) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, 6); ctx.clip(); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 12, 0); ctx.lineTo(x + 6, 6); ctx.lineTo(x - 6, 6); ctx.fill(); ctx.restore(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five rows, three premiums, a legend and its room (보물 지도 ↔
+  // 해적선 갑판). The digits and the S/B/O counts keep their places and stay as easy to read.
+  const chalkboard = row(
+    { backgroundColor: '#1f3d2e', backgroundImage: tile('bb-chalk', 80, 40, (c, w, h) => { const R = rng(3); for (let i = 0; i < 18; i += 1) { c.strokeStyle = `rgba(255,255,255,${.04 + R() * .05})`; c.lineWidth = 1; c.beginPath(); const x = R() * w; const y = R() * h; c.moveTo(x, y); c.lineTo(x + R() * 14, y + (R() - .5) * 4); c.stroke(); } }), borderColor: '#a07a4a', color: '#f2f2e8', fontFamily: '"Segoe Print","Comic Sans MS",system-ui,sans-serif' },
+    { color: '#ffffff', textShadow: '0 0 2px rgba(255,255,255,.6)' },
+    { strike: '#ffe680', ball: '#a8f0c0', out: '#ffb0b0', off: '#2c4d3c', radius: '50%', glow: false });
+  const calculator = row(
+    { backgroundColor: '#a9b8a0', backgroundImage: tile('bb-lcd', 8, 8, (c) => { c.fillStyle = 'rgba(0,0,0,.05)'; c.fillRect(0, 0, 8, 1); }), borderColor: '#4a5048', color: '#1e261c', fontFamily: '"Consolas","Courier New",monospace' },
+    { color: '#121a10', textShadow: '1px 1px 0 rgba(0,0,0,.12)', letterSpacing: '.22em' },
+    { strike: '#1e261c', ball: '#3f5a3a', out: '#7a2a2a', off: '#98a690', radius: '2px', glow: false });
+  const letter = row(
+    { backgroundColor: '#fff0f3', backgroundImage: tile('bb-letter', 40, 22, (c, w, h) => { c.strokeStyle = 'rgba(230,120,150,.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h - 1); c.lineTo(w, h - 1); c.stroke(); }), borderColor: '#f0a0b8', color: '#6a2a3a', fontFamily: '"Segoe Print","Comic Sans MS",system-ui,sans-serif' },
+    { color: '#c02a5a', textShadow: 'none' },
+    { strike: '#d23a6a', ball: '#3a8a6a', out: '#5a4a8a', off: '#f6d6de', radius: '50%', glow: false, ring: true });
+  const woodSign = row(
+    { backgroundColor: '#8a5a32', backgroundImage: tile('bb-wood', 80, 30, (c, w, h) => { const R = rng(17); for (let i = 0; i < 6; i += 1) { c.strokeStyle = `rgba(60,30,10,${.15 + R() * .15})`; c.lineWidth = 1.4; const y = R() * h; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(w * .3, y + 3, w * .7, y - 3, w, y + 1); c.stroke(); } }), borderColor: '#4a2a12', color: '#fff3dc', fontFamily: 'Georgia,serif' },
+    { color: '#ffe6b0', textShadow: '0 1px 0 #3a1a08, 0 -1px 0 rgba(255,255,255,.2)' },
+    { strike: '#ffd27a', ball: '#a8e07a', out: '#ff8a7a', off: '#5a3a1e', radius: '50%', glow: false });
+  const checker = row(
+    { backgroundColor: '#ffffff', backgroundImage: tile('bb-checker', 16, 16, (c) => { c.fillStyle = 'rgba(37,99,235,.12)'; c.fillRect(0, 0, 8, 8); c.fillRect(8, 8, 8, 8); }), borderColor: '#2563eb', color: '#0f1f5a', fontFamily: '"Segoe UI",system-ui,sans-serif' },
+    { color: '#1d4ed8', textShadow: '0 1px 0 #ffffff' },
+    { strike: '#d97706', ball: '#15803d', out: '#b91c1c', off: '#dbe4ff', radius: '3px', glow: false });
+  const neonSign = row(
+    { backgroundColor: '#140a24', backgroundImage: tile('bb-brick', 32, 16, (c, w, h) => { c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 1; c.strokeRect(.5, .5, w / 2, h / 2); c.strokeRect(w / 4, h / 2, w / 2, h / 2); }), borderColor: '#ff3ea5', color: '#ffd6f0', fontFamily: '"Segoe UI",system-ui,sans-serif' },
+    { color: '#ff7ad0', textShadow: '0 0 6px #ff3ea5, 0 0 14px #ff3ea5' },
+    { strike: '#ffe94a', ball: '#50f0ff', out: '#ff3ea5', off: '#2a1440', radius: '50%', glow: true });
+  const typewriter = row(
+    { backgroundColor: '#f4ecd8', backgroundImage: tile('bb-paper', 30, 30, (c, w, h) => { const R = rng(21); for (let i = 0; i < 8; i += 1) { c.fillStyle = `rgba(120,90,40,${R() * .06})`; c.fillRect(R() * w, R() * h, 2, 2); } }), borderColor: '#4a4a4a', color: '#2a2a2a', fontFamily: '"Courier New",monospace' },
+    { color: '#1a1a1a', textShadow: '.5px .5px 0 rgba(0,0,0,.35)', letterSpacing: '.3em' },
+    { strike: '#a01c1c', ball: '#1c3a7a', out: '#2a2a2a', off: '#e2d8c0', radius: '50%', glow: false, ring: true });
+  const retroTv = row(
+    { backgroundColor: '#22303a', backgroundImage: tile('bb-scan', 4, 4, (c) => { c.fillStyle = 'rgba(160,220,255,.08)'; c.fillRect(0, 0, 4, 2); }), borderColor: '#c8a26a', color: '#d8f0ff', fontFamily: '"Consolas","Courier New",monospace' },
+    { color: '#e8f8ff', textShadow: '2px 0 0 rgba(255,60,90,.45), -2px 0 0 rgba(60,200,255,.45)' },
+    { strike: '#ffd54a', ball: '#6ef0a0', out: '#ff6b6b', off: '#16222a', radius: '4px', glow: true });
+  // 보물 지도 (legend) ↔ 해적선 갑판 (room)
+  const treasureMap = row(
+    { backgroundColor: '#e8d3a2', backgroundImage: tile('bb-map', 90, 44, (c, w, h) => { c.strokeStyle = 'rgba(120,70,30,.4)'; c.setLineDash([4, 4]); c.lineWidth = 1.6; c.beginPath(); c.moveTo(4, h * .7); c.bezierCurveTo(w * .3, h * .2, w * .6, h, w - 14, h * .35); c.stroke(); c.setLineDash([]); c.strokeStyle = 'rgba(180,40,30,.6)'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(w - 18, h * .35 - 4); c.lineTo(w - 10, h * .35 + 4); c.moveTo(w - 10, h * .35 - 4); c.lineTo(w - 18, h * .35 + 4); c.stroke(); }), borderColor: '#7a4a1a', color: '#3a1e08', fontFamily: 'Georgia,serif' },
+    { color: '#5a1e08', textShadow: '0 1px 0 rgba(255,240,200,.8)', letterSpacing: '.26em' },
+    { strike: '#d4a017', ball: '#2a7a6a', out: '#a0281e', off: '#d6bf8a', radius: '50%', glow: false, ring: true },
+    { fx: compassFx, special: chestSpecial, win: treasureWin, legend: true });
+  function compassFx(ctx, w, h, t) { // a compass needle swings across the new row
+    const cx = 40 + (w - 80) * t; const cy = h / 2; ctx.save(); ctx.globalAlpha = 1 - t * .6;
+    ctx.strokeStyle = '#7a4a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 12, 0, TAU); ctx.stroke();
+    ctx.translate(cx, cy); ctx.rotate(t * TAU * 2); ctx.fillStyle = '#c0281e'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(3, 0); ctx.lineTo(-3, 0); ctx.fill(); ctx.restore();
+  }
+  function chestSpecial(ctx, w, h, t) { // one digit to go: a chest at the row's end, a glint off its lock
+    const cx = w - 70; const cy = h / 2; ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    ctx.fillStyle = '#7a4a1a'; ctx.fillRect(cx - 22, cy - 6, 44, 24); ctx.fillStyle = '#9a6a2a'; ctx.beginPath(); ctx.ellipse(cx, cy - 6, 22, 10, 0, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = '#d4a017'; ctx.fillRect(cx - 4, cy - 4, 8, 10); ctx.fillStyle = `rgba(255,250,210,${Math.sin(t * Math.PI)})`; starPath(ctx, cx + 6, cy - 8, 10, 2, 4); ctx.fill(); ctx.restore();
+  }
+  function treasureWin(ctx, w, h, t) { // the chest opens and gold coins spill over the list
+    const R = rng(12); const k = clamp01(t * 1.2);
+    for (let i = 0; i < 26; i += 1) { const x = w / 2 + (R() - .5) * w * .7 * k; const y = h * .3 + R() * h * .5 * k + k * k * 30; ctx.fillStyle = `rgba(240,190,40,${1 - clamp01((t - .7) / .3)})`; ctx.beginPath(); ctx.ellipse(x, y, 6, 4, R() * 3, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(160,110,10,.7)'; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.fillStyle = `rgba(255,230,140,${Math.sin(k * Math.PI) * .35})`; ctx.fillRect(40, 40, w - 80, h - 80);
+  }
+  function pirateDeck(ctx, w, h) { // 해적선 갑판: deck planks, a coil of rope at the corners, a brass rail
+    ctx.fillStyle = '#7a5230'; ctx.fillRect(0, 0, w, h); const R = rng(33);
+    for (let x = 0; x < w; x += 22) { ctx.fillStyle = `rgba(0,0,0,${.15 + R() * .1})`; ctx.fillRect(x, 0, 2, h); ctx.fillStyle = 'rgba(30,15,5,.5)'; for (let y = 10 + R() * 40; y < h; y += 70) { ctx.beginPath(); ctx.arc(x + 11, y, 1.6, 0, TAU); ctx.fill(); } }
+    ctx.strokeStyle = '#d6b46a'; ctx.lineWidth = 4; ctx.strokeRect(5, 5, w - 10, h - 10);
+    ctx.strokeStyle = '#c8a26a'; ctx.lineWidth = 3; for (const [x, y] of [[26, 26], [w - 26, h - 26]]) for (let k = 3; k <= 15; k += 4) { ctx.beginPath(); ctx.arc(x, y, k, 0, TAU); ctx.stroke(); }
+  }
+
   function previewRow(ctx, w, h, skinId, keepBackdrop) {
     const d = S.def(skinId); if (!keepBackdrop) { ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h); }
     [[.08, '123', 1, 1], [.5, '456', 0, 2]].forEach(([fy, digits, sCount, bCount]) => {
@@ -139,5 +201,12 @@
     baseball_t1: theme(dugout, { borderColor: '#e9d9b5', boxShadow: 'inset 0 0 0 3px #6b4526, 0 0 0 2px #e9d9b5' }), baseball_t2: theme(secretLab, { borderColor: '#e0b32a', boxShadow: 'inset 0 0 0 3px #0d141d, 0 0 14px rgba(90,220,230,.4)' }),
     baseball_l1: piece(master),
     baseball_l2: piece(walkoff),
+    // v1.10.90 스킨 2배
+baseball_c6: piece(chalkboard), baseball_c7: piece(calculator), baseball_c8: piece(letter), baseball_c9: piece(woodSign), baseball_c10: piece(checker),
+    baseball_p4: piece({ ...neonSign, fx: (ctx, w, h, t) => { ctx.strokeStyle = `rgba(255,62,165,${(1 - t) * .9})`; ctx.lineWidth = 3; ctx.shadowColor = '#ff3ea5'; ctx.shadowBlur = 12; ctx.strokeRect(40, 30, w - 80, h - 60); ctx.shadowBlur = 0; } }),
+    baseball_p5: piece({ ...typewriter, fx: (ctx, w, h, t) => { const x = 40 + (w - 80) * t; ctx.fillStyle = `rgba(30,30,30,${1 - t})`; ctx.fillRect(x - 2, h / 2 - 12, 4, 24); ctx.fillStyle = `rgba(160,28,28,${(1 - t) * .5})`; ctx.fillRect(40, h / 2 + 14, (w - 80) * t, 2); } }),
+    baseball_p6: piece({ ...retroTv, fx: (ctx, w, h, t) => { const R = rng(Math.floor(t * 30)); for (let i = 0; i < 40; i += 1) { ctx.fillStyle = `rgba(255,255,255,${(1 - t) * R() * .5})`; ctx.fillRect(40 + R() * (w - 80), 30 + R() * (h - 60), 3, 2); } } }),
+    baseball_t3: theme(pirateDeck, { borderColor: '#d6b46a', boxShadow: 'inset 0 0 0 3px #4a2a12, 0 0 0 2px #d6b46a' }),
+    baseball_l3: piece(treasureMap), // 보물 지도 ↔ 해적선 갑판
   });
 }());
