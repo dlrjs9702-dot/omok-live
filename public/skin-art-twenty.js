@@ -86,6 +86,46 @@
     ctx.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 24; i += 1) { ctx.beginPath(); ctx.arc(10 + i * (w / 23), h - 8, 2.2, 0, TAU); ctx.fill(); }
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five looks, three premiums, a legend and its room (명탐정 돋보기
+  // ↔ 안개 낀 런던). Text keeps at least 4.5:1 on its background.
+  const postit = look('#ffd6e6', tile('tq-postit', 40, 40, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,.25)'); g.addColorStop(1, 'rgba(0,0,0,.03)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }), '#f09ab8', '#3a1020', tag('#b8245a', '#fff'), tag('#2a6a4a', '#fff'));
+  const libraryCard = look('#f6f1e2', tile('tq-library', 40, 26, (c, w, h) => { c.strokeStyle = 'rgba(80,110,170,.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h - 1); c.lineTo(w, h - 1); c.stroke(); c.strokeStyle = 'rgba(200,50,50,.45)'; c.beginPath(); c.moveTo(6, 0); c.lineTo(6, h); c.stroke(); }), '#b8a98a', '#1f1a10', tag('#6a1f1f', '#fff'), tag('#1f3a6a', '#fff'), {}, 'Georgia,serif');
+  const comic = look('#ffffff', tile('tq-comic', 12, 12, (c) => { c.fillStyle = 'rgba(0,0,0,.06)'; c.beginPath(); c.arc(6, 6, 1.6, 0, TAU); c.fill(); }), '#111111', '#111111', tag('#ffd23f', '#111'), tag('#ff4a4a', '#fff'), { boxShadow: '3px 3px 0 #111' }, '"Comic Sans MS","Segoe Print",system-ui,sans-serif');
+  const receipt = look('#fbfbf6', tile('tq-receipt', 30, 30, (c, w, h) => { c.fillStyle = 'rgba(0,0,0,.035)'; for (let y = 3; y < h; y += 6) c.fillRect(0, y, w, 1); }), '#9a9a90', '#1a1a1a', tag('#1a1a1a', '#fbfbf6'), tag('#5a5a5a', '#fff'), {}, '"Consolas","Courier New",monospace');
+  const graphPaper = look('#f4fbff', tile('tq-graph', 16, 16, (c, w, h) => { c.strokeStyle = 'rgba(60,140,200,.22)'; c.lineWidth = 1; c.strokeRect(.5, .5, w, h); }), '#7ab8e0', '#0f2a40', tag('#1d6aa8', '#fff'), tag('#2a7a3a', '#fff'));
+  const scroll = look('#efe0b8', tile('tq-scroll', 40, 40, (c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w * .7); g.addColorStop(0, 'rgba(170,110,240,.18)'); g.addColorStop(1, 'rgba(170,110,240,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }), '#8a5ac0', '#2a1a40', tag('#6a3aa8', '#fff'), tag('#9a6a1a', '#fff'), { boxShadow: '0 0 10px rgba(170,110,240,.35)' }, 'Georgia,serif');
+  const starLetter = look('#14204a', tile('tq-starletter', 40, 40, (c, w, h) => { const R = rng(2); for (let i = 0; i < 6; i += 1) { c.fillStyle = `rgba(255,255,255,${.2 + R() * .5})`; c.beginPath(); c.arc(R() * w, R() * h, .6 + R(), 0, TAU); c.fill(); } }), '#ffd86b', '#f2f4ff', tag('#ffd86b', '#14204a'), tag('#8fd3ff', '#14204a'));
+  const neonChat = look('#120a1e', tile('tq-neon', 8, 8, (c) => { c.fillStyle = 'rgba(255,62,165,.06)'; c.fillRect(0, 0, 8, 1); }), '#ff3ea5', '#ffe6f6', tag('#ff3ea5', '#120a1e'), tag('#50f0ff', '#120a1e'), { boxShadow: '0 0 12px rgba(255,62,165,.45)' });
+  scroll.fx = sparkle('200,150,255'); starLetter.fx = sparkle('255,230,140');
+  neonChat.fx = (ctx, w, h, t) => { ctx.save(); ctx.shadowColor = '#ff3ea5'; ctx.shadowBlur = 14; ctx.strokeStyle = `rgba(255,62,165,${(1 - t) * .9})`; ctx.lineWidth = 3; ctx.strokeRect(40, 30, w - 80, h - 60); ctx.restore(); };
+  // 명탐정 돋보기 (legend) ↔ 안개 낀 런던 (room)
+  const detective = look('#4a3826', tile('tq-tweed', 12, 12, (c) => { c.strokeStyle = 'rgba(255,230,190,.08)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, 0); c.lineTo(12, 12); c.moveTo(12, 0); c.lineTo(0, 12); c.stroke(); }), '#c8a56a', '#fff3dc', tag('#c8a56a', '#2a1d10'), tag('#9fd8c0', '#102a20'), { boxShadow: 'inset 0 0 0 1px rgba(200,165,106,.4)' }, 'Georgia,serif');
+  detective.fx = (ctx, w, h, t) => { // a magnifying glass slides over the new answer
+    const cx = 40 + (w - 80) * t; const cy = h / 2; ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .7) / .3);
+    ctx.fillStyle = 'rgba(200,230,255,.18)'; ctx.strokeStyle = '#c8a56a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 18, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 6; ctx.strokeStyle = '#6a4a26'; ctx.beginPath(); ctx.moveTo(cx + 13, cy + 13); ctx.lineTo(cx + 30, cy + 30); ctx.stroke(); ctx.restore();
+  };
+  detective.special = (ctx, w, h, t) => { // the right answer: a big lens zooms in and 「정답!」 shows through it
+    const k = clamp01(t / .4); const cx = w / 2; const cy = h / 2; const R = Math.min(w, h) * (.12 + .14 * k);
+    ctx.save(); ctx.globalAlpha = 1 - clamp01((t - .8) / .2);
+    ctx.fillStyle = 'rgba(220,240,255,.55)'; ctx.strokeStyle = '#c8a56a'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#6a4a26'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(cx + R * .72, cy + R * .72); ctx.lineTo(cx + R * 1.4, cy + R * 1.4); ctx.stroke();
+    ctx.fillStyle = '#2a1d10'; ctx.font = `900 ${Math.round(R * .5)}px Georgia,serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('정답!', cx, cy);
+    ctx.restore();
+  };
+  detective.win = (ctx, w, h, t) => { // footprints cross the panel to a spotlight
+    ctx.save(); const n = 10; const on = clamp01(t / .6) * n;
+    for (let i = 0; i < n; i += 1) { if (on < i) break; const x = w * (.1 + .08 * i); const y = h * (.75 - .05 * i) + (i % 2 ? -10 : 10); ctx.fillStyle = `rgba(200,165,106,${.8 * (1 - clamp01((t - .85) / .15))})`; ctx.beginPath(); ctx.ellipse(x, y, 6, 10, -.5, 0, TAU); ctx.fill(); }
+    const s = clamp01((t - .5) / .4); if (s > 0) { const g = ctx.createRadialGradient(w * .85, h * .3, 0, w * .85, h * .3, w * .25); g.addColorStop(0, `rgba(255,240,190,${.6 * s * (1 - clamp01((t - .85) / .15))})`); g.addColorStop(1, 'rgba(255,240,190,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }
+    ctx.restore();
+  };
+  function foggyLondon(ctx, w, h) { // 안개 낀 런던: a cobbled night street, gas lamps and drifting fog
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#2a3340'); g.addColorStop(1, '#151a22'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(10,12,18,.8)'; for (let x = 0; x < w; x += 70) { const bh = h * (.35 + ((x * 7) % 30) / 100); ctx.fillRect(x, h * .55 - bh * .5, 60, bh); }
+    for (const x of [w * .18, w * .82]) { ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x - 2, h * .3, 4, h * .7); const lg = ctx.createRadialGradient(x, h * .3, 2, x, h * .3, 60); lg.addColorStop(0, 'rgba(255,214,140,.55)'); lg.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 60, h * .3 - 60, 120, 120); }
+    const R = rng(73); for (let i = 0; i < 6; i += 1) { const y = h * (.4 + R() * .5); const fg = ctx.createLinearGradient(0, y - 20, 0, y + 20); fg.addColorStop(0, 'rgba(200,210,220,0)'); fg.addColorStop(.5, 'rgba(200,210,220,.12)'); fg.addColorStop(1, 'rgba(200,210,220,0)'); ctx.fillStyle = fg; ctx.fillRect(0, y - 20, w, 40); }
+  }
+
   function previewPair(ctx, w, h, skinId) {
     const d = S.def(skinId); ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h);
     [[.1, '동물인가요?', '예'], [.52, '날 수 있나요?', '아니오']].forEach(([fy, q, a]) => {
@@ -107,5 +147,10 @@
     twentyquestions_t1: theme(office), twentyquestions_t2: theme(quizShow),
     twentyquestions_l1: piece({ ...door, legend: true }),
     twentyquestions_l2: piece({ ...buzzer, legend: true }),
+    // v1.10.90 스킨 2배
+twentyquestions_c6: piece(postit), twentyquestions_c7: piece(libraryCard), twentyquestions_c8: piece(comic), twentyquestions_c9: piece(receipt), twentyquestions_c10: piece(graphPaper),
+    twentyquestions_p4: piece(scroll), twentyquestions_p5: piece(starLetter), twentyquestions_p6: piece(neonChat),
+    twentyquestions_t3: theme(foggyLondon),
+    twentyquestions_l3: piece({ ...detective, legend: true }), // 명탐정 돋보기 ↔ 안개 낀 런던
   });
 }());
