@@ -1475,7 +1475,7 @@
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
-    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard')]) },
+    { id: 'board', name: '게시판', open: () => openPlazaWindow('게시판', [byId('announcementsCard'), titleHall()]) }, // v1.10.89 + 칭호 명예의 전당
     { id: 'missions', name: '미션판', open: () => byId('missionBtn').click() },
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
@@ -1487,6 +1487,47 @@
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
   ];
   const plazaHomes = new Map(); // section -> the marker where it lives in the classic lobby
+  // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
+  // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
+  // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
+  let titleHallCard = null;
+  function titleHall() {
+    if (titleHallCard) return titleHallCard;
+    const home = document.createElement('div'); home.hidden = true; document.body.append(home);
+    const card = titleHallCard = document.createElement('section'); card.className = 'card noticeCard titleHallCard'; card.setAttribute('aria-label', '칭호 명예의 전당');
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'noticeTab'; toggle.id = 'titleHallTab'; toggle.textContent = '🏆 칭호 명예의 전당'; toggle.setAttribute('aria-expanded', 'false');
+    const panel = document.createElement('div'); panel.className = 'titleHallPanel hidden'; panel.id = 'titleHallPanel'; toggle.setAttribute('aria-controls', panel.id);
+    card.append(toggle, panel); home.append(card);
+    let titles = []; let pick = 'champion'; let shown = 20;
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const draw = () => {
+      panel.replaceChildren();
+      const tabs = el('div', 'skinTabs'); tabs.setAttribute('role', 'tablist');
+      for (const t of titles) { const b = el('button', 'skinTab', t.name); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(t.id === pick)); b.addEventListener('click', () => { pick = t.id; shown = 20; draw(); }); tabs.append(b); }
+      panel.append(tabs);
+      const t = titles.find((x) => x.id === pick); if (!t) return;
+      const now = t.entries.find((e) => e.current);
+      panel.append(el('p', 'titleHallHead', `${t.name} · ${t.kind} · ${t.about}`), el('p', 'smallMuted', now ? `현재: ${now.names.join(', ')}` : '현재 보유자 없음'));
+      if (!t.entries.length) { panel.append(el('p', 'emptyState', '아직 수여 기록이 없습니다.')); return; }
+      panel.append(el('p', 'smallMuted', `기록 시작: ${t.since}`));
+      const list = el('ol', 'titleHallList');
+      for (const e of t.entries.slice(0, shown)) {
+        const li = el('li', `titleHallRow${e.current ? ' current' : ''}${e.mine ? ' mine' : ''}`);
+        li.append(el('strong', '', `${e.n}대`), el('span', '', e.names.join(', ')), el('span', 'smallMuted', `${e.start.slice(5).replace('-', '/')} ~ ${e.end.slice(5).replace('-', '/')}`));
+        if (e.current) li.append(el('span', 'titleHallNow', '현재'));
+        list.append(li);
+      }
+      panel.append(list);
+      if (t.entries.length > shown) { const more = el('button', 'ghost tiny', `더 보기 (${t.entries.length - shown})`); more.type = 'button'; more.addEventListener('click', () => { shown += 20; draw(); }); panel.append(more); }
+    };
+    toggle.addEventListener('click', async () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(open)); panel.classList.toggle('hidden', !open);
+      if (!open) return;
+      panel.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
+      try { titles = (await api('/api/island/titles')).titles; shown = 20; draw(); } catch (error) { panel.replaceChildren(el('p', 'emptyState', error.message)); }
+    });
+    return card;
+  }
   function openPlazaWindow(title, nodes) {
     plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;

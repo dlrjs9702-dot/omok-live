@@ -2037,3 +2037,10 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .skinTryOnCap{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
 .skinTryOnBtn{margin-top:4px}
 @media (max-width:560px){.skinTryOn canvas{width:132px;height:165px}}
+/* v1.10.89 칭호 명예의 전당 */
+.titleHallCard{margin-top:10px}.titleHallPanel{display:grid;gap:6px;padding:8px 2px}.titleHallPanel.hidden{display:none}.titleHallPanel p{margin:0}
+.titleHallHead{font-weight:800}
+.titleHallList{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:46vh;overflow-y:auto}
+.titleHallRow{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:8px;background:rgba(148,163,184,.12)}.titleHallRow span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.titleHallRow.current{outline:2px solid #f59e0b}.titleHallRow.mine strong{color:#60a5fa}
+.titleHallNow{font-size:.72rem;font-weight:900;color:#f59e0b}

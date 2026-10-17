@@ -52,6 +52,7 @@ const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관�
 const IslandItems = require('./lib/island-items'); // v1.10.10 게임 아일랜드 이벤트 인벤토리
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
+const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
 const { evaluate: evaluateAchievements, achievementView, achievementToasts } = require('./lib/achievements');
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
@@ -4882,6 +4883,22 @@ async function requestHandler(req, res) {
     donationCache = { week: null, hoguking: null, statues: [], statuesWeek: null };
     await settleDonationWeeks(now);
     return sendJson(res, 200, { ok: true, donation: donationCache });
+  }
+  // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): each server-given title's holders, 1대 from the first week
+  // recorded -- a week's champions (ties together) and its 호구왕 hold the title the week after it closed. Names as they
+  // were that week; the account ids stay here (`mine` only marks my own rows)
+  if (pathname === '/api/island/titles' && req.method === 'GET') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const me = pointAccountForSession(session); const now = nowMs(); const current = previousWeek(climbWeekOf(now));
+    const weeks = await pointStore.titleWeeks();
+    const titles = [['champion', '챔피언', '등반 도전 주간 1위'], ['hoguking', '호구왕', '기부 주간 1위']].map(([id, name, about]) => {
+      const list = weeks.filter((w) => w.title === id && w.holders.length);
+      return { id, name, about, kind: '주간', since: list[0]?.at?.slice(0, 10) || null,
+        entries: list.map((w, i) => ({ n: i + 1, names: w.holders.map((h) => h.name), mine: w.holders.some((h) => h.id === me), week: w.week,
+          start: nextWeekOf(w.week), end: new Date(Date.parse(`${nextWeekOf(nextWeekOf(w.week))}T00:00:00Z`) - 86400000).toISOString().slice(0, 10), current: w.week === current })) };
+    });
+    return sendJson(res, 200, { ok: true, titles });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
     const body = await parseJson(req);
