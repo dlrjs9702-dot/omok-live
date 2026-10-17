@@ -1003,7 +1003,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null })) };
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -1188,6 +1188,17 @@ const fishCasts = new Map(); // v1.10.42 낚시: session token -> { id, species,
 const SEATS = new Map(IslandTerrain.plazaProps().seats.map((s) => [s.id, s]));
 const seatTaken = new Map(); // seat id -> session token
 const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
+// v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
+// the fish shown on a catch is the server's own result, never the page's word
+const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss']);
+function fishActOf(token, act) {
+  if (!FISH_ACTS.has(act)) return null;
+  const c = fishCasts.get(token);
+  if (act === 'fish:miss') return { act, fish: null };
+  if (!c) return null;
+  if (act === 'fish:catch') return c.done?.species ? { act, fish: c.done.species } : null;
+  return { act, fish: null };
+}
 // v1.10.47 관광열차: who is on which train's seat (session token -> { k, seat, from: the stop they got on at }). The trains
 // themselves are the shared timetable (island-train.js) on the server clock; `trainShift` moves that clock in tests only.
 const trainVisitors = new Map();
@@ -4002,7 +4013,9 @@ async function requestHandler(req, res) {
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       space: townhallInside.has(session.token) ? 'townhall' : 'island', // v1.10.84
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
-      ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null }; const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
+      ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
+        const fishing = fishActOf(session.token, body.act); if (fishing) return { ...fishing, actN: 0, seat: null }; // v1.10.89
+        const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });

@@ -845,6 +845,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (['gather','pickup','pickFruit'].includes(o.act) && !['gather','pickup','pickFruit'].includes(p.act)) { o.c.anim?.finishOnce?.(); assets.letGo(o.c,'fruit'); }
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
       if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
+      remoteFish(o, p); // v1.10.89
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
       o.collect = p.actTarget ? {target:p.actTarget,at:p.actAt} : null; o.act = p.act || null; o.actN = p.actN || 0; o.seat = p.seat || null;
       // v1.10.47: riding the train -- drawn on their seat by the same clock (the server only says which train and seat)
@@ -1204,16 +1205,36 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     return best;
   }
+  // v1.10.89 원격 낚시 (IDEAS #future-remote-action-animation): my phase goes out as the act 'fish:<phase>' (the server
+  // takes it only while it holds my cast, and names the catch itself); the others play the same rod and clips
+  function fishAct(phase) { if (phase) { myAct.act = `fish:${phase}`; myAct.seat = null; } else if (myAct.act?.startsWith('fish:')) myAct.act = null; }
+  function remoteFish(o, p) {
+    const was = o.act?.startsWith('fish:') ? o.act.slice(5) : null; const now = p.act?.startsWith('fish:') ? p.act.slice(5) : null;
+    if (was === now) return;
+    const c = o.c;
+    if (!now) { clearTimeout(o.fishTimer); assets.letGo(c, 'rod'); assets.letGo(c, 'catch'); c.noTuck = false; c.anim?.release?.(); return; }
+    if (!was) { c.noTuck = true; assets.hold(c, 'fishing.rod', 0, { key: 'rod' }); const w = waterFrom(p.x, p.z); if (w) c.root.rotation.y = Math.atan2(w.x - p.x, w.z - p.z); }
+    if (now === 'cast') c.anim?.play('fishCast');
+    else if (now === 'wait') c.anim?.loop?.('fishWait');
+    else if (now === 'reel') { c.anim?.play('fishBite'); c.anim?.loop?.('fishReel'); }
+    else if (now === 'miss') { c.anim?.release?.(); c.anim?.play('fishMiss'); }
+    else if (now === 'catch') {
+      c.anim?.release?.(); c.anim?.play('fishCatch'); clearTimeout(o.fishTimer);
+      o.fishTimer = setTimeout(() => { if (o.act !== 'fish:catch') return; assets.letGo(c, 'rod');
+        o.fishTimer = setTimeout(() => { if (o.act !== 'fish:catch' || !p.fish) return; const fit = FISH_HOLD[p.fish] || FISH_HOLD.default; assets.hold(c, `fish.${p.fish}`, 0, { key: 'catch', at: fit.at, rot: fit.rot }); }, 260); }, 420);
+    }
+  }
   function fishBegin({ biteIn, window: biteMs }, onEnd) {
     const water = waterFrom(me.root.position.x, me.root.position.z); if (!water || fishing) return false;
     const ok = startGather({ kind: 'fish', ms: Infinity, anim: 'fishCast', at: water, onDone: () => fishStop(false) });
     if (!ok) return false;
     fishing = { t: 0, start: performance.now(), phase: 'cast', water, biteAt: biteIn / 1000, biteEnd: biteIn / 1000 + biteMs / 1000, onEnd, landed: false };
+    fishAct('cast');
     me.noTuck = true; assets.hold(me, 'fishing.rod', 0, { key: 'rod' });
     return true;
   }
   function fishStop(release = true) {
-    const f = fishing; if (!f) return; fishing = null;
+    const f = fishing; if (!f) return; fishing = null; fishAct(null);
     fishLine.visible = false; bobberHolder.visible = false; if (f.mark) { disposeTag(f.mark); f.mark = null; }
     assets.letGo(me, 'rod'); assets.letGo(me, 'catch'); me.noTuck = false; me.anim?.release?.();
     if (release && gather?.kind === 'fish') { gather.onDone = () => {}; endGather(false); }
@@ -1222,7 +1243,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the server's answer: the fish (species) or none (missed)
   function fishResult(species) {
     const f = fishing; if (!f) return;
-    f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species;
+    f.phase = species ? 'catch' : 'miss'; f.t0 = f.t; f.species = species; fishAct(f.phase);
     me.anim?.release?.(); me.anim?.play(species ? 'fishCatch' : 'fishMiss');
     if (f.mark) { disposeTag(f.mark); f.mark = null; }
   }
@@ -1231,8 +1252,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     f.t = (performance.now() - f.start) / 1000; // real time: the bite is the server's, a slow frame rate must not show it late
     const sea = SEA_Y + 0.02;
     if (f.phase === 'cast' && f.t >= 0.48 && !f.landed) { f.landed = true; bobberHolder.visible = true; fishLine.visible = true; bobberHolder.position.set(f.water.x, sea, f.water.z); }
-    if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); }
-    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
+    if (f.phase === 'cast' && f.t >= 1.0) { f.phase = 'wait'; me.anim?.loop?.('fishWait'); fishAct('wait'); }
+    if (f.phase === 'wait' && f.t >= f.biteAt) { f.phase = 'bite'; fishAct('reel'); me.anim?.play('fishBite'); me.anim?.loop?.('fishReel'); f.mark = makeStarMark(); f.mark.position.set(0, 0.7, 0); bobberHolder.add(f.mark); }
     if (f.phase === 'bite' && f.t >= f.biteEnd + 0.8) fishResult(null); // nobody pulled: it got away
     if (f.phase === 'catch') {
       const t = f.t - f.t0;
