@@ -57,6 +57,7 @@ const { evaluate: evaluateAchievements, achievementView, achievementToasts } = r
 const { EVENTS: POINT_EVENTS, validateEvent, eventStatus, publicEvent } = require('./lib/point-events');
 const { donationRanking, createPointStore, validUserId, kstDate, DONATION_MAX, NICKNAME_FEE, ENTRY_FEE, ENTRY_BURN_PERCENT, SETTLEMENT_BURN_PERCENT, ADMIN_GRANT_UNIT, ADMIN_GRANT_MAX, ADMIN_GRANT_CATEGORIES } = require('./lib/point-store');
 const PointStore = require('./lib/point-store'); // v1.10.86 주민세 constants
+const SkinCatalog = require('./lib/skins'); // v1.10.90 IP_SKIN_IDS / IP_ON
 const releaseAnnouncements = require('./lib/release-announcements');
 const { classifyBrowser, parseSecChUa } = require('./public/browser-gate.js'); // v1.10.14 Chrome-only, shared with the page
 const { buildAssetManifest } = require('./lib/asset-manifest'); // v1.10.14 game resource pack
@@ -5616,6 +5617,10 @@ async function main() {
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
+  if (!SkinCatalog.IP_ON) { // v1.10.90 IP 스킨 정리: switched off -> what was paid for them goes back, once
+    const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
+    if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }
+  }
   settleFishkingWeeks(); // v1.10.89 낚시왕
   // Existing guests get their one-time account on first sight; this backfill is idempotent.
   try {
