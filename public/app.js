@@ -1807,6 +1807,23 @@
     if (sessionRole !== 'admin') return;
     openPlazaWindow('관리자 창', [adminPresencePanel, adminPanel]);
   });
+  // v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③): a folded card in the 관리자 창; the viewer module loads on opening
+  let inspectorCard = null; let inspector = null;
+  function assetInspectorCard() {
+    if (inspectorCard) return inspectorCard;
+    const home = adminPanel; // (inside the admin panel: the lobby and the 관리자 창 alike)
+    inspectorCard = document.createElement('section'); inspectorCard.className = 'noticeCard'; inspectorCard.id = 'assetInspectorCard';
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'noticeTab'; toggle.id = 'assetInspectorTab'; toggle.textContent = '🔎 에셋 점검'; toggle.setAttribute('aria-expanded', 'false');
+    const host = document.createElement('div'); host.className = 'hidden'; host.id = 'assetInspectorHost';
+    inspectorCard.append(toggle, host); home.append(inspectorCard);
+    toggle.addEventListener('click', async () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(open)); host.classList.toggle('hidden', !open);
+      if (!open) { host.replaceChildren(); inspector = null; return; }
+      try { const mod = await import('/admin/asset-inspector.js'); inspector = mod.mountInspector(host, { api, toast: (m) => showToast(m, 3000) }); window.AssetInspector = inspector; } catch (error) { host.textContent = `에셋 점검을 열지 못했습니다 · ${error.message}`; }
+    });
+    return inspectorCard;
+  }
+  assetInspectorCard();
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each

@@ -2057,3 +2057,13 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* v1.10.91 메신저: 삭제·고정 */
 .chatMessageText.deleted{font-style:italic;opacity:.6}
 .messengerUnsend{border:0;background:none;padding:0;font-size:.68rem;color:#94a3b8;cursor:pointer;text-decoration:underline}
+/* v1.10.91 에셋 점검실 */
+.assetInspector{display:grid;grid-template-columns:240px minmax(0,1fr);gap:10px;margin-top:8px}
+.inspectSide{display:grid;gap:6px;align-content:start;min-width:0}.inspectList{list-style:none;margin:0;padding:0;max-height:52vh;overflow:auto;display:grid;gap:2px}
+.inspectList button{width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inspectList button.note-fix{border-left:4px solid #ef4444}.inspectList button.note-check{border-left:4px solid #f59e0b}.inspectList button.note-ok{border-left:4px solid #22c55e}
+.inspectStage{display:grid;gap:6px;min-width:0}.inspectCanvas{width:100%;height:46vh;border-radius:12px;touch-action:none;background:#bfe6ff}
+.inspectBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.inspectBar.hidden{display:none}.inspectBar input[type=range]{flex:1;min-width:120px}
+.inspectTitle{flex:1 1 100%;font-size:.85rem;overflow-wrap:anywhere}
+.inspectNote{display:grid;gap:6px}.inspectNotes{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:30vh;overflow:auto}.inspectNotes p{margin:2px 0}
+@media (max-width:720px){.assetInspector{grid-template-columns:1fr}.inspectList{max-height:24vh}.inspectCanvas{height:36vh}}

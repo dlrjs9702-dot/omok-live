@@ -5047,6 +5047,31 @@ async function requestHandler(req, res) {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
   }
+  // v1.10.91 에셋 점검실 (IDEAS #future-admin-console ③): the drawn pictures the game uses, and the administrator's notes on
+  // assets (status, memo, a small JPEG of the view, the view itself), kept on the server
+  if (pathname === '/api/admin/assets/pictures' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    const files = [];
+    for (const dir of ['assets/gamehall/cards', 'assets/items', 'assets/dex']) for (const f of await fsp.readdir(path.join(PUBLIC_DIR, dir)).catch(() => [])) if (/\.(svg|png)$/i.test(f)) files.push(`/${dir}/${f}`);
+    return sendJson(res, 200, { ok: true, files });
+  }
+  if (pathname === '/api/admin/asset-notes' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    const notes = (await pointStore.worldValue('assetNotes')) || {};
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, notes });
+    const body = await parseJson(req);
+    const id = String(body.id || ''); const status = ['', 'check', 'fix', 'ok'].includes(body.status) ? body.status : null;
+    if (!/^[\w.:/-]{2,160}$/.test(id) || status === null) return sendError(res, 400, 'BAD_NOTE', '잘못된 메모입니다.');
+    const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
+    const v = body.view || {}; const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : null);
+    if (!status && !String(body.memo || '').trim()) delete notes[id];
+    else {
+      if (!notes[id] && Object.keys(notes).length >= 300) return sendError(res, 409, 'TOO_MANY_NOTES', '메모가 너무 많습니다. 확인 완료된 것을 지워 주세요.');
+      notes[id] = { status, memo: String(body.memo || '').slice(0, 1000), shot, view: { yaw: num(v.yaw), pitch: num(v.pitch), dist: num(v.dist), frame: num(v.frame), low: v.low === true, season: ['spring', 'summer', 'autumn', 'winter'].includes(v.season) ? v.season : null }, at: nowMs() };
+    }
+    await pointStore.setWorldValue('assetNotes', notes);
+    return sendJson(res, 200, { ok: true, notes });
+  }
   if (pathname === '/api/admin/island/time' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
     const body = await parseJson(req);

@@ -1029,3 +1029,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .weedBoardList li.mine{outline:2px solid #23806f}
 :root[data-theme="light"] .gamehallToday{background:url("/assets/gamehall/today-frame-left.svg") left center/auto 100% no-repeat,url("/assets/gamehall/today-frame-right.svg") right center/auto 100% no-repeat,linear-gradient(135deg,var(--g1),var(--g2))}
 :root[data-theme="light"] .messengerUnsend{border:0;background:none;color:#7a6650}
+:root[data-theme="light"] .inspectList button.note-fix{border-left:4px solid #ef4444}
+:root[data-theme="light"] .inspectList button.note-check{border-left:4px solid #f59e0b}
+:root[data-theme="light"] .inspectList button.note-ok{border-left:4px solid #22c55e}
+:root[data-theme="light"] .inspectCanvas{background:#bfe6ff}
