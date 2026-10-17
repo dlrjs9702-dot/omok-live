@@ -9917,7 +9917,7 @@
         if (current?.id !== id) return;
         const firstPage = !last; current = data.room; showHead();
         const fresh = data.messages.filter((msg) => msg.seq > last);
-        const key = JSON.stringify(current.reads);
+        const key = JSON.stringify([current.reads, current.members]); // (a member shut out changes the counts too -- Codex review)
         if (!firstPage && !fresh.length && key === readsKey) return;
         const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
         msgs.push(...fresh); if (fresh.length) last = fresh.at(-1).seq; readsKey = key;

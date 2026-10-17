@@ -49,6 +49,10 @@ async function storeBehaves(store) {
   const back = await store.dmRoom('a', 'b');
   assert.deepEqual([back.room.id, back.joined, back.room.members.sort().join()], [d1.room.id, ['b'], 'a,b']);
   assert.equal((await store.messages(back.room.id)).length, 1);
+  await store.leave(back.room.id, 'b');
+  const [, raced] = await Promise.all([store.leave(back.room.id, 'a'), store.dmRoom('a', 'b')]); // the last out vs reopening
+  const got = await store.room(raced.room.id);
+  assert.ok(got && got.members.length >= 1); assert.equal((await store.dmRoom('a', 'b')).room.id, raced.room.id);
 }
 
 test('메신저 저장소: JSON — 허용·방·번호 붙은 메시지·전부 보관·이전 대화·마지막 사람이 나가면 삭제', async () => {

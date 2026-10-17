@@ -3349,7 +3349,7 @@ async function requestHandler(req, res) {
       const before = Math.max(0, Math.floor(Number(url.searchParams.get('before')) || 0)); // v1.10.87 이전 대화
       const messages = await (before ? messengerStore.older(room.id, before) : messengerStore.messages(room.id, after));
       if (!before) { // v1.10.88 읽음: looking at the room reads it (kept on the server, so every device agrees)
-        const upTo = Math.max(room.seq, messages.at(-1)?.seq || 0);
+        const upTo = messages.length ? messages.at(-1).seq : room.seq; // only what was handed over (past 100 unread, the rest next time -- Codex review)
         await messengerStore.setRead(room.id, key.id, upTo); room.reads[key.id] = Math.max(room.reads[key.id] || 0, upTo);
       }
       return sendJson(res, 200, { ok: true, room: view(room), messages: messages.map((x) => ({ ...x, label: nameOf(x.from) })) });
