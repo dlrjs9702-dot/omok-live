@@ -1161,11 +1161,11 @@
     <div class="recordsDialogHead"><h2 id="messengerTitle">메신저</h2><button id="messengerCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="messengerBody">
       <section class="messengerRooms" aria-label="대화방">
-        <button id="messengerNewBtn" type="button" class="secondary tiny">새 대화방</button>
+        <div class="messengerRoomsHead"><button id="messengerNewBtn" type="button" class="secondary tiny">새 대화방</button><button id="messengerDmBtn" type="button" class="secondary tiny">1:1 대화</button></div>
         <ul id="messengerRoomList" class="messengerRoomList"></ul>
       </section>
       <section id="messengerRoom" class="messengerRoom" aria-label="대화">
-        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
+        <div class="messengerRoomHead"><button id="messengerBackBtn" type="button" class="ghost tiny messengerBack">‹ 목록</button><strong id="messengerRoomName"></strong><button id="messengerInviteBtn" type="button" class="ghost tiny">초대</button><button id="messengerRenameBtn" type="button" class="ghost tiny">이름</button><button id="messengerMuteBtn" type="button" class="ghost tiny">알림 끄기</button><button id="messengerLeaveBtn" type="button" class="ghost tiny">나가기</button></div>
         <p id="messengerMembers" class="smallMuted"></p>
         <div id="messengerMessages" class="chatMessages messengerMessages" role="log" aria-live="polite"><p class="emptyState">대화방을 고르거나 새로 만드세요.</p></div>
         <form id="messengerForm" class="messengerForm"><input id="messengerInput" type="text" maxlength="500" autocomplete="off" placeholder="메시지 입력" aria-label="메시지 입력" /><button class="primary" type="submit">보내기</button></form>

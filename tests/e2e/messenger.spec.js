@@ -42,15 +42,31 @@ test('메신저: 허용 계정만 버튼, 방 만들기 → 메시지 → 상대
   await mom.page.locator('#messengerInput').fill('저녁 뭐 먹어?');
   await mom.page.locator('#messengerForm').getByRole('button', { name: '보내기' }).click();
   await expect(mom.page.locator('#messengerMessages .chatMessage.mine')).toHaveText(/저녁 뭐 먹어\?/);
+  await expect(mom.page.locator('#messengerMessages .messengerSystem')).toHaveText(/님을 초대했습니다/); // v1.10.88
+  await expect(mom.page.locator('#messengerMessages .chatMessage.mine .messengerReadCount')).toHaveText('1'); // dad has not read it
 
   await dad.page.reload(); // v1.10.87: the button tells what is unread before opening
-  await expect(dad.page.locator('#accountMessengerBtn')).toContainText('새 메시지 1');
+  await expect(dad.page.locator('#accountMessengerBtn')).toContainText('새 메시지 2'); // the invite line + the message (server count)
   await dad.page.locator('#accountMessengerBtn').click();
+  await expect(dad.page.locator('#messengerRoomList button', { hasText: '우리집' })).toContainText('저녁 뭐 먹어?'); // the last line shown
   await dad.page.locator('#messengerRoomList button', { hasText: '우리집' }).click();
   await expect(dad.page.locator('#messengerMessages .chatMessage')).toHaveText(/저녁 뭐 먹어\?/);
   await dad.page.locator('#messengerInput').fill('김치찌개');
   await dad.page.locator('#messengerInput').press('Enter');
   await expect(mom.page.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 10000 }); // the 3 s ask
+  await expect(mom.page.locator('#messengerMessages .messengerReadCount')).toHaveCount(0); // dad read it: the 「1」 is gone
+  // 1:1: named after the other; 나가기 only with the warning
+  if (await dad.page.locator('#messengerBackBtn').isVisible()) await dad.page.locator('#messengerBackBtn').click(); // a phone shows one side
+  await dad.page.locator('#messengerDmBtn').click();
+  await dad.page.locator('#messengerPeople label', { hasText: mom.nickname }).locator('input').check();
+  await dad.page.locator('#messengerPick').getByRole('button', { name: '확인' }).click();
+  await expect(dad.page.locator('#messengerRoomName')).toHaveText(mom.nickname);
+  await expect(dad.page.locator('#messengerInviteBtn')).toBeHidden();
+  let warned = '';
+  dad.page.once('dialog', (d) => { warned = d.message(); d.dismiss(); });
+  await dad.page.locator('#messengerLeaveBtn').click();
+  expect(warned).toContain('나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다');
+  await expect(dad.page.locator('#messengerRoomName')).toHaveText(mom.nickname); // dismissed: still in
   const box = await mom.page.locator('#messengerDialog').boundingBox(); const vw = mom.page.viewportSize().width;
   expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(vw); // fits a phone too
   for (const p of [mom, dad, kid]) await p.context.close();

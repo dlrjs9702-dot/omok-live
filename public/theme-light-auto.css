@@ -1015,3 +1015,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .islandTaxRow{background:#f7efe1;border:1px solid #e2d4bd}
 :root[data-theme="light"] .islandTaxRow p{color:#8a5a00}
 :root[data-theme="light"] #accountMessengerBtn.hasUnread{box-shadow:0 0 0 2px #ef4444 inset}
+:root[data-theme="light"] .messengerDay{background:rgba(127,127,127,.15)}
+:root[data-theme="light"] .messengerReadCount{border:0;background:none;color:#eab308}

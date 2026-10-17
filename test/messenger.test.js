@@ -31,6 +31,28 @@ async function storeBehaves(store) {
   await store.leave(room.id, 'c');
   assert.equal(await store.room(room.id), null); // the last one out
   assert.deepEqual(await store.messages(room.id), []);
+  // v1.10.88: reads only forward, members only; system lines; last line; rename; mute; one 1:1 room per pair
+  const g = await store.createRoom('모임', 'a', ['b']);
+  await store.post(g.id, 'a', 'a님이 b님을 초대했습니다.', true); await store.post(g.id, 'b', '안녕');
+  await store.setRead(g.id, 'b', 2); await store.setRead(g.id, 'b', 1); await store.setRead(g.id, 'z', 2);
+  let r = await store.room(g.id);
+  assert.deepEqual(r.reads, { b: 2 }); assert.equal(r.kind, 'group'); assert.deepEqual([r.last.seq, r.last.text], [2, '안녕']);
+  assert.deepEqual((await store.messages(g.id)).map((m) => Boolean(m.system)), [true, false]);
+  assert.equal((await store.messages(g.id))[0].from, 'a');
+  await store.rename(g.id, '새이름'); await store.setMuted(g.id, 'b', true); await store.setMuted(g.id, 'b', true);
+  r = await store.room(g.id); assert.equal(r.name, '새이름'); assert.deepEqual(r.muted, ['b']);
+  await store.setMuted(g.id, 'b', false); assert.deepEqual((await store.room(g.id)).muted, []);
+  const [d1, d2] = await Promise.all([store.dmRoom('a', 'b'), store.dmRoom('b', 'a')]);
+  assert.equal(d1.room.id, d2.room.id); assert.equal(d1.room.kind, 'dm'); assert.deepEqual(d1.room.pair.sort(), ['a', 'b']);
+  await store.post(d1.room.id, 'a', '둘이'); await store.leave(d1.room.id, 'b');
+  assert.deepEqual((await store.room(d1.room.id)).members, ['a']); // the other keeps the lines
+  const back = await store.dmRoom('a', 'b');
+  assert.deepEqual([back.room.id, back.joined, back.room.members.sort().join()], [d1.room.id, ['b'], 'a,b']);
+  assert.equal((await store.messages(back.room.id)).length, 1);
+  await store.leave(back.room.id, 'b');
+  const [, raced] = await Promise.all([store.leave(back.room.id, 'a'), store.dmRoom('a', 'b')]); // the last out vs reopening
+  const got = await store.room(raced.room.id);
+  assert.ok(got && got.members.length >= 1); assert.equal((await store.dmRoom('a', 'b')).room.id, raced.room.id);
 }
 
 test('메신저 저장소: JSON — 허용·방·번호 붙은 메시지·전부 보관·이전 대화·마지막 사람이 나가면 삭제', async () => {
@@ -97,27 +119,52 @@ test('메신저 API: 관리자 허용 계정만(서버 확인), 방 만들기·�
   assert.equal((await call('/api/messenger/rooms', { name: ' ', members: [dad.id] }, mom.token)).data.error, 'BAD_ROOM_NAME');
   const room = (await call('/api/messenger/rooms', { name: '우리집', members: [dad.id] }, mom.token)).data.room;
   assert.deepEqual(room.members.map((m) => m.label).sort(), ['아빠', '엄마']);
+  assert.deepEqual([room.seq, room.unread, room.last.text, room.last.system], [1, 0, '엄마님이 아빠님을 초대했습니다.', true]); // v1.10.88 system line
 
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '저녁 뭐 먹어?' }, mom.token)).status, 201);
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: 'x'.repeat(501) }, dad.token)).data.error, 'CHAT_TOO_LONG');
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '김치찌개' }, dad.token)).status, 201);
   const got = (await call(`/api/messenger/rooms/${room.id}/messages`, undefined, dad.token)).data;
-  assert.deepEqual(got.messages.map((m) => [m.seq, m.label, m.text]), [[1, '엄마', '저녁 뭐 먹어?'], [2, '아빠', '김치찌개']]);
-  assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=1`, undefined, mom.token)).data.messages.map((m) => m.seq), [2]);
+  assert.deepEqual(got.messages.map((m) => [m.seq, m.label, m.text]), [[1, '엄마', '엄마님이 아빠님을 초대했습니다.'], [2, '엄마', '저녁 뭐 먹어?'], [3, '아빠', '김치찌개']]);
+  // v1.10.88 읽음 (server): mom has read up to her own line 2, dad all 3 by looking
+  let momList = (await call('/api/messenger', undefined, mom.token)).data.rooms[0];
+  assert.deepEqual([momList.unread, momList.reads[mom.id], momList.reads[dad.id], momList.last.label], [1, 2, 3, '아빠']);
+  assert.deepEqual((await call(`/api/messenger/rooms/${room.id}/messages?after=2`, undefined, mom.token)).data.messages.map((m) => m.seq), [3]);
+  assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].unread, 0); // read on another call too (any device)
+  // rename (group), mute (mine only)
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/name`, { name: '우리 가족' }, dad.token)).data.room.name, '우리 가족');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/mute`, { on: true }, mom.token)).data.room.muted, true);
+  assert.equal((await call('/api/messenger', undefined, dad.token)).data.rooms[0].muted, false);
+  // 1:1: named after the other, one room per pair, no invites
+  const dm = (await call('/api/messenger/dm', { with: dad.id }, mom.token)).data.room;
+  assert.deepEqual([dm.kind, dm.name], ['dm', '아빠']);
+  assert.equal((await call('/api/messenger/dm', { with: mom.id }, dad.token)).data.room.id, dm.id);
+  assert.equal((await call('/api/messenger/dm', { with: kid.id }, mom.token)).data.error, 'BAD_MEMBERS'); // not let in
+  assert.equal((await call(`/api/messenger/rooms/${dm.id}/members`, { members: [dad.id] }, mom.token)).data.error, 'DM_ROOM');
+  await call(`/api/messenger/rooms/${dm.id}/messages`, { text: '둘만' }, mom.token);
+  await call(`/api/messenger/rooms/${dm.id}/leave`, {}, dad.token);
+  const left = (await call(`/api/messenger/rooms/${dm.id}/messages`, undefined, mom.token)).data;
+  assert.deepEqual([left.room.name, left.messages.map((m) => m.text)], ['아빠', ['둘만', '아빠님이 나갔습니다.']]); // mom keeps the lines
+  const again = (await call('/api/messenger/dm', { with: dad.id }, mom.token)).data.room;
+  assert.deepEqual([again.id, again.members.length, again.last.text], [dm.id, 2, '아빠님이 들어왔습니다.']);
 
   // the kid: let in later, not a member until invited
   await req(`/api/admin/keys/${kid.id}/messenger`, admin, { allowed: true });
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, undefined, kid.token)).status, 404);
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, { text: '나도' }, kid.token)).status, 404);
   assert.equal((await call(`/api/messenger/rooms/${room.id}/members`, { members: [kid.id] }, dad.token)).data.room.members.length, 3);
-  assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, undefined, kid.token)).data.messages.length, 2);
+  const kidSees = (await call(`/api/messenger/rooms/${room.id}/messages`, undefined, kid.token)).data;
+  assert.equal(kidSees.messages.at(-1).text, '아빠님이 아이님을 초대했습니다.');
+  assert.equal((await call(`/api/messenger/rooms/${room.id}/members`, { members: [kid.id] }, dad.token)).data.error, 'BAD_MEMBERS'); // already in
 
   // 허용 해제: every call stops at once, the room stays for the others
   await req(`/api/admin/keys/${dad.id}/messenger`, admin, { allowed: false });
   assert.equal((await call(`/api/messenger/rooms/${room.id}/messages`, undefined, dad.token)).data.error, 'MESSENGER_DENIED');
   assert.equal((await call(`/api/messenger/rooms/${room.id}/leave`, {}, kid.token)).status, 200);
   assert.equal((await call('/api/messenger', undefined, kid.token)).data.rooms.length, 0);
-  assert.equal((await call('/api/messenger', undefined, mom.token)).data.rooms[0].seq, 2);
+  const momRoom = (await call('/api/messenger', undefined, mom.token)).data.rooms.find((r) => r.id === room.id);
+  assert.equal(momRoom.last.text, '아이님이 나갔습니다.');
+  assert.equal(momRoom.members.find((m) => m.id === dad.id).active, false); // shut out: not waited for
 });
 
 // Codex review (v1.10.79): after a number, the next ones from it (no gap past 100 unread); the room cap holds with two

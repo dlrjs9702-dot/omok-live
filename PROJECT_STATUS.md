@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.88 메신저 카카오톡처럼
+
+- 지시(사용자 2026-10-17): IDEAS `#future-messenger-kakao` 구현, 보관은 A안(서버에 전부 보관·기기 저장 없음, v1.10.87과 같음).
+- 저장(`lib/messenger-store.js`, JSON·PostgreSQL 같은 동작): 계정별 마지막 읽은 번호(`setRead`, 앞으로만·방 회원만), 1:1 방(`dmRoom`, 두 사람당 한 방 — PostgreSQL은 쌍 잠금; 나간 사람이 다시 열리면 재입장 `joined`), 시스템 문구(`post(..., system)`; PostgreSQL은 기존 표를 바꾸지 않고 보낸 사람 앞에 `!`), 방의 마지막 메시지(`last`), 이름 바꾸기·알림 끄기. 새 표 `messenger_reads`·`messenger_mutes`·`messenger_dm`(기존 표 변경 없음).
+- 서버(`/api/messenger*`): 방 보기에 `kind`·`unread`·`muted`·`reads`·`last`·회원 `active`(허용 해제·권한 취소는 안 읽은 사람 셈에서 뺌). 대화를 받으면 그 번호까지 읽음, 내가 보낸 줄은 읽음. `POST /api/messenger/dm`(1:1, 이름 = 상대), 초대·만들기·나가기·이름 변경 때 시스템 문구, `POST …/name`(단체만)·`…/mute`, 1:1 방 초대 막음, 이미 있는 사람 초대 막음.
+- 화면(`public/app.js` messenger): 목록에 마지막 메시지·시간·안 읽은 수·🔕, 「1:1 대화」, 방 머리 「이름」·「알림 끄기」, 메시지 옆 안 읽은 사람 수(마우스 올리면 이름, 휴대폰은 눌러서), 날짜 구분선, 같은 사람 연속 메시지는 이름 한 번, 가운데 시스템 문구, 나가기 확인창 「나가면 대화 내용이 모두 사라지고 다시 초대받아야 들어올 수 있습니다」. 메신저 버튼 알림은 서버의 안 읽은 수(알림 끈 방 제외) — 기기별 `gc.messengerSeen`은 더 쓰지 않음.
+- 남긴 것: 실시간(SSE) 대신 지금의 3초·10초 폴링 유지, 섬·게임 안 새 메시지 알림, 메시지 삭제(제안), 대화 목록 고정(선택). 업데이트 직후 기존 방은 서버 읽음 기록이 없어 한 번 전부 안 읽음으로 보임.
+- 검증: `test/messenger.test.js`(JSON·PostgreSQL 읽음·1:1 동시 열기 한 방·재입장·시스템 문구·이름·알림, API 읽음·1:1·나가기 뒤 기록 유지·재입장 문구·허용 해제 active), e2e `messenger.spec.js` PC·휴대폰(시스템 문구, 「1」이 상대가 읽으면 사라짐, 서버 안 읽은 수 2, 목록 미리보기, 1:1 방 이름·초대 숨김, 나가기 경고 문구), 화면 확인. 실제 휴대폰 미검증.
+
 ## v1.10.87 메신저 보완 (IDEAS 대조)
 
 - 지시(사용자 2026-10-17): 「메신저 관련 사항 다 구현했는지 확인하고 부족하면 이어서」. IDEAS `#future-messenger` 대조 결과 보완 3가지.
@@ -29,10 +38,3 @@
 - 서버(`server.js` `collectTaxes`): 한국 시간 날짜가 바뀌면(5분마다 확인) 모든 계정(권한 취소 계정 포함)에서 그날 세금; 서버가 잠든 동안 지난 날짜도 깨어날 때 하루씩 차례로(최대 30일, Codex 검토). 납부 요청은 예금만으로 낸 경우도 한 번만(PostgreSQL 원장 표시, Codex 검토). `lookFor`: 체납 중이면 장착 칭호 대신 「체납자」, 의상은 줄무늬(`avatar_outfit_2`, `look.prisoner` → 바탕 흰색·줄 검정, 변신 해제). `/api/island/tax` GET(체납·오늘 밤 예상)·POST(세금 창구 1.8m 안에서 납부).
 - 화면: 민원실 창구를 민원(정산)·세금·예금 세 칸, 직원 셋·명패 셋(창구마다 1.8m 안에서만). `#taxDialog`, 이름표 빨간 「체납자」 표식. 포인트 내역 「주민세」·「체납 세금 납부」.
 - 검증: `test/resident-tax.test.js`(세액 계산, JSON·PostgreSQL 하루 한 번·체납 상한, 서버 전 계정 징수·체납자 칭호·줄무늬·세금 창구 납부로 해제), 예금·관공서 실내·잡초 정산 시험 갱신, e2e 관공서 흐름, 화면 확인(줄무늬 옷·체납자 표식·세 창구). 실제 휴대폰 미검증.
-
-## v1.10.85 관공서 예금 창구
-
-- 결정(사용자 2026-10-17): 은행 건물 없이 관공서 실내에 예금 창구, 예금 금리 하루 4%·이자 상한 없음·입출금 제한 없음, 대출 없음. 주택·방치 회수는 보류(IDEAS 은행 절).
-- 저장(`lib/point-store.js` `bankAccrue`·`bankView`·`bankMove`): 지갑과 예금을 따로, 한국 시간 자정마다 예금 + 예금의 4%(원 단위 내림, 복리) — 접속 없는 날도 다음에 볼 때 지난 자정 수만큼 계산. 맡기기·찾기는 요청 id로 한 번만, 원장 `bank_deposit`(지갑 −)·`bank_withdraw`(지갑 +). JSON은 계정에 `deposit`·`depositDay`, PostgreSQL은 새 표 `bank_deposits`(기존 표는 바꾸지 않음). 기술 상한은 안전한 정수(약 9천조 P)뿐.
-- 서버(`/api/island/bank` GET·POST): 관공서 실내에서 예금 창구 3m 안일 때만. 화면: 민원실 창구를 왼쪽 「민원」·오른쪽 「예금」 두 칸·직원 둘·명패, SPACE · 예금 창구 → `#bankDialog`(지갑·예금·내일 예상 이자, 맡기기·찾기·전부). 포인트 내역 「예금 맡기기/찾기」.
-- 검증: `test/bank-deposit.test.js`(이자 계산·복리·같은 날·상한, 저장소 JSON·PostgreSQL 같은 동작, API 창구 거리·부족·한 번만·내역), 관공서 실내·잡초 정산 시험, e2e 가방·관공서·상인·시장 정문, 화면 확인. 실제 휴대폰 미검증.
