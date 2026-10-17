@@ -53,7 +53,7 @@ test('라이어게임 스킨: 방장 테마가 모든 화면에 같고, 각 힌�
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '라이어게임' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(14);
+  await expect(dialog.locator('.skinCard')).toHaveCount(24) /* v1.10.90 스킨 2배 +10 */;
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'liar' });
@@ -91,7 +91,7 @@ test('다빈치 코드 스킨: 방장 테마가 모든 화면에 같고, 각 랙
   await a.page.locator('#skinShopBtn').click();
   const dialog = a.page.locator('#skinShopDialog');
   await dialog.getByRole('tab', { name: '다빈치 코드' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(14);
+  await expect(dialog.locator('.skinCard')).toHaveCount(24) /* v1.10.90 스킨 2배 +10 */;
   await dialog.getByRole('button', { name: '닫기' }).click();
 
   const created = await call(a, '/api/rooms', { gameType: 'davinci' });
