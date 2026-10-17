@@ -4386,6 +4386,62 @@
       "lowSrc": "motion36:wardrobe/body_hoodie_low.glb",
       "lowSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f",
       "precompressed": true
+    },
+    {
+      "out": "characters/npc_farmer.glb",
+      "src": "farmer:01. High/npc_farmer_high.glb",
+      "sha256": "5b3283d9bf8c7c3a60d464f34c8af2ca563f7023d7c208faf462a24be49bc590",
+      "lowSrc": "farmer:02. Low/npc_farmer_low.glb",
+      "lowSha256": "7e871af834698612494051b9b3a99eed821dc38952e5cb66d00f0b332752e9fa",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/field_stage0.glb",
+      "src": "farmer:01. High/field_stage0_high.glb",
+      "sha256": "ee1a9fe9580ccf1b7f8e70315eae6720878429800ca18463d8c6e631bf2670f4",
+      "lowSrc": "farmer:02. Low/field_stage0_low.glb",
+      "lowSha256": "327e231d079b710484e5a52dc07ce687750ae4f8ea6756510691e8f2dfff6a67",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/field_stage1.glb",
+      "src": "farmer:01. High/field_stage1_high.glb",
+      "sha256": "229850b8da2caabeebb3f409698662b22654a7e422ecdd2d8c75ee570747e0a4",
+      "lowSrc": "farmer:02. Low/field_stage1_low.glb",
+      "lowSha256": "14e97fec9ec693e995b26e167180e379d7c96cf1b79fb008d55bf15c4cc095c9",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/field_stage2.glb",
+      "src": "farmer:01. High/field_stage2_high.glb",
+      "sha256": "8389c69effe536b6abf16d2579611d97f78e7e211611d5d54a58f4a0893a0996",
+      "lowSrc": "farmer:02. Low/field_stage2_low.glb",
+      "lowSha256": "96075cdeebe47988772e4dc8641613253c28f4e1db7e1bfdbe33d84459a429fb",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/field_stage3.glb",
+      "src": "farmer:01. High/field_stage3_high.glb",
+      "sha256": "d481557dc4fb564859374ddd1c98af92675afe7dbaeca85c2ed4bf2d8fde649c",
+      "lowSrc": "farmer:02. Low/field_stage3_low.glb",
+      "lowSha256": "c53c4295a71183e3e67b0e07df62715e80d0444058ee1c1c98bc3b3818919d16",
+      "precompressed": true
+    },
+    {
+      "out": "farmer-v1/sign_helpers.glb",
+      "src": "farmer:01. High/sign_helpers_high.glb",
+      "sha256": "2080ae3a540fe308aaf1a870c7c543ee1cbde2427415b561dfddb935bcd20af7",
+      "lowSrc": "farmer:02. Low/sign_helpers_low.glb",
+      "lowSha256": "f1b5e2760c0256324207e5560961deedd33a3024f5a67302638d742088fb9f45",
+      "precompressed": true
+    },
+    {
+      "out": "characters/props/mallet.glb",
+      "src": "farmer:01. High/prop_mallet_high.glb",
+      "sha256": "f915bfc12b440f3b005e41f2c307a719b5bc6284d53808644b5153cee01f1bc3",
+      "lowSrc": "farmer:02. Low/prop_mallet_low.glb",
+      "lowSha256": "7c18119e539a9149c0bab23d5cd2dbc27c76ad455e1ca5f32646bb48fcbbf6d5",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4407,6 +4463,7 @@
     "skinsx2": "27. Game Island skins x2 2026-10-13",
     "overhaul": "28. Game Island asset overhaul 2026-10-14",
     "transformationChoices": "30. Game Island transformation choices 2026-10-14",
-    "motion36": "36. Game Island expressive motion repair 2026-10-15/delivery"
+    "motion36": "36. Game Island expressive motion repair 2026-10-15/delivery",
+    "farmer": "26. Game Island farmer quest 2026-10-12"
   }
 }

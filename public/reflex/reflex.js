@@ -78,7 +78,7 @@ export function mount({ api, onBack }) {
   const menu = document.getElementById('reflexMenu');
   const result = document.getElementById('reflexResult');
   let set = SETS.reflex; let info = null; let game = null; let runId = null; let shown = 'list'; let startSeq = 0;
-  let direct = false; let launch = null; // launch: { place, goal, level, resolve } of a play() call
+  let direct = false; let questMode = false; let launch = null; // launch: { place, goal, level, resolve } of a play() call
   let runLevel = null; // the level the round was started at (kept for its result: Codex review)
   const levels = {}; // game id -> the level last played
   try { Object.assign(levels, JSON.parse(localStorage.getItem('gc.reflexLevels') || '{}')); } catch {}
@@ -95,7 +95,7 @@ export function mount({ api, onBack }) {
 
   function head(title, back) {
     const top = el('div', 'reflexHead');
-    top.append(direct ? button('ghost tiny', '‹ 게임관', goBack) : button('ghost tiny', back ? '‹ 목록' : '‹ 뒤로', back ? showList : goBack), el('strong', null, title));
+    top.append(direct ? button('ghost tiny', questMode ? '‹ 섬으로' : '‹ 게임관', goBack) : button('ghost tiny', back ? '‹ 목록' : '‹ 뒤로', back ? showList : goBack), el('strong', null, title));
     const sound = button('ghost tiny reflexSound', '', () => { Settings.toggle('sound'); paintSound(); });
     const paintSound = () => { const on = Settings.get('sound'); sound.textContent = on ? '🔊 효과음' : '🔇 효과음'; sound.setAttribute('aria-pressed', String(on)); };
     paintSound();
@@ -202,7 +202,7 @@ export function mount({ api, onBack }) {
     }
     const again = button('primary', '다시 하기', () => start(g, line));
     box.append(el('div', 'reflexActions'));
-    box.lastChild.append(again, button('ghost', direct ? '게임관으로' : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
+    box.lastChild.append(again, button('ghost', direct ? (questMode ? '섬으로' : '게임관으로') : '다른 게임', () => { if (direct) { goBack(); return; } stopGame(); showList(); menu.classList.remove('hidden'); result.classList.add('hidden'); }));
     result.replaceChildren(box); result.classList.remove('hidden');
     again.focus();
     if (set === SETS.puzzle) return r.proof && sendPuzzle(g, level, score, r.proof, line, r.rec);
@@ -260,6 +260,7 @@ export function mount({ api, onBack }) {
   }
 
   function quit() { // a round left before its end: not reported, so not paid
+    if (questMode) { goBack(); return; } // v1.10.80: a quest's round left -- straight back to the island
     stopGame(); runId = null; frame.classList.remove('playing');
     result.classList.add('hidden'); menu.classList.remove('hidden');
     showGame(game);
@@ -274,6 +275,7 @@ export function mount({ api, onBack }) {
     if (shown === 'play' && set === SETS.puzzle) return; // a puzzle's own Esc closes its hint (✕ leaves it)
     event.preventDefault();
     if (shown === 'play') quit();
+    else if (shown === 'result' && questMode) goBack();
     else if (shown === 'result') { stopGame(); result.classList.add('hidden'); menu.classList.remove('hidden'); showGame(game); }
     else if (shown === 'game') { if (direct) goBack(); else showList(); }
     else goBack();
@@ -286,6 +288,7 @@ export function mount({ api, onBack }) {
       const one = set.games.find((g) => g.id === gameId); direct = Boolean(one);
       if (one) showGame(one); else showList();
       const quest = one && launch?.place === 'quest'; // a quest's round: no choosing, it starts once the info is in
+      questMode = Boolean(quest); if (quest) showGame(one); // (v1.10.80: its way back says 섬으로)
       const go = () => start(one, menu.querySelector('.reflexStatus'));
       try { // the list is usable meanwhile: redraw only what still shows (Codex review)
         if (!set.info) { if (quest) go(); return; }
