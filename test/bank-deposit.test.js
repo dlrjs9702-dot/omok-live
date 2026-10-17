@@ -67,3 +67,19 @@ test('예금 API: 관공서 안 예금 창구에서만, 맡기기·찾기·포�
   const history = JSON.stringify((await req('/api/points/history', a)).data);
   assert.ok(history.includes('bank_deposit') && history.includes('bank_withdraw'));
 });
+
+// Codex review: the counted day never goes back (a late request from before midnight), and a move past a safe number on
+// either side is refused rather than losing points
+test('예금 경계: 늦게 온 전날 요청이 기준일을 되돌리지 않음, 안전한 수를 넘는 이동은 거절', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bank-edge-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 100000 }); await store.init();
+  const U = 'guest:00000000-0000-4000-8000-0000000000b2';
+  const d1 = Date.parse('2026-10-17T23:59:00+09:00'); const d2 = Date.parse('2026-10-18T00:01:00+09:00');
+  await store.bankMove(U, 10000, 'edge-in-0001', d1);
+  assert.equal((await store.bankView(U, d2)).deposit, 10400);
+  await store.bankMove(U, 1, 'edge-in-late', d1); // arrives late, dated the day before
+  assert.equal((await store.bankView(U, d2)).deposit, 10401, '그 자정 이자를 다시 세지 않음');
+  store.data.accounts[U].deposit = Number.MAX_SAFE_INTEGER - 1;
+  const r = await store.bankMove(U, 5, 'edge-in-0002', d2);
+  assert.deepEqual([r.applied, r.reason], [false, 'limit']);
+});

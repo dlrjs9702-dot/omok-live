@@ -4046,6 +4046,7 @@ async function requestHandler(req, res) {
     if (!Number.isSafeInteger(amount) || amount === 0 || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '금액을 확인해 주세요.');
     const out = await pointStore.bankMove(account, amount, body.requestId, nowMs());
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT', amount > 0 ? '지갑 포인트가 부족합니다.' : '예금이 부족합니다.', { balance: out.balance, deposit: out.deposit });
+    if (out.reason === 'limit') return sendError(res, 409, 'BANK_LIMIT', '더 맡기거나 찾을 수 없는 금액입니다.', { balance: out.balance, deposit: out.deposit });
     if (out.applied) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, ...out });
   }
