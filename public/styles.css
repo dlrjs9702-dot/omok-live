@@ -2015,3 +2015,16 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* v1.10.87 메신저: 이전 대화 · 안 읽은 알림 */
 .messengerMore{display:block;margin:4px auto 8px}
 #accountMessengerBtn.hasUnread{box-shadow:0 0 0 2px #ef4444 inset;font-weight:900}
+/* v1.10.88 메신저 카카오톡처럼: 목록 미리보기 · 읽음 수 · 시스템 문구 · 날짜 */
+.messengerRoomsHead{display:flex;gap:6px}.messengerRoomsHead button{flex:1}
+.messengerRoomMain{display:flex;flex-direction:column;min-width:0;flex:1}.messengerRoomMain strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.messengerPreview{font-size:.78rem;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.messengerRoomSide{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:.72rem;flex:none}
+.messengerRoomHead{flex-wrap:wrap}
+.messengerRoomList{grid-template-columns:minmax(0,1fr)}.messengerRoomList button{min-width:0}
+.messengerSystem,.messengerDay{text-align:center;font-size:.76rem;opacity:.75;margin:6px auto!important}
+.messengerDay{border-radius:999px;background:rgba(127,127,127,.15);padding:2px 10px;width:max-content;max-width:100%}
+.messengerMessages .chatMessage.same{margin-top:-4px}
+.messengerMeta{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:1px;flex:none}
+.chatMessage.mine .messengerMeta{align-items:flex-end}
+.messengerReadCount{border:0;background:none;padding:0;color:#eab308;font-weight:900;font-size:.72rem;cursor:pointer;line-height:1}
