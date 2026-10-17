@@ -362,6 +362,7 @@ test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 
 });
 
 test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받고, 구조물은 문·충돌을 그대로 두고, 캐릭터는 Idle/Walk/Run을 재생한다', async ({ browser, request }) => {
+  test.setTimeout(90000); // a 3D island page with models: 25-30 s on a CI runner, near the 30 s default
   const a = await island(browser, request, '에셋성공', {
     __only: true,
     'facility.townhall': { url: BOX, scale: 2 },
