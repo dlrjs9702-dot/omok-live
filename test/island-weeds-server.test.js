@@ -106,6 +106,19 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   const price = require('../lib/island-items').priceOf('weed'); // 300P (900P on a 제초 요청 day: the server's clock)
   assert.equal(sold.status, 200); assert.equal(sold.data.paid, price);
   assert.equal((await R()('/api/donation', winner)).data.balance, before + price);
+  // v1.10.91 잡초 게시판: today's pull and hand-in rankings (the winner: 1 and 1), names only; 제초왕 for the week's 1st
+  const boardOf = async (s) => (await R()('/api/island/weeds/board', s)).data;
+  const board = await boardOf(winner);
+  assert.deepEqual([board.today.pulls.total, board.today.submits.total, board.week.total], [1, 1, 1]);
+  assert.deepEqual([board.today.pulls.top[0].total, board.today.pulls.top[0].mine, board.today.submits.top[0].rank], [1, true, 1]);
+  assert.ok(!JSON.stringify(board).includes('guest:'), '계정 ID 비공개');
+  assert.equal(board.island.weeds, 1399); assert.deepEqual(board.merit, []);
+  assert.equal((await boardOf(winner === sa ? sb : sa)).today.pulls.me, null);
+  assert.equal((await R()('/api/skins/title', winner, { skinId: 'title_weedking' })).status, 409);
+  await R()('/api/test/fishking/settle', null, { now: Date.now() + 7 * 24 * 60 * 60 * 1000, asCurrent: true });
+  assert.equal((await R()('/api/skins/title', winner, { skinId: 'title_weedking' })).data.avatar.title, '제초왕');
+  const hall = (await R()('/api/island/titles', winner)).data.titles.find((x) => x.id === 'weedking');
+  assert.deepEqual([hall.name, hall.entries.length, hall.entries[0].mine], ['제초왕', 1, true]);
   // a restart: the pulled weed stays pulled; then a midnight passed while the server was off: it grows back somewhere new
   await server.stop();
   const file = path.join(dir, 'points.json');
@@ -115,7 +128,8 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   server = await boot(t, dir);
   sa = await server.enter(ka);
   const after = await weeds(sa);
-  assert.equal(after.weeds.length, 1400, '뽑힌 만큼 보충');
+  // v1.10.91: 1 pulled the day before (0~139) -> today's total is 1,680, the 281 short of it grow somewhere new
+  assert.equal(after.weeds.length, 1680, '적게 뽑은 다음 날은 1,680포기');
   assert.ok(!after.weeds.some(([w]) => w === id));
-  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 1);
+  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 281);
 });

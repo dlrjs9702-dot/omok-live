@@ -1490,6 +1490,29 @@
   // v1.10.89 칭호 명예의 전당 (IDEAS #future-title-history): on the plaza board under the notices, folded until opened --
   // a title picked, its holders from the first recorded week as 1대, 2대 ... (the current one marked), 20 at a time.
   // It lives in a hidden holder off the board, so the window puts it back there on closing like any other card.
+  // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): today's pull and hand-in rankings (top 10 and mine), yesterday's
+  // island pulls and today's weeds, yesterday's two best hand-ins, this week's hand-ins and last week's 제초왕
+  let weedBoardCard = null;
+  function weedBoard() {
+    if (!weedBoardCard) { const home = document.createElement('div'); home.hidden = true; document.body.append(home); weedBoardCard = document.createElement('section'); weedBoardCard.className = 'card weedBoardCard'; weedBoardCard.id = 'weedBoardCard'; home.append(weedBoardCard); }
+    const card = weedBoardCard; const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    card.replaceChildren(el('p', 'emptyState', '불러오는 중입니다.'));
+    const list = (title, b, unit) => {
+      const box = el('div', 'weedBoardList'); box.append(el('h3', '', `${title} · 섬 전체 ${b.total.toLocaleString('ko-KR')}${unit}`));
+      if (!b.top.length) { box.append(el('p', 'smallMuted', '아직 없어요.')); return box; }
+      const ol = el('ol'); for (const r of b.top) { const li = el('li', r.mine ? 'mine' : ''); li.append(el('strong', '', `${r.rank}위`), el('span', '', r.name), el('span', 'smallMuted', `${r.total}${unit}`)); ol.append(li); }
+      box.append(ol); if (b.me && !b.top.some((r) => r.mine)) box.append(el('p', 'smallMuted', `내 순위: ${b.me.rank}위 · ${b.me.total}${unit}`));
+      return box;
+    };
+    api('/api/island/weeds/board').then((d) => {
+      const head = el('div', 'weedBoardHead');
+      head.append(el('p', '', d.island.yesterdayPulled == null ? `오늘 잡초 ${d.island.weeds.toLocaleString('ko-KR')}포기` : `어제 섬 전체 ${d.island.yesterdayPulled.toLocaleString('ko-KR')}포기 뽑음 · 오늘 잡초 ${d.island.weeds.toLocaleString('ko-KR')}포기`));
+      head.append(el('p', 'weedBoardMerit', d.merit.length ? `어제의 납품 수훈 · ${d.merit.map((m) => `${m.rank}위 ${m.name} ${m.total}포기`).join(' · ')}` : '어제의 납품 수훈 · 어제 납품 없음'));
+      head.append(el('p', 'smallMuted', `지난주 제초왕: ${d.lastWeekKing || '없음'} · 이번 주 납품 1위가 다음 주 「제초왕」`));
+      card.replaceChildren(head, list('오늘 뽑은 순위', d.today.pulls, '포기'), list('오늘 납품 순위', d.today.submits, '포기'), list('이번 주 납품 순위', d.week, '포기'));
+    }).catch((error) => card.replaceChildren(el('p', 'emptyState', error.message)));
+    return card;
+  }
   let titleHallCard = null;
   function titleHall() {
     if (titleHallCard) return titleHallCard;
@@ -1771,7 +1794,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });

@@ -1024,3 +1024,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .titleHallRow.current{outline:2px solid #f59e0b}
 :root[data-theme="light"] .titleHallRow.mine strong{color:#1f6f60}
 :root[data-theme="light"] .titleHallNow{color:#f59e0b}
+:root[data-theme="light"] .weedBoardMerit{color:#166534}
+:root[data-theme="light"] .weedBoardList li{background:rgba(179,156,124,.12)}
+:root[data-theme="light"] .weedBoardList li.mine{outline:2px solid #23806f}

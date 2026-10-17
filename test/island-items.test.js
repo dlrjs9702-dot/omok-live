@@ -19,6 +19,19 @@ test('제초 요청: 2026-10-06 하루만 잡초 3배, 전후는 기본값, 가�
   assert.equal(I.sellAt(bag, 'office', 0, null, at('2026-10-07T09:00:00+09:00')).paid, 3100 + 2000);
 });
 
+test('잡초 총량·집계(v1.10.91): 전날 뽑은 양으로 목표, 넘치면 시듦, 뽑기·납품 계정별 합계', () => {
+  const W = require('../lib/island-weeds'); const { weedTotals } = require('../lib/point-store');
+  assert.deepEqual([0, 139, 140, 349, 350, 900].map(W.targetFor), [1680, 1680, 1400, 1400, 1120, 1120]);
+  const state = { removed: {}, added: [] }; const gone = W.wilt(9, 280, state);
+  assert.equal(new Set(gone).size, 280); assert.deepEqual(W.wilt(9, 280, state), gone, '같은 날은 같은 선택');
+  const at = (h) => `2026-10-17T0${h}:00:00.000Z`;
+  const rows = weedTotals([{ kind: 'island_weed', userId: 'a', at: at(1) }, { kind: 'island_weed', userId: 'a', at: at(2) }, { kind: 'island_weed', userId: 'b', at: at(3) },
+    { kind: 'island_sale', place: 'office', userId: 'b', at: at(4), sold: [{ itemId: 'weed', qty: 5 }, { itemId: 'trash', qty: 2 }] }, { kind: 'island_sale', place: 'merchant', userId: 'a', at: at(5), sold: [{ itemId: 'weed', qty: 9 }] },
+    { kind: 'island_weed', userId: 'a', at: '2026-10-18T01:00:00.000Z' }], '2026-10-17T00:00:00.000Z', '2026-10-18T00:00:00.000Z');
+  assert.deepEqual(rows.pulls.map((r) => [r.userId, r.total]).sort(), [['a', 2], ['b', 1]]);
+  assert.deepEqual(rows.submits.map((r) => [r.userId, r.total]), [['b', 5]]);
+});
+
 test('경제 기준(통합): 아일랜드 정산에 하루 한도가 없다', () => {
   const bag = [{ entryId: 'h', itemId: 'herb', qty: 99 }, { entryId: 'm', itemId: 'mushroom', qty: 99 }];
   const sale = I.sellAt(bag, 'merchant', 10_000_000, null);

@@ -1089,7 +1089,25 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
   weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
   const gridKey = (x, z) => `${Math.floor(x / WEED_GRID)},${Math.floor(z / WEED_GRID)}`;
+  // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): a notice board by the town hall's gate, off the path (the farm sign's
+  // model, its face toward the plaza); SPACE opens the rankings (app.js)
+  let weedBoard = null;
+  function prepareWeedBoard() {
+    if (weedBoard) return;
+    const T = globalThis.IslandTerrain; const p = T.townhallWorld(-5, T.TOWNHALL.yard.z1 + 2.5);
+    const root = new THREE.Group(); root.position.set(p.x, heightAt(p.x, p.z), p.z); root.rotation.y = Math.atan2(p.x, p.z); scene.add(root); // its face (-z) toward the plaza
+    const post = new THREE.Group(); mesh(new THREE.BoxGeometry(1.4, 0.7, 0.08), mat(0xe9d8b4), 0, 1.29, 0, post); mesh(new THREE.BoxGeometry(0.1, 1.3, 0.1), mat(0x8a6a48), 0, 0.65, 0, post);
+    root.add(post); assets.attach('farm.sign', root, post);
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 228; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#2f5a2a'; ctx.textAlign = 'center'; ctx.font = 'bold 58px sans-serif'; ctx.fillText('🌱 잡초 게시판', 256, 100); ctx.font = '32px sans-serif'; ctx.fillStyle = '#4a3020'; ctx.fillText('오늘 뽑은 순위 · 납품 순위', 256, 170);
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.34, 0.6), new THREE.MeshBasicMaterial({ map: texture, transparent: true })); face.position.set(0, 1.29, -0.0995); face.rotation.y = Math.PI; root.add(face);
+    const d = { x: p.x - Math.sin(root.rotation.y) * 1.2, z: p.z - Math.cos(root.rotation.y) * 1.2 };
+    eventDoors.weedboard = { x: d.x, z: d.z, name: '잡초 게시판' };
+    weedBoard = { root, door: d };
+  }
   function setWeeds(list) {
+    prepareWeedBoard();
     if (weedCells.length) { assets.unbatch(weedCells); for (const c of weedCells) { scene.remove(c.procedural[0]); c.procedural[0].dispose(); } }
     weedCells = []; weedById.clear(); weedGrid = new Map();
     if (weedKey) { delete eventDoors[weedKey]; weedKey = null; }
