@@ -431,6 +431,187 @@
     ctx.restore();
   }
 
+  // ---- v1.10.90 스킨 2배 (IDEAS #future-skins-double): five more commons, three premiums and a legend with its own room
+  // (심해 진주 ↔ 바닷속 정원). Black stays the dark stone and white the light one on every design.
+  function sunflower(ctx, r, c) { // 해바라기석: a ring of petals round a seeded heart
+    const d = dark(c);
+    ctx.save();
+    for (let i = 0; i < 14; i += 1) {
+      ctx.save(); ctx.rotate(i * TAU / 14);
+      ctx.fillStyle = d ? (i % 2 ? '#8a5a12' : '#6e450b') : (i % 2 ? '#ffd84a' : '#ffe680');
+      ctx.beginPath(); ctx.ellipse(0, -r * .7, r * .2, r * .36, 0, 0, TAU); ctx.fill(); ctx.restore();
+    }
+    ctx.fillStyle = sphere(ctx, r * .62, d ? ['#3d2a17', '#1d130a', '#090603'] : ['#fff8e6', '#f2dfb4', '#cfb27a']);
+    ctx.beginPath(); ctx.arc(0, 0, r * .62, 0, TAU); ctx.fill();
+    ctx.fillStyle = d ? 'rgba(255,214,120,.35)' : 'rgba(120,80,30,.35)';
+    for (let i = 0; i < 34; i += 1) { const a = i * 2.39996; const k = Math.sqrt(i / 34) * r * .52; ctx.beginPath(); ctx.arc(Math.cos(a) * k, Math.sin(a) * k, r * .045, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  function button(ctx, r, c) { // 단추석: a sewing button, four holes and a stitched rim
+    const d = dark(c);
+    ctx.fillStyle = sphere(ctx, r, d ? ['#4a4f5c', '#1d2028', '#07080b'] : ['#ffffff', '#f4efe6', '#cfc6b6']);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = d ? 'rgba(255,255,255,.18)' : 'rgba(90,70,40,.28)'; ctx.lineWidth = Math.max(1, r * .08);
+    ctx.beginPath(); ctx.arc(0, 0, r * .74, 0, TAU); ctx.stroke();
+    ctx.setLineDash([r * .12, r * .1]); ctx.strokeStyle = d ? 'rgba(255,230,180,.45)' : 'rgba(150,90,60,.55)'; ctx.lineWidth = Math.max(1, r * .05);
+    ctx.beginPath(); ctx.arc(0, 0, r * .88, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = d ? '#000' : '#a89a86';
+    for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(x * r * .22, y * r * .22, r * .1, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = d ? '#e8c46a' : '#c0504d'; ctx.lineWidth = Math.max(1, r * .06); // the thread, crossed
+    ctx.beginPath(); ctx.moveTo(-r * .22, -r * .22); ctx.lineTo(r * .22, r * .22); ctx.moveTo(r * .22, -r * .22); ctx.lineTo(-r * .22, r * .22); ctx.stroke();
+    gloss(ctx, r, .18);
+  }
+  function turtle(ctx, r, c) { // 거북등석: a tortoise shell of hexagon plates
+    const d = dark(c);
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.clip();
+    ctx.fillStyle = sphere(ctx, r, d ? ['#3f5b3a', '#1b2b19', '#070c06'] : ['#fbfff4', '#e7efd2', '#b9c79c']); ctx.fillRect(-r, -r, r * 2, r * 2);
+    const hex = (cx, cy, s) => { ctx.beginPath(); for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6; const x = cx + Math.cos(a) * s; const y = cy + Math.sin(a) * s; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.closePath(); };
+    ctx.strokeStyle = d ? 'rgba(200,230,170,.4)' : 'rgba(90,110,50,.5)'; ctx.lineWidth = Math.max(1, r * .06);
+    const s = r * .36;
+    hex(0, 0, s); ctx.stroke();
+    for (let i = 0; i < 6; i += 1) { const a = i * TAU / 6 + Math.PI / 6; hex(Math.cos(a) * s * 1.73, Math.sin(a) * s * 1.73, s); ctx.stroke(); }
+    ctx.restore();
+    ctx.strokeStyle = d ? '#0a1208' : '#8f9d6c'; ctx.lineWidth = Math.max(1, r * .07); ctx.beginPath(); ctx.arc(0, 0, r * .97, 0, TAU); ctx.stroke();
+    gloss(ctx, r, .15);
+  }
+  function cloud(ctx, r, c) { // 구름석: a puffed cloud (white: a fair-weather one, black: a thundercloud)
+    const d = dark(c);
+    ctx.save();
+    ctx.fillStyle = sphere(ctx, r, d ? ['#5a6274', '#2a2f3b', '#0d0f14'] : ['#ffffff', '#f6f9ff', '#c9d4e8'], .55);
+    ctx.beginPath();
+    for (const [x, y, k] of [[-.5, .12, .5], [0, -.22, .62], [.5, .1, .5], [-.22, .35, .45], [.25, .36, .45]]) ctx.moveTo(x * r + k * r, y * r), ctx.arc(x * r, y * r, k * r, 0, TAU);
+    ctx.fill();
+    if (d) { ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(r * .05, r * .05); ctx.lineTo(-r * .15, r * .45); ctx.lineTo(r * .02, r * .42); ctx.lineTo(-r * .1, r * .8); ctx.lineTo(r * .22, r * .3); ctx.lineTo(r * .05, r * .33); ctx.closePath(); ctx.fill(); }
+    else { ctx.fillStyle = 'rgba(255,200,120,.55)'; ctx.beginPath(); ctx.arc(-r * .25, -r * .1, r * .08, 0, TAU); ctx.arc(r * .2, -r * .1, r * .08, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  function melon(ctx, r, c) { // 수박석: a round watermelon (black) / a honeydew melon (white), with its stripes
+    const d = dark(c);
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.clip();
+    ctx.fillStyle = sphere(ctx, r, d ? ['#3f7a3a', '#1c3d18', '#081406'] : ['#ffffff', '#f2f8dc', '#c9d8a0']); ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.strokeStyle = d ? 'rgba(4,14,4,.8)' : 'rgba(150,175,90,.55)'; ctx.lineWidth = r * .14;
+    for (let i = -2; i <= 2; i += 1) { ctx.beginPath(); ctx.moveTo(i * r * .42, -r); ctx.bezierCurveTo(i * r * .42 + r * .18, -r * .3, i * r * .42 - r * .18, r * .3, i * r * .42, r); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = d ? '#5a3a14' : '#8a6a2a'; ctx.beginPath(); ctx.ellipse(0, -r * .92, r * .08, r * .14, .3, 0, TAU); ctx.fill();
+    gloss(ctx, r, .2);
+  }
+  function drop(ctx, r, c) { // 물방울핵: a clear drop with a bubble inside
+    const d = dark(c);
+    ctx.fillStyle = sphere(ctx, r, d ? ['#3b7bd0', '#103266', '#030b1c'] : ['#ffffff', '#e8f6ff', '#9fc8ea'], .5);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = d ? 'rgba(160,210,255,.55)' : 'rgba(60,120,180,.45)'; ctx.lineWidth = Math.max(1, r * .06);
+    for (const k of [.66, .4]) { ctx.beginPath(); ctx.arc(r * .08, r * .1, r * k, 0, TAU); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.beginPath(); ctx.ellipse(-r * .34, -r * .4, r * .22, r * .12, -.7, 0, TAU); ctx.fill();
+  }
+  function dropFx(ctx, r, t) { // rings spreading on water
+    ctx.save();
+    for (let k = 0; k < 3; k += 1) {
+      const tt = clamp01(t * 1.3 - k * .18); if (tt <= 0 || tt >= 1) continue;
+      ctx.strokeStyle = `rgba(150,210,255,${(1 - tt) * .85})`; ctx.lineWidth = r * .1 * (1 - tt) + 1;
+      ctx.beginPath(); ctx.ellipse(0, 0, r * (1.1 + 2 * tt), r * (1.1 + 2 * tt) * .8, 0, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function snow(ctx, r, c) { // 눈송이핵: an ice core with a six-armed snowflake
+    const d = dark(c);
+    ctx.fillStyle = sphere(ctx, r, d ? ['#4d6a96', '#1b2a48', '#060b16'] : ['#ffffff', '#f2f9ff', '#bcd4ec'], .5);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = d ? '#d8ecff' : '#4b7fb8'; ctx.lineWidth = Math.max(1.2, r * .08); ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i += 1) {
+      ctx.save(); ctx.rotate(i * TAU / 6);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * .72);
+      for (const k of [.32, .52]) { ctx.moveTo(0, -r * k); ctx.lineTo(-r * .14, -r * (k + .14)); ctx.moveTo(0, -r * k); ctx.lineTo(r * .14, -r * (k + .14)); }
+      ctx.stroke(); ctx.restore();
+    }
+    gloss(ctx, r, .2);
+  }
+  function snowFx(ctx, r, t) { // flakes drifting out
+    ctx.save(); ctx.fillStyle = `rgba(235,245,255,${1 - t})`;
+    for (let i = 0; i < 8; i += 1) { const a = i * TAU / 8 + .2; const k = r * (1.1 + 1.8 * t); starPath(ctx, Math.cos(a) * k, Math.sin(a) * k + t * r * .6, r * .2 * (1 - t) + 1, r * .06, 6, t * 3); ctx.fill(); }
+    ctx.restore();
+  }
+  function firework(ctx, r, c) { // 불꽃놀이핵: a night shell with a burst painted on it
+    const d = dark(c);
+    ctx.fillStyle = sphere(ctx, r, d ? ['#3b2a6a', '#16103a', '#05030f'] : ['#ffffff', '#fff6ea', '#e2cfb4'], .5);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    const cols = d ? ['#ff6b8a', '#ffd84a', '#6be3ff'] : ['#e0457a', '#e3a21a', '#2a9fd0'];
+    ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, r * .07);
+    for (let i = 0; i < 12; i += 1) { const a = i * TAU / 12; ctx.strokeStyle = cols[i % 3]; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .18, Math.sin(a) * r * .18); ctx.lineTo(Math.cos(a) * r * .72, Math.sin(a) * r * .72); ctx.stroke(); }
+    ctx.fillStyle = d ? '#fff3c4' : '#c7841a'; ctx.beginPath(); ctx.arc(0, 0, r * .12, 0, TAU); ctx.fill();
+  }
+  function fireworkFx(ctx, r, t) { // a burst of coloured sparks
+    ctx.save(); const cols = ['#ff6b8a', '#ffd84a', '#6be3ff', '#a98bff'];
+    for (let i = 0; i < 16; i += 1) { const a = i * TAU / 16; const k = r * (1 + 2.4 * Math.sqrt(t)); ctx.fillStyle = cols[i % 4]; ctx.globalAlpha = 1 - t; ctx.beginPath(); ctx.arc(Math.cos(a) * k, Math.sin(a) * k + t * t * r, r * .1 * (1 - t) + 1, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  // 심해 진주 (legend) ↔ 바닷속 정원 (room)
+  function pearl(ctx, r, c) {
+    const d = dark(c);
+    ctx.save();
+    ctx.shadowColor = d ? 'rgba(80,170,255,.55)' : 'rgba(255,220,240,.85)'; ctx.shadowBlur = r * .35;
+    const g = ctx.createRadialGradient(-r * .3, -r * .35, r * .05, 0, 0, r);
+    if (d) { g.addColorStop(0, '#5a6fa8'); g.addColorStop(.45, '#1d2850'); g.addColorStop(1, '#05081a'); }
+    else { g.addColorStop(0, '#ffffff'); g.addColorStop(.5, '#fbf2fa'); g.addColorStop(1, '#dccde6'); }
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.restore();
+    const sheen = ctx.createLinearGradient(-r, -r, r, r); // the nacre's play of colour
+    sheen.addColorStop(0, 'rgba(255,170,220,0)'); sheen.addColorStop(.45, d ? 'rgba(120,220,255,.28)' : 'rgba(255,170,220,.35)'); sheen.addColorStop(.6, d ? 'rgba(180,140,255,.22)' : 'rgba(150,210,255,.3)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = d ? '#9fd8ff' : '#d9a6c6'; ctx.lineWidth = Math.max(1.2, r * .06); ctx.beginPath(); ctx.arc(0, 0, r * .98, 0, TAU); ctx.stroke();
+    gloss(ctx, r, .35);
+  }
+  function pearlFx(ctx, r, t) { // bubbles rising from where it landed
+    ctx.save();
+    for (let i = 0; i < 7; i += 1) { const x = Math.sin(i * 2.3) * r * 1.1; const y = -r * (.6 + 2.6 * t) - i * r * .18; ctx.strokeStyle = `rgba(190,235,255,${(1 - t) * .9})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x + Math.sin(t * 8 + i) * r * .15, y, r * (.1 + (i % 3) * .05), 0, TAU); ctx.stroke(); }
+    ctx.restore();
+  }
+  function pearlSpecial(ctx, pts, r, t) { // four in a row: a stream of bubbles running along it
+    if (pts.length < 2) return;
+    const fade = t < .8 ? 1 : (1 - t) / .2;
+    ctx.save();
+    for (let k = 0; k < 18; k += 1) {
+      const u = ((k / 18 + t) % 1) * (pts.length - 1); const i = Math.min(pts.length - 2, Math.floor(u)); const f = u - i;
+      const x = pts[i].x + (pts[i + 1].x - pts[i].x) * f; const y = pts[i].y + (pts[i + 1].y - pts[i].y) * f - Math.sin(k) * r * .3;
+      ctx.strokeStyle = `rgba(170,230,255,${.8 * fade})`; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, r * (.12 + (k % 3) * .05), 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function pearlWin(ctx, pts, r, t) { // the line glows like nacre, a wave sweeps over, every pearl shines
+    if (pts.length < 2) return;
+    ctx.save(); ctx.lineCap = 'round';
+    const link = clamp01(t / .35) * (pts.length - 1);
+    for (const [w, col] of [[r * .5, 'rgba(150,220,255,.22)'], [r * .16, 'rgba(255,230,250,.95)']]) {
+      ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i += 1) { const f = clamp01(link - (i - 1)); if (f <= 0) break; ctx.lineTo(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f); }
+      ctx.stroke();
+    }
+    const mid = pts[Math.floor(pts.length / 2)];
+    const wave = clamp01((t - .3) / .5);
+    if (wave > 0 && wave < 1) { ctx.strokeStyle = `rgba(120,210,255,${(1 - wave) * .7})`; ctx.lineWidth = r * .3 * (1 - wave) + 2; ctx.beginPath(); ctx.arc(mid.x, mid.y, r * (1 + 7 * wave), 0, TAU); ctx.stroke(); }
+    pts.forEach((p, i) => { if (link < i) return; const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 1.4); glow.addColorStop(0, 'rgba(255,240,250,.7)'); glow.addColorStop(1, 'rgba(255,240,250,0)'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.4, 0, TAU); ctx.fill(); });
+    ctx.restore();
+  }
+  function paintSeaGarden(ctx, w, h, pad) { // 바닷속 정원: a sandy board under clear water, seaweed and coral in the frame
+    const sea = ctx.createLinearGradient(0, 0, 0, h); sea.addColorStop(0, '#1f7fa8'); sea.addColorStop(1, '#155f86');
+    ctx.fillStyle = sea; ctx.fillRect(0, 0, w, h);
+    const sand = ctx.createRadialGradient(w / 2, h / 2, w * .1, w / 2, h / 2, w * .7); sand.addColorStop(0, '#f1e3bd'); sand.addColorStop(1, '#ddc897');
+    ctx.fillStyle = sand; ctx.fillRect(pad * .6, pad * .6, w - pad * 1.2, h - pad * 1.2);
+    const R = rng(77);
+    ctx.fillStyle = 'rgba(160,130,80,.14)'; for (let i = 0; i < 220; i += 1) { ctx.beginPath(); ctx.arc(pad * .6 + R() * (w - pad * 1.2), pad * .6 + R() * (h - pad * 1.2), .8 + R() * 1.2, 0, TAU); ctx.fill(); }
+    const caustic = ctx.createLinearGradient(0, 0, w, h); caustic.addColorStop(0, 'rgba(255,255,255,.08)'); caustic.addColorStop(.5, 'rgba(255,255,255,0)'); caustic.addColorStop(1, 'rgba(255,255,255,.06)');
+    ctx.fillStyle = caustic; ctx.fillRect(pad * .6, pad * .6, w - pad * 1.2, h - pad * 1.2);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 10; i += 1) { // seaweed and coral grow only in the frame
+      const side = i % 4; const u = .1 + R() * .8;
+      const [x, y] = side === 0 ? [u * w, pad * .45] : side === 1 ? [u * w, h - pad * .45] : side === 2 ? [pad * .45, u * h] : [w - pad * .45, u * h];
+      ctx.strokeStyle = i % 3 ? '#2f9a5e' : '#e8746a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + (R() - .5) * pad * .6, y + (R() - .5) * pad * .6, x + (R() - .5) * pad * .5, y + (R() - .5) * pad * .5); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(220,245,255,.55)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 12; i += 1) { ctx.beginPath(); ctx.arc(R() < .5 ? pad * (.2 + R() * .3) : w - pad * (.2 + R() * .3), R() * h, 2 + R() * 3, 0, TAU); ctx.stroke(); }
+    ctx.strokeStyle = '#f0d58a'; ctx.lineWidth = 3; ctx.strokeRect(pad * .45, pad * .45, w - pad * .9, h - pad * .9);
+  }
+
   // ---- shop pictures ----------------------------------------------------------------------------------------------
   function drawPair(ctx, w, h, skinId, y = h / 2, r = Math.min(w, h) * .3) {
     for (const [cx, color] of [[w * .28, 'black'], [w * .72, 'white']]) {
@@ -472,5 +653,10 @@
     omok_t2: theme(paintObservatory, 'rgba(236,216,140,.9)', '#f3dc8e', { accent: observatoryAccent, shadow: 'rgba(150,170,255,.32)' }),
     omok_l1: legend(starStone, starStoneFx, starStoneSpecial, starStoneWin), // 천상 바둑 ↔ 별빛 천문대
     omok_l2: legend(sealStone, sealStoneFx, sealStoneSpecial, sealStoneWin), // 왕실 기보 ↔ 조선 기원
+    // v1.10.90 스킨 2배
+    omok_c6: piece(sunflower), omok_c7: piece(button), omok_c8: piece(turtle), omok_c9: piece(cloud), omok_c10: piece(melon),
+    omok_p4: piece(drop, dropFx), omok_p5: piece(snow, snowFx), omok_p6: piece(firework, fireworkFx),
+    omok_t3: theme(paintSeaGarden, 'rgba(60,40,20,.75)', '#1f7fa8'),
+    omok_l3: legend(pearl, pearlFx, pearlSpecial, pearlWin), // 심해 진주 ↔ 바닷속 정원
   });
 }());
