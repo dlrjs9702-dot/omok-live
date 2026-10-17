@@ -894,6 +894,10 @@ function isHoguking(account, now = nowMs()) {
 // Monday) 1st -- by the points the harbour fisherman paid / by the weeds handed in at the town hall -- closed once after it
 // ends, holds the title the week after (worn in the title slot, shown only while it is theirs). A tie: who reached the
 // total first, then the account id. Nobody: no title. From the week of 2026-10-12 on (no earlier week is made up).
+// v1.10.91 운영 스위치 (IDEAS #future-admin-console ②): what the administrator turns on and off without a deploy --
+// 새 가입 신청 받기, 메신저 (everyone's). Kept on the server; read once and then from memory.
+const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
+async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
 const WEEKLY_TITLES = {
   fishking: { title: 'title_fishking', name: '낚시왕', about: '어부 판매 주간 1위', rows: (from, to) => pointStore.fishSalesWeek(from, to) },
@@ -3283,6 +3287,7 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, loginId, available: !await accessStore.loginTaken(loginId) });
   }
   if (pathname === '/api/account/signup' && req.method === 'POST') {
+    if ((await opsSwitches()).signups === false) return sendError(res, 403, 'SIGNUPS_CLOSED', '지금은 가입 신청을 받지 않습니다. 나중에 다시 신청해 주세요.'); // v1.10.91 운영 스위치
     if (!checkRateLimit(`account-signup:${clientIp(req)}`, 5, 60 * 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '가입 신청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req);
     const realName = String(body.realName || '').trim().replace(/\s+/g, ' ');
@@ -3360,6 +3365,7 @@ async function requestHandler(req, res) {
     if (!key || key.revokedAt || key.pendingAt) return sendError(res, 401, 'ACCOUNT_AUTH', '로그인이 필요합니다.');
     const allowed = new Set(await messengerStore.allowedIds());
     if (!allowed.has(key.id)) return sendError(res, 403, 'MESSENGER_DENIED', '메신저는 관리자가 허용한 계정만 쓸 수 있습니다.');
+    if ((await opsSwitches()).messenger === false) return sendError(res, 403, 'MESSENGER_OFF', '메신저를 잠시 쉬고 있습니다.'); // v1.10.91 운영 스위치
     const keys = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt);
     const labelOf = new Map(keys.map((k) => [k.id, k.label]));
     const people = keys.filter((k) => allowed.has(k.id) && k.id !== key.id).map((k) => ({ id: k.id, label: k.label }));
@@ -5071,6 +5077,15 @@ async function requestHandler(req, res) {
     }
     await pointStore.setWorldValue('assetNotes', notes);
     return sendJson(res, 200, { ok: true, notes });
+  }
+  if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.91 운영 스위치
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'POST') {
+      const body = await parseJson(req); const now = await opsSwitches(); const next = { ...now };
+      for (const k of Object.keys(OPS_DEFAULTS)) if (typeof body[k] === 'boolean') next[k] = body[k];
+      await pointStore.setWorldValue('switches', next); opsCache = next;
+    }
+    return sendJson(res, 200, { ok: true, switches: await opsSwitches() });
   }
   if (pathname === '/api/admin/island/time' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;

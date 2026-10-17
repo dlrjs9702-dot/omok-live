@@ -1033,3 +1033,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .inspectList button.note-check{border-left:4px solid #f59e0b}
 :root[data-theme="light"] .inspectList button.note-ok{border-left:4px solid #22c55e}
 :root[data-theme="light"] .inspectCanvas{background:#bfe6ff}
+:root[data-theme="light"] .opsSwitches{border:1px solid rgba(179,156,124,.35)}

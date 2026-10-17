@@ -206,3 +206,28 @@ test('메신저 저장소: 밀린 메시지 100개 넘어도 빠짐없이, 동�
   assert.equal((await again.room(room.id)).seq, 151);
   await fs.rm(dir, { recursive: true, force: true });
 });
+
+// v1.10.91 운영 스위치: the administrator closes sign-ups and turns the messenger off for everyone, then back on
+test('운영 스위치: 가입 신청 멈춤·메신저 끄기, 관리자만', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'switches-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const { req, base } = await boot(t, dir);
+  const call = async (route, body, account) => { const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Forwarded-For': `10.91.0.${Math.floor(Math.random() * 200) + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); return { status: res.status, data: await res.json().catch(() => ({})) }; };
+  const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
+  assert.equal((await req('/api/admin/switches', null, { signups: false })).status, 401);
+  assert.deepEqual((await req('/api/admin/switches', admin)).data.switches, { signups: true, messenger: true });
+  assert.equal((await req('/api/admin/switches', admin, { signups: false })).data.switches.signups, false);
+  assert.equal((await call('/api/account/signup', { realName: '닫힘', loginId: 'closed_1', password: 'secret123', nickname: '닫힘' })).data.error, 'SIGNUPS_CLOSED');
+  await req('/api/admin/switches', admin, { signups: true });
+  assert.equal((await call('/api/account/signup', { realName: '열림', loginId: 'open_1', password: 'secret123', nickname: '열림' })).status < 400, true);
+  const signup = (await req('/api/admin/signups', admin)).data.signups.find((s) => s.loginId === 'open_1');
+  await req(`/api/admin/signups/${signup.id}/approve`, admin, {});
+  const login = (await call('/api/account/login', { loginId: 'open_1', password: 'secret123' })).data;
+  const id = (await req('/api/admin/keys', admin)).data.keys.find((k) => k.loginId === 'open_1').id;
+  await req(`/api/admin/keys/${id}/messenger`, admin, { allowed: true });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).status, 200);
+  await req('/api/admin/switches', admin, { messenger: false });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).data.error, 'MESSENGER_OFF');
+  await req('/api/admin/switches', admin, { messenger: true });
+  assert.equal((await call('/api/messenger', undefined, login.accountToken)).status, 200);
+});
