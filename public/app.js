@@ -2278,7 +2278,7 @@
   let photoShot = null;
   function cancelPhotoShot() {
     const shot = photoShot; photoShot = null;
-    if (shot) { clearTimeout(shot.timer); shot.wake?.(false); shot.abort.abort(); shot.controller.photoPose?.(false); }
+    if (shot) { clearTimeout(shot.timer); shot.wake?.(false); shot.abort.abort(); if (!shot.now) shot.controller.photoPose?.(false); } // an instant shot never touched the motion
     photoCount.classList.add('hidden');
   }
   function enterPhoto() {
@@ -2286,14 +2286,19 @@
     document.body.classList.add('photoMode'); photoBar.classList.remove('hidden'); plazaStage.focus({ preventScroll: true });
   }
   const leavePhoto = () => plaza.controller?.setPhotoMode?.(false);
-  async function takePhoto() {
+  // v1.10.81 기념사진 2버튼 (IDEAS #future-photo-action, 사용자 확정 2026-10-08): 「즉시 촬영」 takes the frame as it is now --
+  // the pose, the place, what is in hand, mid-pull or mid-cast -- with no countdown and nothing stopped or moved;
+  // 「포즈 촬영」 is the 3-2-1 self-timer with PhotoPose as before, held back while an action of mine is under way (pulling,
+  // fishing, seated, on the train) so it never cuts into one. Both save the PNG and keep the photo spot the same way.
+  async function takePhoto({ now = false } = {}) {
     if (photoShot || !document.body.classList.contains('photoMode')) return;
-    const shot = { controller: plaza.controller, token: sessionToken, abort: new AbortController(), timer: null, wake: null };
+    if (!now && plaza.controller?.actionBusy?.()) { showToast('하던 행동이 끝나면 포즈 촬영할 수 있어요. 지금 모습은 「즉시 촬영」으로 찍어 보세요.', 4000); return; }
+    const shot = { controller: plaza.controller, token: sessionToken, abort: new AbortController(), timer: null, wake: null, now };
     photoShot = shot;
     const current = () => photoShot === shot && plaza.controller === shot.controller && sessionToken === shot.token && document.body.classList.contains('photoMode');
     try {
-      shot.controller.photoPose?.();
-      for (const n of [3, 2, 1]) {
+      if (!now) shot.controller.photoPose?.();
+      for (const n of now ? [] : [3, 2, 1]) {
         if (!current()) return;
         photoCount.textContent = String(n); photoCount.classList.remove('hidden');
         const waited = await new Promise((resolve) => { shot.wake = resolve; shot.timer = setTimeout(() => { shot.wake = null; resolve(true); }, 1000); });
@@ -2302,7 +2307,7 @@
       photoCount.classList.add('hidden');
       const blob = await shot.controller.capture?.();
       if (!current()) return;
-      shot.controller.photoPose?.(false);
+      if (!now) shot.controller.photoPose?.(false);
       if (blob) {
         const a = document.createElement('a'); const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
         a.download = `game-island-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`;
@@ -2313,10 +2318,11 @@
       const data = await api('/api/island/photo', { method: 'POST', body: '{}', signal: shot.abort.signal }).catch(() => null);
       if (!current()) return;
       showToast(data?.spot ? `📷 ${data.spot.name}${data.first ? ' · 기념사진 기록' : ''}` : '📷 저장했습니다');
-    } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); shot.controller.photoPose?.(false); } }
+    } finally { if (photoShot === shot) { photoShot = null; photoCount.classList.add('hidden'); if (!now) shot.controller.photoPose?.(false); } }
   }
   document.getElementById('islandPhotoTab').addEventListener('click', () => enterPhoto());
   document.getElementById('photoShootBtn').addEventListener('click', () => takePhoto());
+  document.getElementById('photoNowBtn').addEventListener('click', () => takePhoto({ now: true }));
   document.getElementById('photoCloseBtn').addEventListener('click', () => leavePhoto());
   window.addEventListener('keydown', (event) => {
     if (!document.body.classList.contains('plazaMode') || event.isComposing || event.repeat) return;
