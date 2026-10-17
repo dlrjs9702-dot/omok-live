@@ -1009,3 +1009,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .recordsDialog>.recordsDialogHead h2{color:#fff}
 :root[data-theme="light"] .recordsDialog>.recordsDialogHead .ghost{background:rgba(0,0,0,.25);color:#fff;border-color:rgba(255,255,255,.35)}
 :root[data-theme="light"] .recordsDialog>.recordsDialogHead .skinShopBalance{color:#fff}
+:root[data-theme="light"] .bankSums>div{background:#f7efe1;border:1px solid #e2d4bd}
+:root[data-theme="light"] .bankSums small{color:#7a6650}
+:root[data-theme="light"] .bankSums strong{color:#8a5a00}

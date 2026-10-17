@@ -3159,7 +3159,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.84' });
+    return sendJson(res, 200, { ok: true, version: '1.10.85' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4030,6 +4030,24 @@ async function requestHandler(req, res) {
     plazaPresence.set(session.token, { ...at, x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100, space: entering ? 'townhall' : 'island', moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'townhall' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
+  }
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): at the 예금 window inside the 민원실 -- the wallet and the deposit (4% a day,
+  // lib/point-store.js bankAccrue), and putting in or taking out any amount (once per request id)
+  if (pathname === '/api/island/bank' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res);
+    if (!session) return;
+    const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.bank.lx, R.bank.lz);
+    if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 3) return sendError(res, 409, 'TOO_FAR', '관공서 안 예금 창구에서 이용해 주세요.');
+    const account = pointAccountForSession(session);
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, ...(await pointStore.bankView(account, nowMs())) });
+    if (!checkRateLimit(`bank:${account}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req);
+    const amount = Number(body.amount);
+    if (!Number.isSafeInteger(amount) || amount === 0 || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '금액을 확인해 주세요.');
+    const out = await pointStore.bankMove(account, amount, body.requestId, nowMs());
+    if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT', amount > 0 ? '지갑 포인트가 부족합니다.' : '예금이 부족합니다.', { balance: out.balance, deposit: out.deposit });
+    if (out.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, ...out });
   }
   if (pathname === '/api/island/sell' && req.method === 'POST') {
     const session = requireSession(req, res);
@@ -5451,7 +5469,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.84 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.85 실행: http://${HOST}:${PORT}`));
 }
 
 main().catch((err) => {

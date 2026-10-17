@@ -1730,7 +1730,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2239,6 +2239,35 @@
       plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
+  // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;
+  // anything in or out at any time (the server checks I am at the window, and pays each request once)
+  const bankDialog = byId('bankDialog'); let bankNow = null; let bankBusy = false;
+  const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
+  function showBank(v) {
+    bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다. 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+  }
+  async function openBank() {
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      showBank(await api('/api/island/bank')); byId('bankStatus').textContent = ''; byId('bankAmount').value = ''; bankDialog.showModal();
+    } catch (error) { showToast(error.message); }
+  }
+  async function bankMove(kind) {
+    if (bankBusy || !bankNow) return;
+    const typed = Math.floor(Number(byId('bankAmount').value));
+    const amount = kind === 'allIn' ? bankNow.balance : kind === 'allOut' ? -bankNow.deposit : kind === 'in' ? typed : -typed;
+    if (!Number.isSafeInteger(amount) || amount === 0) { byId('bankStatus').textContent = kind.startsWith('all') ? '옮길 포인트가 없습니다.' : '금액을 입력해 주세요.'; return; }
+    bankBusy = true;
+    try {
+      const r = await api('/api/island/bank', { method: 'POST', body: JSON.stringify({ amount, requestId: crypto.randomUUID() }) });
+      showBank(r); byId('bankAmount').value = ''; loadPoints();
+      byId('bankStatus').textContent = amount > 0 ? `${fmtP(amount)} 맡겼습니다.` : `${fmtP(-amount)} 찾았습니다.`;
+    } catch (error) { byId('bankStatus').textContent = error.message; } finally { bankBusy = false; }
+  }
+  byId('bankForm').addEventListener('submit', (event) => { event.preventDefault(); bankMove('in'); });
+  for (const b of byId('bankForm').querySelectorAll('button[type=button]')) b.addEventListener('click', () => bankMove(b.dataset.bank));
+  byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
@@ -4061,6 +4090,8 @@
     if (item.reason === 'solo_game') return '혼자 게임 보상'; // v1.10.37
     if (item.reason === 'quest') return '섬 주민 부탁'; // v1.10.37
     if (item.reason === 'daily_attendance') return '출석체크';
+    if (item.reason === 'bank_deposit') return '예금 맡기기'; // v1.10.85
+    if (item.reason === 'bank_withdraw') return '예금 찾기';
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
         const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
