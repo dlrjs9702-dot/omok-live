@@ -1771,7 +1771,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2222,6 +2222,20 @@
   // id, sent once more if the answer was lost) and everyone's island drops it.
   let weedBusy = false;
   async function loadWeeds() { try { const data = await api('/api/island/weeds'); plaza.controller?.setWeeds?.(data.weeds); } catch {} }
+  // v1.10.89 밭 수확: the grown field gives each one 밭 채소 a week (sold at the 상인)
+  let harvestBusy = false;
+  async function harvestFarm() {
+    if (harvestBusy) return; harvestBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      await api('/api/island/farm/harvest', { method: 'POST', body: '{}' });
+      plaza.controller?.playMine?.('pickup'); showToast('🥕 밭 채소 +1 · 상인에게 팔 수 있어요');
+      plaza.controller?.setFarm?.({ ...(await api('/api/island/farm')), harvested: true });
+    } catch (error) {
+      showToast(error.message);
+      if (error.data?.error === 'HARVESTED') api('/api/island/farm').then((v) => plaza.controller?.setFarm?.({ ...v, harvested: true })).catch(() => {});
+    } finally { harvestBusy = false; }
+  }
   async function pullWeed(key) {
     const id = key.slice('weed:'.length);
     if (!id || weedBusy || islandEventBusy) return;

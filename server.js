@@ -900,7 +900,7 @@ async function settleFishkingWeeks(now = nowMs()) {
   fishkingSettling = (async () => {
     for (let week = previousWeek(climbWeekOf(now)), n = 0; week >= FISHKING_FIRST_WEEK && n < 8; week = previousWeek(week), n += 1) {
       const key = `fishking_week:${week}`;
-      if (await pointStore.titleWeekResult(key)) break; // closed (and the ones before it)
+      if (await pointStore.settlementOf(key)) break; // closed (and the ones before it)
       const rows = (await pointStore.fishSalesWeek(new Date(weekStartMs(week)).toISOString(), new Date(weekStartMs(nextWeekOf(week))).toISOString()))
         .sort((a, b) => b.total - a.total || String(a.lastAt).localeCompare(String(b.lastAt)) || a.userId.localeCompare(b.userId));
       const labels = new Map((await accessStore.list()).map((k) => [`guest:${k.id}`, k.label]));
@@ -913,7 +913,7 @@ async function settleFishkingWeeks(now = nowMs()) {
 }
 async function refreshFishking(now = nowMs()) {
   const week = previousWeek(climbWeekOf(now));
-  const id = (await pointStore.titleWeekResult(`fishking_week:${week}`))?.fishking || null;
+  const id = (await pointStore.settlementOf(`fishking_week:${week}`))?.fishking || null;
   if (fishkingCache.week === week && fishkingCache.id === id) return;
   fishkingCache = { week, id }; refreshTaxLooks(); // name tags follow at once
 }
@@ -4941,7 +4941,7 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/fishking/settle' && req.method === 'POST') { // v1.10.89
     const body = await parseJson(req); const now = Number(body.now) || nowMs();
     await settleFishkingWeeks(now);
-    if (body.asCurrent) { const r = await pointStore.titleWeekResult(`fishking_week:${previousWeek(climbWeekOf(now))}`); fishkingCache = { week: previousWeek(climbWeekOf(nowMs())), id: r?.fishking || null }; refreshTaxLooks(); } // (tests: that week as if it had just closed)
+    if (body.asCurrent) { const r = await pointStore.settlementOf(`fishking_week:${previousWeek(climbWeekOf(now))}`); fishkingCache = { week: previousWeek(climbWeekOf(nowMs())), id: r?.fishking || null }; refreshTaxLooks(); } // (tests: that week as if it had just closed)
     return sendJson(res, 200, { ok: true, fishking: fishkingCache });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/climb/settle' && req.method === 'POST') {
@@ -4989,9 +4989,24 @@ async function requestHandler(req, res) {
   // the central plaza (a new day, or the first visit).
   // v1.10.80 농부 밭 (IDEAS #future-island-minigames C안): the field everyone sees -- its stage from how many helped this
   // week (0 holes, 1 filled, 2 sprouts, 3 grown), and their names for the sign. A new week starts at 0 by itself.
+  // v1.10.89 밭 수확 (IDEAS #future-island-minigames: 「늦게 온 사람도 자기 수확은 각자」): when this week's field is grown
+  // (stage 3), each account takes one 밭 채소 a week, standing in the field (once per week: the claim)
+  if (pathname === '/api/island/farm/harvest' && req.method === 'POST') {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!checkRateLimit(`island-harvest:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token); const F = IslandTerrain.FARM;
+    if (!at || townhallInside.has(session.token) || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있습니다.');
+    if ((await islandFarm()).stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
+    const account = pointAccountForSession(session);
+    const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${questWeek()}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
+    return sendJson(res, 200, { ok: true, bag: out.bag });
+  }
   if (pathname === '/api/island/farm' && req.method === 'GET') {
-    if (!requireSession(req, res)) return;
-    return sendJson(res, 200, { ok: true, ...(await islandFarm()) });
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    return sendJson(res, 200, { ok: true, ...(await islandFarm()), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89
   }
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
     const session = requireSession(req, res);

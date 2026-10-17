@@ -27,7 +27,7 @@ test('농부 부탁: 두더지 잡기 200점 판으로 단계 완료, 공동 밭
     };
     return { sa, talk, round };
   };
-  assert.deepEqual((await req('/api/island/farm', (await helper('밭구경')).sa)).data, { ok: true, stage: 0, names: [] });
+  assert.deepEqual((await req('/api/island/farm', (await helper('밭구경')).sa)).data, { ok: true, stage: 0, names: [], harvested: false });
 
   const a = await helper('농부도움');
   const asked = (await a.talk()).data;
@@ -41,7 +41,10 @@ test('농부 부탁: 두더지 잡기 200점 판으로 단계 완료, 공동 밭
   await new Promise((r) => setTimeout(r, 200));
   const paid = (await a.talk()).data;
   assert.equal(paid.reward, 3000); assert.match(paid.say, /둘러봐/); assert.equal(paid.minigame, null);
-  assert.deepEqual((await req('/api/island/farm', a.sa)).data, { ok: true, stage: 1, names: ['농부도움'] });
+  assert.deepEqual((await req('/api/island/farm', a.sa)).data, { ok: true, stage: 1, names: ['농부도움'], harvested: false });
+  const T = require('../public/plaza/island-terrain.js'); const field = (s) => req('/api/plaza/state', s, { x: T.FARM.x, z: T.FARM.z, yaw: 0 });
+  await field(a.sa); await new Promise((r) => setTimeout(r, 300)); await field(a.sa);
+  assert.equal((await req('/api/island/farm/harvest', a.sa, {})).data.error, 'FARM_NOT_GROWN'); // v1.10.89: not before it is grown
 
   for (const name of ['도움둘', '도움셋', '도움넷']) {
     const h = await helper(name); await h.talk(); await h.round(300); await new Promise((r) => setTimeout(r, 200)); await h.talk();
@@ -49,6 +52,14 @@ test('농부 부탁: 두더지 잡기 200점 판으로 단계 완료, 공동 밭
   const farm = (await req('/api/island/farm', a.sa)).data;
   assert.equal(farm.stage, 3, '최대 3단계');
   assert.deepEqual([...farm.names].sort(), ['농부도움', '도움넷', '도움둘', '도움셋'].sort());
+  // v1.10.89 밭 수확: grown -> one 밭 채소 each a week, in the field only
+  const late = await helper('늦게옴'); // helped nobody: still harvests (each one's own)
+  assert.equal((await req('/api/island/farm/harvest', late.sa, {})).data.error, 'TOO_FAR');
+  await field(late.sa); await new Promise((r) => setTimeout(r, 300)); await field(late.sa);
+  assert.equal((await req('/api/island/farm/harvest', late.sa, {})).status, 200);
+  assert.equal((await req('/api/island/farm/harvest', late.sa, {})).data.error, 'HARVESTED');
+  assert.equal(((await req('/api/island/bag', late.sa)).data.items || []).find((e) => e.itemId === 'harvest')?.qty, 1);
+  assert.deepEqual([(await req('/api/island/farm', late.sa)).data.harvested, (await req('/api/island/farm', a.sa)).data.harvested], [true, false]);
 });
 
 test('농부 밭: 도운 사람 목록 — JSON·PostgreSQL 같은 답(그 주, 첫 단계를 넘긴 계정만)', async (t) => {

@@ -1421,6 +1421,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setFarm(view) {
     const f = prepareFarm(); const stage = Math.max(0, Math.min(3, Number(view?.stage) || 0)); const names = (view?.names || []).slice(0, 8);
     f.fields.forEach((root, s) => { root.visible = s === stage; }); f.stage = stage;
+    // v1.10.89 밭 수확: a grown field is harvested from its middle (SPACE · 밭 · 수확), until I have this week's
+    const F = globalThis.IslandTerrain.FARM;
+    if (stage === 3 && !view?.harvested) eventDoors['farm:harvest'] = { x: F.x, z: F.z, name: '밭 · 수확', resource: true }; else delete eventDoors['farm:harvest'];
     const key = names.join('|'); if (f.names === key) return; f.names = key;
     const ctx = f.canvas.getContext('2d'); ctx.clearRect(0, 0, 512, 228);
     ctx.fillStyle = '#4a3020'; ctx.textAlign = 'center'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('이번 주 밭을 지켜 준 사람들', 256, 46);
