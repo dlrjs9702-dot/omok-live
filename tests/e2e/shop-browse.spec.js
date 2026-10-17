@@ -4,7 +4,7 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 // v1.10.89 상점·내 정보 분류 (사용자 2026-10-17): name search, 등급·시리즈·보유 chips, 부위 tabs in 내 정보, and the
 // 파츠 미리보기 -- my character with that item on, in 3D from the island's parts. PC and phone.
 test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기', async ({ browser, request }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000); // (a phone profile on CI: about twice the local minute)
   const who = await shopper(browser, request, '분류', 500000, 'male');
   const { page, token } = who;
   for (const skinId of ['avatar_hair_6', 'avatar_hat_1']) expect((await post(request, '/api/skins/buy', token, { skinId })).status).toBe(200);
