@@ -44,6 +44,8 @@ const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
+const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
+require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
@@ -4290,7 +4292,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const g = soloGames.get(session.token);
-    return sendJson(res, 200, { ok: true, levels: Object.entries(Minesweeper.LEVELS).map(([id, l]) => ({ id, label: l.label, w: l.w, h: l.h, mines: l.mines, points: l.points })),
+    return sendJson(res, 200, { ok: true, levels: Object.entries(Minesweeper.LEVELS).map(([id, l]) => ({ id, label: l.label, w: l.w, h: l.h, mines: l.mines, points: Economy.value(`solo:minesweeper:${id}`) })),
       records: (await pointStore.soloRecords(pointAccountForSession(session))).minesweeper || {}, game: g ? { id: g.id, view: g.engine.view() } : null });
   }
   if ((pathname === '/api/solo/minesweeper/new' || pathname === '/api/solo/minesweeper/act') && req.method === 'POST') {
@@ -4313,7 +4315,7 @@ async function requestHandler(req, res) {
     if (view.status === 'won' && !g.paid) {
       g.paid = true;
       const L = Minesweeper.LEVELS[g.level];
-      const points = view.ms >= L.minMs ? L.points : 0;
+      const points = view.ms >= L.minMs ? Economy.value(`solo:minesweeper:${g.level}`) : 0; // (v1.10.91: the administrator's value)
       const account = pointAccountForSession(session);
       const out = await pointStore.soloClear({ userId: account, gameId: g.id, game: 'minesweeper', level: g.level, ms: view.ms, points, title: `지뢰찾기 ${L.label}` });
       result = { points: out.points, best: out.best, clears: out.clears, newBest: out.newBest, balance: out.balance ?? out.balanceAfter };
@@ -5090,7 +5092,7 @@ async function requestHandler(req, res) {
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: r.pay.reward, title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = r.pay.reward; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
     const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
     const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];
@@ -5127,6 +5129,17 @@ async function requestHandler(req, res) {
     await pointStore.setWorldValue('assetNotes', notes);
     return sendJson(res, 200, { ok: true, notes });
     });
+  }
+  // v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②): the table, a change (checked against each value's range, kept with
+  // who/when/before), and putting one back (a change to the value it had before)
+  if (pathname === '/api/admin/economy' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'POST') {
+      const body = await parseJson(req);
+      const out = await worldEdit(async () => { const r = Economy.change(await pointStore.worldValue('economy'), body.changes, '관리자', nowMs()); if (r.error) return r; await pointStore.setWorldValue('economy', r.saved); Economy.load(r.saved); return r; });
+      if (out.error) return sendError(res, 400, 'BAD_ECONOMY', out.error === 'RANGE' ? '허용 범위를 벗어난 값입니다.' : '바꿀 값이 없습니다.');
+    }
+    return sendJson(res, 200, { ok: true, ...Economy.view(await pointStore.worldValue('economy')) });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
     if (!requireAdmin(req, res)) return;
@@ -5770,6 +5783,7 @@ async function main() {
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
+  Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
   if (!SkinCatalog.IP_ON) { // v1.10.90 IP 스킨 정리: switched off -> what was paid for them goes back, once
     const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
     if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }

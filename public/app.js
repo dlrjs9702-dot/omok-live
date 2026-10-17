@@ -2401,6 +2401,34 @@
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
   function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // v1.10.91 경제 값 관리: the table by group (the default beside each), a confirm listing the changes, and the history
+  // with a 되돌리기 for each change (back to the value before it)
+  let economyNow = null;
+  function drawEconomy(v) {
+    economyNow = v; const box = byId('economyTable'); if (!box) return;
+    const groups = [...new Set(v.defs.map((d) => d.group))];
+    box.replaceChildren(...groups.map((g) => { const f = document.createElement('fieldset'); const l = document.createElement('legend'); l.textContent = g; f.append(l);
+      for (const d of v.defs.filter((x) => x.group === g)) { const row = document.createElement('label'); row.className = 'economyRow';
+        const name = document.createElement('span'); name.textContent = d.label; const input = document.createElement('input'); input.type = 'number'; input.min = d.min; input.max = d.max; input.step = 1; input.dataset.key = d.key; input.value = d.changed ? d.value : ''; input.placeholder = String(d.def);
+        const def = document.createElement('small'); def.textContent = `기본 ${d.def.toLocaleString('ko-KR')}`; row.append(name, input, def); f.append(row); }
+      return f; }));
+    byId('economyHistory').replaceChildren(...v.history.slice(0, 30).map((h, i) => { const li = document.createElement('li'); li.textContent = `${new Date(h.at).toLocaleString('ko-KR')} · ${h.label}: ${h.before.toLocaleString('ko-KR')} → ${h.after.toLocaleString('ko-KR')} `;
+      const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
+  }
+  async function saveEconomy(changes) {
+    const keys = Object.keys(changes); if (!keys.length) { showToast('바뀐 값이 없습니다.'); return; }
+    const text = keys.map((k) => { const d = economyNow.defs.find((x) => x.key === k); return `${d.group} · ${d.label}: ${d.value.toLocaleString('ko-KR')} → ${(changes[k] ?? d.def).toLocaleString('ko-KR')}`; }).join('\n');
+    if (!window.confirm(`이렇게 바꿀까요?\n\n${text}`)) return;
+    try { drawEconomy(await api('/api/admin/economy', { method: 'POST', body: JSON.stringify({ changes }) })); showToast('경제 값을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
+  }
+  byId('economySave')?.addEventListener('click', () => {
+    const changes = {};
+    for (const input of byId('economyTable').querySelectorAll('input[data-key]')) { const d = economyNow.defs.find((x) => x.key === input.dataset.key); const v = input.value === '' ? null : Math.floor(Number(input.value));
+      if (v !== null && (!Number.isSafeInteger(v) || v < d.min || v > d.max)) { showToast(`${d.label}: ${d.min.toLocaleString('ko-KR')}~${d.max.toLocaleString('ko-KR')} 사이로 적어 주세요.`, 4000); input.focus(); return; }
+      const want = v === d.def ? null : v; if (want !== (d.changed ? d.value : null)) changes[d.key] = want; } // (the default itself: no override)
+    saveEconomy(changes);
+  });
+  byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
   // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
   const opsBox = byId('opsSwitches');
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };

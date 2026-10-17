@@ -377,6 +377,8 @@
           <form id="islandTimeForm" class="joinForm islandTimeForm"><label for="islandTimeSelect">섬 시간대</label><select id="islandTimeSelect"><option value="auto">자동 (서울 시각)</option><option value="morning">아침</option><option value="day">낮</option><option value="evening">저녁</option><option value="night">밤</option></select><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->
+          <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
           <h3 class="keySectionTitle">가입 신청</h3>
           <div id="signupList" class="keyList"></div>
           <h3 class="keySectionTitle">활성 입장 파일</h3>
