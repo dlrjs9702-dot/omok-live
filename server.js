@@ -3265,8 +3265,10 @@ async function requestHandler(req, res) {
       const body = await parseJson(req);
       const members = invitees(body.members);
       if (!members || !members.length) return sendError(res, 400, 'BAD_MEMBERS', '초대할 사람을 골라 주세요.');
-      if (new Set([...room.members, ...members]).size > MESSENGER_ROOM_MAX) return sendError(res, 409, 'ROOM_FULL', `한 방은 ${MESSENGER_ROOM_MAX}명까지입니다.`);
-      return sendJson(res, 200, { ok: true, room: view(await messengerStore.addMembers(room.id, members)) });
+      const grown = await messengerStore.addMembers(room.id, members, MESSENGER_ROOM_MAX); // the cap checked in the store (two invites at once)
+      if (grown === false) return sendError(res, 409, 'ROOM_FULL', `한 방은 ${MESSENGER_ROOM_MAX}명까지입니다.`);
+      if (!grown) return sendError(res, 404, 'ROOM_NOT_FOUND', '대화방을 찾을 수 없습니다.');
+      return sendJson(res, 200, { ok: true, room: view(grown) });
     }
     if (m[2] === 'leave' && req.method === 'POST') { await messengerStore.leave(room.id, key.id); return sendJson(res, 200, { ok: true }); }
     return sendError(res, 405, 'METHOD', '지원하지 않는 요청입니다.');

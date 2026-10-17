@@ -19,6 +19,7 @@
 - 동작(`tools/assets/island-models.json` 출처 `motion36`, gltfpack): 기존 28개 교체 + 느리게 걷기·둘러보기·알아보기·짧은 인사 4개. 새 클립이 팔 자세를 직접 가지므로 런타임 armTuck 제거(`asset-loader.js`). WalkStart/Stop·선회(초안, 루트 이동)·농사/음식/도구 등 소품이 필요한 자유 모션·CarryWalk/Run·SitTalk는 연결하지 않음(파일도 넣지 않음).
 - 몸·옷 짝(`wardrobe-contract.json`): 운동복·후드는 전용 몸(`body_sports/hoodie`)과 가중치 수정 옷, 옷 없음은 `body_bare`, 나머지 59의상은 기존 `body_core`(`island-assets.js` `body`/`bare`, `asset-loader` `wear`). 납품 바이트 그대로 복사(precompressed) — 양자화 없는 meshopt·재질별 메시라 `budgets.json` `$motion36` 해시 고정 예외.
 - 이동 3단계(`plaza-scene.js`): 1.0/4.2/6.2, Shift 탭 = 느리게↔보통, 0.3초 홀드 = 뛰기(놓으면 이전 걸음), 휴대폰 `#islandPaceBtn` 같은 규칙. 애니메이터(`asset-pipeline.js`)에 `slow` 상태·클립별 재생률(`rates`). 다른 사람은 위치 속도로 같은 걸음이 보임.
+- 메신저 후속(v1.10.78 Codex 검토, 플러그인 실행 오류라 diff를 직접 넘겨 검토): PostgreSQL 번호 증가와 메시지 저장을 한 트랜잭션으로(동시 전송 시 메시지 건너뜀), 밀린 메시지는 받은 번호 다음부터 100개씩(최신 100개만 주던 누락), JSON 저장 실패 뒤에도 다음 저장 계속, 방 인원 제한을 저장소에서 확인(동시 초대 31명). 시험 `test/messenger.test.js`.
 - 시설 관리인: 다가가면 짧은 인사(20초에 한 번), 비어 있을 때 가끔 둘러보기 — 평소 대기 위에서만.
 - 검증: 단위(GLB 예산·등록부·파이프라인), e2e `motion36.spec.js`(Shift 탭/홀드 걸음·클립·거리, 운동복 전용 몸), 기존 섬 에셋·광장 e2e. 실제 휴대폰·GPU·다른 59의상 교차 미검증.
 
