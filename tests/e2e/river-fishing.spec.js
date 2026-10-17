@@ -25,10 +25,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
   await page.evaluate(() => window.PlazaDebug().fishBiteNow());
   await expect(page.locator('#plazaHint')).toHaveText(/당기기$/);
-  const model = page.waitForResponse((r) => /fish_catfish(_low)?.glb/.test(r.url()) && r.ok(), { timeout: 20000 });
   await page.keyboard.press('Space');
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1);
-  await model; // the new model fetched for the hand (held only 0.68-2.4 s after the catch: a slow runner may load it later)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
   await expectNoScriptError(page);
   await who.context.close();
 });

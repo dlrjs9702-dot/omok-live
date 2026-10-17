@@ -24,9 +24,8 @@ test('이모트 도중엔 서 있고, 끝나면 누르고 있던 방향키로 �
   await page.waitForTimeout(250);
   const b = await at(); if (b.locked) expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeLessThan(0.05); // held (while still locked when read)
   await expect.poll(async () => (await at()).locked, { timeout: 4000 }).toBe(false); // ends with the clip (3 s at most)
-  await page.waitForTimeout(500);
-  const c = await at(); await page.keyboard.up('ArrowUp');
-  expect(Math.hypot(c.x - a.x, c.z - a.z)).toBeGreaterThan(0.3); // the same press moves me now
+  await expect.poll(async () => { const c = await at(); return Math.hypot(c.x - a.x, c.z - a.z); }, { timeout: 5000 }).toBeGreaterThan(0.3); // the same press moves me now
+  await page.keyboard.up('ArrowUp');
 
   await expectNoScriptError(page);
   await who.context.close();
