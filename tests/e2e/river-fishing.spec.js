@@ -22,9 +22,9 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
   expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; return window.IslandTerrain.streamDist(b.x, b.z) < window.IslandTerrain.STREAM_HALF; })).toBe(true); // the float is on the stream
-  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().fishBiteNow());
+  await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
   await expect(page.locator('#plazaHint')).toHaveText(/당기기$/);
+  expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
   await page.keyboard.press('Space');
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'fish_catfish')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null); // the catch played out (the 13 new models: test/island-asset-pipeline)
