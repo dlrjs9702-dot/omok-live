@@ -1046,7 +1046,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // within WEED_REACH is offered (a soft ring round it, 「SPACE · 잡초 뽑기」); pulling plays GatherWeed for about a
   // second -- moving, a window opening or leaving the island in that time calls it off -- and only the server's answer
   // takes the weed away (for everyone: removeWeeds).
-  const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 900; const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
+  const WEED_CELL = 30; const WEED_GRID = 4; const WEED_REACH = 1.6; const WEED_MS = 1400; const WEED_LIFT = 620; /* v1.10.89 assets 37: 1.4 s, the weed comes up at the clip's lift event (0.62 s) */ const NOTHING = new THREE.Matrix4().makeScale(0, 0, 0);
   let weedCells = []; const weedById = new Map(); let weedGrid = new Map(); let weedKey = null; let gather = null;
   const weedRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.85, depthWrite: false }));
   weedRing.visible = false; weedRing.renderOrder = 1; scene.add(weedRing);
@@ -1218,7 +1218,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const w = weedById.get(id); if (!w) return false;
     const matrix = w.cell.matrices[w.i].clone();
     return startGather({ kind: 'weed', id, ms: WEED_MS, at: w, waitServer: true,
-      onStep: (t) => { const g = weedById.get(id); if (g) weedMatrix(g, new THREE.Matrix4().makeTranslation(0, Math.min(1, (t * 1000) / WEED_MS) * 0.18, 0).multiply(matrix)); }, // the weed gives a little
+      onStep: (t) => { const g = weedById.get(id); if (g) weedMatrix(g, new THREE.Matrix4().makeTranslation(0, Math.min(1, Math.max(0, t * 1000 - WEED_LIFT) / (WEED_MS - WEED_LIFT)) * 0.18, 0).multiply(matrix)); }, // the weed gives, from the lift on
       onDone: (ok) => { const g = weedById.get(id); if (g && !ok) weedMatrix(g, matrix); done(ok); } }); // let go: back as it was
   }
   const eventDoors = {}; // key -> { x, z, name } (only what I can act on)

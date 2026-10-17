@@ -83,7 +83,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   assert.equal((await R()('/api/island/weed/finish', sa, { weedId: id, requestId: crypto.randomUUID() })).data.error, 'WEED_TOO_SOON');
   // both start; both finish a second later at once: one gets it
   await R()('/api/island/weed/start', sa, { weedId: id }); await R()('/api/island/weed/start', sb, { weedId: id });
-  await sleep(1000);
+  await sleep(1500); // PULL_MS 1.4 s (v1.10.89)
   const ra = crypto.randomUUID();
   const [fa, fb] = await Promise.all([R()('/api/island/weed/finish', sa, { weedId: id, requestId: ra }), R()('/api/island/weed/finish', sb, { weedId: id, requestId: crypto.randomUUID() })]);
   assert.deepEqual([fa.status, fb.status].sort(), [200, 409]);
