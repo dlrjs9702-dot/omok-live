@@ -999,7 +999,11 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .halliPanel #halliStatus.gamePanelHead{color:#f8fafc}
 :root[data-theme="light"] .messengerRoomList button[aria-current="true"]{outline:2px solid #23806f}
 :root[data-theme="light"] .messengerUnread{background:#ef4444;color:#fff}
-:root[data-theme="light"] .islandPaceBtn{background:rgba(247,239,225,.6);color:#33281d;border:1px solid rgba(179,156,124,.45)}
+:root[data-theme="light"] .islandCtl{background:rgba(247,239,225,.55);color:#33281d;border:1px solid rgba(179,156,124,.5)}
+:root[data-theme="light"] .islandActBtn{background:rgba(37, 99, 235, .72);border-color:rgba(191, 219, 254, .7)}
+:root[data-theme="light"] .islandRunBtn.on,:root[data-theme="light"] .islandRunBtn:active{background:rgba(220, 38, 38, .75)}
+:root[data-theme="light"] body.stickEdit .islandCtl{outline:2px dashed #facc15}
+:root[data-theme="light"] body.stickEdit .ctlSelected{outline:3px solid #facc15 !important}
 :root[data-theme="light"] .recordsDialog{border:1px solid #d6c3a5;background:#fffaf1}
 :root[data-theme="light"] .recordsDialog>.recordsDialogHead{color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2));border-bottom:1px solid rgba(255,255,255,.12)}
 :root[data-theme="light"] .recordsDialog>.recordsDialogHead h2{color:#fff}

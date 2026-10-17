@@ -112,9 +112,12 @@
         <button id="islandPhotoTab" class="islandChatTab islandPhotoTab" type="button">사진</button>
         <div id="islandStick" class="islandStick" aria-hidden="true"><span></span></div>
         <!-- v1.10.79 이동 3단계: tapped = 느리게/보통 걷기, held = 뛰기 (Shift on a PC) -->
-        <button id="islandPaceBtn" class="islandPaceBtn" type="button" aria-label="걸음 바꾸기 (누르고 있으면 뛰기)">걷기</button>
+        <!-- v1.10.84 조작 배치: the right hand -- 상호작용 (= SPACE), 걷기 (느리게/보통), 뛰기 (누르는 동안) -- each moved and sized like the stick -->
+        <button id="islandActBtn" class="islandCtl islandActBtn" type="button" aria-label="상호작용 (SPACE)">상호<br>작용</button>
+        <button id="islandWalkBtn" class="islandCtl islandWalkBtn" type="button" aria-label="걸음 바꾸기 (느리게·보통)">걷기</button>
+        <button id="islandRunBtn" class="islandCtl islandRunBtn" type="button" aria-label="누르고 있는 동안 뛰기">뛰기</button>
         <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
-        <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조이스틱 위치·크기 조정"><span>조이스틱을 끌어서 옮기세요</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="4" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
+        <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조작 버튼 위치·크기 조정"><span id="stickEditHint">조작 버튼을 끌어서 옮기고, 누른 버튼의 크기를 바꾸세요 · 조이스틱</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="2" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
         <section id="islandChatPanel" class="islandChatPanel hidden" aria-label="채팅 기록">
           <div class="islandChatHead"><strong>채팅</strong><label class="islandChatAlpha">투명도<input id="islandChatOpacity" type="range" min="25" max="100" step="5" value="80" aria-label="채팅 창 투명도" /></label><button id="islandChatClose" type="button" class="ghost tiny">닫기</button></div>
           <div id="islandChatMessages" class="chatMessages islandChatMessages" role="log" aria-live="polite"></div>
@@ -1214,7 +1217,7 @@
           <label><input type="radio" name="gcTheme" value="system"> 기기 설정</label>
         </div>
         <button id="fullscreenBtn" type="button" class="ghost hidden" aria-pressed="false">전체화면</button>
-        <button id="stickEditBtn" type="button" class="ghost hidden">조이스틱 위치·크기</button>
+        <button id="stickEditBtn" type="button" class="ghost hidden">조작 배치 (위치·크기)</button>
         <p id="homeAppHint" class="homeAppHint hidden">전체화면처럼 쓰려면: Safari 아래 공유 버튼 → 「홈 화면에 추가」. 홈 화면의 섬 아이콘으로 열면 주소창 없이 꽉 찬 화면이 됩니다.</p>
       </section>
       <button id="logoutBtn" type="button" class="danger">접속 종료</button>

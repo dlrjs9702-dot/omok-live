@@ -151,3 +151,65 @@ test('모바일 조이스틱: 위치 옮기기·크기 바꾸기, 새로고침 �
   expect(Math.round(reset.width)).toBe(Math.round(start.width));
   expect(Math.abs(reset.x - start.x)).toBeLessThan(2);
 });
+
+// v1.10.84 조작 배치 (사용자 2026-10-17): the right hand has 상호작용 · 걷기 · 뛰기 by default (the stick on the left); each is
+// dragged and sized like the stick (the one touched last takes the slider), kept after a reload, and 기본값 puts all back.
+// 걷기 tapped switches 느리게/보통; 뛰기 runs while held.
+test('모바일 조작 배치: 오른손 상호작용·걷기·뛰기 기본 배치, 옮기기·크기·유지, 걷기 전환·뛰기 누르는 동안', async ({ page, request }) => {
+  test.setTimeout(90000);
+  const admin = (await post(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  const issued = (await post(request, '/api/admin/keys', admin, { label: '조작배치' })).data;
+  await Promise.all([page.waitForURL(/\/guest-entry$/), page.setContent(issued.html)]);
+  await post(request, '/api/avatar/gender', JSON.parse(await page.evaluate(() => sessionStorage.getItem('gameCenterGuestSession'))).token, { gender: 'male' });
+  await page.locator('#lobbyView').waitFor({ state: 'visible' });
+  await page.evaluate(() => {
+    localStorage.removeItem('gc.testClassic');
+    localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+  const W = page.viewportSize().width;
+  const box = async (id) => page.locator(id).boundingBox();
+  const stick = await box('#islandStick');
+  expect(stick.x + stick.width / 2).toBeLessThan(W / 2); // left hand
+  for (const id of ['#islandActBtn', '#islandWalkBtn', '#islandRunBtn']) { const b = await box(id); expect(b.x + b.width / 2, id).toBeGreaterThan(W / 2); } // right hand
+
+  // 걷기: a tap switches to 느리게 and back; 뛰기: runs while held
+  await page.locator('#islandWalkBtn').tap();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pace)).toBe('slow');
+  await expect(page.locator('#islandWalkBtn')).toHaveText('느리게');
+  await page.locator('#islandWalkBtn').tap();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pace)).toBe('walk');
+  const cdp = await page.context().newCDPSession(page);
+  const run = await box('#islandRunBtn');
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: run.x + run.width / 2, y: run.y + run.height / 2, id: 7 }] });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pace)).toBe('run');
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pace)).toBe('walk');
+
+  // 조작 배치: 상호작용 dragged to the left and made bigger
+  await page.locator('#gameMenuBtn').click();
+  await page.locator('#stickEditBtn').click();
+  await expect(page.locator('#stickEditBar')).toBeVisible();
+  const act = await box('#islandActBtn');
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: act.x + act.width / 2, y: act.y + act.height / 2, id: 8 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: act.x + act.width / 2 - 120, y: act.y + act.height / 2 - 100, id: 8 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.locator('#stickEditBar')).toContainText('상호작용');
+  await page.locator('#stickSizeInput').fill('110');
+  await expect.poll(async () => Math.round((await box('#islandActBtn')).width)).toBe(110);
+  const moved = await box('#islandActBtn');
+  expect(act.x - moved.x).toBeGreaterThan(80);
+  await page.locator('#stickDoneBtn').click();
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
+  const kept = await box('#islandActBtn');
+  expect(Math.round(kept.width)).toBe(110);
+  expect(Math.abs(kept.x + kept.width / 2 - (moved.x + moved.width / 2))).toBeLessThan(4);
+  await page.locator('#gameMenuBtn').click();
+  await page.locator('#stickEditBtn').click();
+  await page.locator('#stickResetBtn').click();
+  await page.locator('#stickDoneBtn').click();
+  const back = await box('#islandActBtn');
+  expect(Math.abs(back.x - act.x)).toBeLessThan(2); expect(Math.round(back.width)).toBe(Math.round(act.width));
+});
