@@ -1939,3 +1939,28 @@ body.stickEdit .islandStick { outline: 2px dashed #facc15; outline-offset: 4px; 
 .gostopMyPoints{display:none}
 /* v1.10.73 게임방 틀 · 말 게임: 윷의 던진 결과 줄, 팬데믹의 진행 표시도 같은 바 */
 .yutThrowSummary.gamePanelHead{justify-content:space-between}
+
+/* v1.10.78 메신저: 목록 | 대화 (휴대폰은 한 칸씩) */
+.recordsDialog.messengerDialog{width:min(94vw,860px);height:min(86vh,680px);display:flex;flex-direction:column}
+.messengerDialog:not([open]){display:none}
+.messengerBody{flex:1;min-height:0;display:grid;grid-template-columns:220px 1fr;gap:12px}
+.messengerRooms{display:flex;flex-direction:column;gap:8px;min-height:0}
+.messengerRoomList{list-style:none;margin:0;padding:0;overflow-y:auto;display:grid;gap:4px}
+.messengerRoomList button{width:100%;text-align:left;display:flex;justify-content:space-between;gap:6px}
+.messengerRoomList button[aria-current="true"]{outline:2px solid #60a5fa}
+.messengerUnread{min-width:1.4em;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:.72rem;text-align:center}
+.messengerRoom{display:flex;flex-direction:column;gap:6px;min-height:0}
+.messengerRoomHead{display:flex;align-items:center;gap:6px}.messengerRoomHead strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.messengerRoom p{margin:0}
+.messengerMessages{min-height:0}
+.messengerForm{display:flex;gap:6px}.messengerForm input{flex:1;min-width:0}
+.messengerBack{display:none}
+.messengerPick{grid-column:1/-1;display:grid;gap:8px;align-content:start}
+.messengerPeople{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;max-height:40vh;overflow-y:auto}
+.messengerPeople label{display:flex;gap:6px;align-items:center}
+.messengerBody.picking>section{display:none}
+@media (max-width:640px){
+  .messengerBody{grid-template-columns:1fr}
+  .messengerBody.inRoom .messengerRooms,.messengerBody:not(.inRoom) .messengerRoom{display:none}
+  .messengerBack{display:inline-flex}
+}
