@@ -1105,9 +1105,11 @@ test('주민 대화: 아래 말풍선, Space로 다음 줄, 숫자로 답, 카�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 15000 }).toBe(`ev:lost_owner:${lost.id}`);
   await page.waitForTimeout(800); // the camera settles behind me
   const before = await page.evaluate(() => window.PlazaDebug().camera);
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await page.locator('#plazaStage').focus();
   const dialog = page.locator('#plazaDialog');
-  await expect(dialog).toHaveClass(/talkMode/, { timeout: 15000 }); // after the server answers the talk (slow on CI)
+  // (a resident event's owner takes Space only once it has walked in: a slow runner shows the prompt a little earlier;
+  // Space again is ignored once the window is open)
+  await expect.poll(async () => { if (!/talkMode/.test(await dialog.getAttribute('class') || '')) await page.keyboard.press('Space'); return /talkMode/.test(await dialog.getAttribute('class') || ''); }, { timeout: 20000, intervals: [1500] }).toBe(true); // after the server answers the talk (slow on CI)
   const box = await dialog.boundingBox(); const view = page.viewportSize();
   expect(box.y + box.height).toBeGreaterThan(view.height - 60); // at the bottom
   expect(box.y).toBeGreaterThan(view.height * 0.4); // the island stays in sight above it
