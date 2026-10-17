@@ -1481,7 +1481,7 @@
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
     { id: 'naming', name: '작명소', open: () => openNaming() }, // v1.10.9 작명소
-    { id: 'townhall', name: '관공서', open: () => openIslandPlace('office') }, // v1.10.10 이벤트 인벤토리
+    { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
     { id: 'admin', name: '관리실', admin: true, open: () => openPlazaWindow('관리실', [byId('adminPresencePanel'), byId('adminPanel')]) },
@@ -1528,37 +1528,55 @@
     if (event.pointerId !== stickPointer) return;
     stickPointer = null; stickKnob.style.transform = ''; plaza.controller?.setStick?.(0, 0);
   }
-  // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12): where its centre sits (a share of the island screen, so a turned phone
-  // keeps it in the same corner) and how big it is, kept on this device; 메뉴 → 환경설정 → 「조이스틱 위치·크기」 opens the
-  // adjusting: the stick is dragged to its place and the slider sizes it, nothing walks meanwhile.
-  const STICK_KEY = 'gc.stick'; const STICK_MIN = 80; const STICK_MAX = 180;
-  let stickPlace = null; // { x, y, size } or null (the default corner and size)
-  try { const saved = JSON.parse(localStorage.getItem(STICK_KEY) || 'null'); if (saved && [saved.x, saved.y, saved.size].every(Number.isFinite)) stickPlace = saved; } catch {}
-  const clampStick = (p) => ({ x: Math.min(0.95, Math.max(0.05, p.x)), y: Math.min(0.95, Math.max(0.05, p.y)), size: Math.min(STICK_MAX, Math.max(STICK_MIN, Math.round(p.size))) });
-  function applyStick() {
-    const s = islandStick.style;
-    if (!stickPlace) { for (const k of ['left', 'top', 'bottom', 'width', 'height', '--stick-knob']) s.removeProperty(k); return; }
-    const { x, y, size } = stickPlace;
-    // the whole stick stays on the island screen, whatever its size or the phone's turn (Codex review): the saved
-    // place is a share, and here it is held inside by the stick's radius in pixels
+  // v1.10.67 조이스틱 위치·크기 (사용자 2026-10-12); v1.10.84 조작 배치 (사용자 2026-10-17): every phone control -- the stick
+  // (left hand), 상호작용 · 걷기 · 뛰기 (right hand) -- has its place (its centre as a share of the island screen, so a turned
+  // phone keeps it in the same corner) and its size, kept on this device. 메뉴 → 「조작 배치」: any control is dragged to its
+  // place, the one last touched is sized by the slider, nothing walks or acts meanwhile; 「기본값」 puts them all back.
+  const CONTROLS = {
+    stick: { el: islandStick, key: 'gc.stick', name: '조이스틱', min: 80, max: 180, knob: true },
+    act: { el: byId('islandActBtn'), key: 'gc.ctl.act', name: '상호작용', min: 48, max: 130 },
+    walk: { el: byId('islandWalkBtn'), key: 'gc.ctl.walk', name: '걷기', min: 40, max: 110 },
+    run: { el: byId('islandRunBtn'), key: 'gc.ctl.run', name: '뛰기', min: 40, max: 110 },
+  };
+  for (const c of Object.values(CONTROLS)) {
+    c.place = null; // { x, y, size } or null (the CSS default)
+    try { const saved = JSON.parse(localStorage.getItem(c.key) || 'null'); if (saved && [saved.x, saved.y, saved.size].every(Number.isFinite)) c.place = saved; } catch {}
+  }
+  const clampCtl = (c, p) => ({ x: Math.min(0.95, Math.max(0.05, p.x)), y: Math.min(0.95, Math.max(0.05, p.y)), size: Math.min(c.max, Math.max(c.min, Math.round(p.size))) });
+  function applyCtl(c) {
+    const st = c.el.style;
+    if (!c.place) { for (const k of ['left', 'top', 'right', 'bottom', 'width', 'height', '--stick-knob']) st.removeProperty(k); return; }
+    const { x, y, size } = c.place;
+    // the whole control stays on the island screen, whatever its size or the phone's turn (Codex review): the saved
+    // place is a share, and here it is held inside by its radius in pixels
     const W = plazaStage.clientWidth; const H = plazaStage.clientHeight; const half = size / 2 + 4;
     const fit = (v, len) => (len > 2 * half ? Math.min(len - half, Math.max(half, v * len)) : len / 2);
-    if (W && H) { s.left = `${Math.round(fit(x, W) - size / 2)}px`; s.top = `${Math.round(fit(y, H) - size / 2)}px`; }
-    else { s.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; s.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; }
-    s.bottom = 'auto'; s.width = s.height = `${size}px`; s.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
+    if (W && H) { st.left = `${Math.round(fit(x, W) - size / 2)}px`; st.top = `${Math.round(fit(y, H) - size / 2)}px`; }
+    else { st.left = `calc(${(x * 100).toFixed(2)}% - ${size / 2}px)`; st.top = `calc(${(y * 100).toFixed(2)}% - ${size / 2}px)`; }
+    st.right = st.bottom = 'auto'; st.width = st.height = `${size}px`;
+    if (c.knob) st.setProperty('--stick-knob', `${Math.round(size * 0.43)}px`);
   }
-  window.addEventListener('resize', () => { if (stickPlace) applyStick(); }); // a turned phone: back inside
-  function saveStick() { try { if (stickPlace) localStorage.setItem(STICK_KEY, JSON.stringify(stickPlace)); else localStorage.removeItem(STICK_KEY); } catch {} }
-  applyStick();
+  const applyAll = () => { for (const c of Object.values(CONTROLS)) applyCtl(c); };
+  window.addEventListener('resize', applyAll); // a turned phone: back inside
+  function saveCtl(c) { try { if (c.place) localStorage.setItem(c.key, JSON.stringify(c.place)); else localStorage.removeItem(c.key); } catch {} }
+  applyAll();
   const stickEditBar = byId('stickEditBar'); const stickSizeInput = byId('stickSizeInput');
   const stickEditing = () => document.body.classList.contains('stickEdit');
-  function currentStick() { // the stick's place now, whether saved or the CSS default
-    const stage = plazaStage.getBoundingClientRect(); const box = islandStick.getBoundingClientRect();
+  function currentCtl(c) { // a control's place now, whether saved or the CSS default
+    const stage = plazaStage.getBoundingClientRect(); const box = c.el.getBoundingClientRect();
     return { x: (box.left + box.width / 2 - stage.left) / stage.width, y: (box.top + box.height / 2 - stage.top) / stage.height, size: box.width };
+  }
+  let ctlSel = 'stick';
+  function selectCtl(id) { // the slider sizes this one
+    ctlSel = id; const c = CONTROLS[id];
+    for (const [k, other] of Object.entries(CONTROLS)) other.el.classList.toggle('ctlSelected', k === id && stickEditing());
+    stickSizeInput.min = String(c.min); stickSizeInput.max = String(c.max); stickSizeInput.value = String(Math.round(currentCtl(c).size));
+    byId('stickEditHint').textContent = `조작 버튼을 끌어서 옮기고, 누른 버튼의 크기를 바꾸세요 · ${c.name}`;
   }
   function setStickEditing(on) {
     document.body.classList.toggle('stickEdit', on); stickEditBar.classList.toggle('hidden', !on);
-    if (on) { plaza.controller?.setStick?.(0, 0); stickSizeInput.value = String(Math.round(currentStick().size)); }
+    if (on) { plaza.controller?.setStick?.(0, 0); plaza.controller?.setRun?.(false); selectCtl('stick'); }
+    else { if (ctlDrag) saveCtl(CONTROLS[ctlDrag.id]); ctlDrag = null; for (const c of Object.values(CONTROLS)) c.el.classList.remove('ctlSelected'); } // (a finger still on a control stops carrying it)
   }
   // only on the island itself (a room's menu has no stick to adjust -- Codex review); leaving the island ends it
   const stickEditable = () => touchIsland && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden');
@@ -1566,35 +1584,48 @@
   new MutationObserver(() => { if (stickEditing() && !stickEditable()) setStickEditing(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   byId('stickEditBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); setStickEditing(true); });
   byId('stickDoneBtn').addEventListener('click', () => setStickEditing(false));
-  byId('stickResetBtn').addEventListener('click', () => { stickPlace = null; applyStick(); saveStick(); stickSizeInput.value = String(Math.round(currentStick().size)); });
-  stickSizeInput.addEventListener('input', () => { stickPlace = clampStick({ ...currentStick(), size: Number(stickSizeInput.value) }); applyStick(); saveStick(); });
-  let stickDrag = null;
-  // v1.10.79 이동 3단계: the 걸음 button is the PC's Shift -- a tap switches 느리게/보통, held it runs until let go
-  const paceBtn = byId('islandPaceBtn'); const PACE_LABEL = { slow: '느리게', walk: '걷기', run: '뛰기' };
-  const showPace = () => { paceBtn.textContent = PACE_LABEL[plaza.controller?.pace?.()] || '걷기'; };
-  paceBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); paceBtn.setPointerCapture(event.pointerId); plaza.controller?.paceDown?.(); setTimeout(showPace, 320); });
-  for (const type of ['pointerup', 'pointercancel']) paceBtn.addEventListener(type, () => { plaza.controller?.paceUp?.(); showPace(); });
+  byId('stickResetBtn').addEventListener('click', () => { for (const c of Object.values(CONTROLS)) { c.place = null; applyCtl(c); saveCtl(c); } selectCtl(ctlSel); });
+  stickSizeInput.addEventListener('input', () => { const c = CONTROLS[ctlSel]; c.place = clampCtl(c, { ...currentCtl(c), size: Number(stickSizeInput.value) }); applyCtl(c); saveCtl(c); });
+  // adjusting: the finger carries the control it touched (and picks it for the slider)
+  let ctlDrag = null;
+  function dragStart(id, event) {
+    if (!stickEditing()) return false;
+    event.preventDefault(); if (ctlDrag) return true;
+    const c = CONTROLS[id]; selectCtl(id);
+    const now = currentCtl(c); const stage = plazaStage.getBoundingClientRect();
+    ctlDrag = { id, pointer: event.pointerId, dx: now.x - (event.clientX - stage.left) / stage.width, dy: now.y - (event.clientY - stage.top) / stage.height, size: now.size };
+    c.el.setPointerCapture(event.pointerId); return true;
+  }
+  function dragMove(event) {
+    if (ctlDrag?.pointer !== event.pointerId || !stickEditing()) return false;
+    const c = CONTROLS[ctlDrag.id]; const stage = plazaStage.getBoundingClientRect();
+    c.place = clampCtl(c, { x: (event.clientX - stage.left) / stage.width + ctlDrag.dx, y: (event.clientY - stage.top) / stage.height + ctlDrag.dy, size: c.place?.size ?? ctlDrag.size }); // (the slider may have sized it meanwhile)
+    applyCtl(c); return true;
+  }
+  const dragEnd = (event) => { if (ctlDrag?.pointer === event.pointerId) { saveCtl(CONTROLS[ctlDrag.id]); ctlDrag = null; } };
+  for (const [id, c] of Object.entries(CONTROLS)) {
+    c.el.addEventListener('pointerdown', (event) => dragStart(id, event), true); // (capture: before the control's own use)
+    c.el.addEventListener('pointermove', dragMove);
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) c.el.addEventListener(type, dragEnd);
+  }
+  // the right hand: 상호작용 is SPACE; 걷기 switches 느리게/보통 (a tap); 뛰기 runs while held, back to that walk on letting go
+  const walkBtn = CONTROLS.walk.el; const runBtn = CONTROLS.run.el;
+  const PACE_LABEL = { slow: '느리게', walk: '걷기', run: '걷기' };
+  const showPace = () => { walkBtn.textContent = PACE_LABEL[plaza.controller?.walkPace?.()] || '걷기'; };
+  CONTROLS.act.el.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.act?.(); });
+  walkBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.paceTap?.(); showPace(); });
+  runBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); runBtn.setPointerCapture(event.pointerId); plaza.controller?.setRun?.(true); runBtn.classList.add('on'); });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) runBtn.addEventListener(type, () => { plaza.controller?.setRun?.(false); runBtn.classList.remove('on'); });
   islandStick.addEventListener('pointerdown', (event) => {
+    if (stickEditing()) return; // (the drag above)
     event.preventDefault();
-    if (stickEditing()) { // adjusting: the finger carries the stick
-      if (stickDrag) return;
-      const now = currentStick(); const stage = plazaStage.getBoundingClientRect();
-      stickDrag = { id: event.pointerId, dx: now.x - (event.clientX - stage.left) / stage.width, dy: now.y - (event.clientY - stage.top) / stage.height, size: now.size };
-      islandStick.setPointerCapture(event.pointerId); return;
-    }
     if (stickPointer !== null) return; // the first finger keeps the stick until it lets go (Codex review)
     stickPointer = event.pointerId; islandStick.setPointerCapture(event.pointerId); moveStick(event);
   });
   islandStick.addEventListener('pointermove', (event) => {
-    if (stickDrag?.id === event.pointerId) {
-      const stage = plazaStage.getBoundingClientRect();
-      stickPlace = clampStick({ x: (event.clientX - stage.left) / stage.width + stickDrag.dx, y: (event.clientY - stage.top) / stage.height + stickDrag.dy, size: stickDrag.size });
-      applyStick(); return;
-    }
+    if (stickEditing()) return;
     if (event.pointerId === stickPointer) moveStick(event);
   });
-  const endStickDrag = (event) => { if (stickDrag?.id === event.pointerId) { stickDrag = null; saveStick(); } };
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) islandStick.addEventListener(type, endStickDrag);
   islandStick.addEventListener('pointerup', endStick);
   islandStick.addEventListener('pointercancel', endStick);
   islandStick.addEventListener('lostpointercapture', endStick); // never left held if the browser drops the touch
@@ -1699,10 +1730,11 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
+      document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
@@ -2196,6 +2228,17 @@
     openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
+  // where I stand now; the island's map is put away inside (body.townhallRoom)
+  let townhallBusy = false;
+  async function townhallDoor(entering) {
+    if (townhallBusy) return; townhallBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const r = await api(entering ? '/api/island/townhall/enter' : '/api/island/townhall/leave', { method: 'POST', body: '{}' });
+      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
+    } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
+  }
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
