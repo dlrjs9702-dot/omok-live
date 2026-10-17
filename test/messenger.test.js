@@ -4,12 +4,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { JsonMessengerStore, PostgresMessengerStore, KEEP } = require('../lib/messenger-store');
+const { JsonMessengerStore, PostgresMessengerStore } = require('../lib/messenger-store');
 const { testDatabase } = require('../test-support/pg-database');
 const { boot } = require('../test-support/test-server');
 
 // v1.10.78 메신저 (IDEAS #future-messenger): permitted accounts, rooms with members, numbered messages, only the latest
-// KEEP of a room kept, the last one out deletes the room.
+// every message kept (v1.10.87), the last one out deletes the room.
 async function storeBehaves(store) {
   await store.setAllowed('a', true); await store.setAllowed('b', true); await store.setAllowed('b', true);
   assert.deepEqual((await store.allowedIds()).sort(), ['a', 'b']);
@@ -33,19 +33,20 @@ async function storeBehaves(store) {
   assert.deepEqual(await store.messages(room.id), []);
 }
 
-test('메신저 저장소: JSON — 허용·방·번호 붙은 메시지·최근 KEEP개만·마지막 사람이 나가면 삭제', async () => {
+test('메신저 저장소: JSON — 허용·방·번호 붙은 메시지·전부 보관·이전 대화·마지막 사람이 나가면 삭제', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'messenger-'));
   const store = new JsonMessengerStore(path.join(dir, 'messenger.json'));
   await store.init();
   await storeBehaves(store);
   const room = await store.createRoom('많이', 'a', ['b']);
-  for (let i = 0; i < KEEP + 5; i += 1) await store.post(room.id, 'a', `m${i}`);
+  for (let i = 0; i < 230; i += 1) await store.post(room.id, 'a', `m${i}`);
   const kept = store.data.messages[room.id];
-  assert.equal(kept.length, KEEP);
-  assert.equal(kept[0].seq, 6);
+  assert.equal(kept.length, 230); // v1.10.87: every message kept
+  assert.deepEqual((await store.older(room.id, 131)).map((m) => m.seq), Array.from({ length: 100 }, (_, i) => i + 31)); // the 100 before #131
+  assert.deepEqual((await store.older(room.id, 31)).length, 30);
   await store.queue;
   const again = new JsonMessengerStore(path.join(dir, 'messenger.json')); await again.init(); // kept on disk
-  assert.equal((await again.room(room.id)).seq, KEEP + 5);
+  assert.equal((await again.room(room.id)).seq, 230);
   await fs.rm(dir, { recursive: true, force: true });
 });
 

@@ -3200,7 +3200,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.86' });
+    return sendJson(res, 200, { ok: true, version: '1.10.87' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3325,7 +3325,8 @@ async function requestHandler(req, res) {
     if (!room || !room.members.includes(key.id)) return sendError(res, 404, 'ROOM_NOT_FOUND', '대화방을 찾을 수 없습니다.');
     if (m[2] === 'messages' && req.method === 'GET') {
       const after = Math.max(0, Math.floor(Number(url.searchParams.get('after')) || 0));
-      return sendJson(res, 200, { ok: true, room: view(room), messages: (await messengerStore.messages(room.id, after)).map((x) => ({ ...x, label: labelOf.get(x.from) || '(떠난 계정)' })) });
+      const before = Math.max(0, Math.floor(Number(url.searchParams.get('before')) || 0)); // v1.10.87 이전 대화
+      return sendJson(res, 200, { ok: true, room: view(room), messages: (await (before ? messengerStore.older(room.id, before) : messengerStore.messages(room.id, after))).map((x) => ({ ...x, label: labelOf.get(x.from) || '(떠난 계정)' })) });
     }
     if (m[2] === 'messages' && req.method === 'POST') {
       if (!checkRateLimit('messenger-post:' + key.id, 6, 5 * 1000)) return sendError(res, 429, 'CHAT_RATE_LIMIT', '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.');
@@ -5530,7 +5531,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.86 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.87 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

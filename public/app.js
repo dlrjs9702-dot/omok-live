@@ -9882,14 +9882,44 @@
         const data = await accountApi(`/api/messenger/rooms/${id}/messages?after=${last}`, null, 'GET');
         if (current?.id !== id) return;
         current = data.room; byId('messengerRoomName').textContent = current.name; byId('messengerMembers').textContent = current.members.map((m) => m.label).join(' · ');
-        if (!last) box.replaceChildren();
+        const firstPage = !last;
+        if (firstPage) box.replaceChildren();
         const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
         for (const msg of data.messages) { if (msg.seq <= last) continue; box.append(line(msg)); last = msg.seq; }
+        if (firstPage && data.messages.length && data.messages[0].seq > 1) moreButton(data.messages[0].seq); // v1.10.87 이전 대화
         if (!box.children.length) box.innerHTML = '<p class="emptyState">첫 메시지를 보내 보세요.</p>';
         if (atEnd || !data.messages.length || data.messages.at(-1).from === state.me) box.scrollTop = box.scrollHeight;
         markSeen(id, current.seq);
       } catch (err) { if (err.status === 404) { current = null; body.classList.remove('inRoom'); refresh(); } else fail(err); }
     }
+    // v1.10.87 이전 대화: 100 at a time from the top, the view held where it was
+    function moreButton(firstSeq) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny messengerMore'; b.textContent = '이전 대화 더 보기';
+      b.addEventListener('click', async () => {
+        const id = current?.id; if (!id) return; b.disabled = true;
+        try {
+          const data = await accountApi(`/api/messenger/rooms/${id}/messages?before=${firstSeq}`, null, 'GET');
+          if (current?.id !== id) return;
+          const height = box.scrollHeight; b.remove();
+          box.prepend(...data.messages.map(line));
+          if (data.messages.length && data.messages[0].seq > 1) moreButton(data.messages[0].seq);
+          box.scrollTop += box.scrollHeight - height;
+        } catch (err) { b.disabled = false; fail(err); }
+      });
+      box.prepend(b);
+    }
+    // v1.10.87 알림: the 메신저 button counts what is unread in my rooms (asked every 30 s while it shows and the window is shut)
+    const msgBtn = byId('accountMessengerBtn');
+    async function badge() {
+      if (msgBtn.classList.contains('hidden') || dialog.open || byId('accountPanel').classList.contains('hidden')) return;
+      try {
+        const data = await accountApi('/api/messenger', null, 'GET');
+        const unread = data.rooms.reduce((n, r) => n + Math.max(0, r.seq - (seen[r.id] || 0)), 0);
+        msgBtn.textContent = unread ? `메신저 · 새 메시지 ${unread > 99 ? '99+' : unread}` : '메신저'; msgBtn.classList.toggle('hasUnread', unread > 0);
+      } catch {}
+    }
+    setInterval(badge, 30000);
+    dialog.addEventListener('close', () => { msgBtn.textContent = '메신저'; msgBtn.classList.remove('hasUnread'); badge(); });
     function openRoom(room) { current = room; last = 0; box.replaceChildren(); body.classList.add('inRoom'); renderRooms(); pull(); byId('messengerInput').focus(); }
     function showPick(mode) { // 'new' | 'invite'
       picking = mode; const inRoom = new Set(mode === 'invite' ? current.members.map((m) => m.id) : []);
@@ -9929,7 +9959,7 @@
       dialog.showModal(); await refresh();
       timers = [setInterval(pull, 3000), setInterval(refresh, 10000)];
     });
-    return { show: (on) => byId('accountMessengerBtn').classList.toggle('hidden', !on), close };
+    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); }, close }; // (after the account panel shows)
   })();
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});

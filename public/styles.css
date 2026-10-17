@@ -2012,3 +2012,6 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .islandTaxRow{display:grid;gap:8px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #273449}
 .islandTaxRow p{margin:0;font-size:.82rem;color:#fde68a}
 .recordsDialog.taxDialog{--g1:#991b1b;--g2:#7f1d1d;width:min(92vw,420px)} /* v1.10.86 세금 창구 */
+/* v1.10.87 메신저: 이전 대화 · 안 읽은 알림 */
+.messengerMore{display:block;margin:4px auto 8px}
+#accountMessengerBtn.hasUnread{box-shadow:0 0 0 2px #ef4444 inset;font-weight:900}

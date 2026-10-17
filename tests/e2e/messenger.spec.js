@@ -43,6 +43,8 @@ test('메신저: 허용 계정만 버튼, 방 만들기 → 메시지 → 상대
   await mom.page.locator('#messengerForm').getByRole('button', { name: '보내기' }).click();
   await expect(mom.page.locator('#messengerMessages .chatMessage.mine')).toHaveText(/저녁 뭐 먹어\?/);
 
+  await dad.page.reload(); // v1.10.87: the button tells what is unread before opening
+  await expect(dad.page.locator('#accountMessengerBtn')).toContainText('새 메시지 1');
   await dad.page.locator('#accountMessengerBtn').click();
   await dad.page.locator('#messengerRoomList button', { hasText: '우리집' }).click();
   await expect(dad.page.locator('#messengerMessages .chatMessage')).toHaveText(/저녁 뭐 먹어\?/);
