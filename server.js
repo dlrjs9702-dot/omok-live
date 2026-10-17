@@ -5041,6 +5041,20 @@ async function requestHandler(req, res) {
   // v1.10.91 잡초 게시판 (IDEAS #future-weed-board): by the town hall's gate -- today's pulls and hand-ins (top 10 and mine,
   // the island's totals), yesterday's island pull count and today's weeds, yesterday's two best hand-ins (named as they
   // were when the day closed, kept once), this week's hand-ins and last week's 제초왕. Names only, never an account id.
+  // v1.10.91 섬 시간대 (IDEAS #future-admin-console ①): 'auto' (Seoul's clock) or one held by the administrator; everyone's
+  // island follows at once (SSE islandTime)
+  if (pathname === '/api/island/time' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+  }
+  if (pathname === '/api/admin/island/time' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!['auto', 'morning', 'day', 'evening', 'night'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '시간대를 골라 주세요.');
+    await pointStore.setWorldValue('time', { mode: body.mode, at: nowMs() });
+    broadcastIsland('islandTime', { mode: body.mode });
+    return sendJson(res, 200, { ok: true, mode: body.mode });
+  }
   if (pathname === '/api/island/weeds/board' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;

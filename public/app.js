@@ -1799,7 +1799,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2382,6 +2382,12 @@
   for (const b of byId('bankForm').querySelectorAll('button[type=button]')) b.addEventListener('click', () => bankMove(b.dataset.bank));
   byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
+  let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
+  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.91
+  byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.91 관리자: 섬 시간대
+    event.preventDefault(); const mode = byId('islandTimeSelect').value;
+    try { await api('/api/admin/island/time', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 시간대: ${byId('islandTimeSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
+  });
   function refreshFarm() { if (plaza.controller?.setFarm && document.body.classList.contains('plazaMode')) api('/api/island/farm').then((v) => plaza.controller?.setFarm?.(v)).catch(() => {}); }
   setInterval(refreshFarm, 15000);
   function openQuestTalk(data) {
@@ -5236,6 +5242,7 @@
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
+    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.91 섬 시간대
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
