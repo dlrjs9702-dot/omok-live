@@ -2500,7 +2500,8 @@
     const game = data.minigame ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = '도와줄게요'; b.addEventListener('click', async () => {
       plazaDialog.close(); const m = data.minigame;
       const r = await window.GameLaunch.play(m.game, { level: m.level, goal: m.goal, place: 'quest' });
-      if (r?.done) showToast(`해냈어요! ${data.name}에게 다시 말을 걸어 주세요.`, 4000); // (v1.10.93: any resident's round)
+      if (m.puzzle ? r?.score != null : r?.done) showToast(`해냈어요! ${data.name}에게 다시 말을 걸어 주세요.`, 4000); // (v1.10.93: any resident's round; A2b: a puzzle solved -- the daily, sent with its answer)
+      else if (m.puzzle) { if (r && 'outcome' in r) showToast('오늘의 문제를 끝까지 풀어 주세요!', 4000); }
       else if (r?.score != null) showToast(m.game === 'numbers' ? `${Math.round(m.goal / 1000)}초 안에 끝내야 해요. 다시 도전해 보세요!` : `${Number(m.goal).toLocaleString('ko-KR')}점이 필요해요. 다시 도전해 보세요!`, 4000);
     }); return [b]; })() : [];
     if (game.length) ok.className = 'ghost';

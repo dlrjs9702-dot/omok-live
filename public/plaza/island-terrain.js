@@ -326,8 +326,15 @@
     painter: Object.freeze({ x: -9.4, z: 19.2 }),
     busk: Object.freeze({ x: 23, z: 9.6, yaw: toPlaza(23, 9.6), r: 2.0 }), busker: Object.freeze({ x: 21.3, z: 8.4 }), // (clear of the walk's lamp at 19.4, 5.4)
     stationmaster: Object.freeze({ x: 97.6, z: -8.2 }), // by the 동해안역's lift
+    // A2b: the three lamps by the walk to the hall the electrician mends, the stepping stones across the north-east stream
+    // (their row across the water: yaw along the stream; on the water, assets 39 README) and the librarian's book cart
+    lamps: Object.freeze([[-1.0, -18.5], [0.5, -22.5], [-5.3, -30.7]].map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))),
+    electrician: Object.freeze({ x: -2.2, z: -16.6 }), toolbox: Object.freeze({ x: -3.1, z: -15.9, yaw: toPlaza(-3.1, -15.9), r: 0.4 }),
+    stones: Object.freeze({ x: 16.4, z: 17.1, yaw: 0.71 }), builder: Object.freeze({ x: 14, z: 19.2 }),
+    bookcart: Object.freeze({ x: -20.6, z: 2.6, yaw: toPlaza(-20.6, 2.6), r: 0.8 }), librarian: Object.freeze({ x: -18.5, z: 1.5 }),
   });
-  const inVillage = (x, z) => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk].some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart];
+  const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {
     if (natureCache) return natureCache;
@@ -494,5 +501,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

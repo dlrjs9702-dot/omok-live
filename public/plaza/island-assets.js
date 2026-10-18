@@ -332,6 +332,7 @@
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
   for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
   REGISTRY['village.guitar'] = village('guitar', { shadows: false });
+  for (const p of ['lamp_broken', 'lamp_fixed']) REGISTRY[`village.${p}`].scale = 0.85; // (the island lamp's own size, prop.lamp)
   // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
   // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made
   REGISTRY['character.base'].slim = { width: 0.82, depth: 0.8, arm: 0.55, leg: 0.5, hand: 0.82, foot: 0.85 }; // (hands 82%, shoes 85% across -- their soles stay down)
