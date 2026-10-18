@@ -322,3 +322,22 @@ test('게임 실행 규약: 퀘스트 자리는 그 난이도로 바로 시작�
   await expectNoScriptError(page);
   await a.context.close();
 });
+
+// A3 G4 한판마당 PC 넓게: on a wide mouse screen the card games and puzzles use the width -- 카드놀이 1,000px or more,
+// the sudoku board 700px or more at 1920×1080 (a phone keeps the narrow frame)
+test('PC 넓게: 카드놀이 판 폭 1,000px 이상, 스도쿠 판 700px 이상', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 전용 검증');
+  test.setTimeout(120000);
+  const a = await shopper(browser, request, '넓게');
+  const { page } = a; await page.setViewportSize({ width: 1920, height: 1080 });
+  const open = (game) => page.evaluate((game) => { window.GameLaunch.play(game, { place: 'quest', level: 'easy' }); }, game);
+  const engine = () => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return { w: E.W, id: E.game?.id, state: E.state }; });
+  await open('klondike');
+  await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('klondike');
+  expect((await page.locator('.reflexFrame').boundingBox()).width).toBeGreaterThanOrEqual(1000);
+  await open('sudoku');
+  await expect.poll(async () => (await engine()).id, { timeout: 30000 }).toBe('sudoku');
+  expect((await engine()).w).toBeGreaterThanOrEqual(1000); // the board's room (sudoku.js caps it at 820 px on a wide frame)
+  await page.screenshot({ path: test.info().outputPath('wide-sudoku.png') });
+  await expectNoScriptError(page); await a.context.close();
+});

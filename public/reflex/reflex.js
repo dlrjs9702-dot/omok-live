@@ -173,6 +173,7 @@ export function mount({ api, onBack }) {
     } catch (error) { if (seq === startSeq) status.textContent = error.message; return; }
     if (seq !== startSeq || view.classList.contains('hidden')) return;
     runId = id; runLevel = level; shown = 'play'; game = g;
+    frame.classList.toggle('wideFrame', set === SETS.cards || set === SETS.puzzle); // A3 G4: the card games and puzzles use a PC's width (game.css)
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
@@ -267,7 +268,7 @@ export function mount({ api, onBack }) {
   }
   function goBack() { stop(); settle({ game: game?.id ?? null, done: false }); onBack(); } // to choosing a game
   function settle(out) { const l = launch; if (!l) return; launch = null; l.resolve(out); }
-  function stop() { stopGame(); runId = null; cardLog = null; startSeq += 1; frame.classList.remove('playing'); }
+  function stop() { stopGame(); runId = null; cardLog = null; startSeq += 1; frame.classList.remove('playing', 'wideFrame'); }
 
   document.getElementById('reflexQuitBtn').addEventListener('click', quit);
   document.addEventListener('keydown', (event) => {

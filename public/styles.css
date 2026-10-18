@@ -2077,3 +2077,84 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* v1.10.92 잡화점 */
 .goodCard{display:grid;gap:8px;justify-items:center;text-align:center}.goodIcon{width:96px;height:96px;object-fit:contain}.goodBuy{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.goodBuy button{min-height:44px}
 .giftList{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}.giftList .itemIcon{width:24px;height:24px;vertical-align:middle}
+
+/* A3 G1-1 게임방 공통 틀 — 판 진행 중 한 화면: the room's info behind ⓘ, no empty seats, the board within the screen */
+.roomInfoBtn{display:none;min-width:32px;padding:4px 8px;font-size:1rem;line-height:1}
+body.roomPlaying .roomInfoBtn{display:inline-flex}
+body.roomPlaying:not(.roomInfoOpen) .roomInfoArea{display:none}
+body.roomPlaying .player:not(.occupied),body.roomPlaying .teamPlayer.emptySeat{display:none}
+body.roomPlaying .players,body.roomPlaying .teamPlayers{margin-bottom:8px}
+body.roomPlaying .canvasWrap{margin-left:auto;margin-right:auto}
+/* G1-2: the 💬·🎮 buttons in the top bar while a hand is played (moved there by setRoomPlaying) */
+.topActions .chatFloatBtn{position:relative;right:auto;bottom:auto;width:38px;height:38px;font-size:1.05rem;box-shadow:none}
+/* G1-4 차례 시간 고리 */
+.player,.teamPlayer{position:relative}
+.turnRing{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#34d399 calc(var(--p,1)*360deg),rgba(148,163,184,.25) 0);pointer-events:none}
+.turnRing::before{content:'';position:absolute;inset:4px;border-radius:50%;background:#0f172a}
+.turnRing b{position:relative;font-size:.72rem;font-variant-numeric:tabular-nums;color:#f8fafc}
+.turnRing.late{background:conic-gradient(#f87171 calc(var(--p,1)*360deg),rgba(148,163,184,.25) 0)}
+.turnRing.late b{color:#fecaca}
+.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:60px}
+/* G1-3: the game's controls under the board while a hand is played */
+.boardCard > .gameActionsPanel{display:grid;gap:10px;margin:8px 0}
+@media(max-width:640px){body.roomPlaying #roomIdentityLabel,body.roomPlaying .roomBar .pointBadge,body.roomPlaying #newRoomBtn,body.roomPlaying #seatLabel,body.roomPlaying #recentActionLine{display:none!important}body.roomPlaying #statusText{font-size:1rem}body.roomPlaying .roomBar{padding-top:8px;padding-bottom:8px}}
+.versus.versusScore{font-size:1.25rem;font-weight:800;color:#f8fafc;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A3 G1-6 빠른 말 */
+.quickChat{display:none;gap:6px;flex-wrap:wrap;margin:6px 0}
+body.roomPlaying .quickChat{display:flex}
+.seatBubble{position:absolute;left:12px;bottom:calc(100% + 4px);z-index:5;max-width:220px;padding:5px 10px;border-radius:12px;background:#f8fafc;color:#0f172a;font-size:.8rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boardOverlay .resultPoints{display:block;margin-top:6px;font-size:.9rem;color:#fde68a}
+.boardOverlay .resultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;pointer-events:auto}
+@media(max-width:640px){body.roomPlaying .quickChat{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}body.roomPlaying .quickChat button{flex:0 0 auto}.turnRing{width:36px;height:36px;right:6px}.turnRing b{font-size:.62rem}.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:46px}.versus.versusScore{font-size:1rem}}
+/* G1-6: the side panels narrow while a hand is played (unless 넓게 was chosen) */
+body.roomPlaying .gameLayout:not(.sideWide){--side-w:280px}
+/* A3 G2-1 맞고 한 화면 테이블 (while a hand is played): the settlement line and score details step aside, cards scale with
+   the screen height, every capture pile is one overlapped row, the floor keeps month slots in two rows, and the go/stop
+   choice is a window over the table -- so the table holds from the first card to the late hand on PC and phone */
+body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopHead,body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopPointHistory{display:none}
+body.roomPlaying .gostopFelt{--hh:clamp(58px,11.5vh,124px);--fh:clamp(46px,9.7vh,112px);--mh:clamp(26px,4.4vh,53px);gap:6px;padding:8px 12px 8px;border-width:8px}
+body.roomPlaying .gostopFelt .hwatu-hand{height:var(--hh);width:calc(var(--hh) * .68)}
+body.roomPlaying .gostopFelt .hwatu-normal{height:var(--fh);width:calc(var(--fh) * .68)}
+body.roomPlaying .gostopFelt .hwatu-mini{height:var(--mh);width:calc(var(--mh) * .68)}
+body.roomPlaying .gostopFelt .gostopSeat{padding:5px 8px;gap:4px;row-gap:3px}
+body.roomPlaying .gostopFelt .gostopSeat>details,body.roomPlaying .gostopFelt .gostopEstimate{display:none}
+body.roomPlaying .gostopFelt .gostopCaptured{gap:6px}
+body.roomPlaying .gostopFelt .gostopPile{padding:2px 4px;min-width:0;overflow:hidden}
+body.roomPlaying .gostopFelt .gostopPileCards{flex-wrap:nowrap;overflow:hidden;min-height:var(--mh)}
+body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 auto}
+body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.42)}
+body.roomPlaying .gostopFelt .gostopTable{min-height:0;padding:4px 10px;gap:2px 12px}
+body.roomPlaying .gostopFelt .gostopEvent{min-height:20px;font-size:.88rem}
+body.roomPlaying .gostopFelt .gostopFloor{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:auto;gap:4px 8px;justify-items:center}
+body.roomPlaying .gostopFelt .gostopFloorGroup{padding:1px}
+body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * -.22)}
+body.roomPlaying .gostopFelt .gostopHand{padding:4px 6px;gap:6px;flex-wrap:nowrap}
+/* G2-2: the go/stop choice over the table's middle */
+body.roomPlaying .gostopFelt .gostopActions{min-height:0}
+body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;width:min(520px,calc(100% - 24px));box-shadow:0 18px 50px rgba(0,0,0,.6)}
+@media(max-width:640px){
+  body.roomPlaying .gostopFelt{--hh:clamp(54px,10vh,80px);--fh:clamp(38px,6.6vh,60px);--mh:clamp(22px,3.6vh,34px);padding:5px 4px;border-width:5px;border-radius:16px}
+  body.roomPlaying .gostopFelt .gostopCaptured{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+  body.roomPlaying .gostopFelt .gostopPile small{font-size:.62rem}
+  body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(6,minmax(0,1fr));gap:2px 2px}
+  body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr) auto;padding:2px 4px}
+  body.roomPlaying .gostopFelt .gostopHand{justify-content:center}
+  body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.22)}
+  body.roomPlaying .gostopFelt .gostopSeatHead{font-size:.8rem}
+}
+/* A3 G2-3: the floor cards a pointed hand card would take, the pointed (first-tapped) card raised, a card that would go to the floor */
+.gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;outline-offset:1px;box-shadow:0 0 16px rgba(250,204,21,.75)}
+.gostopFelt .gostopHand .hwatu.gostopArmed{transform:translateY(-12px);outline:3px solid #facc15;z-index:2}
+.gostopFelt .gostopHand .hwatu.gostopToFloor::after{content:'버림';position:absolute;right:2px;top:2px;padding:0 4px;border-radius:6px;background:rgba(15,23,42,.8);color:#e2e8f0;font-size:.6rem;font-weight:800}
+/* A3 G2-7 화투 뒷면: the game center's own back -- deep red with a cream frame and a small diamond-and-circle crest
+   (a skin's back still wins: SkinLooks styles the element inline) */
+.hwatuBack{background:radial-gradient(circle at 50% 50%,#fde68a 0 9%,transparent 10%),conic-gradient(from 45deg at 50% 50%,#7f1d1d 0 25%,#991b1b 0 50%,#7f1d1d 0 75%,#991b1b 0) 50% 50%/34% 24%,#8b1414;border:1px solid #3f0808;box-shadow:inset 0 0 0 2px #8b1414,inset 0 0 0 3.5px #fcd9a8,inset 0 0 0 5px #8b1414}
+.hwatu-tiny.hwatuBack{box-shadow:inset 0 0 0 1.5px #fcd9a8}
+.gostopSpeedBtn{position:absolute;right:10px;bottom:8px;z-index:3;font-size:.72rem;padding:3px 8px;opacity:.8}
+/* A3 G3-6 할리갈리: the bell in the table's middle, the players' piles in two columns round it */
+.halliTable{position:relative}
+.halliTable .halliCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:7.6rem;row-gap:10px;align-items:center}
+.halliTable .halliBell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3}
+@media(max-width:640px){.halliTable .halliCards{column-gap:5.6rem}.halliTable .halliBell{width:5rem;height:5rem}}
+/* A3 G4 한판마당 PC 넓게: the card games and puzzles on a wide mouse screen */
+@media(min-width:900px) and (pointer:fine){.reflexFrame.wideFrame{width:min(100%,1200px)}}

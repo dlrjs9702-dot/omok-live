@@ -497,6 +497,7 @@
                 <strong id="myActionTimerClock" class="myActionTimerClock">00:00</strong>
                 <span id="myActionTimerResult" class="myActionTimerResult"></span>
               </div>
+              <button type="button" id="roomInfoBtn" class="ghost tiny roomInfoBtn" aria-expanded="false" aria-label="방 정보 보기" title="방 정보">ⓘ</button>
               <span id="connectionBadge" class="badge">연결 중</span>
             </div>
           </div>
@@ -589,6 +590,7 @@
             </details>
             <!-- v1.8.6: the whole play area is one large hwatu table (opponents top, floor and deck centre, me bottom) -->
             <div id="gostopFelt" class="gostopFelt">
+              <button type="button" id="gostopSpeedBtn" class="ghost tiny gostopSpeedBtn" title="카드 연출 속도 (이 기기)">속도 · 보통</button>
               <div id="gostopOpponents" class="gostopOpponents"></div>
               <div class="gostopTable">
                 <div id="gostopEvent" class="gostopEvent" aria-live="polite"></div>
@@ -631,10 +633,13 @@
           </section>
           <section id="halliPanel" class="halliPanel hidden" aria-label="할리갈리">
             <p id="halliStatus" class="gamePanelHead" aria-live="polite"></p>
-            <div id="halliCards" class="halliCards"></div>
+            <!-- A3 G3-6: the bell in the middle of the table, each player's face-up pile round it -->
+            <div class="halliTable">
+              <div id="halliCards" class="halliCards"></div>
+              <button id="halliBellBtn" type="button" class="halliBell" aria-label="종 치기">🔔 종 치기</button>
+            </div>
             <div class="halliActions">
               <button id="halliFlipBtn" type="button" class="primary">카드 뒤집기</button>
-              <button id="halliBellBtn" type="button" class="halliBell" aria-label="종 치기">🔔 종 치기</button>
             </div>
             <div id="halliTransferResult" class="halliTransferResult" aria-live="polite">
               <strong id="halliLastBell"></strong>
@@ -764,6 +769,10 @@
             <h4>정답 제출 기록</h4><div id="twentyGuessLog" class="twentyGuessLog"></div>
           </section>
 
+          <!-- A3 G1-6 빠른 말: a few set words (sent as room chat) while a hand is played -->
+          <div id="quickChat" class="quickChat" role="group" aria-label="빠른 말">
+            <button type="button" class="ghost tiny">잘 부탁해요</button><button type="button" class="ghost tiny">좋은 수!</button><button type="button" class="ghost tiny">잠깐만요</button><button type="button" class="ghost tiny">고마워요</button><button type="button" class="ghost tiny">한 판 더?</button><button type="button" class="ghost tiny">👍</button><button type="button" class="ghost tiny">😮</button><button type="button" class="ghost tiny">😂</button>
+          </div>
           <div class="mobileActions">
             <button id="resignBtn" class="danger subtle">기권</button>
             <button id="nextRoundBtn" class="primary hidden">다음 판 준비</button>

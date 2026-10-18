@@ -141,7 +141,7 @@ export default {
       const x = ox + (s.last % N + 0.5) * cell, y = oy + (Math.floor(s.last / N) + 0.5) * cell;
       c.fillStyle = '#FF5A79'; c.beginPath(); c.arc(x, y, cell * 0.08, 0, 6.283); c.fill();
     }
-    const txt = s.over ? '게임 종료' : net() ? (human() ? `내 차례 (${s.me === ME ? '●' : '○'})` : `${seatName(s.turn - 1)}님 차례…`) : E.p2 ? `${nm(s.turn)} 차례 (${dot(s.turn)})` : s.turn === s.me ? `당신 차례 (${dot(s.me)})` : 'AI가 생각 중…';
+    const txt = s.over ? '게임 종료' : net() ? (human() ? `내 차례 (${s.me === ME ? '●' : '○'})` : `${seatName(s.turn - 1)}님 차례…`) : E.p2 ? `${nm(s.turn)} 차례 (${dot(s.turn)})` : s.turn === s.me ? `내 차례 (${dot(s.me)})` /* (A3 G1-8) */ : 'AI가 생각 중…';
     E.text(txt, E.W / 2, oy + size + 34, 16, human() ? '#8FF0C4' : '#fff', 800);
   },
 };

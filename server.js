@@ -1404,6 +1404,12 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 // v1.10.72 게임방 AI 자리 (lib/room-ai.js): the AI is a participant with no session (always connected, no point account,
 // no record id); it takes the seat across from the person when they choose one. Its move goes through the same game
 // engine as a person's, a short moment after the person's turn so it does not feel instant.
+// A3 G1-4: the turn seat's clock as everyone may see it -- the same deadline its owner gets (lib/action-timer.js)
+function publicTurnTimer(room) {
+  const seat = currentTurnSeat(room); if (seat == null || (room.ai && String(seat) === String(room.ai.seat))) return null;
+  const t = buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS);
+  return t ? { seat: String(seat), deadlineAt: t.deadlineAt, serverNow: t.serverNow } : null;
+}
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -1768,6 +1774,7 @@ function roomView(room, session) {
     ...base,
     stateSeq: roomViewSeq,
     game: gameView,
+    turnTimer: publicTurnTimer(room), // A3 G1-4 차례 시간 고리: whose turn and until when, for every viewer (nothing private)
     me: {
       label: session.label,
       chatId: chatIdFor(session),
@@ -3313,7 +3320,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.93' });
+    return sendJson(res, 200, { ok: true, version: '1.10.94' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5209,8 +5216,12 @@ async function requestHandler(req, res) {
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
+    // (Codex review: the bought thing is handed over before the reward is kept -- a thing already handed over for an
+    // unpaid errand counts as carried, so the next talk pays it; its hand-over id is the same, so it is never taken twice)
+    const useId = (id) => `errand-${id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64);
+    for (const e of errands) if (e.kind === 'buy' && !done.has(e.id) && await pointStore.settlementOf(`island_use:${useId(e.id)}`)) goods.add(e.good);
     let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
-    if (r?.take && !(await pointStore.islandUse({ userId: account, requestId: `errand-${r.pay.id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: r.take })).applied) r = null; // (gone meanwhile)
+    if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
@@ -5971,7 +5982,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.93 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.94 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

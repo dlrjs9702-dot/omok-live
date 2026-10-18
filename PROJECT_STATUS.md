@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.94 게임관 점검 반영 1차(A3): 게임방 한 화면·차례 시간 고리, 맞고 테이블, 터치 두 번 누르기, 한판마당 PC 넓게
+
+- 지시: 구현 순서 A3, 작업서 gamecenter-notes `docs/gamehall-fix-spec-20261018.md`(기본값 표대로: 공통 틀 먼저, 터치일 때만 오목·맞고 두 번 누르기, 사목 빨강 선공).
+- G1 공통 틀(`app.js` `setRoomPlaying`·`fitBoard`·`renderTurnRing`·`chatBubble`·`resultOverlayExtras`): 판 진행 중(`g.status` playing/setup) `body.roomPlaying` — 방 정보는 ⓘ(`#roomInfoBtn`), 빈자리 숨김, 캔버스 판은 남은 높이에 맞춤, `#gameActionsPanel`(윷 던지기·숫자야구·라이어 등, id 그대로)을 판 아래로 옮김, 휴대폰 💬·🎮는 위 막대로, 진행 중 옆 칸 좁게, 빠른 말 8개(방 채팅으로)와 이름표 말풍선, 결과 창에 참가 포인트·[한 판 더]·[게임관으로], 1:1 점수를 이름표 사이에. 서버는 방 상태에 공개 `turnTimer`({ seat, deadlineAt, serverNow }, `publicTurnTimer`).
+- G2 맞고(`gostop-ui.js`·styles): 카드 크기를 화면 높이에 맞춤(--hh/--fh/--mh), 따 온 패는 한 줄 겹침, 바닥은 달 자리 6칸 2줄, 고/스톱 창은 테이블 가운데, 점수 이력·머리 줄은 ⓘ 뒤로, 같은 달 바닥패 빛남(마우스 올림·포커스·첫 터치)·터치 두 번 누르기·「버림」 표시, 진행 속도(보통·빠르게·연출 줄임, 이 기기), 자체 뒷면 무늬.
+- G3: 게임방 오목 터치 두 번 누르기(첫 탭은 미리보기 돌), AI 연습 오목은 마우스 한 번, AI 연습 사목 빨강 선공·빨강 vs 노랑, 할리갈리 종을 판 가운데로, 문구(「내 차례」, 할리갈리 0.3초 안내 뺌). G4: 카드 게임·퍼즐은 넓은 PC에서 1200px 틀(`wideFrame`), 카드·판 상한 상향.
+- 남은 것(다음 묶음): G1-5 이름표 얼굴, G2-4 따 온 패 조건까지 남은 수, G2-5 맞고 결과 창 점수표, G3-2 오목 AI 연습에 내 스킨, G3-5 트럼프 카드 한 벌·도둑잡기 부채꼴, 할리갈리·다빈치·라이어 따로 쓰던 남은 시간 글.
+- Codex 검토: v1.10.92 지적 3건(심부름 건넴 뒤 보상 저장 실패 복구, 백화점 충돌 보정이 옆 가구로 밀던 것, 닿지 않던 편지지·액자) 반영, v1.10.93 지적 없음, v1.10.94 지적 2건(터치 첫 탭 선택이 판·차례를 넘어 남던 것) 반영.
+- 검증: e2e room-play-layout(오목 4크기·윷 2크기·오목 터치)·gostop-late-layout(4크기, 판 후반)·reflex(PC 넓게)와 기존 방·고스톱 시험 통과(로컬은 한 번에 하나씩 — 동시 실행 시 관리자 로그인 제한), 단위 general-store(가구 안에 서지 않음·모든 물건 고를 수 있음). 실제 휴대폰·두 기기 미검증.
+
 ## v1.10.93 체형(DS 인상), 마을 주민 미니게임 퀘스트 2단계(7명·공동 진행도)
 
 - 지시(사용자 2026-10-18): 구현 순서 `docs/implementation-order-20261018.md` A1(체형·팔, 시안 v2) → A2(주민 미니게임 퀘스트 2단계·정자 할아버지 AI 대전, assets 39).
@@ -29,13 +39,3 @@
 - 잡화(`lib/island-items.js` GOODS 16, `islandBuy`·`islandUse`·`islandGift` JSON/PG): 진열 자리(assets 41 모델·아이콘)에서 SPACE → 1·5·10개 구매(결제+가방 한 번에, `island_buy` 원장). 미끼: 낚시 시작 때 가방에서 자동 사용(대기 2~5초, 고급은 두 번 뽑아 비싼 쪽). 폭죽·풍선·비눗방울: 가방 「쓰기」, 서버가 6초 동안 `show:<kind>` 동작을 인정해 주변에 보임. 선물 포장지: 플레이어 메뉴 「선물하기」(3m 안, 포장지 1장 사용). 심부름 「사다 주기」(하루 최대 1개, 물건값+1,500P). 잡화 가격·사다 주기 보상은 경제 값 관리 표에. 꽃씨·묘목·비료는 「곧 판매」(심기 기능 전).
 - 포차코(assets 42): 파츠 4종(의상·머리장식·꼬리·목걸이, 헬로키티와 같은 등급, 합 800,000P)과 변신 두 체형, 의상의 몸·모자 덮개 0. 변신 의상실 점원 모델. 포차코 모델은 기본 자세에서 1.4~1.8mm 어긋남(양자화) — 시험 허용 2.5mm, 재출력하면 0.1mm 이하로.
 - 검증: 단위(general-store JSON/PG·island-errands·economy·asset-pipeline·native-transformations 22종) Windows 전용 6건 외 통과, e2e general-store(구매·물건 쓰기·선물)·shop-browse·transform-shop·native-assets·plaza 상점 PC·휴대폰 통과. Codex 검토 대기(사용량 한도, 풀리면 후속). 실제 휴대폰·GPU 미검증.
-
-## v1.10.91 주민 대화·호감도·심부름, 경제 값 관리, 변신 의상실(변신 따로 판매 A안)
-
-- 지시(사용자 2026-10-18): 「주민들에게 이름과 설정, 설정에 맞는 대사, 퀘스트가 없어도 대화(기존 대화 카메라 그대로), 주민끼리 찾기·가져다주기·사다 주기」, 「호감도에 따라 대사 4단계」, 「경제 수치 열 수 있게」, 「포차코는 다른 캐릭터와 같은 가격, 기존 이용자 A안」.
-- 주민(`public/plaza/island-cast.js`): 걷는 주민 10명(n 0~9) 이름·역할·설정·4단계 대사(+아침·밤), 이야기 주민 5명(n 10~14) 대사. `{me}`는 이용자 이름. 말 걸기: 서 있는 주민 2.2m 안에서 `resident:<n>`(대화 카메라·마주 보기), 서버 `POST /api/island/resident/talk`이 같은 시드로 주민 위치를 계산해 4m 안 확인.
-- 심부름(`lib/island-errands.js`): 서울 하루 3개(같은 날 모두 같음, 부탁하는 주민 서로 다름) 찾기(대상에게 들은 뒤 부탁한 주민에게 알리면 2,000P)·전하기(대상에게 말하면 1,500P), `claimEvent`로 계정당 하루 1회 지급, 진행 단계는 메모리(재시작 시 다시 부탁받음). 머리 위 ★/✓, 추적창 「심부름 · …」. 「사다 주기」는 잡화점과 함께.
-- 호감도(`affinityOf`/`affinityAdd`, JSON `island.affinity`, PG 새 표 `resident_affinity`): 하루 첫 대화 +1, 심부름 부탁한 주민 +3·받은 주민 +2, 이야기 단계 +2, 단계 기준 5·15·30, 상한 999. 대화창 아래 「아는 사이 ♥♥」.
-- 경제 값 관리(`lib/economy.js`, `/api/admin/economy`): 생활 자원·물고기 판매가, 지뢰찾기 보상, 심부름 보상을 관리자 창 표에서 변경(범위 1~기본×10, 확인창, 변경 이력 200개·되돌리기, 서버 `worldValue('economy')`). 은행·세금·퀘스트 단계·원장은 코드에 둠.
-- 변신 따로 판매 A안(`lib/skins.js` `avatar_tf_*` slot `transform`, 가격 = 세트 파츠 합): 파츠 착용만으로는 변신하지 않고 `look.transform`이 정함(`character-transformations.js` `match`). 시작 때 1회 `grantTransformations`: 세트 전부 보유 계정에 변신 무료 지급, 세트를 다 입고 있던 계정은 변신 선택(`worldValue('transformGrant')`). 상점가 입구(28, 10)의 「변신 의상실」(임시 부스, assets 42로 교체 예정) `/api/transformations`, 상점 목록에서는 제외. 기존 「잡화점」(모자·장식) 이름은 「소품 가게」.
-- CI: 새 섬 e2e(resident-talk·transform-shop)는 plaza 작업에. 검증: 단위(errands·economy·transform-grant JSON/PG·skins·native-transformations·point-store) Windows 전용 6건 외 통과, e2e resident-talk·transform-shop(PC·휴대폰)·economy-admin·native-assets 통과. 실제 휴대폰·GPU 미검증.

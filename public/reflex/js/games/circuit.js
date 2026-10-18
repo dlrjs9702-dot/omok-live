@@ -36,7 +36,7 @@ export default {
   },
   layout() {
     if (!s.ready) return;
-    const { w, h } = s.P, top = E.top + 6, availW = Math.min(E.W - 16, 560), availH = E.bottom - top - 66;
+    const { w, h } = s.P, top = E.top + 6, availW = Math.min(E.W - 16, E.W > 900 ? 860 : 560), availH = E.bottom - top - 66;
     s.cell = Math.min(68, availW / w, availH / h);
     s.ox = Math.round((E.W - w * s.cell) / 2); s.oy = top;
     const by = top + h * s.cell + 12, bw = Math.min(E.W - 16, 460), bx = (E.W - bw) / 2, gap = 6;

@@ -1401,6 +1401,17 @@
     playResultEffect({ win: true, reward: true, icon: '🎉', title: `+${Number(amount).toLocaleString('ko-KR')}P`, message, duration: 3200 });
   }
 
+  // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
+  function resultOverlayExtras(outcome) {
+    const e = state.points?.entry;
+    if (e && e.status === 'settled' && Number(e.fee)) { const line = document.createElement('span'); line.className = 'resultPoints';
+      line.textContent = outcome === 'win' && e.each ? `참가 ${Number(e.fee).toLocaleString('ko-KR')}P → +${Number(e.each).toLocaleString('ko-KR')}P` : outcome === 'win' ? '' : `참가 ${Number(e.fee).toLocaleString('ko-KR')}P`;
+      if (line.textContent) boardOverlay.append(line); }
+    const row = document.createElement('span'); row.className = 'resultActions';
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '한 판 더'; again.addEventListener('click', () => nextRoundBtn.click());
+    const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
+    row.append(again, out); boardOverlay.append(row);
+  }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
     const heading = document.createElement('strong');
@@ -1425,7 +1436,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
+    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -5313,6 +5324,7 @@
   }
 
   function enterRoomState(next) {
+    bubbleSeen = null; // (A3 G1-6: a room just entered shows no old line as a bubble)
     closeEventDialogForRoom();
     stopPresenceRefresh();
     stopLobbyStream();
@@ -6061,6 +6073,15 @@
     return '';
   }
 
+  // A3 G1-6: a seated player's newest chat line shows a moment as a bubble on their name card (matched by name)
+  let bubbleSeen = null; // (the first view of a room shows no old line)
+  function chatBubble(row) {
+    if (!row?.text || !document.body.classList.contains('roomPlaying')) return;
+    const who = Object.entries(state?.players || {}).find(([, p]) => p && p.label && p.label === row.label); if (!who) return;
+    const card = /^(black|white)$/.test(who[0]) ? document.getElementById(`${who[0]}Player`) : teamPlayers.querySelector(`[data-seat="${who[0]}"]`); if (!card?.offsetParent) return;
+    card.querySelector('.seatBubble')?.remove();
+    const b = document.createElement('span'); b.className = 'seatBubble'; b.textContent = String(row.text).slice(0, 40); card.append(b); setTimeout(() => b.remove(), 4000);
+  }
   function renderChat() {
     const lockMessage = state ? chatLockMessage() : '';
     const locked = Boolean(lockMessage);
@@ -6086,6 +6107,8 @@
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     lastRenderedChatIds = chatRows.map(row => row.id);
+    if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
+    bubbleSeen = newestId;
 
     if (chatChanged && wasAtBottom) {
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -6108,6 +6131,49 @@
     applyGameInfoLayout();
   }
 
+  // A3 G1-1 게임방 공통 틀: while a hand is played the room shows one screen -- the room's info folds behind ⓘ, empty
+  // seats step aside, a canvas board fits the height left (with the actions under it), and on a phone the 💬·🎮 buttons
+  // move into the top bar so they never cover the board
+  const roomInfoBtn = document.getElementById('roomInfoBtn');
+  roomInfoBtn.addEventListener('click', () => { const open = !document.body.classList.contains('roomInfoOpen'); document.body.classList.toggle('roomInfoOpen', open); roomInfoBtn.setAttribute('aria-expanded', String(open)); fitBoard(); });
+  const floatHome = chatFloatBtn.parentElement; const topActions = document.querySelector('.roomBar .topActions');
+  // G1-3 내 행동은 판 바로 아래: the game's controls (윷 던지기, 숫자야구 추측, 라이어 힌트 …) leave the side panel for the spot under
+  // the board while a hand is played (ids kept -- keys and tests lean on them); a mark keeps their place in the panel
+  const actionsPanel = document.getElementById('gameActionsPanel'); const actionsMark = document.createComment('gameActionsPanel'); actionsPanel.before(actionsMark);
+  const boardActionsSpot = document.getElementById('quickChat');
+  function setRoomPlaying(on) {
+    on = Boolean(on) && !roomView.classList.contains('hidden');
+    if (on !== document.body.classList.contains('roomPlaying')) { document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); } }
+    for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
+    if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
+    fitBoard(); renderTurnRing();
+    const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
+  }
+  function fitBoard() {
+    const wrap = canvasWrap; wrap.style.maxWidth = '';
+    if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
+    const below = [...document.querySelectorAll('#yutControls, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const top = wrap.getBoundingClientRect().top + window.scrollY;
+    wrap.style.maxWidth = `${Math.max(200, Math.floor(window.innerHeight - top - below - 12))}px`;
+  }
+  window.addEventListener('resize', () => fitBoard());
+  // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
+  // on PC and phone; the last 10 seconds red
+  let turnRingClock = 0; let turnRingTimer = null;
+  function renderTurnRing() {
+    document.querySelectorAll('.turnRing').forEach((r) => r.remove());
+    const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
+    if (!t || !document.body.classList.contains('roomPlaying')) return;
+    const card = /^(black|white)$/.test(t.seat) ? document.getElementById(`${t.seat}Player`) : teamPlayers.querySelector(`[data-seat="${t.seat}"]`);
+    if (!card || !card.offsetParent) return;
+    turnRingClock = Date.now() - Number(t.serverNow || Date.now());
+    const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
+    const total = Math.max(1000, t.deadlineAt - Number(t.serverNow || Date.now()));
+    const tick = () => { const left = Math.max(0, t.deadlineAt - (Date.now() - turnRingClock)); const s = Math.ceil(left / 1000);
+      text.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ring.style.setProperty('--p', String(Math.min(1, left / total))); ring.classList.toggle('late', s <= 10);
+      ring.setAttribute('aria-label', `${t.seat === seat ? '내' : '상대'} 차례 남은 시간 ${s}초`); if (!left) { clearInterval(turnRingTimer); turnRingTimer = null; } };
+    tick(); turnRingTimer = setInterval(tick, 250);
+  }
   function renderTeamPlayers() {
     teamPlayers.replaceChildren();
     const bingo = isBingoGame();
@@ -6131,6 +6197,7 @@
       const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
       card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli || pandemic) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
+      card.classList.toggle('emptySeat', !player); // (A3 G1-1: hidden while a hand is played)
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${state.game.mode === 'team' ? ` · ${Number(number) % 2 ? 'A' : 'B'}팀` : ''}${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
@@ -6344,6 +6411,8 @@
       : state.gameType === 'dots' ? `${seatKo('black')} 상자 ${scores.black} · ${seatKo('white')} 상자 ${scores.white}`
         : state.gameType === 'cityking' ? `파랑 자산 ${scores.black} · 빨강 자산 ${scores.white}`
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
+    // A3 G1-5: a two-seat game's score between the name cards, always in sight (오델로 「2 : 2」 as in the AI practice)
+    const versus = document.querySelector('#standardPlayers .versus'); if (versus) { const two = scores && Number.isFinite(Number(scores.black)) && Number.isFinite(Number(scores.white)) && state.gameType !== 'cityking'; versus.textContent = two ? `${scores.black} : ${scores.white}` : 'VS'; versus.classList.toggle('versusScore', Boolean(two)); }
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     // v1.6.40: a paused, disconnect-affected match takes over the status line for every game type
@@ -6524,6 +6593,7 @@
     document.body.classList.toggle('tableGameRoom', gostop);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
+    setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();
@@ -6555,7 +6625,7 @@
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
       boardOverlay.classList.toggle('legendResult', legendWinOnBoard(g)); // keep the legend win sequence uncovered
-      if (outcome) setResultBoardOverlay(outcome, g);
+      if (outcome) { setResultBoardOverlay(outcome, g); resultOverlayExtras(outcome); }
       else {
         boardOverlay.classList.remove('resultWin', 'resultLoss');
         boardOverlay.textContent = `${seatKo(g.winner)} 승리`;
@@ -8042,7 +8112,7 @@
     const left = g.endsAt ? Math.max(0, Math.ceil((g.endsAt - (Date.now() - halliClockOffset)) / 1000)) : 0;
     halliStatus.textContent = g.status === 'selecting' ? '2~6명이 준비되면 시작할 수 있습니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
-      : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · 카드를 뒤집은 직후 0.3초 동안 종 입력이 잠깁니다.`;
+      : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; // (A3 G1-8: the 0.3 s bell lock stays, unexplained)
     // v1.7.41 skins: the host's theme paints the panel; each player's card plot uses that player's skin frame.
     const SLH = window.SkinLooks;
     SLH.h.unstyle(halliPanel, halliThemeApplied);
@@ -10048,6 +10118,12 @@
     }
   }
 
+  // A3 G1-6 빠른 말: a set word goes out as a room chat line (the chat's own rules: locked while hints are given etc.)
+  document.getElementById('quickChat').addEventListener('click', async (event) => {
+    const b = event.target.closest('button'); if (!b) return;
+    const lock = chatLockMessage(); if (lock) { showToast(lock, 2500); return; }
+    b.disabled = true; try { await api('/api/room/chat', { method: 'POST', body: JSON.stringify({ text: b.textContent }) }); } catch (err) { showToast(err.message, 3500); } finally { setTimeout(() => { b.disabled = false; }, 1500); }
+  });
   async function sendChat(event) {
     event.preventDefault();
     if (chatLockMessage()) return;
@@ -10702,6 +10778,7 @@
   nextRoundBtn.addEventListener('click', () => roomAction('next-round'));
   sideNextRoundBtn.addEventListener('click', () => roomAction('next-round'));
 
+  let touchPick = null; let touchPickKey = null; // A3 G3-1: the point a first tap chose (on this board, moveCount unchanged)
   canvas.addEventListener('pointermove', (ev) => {
     if (state?.gameType === 'yut') {
       const { px, py } = canvasPixel(ev);
@@ -10714,7 +10791,8 @@
     hover = canvasPoint(ev);
     drawBoard();
   });
-  canvas.addEventListener('pointerleave', () => {
+  canvas.addEventListener('pointerleave', (ev) => {
+    if (ev.pointerType === 'touch' && touchPick) return; // (A3 G3-1: the first tap's preview stone stays)
     hover = null;
     canvas.style.cursor = '';
     if (state?.gameType === 'yut') {
@@ -10733,6 +10811,13 @@
     if (state?.gameType === 'cityking') { selectCityTileFromPointer(ev); return; }
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
+    // A3 G3-1 오목 터치 두 번 누르기: on a touch screen the first tap shows the stone (the hover preview), the same point
+    // again places it, another point moves the preview; a mouse still places at once
+    if (ev.pointerType === 'touch' && /^omok/.test(state?.gameType || '')) {
+      const key = `${p.x},${p.y}`;
+      if (touchPick !== key) { touchPick = key; hover = p; drawBoard(); return; }
+    }
+    touchPick = null;
     roomAction('move', state?.gameType === 'connect4' ? { x: p.x } : p);
   });
 

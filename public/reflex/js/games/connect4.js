@@ -6,23 +6,23 @@ import { net, pump, seatName, netStat } from './turnnet.js';
 
 let s;
 const C = 7, R = 6, ME = 1, AI = 2;
-const COL = { 1: ['#FFD34D', '#F5A623'], 2: ['#FF6B8B', '#E0335A'] };
+const COL = { 1: ['#F05252', '#C81E1E'], 2: ['#FFD34D', '#F5A623'] }; // (A3 G3-3: 빨강 먼저 · 빨강 vs 노랑, as in the game room)
 
-// 노랑(1)이 먼저 둔다. s.me = 내 색 · s.ai = AI의 색 (AI 대결에서 '먼저 두기'로 고른다 · 온라인은 좌석 0 = 노랑)
+// 빨강(1)이 먼저 둔다. s.me = 내 색 · s.ai = AI의 색 (AI 대결에서 '먼저 두기'로 고른다 · 온라인은 좌석 0 = 빨강)
 const human = () => (net() ? s.turn === s.me && net().myTurn : E.p2 ? s.turn === ME || s.turn === AI : s.turn === s.me);
 const mine = (p) => p === s.me;
-const cname = (p) => (p === ME ? '노랑' : '분홍');
+const cname = (p) => (p === ME ? '빨강' : '노랑');
 export default {
   id: 'connect4', name: '사목', cat: 'puzzle', mode: 'versus',
   color: '#3D7BFF', c2: '#2946B8', c3: '#0F1F66',
   tagline: '칸에 떨어뜨려 4개를 먼저 이으세요',
-  howto: [['tap', '원하는 줄을 탭하면 맨 아래로 떨어져요'], ['grid', '가로·세로·대각선으로 4개를 먼저 이으면 승리'], ['brain', '노랑이 먼저 둬요. 먼저 둘지 나중에 둘지 고를 수 있어요. 상대의 3연결을 조심하세요']],
+  howto: [['tap', '원하는 줄을 탭하면 맨 아래로 떨어져요'], ['grid', '가로·세로·대각선으로 4개를 먼저 이으면 승리'], ['brain', '빨강이 먼저 둬요. 먼저 둘지 나중에 둘지 고를 수 있어요. 상대의 3연결을 조심하세요']],
   winRule: '가로·세로·대각선 4개를 먼저 잇기',
-  hideScore: true, customRight: true, noScore: true, hudLabel: '나(노랑) vs AI',
-  p2Label: '노랑 vs 분홍', p2Howto: '폰 하나로 번갈아 떨어뜨려요. 노랑이 먼저예요',
+  hideScore: true, customRight: true, noScore: true, hudLabel: '나(빨강) vs AI',
+  p2Label: '빨강 vs 노랑', p2Howto: '폰 하나로 번갈아 떨어뜨려요. 빨강이 먼저예요',
   draws: true, bg: '#070B1C',
-  online: 'turn', seatNames: ['노랑', '분홍'],
-  options: [{ id: 'first', title: '먼저 두기', def: 'me', ai: true, items: [['me', '내가 먼저'], ['ai', 'AI가 먼저']], note: { me: '내가 노랑(먼저)이에요', ai: 'AI가 노랑(먼저) · 내가 분홍이에요' } }],
+  online: 'turn', seatNames: ['빨강', '노랑'],
+  options: [{ id: 'first', title: '먼저 두기', def: 'me', ai: true, items: [['me', '내가 먼저'], ['ai', 'AI가 먼저']], note: { me: '내가 빨강(먼저)이에요', ai: 'AI가 빨강(먼저) · 내가 노랑이에요' } }],
 
   init() {
     const me = net() ? net().you + 1 : !E.p2 && E.opts?.first === 'ai' ? AI : ME;
@@ -53,11 +53,11 @@ export default {
     const { c, r, p } = s.fall;
     s.b[r * C + c] = p; s.fall = null; s.moves++;
     E.sfx.drop(); E.haptic(mine(p) ? 'medium' : 'light');
-    const w = winLine(s.b, p), stats = [['수', s.moves + '수'], ['선공', net() ? seatName(0) : E.p2 ? '노랑' : s.me === ME ? '나' : 'AI'], net() ? netStat() : E.p2 ? ['모드', '둘이 하기'] : ['AI', lvName(E.level)]];
+    const w = winLine(s.b, p), stats = [['수', s.moves + '수'], ['선공', net() ? seatName(0) : E.p2 ? '빨강' : s.me === ME ? '나' : 'AI'], net() ? netStat() : E.p2 ? ['모드', '둘이 하기'] : ['AI', lvName(E.level)]];
     if (w) {
       s.win = { p, cells: w };
       mine(p) || E.p2 ? (E.sfx.win(), E.haptic('success')) : (E.sfx.lose(), E.haptic('error'));
-      return E.end(mine(p) ? 'win' : 'loss', { delay: 1.4, title: E.p2 ? (p === ME ? '노랑 승리!' : '분홍 승리!') : mine(p) ? '승리!' : '패배', stats });
+      return E.end(mine(p) ? 'win' : 'loss', { delay: 1.4, title: E.p2 ? (p === ME ? '빨강 승리!' : '노랑 승리!') : mine(p) ? '승리!' : '패배', stats });
     }
     if (!s.b.includes(0)) { E.sfx.draw(); return E.end('draw', { delay: 1, title: '무승부', stats }); }
     s.turn = p === ME ? AI : ME;
@@ -137,6 +137,6 @@ export default {
     const txt = net() ? (s.win ? (mine(s.win.p) ? '4개 연결! 이겼어요' : `${seatName(s.win.p - 1)}님이 4개를 이었어요`) : human() ? `내 차례 (${cname(s.me)}) · 줄을 탭하세요` : s.turn ? `${seatName(s.turn - 1)}님 차례…` : '')
       : s.win ? (E.p2 ? `${cname(s.win.p)} 4개 연결!` : mine(s.win.p) ? '4개 연결! 이겼어요' : 'AI가 4개를 이었어요')
       : human() ? (E.p2 ? `${who} 차례 · 줄을 탭하세요` : `떨어뜨릴 줄을 탭하세요 (${cname(s.me)})`) : s.turn === s.ai ? 'AI가 생각 중…' : '';
-    E.text(txt, E.W / 2, oy + bh + 48, 16, human() ? (s.turn === ME ? '#FFD34D' : '#FF8FA3') : '#fff', 800);
+    E.text(txt, E.W / 2, oy + bh + 48, 16, human() ? (s.turn === ME ? '#F87171' : '#FFD34D') : '#fff', 800);
   },
 };

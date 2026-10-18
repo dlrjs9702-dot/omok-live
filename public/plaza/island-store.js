@@ -40,7 +40,7 @@
     ['seed_flower_purple', [9.905, 1.12, 7.3]], ['sapling', [10.145, 1.12, 7.3]], ['bait', [10.455, 1.12, 7.3]], ['bait_premium', [10.695, 1.12, 7.3]],
     ['fertilizer', [11.625, 1.12, 7.3]], ['guitar_string', [12.055, 1.12, 7.3]], ['nail_box', [12.295, 1.12, 7.3]], ['milk', [12.605, 1.12, 7.3]],
     ['bread', [12.845, 1.12, 7.3]], ['bulb', [13.155, 1.12, 7.3]], ['paint', [13.395, 1.12, 7.3]], ['bouquet', [9.78, 0.82, 4.12]], ['gift_wrap', [10.02, 0.82, 4.12]],
-    ['frame', [9.74, 0.82, 4.55]], ['letter_paper', [10.06, 0.82, 4.55]], ['firework', [9.54, 0.82, 4.98]], ['bubbles', [9.9, 0.82, 4.98]], ['balloon', [10.26, 0.82, 4.98]],
+    ['frame', [12.87, 1.02, 4.6]] /* (the table's middle row could not be reached either) */, ['letter_paper', [11.16, 1.12, 7.3]] /* (Codex review: in the table's middle it could not be reached -- the gap of the back shelf) */, ['firework', [9.54, 0.82, 4.98]], ['bubbles', [9.9, 0.82, 4.98]], ['balloon', [10.26, 0.82, 4.98]],
     ['badge', [11.73, 1.02, 4.6]],
   ].map(([id, at]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: /^seed_|^sapling$|^fertilizer$/.test(id) })));
   const REACH = 1.2; // a good within this of me (on the floor plan) is the one SPACE buys
@@ -50,9 +50,12 @@
     const e = world(ROOM.entry.lx, ROOM.entry.lz);
     let { lx, lz } = local(fin(x, e.x), fin(z, e.z));
     lx = Math.max(-ROOM.w / 2 + 0.45, Math.min(ROOM.w / 2 - 0.45, lx)); lz = Math.max(-ROOM.d / 2 + 0.45, Math.min(ROOM.d / 2 - 0.45, lz));
-    for (const f of FIXTURES) {
-      const hx = f.w / 2 + 0.35; const hz = f.d / 2 + 0.35; const dx = lx - f.x; const dz = lz - f.z;
-      if (Math.abs(dx) < hx && Math.abs(dz) < hz) { if (hx - Math.abs(dx) < hz - Math.abs(dz)) lx = f.x + Math.sign(dx || 1) * hx; else lz = f.z + Math.sign(dz || 1) * hz; }
+    // (Codex review: a push out of one piece could land in the next -- of the four ways out, the nearest clear one)
+    const hit = (x, z) => FIXTURES.find((f) => Math.abs(x - f.x) < f.w / 2 + 0.35 - 1e-6 && Math.abs(z - f.z) < f.d / 2 + 0.35 - 1e-6);
+    for (let pass = 0, f = hit(lx, lz); f && pass < 4; pass += 1, f = hit(lx, lz)) {
+      const hx = f.w / 2 + 0.35; const hz = f.d / 2 + 0.35;
+      const ways = [[f.x - hx, lz], [f.x + hx, lz], [lx, f.z - hz], [lx, f.z + hz]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
+      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= ROOM.w / 2 - 0.45 && Math.abs(z) <= ROOM.d / 2 - 0.45) || ways[0];
     }
     return world(lx, lz);
   }
