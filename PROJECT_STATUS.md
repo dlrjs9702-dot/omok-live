@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.93 체형(DS 인상), 마을 주민 미니게임 퀘스트 2단계(7명·공동 진행도)
+
+- 지시(사용자 2026-10-18): 구현 순서 `docs/implementation-order-20261018.md` A1(체형·팔, 시안 v2) → A2(주민 미니게임 퀘스트 2단계·정자 할아버지 AI 대전, assets 39).
+- 체형(`asset-loader.js` `slimmedGeometry`, 등록부 `character.base.slim`): 몸통 폭 82%·깊이 80%, 팔 55%·다리 50%(뼈 축 쪽으로 스킨 가중치만큼), 손 82%·신발 85%. 몸과 모든 착용물(스킨·IP 파츠·변신)에 같은 변형을 적용해 따라감 — 재맞춤 주문 불필요. 모션 파일·리그는 그대로.
+- 마을 주민(assets 39, `island-terrain.js` `VILLAGE`·`villageSolids`, `island-quests.js` 7편, `island-cast.js` 15~21): 한 주에 한 명씩(`VILLAGE` 순환, 주간 총액 그대로). 화가×다른 색 찾기→벽화 4단계, 거리 악단×비트 탭→무대 공연, 역무원×숫자 터치(`lower`)→남서해안역, 전기 담당×오늘의 회로 연결→가로등 3개, 공사 인부×오늘의 다리 잇기→징검돌 4단계(물 높이 −0.23), 도서관 할아버지×오늘의 네모로직→책 수레, 정자 할아버지×게임방 AI 오목→오델로(서버가 AI를 두고 승패 판정, `aiWinProgress`). 공동 진행도는 `/api/island/farm`의 `village`(그 주 도운 사람 수).
+- 퍼즐 단계(`puzzle: true`): 오늘의 문제 쉬움의 정답 확인(`/api/solo/puzzle/finish`)이 단계를 채움. 이미 오늘 푼 사람은 말을 거는 순간 정산 기록(`puzzleSolved`)으로 바로 완료. 퀘스트로 연 판은 항상 오늘의 문제(`reflex.js` modeOf).
+- 마을 소품 충돌: 충돌 격자는 시작 때 한 번 만들어지므로 마을 소품 원을 시작 때 넣음(전에는 나중에 넣어 통과됐음).
+- 검증: 단위(village-quests·puzzle-quest-server·farmer·island-quests) 통과, e2e island-assets 등록부(백화점·마을 전용 모델 제외) 통과. Codex 검토 대기(사용량). 실제 휴대폰·GPU 미검증.
+
 ## v1.10.92 백화점·잡화 코너(진열 구매), 잡화 물건 쓰임, 포차코 변신
 
 - 지시(사용자 2026-10-18): 「잡화점은 동물의 숲처럼 진열된 걸 사는 방식, 품목은 제안대로」, 「상점가도 백화점화, 큰 건물 하나에 섹터별로」, 「포차코는 다른 캐릭터와 같은 가격」.
@@ -30,13 +39,3 @@
 - 경제 값 관리(`lib/economy.js`, `/api/admin/economy`): 생활 자원·물고기 판매가, 지뢰찾기 보상, 심부름 보상을 관리자 창 표에서 변경(범위 1~기본×10, 확인창, 변경 이력 200개·되돌리기, 서버 `worldValue('economy')`). 은행·세금·퀘스트 단계·원장은 코드에 둠.
 - 변신 따로 판매 A안(`lib/skins.js` `avatar_tf_*` slot `transform`, 가격 = 세트 파츠 합): 파츠 착용만으로는 변신하지 않고 `look.transform`이 정함(`character-transformations.js` `match`). 시작 때 1회 `grantTransformations`: 세트 전부 보유 계정에 변신 무료 지급, 세트를 다 입고 있던 계정은 변신 선택(`worldValue('transformGrant')`). 상점가 입구(28, 10)의 「변신 의상실」(임시 부스, assets 42로 교체 예정) `/api/transformations`, 상점 목록에서는 제외. 기존 「잡화점」(모자·장식) 이름은 「소품 가게」.
 - CI: 새 섬 e2e(resident-talk·transform-shop)는 plaza 작업에. 검증: 단위(errands·economy·transform-grant JSON/PG·skins·native-transformations·point-store) Windows 전용 6건 외 통과, e2e resident-talk·transform-shop(PC·휴대폰)·economy-admin·native-assets 통과. 실제 휴대폰·GPU 미검증.
-
-## v1.10.90 스킨 2배·IP 환불, 낚시 도감 21종, 잡초 게시판·제초왕, UI 그림, 메신저 보완, 섬 시간대, 에셋 점검실·운영 스위치
-
-- 지시(사용자 2026-10-17): 「기록된 구현을 하나씩 계속」; IDEAS 스킨 2배, IP 스킨 정리, 낚시 도감 확장(assets 40), 잡초 게시판, UI 그림(assets 38), 메신저 보완, 섬 시간대, `#future-admin-console` ①②③.
-- 스킨 2배(`public/skin-art-*.js`, `lib/skins.js`): 14게임 일반 c6–c10·고급 p4–p6·방 테마 t3·전설 l3(t3과 짝). IP 환불: `IP_SKINS=off`면 시작 때 `refundSkins(IP_SKIN_IDS)`(산 값 1회 환불, 원장 `ip_skin_refund:<skin>:<user>`, 소유·장착 제거, PG도 같은 키로 한 번만).
-- 낚시(`lib/island-fishing.js`): 13종 추가 21종, 강/바다×계절 출현표 `TABLE`, `island-terrain` `fishWater`로 개울가 자리, 도감 칭호 3은 18종 유지·`dex_title_4` 대도감 완성(31). 모델·아이콘 assets 40.
-- 잡초(`lib/island-weeds.js` `targetFor`·`wilt`): 전날 뽑은 양 <140→1,680, <350→1,400, 그 외 1,120; 하루 이상 비면 0으로 본다. 게시판 `GET /api/island/weeds/board`(오늘 순위, 어제 섬 실적, 어제 수훈 2명 `weedday:` 결산), 주간 칭호 일반화(`WEEKLY_TITLES` 낚시왕·제초왕).
-- UI 그림(assets 38): 게임관 카드 31, 오늘의 게임 테두리, 가방·판매 아이템 그림. 메신저: 5분 안 삭제(`unsend`), 대화방 고정(PG `messenger_pins` 새 표), 섬 새 메시지 알림.
-- 섬 시간대(`plaza-scene` `LIGHTS`·`phaseAt`): 실제 시각 자동 또는 관리자 고정(`/api/admin/island/time`, SSE `islandTime`), 할로윈 장식과 밤 분리. 에셋 점검실(`public/admin/asset-inspector.js`): 등록 모델·모션·그림 미리보기, 메모 서버 저장(최대 300), 수정 요청 → Codex 주문서 초안. 운영 스위치(`/api/admin/switches`): 새 가입 신청·메신저. 관리자 세계값 저장은 한 번에 하나씩(`worldEdit`).
-- 검증: 단위 skins·ip-skin-refund·island-fishing·island-items·island-weeds-server·messenger·asset-pipeline, e2e river-fishing·weed-board·island-time·asset-inspector·plaza 낚시, Codex 검토 반영(스위치·메모 동시 저장, 건너뛴 날 잡초, PG 중복 환불). 실제 휴대폰·GPU 미검증.
