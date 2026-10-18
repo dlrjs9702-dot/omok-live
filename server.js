@@ -4300,7 +4300,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     let out; try { out = await pointStore.islandUse({ userId: account, requestId: String(body.requestId || ''), itemId: body.itemId }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
-    showUsed.set(session.token, { kind: body.itemId, until: nowMs() + 6000 });
+    showUsed.set(session.token, { kind: body.itemId, until: nowMs() + 10000 }); // (the show is 6 s; a slow page posts it late -- the page ends it itself)
     return sendJson(res, 200, { ok: true, kind: body.itemId, bag: out.bag || null });
   }
   if (pathname === '/api/island/store/buy' && req.method === 'POST') {
@@ -4985,6 +4985,9 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
+    broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
     const e = islandEvents.spawnLost();

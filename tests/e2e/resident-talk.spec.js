@@ -22,6 +22,7 @@ test('주민 대화: 걷는 주민에게 말 걸기, 심부름 받고 끝내면 
     expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk)
   };
   const close = async () => { await page.keyboard.press('Escape'); await expect(dialog).not.toHaveClass(/talkMode/); };
+  await require('./skin-support').post(request, '/api/test/island/free-residents', token, {}); // (CI: no resident still held by an earlier test's event)
   const view = (await get(request, '/api/island/errands', token)).data;
   expect(view.total).toBe(3);
   const askers = Object.entries(view.marks).filter(([, m]) => m === 'new').map(([n]) => Number(n));
