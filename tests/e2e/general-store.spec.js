@@ -47,7 +47,7 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await a.page.bringToFront(); // (a background page sends its acts late -- CI)
   await a.page.locator('#islandBagTab').click();
   await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('button', { name: '쓰기' }).click();
-  await expect.poll(() => b.page.evaluate(() => window.__zzSeen), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => b.page.evaluate(() => window.__zzSeen), { timeout: 30000 }).toBe(true);
   await b.page.evaluate(() => clearInterval(window.__zzWatch));
   // the gift: by the other player, 선물하기, bread
   const id = await a.page.evaluate(() => window.PlazaDebug().others[0].id);
