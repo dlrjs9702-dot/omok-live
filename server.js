@@ -41,7 +41,9 @@ const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
-const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
+const RoomAi = require('./lib/room-ai');
+const IslandWeather = require('./lib/island-weather'); // A4 날씨
+const IslandStars = require('./lib/island-stars'); // A4 별똥별 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
@@ -1410,6 +1412,8 @@ function publicTurnTimer(room) {
   const t = buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS);
   return t ? { seat: String(seat), deadlineAt: t.deadlineAt, serverNow: t.serverNow } : null;
 }
+// A4 별똥별: tests may move the stars' clock (so a star falls now); otherwise the server clock
+let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -1683,6 +1687,9 @@ function publicPlayer(room, color) {
   const family = familyOf(room.gameType);
   const skin = family ? equippedSkin(pointAccountForParticipant(p), family, 'piece') : null;
   if (skin) player.skin = skin; // v1.7.30: every viewer draws this player's pieces with the same skin
+  // A3 G1-5 이름표 얼굴: the island look's public summary (skin and hair colours) and a worn title -- nothing else of the account
+  const account = pointAccountForParticipant(p); const worn = account ? equippedSkinCache.get(account) : null;
+  if (worn) { const al = avatarLookOf(worn); player.face = { skin: al.look.skinColor || null, hair: al.look.hairColor || null }; if (al.title) player.title = al.title; }
   return player;
 }
 
@@ -3320,7 +3327,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.94' });
+    return sendJson(res, 200, { ok: true, version: '1.10.95' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4707,7 +4714,8 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait });
+    const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain });
     fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
     return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
@@ -4993,6 +5001,11 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/star-now' && req.method === 'POST') { // a star falling now
+    const t = nowMs(); let slot = Math.floor(t / IslandStars.SLOT_MS) + 1; while (!IslandStars.starOf(slot)) slot += 1;
+    const body = await parseJson(req); if (body.reset) { starShiftMs = 0; return sendJson(res, 200, { ok: true }); }
+    starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
@@ -5231,6 +5244,41 @@ async function requestHandler(req, res) {
     const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];
     const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0;
     return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), affinity: { points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name }, ...(await errandView(account)) });
+  }
+  // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
+  if (pathname === '/api/island/weather' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    const mode = (await pointStore.worldValue('weather'))?.mode || 'auto';
+    return sendJson(res, 200, { ok: true, mode, ...IslandWeather.weatherAt(nowMs(), mode), serverNow: nowMs() });
+  }
+  if (pathname === '/api/admin/island/weather' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!['auto', ...IslandWeather.KINDS].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '날씨를 골라 주세요.');
+    await pointStore.setWorldValue('weather', { mode: body.mode, at: nowMs() });
+    broadcastIsland('islandWeather', { mode: body.mode, ...IslandWeather.weatherAt(nowMs(), body.mode) });
+    return sendJson(res, 200, { ok: true, mode: body.mode });
+  }
+  // A4 밤하늘 별똥별 (lib/island-stars.js): the star falling now and the next one (the same for everyone); on a look, the
+  // gifts for the wishes of the Seoul day before are paid once (until the 우체통). Wishes live in the account's 'stars' doc.
+  if (pathname === '/api/island/stars' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0;
+    const wished = new Set((await pointStore.questDoc(account, 'stars')).doc.wished || []);
+    for (const st of IslandStars.starsOfDayBefore(now)) if (wished.has(st.id)) {
+      const out = await pointStore.claimEvent({ eventId: `star_gift_${IslandStars.slotOfId(st.id)}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' });
+      if (out.applied) gift += out.amount;
+    }
+    if (gift) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, wishMs: IslandStars.WISH_MS });
+  }
+  if (pathname === '/api/island/stars/wish' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!plazaPresence.get(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬에서 빌 수 있어요.');
+    const body = await parseJson(req); const now = IslandStars.around(starNow(nowMs())).now;
+    if (!now || now.id !== body.id) return sendError(res, 409, 'STAR_GONE', '별똥별이 이미 지나갔어요.');
+    const out = await pointStore.questApply(pointAccountForSession(session), 'stars', (doc) => (doc.wished || []).includes(now.id) ? null : { doc: { ...doc, wished: [...(doc.wished || []), now.id].slice(-120) }, reward: 0 });
+    return sendJson(res, 200, { ok: true, already: !out?.doc });
   }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
@@ -5982,7 +6030,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.94 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.95 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

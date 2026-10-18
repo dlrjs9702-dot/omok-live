@@ -72,7 +72,7 @@ const LEVEL_NAMES = { easy: '쉬움', normal: '보통', hard: '어려움' };
 const KEYS = { reaction: 'Space · Enter', rhythm: 'D F J K' }; // the games' own keys on a PC
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
 
-export function mount({ api, onBack }) {
+export function mount({ api, onBack, pieceSkin = null }) {
   const view = document.getElementById('reflexView');
   const frame = view.querySelector('.reflexFrame');
   const menu = document.getElementById('reflexMenu');
@@ -166,6 +166,7 @@ export function mount({ api, onBack }) {
     const seq = ++startSeq; const level = levelOf(g); // a screen change or a later press makes this answer stale (Codex review)
     const mode = modeOf(g);
     let id = null; let seed = null;
+    const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
     try {
       if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) })).id;
       else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) }));
@@ -177,7 +178,7 @@ export function mount({ api, onBack }) {
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
-    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}) } });
+    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}), ...(skin ? { pieceSkin: skin } : {}) } });
   }
 
   async function finish(g, r) {

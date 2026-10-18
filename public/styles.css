@@ -2158,3 +2158,46 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
 @media(max-width:640px){.halliTable .halliCards{column-gap:5.6rem}.halliTable .halliBell{width:5rem;height:5rem}}
 /* A3 G4 한판마당 PC 넓게: the card games and puzzles on a wide mouse screen */
 @media(min-width:900px) and (pointer:fine){.reflexFrame.wideFrame{width:min(100%,1200px)}}
+/* A3 G2-5 맞고 결과 창: over the table's middle, one line per part, then the way on */
+.gostopPanel{position:relative}
+body.roomMode>.gostopResult:not(.hidden):not(.closed){position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.gostopResult.closed{display:none}
+.gostopResult .gostopSettlementFlow{display:flex;flex-wrap:wrap;gap:6px}
+.gostopResultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+body:not(.roomMode)>.gostopResult{display:none}
+/* A3 G2-4: what a pile still needs, an empty pile faint, the sets under way and the 박 risk */
+.gostopPile small .gostopNeed{font-style:normal;font-weight:600;opacity:.7;font-size:.85em}
+.gostopPile.emptyPile{opacity:.55}
+.gostopSets{display:block;color:#fde68a;font-weight:700;font-size:.78rem;line-height:1.3}
+/* A3 G1-5 이름표 얼굴: a round island face (skin tone, hair on top) and the worn title */
+.seatFace{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 36% 58%,#1f2937 0 2.2px,transparent 2.6px),radial-gradient(circle at 64% 58%,#1f2937 0 2.2px,transparent 2.6px),linear-gradient(180deg,var(--hair,#4a3426) 0 34%,var(--skin,#f6d3b3) 34%);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+.player .seatFace{order:-1}
+.teamPlayer .seatFace{float:left;margin-right:8px}
+.seatTitle{display:block;color:#fcd34d;font-weight:800;font-size:.7rem}
+/* A3 G3-5 트럼프 한 벌: 도둑잡기 cards in the same look as the card games' (public/reflex/js/games/cards.js) -- white face,
+   #E0334F / #1B1E33 ink, rounded 12%, the blue back with a white frame and a spade; the table green felt in wood;
+   a seat's hidden hand fanned (overlapped), the card pointed at rises. A skin's back (skin-art-oldmaid.js) still wins. */
+.oldmaidPanel{background:radial-gradient(ellipse at 50% 35%,#15603F 0,#0A2E20 100%);border:10px solid #6b3f1d;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+.oldmaidCard.oldmaidFace{background:#FBFBFE;color:#1B1E33;border:1px solid rgba(20,24,60,.2);border-radius:12%/9%}
+.oldmaidCard.oldmaidFace.red{color:#E0334F}
+.oldmaidCard.oldmaidBack:not([style*="background"]){background:linear-gradient(135deg,#3B4BD8,#1E2A8A);border:2px solid #F4F5FC;border-radius:12%/9%}
+.oldmaidCard.oldmaidBack:not([style*="background"])::before{content:'♠';position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.16);font-size:1.4rem}
+.oldmaidSeatCards{flex-wrap:nowrap;gap:0}
+.oldmaidSeatCards .oldmaidCard+.oldmaidCard{margin-left:-22px}
+.oldmaidSeatCards .oldmaidCard.selectable:hover:not(:disabled),.oldmaidSeatCards .oldmaidCard.selectable:focus-visible{transform:translateY(-10px);z-index:2}
+.oldmaidCard.oldmaidBack.selected{background:#16a34a!important}
+/* A4 날씨: a rainbow band over the top of the island view (the camera looks down, the sky is out of frame) */
+.plazaRainbow{position:absolute;left:0;right:0;top:0;height:46vh;pointer-events:none;z-index:2;opacity:0;transition:opacity 2s ease;
+  background:radial-gradient(62% 100% at 50% 100%,transparent 0 80%,rgba(176,124,255,.26) 81%,rgba(108,124,255,.28) 83.5%,rgba(90,176,255,.3) 86%,rgba(123,211,137,.3) 88.5%,rgba(255,224,102,.32) 91%,rgba(255,159,67,.32) 93.5%,rgba(255,90,90,.32) 96%,transparent 98%)}
+.plazaRainbow.on{opacity:1}
+/* A4 별똥별: a streak across the top of the island view, and the wish button under it */
+.plazaStar{position:absolute;top:6vh;left:70%;width:180px;height:2px;z-index:3;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,0),#fff 70%,#fffbe0);border-radius:2px;box-shadow:0 0 10px 2px rgba(255,251,224,.8);transform:rotate(-20deg);opacity:0}
+.plazaStar.fall{animation:starFall 4s ease-out forwards}
+@keyframes starFall{0%{opacity:0;transform:translate(0,0) rotate(-20deg)}10%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translate(-55vw,22vh) rotate(-20deg)}}
+.starWishBtn{position:absolute;left:50%;top:14vh;transform:translateX(-50%);z-index:5;font-size:1rem;padding:10px 18px;box-shadow:0 6px 24px rgba(255,251,224,.45)}
+@media (prefers-reduced-motion: reduce){.plazaStar.fall{animation:none;opacity:1}}
+@media(max-width:640px){body.roomPlaying #yutHint{display:none}}
+.gostopSeatHead .gostopSets{display:inline;margin-left:8px}
+body.roomPlaying .gostopFelt .gostopSeat{grid-template-columns:minmax(0,1fr) auto}
+body.roomPlaying .gostopFelt .gostopSeatHead{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}

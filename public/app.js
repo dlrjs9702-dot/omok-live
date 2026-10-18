@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2002,7 +2002,8 @@
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
   let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
   async function loadHanpan(onBack) {
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack() }); }
+    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
+      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }); }
     catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
     hanpanBack = () => { loadPoints(); onBack(); };
     showView('reflex');
@@ -2456,6 +2457,37 @@
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
   function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // A4 날씨: the server's weather for everyone; asked on entering the island, pushed when the administrator holds it, and
+  // asked again when its block ends
+  let weatherTimer = null;
+  function showWeather(d) {
+    plaza.controller?.setWeather?.(d.kind); const sel = byId('islandWeatherSelect'); if (sel && d.mode) sel.value = d.mode;
+    clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
+  }
+  function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
+  // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
+  // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
+  let starTimers = []; let starPoll = null; let starShown = null;
+  function refreshStars() {
+    clearTimeout(starPoll); if (!document.body.classList.contains('plazaMode')) return;
+    api('/api/island/stars').then((d) => {
+      if (d.gift) showToast(`어젯밤 별똥별에 빈 소원이 선물로 왔어요 · +${Number(d.gift).toLocaleString('ko-KR')}P`, 5000);
+      const offset = d.serverNow - Date.now(); starTimers.forEach(clearTimeout); starTimers = [];
+      for (const st of [d.now, d.next].filter(Boolean)) { const wait = st.at - offset - Date.now(); if (wait < 120000) starTimers.push(setTimeout(() => showStar(st, d.wishMs - Math.max(0, -wait)), Math.max(0, wait))); }
+      starPoll = setTimeout(refreshStars, 60000);
+    }).catch(() => { starPoll = setTimeout(refreshStars, 60000); });
+  }
+  function showStar(st, ms) {
+    if (starShown === st.id || ms <= 0 || !document.body.classList.contains('plazaMode')) return; starShown = st.id;
+    const streak = byId('plazaStar'); const btn = byId('starWishBtn');
+    streak.classList.remove('hidden', 'fall'); void streak.offsetWidth; streak.classList.add('fall'); btn.classList.remove('hidden'); btn.disabled = false; btn.dataset.star = st.id;
+    setTimeout(() => { btn.classList.add('hidden'); streak.classList.add('hidden'); }, ms);
+  }
+  byId('starWishBtn')?.addEventListener('click', async () => {
+    const btn = byId('starWishBtn'); btn.disabled = true;
+    try { const r = await api('/api/island/stars/wish', { method: 'POST', body: JSON.stringify({ id: btn.dataset.star }) }); showToast(r.already ? '이미 소원을 빌었어요.' : '소원을 빌었어요! 내일 작은 선물이 와요.', 4000); } catch (error) { showToast(error.message, 3500); }
+    btn.classList.add('hidden');
+  });
   // v1.10.91 경제 값 관리: the table by group (the default beside each), a confirm listing the changes, and the history
   // with a 되돌리기 for each change (back to the value before it)
   let economyNow = null;
@@ -2492,6 +2524,10 @@
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  byId('islandWeatherForm')?.addEventListener('submit', async (event) => { // A4 관리자: 날씨
+    event.preventDefault(); const mode = byId('islandWeatherSelect').value;
+    try { await api('/api/admin/island/weather', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 날씨: ${byId('islandWeatherSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
+  });
   byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.90 관리자: 섬 시간대
     event.preventDefault(); const mode = byId('islandTimeSelect').value;
     try { await api('/api/admin/island/time', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 시간대: ${byId('islandTimeSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
@@ -5431,6 +5467,7 @@
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
+    if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
@@ -5854,6 +5891,16 @@
     if (!player) small.textContent = '선택 가능';
     else small.textContent = `${player.label || '게스트'} · ${player.connected ? '접속 중' : '연결 끊김'}`;
     el.classList.toggle('mySeat', seat === color);
+    seatFace(el, player);
+  }
+  // A3 G1-5: a small island face (skin and hair colour) and the worn title on a name card
+  function seatFace(card, player) {
+    card.querySelector('.seatFace')?.remove(); card.querySelector('.seatTitle')?.remove();
+    if (!player) return;
+    const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
+    if (player.face?.skin) f.style.setProperty('--skin', player.face.skin); if (player.face?.hair) f.style.setProperty('--hair', player.face.hair);
+    card.prepend(f);
+    if (player.title) { const t = document.createElement('small'); t.className = 'seatTitle'; t.textContent = player.title; (card.querySelector('div') || card).append(t); }
   }
 
   function participantRoleText(p) {
@@ -6154,7 +6201,7 @@
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
     const below = [...document.querySelectorAll('#yutControls, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const top = wrap.getBoundingClientRect().top + window.scrollY;
-    wrap.style.maxWidth = `${Math.max(200, Math.floor(window.innerHeight - top - below - 12))}px`;
+    wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
   }
   window.addEventListener('resize', () => fitBoard());
   // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
@@ -6216,6 +6263,7 @@
         ? `${player.label}${gostop && state.game.seats?.[number] ? ` · 손패 ${state.game.seats[number].handCount}장 · ${state.game.seats[number].score}점` : ''}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : halli ? ` · 뒷면 ${state.game.pileCounts?.[number] ?? 0}장` : pandemic ? ` · 손패 ${state.game.hands?.[number]?.length ?? 0}장` : davinci ? ` · 타일 ${state.game.hands?.[number]?.length ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
+      seatFace(card, player); // A3 G1-5
       teamPlayers.appendChild(card);
     }
   }
@@ -8453,7 +8501,7 @@
       ? `guess:${g.history.length}:${latestDavinciGuess.seat}:${latestDavinciGuess.target}:${latestDavinciGuess.id}:${latestDavinciGuess.number}`
       : null);
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
-    const inlineTimer = !active || !desktopActionTimerOwns('davinci');
+    const inlineTimer = (!active || !desktopActionTimerOwns('davinci')) && String(state.turnTimer?.seat) !== String(g.turn); // (A3 G1-4: the turn's ring on the name card says it)
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
     davinciStatus.textContent = g.status === 'selecting' ? '2~4명이 자리를 선택하면 방장이 시작합니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`

@@ -172,6 +172,9 @@ export default {
   },
 
   stone(c, x, y, r, v, a = 1) {
+    // A3 G3-2: my stones in my equipped 오목 skin (the game room's own drawing, SkinLooks); the AI's stay plain
+    const mySkin = !net() && !E.p2 && E.opts?.pieceSkin; const looks = globalThis.SkinLooks;
+    if (mySkin && looks?.def(mySkin)?.stone && s.st && v === gmColor(s.st, 0)) { c.save(); c.globalAlpha = a; c.translate(x, y); looks.paintStone(c, r, mySkin, v === 1 ? 'black' : 'white'); c.restore(); return; }
     c.globalAlpha = a;
     const g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
     const col = v === 1 ? s.sk.black : s.sk.white;

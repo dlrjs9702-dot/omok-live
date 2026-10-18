@@ -76,6 +76,14 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
     let n = 0; let state = true;
     while (n < 26 && state === true) { state = await step(request, tokens); n += 1; }
     await check('late');
+    // G2-5: played to the end (a go/stop choice stops), the result is a window on screen with the way on
+    for (let k = 0; k < 80 && (await step(request, tokens, { go: true })); k += 1);
+    const actions = page.locator('#gostopResult .gostopResultActions');
+    await expect(actions).toBeVisible({ timeout: 15000 });
+    await page.evaluate(() => window.scrollTo(0, 0)); const rb = await page.locator('#gostopResult').boundingBox();
+    expect(rb.y + rb.height).toBeLessThanOrEqual(h + 1);
+    if (process.env.GOSTOP_SHOTS) { await page.waitForTimeout(2500); await page.screenshot({ path: `${process.env.GOSTOP_SHOTS}/gostop-${w}-result.png` }); }
+    await actions.getByRole('button', { name: '판 보기' }).click(); await expect(page.locator('#gostopResult')).toBeHidden();
     for (const c of [me.context, other.context]) await c.close();
   });
 }

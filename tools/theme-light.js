@@ -33,7 +33,7 @@ const RGB = { '15,23,42': 'f7efe1', '2,6,23': '3d2f20', '148,163,184': 'b39c7c',
 const SURFACE_PROPS = /^(background|background-color|background-image|border|border-(top|right|bottom|left)(-color)?|border-color|outline|outline-color|box-shadow|fill|stroke)$/;
 const TEXT_PROPS = /^(color|caret-color|-webkit-text-fill-color)$/;
 // each game's own board, card, piece and result art keeps its colours (DESIGN.md): restated as it is, never mapped
-const GAME_ART = /davinci|bingoCell|dice|hwatu|gostop|yut|halli|oldmaid|pandemic|resultEffect|resultMessage|cityBoard|pictionary/i;
+const GAME_ART = /davinci|bingoCell|dice|hwatu|gostop|yut|halli|oldmaid|pandemic|resultEffect|resultMessage|cityBoard|pictionary|seatFace/i; // (A3 G1-5: the name card's island face is a drawing)
 const isDark = (value) => [...value.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)].some((m) => {
   const [r, g, b] = m[1] ? [0, 2, 4].map((i) => parseInt(expand(m[1]).slice(i, i + 2), 16)) : [m[2], m[3], m[4]].map(Number);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b < 90;
