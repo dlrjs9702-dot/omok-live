@@ -19,7 +19,7 @@ module.exports = defineConfig({
     ...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') || process.env.PLAYWRIGHT_SKIP_ISLAND === '1' ? ['**/river-fishing.spec.js', '**/weed-board.spec.js', '**/island-time.spec.js', '**/island-weather.spec.js', '**/island-stars.spec.js', '**/island-contest.spec.js', '**/island-admin-look.spec.js', '**/island-plants.spec.js', '**/asset-inspector.spec.js', '**/shop-browse.spec.js', '**/title-hall.spec.js', '**/action-lock.spec.js', '**/resident-talk.spec.js', '**/transform-shop.spec.js', '**/general-store.spec.js'] : [])],
   timeout: 30_000,
   expect: {
-    timeout: 5_000,
+    timeout: process.env.CI ? 15_000 : 5_000, // (CI 2026-10-19: the GitHub runner draws the island at a few frames a second -- a state the page sets a moment later is missed at 5 s)
   },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
