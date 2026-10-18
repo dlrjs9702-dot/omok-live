@@ -2195,7 +2195,7 @@
     byId('gameSheetArt').innerHTML = gameArtHtml(g);
     byId('gameSheetName').textContent = g.name;
     byId('gameSheetMeta').textContent = `${g.cats.map(catName).join(' · ')} · ${g.players}${g.soon ? ' · 준비 중' : ''}`;
-    byId('gameSheetIntro').textContent = g.intro;
+    byId('gameSheetIntro').textContent = g.credit ? `${g.intro} (${g.credit})` : g.intro; // (두 세계 영웅전: its maker, public/herosurv/NOTICE.md)
     byId('gameSheetHow').replaceChildren(...g.how.map((line) => hallEl('li', null, line)));
     const actions = byId('gameSheetActions'); actions.replaceChildren();
     const act = (label, cls, fn) => { const b = hallEl('button', cls, label); b.type = 'button'; b.addEventListener('click', fn); actions.append(b); return b; };

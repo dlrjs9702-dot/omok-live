@@ -88,7 +88,7 @@
     { id: 'spider', name: '스파이더 카드놀이', cats: ['solo'], players: '혼자', colors: ['#334155', '#0f172a'], art: 'spider', set: 'cards',
       intro: '같은 무늬로 K부터 A까지 모아 치우세요', how: how('숫자가 1 큰 카드 위에 놓습니다', '같은 무늬로 K~A를 모으면 치워져요', '더미를 누르면 10장을 새로 나눠요') },
     { id: 'herosurv', name: '두 세계 영웅전', cats: ['solo'], players: '혼자', colors: ['#b45309', '#78350f'], svg: 'hero', launch: 'herosurv',
-      intro: '몰려오는 적을 버티는 액션', how: how('방향키로 움직이면 영웅이 알아서 공격합니다', '레벨이 오르면 기술을 고릅니다', '오래 버틸수록 높은 기록') },
+      intro: '몰려오는 적을 버티는 액션', credit: '원작: 스마트대디 · 게임센터용으로 일부 수정', how: how('방향키로 움직이면 영웅이 알아서 공격합니다', '레벨이 오르면 기술을 고릅니다', '오래 버틸수록 높은 기록') },
     { id: 'cityking', name: '랜드킹', cats: ['board'], players: '2~4인', colors: ['#0369a1', '#075985'], svg: 'city', room: 'cityking', soon: true,
       intro: '도시를 사고 지어 부자가 되는 보드게임', how: how('주사위를 굴려 판을 돕니다', '도시를 사고 건물을 지어 통행료를 받습니다', '아직 만드는 중이에요') },
     { id: 'rpg', name: '잿빛 원정', cats: ['coop'], players: '1~4인', colors: ['#57534e', '#292524'], svg: 'sword', room: 'rpg', soon: true,
