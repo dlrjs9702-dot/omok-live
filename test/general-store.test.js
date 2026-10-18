@@ -58,3 +58,16 @@ test('잡화점 구매·사용(PostgreSQL)', async (t) => {
   const pg = new PostgresPointStore(database.url, { initialGrant: 0 }); t.after(() => pg.pool.end()); await pg.init();
   await behaves(pg);
 });
+
+// Codex review (v1.10.92): no standing point is left inside furniture after clamp, and every good on sale can be reached
+test('백화점: 보정 뒤 가구 안에 서지 않고, 파는 물건은 모두 고를 수 있다', () => {
+  const S = require('../public/plaza/island-store.js');
+  const inside = (l) => S.FIXTURES.some((f) => Math.abs(l.lx - f.x) < f.w / 2 + 0.34 && Math.abs(l.lz - f.z) < f.d / 2 + 0.34);
+  const reach = new Set();
+  for (let x = -14.6; x <= 14.6; x += 0.1) for (let z = -9.6; z <= 9.6; z += 0.1) {
+    const w = S.world(x, z); const p = S.clamp(w.x, w.z); const l = S.local(p.x, p.z);
+    assert.equal(inside(l), false, `${x.toFixed(1)},${z.toFixed(1)}`);
+    const g = S.goodAt(p.x, p.z); if (g) reach.add(g.id);
+  }
+  for (const s of S.SHELF) if (!s.soon) assert.ok(reach.has(s.id), s.id);
+});

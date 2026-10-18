@@ -5216,8 +5216,12 @@ async function requestHandler(req, res) {
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
+    // (Codex review: the bought thing is handed over before the reward is kept -- a thing already handed over for an
+    // unpaid errand counts as carried, so the next talk pays it; its hand-over id is the same, so it is never taken twice)
+    const useId = (id) => `errand-${id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64);
+    for (const e of errands) if (e.kind === 'buy' && !done.has(e.id) && await pointStore.settlementOf(`island_use:${useId(e.id)}`)) goods.add(e.good);
     let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
-    if (r?.take && !(await pointStore.islandUse({ userId: account, requestId: `errand-${r.pay.id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: r.take })).applied) r = null; // (gone meanwhile)
+    if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
