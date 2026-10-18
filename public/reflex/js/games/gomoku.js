@@ -34,7 +34,7 @@ export default {
   id: 'gomoku', name: '오목', cat: 'puzzle', mode: 'versus',
   color: '#D9A04A', c2: '#8C5A2B', c3: '#3E2410',
   tagline: '렌주룰 오목. 흑이든 백이든 다섯 알을 먼저 이으세요',
-  howto: [['tap', '놓을 곳을 탭하면 미리보기, 한 번 더 탭하면 착수해요'], ['grid', '가로·세로·대각선으로 5개를 먼저 이으면 승리 (흑은 정확히 5개)'], ['brain', '흑은 3-3 · 4-4 · 장목(6개 이상)을 둘 수 없어요 (× 표시) — 렌주룰. 4-3은 돼요']],
+  howto: [['tap', '놓을 곳을 누르면 착수해요 (터치는 한 번 누르면 미리보기, 한 번 더 누르면 착수)'], ['grid', '가로·세로·대각선으로 5개를 먼저 이으면 승리 (흑은 정확히 5개)'], ['brain', '흑은 3-3 · 4-4 · 장목(6개 이상)을 둘 수 없어요 (× 표시) — 렌주룰. 4-3은 돼요']],
   winRule: '5알을 먼저 잇기 (렌주룰: 흑은 3-3 · 4-4 · 장목 금수)',
   hideScore: true, customRight: true, noScore: true, hudLabel: '나 vs AI',
   p2Label: '흑 vs 백', p2Howto: '폰 하나로 번갈아 두세요. 아래쪽 사람이 먼저 둬요',
@@ -153,7 +153,7 @@ export default {
     }
     const ban = st.phase === 'play' && gmColor(st, st.turn) === 1 ? gmForbidden(st.b, i) : ''; // 흑 금수 (렌주룰)
     if (ban) { s.pre = -1; E.sfx.wrong(); E.haptic('error'); E.banner(`금수예요 · 흑은 ${GM_BAN_NAME[ban]}를 둘 수 없어요`, 'info', 1600); return; }
-    if (s.pre === i) this.act(i);
+    if (s.pre === i || E.pointer.type === 'mouse') this.act(i); // (A3 G3-1: a mouse places at once, as in the game room)
     else { s.pre = i; E.sfx.tap(); E.haptic('light'); }
   },
 

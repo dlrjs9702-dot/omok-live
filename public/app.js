@@ -10777,6 +10777,7 @@
   nextRoundBtn.addEventListener('click', () => roomAction('next-round'));
   sideNextRoundBtn.addEventListener('click', () => roomAction('next-round'));
 
+  let touchPick = null; // A3 G3-1: the point a first tap chose
   canvas.addEventListener('pointermove', (ev) => {
     if (state?.gameType === 'yut') {
       const { px, py } = canvasPixel(ev);
@@ -10789,7 +10790,8 @@
     hover = canvasPoint(ev);
     drawBoard();
   });
-  canvas.addEventListener('pointerleave', () => {
+  canvas.addEventListener('pointerleave', (ev) => {
+    if (ev.pointerType === 'touch' && touchPick) return; // (A3 G3-1: the first tap's preview stone stays)
     hover = null;
     canvas.style.cursor = '';
     if (state?.gameType === 'yut') {
@@ -10808,6 +10810,13 @@
     if (state?.gameType === 'cityking') { selectCityTileFromPointer(ev); return; }
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
+    // A3 G3-1 오목 터치 두 번 누르기: on a touch screen the first tap shows the stone (the hover preview), the same point
+    // again places it, another point moves the preview; a mouse still places at once
+    if (ev.pointerType === 'touch' && /^omok/.test(state?.gameType || '')) {
+      const key = `${p.x},${p.y}`;
+      if (touchPick !== key) { touchPick = key; hover = p; drawBoard(); return; }
+    }
+    touchPick = null;
     roomAction('move', state?.gameType === 'connect4' ? { x: p.x } : p);
   });
 

@@ -246,6 +246,7 @@ cv.addEventListener('pointerdown', (e) => {
   const [x, y] = pos(e);
   activePointers.set(e.pointerId, { x, y });
   if (E.pointer.id == null) Object.assign(E.pointer, { x, y, down: true, id: e.pointerId });
+  E.pointer.type = e.pointerType; // (A3 G3-1: a mouse places a stone at once, a touch shows it first)
   if (E.state === 'play') E.game.down?.(x, y, e.pointerId);
 });
 cv.addEventListener('pointermove', (e) => {

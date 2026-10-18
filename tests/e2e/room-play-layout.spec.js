@@ -81,3 +81,30 @@ for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851
     expect(errors).toEqual([]);
   });
 }
+
+// G3-1 오목 터치 두 번 누르기: on a touch screen the first tap only shows the stone, the second on the same point places it
+test('오목 터치: 첫 탭은 미리보기, 같은 자리 두 번째 탭에 착수', async ({ browser, request }) => {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({ viewport: { width: 393, height: 851 }, hasTouch: true });
+  const page = await context.newPage();
+  const black = await login(page);
+  await page.evaluate(() => document.querySelector('[data-game="omok"]').click());
+  const [res] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/api/rooms') && r.request().method() === 'POST'),
+    page.locator('#createRoomBtn').click(),
+  ]);
+  const code = (await res.json()).state.me.roomCode;
+  const white = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+  await api(request, '/api/rooms/join', white, { code });
+  await api(request, '/api/room/choose-role', black, { choice: 'black' });
+  await api(request, '/api/room/choose-role', white, { choice: 'white' });
+  await expect(page.locator('body')).toHaveClass(/roomPlaying/);
+  const moves = async () => (await (await request.get('/api/room', { headers: { 'X-Session-Token': black } })).json()).state.game.moveCount ?? 0;
+  const board = page.locator('#board'); const box = await board.boundingBox();
+  const at = { x: box.width / 2, y: box.height / 2 };
+  await board.tap({ position: at }); await page.waitForTimeout(800);
+  expect(await moves()).toBe(0);
+  await board.tap({ position: at });
+  await expect.poll(moves).toBe(1);
+  await context.close();
+});
