@@ -1777,7 +1777,7 @@
   function syncPlaza(view) {
     const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
     // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): phones and narrow windows are on the island too (touch controls in plaza-scene)
-    const on = view === 'lobby' && !plazaTestClassic && !classicFallback;
+    const on = view === 'lobby' && !plazaTestClassic && !classicFallback; const back = on && !document.body.classList.contains('plazaMode');
     document.body.classList.toggle('plazaMode', on);
     const facilityActions = document.getElementById('islandFacilityActions');
     facilityActions.classList.toggle('hidden', on || view !== 'lobby');
@@ -1796,7 +1796,7 @@
     plazaStage.classList.toggle('plazaFailed', Boolean(plaza.failed));
     plazaError.classList.toggle('hidden', !plaza.failed);
     if (plaza.failed) return; // the error and its retry, over the island's place
-    if (plaza.controller) { plaza.controller.start(); return; }
+    if (plaza.controller) { plaza.controller.start(); if (back) { refreshStars(); refreshContest(); } return; } // (their polls stop off the island -- Codex review)
     if (plaza.loading) return;
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2190,12 +2190,25 @@
         const name = document.createElement('span'); name.textContent = item.name;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
+        if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
+  // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
+  const PLANT_GOODS = { seed_flower_red: '심기', seed_flower_yellow: '심기', seed_flower_white: '심기', seed_flower_pink: '심기', seed_flower_purple: '심기', sapling: '심기', fertilizer: '비료 주기' };
+  async function plantGood(itemId) {
+    try {
+      let r;
+      if (itemId === 'fertilizer') { const p = plaza.controller?.nearestPlant?.(2); if (!p) { showToast('꽃·나무 가까이에서 줄 수 있어요.'); return; } r = await api('/api/island/fertilize', { method: 'POST', body: JSON.stringify({ plantId: p.id, requestId: crypto.randomUUID() }) }); showToast('비료를 줬어요. 남은 시간이 절반으로 줄어요.'); }
+      else { r = await api('/api/island/plant', { method: 'POST', body: JSON.stringify({ itemId, requestId: crypto.randomUUID() }) }); showToast(itemId === 'sapling' ? '묘목을 심었어요. 며칠 뒤면 큰 나무가 돼요.' : '꽃씨를 심었어요. 하루쯤 지나면 꽃이 펴요.'); }
+      if (islandBagDialog.open) islandBagDialog.close(); if (r.bag) drawIslandBag(r.bag); refreshPlants();
+    } catch (error) { showToast(error.message); }
+  }
+  let plantsPoll = null;
+  function refreshPlants() { clearTimeout(plantsPoll); if (!document.body.classList.contains('plazaMode')) return; api('/api/island/plants').then((d) => plaza.controller?.setPlants?.(d.plants)).catch(() => {}).finally(() => { plantsPoll = setTimeout(refreshPlants, 120000); }); }
   async function useGood(kind) {
     try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); }
     catch (error) { showToast(error.message); }
@@ -2431,7 +2444,7 @@
   const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
-    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다. 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
   }
   async function openBank() {
     try {
@@ -2456,7 +2469,7 @@
   byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
-  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); plaza.controller?.setIslandLook?.(d); const ss = byId('islandSeasonSelect'); if (ss) ss.value = d.seasonHold == null ? 'auto' : 'hold'; const ds = byId('islandDecorSelect'); if (ds) ds.value = d.decor; const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
   // A4 날씨: the server's weather for everyone; asked on entering the island, pushed when the administrator holds it, and
   // asked again when its block ends
   let weatherTimer = null;
@@ -2464,7 +2477,34 @@
     plaza.controller?.setWeather?.(d.kind); const sel = byId('islandWeatherSelect'); if (sel && d.mode) sel.value = d.mode;
     clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
   }
-  function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
+  let weatherSeq = 0; // (a slower earlier read does not undo the administrator's change -- Codex review)
+  function refreshIslandWeather() { const seq = ++weatherSeq; api('/api/island/weather').then((d) => { if (seq === weatherSeq) showWeather(d); }).catch(() => {}); }
+  // A4 주말 섬 대회: a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
+  // and me, every 10 s), and a while after (the winner); the server judges, the page only shows
+  let contestPoll = null; let contestTick = null; let contestSeen = null;
+  const contestScore = (c, n) => `${Number(n).toLocaleString('ko-KR')}${c.unit}`;
+  function refreshContest() {
+    clearTimeout(contestPoll); if (!document.body.classList.contains('plazaMode')) return;
+    api('/api/island/contest').then((d) => {
+      const c = d.contest; const bar = byId('contestBar'); const offset = d.serverNow - Date.now(); clearInterval(contestTick);
+      if (c.phase === 'live' && contestSeen !== c.id + ':live') { contestSeen = c.id + ':live'; showToast(`🏆 ${c.name} 시작! ${c.how}으로 겨뤄요.`, 5000); }
+      const show = (text) => { bar.textContent = text; bar.classList.toggle('hidden', !text); };
+      const clock = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+      const draw = () => {
+        const now = Date.now() + offset;
+        if (c.phase === 'soon') show(`🏆 곧 ${c.name} · ${clock(c.start - now)} 뒤 시작 · ${c.how}`);
+        else if (c.phase === 'live') show(`🏆 ${c.name} · 남은 ${clock(c.end - now)} · ${d.top.length ? d.top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록 없음'}${d.mine ? ` · 나 ${d.mine.rank}위` : ''}`);
+        else if (d.last?.id === c.id && now - c.end < 30 * 60000) show(d.last.rewarded ? `🏆 ${d.last.name} 우승 ${d.last.top[0]?.name || ''} · ${contestScore(c, d.last.top[0]?.score || 0)}` : `🏆 ${d.last.name} 끝 · 참가자가 적어 시상은 없어요`);
+        else show('');
+      };
+      draw(); if (c.phase === 'soon' || c.phase === 'live') contestTick = setInterval(draw, 1000);
+      contestPoll = setTimeout(refreshContest, c.phase === 'live' || c.phase === 'soon' ? 10000 : 60000);
+    }).catch(() => { contestPoll = setTimeout(refreshContest, 60000); });
+  }
+  byId('contestForm')?.addEventListener('submit', async (event) => { // A4 관리자: 대회 일정
+    event.preventDefault(); const [hour, minute] = byId('contestTime').value.split(':').map(Number);
+    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ day: Number(byId('contestDay').value), hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked }) }); showToast('주말 섬 대회 일정을 바꿨어요.'); } catch (error) { showToast(error.message, 4000); }
+  });
   // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
   // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
   let starTimers = []; let starPoll = null; let starShown = null;
@@ -2523,7 +2563,11 @@
     const c = event.target.closest('input[data-switch]'); if (!c) return;
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
-  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c }) => { byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
+ api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  for (const [form, select, path, label] of [['islandSeasonForm', 'islandSeasonSelect', '/api/admin/island/season', '계절 회전'], ['islandDecorForm', 'islandDecorSelect', '/api/admin/island/decor', '이벤트 장식']]) { // A5 관리자
+    byId(form)?.addEventListener('submit', async (event) => { event.preventDefault(); const mode = byId(select).value; try { await api(path, { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`${label}: ${byId(select).selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); } });
+  }
   byId('islandWeatherForm')?.addEventListener('submit', async (event) => { // A4 관리자: 날씨
     event.preventDefault(); const mode = byId('islandWeatherSelect').value;
     try { await api('/api/admin/island/weather', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 날씨: ${byId('islandWeatherSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
@@ -3619,7 +3663,7 @@
     announcementFormTitle.textContent = '공지 등록';
   }
 
-  function openAnnouncementEditor(item = null) {
+  function openAnnouncementEditor(item = null) { loadNoticeQueue(); // (A5: the queued ones beside the editor)
     if (sessionRole !== 'admin') return;
     announcementPanel.classList.remove('hidden');
     announcementTab.setAttribute('aria-expanded', 'true');
@@ -3701,6 +3745,15 @@
     }
   }
 
+  // A5 공지 예약: the queued notices (administrator only) with a 취소 each
+  async function loadNoticeQueue() {
+    const box = byId('noticeQueue'); if (!box || sessionRole !== 'admin') return;
+    try {
+      const { queue } = await api('/api/admin/notice-queue');
+      box.replaceChildren(...queue.map((e) => { const row = document.createElement('div'); row.className = 'noticeQueueRow'; const t = document.createElement('span'); t.textContent = `⏰ ${new Date(e.at).toLocaleString('ko-KR')} · ${e.title}`; const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = '취소'; b.addEventListener('click', async () => { await api(`/api/admin/notice-queue/${e.id}`, { method: 'DELETE' }).catch(() => {}); loadNoticeQueue(); }); row.append(t, b); return row; }));
+      box.classList.toggle('hidden', !queue.length);
+    } catch {}
+  }
   async function saveAnnouncement(event) {
     event.preventDefault();
     if (sessionRole !== 'admin') return;
@@ -3714,10 +3767,11 @@
     try {
       await api(id ? `/api/announcements/${id}` : '/api/announcements', {
         method: id ? 'PUT' : 'POST',
-        body: JSON.stringify({ title, body, pinned: announcementPinned.checked }),
-      });
+        body: JSON.stringify({ title, body, pinned: announcementPinned.checked, ...(!id && byId('announcementAt').value ? { publishAt: new Date(byId('announcementAt').value).toISOString() } : {}) }), // (A5 공지 예약)
+      }).then((r) => { if (r.scheduled) showToast(`예약했어요 · ${new Date(r.scheduled.at).toLocaleString('ko-KR')}에 게시`); return r; });
+      byId('announcementAt').value = '';
       closeAnnouncementEditor();
-      await loadAnnouncements();
+      await loadAnnouncements(); loadNoticeQueue();
       showToast(id ? '공지사항을 수정했습니다.' : '공지사항을 등록했습니다.');
     } catch (err) { showToast(err.message, 4000); }
     finally { announcementSaveBtn.disabled = false; }
@@ -5466,8 +5520,10 @@
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
-    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
+    if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
+    if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
+    if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {
@@ -10461,6 +10517,30 @@
       } catch {}
     }
     setInterval(badge, 30000);
+    // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change pulls it at once
+    // where it shows -- the open room, the room list, the 메신저 button and the island's toast; a dropped stream comes back
+    let streamUp = false; let streamCtl = null; let streamWanted = false;
+    async function openStream() {
+      if (!streamWanted || streamCtl) return; streamCtl = new AbortController();
+      try {
+        const res = await fetch('/api/messenger/stream', { headers: { 'X-Account-Token': accountToken.get() }, signal: streamCtl.signal, cache: 'no-store' });
+        if (!res.ok || !res.body) throw new Error(String(res.status));
+        streamUp = true; const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read(); if (done) break;
+          buf += dec.decode(value, { stream: true }); let cut;
+          while ((cut = buf.indexOf('\n\n')) >= 0) {
+            const chunk = buf.slice(0, cut); buf = buf.slice(cut + 2);
+            if (!/^event: msg$/m.test(chunk)) continue;
+            let room = null; try { room = JSON.parse((chunk.match(/^data: (.*)$/m) || [])[1] || '{}').room; } catch {}
+            if (dialog.open) { if (current?.id === room) pull(); refresh(); } else { badge(); islandNotice(); }
+          }
+        }
+      } catch {}
+      streamUp = false; streamCtl = null;
+      if (streamWanted) setTimeout(openStream, 5000);
+    }
+    function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
     // v1.10.90 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
     let islandSeen = null;
     async function islandNotice() {
@@ -10524,9 +10604,9 @@
     byId('accountMessengerBtn').addEventListener('click', async () => {
       current = null; hidePick(); body.classList.remove('inRoom'); box.innerHTML = '<p class="emptyState">대화방을 고르거나 새로 만드세요.</p>';
       dialog.showModal(); await refresh();
-      timers = [setInterval(pull, 3000), setInterval(refresh, 10000)];
+      timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(refresh, streamUp ? 30000 : 10000)]; // (A5: asking stays only while the stream is down)
     });
-    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); }, close }; // (after the account panel shows)
+    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); wantStream(Boolean(on)); }, close }; // (after the account panel shows; A5: the stream while permitted)
   })();
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});

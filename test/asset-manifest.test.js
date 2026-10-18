@@ -55,7 +55,9 @@ test('리소스 매니페스트 그룹: 아일랜드 등록 모델 파일은 4�
     assert.equal(byUrl.get(url).group, groupOf(url), url);
   }
   for (const season of ['spring', 'summer', 'autumn', 'winter']) assert.ok([...urls].some(u => u.includes(`/${season}/`)), season);
-  assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => ['island', 'island.transformations'].includes(a.group)));
+  assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => ['island', 'island.transformations', 'island.later'].includes(a.group)));
+  assert.equal(groupOf('/assets/island/winter-v1/xmas_tree.glb'), 'island.later');
+  assert.equal(groupOf('/assets/island/characters/wear-winter/wear_hat_santa.glb'), 'island.later');
   const transformations = require('../public/plaza/character-transformations');
   const completeUrls = transformations.characters.flatMap(c => Object.values(c.variants).flatMap(v => [v.url, v.lowUrl]));
   assert.equal(new Set(completeUrls).size, 78); // v1.10.92 + 포차코

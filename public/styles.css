@@ -2201,3 +2201,8 @@ body:not(.roomMode)>.gostopResult{display:none}
 body.roomPlaying .gostopFelt .gostopSeat{grid-template-columns:minmax(0,1fr) auto}
 body.roomPlaying .gostopFelt .gostopSeatHead{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
+/* A4 주말 섬 대회: the bar over the island view */
+.contestBar{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:6;max-width:calc(100% - 200px);padding:6px 14px;border-radius:999px;background:rgba(15,23,42,.82);color:#fde68a;font-weight:800;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none}
+@media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}
+/* A5 공지 예약 */
+.noticeQueue{display:grid;gap:4px;margin:6px 0}.noticeQueueRow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:#fde68a}

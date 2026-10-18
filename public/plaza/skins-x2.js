@@ -232,5 +232,10 @@
     "포켓몬"
   ]
 ]);
-  return { X2_ITEMS, IP_ITEMS, IP_GAME };
+  // B 46 겨울 축제 의상 (assets 46, characters/wear-winter): [slot, tier, name, file] -- ids avatar_winter_<file without wear_>
+  const WINTER_ITEMS = Object.freeze([
+    ['hat', 'premium', '산타 모자', 'wear_hat_santa'], ['outfit', 'rare', '산타 옷', 'wear_outfit_santa'], ['necklace', 'common', '털 목도리', 'wear_necklace_fur'],
+    ['shoes', 'common', '털 부츠', 'wear_shoes_fur'], ['cape', 'premium', '눈꽃 망토', 'wear_cape_snowflake'], ['hat', 'premium', '루돌프 머리띠', 'wear_hat_reindeer'],
+  ]);
+  return { X2_ITEMS, IP_ITEMS, IP_GAME, WINTER_ITEMS };
 }));

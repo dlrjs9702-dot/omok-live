@@ -18,6 +18,8 @@ test('예금 이자: 자정마다 4% 복리, 같은 날은 그대로, 안전한 
   assert.equal(bankAccrue(10, '2026-10-16', '2026-10-17'), 10); // 0.4P rounds down
   assert.equal(bankAccrue(0, '2026-01-01', '2026-10-17'), 0);
   assert.equal(bankAccrue(1e15, '2026-01-01', '2027-01-01'), Number.MAX_SAFE_INTEGER);
+  assert.equal(bankAccrue(100000, '2026-10-17', '2026-10-30', '2026-10-17'), bankAccrue(100000, '2026-10-17', '2026-10-23'), '마지막 접속 뒤 7번째 자정부터 없음');
+  assert.equal(bankAccrue(100000, '2026-10-24', '2026-10-30', '2026-10-17'), 100000);
 });
 
 async function storeBehaves(store) {
@@ -32,6 +34,12 @@ async function storeBehaves(store) {
   assert.equal((await store.bankMove(U, -70000, 'req-out-0001', day3)).reason, 'insufficient');
   assert.deepEqual(await store.bankMove(U, -64896, 'req-out-0002', day3), { applied: true, balance: 104896, deposit: 0, rate: 0.04 });
   assert.equal((await store.getAccount(U)).balance, 104896);
+  // (사용자 2026-10-18) 7일 이상 안 들어오면 이자 없음: away 10 days pays the 6 midnights before the 7th; back in, it pays again
+  const W = 'guest:00000000-0000-4000-8000-0000000000b2'; const at = (d) => Date.parse(`2026-11-${d}T12:00:00+09:00`);
+  await store.noteVisit(W, at(10)); await store.bankMove(W, 100000, 'req-in-0003', at(10));
+  assert.equal((await store.bankView(W, at(13))).deposit, 112486, '3일: 그대로 붙음');
+  assert.equal((await store.bankView(W, at(20))).deposit, bankAccrue(100000, '2026-11-10', '2026-11-16'), '10일 비움: 6일치만');
+  await store.noteVisit(W, at(20)); assert.equal((await store.bankView(W, at(21))).deposit, bankAccrue(100000, '2026-11-10', '2026-11-17'), '돌아오면 다음 자정부터 다시');
 }
 
 test('예금 저장소: JSON·PostgreSQL 같은 동작(맡기기·이자·찾기·부족·한 번만)', async (t) => {

@@ -43,7 +43,9 @@ const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
-const IslandStars = require('./lib/island-stars'); // A4 별똥별 // v1.10.72 게임방 AI 자리
+const IslandStars = require('./lib/island-stars'); // A4 별똥별
+const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
+const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
@@ -683,6 +685,13 @@ function requireAdmin(req, res) {
 
 const { writeUnlessBacklogged } = require('./lib/sse-backpressure');
 
+// A5 메신저 실시간 받기: each permitted account's open streams; a change in a room is told to its members at once
+// (only the room's id -- the page asks for the lines as before, with the same checks)
+const messengerStreams = new Map(); // key id -> Set<res>
+async function pokeRoom(roomId, also = []) {
+  const room = await messengerStore.room(roomId).catch(() => null);
+  for (const id of new Set([...(room?.members || []), ...also])) for (const res of messengerStreams.get(id) || []) { try { sseWrite(res, 'msg', { room: roomId }); } catch {} }
+}
 function sseWrite(res, event, data) {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -893,7 +902,8 @@ async function refreshDonation(now = nowMs()) {
     for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } // the plaza statues change for everyone
   }
 }
-const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: donationCache.statues });
+let contestWinnerStatue = null; // A4: the last contest's winner (kept with its result; read once at start and on settling)
+const statueSnapshot = () => ({ week: donationCache.statuesWeek, statues: [...donationCache.statues, ...(contestWinnerStatue ? [{ contest: true, ...contestWinnerStatue }] : [])] });
 function isHoguking(account, now = nowMs()) {
   return Boolean(account) && donationCache.week === previousWeek(climbWeekOf(now)) && donationCache.hoguking === account;
 }
@@ -1044,6 +1054,12 @@ function lookFor(account, equipped) {
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
+}
+// the day each account last came in, once a day per account (lib/point-store.js bankAccrue: no interest after 7 days away)
+const visitNoted = new Map();
+function noteVisit(account) {
+  const today = kstDate(nowMs()); if (!account || visitNoted.get(account) === today) return;
+  visitNoted.set(account, today); pointStore.noteVisit(account).catch((error) => { visitNoted.delete(account); console.error('접속 기록 실패:', error.message); });
 }
 let taxDay = null; let taxRunning = null;
 function collectTaxes(now = nowMs(), forced = null) {
@@ -1414,6 +1430,64 @@ function publicTurnTimer(room) {
 }
 // A4 별똥별: tests may move the stars' clock (so a star falls now); otherwise the server clock
 let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
+// A4 주말 섬 대회 (lib/island-contest.js): the live board in memory -- ponytail: a restart during the 30 minutes loses that
+// contest's board (kept in the store only once settled); upgrade path: a contest_scores table if it matters
+// A5 공지 예약: every change to the queue goes one after another (adding, cancelling, posting -- Codex review); a due
+// notice is taken off only after it is posted (ponytail: a crash between the two posts it again; an id mark if it matters)
+let noticeChain = Promise.resolve();
+const editNoticeQueue = (fn) => { const run = noticeChain.then(async () => {
+  const queue = (await pointStore.worldValue('noticeQueue')) || []; const out = await fn(queue);
+  if (out.queue) await pointStore.setWorldValue('noticeQueue', out.queue); return out.value;
+}); noticeChain = run.catch(() => {}); return run; };
+function postDueNotices() {
+  if (!pointStore) return null;
+  return editNoticeQueue(async (queue) => {
+    const now = nowMs(); const posted = new Set();
+    try { for (const e of queue.filter((q) => q.at <= now)) { await announcementStore.create(e.title, e.body, e.pinned); posted.add(e.id); } } catch (error) { console.error('예약 공지 실패:', error.message); } // (the rest wait for the next round)
+    if (posted.size) await broadcastAnnouncements().catch(() => {});
+    return { queue: posted.size ? queue.filter((e) => !posted.has(e.id)) : null };
+  }).catch((error) => console.error('예약 공지 실패:', error.message));
+}
+setInterval(postDueNotices, 30000).unref?.();
+let contestShiftMs = 0; const contestNow = () => nowMs() + contestShiftMs; // (tests may move the contest's clock)
+let contestBoard = { id: null, rows: new Map() }; let contestPhase = null;
+let contestKindTest = null; // (tests: the week's event held at one kind)
+const contestKindHeld = (c) => (c && contestKindTest ? Object.assign(c, { kind: contestKindTest, name: IslandContest.KINDS[contestKindTest].name, how: IslandContest.KINDS[contestKindTest].how, unit: IslandContest.KINDS[contestKindTest].unit }) : c);
+async function contestState() { return contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
+async function contestEnded() { return contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
+function contestNote(account, session, kind, value) {
+  contestState().then((c) => {
+    if (c.phase !== 'live' || c.kind !== kind || !Number.isFinite(value) || value <= 0) return;
+    if (contestBoard.id !== c.id) contestBoard = { id: c.id, rows: new Map() };
+    const row = contestBoard.rows.get(account) || { account, name: String(session.label || '게스트'), score: 0, at: 0 };
+    const score = IslandContest.merge(kind, row.score, value); if (score !== row.score) { row.score = score; row.at = contestNow(); }
+    contestBoard.rows.set(account, row);
+  }).catch(() => {});
+}
+const contestTop = (n) => IslandContest.rank([...contestBoard.rows.values()]).slice(0, n).map((r, i) => ({ rank: i + 1, name: r.name, score: r.score }));
+// after the end: rewards once (claimEvent ids per contest), the result kept, the winner on the plaza until the next
+async function settleContest(c) {
+  const done = await pointStore.worldValue('contestResult'); if (done?.id === c.id) return done;
+  const rows = contestBoard.id === c.id ? IslandContest.rank([...contestBoard.rows.values()]) : [];
+  const rewarded = rows.length >= IslandContest.MIN_ENTRANTS; const paid = [];
+  if (rewarded) for (const [i, r] of rows.entries()) {
+    const amount = (IslandContest.REWARDS[i + 1] || 0) + IslandContest.REWARDS.join;
+    const out = await pointStore.claimEvent({ eventId: `${c.id}_prize`, userId: r.account, amount, title: `${c.name} ${i < 3 ? `${i + 1}위` : '참가'}` });
+    if (out.applied) paid.push(r.account);
+  }
+  if (paid.length) notifyPointsChanged(paid);
+  const winner = rewarded && rows[0] ? (() => { const al = avatarLookOf(equippedSkinCache.get(rows[0].account) || {}); return { name: rows[0].name, look: al.look, title: al.title, score: rows[0].score }; })() : null;
+  const result = { id: c.id, kind: c.kind, name: c.name, unit: c.unit, top: rows.slice(0, 3).map((r, i) => ({ rank: i + 1, name: r.name, score: r.score })), entrants: rows.length, rewarded, winner };
+  await pointStore.setWorldValue('contestResult', result); contestWinnerStatue = winner ? { name: winner.name, look: winner.look, title: winner.title, label: c.name } : contestWinnerStatue;
+  if (winner) { for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // (the winner joins the statues)
+  return result;
+}
+// every 15 s: the latest contest over is settled until it is (settleContest is once per id; a failed one is tried again
+// -- Codex review), and the phase turns are told to the island (the notice 10 min before, the start, the end)
+setInterval(() => { contestState().then(async (c) => {
+  if (contestWinnerStatue === null) { const r = await pointStore.worldValue('contestResult'); contestWinnerStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; } // (after a restart)
+  const ended = await contestEnded(); if (ended) await settleContest(ended);
+  if (c.phase === contestPhase) return; contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id }); }).catch((error) => console.error('섬 대회 정산 실패:', error.message)); }, 15000).unref?.();
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -3327,7 +3401,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.95' });
+    return sendJson(res, 200, { ok: true, version: '1.10.96' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3437,7 +3511,15 @@ async function requestHandler(req, res) {
       reads: Object.fromEntries(room.members.map((id) => [id, room.reads[id] || 0])),
       last: room.last && { text: room.last.text || (room.last.system ? '' : '삭제된 메시지입니다'), at: room.last.at, system: Boolean(room.last.system), label: nameOf(room.last.from) },
       members: room.members.map((id) => ({ id, label: nameOf(id), active: allowed.has(id) && labelOf.has(id) })) });
-    const say = async (room, text) => { const msg = await messengerStore.post(room.id, key.id, text, true); if (msg) await messengerStore.setRead(room.id, key.id, msg.seq); };
+    const say = async (room, text) => { const msg = await messengerStore.post(room.id, key.id, text, true); if (msg) await messengerStore.setRead(room.id, key.id, msg.seq); pokeRoom(room.id); };
+    if (pathname === '/api/messenger/stream' && req.method === 'GET') { // A5: held open; 'msg' with a room id when it changes
+      res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      res.write(': open\n\n');
+      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } set.add(res); messengerStreams.set(key.id, set);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
+      req.on('close', () => { clearInterval(ping); set.delete(res); if (!set.size) messengerStreams.delete(key.id); });
+      return;
+    }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
       if (!Array.isArray(list) || list.length > MESSENGER_ROOM_MAX) return null;
@@ -3456,7 +3538,7 @@ async function requestHandler(req, res) {
       const members = invitees(body.members);
       if (!members || !members.length || members.length + 1 > MESSENGER_ROOM_MAX) return sendError(res, 400, 'BAD_MEMBERS', `함께할 사람을 1~${MESSENGER_ROOM_MAX - 1}명 골라 주세요.`);
       if ((await messengerStore.roomsOf(key.id)).length >= MESSENGER_ROOMS_MAX) return sendError(res, 409, 'TOO_MANY_ROOMS', `방은 ${MESSENGER_ROOMS_MAX}개까지 들어갈 수 있습니다.`);
-      const made = await messengerStore.createRoom(name, key.id, members);
+      const made = await messengerStore.createRoom(name, key.id, members); pokeRoom(made.id); // (A5: the new room shows on their lists)
       await say(made, `${nameOf(key.id)}님이 ${names(members)}을 초대했습니다.`);
       return sendJson(res, 201, { ok: true, room: view(await messengerStore.room(made.id)) });
     }
@@ -3491,6 +3573,7 @@ async function requestHandler(req, res) {
       if (text.length > MESSENGER_TEXT_MAX) return sendError(res, 400, 'CHAT_TOO_LONG', `메시지는 ${MESSENGER_TEXT_MAX}자까지 보낼 수 있습니다.`);
       const sent = await messengerStore.post(room.id, key.id, text);
       if (sent) await messengerStore.setRead(room.id, key.id, sent.seq); // my own line is read by me
+      pokeRoom(room.id); // (A5: the members' pages take it at once)
       return sendJson(res, 201, { ok: true, message: { ...sent, label: key.label } });
     }
     if (m[2] === 'members' && req.method === 'POST') {
@@ -3507,6 +3590,7 @@ async function requestHandler(req, res) {
     if (m[2] === 'leave' && req.method === 'POST') { // the others are told; the last one out deletes the room
       await messengerStore.leave(room.id, key.id);
       await messengerStore.post(room.id, key.id, `${nameOf(key.id)}님이 나갔습니다.`, true);
+      pokeRoom(room.id, [key.id]);
       return sendJson(res, 200, { ok: true });
     }
     if (m[2] === 'name' && req.method === 'POST') { // v1.10.88 단체 방 이름 바꾸기
@@ -3528,6 +3612,7 @@ async function requestHandler(req, res) {
       if (!msg || msg.system || msg.from !== key.id) return sendError(res, 404, 'MESSAGE_NOT_FOUND', '지울 수 있는 메시지가 아닙니다.');
       if (Date.now() - Date.parse(msg.at) > 5 * 60 * 1000) return sendError(res, 409, 'TOO_LATE', '보낸 지 5분이 지난 메시지는 지울 수 없습니다.');
       await messengerStore.unsend(room.id, seq);
+      pokeRoom(room.id);
       return sendJson(res, 200, { ok: true });
     }
     if (m[2] === 'mute' && req.method === 'POST') { // v1.10.88 방별 알림 끄기 (mine only)
@@ -4071,6 +4156,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/lobby/events' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
+    noteVisit(pointAccountForSession(session)); // (7일 이상 안 들어오면 이자 없음)
     if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
     res.writeHead(200, securityHeaders({
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -4093,7 +4179,7 @@ async function requestHandler(req, res) {
         clearInterval(heartbeat);
         return;
       }
-      current.lastSeen = nowMs();
+      current.lastSeen = nowMs(); noteVisit(pointAccountForSession(current)); // (a day on, still here: in today -- Codex review)
       if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
       res.write(': ping\n\n');
     }, 15000);
@@ -4481,6 +4567,7 @@ async function requestHandler(req, res) {
       title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name });
     if (out.points) notifyPointsChanged([account]);
     if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a paid round counts
+    if (verdict === 'ok' && run.game === 'whack') contestNote(account, session, 'whack', score); // (A4: a contest round)
     return sendJson(res, 200, { ok: true, verdict, points: out.points, best: out.best, newBest: out.newBest, today: out.today, cap: Reflex.DAILY_CAP, balance: out.balance ?? out.balanceAfter });
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
@@ -4693,7 +4780,7 @@ async function requestHandler(req, res) {
     weedPulls.set(session.token, { ...pull, requestId: body.requestId, result }); collectionPose(session.token);
     if (outcome.applied) {
       broadcastIsland('islandWeed', { gone: [weedId] });
-      islandProgress('weed_pull', account, 1);
+      islandProgress('weed_pull', account, 1); contestNote(account, session, 'weed', 1); // (A4: a contest pull)
       if (outcome.bonus) notifyPointsChanged([account]);
     }
     return sendJson(res, 200, result);
@@ -4708,7 +4795,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-fish:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || !IslandFishing.canFish(at.x, at.z)) return sendError(res, 409, 'NOT_FISHING_SPOT', '물가에서 낚시할 수 있습니다.');
-    const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const season = IslandTerrain.seasonAt(at.x, at.z, now) || 'summer'; // v1.10.90: the river or the sea, and that spot's season today
+    const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const held = (await pointStore.worldValue('season'))?.day; const season = (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(at.x, at.z), held) : IslandTerrain.seasonAt(at.x, at.z, now)) || 'summer'; // (A5: a held arrangement) // v1.10.90: the river or the sea, and that spot's season today
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
@@ -4737,7 +4824,7 @@ async function requestHandler(req, res) {
     const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
     c.done = { ok: true, species: c.species, name: f.name, grade: f.grade, price: f.price, firstTime: dex.first, bag: outcome.bag };
-    if (outcome.applied) islandProgress('fish', account, 1);
+    if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); } // (A4: a contest catch)
     return sendJson(res, 200, c.done);
   }
   if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
@@ -5006,6 +5093,15 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); if (body.reset) { starShiftMs = 0; return sendJson(res, 200, { ok: true }); }
     starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
+    const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(nowMs(), cfg);
+    contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
+    if (body.to === 'live' && (await pointStore.worldValue('contestResult'))?.id === k.id) { await pointStore.setWorldValue('contestResult', null); contestBoard = { id: null, rows: new Map() }; } // (the real clock may have closed this week's contest already, empty)
+    contestKindTest = body.to === 'reset' ? null : IslandContest.KINDS[body.kind] ? body.kind : contestKindTest;
+    const c = await contestState(); if (c.phase === 'done') await settleContest(c); contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id });
+    return sendJson(res, 200, { ok: true, phase: c.phase, kind: c.kind, id: c.id });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
@@ -5264,8 +5360,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/stars' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0;
-    const wished = new Set((await pointStore.questDoc(account, 'stars')).doc.wished || []);
-    for (const st of IslandStars.starsOfDayBefore(now)) if (wished.has(st.id)) {
+    for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const out = await pointStore.claimEvent({ eventId: `star_gift_${IslandStars.slotOfId(st.id)}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' });
       if (out.applied) gift += out.amount;
     }
@@ -5280,9 +5375,53 @@ async function requestHandler(req, res) {
     const out = await pointStore.questApply(pointAccountForSession(session), 'stars', (doc) => (doc.wished || []).includes(now.id) ? null : { doc: { ...doc, wished: [...(doc.wished || []), now.id].slice(-120) }, reward: 0 });
     return sendJson(res, 200, { ok: true, already: !out?.doc });
   }
+  // A4 주말 섬 대회: where the week's contest is (soon / live / done), the live top 5 and my record, the last result
+  if (pathname === '/api/island/contest' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const c = await contestState(); const account = pointAccountForSession(session);
+    const live = contestBoard.id === c.id; const mine = live ? contestBoard.rows.get(account) : null;
+    return sendJson(res, 200, { ok: true, contest: { id: c.id, kind: c.kind, name: c.name, how: c.how, unit: c.unit, phase: c.phase, start: c.start, end: c.end }, serverNow: contestNow(),
+      top: live ? contestTop(5) : [], mine: mine ? { score: mine.score, rank: IslandContest.rank([...contestBoard.rows.values()]).indexOf(mine) + 1 } : null, entrants: live ? contestBoard.rows.size : 0,
+      last: await pointStore.worldValue('contestResult') });
+  }
+  if (pathname === '/api/admin/contest' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, config: IslandContest.config((await pointStore.worldValue('contest'))?.config) }); }
+  if (pathname === '/api/admin/contest' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); const cfg = IslandContest.config({ day: Number(body.day), hour: Number(body.hour), minute: Number(body.minute), minutes: Number(body.minutes), enabled: body.enabled !== false });
+    if (cfg.day !== Number(body.day) || cfg.hour !== Number(body.hour) || cfg.minutes !== Number(body.minutes)) return sendError(res, 400, 'BAD_CONTEST', '요일·시각·길이(10~120분)를 확인해 주세요.');
+    await pointStore.setWorldValue('contest', { config: cfg, at: nowMs() }); contestPhase = null;
+    return sendJson(res, 200, { ok: true, config: cfg });
+  }
+  // B 45 꽃·나무 심기: every plant on the island (its stage by the server clock, mine marked), a seed or sapling of mine into
+  // the ground where I stand (the server's own spot of me), fertilizer onto a plant by me -- everyone is told to look again
+  if (pathname === '/api/island/plants' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const me = pointAccountForSession(session); const now = nowMs();
+    return sendJson(res, 200, { ok: true, plants: (await pointStore.islandPlants()).map((p) => ({ id: p.id, kind: p.kind, color: p.color, x: p.x, z: p.z, stage: IslandPlants.stageOf(p, now), fertilized: Boolean(p.fertilizedAt), mine: p.owner === me })) });
+  }
+  if ((pathname === '/api/island/plant' || pathname === '/api/island/fertilize') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); if (!at || townhallInside.has(session.token) || storeInside.has(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬 땅 위에서 할 수 있어요.');
+    const body = await parseJson(req); const account = pointAccountForSession(session);
+    const SAY = { full: '섬에 꽃·나무가 가득 찼어요.', mine: `한 사람이 ${IslandPlants.PER_ACCOUNT}그루까지 심을 수 있어요.`, missing: '가방에 없어요.', gone: '이미 없어진 꽃·나무예요.', done: '이미 비료를 준 꽃·나무예요.' };
+    let out;
+    try {
+      if (pathname === '/api/island/plant') {
+        const k = IslandPlants.KINDS[body.itemId]; if (!k) return sendError(res, 400, 'NOT_A_SEED', '심을 수 있는 물건이 아니에요.');
+        const why = IslandPlants.refuse(k.kind, at.x, at.z, await pointStore.islandPlants()); if (why) return sendError(res, 409, 'BAD_SPOT', why);
+        out = await pointStore.islandPlant({ userId: account, requestId: String(body.requestId || ''), itemId: body.itemId, x: at.x, z: at.z, at: nowMs() });
+      } else {
+        const plant = (await pointStore.islandPlants()).find((p) => p.id === body.plantId); if (!plant || Math.hypot(plant.x - at.x, plant.z - at.z) > 2) return sendError(res, 409, 'TOO_FAR', '꽃·나무 가까이에서 줄 수 있어요.');
+        out = await pointStore.islandFertilize({ userId: account, requestId: String(body.requestId || ''), plantId: plant.id, at: nowMs() });
+      }
+    } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason) return sendError(res, 409, out.reason === 'spot' ? 'BAD_SPOT' : 'NOT_DONE', out.reason === 'spot' ? '바로 옆에 이미 심겨 있어요.' : SAY[out.reason] || '할 수 없어요.');
+    if (out.applied) broadcastIsland('plants', {});
+    return sendJson(res, 200, { ok: true, already: Boolean(out.already), plant: out.plant ? { id: out.plant.id, stage: IslandPlants.stageOf(out.plant, nowMs()) } : null, bag: out.bag || null });
+  }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
-    return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    // (A5: with the season arrangement -- the day it is held at, or null to turn -- and the event decorations' mode)
+    return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto', seasonHold: (await pointStore.worldValue('season'))?.day ?? null, decor: (await pointStore.worldValue('decor'))?.mode || 'auto' });
   }
   // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): the drawn pictures the game uses, and the administrator's notes on
   // assets (status, memo, a small JPEG of the view, the view itself), kept on the server
@@ -5331,6 +5470,21 @@ async function requestHandler(req, res) {
         await pointStore.setWorldValue('switches', next); opsCache = next; });
     }
     return sendJson(res, 200, { ok: true, switches: await opsSwitches() });
+  }
+  // A5 관리자: 계절 고정 (hold today's arrangement of the four season zones, or let it turn by the day) and 이벤트 장식 수동
+  // (the event decorations on or off by hand, or by the date) -- both told to the island at once (the 'islandTime' push)
+  if (pathname === '/api/admin/island/season' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); if (!['auto', 'hold'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '계절 회전을 골라 주세요.');
+    const day = body.mode === 'hold' ? IslandTerrain.seasonDay(nowMs()) : null;
+    await pointStore.setWorldValue('season', { day, at: nowMs() }); broadcastIsland('islandTime', { mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    return sendJson(res, 200, { ok: true, seasonHold: day });
+  }
+  if (pathname === '/api/admin/island/decor' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); if (!['auto', 'halloween', 'winter', 'off'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '장식 설정을 골라 주세요.'); // (B 46: the winter festival too)
+    await pointStore.setWorldValue('decor', { mode: body.mode, at: nowMs() }); broadcastIsland('islandTime', { mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    return sendJson(res, 200, { ok: true, decor: body.mode });
   }
   if (pathname === '/api/admin/island/time' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
@@ -5386,11 +5540,22 @@ async function requestHandler(req, res) {
     if (!title || title.length > 100 || !content || content.length > 3000) {
       return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
     }
+    const publishAt = body.publishAt ? Date.parse(body.publishAt) : NaN; // A5 공지 예약: a later time queues it
+    if (Number.isFinite(publishAt) && publishAt > nowMs() + 30000) {
+      if (publishAt > nowMs() + 60 * 86400000) return sendError(res, 400, 'BAD_ANNOUNCEMENT', '예약은 60일 안으로 해 주세요.');
+      const entry = { id: crypto.randomUUID(), title, body: content, pinned: body.pinned === true, at: publishAt };
+      const added = await editNoticeQueue(async (queue) => (queue.length >= 20 ? { value: false } : { queue: [...queue, entry].sort((a, b) => a.at - b.at), value: true }));
+      if (!added) return sendError(res, 409, 'QUEUE_FULL', '예약 공지는 20개까지입니다.');
+      return sendJson(res, 201, { ok: true, scheduled: entry });
+    }
     const item = await announcementStore.create(title, content, body.pinned === true);
     await broadcastAnnouncements();
     return sendJson(res, 201, { ok: true, item });
   }
 
+  if (pathname === '/api/admin/notice-queue' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, queue: (await pointStore.worldValue('noticeQueue')) || [] }); }
+  const queuedMatch = pathname.match(/^\/api\/admin\/notice-queue\/([0-9a-f-]{36})$/i);
+  if (queuedMatch && req.method === 'DELETE') { if (!requireAdmin(req, res)) return; await editNoticeQueue(async (queue) => ({ queue: queue.filter((e) => e.id !== queuedMatch[1]) })); return sendJson(res, 200, { ok: true }); }
   const announcementMatch = pathname.match(/^\/api\/announcements\/([0-9a-f-]{36})$/i);
   if (announcementMatch && req.method === 'PUT') {
     if (!requireAdmin(req, res)) return;
@@ -5904,7 +6069,7 @@ async function requestHandler(req, res) {
         try { sseWrite(res, 'sessionExpired', { message: '입장 세션이 만료되었습니다.' }); res.end(); } catch {}
         return clearInterval(heartbeat);
       }
-      current.lastSeen = nowMs();
+      current.lastSeen = nowMs(); noteVisit(pointAccountForSession(current)); // (a day on, still here: in today -- Codex review)
       if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
       res.write(': ping\n\n');
     }, 15000);
@@ -6030,7 +6195,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.95 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.96 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

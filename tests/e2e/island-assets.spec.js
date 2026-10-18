@@ -571,7 +571,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -838,9 +838,9 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   }
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().halloween.set(true));
+  await page.evaluate(() => window.PlazaDebug().halloween.set(true)); // (A5: the decorations no longer bring the night -- set below)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(true);
-  expect(await page.evaluate(() => window.PlazaDebug().halloween.background())).toBe(0x0d1630);
+  await expect.poll(() => page.evaluate(() => { const D = window.PlazaDebug(); D.setTime('night'); D.setWeather('clear'); return D.halloween.background(); }), { timeout: 15000 }).toBe(0x0d1630); // (again until the page's own first time and weather reads are in)
   expect(await page.evaluate(() => window.PlazaDebug().halloween.fountain())).toBe(false);
   await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return [s['landmark.halloween.pedestal'], s['landmark.halloween.lantern']]; }), { timeout: 90000 }).toEqual(['model', 'model']);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glows()), { timeout: 30000 }).toBeGreaterThan(1); // the model's own glow joined
@@ -869,7 +869,7 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
-  await page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await page.evaluate(() => { window.PlazaDebug().halloween.set(false); window.PlazaDebug().setTime('day'); });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(false);
   expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit, window.PlazaDebug().halloween.decor().shown])).toEqual([true, 0xbfe6ff, 0, false]);
   await expectNoScriptError(page);
