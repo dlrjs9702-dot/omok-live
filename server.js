@@ -44,7 +44,8 @@ const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
-const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회 // v1.10.72 게임방 AI 자리
+const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
+const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
@@ -5374,6 +5375,32 @@ async function requestHandler(req, res) {
     if (cfg.day !== Number(body.day) || cfg.hour !== Number(body.hour) || cfg.minutes !== Number(body.minutes)) return sendError(res, 400, 'BAD_CONTEST', '요일·시각·길이(10~120분)를 확인해 주세요.');
     await pointStore.setWorldValue('contest', { config: cfg, at: nowMs() }); contestPhase = null;
     return sendJson(res, 200, { ok: true, config: cfg });
+  }
+  // B 45 꽃·나무 심기: every plant on the island (its stage by the server clock, mine marked), a seed or sapling of mine into
+  // the ground where I stand (the server's own spot of me), fertilizer onto a plant by me -- everyone is told to look again
+  if (pathname === '/api/island/plants' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const me = pointAccountForSession(session); const now = nowMs();
+    return sendJson(res, 200, { ok: true, plants: (await pointStore.islandPlants()).map((p) => ({ id: p.id, kind: p.kind, color: p.color, x: p.x, z: p.z, stage: IslandPlants.stageOf(p, now), fertilized: Boolean(p.fertilizedAt), mine: p.owner === me })) });
+  }
+  if ((pathname === '/api/island/plant' || pathname === '/api/island/fertilize') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); if (!at || townhallInside.has(session.token) || storeInside.has(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬 땅 위에서 할 수 있어요.');
+    const body = await parseJson(req); const account = pointAccountForSession(session);
+    const SAY = { full: '섬에 꽃·나무가 가득 찼어요.', mine: `한 사람이 ${IslandPlants.PER_ACCOUNT}그루까지 심을 수 있어요.`, missing: '가방에 없어요.', gone: '이미 없어진 꽃·나무예요.', done: '이미 비료를 준 꽃·나무예요.' };
+    let out;
+    try {
+      if (pathname === '/api/island/plant') {
+        const k = IslandPlants.KINDS[body.itemId]; if (!k) return sendError(res, 400, 'NOT_A_SEED', '심을 수 있는 물건이 아니에요.');
+        const why = IslandPlants.refuse(k.kind, at.x, at.z, await pointStore.islandPlants()); if (why) return sendError(res, 409, 'BAD_SPOT', why);
+        out = await pointStore.islandPlant({ userId: account, requestId: String(body.requestId || ''), itemId: body.itemId, x: at.x, z: at.z, at: nowMs() });
+      } else {
+        const plant = (await pointStore.islandPlants()).find((p) => p.id === body.plantId); if (!plant || Math.hypot(plant.x - at.x, plant.z - at.z) > 2) return sendError(res, 409, 'TOO_FAR', '꽃·나무 가까이에서 줄 수 있어요.');
+        out = await pointStore.islandFertilize({ userId: account, requestId: String(body.requestId || ''), plantId: plant.id, at: nowMs() });
+      }
+    } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason) return sendError(res, 409, out.reason === 'spot' ? 'BAD_SPOT' : 'NOT_DONE', out.reason === 'spot' ? '바로 옆에 이미 심겨 있어요.' : SAY[out.reason] || '할 수 없어요.');
+    if (out.applied) broadcastIsland('plants', {});
+    return sendJson(res, 200, { ok: true, already: Boolean(out.already), plant: out.plant ? { id: out.plant.id, stage: IslandPlants.stageOf(out.plant, nowMs()) } : null, bag: out.bag || null });
   }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;

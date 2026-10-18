@@ -344,6 +344,9 @@
   const th3 = (file) => ({ url: `/assets/island/townhall-v3/${file}.glb`, low: { url: `/assets/island/townhall-v3/${file}_low.glb` } });
   for (const f of ['townhall_interior', 'desk_civil', 'desk_tax', 'desk_bank', 'chair_marble', 'bench_marble', 'ticket_machine', 'notice_board', 'plant_pot', 'mayor_door', 'flag_stand', 'water_cooler', 'counter_bell', 'rope_stand']) REGISTRY[`townhall3.${f}`] = th3(f);
   for (const n of ['civil', 'tax', 'bank']) REGISTRY[`character.clerk_${n}`] = { url: `${CH}/npc_clerk_${n}.glb`, low: { url: `${CH}/npc_clerk_${n}_low.glb` }, rotationY: Math.PI, motions: true };
+  // B 45 꽃·나무 심기 (assets 45 planting-v1): the stages of a flower (five colours from the bud on) and of a tree, the
+  // fertilizer's mark
+  for (const f of ["flower_stage0","flower_stage1","flower_stage2_red","flower_stage3_red","flower_stage2_yellow","flower_stage3_yellow","flower_stage2_white","flower_stage3_white","flower_stage2_pink","flower_stage3_pink","flower_stage2_purple","flower_stage3_purple","tree_stage0","tree_stage1","tree_stage2","tree_stage3","fertilized_mark"]) REGISTRY[`plant.${f}`] = { url: `/assets/island/planting-v1/${f}.glb`, low: { url: `/assets/island/planting-v1/${f}_low.glb` }, near: 40 };
   // B 46 겨울 축제 (assets 46 winter-v1): the plaza's tree on the fountain's spot, the props, the snow laid over the plaza's
   // lamps and benches (overlays, in the props' own frame); the lamp's own 0.85 is the overlay's too
   const winter = (file, extra = {}) => ({ url: `/assets/island/winter-v1/${file}.glb`, low: { url: `/assets/island/winter-v1/${file}_low.glb` }, near: 60, ...extra });

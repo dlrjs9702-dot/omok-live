@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2190,12 +2190,25 @@
         const name = document.createElement('span'); name.textContent = item.name;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
+        if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
+  // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
+  const PLANT_GOODS = { seed_flower_red: '심기', seed_flower_yellow: '심기', seed_flower_white: '심기', seed_flower_pink: '심기', seed_flower_purple: '심기', sapling: '심기', fertilizer: '비료 주기' };
+  async function plantGood(itemId) {
+    try {
+      let r;
+      if (itemId === 'fertilizer') { const p = plaza.controller?.nearestPlant?.(2); if (!p) { showToast('꽃·나무 가까이에서 줄 수 있어요.'); return; } r = await api('/api/island/fertilize', { method: 'POST', body: JSON.stringify({ plantId: p.id, requestId: crypto.randomUUID() }) }); showToast('비료를 줬어요. 남은 시간이 절반으로 줄어요.'); }
+      else { r = await api('/api/island/plant', { method: 'POST', body: JSON.stringify({ itemId, requestId: crypto.randomUUID() }) }); showToast(itemId === 'sapling' ? '묘목을 심었어요. 며칠 뒤면 큰 나무가 돼요.' : '꽃씨를 심었어요. 하루쯤 지나면 꽃이 펴요.'); }
+      if (islandBagDialog.open) islandBagDialog.close(); if (r.bag) drawIslandBag(r.bag); refreshPlants();
+    } catch (error) { showToast(error.message); }
+  }
+  let plantsPoll = null;
+  function refreshPlants() { clearTimeout(plantsPoll); if (!document.body.classList.contains('plazaMode')) return; api('/api/island/plants').then((d) => plaza.controller?.setPlants?.(d.plants)).catch(() => {}).finally(() => { plantsPoll = setTimeout(refreshPlants, 120000); }); }
   async function useGood(kind) {
     try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); }
     catch (error) { showToast(error.message); }
@@ -5509,6 +5522,7 @@
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
+    if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {

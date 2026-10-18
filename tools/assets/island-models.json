@@ -5331,6 +5331,142 @@
       "lowSrc": "townhall44:02. Low/npc_clerk_bank_low.glb",
       "lowSha256": "85f75749094973f79f8a5b314b8f583ea071876eb28328b776e9338f8c8d6c26",
       "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage0.glb",
+      "src": "planting45:01. High/flower_stage0.glb",
+      "sha256": "d8708140c09095d2b9188d00cc739931ef5218bb5327f8b228061f805850fd8f",
+      "lowSrc": "planting45:02. Low/flower_stage0_low.glb",
+      "lowSha256": "c85bba0ceaa26109ecb25a0ad720e5430e522b39c7aa7af9ac9b71ab2ffba3f6",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage1.glb",
+      "src": "planting45:01. High/flower_stage1.glb",
+      "sha256": "b4ae78e9805ee6e19c8e5e5e1e673e4346d7443c9cb6392dc24f5eeaf88cce9c",
+      "lowSrc": "planting45:02. Low/flower_stage1_low.glb",
+      "lowSha256": "5b1ccaf9fc1f8a8203b58b1efe50cbaff62a7212029444d41c1ef19a96796369",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage2_red.glb",
+      "src": "planting45:01. High/flower_stage2_red.glb",
+      "sha256": "0c388cb3a4cc7dad15679012f5f438e5eef2280c73e16a2d840a688b9bdb78ab",
+      "lowSrc": "planting45:02. Low/flower_stage2_red_low.glb",
+      "lowSha256": "9ded7737dcaf89b68c255083814eafff68dcd36e27827bc434aeffe37f683f67",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage3_red.glb",
+      "src": "planting45:01. High/flower_stage3_red.glb",
+      "sha256": "00523496500b6901e08e62662978e29ce6a5a3b2365494ff66c5dc5f8637a361",
+      "lowSrc": "planting45:02. Low/flower_stage3_red_low.glb",
+      "lowSha256": "0ab744062f51553deb18fba4732868d37e8efbf7be909900759628fb630ae0ac",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage2_yellow.glb",
+      "src": "planting45:01. High/flower_stage2_yellow.glb",
+      "sha256": "52939d70b2bbbe6e512a064de06474e3bf09ceada882208f5972df89461d76ea",
+      "lowSrc": "planting45:02. Low/flower_stage2_yellow_low.glb",
+      "lowSha256": "af5caf604d71cb83f6534bb2308ac0db2e1781b0d60e70eb22565de7d1f2e6a5",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage3_yellow.glb",
+      "src": "planting45:01. High/flower_stage3_yellow.glb",
+      "sha256": "b55ae0fa0fb6bf9ad41205052641f47f401071f2864de8b98534fab258a17236",
+      "lowSrc": "planting45:02. Low/flower_stage3_yellow_low.glb",
+      "lowSha256": "c8876a51694636365ab99a740f50b44429025eb8fe7fe5176e1cf3305e030f75",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage2_white.glb",
+      "src": "planting45:01. High/flower_stage2_white.glb",
+      "sha256": "f015ecec5559c980fd6075daa1bf58dce5b6f40f405e5ebddec65242d47b01d5",
+      "lowSrc": "planting45:02. Low/flower_stage2_white_low.glb",
+      "lowSha256": "c832dacdbf63bf488520178e804da1890077dacb40d92fb9330011b80adda145",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage3_white.glb",
+      "src": "planting45:01. High/flower_stage3_white.glb",
+      "sha256": "24e8c25ca683f1d15300f7a10f815ea4cf49cd9902354b003d70f9c994b59f49",
+      "lowSrc": "planting45:02. Low/flower_stage3_white_low.glb",
+      "lowSha256": "a42307aea05d4f90203c6b5fc505abc4bf06ab09aaa4332c4b4d316851340455",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage2_pink.glb",
+      "src": "planting45:01. High/flower_stage2_pink.glb",
+      "sha256": "26cb89ea635bf6e845c466bbcf7ce6e92e7ae48d7fbc2f15145a127e9f81556e",
+      "lowSrc": "planting45:02. Low/flower_stage2_pink_low.glb",
+      "lowSha256": "bf9df71db1ef294edb0dfd47251670811383f8fb6a17d2da0cf9ee985225c94c",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage3_pink.glb",
+      "src": "planting45:01. High/flower_stage3_pink.glb",
+      "sha256": "f7dcffdef6da9a6993e845af4c9714c69e42ea1675fee40841b45145dbdab301",
+      "lowSrc": "planting45:02. Low/flower_stage3_pink_low.glb",
+      "lowSha256": "80eff5a660fe98cbd4dbded60794cce4af98bc63f8e3caebb38379db3af94421",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage2_purple.glb",
+      "src": "planting45:01. High/flower_stage2_purple.glb",
+      "sha256": "55ce82b5b0b9574d8776d6db62acf78032533f2f90ea12869368fe77ac392e72",
+      "lowSrc": "planting45:02. Low/flower_stage2_purple_low.glb",
+      "lowSha256": "ffd8855602c00c1dc885b1ad88c2d690b41f8cbed0ed0a13363baeed6d43d85d",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/flower_stage3_purple.glb",
+      "src": "planting45:01. High/flower_stage3_purple.glb",
+      "sha256": "bc84c7df2986449d8704debbee43d426e6bc5eca5bc7bced22f01ba29ae1ad4c",
+      "lowSrc": "planting45:02. Low/flower_stage3_purple_low.glb",
+      "lowSha256": "e047306253b1e226968ddddd8ec6582cd358ea0f4e66cad23070d525579e3fbd",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/tree_stage0.glb",
+      "src": "planting45:01. High/tree_stage0.glb",
+      "sha256": "376ac2747ccda11d4c49b94584891a9ca1ae305de87947ece348bfac950273af",
+      "lowSrc": "planting45:02. Low/tree_stage0_low.glb",
+      "lowSha256": "728e935fdea3c2f681f7960451c3d304c5bf99c921959bfb89f6b6bb53d0f789",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/tree_stage1.glb",
+      "src": "planting45:01. High/tree_stage1.glb",
+      "sha256": "7e2270963a827c03598bc021d536a962efda6ebaf7b588d50c9c213e2fd33f40",
+      "lowSrc": "planting45:02. Low/tree_stage1_low.glb",
+      "lowSha256": "4e0bb8ac4438eb77e3354e4654ef4450500342ba008cd83cd71178dacc052899",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/tree_stage2.glb",
+      "src": "planting45:01. High/tree_stage2.glb",
+      "sha256": "974225e5a48fd2b0c8205193b46cd74a4024b5d31b606874bfd45611afecb477",
+      "lowSrc": "planting45:02. Low/tree_stage2_low.glb",
+      "lowSha256": "4880f9c62bac425f00ea85963fb8e6915a5ce8d4c637579bf3db7f81c526f4be",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/tree_stage3.glb",
+      "src": "planting45:01. High/tree_stage3.glb",
+      "sha256": "5c434d672d7e3d46720bfeba32e41079ed7e1d5b2f5c51184897404164bcaadd",
+      "lowSrc": "planting45:02. Low/tree_stage3_low.glb",
+      "lowSha256": "c6d58f333497a87cfb931cafabe79ff6fd392fa9106edc781650e64f63b6e15c",
+      "precompressed": true
+    },
+    {
+      "out": "planting-v1/fertilized_mark.glb",
+      "src": "planting45:01. High/fertilized_mark.glb",
+      "sha256": "99a83b514e1f9435170df9bdc63b6b0c0ac7feaf703aeb156dd4be8b59a76ea4",
+      "lowSrc": "planting45:02. Low/fertilized_mark_low.glb",
+      "lowSha256": "51a9f1ab7cf17fad706f5c2d0f2815335260b52adfcd35a272b3b86e0117be6a",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -5361,6 +5497,7 @@
     "mall43": "43. Game Island department store 2026-10-18",
     "residents39": "39. Game Island residents and quest props 2026-10-17",
     "winter46": "46. Game Island winter event 2026-10-18",
-    "townhall44": "44. Game Island townhall interior 2026-10-18"
+    "townhall44": "44. Game Island townhall interior 2026-10-18",
+    "planting45": "45. Game Island planting growth 2026-10-18"
   }
 }
