@@ -197,15 +197,10 @@ async function exercise(t, makeStore) {
     const { transformationById, avatarLookOf, skinById } = require('../lib/skins');
     const choose = (characterId, mode) => store.setAvatarTransformation({ userId, characterId, mode });
     const equip = (slot, skinId) => store.equipSkin({ userId, game: 'avatar', slot, skinId });
-    const own = async (characterId) => {
-      for (const skinId of Object.values(transformationById(characterId).items)) {
-        const skin = skinById(skinId);
-        assert.equal((await store.buySkin({ userId, skinId, price: skin.price, title: skin.name })).applied, true);
-      }
-    };
-    const wear = async (characterId) => {
-      for (const [slot, skinId] of Object.entries(transformationById(characterId).items)) assert.equal((await equip(slot, skinId)).ok, true);
-    };
+    // v1.10.91 (사용자 2026-10-18 A안): the transformation is its own item, bought and chosen (not the parts worn)
+    const { transformSkinId } = require('../lib/skins');
+    const own = async (characterId) => { const skin = skinById(transformSkinId(characterId)); assert.equal((await store.buySkin({ userId, skinId: skin.id, price: skin.price, title: skin.name })).applied, true); };
+    const wear = async (characterId) => { assert.ok(transformationById(characterId)); assert.equal((await equip('transform', transformSkinId(characterId))).ok, true); };
     await store.ensureAccount(userId);
     await store.adminGrant({ grantId: 'admin-grant:transform-test', userId, amount: 5_000_000, category: 'event', memo: '' });
     assert.deepEqual(await choose('kuromi', 'native'), { ok: false, reason: 'not-owned' });
@@ -231,7 +226,7 @@ async function exercise(t, makeStore) {
     await Promise.all([choose('kuromi', 'native'), choose('kuromi', 'native')]);
     assert.equal((await store.getAccount(userId)).balance, balance);
     assert.deepEqual(await store.ledger(userId, 1000), ledger, '체형 변경은 결제·원장 기록이 없다');
-    await equip('hat', null);
+    await equip('transform', null);
     assert.deepEqual(await choose('kuromi', 'current'), { ok: false, reason: 'incomplete' });
     assert.equal((await store.skinState(userId)).equipped.avatar.transformation_kuromi, 'native', '파츠를 벗어도 선택 유지');
     await wear('kuromi');

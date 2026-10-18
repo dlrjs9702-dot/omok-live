@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf, avatarLookOf } = require('../lib/skins');
+const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf, avatarLookOf, transformationById } = require('../lib/skins');
 const SkinLooks = require('../public/skin-looks');
 
 // v1.7.30 skins: the catalog and looks (unit), then buying / equipping / sharing through the real server.
@@ -37,12 +37,16 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.32: + the character skins (2026-10-05 pack) after them, 망토·꼬리·신발·목걸이 칸, the 4-tier prices
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
-  const avatar = SKINS.filter(s => s.family === 'avatar');
+  const avatar = SKINS.filter(s => s.family === 'avatar' && s.slot !== 'transform'); // (v1.10.91: the transformations below)
   assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 11, 27 + 16 + 11, 13 + 8 + 5, 23 + 17 + 6, 23 + 17 + 5, 23 + 18 + 6]); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
   // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
   const ip = avatar.filter(s => s.ip);
-  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 33); // 22 character game pairs + 11 themes
+  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 11 + 33); // 22 character game pairs + 11 themes; v1.10.91 + their 11 transformations
   assert.ok(ip.every(s => ['산리오', 'DC', '마블', '포켓몬'].includes(s.ip) && s.tier !== 'common' && s.id.startsWith('avatar_ip_')));
+  // v1.10.91 변신 따로 판매 (사용자 2026-10-18): each of the 21 a `transform` item at its parts' price, out of the shops' catalog
+  const tfs = SKINS.filter(s => s.slot === 'transform'); assert.equal(tfs.length, 21);
+  for (const tf of tfs) assert.equal(tf.price, Object.values(transformationById(tf.transform).items).reduce((n, id) => n + skinById(id).price, 0));
+  assert.ok(!catalogView().some(f => f.skins.some(s => s.slot === 'transform')));
   assert.equal(require('node:child_process').execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./lib/skins').SKINS.filter(s => s.ip || s.id.startsWith('avatar_ip_')).length))"], { env: { ...process.env, IP_SKINS: 'off' }, cwd: require('node:path').join(__dirname, '..') }).toString(), '0');
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
   assert.equal(older.length, 16);
@@ -177,9 +181,15 @@ test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·�
   assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'SKIN_NOT_OWNED');
   await fx.grant(a, 3_000_000);
   const character = require('../lib/skins').transformationById('kuromi');
+  // v1.10.91 (A안): the parts on are not a transformation; the transformation bought and chosen is
   for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/buy', a.session, { skinId })).status, 200);
-  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'TRANSFORMATION_INCOMPLETE');
   for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/equip', a.session, { skinId })).status, 200);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'SKIN_NOT_OWNED');
+  const tf = require('../lib/skins').transformSkinId('kuromi');
+  assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: tf })).status, 200);
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'TRANSFORMATION_INCOMPLETE');
+  assert.equal((await fx.req('/api/skins/equip', a.session, { skinId: tf })).status, 200);
+  const list = (await fx.req('/api/transformations', a.session)).data.list; assert.equal(list.length, 21); assert.deepEqual(list.filter(t => t.owned).map(t => [t.character, t.chosen]), [['kuromi', true]]);
   const balance = (await fx.req('/api/points', a.session)).data.balance;
   const history = (await fx.req('/api/points/history', a.session)).data;
   const pose = await fx.req('/api/plaza/state', a.session, { x: 0, z: 0, yaw: 0, moving: false });
@@ -189,14 +199,16 @@ test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·�
   assert.equal((await fx.plaza(a.session)).players.find(p => p.id === pose.data.id).look.transformationModes.kuromi, 'current', '다음 위치 전송 전 광장에도 새 체형 공유');
   assert.equal((await fx.req('/api/points', a.session)).data.balance, balance);
   assert.deepEqual((await fx.req('/api/points/history', a.session)).data, history);
-  await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'hat' });
+  await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'hat' }); // a part off: still transformed
+  assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'current' })).status, 200);
+  await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'transform' }); // the transformation off
   assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'native' })).status, 409);
   const session = await fx.relogin(a);
   assert.ok(session);
   const restored = await fx.req('/api/skins', session);
   assert.equal(restored.data.avatar.look.transformationModes.kuromi, 'current');
   assert.equal(restored.data.avatar.look.hat, undefined);
-  assert.equal((await fx.req('/api/skins/equip', session, { skinId: character.items.hat })).status, 200);
+  assert.equal((await fx.req('/api/skins/equip', session, { skinId: tf })).status, 200);
   assert.equal((await fx.req('/api/avatar/transformation', session, { ...body, mode: 'native' })).data.avatar.look.transformationModes.kuromi, 'native');
 });
 

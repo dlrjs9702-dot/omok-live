@@ -2069,3 +2069,8 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 @media (max-width:720px){.assetInspector{grid-template-columns:1fr}.inspectList{max-height:24vh}.inspectCanvas{height:36vh}}
 /* v1.10.90 운영 스위치 */
 .opsSwitches{display:flex;flex-wrap:wrap;gap:12px;border:1px solid rgba(148,163,184,.35);border-radius:10px;padding:8px 12px;margin:8px 0}.opsSwitches label{display:flex;gap:6px;align-items:center}
+/* v1.10.91 경제 값 관리 */
+.economyBox{border:1px solid rgba(148,163,184,.35);border-radius:10px;padding:8px 12px;margin:8px 0}.economyBox summary{cursor:pointer;font-weight:600}.economyBox fieldset{border:0;padding:4px 0;margin:0}.economyBox legend{font-weight:600;margin-top:6px}
+.economyRow{display:grid;grid-template-columns:minmax(6em,1fr) 7em auto;gap:8px;align-items:center;padding:2px 0}.economyRow input{width:100%}.economyRow small{opacity:.7}#economyHistory{max-height:12em;overflow:auto;padding-left:1.2em}#economyHistory button{margin-left:6px;padding:2px 8px}
+/* v1.10.91 변신 의상실 */
+.tfShop{display:grid;gap:6px}.tfRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 8px;border:1px solid rgba(148,163,184,.3);border-radius:10px}.tfRow strong{flex:1 1 8em}.tfRow small{opacity:.75}.tfRow.chosen{border-color:#8b5cf6;background:rgba(139,92,246,.08)}

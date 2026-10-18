@@ -297,7 +297,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('hair', '미용실', 34); // v1.10.74: +17 original hairstyles
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '잡화점', 54); // v1.10.74: +16 original and 11 character hats
+  await visit('accessories', '소품 가게', 54); // v1.10.74: +16 original and 11 character hats
   // v1.10.32: the five accessory slots, a tab each (the hats first)
   await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');

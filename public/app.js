@@ -1471,7 +1471,8 @@
     // the face at the 성형외과, colours at the 염색사 (the former character-skin shop is the clothes shop)
     { id: 'avatar', name: '옷가게', open: () => openSkinShop('avatar:outfit') },
     { id: 'hair', name: '미용실', open: () => openSkinShop('avatar:hair') },
-    { id: 'accessories', name: '잡화점', open: () => openSkinShop('avatar:hat') },
+    { id: 'accessories', name: '소품 가게', open: () => openSkinShop('avatar:hat') }, // (v1.10.91: the 잡화점 is the new store of goods)
+    { id: 'transform', name: '변신 의상실', open: () => openTransformShop() }, // v1.10.91 변신 따로 판매
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
@@ -1794,13 +1795,13 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
-      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); // v1.10.80
+      syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
   adminWindowBtn.addEventListener('click', () => {
@@ -2401,6 +2402,34 @@
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
   function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // v1.10.91 경제 값 관리: the table by group (the default beside each), a confirm listing the changes, and the history
+  // with a 되돌리기 for each change (back to the value before it)
+  let economyNow = null;
+  function drawEconomy(v) {
+    economyNow = v; const box = byId('economyTable'); if (!box) return;
+    const groups = [...new Set(v.defs.map((d) => d.group))];
+    box.replaceChildren(...groups.map((g) => { const f = document.createElement('fieldset'); const l = document.createElement('legend'); l.textContent = g; f.append(l);
+      for (const d of v.defs.filter((x) => x.group === g)) { const row = document.createElement('label'); row.className = 'economyRow';
+        const name = document.createElement('span'); name.textContent = d.label; const input = document.createElement('input'); input.type = 'number'; input.min = d.min; input.max = d.max; input.step = 1; input.dataset.key = d.key; input.value = d.changed ? d.value : ''; input.placeholder = String(d.def);
+        const def = document.createElement('small'); def.textContent = `기본 ${d.def.toLocaleString('ko-KR')}`; row.append(name, input, def); f.append(row); }
+      return f; }));
+    byId('economyHistory').replaceChildren(...v.history.slice(0, 30).map((h, i) => { const li = document.createElement('li'); li.textContent = `${new Date(h.at).toLocaleString('ko-KR')} · ${h.label}: ${h.before.toLocaleString('ko-KR')} → ${h.after.toLocaleString('ko-KR')} `;
+      const back = document.createElement('button'); back.type = 'button'; back.className = 'ghost'; back.textContent = '되돌리기'; back.addEventListener('click', () => saveEconomy({ [h.key]: h.before === v.defs.find((d) => d.key === h.key)?.def ? null : h.before })); li.append(back); return li; }));
+  }
+  async function saveEconomy(changes) {
+    const keys = Object.keys(changes); if (!keys.length) { showToast('바뀐 값이 없습니다.'); return; }
+    const text = keys.map((k) => { const d = economyNow.defs.find((x) => x.key === k); return `${d.group} · ${d.label}: ${d.value.toLocaleString('ko-KR')} → ${(changes[k] ?? d.def).toLocaleString('ko-KR')}`; }).join('\n');
+    if (!window.confirm(`이렇게 바꿀까요?\n\n${text}`)) return;
+    try { drawEconomy(await api('/api/admin/economy', { method: 'POST', body: JSON.stringify({ changes }) })); showToast('경제 값을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
+  }
+  byId('economySave')?.addEventListener('click', () => {
+    const changes = {};
+    for (const input of byId('economyTable').querySelectorAll('input[data-key]')) { const d = economyNow.defs.find((x) => x.key === input.dataset.key); const v = input.value === '' ? null : Math.floor(Number(input.value));
+      if (v !== null && (!Number.isSafeInteger(v) || v < d.min || v > d.max)) { showToast(`${d.label}: ${d.min.toLocaleString('ko-KR')}~${d.max.toLocaleString('ko-KR')} 사이로 적어 주세요.`, 4000); input.focus(); return; }
+      const want = v === d.def ? null : v; if (want !== (d.changed ? d.value : null)) changes[d.key] = want; } // (the default itself: no override)
+    saveEconomy(changes);
+  });
+  byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
   // v1.10.90 운영 스위치: read when the admin panel shows, each box saved as it changes
   const opsBox = byId('opsSwitches');
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };
@@ -2626,9 +2655,36 @@
     openTalk('시장');
   }
   const questTracker = document.getElementById('questTracker');
-  function showQuestTracker(list) {
-    questTracker.replaceChildren(...list.map((t) => { const p = document.createElement('p'); p.textContent = t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`; return p; }));
-    questTracker.classList.toggle('hidden', !list.length);
+  let questTrack = []; let errandTrack = []; // v1.10.91: the day's errands under way share the tracker
+  function showQuestTracker(list = questTrack) {
+    questTrack = list;
+    const lines = [...list.map((t) => (t.ready ? `${t.name} · 완료 ✓ 보고하기` : `${t.name} · ${t.label}${t.need > 1 ? ` ${t.count}/${t.need}` : ''}`)), ...errandTrack.map((e) => `심부름 · ${e.label}`)];
+    questTracker.replaceChildren(...lines.map((text) => { const p = document.createElement('p'); p.textContent = text; return p; }));
+    questTracker.classList.toggle('hidden', !lines.length);
+  }
+  // v1.10.91 주민 대화·심부름: any islander standing by me talks -- their own words, or the day's errand (asked, a thing
+  // brought, someone found); the stars over their heads and the tracker follow the server's view
+  function showErrands(view) {
+    if (!view) return;
+    plaza.controller?.setResidentMarks?.(view.marks || {}); errandTrack = view.track || []; showQuestTracker();
+  }
+  function refreshErrands() { if (document.body.classList.contains('plazaMode')) api('/api/island/errands').then(showErrands).catch(() => {}); }
+  setInterval(refreshErrands, 20000);
+  let residentBusy = false;
+  async function talkResident(n) {
+    if (residentBusy) return; residentBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) });
+      showErrands(data);
+      const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
+      const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
+      meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
+      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.errand && !data.reward ? '알겠어요' : '확인'; ok.addEventListener('click', () => plazaDialog.close());
+      lostCard.replaceChildren(...lines, meta, ok);
+      openTalk(data.name, Boolean(data.reward));
+      if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
+    } catch (error) { showToast(error.message); } finally { residentBusy = false; }
   }
   let islandEventBusy = false;
   async function solveIslandEvent(key) {
@@ -2946,7 +3002,7 @@
       const places = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
       let place = places[path];
       if (path === '/api/skins/buy' || (headers['X-Island-Facility'] && ['/api/skins/equip', '/api/skins/title'].includes(path))) {
-        place = skinShopMode === 'avatar:outfit' ? 'avatar' : skinShopMode === 'avatar:hair' ? 'hair' : skinShopMode === 'avatar:hat' ? 'accessories' : 'shop';
+        place = skinShopMode === 'transform' ? 'transform' : skinShopMode === 'avatar:outfit' ? 'avatar' : skinShopMode === 'avatar:hair' ? 'hair' : skinShopMode === 'avatar:hat' ? 'accessories' : 'shop';
         headers['X-Island-Facility'] = place;
       }
       if (place) {
@@ -4800,7 +4856,7 @@
 
   let skinShopFamily = null;
   let skinShopMode = 'all'; // v1.10.1 게임 아일랜드: 'game' (game skins) or 'avatar' (character skins) by which shop was entered
-  const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점', 'avatar:outfit': '옷가게', 'avatar:hair': '미용실', 'avatar:hat': '잡화점' };
+  const SKIN_SHOP_TITLES = { all: '상점', game: '게임 스킨 상점', avatar: '캐릭터 스킨 상점', 'avatar:outfit': '옷가게', 'avatar:hair': '미용실', 'avatar:hat': '소품 가게' }; // (v1.10.91: was 잡화점)
   const SKIN_TIER_ORDER = ['common', 'premium', 'rare', 'theme', 'legend']; // v1.10.32 희귀: character skins
   // v1.10.32: the slots each character shop sells (잡화점: the five accessory slots, one tab each)
   const SHOP_SLOTS = { 'avatar:outfit': ['outfit'], 'avatar:hair': ['hair'], 'avatar:hat': ['hat', 'cape', 'tail', 'shoes', 'necklace'] };
@@ -4981,6 +5037,36 @@
       loadSkinShop();
     }
   });
+  // v1.10.91 변신 의상실 (사용자 2026-10-18, A안): transformations bought and chosen here, apart from the parts -- a card per
+  // character: buy (a confirm with the price), 변신하기 / 변신 풀기, and its body (우리 체형 / 고유 체형) once chosen
+  const tfCard = document.createElement('div'); tfCard.className = 'tfShop'; tfCard.id = 'transformShop';
+  let tfBusy = false;
+  async function drawTransformShop() {
+    const { list } = await api('/api/transformations');
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = '파츠를 입는 것만으로는 변신하지 않아요. 변신은 여기서 사고 고릅니다.';
+    tfCard.replaceChildren(note, ...list.map((t) => {
+      const row = document.createElement('div'); row.className = `tfRow${t.chosen ? ' chosen' : ''}`; row.dataset.character = t.character;
+      const name = document.createElement('strong'); name.textContent = t.name;
+      const meta = document.createElement('small'); meta.textContent = t.owned ? (t.chosen ? '변신 중' : '보유') : `${Number(t.price).toLocaleString('ko-KR')}P${t.ip ? ` · ${t.ip}` : ''}`;
+      const act = document.createElement('button'); act.type = 'button'; act.className = t.owned ? (t.chosen ? 'ghost' : 'primary') : 'secondary';
+      act.textContent = t.owned ? (t.chosen ? '변신 풀기' : '변신하기') : '사기';
+      act.addEventListener('click', () => transformAction(t));
+      row.append(name, meta, act);
+      if (t.chosen && t.modes.length > 1) for (const [value, label] of [['current', '우리 체형'], ['native', '고유 체형']]) { const b = document.createElement('button'); b.type = 'button'; b.className = `ghost tiny${t.mode === value ? ' selected' : ''}`; b.textContent = label; b.setAttribute('aria-pressed', String(t.mode === value));
+        b.addEventListener('click', async () => { try { const data = await api('/api/avatar/transformation', { method: 'POST', body: JSON.stringify({ characterId: t.character, mode: value }) }); applySkinEquipment(data); drawTransformShop(); } catch (error) { showToast(error.message); } }); row.append(b); }
+      return row; }));
+  }
+  async function transformAction(t) {
+    if (tfBusy) return; tfBusy = true; const was = skinShopMode; skinShopMode = 'transform'; // (the island's facility check: the 변신 의상실)
+    try {
+      if (!t.owned) { if (!window.confirm(`${t.name}을(를) ${Number(t.price).toLocaleString('ko-KR')}P에 살까요?`)) return; await api('/api/skins/buy', { method: 'POST', body: JSON.stringify({ skinId: t.skinId }) }); loadPoints(); showToast(`${t.name} 구매 완료`); }
+      else { const data = await api('/api/skins/equip', { method: 'POST', headers: { 'X-Island-Facility': 'transform' }, body: JSON.stringify(t.chosen ? { skinId: null, game: 'avatar', slot: 'transform' } : { skinId: t.skinId }) }); applySkinEquipment(data); showToast(t.chosen ? '변신을 풀었어요.' : `${t.name}!`); }
+      await drawTransformShop();
+    } catch (error) { showToast(error.message, 4000); } finally { skinShopMode = was; tfBusy = false; }
+  }
+  async function openTransformShop() {
+    try { await drawTransformShop(); openPlazaWindow('변신 의상실', [tfCard]); } catch (error) { showToast(error.message); }
+  }
   function openSkinShop(mode = 'all') {
     ++skinShopEpoch; clearTimeout(skinBuyTimer);
     skinShop = null; skinShopBody.replaceChildren(); skinShopBalance.textContent = ''; skinShopStatus.textContent = '';

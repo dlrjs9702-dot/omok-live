@@ -13,10 +13,10 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
 
   // 잡화점 on the island (모자·장식 first)
   await page.evaluate(() => window.PlazaDebug().place('accessories'));
-  await expect(page.locator('#plazaHint')).toContainText('잡화점');
+  await expect(page.locator('#plazaHint')).toContainText('소품 가게');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   const shop = page.locator('#skinShopDialog');
-  await expect(shop.locator('#skinShopTitle')).toHaveText('잡화점');
+  await expect(shop.locator('#skinShopTitle')).toHaveText('소품 가게');
   await expect(shop.locator('.skinCard').first()).toBeVisible(); const all = await shop.locator('.skinCard').count();
   await shop.getByRole('group', { name: '보유' }).getByRole('button', { name: '산 것', exact: true }).click();
   await expect(shop.locator('.skinCount')).toHaveText('1개'); // the hat (the hair is the 미용실's)
