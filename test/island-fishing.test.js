@@ -39,6 +39,8 @@ test('낚시 서버: 물가에서만 던지고, 입질 때 당기면 가방·도
   await at(0, 8);
   assert.equal((await req('/api/island/fish/start', sa, {})).data.error, 'NOT_FISHING_SPOT');
   await at(T.PIER.x, T.PIER.z);
+  assert.equal((await req('/api/island/fish/start', sa, {})).data.error, 'NO_ROD', '낚싯대 없이는 안 됨');
+  await req('/api/test/island/give', sa, { itemId: 'fishing_rod', qty: 1 });
   const early = (await req('/api/island/fish/start', sa, {})).data; assert.ok(early.biteIn >= 5000 && early.biteIn <= 10000);
   assert.equal((await req('/api/island/fish/finish', sa, { fishId: early.fishId })).data.error, 'FISH_EARLY');
   const cast = (await req('/api/island/fish/start', sa, {})).data;

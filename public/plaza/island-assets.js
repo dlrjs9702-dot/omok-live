@@ -355,6 +355,8 @@
   // bug net and twelve insects, the museum, three pets -- each as together.<file>; the guide on the common rig
   for (const f of ["birthday_balloons","birthday_banner","birthday_cake","confetti_burst","mailbox","letter","parcel","guide_arrow","tool_bugnet","insect_butterfly_cabbage","insect_butterfly_swallowtail","insect_butterfly_blue","insect_dragonfly_red","insect_dragonfly_emperor","insect_cicada","insect_rhinoceros_beetle","insect_stag_beetle","insect_ladybird","insect_firefly","insect_grasshopper","insect_snail","museum_exterior","museum_case","museum_tank","museum_frame","pet_puppy","pet_kitten","pet_bird"]) REGISTRY[`together.${f}`] = { url: `/assets/island/together-v1/${f}.glb`, low: { url: `/assets/island/together-v1/${f}_low.glb` }, near: 40 };
   REGISTRY['good.bugnet'] = { ...REGISTRY['together.tool_bugnet'], scale: 0.55 }; // (on the store's table, laid small)
+  REGISTRY['good.fishing_rod'] = { ...REGISTRY['fishing.rod'], scale: 0.55 }; // (the rod one fishes with, on the table)
+  for (const p of ['puppy', 'kitten', 'bird']) REGISTRY[`good.pet_${p}`] = { ...REGISTRY[`together.pet_${p}`], scale: 0.55 }; // (on the table; walking with one it is full size)
   REGISTRY['character.guide'] = { url: `${CH}/npc_guide.glb`, low: { url: `${CH}/npc_guide_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
   // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made

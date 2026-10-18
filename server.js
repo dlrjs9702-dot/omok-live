@@ -48,6 +48,8 @@ const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
 const Together = require('./lib/island-together'); // B 47 생일·우체통
 const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 const bugSwings = new Map(); // session token -> the swing (one at a time)
+const petOf = new Map(); // B 47 반려동물: account -> { kind, name } | null (read from its 'pet' doc once)
+const PET_KINDS = ['puppy', 'kitten', 'bird'];
 const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
@@ -1133,7 +1135,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -4280,8 +4282,9 @@ async function requestHandler(req, res) {
     }
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
+    if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, { kind: doc.kind, name: String(doc.name || '').slice(0, 10) }); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
     plazaPresence.set(session.token, {
-      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
@@ -4495,6 +4498,18 @@ async function requestHandler(req, res) {
     if (out === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
     broadcastIsland('museum', { id: itemId, by: String(session.label || '게스트').slice(0, 24) });
     return sendJson(res, 200, { ok: true });
+  }
+  // B 47 반려동물: which of mine walks with me (one bought at the 잡화점, a name of up to 10 characters), or none
+  if (pathname === '/api/island/pet' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const body = await parseJson(req);
+    const kind = body.kind == null ? null : String(body.kind); const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
+    if (kind && !PET_KINDS.includes(kind)) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
+    if (kind && !((await pointStore.islandBag(account)).items || []).some((e) => e.itemId === `pet_${kind}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    await pointStore.questApply(account, 'pet', () => ({ doc: kind ? { kind, name } : {} }));
+    petOf.set(account, kind ? { kind, name } : null);
+    for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+    plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
   }
   // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
   if (pathname === '/api/island/mail' && req.method === 'GET') {
@@ -4958,6 +4973,7 @@ async function requestHandler(req, res) {
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
+    if (!bag.some((e) => e.itemId === 'fishing_rod')) return sendError(res, 409, 'NO_ROD', '낚싯대가 필요해요. 잡화점에서 살 수 있어요.'); // (사용자 2026-10-18)
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)

@@ -13,7 +13,7 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   const { page } = a;
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
-  const stand = async (x, z) => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await post(request, '/api/plaza/state', a.token, { x, z, yaw: 0, moving: false }); };
+  const stand = async (x, z) => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); for (let i = 0; i < 10; i += 1) { const r = await post(request, '/api/plaza/state', a.token, { x, z, yaw: 0, moving: false }); if (Math.hypot(r.data.x - x, r.data.z - z) < 0.6) break; await new Promise((ok) => setTimeout(ok, 300)); } }; // (until the server has me there)
   expect((await post(request, '/api/island/bug/start', a.token, {})).data.error).toBe('NO_BUGNET');
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
   await stand(0, 6); expect((await post(request, '/api/island/bug/start', a.token, {})).data.error).toBe('NOT_BUG_SPOT');
@@ -37,11 +37,12 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId: caught.itemId })).status).toBe(409);
   const door = Together.museumDoor(T.MUSEUM); await stand(door.x, door.z);
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId: 'bugnet' })).status).toBe(400);
-  expect((await post(request, '/api/island/museum/donate', a.token, { itemId: caught.itemId })).status).toBe(200);
-  const museum = (await get(request, '/api/island/museum', a.token)).data;
-  expect(museum.exhibits.find((x) => x.id === caught.itemId).by).toBe('곤충박사');
+  const before = (await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => x.id === caught.itemId).by; // (the island's museum: an earlier run may have given this kind)
+  const given = await post(request, '/api/island/museum/donate', a.token, { itemId: caught.itemId });
+  if (before) expect(given.data.error).toBe('ALREADY_SHOWN');
+  else { expect(given.status).toBe(200); expect((await get(request, '/api/island/museum', a.token)).data.exhibits.find((x) => x.id === caught.itemId).by).toBe('곤충박사'); }
   expect((await post(request, '/api/island/museum/donate', a.token, { itemId: caught.itemId })).status).toBe(409);
-  expect((await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === caught.itemId)).toBe(false);
+  expect((await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === caught.itemId)).toBe(Boolean(before));
   await page.keyboard.press('Escape');
   await expectNoScriptError(page);
   await a.context.close();

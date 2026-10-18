@@ -7,6 +7,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   test.setTimeout(120000);
   const who = await shopper(browser, request, '강낚시', 500000, 'male');
   const { page, token } = who;
+  expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (낚싯대는 잡화점에서)
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
   const weeds = (await get(request, '/api/island/weeds', token)).data.weeds || [];

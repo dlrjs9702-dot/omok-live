@@ -1338,6 +1338,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '낚시꾼');
   const { page } = a;
+  expect((await post(request, '/api/test/island/give', a.token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (사용자 2026-10-18: 낚싯대는 잡화점에서)
   await page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x, d.pier.z + 9); });
   const b = await intoPlaza(browser, request, '구경꾼'); // v1.10.89 원격 낚시: someone close by sees it
   await b.page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x + 2.5, d.pier.z + 10); });
@@ -1362,7 +1363,7 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   await expect.poll(seen, { timeout: 8000 }).toBe(null); await b.context.close();
   await page.keyboard.press('KeyI'); await page.locator('#islandDexBtn').click();
-  await expect(page.locator('#islandBagCount')).toHaveText('1/31'); // v1.10.43: + the 7 photo spots; v1.10.90 + 13 fish
+  await expect(page.locator('#islandBagCount')).toHaveText('1/43'); // v1.10.43: + the 7 photo spots; v1.10.90 + 13 fish; B 47 + 12 insects
   await expect(page.locator('.islandDexCell:not(.unfound)')).toHaveText(/고등어/);
   await expectNoScriptError(page);
   await a.context.close();

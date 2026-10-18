@@ -24,7 +24,7 @@ test('생일·우체통: 오늘 생일이면 광장 장식·선물 한 번·칭�
   for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().together()), { timeout: 20000 }).toMatchObject({ birthday: true, names: expect.arrayContaining(['생일손님']), mailbox: true });
   // 축하하기: by her side, once a day
   const at = (w) => w.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
-  const stand = async (w, x, z) => { await w.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await post(request, '/api/plaza/state', w.token, { x, z, yaw: 0, moving: false }); }; // (the server has me there at once)
+  const stand = async (w, x, z) => { await w.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); for (let i = 0; i < 10; i += 1) { const r = await post(request, '/api/plaza/state', w.token, { x, z, yaw: 0, moving: false }); if (Math.hypot(r.data.x - x, r.data.z - z) < 0.6) break; await new Promise((ok) => setTimeout(ok, 300)); } }; // (until the server has me there)
   const aId = await a.page.evaluate(() => window.PlazaDebug().myId); const spot = await at(a); await stand(b, spot.x + 1, spot.z);
   const cheer = await post(request, '/api/island/birthday/cheer', b.token, { plazaId: aId }); expect(cheer.status).toBe(200);
   expect(cheer.data.count).toBe(1);
@@ -34,8 +34,9 @@ test('생일·우체통: 오늘 생일이면 광장 장식·선물 한 번·칭�
   for (const [itemId, qty] of [['gift_wrap', 1], ['bait', 1]]) expect((await post(request, '/api/test/island/give', b.token, { itemId, qty })).status).toBe(200);
   const letter = (extra = {}) => ({ to: a.id, text: '생일 축하해요!', requestId: crypto.randomUUID(), ...extra });
   expect((await post(request, '/api/island/mail/send', b.token, letter())).status).toBe(409);
+  await b.page.bringToFront(); // (a background page sends its old place late)
   const M = T.VILLAGE.mailbox; await stand(b, M.x - Math.sin(M.yaw) * 1.1, M.z - Math.cos(M.yaw) * 1.1);
-  expect((await post(request, '/api/island/mail/send', b.token, letter({ text: '' }))).status).toBe(400);
+  const empty = await post(request, '/api/island/mail/send', b.token, letter({ text: '' })); expect(empty.status, JSON.stringify(empty.data)).toBe(400);
   expect((await post(request, '/api/island/mail/send', b.token, letter({ itemId: 'bait' }))).status).toBe(200);
   const box = (await get(request, '/api/island/mail', a.token)).data;
   expect([box.unread, box.letters[0].fromName, box.letters[0].text, box.letters[0].itemName]).toEqual([1, '편지손님', '생일 축하해요!', expect.any(String)]);

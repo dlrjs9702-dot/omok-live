@@ -1,0 +1,41 @@
+const { test, expect } = require('@playwright/test');
+const { shopper, get, post, expectNoScriptError } = require('./skin-support');
+
+// B 47 반려동물: one bought at the 잡화점 walks behind me with its name (Walk while it catches up, Sit when I sit), the
+// others see it too; put away, it is gone everywhere. PC 전용.
+test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
+
+test('반려동물: 가방에서 데리고 다니면 이름과 함께 따라오고 다른 화면에도 보임, 집에 두면 사라짐', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await shopper(browser, request, '강아지주인', 0, 'female');
+  const b = await shopper(browser, request, '구경꾼', 0, 'male');
+  for (const w of [a, b]) {
+    await w.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await w.page.reload();
+    await expect.poll(() => w.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  }
+  expect((await post(request, '/api/island/pet', a.token, { kind: 'puppy', name: '바둑이' })).status).toBe(409); // (not in the bag)
+  expect((await post(request, '/api/test/island/give', a.token, { itemId: 'pet_puppy', qty: 1 })).status).toBe(200);
+  // from the bag's button, with a name
+  a.page.once('dialog', (d) => d.accept('바둑이'));
+  await a.page.keyboard.press('KeyI'); const chosen = a.page.waitForResponse((r) => r.url().includes('/api/island/pet')); await a.page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
+  const res = await chosen; expect(res.status(), await res.text()).toBe(200);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
+  const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id), aId), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
+  // it follows: far, then Walk, then by me
+  const stand = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); for (let i = 0; i < 10; i += 1) { const r = await post(request, '/api/plaza/state', a.token, { x, z, yaw: 0, moving: false }); if (Math.hypot(r.data.x - x, r.data.z - z) < 0.6) break; await new Promise((ok) => setTimeout(ok, 300)); } }; // (until the server has me there)
+  await a.page.bringToFront(); // (a background page's frames are slowed)
+  const clips = a.page.evaluate(() => new Promise((done) => { const seen = new Set(); const t0 = performance.now(); const f = () => { seen.add(window.PlazaDebug().pets().find((p) => p.key === 'me')?.clip); if (performance.now() - t0 < 3000) requestAnimationFrame(f); else done([...seen]); }; requestAnimationFrame(f); }));
+  await stand(8, 6);
+  expect(await clips).toContain('Walk'); // (it walked to catch up)
+  await expect.poll(() => a.page.evaluate(() => { const d = window.PlazaDebug(); const p = d.pets().find((q) => q.key === 'me'); return Math.hypot(p.x - d.x, p.z - d.z) < 1.5 && p.clip; }), { timeout: 10000 }).toBe('Idle');
+  // after a reload it still walks with me (the server keeps it)
+  await a.page.reload(); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.kind), { timeout: 30000 }).toBe('puppy');
+  // put away: gone on both screens
+  expect((await post(request, '/api/island/pet', a.token, { kind: null })).status).toBe(200);
+  const newId = await a.page.evaluate(() => window.PlazaDebug().myId);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().some((p) => p.key === id), newId), { timeout: 20000 }).toBe(false);
+  for (const w of [a, b]) await expectNoScriptError(w.page);
+  for (const w of [a, b]) await w.context.close();
+});

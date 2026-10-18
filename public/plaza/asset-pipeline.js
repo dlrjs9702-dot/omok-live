@@ -337,6 +337,8 @@
       refill: (cell) => call('refill', [cell]),
       unbatch: (cells) => call('unbatch', [cells]),
       hold: (character, targetIds, ms, options) => call('hold', [character, targetIds, ms, options]),
+      // B 47 반려동물: a small animal's model and clips into the scene's holder (asset-loader `creature`)
+      creature: (targetIds, holder) => call('creature', [targetIds, holder]),
       // v1.10.32 운반: a kept thing let go, or handed to another character's hand (a lost thing given back)
       letGo: (character, key) => call('letGo', [character, key]),
       handOver: (from, to, key) => call('handOver', [from, to, key]),

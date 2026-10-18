@@ -10,8 +10,8 @@ const { testDatabase } = require('../test-support/pg-database');
 
 // v1.10.92 잡화점 (사용자 2026-10-18, IDEAS #future-general-store)
 test('잡화점 물건: 24종(B 45 꽃씨 5·묘목·비료, B 47 잠자리채 포함), 판매가(되팔기 없음)·쓰임', () => {
-  assert.equal(Items.GOODS.length, 24); // (B 47 + 잠자리채)
-  for (const id of Items.GOODS) { const g = Items.ITEMS[id]; assert.ok(g.good && g.buy > 0 && g.name && ['bait', 'show', 'gift', 'errand', 'keep', 'plant', 'fertilize', 'tool'].includes(g.use), id); assert.equal(g.at, null); }
+  assert.equal(Items.GOODS.length, 28); // (B 47 + 잠자리채, 반려동물 3, 낚싯대)
+  for (const id of Items.GOODS) { const g = Items.ITEMS[id]; assert.ok(g.good && g.buy > 0 && g.name && ['bait', 'show', 'gift', 'errand', 'keep', 'plant', 'fertilize', 'tool', 'pet'].includes(g.use), id); assert.equal(g.at, null); }
   assert.equal(Items.sellAt([{ entryId: 'a', itemId: 'bait', qty: 3 }], 'merchant', 0).paid, 0, '되팔 수 없음');
   assert.deepEqual(['bait', 'bait_premium', 'firework', 'gift_wrap', 'bouquet'].map((id) => Items.ITEMS[id].buy), [300, 1000, 800, 500, 1200]);
 });

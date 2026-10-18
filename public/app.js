@@ -2191,12 +2191,20 @@
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
         if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
+        if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = walking ? '집에 두기' : '데리고 다니기'; use.addEventListener('click', () => choosePet(walking ? null : kind)); slot.append(use); } // B 47
         if (item.itemId === 'bugnet') { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '채집하기'; use.addEventListener('click', () => { islandBagDialog.close(); startBugSwing(); }); slot.append(use); } // B 47
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
+  }
+  // B 47 반려동물: one of mine walks with me (a name asked the first time), everyone sees it
+  let myPet = null;
+  async function choosePet(kind) {
+    let name = myPet?.kind === kind ? myPet.name : '';
+    if (kind && !name) name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10);
+    try { const r = await api('/api/island/pet', { method: 'POST', body: JSON.stringify({ kind, name }) }); myPet = r.pet; plaza.controller?.setMyPet?.(myPet); islandBagDialog.close(); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); } catch (error) { showToast(error.message); }
   }
   // B 47 곤충 채집: the server picks the insect and when it comes; Space (or the big button) while it circles me catches it
   let bugNow = null;
@@ -3226,6 +3234,7 @@
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
   function showPlazaPlayers() {
+    const meNow = plazaPlayers.find((p) => p.id === plazaMyId); if (meNow && JSON.stringify(meNow.pet || null) !== JSON.stringify(myPet)) { myPet = meNow.pet || null; plaza.controller?.setMyPet?.(myPet); } // B 47 (my pet, as the server has it)
     plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
     const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
     if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
