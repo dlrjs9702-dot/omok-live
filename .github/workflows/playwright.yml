@@ -25,7 +25,7 @@ jobs:
     # October night and the town hall made the plaza tests slower; a shard went past 40 minutes)
     # v1.10.47: one shard reached 39.3m while the others took 6-8m. Split the two 3D suites from general games.
     # v1.10.90: 60 (the plaza job also runs the newer island specs on PC and phone)
-    timeout-minutes: 60
+    timeout-minutes: 90 # (the plaza group with the island specs runs 40~60 min on a slow runner)
     strategy:
       fail-fast: false
       matrix:
