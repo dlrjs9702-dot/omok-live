@@ -2477,7 +2477,8 @@
     plaza.controller?.setWeather?.(d.kind); const sel = byId('islandWeatherSelect'); if (sel && d.mode) sel.value = d.mode;
     clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
   }
-  function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
+  let weatherSeq = 0; // (a slower earlier read does not undo the administrator's change -- Codex review)
+  function refreshIslandWeather() { const seq = ++weatherSeq; api('/api/island/weather').then((d) => { if (seq === weatherSeq) showWeather(d); }).catch(() => {}); }
   // A4 주말 섬 대회: a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
   // and me, every 10 s), and a while after (the winner); the server judges, the page only shows
   let contestPoll = null; let contestTick = null; let contestSeen = null;

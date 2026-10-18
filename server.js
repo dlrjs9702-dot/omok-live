@@ -1432,22 +1432,29 @@ function publicTurnTimer(room) {
 let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
 // A4 주말 섬 대회 (lib/island-contest.js): the live board in memory -- ponytail: a restart during the 30 minutes loses that
 // contest's board (kept in the store only once settled); upgrade path: a contest_scores table if it matters
-// A5 공지 예약: the due notices posted (in order; each once -- taken off the queue before it is posted)
-let noticeBusy = false;
-async function postDueNotices() {
-  if (noticeBusy || !pointStore) return; noticeBusy = true;
-  try {
-    const queue = (await pointStore.worldValue('noticeQueue')) || []; const due = queue.filter((e) => e.at <= nowMs()); if (!due.length) return;
-    await pointStore.setWorldValue('noticeQueue', queue.filter((e) => e.at > nowMs()));
-    for (const e of due) await announcementStore.create(e.title, e.body, e.pinned);
-    await broadcastAnnouncements();
-  } catch (error) { console.error('예약 공지 실패:', error.message); } finally { noticeBusy = false; }
+// A5 공지 예약: every change to the queue goes one after another (adding, cancelling, posting -- Codex review); a due
+// notice is taken off only after it is posted (ponytail: a crash between the two posts it again; an id mark if it matters)
+let noticeChain = Promise.resolve();
+const editNoticeQueue = (fn) => { const run = noticeChain.then(async () => {
+  const queue = (await pointStore.worldValue('noticeQueue')) || []; const out = await fn(queue);
+  if (out.queue) await pointStore.setWorldValue('noticeQueue', out.queue); return out.value;
+}); noticeChain = run.catch(() => {}); return run; };
+function postDueNotices() {
+  if (!pointStore) return null;
+  return editNoticeQueue(async (queue) => {
+    const now = nowMs(); const posted = new Set();
+    try { for (const e of queue.filter((q) => q.at <= now)) { await announcementStore.create(e.title, e.body, e.pinned); posted.add(e.id); } } catch (error) { console.error('예약 공지 실패:', error.message); } // (the rest wait for the next round)
+    if (posted.size) await broadcastAnnouncements().catch(() => {});
+    return { queue: posted.size ? queue.filter((e) => !posted.has(e.id)) : null };
+  }).catch((error) => console.error('예약 공지 실패:', error.message));
 }
 setInterval(postDueNotices, 30000).unref?.();
 let contestShiftMs = 0; const contestNow = () => nowMs() + contestShiftMs; // (tests may move the contest's clock)
 let contestBoard = { id: null, rows: new Map() }; let contestPhase = null;
 let contestKindTest = null; // (tests: the week's event held at one kind)
-async function contestState() { const cfg = (await pointStore.worldValue('contest'))?.config; const c = IslandContest.phaseAt(contestNow(), cfg); if (contestKindTest) Object.assign(c, { kind: contestKindTest, name: IslandContest.KINDS[contestKindTest].name, how: IslandContest.KINDS[contestKindTest].how, unit: IslandContest.KINDS[contestKindTest].unit }); return c; }
+const contestKindHeld = (c) => (c && contestKindTest ? Object.assign(c, { kind: contestKindTest, name: IslandContest.KINDS[contestKindTest].name, how: IslandContest.KINDS[contestKindTest].how, unit: IslandContest.KINDS[contestKindTest].unit }) : c);
+async function contestState() { return contestKindHeld(IslandContest.phaseAt(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
+async function contestEnded() { return contestKindHeld(IslandContest.lastEnded(contestNow(), (await pointStore.worldValue('contest'))?.config)); }
 function contestNote(account, session, kind, value) {
   contestState().then((c) => {
     if (c.phase !== 'live' || c.kind !== kind || !Number.isFinite(value) || value <= 0) return;
@@ -1475,10 +1482,12 @@ async function settleContest(c) {
   if (winner) { for (const entry of lobbyStreams) { try { sseWrite(entry.res, 'statues', statueSnapshot()); } catch { lobbyStreams.delete(entry); } } } // (the winner joins the statues)
   return result;
 }
-// every 15 s: the phase turns are told to the island (the notice 10 min before, the start, the end) and the end settles
+// every 15 s: the latest contest over is settled until it is (settleContest is once per id; a failed one is tried again
+// -- Codex review), and the phase turns are told to the island (the notice 10 min before, the start, the end)
 setInterval(() => { contestState().then(async (c) => {
   if (contestWinnerStatue === null) { const r = await pointStore.worldValue('contestResult'); contestWinnerStatue = r?.winner ? { name: r.winner.name, look: r.winner.look, title: r.winner.title, label: r.name } : false; } // (after a restart)
-  if (c.phase === contestPhase) return; contestPhase = c.phase; if (c.phase === 'done') await settleContest(c); broadcastIsland('contest', { phase: c.phase, id: c.id }); }).catch(() => {}); }, 15000).unref?.();
+  const ended = await contestEnded(); if (ended) await settleContest(ended);
+  if (c.phase === contestPhase) return; contestPhase = c.phase; broadcastIsland('contest', { phase: c.phase, id: c.id }); }).catch((error) => console.error('섬 대회 정산 실패:', error.message)); }, 15000).unref?.();
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -4170,7 +4179,7 @@ async function requestHandler(req, res) {
         clearInterval(heartbeat);
         return;
       }
-      current.lastSeen = nowMs();
+      current.lastSeen = nowMs(); noteVisit(pointAccountForSession(current)); // (a day on, still here: in today -- Codex review)
       if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
       res.write(': ping\n\n');
     }, 15000);
@@ -5534,9 +5543,9 @@ async function requestHandler(req, res) {
     const publishAt = body.publishAt ? Date.parse(body.publishAt) : NaN; // A5 공지 예약: a later time queues it
     if (Number.isFinite(publishAt) && publishAt > nowMs() + 30000) {
       if (publishAt > nowMs() + 60 * 86400000) return sendError(res, 400, 'BAD_ANNOUNCEMENT', '예약은 60일 안으로 해 주세요.');
-      const queue = (await pointStore.worldValue('noticeQueue')) || []; if (queue.length >= 20) return sendError(res, 409, 'QUEUE_FULL', '예약 공지는 20개까지입니다.');
       const entry = { id: crypto.randomUUID(), title, body: content, pinned: body.pinned === true, at: publishAt };
-      await pointStore.setWorldValue('noticeQueue', [...queue, entry].sort((a, b) => a.at - b.at));
+      const added = await editNoticeQueue(async (queue) => (queue.length >= 20 ? { value: false } : { queue: [...queue, entry].sort((a, b) => a.at - b.at), value: true }));
+      if (!added) return sendError(res, 409, 'QUEUE_FULL', '예약 공지는 20개까지입니다.');
       return sendJson(res, 201, { ok: true, scheduled: entry });
     }
     const item = await announcementStore.create(title, content, body.pinned === true);
@@ -5546,7 +5555,7 @@ async function requestHandler(req, res) {
 
   if (pathname === '/api/admin/notice-queue' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, queue: (await pointStore.worldValue('noticeQueue')) || [] }); }
   const queuedMatch = pathname.match(/^\/api\/admin\/notice-queue\/([0-9a-f-]{36})$/i);
-  if (queuedMatch && req.method === 'DELETE') { if (!requireAdmin(req, res)) return; const queue = (await pointStore.worldValue('noticeQueue')) || []; await pointStore.setWorldValue('noticeQueue', queue.filter((e) => e.id !== queuedMatch[1])); return sendJson(res, 200, { ok: true }); }
+  if (queuedMatch && req.method === 'DELETE') { if (!requireAdmin(req, res)) return; await editNoticeQueue(async (queue) => ({ queue: queue.filter((e) => e.id !== queuedMatch[1]) })); return sendJson(res, 200, { ok: true }); }
   const announcementMatch = pathname.match(/^\/api\/announcements\/([0-9a-f-]{36})$/i);
   if (announcementMatch && req.method === 'PUT') {
     if (!requireAdmin(req, res)) return;
@@ -6060,7 +6069,7 @@ async function requestHandler(req, res) {
         try { sseWrite(res, 'sessionExpired', { message: '입장 세션이 만료되었습니다.' }); res.end(); } catch {}
         return clearInterval(heartbeat);
       }
-      current.lastSeen = nowMs();
+      current.lastSeen = nowMs(); noteVisit(pointAccountForSession(current)); // (a day on, still here: in today -- Codex review)
       if (current.guestKeyId) current.leaseSeenAt = current.lastSeen;
       res.write(': ping\n\n');
     }, 15000);

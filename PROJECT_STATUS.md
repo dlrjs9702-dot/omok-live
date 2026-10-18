@@ -20,7 +20,8 @@
 - 겨울 축제(B 46 winter-v1): 12월 또는 관리자 스위치 — 분수 자리 트리·선물·눈사람·썰매·사탕 지팡이·눈더미, 광장 벤치·가로등에 눈 덮개(겹침 모델), 겨울 의상 6종(`WINTER_ITEMS`, 산타 옷은 자체 몸체). 팩의 화환·가랜드·전구줄은 걸 난간이 없어 뺌.
 - 민원실 넓히기(B 44 townhall-v3): 28x18m, 창구 3개 9m 간격·직원 자체 모델, 대리석 의자 12+벤치 6석(좌석 `t0..t17`, 방 바닥 높이 `y`), 로비 소품, 가구 충돌(가장 가까운 빈 쪽). 팩을 반 바퀴 돌려 입구는 그대로 카메라 쪽.
 - 꽃·나무 심기(B 45 planting-v1, `lib/island-plants.js`): 꽃씨 5색·묘목·비료 판매, 가방 「심기」(광장·길·물가·시설·밭·마을 소품 밖, 꽃 0.6m·나무 3.2m 간격, 1인 20·섬 600), 단계(꽃 8시간·나무 2일마다, 3단계), 비료 한 번이면 그 뒤 2배, 모두에게 보임(`plants` 방송·2분마다). PG 새 표 `island_plants`.
-- 검증: e2e island-contest·island-admin-look(겨울 축제 포함)·island-plants·messenger(2.5초 안 도착), townhall 관련 plaza 시험, 단위 island-a4(모듈 자체 검사 4)·general-store(심기 JSON/PG)·asset-pipeline·skins. Codex 검토 대기(사용량 한도). 실제 휴대폰·GPU 미검증.
+- 검증: e2e island-contest·island-admin-look(겨울 축제 포함)·island-plants·messenger(2.5초 안 도착), townhall 관련 plaza 시험, 단위 island-a4(모듈 자체 검사 4)·general-store(심기 JSON/PG)·asset-pipeline·skins. Codex 검토(v1.10.95·96): 지적 10건 모두 반영 — 지난 소원 선물(어제만→받지 않은 날 모두), 섬 재진입 때 별똥별·대회 확인 재시작, 맞고 「판 보기」 닫힘은 방마다, 날씨 늦은 응답 무시, 공지 예약 변경 한 줄로 차례대로·게시 뒤에만 빼기, 일요일 늦게 시작해 월요일로 넘어가는 대회 유지, 정산 실패 시 15초마다 다시, 오래 접속 중인 계정도 날마다 접속일 기록. 실제 휴대폰·GPU 미검증.
+- 예금 이자(사용자 2026-10-18): 마지막 접속 뒤 7번째 자정부터 이자 없음(`bankAccrue` visitDay, 접속일은 로비·방 연결 때 하루 한 번 `noteVisit` — 이자를 먼저 옛 접속일로 센 뒤 바꿈; 기록 없는 계정은 2026-10-18 접속으로 침). PG 새 표 `bank_visits`. 입장 전 묶음은 겨울 축제·민원실 모델을 빼 21.6→19.9MB(`island.later`, 처음 쓸 때 받음).
 
 ## v1.10.95 날씨·별똥별(A4 일부), 게임관 점검 반영 2차(A3)
 

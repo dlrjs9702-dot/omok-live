@@ -569,7 +569,7 @@
     seenEventKey = undefined;
     prevItems = null;
     animatedTurn = { key: null, count: 0 };
-    stagedResultKey = null;
+    stagedResultKey = null; resultClosedKey = null; // (「판 보기」 in one room does not hide the next room's result -- Codex review)
     viewedRound = null;
     elementsById = new Map();
     anchors = { backs: new Map(), piles: new Map(), stats: new Map(), deck: null };
