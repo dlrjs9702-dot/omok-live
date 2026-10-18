@@ -341,3 +341,16 @@ test('PC 넓게: 카드놀이 판 폭 1,000px 이상, 스도쿠 판 700px 이상
   await page.screenshot({ path: test.info().outputPath('wide-sudoku.png') });
   await expectNoScriptError(page); await a.context.close();
 });
+
+// A3 G3-2: my equipped 오목 돌 skin goes into the AI practice too (my stones drawn with it)
+test('AI 연습 오목: 장착한 오목 돌 스킨으로 내 돌을 그린다', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 전용 검증');
+  test.setTimeout(120000);
+  const { buyAndEquip } = require('./skin-support');
+  const a = await shopper(browser, request, 'AI스킨', 3000000);
+  await buyAndEquip(request, a, ['omok_l1']);
+  const { page } = a;
+  await page.evaluate(() => { window.GameLaunch.play('gomoku', { place: 'quest', level: 'easy' }); });
+  await expect.poll(() => page.evaluate(async () => { const { E } = await import('/reflex/js/engine.js'); return E.game?.id === 'gomoku' ? E.opts?.pieceSkin || 'none' : null; }), { timeout: 30000 }).toBe('omok_l1');
+  await expectNoScriptError(page); await a.context.close();
+});

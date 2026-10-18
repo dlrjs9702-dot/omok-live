@@ -2002,7 +2002,8 @@
   // (on its 싱글게임 tab, the one last shown), as when leaving a room
   let hanpanBack = () => showView('lobby'); // where the screen opened last goes back to
   async function loadHanpan(onBack) {
-    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack() }); }
+    try { reflexGames ||= (await import('/reflex/reflex.js')).mount({ api, onBack: () => hanpanBack(), pieceSkin: async (gameId) => { // A3 G3-2: my equipped 오목 돌 in the AI practice too
+      if (gameId !== 'gomoku') return null; try { return (await api('/api/skins')).equipped?.omok?.piece || null; } catch { return null; } } }); }
     catch { showToast('게임을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return false; }
     hanpanBack = () => { loadPoints(); onBack(); };
     showView('reflex');
