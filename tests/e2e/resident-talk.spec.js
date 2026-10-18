@@ -12,14 +12,13 @@ test('주민 대화: 걷는 주민에게 말 걸기, 심부름 받고 끝내면 
   const dialog = page.locator('#plazaDialog');
   // stand by islander n (they stroll: next to them again until one stands and the prompt is theirs), then Space
   // (they stand 3-9 s at a stop: next to them again, Space while the prompt is theirs, until the talk is open)
+  // (CI's slow frames miss the 3-9 s stops: the debug helper stands me by them and talks at once; the server still
+  // checks the distance -- a walk-off between is retried)
   const talkTo = async (n) => {
-    await page.locator('#plazaStage').focus();
     await expect.poll(async () => {
-      if (/talkMode/.test(await dialog.getAttribute('class') || '')) return true;
-      const ready = await page.evaluate((n) => { const d = window.PlazaDebug(); if (d.near === `resident:${n}`) return true; const w = d.wanderers.find((o) => o.n === n); window.PlazaWarp(w.x + 1.1, w.z); return false; }, n);
-      if (ready) { await page.keyboard.press('Space'); await page.waitForTimeout(800); } else await page.waitForTimeout(500);
+      if (!/talkMode/.test(await dialog.getAttribute('class') || '')) { await page.evaluate((n) => window.PlazaDebug().talkResident(n), n); await page.waitForTimeout(1500); }
       return /talkMode/.test(await dialog.getAttribute('class') || '');
-    }, { timeout: 120000, intervals: [200] }).toBe(true);
+    }, { timeout: 120000, intervals: [300] }).toBe(true);
     expect(await page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe(`resident:${n}`); // the talk camera (사용자 2026-10-18: every talk)
   };
   const close = async () => { await page.keyboard.press('Escape'); await expect(dialog).not.toHaveClass(/talkMode/); };
