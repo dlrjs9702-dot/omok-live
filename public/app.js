@@ -2456,7 +2456,7 @@
   byId('bankCloseBtn').addEventListener('click', () => bankDialog.close());
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
-  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); plaza.controller?.setIslandLook?.(d); const ss = byId('islandSeasonSelect'); if (ss) ss.value = d.seasonHold == null ? 'auto' : 'hold'; const ds = byId('islandDecorSelect'); if (ds) ds.value = d.decor; const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
   // A4 날씨: the server's weather for everyone; asked on entering the island, pushed when the administrator holds it, and
   // asked again when its block ends
   let weatherTimer = null;
@@ -2551,6 +2551,9 @@
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c }) => { byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  for (const [form, select, path, label] of [['islandSeasonForm', 'islandSeasonSelect', '/api/admin/island/season', '계절 회전'], ['islandDecorForm', 'islandDecorSelect', '/api/admin/island/decor', '이벤트 장식']]) { // A5 관리자
+    byId(form)?.addEventListener('submit', async (event) => { event.preventDefault(); const mode = byId(select).value; try { await api(path, { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`${label}: ${byId(select).selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); } });
+  }
   byId('islandWeatherForm')?.addEventListener('submit', async (event) => { // A4 관리자: 날씨
     event.preventDefault(); const mode = byId('islandWeatherSelect').value;
     try { await api('/api/admin/island/weather', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 날씨: ${byId('islandWeatherSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
@@ -3646,7 +3649,7 @@
     announcementFormTitle.textContent = '공지 등록';
   }
 
-  function openAnnouncementEditor(item = null) {
+  function openAnnouncementEditor(item = null) { loadNoticeQueue(); // (A5: the queued ones beside the editor)
     if (sessionRole !== 'admin') return;
     announcementPanel.classList.remove('hidden');
     announcementTab.setAttribute('aria-expanded', 'true');
@@ -3728,6 +3731,15 @@
     }
   }
 
+  // A5 공지 예약: the queued notices (administrator only) with a 취소 each
+  async function loadNoticeQueue() {
+    const box = byId('noticeQueue'); if (!box || sessionRole !== 'admin') return;
+    try {
+      const { queue } = await api('/api/admin/notice-queue');
+      box.replaceChildren(...queue.map((e) => { const row = document.createElement('div'); row.className = 'noticeQueueRow'; const t = document.createElement('span'); t.textContent = `⏰ ${new Date(e.at).toLocaleString('ko-KR')} · ${e.title}`; const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.textContent = '취소'; b.addEventListener('click', async () => { await api(`/api/admin/notice-queue/${e.id}`, { method: 'DELETE' }).catch(() => {}); loadNoticeQueue(); }); row.append(t, b); return row; }));
+      box.classList.toggle('hidden', !queue.length);
+    } catch {}
+  }
   async function saveAnnouncement(event) {
     event.preventDefault();
     if (sessionRole !== 'admin') return;
@@ -3741,10 +3753,11 @@
     try {
       await api(id ? `/api/announcements/${id}` : '/api/announcements', {
         method: id ? 'PUT' : 'POST',
-        body: JSON.stringify({ title, body, pinned: announcementPinned.checked }),
-      });
+        body: JSON.stringify({ title, body, pinned: announcementPinned.checked, ...(!id && byId('announcementAt').value ? { publishAt: new Date(byId('announcementAt').value).toISOString() } : {}) }), // (A5 공지 예약)
+      }).then((r) => { if (r.scheduled) showToast(`예약했어요 · ${new Date(r.scheduled.at).toLocaleString('ko-KR')}에 게시`); return r; });
+      byId('announcementAt').value = '';
       closeAnnouncementEditor();
-      await loadAnnouncements();
+      await loadAnnouncements(); loadNoticeQueue();
       showToast(id ? '공지사항을 수정했습니다.' : '공지사항을 등록했습니다.');
     } catch (err) { showToast(err.message, 4000); }
     finally { announcementSaveBtn.disabled = false; }
@@ -5493,7 +5506,7 @@
     if (event === 'plaza') { plaza.controller?.setTrainService?.(parsed.trainService); plazaPlayers = Array.isArray(parsed.players) ? parsed.players : []; showPlazaPlayers(); return; }
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
-    if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
+    if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere

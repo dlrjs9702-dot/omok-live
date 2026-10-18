@@ -1425,6 +1425,18 @@ function publicTurnTimer(room) {
 let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
 // A4 주말 섬 대회 (lib/island-contest.js): the live board in memory -- ponytail: a restart during the 30 minutes loses that
 // contest's board (kept in the store only once settled); upgrade path: a contest_scores table if it matters
+// A5 공지 예약: the due notices posted (in order; each once -- taken off the queue before it is posted)
+let noticeBusy = false;
+async function postDueNotices() {
+  if (noticeBusy || !pointStore) return; noticeBusy = true;
+  try {
+    const queue = (await pointStore.worldValue('noticeQueue')) || []; const due = queue.filter((e) => e.at <= nowMs()); if (!due.length) return;
+    await pointStore.setWorldValue('noticeQueue', queue.filter((e) => e.at > nowMs()));
+    for (const e of due) await announcementStore.create(e.title, e.body, e.pinned);
+    await broadcastAnnouncements();
+  } catch (error) { console.error('예약 공지 실패:', error.message); } finally { noticeBusy = false; }
+}
+setInterval(postDueNotices, 30000).unref?.();
 let contestShiftMs = 0; const contestNow = () => nowMs() + contestShiftMs; // (tests may move the contest's clock)
 let contestBoard = { id: null, rows: new Map() }; let contestPhase = null;
 let contestKindTest = null; // (tests: the week's event held at one kind)
@@ -4766,7 +4778,7 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-fish:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || !IslandFishing.canFish(at.x, at.z)) return sendError(res, 409, 'NOT_FISHING_SPOT', '물가에서 낚시할 수 있습니다.');
-    const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const season = IslandTerrain.seasonAt(at.x, at.z, now) || 'summer'; // v1.10.90: the river or the sea, and that spot's season today
+    const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const held = (await pointStore.worldValue('season'))?.day; const season = (Number.isInteger(held) ? IslandTerrain.zoneSeason(IslandTerrain.seasonZoneAt(at.x, at.z), held) : IslandTerrain.seasonAt(at.x, at.z, now)) || 'summer'; // (A5: a held arrangement) // v1.10.90: the river or the sea, and that spot's season today
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
@@ -5064,6 +5076,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); if (body.reset) { starShiftMs = 0; return sendJson(res, 200, { ok: true }); }
     starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/notices/due' && req.method === 'POST') { await postDueNotices(); return sendJson(res, 200, { ok: true }); } // (tests: not waiting 30 s)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/contest/clock' && req.method === 'POST') { // move the contest's clock: 'live' (1 min in), 'end' (just after), 'reset'
     const body = await parseJson(req); const cfg = (await pointStore.worldValue('contest'))?.config; const k = IslandContest.weekContest(nowMs(), cfg);
     contestShiftMs = body.to === 'live' ? k.start + 60000 - nowMs() : body.to === 'end' ? k.end + 1000 - nowMs() : 0;
@@ -5364,7 +5377,8 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
-    return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    // (A5: with the season arrangement -- the day it is held at, or null to turn -- and the event decorations' mode)
+    return sendJson(res, 200, { ok: true, mode: (await pointStore.worldValue('time'))?.mode || 'auto', seasonHold: (await pointStore.worldValue('season'))?.day ?? null, decor: (await pointStore.worldValue('decor'))?.mode || 'auto' });
   }
   // v1.10.90 에셋 점검실 (IDEAS #future-admin-console ③): the drawn pictures the game uses, and the administrator's notes on
   // assets (status, memo, a small JPEG of the view, the view itself), kept on the server
@@ -5413,6 +5427,21 @@ async function requestHandler(req, res) {
         await pointStore.setWorldValue('switches', next); opsCache = next; });
     }
     return sendJson(res, 200, { ok: true, switches: await opsSwitches() });
+  }
+  // A5 관리자: 계절 고정 (hold today's arrangement of the four season zones, or let it turn by the day) and 이벤트 장식 수동
+  // (the event decorations on or off by hand, or by the date) -- both told to the island at once (the 'islandTime' push)
+  if (pathname === '/api/admin/island/season' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); if (!['auto', 'hold'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '계절 회전을 골라 주세요.');
+    const day = body.mode === 'hold' ? IslandTerrain.seasonDay(nowMs()) : null;
+    await pointStore.setWorldValue('season', { day, at: nowMs() }); broadcastIsland('islandTime', { mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    return sendJson(res, 200, { ok: true, seasonHold: day });
+  }
+  if (pathname === '/api/admin/island/decor' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); if (!['auto', 'on', 'off'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '장식 설정을 골라 주세요.');
+    await pointStore.setWorldValue('decor', { mode: body.mode, at: nowMs() }); broadcastIsland('islandTime', { mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
+    return sendJson(res, 200, { ok: true, decor: body.mode });
   }
   if (pathname === '/api/admin/island/time' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
@@ -5468,11 +5497,22 @@ async function requestHandler(req, res) {
     if (!title || title.length > 100 || !content || content.length > 3000) {
       return sendError(res, 400, 'BAD_ANNOUNCEMENT', '제목은 1~100자, 내용은 1~3000자로 입력해 주세요.');
     }
+    const publishAt = body.publishAt ? Date.parse(body.publishAt) : NaN; // A5 공지 예약: a later time queues it
+    if (Number.isFinite(publishAt) && publishAt > nowMs() + 30000) {
+      if (publishAt > nowMs() + 60 * 86400000) return sendError(res, 400, 'BAD_ANNOUNCEMENT', '예약은 60일 안으로 해 주세요.');
+      const queue = (await pointStore.worldValue('noticeQueue')) || []; if (queue.length >= 20) return sendError(res, 409, 'QUEUE_FULL', '예약 공지는 20개까지입니다.');
+      const entry = { id: crypto.randomUUID(), title, body: content, pinned: body.pinned === true, at: publishAt };
+      await pointStore.setWorldValue('noticeQueue', [...queue, entry].sort((a, b) => a.at - b.at));
+      return sendJson(res, 201, { ok: true, scheduled: entry });
+    }
     const item = await announcementStore.create(title, content, body.pinned === true);
     await broadcastAnnouncements();
     return sendJson(res, 201, { ok: true, item });
   }
 
+  if (pathname === '/api/admin/notice-queue' && req.method === 'GET') { if (!requireAdmin(req, res)) return; return sendJson(res, 200, { ok: true, queue: (await pointStore.worldValue('noticeQueue')) || [] }); }
+  const queuedMatch = pathname.match(/^\/api\/admin\/notice-queue\/([0-9a-f-]{36})$/i);
+  if (queuedMatch && req.method === 'DELETE') { if (!requireAdmin(req, res)) return; const queue = (await pointStore.worldValue('noticeQueue')) || []; await pointStore.setWorldValue('noticeQueue', queue.filter((e) => e.id !== queuedMatch[1])); return sendJson(res, 200, { ok: true }); }
   const announcementMatch = pathname.match(/^\/api\/announcements\/([0-9a-f-]{36})$/i);
   if (announcementMatch && req.method === 'PUT') {
     if (!requireAdmin(req, res)) return;
