@@ -22,8 +22,8 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   await expect.poll(async () => ((await get(request, '/api/island/bag', token)).data.items || []).find((e) => e.itemId === 'bait')?.qty || 0).toBe(5);
   expect((await get(request, '/api/points', token)).data.balance).toBe(before - 1500);
   await page.keyboard.press('Escape');
-  // seeds are shown, not sold yet
-  await require('./skin-support').standInMall(page, 9.2, 6.5, '곧 판매');
+  // (B 45: the seeds are on sale now)
+  await require('./skin-support').standInMall(page, 9.2, 6.5, '꽃씨');
   await require('./skin-support').standInMall(page, 0, -9.1, '나가기');
   await press();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');

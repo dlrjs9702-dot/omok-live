@@ -298,12 +298,12 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('hair', '미용실', 34); // v1.10.74: +17 original hairstyles
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '소품 가게', 55); /* v1.10.92 + 포차코 머리장식 */ // v1.10.74: +16 original and 11 character hats
+  await visit('accessories', '소품 가게', 57); /* v1.10.92 + 포차코 머리장식; B 46 + 산타 모자·루돌프 머리띠 */ // v1.10.74: +16 original and 11 character hats
   // v1.10.32: the five accessory slots, a tab each (the hats first)
   await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
   await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '망토' }).click();
-  await expect(dialog.locator('.skinCard')).toHaveCount(26); // v1.10.74: +8 original and 5 character capes
+  await expect(dialog.locator('.skinCard')).toHaveCount(27); // v1.10.74: +8 original and 5 character capes; B 46 + 눈꽃 망토
   await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('전설 · 망토');
   await expect(dialog.locator('.skinCard').filter({ hasText: '작은 날개 망토' })).toContainText('400,000P'); // 전설 (v1.10.35)
   await dialog.locator('.skinSlotTabs [role=tab]').filter({ hasText: '모자·장식' }).click();
@@ -311,7 +311,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('avatar', '옷가게', 61); /* v1.10.92 + 포차코 의상 */ // v1.10.74: +19 original and 11 character outfits
+  await visit('avatar', '옷가게', 62); /* v1.10.92 + 포차코 의상; B 46 + 산타 옷 */ // v1.10.74: +19 original and 11 character outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await expect(dialog.locator('.skinTitle.selected')).toHaveAttribute('aria-pressed', 'true');
   await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('outline-color', 'rgb(96, 165, 250)');
@@ -1049,6 +1049,7 @@ test('배회 NPC: 10명이 걸어 다니고, 두 화면에서 같은 자리에 �
   test.setTimeout(180000); // two 3D island pages
   const a = await intoPlaza(browser, request, '구경꾼하나');
   const b = await intoPlaza(browser, request, '구경꾼둘');
+  await post(request, '/api/test/island/free-residents', a.token, {}); // (no resident held by an earlier test's event: they all walk their rounds)
   const islanders = (page) => page.evaluate(() => window.PlazaDebug().wanderers);
   await expect.poll(async () => (await islanders(a.page)).length, { timeout: 15000 }).toBe(10);
   await expect.poll(async () => (await islanders(b.page)).length, { timeout: 15000 }).toBe(10);
