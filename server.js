@@ -48,6 +48,7 @@ const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
 require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandNpcs = require('./public/plaza/island-npcs');
+const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
@@ -908,7 +909,8 @@ async function errandView(account) {
   const day = kstDate(nowMs()); const errands = IslandErrands.errandsOf(day);
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
-  return { marks: IslandErrands.marks(errands, stages, done), track: IslandErrands.track(errands, stages, done), done: done.size, total: errands.length };
+  const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
+  return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done), done: done.size, total: errands.length };
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
@@ -1028,6 +1030,7 @@ let plazaDirty = false;
 // v1.10.84 관공서 실내 (IslandTerrain.TOWNHALL_ROOM): who is in the 민원실 (session tokens). Inside, a pose stays in the
 // room; leaving the island or the visit ends it -- a new visit starts outside the hall's door.
 const townhallInside = new Set();
+const storeInside = new Set(); // v1.10.92 잡화점: who is in the store's room (the same rules as the 민원실)
 // v1.10.86 주민세 (사용자 2026-10-17): every account pays each Seoul day 3% of what it has (wallet + deposit), at least
 // 20,000P (lib/point-store.js taxCollect); what it cannot pay is owed, up to 200,000P. Anyone owing is a 체납자: that title
 // over any other, and the 줄무늬 outfit in white and black over whatever is worn, until it is paid at the 민원 창구.
@@ -1075,7 +1078,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null })) };
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -4091,6 +4094,11 @@ async function requestHandler(req, res) {
     if (ride) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
+    } else if (storeInside.has(session.token)) { // v1.10.92 (as the 민원실 below)
+      const here = plazaPresence.get(session.token);
+      spot = IslandStore.inStore(Number(body.x), Number(body.z), 2) || !here ? IslandStore.clamp(body.x, body.z) : { x: here.x, z: here.z };
+      Object.assign(wanted, IslandStore.clamp(body.x, body.z));
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('store'));
     } else if (townhallInside.has(session.token)) {
       // a pose from before going in (still on the island) arrives late: where I am stays (it never drags me to a wall)
       const here = plazaPresence.get(session.token);
@@ -4115,7 +4123,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      space: townhallInside.has(session.token) ? 'townhall' : 'island', // v1.10.84
+      space: townhallInside.has(session.token) ? 'townhall' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
         const fishing = fishActOf(session.token, body.act); if (fishing) return { ...fishing, actN: 0, seat: null }; // v1.10.89
@@ -4219,6 +4227,45 @@ async function requestHandler(req, res) {
   }
   // v1.10.84 관공서 실내: SPACE at the hall's door (in the yard, past the mayor) goes in; at the room's door, out to the
   // hall's door. The server moves the position itself, so a pose can never put anyone in or out.
+  // v1.10.92 잡화점: in at the store's door, out at the room's; the shelves (each good, its price -- seeds and the like
+  // shown, not sold yet); a good bought where it stands (in the room, within reach of it), paid and in the bag at once
+  if ((pathname === '/api/island/store/enter' || pathname === '/api/island/store/leave') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); if (!at) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const entering = pathname.endsWith('/enter'); const R = IslandStore.ROOM;
+    if (entering) {
+      const door = IslandTerrain.facilityDoor('store');
+      if (storeInside.has(session.token) || townhallInside.has(session.token)) return sendError(res, 409, 'ALREADY_INSIDE', '이미 안에 있습니다.');
+      if (trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      freeSeat(session.token); storeInside.add(session.token);
+    } else {
+      const exit = IslandStore.world(R.exit.lx, R.exit.lz);
+      if (!storeInside.has(session.token) || Math.hypot(at.x - exit.x, at.z - exit.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      storeInside.delete(session.token);
+    }
+    const spot = entering ? IslandStore.world(R.entry.lx, R.entry.lz) : IslandTerrain.facilityDoor('store');
+    plazaPresence.set(session.token, { ...at, x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100, space: entering ? 'store' : 'island', moving: false, at: nowMs(), act: null, seat: null });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: entering ? 'store' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
+  }
+  if (pathname === '/api/island/store' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null }; }) });
+  }
+  if (pathname === '/api/island/store/buy' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const at = plazaPresence.get(session.token);
+    const s = at && storeInside.has(session.token) ? IslandStore.goodAt(at.x, at.z) : null;
+    if (!s || s.id !== body.itemId) return sendError(res, 409, 'TOO_FAR', '물건 가까이 가서 다시 시도해 주세요.');
+    if (s.soon || !IslandItems.ITEMS[s.id]?.good) return sendError(res, 409, 'NOT_ON_SALE', '아직 팔지 않는 물건입니다.');
+    const qty = Number(body.qty); if (![1, 5, 10].includes(qty)) return sendError(res, 400, 'BAD_QTY', '수량을 확인해 주세요.');
+    const account = pointAccountForSession(session);
+    let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (out.applied) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, itemId: s.id, qty, bag: out.bag, balance: out.balance ?? null });
+  }
   if ((pathname === '/api/island/townhall/enter' || pathname === '/api/island/townhall/leave') && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -4227,7 +4274,7 @@ async function requestHandler(req, res) {
     const entering = pathname.endsWith('/enter');
     if (entering) {
       const door = IslandTerrain.facilityDoor('townhall');
-      if (townhallInside.has(session.token)) return sendError(res, 409, 'ALREADY_INSIDE', '이미 안에 있습니다.');
+      if (townhallInside.has(session.token) || storeInside.has(session.token)) return sendError(res, 409, 'ALREADY_INSIDE', '이미 안에 있습니다.');
       if (trainRiders.has(session.token) || trainVisitors.has(session.token) || !passesGate(session) || Math.hypot(at.x - door.x, at.z - door.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       freeSeat(session.token); townhallInside.add(session.token);
     } else {
@@ -5097,11 +5144,13 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
-    const r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n);
+    const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
+    let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
+    if (r?.take && !(await pointStore.islandUse({ userId: account, requestId: `errand-${r.pay.id}-${account.slice(-12)}`.replace(/[^A-Za-z0-9-]/g, '-').slice(0, 64), itemId: r.take })).applied) r = null; // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
     const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
     const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];

@@ -52,7 +52,8 @@
     hair: { x: 49, z: 11, face: [49, 0], kind: 'shop', wall: 0xfff1e0, roof: 0xd98b5f }, // 미용실
     accessories: { x: 55.5, z: 11, face: [55.5, 0], kind: 'shop', wall: 0xfdf3d7, roof: 0xc9a14a }, // 잡화점
     dye: { x: 62, z: 10, face: [62, 0], kind: 'stall' }, // 염색사
-    transform: { x: 28, z: 10, face: [28, 0], kind: 'tfbooth' }, // v1.10.91 변신 의상실 (사용자 2026-10-18: transformations sold apart)
+    transform: { x: 28, z: 10, face: [28, 0], kind: 'tfbooth' },
+    store: { x: 80, z: 9, face: [75, 4], kind: 'store', wall: 0xf3e6c8, roof: 0xd9734f }, // v1.10.92 잡화점 (assets 41): at the end of the shop street // v1.10.91 변신 의상실 (사용자 2026-10-18: transformations sold apart)
     board: { x: -10, z: -6, face: [0, 0], kind: 'board' },
     attendance: { x: 10, z: -6, face: [0, 0], kind: 'npc' },
     map: { x: -11, z: 6, face: [0, 2], kind: 'mapboard' },
@@ -66,7 +67,7 @@
   };
   function facilityDoor(id) {
     const s = SPOTS[id]; if (!s) return null;
-    const depth = { hall: 10, tower: 6.4, townhall: 12.6, shop: 2.7, house: 2.7, office: 2.7, board: .3, donation: .9, mapboard: .3, gate: 1.2, gazebo: 2.4, npc: .9, stall: 1.3, desk: 1.2, tfbooth: 1.2 }[s.kind];
+    const depth = { hall: 10, tower: 6.4, townhall: 12.6, shop: 2.7, house: 2.7, office: 2.7, board: .3, donation: .9, mapboard: .3, gate: 1.2, gazebo: 2.4, npc: .9, stall: 1.3, desk: 1.2, tfbooth: 1.2, store: 6 }[s.kind];
     if (depth === undefined) return null;
     const distance = s.kind === 'townhall' ? 8.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
     const dx = s.face[0] - s.x; const dz = s.face[1] - s.z; const length = Math.hypot(dx, dz) || 1;

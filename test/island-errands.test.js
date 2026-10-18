@@ -21,7 +21,11 @@ test('주민: 열 명 모두 이름·설정·대사, 이야기 주민도 대사,
 test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 찾기는 찾고 알리면, 전하기는 전하면 한 번 사례', () => {
   const day = '2026-10-18'; const es = E.errandsOf(day);
   assert.deepEqual(E.errandsOf(day), es); assert.notDeepEqual(E.errandsOf('2026-10-19').map((e) => e.id), es.map((e) => e.id));
-  assert.equal(es.length, 3); assert.equal(new Set(es.map((e) => e.from)).size, 3); for (const e of es) assert.notEqual(e.from, e.to);
+  assert.equal(es.length, 3); assert.equal(new Set(es.map((e) => e.from)).size, 3); for (const e of es) if (e.kind !== 'buy') assert.notEqual(e.from, e.to);
+  // v1.10.92 잡화점: at most one 'buy' a day, over a month every kind comes
+  const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`));
+  assert.ok(month.every((d) => d.filter((e) => e.kind === 'buy').length <= 1)); assert.deepEqual([...new Set(month.flat().map((e) => e.kind))].sort(), ['buy', 'deliver', 'find']);
+  for (const e of month.flat().filter((x) => x.kind === 'buy')) assert.ok(E.BUY_GOODS.includes(e.good) && e.from === e.to);
   // both kinds, made up by hand
   const find = { id: 'errand_x_0', kind: 'find', from: 0, to: 1, reward: 2000, why: '할 말이 있어요' };
   const give = { id: 'errand_x_1', kind: 'deliver', from: 2, to: 3, reward: 1500, thing: '편지' };
@@ -38,6 +42,12 @@ test('심부름: 하루 세 개(같은 날 같음, 부탁하는 사람 다름), 
   r = E.talk(list, st, done, 3); assert.equal(r.pay, give); assert.match(r.say[0], /하람이 보낸 편지요/); done.add(give.id); st = r.stages;
   assert.equal(E.talk(list, st, done, 0), null); assert.equal(E.talk(list, st, done, 2), null); // both done: their own words again
   assert.deepEqual(E.marks(list, st, done), {}); assert.deepEqual(E.track(list, st, done), []);
+  // a store errand: asked, the star only once the good is in the bag, then it is taken and paid
+  const buy = { id: 'errand_x_2', kind: 'buy', from: 6, to: 6, reward: 1500, good: 'milk', thing: '우유' };
+  r = E.talk([buy], {}, done, 6); assert.match(r.say[0], /우유가 필요한데/); st = r.stages;
+  assert.deepEqual(E.marks([buy], st, done), {}); assert.equal(E.talk([buy], st, done, 6).pay, null);
+  assert.deepEqual(E.marks([buy], st, done, new Set(['milk'])), { 6: 'ready' });
+  r = E.talk([buy], st, done, 6, new Set(['milk'])); assert.equal(r.take, 'milk'); assert.equal(r.pay, buy);
 });
 
 async function affinityBehaves(store, reopen) {

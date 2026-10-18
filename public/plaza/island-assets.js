@@ -338,5 +338,12 @@
   REGISTRY['farm.sign'] = farm('sign_helpers');
   REGISTRY['farm.mallet'] = { url: `${CH}/props/mallet.glb`, low: { url: `${CH}/props/mallet_low.glb` } };
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
+  // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
+  // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves
+  const ST = '/assets/island/store-v1';
+  const st = (file, extra = {}) => ({ url: `${ST}/${file}.glb`, low: { url: `${ST}/${file}_low.glb` }, ...extra });
+  REGISTRY['facility.store'] = st('store_exterior', { near: 90, rotationY: Math.PI }); REGISTRY['store.interior'] = st('store_interior');
+  REGISTRY['character.storekeeper'] = { url: `${CH}/npc_storekeeper.glb`, low: { url: `${CH}/npc_storekeeper_low.glb` }, rotationY: Math.PI, motions: true };
+  for (const id of ['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge']) REGISTRY[`good.${id}`] = st(id, { shadows: false });
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

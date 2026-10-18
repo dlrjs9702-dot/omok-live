@@ -1473,6 +1473,7 @@
     { id: 'hair', name: '미용실', open: () => openSkinShop('avatar:hair') },
     { id: 'accessories', name: '소품 가게', open: () => openSkinShop('avatar:hat') }, // (v1.10.91: the 잡화점 is the new store of goods)
     { id: 'transform', name: '변신 의상실', open: () => openTransformShop() }, // v1.10.91 변신 따로 판매
+    { id: 'store', name: '잡화점', open: () => storeDoor(true) }, // v1.10.92 잡화점: in through its door
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
@@ -1795,7 +1796,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'store:keeper' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2359,6 +2360,41 @@
     openTalk('분실물 찾아주기', true);
   }
   // v1.10.37 연계 퀘스트: what the islander says (the step paid, the next asked), and the step under way in one line each
+  // v1.10.92 잡화점 (IDEAS #future-general-store): in and out like the 민원실; inside, standing at a good on its shelf, SPACE
+  // opens it (what it is for, 1·5·10 to buy -- paid and in the bag at once); the keeper behind the counter greets
+  let storeBusy = false; let storeGoods = [];
+  const GOOD_USE = { bait: '가방에 있으면 낚시할 때 자동으로 씁니다. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 씁니다.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
+  async function storeDoor(entering) {
+    if (storeBusy) return; storeBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      if (entering) { storeGoods = (await api('/api/island/store')).goods; plaza.controller?.setGoodsPrices?.(Object.fromEntries(storeGoods.map((g) => [g.id, { name: g.name, price: g.price }]))); }
+      const r = await api(entering ? '/api/island/store/enter' : '/api/island/store/leave', { method: 'POST', body: '{}' });
+      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
+    } catch (error) { showToast(error.message); } finally { storeBusy = false; }
+  }
+  function storeKeeperTalk() {
+    const lines = ['「어서 오세요! 잡화점이에요.」', '「필요한 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(...lines, ok); openTalk('잡화점 주인');
+  }
+  const goodCard = document.createElement('div'); goodCard.className = 'goodCard'; goodCard.id = 'goodCard';
+  let goodBusy = false;
+  function openGood(id) {
+    const g = storeGoods.find((x) => x.id === id); if (!g || !g.price) { showToast('곧 판매할 물건이에요.'); return; }
+    const img = document.createElement('img'); img.src = `/assets/items/goods/${id}.png`; img.alt = ''; img.className = 'goodIcon';
+    const name = document.createElement('strong'); name.textContent = `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P`;
+    const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = GOOD_USE[g.use] || '';
+    const row = document.createElement('div'); row.className = 'goodBuy';
+    for (const qty of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
+      b.addEventListener('click', async () => {
+        if (goodBusy) return; goodBusy = true;
+        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/store/buy', { method: 'POST', body: JSON.stringify({ itemId: id, qty, requestId: crypto.randomUUID() }) }); showToast(`🛍️ ${g.name} ${qty}개를 가방에 넣었어요.`); loadPoints(); }
+        catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
+      }); row.append(b); }
+    goodCard.replaceChildren(img, name, what, row);
+    openPlazaWindow('잡화점', [goodCard]);
+  }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
   // where I stand now; the island's map is put away inside (body.townhallRoom)
   let townhallBusy = false;

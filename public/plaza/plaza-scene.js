@@ -509,11 +509,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // steps are also walled round their edges with circles that overlap (one never gets past the foot of the steps)
       const edge = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
       edge(0, 0, 16.2, 12.6); edge(0, 6.85, 6, 1.1);
-    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
+    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'store') { // (v1.10.92 store: the 잡화점, 7 x 6 m)
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
       // crooked), framed door and windows; each facility its own silhouette. Footprint and door are unchanged.
-      const w = 3.2; const h = 2.4; depth = 2.7;
+      const big = spot.kind === 'store'; const w = big ? 6.6 : 3.2; const h = big ? 3.2 : 2.4; depth = big ? 5.6 : 2.7;
       const looks = {
         shop: { roof: 'front', rise: 1.35, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], planters: true },
         avatar: { roof: 'gable', rise: 1.05, chimney: 0.9, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], shutters: 0xe87a9e },
@@ -534,7 +534,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
       sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
-      solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
+      if (big) boxSolids(0, 0, w, depth, 1.4); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
       footing(root, w + 0.6, depth + 0.6);
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -892,6 +892,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
+    if (mySpace === 'store') { const q = STORE.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, STORE.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
@@ -922,7 +923,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
-      p.y = o.space === 'townhall' ? ROOM.y : heightAt(p.x, p.z);
+      p.y = o.space === 'townhall' ? ROOM.y : o.space === 'store' ? STORE.ROOM.y : heightAt(p.x, p.z);
       o.c.root.visible = o.space === mySpace; // v1.10.84: the 민원실 and the island never show each other
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
@@ -1538,15 +1539,39 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   doors['room:bank'] = { ...roomAt(ROOM.bank.lx, ROOM.bank.lz), name: '예금 창구' }; // v1.10.85
   doors['room:tax'] = { ...roomAt(ROOM.tax.lx, ROOM.tax.lz), name: '세금 창구' }; // v1.10.86
   if (doors.townhall) { doors.townhall.mapName = doors.townhall.name; doors.townhall.name = '관공서 들어가기'; }
+  // v1.10.92 잡화점 (IslandStore, assets 41): its room far off the island like the 민원실 -- the keeper behind the counter,
+  // the goods where the manifest stands them; SPACE by a good buys it (the price on the prompt), by the door goes out
+  const STORE = globalThis.IslandStore; let store = null; let goodsPrices = {};
+  function buildStore() {
+    if (store) return store;
+    const g = new THREE.Group(); g.position.set(STORE.ROOM.x, STORE.ROOM.y, STORE.ROOM.z); g.rotation.y = Math.PI; scene.add(g); // (turned half round: its door toward the camera)
+    mesh(new THREE.BoxGeometry(70, 0.2, 70), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    const shell = new THREE.Group(); g.add(shell); const fallback = new THREE.Group(); shell.add(fallback);
+    mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, fallback);
+    for (const f of STORE.FIXTURES) { const across = Math.abs(Math.sin(f.yaw)) > 0.5; mesh(new THREE.BoxGeometry(across ? f.d : f.w, 1.0, across ? f.w : f.d), mat(0xc9955c), f.x, 0.5, f.z, fallback); }
+    assets.attach('store.interior', shell, fallback);
+    for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.16, 0.2, 0.12), mat(0xd8c3a0), 0, 0.1, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
+    const K = STORE.ROOM.keeper; const keeper = makeCharacter({ shirt: 0xf3e6c8, hair: 0x6b4a2b, skin: 0xffdcbc });
+    keeper.root.position.set(K.lx, 0, K.lz); keeper.root.rotation.y = Math.PI; g.add(keeper.root); assets.dress(['character.storekeeper', 'character.npc'], keeper); dressUp(keeper, { gender: 'male' }, { shirt: 0xf3e6c8 });
+    const w = STORE.world(K.lx, K.lz); keeper.home = { x: w.x, z: w.z, yaw: 0, id: 'store:keeper' };
+    for (const [lx, lz] of [[-2.5, 1], [2.5, 1], [0, -2]]) { const light = new THREE.PointLight(0xfff1d6, 14, 14, 1.2); light.position.set(lx, 3, lz); g.add(light); }
+    store = { group: g, keeper }; npcs.push(keeper);
+    return store;
+  }
+  doors['store:exit'] = { ...STORE.world(STORE.ROOM.exit.lx, STORE.ROOM.exit.lz), name: '나가기' };
+  doors['store:keeper'] = { ...STORE.world(1.35, 0.65), name: '잡화점 주인' };
+  if (doors.store) { doors.store.mapName = doors.store.name; doors.store.name = '잡화점 들어가기'; }
+  function setGoodsPrices(prices) { goodsPrices = { ...(prices || {}) }; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
-    mySpace = space === 'townhall' ? 'townhall' : 'island';
+    mySpace = space === 'townhall' || space === 'store' ? space : 'island';
     if (mySpace === 'townhall') buildRoom();
+    if (mySpace === 'store') buildStore();
     // the island is not drawn while I am inside (IDEAS: no terrain, trees or sea in the room) -- only what is drawn now
     // is put away, and comes back as it was; the lights stay (they light the room too), people show by their space
-    if (mySpace === 'townhall' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== room.group && !people.has(o)); for (const o of roomHidden) o.visible = false; }
-    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; }
-    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace === 'townhall' ? Math.PI : me.root.rotation.y;
-    if (mySpace === 'townhall') me.root.rotation.y = Math.PI;
+    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
+    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; }
+    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : mySpace === 'store' ? STORE.ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y;
+    if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
   }
   let questDepartureHeld = false;
@@ -1836,6 +1861,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     if (mySpace === 'townhall') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = globalThis.IslandTerrain.roomClamp(nx, nz); p.set(q.x, ROOM.y, q.z); return; } // v1.10.84
+    if (mySpace === 'store') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = STORE.clamp(nx, nz); p.set(q.x, STORE.ROOM.y, q.z); return; } // v1.10.92
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -2182,6 +2208,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         best = 'train:enter:' + id; break;
       }
     }
+    // v1.10.92 잡화점: in the store, the good nearest me (within reach) is what SPACE buys
+    for (const k of Object.keys(eventDoors)) if (k.startsWith('good:')) delete eventDoors[k];
+    if (best && !doorOf(best)) best = null; // (last frame's good, picked above)
+    if (mySpace === 'store' && !best) { const s = STORE.goodAt(me.root.position.x, me.root.position.z); if (s) { const w = STORE.world(s.at[0], s.at[2]); const g = goodsPrices[s.id]; const on = Boolean(g?.price) && !s.soon; eventDoors[`good:${s.id}`] = { x: w.x, z: w.z, name: on ? `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P` : `${g?.name || '물건'} · 곧 판매`, plain: !on }; /* (prices: the server's, app.js) */ best = `good:${s.id}`; } }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
@@ -2438,7 +2468,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setSpace, space: () => mySpace, setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setSpace, space: () => mySpace, setGoodsPrices, setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
