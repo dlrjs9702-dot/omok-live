@@ -1065,10 +1065,11 @@ function lookFor(account, equipped) {
 }
 // B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
 // and whenever one is set (ponytail: one read per account; a birthday index if the accounts grow into the hundreds)
-const birthdays = { day: null, today: new Map(), loading: null };
+const birthdays = { day: null, today: new Map(), loading: null, gen: 0 };
 function refreshBirthdays(force = false) {
   const day = kstDate(nowMs()); if (!pointStore || (!force && birthdays.day === day)) return birthdays.loading;
   birthdays.day = day;
+  const gen = ++birthdays.gen; // (an older read finishing late does not undo a newer one -- Codex review)
   birthdays.loading = (async () => {
     const today = new Map();
     for (const key of await accessStore.list()) {
@@ -1076,9 +1077,10 @@ function refreshBirthdays(force = false) {
       const doc = (await pointStore.questDoc(account, 'birthday')).doc;
       if (!doc.hidden && Together.isBirthday(doc, nowMs())) today.set(account, String(key.label || '').slice(0, 24));
     }
+    if (gen !== birthdays.gen) return;
     const changed = [...today.keys()].join() !== [...birthdays.today.keys()].join(); birthdays.today = today;
         if (changed) { refreshTaxLooks(); broadcastIsland('birthdays', { names: [...today.values()] }); }
-  })().catch((error) => { birthdays.day = null; console.error('생일 확인 실패:', error.message); }).finally(() => { birthdays.loading = null; });
+  })().catch((error) => { birthdays.day = null; console.error('생일 확인 실패:', error.message); }).finally(() => { if (gen === birthdays.gen) birthdays.loading = null; });
   return birthdays.loading;
 }
 setInterval(() => refreshBirthdays(), 60000).unref?.();
@@ -1087,9 +1089,10 @@ let museumChain = Promise.resolve();
 function museumGive(account, itemId, name) {
   const run = museumChain.then(async () => {
     const shown = (await pointStore.worldValue('museum')) || {}; if (shown[itemId]) return 'shown';
-    const out = await pointStore.questApply(account, 'museumGiven', (d) => ({ doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1 } }));
-    if (!out?.doc) return 'missing';
-    await pointStore.setWorldValue('museum', { ...shown, [itemId]: { by: name, at: nowMs() } }); return 'ok';
+    await pointStore.setWorldValue('museum', { ...shown, [itemId]: { by: name, at: nowMs() } }); // (on show first: a failure after it never loses the thing -- Codex review)
+    const out = await pointStore.questApply(account, 'museumGiven', (d) => ({ doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1 } })).catch(() => null);
+    if (!out?.doc) { await pointStore.setWorldValue('museum', shown); return 'missing'; }
+    return 'ok';
   });
   museumChain = run.catch(() => {}); return run;
 }
@@ -4532,17 +4535,21 @@ async function requestHandler(req, res) {
     if (!text) return sendError(res, 400, 'BAD_LETTER', `편지는 1~${Together.LETTER_MAX}자로 써 주세요.`);
     if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_LETTER', '다시 시도해 주세요.');
     const to = `guest:${key.id}`;
-    if (!Together.sentAfter((await pointStore.questDoc(from, 'mailSent')).doc, nowMs())) return sendError(res, 409, 'MAIL_LIMIT', `편지는 하루 ${Together.SEND_PER_DAY}통까지 보낼 수 있어요.`);
+    const sentAt = nowMs(); // (the day's count taken first -- two at once cannot both slip under it, Codex review)
+    const reserved = await pointStore.questApply(from, 'mailSent', (d) => { const next = Together.sentAfter(d, sentAt); return next ? { doc: next } : null; });
+    if (!reserved?.doc) return sendError(res, 409, 'MAIL_LIMIT', `편지는 하루 ${Together.SEND_PER_DAY}통까지 보낼 수 있어요.`);
+    const giveBack = () => pointStore.questApply(from, 'mailSent', (d) => (d.day === reserved.doc.day && d.n > 0 ? { doc: { ...d, n: d.n - 1 } } : null)).catch(() => {});
     const itemId = body.itemId ? String(body.itemId) : null;
     if (itemId) { // the parcel: the gift wrap's rule (one thing, a wrap used), straight into their bag
-      let out; try { out = await pointStore.islandGift({ userId: from, to, itemId, requestId }); } catch { return sendError(res, 400, 'BAD_GIFT', '선물할 수 없는 물건입니다.'); }
+      let out; try { out = await pointStore.islandGift({ userId: from, to, itemId, requestId }); } catch { await giveBack(); return sendError(res, 400, 'BAD_GIFT', '선물할 수 없는 물건입니다.'); }
+      if (out.reason) await giveBack();
       if (out.reason === 'no-wrap') return sendError(res, 409, 'NO_GIFT_WRAP', '소포에는 선물 포장지가 필요합니다. 잡화점에서 살 수 있어요.');
       if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
       if (out.reason === 'full') return sendError(res, 409, 'THEIR_BAG_FULL', '상대의 가방이 가득 찼습니다.');
     }
     const now = nowMs(); const letter = { id: requestId, from: session.guestKeyId || 'admin', fromName: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), text, itemId, itemName: itemId ? (IslandItems.ITEMS[itemId]?.name || null) : null, at: now, read: false };
     const put = await pointStore.questApply(to, 'mail', (d) => ((d.letters || []).some((l) => l.id === letter.id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
-    if (put?.doc) await pointStore.questApply(from, 'mailSent', (d) => { const next = Together.sentAfter(d, now); return next ? { doc: next } : null; });
+    if (!put?.doc) await giveBack(); // (the same letter again: not counted twice)
     notifyAccount(to, 'mail', { from: letter.fromName });
     return sendJson(res, 200, { ok: true, to: key.label });
   }

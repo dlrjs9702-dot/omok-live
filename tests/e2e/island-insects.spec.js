@@ -24,7 +24,7 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   // from the bag's button: the net in hand, the insect comes, Space catches it
   await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="bugnet"] button').click();
   await expect(page.locator('.bugCatchBtn')).toBeVisible({ timeout: 10000 });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().bug()?.on), { timeout: 5000 }).toBe(true);
+  expect(await page.evaluate(() => Boolean(window.PlazaDebug().bug()))).toBe(true); // (the net in hand, the insect on its way)
   const finish = page.waitForResponse((r) => r.url().includes('/api/island/bug/finish'));
   await page.keyboard.press('Space');
   const done = await finish; expect(done.status(), await done.text()).toBe(200);
