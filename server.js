@@ -282,7 +282,8 @@ function sendHerosurv(res) {
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Length': Buffer.byteLength(herosurvTemplate),
     'Cache-Control': 'no-store',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${assetOrigin}; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+    'X-Frame-Options': 'SAMEORIGIN', // (사용자 2026-10-19: opened in a window over the island, our own page only)
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${assetOrigin}; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'self'; form-action 'self'`,
   }));
   res.end(herosurvTemplate);
 }
@@ -1289,6 +1290,7 @@ const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|leve
 const cardRuns = new Map(); // v1.10.70 카드 게임: round id -> { account, game, level, seed, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
 const herosurvRuns = new Map(); // runId -> { account, board, at }
+let herosurvLatest = null; // the board the game last started a run on (kept in the world values)
 const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
 function herosurvPlayerId(account) { // stable, and reveals nothing about the account
   const h = crypto.createHash('sha256').update(`herosurv:${account}`).digest('hex');
@@ -4869,6 +4871,7 @@ async function requestHandler(req, res) {
       for (const [id, run] of herosurvRuns) if (now - run.at > HEROSURV_RUN_MS) herosurvRuns.delete(id);
       const runId = crypto.randomUUID();
       herosurvRuns.set(runId, { account, board: m[1], at: now });
+      if (herosurvLatest !== m[1]) { herosurvLatest = m[1]; pointStore.setWorldValue('herosurvBoard', m[1]).catch(() => {}); } // (게임별 랭킹 follows the game's board)
       return sendJson(res, 201, { runId, expiresInSeconds: HEROSURV_RUN_MS / 1000, rulesVersion: m[1].slice(7), protocolVersion: 1 });
     }
     m = /^runs\/([0-9a-f-]{36})$/.exec(route);
@@ -6043,6 +6046,13 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const game = String(url.searchParams.get('game') || '');
+    if (game === 'herosurv') { // (사용자 2026-10-19) 두 세계 영웅전: each account's best on the game's board -- its word, no points
+      const board = herosurvLatest || (herosurvLatest = (await pointStore.worldValue('herosurvBoard')) || 'heroes-r14');
+      const rows = await pointStore.herosurvBoard(board); const account = pointAccountForSession(session);
+      const view = (row, i) => ({ rank: i + 1, label: row.name, score: row.score, hero: row.meta?.hero || null, stage: row.meta?.stage ?? row.meta?.wave ?? row.meta?.level ?? null, me: row.userId === account });
+      const mine = rows.findIndex((row) => row.userId === account);
+      return sendJson(res, 200, { ok: true, game, kind: 'score', board, top: rows.slice(0, 20).map(view), me: mine < 0 ? null : view(rows[mine], mine) });
+    }
     if (!/^[a-z0-9]{2,20}$/.test(game)) return sendError(res, 400, 'BAD_GAME', '고를 수 없는 게임입니다.');
     const all = url.searchParams.get('week') === 'all';
     try {

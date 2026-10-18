@@ -2251,3 +2251,7 @@ body:not(.plazaMode) .bugCatchBtn { display: none; }
 .issueItem summary { cursor: pointer; overflow-wrap: anywhere; }
 .issueBody { display: grid; gap: 6px; margin-top: 6px; }
 .issueInfo { font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; margin: 0; }
+
+/* 두 세계 영웅전: a window over everything (사용자 2026-10-19) */
+.herosurvFrame { position: fixed; inset: 0; width: 100vw; height: 100dvh; border: 0; z-index: 1000; background: #000; }
+body.herosurvOpen { overflow: hidden; }

@@ -2059,10 +2059,25 @@
   renderGameGuide(document.getElementById('minesGuide'), 'minesweeper');
   // v1.10.61 두 세계 영웅전: its own page in this tab; it ranks by this session (guest or admin), handed over in the tab's
   // sessionStorage. The browser's back returns here (a guest resumes; an admin, whose login lives only in this page, logs in again).
-  document.getElementById('soloHerosurvBtn').addEventListener('click', () => {
-    try { sessionStorage.setItem('herosurvSession', sessionToken); } catch {}
-    location.href = '/herosurv/';
-  });
+  // (사용자 2026-10-19) now in a window over the island -- the same tab, so its sessionStorage hands the session over; the
+  // island sleeps meanwhile and its sounds stop; 「나가기」 closes the window (the whole game, its memory too) and the
+  // island is where it was -- nothing loads again, an administrator stays logged in
+  let herosurvFrame = null;
+  function openHerosurv() {
+    if (herosurvFrame) return;
+    try { sessionStorage.setItem('herosurvSession', sessionToken); sessionStorage.setItem('herosurvName', String(sessionLabel || (sessionRole === 'admin' ? '관리자' : '게스트'))); } catch {} // (the name for its 명예의 전당 join, written in advance)
+    plaza.controller?.stop(); document.body.classList.add('herosurvOpen');
+    const frame = document.createElement('iframe'); frame.className = 'herosurvFrame'; frame.title = '두 세계 영웅전'; frame.src = '/herosurv/'; frame.allow = 'fullscreen; gamepad; autoplay';
+    document.body.append(frame); herosurvFrame = frame; frame.addEventListener('load', () => frame.contentWindow?.document.getElementById('canvas')?.focus());
+  }
+  function closeHerosurv() {
+    if (!herosurvFrame) return;
+    herosurvFrame.src = 'about:blank'; herosurvFrame.remove(); herosurvFrame = null; document.body.classList.remove('herosurvOpen');
+    if (document.body.classList.contains('plazaMode') && gamehallView.classList.contains('hidden')) plaza.controller?.start();
+    (byId('soloHerosurvBtn').offsetParent ? byId('soloHerosurvBtn') : document.querySelector('#gamehallView:not(.hidden) .gameCard'))?.focus({ preventScroll: true });
+  }
+  window.addEventListener('message', (event) => { if (event.origin === location.origin && event.data?.type === 'herosurv-exit') closeHerosurv(); });
+  document.getElementById('soloHerosurvBtn').addEventListener('click', openHerosurv);
   // v1.10.68 순발력 게임 (한판마당 자료): its own screen over the island; the module (public/reflex/reflex.js and the
   // engine under it) loads the first time it is opened (reflexGames is declared by showView)
   // v1.10.69 퍼즐 (스도쿠·네모로직·다리 잇기·회로 연결): the same screen with the puzzle list
@@ -10514,7 +10529,7 @@
   const rankingDialog = document.getElementById('rankingDialog');
   const rankingGame = document.getElementById('rankingGame');
   let rankingWeek = 'this';
-  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)));
+  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)), new Option('두 세계 영웅전 (최고 기록)', 'herosurv')); // (사용자 2026-10-19)
   async function loadRanking() {
     const list = document.getElementById('rankingList'); const mine = document.getElementById('rankingMe');
     const game = rankingGame.value; const week = rankingWeek;
@@ -10523,15 +10538,15 @@
     try { data = await api(`/api/records/ranking?game=${encodeURIComponent(game)}&week=${week}`); }
     catch (error) { mine.textContent = error.message; return; }
     if (game !== rankingGame.value || week !== rankingWeek) return; // changed meanwhile
-    const line = (r) => `${r.label} · ${r.w}승 ${r.d}무 ${r.l}패 (${r.n}판)`;
+    const line = data.kind === 'score' ? (r) => `${r.label} · ${Number(r.score).toLocaleString('ko-KR')}점${r.hero ? ` · ${r.hero}` : ''}${r.stage != null ? ` · ${r.stage}단계` : ''}` : (r) => `${r.label} · ${r.w}승 ${r.d}무 ${r.l}패 (${r.n}판)`; // (두 세계 영웅전: each one's best, all time)
     list.replaceChildren(...data.top.map((r) => {
       const li = document.createElement('li'); li.className = r.me ? 'me' : '';
       const place = document.createElement('b'); place.textContent = `${r.rank}위`;
       li.append(place, document.createTextNode(` ${line(r)}`));
       return li;
     }));
-    if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
-    mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : `${data.min}판을 두면 순위에 올라요.`;
+    if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: data.kind === 'score' ? '아직 기록이 없어요.' : `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
+    mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : data.kind === 'score' ? '한 판을 끝내면 최고 기록이 올라요. (주간 구분 없음)' : `${data.min}판을 두면 순위에 올라요.`;
   }
   document.getElementById('rankingBtn').addEventListener('click', () => {
     rankingGame.value = [...rankingGame.options].some((o) => o.value === gameRulesSelect.value) ? gameRulesSelect.value : 'omok'; // 랜드킹·잿빛 원정: no board (Codex review)

@@ -40,16 +40,47 @@
 	};
 }());
 
-// The way back to the island (a guest's session resumes there; an admin logs in again). A run in progress is lost, so it
-// asks first. The button never keeps the focus: the game's keys (Space is the special move) stay with the canvas.
+// The way back to the island. A run in progress is lost, so it asks first. Opened in the island's own window (사용자
+// 2026-10-19), it just asks that window to close -- the island is still there, nothing loads again; a page opened on its
+// own goes back to '/'. The button never keeps the focus: the game's keys (Space is the special move) stay with the canvas.
 (function () {
 	const exit = document.getElementById('herosurv-exit');
 	exit.addEventListener('mousedown', (event) => event.preventDefault());
 	exit.addEventListener('click', () => {
-		if (confirm('게임을 나가 아일랜드로 돌아갈까요?\n진행 중인 판은 기록되지 않습니다.')) location.href = '/';
-		else document.getElementById('canvas').focus();
+		if (!confirm('게임을 나가 아일랜드로 돌아갈까요?\n진행 중인 판은 기록되지 않습니다.')) { document.getElementById('canvas').focus(); return; }
+		if (window.parent !== window) window.parent.postMessage({ type: 'herosurv-exit' }, location.origin);
+		else location.href = '/';
 	});
 }());
+
+// (사용자 2026-10-19) The game asks a name and a mail before its 명예의 전당 -- ours ranks by the game-center nickname, so
+// the join is written in advance, where the game looks for it: its user storage (IndexedDB '/userfs', the Emscripten IDBFS
+// entry shape), the file user://leaderboard_<the first 16 hex of sha256(api root)>.cfg with [guest] token, name,
+// player_id, anon (scripts/net/online_leaderboard). The server never uses these values (the session header ranks).
+// The game's own files are untouched.
+function herosurvPrejoin() {
+	const root = location.origin + '/api/leaderboards/v1';
+	let nick = '게스트';
+	try { nick = sessionStorage.getItem('herosurvName') || nick; } catch {}
+	const esc = (v) => v.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+	const text = `[guest]\n\ntoken="gamecenter"\nname="${esc(nick)}"\nplayer_id="gamecenter"\nanon=false\n`;
+	return crypto.subtle.digest('SHA-256', new TextEncoder().encode(root)).then((hash) => new Promise((resolve) => {
+		const hex = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+		const key = `/userfs/leaderboard_${hex}.cfg`;
+		const req = indexedDB.open('/userfs', 21);
+		req.onupgradeneeded = () => { const store = req.result.createObjectStore('FILE_DATA'); store.createIndex('timestamp', 'timestamp', { unique: false }); };
+		req.onerror = () => resolve();
+		req.onsuccess = () => {
+			const db = req.result;
+			try {
+				const tx = db.transaction(['FILE_DATA'], 'readwrite'); const store = tx.objectStore('FILE_DATA');
+				const got = store.get(key);
+				got.onsuccess = () => { if (!got.result) store.put({ timestamp: new Date(), mode: 33206, contents: new TextEncoder().encode(text) }, key); };
+				tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => { db.close(); resolve(); };
+			} catch { db.close(); resolve(); }
+		};
+	})).catch(() => {});
+}
 
 const GODOT_CONFIG ={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":72447648,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
@@ -111,7 +142,7 @@ const engine = new Engine(GODOT_CONFIG);
 		displayFailureNotice('Error\nThe following features required to run Godot projects on the Web are missing:\n' + missing.join('\n'));
 	} else {
 		setStatusMode('progress');
-		engine.startGame({
+		herosurvPrejoin().then(() => engine.startGame({
 			'onProgress': function (current, total) {
 				if (current > 0 && total > 0) {
 					statusProgress.value = current;
@@ -121,7 +152,7 @@ const engine = new Engine(GODOT_CONFIG);
 					statusProgress.removeAttribute('max');
 				}
 			},
-		}).then(() => {
+		})).then(() => {
 			setStatusMode('hidden');
 		}, displayFailureNotice);
 	}
