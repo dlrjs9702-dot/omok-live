@@ -5351,8 +5351,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/stars' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0;
-    const wished = new Set((await pointStore.questDoc(account, 'stars')).doc.wished || []);
-    for (const st of IslandStars.starsOfDayBefore(now)) if (wished.has(st.id)) {
+    for (const st of IslandStars.wishesDue((await pointStore.questDoc(account, 'stars')).doc.wished || [], now)) { // (every day before, not only yesterday -- Codex review)
       const out = await pointStore.claimEvent({ eventId: `star_gift_${IslandStars.slotOfId(st.id)}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' });
       if (out.applied) gift += out.amount;
     }

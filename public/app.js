@@ -1777,7 +1777,7 @@
   function syncPlaza(view) {
     const classicFallback = Boolean(plaza.failed) && sessionRole === 'admin'; // administrators only (internal)
     // v1.10.62 모바일 아일랜드 (IDEAS 2026-10-11): phones and narrow windows are on the island too (touch controls in plaza-scene)
-    const on = view === 'lobby' && !plazaTestClassic && !classicFallback;
+    const on = view === 'lobby' && !plazaTestClassic && !classicFallback; const back = on && !document.body.classList.contains('plazaMode');
     document.body.classList.toggle('plazaMode', on);
     const facilityActions = document.getElementById('islandFacilityActions');
     facilityActions.classList.toggle('hidden', on || view !== 'lobby');
@@ -1796,7 +1796,7 @@
     plazaStage.classList.toggle('plazaFailed', Boolean(plaza.failed));
     plazaError.classList.toggle('hidden', !plaza.failed);
     if (plaza.failed) return; // the error and its retry, over the island's place
-    if (plaza.controller) { plaza.controller.start(); return; }
+    if (plaza.controller) { plaza.controller.start(); if (back) { refreshStars(); refreshContest(); } return; } // (their polls stop off the island -- Codex review)
     if (plaza.loading) return;
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
