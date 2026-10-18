@@ -42,7 +42,7 @@ test('스킨 확장 염색 목록은 High/Low 모델의 실제 재질과 일치�
 test('판매 의상 전체: High/Low 실제 주색만 염색하고 장식·원본 재질을 보존한다', async () => {
   const THREE = await import('three');
   // v1.10.74: + the 19 original outfits of 스킨 2배 (their dye material `primary`); the 11 character outfits keep their colours
-  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit' && !s.ip);
+  const outfits = SKINS.filter(s => s.family === 'avatar' && s.slot === 'outfit' && !s.ip && !s.id.startsWith('avatar_winter_')); // (B 46: the 산타 옷 keeps its colours, as the character outfits)
   assert.equal(outfits.length, 30 + 19);
   for (const s of SKINS.filter(x => x.ip)) assert.ok(!DYEABLE.has(s.id), s.id);
   for (const item of outfits) {
