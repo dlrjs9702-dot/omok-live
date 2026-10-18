@@ -232,12 +232,12 @@ async function stillPlays(page) {
   await page.keyboard.down('ArrowUp');
   await expect.poll(async () => before.z - (await debug(page)).z, { timeout: 10000 }).toBeGreaterThan(0.3);
   await page.keyboard.up('ArrowUp');
-  await page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
+  await page.evaluate(() => window.PlazaDebug().place('records')); // (v1.10.92: the shops are inside the 백화점 now)
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
   await page.keyboard.press('Space');
-  await expect(page.locator('#skinShopDialog')).toBeVisible();
+  await expect(page.locator('#plazaDialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('#skinShopDialog')).toBeHidden();
+  await expect(page.locator('#plazaDialog')).toBeHidden();
 }
 
 let proceduralDoors = null;
@@ -397,13 +397,13 @@ test('실패·비활성화: 없는 파일·손상된 파일·꺼진 등록은 �
   const a = await island(browser, request, '에셋실패', {
     __only: true,
     'facility.townhall': { url: '/assets/island/__e2e/missing.glb' },
-    'facility.shop': { url: '/assets/island/__e2e/broken.glb' },
+    'facility.store': { url: '/assets/island/__e2e/broken.glb' }, // (v1.10.92: the 백화점's building)
     'facility.records': { url: BOX, enabled: false },
     'cottage': { url: BOX },
   });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.shown, { timeout: 10000 })
-    .toMatchObject({ 'facility.townhall': 'procedural', 'facility.shop': 'procedural', cottage: 'model' });
+    .toMatchObject({ 'facility.townhall': 'procedural', 'facility.store': 'procedural', cottage: 'model' });
   const files = (await debug(page)).assets.files;
   expect(files[BOX]).toBe('loaded');
   expect(files['/assets/island/__e2e/missing.glb']).toMatch(/^failed/);

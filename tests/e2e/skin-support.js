@@ -132,3 +132,11 @@ async function intoMall(page, place = null, isMobile = false) {
   return press;
 }
 module.exports.intoMall = intoMall;
+// v1.10.92: out of the 백화점 again (its door, SPACE), back on the island at its door
+async function outOfMall(page) {
+  await page.evaluate(() => { const d = window.PlazaDebug(); const door = d.doors['store:exit'] || null; const w = door || window.IslandStore.world(0, -9.1); d.teleport(w.x, w.z); });
+  await expect(page.locator('#plazaHint')).toContainText('나가기', { timeout: 10000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('island');
+}
+module.exports.outOfMall = outOfMall;
