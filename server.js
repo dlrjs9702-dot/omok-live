@@ -1172,15 +1172,29 @@ async function islandFarm() {
   islandFarmView = { week, view: { stage: Math.min(3, names.length), names } }; islandFarmAt = nowMs();
   return islandFarmView.view;
 }
+// v1.10.93 마을 공동 진행도 (IDEAS #future-island-minigames C안): this week's helpers of the painter and the busker change the
+// island for everyone -- the mural in four stages (one more per helper), the stage playing once someone helped
+let villageAt = 0; let villageView = null;
+async function islandVillage() {
+  const week = questWeek();
+  if (villageView?.week === week && nowMs() - villageAt < 10000) return villageView.view;
+  const [painter, busker, electrician, builder, librarian] = await Promise.all(['painter', 'busker', 'electrician', 'builder', 'librarian'].map((id) => pointStore.questHelpers(week, id)));
+  // (A2b: the lamps mended one per helper, the stepping stones in four stages, the book cart filled once helped)
+  villageView = { week, view: { mural: Math.min(3, painter.length), busk: busker.length > 0, lamps: Math.min(3, electrician.length), stones: Math.min(3, builder.length), books: librarian.length > 0 } }; villageAt = nowMs();
+  return villageView.view;
+}
+// v1.10.69 오늘의 문제: the settlement of an account's first clear of a game, level and day (A2b: has it been solved today?)
+const puzzleClaim = (account, game, level, date) => crypto.createHash('sha256').update(`puzzle|${account}|${game}|${level}|${date}`).digest('hex').slice(0, 40);
+const puzzleSolved = async (account, game, level) => Boolean(await pointStore.settlementOf(`solo:pz-${puzzleClaim(account, game, level, kstDate(nowMs()))}`));
 async function questApply(account, fn, scope = 'week') {
   const st = await questState(account);
   const out = await pointStore.questApply(account, scope==='fixed'?'fixed':st.week, fn);
   if (out?.doc) { st.doc = {...st.doc,...out.doc}; if (out.bag) { st.bag = out.bag.items.map(({ entryId, itemId, qty, meta }) => ({ entryId, itemId, qty, meta })); st.bagAt = nowMs(); } }
   return out;
 }
-function islandProgress(kind, account, qty, where = null) {
+function islandProgress(kind, account, qty, where = null) { // (A2b: a promise -- a talk may wait for it)
   const what = kind === 'weed_pull' ? 'weed' : kind;
-  questState(account).then((st) => {
+  return questState(account).then((st) => {
     if (!IslandQuests.note(st.doc, what, { qty, ...(where || {}) })) return null; // nothing of mine waits on it
     return Promise.all(['week','fixed'].map(scope=>questApply(account, doc=>{
       const next=IslandQuests.note(doc,what,{qty,...(where||{}),scope});
@@ -1848,8 +1862,14 @@ function prepareNextRound(room) {
 
 // The game engine, never the client, supplies the final result. An individual match
 // (including a three-round liar match) has one stable id across retries and reconnects.
+// A2c 정자 할아버지: the person who beat the AI (the engine's winner, never the page's word) -- 1 쉬움 · 2 보통 · 3 어려움
+function aiWinProgress(room) {
+  const seat = room.game?.winner; if (!seat || seat === room.ai.seat) return;
+  const person = room.participants[room.players[seat]]; const account = person && !person.ai ? pointAccountForParticipant(person) : null;
+  if (account) islandProgress(`minigame:ai_${room.gameType}`, account, { easy: 1, normal: 2, hard: 3 }[room.ai.level] || 1);
+}
 async function recordFinishedMatch(room) {
-  if (room.ai) return false; // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
+  if (room.ai) { aiWinProgress(room); return false; } // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
   if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
@@ -3293,7 +3313,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.92' });
+    return sendJson(res, 200, { ok: true, version: '1.10.93' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4280,7 +4300,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     let out; try { out = await pointStore.islandUse({ userId: account, requestId: String(body.requestId || ''), itemId: body.itemId }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
-    showUsed.set(session.token, { kind: body.itemId, until: nowMs() + 6000 });
+    showUsed.set(session.token, { kind: body.itemId, until: nowMs() + 10000 }); // (the show is 6 s; a slow page posts it late -- the page ends it itself)
     return sendJson(res, 200, { ok: true, kind: body.itemId, bag: out.bag || null });
   }
   if (pathname === '/api/island/store/buy' && req.method === 'POST') {
@@ -4486,10 +4506,11 @@ async function requestHandler(req, res) {
     if (!right) return sendError(res, 400, 'WRONG_ANSWER', '정답이 아닙니다.');
     const startedAt = puzzleStarts.get(`${account}|${game}|${level}|${date}`); // unknown after a restart: the time it claims decides
     const fast = score < PuzzleDaily.MIN_MS[level] || (startedAt !== undefined && now - startedAt < PuzzleDaily.MIN_MS[level]);
-    const claim = crypto.createHash('sha256').update(`puzzle|${account}|${game}|${level}|${date}`).digest('hex').slice(0, 40);
+    const claim = puzzleClaim(account, game, level, date);
     const out = await pointStore.soloClear({ userId: account, gameId: `pz-${claim}`, game, level, ms: score, points: fast ? 0 : PuzzleDaily.POINTS[level],
       title: `${PuzzleDaily.GAMES[game]} ${PuzzleDaily.LEVELS[level]} 오늘의 문제` });
     if (out.applied && out.points) notifyPointsChanged([account]);
+    islandProgress(`minigame:${game}`, account, 1); // A2b 마을 주민 부탁: a right answer of the day counts
     return sendJson(res, 200, { ok: true, already: !out.applied, fast, points: out.applied ? out.points : 0, best: out.best, newBest: Boolean(out.applied && out.newBest) });
   }
   // v1.10.70 카드 게임 (lib/cards.js): the server deals (the round's seed) and pays a clear only after playing its action
@@ -4907,19 +4928,24 @@ async function requestHandler(req, res) {
       const week = IslandQuests.scopeOf(story)==='fixed'?'fixed':questWeek();
       const st=await questState(account);
       if(!IslandQuests.visibleStories(st.doc,nowMs()).includes(story)) return sendError(res,409,'QUEST_BUSY','지금은 받을 수 없는 부탁입니다.');
+      // A2b: a puzzle step is today's 오늘의 문제 -- already solved today (in the game hall), it counts at once
+      const puzzleDone = async () => { const d = (await questState(account)).doc[story]; const s = IslandQuests.STORIES[story].steps[d?.step]; if (!d?.taken || d.done || !s?.puzzle || d.count >= 1 || !(await puzzleSolved(account, s.game, s.level))) return false; await islandProgress(`minigame:${s.game}`, account, 1); return true; };
+      await puzzleDone();
       const out = await questApply(account, (doc, bag) => { const r = IslandQuests.talk(doc, story, bag, pos); return r.error ? r : { ...r, payKey: `quest:${week}:${account}:${story}:${r.step}` }; },IslandQuests.scopeOf(story));
       if (out?.error === 'TOO_FAR') return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
       if (out?.error) return sendError(res, 409, 'QUEST_BUSY', '잠시 후 다시 말을 걸어 주세요.');
       const r = out || IslandQuests.talk((await questState(account)).doc, story, (await questState(account)).bag, pos); // nothing changed: what they say now
       if (r.reward) notifyPointsChanged([account]);
+      const solvedToday = await puzzleDone(); // (a step just taken)
       const keeperN = IslandCast.keeperN(story); let keeperLevel = 1; // v1.10.91 호감도: a talk a day, a story step
       if (keeperN != null) { keeperLevel = IslandCast.levelOf((await pointStore.affinityOf(account))[keeperN] || 0); await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: keeperN, delta: IslandCast.GAIN.talk, daily: true }, ...(r.paid ? [{ n: keeperN, delta: IslandCast.GAIN.story }] : [])]); }
       if (story === 'farmer' && r.paid) islandFarmAt = 0; // the field may grow at once
+      if (['painter', 'busker', 'electrician', 'builder', 'librarian'].includes(story) && r.paid) villageAt = 0; // (v1.10.93: the mural, the stage, the lamps, the stones, the cart)
       const quests = questEntries(account);
       // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
       const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
-      const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, goal: stepNow.need } : null;
-      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
+      const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, ...(stepNow.puzzle ? { goal: null, puzzle: true } : stepNow.ai ? { goal: null, ai: true } : { goal: stepNow.need }) } : null;
+      return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }
     const claimed = islandEvents.claim(id, account, plazaPresence.get(session.token) || plazaLastPos.get(session.token), { owner: body.owner === true });
@@ -4959,6 +4985,9 @@ async function requestHandler(req, res) {
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
+    broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/lost' && req.method === 'POST') {
     const e = islandEvents.spawnLost();
@@ -5269,7 +5298,7 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/island/farm' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    return sendJson(res, 200, { ok: true, ...(await islandFarm()), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89
+    return sendJson(res, 200, { ok: true, ...(await islandFarm()), village: await islandVillage(), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89; v1.10.93 village
   }
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
     const session = requireSession(req, res);
@@ -5942,7 +5971,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.92 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.93 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

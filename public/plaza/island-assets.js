@@ -324,6 +324,18 @@
   // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
   REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
+  // v1.10.93 마을 주민·결과 소품 (assets 39, IDEAS #future-island-minigames): seven residents on the common rig (moved by the
+  // common motions) and what their weeks of help change on the island -- the mural in four stages, the easel, the busking
+  // stage and the guitar (Hand.R), the lamps, the stepping stones, the tables
+  for (const n of ['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa']) REGISTRY[`character.${n}`] = { url: `${CH}/npc_${n}.glb`, low: { url: `${CH}/npc_${n}_low.glb` }, rotationY: Math.PI, motions: true };
+  const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
+  for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
+  for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
+  REGISTRY['village.guitar'] = village('guitar', { shadows: false });
+  for (const p of ['lamp_broken', 'lamp_fixed']) REGISTRY[`village.${p}`].scale = 0.85; // (the island lamp's own size, prop.lamp)
+  // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
+  // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made
+  REGISTRY['character.base'].slim = { width: 0.82, depth: 0.8, arm: 0.55, leg: 0.5, hand: 0.82, foot: 0.85 }; // (hands 82%, shoes 85% across -- their soles stay down)
   const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     REGISTRY[`tree.harvest.${season}`] = life(`tree_harvest_${season}`);

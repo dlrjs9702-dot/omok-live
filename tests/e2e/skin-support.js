@@ -115,6 +115,12 @@ async function expectNoScriptError(page) {
   await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
 }
 module.exports.expectNoScriptError = expectNoScriptError;
+// v1.10.93: stand at a spot of the 백화점's room (local lx, lz) until its prompt shows -- on a slow runner the walk-in can
+// still put me at the door after a first teleport
+async function standInMall(page, lx, lz, text) {
+  await expect.poll(async () => { await page.evaluate(([lx, lz]) => { const w = window.IslandStore.world(lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [lx, lz]); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain(text);
+}
+module.exports.standInMall = standInMall;
 // v1.10.92 백화점: the shop street's shops are its sectors -- in through its door (SPACE, or a tap on the hint on a
 // phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing
 async function intoMall(page, place = null, isMobile = false) {

@@ -88,7 +88,7 @@ export function mount({ api, onBack }) {
   const levelOf = (g) => (launch?.level && launch.place === 'quest' ? launch.level : g.levels || g.mode === 'versus' ? levels[g.id] || g.defaultLevel || 'normal' : 'normal');
   const optionOf = (g, o) => (o.items.some(([v]) => v === levels[`${g.id}.${o.id}`]) ? levels[`${g.id}.${o.id}`] : o.def);
   const optionsOf = (g) => Object.fromEntries((g.options || []).map((o) => [o.id, optionOf(g, o)]));
-  const modeOf = (g) => optionsOf(g).mode ?? null; // the puzzles: 오늘의 문제 (daily) or 새 문제
+  const modeOf = (g) => (launch?.place === 'quest' && optionsOf(g).mode ? 'daily' : optionsOf(g).mode ?? null); // the puzzles: 오늘의 문제 (daily) or 새 문제 (A2b: a quest's round is always the daily)
   const remember = (key, value) => { levels[key] = value; try { localStorage.setItem('gc.reflexLevels', JSON.stringify(levels)); } catch {} };
   const bestOf = (g) => info?.records?.[g.id]?.[levelOf(g)]?.best ?? null;
   const pointsOf = (g, level) => (set === SETS.cards ? info?.points?.[g.id]?.[level] : info?.points?.[level]) ?? 0;
@@ -176,7 +176,7 @@ export function mount({ api, onBack }) {
     menu.classList.add('hidden'); result.classList.add('hidden'); frame.classList.add('playing');
     E.onEnd = (r) => finish(g, r);
     if (set === SETS.cards) { noteActions(g); cardLog = []; } else cardLog = null;
-    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(seed != null ? { seed } : {}) } });
+    startGame(g, { best: bestOf(g), level, opts: { ...optionsOf(g), ...(mode ? { mode } : {}), ...(seed != null ? { seed } : {}) } });
   }
 
   async function finish(g, r) {
