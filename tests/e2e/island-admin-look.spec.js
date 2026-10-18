@@ -23,9 +23,15 @@ test('관리자: 계절 고정·이벤트 장식 수동·공지 예약', async (
     expect((await as('/api/admin/island/decor', { mode: 'off' })).status()).toBe(200);
     await expect.poll(async () => (await look()).decorMode, { timeout: 15000 }).toBe('off');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shown), { timeout: 15000 }).toBe(false);
-    expect((await as('/api/admin/island/decor', { mode: 'on' })).status()).toBe(200);
-    await expect.poll(async () => (await look()).decorMode, { timeout: 15000 }).toBe('on');
+    expect((await as('/api/admin/island/decor', { mode: 'halloween' })).status()).toBe(200);
+    await expect.poll(async () => (await look()).decorMode, { timeout: 15000 }).toBe('halloween');
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shown), { timeout: 15000 }).toBe(true);
+    // B 46 겨울 축제: the tree on the fountain's spot, the snow on the plaza's benches and lamps
+    expect((await as('/api/admin/island/decor', { mode: 'winter' })).status()).toBe(200);
+    await expect.poll(async () => { const l = await look(); return [l.winter, l.fountain]; }, { timeout: 15000 }).toEqual([true, false]);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.decor().shown), { timeout: 15000 }).toBe(false);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().assets.shown['winter.landmark_winter_tree']), { timeout: 30000 }).toBe('model');
+    if (process.env.WINTER_SHOT) { await page.evaluate(() => window.PlazaDebug().teleport(0, 9)); await page.waitForTimeout(3000); await page.screenshot({ path: process.env.WINTER_SHOT }); }
   } finally { await as('/api/admin/island/season', { mode: 'auto' }); await as('/api/admin/island/decor', { mode: 'auto' }); }
   await expect.poll(async () => (await look()).seasonHold, { timeout: 15000 }).toBe(null);
   // 공지 예약: one far ahead is cancelled; one 35 s ahead shows up by itself

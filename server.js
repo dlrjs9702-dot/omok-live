@@ -5439,7 +5439,7 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/admin/island/decor' && req.method === 'POST') {
     if (!requireAdmin(req, res)) return;
-    const body = await parseJson(req); if (!['auto', 'on', 'off'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '장식 설정을 골라 주세요.');
+    const body = await parseJson(req); if (!['auto', 'halloween', 'winter', 'off'].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '장식 설정을 골라 주세요.'); // (B 46: the winter festival too)
     await pointStore.setWorldValue('decor', { mode: body.mode, at: nowMs() }); broadcastIsland('islandTime', { mode: (await pointStore.worldValue('time'))?.mode || 'auto' });
     return sendJson(res, 200, { ok: true, decor: body.mode });
   }

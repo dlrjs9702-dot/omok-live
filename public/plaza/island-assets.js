@@ -315,6 +315,12 @@
   for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
     REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;
   }
+  // B 46 겨울 축제 의상: on the common rig like the others; the 산타 옷 wears its own body under it (as 포차코's outfit)
+  for (const [slot, , , file] of X2?.WINTER_ITEMS || []) {
+    const { dye, ...fit } = X2_FIT(slot); const key = file.slice(5);
+    REGISTRY[`wear.winter_${key}`] = { url: `${CH}/wear-winter/${file}.glb`, low: { url: `${CH}/wear-winter/${file}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_winter_${key}`] = `wear.winter_${key}`;
+  }
+  if (REGISTRY['wear.winter_outfit_santa']) REGISTRY['wear.winter_outfit_santa'].body = { url: `${CH}/wear-winter/body_winter_fitted.glb`, lowUrl: `${CH}/wear-winter/body_winter_fitted_low.glb` };
   for (const [character, , , parts] of X2?.IP_ITEMS || []) for (const [slot] of parts) {
     const id = `wear.ip_${character}_${slot}`; const { dye, ...fit } = X2_FIT(slot);
     REGISTRY[id] = { url: `${CH}/wear-ip/${character}_${slot}.glb`, low: { url: `${CH}/wear-ip/${character}_${slot}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_ip_${character}_${slot}`] = id;
@@ -333,6 +339,10 @@
   for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
   REGISTRY['village.guitar'] = village('guitar', { shadows: false });
   for (const p of ['lamp_broken', 'lamp_fixed']) REGISTRY[`village.${p}`].scale = 0.85; // (the island lamp's own size, prop.lamp)
+  // B 46 겨울 축제 (assets 46 winter-v1): the plaza's tree on the fountain's spot, the props, the snow laid over the plaza's
+  // lamps and benches (overlays, in the props' own frame); the lamp's own 0.85 is the overlay's too
+  const winter = (file, extra = {}) => ({ url: `/assets/island/winter-v1/${file}.glb`, low: { url: `/assets/island/winter-v1/${file}_low.glb` }, near: 60, ...extra });
+  for (const f of ['landmark_winter_tree', 'landmark_winter_base', 'snowman_classic', 'snowman_little', 'gift_box_red', 'gift_box_green', 'gift_box_blue', 'wreath', 'garland', 'candy_cane', 'snow_pile_round', 'snow_pile_long', 'sleigh', 'lights_string', 'bench_snow', 'lamp_winter']) REGISTRY[`winter.${f}`] = winter(f);
   // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
   // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made
   REGISTRY['character.base'].slim = { width: 0.82, depth: 0.8, arm: 0.55, leg: 0.5, hand: 0.82, foot: 0.85 }; // (hands 82%, shoes 85% across -- their soles stay down)
