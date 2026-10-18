@@ -1862,8 +1862,14 @@ function prepareNextRound(room) {
 
 // The game engine, never the client, supplies the final result. An individual match
 // (including a three-round liar match) has one stable id across retries and reconnects.
+// A2c 정자 할아버지: the person who beat the AI (the engine's winner, never the page's word) -- 1 쉬움 · 2 보통 · 3 어려움
+function aiWinProgress(room) {
+  const seat = room.game?.winner; if (!seat || seat === room.ai.seat) return;
+  const person = room.participants[room.players[seat]]; const account = person && !person.ai ? pointAccountForParticipant(person) : null;
+  if (account) islandProgress(`minigame:ai_${room.gameType}`, account, { easy: 1, normal: 2, hard: 3 }[room.ai.level] || 1);
+}
 async function recordFinishedMatch(room) {
-  if (room.ai) return false; // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
+  if (room.ai) { aiWinProgress(room); return false; } // v1.10.72: an AI game is practice -- no record, missions, achievements or ranking
   if (isGostop(room)) await settleGostopBonuses(room);
   const result = buildMatchResult(room, nowIso());
   if (!result) return false;
@@ -4938,7 +4944,7 @@ async function requestHandler(req, res) {
       const quests = questEntries(account);
       // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
       const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
-      const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, ...(stepNow.puzzle ? { goal: null, puzzle: true } : { goal: stepNow.need }) } : null;
+      const minigame = cur?.taken && !cur.done && stepNow?.kind === 'minigame' && !(cur.count >= 1) ? { game: stepNow.game, level: stepNow.level, ...(stepNow.puzzle ? { goal: null, puzzle: true } : stepNow.ai ? { goal: null, ai: true } : { goal: stepNow.need }) } : null;
       return sendJson(res, 200, { ok: true, action: 'quest', story, minigame, fixed:Boolean(IslandQuests.STORIES[story].fixed), name: IslandQuests.STORIES[story].name, say: solvedToday ? `${r.say} …어? 오늘 문제는 벌써 풀었네요! 다시 말을 걸어 주세요.` : r.done && !r.reward && Math.random() < 0.7 ? IslandCast.keeperLine(story, Math.random, keeperLevel, String(session.label || '')) || r.say : r.say /* v1.10.91: their own words (by 호감도) once the story is done */, reward: r.reward || 0, done: Boolean(r.done), waiting: Boolean(r.waiting),
         balance: out?.balance ?? null, track: quests.track, events: pos ? [...islandEvents.nearby(pos.x, pos.z, account), ...quests.entries] : quests.entries });
     }

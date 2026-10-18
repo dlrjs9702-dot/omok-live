@@ -2499,6 +2499,11 @@
     // goal is the step done -- then a word with the farmer hands it in
     const game = data.minigame ? (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = '도와줄게요'; b.addEventListener('click', async () => {
       plazaDialog.close(); const m = data.minigame;
+      if (m.ai) { // A2c 정자 할아버지: a game room against the server's AI (쉬움 -- a harder one counts too, from the game hall)
+        try { const room = await api('/api/rooms', { method: 'POST', body: JSON.stringify({ gameType: m.game.slice(3), visibility: 'private', title: `${data.name}의 대국`, ai: m.level || 'easy' }) }); enterRoomState(room.state); showToast(`자리를 고르면 AI가 맞은편에 앉아요. 이기면 ${data.name}에게 다시 말을 걸어 주세요.`, 5000); }
+        catch (error) { showToast(error.message); }
+        return;
+      }
       const r = await window.GameLaunch.play(m.game, { level: m.level, goal: m.goal, place: 'quest' });
       if (m.puzzle ? r?.score != null : r?.done) showToast(`해냈어요! ${data.name}에게 다시 말을 걸어 주세요.`, 4000); // (v1.10.93: any resident's round; A2b: a puzzle solved -- the daily, sent with its answer)
       else if (m.puzzle) { if (r && 'outcome' in r) showToast('오늘의 문제를 끝까지 풀어 주세요!', 4000); }

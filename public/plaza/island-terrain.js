@@ -332,8 +332,10 @@
     electrician: Object.freeze({ x: -2.2, z: -16.6 }), toolbox: Object.freeze({ x: -3.1, z: -15.9, yaw: toPlaza(-3.1, -15.9), r: 0.4 }),
     stones: Object.freeze({ x: 16.4, z: 17.1, yaw: 0.71 }), builder: Object.freeze({ x: 14, z: 19.2 }),
     bookcart: Object.freeze({ x: -20.6, z: 2.6, yaw: toPlaza(-20.6, 2.6), r: 0.8 }), librarian: Object.freeze({ x: -18.5, z: 1.5 }),
+    // A2c: the gazebo grandpa and his 오목 table, west of the gazebo
+    omokTable: Object.freeze({ x: -25.4, z: 24.2, yaw: toPlaza(-25.4, 24.2), r: 1.4 }), grandpa: Object.freeze({ x: -25.5, z: 27 }),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable];
   const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {

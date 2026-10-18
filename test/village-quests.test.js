@@ -8,10 +8,10 @@ const Cast = require('../public/plaza/island-cast');
 // v1.10.93 마을 주민 미니게임 퀘스트 2단계 (IDEAS #future-island-minigames, assets 39)
 test('마을 주민: 화가·역무원·거리 악단은 매주, 미니게임 한 판(숫자 터치는 시간이 짧을수록) 뒤 둘러보기', () => {
   // one of the three each week, in turn (v1.10.93: the weekly total stays as it was planned)
-  const weekOf = (id) => [0, 1, 2, 3, 4, 5].map((w) => Date.parse('2026-10-20T12:00:00+09:00') + w * 7 * 86400000).find((t) => Q.weeklyStories(t).includes(id));
-  const VILLAGERS = ['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian'];
-  const ids = [0, 1, 2, 3, 4, 5].map((w) => Q.weeklyStories(Date.parse('2026-10-20T12:00:00+09:00') + w * 7 * 86400000).filter((id) => VILLAGERS.includes(id)));
-  assert.deepEqual(ids.map((x) => x.length), [1, 1, 1, 1, 1, 1]); assert.equal(new Set(ids.flat()).size, 6);
+  const weekOf = (id) => [0, 1, 2, 3, 4, 5, 6].map((w) => Date.parse('2026-10-20T12:00:00+09:00') + w * 7 * 86400000).find((t) => Q.weeklyStories(t).includes(id));
+  const VILLAGERS = ['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'grandpa'];
+  const ids = [0, 1, 2, 3, 4, 5, 6].map((w) => Q.weeklyStories(Date.parse('2026-10-20T12:00:00+09:00') + w * 7 * 86400000).filter((id) => VILLAGERS.includes(id)));
+  assert.deepEqual(ids.map((x) => x.length), [1, 1, 1, 1, 1, 1, 1]); assert.equal(new Set(ids.flat()).size, 7);
   for (const id of VILLAGERS) { assert.ok(Cast.keeperLine(id, () => 0)); assert.ok(Cast.keeperN(id) >= 15); }
   let now = weekOf('stationmaster');
   let doc = Q.talk({}, 'stationmaster', [], { x: T.VILLAGE.stationmaster.x, z: T.VILLAGE.stationmaster.z }, now).doc;
@@ -33,4 +33,10 @@ test('마을 주민: 화가·역무원·거리 악단은 매주, 미니게임 �
     d = Q.note(d, 'at', { x: look.x, z: look.z, now }); assert.equal(d[id].count, 1, id + ' 둘러보기');
   }
   for (const v of T.villageSolids()) assert.ok(T.walkable(v.x, v.z));
+  // A2c: the grandpa -- a win over the room AI (오목, then 오델로); the other game does not count
+  now = weekOf('grandpa'); const g = { x: T.VILLAGE.grandpa.x, z: T.VILLAGE.grandpa.z };
+  let d = Q.talk({}, 'grandpa', [], g, now).doc;
+  assert.equal(Q.note(d, 'minigame:ai_othello', { qty: 1, now }), null); d = Q.note(d, 'minigame:ai_omok', { qty: 1, now }); assert.equal(d.grandpa.count, 1);
+  const won = Q.talk(d, 'grandpa', [], g, now); assert.equal(won.reward, 3000); assert.match(won.say, /오델로/);
+  d = Q.note(won.doc, 'minigame:ai_othello', { qty: 3, now }); assert.equal(Q.talk(d, 'grandpa', [], g, now).reward, 4000 + 15000);
 });

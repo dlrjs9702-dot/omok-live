@@ -1501,6 +1501,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const rock = (n) => { const g = new THREE.Group(); for (let i = 0; i < n; i += 1) mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.3, 10), mat(0x9a958c), -2.4 + i * 1.2, 0.12, 0, g); return g; };
     const stones = [0, 2, 4, 5].map((n, s) => { const root = place(`village.stepstones.${s}`, V.stones, rock(n)); root.position.y = globalThis.IslandTerrain.streamWaterHeight(V.stones.x, V.stones.z) - 0.23; return root; });
     const box = new THREE.Group(); mesh(new THREE.BoxGeometry(0.6, 0.35, 0.35), mat(0xc0392b), 0, 0.18, 0, box); place('village.toolbox', V.toolbox, box);
+    const table = new THREE.Group(); mesh(new THREE.BoxGeometry(1.1, 0.7, 1.1), mat(0x9a6b45), 0, 0.35, 0, table); place('village.table_omok', V.omokTable, table); // A2c (always there)
     const cartBox = new THREE.Group(); mesh(new THREE.BoxGeometry(1.2, 0.9, 0.6), mat(0x8a5a3b), 0, 0.45, 0, cartBox); const cart = place('village.bookcart', V.bookcart, cartBox); cart.visible = false;
     village = { murals, mural: -1, busk: false, cheerAt: 0, lamps, lit: 0, stones, stone: 0, cart };
     return village;
@@ -1663,7 +1664,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
           if (ev.story === 'farmer') { assets.dress(['character.farmer'], npc); assets.hold(npc, 'farm.mallet', 0, { key: 'questTool', at: [0, -0.18, -0.025] }); prepareFarm(); } // v1.10.80 his own model, the mallet in hand
-          else if (['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian'].includes(ev.story)) { assets.dress([`character.${ev.story}`, 'character.npc'], npc); if (ev.story === 'busker') assets.hold(npc, 'village.guitar', 0, { key: 'questTool', at: [0, -0.505, 0] }); prepareVillage(); } // v1.10.93 assets 39
+          else if (['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'grandpa'].includes(ev.story)) { assets.dress([`character.${ev.story === 'grandpa' ? 'gazebo_grandpa' : ev.story}`, 'character.npc'], npc); if (ev.story === 'busker') assets.hold(npc, 'village.guitar', 0, { key: 'questTool', at: [0, -0.505, 0] }); prepareVillage(); } // v1.10.93 assets 39
           else dressUp(npc, look, spec);
           if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
           if (ev.story === 'granny') assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });

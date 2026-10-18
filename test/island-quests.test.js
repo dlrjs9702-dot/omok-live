@@ -123,7 +123,7 @@ test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유�
   const held=process.env.ISLAND_QUEST_WEEK; delete process.env.ISLAND_QUEST_WEEK; t.after(()=>{ process.env.ISLAND_QUEST_WEEK=held; }); // the real rotation here
   const before=Date.parse('2026-10-11T23:59:59+09:00'), after=before+1000;
   assert.deepEqual(Q.weeklyStories(before),['granny','fisher','kid','farmer','painter']); // v1.10.80 the farmer every week; v1.10.93 a village resident in turn
-  assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid','farmer','electrician']); // (A2b: six village residents in turn)
+  assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid','farmer','electrician']); // (A2b/A2c: seven village residents in turn)
   assert.equal(Q.talk({},'granny',[],at('granny'),after).error,'NO_STORY');
   for(let week=0;week<52;week++) {
     const now=Date.parse('2026-10-05T00:00:00+09:00')+week*7*86400000;
