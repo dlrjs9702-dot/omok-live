@@ -271,6 +271,8 @@
     }
   }
 
+  let armedCard = null; let lastPointer = 'mouse'; // A3 G2-3 (a touch's first tap)
+  function lightMonth(month) { document.querySelectorAll('#gostopFloor .hwatu').forEach((el) => el.classList.toggle('gostopMatch', Boolean(month) && el.classList.contains(`month-${month}`) && !el.classList.contains('bonus'))); }
   function renderHand(state) {
     const g = state.game;
     const hand = $('gostopHand');
@@ -294,8 +296,18 @@
       const el = cardEl(card.id, { size: 'hand', button: true, track: true, classes: `${actionable?.classes(legal) || ''}${unavailable ? ' gostopCardUnavailable' : ''}` });
       el.disabled = !legal;
       if (card.shake || card.bomb || card.kong) el.classList.add('hasSpecial');
+      // A3 G2-3: pointing at a card (mouse, keys, a first touch) lights the floor cards of its month; with none, it would be
+      // thrown on the floor (marked). On a touch screen the first tap only points -- the second plays it.
+      const month = info(card.id).bonus ? null : info(card.id).month;
+      if (month && !g.floor.some((f) => info(f).month === month)) el.classList.add('gostopToFloor');
+      el.addEventListener('pointerenter', () => lightMonth(month)); el.addEventListener('pointerleave', () => { if (armedCard !== card.id) lightMonth(null); });
+      el.addEventListener('focus', () => lightMonth(month)); el.addEventListener('blur', () => { if (armedCard !== card.id) lightMonth(null); });
+      el.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType; });
+      if (armedCard === card.id) el.classList.add('gostopArmed');
       el.addEventListener('click', () => {
         if (!legal) return;
+        if (lastPointer === 'touch' && armedCard !== card.id) { armedCard = card.id; hand.querySelectorAll('.gostopArmed').forEach((x) => x.classList.remove('gostopArmed')); el.classList.add('gostopArmed'); lightMonth(month); return; }
+        armedCard = null;
         if (card.shake || card.bomb || card.kong) { pendingSpecial = { cardId: card.id, options: card }; render(lastState); return; }
         act('gostop-play', { cardId: card.id });
       });
@@ -611,7 +623,10 @@
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const rectOf = el => (el?.isConnected ? el.getBoundingClientRect() : null);
   const plain = r => (r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null);
-  const fxMs = (run, ms, min = 90) => Math.max(min, Math.round(ms * (run?.pace || 1)));
+  // A3 G2-6 진행 속도: 보통 / 빠르게(½) / 연출 줄임(¼, the cards only slide) -- this device's choice; the server's pace is unchanged
+  const SPEEDS = { normal: ['보통', 1], fast: ['빠르게', 0.5], off: ['연출 줄임', 0.25] };
+  let speed = 'normal'; try { speed = SPEEDS[localStorage.getItem('gc.gostopSpeed')] ? localStorage.getItem('gc.gostopSpeed') : 'normal'; } catch {}
+  const fxMs = (run, ms, min = 90) => { const k = SPEEDS[speed][1]; return Math.max(Math.round(min * k), Math.round(ms * (run?.pace || 1) * k)); };
 
   function snapshot() {
     const cards = new Map();
@@ -1006,6 +1021,8 @@
     submit = roomAction;
     $('gostopStakeSelect').addEventListener('change', event => act('set-gostop-stake', { pointsPerScore: Number(event.target.value) }));
     $('gostopStartBtn').addEventListener('click', () => act('start-gostop', {}));
+    const sp = $('gostopSpeedBtn'); const show = () => { sp.textContent = `속도 · ${SPEEDS[speed][0]}`; };
+    show(); sp.addEventListener('click', () => { const order = Object.keys(SPEEDS); speed = order[(order.indexOf(speed) + 1) % order.length]; try { localStorage.setItem('gc.gostopSpeed', speed); } catch {} show(); });
   }
 
   // fxLog/fxBusy: read-only hooks for browser tests (public card ids and screen positions only).

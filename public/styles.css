@@ -2108,3 +2108,46 @@ body.roomPlaying .quickChat{display:flex}
 @media(max-width:640px){body.roomPlaying .quickChat{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}body.roomPlaying .quickChat button{flex:0 0 auto}.turnRing{width:36px;height:36px;right:6px}.turnRing b{font-size:.62rem}.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:46px}.versus.versusScore{font-size:1rem}}
 /* G1-6: the side panels narrow while a hand is played (unless 넓게 was chosen) */
 body.roomPlaying .gameLayout:not(.sideWide){--side-w:280px}
+/* A3 G2-1 맞고 한 화면 테이블 (while a hand is played): the settlement line and score details step aside, cards scale with
+   the screen height, every capture pile is one overlapped row, the floor keeps month slots in two rows, and the go/stop
+   choice is a window over the table -- so the table holds from the first card to the late hand on PC and phone */
+body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopHead,body.roomPlaying.tableGameRoom:not(.roomInfoOpen) .gostopPanel>.gostopPointHistory{display:none}
+body.roomPlaying .gostopFelt{--hh:clamp(58px,11.5vh,124px);--fh:clamp(46px,9.7vh,112px);--mh:clamp(26px,4.4vh,53px);gap:6px;padding:8px 12px 8px;border-width:8px}
+body.roomPlaying .gostopFelt .hwatu-hand{height:var(--hh);width:calc(var(--hh) * .68)}
+body.roomPlaying .gostopFelt .hwatu-normal{height:var(--fh);width:calc(var(--fh) * .68)}
+body.roomPlaying .gostopFelt .hwatu-mini{height:var(--mh);width:calc(var(--mh) * .68)}
+body.roomPlaying .gostopFelt .gostopSeat{padding:5px 8px;gap:4px;row-gap:3px}
+body.roomPlaying .gostopFelt .gostopSeat>details,body.roomPlaying .gostopFelt .gostopEstimate{display:none}
+body.roomPlaying .gostopFelt .gostopCaptured{gap:6px}
+body.roomPlaying .gostopFelt .gostopPile{padding:2px 4px;min-width:0;overflow:hidden}
+body.roomPlaying .gostopFelt .gostopPileCards{flex-wrap:nowrap;overflow:hidden;min-height:var(--mh)}
+body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini{flex:0 0 auto}
+body.roomPlaying .gostopFelt .gostopPileCards .hwatu-mini+.hwatu-mini{margin-left:calc(var(--mh) * -.42)}
+body.roomPlaying .gostopFelt .gostopTable{min-height:0;padding:4px 10px;gap:2px 12px}
+body.roomPlaying .gostopFelt .gostopEvent{min-height:20px;font-size:.88rem}
+body.roomPlaying .gostopFelt .gostopFloor{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:auto;gap:4px 8px;justify-items:center}
+body.roomPlaying .gostopFelt .gostopFloorGroup{padding:1px}
+body.roomPlaying .gostopFelt .gostopFloorGroup .hwatu+.hwatu{margin-left:calc(var(--fh) * -.22)}
+body.roomPlaying .gostopFelt .gostopHand{padding:4px 6px;gap:6px;flex-wrap:nowrap}
+/* G2-2: the go/stop choice over the table's middle */
+body.roomPlaying .gostopFelt .gostopActions{min-height:0}
+body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;width:min(520px,calc(100% - 24px));box-shadow:0 18px 50px rgba(0,0,0,.6)}
+@media(max-width:640px){
+  body.roomPlaying .gostopFelt{--hh:clamp(54px,10vh,80px);--fh:clamp(38px,6.6vh,60px);--mh:clamp(22px,3.6vh,34px);padding:5px 4px;border-width:5px;border-radius:16px}
+  body.roomPlaying .gostopFelt .gostopCaptured{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+  body.roomPlaying .gostopFelt .gostopPile small{font-size:.62rem}
+  body.roomPlaying .gostopFelt .gostopFloor{grid-template-columns:repeat(6,minmax(0,1fr));gap:2px 2px}
+  body.roomPlaying .gostopFelt .gostopTable{grid-template-columns:minmax(0,1fr) auto;padding:2px 4px}
+  body.roomPlaying .gostopFelt .gostopHand{justify-content:center}
+  body.roomPlaying .gostopFelt .gostopHand .hwatu+.hwatu{margin-left:calc(var(--hh) * -.22)}
+  body.roomPlaying .gostopFelt .gostopSeatHead{font-size:.8rem}
+}
+/* A3 G2-3: the floor cards a pointed hand card would take, the pointed (first-tapped) card raised, a card that would go to the floor */
+.gostopFelt .hwatu.gostopMatch{outline:3px solid #facc15;outline-offset:1px;box-shadow:0 0 16px rgba(250,204,21,.75)}
+.gostopFelt .gostopHand .hwatu.gostopArmed{transform:translateY(-12px);outline:3px solid #facc15;z-index:2}
+.gostopFelt .gostopHand .hwatu.gostopToFloor::after{content:'버림';position:absolute;right:2px;top:2px;padding:0 4px;border-radius:6px;background:rgba(15,23,42,.8);color:#e2e8f0;font-size:.6rem;font-weight:800}
+/* A3 G2-7 화투 뒷면: the game center's own back -- deep red with a cream frame and a small diamond-and-circle crest
+   (a skin's back still wins: SkinLooks styles the element inline) */
+.hwatuBack{background:radial-gradient(circle at 50% 50%,#fde68a 0 9%,transparent 10%),conic-gradient(from 45deg at 50% 50%,#7f1d1d 0 25%,#991b1b 0 50%,#7f1d1d 0 75%,#991b1b 0) 50% 50%/34% 24%,#8b1414;border:1px solid #3f0808;box-shadow:inset 0 0 0 2px #8b1414,inset 0 0 0 3.5px #fcd9a8,inset 0 0 0 5px #8b1414}
+.hwatu-tiny.hwatuBack{box-shadow:inset 0 0 0 1.5px #fcd9a8}
+.gostopSpeedBtn{position:absolute;right:10px;bottom:8px;z-index:3;font-size:.72rem;padding:3px 8px;opacity:.8}
