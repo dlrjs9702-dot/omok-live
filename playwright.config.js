@@ -36,6 +36,9 @@ module.exports = defineConfig({
     // v1.9.7: 일반 사용자는 기존 로비로 전환할 수 없다. 오래된 e2e만 webdriver 전용 내부 플래그로
     // 기존 DOM을 사용하고, plaza.spec은 그 플래그를 지운 뒤 실제 게임 아일랜드를 검증한다.
     storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'gc.testClassic', value: '1' }] }] },
+    // two players in one test: the page not in front must keep its frames and timers (Chrome stops a background page's
+    // requestAnimationFrame) -- else it never shows what the other did (the 잡화점 firework, CI 2026-10-19)
+    launchOptions: { args: ['--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows'] },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
