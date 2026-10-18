@@ -45,10 +45,12 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   for (const w of [a, b]) { await w.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await w.page.reload(); await expect.poll(() => w.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   for (const [itemId, qty] of [['firework', 1], ['gift_wrap', 1], ['bread', 2]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
   await a.page.evaluate(() => window.PlazaWarp(4, 4)); await b.page.evaluate(() => window.PlazaWarp(5.2, 4));
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
+  for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
+  await b.page.evaluate(() => { window.__zzSeen = false; const d = window.PlazaDebug(); window.__zzWatch = setInterval(() => { if (d.othersActs().some((o) => o.act === 'show:firework')) window.__zzSeen = true; }, 100); }); // (CI: one PlazaDebug() takes ~2 s, the show 6 s -- watch with one debug object)
   await a.page.locator('#islandBagTab').click();
   await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('button', { name: '쓰기' }).click();
-  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'show:firework')), { timeout: 8000 }).toBe(true);
+  await expect.poll(() => b.page.evaluate(() => window.__zzSeen), { timeout: 15000 }).toBe(true);
+  await b.page.evaluate(() => clearInterval(window.__zzWatch));
   // the gift: by the other player, 선물하기, bread
   const id = await a.page.evaluate(() => window.PlazaDebug().others[0].id);
   await a.page.evaluate((id) => { const o = window.PlazaDebug().others.find((x) => x.id === id); window.PlazaDebug().teleport(o.x - 1, o.z); }, id);

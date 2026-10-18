@@ -531,7 +531,8 @@ test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 
     expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x - b.uz * (b.w / 2 + 0.5), b.z + b.ux * (b.w / 2 + 0.5)])).toBe(false); // just past its rail: water
   }
   // every facility's entrance is reachable ground
-  for (const [id, door] of Object.entries(start.doors)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
+  const inside = await page.evaluate(() => ['store:exit', ...globalThis.IslandStore.SECTORS.map((s) => s.place)]); // (v1.10.92: the 백화점's own doors are in its room)
+  for (const [id, door] of Object.entries(start.doors)) if (!inside.includes(id)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
   // walking south down the pier stops at its end, over the sea
   const pier = start.pier;
   await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [pier.x, pier.z + pier.half - 3]);
@@ -1596,7 +1597,7 @@ async function appearanceShop(browser, request, label, door, name, outfit = fals
   const { page } = a;
   await islandPage(page);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
-  await page.evaluate(id => window.PlazaDebug().place(id), door);
+  await require('./skin-support').intoMall(page, door); // (v1.10.92: in the 백화점)
   await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toBeVisible();

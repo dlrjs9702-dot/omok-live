@@ -126,8 +126,9 @@ async function intoMall(page, place = null, isMobile = false) {
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('store');
   }
   if (place) {
-    await page.evaluate((place) => { const d = window.PlazaDebug(); const door = d.doors[place]; d.teleport(door.x, door.z); }, place);
-    await expect(page.locator('#plazaHint')).toContainText(await page.evaluate((place) => window.PlazaDebug().doors[place].name, place), { timeout: 10000 });
+    // (the walk-in may still place me at the door after a first teleport on a slow runner: again until the prompt is the sector's)
+    const name = await page.evaluate((place) => window.PlazaDebug().doors[place].name, place);
+    await expect.poll(async () => { await page.evaluate((place) => { const d = window.PlazaDebug(); const door = d.doors[place]; d.teleport(door.x, door.z); }, place); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain(name);
   }
   return press;
 }
