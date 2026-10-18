@@ -1068,3 +1068,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .starWishBtn{box-shadow:0 6px 24px rgba(255,251,224,.45)}
 :root[data-theme="light"] .contestBar{background:rgba(247,239,225,.82);color:#8a5a00;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 :root[data-theme="light"] .noticeQueueRow{color:#8a5a00}
+:root[data-theme="light"] .mailLetter{border:1px solid var(--line, #33415a)}
+:root[data-theme="light"] .mailLetter.unread{border-color:#f2c14e}
+:root[data-theme="light"] .mailLetter.unread .mailHead strong::after{color:#f2c14e}

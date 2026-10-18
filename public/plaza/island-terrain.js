@@ -350,8 +350,10 @@
     bookcart: Object.freeze({ x: -20.6, z: 2.6, yaw: toPlaza(-20.6, 2.6), r: 0.8 }), librarian: Object.freeze({ x: -18.5, z: 1.5 }),
     // A2c: the gazebo grandpa and his 오목 table, west of the gazebo
     omokTable: Object.freeze({ x: -25.4, z: 24.2, yaw: toPlaza(-25.4, 24.2), r: 1.4 }), grandpa: Object.freeze({ x: -25.5, z: 27 }),
+    // B 47 함께하는 섬: the 우체통 on the plaza's east side, the birthday corner on its north-west (decorations only on the day)
+    mailbox: Object.freeze({ x: 11, z: -6, yaw: toPlaza(11, -6), r: 0.5 }), birthday: Object.freeze({ x: -9, z: 8.5, yaw: toPlaza(-9, 8.5) }),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox];
   const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {

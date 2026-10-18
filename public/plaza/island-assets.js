@@ -351,6 +351,10 @@
   // lamps and benches (overlays, in the props' own frame); the lamp's own 0.85 is the overlay's too
   const winter = (file, extra = {}) => ({ url: `/assets/island/winter-v1/${file}.glb`, low: { url: `/assets/island/winter-v1/${file}_low.glb` }, near: 60, ...extra });
   for (const f of ['landmark_winter_tree', 'landmark_winter_base', 'snowman_classic', 'snowman_little', 'gift_box_red', 'gift_box_green', 'gift_box_blue', 'wreath', 'garland', 'candy_cane', 'snow_pile_round', 'snow_pile_long', 'sleigh', 'lights_string', 'bench_snow', 'lamp_winter']) REGISTRY[`winter.${f}`] = winter(f);
+  // B 47 함께하는 섬 (assets 47 together-v1): birthday decorations, the 우체통 and its letter and parcel, the guide's arrow, the
+  // bug net and twelve insects, the museum, three pets -- each as together.<file>; the guide on the common rig
+  for (const f of ["birthday_balloons","birthday_banner","birthday_cake","confetti_burst","mailbox","letter","parcel","guide_arrow","tool_bugnet","insect_butterfly_cabbage","insect_butterfly_swallowtail","insect_butterfly_blue","insect_dragonfly_red","insect_dragonfly_emperor","insect_cicada","insect_rhinoceros_beetle","insect_stag_beetle","insect_ladybird","insect_firefly","insect_grasshopper","insect_snail","museum_exterior","museum_case","museum_tank","museum_frame","pet_puppy","pet_kitten","pet_bird"]) REGISTRY[`together.${f}`] = { url: `/assets/island/together-v1/${f}.glb`, low: { url: `/assets/island/together-v1/${f}_low.glb` }, near: 40 };
+  REGISTRY['character.guide'] = { url: `${CH}/npc_guide.glb`, low: { url: `${CH}/npc_guide_low.glb` }, rotationY: Math.PI, motions: true };
   // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
   // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made
   REGISTRY['character.base'].slim = { width: 0.82, depth: 0.8, arm: 0.55, leg: 0.5, hand: 0.82, foot: 0.85 }; // (hands 82%, shoes 85% across -- their soles stay down)

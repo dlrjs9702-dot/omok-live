@@ -2206,3 +2206,18 @@ body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
 @media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}
 /* A5 공지 예약 */
 .noticeQueue{display:grid;gap:4px;margin:6px 0}.noticeQueueRow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:#fde68a}
+
+/* B 47 우체통·생일 */
+.mailBox { display: grid; gap: 8px; max-height: min(70vh, 560px); overflow-y: auto; text-align: left; }
+.mailBox h3 { margin: 4px 0 0; font-size: 1rem; }
+.mailList { display: grid; gap: 6px; }
+.mailLetter { border: 1px solid var(--line, #33415a); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; }
+.mailLetter.unread { border-color: #f2c14e; }
+.mailLetter.unread .mailHead strong::after { content: ' · 새 편지'; color: #f2c14e; font-weight: 600; }
+.mailHead { display: flex; justify-content: space-between; gap: 8px; }
+.mailText { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mailLetter button { justify-self: end; }
+.mailForm { display: grid; gap: 6px; }
+.mailForm textarea { resize: vertical; min-height: 64px; }
+.birthdayForm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.birthdayForm #birthdayDay { width: 72px; }

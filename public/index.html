@@ -381,6 +381,7 @@
           <form id="islandWeatherForm" class="joinForm islandTimeForm"><label for="islandWeatherSelect">섬 날씨</label><select id="islandWeatherSelect"><option value="auto">자동 (서버 시계)</option><option value="clear">맑음</option><option value="rain">비 (겨울 구역은 눈)</option><option value="rainbow">무지개</option></select><button class="secondary" type="submit">적용</button></form>
           <form id="islandSeasonForm" class="joinForm islandTimeForm"><label for="islandSeasonSelect">계절 회전</label><select id="islandSeasonSelect"><option value="auto">자동 (날마다 돎)</option><option value="hold">지금 배치로 멈춤</option></select><button class="secondary" type="submit">적용</button></form>
           <form id="islandDecorForm" class="joinForm islandTimeForm"><label for="islandDecorSelect">이벤트 장식</label><select id="islandDecorSelect"><option value="auto">자동 (10월 할로윈·12월 겨울 축제)</option><option value="halloween">할로윈</option><option value="winter">겨울 축제</option><option value="off">끔</option></select><button class="secondary" type="submit">적용</button></form>
+          <form id="adminBirthdayForm" class="joinForm islandTimeForm"><label for="adminBirthdayName">생일 넣기</label><input id="adminBirthdayName" type="text" placeholder="계정 이름" required><input id="adminBirthdayMonth" type="number" min="1" max="12" placeholder="월" aria-label="월" required><input id="adminBirthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일" required><button class="secondary" type="submit">적용</button></form>
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestDay">주말 섬 대회</label><select id="contestDay"><option value="0">일</option><option value="1">월</option><option value="2">화</option><option value="3">수</option><option value="4">목</option><option value="5">금</option><option value="6">토</option></select><input id="contestTime" type="time" value="20:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
@@ -1097,6 +1098,16 @@
         <p id="pointHistoryStatus" class="smallMuted" role="status"></p>
         <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
       </section>
+    </section>
+    <section class="myInfoSection" aria-labelledby="myInfoBirthdayTitle"><!-- B 47 생일 -->
+      <div class="myInfoSectionHead"><h3 id="myInfoBirthdayTitle">생일</h3></div>
+      <form id="birthdayForm" class="joinForm birthdayForm">
+        <select id="birthdayMonth" aria-label="월"><option value="">월</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select>
+        <input id="birthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일">
+        <label><input id="birthdayHidden" type="checkbox"> 다른 사람에게 숨기기</label>
+        <button class="secondary" type="submit">저장</button>
+      </form>
+      <p id="birthdayStatus" class="smallMuted" role="status"></p>
     </section>
     <section class="myInfoSection" aria-labelledby="myInfoSkinsTitle">
       <div class="myInfoSectionHead"><h3 id="myInfoSkinsTitle">보유 스킨</h3></div>

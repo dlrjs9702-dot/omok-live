@@ -5467,6 +5467,238 @@
       "lowSrc": "planting45:02. Low/fertilized_mark_low.glb",
       "lowSha256": "51a9f1ab7cf17fad706f5c2d0f2815335260b52adfcd35a272b3b86e0117be6a",
       "precompressed": true
+    },
+    {
+      "out": "together-v1/birthday_balloons.glb",
+      "src": "together47:01. High/birthday_balloons.glb",
+      "sha256": "d63df08d88e34a9ba30bc362869bc683d0fd7413f58c69bda2fc1ef5fc8d0615",
+      "lowSrc": "together47:02. Low/birthday_balloons_low.glb",
+      "lowSha256": "8a084cb5a8a3f8cd45a70016fb7c317cad505dd408bfaa20591cc8a742a0db0e",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/birthday_banner.glb",
+      "src": "together47:01. High/birthday_banner.glb",
+      "sha256": "c5b1056d4e50240c63d416b8d3b9cbb4c829cd9c7bb0e2c9ef2e6dcbc6baef76",
+      "lowSrc": "together47:02. Low/birthday_banner_low.glb",
+      "lowSha256": "4d7d9b93d4f0bf93c6881bd58cd0946370ca515cc67c5d8dc56726ba96d0739f",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/birthday_cake.glb",
+      "src": "together47:01. High/birthday_cake.glb",
+      "sha256": "21a1907cf745762b2c12bd52101e6381b6b54349dd322989fcbcc5e88781414e",
+      "lowSrc": "together47:02. Low/birthday_cake_low.glb",
+      "lowSha256": "9daf654f29ac36d360a98ec7227e2787c92fc3c9da1955bf4c2ce9c7c1fd1d75",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/confetti_burst.glb",
+      "src": "together47:01. High/confetti_burst.glb",
+      "sha256": "587c503d74e6f7283922effc58f59cc13578346a1f410ad1fbf20ded3b91d6e9",
+      "lowSrc": "together47:02. Low/confetti_burst_low.glb",
+      "lowSha256": "32b1e45b7e1e0c872d4e57a047603f239d950124ae68a92ecca10df2e26af822",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/mailbox.glb",
+      "src": "together47:01. High/mailbox.glb",
+      "sha256": "20213c566ba22754c108b65f85f836e6c1cecc2c679f7b76ed52f96e7696b1ef",
+      "lowSrc": "together47:02. Low/mailbox_low.glb",
+      "lowSha256": "d5c69652ddbf60da21713e09024c6caca03b2a58be6f08d1558f2ed496325182",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/letter.glb",
+      "src": "together47:01. High/letter.glb",
+      "sha256": "2d9163fad03bcb182d2db4599910a83f45d20774f6b760070d8fa4c5b7bcc10a",
+      "lowSrc": "together47:02. Low/letter_low.glb",
+      "lowSha256": "52381e30dce8375dfc42c7dccd98b67e781ee3ac65a7de41594ecaba3cfd6027",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/parcel.glb",
+      "src": "together47:01. High/parcel.glb",
+      "sha256": "79b61b86b9c02cae7f400b5b576fd8318c96154e033440a6e0b32a82455e293b",
+      "lowSrc": "together47:02. Low/parcel_low.glb",
+      "lowSha256": "25476f6cc2647be8010d52edb257d6d69d7030c8c8d18abc142ec33e888f0588",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_guide.glb",
+      "src": "together47:01. High/npc_guide.glb",
+      "sha256": "fc080ca883f2408f74c1bd28568791f1e74a5b6da5316a2286dde5dfb1f4ee52",
+      "lowSrc": "together47:02. Low/npc_guide_low.glb",
+      "lowSha256": "ff4b50f7255702cb2fed146fd97c44d0826207688bb13cb7b629e33ef4003383",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/guide_arrow.glb",
+      "src": "together47:01. High/guide_arrow.glb",
+      "sha256": "adccaef81053ec9c9a2d1ac98ccc6f3ba501f48b5e4921fdf736174f5396a816",
+      "lowSrc": "together47:02. Low/guide_arrow_low.glb",
+      "lowSha256": "4b8c8b69be87eab8ec58c1f73b04b704dc46d1e6da54b8e0de1ec5e8c03f99d2",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/tool_bugnet.glb",
+      "src": "together47:01. High/tool_bugnet.glb",
+      "sha256": "f8d0a1f83facbd2419accaa5709a94a264e0842cc6f47db010a58c9dcc689426",
+      "lowSrc": "together47:02. Low/tool_bugnet_low.glb",
+      "lowSha256": "3edeccafc60365425430cc99c106ef7f53f581b1b78efce53d6aa417d19b7555",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_butterfly_cabbage.glb",
+      "src": "together47:01. High/insect_butterfly_cabbage.glb",
+      "sha256": "1e8b3b76d90c30ac4a80a738349441f5c7c21c2ba8ebdd63455c67875929b92e",
+      "lowSrc": "together47:02. Low/insect_butterfly_cabbage_low.glb",
+      "lowSha256": "d79b2bcdb9d8a2a0c1e331e2b137a1d47d19fe148cd2bdeb56a1a2fe443da2cf",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_butterfly_swallowtail.glb",
+      "src": "together47:01. High/insect_butterfly_swallowtail.glb",
+      "sha256": "88ba6578cc137d0c48fdee3fc9bddd9a5137be443813fe94ab18f6e488598310",
+      "lowSrc": "together47:02. Low/insect_butterfly_swallowtail_low.glb",
+      "lowSha256": "17f391e9b6e670c9cb020f493c82fceb809c3f68a3d0677a49a549b35396be69",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_butterfly_blue.glb",
+      "src": "together47:01. High/insect_butterfly_blue.glb",
+      "sha256": "041dbd0842a51b985992050b436166bb615b8d2c110b851ab210c7c5dd20e4f2",
+      "lowSrc": "together47:02. Low/insect_butterfly_blue_low.glb",
+      "lowSha256": "62fb5550fe9ac64fd21fbddff5bbabed023aba9b2d5225abca2129a0e9bb3432",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_dragonfly_red.glb",
+      "src": "together47:01. High/insect_dragonfly_red.glb",
+      "sha256": "00e9c526758edb69533946bd64b3daf2bfec116de1e26d53f97f8bad6f565b03",
+      "lowSrc": "together47:02. Low/insect_dragonfly_red_low.glb",
+      "lowSha256": "0f0e7001a43b690788bd8bf4e69835641b150db577ad16fba91ac8bc00565367",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_dragonfly_emperor.glb",
+      "src": "together47:01. High/insect_dragonfly_emperor.glb",
+      "sha256": "29f785c4ba353872c3693fbd5271e2748700dbd4144a2b4dcb83c60d6f47f82a",
+      "lowSrc": "together47:02. Low/insect_dragonfly_emperor_low.glb",
+      "lowSha256": "115f809d9b7835c7bf1de23557b642f04d2945a7b5edf9f3957fd32400443061",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_cicada.glb",
+      "src": "together47:01. High/insect_cicada.glb",
+      "sha256": "7e4e0bca4ffeec4a3fbc427a73758c7193853b1967d17c2e5918a054dd16d809",
+      "lowSrc": "together47:02. Low/insect_cicada_low.glb",
+      "lowSha256": "9f91a24a435400e617c61e191311f3ceea139954c322872d7a53f834e3442434",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_rhinoceros_beetle.glb",
+      "src": "together47:01. High/insect_rhinoceros_beetle.glb",
+      "sha256": "73548a5ee2ad1416b087a4a994c8ebe779970475ac7cf934012a585913817631",
+      "lowSrc": "together47:02. Low/insect_rhinoceros_beetle_low.glb",
+      "lowSha256": "27a081989fc67c4871a6cd16ad32007000d053b1e9600bcaf97c0746ab47e0f7",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_stag_beetle.glb",
+      "src": "together47:01. High/insect_stag_beetle.glb",
+      "sha256": "a6ac40fb10681b9961040e95217bb0bcc44e06c277d8d2cead7daed9f9a4a6aa",
+      "lowSrc": "together47:02. Low/insect_stag_beetle_low.glb",
+      "lowSha256": "99a318606568e69e8478653c5d05281422db801ce812af9aa77d1a05c1cd7565",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_ladybird.glb",
+      "src": "together47:01. High/insect_ladybird.glb",
+      "sha256": "d8a3aa136389fb7f804833b184a4b0f282712a2c044b6da201eb7e584a5fe8b5",
+      "lowSrc": "together47:02. Low/insect_ladybird_low.glb",
+      "lowSha256": "caf87b865cd4530c5a06681f4e4fb374177408a7a25f09c80aa33cfa628eaa36",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_firefly.glb",
+      "src": "together47:01. High/insect_firefly.glb",
+      "sha256": "e072533b2e442fbbfc0f89a8e9d219f035e3112d7405dd71210f1c506db22cd1",
+      "lowSrc": "together47:02. Low/insect_firefly_low.glb",
+      "lowSha256": "0eea09a93a6887c5393ddc1123264a813848458e0e758bf81cd668103fc85942",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_grasshopper.glb",
+      "src": "together47:01. High/insect_grasshopper.glb",
+      "sha256": "39cb1fd7962dc541e6494b2820bd36dfa94a165c4ffb5142efdac6b9c39ff39c",
+      "lowSrc": "together47:02. Low/insect_grasshopper_low.glb",
+      "lowSha256": "8396cdf22324b8a240949fc15e868bea175b9bb376f7a9b410100f3349c42401",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/insect_snail.glb",
+      "src": "together47:01. High/insect_snail.glb",
+      "sha256": "0543716b1ee1a137dfc0028b603f83ab2dd967aeb583f2c9c8fcdac3f6af5e7b",
+      "lowSrc": "together47:02. Low/insect_snail_low.glb",
+      "lowSha256": "42366d2951c8f1a4b94d1ffb66f76d5c682cd242a9c9da21b9a7a65288c79969",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/museum_exterior.glb",
+      "src": "together47:01. High/museum_exterior.glb",
+      "sha256": "a7081553ede124eafe8334c620c87eecd4dac546a21809805a0ccd4d146360eb",
+      "lowSrc": "together47:02. Low/museum_exterior_low.glb",
+      "lowSha256": "98cc9de3536335c4f53ea9b326dd3ca1c42eafbf8eafd49329f2118fdf0048dc",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/museum_case.glb",
+      "src": "together47:01. High/museum_case.glb",
+      "sha256": "163b63acc08ce5ff112b5920c20bfbd250e56cd261bc18e240bc42015eedf2a3",
+      "lowSrc": "together47:02. Low/museum_case_low.glb",
+      "lowSha256": "4040e925a3a38ccc32de26f5741dbe246d92fc8d3d4a10ed4b57922f87b879eb",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/museum_tank.glb",
+      "src": "together47:01. High/museum_tank.glb",
+      "sha256": "aa830b85b8b5bed0b893d0796401fc7499b303f3c5178866d581f1c6e204a2c7",
+      "lowSrc": "together47:02. Low/museum_tank_low.glb",
+      "lowSha256": "5f6c5988276eebf4f85a0918d3e05a044013602a9c7f63ece9eb9a48426de044",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/museum_frame.glb",
+      "src": "together47:01. High/museum_frame.glb",
+      "sha256": "7dd4e72fc1f67cf4d02c57ba3907df10dcd1a88a00da81407ae82809fb3b48a3",
+      "lowSrc": "together47:02. Low/museum_frame_low.glb",
+      "lowSha256": "465071bafbeac085270370be7fd360a0c10bee5205ef60e1f7ed8b5a348d3d53",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/pet_puppy.glb",
+      "src": "together47:01. High/pet_puppy.glb",
+      "sha256": "7bec3be9d7c6447ae928155a71f4480530c4f142fe86362c2fbe467a280cb54a",
+      "lowSrc": "together47:02. Low/pet_puppy_low.glb",
+      "lowSha256": "c40564b0893fa34d5a6a25968cef917a6b9cc784eb41059eb3c2815e7d0e486d",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/pet_kitten.glb",
+      "src": "together47:01. High/pet_kitten.glb",
+      "sha256": "dffd00af925e4b82a8a519a65aa4eb32fee6b67fe3f826323a38304abe800ee8",
+      "lowSrc": "together47:02. Low/pet_kitten_low.glb",
+      "lowSha256": "bf89a7f1994a1ef4ae8a8b3ecdfe6989fd6fbefb45c1506297fc73caed862a61",
+      "precompressed": true
+    },
+    {
+      "out": "together-v1/pet_bird.glb",
+      "src": "together47:01. High/pet_bird.glb",
+      "sha256": "10c26ff3e45ce172c58224b2db9298fbef420721ace66db325f525aea58552a6",
+      "lowSrc": "together47:02. Low/pet_bird_low.glb",
+      "lowSha256": "744c10c6f53898eafcd4be1847b28af1c253b80ccf666da416a4285a03c586da",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -5498,6 +5730,7 @@
     "residents39": "39. Game Island residents and quest props 2026-10-17",
     "winter46": "46. Game Island winter event 2026-10-18",
     "townhall44": "44. Game Island townhall interior 2026-10-18",
-    "planting45": "45. Game Island planting growth 2026-10-18"
+    "planting45": "45. Game Island planting growth 2026-10-18",
+    "together47": "47. Game Island together island 2026-10-18"
   }
 }

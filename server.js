@@ -45,6 +45,7 @@ const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
+const Together = require('./lib/island-together'); // B 47 생일·우체통
 const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
@@ -1051,10 +1052,35 @@ const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
   const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? weekly[1].name : null; // v1.10.89 낚시왕 · v1.10.90 제초왕
+  if (birthdays.today.has(account)) shown.title = Together.BIRTHDAY_TITLE; // B 47 생일: the day's title
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
 }
+// B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
+// and whenever one is set (ponytail: one read per account; a birthday index if the accounts grow into the hundreds)
+const birthdays = { day: null, today: new Map(), loading: null };
+function refreshBirthdays(force = false) {
+  const day = kstDate(nowMs()); if (!pointStore || (!force && birthdays.day === day)) return birthdays.loading;
+  birthdays.day = day;
+  birthdays.loading = (async () => {
+    const today = new Map();
+    for (const key of await accessStore.list()) {
+      if (key.revokedAt || key.pendingAt) continue; const account = `guest:${key.id}`;
+      const doc = (await pointStore.questDoc(account, 'birthday')).doc;
+      if (!doc.hidden && Together.isBirthday(doc, nowMs())) today.set(account, String(key.label || '').slice(0, 24));
+    }
+    const changed = [...today.keys()].join() !== [...birthdays.today.keys()].join(); birthdays.today = today;
+        if (changed) { refreshTaxLooks(); broadcastIsland('birthdays', { names: [...today.values()] }); }
+  })().catch((error) => { birthdays.day = null; console.error('생일 확인 실패:', error.message); }).finally(() => { birthdays.loading = null; });
+  return birthdays.loading;
+}
+setInterval(() => refreshBirthdays(), 60000).unref?.();
+// one account's open lobby streams get an event (a letter came)
+function notifyAccount(account, type, data) {
+  for (const entry of [...lobbyStreams]) { const session = sessions.get(entry.sessionToken); if (!session || pointAccountForSession(session) !== account) continue; try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } }
+}
+const nearMailbox = (session) => { const me = plazaPresence.get(session.token); const m = IslandTerrain.VILLAGE.mailbox; return Boolean(me && (me.space || 'island') === 'island' && Math.hypot(me.x - m.x, me.z - m.z) <= 3); };
 // the day each account last came in, once a day per account (lib/point-store.js bankAccrue: no interest after 7 days away)
 const visitNoted = new Map();
 function noteVisit(account) {
@@ -4375,6 +4401,88 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null }; }) });
+  }
+  // B 47 생일: mine (set, hidden, how many cheered this year), today's birthdays; my own birthday pays its gift once a year
+  if (pathname === '/api/island/birthday' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); await refreshBirthdays();
+    const doc = (await pointStore.questDoc(account, 'birthday')).doc; const t = Together.seoul(nowMs()); let gift = 0;
+    if (!doc.hidden && Together.isBirthday(doc, nowMs()) && !doc.paid?.[t.year]) {
+      const out = await pointStore.questApply(account, 'birthday', (d) => (d.paid?.[t.year] ? null : { doc: { ...d, paid: { ...(d.paid || {}), [t.year]: true } }, reward: Together.BIRTHDAY_GIFT, payKey: `birthday:${account}:${t.year}` }));
+      if (out?.reward) { gift = out.reward; notifyPointsChanged([account]); }
+    }
+    return sendJson(res, 200, { ok: true, mine: { month: doc.month || null, day: doc.day || null, hidden: Boolean(doc.hidden), cheers: (doc.cheers?.[t.year] || []).length }, today: [...birthdays.today.entries()].map(([id, name]) => ({ id: id === account ? 'me' : null, name })), gift });
+  }
+  if (pathname === '/api/island/birthday' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (session.role === 'admin') return sendError(res, 400, 'BAD_BIRTHDAY', '관리자 창에서 계정마다 정해 주세요.');
+    const body = await parseJson(req); const clear = body.clear === true; const month = Number(body.month); const day = Number(body.day);
+    if (!clear && !Together.validDay(month, day)) return sendError(res, 400, 'BAD_BIRTHDAY', '월·일을 확인해 주세요.');
+    await pointStore.questApply(pointAccountForSession(session), 'birthday', (d) => ({ doc: clear ? { cheers: d.cheers, paid: d.paid } : { ...d, month, day, hidden: body.hidden === true } }));
+    await refreshBirthdays(true); return sendJson(res, 200, { ok: true });
+  }
+  if (pathname === '/api/admin/birthday' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); const name = String(body.label || '').trim(); const key = (await accessStore.list()).find((k) => !k.revokedAt && (k.id === body.keyId || (name && k.label === name))); const month = Number(body.month); const day = Number(body.day);
+    if (!key || !Together.validDay(month, day)) return sendError(res, 400, 'BAD_BIRTHDAY', '계정과 월·일을 확인해 주세요.');
+    await pointStore.questApply(`guest:${key.id}`, 'birthday', (d) => ({ doc: { ...d, month, day, hidden: body.hidden === true } }));
+    await refreshBirthdays(true); return sendJson(res, 200, { ok: true });
+  }
+  // 축하하기: by someone whose birthday it is, once a day from each person (counted in their year), confetti for everyone
+  if (pathname === '/api/island/birthday/cheer' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); prunePlazaPresence();
+    const target = [...sessions.entries()].find(([token, x]) => x.plazaId && x.plazaId === body.plazaId && token !== session.token);
+    const me = plazaPresence.get(session.token); const them = target && plazaPresence.get(target[0]);
+    if (!me || !them) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    if ((me.space || 'island') !== (them.space || 'island') || Math.hypot(me.x - them.x, me.z - them.z) > 4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const to = pointAccountForSession(target[1]); const from = pointAccountForSession(session);
+    if (!birthdays.today.has(to)) return sendError(res, 409, 'NOT_BIRTHDAY', '오늘이 생일인 사람에게만 축하할 수 있어요.');
+    const t = Together.seoul(nowMs()); const mark = `${from}@${kstDate(nowMs())}`;
+    const out = await pointStore.questApply(to, 'birthday', (d) => { const list = d.cheers?.[t.year] || []; return list.includes(mark) ? null : { doc: { ...d, cheers: { [t.year]: [...list, mark] } } }; });
+    if (!out?.doc) return sendError(res, 409, 'ALREADY_CHEERED', '오늘은 이미 축하했어요.');
+    broadcastIsland('birthdayCheer', { to: target[1].plazaId, by: session.plazaId });
+    notifyAccount(to, 'birthdayCheered', { name: String(session.label || '누군가').slice(0, 24), count: out.doc.cheers[t.year].length });
+    return sendJson(res, 200, { ok: true, count: out.doc.cheers[t.year].length });
+  }
+  // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
+  if (pathname === '/api/island/mail' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const now = nowMs();
+    const letters = Together.freshLetters((await pointStore.questDoc(account, 'mail')).doc.letters, now);
+    const sent = (await pointStore.questDoc(account, 'mailSent')).doc; const t = Together.seoul(now);
+    const people = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt && `guest:${k.id}` !== account).map((k) => ({ id: k.id, label: k.label }));
+    return sendJson(res, 200, { ok: true, letters, unread: letters.filter((l) => !l.read).length, people, left: Together.SEND_PER_DAY - (sent.day === `${t.year}-${t.month}-${t.day}` ? sent.n : 0), max: Together.LETTER_MAX });
+  }
+  if (pathname === '/api/island/mail/send' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-mail:${session.token}`, 10, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    if (!nearMailbox(session)) return sendError(res, 409, 'TOO_FAR', '우체통 앞에서 보낼 수 있어요.');
+    const body = await parseJson(req); const text = Together.letterText(body.text); const requestId = String(body.requestId || '');
+    const key = await accessStore.get(String(body.to || '')); const from = pointAccountForSession(session);
+    if (!key || key.revokedAt || key.pendingAt || `guest:${key.id}` === from) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
+    if (!text) return sendError(res, 400, 'BAD_LETTER', `편지는 1~${Together.LETTER_MAX}자로 써 주세요.`);
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_LETTER', '다시 시도해 주세요.');
+    const to = `guest:${key.id}`;
+    if (!Together.sentAfter((await pointStore.questDoc(from, 'mailSent')).doc, nowMs())) return sendError(res, 409, 'MAIL_LIMIT', `편지는 하루 ${Together.SEND_PER_DAY}통까지 보낼 수 있어요.`);
+    const itemId = body.itemId ? String(body.itemId) : null;
+    if (itemId) { // the parcel: the gift wrap's rule (one thing, a wrap used), straight into their bag
+      let out; try { out = await pointStore.islandGift({ userId: from, to, itemId, requestId }); } catch { return sendError(res, 400, 'BAD_GIFT', '선물할 수 없는 물건입니다.'); }
+      if (out.reason === 'no-wrap') return sendError(res, 409, 'NO_GIFT_WRAP', '소포에는 선물 포장지가 필요합니다. 잡화점에서 살 수 있어요.');
+      if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      if (out.reason === 'full') return sendError(res, 409, 'THEIR_BAG_FULL', '상대의 가방이 가득 찼습니다.');
+    }
+    const now = nowMs(); const letter = { id: requestId, from: session.guestKeyId || 'admin', fromName: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), text, itemId, itemName: itemId ? (IslandItems.ITEMS[itemId]?.name || null) : null, at: now, read: false };
+    const put = await pointStore.questApply(to, 'mail', (d) => ((d.letters || []).some((l) => l.id === letter.id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+    if (put?.doc) await pointStore.questApply(from, 'mailSent', (d) => { const next = Together.sentAfter(d, now); return next ? { doc: next } : null; });
+    notifyAccount(to, 'mail', { from: letter.fromName });
+    return sendJson(res, 200, { ok: true, to: key.label });
+  }
+  if (pathname === '/api/island/mail/read' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const id = String(body.id || '');
+    await pointStore.questApply(pointAccountForSession(session), 'mail', (d) => ((d.letters || []).some((l) => l.id === id && !l.read) ? { doc: { ...d, letters: d.letters.map((l) => (l.id === id ? { ...l, read: true } : l)) } } : null));
+    return sendJson(res, 200, { ok: true });
   }
   // v1.10.92 선물 포장지: one thing from my bag to someone standing by me on the island (a wrap of mine used)
   if (pathname === '/api/island/gift' && req.method === 'POST') {
