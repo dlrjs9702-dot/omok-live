@@ -6201,7 +6201,7 @@
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
     const below = [...document.querySelectorAll('#yutControls, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const top = wrap.getBoundingClientRect().top + window.scrollY;
-    wrap.style.maxWidth = `${Math.max(200, Math.floor(window.innerHeight - top - below - 12))}px`;
+    wrap.style.maxWidth = `${Math.max(160, Math.floor(window.innerHeight - top - below - 12))}px`;
   }
   window.addEventListener('resize', () => fitBoard());
   // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
