@@ -213,24 +213,28 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   // paths' grass edge is a tufted mask instead of a straight line. Grey set + mask only: about 120 KB on the GPU.
   const groundTex = (() => {
     const loader = new THREE.TextureLoader();
-    const t = (file, srgb, clampV = false) => { const x = keep(loader.load(`/assets/island/ground-v1/${file}.png`)); x.wrapS = THREE.RepeatWrapping; x.wrapT = clampV ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; x.anisotropy = 4; return x; };
+    const t = (file, srgb, clampV = false) => { const x = keep(loader.load(`/assets/island/ground-v1/${file}.png`)); x.wrapS = THREE.RepeatWrapping; x.wrapT = clampV ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return x; }; // (no anisotropic filtering: costly on a software renderer or a weak phone)
     return { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
   })();
   const GRAIN = 0.5; // how strongly the grains show
+  const grainOn = { value: GRAIN }; // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
   const grained = (material, path) => {
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: { value: GRAIN } });
+      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
 attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ;`).replace('#include <begin_vertex>', `#include <begin_vertex>
 vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; varying vec2 vGround; varying vec2 vGroundXZ;`).replace('#include <color_fragment>', `#include <color_fragment>
+if (uGrain > 0.0) {
 vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
 float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1 at its grass edge)
 diffuseColor.rgb *= mix(vec3(1.0), mix(texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, gGrass, gCover), uGrain);
-diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's grass shows through in tufts` : `
+diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's grass shows through in tufts
+}` : `
 vec3 gGrain = mix(mix(vec3(1.0), gGrass, vGround.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, vGround.y);
-diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);`}`);
+diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
+}`}`);
     };
     material.customProgramCacheKey = () => (path ? 'ground-path' : 'ground');
     return material;
@@ -718,7 +722,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);`}`);
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
     coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
   }
-  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; };
+  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = tier >= 1 ? GRAIN : 0; }; // (B 48: the grain from tier 1)
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
   // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well
