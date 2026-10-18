@@ -2076,3 +2076,4 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 .tfShop{display:grid;gap:6px}.tfRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 8px;border:1px solid rgba(148,163,184,.3);border-radius:10px}.tfRow strong{flex:1 1 8em}.tfRow small{opacity:.75}.tfRow.chosen{border-color:#8b5cf6;background:rgba(139,92,246,.08)}
 /* v1.10.92 잡화점 */
 .goodCard{display:grid;gap:8px;justify-items:center;text-align:center}.goodIcon{width:96px;height:96px;object-fit:contain}.goodBuy{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.goodBuy button{min-height:44px}
+.giftList{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}.giftList .itemIcon{width:24px;height:24px;vertical-align:middle}

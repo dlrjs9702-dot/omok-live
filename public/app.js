@@ -2160,9 +2160,11 @@
   // v1.10.90 assets 38: an island item's picture (SVG for the 20 drawn ones, the 도감 picture for the newer fish, else the
   // old emoji) -- the bag and the sale lists; toasts keep the emoji
   const ITEM_SVG = new Set(["berry","candy","crop_cabbage","crop_carrot","fish_anchovy","fish_cutlassfish","fish_giant_tuna","fish_goby","fish_mackerel","fish_octopus","fish_pufferfish","fish_stingray","herb","lost","mushroom","point","reward","trash","wallet","weed"]); const ITEM_ALIAS = { harvest: 'crop_carrot' };
+  const GOOD_ICONS = new Set(['bait', 'bait_premium', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge']);
+  const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
-    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : null;
+    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : GOOD_ICONS.has(id) ? `/assets/items/goods/${id}.png` : null; // (v1.10.92 잡화점: assets 41 icons)
     if (!src) return document.createTextNode(item.icon);
     const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
   }
@@ -2176,10 +2178,15 @@
         const name = document.createElement('span'); name.textContent = item.name;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
+        if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
+  }
+  async function useGood(kind) {
+    try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); }
+    catch (error) { showToast(error.message); }
   }
   async function openIslandBag() {
     showDex(false);
@@ -2513,6 +2520,7 @@
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const data = await api('/api/island/fish/start', { method: 'POST', body: '{}' });
         fishId = data.fishId;
+        if (data.bait) showToast(`🪱 ${data.bait}를 썼어요.`); // v1.10.92
         if (!plaza.controller?.fishBegin?.(data, () => { fishId = null; })) { fishId = null; api('/api/island/fish/cancel', { method: 'POST', body: '{}' }).catch(() => {}); }
       } else if (phase === 'cast' || phase === 'wait' || phase === 'bite') {
         try {
@@ -2667,8 +2675,22 @@
           await api('/api/island/invite/prepare', { method: 'POST', body: JSON.stringify({ plazaId }) });
           islandInviteTo = { id: plazaId, at: Date.now() }; PLAZA_FACILITIES.find((f) => f.id === 'games')?.open();
         } catch (error) { showToast(error.message); }
-      }));
+      }),
+      make('선물하기', 'ghost', () => openGift(plazaId, who?.name || '상대'))); // v1.10.92 선물 포장지
     openTalk(who?.name || '');
+  }
+  // v1.10.92 선물: what of my bag can be given (not a lost thing, not the wrap itself), one tap gives one
+  async function openGift(plazaId, name) {
+    try {
+      const bag = await api('/api/island/bag'); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
+      const head = document.createElement('p'); head.className = 'lostRequestLine'; head.textContent = wraps ? `${name}님에게 무엇을 선물할까요? (포장지 ${wraps}장)` : '선물 포장지가 필요해요. 잡화점에서 살 수 있어요.';
+      const list = document.createElement('div'); list.className = 'giftList';
+      if (wraps) for (const item of bag.items.filter((e) => !['lost', 'wallet', 'gift_wrap'].includes(e.itemId))) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.append(itemIcon(item), ` ${item.name} ×${item.qty}`);
+        b.addEventListener('click', async () => { try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/gift', { method: 'POST', body: JSON.stringify({ plazaId, itemId: item.itemId, requestId: crypto.randomUUID() }) }); plazaDialog.close(); showToast(`🎁 ${name}님에게 ${item.name}을(를) 선물했어요.`); plaza.controller?.emote?.('bow'); } catch (error) { showToast(error.message, 4000); } });
+        list.append(b); }
+      const close = document.createElement('button'); close.type = 'button'; close.className = 'primary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
+      lostCard.replaceChildren(head, list, close); openTalk(name);
+    } catch (error) { showToast(error.message); }
   }
   async function sendIslandInvite() {
     const to = islandInviteTo; islandInviteTo = null;

@@ -36,3 +36,31 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   await expectNoScriptError(page);
   await who.context.close();
 });
+
+// v1.10.92 놀이 물건과 선물: a firework used from the bag bursts over me and the other player sees it; with a gift wrap,
+// one thing goes from my bag to theirs (PC: the two-player view)
+test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물하면 상대 가방에', async ({ browser, request, isMobile }) => {
+  test.skip(isMobile, 'PC 전용 검증');
+  test.setTimeout(180000);
+  const { post } = require('./skin-support');
+  const a = await shopper(browser, request, '폭죽가', 100000, 'male');
+  const b = await shopper(browser, request, '받는이', 100000, 'female');
+  for (const w of [a, b]) { await w.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await w.page.reload(); await expect.poll(() => w.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+  for (const [itemId, qty] of [['firework', 1], ['gift_wrap', 1], ['bread', 2]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
+  await a.page.evaluate(() => window.PlazaWarp(4, 4)); await b.page.evaluate(() => window.PlazaWarp(5.2, 4));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
+  await a.page.locator('#islandBagTab').click();
+  await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('button', { name: '쓰기' }).click();
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'show:firework')), { timeout: 8000 }).toBe(true);
+  // the gift: by the other player, 선물하기, bread
+  const id = await a.page.evaluate(() => window.PlazaDebug().others[0].id);
+  await a.page.evaluate((id) => { const o = window.PlazaDebug().others.find((x) => x.id === id); window.PlazaDebug().teleport(o.x - 1, o.z); }, id);
+  await expect(a.page.locator('#plazaHint')).toContainText('인사', { timeout: 10000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await a.page.getByRole('button', { name: '선물하기' }).click();
+  await a.page.locator('.giftList button', { hasText: '빵 봉투' }).click();
+  await expect.poll(async () => ((await get(request, '/api/island/bag', b.token)).data.items || []).find((e) => e.itemId === 'bread')?.qty || 0).toBe(1);
+  expect(((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'gift_wrap')).toBeUndefined();
+  await expectNoScriptError(a.page);
+  await a.context.close(); await b.context.close();
+});

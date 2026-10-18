@@ -37,6 +37,15 @@ async function behaves(store) {
   assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000010', itemId: 'badge', qty: 1, unit: 1000 })).applied, true);
   assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000011', itemId: 'frame', qty: 1, unit: 2000 })).applied, true);
   assert.equal((await store.getAccount(u)).balance, balance - 3000);
+  // 선물: a wrap used, one of the thing to the other bag; none without a wrap; not to oneself
+  const v = 'guest:00000000-0000-4000-8000-0000000000e2'; await store.ensureAccount(v);
+  const gift = (requestId, itemId = 'bread') => store.islandGift({ userId: u, to: v, itemId, requestId });
+  assert.equal((await gift('gift-0000001')).applied, true, 'wrap(GOODS[6]) and bread in the bag');
+  assert.equal((await gift('gift-0000001')).already, true);
+  assert.equal((await store.islandBag(v)).items.find((e) => e.itemId === 'bread').qty, 1);
+  assert.equal((await store.islandBag(u)).items.find((e) => e.itemId === 'gift_wrap'), undefined);
+  assert.equal((await gift('gift-0000002', 'milk')).reason, 'no-wrap');
+  await assert.rejects(store.islandGift({ userId: u, to: u, itemId: 'milk', requestId: 'gift-0000003' }), RangeError);
 }
 test('잡화점 구매·사용(JSON): 결제와 가방이 함께, 같은 요청 한 번, 잔액 부족·없는 물건', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'store-'));

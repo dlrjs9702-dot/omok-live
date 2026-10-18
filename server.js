@@ -1269,6 +1269,9 @@ const PLAZA_ACTS = new Set(['sit', 'wave', 'cheer', 'nod', 'clap', 'bow']);
 // v1.10.89 원격 낚시: a fishing phase, taken only while this player has a cast in the water (a miss also just after);
 // the fish shown on a catch is the server's own result, never the page's word
 const FISH_ACTS = new Set(['fish:cast', 'fish:wait', 'fish:reel', 'fish:catch', 'fish:miss']);
+// v1.10.92 잡화점 놀이 물건: an act `show:<kind>` is taken only just after that good was used from the bag (6 s)
+const showUsed = new Map(); // session token -> { kind, until }
+function showActOf(token, act) { const u = showUsed.get(token); return u && act === `show:${u.kind}` && nowMs() < u.until ? { act, fish: null } : null; }
 function fishActOf(token, act) {
   if (!FISH_ACTS.has(act)) return null;
   const c = fishCasts.get(token);
@@ -4126,7 +4129,7 @@ async function requestHandler(req, res) {
       space: townhallInside.has(session.token) ? 'townhall' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
-        const fishing = fishActOf(session.token, body.act); if (fishing) return { ...fishing, actN: 0, seat: null }; // v1.10.89
+        const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
         const act = PLAZA_ACTS.has(body.act) ? body.act : null; const seat = act === 'sit' && seatTaken.get(body.seat) === session.token ? body.seat : null;
         // (a seat is let go only by /api/island/stand, another seat or leaving: a pose sent just before the sit may arrive after it)
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
@@ -4251,6 +4254,33 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null }; }) });
+  }
+  // v1.10.92 선물 포장지: one thing from my bag to someone standing by me on the island (a wrap of mine used)
+  if (pathname === '/api/island/gift' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-gift:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); prunePlazaPresence();
+    const target = [...sessions.entries()].find(([token, s]) => s.plazaId && s.plazaId === body.plazaId && token !== session.token);
+    const me = plazaPresence.get(session.token); const them = target && plazaPresence.get(target[0]);
+    if (!me || !them) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    if ((me.space || 'island') !== (them.space || 'island') || Math.hypot(me.x - them.x, me.z - them.z) > 3) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const from = pointAccountForSession(session); const to = pointAccountForSession(target[1]);
+    let out; try { out = await pointStore.islandGift({ userId: from, to, itemId: String(body.itemId || ''), requestId: String(body.requestId || '') }); } catch { return sendError(res, 400, 'BAD_GIFT', '선물할 수 없는 물건입니다.'); }
+    if (out.reason === 'no-wrap') return sendError(res, 409, 'NO_GIFT_WRAP', '선물 포장지가 필요합니다. 잡화점에서 살 수 있어요.');
+    if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    if (out.reason === 'full') return sendError(res, 409, 'THEIR_BAG_FULL', '상대의 가방이 가득 찼습니다.');
+    return sendJson(res, 200, { ok: true, to: them.name || '상대', bag: out.bag || null });
+  }
+  if (pathname === '/api/island/goods/use' && req.method === 'POST') { // v1.10.92: a show good from the bag (on the island)
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const def = IslandItems.ITEMS[body.itemId];
+    if (!def?.good || def.use !== 'show') return sendError(res, 400, 'NOT_USABLE', '여기서 쓸 수 없는 물건입니다.');
+    if (!plazaPresence.get(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬에서 쓸 수 있습니다.');
+    const account = pointAccountForSession(session);
+    let out; try { out = await pointStore.islandUse({ userId: account, requestId: String(body.requestId || ''), itemId: body.itemId }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    showUsed.set(session.token, { kind: body.itemId, until: nowMs() + 6000 });
+    return sendJson(res, 200, { ok: true, kind: body.itemId, bag: out.bag || null });
   }
   if (pathname === '/api/island/store/buy' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
@@ -4643,10 +4673,14 @@ async function requestHandler(req, res) {
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || !IslandFishing.canFish(at.x, at.z)) return sendError(res, 409, 'NOT_FISHING_SPOT', '물가에서 낚시할 수 있습니다.');
     const now = nowMs(); const water = IslandFishing.waterAt(at.x, at.z); const season = IslandTerrain.seasonAt(at.x, at.z, now) || 'summer'; // v1.10.90: the river or the sea, and that spot's season today
-    const c = IslandFishing.cast(now, Math.random, { water, season });
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
+    const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
+    let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
+    if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait });
     fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
-    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS });
+    return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
   if (pathname === '/api/island/fish/finish' && req.method === 'POST') {
     const session = requireSession(req, res);

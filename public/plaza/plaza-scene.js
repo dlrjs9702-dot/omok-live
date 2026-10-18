@@ -875,6 +875,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
       if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
       remoteFish(o, p); // v1.10.89
+      if (p.act?.startsWith('show:') && p.act !== o.act) playShow(o.c, p.act.slice(5)); // v1.10.92 잡화점: their firework, balloon or bubbles
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
       o.collect = p.actTarget ? {target:p.actTarget,at:p.actAt} : null; o.act = p.act || null; o.actN = p.actN || 0; o.seat = p.seat || null;
       // v1.10.47: riding the train -- drawn on their seat by the same clock (the server only says which train and seat)
@@ -1263,6 +1264,30 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.89 원격 낚시 (IDEAS #future-remote-action-animation): my phase goes out as the act 'fish:<phase>' (the server
   // takes it only while it holds my cast, and names the catch itself); the others play the same rod and clips
   function fishAct(phase) { if (phase) { myAct.act = `fish:${phase}`; myAct.seat = null; } else if (myAct.act?.startsWith('fish:')) myAct.act = null; }
+  // v1.10.92 잡화점 놀이 물건: used from the bag, seen by everyone near -- a firework bursts over me, bubbles float up round
+  // me, a balloon in my hand for a while. Small particles of their own (nothing kept on the server but the act).
+  const shows = [];
+  const SHOW_COLORS = [0xff6b6b, 0xffd166, 0x06d6a0, 0x4cc9f0, 0xc77dff, 0xffffff];
+  function playShow(c, kind) {
+    if (!c?.root) return;
+    if (kind === 'balloon') { assets.hold(c, 'good.balloon', 0, { key: 'balloon', at: [0, -0.015, 0] }); shows.push({ c, kind, t: 0, life: 30, parts: [] }); return; }
+    const n = kind === 'firework' ? 36 : 14; const parts = [];
+    for (let i = 0; i < n; i += 1) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(kind === 'firework' ? 0.07 : 0.11, 8, 6), new THREE.MeshBasicMaterial({ color: kind === 'firework' ? SHOW_COLORS[i % SHOW_COLORS.length] : 0xcfe9ff, transparent: true, opacity: kind === 'firework' ? 1 : 0.55 }));
+      const p = c.root.position; m.position.set(p.x, p.y + (kind === 'firework' ? 4.2 : 1.2), p.z); scene.add(m);
+      const a = (i / n) * Math.PI * 2; const up = kind === 'firework' ? (Math.random() - 0.3) * 3 : 0.5 + Math.random() * 0.6;
+      parts.push({ m, v: kind === 'firework' ? new THREE.Vector3(Math.cos(a) * 3, up, Math.sin(a) * 3) : new THREE.Vector3(Math.cos(a) * 0.4, up, Math.sin(a) * 0.4), delay: kind === 'bubbles' ? Math.random() * 3 : 0 });
+    }
+    shows.push({ c, kind, t: 0, life: kind === 'firework' ? 2.4 : 5, parts });
+  }
+  function stepShows(dt) {
+    for (let i = shows.length - 1; i >= 0; i -= 1) {
+      const s = shows[i]; s.t += dt;
+      for (const p of s.parts) { if (s.t < p.delay) { p.m.visible = false; continue; } p.m.visible = true; p.m.position.addScaledVector(p.v, dt); if (s.kind === 'firework') p.v.y -= 2.2 * dt; p.m.material.opacity = Math.max(0, (s.kind === 'firework' ? 1 : 0.55) * (1 - (s.t - p.delay) / (s.life - p.delay))); }
+      if (s.t >= s.life) { for (const p of s.parts) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); } if (s.kind === 'balloon') assets.letGo(s.c, 'balloon'); shows.splice(i, 1); }
+    }
+  }
+  function useShow(kind) { playShow(me, kind); myAct.act = `show:${kind}`; myAct.seat = null; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === `show:${kind}`) myAct.act = null; }, 4000); }
   function remoteFish(o, p) {
     const was = o.act?.startsWith('fish:') ? o.act.slice(5) : null; const now = p.act?.startsWith('fish:') ? p.act.slice(5) : null;
     if (was === now) return;
@@ -2241,6 +2266,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = ambientClock * 2.4; else spin.rotation.y = ambientClock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(ambientClock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31
     stepFishing(dt); // v1.10.42
+    stepShows(dt); // v1.10.92
     if (photoMode) hideForPhoto(); // v1.10.43 (bubbles are shown again by their own updates)
     // v1.10.46: the shadow's square moves in whole texels of its map across the light (it followed me smoothly, so the
     // edges of every shadow crawled as I walked -- seen on the town hall's marble)
@@ -2468,7 +2494,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setSpace, space: () => mySpace, setGoodsPrices, setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setSpace, space: () => mySpace, setGoodsPrices, useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
