@@ -633,10 +633,13 @@
           </section>
           <section id="halliPanel" class="halliPanel hidden" aria-label="할리갈리">
             <p id="halliStatus" class="gamePanelHead" aria-live="polite"></p>
-            <div id="halliCards" class="halliCards"></div>
+            <!-- A3 G3-6: the bell in the middle of the table, each player's face-up pile round it -->
+            <div class="halliTable">
+              <div id="halliCards" class="halliCards"></div>
+              <button id="halliBellBtn" type="button" class="halliBell" aria-label="종 치기">🔔 종 치기</button>
+            </div>
             <div class="halliActions">
               <button id="halliFlipBtn" type="button" class="primary">카드 뒤집기</button>
-              <button id="halliBellBtn" type="button" class="halliBell" aria-label="종 치기">🔔 종 치기</button>
             </div>
             <div id="halliTransferResult" class="halliTransferResult" aria-live="polite">
               <strong id="halliLastBell"></strong>

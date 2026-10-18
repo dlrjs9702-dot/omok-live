@@ -2151,3 +2151,8 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
 .hwatuBack{background:radial-gradient(circle at 50% 50%,#fde68a 0 9%,transparent 10%),conic-gradient(from 45deg at 50% 50%,#7f1d1d 0 25%,#991b1b 0 50%,#7f1d1d 0 75%,#991b1b 0) 50% 50%/34% 24%,#8b1414;border:1px solid #3f0808;box-shadow:inset 0 0 0 2px #8b1414,inset 0 0 0 3.5px #fcd9a8,inset 0 0 0 5px #8b1414}
 .hwatu-tiny.hwatuBack{box-shadow:inset 0 0 0 1.5px #fcd9a8}
 .gostopSpeedBtn{position:absolute;right:10px;bottom:8px;z-index:3;font-size:.72rem;padding:3px 8px;opacity:.8}
+/* A3 G3-6 할리갈리: the bell in the table's middle, the players' piles in two columns round it */
+.halliTable{position:relative}
+.halliTable .halliCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:7.6rem;row-gap:10px;align-items:center}
+.halliTable .halliBell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3}
+@media(max-width:640px){.halliTable .halliCards{column-gap:5.6rem}.halliTable .halliBell{width:5rem;height:5rem}}
