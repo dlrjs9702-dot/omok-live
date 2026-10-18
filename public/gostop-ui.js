@@ -180,7 +180,7 @@
     const risks = [];
     if (g.status === 'playing' && g.pibakMax && info2.counts.pi >= 1 && info2.counts.pi <= g.pibakMax) risks.push('피박 위험');
     if (g.status === 'playing' && !groups.gwang.length && Object.entries(g.seats).some(([s, o]) => s !== seat && groupCaptured(o.captured).gwang.length >= (g.scoreFrom?.gwang || 3))) risks.push('광박 위험');
-    if (sets.length || risks.length) { const line = document.createElement('small'); line.className = 'gostopSets'; line.textContent = [...sets, ...risks.map((r) => `⚠ ${r}`)].join(' · '); line.title = '박은 판이 끝날 때 서버가 정합니다. 여기서는 위험 안내만 합니다.'; box.append(line); }
+    if (sets.length || risks.length) { const line = document.createElement('small'); line.className = 'gostopSets'; line.textContent = [...sets, ...risks.map((r) => `⚠ ${r}`)].join(' · '); line.title = '박은 판이 끝날 때 서버가 정합니다. 여기서는 위험 안내만 합니다.'; head.append(line); } // (in the name row: no row of its own)
     if (info2.items?.length || info2.goCount || info2.factors?.length) {
       const detail = document.createElement('details');
       detail.className = 'gostopScoreDetails';
