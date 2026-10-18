@@ -43,7 +43,7 @@
     const month = Number(match[1]);
     const part = match[2];
     const kind = part.startsWith('pi') || part === 'ssangpi' ? 'pi' : part;
-    return { id, month, kind, piValue: part === 'ssangpi' ? 2 : kind === 'pi' ? 1 : 0, dan: kind === 'ribbon' ? RIBBON_DAN[month] || null : null, gukjin: id === 'm09-animal', rain: id === 'm12-gwang' };
+    return { id, month, kind, piValue: part === 'ssangpi' ? 2 : kind === 'pi' ? 1 : 0, dan: kind === 'ribbon' ? RIBBON_DAN[month] || null : null, gukjin: id === 'm09-animal', rain: id === 'm12-gwang', godori: kind === 'animal' && [2, 4, 8].includes(month) }; // (godori: the three birds, as lib/games/gostop/cards.js)
   }
 
   const fmt = value => `${Number(value || 0).toLocaleString('ko-KR')}P`;
@@ -161,6 +161,9 @@
       const actualCards = groups[kind].length;
       const count = kind === 'pi' ? info2.counts.pi : actualCards;
       cap.textContent = kind === 'pi' && count !== actualCards ? `${title} ${count} · 카드 ${actualCards}장` : `${title} ${count}`;
+      // A3 G2-4: until a pile scores, how many it takes (the engine's numbers, g.scoreFrom); an empty pile is only faint
+      const from = g.scoreFrom?.[kind]; if (from && count < from) { const need = document.createElement('em'); need.className = 'gostopNeed'; need.textContent = ` · ${from}${kind === 'pi' ? '' : '장'}부터`; cap.append(need); }
+      col.classList.toggle('emptyPile', !actualCards);
       if (kind === 'pi') cap.title = '피 숫자는 점수 계산상 개수입니다. 쌍피·쓰리피는 2피·3피로 계산됩니다.';
       col.append(cap);
       const row = document.createElement('div'); row.className = 'gostopPileCards';
@@ -170,6 +173,14 @@
       pile.append(col);
     }
     box.append(pile);
+    // A3 G2-4: the sets under way (홍단·청단·초단·고도리 n/3) and the 박 risk -- the server decides 박 at the end; this only warns
+    const setOf = g.scoreFrom?.set || 3; const sets = [];
+    for (const [key, name] of [['hong', '홍단'], ['cheong', '청단'], ['cho', '초단']]) { const n = groups.ribbon.filter((id) => info(id).dan === key).length; if (n && n < setOf) sets.push(`${name} ${n}/${setOf}`); }
+    const go = groups.animal.filter((id) => info(id).godori).length; if (go && go < setOf) sets.push(`고도리 ${go}/${setOf}`);
+    const risks = [];
+    if (g.status === 'playing' && g.pibakMax && info2.counts.pi >= 1 && info2.counts.pi <= g.pibakMax) risks.push('피박 위험');
+    if (g.status === 'playing' && !groups.gwang.length && Object.entries(g.seats).some(([s, o]) => s !== seat && groupCaptured(o.captured).gwang.length >= (g.scoreFrom?.gwang || 3))) risks.push('광박 위험');
+    if (sets.length || risks.length) { const line = document.createElement('small'); line.className = 'gostopSets'; line.textContent = [...sets, ...risks.map((r) => `⚠ ${r}`)].join(' · '); line.title = '박은 판이 끝날 때 서버가 정합니다. 여기서는 위험 안내만 합니다.'; box.append(line); }
     if (info2.items?.length || info2.goCount || info2.factors?.length) {
       const detail = document.createElement('details');
       detail.className = 'gostopScoreDetails';
@@ -395,7 +406,7 @@
     if (!r || !['finished', 'draw'].includes(g.status)) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     // v1.7.4: the first time this result is shown (and once it is settled), its lines appear in order.
-    const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`; box.dataset.key = `${g.round}:${r.kind}`;
+    const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`; resultKey = `${g.round}:${r.kind}`;
     if (stageKey !== stagedResultKey && g.settlement?.status === 'done') {
       const winSkin = r.kind === 'win' ? skinOf(state, r.winner) : null;
       if (winSkin?.win && stageKey !== winPlayed) requestAnimationFrame(() => SKN().h.playFx($('gostopPanel'), winSkin.win, winSkin.legend ? 2400 : 1800, 10));
@@ -481,9 +492,9 @@
     resultButtons(box);
   }
   // A3 G2-5 결과 창: the result is a window over the table with the way on; [판 보기] closes it to look at the last table
-  let resultClosedKey = null;
+  let resultClosedKey = null; let resultKey = null;
   function resultButtons(box) {
-    const key = box.dataset.key || ''; box.classList.toggle('closed', resultClosedKey === key);
+    const key = resultKey || ''; box.classList.toggle('closed', resultClosedKey === key);
     const row = document.createElement('div'); row.className = 'gostopResultActions';
     const b = (text, cls, fn) => { const el = document.createElement('button'); el.type = 'button'; el.className = cls; el.textContent = text; el.addEventListener('click', fn); row.append(el); };
     b('한 판 더', 'primary', () => document.getElementById('nextRoundBtn')?.click());

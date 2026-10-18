@@ -344,10 +344,10 @@ test.describe('고스톱·맞고 UX·규칙·정산 (v1.6.92~v1.6.93)', () => {
     const months = await a.page.locator('#gostopFloor .hwatuMonth').allTextContents();
     for (let month = 1; month <= 12; month += 1) expect(months).toContain(month + '월');
     await expect(a.page.locator('#gostopFloor .month-3 .hwatuMonth')).toHaveCount(2);
-    await expect(a.page.locator('#gostopMine .pile-gwang > small')).toHaveText('광 1');
-    await expect(a.page.locator('#gostopMine .pile-animal > small')).toHaveText('열끗 1');
-    await expect(a.page.locator('#gostopMine .pile-ribbon > small')).toHaveText('띠 1');
-    await expect(a.page.locator('#gostopMine .pile-pi > small')).toHaveText('피 7 · 카드 3장');
+    await expect(a.page.locator('#gostopMine .pile-gwang > small')).toHaveText('광 1 · 3장부터'); // (A3 G2-4: until it scores, how many it takes)
+    await expect(a.page.locator('#gostopMine .pile-animal > small')).toHaveText('열끗 1 · 5장부터');
+    await expect(a.page.locator('#gostopMine .pile-ribbon > small')).toHaveText('띠 1 · 5장부터');
+    await expect(a.page.locator('#gostopMine .pile-pi > small')).toHaveText('피 7 · 카드 3장 · 10부터');
     await expect(a.page.locator('#gostopMine .pile-pi .hwatu')).toHaveCount(3);
     expect(await a.page.locator('#gostopOpponents .hwatuBack .hwatuMonth').count()).toBe(0);
     expect(await a.page.locator('#gostopOpponents .hwatuBack').evaluateAll(els => els.some(el => /월/.test(el.textContent || '')))).toBe(false);

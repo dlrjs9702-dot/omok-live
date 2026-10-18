@@ -2165,3 +2165,7 @@ body.roomMode>.gostopResult:not(.hidden):not(.closed){position:fixed;left:50%;to
 .gostopResult .gostopSettlementFlow{display:flex;flex-wrap:wrap;gap:6px}
 .gostopResultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
 body:not(.roomMode)>.gostopResult{display:none}
+/* A3 G2-4: what a pile still needs, an empty pile faint, the sets under way and the 박 risk */
+.gostopPile small .gostopNeed{font-style:normal;font-weight:600;opacity:.7;font-size:.85em}
+.gostopPile.emptyPile{opacity:.55}
+.gostopSets{display:block;color:#fde68a;font-weight:700;font-size:.78rem;line-height:1.3}
