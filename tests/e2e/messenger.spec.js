@@ -53,7 +53,7 @@ test('메신저: 허용 계정만 버튼, 방 만들기 → 메시지 → 상대
   await expect(dad.page.locator('#messengerMessages .chatMessage')).toHaveText(/저녁 뭐 먹어\?/);
   await dad.page.locator('#messengerInput').fill('김치찌개');
   await dad.page.locator('#messengerInput').press('Enter');
-  await expect(mom.page.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 10000 }); // the 3 s ask
+  await expect(mom.page.locator('#messengerMessages .chatMessage:not(.mine)')).toHaveText(/김치찌개/, { timeout: 2500 }); // A5: at once by the stream (the 3 s ask only while it is down)
   await expect(mom.page.locator('#messengerMessages .messengerReadCount')).toHaveCount(0); // dad read it: the 「1」 is gone
   // 1:1: named after the other; 나가기 only with the warning
   if (await dad.page.locator('#messengerBackBtn').isVisible()) await dad.page.locator('#messengerBackBtn').click(); // a phone shows one side

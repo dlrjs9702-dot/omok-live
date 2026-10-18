@@ -684,6 +684,13 @@ function requireAdmin(req, res) {
 
 const { writeUnlessBacklogged } = require('./lib/sse-backpressure');
 
+// A5 메신저 실시간 받기: each permitted account's open streams; a change in a room is told to its members at once
+// (only the room's id -- the page asks for the lines as before, with the same checks)
+const messengerStreams = new Map(); // key id -> Set<res>
+async function pokeRoom(roomId, also = []) {
+  const room = await messengerStore.room(roomId).catch(() => null);
+  for (const id of new Set([...(room?.members || []), ...also])) for (const res of messengerStreams.get(id) || []) { try { sseWrite(res, 'msg', { room: roomId }); } catch {} }
+}
 function sseWrite(res, event, data) {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -3476,7 +3483,15 @@ async function requestHandler(req, res) {
       reads: Object.fromEntries(room.members.map((id) => [id, room.reads[id] || 0])),
       last: room.last && { text: room.last.text || (room.last.system ? '' : '삭제된 메시지입니다'), at: room.last.at, system: Boolean(room.last.system), label: nameOf(room.last.from) },
       members: room.members.map((id) => ({ id, label: nameOf(id), active: allowed.has(id) && labelOf.has(id) })) });
-    const say = async (room, text) => { const msg = await messengerStore.post(room.id, key.id, text, true); if (msg) await messengerStore.setRead(room.id, key.id, msg.seq); };
+    const say = async (room, text) => { const msg = await messengerStore.post(room.id, key.id, text, true); if (msg) await messengerStore.setRead(room.id, key.id, msg.seq); pokeRoom(room.id); };
+    if (pathname === '/api/messenger/stream' && req.method === 'GET') { // A5: held open; 'msg' with a room id when it changes
+      res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      res.write(': open\n\n');
+      const set = messengerStreams.get(key.id) || new Set(); if (set.size >= 4) { const oldest = set.values().next().value; set.delete(oldest); try { oldest.end(); } catch {} } set.add(res); messengerStreams.set(key.id, set);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
+      req.on('close', () => { clearInterval(ping); set.delete(res); if (!set.size) messengerStreams.delete(key.id); });
+      return;
+    }
     const names = (ids) => ids.map((id) => `${nameOf(id)}님`).join(', ');
     const invitees = (list) => { // other permitted accounts only
       if (!Array.isArray(list) || list.length > MESSENGER_ROOM_MAX) return null;
@@ -3495,7 +3510,7 @@ async function requestHandler(req, res) {
       const members = invitees(body.members);
       if (!members || !members.length || members.length + 1 > MESSENGER_ROOM_MAX) return sendError(res, 400, 'BAD_MEMBERS', `함께할 사람을 1~${MESSENGER_ROOM_MAX - 1}명 골라 주세요.`);
       if ((await messengerStore.roomsOf(key.id)).length >= MESSENGER_ROOMS_MAX) return sendError(res, 409, 'TOO_MANY_ROOMS', `방은 ${MESSENGER_ROOMS_MAX}개까지 들어갈 수 있습니다.`);
-      const made = await messengerStore.createRoom(name, key.id, members);
+      const made = await messengerStore.createRoom(name, key.id, members); pokeRoom(made.id); // (A5: the new room shows on their lists)
       await say(made, `${nameOf(key.id)}님이 ${names(members)}을 초대했습니다.`);
       return sendJson(res, 201, { ok: true, room: view(await messengerStore.room(made.id)) });
     }
@@ -3530,6 +3545,7 @@ async function requestHandler(req, res) {
       if (text.length > MESSENGER_TEXT_MAX) return sendError(res, 400, 'CHAT_TOO_LONG', `메시지는 ${MESSENGER_TEXT_MAX}자까지 보낼 수 있습니다.`);
       const sent = await messengerStore.post(room.id, key.id, text);
       if (sent) await messengerStore.setRead(room.id, key.id, sent.seq); // my own line is read by me
+      pokeRoom(room.id); // (A5: the members' pages take it at once)
       return sendJson(res, 201, { ok: true, message: { ...sent, label: key.label } });
     }
     if (m[2] === 'members' && req.method === 'POST') {
@@ -3546,6 +3562,7 @@ async function requestHandler(req, res) {
     if (m[2] === 'leave' && req.method === 'POST') { // the others are told; the last one out deletes the room
       await messengerStore.leave(room.id, key.id);
       await messengerStore.post(room.id, key.id, `${nameOf(key.id)}님이 나갔습니다.`, true);
+      pokeRoom(room.id, [key.id]);
       return sendJson(res, 200, { ok: true });
     }
     if (m[2] === 'name' && req.method === 'POST') { // v1.10.88 단체 방 이름 바꾸기
@@ -3567,6 +3584,7 @@ async function requestHandler(req, res) {
       if (!msg || msg.system || msg.from !== key.id) return sendError(res, 404, 'MESSAGE_NOT_FOUND', '지울 수 있는 메시지가 아닙니다.');
       if (Date.now() - Date.parse(msg.at) > 5 * 60 * 1000) return sendError(res, 409, 'TOO_LATE', '보낸 지 5분이 지난 메시지는 지울 수 없습니다.');
       await messengerStore.unsend(room.id, seq);
+      pokeRoom(room.id);
       return sendJson(res, 200, { ok: true });
     }
     if (m[2] === 'mute' && req.method === 'POST') { // v1.10.88 방별 알림 끄기 (mine only)

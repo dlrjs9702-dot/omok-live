@@ -10489,6 +10489,30 @@
       } catch {}
     }
     setInterval(badge, 30000);
+    // A5 메신저 실시간 받기: a held stream (fetch, as the account's token goes in a header); a room's change pulls it at once
+    // where it shows -- the open room, the room list, the 메신저 button and the island's toast; a dropped stream comes back
+    let streamUp = false; let streamCtl = null; let streamWanted = false;
+    async function openStream() {
+      if (!streamWanted || streamCtl) return; streamCtl = new AbortController();
+      try {
+        const res = await fetch('/api/messenger/stream', { headers: { 'X-Account-Token': accountToken.get() }, signal: streamCtl.signal, cache: 'no-store' });
+        if (!res.ok || !res.body) throw new Error(String(res.status));
+        streamUp = true; const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read(); if (done) break;
+          buf += dec.decode(value, { stream: true }); let cut;
+          while ((cut = buf.indexOf('\n\n')) >= 0) {
+            const chunk = buf.slice(0, cut); buf = buf.slice(cut + 2);
+            if (!/^event: msg$/m.test(chunk)) continue;
+            let room = null; try { room = JSON.parse((chunk.match(/^data: (.*)$/m) || [])[1] || '{}').room; } catch {}
+            if (dialog.open) { if (current?.id === room) pull(); refresh(); } else { badge(); islandNotice(); }
+          }
+        }
+      } catch {}
+      streamUp = false; streamCtl = null;
+      if (streamWanted) setTimeout(openStream, 5000);
+    }
+    function wantStream(on) { streamWanted = on; if (on) openStream(); else { streamCtl?.abort(); streamCtl = null; streamUp = false; } }
     // v1.10.90 섬 안 알림: on the island (the window shut), a new message in a room not muted shows as a small toast
     let islandSeen = null;
     async function islandNotice() {
@@ -10552,9 +10576,9 @@
     byId('accountMessengerBtn').addEventListener('click', async () => {
       current = null; hidePick(); body.classList.remove('inRoom'); box.innerHTML = '<p class="emptyState">대화방을 고르거나 새로 만드세요.</p>';
       dialog.showModal(); await refresh();
-      timers = [setInterval(pull, 3000), setInterval(refresh, 10000)];
+      timers = [setInterval(() => { if (!streamUp) pull(); }, 3000), setInterval(refresh, streamUp ? 30000 : 10000)]; // (A5: asking stays only while the stream is down)
     });
-    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); }, close }; // (after the account panel shows)
+    return { show: (on) => { msgBtn.classList.toggle('hidden', !on); if (on) setTimeout(badge, 0); wantStream(Boolean(on)); }, close }; // (after the account panel shows; A5: the stream while permitted)
   })();
   byId('accountLogoutBtn').addEventListener('click', async () => {
     await accountApi('/api/account/logout').catch(() => {});
