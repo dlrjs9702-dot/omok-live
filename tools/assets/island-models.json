@@ -5195,6 +5195,142 @@
       "lowSrc": "winter46:02. Low/body_winter_fitted_low.glb",
       "lowSha256": "695b82deaa14a7e8070fb95337afe8de982ad7a3f125a537a5c135543035c1a8",
       "precompressed": true
+    },
+    {
+      "out": "townhall-v3/townhall_interior.glb",
+      "src": "townhall44:01. High/townhall_interior.glb",
+      "sha256": "cbf83355378a10614a56c266d1fec34a3a5ce89a376cc5611ed84671d170441a",
+      "lowSrc": "townhall44:02. Low/townhall_interior_low.glb",
+      "lowSha256": "8a2727e157b3282d8989b84839c2274314713b7ac9634d02cbacbe651120c21d",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/desk_civil.glb",
+      "src": "townhall44:01. High/desk_civil.glb",
+      "sha256": "92f5314678bbf75b194443a4a79025e36a6ebe06f0f083ff332c1b0a2be4072a",
+      "lowSrc": "townhall44:02. Low/desk_civil_low.glb",
+      "lowSha256": "69b5ed5962ab13cca166d9cf4af4d888a762b734d3d168925270acf9b214607f",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/desk_tax.glb",
+      "src": "townhall44:01. High/desk_tax.glb",
+      "sha256": "5f444d6d9e851daa4364eba20d27089e85d83c6a1286e615d83315e003e0f95c",
+      "lowSrc": "townhall44:02. Low/desk_tax_low.glb",
+      "lowSha256": "5e357e42909a6a95fae36df3d8642e3c752826017178fc67ee26080ce2fefd96",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/desk_bank.glb",
+      "src": "townhall44:01. High/desk_bank.glb",
+      "sha256": "42283f6df6f54e0b7533271bee6504aed4f8e40bc22e172410e1fcaa593e15f2",
+      "lowSrc": "townhall44:02. Low/desk_bank_low.glb",
+      "lowSha256": "9c564791edbd6d17c5ab973627e170e448324e4401def00fbc5dadcd44fb276b",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/chair_marble.glb",
+      "src": "townhall44:01. High/chair_marble.glb",
+      "sha256": "77a89ebfdd00ad5f32be6da86cdbc52fc5ff75e7dffc1fa38f2f3cd7b93078db",
+      "lowSrc": "townhall44:02. Low/chair_marble_low.glb",
+      "lowSha256": "cb482111da66e11cd061b32f93e46ecf722eb325277efb9069cabb7e64949fa8",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/bench_marble.glb",
+      "src": "townhall44:01. High/bench_marble.glb",
+      "sha256": "58755ff71de3334fd1ee76f150901d81d30b2165accef9892915d95b68a85f6e",
+      "lowSrc": "townhall44:02. Low/bench_marble_low.glb",
+      "lowSha256": "a03cab469cf3543d8f29aec9bb04244e1dba0208400de5edb32dfd70c3e76a98",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/ticket_machine.glb",
+      "src": "townhall44:01. High/ticket_machine.glb",
+      "sha256": "a10591e9e43dfad3a2d10bcd322ce310f41d7844af65b09873dabf7978ceb7c9",
+      "lowSrc": "townhall44:02. Low/ticket_machine_low.glb",
+      "lowSha256": "0b68c3883fef66e0a67e02c7fd94a131d7b1577107a723a18c74dbdc7b65c652",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/notice_board.glb",
+      "src": "townhall44:01. High/notice_board.glb",
+      "sha256": "f4c52334d63eecb671dfcfbab43e4dcf78914b0c62c58181bb3b3d0a07306441",
+      "lowSrc": "townhall44:02. Low/notice_board_low.glb",
+      "lowSha256": "51de4b604580a2121f2c62a3030a6e16184531e0fb8e2c6ffee752fc6b11e677",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/plant_pot.glb",
+      "src": "townhall44:01. High/plant_pot.glb",
+      "sha256": "04e8e151fc5610a25c89d4afcd945904267e41e2f238cc718ff7732e7c1ad47b",
+      "lowSrc": "townhall44:02. Low/plant_pot_low.glb",
+      "lowSha256": "83d61bd1b1091ff975b2ef3b88fc9ed1b4160b9f5e0ac62436e5fda55d65e826",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/mayor_door.glb",
+      "src": "townhall44:01. High/mayor_door.glb",
+      "sha256": "b84a1162fc126c057c9b29fa87a980b48b3b04d0751739768eaa95eb505d06b5",
+      "lowSrc": "townhall44:02. Low/mayor_door_low.glb",
+      "lowSha256": "b19b5f645e89af200787eb98e179111c0e023f186023970200252ce2101fd80a",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/flag_stand.glb",
+      "src": "townhall44:01. High/flag_stand.glb",
+      "sha256": "51e00f985cc462beaaf529945e7e38a63412b2e13122eb767cf71d0cd8d22b5e",
+      "lowSrc": "townhall44:02. Low/flag_stand_low.glb",
+      "lowSha256": "2d80e792411bedca598cd7f52a6d893ef8ee758333ca0b7db78e6402adbd2cc9",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/water_cooler.glb",
+      "src": "townhall44:01. High/water_cooler.glb",
+      "sha256": "c4bfb33810a9ff31f23950c4bb7b0268c9526d4e57f255b6e978fbd96476254c",
+      "lowSrc": "townhall44:02. Low/water_cooler_low.glb",
+      "lowSha256": "93ce7274120450fa9982d6102492e6cb0c941d92291f9dd24f7b09a2bc3a6007",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/counter_bell.glb",
+      "src": "townhall44:01. High/counter_bell.glb",
+      "sha256": "1808bac2b6eadd75657b4ea7ba82e37f9500116d2d1a5b59d44e927d43127612",
+      "lowSrc": "townhall44:02. Low/counter_bell_low.glb",
+      "lowSha256": "795f031c46a3ec78d35b1a704edeba299046d6446646cdba35a7b38407120678",
+      "precompressed": true
+    },
+    {
+      "out": "townhall-v3/rope_stand.glb",
+      "src": "townhall44:01. High/rope_stand.glb",
+      "sha256": "763a3b488fc45396b5d339ba4818cd7f14a3938dcd3db6409626bec28eb59fb7",
+      "lowSrc": "townhall44:02. Low/rope_stand_low.glb",
+      "lowSha256": "a3d1129db0aebc41648066606eea6d3fe93eb44f7ccb321c94e0fd7501045363",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_clerk_civil.glb",
+      "src": "townhall44:01. High/npc_clerk_civil.glb",
+      "sha256": "41820f93c0d4adaaf2c2a10fbb08901a96c67ad24c46a6219b5fbc76f51db424",
+      "lowSrc": "townhall44:02. Low/npc_clerk_civil_low.glb",
+      "lowSha256": "f5248022a931abe7b5cdb19d0302ab37bce7d5e726f6856fbbfa4184d3462a4f",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_clerk_tax.glb",
+      "src": "townhall44:01. High/npc_clerk_tax.glb",
+      "sha256": "404d7689599f6dd6e37dc6f7d9f82495fe1e63baeca2a6e7ab9abd9dcc612fcf",
+      "lowSrc": "townhall44:02. Low/npc_clerk_tax_low.glb",
+      "lowSha256": "b8a688ac7cc2498ba585d6ee66e079702f9816e85eb3745a6f88db7a8a7d4a91",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_clerk_bank.glb",
+      "src": "townhall44:01. High/npc_clerk_bank.glb",
+      "sha256": "8fae805032318dada50b9a9d9b4dff5e5035c109c0599a7e97be4c9cf8d4038f",
+      "lowSrc": "townhall44:02. Low/npc_clerk_bank_low.glb",
+      "lowSha256": "85f75749094973f79f8a5b314b8f583ea071876eb28328b776e9338f8c8d6c26",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -5224,6 +5360,7 @@
     "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18",
     "mall43": "43. Game Island department store 2026-10-18",
     "residents39": "39. Game Island residents and quest props 2026-10-17",
-    "winter46": "46. Game Island winter event 2026-10-18"
+    "winter46": "46. Game Island winter event 2026-10-18",
+    "townhall44": "44. Game Island townhall interior 2026-10-18"
   }
 }

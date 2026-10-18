@@ -399,6 +399,14 @@
     "mall-v1/mall_interior_low.glb": {
       "triangles": 14000,
       "reason": "v1.10.92 백화점 실내 Low (주문 상한 14,000)"
+    },
+    "townhall-v3/townhall_interior.glb": {
+      "triangles": 20000,
+      "reason": "B 44 민원실 28x18 m 껍데기(기둥·몰딩 포함, 주문 상한 33,000)"
+    },
+    "townhall-v3/townhall_interior_low.glb": {
+      "triangles": 11000,
+      "reason": "B 44 민원실 Low"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

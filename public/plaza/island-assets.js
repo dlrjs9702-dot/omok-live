@@ -339,6 +339,11 @@
   for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
   REGISTRY['village.guitar'] = village('guitar', { shadows: false });
   for (const p of ['lamp_broken', 'lamp_fixed']) REGISTRY[`village.${p}`].scale = 0.85; // (the island lamp's own size, prop.lamp)
+  // B 44 민원실 넓히기 (assets 44 townhall-v3): the 28 x 18 m room, the three desks, the marble seats and benches, the lobby
+  // props, and the three clerks on the common rig
+  const th3 = (file) => ({ url: `/assets/island/townhall-v3/${file}.glb`, low: { url: `/assets/island/townhall-v3/${file}_low.glb` } });
+  for (const f of ['townhall_interior', 'desk_civil', 'desk_tax', 'desk_bank', 'chair_marble', 'bench_marble', 'ticket_machine', 'notice_board', 'plant_pot', 'mayor_door', 'flag_stand', 'water_cooler', 'counter_bell', 'rope_stand']) REGISTRY[`townhall3.${f}`] = th3(f);
+  for (const n of ['civil', 'tax', 'bank']) REGISTRY[`character.clerk_${n}`] = { url: `${CH}/npc_clerk_${n}.glb`, low: { url: `${CH}/npc_clerk_${n}_low.glb` }, rotationY: Math.PI, motions: true };
   // B 46 겨울 축제 (assets 46 winter-v1): the plaza's tree on the fountain's spot, the props, the snow laid over the plaza's
   // lamps and benches (overlays, in the props' own frame); the lamp's own 0.85 is the overlay's too
   const winter = (file, extra = {}) => ({ url: `/assets/island/winter-v1/${file}.glb`, low: { url: `/assets/island/winter-v1/${file}_low.glb` }, near: 60, ...extra });

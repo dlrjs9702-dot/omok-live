@@ -302,7 +302,16 @@
   // v1.10.84 관공서 실내 (IDEAS 2026-10-07 「관공서 실내 공간」): a separate room, the 1층 민원실, set far off the island (past
   // the fog, so neither place shows in the other) -- its own coordinates for the server's positions too. Local layout:
   // the door on +z (the way in and out), the counter across the back (-z) with the clerk behind it, benches at the sides.
-  const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 16, d: 11, entry: Object.freeze({ lx: 0, lz: 3.4 }), exit: Object.freeze({ lx: 0, lz: 4.7 }), desk: Object.freeze({ lx: -2.3, lz: -1.9 }), tax: Object.freeze({ lx: 0, lz: -1.9 }), bank: Object.freeze({ lx: 2.3, lz: -1.9 }), counter: Object.freeze({ x0: -3.4, x1: 3.4, z: -2.5 }) });
+  // B 44 민원실 넓히기 (IDEAS 「민원실 넓히기」, assets 44 townhall-v3): 28 x 18 m, the 민원·세금·예금 desks 9 m apart (5.6 m between their
+  // edges), each with a queue spot (interact) and its clerk, 18 marble seats to sit on, the lobby props. The pack is turned half
+  // round here (its door at -z) so the door stays toward the camera at +z as before: lx = -x, lz = -z of the pack's numbers.
+  const TH = Object.freeze({
+    desks: [{id: "civil", lx: 9, lz: -4.5, keeper: -6.15}, {id: "tax", lx: 0, lz: -4.5, keeper: -6.15}, {id: "bank", lx: -9, lz: -4.5, keeper: -6.15}],
+    props: [["bench_marble",6,0,5,4.7124],["bench_marble",-6,0,5,1.5708],["ticket_machine",2.7,0,6.6,3.1416],["notice_board",-2.7,0,6.6,3.1416],["plant_pot",12.4,0,-6.6,3.1416],["plant_pot",-12.4,0,-6.6,3.1416],["mayor_door",0,0,-8.65,3.1416],["flag_stand",12.2,0,-2.4,3.1416],["water_cooler",-12.3,0,3,3.1416],["counter_bell",8.1,1.06,-4.32,3.1416],["counter_bell",-0.9,1.06,-4.32,3.1416],["counter_bell",-9.9,1.06,-4.32,3.1416],["rope_stand",12.3,0,-3.8,4.7124],["rope_stand",3.3,0,-3.8,4.7124],["rope_stand",-5.7,0,-3.8,4.7124]], // [file, lx, y, lz, yaw] (the pack's placements without the desks, chairs and clerks)
+    seats: [["desk.civil.chair.1.seat",11.025,0.62,3.1416],["desk.civil.chair.2.seat",9.675,0.62,3.1416],["desk.civil.chair.3.seat",8.325,0.62,3.1416],["desk.civil.chair.4.seat",6.975,0.62,3.1416],["desk.tax.chair.1.seat",2.025,0.62,3.1416],["desk.tax.chair.2.seat",0.675,0.62,3.1416],["desk.tax.chair.3.seat",-0.675,0.62,3.1416],["desk.tax.chair.4.seat",-2.025,0.62,3.1416],["desk.bank.chair.1.seat",-6.975,0.62,3.1416],["desk.bank.chair.2.seat",-8.325,0.62,3.1416],["desk.bank.chair.3.seat",-9.675,0.62,3.1416],["desk.bank.chair.4.seat",-11.025,0.62,3.1416],["lobby.left.seat.1",5.98,3.65,1.5708],["lobby.left.seat.2",5.98,5,1.5708],["lobby.left.seat.3",5.98,6.35,1.5708],["lobby.right.seat.1",-5.98,6.35,-1.5708],["lobby.right.seat.2",-5.98,5,-1.5708],["lobby.right.seat.3",-5.98,3.65,-1.5708]], // [id, lx, lz, yaw]
+    obstacles: [[9,-4.5,3.4,1.1],[11.03,0.6,1.14,1.28],[9.68,0.6,1.14,1.28],[8.32,0.6,1.14,1.28],[6.97,0.6,1.14,1.28],[0,-4.5,3.4,1.1],[2.02,0.6,1.14,1.28],[0.68,0.6,1.14,1.28],[-0.68,0.6,1.14,1.28],[-2.02,0.6,1.14,1.28],[-9,-4.5,3.4,1.1],[-6.97,0.6,1.14,1.28],[-8.32,0.6,1.14,1.28],[-9.68,0.6,1.14,1.28],[-11.03,0.6,1.14,1.28],[6,5,3.98,1.28],[-6,5,3.98,1.28],[2.7,6.61,0.68,0.54],[-2.7,6.6,1.65,0.55],[12.4,-6.6,1.02,1.02],[-12.4,-6.6,1.02,1.02],[0,-8.6,2.5,0.48],[11.86,-2.4,1.41,0.72],[-12.3,3.05,0.66,0.72],[12.3,-3.8,2.18,0.37],[3.3,-3.8,2.18,0.37],[-5.7,-3.8,2.18,0.37],[13,4.7,0.96,0.96],[13,-1,0.96,0.96],[4.5,-7.2,0.96,0.96],[-4.5,-7.2,0.96,0.96],[-13,-1,0.96,0.96],[-13,4.7,0.96,0.96],[0,-8.9,28,0.2],[13.9,0,0.2,18],[7.75,8.9,12.5,0.2],[-13.9,0,0.2,18],[-7.75,8.9,12.5,0.2]], // [lx, lz, w, d]
+  });
+  const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 28, d: 18, entry: Object.freeze({ lx: 0, lz: 7.7 }), exit: Object.freeze({ lx: 0, lz: 8.3 }), desk: Object.freeze({ lx: 9, lz: -2.5 }), tax: Object.freeze({ lx: 0, lz: -2.5 }), bank: Object.freeze({ lx: -9, lz: -2.5 }), layout: TH });
   const roomWorld = (lx, lz) => ({ x: TOWNHALL_ROOM.x + lx, z: TOWNHALL_ROOM.z + lz });
   const inRoom = (x, z, pad = 0) => Math.abs(x - TOWNHALL_ROOM.x) <= TOWNHALL_ROOM.w / 2 + pad && Math.abs(z - TOWNHALL_ROOM.z) <= TOWNHALL_ROOM.d / 2 + pad;
   // where one may stand inside: within the walls (0.6 m off them) and in front of the counter
@@ -310,7 +319,13 @@
     const R = TOWNHALL_ROOM; const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
     let lx = Math.max(-R.w / 2 + 0.6, Math.min(R.w / 2 - 0.6, fin(x, R.x + R.entry.lx) - R.x));
     let lz = Math.max(-R.d / 2 + 0.6, Math.min(R.d / 2 - 0.6, fin(z, R.z + R.entry.lz) - R.z));
-    if (lx > R.counter.x0 - 0.4 && lx < R.counter.x1 + 0.4 && lz < R.counter.z + 0.4) lz = R.counter.z + 0.4;
+    // (B 44: out of the desks, chairs and props -- of the four ways out of a piece, the nearest clear one, as in the 백화점)
+    const hit = (x, z) => R.layout.obstacles.find(([ox, oz, w, d]) => Math.abs(x - ox) < w / 2 + 0.35 - 1e-6 && Math.abs(z - oz) < d / 2 + 0.35 - 1e-6);
+    for (let pass = 0, o = hit(lx, lz); o && pass < 4; pass += 1, o = hit(lx, lz)) {
+      const hx = o[2] / 2 + 0.35; const hz = o[3] / 2 + 0.35;
+      const ways = [[o[0] - hx, lz], [o[0] + hx, lz], [lx, o[1] - hz], [lx, o[1] + hz]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
+      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= R.w / 2 - 0.6 && Math.abs(z) <= R.d / 2 - 0.6) || ways[0];
+    }
     return { x: Math.round((R.x + lx) * 100) / 100, z: Math.round((R.z + lz) * 100) / 100 };
   }
   // v1.10.80 농부 밭 (IDEAS #future-island-minigames): the 8 x 5 m field beside the village lane (its models' floor centre,
@@ -432,6 +447,8 @@
     // the outer hands went into the armrests). v1.10.46: 0.18 forward of the bench's middle (was 0.08) -- the back of the
     // bench 0.40 behind the hips, so a cape (0.31-0.41 behind them seated) clears it; still on the seat, knees past its edge
     const seats = benches.map((b, k) => { const ry = Math.atan2(-b.x, -b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
+    // B 44: the 민원실's 18 marble seats (y: the room's floor -- not the island's ground)
+    const R = TOWNHALL_ROOM; seats.push(...R.layout.seats.map(([, lx, lz, yaw], k) => ({ id: `t${k}`, x: R.x + lx, z: R.z + lz, yaw, y: R.y, room: 'townhall' })));
     return { benches, lamps, beds, seats };
   }
   // Things a character walks around, with their radius (the same circles the browser uses).

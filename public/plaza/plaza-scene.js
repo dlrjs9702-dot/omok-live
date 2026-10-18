@@ -971,7 +971,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         if(o.act==='pickFruit' && t>=0.98 && t<1.48 && !o.c.holding?.fruit) assets.hold(o.c,'prop.harvest.fruit',0,{key:'fruit'});
         if(t>=1.48) assets.letGo(o.c,'fruit');
       }
-      if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = heightAt(s.x, s.z) + SEAT_LIFT; o.c.targetYaw = s.yaw; } } // v1.10.44
+      if (o.act === 'sit') { const s = SEATS.find((x) => x.id === o.seat); if (s) { p.x = s.x; p.z = s.z; p.y = (s.y ?? heightAt(s.x, s.z)) + SEAT_LIFT; o.c.targetYaw = s.yaw; } } // v1.10.44 (B 44: a room seat has its floor)
       if (o.platform && !o.ride) { const q = R.platformClamp(o.platform.line, o.platform.station, p.x, p.z); p.set(q.x, q.y, q.z); animate(o.c, dt, f.speed > .4, f.speed); continue; }
       if (o.ride) { const q = R.seatAt(o.ride.id, o.ride.seat, trainNow()); p.set(q.x, q.y, q.z); o.c.root.rotation.y = q.yaw; o.c.targetYaw = q.yaw; animate(o.c, dt, false, 0); continue; } // v1.10.47
       animate(o.c, dt, o.act !== 'sit' && f.speed > 0.4, o.act === 'sit' ? 0 : f.speed);
@@ -1591,43 +1591,23 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const roomAt = (lx, lz) => globalThis.IslandTerrain.roomWorld(lx, lz);
   function buildRoom() {
     if (room) return room;
+    // B 44 민원실 넓히기 (assets 44): the 28 x 18 m marble hall, the 민원·세금·예금 desks 9 m apart each with its clerk, 18 marble
+    // seats (sat on like the plaza's benches), the lobby props; each piece has a plain stand-in until its model is in
     const g = new THREE.Group(); g.position.set(ROOM.x, ROOM.y, ROOM.z); scene.add(g);
-    const W = ROOM.w; const D = ROOM.d;
-    mesh(new THREE.BoxGeometry(70, 0.2, 70), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it (no island here)
-    mesh(new THREE.BoxGeometry(W, 0.2, D), mat(0xe8dcc6), 0, -0.1, 0, g); // the stone floor
-    mesh(new THREE.BoxGeometry(W - 3, 0.02, D - 4), mat(0x3f7d68), 0, 0.01, 0.6, g); // the hall's green carpet
-    const wall = mat(0xf7f0e1);
-    mesh(new THREE.BoxGeometry(W, 3.2, 0.3), wall, 0, 1.6, -D / 2, g); // back
-    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.2, D), wall, s * W / 2, 1.6, 0, g); // sides
-    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(W / 2 - 1.2, 1.0, 0.3), wall, s * (W / 4 + 0.6), 0.5, D / 2, g); // the front, low (the camera looks in over it)
-    mesh(new THREE.BoxGeometry(2.4, 0.06, 0.6), mat(0x8a6a48), 0, 0.03, D / 2, g); // the doorstep
-    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.4, 3.2, 0.4), mat(0xdcd2bd), s * 2.2, 1.6, -D / 2 + 0.35, g); // pillars
-    const C = ROOM.counter; const cw = C.x1 - C.x0;
-    mesh(new THREE.BoxGeometry(cw, 1.05, 0.7), mat(0x8a5a3b), (C.x0 + C.x1) / 2, 0.525, C.z - 0.35, g); // the counter
-    mesh(new THREE.BoxGeometry(cw + 0.2, 0.08, 0.86), mat(0xc9a77a), (C.x0 + C.x1) / 2, 1.09, C.z - 0.35, g);
-    // the sign over the counter: 민원실
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#3f7d68'; ctx.fillRect(0, 0, 512, 128); ctx.fillStyle = '#fffaf1'; ctx.font = 'bold 72px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('민원실', 256, 66);
-    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.75), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, 2.55, -D / 2 + 0.17); g.add(sign);
-    // v1.10.85 the two windows' small plates on the counter: 민원 (left) and 예금 (right)
-    for (const [lx, word, bg] of [[ROOM.desk.lx, '민원', '#3f7d68'], [ROOM.tax.lx, '세금', '#7f1d1d'], [ROOM.bank.lx, '예금', '#b45309']]) {
-      const c2 = document.createElement('canvas'); c2.width = 256; c2.height = 96; const x2 = c2.getContext('2d');
-      x2.fillStyle = bg; x2.fillRect(0, 0, 256, 96); x2.fillStyle = '#fffaf1'; x2.font = 'bold 60px sans-serif'; x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillText(word, 128, 52);
-      const t2 = new THREE.CanvasTexture(c2); t2.colorSpace = THREE.SRGBColorSpace;
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.42), new THREE.MeshBasicMaterial({ map: t2 })); plate.position.set(lx, 1.42, C.z + 0.04); g.add(plate);
-      mesh(new THREE.BoxGeometry(1.14, 0.46, 0.04), mat(0x8a6a48), lx, 1.42, C.z + 0.01, g);
-    }
-    // benches to wait on (decoration), plants by the door
-    for (const s of [-1, 1]) { const b = new THREE.Group(); b.position.set(s * 5.4, 0, 0.8); b.rotation.y = s * -Math.PI / 2; g.add(b); const f = new THREE.Group(); mesh(new THREE.BoxGeometry(1.8, 0.1, 0.5), mat(0x9c6b3f), 0, 0.45, 0, f); b.add(f); assets.attach('prop.bench', b, f); }
-    for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 2.4, 0, D / 2 - 0.9); g.add(p); const f = new THREE.Group(); mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.5, 10), mat(0x9c6b3f), 0, 0.25, 0, f); mesh(new THREE.SphereGeometry(0.45, 10, 8), mat(0x5fa36a), 0, 0.85, 0, f); p.add(f); assets.attach('prop.planter', p, f); }
-    // the clerk behind the counter, facing the room
-    const clerks = [[ROOM.desk.lx, 'room:desk', 'female', 0x3f7d68], [ROOM.tax.lx, 'room:tax', 'male', 0x7f1d1d], [ROOM.bank.lx, 'room:bank', 'female', 0xb45309]].map(([lx, id, gender, shirt]) => {
-      const at = new THREE.Group(); at.position.set(lx, 0, C.z - 1.2); g.add(at);
-      const c = makeCharacter({ shirt, hair: 0x2b2b2b, skin: 0xffdcbc }); at.add(c.root); dressUp(c, { gender, outfit: 'npc_outfit_suit' }, { shirt });
-      return Object.assign(c, { home: { x: ROOM.x + lx, z: ROOM.z + C.z - 1.2, yaw: 0, id } });
+    const L = ROOM.layout;
+    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it (no island here)
+    const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
+    put('townhall3.townhall_interior', 0, 0, 0, Math.PI, (f) => { mesh(new THREE.BoxGeometry(ROOM.w, 0.2, ROOM.d), mat(0xf2efe8), 0, -0.1, 0, f); const wall = mat(0xf2efe8); mesh(new THREE.BoxGeometry(ROOM.w, 3.2, 0.3), wall, 0, 1.6, ROOM.d / 2, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.2, ROOM.d), wall, s * ROOM.w / 2, 1.6, 0, f); });
+    const SHIRT = { civil: 0x3f7d68, tax: 0x7f1d1d, bank: 0xb45309 };
+    const clerks = L.desks.map((d) => {
+      put(`townhall3.desk_${d.id}`, d.lx, 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
+      const c = makeCharacter({ shirt: SHIRT[d.id], hair: 0x2b2b2b, skin: 0xffdcbc }); c.root.position.set(d.lx, 0, d.keeper); g.add(c.root);
+      assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] });
+      const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: 0, id } });
     });
-    for (const [lx, lz] of [[-4, 0.5], [4, 0.5], [0, -3]]) { const light = new THREE.PointLight(0xfff1d6, 18, 16, 1.2); light.position.set(lx, 3.2, lz); g.add(light); } // a lit hall at any hour
+    for (const [, lx, lz, yaw] of L.seats.filter(([id]) => id.startsWith('desk.'))) put('townhall3.chair_marble', lx, 0, lz, yaw + Math.PI, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // (a seat's yaw faces the sitter's way; the chair's front is -z)
+    for (const [file, lx, y, lz, yaw] of L.props) put(`townhall3.${file}`, lx, y, lz, yaw, (f) => mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), mat(0xd9d4c8), 0, 0.4, 0, f));
+    for (const lx of [-9, 0, 9]) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
     room = { group: g, clerks }; npcs.push(...clerks);
     return room;
   }
@@ -2537,7 +2517,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const s = SEATS.find((x) => x.id === seatId); if (!s || gather || fishing) return false;
     if (!startGather({ kind: 'sit', ms: Infinity, anim: 'sitDown', onDone: () => standUp(false) })) return false;
     sitting = { seat: s, t: 0, from: { x: me.root.position.x, z: me.root.position.z } };
-    me.root.position.set(s.x, heightAt(s.x, s.z) + SEAT_LIFT, s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw;
+    me.root.position.set(s.x, (s.y ?? heightAt(s.x, s.z)) + SEAT_LIFT, s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw;
     me.anim?.loop?.('sitIdle'); me.tailTucked = true; me.tuckTail?.(true); myAct.act = 'sit'; myAct.seat = s.id;
     return true;
   }
