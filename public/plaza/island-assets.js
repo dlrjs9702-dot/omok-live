@@ -324,6 +324,9 @@
   // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
   REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
+  // v1.10.93 체형 (사용자 2026-10-18, 시안 v2): the body and all it wears narrowed alike (asset-loader slimmedGeometry) --
+  // trunk width 82%·depth 80%, arms 55%, legs 50% of their thickness; 1 everywhere is the body as made
+  REGISTRY['character.base'].slim = { width: 0.82, depth: 0.8, arm: 0.55, leg: 0.5, hand: 0.82, foot: 0.85 }; // (hands 82%, shoes 85% across -- their soles stay down)
   const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     REGISTRY[`tree.harvest.${season}`] = life(`tree_harvest_${season}`);

@@ -611,6 +611,36 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }
     return restCache.get(key);
   }
+  // v1.10.93 체형 (사용자 2026-10-18 「동물의 숲 DS 정도의 인상」, 시안 v2): the same narrowing on the body and on everything
+  // worn over it, so every outfit follows -- in the bind pose, each vertex of an arm or a leg drawn toward its bone's axis
+  // (by how much it is skinned to the limb, one field across elbow and knee), the trunk narrowed (Hips·Spine·Chest weight,
+  // between the hips and the shoulders); head, hands and feet as they are. `slim` = { width, depth, arm, leg } (1 = as made).
+  const slimOf = new Map(); // `${geometry uuid}|${slim}` -> geometry
+  function slimmedGeometry(mesh, slim) {
+    if (!slim || !mesh.isSkinnedMesh || !mesh.geometry.attributes.skinIndex) return mesh.geometry;
+    const key = `${mesh.geometry.uuid}|${slim.width},${slim.depth},${slim.arm},${slim.leg},${slim.hand},${slim.foot}`;
+    if (slimOf.has(key)) return slimOf.get(key);
+    const g = mesh.geometry; const rest = restOf(mesh); const si = g.attributes.skinIndex; const sw = g.attributes.skinWeight;
+    mesh.updateMatrixWorld(true);
+    const ends = Object.fromEntries(mesh.skeleton.bones.filter((b) => /^(Hand|Foot)/.test(b.name)).map((b) => [b.name, b.getWorldPosition(new THREE.Vector3())])); // hands and feet drawn in round their own joint
+    const chains = []; mesh.skeleton.bones.forEach((bone) => { if (!/^(UpperArm|LowerArm|UpperLeg|LowerLeg)/.test(bone.name)) return; const child = bone.children.find((b) => b.isBone); if (!child) return; const start = bone.getWorldPosition(new THREE.Vector3()); chains.push({ start, axis: child.getWorldPosition(new THREE.Vector3()).sub(start), arm: /Arm/.test(bone.name) }); });
+    const names = mesh.skeleton.bones.map((b) => b.name); const v = new THREE.Vector3(); const out = new Float32Array(rest.length); const smooth = THREE.MathUtils.smoothstep;
+    for (let i = 0; i < rest.length / 3; i += 1) {
+      v.fromArray(rest, i * 3); let trunk = 0; let aw = 0; let lw = 0; let end = null; let ew = 0;
+      for (let k = 0; k < 4; k += 1) { const name = names[si.getComponent(i, k)] || ''; const w = sw.getComponent(i, k); if (/^(Hips|Spine|Chest)$/.test(name)) trunk += w; if (/^(UpperArm|LowerArm)/.test(name)) aw += w; if (/^(UpperLeg|LowerLeg)/.test(name)) lw += w; if (ends[name] && w > ew) { ew = w; end = name; } }
+      if (end && ew > 0.5) { const o = ends[end]; const s = /^Hand/.test(end) ? slim.hand ?? 1 : slim.foot ?? 1; v.x = o.x + (v.x - o.x) * s; v.z = o.z + (v.z - o.z) * s; if (/^Hand/.test(end)) v.y = o.y + (v.y - o.y) * s; v.toArray(out, i * 3); continue; } // (a foot keeps its sole where it stands)
+      trunk *= v.y > 1.4 || v.y < 0.48 ? 0 : smooth(v.y, 0.48, 0.62) * (1 - smooth(v.y, 1.25, 1.4));
+      const isArm = aw > lw; const limb = Math.min(1, (isArm ? aw : lw) * 2);
+      if (limb > 0.01) { let best = null; let bd = Infinity; for (const ch of chains) { if (ch.arm !== isArm || Math.sign(ch.start.x) !== Math.sign(v.x)) continue; const t = THREE.MathUtils.clamp(v.clone().sub(ch.start).dot(ch.axis) / ch.axis.lengthSq(), 0, 1); const p = ch.start.clone().addScaledVector(ch.axis, t); const d = p.distanceToSquared(v); if (d < bd) { bd = d; best = p; } }
+        if (best) { v.lerp(best, (1 - (isArm ? slim.arm : slim.leg)) * limb); trunk *= 1 - limb; } }
+      v.x *= 1 + (slim.width - 1) * trunk; v.z *= 1 + (slim.depth - 1) * trunk; v.toArray(out, i * 3);
+    }
+    const back = restMatrix(mesh).invert(); const arr = new Float32Array(out.length);
+    for (let i = 0; i < arr.length; i += 3) { v.set(out[i], out[i + 1], out[i + 2]).applyMatrix4(back); arr[i] = v.x; arr[i + 1] = v.y; arr[i + 2] = v.z; }
+    const made1 = new THREE.BufferGeometry(); for (const [name, attr] of Object.entries(g.attributes)) if (name !== 'normal') made1.setAttribute(name, attr);
+    made1.setAttribute('position', new THREE.BufferAttribute(arr, 3)); if (g.index) made1.setIndex(g.index); made1.computeVertexNormals();
+    made.push(made1); slimOf.set(key, made1); return made1;
+  }
   const fittedOf = new Map(); // `${geometry uuid}|${ops}` -> geometry
   function fittedGeometry(mesh, ops) {
     const key = `${mesh.geometry.uuid}|${JSON.stringify(ops)}`;
@@ -740,6 +770,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const adopt = (gltf, colors, into, fit, tail = false) => {
         for (const m of meshesOf(gltf)) {
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
+          m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is
           const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
           if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
           if (sitGeometry) { m.userData.stand = m.geometry; m.userData.sit = sitGeometry; tails.push(m); }
@@ -749,7 +780,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           m.frustumCulled = false; m.castShadow = true; own(m, colors); into.push(m);
         }
       };
-      object.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } });
+      object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } }); // (v1.10.93 체형)
       const lowBody = body.lowUrl ? byUrl.get(body.lowUrl) : null;
       if (lowBody) adopt(lowBody, null, low, null);
       parts.forEach((p, i) => {
