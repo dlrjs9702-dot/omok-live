@@ -9,8 +9,7 @@ test('변신 의상실: 사기(확인창) → 변신하기 → 변신 풀기', a
   const { page, token } = who;
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().place('transform'));
-  await expect(page.locator('#plazaHint')).toContainText('변신 의상실', { timeout: 15000 });
+  await require('./skin-support').intoMall(page, 'transform', isMobile); // v1.10.92 백화점
   if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   const shop = page.locator('#transformShop');
   await expect(shop.locator('.tfRow')).toHaveCount(22);

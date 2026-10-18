@@ -10,12 +10,9 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
-  await page.evaluate(() => window.PlazaDebug().place('store'));
-  await expect(page.locator('#plazaHint')).toContainText('잡화점 들어가기', { timeout: 15000 });
-  await press();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('store');
+  await require('./skin-support').intoMall(page, null, isMobile);
   // the bait on the left shelf: stand in front of it
-  await page.evaluate(() => { const S = window.IslandStore; const w = S.world(-3.4, -0.77); window.PlazaDebug().teleport(w.x, w.z); });
+  await page.evaluate(() => { const S = window.IslandStore; const w = S.world(10.455, 6.5); window.PlazaDebug().teleport(w.x, w.z); });
   await expect(page.locator('#plazaHint')).toContainText('낚시 미끼 · 300P', { timeout: 10000 });
   await page.screenshot({ path: testInfo.outputPath('store-inside.png') });
   await press();
@@ -27,9 +24,9 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
   expect((await get(request, '/api/points', token)).data.balance).toBe(before - 1500);
   await page.keyboard.press('Escape');
   // seeds are shown, not sold yet
-  await page.evaluate(() => { const w = window.IslandStore.world(-2.9, 2.6); window.PlazaDebug().teleport(w.x, w.z); });
+  await page.evaluate(() => { const w = window.IslandStore.world(9.2, 6.5); window.PlazaDebug().teleport(w.x, w.z); });
   await expect(page.locator('#plazaHint')).toContainText('곧 판매', { timeout: 10000 });
-  await page.evaluate(() => { const w = window.IslandStore.world(0, -3.3); window.PlazaDebug().teleport(w.x, w.z); });
+  await page.evaluate(() => { const w = window.IslandStore.world(0, -9.1); window.PlazaDebug().teleport(w.x, w.z); });
   await expect(page.locator('#plazaHint')).toContainText('나가기', { timeout: 10000 });
   await press();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');

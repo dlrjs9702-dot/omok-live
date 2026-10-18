@@ -3286,7 +3286,8 @@ async function requestHandler(req, res) {
       const slot = skin?.slot || body.slot;
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
       const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
-      const door = IslandTerrain.facilityDoor(place);
+      // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
+      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     }
   }

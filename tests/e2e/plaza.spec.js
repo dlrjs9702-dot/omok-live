@@ -287,7 +287,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   // v1.10.30 상점가 꾸미기 점포 세분화: 옷가게는 의상과 칭호, 미용실은 헤어, 잡화점은 모자·장식만 판다; 장착하면 바로 바뀐다.
   const dialog = page.locator('#skinShopDialog');
   const visit = async (id, name, count) => {
-    await page.evaluate((door) => window.PlazaDebug().place(door), id);
+    await require('./skin-support').intoMall(page, id); // v1.10.92: the shops are the 백화점's sectors
     await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
     await page.keyboard.press('Space');
     await expect(dialog.locator('#skinShopTitle')).toHaveText(name);

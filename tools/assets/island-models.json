@@ -4741,22 +4741,6 @@
       "precompressed": true
     },
     {
-      "out": "store-v1/store_exterior.glb",
-      "src": "store41:High/store_exterior.glb",
-      "sha256": "670e55f9d4f3ad3a7988138303264cbe6e7899299e5c94f3762057857333fe34",
-      "lowSrc": "store41:Low/store_exterior_low.glb",
-      "lowSha256": "b608cf548993cebaacec3b4ca9fdefd917fbd4866b5fcee53819898dddaed754",
-      "precompressed": true
-    },
-    {
-      "out": "store-v1/store_interior.glb",
-      "src": "store41:High/store_interior.glb",
-      "sha256": "88a0040124054ef77e951455a58f81361721722b36ecd5eeda2db290e78ff28f",
-      "lowSrc": "store41:Low/store_interior_low.glb",
-      "lowSha256": "64b034afde1e8d7c70c9bc0e47de3f7ec1318f43cb40c13d3eb874575637ab87",
-      "precompressed": true
-    },
-    {
       "out": "characters/ip-characters/pochacco.glb",
       "src": "pochacco42:High/ip-characters/pochacco.glb",
       "sha256": "07ae4ee0dc5d8194d8484d8579ee564c3dbe3def14bc9fe33e2d5d0a7d02a6ac",
@@ -4821,11 +4805,19 @@
       "precompressed": true
     },
     {
-      "out": "transform-v1/prop_transform_booth.glb",
-      "src": "pochacco42:High/prop_transform_booth.glb",
-      "sha256": "343e9b31985b0b04891b434633034785f311b0997aceb8156b1423e4e84dac74",
-      "lowSrc": "pochacco42:Low/prop_transform_booth_low.glb",
-      "lowSha256": "2ecd96ce000c8b22284b54205d8d3056c44754ea6b73be075c8b88c4fa0e0f12",
+      "out": "mall-v1/mall_exterior.glb",
+      "src": "mall43:High/mall_exterior.glb",
+      "sha256": "e99ae32d2456e0dce414d356d7a0fd3d6bd0702a7558297270e043555c977355",
+      "lowSrc": "mall43:Low/mall_exterior_low.glb",
+      "lowSha256": "514552e0fa9b5c40c4d78eeacc4ef7117cc9e75e0cd5e789b6c01be2aaec186c",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v1/mall_interior.glb",
+      "src": "mall43:High/mall_interior.glb",
+      "sha256": "802bf791729cdd63759782196a4bf686ccbea691008dc2f6a32dee0fd1affe1d",
+      "lowSrc": "mall43:Low/mall_interior_low.glb",
+      "lowSha256": "b8892534a1e1a116259eaf5ce7f7602f3b3e626e4f99b1b210b9ee4423db51f7",
       "precompressed": true
     }
   ],
@@ -4853,6 +4845,7 @@
     "weed37": "37. Game Island weed pull motion 2026-10-17",
     "fishdex40": "40. Game Island fishing dex 13 2026-10-18",
     "store41": "41. Game Island general store 2026-10-18",
-    "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18"
+    "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18",
+    "mall43": "43. Game Island department store 2026-10-18"
   }
 }

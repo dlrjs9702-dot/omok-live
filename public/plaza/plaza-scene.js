@@ -509,11 +509,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // steps are also walled round their edges with circles that overlap (one never gets past the foot of the steps)
       const edge = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
       edge(0, 0, 16.2, 12.6); edge(0, 6.85, 6, 1.1);
-    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'store') { // (v1.10.92 store: the 잡화점, 7 x 6 m)
+    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'mall') { // (v1.10.92 mall: the 백화점, 24 x 14 m)
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
       // crooked), framed door and windows; each facility its own silhouette. Footprint and door are unchanged.
-      const big = spot.kind === 'store'; const w = big ? 6.6 : 3.2; const h = big ? 3.2 : 2.4; depth = big ? 5.6 : 2.7;
+      const big = spot.kind === 'mall'; const w = big ? 23.6 : 3.2; const h = big ? 8 : 2.4; depth = big ? 13.6 : 2.7;
       const looks = {
         shop: { roof: 'front', rise: 1.35, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], planters: true },
         avatar: { roof: 'gable', rise: 1.05, chimney: 0.9, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], shutters: 0xe87a9e },
@@ -534,7 +534,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
       sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
-      if (big) boxSolids(0, 0, w, depth, 1.4); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
+      if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
       footing(root, w + 0.6, depth + 0.6);
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -621,21 +621,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
       sign(facility.name, root, 3.0);
       solids.push({ ...at(0, 0.1), r: 1.1 }, { ...at(0, -0.85), r: 0.45 });
-      npcs.push(npc);
-    } else if (spot.kind === 'tfbooth') { // v1.10.91 변신 의상실: a keeper in a cape beside a curtained booth and a mirror (assets 42 replaces it)
-      depth = 1.2;
-      const npcSpec = { shirt: 0x5b3f8f, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0x2b2b2b };
-      const npc = makeCharacter(npcSpec);
-      npc.root.position.set(1.4, 0, -0.2); root.add(npc.root); assets.dress(['character.transformer', 'character.npc'], npc); /* (assets 42 keeper beside the booth model) */ dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y };
-      const wood = mat(0x8a5a3b);
-      for (const [lx, lz] of [[-1.6, -0.6], [-0.2, -0.6], [-1.6, 0.6], [-0.2, 0.6]]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), wood, lx, 1.2, lz, visual);
-      mesh(new THREE.BoxGeometry(1.5, 0.08, 1.3), wood, -0.9, 2.42, 0, visual); // the booth's top
-      for (const lz of [-0.6, 0.6]) mesh(new THREE.BoxGeometry(1.4, 2.2, 0.04), mat(0xb5395c), -0.9, 1.22, lz, visual); // curtains
-      mesh(new THREE.BoxGeometry(0.04, 2.2, 1.2), mat(0xb5395c), -1.6, 1.22, 0, visual);
-      mesh(new THREE.BoxGeometry(0.6, 1.4, 0.06), mat(0xd9e8f2), 1.5, 0.9, -0.4, visual); // the mirror
-      mesh(new THREE.BoxGeometry(0.7, 1.5, 0.04), mat(0xc9a14a), 1.5, 0.9, -0.44, visual);
-      sign(facility.name, root, 2.9);
-      solids.push({ ...at(-0.4, 0), r: 1.0 }, { ...at(1.4, -0.2), r: 0.45 });
       npcs.push(npc);
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;
@@ -1570,22 +1555,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function buildStore() {
     if (store) return store;
     const g = new THREE.Group(); g.position.set(STORE.ROOM.x, STORE.ROOM.y, STORE.ROOM.z); g.rotation.y = Math.PI; scene.add(g); // (turned half round: its door toward the camera)
-    mesh(new THREE.BoxGeometry(70, 0.2, 70), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
     const shell = new THREE.Group(); g.add(shell); const fallback = new THREE.Group(); shell.add(fallback);
     mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, fallback);
-    for (const f of STORE.FIXTURES) { const across = Math.abs(Math.sin(f.yaw)) > 0.5; mesh(new THREE.BoxGeometry(across ? f.d : f.w, 1.0, across ? f.w : f.d), mat(0xc9955c), f.x, 0.5, f.z, fallback); }
-    assets.attach('store.interior', shell, fallback);
-    for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.16, 0.2, 0.12), mat(0xd8c3a0), 0, 0.1, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
-    const K = STORE.ROOM.keeper; const keeper = makeCharacter({ shirt: 0xf3e6c8, hair: 0x6b4a2b, skin: 0xffdcbc });
-    keeper.root.position.set(K.lx, 0, K.lz); keeper.root.rotation.y = Math.PI; g.add(keeper.root); assets.dress(['character.storekeeper', 'character.npc'], keeper); dressUp(keeper, { gender: 'male' }, { shirt: 0xf3e6c8 });
-    const w = STORE.world(K.lx, K.lz); keeper.home = { x: w.x, z: w.z, yaw: 0, id: 'store:keeper' };
-    for (const [lx, lz] of [[-2.5, 1], [2.5, 1], [0, -2]]) { const light = new THREE.PointLight(0xfff1d6, 14, 14, 1.2); light.position.set(lx, 3, lz); g.add(light); }
-    store = { group: g, keeper }; npcs.push(keeper);
+    for (const f of STORE.FIXTURES) mesh(new THREE.BoxGeometry(f.w, 1.0, f.d), mat(0xc9955c), f.x, 0.5, f.z, fallback);
+    assets.attach('mall.interior', shell, fallback);
+    for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
+    // a keeper in every sector (the 잡화 keeper and the 변신 keeper their own models, the rest the shop keepers' look)
+    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8 };
+    const keepers = STORE.SECTORS.map((s, i) => {
+      const k = makeCharacter({ shirt: SHIRTS[s.id], hair: [0x3d2b1f, 0x6b4a2b, 0x2b2b2b][i % 3], skin: 0xffdcbc });
+      k.root.position.set(s.keeper[0], 0, s.keeper[1]); k.root.rotation.y = s.keeper[2] + Math.PI; g.add(k.root);
+      assets.dress([s.id === 'store' ? 'character.storekeeper' : s.id === 'transform' ? 'character.transformer' : 'character.npc'], k); dressUp(k, { gender: i % 2 ? 'female' : 'male' }, { shirt: SHIRTS[s.id] });
+      const w = STORE.world(s.keeper[0], s.keeper[1]); k.home = { x: w.x, z: w.z, yaw: 0, id: s.place }; return k;
+    });
+    for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
+    store = { group: g, keepers }; npcs.push(...keepers);
     return store;
   }
   doors['store:exit'] = { ...STORE.world(STORE.ROOM.exit.lx, STORE.ROOM.exit.lz), name: '나가기' };
-  doors['store:keeper'] = { ...STORE.world(1.35, 0.65), name: '잡화점 주인' };
-  if (doors.store) { doors.store.mapName = doors.store.name; doors.store.name = '잡화점 들어가기'; }
+  // each sector's spot carries its old facility id (the shop's window and the server's place check stay the same)
+  for (const s of STORE.SECTORS) doors[s.place] = { ...STORE.world(s.interact[0], s.interact[1]), name: s.name };
+  if (doors.store) { doors.store.mapName = '백화점'; doors.store.name = '백화점 들어가기'; }
   function setGoodsPrices(prices) { goodsPrices = { ...(prices || {}) }; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
     mySpace = space === 'townhall' || space === 'store' ? space : 'island';

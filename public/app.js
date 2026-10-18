@@ -1473,7 +1473,7 @@
     { id: 'hair', name: '미용실', open: () => openSkinShop('avatar:hair') },
     { id: 'accessories', name: '소품 가게', open: () => openSkinShop('avatar:hat') }, // (v1.10.91: the 잡화점 is the new store of goods)
     { id: 'transform', name: '변신 의상실', open: () => openTransformShop() }, // v1.10.91 변신 따로 판매
-    { id: 'store', name: '잡화점', open: () => storeDoor(true) }, // v1.10.92 잡화점: in through its door
+    { id: 'store', name: '백화점', open: () => storeDoor(true) }, // v1.10.92 백화점: in through its door (the shops are its sectors inside)
     { id: 'faces', name: '성형외과', open: () => openLookShop('surgery') },
     { id: 'dye', name: '염색사', open: () => openLookShop('dye') },
     { id: 'records', name: '전적관', open: () => openPlazaWindow('전적관', [byId('myRecordsCard')]) },
@@ -1796,7 +1796,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'store:keeper' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2381,7 +2381,7 @@
     } catch (error) { showToast(error.message); } finally { storeBusy = false; }
   }
   function storeKeeperTalk() {
-    const lines = ['「어서 오세요! 잡화점이에요.」', '「필요한 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
+    const lines = ['「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
     lostCard.replaceChildren(...lines, ok); openTalk('잡화점 주인');
   }

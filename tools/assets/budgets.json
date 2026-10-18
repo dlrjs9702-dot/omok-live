@@ -383,6 +383,22 @@
     "characters/wear/outfit_hoodie_low.glb": {
       "unquantized": true,
       "sourceSha256": "bbcc8eebdab1d2bee3e0205368b544b95069f8e86084b426112f6f8114da7b3e"
+    },
+    "mall-v1/mall_exterior.glb": {
+      "triangles": 30000,
+      "reason": "v1.10.92 백화점 외관 24x14x9 m (assets 43 주문 C 상한 30,000)"
+    },
+    "mall-v1/mall_exterior_low.glb": {
+      "triangles": 10000,
+      "reason": "v1.10.92 백화점 외관 Low (주문 상한 10,000)"
+    },
+    "mall-v1/mall_interior.glb": {
+      "triangles": 40000,
+      "reason": "v1.10.92 백화점 실내 30x20 m, 구역 8곳 가구 포함 (주문 상한 40,000)"
+    },
+    "mall-v1/mall_interior_low.glb": {
+      "triangles": 14000,
+      "reason": "v1.10.92 백화점 실내 Low (주문 상한 14,000)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

@@ -115,3 +115,20 @@ async function expectNoScriptError(page) {
   await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
 }
 module.exports.expectNoScriptError = expectNoScriptError;
+// v1.10.92 백화점: the shop street's shops are its sectors -- in through its door (SPACE, or a tap on the hint on a
+// phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing
+async function intoMall(page, place = null, isMobile = false) {
+  const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
+  if (await page.evaluate(() => window.PlazaDebug().space) !== 'store') {
+    await page.evaluate(() => window.PlazaDebug().place('store'));
+    await expect(page.locator('#plazaHint')).toContainText('백화점 들어가기', { timeout: 15000 });
+    await press();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('store');
+  }
+  if (place) {
+    await page.evaluate((place) => { const d = window.PlazaDebug(); const door = d.doors[place]; d.teleport(door.x, door.z); }, place);
+    await expect(page.locator('#plazaHint')).toContainText(await page.evaluate((place) => window.PlazaDebug().doors[place].name, place), { timeout: 10000 });
+  }
+  return press;
+}
+module.exports.intoMall = intoMall;

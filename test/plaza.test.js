@@ -29,7 +29,9 @@ test('광장 로비: 별도 장면, 외부 에셋 없음, 확정된 시설이 �
   const ids = [...facilities.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
   assert.deepEqual(ids.sort(), ['accessories', 'admin', 'attendance', 'avatar', 'board', 'climb', 'donate', 'dye', 'faces', 'games', 'hair', 'map', 'missions', 'naming', 'records', 'shop', 'store', 'townhall', 'trader', 'transform']); // v1.10.92 잡화점 // v1.10.91 변신 의상실
   const terrain = read('public/plaza/island-terrain.js'); // v1.10.7: the facility spots moved with the island's shape
-  for (const id of ids) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
+  const mall = require('../public/plaza/island-store'); // v1.10.92 백화점: the shops are its sectors (inside), not island lots
+  for (const id of ids) if (!mall.sectorOf(id)) assert.match(terrain, new RegExp(`\\b${id}: \\{ x:`), `${id} 시설 배치(게임 아일랜드)`);
+  assert.deepEqual(mall.SECTORS.map((s) => s.place).filter((p) => !p.startsWith('mall:')).sort(), ['accessories', 'avatar', 'dye', 'faces', 'hair', 'shop', 'transform']);
   for (const target of ['openSkinShop', 'missionBtn', 'attendanceBtn', 'myRecordsCard', 'announcementsCard', 'publicRoomsCard', 'openGamehall']) { // v1.10.73: the game hall is its own screen
     assert.match(facilities + app.match(/const publicRoomsCardEl = .*/)[0], new RegExp(target), `${target} 재사용`);
   }
