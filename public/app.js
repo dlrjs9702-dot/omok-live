@@ -1425,7 +1425,7 @@
     document.getElementById('gamehallView').classList.toggle('hidden', name !== 'gamehall'); // v1.10.73 게임관
     if (name !== 'gamehall' && document.getElementById('gameSheet').open) document.getElementById('gameSheet').close();
     if (name !== 'reflex') reflexGames?.stop();
-    if (name !== 'room') document.body.classList.remove('tableGameRoom', 'tableGamePlaying');
+    if (name !== 'room') { document.body.classList.remove('tableGameRoom', 'tableGamePlaying'); if (document.body.classList.contains('roomPlaying')) setRoomPlaying(false); } // (set only once the page is up)
     syncPlaza(name);
   }
 
@@ -6108,6 +6108,43 @@
     applyGameInfoLayout();
   }
 
+  // A3 G1-1 게임방 공통 틀: while a hand is played the room shows one screen -- the room's info folds behind ⓘ, empty
+  // seats step aside, a canvas board fits the height left (with the actions under it), and on a phone the 💬·🎮 buttons
+  // move into the top bar so they never cover the board
+  const roomInfoBtn = document.getElementById('roomInfoBtn');
+  roomInfoBtn.addEventListener('click', () => { const open = !document.body.classList.contains('roomInfoOpen'); document.body.classList.toggle('roomInfoOpen', open); roomInfoBtn.setAttribute('aria-expanded', String(open)); fitBoard(); });
+  const floatHome = chatFloatBtn.parentElement; const topActions = document.querySelector('.roomBar .topActions');
+  function setRoomPlaying(on) {
+    on = Boolean(on) && !roomView.classList.contains('hidden');
+    if (on !== document.body.classList.contains('roomPlaying')) { document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); } }
+    for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
+    fitBoard(); renderTurnRing();
+  }
+  function fitBoard() {
+    const wrap = canvasWrap; wrap.style.maxWidth = '';
+    if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
+    const below = [...document.querySelectorAll('#yutControls, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const top = wrap.getBoundingClientRect().top + window.scrollY;
+    wrap.style.maxWidth = `${Math.max(240, Math.floor(window.innerHeight - top - below - 12))}px`;
+  }
+  window.addEventListener('resize', () => fitBoard());
+  // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
+  // on PC and phone; the last 10 seconds red
+  let turnRingClock = 0; let turnRingTimer = null;
+  function renderTurnRing() {
+    document.querySelectorAll('.turnRing').forEach((r) => r.remove());
+    const t = state?.turnTimer; clearInterval(turnRingTimer); turnRingTimer = null;
+    if (!t || !document.body.classList.contains('roomPlaying')) return;
+    const card = /^(black|white)$/.test(t.seat) ? document.getElementById(`${t.seat}Player`) : teamPlayers.querySelector(`[data-seat="${t.seat}"]`);
+    if (!card || !card.offsetParent) return;
+    turnRingClock = Date.now() - Number(t.serverNow || Date.now());
+    const ring = document.createElement('span'); ring.className = 'turnRing'; ring.setAttribute('role', 'timer'); const text = document.createElement('b'); ring.append(text); card.append(ring);
+    const total = Math.max(1000, t.deadlineAt - Number(t.serverNow || Date.now()));
+    const tick = () => { const left = Math.max(0, t.deadlineAt - (Date.now() - turnRingClock)); const s = Math.ceil(left / 1000);
+      text.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ring.style.setProperty('--p', String(Math.min(1, left / total))); ring.classList.toggle('late', s <= 10);
+      ring.setAttribute('aria-label', `${t.seat === seat ? '내' : '상대'} 차례 남은 시간 ${s}초`); if (!left) { clearInterval(turnRingTimer); turnRingTimer = null; } };
+    tick(); turnRingTimer = setInterval(tick, 250);
+  }
   function renderTeamPlayers() {
     teamPlayers.replaceChildren();
     const bingo = isBingoGame();
@@ -6131,6 +6168,7 @@
       const eliminated = (city && state.game.players?.[number]?.eliminated) || (halli && state.game.eliminated?.includes(number));
       card.className = `teamPlayer ${(isRpgGame() || gostop || bingo || pictionary || liar || oldmaid || city || twenty || davinci || halli || pandemic) ? 'bingoSeat' : color}${seat === number ? ' mySeat' : ''}${player && !player.connected ? ' disconnected' : ''}${eliminated ? ' disconnected' : ''}`;
       card.dataset.seat = number; // public seat number only -- renderCurrentActor() keys on it
+      card.classList.toggle('emptySeat', !player); // (A3 G1-1: hidden while a hand is played)
       const title = document.createElement('strong');
       title.textContent = twenty ? `${number}번${number === state.game.drawerSeat && state.game.status === 'playing' ? ' · 출제자' : state.game.turnSeat === number && state.game.status === 'playing' ? ' · 질문 차례' : ''}` : pictionary
         ? `${number}번${state.game.mode === 'team' ? ` · ${Number(number) % 2 ? 'A' : 'B'}팀` : ''}${currentTurn && state.game.status === 'playing' ? ' · 출제자' : ''}`
@@ -6524,6 +6562,7 @@
     document.body.classList.toggle('tableGameRoom', gostop);
     // while a hand is being played the table itself shows every seat (name, hand, captures), so the generic seat strip steps aside
     document.body.classList.toggle('tableGamePlaying', gostop && g.status !== 'selecting');
+    setRoomPlaying(g.status === 'playing' || g.status === 'setup'); // A3 G1-1
     if (gostop) window.GostopUI.render(state);
     rpgPanel.classList.toggle('hidden', !rpg);
     if (rpg) rpgRender(state); else rpgUnmount();
@@ -8042,7 +8081,7 @@
     const left = g.endsAt ? Math.max(0, Math.ceil((g.endsAt - (Date.now() - halliClockOffset)) / 1000)) : 0;
     halliStatus.textContent = g.status === 'selecting' ? '2~6명이 준비되면 시작할 수 있습니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
-      : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · 카드를 뒤집은 직후 0.3초 동안 종 입력이 잠깁니다.`;
+      : `${g.turn}번 차례 · 남은 시간 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; // (A3 G1-8: the 0.3 s bell lock stays, unexplained)
     // v1.7.41 skins: the host's theme paints the panel; each player's card plot uses that player's skin frame.
     const SLH = window.SkinLooks;
     SLH.h.unstyle(halliPanel, halliThemeApplied);

@@ -1404,6 +1404,12 @@ function touchRoom(room) { room.updatedAt = nowIso(); }
 // v1.10.72 게임방 AI 자리 (lib/room-ai.js): the AI is a participant with no session (always connected, no point account,
 // no record id); it takes the seat across from the person when they choose one. Its move goes through the same game
 // engine as a person's, a short moment after the person's turn so it does not feel instant.
+// A3 G1-4: the turn seat's clock as everyone may see it -- the same deadline its owner gets (lib/action-timer.js)
+function publicTurnTimer(room) {
+  const seat = currentTurnSeat(room); if (seat == null || (room.ai && String(seat) === String(room.ai.seat))) return null;
+  const t = buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS);
+  return t ? { seat: String(seat), deadlineAt: t.deadlineAt, serverNow: t.serverNow } : null;
+}
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -1768,6 +1774,7 @@ function roomView(room, session) {
     ...base,
     stateSeq: roomViewSeq,
     game: gameView,
+    turnTimer: publicTurnTimer(room), // A3 G1-4 차례 시간 고리: whose turn and until when, for every viewer (nothing private)
     me: {
       label: session.label,
       chatId: chatIdFor(session),

@@ -2077,3 +2077,21 @@ body.townhallRoom .plazaStage canvas.islandMinimap{display:none}
 /* v1.10.92 잡화점 */
 .goodCard{display:grid;gap:8px;justify-items:center;text-align:center}.goodIcon{width:96px;height:96px;object-fit:contain}.goodBuy{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.goodBuy button{min-height:44px}
 .giftList{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto}.giftList .itemIcon{width:24px;height:24px;vertical-align:middle}
+
+/* A3 G1-1 게임방 공통 틀 — 판 진행 중 한 화면: the room's info behind ⓘ, no empty seats, the board within the screen */
+.roomInfoBtn{display:none;min-width:32px;padding:4px 8px;font-size:1rem;line-height:1}
+body.roomPlaying .roomInfoBtn{display:inline-flex}
+body.roomPlaying:not(.roomInfoOpen) .roomInfoArea{display:none}
+body.roomPlaying .player:not(.occupied),body.roomPlaying .teamPlayer.emptySeat{display:none}
+body.roomPlaying .players,body.roomPlaying .teamPlayers{margin-bottom:8px}
+body.roomPlaying .canvasWrap{margin-left:auto;margin-right:auto}
+/* G1-2: the 💬·🎮 buttons in the top bar while a hand is played (moved there by setRoomPlaying) */
+.topActions .chatFloatBtn{position:relative;right:auto;bottom:auto;width:38px;height:38px;font-size:1.05rem;box-shadow:none}
+/* G1-4 차례 시간 고리 */
+.player,.teamPlayer{position:relative}
+.turnRing{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#34d399 calc(var(--p,1)*360deg),rgba(148,163,184,.25) 0);pointer-events:none}
+.turnRing::before{content:'';position:absolute;inset:4px;border-radius:50%;background:#0f172a}
+.turnRing b{position:relative;font-size:.72rem;font-variant-numeric:tabular-nums;color:#f8fafc}
+.turnRing.late{background:conic-gradient(#f87171 calc(var(--p,1)*360deg),rgba(148,163,184,.25) 0)}
+.turnRing.late b{color:#fecaca}
+.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:60px}
