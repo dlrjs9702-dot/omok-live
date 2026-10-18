@@ -1683,6 +1683,9 @@ function publicPlayer(room, color) {
   const family = familyOf(room.gameType);
   const skin = family ? equippedSkin(pointAccountForParticipant(p), family, 'piece') : null;
   if (skin) player.skin = skin; // v1.7.30: every viewer draws this player's pieces with the same skin
+  // A3 G1-5 이름표 얼굴: the island look's public summary (skin and hair colours) and a worn title -- nothing else of the account
+  const account = pointAccountForParticipant(p); const worn = account ? equippedSkinCache.get(account) : null;
+  if (worn) { const al = avatarLookOf(worn); player.face = { skin: al.look.skinColor || null, hair: al.look.hairColor || null }; if (al.title) player.title = al.title; }
   return player;
 }
 

@@ -5855,6 +5855,16 @@
     if (!player) small.textContent = '선택 가능';
     else small.textContent = `${player.label || '게스트'} · ${player.connected ? '접속 중' : '연결 끊김'}`;
     el.classList.toggle('mySeat', seat === color);
+    seatFace(el, player);
+  }
+  // A3 G1-5: a small island face (skin and hair colour) and the worn title on a name card
+  function seatFace(card, player) {
+    card.querySelector('.seatFace')?.remove(); card.querySelector('.seatTitle')?.remove();
+    if (!player) return;
+    const f = document.createElement('span'); f.className = 'seatFace'; f.setAttribute('aria-hidden', 'true');
+    if (player.face?.skin) f.style.setProperty('--skin', player.face.skin); if (player.face?.hair) f.style.setProperty('--hair', player.face.hair);
+    card.prepend(f);
+    if (player.title) { const t = document.createElement('small'); t.className = 'seatTitle'; t.textContent = player.title; (card.querySelector('div') || card).append(t); }
   }
 
   function participantRoleText(p) {
@@ -6217,6 +6227,7 @@
         ? `${player.label}${gostop && state.game.seats?.[number] ? ` · 손패 ${state.game.seats[number].handCount}장 · ${state.game.seats[number].score}점` : ''}${oldmaid ? ` · ${state.game.counts?.[number] ?? 0}장` : halli ? ` · 뒷면 ${state.game.pileCounts?.[number] ?? 0}장` : pandemic ? ` · 손패 ${state.game.hands?.[number]?.length ?? 0}장` : davinci ? ` · 타일 ${state.game.hands?.[number]?.length ?? 0}장` : (pictionary || liar || twenty) ? ` · ${state.game.scores?.[number] || 0}점` : bingo ? ` · ${state.game.lineCounts?.[number] || 0}줄` : city ? ` · 현금 ${state.game.players?.[number]?.cash ?? 0}` : ''} · ${player.connected ? '접속 중' : '연결 끊김'}`
         : '자리 선택 가능';
       card.append(title, name);
+      seatFace(card, player); // A3 G1-5
       teamPlayers.appendChild(card);
     }
   }
