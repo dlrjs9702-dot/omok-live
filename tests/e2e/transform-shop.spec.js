@@ -13,7 +13,7 @@ test('변신 의상실: 사기(확인창) → 변신하기 → 변신 풀기', a
   await expect(page.locator('#plazaHint')).toContainText('변신 의상실', { timeout: 15000 });
   if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   const shop = page.locator('#transformShop');
-  await expect(shop.locator('.tfRow')).toHaveCount(21);
+  await expect(shop.locator('.tfRow')).toHaveCount(22);
   const cat = shop.locator('.tfRow[data-character="animal-cat"]');
   await expect(cat).toContainText('350,000P');
   const before = (await get(request, '/api/points', token)).data.balance;

@@ -24,13 +24,13 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
   const { buildAssetManifest } = require('../lib/asset-manifest');
   const FACILITIES = ['games', 'climb', 'shop', 'avatar', 'records', 'admin', 'townhall', 'board', 'missions', 'map', 'donate', 'attendance', 'trader', 'naming'];
   const HUMAN_TRANSFORMS = ['ironman', 'superman', 'batman', 'spiderman', 'captainamerica'];
-  const NONHUMAN_TRANSFORMS = ['kuromi', 'hellokitty', 'mymelody', 'cinnamoroll', 'pompompurin', 'pikachu',
+  const NONHUMAN_TRANSFORMS = ['kuromi', 'hellokitty', 'mymelody', 'cinnamoroll', 'pompompurin', 'pochacco', 'pikachu', // (v1.10.92 포차코)
     ...['cat', 'dog', 'sheep', 'rabbit', 'bear', 'panda', 'fox', 'hamster', 'pig', 'cow'].map(id => `animal-${id}`)];
   const TRANSFORMS = [...HUMAN_TRANSFORMS, ...NONHUMAN_TRANSFORMS];
   const transformAliases = TRANSFORMS.map(id => `character.transform.${id}`);
   const transformModes = [...TRANSFORMS.map(id => `character.transform.${id}.current`), ...NONHUMAN_TRANSFORMS.map(id => `character.transform.${id}.native`)];
-  assert.equal(transformAliases.length, 21);
-  assert.equal(transformModes.length, 37);
+  assert.equal(transformAliases.length, 22);
+  assert.equal(transformModes.length, 39);
   assert.deepEqual(require('../public/plaza/character-transformations.js').characters.map(c => c.id).sort(), [...TRANSFORMS].sort());
   for (const id of TRANSFORMS) {
     const mode = HUMAN_TRANSFORMS.includes(id) ? 'current' : 'native';
@@ -60,12 +60,12 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     ...Object.keys(REGISTRY).filter((id) => id.startsWith('path.')),
     // v1.10.80 농부 × 두더지 잡기 (assets 26): the field's four stages, the helpers' sign, the farmer and his mallet
     ...[0, 1, 2, 3].map((s) => `farm.field.${s}`), 'farm.sign', 'farm.mallet', 'character.farmer',
-    'facility.store', 'store.interior', 'character.storekeeper', ...['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge'].map((id) => `good.${id}`), // v1.10.92 잡화점 (assets 41)
+    'facility.store', 'store.interior', 'character.storekeeper', 'facility.transform', 'character.transformer', /* v1.10.92 (assets 41·42) */ ...['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge'].map((id) => `good.${id}`), // v1.10.92 잡화점 (assets 41)
     'ground.season', 'ground.moss', 'ground.fern', 'ground.shrub', 'ground.flowers', // ② 땅 다듬기 (assets/25)
     'train.car', 'train.platform', 'fishing.rod', 'fishing.bobber', ...['anchovy', 'mackerel', 'goby', 'cutlassfish', 'pufferfish', 'octopus', 'stingray', 'giant_tuna', 'crucian_carp', 'carp', 'pale_chub', 'sweetfish', 'catfish', 'mandarin_fish', 'eel', 'smelt', 'mullet', 'flatfish', 'sea_bass', 'gizzard_shad', 'rockfish'].map((f) => `fish.${f}`)].sort()); // v1.10.90 +13 (assets 40)
   // v1.10.32: the base (9: face, two hairs, four clothes, shoes, overalls), every avatar item's part (hair 12, clothes 14, hats 12 with the cat ears, capes, tails,
   // shoes, necklaces 10 each) and the 30 face designs
-  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50 + 112 + 44); // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit; v1.10.74 + 스킨 2배 112 + 캐릭터 44
+  assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('wear.')).length, 9 + 12 + 14 + 12 + 40 + 30 + 27 + 1 + 50 + 112 + 44 + 4); /* v1.10.92 + 포차코 4 */ // v1.10.36: + the 27 Halloween parts; v1.10.41 + the mayor's suit; v1.10.74 + 스킨 2배 112 + 캐릭터 44
   assert.equal(Object.keys(REGISTRY).filter((id) => id.startsWith('path.')).length, 11); // the pieces in use
   const pack = buildAssetManifest(path.join(__dirname, '..', 'public'), (ext) => ['.svg', '.png', '.glb'].includes(ext));
   assert.ok(!pack.required.includes('island.transformations'), '캐릭터 체형은 선택할 때 받는 묶음');
@@ -91,7 +91,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
     if (id.startsWith('sea.') && entry.haze) assert.ok(scale >= 2 && scale <= 4 && entry.haze > 0 && entry.haze < 1, `${id} 원경 크기·대기색`); // far landmarks at sea
     else assert.ok(scale > 0.5 && scale < 1.5, `${id} 크기 보정`);
     if (!entry.seasons) { // the same in every season
-      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1|halloween-decor-v1|townhall-v2|fishing-v1|train-v1|life-v1|path-tiers-v1|ground-cover-v1|farmer-v1|store-v1)\//, id); // v1.10.32 + snowcaps, the sea sights
+      assert.match(entry.url, /^\/assets\/island\/(seasonal-v2\/common|additions-v1\/(houses|facilities|props)|gaps-v1\/(props|sea|structure)|characters|additions-v1\/common|finish-v1\/sea|halloween-v1|halloween-decor-v1|townhall-v2|fishing-v1|train-v1|life-v1|path-tiers-v1|ground-cover-v1|farmer-v1|store-v1|transform-v1)\//, id); // v1.10.32 + snowcaps, the sea sights
       for (const season of P.SEASONS) assert.equal(P.entryOf(REGISTRY, id, [], season).url, entry.url);
       await check(id, entry.url, 'High');
       if (entry.low) await check(id, entry.low.url, 'Low');

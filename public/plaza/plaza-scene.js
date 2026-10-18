@@ -626,7 +626,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       depth = 1.2;
       const npcSpec = { shirt: 0x5b3f8f, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0x2b2b2b };
       const npc = makeCharacter(npcSpec);
-      npc.root.position.set(0.7, 0, -0.3); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y };
+      npc.root.position.set(1.4, 0, -0.2); root.add(npc.root); assets.dress(['character.transformer', 'character.npc'], npc); /* (assets 42 keeper beside the booth model) */ dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y };
       const wood = mat(0x8a5a3b);
       for (const [lx, lz] of [[-1.6, -0.6], [-0.2, -0.6], [-1.6, 0.6], [-0.2, 0.6]]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), wood, lx, 1.2, lz, visual);
       mesh(new THREE.BoxGeometry(1.5, 0.08, 1.3), wood, -0.9, 2.42, 0, visual); // the booth's top
@@ -635,7 +635,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       mesh(new THREE.BoxGeometry(0.6, 1.4, 0.06), mat(0xd9e8f2), 1.5, 0.9, -0.4, visual); // the mirror
       mesh(new THREE.BoxGeometry(0.7, 1.5, 0.04), mat(0xc9a14a), 1.5, 0.9, -0.44, visual);
       sign(facility.name, root, 2.9);
-      solids.push({ ...at(-0.9, 0), r: 1.0 }, { ...at(0.7, -0.3), r: 0.45 }, { ...at(1.5, -0.4), r: 0.4 });
+      solids.push({ ...at(-0.4, 0), r: 1.0 }, { ...at(1.4, -0.2), r: 0.45 });
       npcs.push(npc);
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;

@@ -27,6 +27,7 @@
     ['ironman', '아이언맨', '마블', [['outfit', 'legend', '아이언맨 의상'], ['hat', 'rare', '아이언맨 머리장식'], ['cape', 'premium', '아이언맨 등 장비'], ['necklace', 'premium', '아이언맨 목걸이']]],
     ['spiderman', '스파이더맨', '마블', [['outfit', 'legend', '스파이더맨 의상'], ['hat', 'rare', '스파이더맨 머리장식'], ['cape', 'premium', '스파이더맨 등 장비'], ['shoes', 'premium', '스파이더맨 신발']]],
     ['captainamerica', '캡틴 아메리카', '마블', [['outfit', 'legend', '캡틴 아메리카 의상'], ['hat', 'rare', '캡틴 아메리카 머리장식'], ['cape', 'premium', '캡틴 아메리카 등 장비'], ['necklace', 'premium', '캡틴 아메리카 목걸이']]],
+    ['pochacco', '포차코', '산리오', [['outfit', 'legend', '포차코 의상'], ['hat', 'rare', '포차코 머리장식'], ['tail', 'premium', '포차코 꼬리'], ['necklace', 'premium', '포차코 목걸이']]], // v1.10.92 (assets 42)
     ['pikachu', '피카츄', '포켓몬', [['outfit', 'legend', '피카츄 의상'], ['hat', 'rare', '피카츄 머리장식'], ['tail', 'premium', '피카츄 꼬리'], ['necklace', 'premium', '피카츄 목걸이']]],
   ]);
   // the character game skins connected so far (public/skin-art-ip.js draws them): [family, character, tier ('theme' = room

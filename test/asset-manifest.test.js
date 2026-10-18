@@ -58,7 +58,7 @@ test('리소스 매니페스트 그룹: 아일랜드 등록 모델 파일은 4�
   assert.ok(manifest.assets.filter(a => a.url.startsWith('/assets/island/')).every(a => ['island', 'island.transformations'].includes(a.group)));
   const transformations = require('../public/plaza/character-transformations');
   const completeUrls = transformations.characters.flatMap(c => Object.values(c.variants).flatMap(v => [v.url, v.lowUrl]));
-  assert.equal(new Set(completeUrls).size, 74);
+  assert.equal(new Set(completeUrls).size, 78); // v1.10.92 + 포차코
   for (const url of completeUrls) {
     assert.equal(byUrl.get(url)?.group, 'island.transformations', url);
     assert.equal(REQUIRED_GROUPS.includes(byUrl.get(url)?.group), false, 'unused complete models are not an entry download');

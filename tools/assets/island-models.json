@@ -4755,6 +4755,78 @@
       "lowSrc": "store41:Low/store_interior_low.glb",
       "lowSha256": "64b034afde1e8d7c70c9bc0e47de3f7ec1318f43cb40c13d3eb874575637ab87",
       "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pochacco.glb",
+      "src": "pochacco42:High/ip-characters/pochacco.glb",
+      "sha256": "07ae4ee0dc5d8194d8484d8579ee564c3dbe3def14bc9fe33e2d5d0a7d02a6ac",
+      "lowSrc": "pochacco42:Low/ip-characters/pochacco_low.glb",
+      "lowSha256": "f4609b85049b789ed6dab9fc75edf7c9e72caa66aed78525ef830d2f5edc7d07",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pochacco_current.glb",
+      "src": "pochacco42:High/ip-characters/pochacco_current.glb",
+      "sha256": "ebee39a1610bd2e99fb5c4237934482bb7a305e1d948db29a9dbf30a2d9734cd",
+      "lowSrc": "pochacco42:Low/ip-characters/pochacco_current_low.glb",
+      "lowSha256": "233b29a099dfa1e60acddcbc8cf76de47c17ea8938bc9d8397bb00500c543454",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_body.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_body.glb",
+      "sha256": "29efb6617b599b6217170af4aca4ec9b3be2a4892627c4500af20bb0b534efbd",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_body_low.glb",
+      "lowSha256": "51ba7a889d4207bcbd364b57a08bd92c0c77fa5327be0ddefb65afd2cb177db9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_hat.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_hat.glb",
+      "sha256": "796de15fb8ba34d5a457e55dc8682e1a5f08ba00d36e2c588e015c8d15dbd600",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_hat_low.glb",
+      "lowSha256": "1fc115fe4f80070de34bd4c1bf8a9f085d5180c5e2ad513f61ed021b90e0dcc3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_necklace.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_necklace.glb",
+      "sha256": "fcccbdd632bbd9364a22ab90e1b8e1266098d28437fc343502b405db84ee5e3a",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_necklace_low.glb",
+      "lowSha256": "757b30767795e51ffc7c187c8a70d75303fa10b60aa74d277e79109a69a2d38f",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_outfit.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_outfit.glb",
+      "sha256": "e5447a25e3ff1b27c4db1cb106e21ddd03e431f35c13f693bdc423df514d0ec6",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_outfit_low.glb",
+      "lowSha256": "7966f26c47ec01102859fb260b501a260fb54feef922fcdeaaeb25feeba80957",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_tail.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_tail.glb",
+      "sha256": "1b710d2e4dd5408d425679a12eeebeb53de13825933e0aa30261131e1eb9602e",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_tail_low.glb",
+      "lowSha256": "7fa896cfbbfb488b53c0514c67583fde00c234c86a0b1b6d1a223e6255f9d2b2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_transformer.glb",
+      "src": "pochacco42:High/npc_transformer.glb",
+      "sha256": "7e69160a1cb04c024117f65f8aad1bd8b226a26416c74dc9c742abf72f601898",
+      "lowSrc": "pochacco42:Low/npc_transformer_low.glb",
+      "lowSha256": "b8983b763286fb51cc30d1a7d561eb30660a49155b1fabc8f36d5952f05c8d3c",
+      "precompressed": true
+    },
+    {
+      "out": "transform-v1/prop_transform_booth.glb",
+      "src": "pochacco42:High/prop_transform_booth.glb",
+      "sha256": "343e9b31985b0b04891b434633034785f311b0997aceb8156b1423e4e84dac74",
+      "lowSrc": "pochacco42:Low/prop_transform_booth_low.glb",
+      "lowSha256": "2ecd96ce000c8b22284b54205d8d3056c44754ea6b73be075c8b88c4fa0e0f12",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4780,6 +4852,7 @@
     "farmer": "26. Game Island farmer quest 2026-10-12",
     "weed37": "37. Game Island weed pull motion 2026-10-17",
     "fishdex40": "40. Game Island fishing dex 13 2026-10-18",
-    "store41": "41. Game Island general store 2026-10-18"
+    "store41": "41. Game Island general store 2026-10-18",
+    "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18"
   }
 }

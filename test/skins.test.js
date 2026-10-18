@@ -38,13 +38,13 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar' && s.slot !== 'transform'); // (v1.10.91: the transformations below)
-  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 11, 27 + 16 + 11, 13 + 8 + 5, 23 + 17 + 6, 23 + 17 + 5, 23 + 18 + 6]); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 12, 27 + 16 + 12, 13 + 8 + 5, 23 + 17 + 7, 23 + 17 + 5, 23 + 18 + 7] /* v1.10.92 + 포차코 의상·머리장식·꼬리·목걸이 */); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
   // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
   const ip = avatar.filter(s => s.ip);
-  assert.equal(ip.length, 44); assert.equal(SKINS.filter(s => s.ip).length, 44 + 11 + 33); // 22 character game pairs + 11 themes; v1.10.91 + their 11 transformations
+  assert.equal(ip.length, 48); assert.equal(SKINS.filter(s => s.ip).length, 48 + 12 + 33); // (v1.10.92 + 포차코) // 22 character game pairs + 11 themes; v1.10.91 + their 11 transformations
   assert.ok(ip.every(s => ['산리오', 'DC', '마블', '포켓몬'].includes(s.ip) && s.tier !== 'common' && s.id.startsWith('avatar_ip_')));
   // v1.10.91 변신 따로 판매 (사용자 2026-10-18): each of the 21 a `transform` item at its parts' price, out of the shops' catalog
-  const tfs = SKINS.filter(s => s.slot === 'transform'); assert.equal(tfs.length, 21);
+  const tfs = SKINS.filter(s => s.slot === 'transform'); assert.equal(tfs.length, 22);
   for (const tf of tfs) assert.equal(tf.price, Object.values(transformationById(tf.transform).items).reduce((n, id) => n + skinById(id).price, 0));
   assert.ok(!catalogView().some(f => f.skins.some(s => s.slot === 'transform')));
   assert.equal(require('node:child_process').execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./lib/skins').SKINS.filter(s => s.ip || s.id.startsWith('avatar_ip_')).length))"], { env: { ...process.env, IP_SKINS: 'off' }, cwd: require('node:path').join(__dirname, '..') }).toString(), '0');
@@ -189,7 +189,7 @@ test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·�
   assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: tf })).status, 200);
   assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'TRANSFORMATION_INCOMPLETE');
   assert.equal((await fx.req('/api/skins/equip', a.session, { skinId: tf })).status, 200);
-  const list = (await fx.req('/api/transformations', a.session)).data.list; assert.equal(list.length, 21); assert.deepEqual(list.filter(t => t.owned).map(t => [t.character, t.chosen]), [['kuromi', true]]);
+  const list = (await fx.req('/api/transformations', a.session)).data.list; assert.equal(list.length, 22); assert.deepEqual(list.filter(t => t.owned).map(t => [t.character, t.chosen]), [['kuromi', true]]);
   const balance = (await fx.req('/api/points', a.session)).data.balance;
   const history = (await fx.req('/api/points/history', a.session)).data;
   const pose = await fx.req('/api/plaza/state', a.session, { x: 0, z: 0, yaw: 0, moving: false });

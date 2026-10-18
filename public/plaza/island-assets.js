@@ -319,6 +319,11 @@
     const id = `wear.ip_${character}_${slot}`; const { dye, ...fit } = X2_FIT(slot);
     REGISTRY[id] = { url: `${CH}/wear-ip/${character}_${slot}.glb`, low: { url: `${CH}/wear-ip/${character}_${slot}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_ip_${character}_${slot}`] = id;
   }
+  // v1.10.92 포차코 (assets 42): the hat covers no hair (cover 0), the outfit wears its own body under it
+  if (REGISTRY['wear.ip_pochacco_hat']) { REGISTRY['wear.ip_pochacco_hat'].fit = { slot: 'hat', cover: 0 }; REGISTRY['wear.ip_pochacco_outfit'].body = { url: `${CH}/wear-ip/pochacco_body.glb`, lowUrl: `${CH}/wear-ip/pochacco_body_low.glb` }; }
+  // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
+  REGISTRY['facility.transform'] = { url: '/assets/island/transform-v1/prop_transform_booth.glb', low: { url: '/assets/island/transform-v1/prop_transform_booth_low.glb' }, near: 60 };
+  REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
   const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
