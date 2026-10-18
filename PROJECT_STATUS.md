@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.92 백화점·잡화 코너(진열 구매), 잡화 물건 쓰임, 포차코 변신
+
+- 지시(사용자 2026-10-18): 「잡화점은 동물의 숲처럼 진열된 걸 사는 방식, 품목은 제안대로」, 「상점가도 백화점화, 큰 건물 하나에 섹터별로」, 「포차코는 다른 캐릭터와 같은 가격」.
+- 백화점(`public/plaza/island-store.js`, assets 43 mall-v1): 상점가 북쪽(48, -15)의 24×14m 건물 하나(SPOTS.store kind `mall`, 섬 주민 경로는 `island-npcs.js` `inMall`로 피함). 들어가면 섬 밖 실내 방(30×20m, 관공서와 같은 방식, 서버 `storeInside`, `/api/island/store/enter|leave`). 구역 8곳: 게임 스킨·옷가게·미용실·소품 가게·성형외과·염색사·변신 의상실·잡화 — 각 구역의 SPACE 자리는 예전 시설 id(`shop`·`avatar`·`hair`·`accessories`·`faces`·`dye`·`transform`)라 가게 창·서버 장소 확인(`IslandStore.sectorPoint`)이 그대로. 섬의 개별 가게 건물·변신 부스는 없앰.
+- 잡화(`lib/island-items.js` GOODS 16, `islandBuy`·`islandUse`·`islandGift` JSON/PG): 진열 자리(assets 41 모델·아이콘)에서 SPACE → 1·5·10개 구매(결제+가방 한 번에, `island_buy` 원장). 미끼: 낚시 시작 때 가방에서 자동 사용(대기 2~5초, 고급은 두 번 뽑아 비싼 쪽). 폭죽·풍선·비눗방울: 가방 「쓰기」, 서버가 6초 동안 `show:<kind>` 동작을 인정해 주변에 보임. 선물 포장지: 플레이어 메뉴 「선물하기」(3m 안, 포장지 1장 사용). 심부름 「사다 주기」(하루 최대 1개, 물건값+1,500P). 잡화 가격·사다 주기 보상은 경제 값 관리 표에. 꽃씨·묘목·비료는 「곧 판매」(심기 기능 전).
+- 포차코(assets 42): 파츠 4종(의상·머리장식·꼬리·목걸이, 헬로키티와 같은 등급, 합 800,000P)과 변신 두 체형, 의상의 몸·모자 덮개 0. 변신 의상실 점원 모델. 포차코 모델은 기본 자세에서 1.4~1.8mm 어긋남(양자화) — 시험 허용 2.5mm, 재출력하면 0.1mm 이하로.
+- 검증: 단위(general-store JSON/PG·island-errands·economy·asset-pipeline·native-transformations 22종) Windows 전용 6건 외 통과, e2e general-store(구매·물건 쓰기·선물)·shop-browse·transform-shop·native-assets·plaza 상점 PC·휴대폰 통과. Codex 검토 대기(사용량 한도, 풀리면 후속). 실제 휴대폰·GPU 미검증.
+
 ## v1.10.91 주민 대화·호감도·심부름, 경제 값 관리, 변신 의상실(변신 따로 판매 A안)
 
 - 지시(사용자 2026-10-18): 「주민들에게 이름과 설정, 설정에 맞는 대사, 퀘스트가 없어도 대화(기존 대화 카메라 그대로), 주민끼리 찾기·가져다주기·사다 주기」, 「호감도에 따라 대사 4단계」, 「경제 수치 열 수 있게」, 「포차코는 다른 캐릭터와 같은 가격, 기존 이용자 A안」.
@@ -32,16 +40,3 @@
 - UI 그림(assets 38): 게임관 카드 31, 오늘의 게임 테두리, 가방·판매 아이템 그림. 메신저: 5분 안 삭제(`unsend`), 대화방 고정(PG `messenger_pins` 새 표), 섬 새 메시지 알림.
 - 섬 시간대(`plaza-scene` `LIGHTS`·`phaseAt`): 실제 시각 자동 또는 관리자 고정(`/api/admin/island/time`, SSE `islandTime`), 할로윈 장식과 밤 분리. 에셋 점검실(`public/admin/asset-inspector.js`): 등록 모델·모션·그림 미리보기, 메모 서버 저장(최대 300), 수정 요청 → Codex 주문서 초안. 운영 스위치(`/api/admin/switches`): 새 가입 신청·메신저. 관리자 세계값 저장은 한 번에 하나씩(`worldEdit`).
 - 검증: 단위 skins·ip-skin-refund·island-fishing·island-items·island-weeds-server·messenger·asset-pipeline, e2e river-fishing·weed-board·island-time·asset-inspector·plaza 낚시, Codex 검토 반영(스위치·메모 동시 저장, 건너뛴 날 잡초, PG 중복 환불). 실제 휴대폰·GPU 미검증.
-
-## v1.10.89 상점 미리보기·분류, 행동 중 이동 잠금, 잡초 뽑기 모션·310P
-
-- 지시(사용자 2026-10-17): 「상점 창에서 각 파츠 미리보기를 다음 패치에. 내 정보에서 산 것들도 분류를 더 자세히, 상점도」; IDEAS `#future-action-move-lock`, `#future-weed-motion`(납품가 200→310P 같은 릴리스).
-- 상점·내 정보(`public/app.js` `skinFilterBar`·`filterSkins`·`slotTabsOf`): 이름 검색(카드만 다시 그려 한글 입력 유지), 등급·시리즈(기본·동물 세트·추가 의상·캐릭터)·보유(상점만) 칩, 개수 표시, 내 정보 광장 아바타에 부위 탭(전체·부위별 개수), 게임 탭에도 개수. 조건에 맞는 것이 없으면 안내.
-- 파츠 미리보기(`plaza-scene.js` `tryOn`·`tryOnClose`): 섬과 같은 부품·캐시로 내 캐릭터(지금 입은 것 + 그 파츠)를 별도 작은 캔버스의 두 번째 렌더러에 그려 천천히 돈다(Idle). 상점·내 정보 위쪽 고정 칸, 창을 닫으면 정리. 섬이 켜진 경우만 버튼(고전 화면은 기존 그림 미리보기).
-- 이동 잠금(`plaza-scene.js` `actLock`, `asset-pipeline` `onceLeft`): 이모트·일어서기·건네기·줍기 클립이 끝날 때까지 이동 안 받음(클립 길이, 없으면 0.9초, 최대 3초), 그동안 이모트 연타 무시, 창·Esc·열차/승강장 이동 때 즉시 해제. 낚시 마무리는 원래 채집 잠금 안.
-- 잡초: assets 37 `GatherWeed.glb`(1.4초, 쥐기 0.49·들기 0.62초) 교체, `WEED_MS`·서버 `PULL_MS` 1400, 잡초가 들리는 시점을 lift 이벤트에 맞춤, 납품가 310P(`lib/island-items.js`, 제초 요청 날 930P).
-- 원격 낚시(IDEAS `#future-remote-action-animation`): 낚는 사람의 단계를 act `fish:cast|wait|reel|catch|miss`로 보냄(바뀌면 즉시), 서버는 그 사람의 낚싯대가 물에 있을 때만 받고 잡은 물고기는 서버 결과(`fishActOf`). 다른 화면은 낚싯대·같은 클립·잡은 물고기 들기(`remoteFish`). 찌·줄은 원격에 그리지 않음.
-- 칭호 명예의 전당(IDEAS `#future-title-history`): 저장된 주간 결산(`point_settlements`의 `climb_week`·`donation_week`·`fishking_week`)에서 챔피언·호구왕·낚시왕 역대 수상자(`titleWeeks`, 그 주 이름, 계정 ID 비공개), `GET /api/island/titles`, 게시판 공지 아래 접힌 칸(칭호 탭·1대부터·현재·20개씩 더 보기·기록 시작일). 기록 이전은 만들지 않음.
-- 낚시왕(IDEAS `#future-fishing-dex`): 그 주(서울 월~월) 어부 판매 지급 합계 1위(동률: 먼저 도달, 계정 ID), 다음 한 주 칭호 `title_fishking`(칭호 칸 착용·보유 중에만 표시), 판매 기록에서 집계(`fishSalesWeek`), 결산은 한 번(`settleTitleWeek`), 2026-10-12 주부터. 낚시 도감 13종 에셋은 assets 40 제작 완료(연결은 다음).
-- 밭 수확(IDEAS `#future-island-minigames`): 밭 3단계일 때 밭 안에서 SPACE · 밭 · 수확 → 계정마다 주 1회 「밭 채소」(상인 3,000P), `POST /api/island/farm/harvest`, `GET /api/island/farm`의 `harvested`.
-- 검증: e2e `shop-browse.spec.js`(PC·휴대폰: 보유·검색·없음 안내·3D 미리보기 모델 로드·내 정보 부위 탭), `action-lock.spec.js`(PC: 이모트 중 정지·연타 무시·끝나면 누른 방향키로 이동), `title-hall.spec.js`(PC·휴대폰), `plaza.spec.js` 낚시(구경하는 사람 화면에 단계·잡은 물고기), 단위 `island-items`·`island-weeds-server`·`climb-server`(명예의 전당)·`island-fishing`(낚시왕·집계)·`farmer-quest-server`(수확), 화면 확인. 실제 휴대폰·GPU 미검증.
