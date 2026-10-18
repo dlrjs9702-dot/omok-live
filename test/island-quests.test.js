@@ -122,14 +122,14 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
 test('주간 순환: 서울 월요일 경계·2~3개·첫 주 기존 진행 유지·같은 주민 중복 없음',(t)=>{
   const held=process.env.ISLAND_QUEST_WEEK; delete process.env.ISLAND_QUEST_WEEK; t.after(()=>{ process.env.ISLAND_QUEST_WEEK=held; }); // the real rotation here
   const before=Date.parse('2026-10-11T23:59:59+09:00'), after=before+1000;
-  assert.deepEqual(Q.weeklyStories(before),['granny','fisher','kid','farmer']); // v1.10.80 the farmer every week
-  assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid','farmer']);
+  assert.deepEqual(Q.weeklyStories(before),['granny','fisher','kid','farmer','painter']); // v1.10.80 the farmer every week; v1.10.93 a village resident in turn
+  assert.deepEqual(Q.weeklyStories(after),['fisher','photographer','kid','farmer','busker']);
   assert.equal(Q.talk({},'granny',[],at('granny'),after).error,'NO_STORY');
   for(let week=0;week<52;week++) {
     const now=Date.parse('2026-10-05T00:00:00+09:00')+week*7*86400000;
-    const ids=Q.weeklyStories(now); assert.ok(ids.length>=3&&ids.length<=4);
+    const ids=Q.weeklyStories(now); assert.ok(ids.length>=4&&ids.length<=5);
     const total=ids.reduce((sum,id)=>sum+Q.STORIES[id].bonus+Q.STORIES[id].steps.reduce((n,s)=>n+s.reward,0),0);
-    assert.ok(total<=90000); // 66k normal weeks, 88k October (v1.10.80 + the farmer's 22k): 22k per story
+    assert.ok(total<=110000); // 88k normal weeks, 110k October (v1.10.80 + the farmer's 22k; v1.10.93 + one village resident's 22k): 22k per story
     for(const doc of [{},{photomemory:{done:true}}]) {
       const keepers=Q.visibleStories(doc,now).map(id=>Q.STORIES[id].keeper||id);
       assert.equal(new Set(keepers).size,keepers.length);

@@ -1483,7 +1483,31 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     setFarm({ stage: 0, names: [] });
     return farm;
   }
+  // v1.10.93 마을 공동 진행도 (assets 39): the mural (one of four stages shown -- this week's helpers), the painter's easel and
+  // the busker's stage; once someone helped the busker this week, he plays (a cheer now and then) for everyone
+  let village = null;
+  function prepareVillage() {
+    if (village) return village;
+    const V = globalThis.IslandTerrain.VILLAGE;
+    const place = (id, at, fallback) => { const root = new THREE.Group(); root.position.set(at.x, heightAt(at.x, at.z), at.z); root.rotation.y = at.yaw || 0; scene.add(root); root.add(fallback); assets.attach(id, root, fallback); return root; };
+    const board = (s) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(4, 2.4, 0.2), mat(0xf3ead8), 0, 1.2, 0, g); if (s) mesh(new THREE.BoxGeometry(3.6 * s / 3, 1.5, 0.05), mat(0x6aa9e8), -1.8 + 1.8 * s / 3, 1.43, -0.13, g); return g; };
+    const murals = [0, 1, 2, 3].map((s) => place(`village.mural.${s}`, V.mural, board(s)));
+    const easel = new THREE.Group(); mesh(new THREE.BoxGeometry(0.8, 1.0, 0.06), mat(0xf3ead8), 0, 1.1, 0, easel); place('village.easel', V.easel, easel);
+    const stage = new THREE.Group(); mesh(new THREE.BoxGeometry(3, 0.21, 2), mat(0xb07a4f), 0, 0.105, 0, stage); place('village.busk_stage', V.busk, stage);
+    solids.push({ x: V.mural.x, z: V.mural.z, r: V.mural.r * 0.85 }, { x: V.easel.x, z: V.easel.z, r: 0.5 }, { x: V.busk.x, z: V.busk.z, r: 1.6 });
+    village = { murals, mural: -1, busk: false, cheerAt: 0 };
+    return village;
+  }
+  function setVillage(view) {
+    const v = prepareVillage(); const stage = Math.max(0, Math.min(3, Number(view?.mural) || 0));
+    v.murals.forEach((root, s) => { root.visible = s === stage; }); v.mural = stage; v.busk = Boolean(view?.busk);
+  }
+  function stepVillage(dt) { // the busker plays once helped this week
+    if (!village?.busk) return; village.cheerAt -= dt; if (village.cheerAt > 0) return; village.cheerAt = 4 + Math.random() * 3;
+    const o = eventObjs.get('ev:quest_npc:busker'); if (o?.npc && !talkView) o.npc.anim?.play?.('cheer');
+  }
   function setFarm(view) {
+    if (view?.village) setVillage(view.village); // (v1.10.93: the village comes with the farm's answer)
     const f = prepareFarm(); const stage = Math.max(0, Math.min(3, Number(view?.stage) || 0)); const names = (view?.names || []).slice(0, 8);
     f.fields.forEach((root, s) => { root.visible = s === stage; }); f.stage = stage;
     // v1.10.89 밭 수확: a grown field is harvested from its middle (SPACE · 밭 · 수확), until I have this week's
@@ -1629,6 +1653,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
           if (ev.story === 'farmer') { assets.dress(['character.farmer'], npc); assets.hold(npc, 'farm.mallet', 0, { key: 'questTool', at: [0, -0.18, -0.025] }); prepareFarm(); } // v1.10.80 his own model, the mallet in hand
+          else if (['painter', 'stationmaster', 'busker'].includes(ev.story)) { assets.dress([`character.${ev.story}`, 'character.npc'], npc); if (ev.story === 'busker') assets.hold(npc, 'village.guitar', 0, { key: 'questTool', at: [0, -0.505, 0] }); prepareVillage(); } // v1.10.93 assets 39
           else dressUp(npc, look, spec);
           if (ev.story === 'kid') { npc.root.scale.setScalar(0.72); assets.hold(npc, 'halloween.candyBasket', 0, { key: 'basket' }); } // a child, the candy basket in hand
           if (ev.story === 'granny') assets.hold(npc, 'quest.watering_can', 0, { key: 'questTool' });
@@ -2257,6 +2282,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = ambientClock * 2.4; else spin.rotation.y = ambientClock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(ambientClock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31
     stepFishing(dt); // v1.10.42
+    stepVillage(dt); // v1.10.93
     stepShows(dt); // v1.10.92
     if (photoMode) hideForPhoto(); // v1.10.43 (bubbles are shown again by their own updates)
     // v1.10.46: the shadow's square moves in whole texels of its map across the light (it followed me smoothly, so the

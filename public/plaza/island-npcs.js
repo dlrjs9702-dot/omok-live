@@ -36,7 +36,7 @@
   function buildGrid() {
     if (grid) return grid;
     const blocked = new Uint8Array(N * N); const cost = new Float32Array(N * N);
-    const solids = T.natureSolids();
+    const solids = [...T.natureSolids(), ...[T.VILLAGE.mural, T.VILLAGE.easel, T.VILLAGE.busk].map((v) => ({ x: v.x, z: v.z, r: v.r }))]; // (v1.10.93 마을 소품)
     const near = new Map(); // a coarse bucket of the nature solids
     for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
     const spots = T.BUILDINGS; // v1.10.13: the cottages too

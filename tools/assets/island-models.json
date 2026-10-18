@@ -4819,6 +4819,198 @@
       "lowSrc": "mall43:Low/mall_interior_low.glb",
       "lowSha256": "b8892534a1e1a116259eaf5ce7f7602f3b3e626e4f99b1b210b9ee4423db51f7",
       "precompressed": true
+    },
+    {
+      "out": "characters/npc_painter.glb",
+      "src": "residents39:01. High/npc_painter_high.glb",
+      "sha256": "d591f3718e4be043c03b1dca52bb19a96d399fb58f370889200018c91a85f025",
+      "lowSrc": "residents39:02. Low/npc_painter_low.glb",
+      "lowSha256": "1e00516644ac41160f876dc7ed5e0ac746e5e2c88a958abfeec468ed2f8fc7b5",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_stationmaster.glb",
+      "src": "residents39:01. High/npc_stationmaster_high.glb",
+      "sha256": "4595451cb7615363f965898c243ab6b7cebd5f4d7a0b270698c7ecdcb0635790",
+      "lowSrc": "residents39:02. Low/npc_stationmaster_low.glb",
+      "lowSha256": "0e2a8d8d5b9b13734ade802fa585268a6899036450c9f1cbd6385eadaaa9bf97",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_busker.glb",
+      "src": "residents39:01. High/npc_busker_high.glb",
+      "sha256": "9ffa94d3dc62446da510a086772da73a4563a8b0f535c9fbd5d82c706e4ece10",
+      "lowSrc": "residents39:02. Low/npc_busker_low.glb",
+      "lowSha256": "62b6818c18f75853656908ad81e8bb37b219941525253b46970394c268860475",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_electrician.glb",
+      "src": "residents39:01. High/npc_electrician_high.glb",
+      "sha256": "a64d127c7e2b61363451297629db3cd15b0c1b4e1214339525aa69aebb8301a9",
+      "lowSrc": "residents39:02. Low/npc_electrician_low.glb",
+      "lowSha256": "73a566e7d006237f274f03c59dc6fffddded561de7b97c3e81a5070dee5fa10e",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_builder.glb",
+      "src": "residents39:01. High/npc_builder_high.glb",
+      "sha256": "4fa60db2a51f9535cd52dc44f32afaa35933186d83b2e89ebd0288c6d6131c59",
+      "lowSrc": "residents39:02. Low/npc_builder_low.glb",
+      "lowSha256": "d1a3296a33f35108182704c2cfa7ab1374fa82794242c7290a80cbd911d0d066",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_librarian.glb",
+      "src": "residents39:01. High/npc_librarian_high.glb",
+      "sha256": "f4a007f785a9837a6e6e27559f2be67c4b3919ba94f5432b4f70e22ea954111c",
+      "lowSrc": "residents39:02. Low/npc_librarian_low.glb",
+      "lowSha256": "a4ccb4fb3e867d54e012cce7fbf79538267be50c4fa6dc9da8a9780fbfa516d3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_gazebo_grandpa.glb",
+      "src": "residents39:01. High/npc_gazebo_grandpa_high.glb",
+      "sha256": "4e4fb9c258ed087ef24e37162babb78027b06866eddced7d6e08efcb22966999",
+      "lowSrc": "residents39:02. Low/npc_gazebo_grandpa_low.glb",
+      "lowSha256": "4fc0d68983c9acf1f26fdcbdca6f88e8d68fee34d710b2cc53af5b52fe30352c",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/mural_stage0.glb",
+      "src": "residents39:01. High/mural_stage0_high.glb",
+      "sha256": "2bfe86f3021a6190f2d8702a43f50e1376147ee02091a4fbf0117f408a959434",
+      "lowSrc": "residents39:02. Low/mural_stage0_low.glb",
+      "lowSha256": "c1d672656620718659b09827633c55ffb3259bdc6f116b6049fdc028181bf6b8",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/mural_stage1.glb",
+      "src": "residents39:01. High/mural_stage1_high.glb",
+      "sha256": "eb8dae38c93c8dfefd6dea24f9fe03474bb54ec755591ee49d2eb02fd8295dc6",
+      "lowSrc": "residents39:02. Low/mural_stage1_low.glb",
+      "lowSha256": "c5143f3c5da1f5b316e2d44c26a9eba10cca6813a45d3ba7a10ddbd3eacce35a",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/mural_stage2.glb",
+      "src": "residents39:01. High/mural_stage2_high.glb",
+      "sha256": "5249f0d1a7b7ee7b5b8a982347bfbb05b01ca7ba6f4eedc29b963feb17df6c95",
+      "lowSrc": "residents39:02. Low/mural_stage2_low.glb",
+      "lowSha256": "da77e85fd1542626961f9845286f2bdcd22b7fbdaed49041223412b51ef03425",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/mural_stage3.glb",
+      "src": "residents39:01. High/mural_stage3_high.glb",
+      "sha256": "a1a3b7df8c46bf30c81fac11f4250aa08a61fb616117fa57f665d75aad9a138f",
+      "lowSrc": "residents39:02. Low/mural_stage3_low.glb",
+      "lowSha256": "b6bf2189e4e64f04f4621765d830dbcd098e2ae22dcc10f148c2d08aa54cc519",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/easel.glb",
+      "src": "residents39:01. High/easel_high.glb",
+      "sha256": "ea79c7c6a0bc66a160ed166c34f8f502e35358de2a0e330da44174025ddd3e1c",
+      "lowSrc": "residents39:02. Low/easel_low.glb",
+      "lowSha256": "f5806d8f1d350fc8d5ef2b7836d6082880c48dfdcc42aad891a225857c53732a",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/busk_stage.glb",
+      "src": "residents39:01. High/busk_stage_high.glb",
+      "sha256": "9c9055696192604aaa6b483be8ef98994261cbad637e4f269ea26e24325a4af5",
+      "lowSrc": "residents39:02. Low/busk_stage_low.glb",
+      "lowSha256": "afea3b302f5690a7b63c0a0743a74cc6f0b15d4feca2298f2b2f86c89acf0bd7",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/guitar.glb",
+      "src": "residents39:01. High/guitar_high.glb",
+      "sha256": "559e24d50f776acb39e88c5f1c7670f01c29352f5411872e9ac766b2ae70bf23",
+      "lowSrc": "residents39:02. Low/guitar_low.glb",
+      "lowSha256": "6992d33417d94430c5e30c53949a64779085f6d7faed38ed4ddf7bbd8fda1eaf",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/lamp_broken.glb",
+      "src": "residents39:01. High/lamp_broken_high.glb",
+      "sha256": "f8ea33da785d9a26a0951dbfac0f5adee71754972353d30a116196c08febee45",
+      "lowSrc": "residents39:02. Low/lamp_broken_low.glb",
+      "lowSha256": "ed9a00ccd8bab314d170b8028286470f74321bd2ca23ea5c0e7dab1ec3f8de06",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/lamp_fixed.glb",
+      "src": "residents39:01. High/lamp_fixed_high.glb",
+      "sha256": "7e7c3cc6d2974f9f9d3c52acda9cedafcae0b9e8b2c00449e3d9c8c7909807cc",
+      "lowSrc": "residents39:02. Low/lamp_fixed_low.glb",
+      "lowSha256": "4ea211d4bb12001b1d09f0e254f18f71f8da8b6755c6183a10e36ce1871550be",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/stepstones_stage0.glb",
+      "src": "residents39:01. High/stepstones_stage0_high.glb",
+      "sha256": "715071cab4b087cfdd134961fac80ec48ae7e4025af8e1be08fba1c5220e40c2",
+      "lowSrc": "residents39:02. Low/stepstones_stage0_low.glb",
+      "lowSha256": "7318e2058b1ee1e4d356a56c747e53dcfafa1764741ae32f49669d9f3031a3b6",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/stepstones_stage1.glb",
+      "src": "residents39:01. High/stepstones_stage1_high.glb",
+      "sha256": "b5f6da84a05462fbf4cf6385891e164e8f181d156eed448bdeeb487dc4042241",
+      "lowSrc": "residents39:02. Low/stepstones_stage1_low.glb",
+      "lowSha256": "eb7c2376fe3833833783c90d0d51612497cef04c2820d4c010d1db2df9d4d1b6",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/stepstones_stage2.glb",
+      "src": "residents39:01. High/stepstones_stage2_high.glb",
+      "sha256": "5531030c191d707efde353f4c8586e3b1daabc190404e0e2de58ed3ce31cc9ee",
+      "lowSrc": "residents39:02. Low/stepstones_stage2_low.glb",
+      "lowSha256": "8ddbb33976201e77866a83fe91129033adfcf5953252e122e7c39960a6eeb77b",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/stepstones_stage3.glb",
+      "src": "residents39:01. High/stepstones_stage3_high.glb",
+      "sha256": "203d9836158f7e1a24f134191ab96caa45d9c2086f944e27a862cc8609d93115",
+      "lowSrc": "residents39:02. Low/stepstones_stage3_low.glb",
+      "lowSha256": "56fc59b80e7b8ba3d472d8886882df818575a0f24291ffcc737d7f1527133cd7",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/toolbox.glb",
+      "src": "residents39:01. High/toolbox_high.glb",
+      "sha256": "717b25b8d9d1ae6b188b58d10fda5612b949ce8853b0ccd51bbe3dd4189aeec0",
+      "lowSrc": "residents39:02. Low/toolbox_low.glb",
+      "lowSha256": "ecd3b17be8d4916ee1064f99e3ceb21befdf2060845d790e020dec1cc4c0f2ff",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/bookcart.glb",
+      "src": "residents39:01. High/bookcart_high.glb",
+      "sha256": "b448a373738a5021b3ef56625377865fbf23f8ad7897ed4547c969fcf1f2d805",
+      "lowSrc": "residents39:02. Low/bookcart_low.glb",
+      "lowSha256": "7f7a84722b82ecd39af85020f397ca8a2088849cc2a8dc78bc15e84350b02e39",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/table_omok.glb",
+      "src": "residents39:01. High/table_omok_high.glb",
+      "sha256": "05b35c18d2e8cb72e1234f5da1df6d8ca9559fff432b5a093c84acb5438dc728",
+      "lowSrc": "residents39:02. Low/table_omok_low.glb",
+      "lowSha256": "d65de87b1212091b581d25ca5129b3b13436f7f6c821e66ae1f7936b430f10d3",
+      "precompressed": true
+    },
+    {
+      "out": "village-v1/table_cards.glb",
+      "src": "residents39:01. High/table_cards_high.glb",
+      "sha256": "76ba92dee1d236bad92dd7b52c610a24da290756502044fe7d013add281ebdf1",
+      "lowSrc": "residents39:02. Low/table_cards_low.glb",
+      "lowSha256": "754f3f0cf475e102feb9588a6c646473ab4cfc2bb23007d2097302d64368d54e",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4846,6 +5038,7 @@
     "fishdex40": "40. Game Island fishing dex 13 2026-10-18",
     "store41": "41. Game Island general store 2026-10-18",
     "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18",
-    "mall43": "43. Game Island department store 2026-10-18"
+    "mall43": "43. Game Island department store 2026-10-18",
+    "residents39": "39. Game Island residents and quest props 2026-10-17"
   }
 }

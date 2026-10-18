@@ -318,6 +318,16 @@
   // weeds are numbered by them (island-weeds `w<index>`), and a weed in the field is no wonder.
   const FARM = Object.freeze({ x: -17, z: 45.5, w: 8, d: 5, farmer: Object.freeze({ x: -12.4, z: 42.7 }), sign: Object.freeze({ x: -22.6, z: 44.6 }) });
   const inFarm = (x, z) => Math.abs(x - FARM.x) < FARM.w / 2 + 1.2 && Math.abs(z - FARM.z) < FARM.d / 2 + 1.2;
+  // v1.10.93 마을 주민 미니게임 퀘스트 (IDEAS #future-island-minigames, assets 39): where the painter's mural and easel and the
+  // busker's stage stand (their fronts toward the plaza), and where each keeper waits; `r` keeps islanders and trees off
+  const toPlaza = (x, z) => Math.atan2(x, z); // a model whose front is -Z, turned to face the plaza's centre (-Z then points at it)
+  const VILLAGE = Object.freeze({
+    mural: Object.freeze({ x: -12, z: 22, yaw: toPlaza(-12, 22), r: 2.4 }), easel: Object.freeze({ x: -8.6, z: 20.4, yaw: toPlaza(-8.6, 20.4), r: 0.7 }),
+    painter: Object.freeze({ x: -9.4, z: 19.2 }),
+    busk: Object.freeze({ x: 23, z: 9.6, yaw: toPlaza(23, 9.6), r: 2.0 }), busker: Object.freeze({ x: 21.3, z: 8.4 }), // (clear of the walk's lamp at 19.4, 5.4)
+    stationmaster: Object.freeze({ x: 97.6, z: -8.2 }), // by the 동해안역's lift
+  });
+  const inVillage = (x, z) => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk].some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {
     if (natureCache) return natureCache;
@@ -387,7 +397,7 @@
     }
     natureCache = { trees, flowers, bushes, tufts, rocks, posts, lampSpots };
     // Remove only obstructing props, retaining the original seeded positions of all remaining scenery.
-    for (const key of Object.keys(natureCache)) natureCache[key] = natureCache[key].filter(p => !natureBlocks.some(fn => fn(p.x, p.z, p.s || 1)) && (key === 'tufts' || !inFarm(p.x, p.z)));
+    for (const key of Object.keys(natureCache)) natureCache[key] = natureCache[key].filter(p => !natureBlocks.some(fn => fn(p.x, p.z, p.s || 1)) && (key === 'tufts' || (!inFarm(p.x, p.z) && !inVillage(p.x, p.z)))); // (v1.10.93: nothing grows through the mural or the stage)
     return natureCache;
   }
   // v1.10.16: the plaza's fixed props with their collision circles -- benches facing the fountain, lamps on a ring, flower
@@ -484,5 +494,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

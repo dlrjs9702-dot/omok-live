@@ -1172,6 +1172,16 @@ async function islandFarm() {
   islandFarmView = { week, view: { stage: Math.min(3, names.length), names } }; islandFarmAt = nowMs();
   return islandFarmView.view;
 }
+// v1.10.93 마을 공동 진행도 (IDEAS #future-island-minigames C안): this week's helpers of the painter and the busker change the
+// island for everyone -- the mural in four stages (one more per helper), the stage playing once someone helped
+let villageAt = 0; let villageView = null;
+async function islandVillage() {
+  const week = questWeek();
+  if (villageView?.week === week && nowMs() - villageAt < 10000) return villageView.view;
+  const [painter, busker] = await Promise.all([pointStore.questHelpers(week, 'painter'), pointStore.questHelpers(week, 'busker')]);
+  villageView = { week, view: { mural: Math.min(3, painter.length), busk: busker.length > 0 } }; villageAt = nowMs();
+  return villageView.view;
+}
 async function questApply(account, fn, scope = 'week') {
   const st = await questState(account);
   const out = await pointStore.questApply(account, scope==='fixed'?'fixed':st.week, fn);
@@ -4915,6 +4925,7 @@ async function requestHandler(req, res) {
       const keeperN = IslandCast.keeperN(story); let keeperLevel = 1; // v1.10.91 호감도: a talk a day, a story step
       if (keeperN != null) { keeperLevel = IslandCast.levelOf((await pointStore.affinityOf(account))[keeperN] || 0); await pointStore.affinityAdd(account, kstDate(nowMs()), [{ n: keeperN, delta: IslandCast.GAIN.talk, daily: true }, ...(r.paid ? [{ n: keeperN, delta: IslandCast.GAIN.story }] : [])]); }
       if (story === 'farmer' && r.paid) islandFarmAt = 0; // the field may grow at once
+      if (['painter', 'busker'].includes(story) && r.paid) villageAt = 0; // (v1.10.93: the mural, the stage)
       const quests = questEntries(account);
       // v1.10.80: a game step now under way -- which round to open ([도와줄게요] in the talk)
       const cur = (await questState(account)).doc[story]; const stepNow = IslandQuests.STORIES[story].steps[cur?.step];
@@ -5269,7 +5280,7 @@ async function requestHandler(req, res) {
   }
   if (pathname === '/api/island/farm' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    return sendJson(res, 200, { ok: true, ...(await islandFarm()), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89
+    return sendJson(res, 200, { ok: true, ...(await islandFarm()), village: await islandVillage(), harvested: Boolean(await pointStore.settlementOf(`island_give:harvest:${questWeek()}:${account}`)) }); // v1.10.89; v1.10.93 village
   }
   if (pathname === '/api/plaza/spot' && req.method === 'GET') {
     const session = requireSession(req, res);
