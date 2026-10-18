@@ -571,7 +571,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish')); // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -627,6 +627,8 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const transformations = require('../../tools/assets/transformation-choices-import.json');
   const transformationPaths = transformations.files.map(file => '/assets/island/' + file.out);
   expect(new Set(transformationPaths).size).toBe(transformations.GLBs);
+  // v1.10.92 포차코 (assets 42): imported with the other models (island-models.json), in the same optional group
+  for (const e of require('../../tools/assets/island-models.json').files.filter((e) => e.out.startsWith('characters/ip-characters/pochacco'))) transformationPaths.push('/assets/island/' + e.out, '/assets/island/' + e.out.replace(/\.glb$/, '_low.glb'));
   const optionalTransformations = islandAssets.filter(asset => asset.group === 'island.transformations');
   expect(optionalTransformations.map(asset => asset.url).sort()).toEqual(transformationPaths.slice().sort());
   for (const asset of optionalTransformations) {
