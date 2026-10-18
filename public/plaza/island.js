@@ -208,26 +208,54 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     for (let a = -1; a <= 1; a += 1) for (let b = -1; b <= 1; b += 1) for (const t of treeBuckets.get(`${bx + a},${bz + b}`) || []) { const d = Math.hypot(t.x - x, t.z - z); if (d < 6) f += 1 - d / 6; }
     return Math.min(1, f / 2);
   }
+  // B 48 바닥 질감 (assets 48 ground-v1): small repeating grey grains -- grass blades, soil and gravel, sand -- multiplied
+  // into the ground's own colours at 35% (the colours, seasons and forest floor stay theirs), by world position; the
+  // paths' grass edge is a tufted mask instead of a straight line. Grey set + mask only: about 120 KB on the GPU.
+  const groundTex = (() => {
+    const loader = new THREE.TextureLoader();
+    const t = (file, srgb, clampV = false) => { const x = keep(loader.load(`/assets/island/ground-v1/${file}.png`)); x.wrapS = THREE.RepeatWrapping; x.wrapT = clampV ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping; x.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; x.anisotropy = 4; return x; };
+    return { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
+  })();
+  const GRAIN = 0.5; // how strongly the grains show
+  const grained = (material, path) => {
+    material.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: { value: GRAIN } });
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+attribute vec2 aGround; varying vec2 vGround; varying vec2 vGroundXZ;`).replace('#include <begin_vertex>', `#include <begin_vertex>
+vGround = aGround; vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D tGrass; uniform sampler2D tSoil; uniform sampler2D tSand; uniform sampler2D tEdge; uniform float uGrain; varying vec2 vGround; varying vec2 vGroundXZ;`).replace('#include <color_fragment>', `#include <color_fragment>
+vec3 gGrass = texture2D(tGrass, vGroundXZ / 2.4).rgb / 0.611; // (each over its own mean: the colours keep their brightness, only the grain shows)${path ? `
+float gCover = texture2D(tEdge, vGround).a; // the path: x along it, y across (1 at its grass edge)
+diffuseColor.rgb *= mix(vec3(1.0), mix(texture2D(tSoil, vGroundXZ / 1.4).rgb / 0.319, gGrass, gCover), uGrain);
+diffuseColor.a *= 1.0 - 0.85 * gCover * step(0.001, vGround.y); // the island's grass shows through in tufts` : `
+vec3 gGrain = mix(mix(vec3(1.0), gGrass, vGround.x), texture2D(tSand, vGroundXZ / 1.4).rgb / 0.701, vGround.y);
+diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);`}`);
+    };
+    material.customProgramCacheKey = () => (path ? 'ground-path' : 'ground');
+    return material;
+  };
   const SIZE = 250; const SEG = 125;
   const geo = keep(new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG)); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
   const grass = new THREE.Color(0x9fd67f); const grass2 = new THREE.Color(0x8cc96c); const sand = new THREE.Color(0xf1dfae);
   const rock = new THREE.Color(0xb7ad9e); const wet = new THREE.Color(0xd8c48f); const c = new THREE.Color();
   const grassy = new Float32Array(pos.count); // v1.10.29: how much of a vertex is grass (the season paints that part)
+  const grains = new Float32Array(pos.count * 2); // B 48: the grass and the sand share of a vertex (its grains)
   const forestFloor = new THREE.Color(0x6f8a4c); // v1.10.73 숲 바닥: darker, mossy ground under the trees
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i); const z = pos.getZ(i); const h = ground(x, z); pos.setY(i, h);
-    const cd = coastDist(x, z); const cliff = cliffAt(x, z); let g = 1;
+    const cd = coastDist(x, z); const cliff = cliffAt(x, z); let g = 1; let sd = 0;
     c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13));
     const woods = forestAt(x, z); if (woods > 0) c.lerp(forestFloor, 0.55 * woods);
-    if (cd < 8 && cliff < 0.5) { const a = smooth(8, 4, cd); c.lerp(cd < 2.5 ? wet : sand, a); g *= 1 - a; }
-    if (cliff > 0.4 && cd < 4) { const a = smooth(4, 1, cd); c.lerp(rock, a); g *= 1 - a; }
-    if (h < -0.4) { c.copy(wet); g = 0; }
-    colors.set([c.r, c.g, c.b], i * 3); grassy[i] = g;
+    if (cd < 8 && cliff < 0.5) { const a = smooth(8, 4, cd); c.lerp(cd < 2.5 ? wet : sand, a); g *= 1 - a; sd = a; }
+    if (cliff > 0.4 && cd < 4) { const a = smooth(4, 1, cd); c.lerp(rock, a); g *= 1 - a; sd *= 1 - a; }
+    if (h < -0.4) { c.copy(wet); g = 0; sd = 1; }
+    colors.set([c.r, c.g, c.b], i * 3); grassy[i] = g; grains[i * 2] = g; grains[i * 2 + 1] = sd;
   }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.computeVertexNormals();
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geo.setAttribute('aGround', new THREE.BufferAttribute(grains, 2)); geo.computeVertexNormals();
   seasonal(geo.attributes.color, (i) => [pos.getX(i), pos.getZ(i)], (i) => [0, grassy[i]]);
-  const terrain = new THREE.Mesh(geo, keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 })));
+  const terrain = new THREE.Mesh(geo, keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), false)));
   terrain.receiveShadow = true; scene.add(terrain);
 
   // Sea and the pond and streams (flat water a little under the banks).
@@ -274,26 +302,26 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
   const TOWN_R = 32;
   const tierAt = (wi, x, z) => (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
   const TIER_COLOR = { town: 0xe7e1d3, walk: 0xe6d8bd, trail: 0xcdb48c };
-  const pathMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  const pathMat = keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), true));
   const grassEdge = new THREE.Color(0xa7d483);
   const plazaPaving = new THREE.Color(0xf3e6c8);
   const pathStrip = (pts, width, base) => {
-    const v = []; const col = []; const idx = []; const c0 = new THREE.Color(base); const cm = new THREE.Color(); const ce = new THREE.Color(); const cols = 4;
+    const v = []; const col = []; const idx = []; const gr = []; let along = 0; const c0 = new THREE.Color(base); const cm = new THREE.Color(); const ce = new THREE.Color(); const cols = 4;
     for (let i = 0; i < pts.length; i += 1) {
       const a = pts[Math.max(0, i - 1)]; const b = pts[Math.min(pts.length - 1, i + 1)];
       const dx = b[0] - a[0]; const dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1;
-      const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i];
+      const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i]; if (i) along += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
       const mottle = 0.94 + 0.08 * Math.sin(x * 0.7 + z * 0.4) * Math.cos(z * 0.53 - x * 0.2);
       const plazaBlend = 1 - smooth(PLAZA_R - 1, PLAZA_R + 6, Math.hypot(x, z));
       const halfWidth = width / 2 * (1 + 0.35 * plazaBlend);
       cm.copy(c0).multiplyScalar(mottle).lerp(plazaPaving, plazaBlend);
       ce.copy(cm).lerp(grassEdge, 0.55 * (1 - plazaBlend));
       for (const [o, c] of [[-(halfWidth + 0.35), ce], [-(halfWidth - 0.25), cm], [halfWidth - 0.25, cm], [halfWidth + 0.35, ce]]) {
-        const px = x + nx * o; const pz = z + nz * o; v.push(px, T.meshGroundHeight(px, pz) + 0.008, pz); col.push(c.r, c.g, c.b);
+        const px = x + nx * o; const pz = z + nz * o; v.push(px, T.meshGroundHeight(px, pz) + 0.008, pz); col.push(c.r, c.g, c.b); gr.push(along / 3, c === ce ? 1 - plazaBlend : 0); // (B 48: the edge mask's x along, y across)
       }
       if (i) for (let k = 0; k < cols - 1; k += 1) { const p = (i - 1) * cols + k; const n = i * cols + k; idx.push(p, n + 1, n, p, p + 1, n + 1); }
     }
-    const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('aGround', new THREE.Float32BufferAttribute(gr, 2)); g.setIndex(idx); g.computeVertexNormals();
     seasonal(g.attributes.color, (i) => [v[i * 3], v[i * 3 + 2]], (i) => (i % cols === 0 || i % cols === cols - 1 ? [0, 0.55] : [1, 1])); // v1.10.29: edges are half grass
     const m = new THREE.Mesh(g, pathMat); m.receiveShadow = true; scene.add(m); return m;
   };
