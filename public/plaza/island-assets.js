@@ -319,6 +319,10 @@
     const id = `wear.ip_${character}_${slot}`; const { dye, ...fit } = X2_FIT(slot);
     REGISTRY[id] = { url: `${CH}/wear-ip/${character}_${slot}.glb`, low: { url: `${CH}/wear-ip/${character}_${slot}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_ip_${character}_${slot}`] = id;
   }
+  // v1.10.92 포차코 (assets 42): the hat covers no hair (cover 0), the outfit wears its own body under it
+  if (REGISTRY['wear.ip_pochacco_hat']) { REGISTRY['wear.ip_pochacco_hat'].fit = { slot: 'hat', cover: 0 }; REGISTRY['wear.ip_pochacco_outfit'].body = { url: `${CH}/wear-ip/pochacco_body.glb`, lowUrl: `${CH}/wear-ip/pochacco_body_low.glb` }; }
+  // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
+  REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
   const life = (file) => ({ url: `/assets/island/life-v1/${file}.glb`, low: { url: `/assets/island/life-v1/${file}_low.glb` }, near: 35 });
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
@@ -338,5 +342,13 @@
   REGISTRY['farm.sign'] = farm('sign_helpers');
   REGISTRY['farm.mallet'] = { url: `${CH}/props/mallet.glb`, low: { url: `${CH}/props/mallet_low.glb` } };
   REGISTRY['character.farmer'] = { url: `${CH}/npc_farmer.glb`, low: { url: `${CH}/npc_farmer_low.glb` }, rotationY: Math.PI, motions: true };
+  // v1.10.92 잡화점 (assets 41 store-v1): the building (front -Z, its door at local z -2.65), the room one walks into
+  // (10 x 8 m, its door at local -Z; plaza-scene turns it half round), its keeper (the common rig) and the 23 goods on the shelves
+  const ST = '/assets/island/store-v1';
+  const st = (file, extra = {}) => ({ url: `${ST}/${file}.glb`, low: { url: `${ST}/${file}_low.glb` }, ...extra });
+  REGISTRY['facility.store'] = { url: '/assets/island/mall-v1/mall_exterior.glb', low: { url: '/assets/island/mall-v1/mall_exterior_low.glb' }, near: 140, rotationY: Math.PI }; // v1.10.92 백화점 (assets 43)
+  REGISTRY['mall.interior'] = { url: '/assets/island/mall-v1/mall_interior.glb', low: { url: '/assets/island/mall-v1/mall_interior_low.glb' } };
+  REGISTRY['character.storekeeper'] = { url: `${CH}/npc_storekeeper.glb`, low: { url: `${CH}/npc_storekeeper_low.glb` }, rotationY: Math.PI, motions: true };
+  for (const id of ['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge']) REGISTRY[`good.${id}`] = st(id, { shadows: false });
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

@@ -509,11 +509,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // steps are also walled round their edges with circles that overlap (one never gets past the foot of the steps)
       const edge = (cx, cz, ew, ed) => { for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) { const len = Math.hypot((bx - ax) * ew, (bz - az) * ed) / 2; for (let d = 0; d < len; d += 0.5) { const t = d / len; solids.push({ ...at(cx + (ax + (bx - ax) * t) * (ew / 2 - 0.3), cz + (az + (bz - az) * t) * (ed / 2 - 0.3)), r: 0.5 }); } } };
       edge(0, 0, 16.2, 12.6); edge(0, 6.85, 6, 1.1);
-    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office') {
+    } else if (spot.kind === 'shop' || spot.kind === 'house' || spot.kind === 'office' || spot.kind === 'mall') { // (v1.10.92 mall: the 백화점, 24 x 14 m)
       // v1.10.13: one merged build per facility (island.js `building`): a level body on a stone plinth, a real pitched
       // or hip roof lined up with the walls (the old roof was a square cone squashed along its diagonal -- it looked
       // crooked), framed door and windows; each facility its own silhouette. Footprint and door are unchanged.
-      const w = 3.2; const h = 2.4; depth = 2.7;
+      const big = spot.kind === 'mall'; const w = big ? 23.6 : 3.2; const h = big ? 8 : 2.4; depth = big ? 13.6 : 2.7;
       const looks = {
         shop: { roof: 'front', rise: 1.35, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], planters: true },
         avatar: { roof: 'gable', rise: 1.05, chimney: 0.9, windows: [[-1.08, 0.6], [1.08, 0.6], [0, 0.55, 'l'], [0, 0.55, 'r']], awning: [0xffffff, 0xff8aa8], shutters: 0xe87a9e },
@@ -534,7 +534,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         mesh(new THREE.CylinderGeometry(0.1, 0.22, 0.25, 12), mat(0xf6c945, { metalness: 0.25, roughness: 0.5 }), 0, h + 2.15, 0, visual);
       }
       sign(facility.name, root, h + (spot.kind === 'house' ? 3.3 : 2.5)); // above the roof ornaments
-      solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
+      if (big) boxSolids(0, 0, w, depth, 2.2); else solids.push({ x, z, r: Math.max(w, depth) * 0.62 });
       footing(root, w + 0.6, depth + 0.6);
     } else if (spot.kind === 'board') { // a notice board on two posts, papers pinned on it
       depth = 0.3;
@@ -621,21 +621,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       }
       sign(facility.name, root, 3.0);
       solids.push({ ...at(0, 0.1), r: 1.1 }, { ...at(0, -0.85), r: 0.45 });
-      npcs.push(npc);
-    } else if (spot.kind === 'tfbooth') { // v1.10.91 변신 의상실: a keeper in a cape beside a curtained booth and a mirror (assets 42 replaces it)
-      depth = 1.2;
-      const npcSpec = { shirt: 0x5b3f8f, hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0x2b2b2b };
-      const npc = makeCharacter(npcSpec);
-      npc.root.position.set(0.7, 0, -0.3); root.add(npc.root); assets.dress([`character.${facility.id}`, 'character.npc'], npc); dressUp(npc, { gender: 'male' }, npcSpec); npc.root.userData.npc = npc; npc.home = { x, z, yaw: root.rotation.y };
-      const wood = mat(0x8a5a3b);
-      for (const [lx, lz] of [[-1.6, -0.6], [-0.2, -0.6], [-1.6, 0.6], [-0.2, 0.6]]) mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), wood, lx, 1.2, lz, visual);
-      mesh(new THREE.BoxGeometry(1.5, 0.08, 1.3), wood, -0.9, 2.42, 0, visual); // the booth's top
-      for (const lz of [-0.6, 0.6]) mesh(new THREE.BoxGeometry(1.4, 2.2, 0.04), mat(0xb5395c), -0.9, 1.22, lz, visual); // curtains
-      mesh(new THREE.BoxGeometry(0.04, 2.2, 1.2), mat(0xb5395c), -1.6, 1.22, 0, visual);
-      mesh(new THREE.BoxGeometry(0.6, 1.4, 0.06), mat(0xd9e8f2), 1.5, 0.9, -0.4, visual); // the mirror
-      mesh(new THREE.BoxGeometry(0.7, 1.5, 0.04), mat(0xc9a14a), 1.5, 0.9, -0.44, visual);
-      sign(facility.name, root, 2.9);
-      solids.push({ ...at(-0.9, 0), r: 1.0 }, { ...at(0.7, -0.3), r: 0.45 }, { ...at(1.5, -0.4), r: 0.4 });
       npcs.push(npc);
     } else if (spot.kind === 'desk') { // v1.10.9 작명소: a name-giver behind a folding desk set out in the street
       depth = 1.2;
@@ -875,6 +860,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
       if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
       remoteFish(o, p); // v1.10.89
+      if (p.act?.startsWith('show:') && p.act !== o.act) playShow(o.c, p.act.slice(5)); // v1.10.92 잡화점: their firework, balloon or bubbles
       for (const [seat, id] of takenSeats) if (id === p.id && (p.act !== 'sit' || p.seat !== seat)) takenSeats.delete(seat);
       o.collect = p.actTarget ? {target:p.actTarget,at:p.actAt} : null; o.act = p.act || null; o.actN = p.actN || 0; o.seat = p.seat || null;
       // v1.10.47: riding the train -- drawn on their seat by the same clock (the server only says which train and seat)
@@ -892,6 +878,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
+    if (mySpace === 'store') { const q = STORE.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, STORE.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
@@ -922,7 +909,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
-      p.y = o.space === 'townhall' ? ROOM.y : heightAt(p.x, p.z);
+      p.y = o.space === 'townhall' ? ROOM.y : o.space === 'store' ? STORE.ROOM.y : heightAt(p.x, p.z);
       o.c.root.visible = o.space === mySpace; // v1.10.84: the 민원실 and the island never show each other
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
@@ -1262,6 +1249,30 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.89 원격 낚시 (IDEAS #future-remote-action-animation): my phase goes out as the act 'fish:<phase>' (the server
   // takes it only while it holds my cast, and names the catch itself); the others play the same rod and clips
   function fishAct(phase) { if (phase) { myAct.act = `fish:${phase}`; myAct.seat = null; } else if (myAct.act?.startsWith('fish:')) myAct.act = null; }
+  // v1.10.92 잡화점 놀이 물건: used from the bag, seen by everyone near -- a firework bursts over me, bubbles float up round
+  // me, a balloon in my hand for a while. Small particles of their own (nothing kept on the server but the act).
+  const shows = [];
+  const SHOW_COLORS = [0xff6b6b, 0xffd166, 0x06d6a0, 0x4cc9f0, 0xc77dff, 0xffffff];
+  function playShow(c, kind) {
+    if (!c?.root) return;
+    if (kind === 'balloon') { assets.hold(c, 'good.balloon', 0, { key: 'balloon', at: [0, -0.015, 0] }); shows.push({ c, kind, t: 0, life: 30, parts: [] }); return; }
+    const n = kind === 'firework' ? 36 : 14; const parts = [];
+    for (let i = 0; i < n; i += 1) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(kind === 'firework' ? 0.07 : 0.11, 8, 6), new THREE.MeshBasicMaterial({ color: kind === 'firework' ? SHOW_COLORS[i % SHOW_COLORS.length] : 0xcfe9ff, transparent: true, opacity: kind === 'firework' ? 1 : 0.55 }));
+      const p = c.root.position; m.position.set(p.x, p.y + (kind === 'firework' ? 4.2 : 1.2), p.z); scene.add(m);
+      const a = (i / n) * Math.PI * 2; const up = kind === 'firework' ? (Math.random() - 0.3) * 3 : 0.5 + Math.random() * 0.6;
+      parts.push({ m, v: kind === 'firework' ? new THREE.Vector3(Math.cos(a) * 3, up, Math.sin(a) * 3) : new THREE.Vector3(Math.cos(a) * 0.4, up, Math.sin(a) * 0.4), delay: kind === 'bubbles' ? Math.random() * 3 : 0 });
+    }
+    shows.push({ c, kind, t: 0, life: kind === 'firework' ? 2.4 : 5, parts });
+  }
+  function stepShows(dt) {
+    for (let i = shows.length - 1; i >= 0; i -= 1) {
+      const s = shows[i]; s.t += dt;
+      for (const p of s.parts) { if (s.t < p.delay) { p.m.visible = false; continue; } p.m.visible = true; p.m.position.addScaledVector(p.v, dt); if (s.kind === 'firework') p.v.y -= 2.2 * dt; p.m.material.opacity = Math.max(0, (s.kind === 'firework' ? 1 : 0.55) * (1 - (s.t - p.delay) / (s.life - p.delay))); }
+      if (s.t >= s.life) { for (const p of s.parts) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); } if (s.kind === 'balloon') assets.letGo(s.c, 'balloon'); shows.splice(i, 1); }
+    }
+  }
+  function useShow(kind) { playShow(me, kind); myAct.act = `show:${kind}`; myAct.seat = null; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === `show:${kind}`) myAct.act = null; }, 4000); }
   function remoteFish(o, p) {
     const was = o.act?.startsWith('fish:') ? o.act.slice(5) : null; const now = p.act?.startsWith('fish:') ? p.act.slice(5) : null;
     if (was === now) return;
@@ -1538,15 +1549,45 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   doors['room:bank'] = { ...roomAt(ROOM.bank.lx, ROOM.bank.lz), name: '예금 창구' }; // v1.10.85
   doors['room:tax'] = { ...roomAt(ROOM.tax.lx, ROOM.tax.lz), name: '세금 창구' }; // v1.10.86
   if (doors.townhall) { doors.townhall.mapName = doors.townhall.name; doors.townhall.name = '관공서 들어가기'; }
+  // v1.10.92 잡화점 (IslandStore, assets 41): its room far off the island like the 민원실 -- the keeper behind the counter,
+  // the goods where the manifest stands them; SPACE by a good buys it (the price on the prompt), by the door goes out
+  const STORE = globalThis.IslandStore; let store = null; let goodsPrices = {};
+  function buildStore() {
+    if (store) return store;
+    const g = new THREE.Group(); g.position.set(STORE.ROOM.x, STORE.ROOM.y, STORE.ROOM.z); g.rotation.y = Math.PI; scene.add(g); // (turned half round: its door toward the camera)
+    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    const shell = new THREE.Group(); g.add(shell); const fallback = new THREE.Group(); shell.add(fallback);
+    mesh(new THREE.BoxGeometry(STORE.ROOM.w, 0.2, STORE.ROOM.d), mat(0xeadfc8), 0, -0.1, 0, fallback);
+    for (const f of STORE.FIXTURES) mesh(new THREE.BoxGeometry(f.w, 1.0, f.d), mat(0xc9955c), f.x, 0.5, f.z, fallback);
+    assets.attach('mall.interior', shell, fallback);
+    for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
+    // a keeper in every sector (the 잡화 keeper and the 변신 keeper their own models, the rest the shop keepers' look)
+    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8 };
+    const keepers = STORE.SECTORS.map((s, i) => {
+      const k = makeCharacter({ shirt: SHIRTS[s.id], hair: [0x3d2b1f, 0x6b4a2b, 0x2b2b2b][i % 3], skin: 0xffdcbc });
+      k.root.position.set(s.keeper[0], 0, s.keeper[1]); k.root.rotation.y = s.keeper[2] + Math.PI; g.add(k.root);
+      assets.dress([s.id === 'store' ? 'character.storekeeper' : s.id === 'transform' ? 'character.transformer' : 'character.npc'], k); dressUp(k, { gender: i % 2 ? 'female' : 'male' }, { shirt: SHIRTS[s.id] });
+      const w = STORE.world(s.keeper[0], s.keeper[1]); k.home = { x: w.x, z: w.z, yaw: 0, id: s.place }; return k;
+    });
+    for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
+    store = { group: g, keepers }; npcs.push(...keepers);
+    return store;
+  }
+  doors['store:exit'] = { ...STORE.world(STORE.ROOM.exit.lx, STORE.ROOM.exit.lz), name: '나가기' };
+  // each sector's spot carries its old facility id (the shop's window and the server's place check stay the same)
+  for (const s of STORE.SECTORS) doors[s.place] = { ...STORE.world(s.interact[0], s.interact[1]), name: s.name };
+  if (doors.store) { doors.store.mapName = '백화점'; doors.store.name = '백화점 들어가기'; }
+  function setGoodsPrices(prices) { goodsPrices = { ...(prices || {}) }; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
-    mySpace = space === 'townhall' ? 'townhall' : 'island';
+    mySpace = space === 'townhall' || space === 'store' ? space : 'island';
     if (mySpace === 'townhall') buildRoom();
+    if (mySpace === 'store') buildStore();
     // the island is not drawn while I am inside (IDEAS: no terrain, trees or sea in the room) -- only what is drawn now
     // is put away, and comes back as it was; the lights stay (they light the room too), people show by their space
-    if (mySpace === 'townhall' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== room.group && !people.has(o)); for (const o of roomHidden) o.visible = false; }
-    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; }
-    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace === 'townhall' ? Math.PI : me.root.rotation.y;
-    if (mySpace === 'townhall') me.root.rotation.y = Math.PI;
+    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
+    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; }
+    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : mySpace === 'store' ? STORE.ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y;
+    if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
   }
   let questDepartureHeld = false;
@@ -1836,6 +1877,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     if (mySpace === 'townhall') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = globalThis.IslandTerrain.roomClamp(nx, nz); p.set(q.x, ROOM.y, q.z); return; } // v1.10.84
+    if (mySpace === 'store') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = STORE.clamp(nx, nz); p.set(q.x, STORE.ROOM.y, q.z); return; } // v1.10.92
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -2182,6 +2224,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         best = 'train:enter:' + id; break;
       }
     }
+    // v1.10.92 잡화점: in the store, the good nearest me (within reach) is what SPACE buys
+    for (const k of Object.keys(eventDoors)) if (k.startsWith('good:')) delete eventDoors[k];
+    if (best && !doorOf(best)) best = null; // (last frame's good, picked above)
+    if (mySpace === 'store' && !best) { const s = STORE.goodAt(me.root.position.x, me.root.position.z); if (s) { const w = STORE.world(s.at[0], s.at[2]); const g = goodsPrices[s.id]; const on = Boolean(g?.price) && !s.soon; eventDoors[`good:${s.id}`] = { x: w.x, z: w.z, name: on ? `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P` : `${g?.name || '물건'} · 곧 판매`, plain: !on }; /* (prices: the server's, app.js) */ best = `good:${s.id}`; } }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
@@ -2211,6 +2257,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const o of eventObjs.values()) { const spin = o.root.userData.spin; if (spin) { if (spin.isMesh) spin.rotation.z = ambientClock * 2.4; else spin.rotation.y = ambientClock * 2.4; spin.position.y = (spin.isMesh ? 0.35 : 0.2) + Math.sin(ambientClock * 2) * 0.05; } }
     stepWeeds(dt); // v1.10.31
     stepFishing(dt); // v1.10.42
+    stepShows(dt); // v1.10.92
     if (photoMode) hideForPhoto(); // v1.10.43 (bubbles are shown again by their own updates)
     // v1.10.46: the shadow's square moves in whole texels of its map across the light (it followed me smoothly, so the
     // edges of every shadow crawled as I walked -- seen on the town hall's marble)
@@ -2438,7 +2485,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setSpace, space: () => mySpace, setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setSpace, space: () => mySpace, setGoodsPrices, useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

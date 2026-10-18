@@ -98,7 +98,7 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   assert.equal((await R()('/api/island/weed/start', sa, { weedId: far[0] })).data.error, 'TOO_FAR');
   // the town hall: 300P a weed
   // v1.10.84: at the 민원 창구 inside the hall (in at its door, to the counter)
-  const T = require('../public/plaza/island-terrain'); const hallDoor = T.facilityDoor('townhall'); await stand(winner, hallDoor.x, hallDoor.z);
+  const T = require('../public/plaza/island-terrain'); const hallDoor = T.facilityDoor('townhall'); await R()('/api/plaza/leave', winner === sa ? sb : sa, {}); await stand(winner, hallDoor.x, hallDoor.z); // (the other off the island: the way to the hall must not run into them)
   assert.equal((await R()('/api/island/townhall/enter', winner, {})).status, 200);
   const counter = T.roomWorld(T.TOWNHALL_ROOM.desk.lx, T.TOWNHALL_ROOM.desk.lz); await stand(winner, counter.x, counter.z);
   const before = (await R()('/api/donation', winner)).data.balance;

@@ -3,7 +3,7 @@ const { shopper, post, expectNoScriptError } = require('./skin-support');
 
 // v1.10.89 상점·내 정보 분류 (사용자 2026-10-17): name search, 등급·시리즈·보유 chips, 부위 tabs in 내 정보, and the
 // 파츠 미리보기 -- my character with that item on, in 3D from the island's parts. PC and phone.
-test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기', async ({ browser, request }) => {
+test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기', async ({ browser, request, isMobile }) => {
   test.setTimeout(240000); // (a phone profile on CI: about twice the local minute)
   const who = await shopper(browser, request, '분류', 500000, 'male');
   const { page, token } = who;
@@ -12,9 +12,8 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 30000 }).toBe(true);
 
   // 잡화점 on the island (모자·장식 first)
-  await page.evaluate(() => window.PlazaDebug().place('accessories'));
-  await expect(page.locator('#plazaHint')).toContainText('소품 가게');
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await require('./skin-support').intoMall(page, 'accessories', isMobile); // v1.10.92 백화점
+  if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); }
   const shop = page.locator('#skinShopDialog');
   await expect(shop.locator('#skinShopTitle')).toHaveText('소품 가게');
   await expect(shop.locator('.skinCard').first()).toBeVisible(); const all = await shop.locator('.skinCard').count();

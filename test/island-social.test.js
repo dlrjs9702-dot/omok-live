@@ -25,7 +25,10 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
   assert.equal((await req('/api/points/attendance', token, {})).data.granted, false, '기존 일일 중복 지급 방지를 유지한다');
   await req('/api/test/points-credit', token, { amount: 100000 });
   await req('/api/plaza/leave', token, {});
-  const shop = T.facilityDoor('avatar');
+  // v1.10.92 백화점: the 옷가게 is its sector -- in at its door, then at the sector's spot
+  const mallDoor = T.facilityDoor('store'); await req('/api/plaza/state', token, { ...mallDoor, yaw: 0, moving: false });
+  assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
+  const shop = require('../public/plaza/island-store').sectorPoint('avatar');
   await req('/api/plaza/state', token, { ...shop, yaw: 0, moving: false });
   assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_animal_cat_outfit' })).status, 200, '가까운 옷가게에서 기존 구매가 정상 실행된다');
 });

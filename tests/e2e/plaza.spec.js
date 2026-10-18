@@ -105,11 +105,11 @@ test('상점 전환: 이전 목록을 비우고 늦은 응답이 새 상점을 �
       if (first) { firstSeen(); await pending; }
       await route.fulfill({ response, json: data });
     });
-    await page.evaluate(() => window.PlazaDebug().place('shop'));
+    await require('./skin-support').intoMall(page, 'shop'); // v1.10.92: the shops are the 백화점's sectors
     await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
     await page.keyboard.press('Space'); await seen;
     await page.keyboard.press('Escape');
-    await page.evaluate(() => window.PlazaDebug().place('hair'));
+    await require('./skin-support').intoMall(page, 'hair');
     await expect(page.locator('#plazaHint')).toHaveText('SPACE · 미용실');
     await page.keyboard.press('Space');
     await expect(page.locator('#skinShopTitle')).toHaveText('미용실');
@@ -151,7 +151,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await page.keyboard.up('ArrowUp');
 
   // At the shop door: a short hint, and Space opens the skin shop over the square.
-  await page.evaluate(() => window.PlazaDebug().place('shop'));
+  await require('./skin-support').intoMall(page, 'shop'); // v1.10.92: in the 백화점
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
   await page.keyboard.press('Space');
   await expect(page.locator('#skinShopDialog')).toBeVisible();
@@ -166,6 +166,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
   await page.keyboard.down('ArrowDown'); // back to walking right away
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - during.x, now.z - during.z); }, { timeout: 10000 }).toBeGreaterThan(0.2);
   await page.keyboard.up('ArrowDown');
+  await require('./skin-support').outOfMall(page); // (v1.10.92: back out of the 백화점 to the island)
 
   // A click on a facility runs the same action: the board opens the notices in a window, closing puts them back.
   await page.evaluate(() => window.PlazaDebug().place('board'));
@@ -287,7 +288,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   // v1.10.30 상점가 꾸미기 점포 세분화: 옷가게는 의상과 칭호, 미용실은 헤어, 잡화점은 모자·장식만 판다; 장착하면 바로 바뀐다.
   const dialog = page.locator('#skinShopDialog');
   const visit = async (id, name, count) => {
-    await page.evaluate((door) => window.PlazaDebug().place(door), id);
+    await require('./skin-support').intoMall(page, id); // v1.10.92: the shops are the 백화점's sectors
     await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
     await page.keyboard.press('Space');
     await expect(dialog.locator('#skinShopTitle')).toHaveText(name);
@@ -297,7 +298,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await visit('hair', '미용실', 34); // v1.10.74: +17 original hairstyles
   await expect(dialog.locator('.skinCard')).toContainText(['양갈래 머리']);
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('accessories', '소품 가게', 54); // v1.10.74: +16 original and 11 character hats
+  await visit('accessories', '소품 가게', 55); /* v1.10.92 + 포차코 머리장식 */ // v1.10.74: +16 original and 11 character hats
   // v1.10.32: the five accessory slots, a tab each (the hats first)
   await expect(dialog.locator('.skinSlotTabs [role=tab]')).toHaveText(['모자·장식', '망토', '꼬리', '신발', '목걸이']);
   await expect(dialog.locator('.skinCard').filter({ hasText: '왕관' })).toContainText('고급 · 모자·장식');
@@ -310,7 +311,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
   await dialog.locator('.skinCard').filter({ hasText: '왕관' }).getByRole('button', { name: '장착' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look.hat), { timeout: 8000 }).toBe('avatar_hat_4');
   await dialog.locator('#skinShopCloseBtn').click();
-  await visit('avatar', '옷가게', 60); // v1.10.74: +19 original and 11 character outfits
+  await visit('avatar', '옷가게', 61); /* v1.10.92 + 포차코 의상 */ // v1.10.74: +19 original and 11 character outfits
   await expect(dialog.locator('.skinTitle.selected')).toHaveText('천상 바둑');
   await expect(dialog.locator('.skinTitle.selected')).toHaveAttribute('aria-pressed', 'true');
   await expect(dialog.locator('.skinTitle.selected')).toHaveCSS('outline-color', 'rgb(96, 165, 250)');
@@ -335,7 +336,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
   // a walks to the shop door: b sees a's character arrive there.
   // a warp, not place(): a walk-check from the spawn would stop at b when b happens to stand on the straight line (v1.9.6 collision)
-  const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.shop; await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
+  const door = await a.page.evaluate(async () => { const d = window.PlazaDebug().doors.records; /* (v1.10.92: the shops are inside the 백화점) */ await window.PlazaWarp(d.x, d.z); return { x: window.PlazaDebug().x, z: window.PlazaDebug().z }; });
   await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - door.x, o.z - door.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
 
   // v1.10.8: a walks down the harbour walk; on b's screen a moves on evenly -- never backward, never faster than a
@@ -495,15 +496,15 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5);
 
   // 4) B stands right in the shop's door: A still reaches the shop and opens it
-  const shopDoor = await b.page.evaluate(() => window.PlazaDebug().doors.shop);
+  const shopDoor = await b.page.evaluate(() => window.PlazaDebug().doors.records); // (v1.10.92: an island door -- the 전적관's)
   await teleport(b, shopDoor.x, shopDoor.z);
   const door = await me(b);
   await settle(a, bId, door.x, door.z);
   await teleport(a, shopDoor.x + 1.5, shopDoor.z + 1.5); // then walk into the doorway B is standing in
-  await a.page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
+  await a.page.evaluate(() => window.PlazaDebug().place('records'));
+  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
   await a.page.keyboard.press('Space');
-  await expect(a.page.locator('#skinShopDialog')).toBeVisible();
+  await expect(a.page.locator('#plazaDialog')).toBeVisible();
   await a.page.keyboard.press('Escape');
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
@@ -530,7 +531,8 @@ test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 
     expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x - b.uz * (b.w / 2 + 0.5), b.z + b.ux * (b.w / 2 + 0.5)])).toBe(false); // just past its rail: water
   }
   // every facility's entrance is reachable ground
-  for (const [id, door] of Object.entries(start.doors)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
+  const inside = await page.evaluate(() => ['store:exit', ...globalThis.IslandStore.SECTORS.map((s) => s.place)]); // (v1.10.92: the 백화점's own doors are in its room)
+  for (const [id, door] of Object.entries(start.doors)) if (!inside.includes(id)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
   // walking south down the pier stops at its end, over the sea
   const pier = start.pier;
   await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [pier.x, pier.z + pier.half - 3]);
@@ -728,11 +730,11 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.keyboard.press('Escape');
 
   // a window open over the island: no camera keys either
-  await page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
+  await page.evaluate(() => window.PlazaDebug().place('records')); // (v1.10.92: a window of an island facility)
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
   await page.locator('#plazaStage').focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('#skinShopDialog')).toBeVisible();
+  await expect(page.locator('#plazaDialog')).toBeVisible();
   const open = await cam();
   await hold('d', 500); await hold('w', 500); await page.waitForTimeout(200);
   const still = await cam(); expect(Math.abs(still.yaw - open.yaw)).toBeLessThan(0.02); expect(Math.abs(still.pitch - open.pitch)).toBeLessThan(0.02);
@@ -1595,7 +1597,7 @@ async function appearanceShop(browser, request, label, door, name, outfit = fals
   const { page } = a;
   await islandPage(page);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
-  await page.evaluate(id => window.PlazaDebug().place(id), door);
+  await require('./skin-support').intoMall(page, door); // (v1.10.92: in the 백화점)
   await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toBeVisible();

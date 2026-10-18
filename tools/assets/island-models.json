@@ -4547,6 +4547,278 @@
       "lowSrc": "fishdex40:Low/fish_rockfish_low.glb",
       "lowSha256": "f96a071083d007d2396a6c1597cf464b6612496d1d4f092b8c493a6254873c23",
       "precompressed": true
+    },
+    {
+      "out": "store-v1/badge.glb",
+      "src": "store41:High/badge.glb",
+      "sha256": "31c8b2b8ae5d7ed3567a20aeb1ba7f406ed1ef94a53718c85b7cd1f1978e02aa",
+      "lowSrc": "store41:Low/badge_low.glb",
+      "lowSha256": "4ef2173291eb39b97e5c2639fe7ad171c8da9d3b2e2572ca85e907747e0db53c",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bait.glb",
+      "src": "store41:High/bait.glb",
+      "sha256": "b0a32705ce1ceec54c10e57b9d58a046eb21b80be0c8dbd325b5bbbd969a5dbe",
+      "lowSrc": "store41:Low/bait_low.glb",
+      "lowSha256": "6fcdcfa5756161b851ec0e9f41fed1f0fcf2de7d47bbadd95a75153dc3d9dfde",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bait_premium.glb",
+      "src": "store41:High/bait_premium.glb",
+      "sha256": "4fe6510a6079ff611b719b1bfa4313cf432fd60ffd9f8930374749a08be04d96",
+      "lowSrc": "store41:Low/bait_premium_low.glb",
+      "lowSha256": "600189bab79ffe539e89db4b3b3894fa447e6177d141915d855f637cca853fc2",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/balloon.glb",
+      "src": "store41:High/balloon.glb",
+      "sha256": "3855651c461a7f7c88b97ae0d2bd31d10db772d996e801fc17f1f3ca9e4b7c16",
+      "lowSrc": "store41:Low/balloon_low.glb",
+      "lowSha256": "fb51cb76eca66c65dba3d738a2c27bfce0fd2eb49919b377e56087fa17650578",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bouquet.glb",
+      "src": "store41:High/bouquet.glb",
+      "sha256": "74e5cd3e828343c2fcd9e92a652c4bf3f081433165faaf13fc7d1924ede2ed13",
+      "lowSrc": "store41:Low/bouquet_low.glb",
+      "lowSha256": "88cd1b7ee00d872a1faee54df15b95fbd24205e9effd2c6920e16a8380278cc1",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bread.glb",
+      "src": "store41:High/bread.glb",
+      "sha256": "da1411effde17cbed7f756f5e372f2d6ee1ed83bc6b5481585623611226927ed",
+      "lowSrc": "store41:Low/bread_low.glb",
+      "lowSha256": "757b9e87b68cf1963d1d872b6aaa3ce61867ed95c8b195ca684f9b722fd52bc4",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bubbles.glb",
+      "src": "store41:High/bubbles.glb",
+      "sha256": "1c2e8678013cb8674e9ff74f23ea5bb7654602ba46766821a78c48ac1b78a49d",
+      "lowSrc": "store41:Low/bubbles_low.glb",
+      "lowSha256": "74240869ed49b640270218452010694b7cc40cce9ca9a3ff859749f4d7f0ca2b",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/bulb.glb",
+      "src": "store41:High/bulb.glb",
+      "sha256": "f83de4e51d78643ef730576fc83535884e7e46d452fef22424fdc7d893b5c21c",
+      "lowSrc": "store41:Low/bulb_low.glb",
+      "lowSha256": "01f7e27a5259ac62535c1db5a2290fef39b199a2ab85a20d8e2b025037ccddce",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/fertilizer.glb",
+      "src": "store41:High/fertilizer.glb",
+      "sha256": "fc5a8499e5b7373b9cba07e7da17f8aae093b928cd6aa4dfb077d3d04327d77b",
+      "lowSrc": "store41:Low/fertilizer_low.glb",
+      "lowSha256": "dd2fdafae4201c50a85bd1a2c22100916893a0ad6a4d35e0801d1cf70ec09e08",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/firework.glb",
+      "src": "store41:High/firework.glb",
+      "sha256": "ec136a77646c622c92e7a0d1517bd88add4f6abf48fc16a7bb9848c485cebaf8",
+      "lowSrc": "store41:Low/firework_low.glb",
+      "lowSha256": "d1792a0d7d34c2b4e33e91a7083427416fbb836264960986abce6f7fc885ae0c",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/frame.glb",
+      "src": "store41:High/frame.glb",
+      "sha256": "97510b8d3d75f9a0cc2e6ea61ca72b779e6a1585a21310ee8730ea11bfc8baa5",
+      "lowSrc": "store41:Low/frame_low.glb",
+      "lowSha256": "2887236cab6a666aa988a3c3dbcf6a62880c6a7a229fdc0852c41418ef92e5c4",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/gift_wrap.glb",
+      "src": "store41:High/gift_wrap.glb",
+      "sha256": "5dba095cc7f674feab34bc9517c6e0a47b9cba9e68f4e556f4f9863c12167912",
+      "lowSrc": "store41:Low/gift_wrap_low.glb",
+      "lowSha256": "f612dd1bf7e651e8714c5ae5e080a00117a1e11a6226bf0babbc3951c5e1692b",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/guitar_string.glb",
+      "src": "store41:High/guitar_string.glb",
+      "sha256": "7107ab84e8c3c31e5116286b7557e1fca769120144ffe3ec39ac72db001b834d",
+      "lowSrc": "store41:Low/guitar_string_low.glb",
+      "lowSha256": "f7d9354ed12d5b8de58ce87f507d3db0c3a5a0ea28317160f2046e43482b8d7c",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/letter_paper.glb",
+      "src": "store41:High/letter_paper.glb",
+      "sha256": "0baf0e533bc36b5d8c48f37d949118aa984a8cf41903deeae53bafbcec13a0d4",
+      "lowSrc": "store41:Low/letter_paper_low.glb",
+      "lowSha256": "561b70e3d7ec6cacc61377a63320f2e38ad8f37c38930c2049e4e7c29e140311",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/milk.glb",
+      "src": "store41:High/milk.glb",
+      "sha256": "206c07b25cf7702aec4cd72b5edfb5ddc9d3b1b7ec3b15f4b75e6534908d75fa",
+      "lowSrc": "store41:Low/milk_low.glb",
+      "lowSha256": "a541c656a947a869fe863084734544a2cb8edc45c62adefa2f2130d713e82b90",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/nail_box.glb",
+      "src": "store41:High/nail_box.glb",
+      "sha256": "5c3cddd8041f34d1b1727f1a1d057654c36e79ea60294b410adcf6481f6d53a8",
+      "lowSrc": "store41:Low/nail_box_low.glb",
+      "lowSha256": "25b0827079aead0a32ae1353ae1d6a75b0ecf3826e6be86f79364960f03ae41b",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_storekeeper.glb",
+      "src": "store41:High/npc_storekeeper.glb",
+      "sha256": "8ce0901476fc1946d74d2b20cd93ec708e83b388e8add0484e9dbc3b22cd9893",
+      "lowSrc": "store41:Low/npc_storekeeper_low.glb",
+      "lowSha256": "fbf3fac263d934e0a30d46443a6aa5b237f61028702ad6236efcab57b14cbe94",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/paint.glb",
+      "src": "store41:High/paint.glb",
+      "sha256": "fb8ab8f65091eca50238fa6d74436898c448ac962fcb1865935c0e1b5c4040f4",
+      "lowSrc": "store41:Low/paint_low.glb",
+      "lowSha256": "ca80da0cc9e4672024b2193da287109ffc46e07418328a471146aacdded7baac",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/sapling.glb",
+      "src": "store41:High/sapling.glb",
+      "sha256": "09829af5c41ef424c0d863a2d6e737fdc4b32dd9d6904f3788242b6fd5f0ad8b",
+      "lowSrc": "store41:Low/sapling_low.glb",
+      "lowSha256": "ca0f1e9237d6c77e304203e60ea7409321702d6dbf654e41a3dc84a44c3ddc6e",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/seed_flower_pink.glb",
+      "src": "store41:High/seed_flower_pink.glb",
+      "sha256": "9051d4f86c31f05aec4401c66727738d70fe9a13afd6884e3ee0b59d7aad990f",
+      "lowSrc": "store41:Low/seed_flower_pink_low.glb",
+      "lowSha256": "a0ca8e9880f01c8e71d191ef6c7019f0095ad539bf941aef97caa0af79298e2d",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/seed_flower_purple.glb",
+      "src": "store41:High/seed_flower_purple.glb",
+      "sha256": "ae625876a47afab5b628df2ca70201479d3a8588eb1f1dc739a36260d5d1760c",
+      "lowSrc": "store41:Low/seed_flower_purple_low.glb",
+      "lowSha256": "45398d35e66fbed2153152db43c5db1299a15aa4db48c434165e6d5dbfcdd15a",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/seed_flower_red.glb",
+      "src": "store41:High/seed_flower_red.glb",
+      "sha256": "4ace845d131ed6072201b24eaa68f2779d3d56695f21bac932dbe49931411252",
+      "lowSrc": "store41:Low/seed_flower_red_low.glb",
+      "lowSha256": "eb76edbf17b4dc4b8367514d8c7359f9d2df799daae70a46ed62d60f2460e8c9",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/seed_flower_white.glb",
+      "src": "store41:High/seed_flower_white.glb",
+      "sha256": "490fea02d9f86585cdf4c37b71ba0d366c38ebc44bd623cf8e0a53049e202d09",
+      "lowSrc": "store41:Low/seed_flower_white_low.glb",
+      "lowSha256": "15ec7d0a30c879d8131db7cde4993e7ac26fa2738c9f687faa6ea47efb469e71",
+      "precompressed": true
+    },
+    {
+      "out": "store-v1/seed_flower_yellow.glb",
+      "src": "store41:High/seed_flower_yellow.glb",
+      "sha256": "2dba9f684314603026516116538c1f5c3742dbc0cec50efc1837068b74499021",
+      "lowSrc": "store41:Low/seed_flower_yellow_low.glb",
+      "lowSha256": "527c8082994e6ceef09a1a17f732c2c354c907d0b170bbec2eb49461b6954c58",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pochacco.glb",
+      "src": "pochacco42:High/ip-characters/pochacco.glb",
+      "sha256": "07ae4ee0dc5d8194d8484d8579ee564c3dbe3def14bc9fe33e2d5d0a7d02a6ac",
+      "lowSrc": "pochacco42:Low/ip-characters/pochacco_low.glb",
+      "lowSha256": "f4609b85049b789ed6dab9fc75edf7c9e72caa66aed78525ef830d2f5edc7d07",
+      "precompressed": true
+    },
+    {
+      "out": "characters/ip-characters/pochacco_current.glb",
+      "src": "pochacco42:High/ip-characters/pochacco_current.glb",
+      "sha256": "ebee39a1610bd2e99fb5c4237934482bb7a305e1d948db29a9dbf30a2d9734cd",
+      "lowSrc": "pochacco42:Low/ip-characters/pochacco_current_low.glb",
+      "lowSha256": "233b29a099dfa1e60acddcbc8cf76de47c17ea8938bc9d8397bb00500c543454",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_body.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_body.glb",
+      "sha256": "29efb6617b599b6217170af4aca4ec9b3be2a4892627c4500af20bb0b534efbd",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_body_low.glb",
+      "lowSha256": "51ba7a889d4207bcbd364b57a08bd92c0c77fa5327be0ddefb65afd2cb177db9",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_hat.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_hat.glb",
+      "sha256": "796de15fb8ba34d5a457e55dc8682e1a5f08ba00d36e2c588e015c8d15dbd600",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_hat_low.glb",
+      "lowSha256": "1fc115fe4f80070de34bd4c1bf8a9f085d5180c5e2ad513f61ed021b90e0dcc3",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_necklace.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_necklace.glb",
+      "sha256": "fcccbdd632bbd9364a22ab90e1b8e1266098d28437fc343502b405db84ee5e3a",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_necklace_low.glb",
+      "lowSha256": "757b30767795e51ffc7c187c8a70d75303fa10b60aa74d277e79109a69a2d38f",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_outfit.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_outfit.glb",
+      "sha256": "e5447a25e3ff1b27c4db1cb106e21ddd03e431f35c13f693bdc423df514d0ec6",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_outfit_low.glb",
+      "lowSha256": "7966f26c47ec01102859fb260b501a260fb54feef922fcdeaaeb25feeba80957",
+      "precompressed": true
+    },
+    {
+      "out": "characters/wear-ip/pochacco_tail.glb",
+      "src": "pochacco42:High/wear-ip/pochacco_tail.glb",
+      "sha256": "1b710d2e4dd5408d425679a12eeebeb53de13825933e0aa30261131e1eb9602e",
+      "lowSrc": "pochacco42:Low/wear-ip/pochacco_tail_low.glb",
+      "lowSha256": "7fa896cfbbfb488b53c0514c67583fde00c234c86a0b1b6d1a223e6255f9d2b2",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_transformer.glb",
+      "src": "pochacco42:High/npc_transformer.glb",
+      "sha256": "7e69160a1cb04c024117f65f8aad1bd8b226a26416c74dc9c742abf72f601898",
+      "lowSrc": "pochacco42:Low/npc_transformer_low.glb",
+      "lowSha256": "b8983b763286fb51cc30d1a7d561eb30660a49155b1fabc8f36d5952f05c8d3c",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v1/mall_exterior.glb",
+      "src": "mall43:High/mall_exterior.glb",
+      "sha256": "e99ae32d2456e0dce414d356d7a0fd3d6bd0702a7558297270e043555c977355",
+      "lowSrc": "mall43:Low/mall_exterior_low.glb",
+      "lowSha256": "514552e0fa9b5c40c4d78eeacc4ef7117cc9e75e0cd5e789b6c01be2aaec186c",
+      "precompressed": true
+    },
+    {
+      "out": "mall-v1/mall_interior.glb",
+      "src": "mall43:High/mall_interior.glb",
+      "sha256": "802bf791729cdd63759782196a4bf686ccbea691008dc2f6a32dee0fd1affe1d",
+      "lowSrc": "mall43:Low/mall_interior_low.glb",
+      "lowSha256": "b8892534a1e1a116259eaf5ce7f7602f3b3e626e4f99b1b210b9ee4423db51f7",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -4571,6 +4843,9 @@
     "motion36": "36. Game Island expressive motion repair 2026-10-15/delivery",
     "farmer": "26. Game Island farmer quest 2026-10-12",
     "weed37": "37. Game Island weed pull motion 2026-10-17",
-    "fishdex40": "40. Game Island fishing dex 13 2026-10-18"
+    "fishdex40": "40. Game Island fishing dex 13 2026-10-18",
+    "store41": "41. Game Island general store 2026-10-18",
+    "pochacco42": "42. Game Island pochacco and transform shop 2026-10-18",
+    "mall43": "43. Game Island department store 2026-10-18"
   }
 }

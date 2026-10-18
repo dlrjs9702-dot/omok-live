@@ -232,12 +232,12 @@ async function stillPlays(page) {
   await page.keyboard.down('ArrowUp');
   await expect.poll(async () => before.z - (await debug(page)).z, { timeout: 10000 }).toBeGreaterThan(0.3);
   await page.keyboard.up('ArrowUp');
-  await page.evaluate(() => window.PlazaDebug().place('shop'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 게임 스킨 상점');
+  await page.evaluate(() => window.PlazaDebug().place('records')); // (v1.10.92: the shops are inside the 백화점 now)
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 전적관');
   await page.keyboard.press('Space');
-  await expect(page.locator('#skinShopDialog')).toBeVisible();
+  await expect(page.locator('#plazaDialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('#skinShopDialog')).toBeHidden();
+  await expect(page.locator('#plazaDialog')).toBeHidden();
 }
 
 let proceduralDoors = null;
@@ -397,13 +397,13 @@ test('실패·비활성화: 없는 파일·손상된 파일·꺼진 등록은 �
   const a = await island(browser, request, '에셋실패', {
     __only: true,
     'facility.townhall': { url: '/assets/island/__e2e/missing.glb' },
-    'facility.shop': { url: '/assets/island/__e2e/broken.glb' },
+    'facility.store': { url: '/assets/island/__e2e/broken.glb' }, // (v1.10.92: the 백화점's building)
     'facility.records': { url: BOX, enabled: false },
     'cottage': { url: BOX },
   });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.shown, { timeout: 10000 })
-    .toMatchObject({ 'facility.townhall': 'procedural', 'facility.shop': 'procedural', cottage: 'model' });
+    .toMatchObject({ 'facility.townhall': 'procedural', 'facility.store': 'procedural', cottage: 'model' });
   const files = (await debug(page)).assets.files;
   expect(files[BOX]).toBe('loaded');
   expect(files['/assets/island/__e2e/missing.glb']).toMatch(/^failed/);
@@ -571,7 +571,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const { page } = a;
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
-  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish')); // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
+  const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -627,6 +627,8 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   const transformations = require('../../tools/assets/transformation-choices-import.json');
   const transformationPaths = transformations.files.map(file => '/assets/island/' + file.out);
   expect(new Set(transformationPaths).size).toBe(transformations.GLBs);
+  // v1.10.92 포차코 (assets 42): imported with the other models (island-models.json), in the same optional group
+  for (const e of require('../../tools/assets/island-models.json').files.filter((e) => e.out.startsWith('characters/ip-characters/pochacco'))) transformationPaths.push('/assets/island/' + e.out, '/assets/island/' + e.out.replace(/\.glb$/, '_low.glb'));
   const optionalTransformations = islandAssets.filter(asset => asset.group === 'island.transformations');
   expect(optionalTransformations.map(asset => asset.url).sort()).toEqual(transformationPaths.slice().sort());
   for (const asset of optionalTransformations) {

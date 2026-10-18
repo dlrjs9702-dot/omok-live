@@ -45,14 +45,8 @@
     games: { x: 0, z: -58, face: [0, -40], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b },
     records: { x: -20, z: -48, face: [-6, -42], kind: 'house', wall: 0xf3e2ff, roof: 0x9b7fd6 },
     missions: { x: 13, z: -46, face: [0, -42], kind: 'board', tint: 0x8fd18a },
-    shop: { x: 42, z: -8, face: [42, 4], kind: 'shop', wall: 0xd9f0ff, roof: 0x6aa9e8 }, // 게임 스킨 상점
-    avatar: { x: 55, z: -8, face: [55, 4], kind: 'shop', wall: 0xffe4ef, roof: 0xe87a9e }, // v1.10.30 옷가게 (was 캐릭터 스킨 상점)
     // v1.10.30 상점가 꾸미기 점포 세분화: across the street from the shops, facing them (the reserved lot is the 잡화점)
-    faces: { x: 42.5, z: 11, face: [42.5, 0], kind: 'shop', wall: 0xeaf6f2, roof: 0x5fa39a }, // 성형외과
-    hair: { x: 49, z: 11, face: [49, 0], kind: 'shop', wall: 0xfff1e0, roof: 0xd98b5f }, // 미용실
-    accessories: { x: 55.5, z: 11, face: [55.5, 0], kind: 'shop', wall: 0xfdf3d7, roof: 0xc9a14a }, // 잡화점
-    dye: { x: 62, z: 10, face: [62, 0], kind: 'stall' }, // 염색사
-    transform: { x: 28, z: 10, face: [28, 0], kind: 'tfbooth' }, // v1.10.91 변신 의상실 (사용자 2026-10-18: transformations sold apart)
+    store: { x: 48, z: -15, face: [48, 0], kind: 'mall', wall: 0xf3e6c8, roof: 0xd9734f }, // v1.10.92 백화점 (사용자 2026-10-18, assets 43): the shop street's shops in one building, its sectors inside
     board: { x: -10, z: -6, face: [0, 0], kind: 'board' },
     attendance: { x: 10, z: -6, face: [0, 0], kind: 'npc' },
     map: { x: -11, z: 6, face: [0, 2], kind: 'mapboard' },
@@ -66,7 +60,7 @@
   };
   function facilityDoor(id) {
     const s = SPOTS[id]; if (!s) return null;
-    const depth = { hall: 10, tower: 6.4, townhall: 12.6, shop: 2.7, house: 2.7, office: 2.7, board: .3, donation: .9, mapboard: .3, gate: 1.2, gazebo: 2.4, npc: .9, stall: 1.3, desk: 1.2, tfbooth: 1.2 }[s.kind];
+    const depth = { hall: 10, tower: 6.4, townhall: 12.6, shop: 2.7, house: 2.7, office: 2.7, board: .3, donation: .9, mapboard: .3, gate: 1.2, gazebo: 2.4, npc: .9, stall: 1.3, desk: 1.2, mall: 14 }[s.kind];
     if (depth === undefined) return null;
     const distance = s.kind === 'townhall' ? 8.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
     const dx = s.face[0] - s.x; const dz = s.face[1] - s.z; const length = Math.hypot(dx, dz) || 1;

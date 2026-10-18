@@ -115,3 +115,29 @@ async function expectNoScriptError(page) {
   await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
 }
 module.exports.expectNoScriptError = expectNoScriptError;
+// v1.10.92 백화점: the shop street's shops are its sectors -- in through its door (SPACE, or a tap on the hint on a
+// phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing
+async function intoMall(page, place = null, isMobile = false) {
+  const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
+  if (await page.evaluate(() => window.PlazaDebug().space) !== 'store') {
+    await page.evaluate(() => window.PlazaDebug().place('store'));
+    await expect(page.locator('#plazaHint')).toContainText('백화점 들어가기', { timeout: 15000 });
+    await press();
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('store');
+  }
+  if (place) {
+    // (the walk-in may still place me at the door after a first teleport on a slow runner: again until the prompt is the sector's)
+    const name = await page.evaluate((place) => window.PlazaDebug().doors[place].name, place);
+    await expect.poll(async () => { await page.evaluate((place) => { const d = window.PlazaDebug(); const door = d.doors[place]; d.teleport(door.x, door.z); }, place); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000, intervals: [200] }).toContain(name);
+  }
+  return press;
+}
+module.exports.intoMall = intoMall;
+// v1.10.92: out of the 백화점 again (its door, SPACE), back on the island at its door
+async function outOfMall(page) {
+  await page.evaluate(() => { const d = window.PlazaDebug(); const door = d.doors['store:exit'] || null; const w = door || window.IslandStore.world(0, -9.1); d.teleport(w.x, w.z); });
+  await expect(page.locator('#plazaHint')).toContainText('나가기', { timeout: 10000 });
+  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('island');
+}
+module.exports.outOfMall = outOfMall;
