@@ -2158,3 +2158,10 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
 @media(max-width:640px){.halliTable .halliCards{column-gap:5.6rem}.halliTable .halliBell{width:5rem;height:5rem}}
 /* A3 G4 한판마당 PC 넓게: the card games and puzzles on a wide mouse screen */
 @media(min-width:900px) and (pointer:fine){.reflexFrame.wideFrame{width:min(100%,1200px)}}
+/* A3 G2-5 맞고 결과 창: over the table's middle, one line per part, then the way on */
+.gostopPanel{position:relative}
+body.roomMode>.gostopResult:not(.hidden):not(.closed){position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.gostopResult.closed{display:none}
+.gostopResult .gostopSettlementFlow{display:flex;flex-wrap:wrap;gap:6px}
+.gostopResultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+body:not(.roomMode)>.gostopResult{display:none}

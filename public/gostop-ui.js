@@ -388,13 +388,14 @@
   function renderResult(state) {
     const g = state.game;
     const box = $('gostopResult');
+    if (box.parentElement !== document.body) document.body.append(box); // (A3 G2-5: a window over the screen -- the table's frame has a transform)
     box.replaceChildren();
     const r = g.result;
     box.classList.remove('staged');
     if (!r || !['finished', 'draw'].includes(g.status)) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     // v1.7.4: the first time this result is shown (and once it is settled), its lines appear in order.
-    const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`;
+    const stageKey = `${g.round}:${r.kind}:${g.settlement?.status || ''}`; box.dataset.key = `${g.round}:${r.kind}`;
     if (stageKey !== stagedResultKey && g.settlement?.status === 'done') {
       const winSkin = r.kind === 'win' ? skinOf(state, r.winner) : null;
       if (winSkin?.win && stageKey !== winPlayed) requestAnimationFrame(() => SKN().h.playFx($('gostopPanel'), winSkin.win, winSkin.legend ? 2400 : 1800, 10));
@@ -415,7 +416,7 @@
       box.append(title);
       const note = document.createElement('p'); note.textContent = '포인트 이동 없음 · 참가자가 같으면 배수가 이어집니다.';
       box.append(note);
-      return;
+      resultButtons(box); return;
     }
     if (r.kind === 'forfeit') {
       title.textContent = `${r.forfeiting.map(seat => label(state, seat)).join(', ')} ${r.reason === 'resign' ? '기권' : '응답 없음'} · ${r.score}점 × 점당 ${r.pointsPerScore}P 기준`;
@@ -428,7 +429,7 @@
         box.append(line);
       }
       if (!settled) { const wait = document.createElement('small'); wait.textContent = '포인트 정산 처리 중…'; box.append(wait); }
-      return;
+      resultButtons(box); return;
     }
     const reasonText = r.reason === 'chongtong' ? '총통' : r.reason === 'samppeok' ? '3뻑' : '스톱';
     title.textContent = `${label(state, r.winner)} 승리 · ${reasonText}`;
@@ -443,7 +444,7 @@
       flow.append(el);
     };
     chip(r.instant ? `${reasonText} ${r.base}점 고정` : `기본 ${r.base}점`);
-    if (r.items?.length && !r.instant) chip(r.items.map(item => `${ITEM_LABEL[item.key] || item.key} ${item.points}점`).join(' · '), ' muted');
+    if (r.items?.length && !r.instant) for (const item of r.items) chip(`${ITEM_LABEL[item.key] || item.key} ${item.points}점`, ' muted'); // (A3 G2-5: one line per part)
     if (r.goCount) chip(`${r.goCount}고 +${r.goCount}점`);
     const commonFactors = orderedFactors(r.losers?.[0]?.factors).filter(item => !BAK_KEYS.has(item.key));
     for (const item of commonFactors) chip(factorText(item));
@@ -477,6 +478,18 @@
       ? `${label(state, r.winner)} → +${fmt(credited)}${burned ? ` (이동 ${fmt(total)} 중 ${g.settlement.burnPercent || 10}% ${fmt(burned)} 소각)` : ''}${balanceNote(r.winner)}`
       : '포인트 정산 처리 중…';
     box.append(win);
+    resultButtons(box);
+  }
+  // A3 G2-5 결과 창: the result is a window over the table with the way on; [판 보기] closes it to look at the last table
+  let resultClosedKey = null;
+  function resultButtons(box) {
+    const key = box.dataset.key || ''; box.classList.toggle('closed', resultClosedKey === key);
+    const row = document.createElement('div'); row.className = 'gostopResultActions';
+    const b = (text, cls, fn) => { const el = document.createElement('button'); el.type = 'button'; el.className = cls; el.textContent = text; el.addEventListener('click', fn); row.append(el); };
+    b('한 판 더', 'primary', () => document.getElementById('nextRoundBtn')?.click());
+    b('게임관으로', 'ghost', () => document.getElementById('leaveRoomBtn')?.click());
+    b('판 보기', 'ghost', () => { resultClosedKey = key; box.classList.add('closed'); });
+    box.append(row);
   }
 
   function renderSetup(state) {
