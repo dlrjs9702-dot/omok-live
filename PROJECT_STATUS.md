@@ -17,7 +17,7 @@
 
 - 지시: 구현 순서 A3 나머지(작업서 gamehall-fix-spec-20261018.md)와 A4 「함께하는 섬 — 에셋 없이 되는 것」의 날씨·별똥별.
 - 날씨(`lib/island-weather.js`): 서울 하루의 3시간 단위마다 맑음·비(약 1/4, 시드 고정 — 서버마다 같음), 비 갠 뒤 30분 무지개. `/api/island/weather`, 관리자 고정 `/api/admin/island/weather`(worldValue `weather`, `islandWeather` 방송). 화면: 비 줄기(화질 단계별 200/450/900)·겨울 구역은 눈(`seasonAt`)·비 올 때 하늘·조명 어둡게·무지개는 시야 위 띠(카메라가 아래를 봐 하늘이 화면에 없음). 비 오는 동안 낚시는 한 번 더 뽑아 비싼 쪽(`where.rain`).
-- 별똥별(`lib/island-stars.js`): 서울 밤(20~4시) 30분마다 45%로 한 개, 시각은 시드 고정. `/api/island/stars`(지금·다음 별, 어제 소원 선물 300P 지급 — `claimEvent star_gift_<slot>` 1회), `/api/island/stars/wish`(떨어지는 12초 안 1회, 계정의 `stars` 문서에 기록). 우체통(B 47)이 생기면 선물을 그쪽으로.
+- 별똥별(`lib/island-stars.js`): 서울 밤(20~4시) 30분마다 45%로 한 개, 시각은 시드 고정. `/api/island/stars`(지금·다음 별, 어제 소원 선물 300P 지급 — `claimEvent star_gift_<slot>` 1회), `/api/island/stars/wish`(떨어지는 20초 안 1회, 계정의 `stars` 문서에 기록). 우체통(B 47)이 생기면 선물을 그쪽으로.
 - A3 2차: 맞고 결과 창(body로 옮긴 가운데 창, 항목 한 줄씩, [한 판 더]·[게임관으로]·[판 보기]), 따 온 패 「n장부터」(엔진 `SCORE_FROM`·`PIBAK_MAX`를 공개 상태로)·단·고도리 n/3·피박·광박 위험, 이름표 얼굴(`publicPlayer` face·title — 피부·머리색 요약), 오목 AI 연습에 장착한 오목 돌 스킨(`/api/skins`), 카드놀이 공용 탁자(초록 펠트+나무 테두리)·도둑잡기 같은 앞면·파란 뒷면·부채꼴 상대 패, 다빈치 차례 시간은 고리로.
 - 남은 A4: 주말 섬 대회. A5: 메신저 SSE, 기념사진 2버튼, 근거리·같은 열차 채팅, 통합 UI, 관리자 나머지.
 - 검증: e2e island-weather·island-stars(관리자 고정·겨울 눈·무지개, 별 시계 이동 시험 훅)·gostop-late-layout(결과 창)·reflex(AI 스킨)·skins-cards, 단위 gostop 60건·theme-light. Codex 검토 대기(사용량 한도, 18:19 KST 해제 뒤). 실제 휴대폰·두 기기 미검증.
