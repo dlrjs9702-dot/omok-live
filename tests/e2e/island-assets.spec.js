@@ -838,9 +838,9 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   }
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
-  await page.evaluate(() => window.PlazaDebug().halloween.set(true));
+  await page.evaluate(() => window.PlazaDebug().halloween.set(true)); // (A5: the decorations no longer bring the night -- set below)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(true);
-  expect(await page.evaluate(() => window.PlazaDebug().halloween.background())).toBe(0x0d1630);
+  await expect.poll(() => page.evaluate(() => { const D = window.PlazaDebug(); D.setTime('night'); D.setWeather('clear'); return D.halloween.background(); }), { timeout: 15000 }).toBe(0x0d1630); // (again until the page's own first time and weather reads are in)
   expect(await page.evaluate(() => window.PlazaDebug().halloween.fountain())).toBe(false);
   await expect.poll(() => page.evaluate(() => { const s = window.PlazaDebug().assets.shown; return [s['landmark.halloween.pedestal'], s['landmark.halloween.lantern']]; }), { timeout: 90000 }).toEqual(['model', 'model']);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.glows()), { timeout: 30000 }).toBeGreaterThan(1); // the model's own glow joined
@@ -869,7 +869,7 @@ test('10월 할로윈: 밤 조명·창문 불빛, 분수 자리에 단상과 잭
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().map((q) => q.id)), { timeout: 30000 }).toContain('questkid'); // the costumed kid's request (October)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.outfit_hw_witch', 'wear.hat_hw_witch', 'wear.cape_hw_moon']));
   // the rest of the year: the day and the fountain back
-  await page.evaluate(() => window.PlazaDebug().halloween.set(false));
+  await page.evaluate(() => { window.PlazaDebug().halloween.set(false); window.PlazaDebug().setTime('day'); });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.on()), { timeout: 15000 }).toBe(false);
   expect(await page.evaluate(() => [window.PlazaDebug().halloween.fountain(), window.PlazaDebug().halloween.background(), window.PlazaDebug().halloween.glass().lit, window.PlazaDebug().halloween.decor().shown])).toEqual([true, 0xbfe6ff, 0, false]);
   await expectNoScriptError(page);

@@ -21,9 +21,9 @@ test('섬 시간대: 관리자가 밤·낮으로 정하면 섬이 바로 따라 
     expect(await page.evaluate(() => window.PlazaDebug().halloween.on())).toBe(true);
     expect((await set('day')).status()).toBe(200);
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().time().phase), { timeout: 15000 }).toBe('day');
-    expect(await page.evaluate(() => [window.PlazaDebug().halloween.on(), window.PlazaDebug().halloween.background()])).toEqual([false, 0xbfe6ff]);
+    await expect.poll(() => page.evaluate(() => { window.PlazaDebug().setWeather('clear'); return [window.PlazaDebug().halloween.on(), window.PlazaDebug().halloween.background()]; }), { timeout: 15000 }).toEqual([false, 0xbfe6ff]); // (a rainy block dims the sky)
     expect((await set('evening')).status()).toBe(200);
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().halloween.background()), { timeout: 15000 }).toBe(0xf29a73);
+    await expect.poll(() => page.evaluate(() => { window.PlazaDebug().setWeather('clear'); return window.PlazaDebug().halloween.background(); }), { timeout: 15000 }).toBe(0xf29a73);
   } finally { await set('auto'); }
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().time().mode), { timeout: 15000 }).toBe('auto');
   await expectNoScriptError(page);

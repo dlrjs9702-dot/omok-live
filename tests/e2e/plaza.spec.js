@@ -824,8 +824,8 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   expect((await post(request, '/api/test/donation/settle', null, { reopen: true })).status).toBe(200);
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const aId = await idOf(a);
-  for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]);
-  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes)).toEqual([2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st
+  for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues.filter((s) => s.rank)), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]); // (a weekend contest winner may stand too)
+  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual([2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
