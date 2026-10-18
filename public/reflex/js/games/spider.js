@@ -49,7 +49,7 @@ export default {
   },
   layout() {
     const gap = E.W < 400 ? 3 : 5;
-    T.cw = Math.min(64, (E.W - 12 - gap * 9) / 10); T.ch = T.cw * 1.4;
+    T.cw = Math.min(E.W > 900 ? Math.min(100, (E.bottom - E.top) / 7) : 64, (E.W - 12 - gap * 9) / 10); /* (A3 G4) */ T.ch = T.cw * 1.4;
     const { cw, ch } = T, x0 = (E.W - (cw * 10 + gap * 9)) / 2;
     s.barY = E.bottom - ch - 4;
     for (let i = 0; i < 10; i++) { const p = T.get('t' + i); p.x = x0 + i * (cw + gap); p.y = E.top + 4; p.maxH = s.barY - 10 - p.y; }

@@ -42,7 +42,7 @@ export default {
   },
   layout() {
     const gap = E.W < 400 ? 5 : 8;
-    T.cw = Math.min(80, (E.W - 12 - gap * 6) / 7); T.ch = T.cw * 1.4;
+    T.cw = Math.min(E.W > 900 ? Math.min(124, (E.bottom - E.top) / 6.2) : 80, (E.W - 12 - gap * 6) / 7); /* (A3 G4: bigger on a wide PC frame) */ T.ch = T.cw * 1.4;
     const { cw, ch } = T, x0 = (E.W - (cw * 7 + gap * 6)) / 2, col = (i) => x0 + i * (cw + gap), y0 = E.top + 4;
     T.get('stock').x = col(0); T.get('stock').y = y0;
     T.get('waste').x = col(1); T.get('waste').y = y0;

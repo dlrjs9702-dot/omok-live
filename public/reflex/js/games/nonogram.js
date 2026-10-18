@@ -40,7 +40,7 @@ export default {
     s.cell = cell; s.rw = rowLen * cell * 0.62; s.ch = colLen * cell * 0.58;
     const total = s.rw + s.w * cell;
     s.gx = Math.round((E.W - total) / 2 + s.rw); s.gy = Math.round(top + s.ch);
-    const by = s.gy + s.h * cell + 12, bw = Math.min(E.W - 16, 520), bx = (E.W - bw) / 2, gap = 6;
+    const by = s.gy + s.h * cell + 12, bw = Math.min(E.W - 16, E.W > 900 ? 820 : 520), bx = (E.W - bw) / 2, gap = 6;
     s.modeBtn = { x: bx, y: by, w: bw * 0.44, h: 44 };
     s.undoBtn = { x: bx + bw * 0.44 + gap, y: by, w: bw * 0.26 - gap, h: 44 };
     s.hintBtn = { x: bx + bw * 0.7 + gap, y: by, w: bw * 0.3 - gap, h: 44 };

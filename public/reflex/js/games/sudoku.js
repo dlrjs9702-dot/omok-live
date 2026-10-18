@@ -33,7 +33,7 @@ export default {
     });
   },
   layout() {
-    const top = E.top + 4, nw = Math.min(E.W - 16, 520), avail = E.bottom - top - (12 + 54 + 10 + 44 + 6);
+    const top = E.top + 4, nw = Math.min(E.W - 16, E.W > 900 ? 820 : 520) /* (A3 G4) */, avail = E.bottom - top - (12 + 54 + 10 + 44 + 6);
     const size = Math.floor(Math.max(180, Math.min(nw, avail)) / 9) * 9;
     s.cell = size / 9; s.size = size; s.bx = Math.round((E.W - size) / 2); s.by = top;
     const nx = (E.W - nw) / 2, ny = top + size + 12, gap = 4, bw = (nw - gap * 8) / 9;

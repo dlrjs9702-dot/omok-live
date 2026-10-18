@@ -2156,3 +2156,5 @@ body.roomPlaying .gostopFelt .gostopDecisionPanel{position:absolute;left:50%;top
 .halliTable .halliCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:7.6rem;row-gap:10px;align-items:center}
 .halliTable .halliBell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3}
 @media(max-width:640px){.halliTable .halliCards{column-gap:5.6rem}.halliTable .halliBell{width:5rem;height:5rem}}
+/* A3 G4 한판마당 PC 넓게: the card games and puzzles on a wide mouse screen */
+@media(min-width:900px) and (pointer:fine){.reflexFrame.wideFrame{width:min(100%,1200px)}}

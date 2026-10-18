@@ -57,7 +57,7 @@ export default {
   },
   layout() {
     const gap = E.W < 400 ? 4 : 7;
-    T.cw = Math.min(76, (E.W - 12 - gap * 7) / 8); T.ch = T.cw * 1.4;
+    T.cw = Math.min(E.W > 900 ? Math.min(118, (E.bottom - E.top) / 6.6) : 76, (E.W - 12 - gap * 7) / 8); /* (A3 G4) */ T.ch = T.cw * 1.4;
     const { cw, ch } = T, x0 = (E.W - (cw * 8 + gap * 7)) / 2, col = (i) => x0 + i * (cw + gap), y0 = E.top + 4;
     this.kind('cell').forEach((p, i) => Object.assign(p, { x: col(i), y: y0 }));
     for (let i = 0; i < 4; i++) Object.assign(T.get('f' + i), { x: col(4 + i), y: y0 });
