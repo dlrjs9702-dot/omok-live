@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2457,6 +2457,14 @@
   // v1.10.80 농부 밭: the week's shared field (stage, helpers' names) -- asked while the island is up
   let islandTimeSeq = 0; // (a change pushed meanwhile wins over a slower read)
   function refreshIslandTime() { const seq = ++islandTimeSeq; api('/api/island/time').then((d) => { if (seq !== islandTimeSeq) return; plaza.controller?.setTimeMode?.(d.mode); const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } // v1.10.90
+  // A4 날씨: the server's weather for everyone; asked on entering the island, pushed when the administrator holds it, and
+  // asked again when its block ends
+  let weatherTimer = null;
+  function showWeather(d) {
+    plaza.controller?.setWeather?.(d.kind); const sel = byId('islandWeatherSelect'); if (sel && d.mode) sel.value = d.mode;
+    clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
+  }
+  function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
   // v1.10.91 경제 값 관리: the table by group (the default beside each), a confirm listing the changes, and the history
   // with a 되돌리기 for each change (back to the value before it)
   let economyNow = null;
@@ -2493,6 +2501,10 @@
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  byId('islandWeatherForm')?.addEventListener('submit', async (event) => { // A4 관리자: 날씨
+    event.preventDefault(); const mode = byId('islandWeatherSelect').value;
+    try { await api('/api/admin/island/weather', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 날씨: ${byId('islandWeatherSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
+  });
   byId('islandTimeForm')?.addEventListener('submit', async (event) => { // v1.10.90 관리자: 섬 시간대
     event.preventDefault(); const mode = byId('islandTimeSelect').value;
     try { await api('/api/admin/island/time', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 시간대: ${byId('islandTimeSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
@@ -5432,6 +5444,7 @@
     if (event === 'islandEvent') { forgetIslandEvents(parsed.removed); return; } // v1.10.11: solved by someone: gone everywhere at once
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
+    if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {

@@ -102,7 +102,7 @@
 
       <!-- v1.8.8: the 3D plaza hub (public/plaza/plaza-scene.js); its facilities open the lobby sections below in #plazaDialog -->
       <section id="islandMapCard" class="islandMapCard" aria-label="게임 아일랜드 지도"><canvas id="islandMapCanvas" width="940" height="690"></canvas></section>
-      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="questTracker" class="questTracker hidden" role="status"></div>
+      <section id="plazaStage" class="plazaStage hidden" tabindex="0" aria-label="광장"><div id="plazaRainbow" class="plazaRainbow" aria-hidden="true"></div><div id="trainControls" class="trainControls hidden"><button id="trainMainBtn" class="primary" type="button"></button><button id="trainMenuBtn" class="ghost hidden" type="button">승강장 메뉴</button></div><div id="plazaHint" class="plazaHint hidden" role="status"></div><div id="questTracker" class="questTracker hidden" role="status"></div>
         <div id="plazaError" class="plazaError hidden" role="alert"><strong>게임 아일랜드를 불러오지 못했습니다.</strong><button id="plazaRetry" class="secondary" type="button">다시 시도</button></div>
         <!-- v1.10.2 게임 아일랜드 채팅: the tab opens the recent conversation over the island; Enter opens the input -->
         <!-- v1.10.63: no account bar -- Esc (or this button, on a phone) opens the menu (#gameMenuDialog) -->
@@ -375,6 +375,7 @@
           <div class="adminMeta"><span id="persistenceBadge" class="badge">저장소 확인 중</span></div>
           <!-- v1.10.90 섬 환경 (IDEAS #future-admin-console ①): the island's time of day for everyone -->
           <form id="islandTimeForm" class="joinForm islandTimeForm"><label for="islandTimeSelect">섬 시간대</label><select id="islandTimeSelect"><option value="auto">자동 (서울 시각)</option><option value="morning">아침</option><option value="day">낮</option><option value="evening">저녁</option><option value="night">밤</option></select><button class="secondary" type="submit">적용</button></form>
+          <form id="islandWeatherForm" class="joinForm islandTimeForm"><label for="islandWeatherSelect">섬 날씨</label><select id="islandWeatherSelect"><option value="auto">자동 (서버 시계)</option><option value="clear">맑음</option><option value="rain">비 (겨울 구역은 눈)</option><option value="rainbow">무지개</option></select><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
           <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->

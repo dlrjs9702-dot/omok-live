@@ -41,7 +41,8 @@ const Reflex = require('./lib/reflex'); // v1.10.68 순발력 게임
 const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
-const RoomAi = require('./lib/room-ai'); // v1.10.72 게임방 AI 자리
+const RoomAi = require('./lib/room-ai');
+const IslandWeather = require('./lib/island-weather'); // A4 날씨 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
@@ -4710,7 +4711,8 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
-    const c = IslandFishing.cast(now, Math.random, { water, season, bait });
+    const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
+    const c = IslandFishing.cast(now, Math.random, { water, season, bait, rain });
     fishCasts.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
     return sendJson(res, 200, { ok: true, fishId: id, biteIn: c.biteAt - now, window: IslandFishing.BITE_MS, bait: bait ? IslandItems.ITEMS[bait].name : null });
   }
@@ -5234,6 +5236,20 @@ async function requestHandler(req, res) {
     const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];
     const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0;
     return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), affinity: { points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name }, ...(await errandView(account)) });
+  }
+  // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
+  if (pathname === '/api/island/weather' && req.method === 'GET') {
+    if (!requireSession(req, res)) return;
+    const mode = (await pointStore.worldValue('weather'))?.mode || 'auto';
+    return sendJson(res, 200, { ok: true, mode, ...IslandWeather.weatherAt(nowMs(), mode), serverNow: nowMs() });
+  }
+  if (pathname === '/api/admin/island/weather' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!['auto', ...IslandWeather.KINDS].includes(body.mode)) return sendError(res, 400, 'BAD_MODE', '날씨를 골라 주세요.');
+    await pointStore.setWorldValue('weather', { mode: body.mode, at: nowMs() });
+    broadcastIsland('islandWeather', { mode: body.mode, ...IslandWeather.weatherAt(nowMs(), body.mode) });
+    return sendJson(res, 200, { ok: true, mode: body.mode });
   }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
