@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2465,6 +2465,32 @@
     clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
   }
   function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
+  // A4 주말 섬 대회: a bar over the island -- 10 minutes before (what and when), while it runs (the time left, the top 3
+  // and me, every 10 s), and a while after (the winner); the server judges, the page only shows
+  let contestPoll = null; let contestTick = null; let contestSeen = null;
+  const contestScore = (c, n) => `${Number(n).toLocaleString('ko-KR')}${c.unit}`;
+  function refreshContest() {
+    clearTimeout(contestPoll); if (!document.body.classList.contains('plazaMode')) return;
+    api('/api/island/contest').then((d) => {
+      const c = d.contest; const bar = byId('contestBar'); const offset = d.serverNow - Date.now(); clearInterval(contestTick);
+      if (c.phase === 'live' && contestSeen !== c.id + ':live') { contestSeen = c.id + ':live'; showToast(`🏆 ${c.name} 시작! ${c.how}으로 겨뤄요.`, 5000); }
+      const show = (text) => { bar.textContent = text; bar.classList.toggle('hidden', !text); };
+      const clock = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+      const draw = () => {
+        const now = Date.now() + offset;
+        if (c.phase === 'soon') show(`🏆 곧 ${c.name} · ${clock(c.start - now)} 뒤 시작 · ${c.how}`);
+        else if (c.phase === 'live') show(`🏆 ${c.name} · 남은 ${clock(c.end - now)} · ${d.top.length ? d.top.slice(0, 3).map((r) => `${r.rank}위 ${r.name} ${contestScore(c, r.score)}`).join(' · ') : '아직 기록 없음'}${d.mine ? ` · 나 ${d.mine.rank}위` : ''}`);
+        else if (d.last?.id === c.id && now - c.end < 30 * 60000) show(d.last.rewarded ? `🏆 ${d.last.name} 우승 ${d.last.top[0]?.name || ''} · ${contestScore(c, d.last.top[0]?.score || 0)}` : `🏆 ${d.last.name} 끝 · 참가자가 적어 시상은 없어요`);
+        else show('');
+      };
+      draw(); if (c.phase === 'soon' || c.phase === 'live') contestTick = setInterval(draw, 1000);
+      contestPoll = setTimeout(refreshContest, c.phase === 'live' || c.phase === 'soon' ? 10000 : 60000);
+    }).catch(() => { contestPoll = setTimeout(refreshContest, 60000); });
+  }
+  byId('contestForm')?.addEventListener('submit', async (event) => { // A4 관리자: 대회 일정
+    event.preventDefault(); const [hour, minute] = byId('contestTime').value.split(':').map(Number);
+    try { await api('/api/admin/contest', { method: 'POST', body: JSON.stringify({ day: Number(byId('contestDay').value), hour, minute, minutes: Number(byId('contestMinutes').value), enabled: byId('contestEnabled').checked }) }); showToast('주말 섬 대회 일정을 바꿨어요.'); } catch (error) { showToast(error.message, 4000); }
+  });
   // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
   // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
   let starTimers = []; let starPoll = null; let starShown = null;
@@ -2523,7 +2549,8 @@
     const c = event.target.closest('input[data-switch]'); if (!c) return;
     try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
-  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c }) => { byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
+ api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
   byId('islandWeatherForm')?.addEventListener('submit', async (event) => { // A4 관리자: 날씨
     event.preventDefault(); const mode = byId('islandWeatherSelect').value;
     try { await api('/api/admin/island/weather', { method: 'POST', body: JSON.stringify({ mode }) }); showToast(`섬 날씨: ${byId('islandWeatherSelect').selectedOptions[0].textContent}`); } catch (error) { showToast(error.message, 4000); }
@@ -5468,6 +5495,7 @@
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { islandTimeSeq += 1; plaza.controller?.setTimeMode?.(parsed.mode); return; } // v1.10.90 섬 시간대
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
+    if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
     if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
     if (event === 'lobbyState') {

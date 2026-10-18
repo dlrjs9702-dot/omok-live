@@ -1066,3 +1066,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaRainbow{background:radial-gradient(62% 100% at 50% 100%,transparent 0 80%,rgba(176,124,255,.26) 81%,rgba(108,124,255,.28) 83.5%,rgba(90,176,255,.3) 86%,rgba(123,211,137,.3) 88.5%,rgba(255,224,102,.32) 91%,rgba(255,159,67,.32) 93.5%,rgba(255,90,90,.32) 96%,transparent 98%)}
 :root[data-theme="light"] .plazaStar{background:linear-gradient(90deg,rgba(255,255,255,0),#fff 70%,#fffbe0);box-shadow:0 0 10px 2px rgba(255,251,224,.8)}
 :root[data-theme="light"] .starWishBtn{box-shadow:0 6px 24px rgba(255,251,224,.45)}
+:root[data-theme="light"] .contestBar{background:rgba(247,239,225,.82);color:#8a5a00;box-shadow:0 4px 14px rgba(0,0,0,.35)}

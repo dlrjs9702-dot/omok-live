@@ -773,7 +773,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let statueList = []; let statueKey = '[]'; const statueRoots = []; const statueChars = [];
   const STATUE_SIZE = 2.6; // v1.10.30: the 1st donor's statue, in player heights (the 2nd is 70% of it)
   function setStatues(list) {
-    const next = (Array.isArray(list) ? list : []).filter((s) => s && (s.rank === 1 || s.rank === 2)).slice(0, 2);
+    const next = [...(Array.isArray(list) ? list : []).filter((s) => s && !s.contest && (s.rank === 1 || s.rank === 2)).slice(0, 2), ...(Array.isArray(list) ? list : []).filter((s) => s?.contest).slice(0, 1)]; // (A4: and the contest's winner)
     const key = JSON.stringify(next.map(({ rank, name, look, title }) => [rank, name, look, title]));
     if (key === statueKey) return;
     statueKey = key; statueList = next;
@@ -784,14 +784,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // a player, the 2nd 70% of that, waving, frozen. Over everyone's heads they never stand in the way (the plinth's
     // circle is the walking limit); one that hides me from the camera fades like a building.
     for (const st of next) {
-      const spot = STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
-      const size = st.rank === 1 ? STATUE_SIZE : STATUE_SIZE * 0.7;
+      const spot = st.contest ? globalThis.IslandTerrain.CONTEST_STATUE : STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
+      const size = st.contest ? STATUE_SIZE * 0.6 : st.rank === 1 ? STATUE_SIZE : STATUE_SIZE * 0.7;
       const c = makeCharacter({ ...ME_BASE, look: st.look || {} });
       c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(size);
       c.armR.rotation.z = 2.4; // a wave, frozen (the procedural character)
       scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); c.root.userData.building = true; buildingRoots.push(c.root);
       dressUp(c, st.look || {});
-      const plate = makeTag(`${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 1.5 + 2.35 * size, spot.z); scene.add(plate); statueRoots.push(plate);
+      const plate = makeTag(st.contest ? `🏆 ${st.label || '주말 섬 대회'} 우승 ${st.name}` : `${st.rank}위 ${st.name}`, null); plate.position.set(spot.x, PH + 1.5 + 2.35 * size, spot.z); scene.add(plate); statueRoots.push(plate);
     }
   }
 
@@ -1903,6 +1903,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.0: hundreds of trees and lamps on the island, so the solids are looked up in a coarse grid.
   // v1.10.16: each circle is listed in every cell from which a character (radius up to 0.5) could touch it -- listed
   // only where the circle itself lies, one standing just across a cell edge from it was not checked against it.
+  { const cs = globalThis.IslandTerrain.CONTEST_STATUE; solids.push({ x: cs.x, z: cs.z, r: 1.4 }); } // A4: the contest winner's plinth
   // v1.10.93 마을 소품 (the mural, easel, stage, lamps, toolbox, book cart): solid from the start, as the grid is made once
   for (const v of globalThis.IslandTerrain.villageSolids()) solids.push({ x: v.x, z: v.z, r: v.r * 0.8 });
   const GRID = 8; const grid = new Map();

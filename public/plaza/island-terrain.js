@@ -68,6 +68,7 @@
   }
   const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
+  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props)
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
   // far end of the shop street. Decoration only (no door to enter); each `style` picks a different build (plaza-scene).
@@ -503,5 +504,5 @@
   const HALLOWEEN_FIELDS = [[-34,58],[-58,30],[20,40],[-22,-30],[58,22],[-6,44]];
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
-  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, CONTEST_STATUE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));
