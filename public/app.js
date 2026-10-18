@@ -2444,7 +2444,7 @@
   const fmtP = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
   function showBank(v) {
     bankNow = v; byId('bankWallet').textContent = fmtP(v.balance); byId('bankDeposit').textContent = fmtP(v.deposit);
-    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다. 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
+    byId('bankRate').textContent = `예금에는 매일 자정(한국 시간) 하루 ${Math.round(v.rate * 100)}% 이자가 붙습니다(7일 이상 접속하지 않으면 그 뒤로는 붙지 않아요). 내일 예상 이자 +${fmtP(Math.floor(v.deposit * v.rate))}`;
   }
   async function openBank() {
     try {

@@ -33,7 +33,7 @@ async function storeBehaves(store) {
   const R = await store.bankMove(U, 0, 'x', Date.now()).catch((e) => e); assert.ok(R instanceof RangeError);
   // paid from the deposit alone, then the same request sent again: nothing taken twice (Codex review)
   const V = 'guest:00000000-0000-4000-8000-0000000000c2'; const day = Date.parse('2026-11-01T12:00:00+09:00');
-  await store.ensureAccount(V); await store.bankMove(V, 30000, 'v-in-0001', day);
+  await store.ensureAccount(V); await store.noteVisit(V, day); await store.bankMove(V, 30000, 'v-in-0001', day);
   await store.taxCollect(V, '2026-11-01'); await store.taxCollect(V, '2026-11-02'); // 20,000; then 10,400 (with a day's interest) + 9,600 owed
   assert.equal((await store.taxDebts())[V], 9600);
   await store.claimAttendance(V, day); const w = (await store.getAccount(V)).balance; await store.bankMove(V, w, 'v-in-0002', day);

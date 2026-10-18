@@ -1055,6 +1055,12 @@ function lookFor(account, equipped) {
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
 }
+// the day each account last came in, once a day per account (lib/point-store.js bankAccrue: no interest after 7 days away)
+const visitNoted = new Map();
+function noteVisit(account) {
+  const today = kstDate(nowMs()); if (!account || visitNoted.get(account) === today) return;
+  visitNoted.set(account, today); pointStore.noteVisit(account).catch((error) => { visitNoted.delete(account); console.error('접속 기록 실패:', error.message); });
+}
 let taxDay = null; let taxRunning = null;
 function collectTaxes(now = nowMs(), forced = null) {
   const day = forced || kstDate(now);
@@ -4141,6 +4147,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/lobby/events' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
+    noteVisit(pointAccountForSession(session)); // (7일 이상 안 들어오면 이자 없음)
     if (getCurrentRoom(session)) return sendError(res, 409, 'IN_ROOM', '현재 게임 방에 참여 중입니다.');
     res.writeHead(200, securityHeaders({
       'Content-Type': 'text/event-stream; charset=utf-8',
