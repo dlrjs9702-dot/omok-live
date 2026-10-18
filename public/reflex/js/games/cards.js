@@ -40,6 +40,15 @@ export function suitPath(c, s, cx, cy, z) {
 export function drawSuit(c, s, cx, cy, z, color) { c.fillStyle = color || (isRed(s) ? '#E0334F' : '#1B1E33'); suitPath(c, s, cx, cy, z); }
 
 const BACK = { a: '#3B4BD8', b: '#1E2A8A', line: 'rgba(255,255,255,.22)' };
+// A3 G3-5 트럼프 한 벌: the card table -- green felt in a wooden frame (도둑잡기's room table has the same, styles.css)
+export function drawTable(c) {
+  const g = c.createRadialGradient(E.W / 2, E.H * 0.35, 0, E.W / 2, E.H * 0.35, E.H * 0.8);
+  g.addColorStop(0, '#15603F'); g.addColorStop(1, '#0A2E20');
+  c.fillStyle = g; c.fillRect(0, 0, E.W, E.H);
+  const f = E.W < 500 ? 4 : 10; // (a phone's cards run close to the edge: a thin frame there)
+  c.strokeStyle = '#6b3f1d'; c.lineWidth = f; c.strokeRect(f / 2, f / 2, E.W - f, E.H - f);
+  c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 1.5; c.strokeRect(f + 1, f + 1, E.W - 2 * f - 2, E.H - 2 * f - 2);
+}
 export function drawBack(c, x, y, w, h) {
   const r = Math.max(3, w * 0.12);
   c.fillStyle = 'rgba(0,0,0,.3)'; E.rr(x, y + 1.5, w, h, r); c.fill();

@@ -1,5 +1,5 @@
 import { E } from '../engine.js';
-import { Table, card, isRed, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
+import { Table, drawTable, card, isRed, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
 import { HARD_DEALS } from './freecell-deals.js';
 import { rng } from './pz-util.js';
 
@@ -203,9 +203,7 @@ export default {
     }
   },
   draw(c) {
-    const g = c.createRadialGradient(E.W / 2, E.H * 0.35, 0, E.W / 2, E.H * 0.35, E.H * 0.8);
-    g.addColorStop(0, '#15603F'); g.addColorStop(1, '#0A2E20');
-    c.fillStyle = g; c.fillRect(0, 0, E.W, E.H);
+    drawTable(c); // (A3 G3-5: the shared card table)
     T.draw(c, (p) => (p.kind === 'found' ? { label: 'A' } : null));
     drawButtons(c, s.btns);
   },

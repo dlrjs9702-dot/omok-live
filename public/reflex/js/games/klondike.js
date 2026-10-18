@@ -1,5 +1,5 @@
 import { E } from '../engine.js';
-import { Table, card, shuffle, isRed, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
+import { Table, drawTable, card, shuffle, isRed, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
 import { rng } from './pz-util.js'; // 아일랜드 v1.10.70: the deal from the server's seed (E.opts.seed), so the server can replay it
 
 // 카드놀이(클론다이크) — 윈도우 '카드놀이'와 같은 규칙
@@ -211,9 +211,7 @@ export default {
     }
   },
   draw(c) {
-    const g = c.createRadialGradient(E.W / 2, E.H * 0.35, 0, E.W / 2, E.H * 0.35, E.H * 0.8);
-    g.addColorStop(0, '#15603F'); g.addColorStop(1, '#0A2E20');
-    c.fillStyle = g; c.fillRect(0, 0, E.W, E.H);
+    drawTable(c); // (A3 G3-5: the shared card table)
     T.draw(c, (p) => (p.kind === 'stock' ? { label: T.get('waste').cards.length ? '↻' : '' } : p.kind === 'found' ? { label: 'A' } : p.kind === 'tab' ? { label: 'K' } : null));
     drawButtons(c, s.btns);
   },

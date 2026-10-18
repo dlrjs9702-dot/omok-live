@@ -1,5 +1,5 @@
 import { E } from '../engine.js';
-import { Table, card, shuffle, drawBack, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
+import { Table, drawTable, card, shuffle, drawBack, drawButtons, btnAt, fmtClock, SPADE, HEART, DIAMOND, CLUB } from './cards.js';
 import { rng } from './pz-util.js'; // 아일랜드 v1.10.70: the deal from the server's seed (E.opts.seed), so the server can replay it
 
 // 스파이더 카드놀이 — 윈도우와 같은 규칙
@@ -212,9 +212,7 @@ export default {
   draw(c) {
     const { cw, ch } = T, st = T.get('stock');
     // 녹색 펠트
-    const g = c.createRadialGradient(E.W / 2, E.H * 0.35, 0, E.W / 2, E.H * 0.35, E.H * 0.8);
-    g.addColorStop(0, '#15603F'); g.addColorStop(1, '#0A2E20');
-    c.fillStyle = g; c.fillRect(0, 0, E.W, E.H);
+    drawTable(c); // (A3 G3-5: the shared card table)
     // 남은 나눠 주기 횟수만큼 뒷면을 겹쳐 보여 준다
     const deals = Math.ceil(st.cards.length / 10);
     for (let k = 1; k < deals; k++) drawBack(c, st.x - k * cw * 0.2, st.y, cw, ch);

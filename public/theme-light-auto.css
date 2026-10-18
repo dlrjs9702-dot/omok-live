@@ -1057,3 +1057,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .gostopSets{color:#fde68a}
 :root[data-theme="light"] .seatFace{background:radial-gradient(circle at 36% 58%,#1f2937 0 2.2px,transparent 2.6px),radial-gradient(circle at 64% 58%,#1f2937 0 2.2px,transparent 2.6px),linear-gradient(180deg,var(--hair,#4a3426) 0 34%,var(--skin,#f6d3b3) 34%);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
 :root[data-theme="light"] .seatTitle{color:#fcd34d}
+:root[data-theme="light"] .oldmaidPanel{background:radial-gradient(ellipse at 50% 35%,#15603F 0,#0A2E20 100%);border:10px solid #6b3f1d;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+:root[data-theme="light"] .oldmaidCard.oldmaidFace{background:#FBFBFE;color:#1B1E33;border:1px solid rgba(20,24,60,.2)}
+:root[data-theme="light"] .oldmaidCard.oldmaidFace.red{color:#E0334F}
+:root[data-theme="light"] .oldmaidCard.oldmaidBack:not([style*="background"]){background:linear-gradient(135deg,#3B4BD8,#1E2A8A);border:2px solid #F4F5FC}
+:root[data-theme="light"] .oldmaidCard.oldmaidBack:not([style*="background"])::before{color:rgba(255,255,255,.16)}
+:root[data-theme="light"] .oldmaidCard.oldmaidBack.selected{background:#16a34a!important}

@@ -2174,3 +2174,15 @@ body:not(.roomMode)>.gostopResult{display:none}
 .player .seatFace{order:-1}
 .teamPlayer .seatFace{float:left;margin-right:8px}
 .seatTitle{display:block;color:#fcd34d;font-weight:800;font-size:.7rem}
+/* A3 G3-5 트럼프 한 벌: 도둑잡기 cards in the same look as the card games' (public/reflex/js/games/cards.js) -- white face,
+   #E0334F / #1B1E33 ink, rounded 12%, the blue back with a white frame and a spade; the table green felt in wood;
+   a seat's hidden hand fanned (overlapped), the card pointed at rises. A skin's back (skin-art-oldmaid.js) still wins. */
+.oldmaidPanel{background:radial-gradient(ellipse at 50% 35%,#15603F 0,#0A2E20 100%);border:10px solid #6b3f1d;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+.oldmaidCard.oldmaidFace{background:#FBFBFE;color:#1B1E33;border:1px solid rgba(20,24,60,.2);border-radius:12%/9%}
+.oldmaidCard.oldmaidFace.red{color:#E0334F}
+.oldmaidCard.oldmaidBack:not([style*="background"]){background:linear-gradient(135deg,#3B4BD8,#1E2A8A);border:2px solid #F4F5FC;border-radius:12%/9%}
+.oldmaidCard.oldmaidBack:not([style*="background"])::before{content:'♠';position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.16);font-size:1.4rem}
+.oldmaidSeatCards{flex-wrap:nowrap;gap:0}
+.oldmaidSeatCards .oldmaidCard+.oldmaidCard{margin-left:-22px}
+.oldmaidSeatCards .oldmaidCard.selectable:hover:not(:disabled),.oldmaidSeatCards .oldmaidCard.selectable:focus-visible{transform:translateY(-10px);z-index:2}
+.oldmaidCard.oldmaidBack.selected{background:#16a34a!important}
