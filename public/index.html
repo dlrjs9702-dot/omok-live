@@ -1256,12 +1256,25 @@
       <div id="eventList" class="missionList" role="list"></div>
     </section>
   </dialog>
+  <!-- 관리자 「문제 기록」: over whatever is on screen -->
+  <dialog id="issueDialog" class="recordsDialog issueDialog" aria-labelledby="issueTitle">
+    <div class="recordsDialogHead"><h2 id="issueTitle">문제 기록</h2><button id="issueCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <form id="issueForm" class="issueForm">
+      <textarea id="issueText" maxlength="1000" rows="4" placeholder="무엇이 문제인가요? (Ctrl+Enter 저장)" aria-label="내용" required></textarea>
+      <div class="issueRow"><select id="issueKind" aria-label="종류"><option value="bug">버그</option><option value="odd">어색함</option><option value="idea">개선</option></select>
+        <label><input id="issueShotOn" type="checkbox" checked> 화면 사진 같이</label></div>
+      <img id="issueShot" class="issueShot hidden" alt="저장할 화면 사진">
+      <p id="issueStatus" class="smallMuted" role="status"></p>
+      <button class="primary" type="submit">저장</button>
+    </form>
+  </dialog>
   <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog" aria-labelledby="gameMenuTitle">
     <div class="recordsDialogHead"><h2 id="gameMenuTitle">메뉴</h2><button id="gameMenuCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="gameMenuList">
       <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임관으로 돌아가기</button>
       <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
       <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
+      <button id="issueLogBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="issueDialog">문제 기록</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
         <div class="gameMenuThemes" role="radiogroup" aria-label="화면 테마">

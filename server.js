@@ -46,6 +46,7 @@ const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
 const Together = require('./lib/island-together'); // B 47 생일·우체통
+const SERVER_VERSION = require('./package.json').version; // (관리자 「문제 기록」에 붙는 버전)
 const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 const bugSwings = new Map(); // session token -> the swing (one at a time)
 const petOf = new Map(); // B 47 반려동물: account -> { kind, name } | null (read from its 'pet' doc once)
@@ -934,6 +935,7 @@ function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mo
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
+const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
@@ -5641,6 +5643,36 @@ async function requestHandler(req, res) {
     const files = [];
     for (const dir of ['assets/gamehall/cards', 'assets/items', 'assets/dex']) for (const f of await fsp.readdir(path.join(PUBLIC_DIR, dir)).catch(() => [])) if (/\.(svg|png)$/i.test(f)) files.push(`/${dir}/${f}`);
     return sendJson(res, 200, { ok: true, files });
+  }
+  // 관리자 「문제 기록」 (사용자 2026-10-18, docs/admin-issue-log-20261018.md): what an administrator saw go wrong, written where
+  // it happened -- the words, a kind, what the page knew (screen, place, device, frame rate, recent errors) and a small
+  // picture; newest first, open / doing / done, up to 500. GET gives the pictures only with ?shots=1 (Claude reads the rest).
+  if (pathname === '/api/admin/issues' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'GET') {
+      const shots = url.searchParams.get('shots') === '1'; const list = (await pointStore.worldValue('issueLog')) || [];
+      return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: list.map((i) => (shots ? i : { ...i, shot: undefined, hasShot: Boolean(i.shot) })) });
+    }
+    const body = await parseJson(req);
+    return worldEdit(async () => {
+      const list = (await pointStore.worldValue('issueLog')) || [];
+      if (body.action === 'add') {
+        const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
+        if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
+        if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
+        const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
+        let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
+        const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot };
+        await pointStore.setWorldValue('issueLog', [issue, ...list]);
+        return sendJson(res, 201, { ok: true, id: issue.id });
+      }
+      const i = list.findIndex((x) => x.id === body.id); if (i < 0) return sendError(res, 404, 'ISSUE_NOT_FOUND', '기록을 찾을 수 없습니다.');
+      if (body.action === 'status' && ISSUE_STATUS.includes(body.status)) list[i] = { ...list[i], status: body.status, changedAt: nowMs() };
+      else if (body.action === 'delete') list.splice(i, 1);
+      else return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
+      await pointStore.setWorldValue('issueLog', list);
+      return sendJson(res, 200, { ok: true });
+    });
   }
   if (pathname === '/api/admin/asset-notes' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;

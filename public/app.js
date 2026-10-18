@@ -35,6 +35,12 @@
   const lobbyConnectedCount = document.getElementById('lobbyConnectedCount');
   const logoutBtn = document.getElementById('logoutBtn');
   const adminWindowBtn = document.getElementById('adminWindowBtn');
+  // 관리자 「문제 기록」: the last few browser errors and the frame rate, kept quietly to go with a record
+  const recentErrors = []; const keepError = (text) => { recentErrors.push({ at: Date.now(), text: String(text).slice(0, 300) }); if (recentErrors.length > 8) recentErrors.shift(); };
+  window.addEventListener('error', (event) => keepError(event.message || event.error));
+  window.addEventListener('unhandledrejection', (event) => keepError(event.reason?.message || event.reason));
+  { const realError = console.error.bind(console); console.error = (...args) => { keepError(args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); realError(...args); }; }
+  let fpsNow = null; { let n = 0; let t0 = performance.now(); const tick = (t) => { n += 1; if (t - t0 >= 2000) { fpsNow = Math.round((n * 1000) / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   const myInfoBtn = document.getElementById('myInfoBtn');
   const myInfoDialog = document.getElementById('myInfoDialog');
   const myInfoCloseBtn = document.getElementById('myInfoCloseBtn');
@@ -1735,11 +1741,11 @@
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
     // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
     byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
-    gameMenuDialog.showModal(); guideDone('menu');
+    byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin'); gameMenuDialog.showModal(); guideDone('menu');
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
-  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
+  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn, byId('issueLogBtn')]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
   gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
   // v1.10.63 게임방: the same menu, with 게임 선택으로 돌아가기 on top (the room's own buttons stay in its top bar)
   const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
@@ -1837,6 +1843,68 @@
     return inspectorCard;
   }
   assetInspectorCard();
+  // 관리자 「문제 기록」 (사용자 2026-10-18): where I am and what the page knows, gathered the moment the window opens
+  const issueDialog = byId('issueDialog'); let issueShot = null;
+  function issueContext() {
+    const openDialogs = [...document.querySelectorAll('dialog[open]')].filter((d) => d !== issueDialog).map((d) => d.querySelector('h2')?.textContent || d.id);
+    const ctx = { screen: !roomView.classList.contains('hidden') ? 'room' : document.body.classList.contains('plazaMode') ? 'island' : !document.getElementById('gamehallView')?.classList.contains('hidden') ? 'gamehall' : 'lobby', windows: openDialogs,
+      device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
+    if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
+    const d = plaza.controller?.debug?.();
+    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality }; }
+    return ctx;
+  }
+  async function openIssue() {
+    if (sessionRole !== 'admin' || issueDialog.open) return;
+    issueShot = await plaza.controller?.snapshot?.() || null; // (the island's picture as it is now; other screens have none)
+    byId('issueShot').src = issueShot || ''; byId('issueShot').classList.toggle('hidden', !issueShot); byId('issueShotOn').disabled = !issueShot; byId('issueShotOn').checked = Boolean(issueShot);
+    byId('issueStatus').textContent = ''; issueDialog.dataset.ctx = ''; issueDialog.ctx = issueContext(); issueDialog.showModal(); byId('issueText').focus();
+  }
+  byId('issueLogBtn').addEventListener('click', openIssue);
+  byId('issueCloseBtn').addEventListener('click', () => issueDialog.close());
+  byId('issueShotOn').addEventListener('change', (event) => byId('issueShot').classList.toggle('hidden', !event.target.checked || !issueShot));
+  byId('issueText').addEventListener('keydown', (event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); byId('issueForm').requestSubmit(); } });
+  byId('issueForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'add', text: byId('issueText').value, kind: byId('issueKind').value, shot: byId('issueShotOn').checked ? issueShot : null, ctx: issueDialog.ctx }) });
+      byId('issueText').value = ''; issueDialog.close(); showToast('문제를 기록했어요.'); if (issueCard.open) loadIssues();
+    } catch (error) { byId('issueStatus').textContent = error.message; }
+  });
+  // the 관리자 창's card: newest first, by state; a state changed, a record removed, the open ones copied as Markdown
+  const ISSUE_KIND = { bug: '버그', odd: '어색함', idea: '개선' }; const ISSUE_STATE = { open: '열림', doing: '고치는 중', done: '해결' };
+  const issueCard = document.createElement('details'); issueCard.id = 'issueCard'; issueCard.className = 'economyBox issueCard';
+  issueCard.innerHTML = '<summary>문제 기록</summary><div class="issueTools"><select id="issueFilter" aria-label="상태"><option value="open">열림</option><option value="doing">고치는 중</option><option value="done">해결</option><option value="">전체</option></select><button id="issueNewBtn" type="button" class="ghost tiny">새로 적기</button><button id="issueCopyBtn" type="button" class="ghost tiny">열린 것 복사</button></div><div id="issueList" class="issueList" role="list"></div>';
+  adminPanel.append(issueCard);
+  let issues = [];
+  const issueWhere = (i) => [i.ctx?.screen === 'room' ? `게임방 ${i.ctx.room?.game || ''}` : i.ctx?.screen === 'island' ? `섬 (${i.ctx.island?.x}, ${i.ctx.island?.z})${i.ctx.island?.space && i.ctx.island.space !== 'island' ? ` · ${i.ctx.island.space}` : ''}` : i.ctx?.screen || '', ...(i.ctx?.windows || [])].filter(Boolean).join(' · ');
+  async function loadIssues() {
+    try { issues = (await api('/api/admin/issues')).issues; } catch (error) { byId('issueList').textContent = error.message; return; }
+    const want = byId('issueFilter').value; const list = byId('issueList'); list.replaceChildren();
+    const shown = issues.filter((i) => !want || i.status === want); if (!shown.length) list.textContent = '기록이 없어요.';
+    for (const i of shown) {
+      const row = document.createElement('details'); row.className = 'issueItem'; row.setAttribute('role', 'listitem');
+      const head = document.createElement('summary'); head.textContent = `[${ISSUE_KIND[i.kind]}] ${i.text.split('\n')[0].slice(0, 80)} · ${issueWhere(i)} · ${new Date(i.at).toLocaleString('ko-KR')} · v${i.version}`;
+      const body = document.createElement('div'); body.className = 'issueBody';
+      const text = document.createElement('p'); text.className = 'mailText'; text.textContent = i.text;
+      const info = document.createElement('pre'); info.className = 'issueInfo'; info.textContent = JSON.stringify(i.ctx, null, 1);
+      const status = document.createElement('select'); status.setAttribute('aria-label', '상태'); for (const [v, label] of Object.entries(ISSUE_STATE)) status.append(new Option(label, v)); status.value = i.status;
+      status.addEventListener('change', async () => { try { await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'status', id: i.id, status: status.value }) }); loadIssues(); } catch (error) { showToast(error.message); } });
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'ghost tiny'; del.textContent = '지우기';
+      del.addEventListener('click', async () => { if (!window.confirm('이 기록을 지울까요?')) return; try { await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'delete', id: i.id }) }); loadIssues(); } catch (error) { showToast(error.message); } });
+      body.append(text, status, del, info);
+      row.addEventListener('toggle', async () => { if (!row.open || !i.hasShot || body.querySelector('img')) return; const all = (await api('/api/admin/issues?shots=1')).issues; const one = all.find((x) => x.id === i.id); if (one?.shot) { const img = document.createElement('img'); img.className = 'issueShot'; img.alt = '기록한 화면'; img.src = one.shot; body.prepend(img); } });
+      row.append(head, body); list.append(row);
+    }
+  }
+  issueCard.addEventListener('toggle', () => { if (issueCard.open) loadIssues(); });
+  byId('issueFilter').addEventListener('change', loadIssues);
+  byId('issueNewBtn').addEventListener('click', () => { plazaDialog.open && plazaDialog.close(); openIssue(); });
+  byId('issueCopyBtn').addEventListener('click', async () => {
+    const open = issues.filter((i) => i.status === 'open');
+    const md = open.map((i) => `- [${ISSUE_KIND[i.kind]}] ${i.text.replace(/\n/g, ' ')} — ${issueWhere(i)}, ${new Date(i.at).toLocaleString('ko-KR')}, v${i.version}${i.ctx?.fps != null ? `, ${i.ctx.fps}fps` : ''}${i.ctx?.errors?.length ? `, 오류: ${i.ctx.errors.map((e) => e.text).join(' / ')}` : ''}`).join('\n');
+    try { await navigator.clipboard.writeText(md || '(열린 기록 없음)'); showToast(`열린 기록 ${open.length}개를 복사했어요.`); } catch { showToast('복사하지 못했어요.'); }
+  });
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
@@ -3396,7 +3464,7 @@
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
       adminPresencePanel.classList.toggle('hidden', sessionRole !== 'admin');
-      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin');
+      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin'); byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin');
       announcementAddBtn.classList.toggle('hidden', sessionRole !== 'admin');
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');

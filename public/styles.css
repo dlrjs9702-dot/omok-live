@@ -2238,3 +2238,16 @@ body:not(.plazaMode) .bugCatchBtn { display: none; }
 .museumList { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
 .museumItem { border: 1px solid var(--line, #33415a); border-radius: 8px; padding: 6px 8px; display: grid; gap: 2px; }
 .museumItem.empty { opacity: 0.55; }
+
+/* 관리자 「문제 기록」 */
+.issueDialog { max-width: min(92vw, 520px); }
+.issueForm { display: grid; gap: 8px; }
+.issueForm textarea { resize: vertical; min-height: 90px; }
+.issueRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.issueShot { max-width: 100%; border-radius: 8px; }
+.issueTools { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.issueList { display: grid; gap: 6px; }
+.issueItem { border: 1px solid var(--line, #33415a); border-radius: 8px; padding: 6px 8px; }
+.issueItem summary { cursor: pointer; overflow-wrap: anywhere; }
+.issueBody { display: grid; gap: 6px; margin-top: 6px; }
+.issueInfo { font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; margin: 0; }
