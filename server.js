@@ -5371,6 +5371,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     if (!plazaPresence.get(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬에서 빌 수 있어요.');
     const body = await parseJson(req); const now = IslandStars.around(starNow(nowMs())).now;
+    if ((await pointStore.questDoc(pointAccountForSession(session), 'stars')).doc.wished?.includes(String(body.id))) return sendJson(res, 200, { ok: true, already: true }); // (wished already: so even once it has gone by)
     if (!now || now.id !== body.id) return sendError(res, 409, 'STAR_GONE', '별똥별이 이미 지나갔어요.');
     const out = await pointStore.questApply(pointAccountForSession(session), 'stars', (doc) => (doc.wished || []).includes(now.id) ? null : { doc: { ...doc, wished: [...(doc.wished || []), now.id].slice(-120) }, reward: 0 });
     return sendJson(res, 200, { ok: true, already: !out?.doc });

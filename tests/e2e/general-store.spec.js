@@ -44,6 +44,7 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   await a.page.evaluate(() => window.PlazaWarp(4, 4)); await b.page.evaluate(() => window.PlazaWarp(5.2, 4));
   for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
   await b.page.evaluate(() => { window.__zzSeen = false; const d = window.PlazaDebug(); window.__zzWatch = setInterval(() => { if (d.othersActs().some((o) => o.act === 'show:firework')) window.__zzSeen = true; }, 100); }); // (CI: one PlazaDebug() takes ~2 s, the show 6 s -- watch with one debug object)
+  await a.page.bringToFront(); // (a background page sends its acts late -- CI)
   await a.page.locator('#islandBagTab').click();
   await a.page.locator('.islandBagSlot[data-item="firework"]').getByRole('button', { name: '쓰기' }).click();
   await expect.poll(() => b.page.evaluate(() => window.__zzSeen), { timeout: 15000 }).toBe(true);
