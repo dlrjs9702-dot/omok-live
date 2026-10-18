@@ -1812,7 +1812,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2465,6 +2465,29 @@
     clearTimeout(weatherTimer); if (d.until && d.serverNow) weatherTimer = setTimeout(refreshIslandWeather, Math.max(5000, d.until - d.serverNow + 1500));
   }
   function refreshIslandWeather() { api('/api/island/weather').then(showWeather).catch(() => {}); }
+  // A4 밤하늘 별똥별: the server says when the next star falls (the same moment for everyone); while it falls a streak
+  // crosses the top of the view and 「소원 빌기」 shows; yesterday's wishes come back as a small gift on the first look
+  let starTimers = []; let starPoll = null; let starShown = null;
+  function refreshStars() {
+    clearTimeout(starPoll); if (!document.body.classList.contains('plazaMode')) return;
+    api('/api/island/stars').then((d) => {
+      if (d.gift) showToast(`어젯밤 별똥별에 빈 소원이 선물로 왔어요 · +${Number(d.gift).toLocaleString('ko-KR')}P`, 5000);
+      const offset = d.serverNow - Date.now(); starTimers.forEach(clearTimeout); starTimers = [];
+      for (const st of [d.now, d.next].filter(Boolean)) { const wait = st.at - offset - Date.now(); if (wait < 120000) starTimers.push(setTimeout(() => showStar(st, d.wishMs - Math.max(0, -wait)), Math.max(0, wait))); }
+      starPoll = setTimeout(refreshStars, 60000);
+    }).catch(() => { starPoll = setTimeout(refreshStars, 60000); });
+  }
+  function showStar(st, ms) {
+    if (starShown === st.id || ms <= 0 || !document.body.classList.contains('plazaMode')) return; starShown = st.id;
+    const streak = byId('plazaStar'); const btn = byId('starWishBtn');
+    streak.classList.remove('hidden', 'fall'); void streak.offsetWidth; streak.classList.add('fall'); btn.classList.remove('hidden'); btn.disabled = false; btn.dataset.star = st.id;
+    setTimeout(() => { btn.classList.add('hidden'); streak.classList.add('hidden'); }, ms);
+  }
+  byId('starWishBtn')?.addEventListener('click', async () => {
+    const btn = byId('starWishBtn'); btn.disabled = true;
+    try { const r = await api('/api/island/stars/wish', { method: 'POST', body: JSON.stringify({ id: btn.dataset.star }) }); showToast(r.already ? '이미 소원을 빌었어요.' : '소원을 빌었어요! 내일 작은 선물이 와요.', 4000); } catch (error) { showToast(error.message, 3500); }
+    btn.classList.add('hidden');
+  });
   // v1.10.91 경제 값 관리: the table by group (the default beside each), a confirm listing the changes, and the history
   // with a 되돌리기 for each change (back to the value before it)
   let economyNow = null;

@@ -42,7 +42,8 @@ const PuzzleDaily = require('./lib/puzzle-daily'); // v1.10.69 오늘의 문제
 const Cards = require('./lib/cards'); // v1.10.70 카드 게임
 const GameRanking = require('./lib/game-ranking'); // v1.10.71 게임별 랭킹
 const RoomAi = require('./lib/room-ai');
-const IslandWeather = require('./lib/island-weather'); // A4 날씨 // v1.10.72 게임방 AI 자리
+const IslandWeather = require('./lib/island-weather'); // A4 날씨
+const IslandStars = require('./lib/island-stars'); // A4 별똥별 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
 const Economy = require('./lib/economy'); // v1.10.91 경제 값 관리
@@ -1411,6 +1412,8 @@ function publicTurnTimer(room) {
   const t = buildActionTimer(room, seat, nowMs(), AFK_TIMEOUT_MS);
   return t ? { seat: String(seat), deadlineAt: t.deadlineAt, serverNow: t.serverNow } : null;
 }
+// A4 별똥별: tests may move the stars' clock (so a star falls now); otherwise the server clock
+let starShiftMs = 0; const starNow = (ms) => ms + starShiftMs;
 function seatRoomAi(room, level) {
   const token = `ai:${room.id}`;
   room.ai = { level, token, seat: 'white' };
@@ -4998,6 +5001,11 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/events' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, events: [...islandEvents.events.values()].map(({ id, type, x, z, npc, state, carrier }) => ({ id, type, x, z, npc: npc || null, state, carrier })) });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/star-now' && req.method === 'POST') { // a star falling now
+    const t = nowMs(); let slot = Math.floor(t / IslandStars.SLOT_MS) + 1; while (!IslandStars.starOf(slot)) slot += 1;
+    const body = await parseJson(req); if (body.reset) { starShiftMs = 0; return sendJson(res, 200, { ok: true }); }
+    starShiftMs = IslandStars.starOf(slot).at + 500 - t + (Number(body.plusMs) || 0); return sendJson(res, 200, { ok: true, id: IslandStars.starOf(slot).id });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/island/free-residents' && req.method === 'POST') {
     broadcastIslandRemoved(islandEvents.freeResidents()); return sendJson(res, 200, { ok: true });
   }
@@ -5250,6 +5258,27 @@ async function requestHandler(req, res) {
     await pointStore.setWorldValue('weather', { mode: body.mode, at: nowMs() });
     broadcastIsland('islandWeather', { mode: body.mode, ...IslandWeather.weatherAt(nowMs(), body.mode) });
     return sendJson(res, 200, { ok: true, mode: body.mode });
+  }
+  // A4 밤하늘 별똥별 (lib/island-stars.js): the star falling now and the next one (the same for everyone); on a look, the
+  // gifts for the wishes of the Seoul day before are paid once (until the 우체통). Wishes live in the account's 'stars' doc.
+  if (pathname === '/api/island/stars' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const now = starNow(nowMs()); let gift = 0;
+    const wished = new Set((await pointStore.questDoc(account, 'stars')).doc.wished || []);
+    for (const st of IslandStars.starsOfDayBefore(now)) if (wished.has(st.id)) {
+      const out = await pointStore.claimEvent({ eventId: `star_gift_${IslandStars.slotOfId(st.id)}`, userId: account, amount: IslandStars.GIFT, title: '별똥별 소원 선물' });
+      if (out.applied) gift += out.amount;
+    }
+    if (gift) notifyPointsChanged([account]);
+    return sendJson(res, 200, { ok: true, ...IslandStars.around(now), serverNow: now, gift, wishMs: IslandStars.WISH_MS });
+  }
+  if (pathname === '/api/island/stars/wish' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!plazaPresence.get(session.token)) return sendError(res, 409, 'NOT_ON_ISLAND', '섬에서 빌 수 있어요.');
+    const body = await parseJson(req); const now = IslandStars.around(starNow(nowMs())).now;
+    if (!now || now.id !== body.id) return sendError(res, 409, 'STAR_GONE', '별똥별이 이미 지나갔어요.');
+    const out = await pointStore.questApply(pointAccountForSession(session), 'stars', (doc) => (doc.wished || []).includes(now.id) ? null : { doc: { ...doc, wished: [...(doc.wished || []), now.id].slice(-120) }, reward: 0 });
+    return sendJson(res, 200, { ok: true, already: !out?.doc });
   }
   if (pathname === '/api/island/time' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
