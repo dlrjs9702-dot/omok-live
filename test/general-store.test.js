@@ -71,3 +71,33 @@ test('백화점: 보정 뒤 가구 안에 서지 않고, 파는 물건은 모두
   }
   for (const s of S.SHELF) if (!s.soon) assert.ok(reach.has(s.id), s.id);
 });
+
+// B 45 꽃·나무 심기: the store keeps the plants -- a seed from the bag, one spot a plant, each fertilized once, the same on
+// JSON and PostgreSQL
+async function plants(store) {
+  const u = 'guest:00000000-0000-4000-8000-0000000000e9';
+  await store.ensureAccount(u); await store.adminGrant({ grantId: 'admin-grant:plants-e9', userId: u, amount: 10_000, category: 'event', memo: '' });
+  const Plants = require('../lib/island-plants');
+  let spot = null; for (let k = 0; k < 360 && !spot; k += 5) for (const r of [40, 55, 70]) { const x = Math.cos(k) * r; const z = Math.sin(k) * r; if (!Plants.refuse('flower', x, z)) { spot = { x, z }; break; } }
+  for (const [itemId, qty] of [['seed_flower_red', 2], ['fertilizer', 1]]) await store.islandBuy({ userId: u, requestId: `buy-${itemId.replace(/_/g, "-")}-plant`, itemId, qty, unit: 300 });
+  const plant = (requestId, x = spot.x) => store.islandPlant({ userId: u, requestId, itemId: 'seed_flower_red', x, z: spot.z, at: 1000 });
+  const [p1, again] = await Promise.all([plant('plant-0000001'), plant('plant-0000001')]);
+  assert.equal([p1, again].filter((r) => r.applied).length, 1, '같은 요청 한 번');
+  assert.equal((await plant('plant-0000002', spot.x + 0.3)).reason, 'spot', '바로 옆');
+  const list = await store.islandPlants(); assert.equal(list.length, 1);
+  assert.deepEqual({ kind: list[0].kind, color: list[0].color, plantedAt: list[0].plantedAt, fertilizedAt: list[0].fertilizedAt }, { kind: 'flower', color: 'red', plantedAt: 1000, fertilizedAt: null });
+  assert.equal((await store.islandFertilize({ userId: u, requestId: 'fert-0000001', plantId: list[0].id, at: 5000 })).applied, true);
+  assert.equal((await store.islandFertilize({ userId: u, requestId: 'fert-0000002', plantId: list[0].id, at: 6000 })).reason, 'done');
+  assert.equal((await store.islandPlants())[0].fertilizedAt, 5000);
+}
+test('심기 저장(JSON)', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'plants-'));
+  const store = new JsonPointStore(path.join(dir, 'points.json'), { initialGrant: 0 }); await store.init();
+  await plants(store);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+test('심기 저장(PostgreSQL)', async (t) => {
+  const database = await testDatabase(); t.after(() => database.stop());
+  const pg = new PostgresPointStore(database.url, { initialGrant: 0 }); t.after(() => pg.pool.end()); await pg.init();
+  await plants(pg);
+});
