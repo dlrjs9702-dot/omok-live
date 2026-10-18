@@ -271,7 +271,7 @@
     }
   }
 
-  let armedCard = null; let lastPointer = 'mouse'; // A3 G2-3 (a touch's first tap)
+  let armedCard = null; let armedKey = null; let lastPointer = 'mouse'; // A3 G2-3 (a touch's first tap -- for this turn of this hand only, Codex review)
   function lightMonth(month) { document.querySelectorAll('#gostopFloor .hwatu').forEach((el) => el.classList.toggle('gostopMatch', Boolean(month) && el.classList.contains(`month-${month}`) && !el.classList.contains('bonus'))); }
   function renderHand(state) {
     const g = state.game;
@@ -283,6 +283,7 @@
     trayApplied = state.me?.seat ? (skinOf(state, state.me.seat)?.tray || null) : null;
     if (trayApplied) SKN().h.style(hand, trayApplied);
     const mine = state.me.myGostopHand;
+    const turnKey = `${g.round}:${g.turn}:${g.phase}:${(mine || []).length}`; if (turnKey !== armedKey) { armedKey = turnKey; armedCard = null; }
     if (!mine) { hand.classList.add('hidden'); return; }
     hand.classList.remove('hidden');
     const seat = state.me.seat;

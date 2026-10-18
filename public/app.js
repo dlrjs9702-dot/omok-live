@@ -6147,6 +6147,7 @@
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
     if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     fitBoard(); renderTurnRing();
+    const boardKey = `${state?.gameType}:${state?.game?.round}:${state?.game?.moveCount}`; if (boardKey !== touchPickKey) { touchPickKey = boardKey; touchPick = null; } // (Codex review: a first tap holds for this board only)
   }
   function fitBoard() {
     const wrap = canvasWrap; wrap.style.maxWidth = '';
@@ -10777,7 +10778,7 @@
   nextRoundBtn.addEventListener('click', () => roomAction('next-round'));
   sideNextRoundBtn.addEventListener('click', () => roomAction('next-round'));
 
-  let touchPick = null; // A3 G3-1: the point a first tap chose
+  let touchPick = null; let touchPickKey = null; // A3 G3-1: the point a first tap chose (on this board, moveCount unchanged)
   canvas.addEventListener('pointermove', (ev) => {
     if (state?.gameType === 'yut') {
       const { px, py } = canvasPixel(ev);
