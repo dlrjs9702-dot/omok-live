@@ -1073,3 +1073,5 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .mailLetter.unread .mailHead strong::after{color:#f2c14e}
 :root[data-theme="light"] .guidePanel{background:rgba(16, 24, 40, 0.88);color:#fff;box-shadow:0 6px 20px rgba(0, 0, 0, 0.35)}
 :root[data-theme="light"] .guideStep{color:#f2c14e}
+:root[data-theme="light"] .bugCatchBtn{background:#f2c14e;color:#1b1b1b;border:0;box-shadow:0 6px 20px rgba(0, 0, 0, 0.35)}
+:root[data-theme="light"] .museumItem{border:1px solid var(--line, #33415a)}

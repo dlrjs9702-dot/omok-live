@@ -1807,7 +1807,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2176,7 +2176,7 @@
   const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
-    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : GOOD_ICONS.has(id) ? `/assets/items/goods/${id}.png` : null; // (v1.10.92 잡화점: assets 41 icons)
+    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : id.startsWith('insect_') ? `/assets/dex/${id}.svg` : GOOD_ICONS.has(id) ? `/assets/items/goods/${id}.png` : null; // (v1.10.92 잡화점: assets 41 icons)
     if (!src) return document.createTextNode(item.icon);
     const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
   }
@@ -2191,12 +2191,35 @@
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
         if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
+        if (item.itemId === 'bugnet') { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '채집하기'; use.addEventListener('click', () => { islandBagDialog.close(); startBugSwing(); }); slot.append(use); } // B 47
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
+  // B 47 곤충 채집: the server picks the insect and when it comes; Space (or the big button) while it circles me catches it
+  let bugNow = null;
+  const bugBtn = document.createElement('button'); bugBtn.type = 'button'; bugBtn.className = 'bugCatchBtn hidden'; bugBtn.textContent = '🥅 잡기!'; document.body.append(bugBtn);
+  async function startBugSwing() {
+    if (bugNow) return;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const d = await api('/api/island/bug/start', { method: 'POST', body: '{}' });
+      bugNow = d; plaza.controller?.bugBegin?.(d.species, d.comeIn, d.window); showToast('잠자리채를 들고 기다려요… 곤충이 오면 Space!', 3000);
+      setTimeout(() => { if (bugNow === d) bugBtn.classList.remove('hidden'); }, d.comeIn);
+      setTimeout(() => { if (bugNow === d) { bugNow = null; bugBtn.classList.add('hidden'); plaza.controller?.bugEnd?.(false); showToast(`${d.name}이(가) 날아가 버렸어요.`); api('/api/island/bug/cancel', { method: 'POST', body: '{}' }).catch(() => {}); } }, d.comeIn + d.window + 900);
+    } catch (error) { showToast(error.message, 4000); }
+  }
+  async function catchBug() {
+    const d = bugNow; if (!d) return; bugNow = null; bugBtn.classList.add('hidden');
+    try {
+      const r = await api('/api/island/bug/finish', { method: 'POST', body: JSON.stringify({ bugId: d.bugId }) });
+      plaza.controller?.bugEnd?.(true); showToast(`${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); if (r.bag) drawIslandBag(r.bag);
+    } catch (error) { plaza.controller?.bugEnd?.(false); showToast(error.message); }
+  }
+  bugBtn.addEventListener('click', catchBug);
+  window.addEventListener('keydown', (event) => { if (event.code === 'Space' && bugNow && !bugBtn.classList.contains('hidden') && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); catchBug(); } }, true);
   // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
   const PLANT_GOODS = { seed_flower_red: '심기', seed_flower_yellow: '심기', seed_flower_white: '심기', seed_flower_pink: '심기', seed_flower_purple: '심기', sapling: '심기', fertilizer: '비료 주기' };
   async function plantGood(itemId) {
@@ -2651,7 +2674,7 @@
           cell.append(icon, name, day); return cell;
         }
         const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-        const img = document.createElement('img'); img.src = `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
+        const img = document.createElement('img'); img.src = e.kind === 'insect' ? `/assets/dex/${e.id}.svg` : `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; // (B 47: the insects' drawn icons) img.alt = ''; img.width = 64; img.height = 64;
         const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
         const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
         cell.append(img, name, n); return cell;
@@ -2872,6 +2895,22 @@
   let mailUnread = 0;
   function refreshMail(notice = false) {
     return api('/api/island/mail').then((d) => { if (notice && d.unread && d.unread !== mailUnread) showToast(`✉️ 읽지 않은 편지가 ${d.unread}통 있어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); mailUnread = d.unread; return d; }).catch(() => null);
+  }
+  // B 47 박물관: what is on show with its giver, and my fish and insects that are not yet (one tap gives one)
+  async function openMuseum() {
+    try {
+      const [d, bag] = await Promise.all([api('/api/island/museum'), api('/api/island/bag')]);
+      const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+      const box = el('div', 'mailBox');
+      const mine = bag.items.filter((e) => d.exhibits.some((x) => x.id === e.itemId && !x.by));
+      const give = el('div', 'guideTopics');
+      if (!mine.length) give.append(el('p', 'smallMuted', '아직 전시되지 않은 물고기·곤충이 가방에 없어요.'));
+      for (const e of mine) { const b = el('button', 'ghost', `🎁 ${e.name}`); b.type = 'button'; b.addEventListener('click', async () => { try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/museum/donate', { method: 'POST', body: JSON.stringify({ itemId: e.itemId }) }); showToast(`${e.name}을(를) 기증했어요. 박물관에 이름이 남아요!`); openMuseum(); } catch (error) { showToast(error.message); } }); give.append(b); }
+      const list = el('div', 'museumList'); list.setAttribute('role', 'list');
+      for (const x of d.exhibits) { const row = el('div', `museumItem${x.by ? '' : ' empty'}`); row.setAttribute('role', 'listitem'); row.append(el('span', '', x.by ? x.name : '???'), el('small', 'smallMuted', x.by ? `${x.by}님 기증` : '빈 자리')); list.append(row); }
+      box.append(el('h3', '', `전시 ${d.shown}/${d.total}`), el('p', 'smallMuted', '물고기와 곤충을 종류마다 한 번 기증하면 섬 모두의 전시가 되고, 처음 기증한 사람의 이름이 남아요.'), el('h3', '', '기증하기'), give, el('h3', '', '전시 목록'), list);
+      openPlazaWindow('섬 박물관', [box]);
+    } catch (error) { showToast(error.message); }
   }
   async function openMailbox(replyTo = null) {
     const d = await refreshMail(); if (!d) { showToast('우체통을 열지 못했어요.'); return; }

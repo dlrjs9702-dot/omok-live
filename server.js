@@ -46,6 +46,8 @@ const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
 const Together = require('./lib/island-together'); // B 47 생일·우체통
+const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
+const bugSwings = new Map(); // session token -> the swing (one at a time)
 const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
@@ -1076,6 +1078,17 @@ function refreshBirthdays(force = false) {
   return birthdays.loading;
 }
 setInterval(() => refreshBirthdays(), 60000).unref?.();
+// B 47 박물관: one gift at a time (two at once for the same kind: the first stays), the thing out of the giver's bag
+let museumChain = Promise.resolve();
+function museumGive(account, itemId, name) {
+  const run = museumChain.then(async () => {
+    const shown = (await pointStore.worldValue('museum')) || {}; if (shown[itemId]) return 'shown';
+    const out = await pointStore.questApply(account, 'museumGiven', (d) => ({ doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1 } }));
+    if (!out?.doc) return 'missing';
+    await pointStore.setWorldValue('museum', { ...shown, [itemId]: { by: name, at: nowMs() } }); return 'ok';
+  });
+  museumChain = run.catch(() => {}); return run;
+}
 // one account's open lobby streams get an event (a letter came)
 function notifyAccount(account, type, data) {
   for (const entry of [...lobbyStreams]) { const session = sessions.get(entry.sessionToken); if (!session || pointAccountForSession(session) !== account) continue; try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } }
@@ -4464,6 +4477,25 @@ async function requestHandler(req, res) {
     }
     return sendJson(res, 200, { ok: true, active: Boolean(doc.started && !doc.skipped && !doc.done), step: doc.step || 0, done: Boolean(doc.done), steps: Together.GUIDE_STEPS, gift });
   }
+  // B 47 박물관: what is on show (each fish and insect once, the first giver's name) and a gift from my bag at its door
+  if (pathname === '/api/island/museum' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const shown = (await pointStore.worldValue('museum')) || {};
+    const kinds = IslandFishing.DEX.filter((d) => d.kind === 'fish' || d.kind === 'insect');
+    return sendJson(res, 200, { ok: true, exhibits: kinds.map((d) => ({ id: d.id, name: d.name, kind: d.kind, by: shown[d.id]?.by || null, at: shown[d.id]?.at || null })), shown: kinds.filter((d) => shown[d.id]).length, total: kinds.length });
+  }
+  if (pathname === '/api/island/museum/donate' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const me = plazaPresence.get(session.token); const door = Together.museumDoor(IslandTerrain.MUSEUM);
+    if (!me || (me.space || 'island') !== 'island' || Math.hypot(me.x - door.x, me.z - door.z) > 3.5) return sendError(res, 409, 'TOO_FAR', '박물관 앞에서 기증할 수 있어요.');
+    const body = await parseJson(req); const itemId = String(body.itemId || '');
+    if (!IslandFishing.DEX.some((d) => d.id === itemId && (d.kind === 'fish' || d.kind === 'insect'))) return sendError(res, 400, 'BAD_DONATION', '물고기나 곤충만 기증할 수 있어요.');
+    const out = await museumGive(pointAccountForSession(session), itemId, String(session.label || '게스트').slice(0, 24));
+    if (out === 'shown') return sendError(res, 409, 'ALREADY_SHOWN', '이미 전시돼 있어요.');
+    if (out === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    broadcastIsland('museum', { id: itemId, by: String(session.label || '게스트').slice(0, 24) });
+    return sendJson(res, 200, { ok: true });
+  }
   // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
   if (pathname === '/api/island/mail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
@@ -4954,6 +4986,41 @@ async function requestHandler(req, res) {
     if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); } // (A4: a contest catch)
     return sendJson(res, 200, c.done);
   }
+  // B 47 곤충 채집: a 잠자리채 in the bag, on the island's grass (not the plaza); the server picks what comes and when
+  if (pathname === '/api/island/bug/start' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-bug:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
+    if (!bag.some((e) => e.itemId === 'bugnet')) return sendError(res, 409, 'NO_BUGNET', '잠자리채가 필요해요. 잡화점에서 살 수 있어요.');
+    const at = plazaPresence.get(session.token);
+    if (!at || (at.space || 'island') !== 'island' || Math.hypot(at.x, at.z) < IslandTerrain.PLAZA_R + 2 || !IslandTerrain.walkable(at.x, at.z) || IslandTerrain.walkDist(at.x, at.z) < 2) return sendError(res, 409, 'NOT_BUG_SPOT', '광장과 길 밖, 풀밭에서 채집할 수 있어요.');
+    const now = nowMs(); const held = (await pointStore.worldValue('season'))?.day; const zone = IslandTerrain.seasonZoneAt(at.x, at.z);
+    const season = Number.isInteger(held) ? IslandTerrain.zoneSeason(zone, held) : IslandTerrain.seasonAt(at.x, at.z, now);
+    const mode = (await pointStore.worldValue('time'))?.mode || 'auto'; const hour = new Date(now + 9 * 3600000).getUTCHours();
+    const night = mode === 'night' || (mode === 'auto' && (hour >= 20 || hour < 6));
+    const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain';
+    const c = IslandInsects.swing(now, Math.random, { season: season || 'summer', night, rain });
+    if (!c) return sendError(res, 409, 'NO_BUGS', season === 'winter' ? '겨울 구역에는 곤충이 없어요.' : '지금 여기에는 곤충이 없어요.');
+    const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    bugSwings.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
+    const b = IslandInsects.SPECIES[c.species];
+    return sendJson(res, 200, { ok: true, bugId: id, species: c.species, name: b.name, comeIn: c.comeAt - now, window: IslandInsects.CATCH_MS });
+  }
+  if (pathname === '/api/island/bug/finish' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const c = bugSwings.get(session.token);
+    if (!c || c.id !== body.bugId) return sendError(res, 409, 'BUG_GONE', '놓쳤어요.');
+    if (c.done) return sendJson(res, 200, c.done);
+    const verdict = IslandInsects.judge(c, nowMs()); const at = plazaPresence.get(session.token);
+    if (verdict !== 'ok' || !at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandInsects.MOVE_R) { bugSwings.delete(session.token); return sendError(res, 409, verdict === 'early' ? 'BUG_EARLY' : 'BUG_GONE', verdict === 'early' ? '아직 오지 않았어요.' : '놓쳤어요.'); }
+    const account = pointAccountForSession(session); const itemId = `insect_${c.species}`;
+    const outcome = await pointStore.islandGive({ userId: account, claimId: `bug:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
+    if (outcome.reason === 'full') { bugSwings.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    const b = IslandInsects.SPECIES[c.species];
+    c.done = { ok: true, species: c.species, name: b.name, grade: b.grade, price: b.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
+    return sendJson(res, 200, c.done);
+  }
+  if (pathname === '/api/island/bug/cancel' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; bugSwings.delete(session.token); return sendJson(res, 200, { ok: true }); }
   if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
