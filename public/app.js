@@ -1401,6 +1401,17 @@
     playResultEffect({ win: true, reward: true, icon: '🎉', title: `+${Number(amount).toLocaleString('ko-KR')}P`, message, duration: 3200 });
   }
 
+  // A3 G1-7 결과 창 공통: the points this hand moved for me (the server's entry settlement) and [한 판 더]·[게임관으로]
+  function resultOverlayExtras(outcome) {
+    const e = state.points?.entry;
+    if (e && e.status === 'settled' && Number(e.fee)) { const line = document.createElement('span'); line.className = 'resultPoints';
+      line.textContent = outcome === 'win' && e.each ? `참가 ${Number(e.fee).toLocaleString('ko-KR')}P → +${Number(e.each).toLocaleString('ko-KR')}P` : outcome === 'win' ? '' : `참가 ${Number(e.fee).toLocaleString('ko-KR')}P`;
+      if (line.textContent) boardOverlay.append(line); }
+    const row = document.createElement('span'); row.className = 'resultActions';
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '한 판 더'; again.addEventListener('click', () => nextRoundBtn.click());
+    const out = document.createElement('button'); out.type = 'button'; out.className = 'ghost'; out.textContent = '게임관으로'; out.addEventListener('click', () => document.getElementById('leaveRoomBtn').click());
+    row.append(again, out); boardOverlay.append(row);
+  }
   function setResultBoardOverlay(outcome, game) {
     const win = outcome === 'win';
     const heading = document.createElement('strong');
@@ -5313,6 +5324,7 @@
   }
 
   function enterRoomState(next) {
+    bubbleSeen = null; // (A3 G1-6: a room just entered shows no old line as a bubble)
     closeEventDialogForRoom();
     stopPresenceRefresh();
     stopLobbyStream();
@@ -6061,6 +6073,15 @@
     return '';
   }
 
+  // A3 G1-6: a seated player's newest chat line shows a moment as a bubble on their name card (matched by name)
+  let bubbleSeen = null; // (the first view of a room shows no old line)
+  function chatBubble(row) {
+    if (!row?.text || !document.body.classList.contains('roomPlaying')) return;
+    const who = Object.entries(state?.players || {}).find(([, p]) => p && p.label && p.label === row.label); if (!who) return;
+    const card = /^(black|white)$/.test(who[0]) ? document.getElementById(`${who[0]}Player`) : teamPlayers.querySelector(`[data-seat="${who[0]}"]`); if (!card?.offsetParent) return;
+    card.querySelector('.seatBubble')?.remove();
+    const b = document.createElement('span'); b.className = 'seatBubble'; b.textContent = String(row.text).slice(0, 40); card.append(b); setTimeout(() => b.remove(), 4000);
+  }
   function renderChat() {
     const lockMessage = state ? chatLockMessage() : '';
     const locked = Boolean(lockMessage);
@@ -6086,6 +6107,8 @@
     const chatChanged = fillMessageList(chatMessages, chatRows, '아직 메시지가 없습니다.', state?.me?.chatId || '');
     fillMessageList(systemMessages, systemRows, '시스템 메시지가 없습니다.');
     lastRenderedChatIds = chatRows.map(row => row.id);
+    if (bubbleSeen !== null && newestId > bubbleSeen) chatBubble(chatRows[chatRows.length - 1]); // A3 G1-6 (a line newer than the last view)
+    bubbleSeen = newestId;
 
     if (chatChanged && wasAtBottom) {
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -6114,18 +6137,23 @@
   const roomInfoBtn = document.getElementById('roomInfoBtn');
   roomInfoBtn.addEventListener('click', () => { const open = !document.body.classList.contains('roomInfoOpen'); document.body.classList.toggle('roomInfoOpen', open); roomInfoBtn.setAttribute('aria-expanded', String(open)); fitBoard(); });
   const floatHome = chatFloatBtn.parentElement; const topActions = document.querySelector('.roomBar .topActions');
+  // G1-3 내 행동은 판 바로 아래: the game's controls (윷 던지기, 숫자야구 추측, 라이어 힌트 …) leave the side panel for the spot under
+  // the board while a hand is played (ids kept -- keys and tests lean on them); a mark keeps their place in the panel
+  const actionsPanel = document.getElementById('gameActionsPanel'); const actionsMark = document.createComment('gameActionsPanel'); actionsPanel.before(actionsMark);
+  const boardActionsSpot = document.getElementById('quickChat');
   function setRoomPlaying(on) {
     on = Boolean(on) && !roomView.classList.contains('hidden');
     if (on !== document.body.classList.contains('roomPlaying')) { document.body.classList.toggle('roomPlaying', on); if (!on) { document.body.classList.remove('roomInfoOpen'); roomInfoBtn.setAttribute('aria-expanded', 'false'); } }
     for (const b of [gameInfoFloatBtn, chatFloatBtn]) { const home = on ? topActions : floatHome; if (b.parentElement !== home) (on ? topActions.prepend(b) : floatHome.append(b)); }
+    if (on && actionsPanel.nextElementSibling !== boardActionsSpot) boardActionsSpot.before(actionsPanel); else if (!on && actionsMark.nextSibling !== actionsPanel) actionsMark.after(actionsPanel);
     fitBoard(); renderTurnRing();
   }
   function fitBoard() {
     const wrap = canvasWrap; wrap.style.maxWidth = '';
     if (!document.body.classList.contains('roomPlaying') || !wrap.offsetParent || wrap.classList.contains('cityBoard')) return;
-    const below = [...document.querySelectorAll('#yutControls, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
+    const below = [...document.querySelectorAll('#yutControls, .boardCard > .gameActionsPanel, #quickChat, .boardCard > .mobileActions')].reduce((n, el) => n + (el.offsetParent ? el.offsetHeight + 8 : 0), 0);
     const top = wrap.getBoundingClientRect().top + window.scrollY;
-    wrap.style.maxWidth = `${Math.max(240, Math.floor(window.innerHeight - top - below - 12))}px`;
+    wrap.style.maxWidth = `${Math.max(200, Math.floor(window.innerHeight - top - below - 12))}px`;
   }
   window.addEventListener('resize', () => fitBoard());
   // A3 G1-4 차례 시간 고리: the turn seat's clock (the server's public turnTimer) round that seat's name card, for everyone,
@@ -6382,6 +6410,8 @@
       : state.gameType === 'dots' ? `${seatKo('black')} 상자 ${scores.black} · ${seatKo('white')} 상자 ${scores.white}`
         : state.gameType === 'cityking' ? `파랑 자산 ${scores.black} · 빨강 자산 ${scores.white}`
         : `흑 ${scores.black} · 백 ${scores.white}`) : (state.gameType === 'bingo' ? Object.entries(g.lineCounts || {}).map(([n, count]) => `${n}번 ${count}줄`).join(' · ') || '-' : '-');
+    // A3 G1-5: a two-seat game's score between the name cards, always in sight (오델로 「2 : 2」 as in the AI practice)
+    const versus = document.querySelector('#standardPlayers .versus'); if (versus) { const two = scores && Number.isFinite(Number(scores.black)) && Number.isFinite(Number(scores.white)) && state.gameType !== 'cityking'; versus.textContent = two ? `${scores.black} : ${scores.white}` : 'VS'; versus.classList.toggle('versusScore', Boolean(two)); }
     seatLabel.textContent = isHost ? `방장 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}` : `참가자 · ${seat ? `${seatKo(seat)} 플레이어` : choiceKo(state.me?.choice)}`;
 
     // v1.6.40: a paused, disconnect-affected match takes over the status line for every game type
@@ -6594,7 +6624,7 @@
       boardOverlay.classList.remove('hidden');
     } else if (g.status === 'finished') {
       boardOverlay.classList.toggle('legendResult', legendWinOnBoard(g)); // keep the legend win sequence uncovered
-      if (outcome) setResultBoardOverlay(outcome, g);
+      if (outcome) { setResultBoardOverlay(outcome, g); resultOverlayExtras(outcome); }
       else {
         boardOverlay.classList.remove('resultWin', 'resultLoss');
         boardOverlay.textContent = `${seatKo(g.winner)} 승리`;
@@ -10087,6 +10117,12 @@
     }
   }
 
+  // A3 G1-6 빠른 말: a set word goes out as a room chat line (the chat's own rules: locked while hints are given etc.)
+  document.getElementById('quickChat').addEventListener('click', async (event) => {
+    const b = event.target.closest('button'); if (!b) return;
+    const lock = chatLockMessage(); if (lock) { showToast(lock, 2500); return; }
+    b.disabled = true; try { await api('/api/room/chat', { method: 'POST', body: JSON.stringify({ text: b.textContent }) }); } catch (err) { showToast(err.message, 3500); } finally { setTimeout(() => { b.disabled = false; }, 1500); }
+  });
   async function sendChat(event) {
     event.preventDefault();
     if (chatLockMessage()) return;

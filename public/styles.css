@@ -2095,3 +2095,16 @@ body.roomPlaying .canvasWrap{margin-left:auto;margin-right:auto}
 .turnRing.late{background:conic-gradient(#f87171 calc(var(--p,1)*360deg),rgba(148,163,184,.25) 0)}
 .turnRing.late b{color:#fecaca}
 .player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:60px}
+/* G1-3: the game's controls under the board while a hand is played */
+.boardCard > .gameActionsPanel{display:grid;gap:10px;margin:8px 0}
+@media(max-width:640px){body.roomPlaying #roomIdentityLabel,body.roomPlaying .roomBar .pointBadge,body.roomPlaying #newRoomBtn,body.roomPlaying #seatLabel,body.roomPlaying #recentActionLine{display:none!important}body.roomPlaying #statusText{font-size:1rem}body.roomPlaying .roomBar{padding-top:8px;padding-bottom:8px}}
+.versus.versusScore{font-size:1.25rem;font-weight:800;color:#f8fafc;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A3 G1-6 빠른 말 */
+.quickChat{display:none;gap:6px;flex-wrap:wrap;margin:6px 0}
+body.roomPlaying .quickChat{display:flex}
+.seatBubble{position:absolute;left:12px;bottom:calc(100% + 4px);z-index:5;max-width:220px;padding:5px 10px;border-radius:12px;background:#f8fafc;color:#0f172a;font-size:.8rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boardOverlay .resultPoints{display:block;margin-top:6px;font-size:.9rem;color:#fde68a}
+.boardOverlay .resultActions{display:flex;gap:8px;justify-content:center;margin-top:10px;pointer-events:auto}
+@media(max-width:640px){body.roomPlaying .quickChat{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}body.roomPlaying .quickChat button{flex:0 0 auto}.turnRing{width:36px;height:36px;right:6px}.turnRing b{font-size:.62rem}.player:has(.turnRing),.teamPlayer:has(.turnRing){padding-right:46px}.versus.versusScore{font-size:1rem}}
+/* G1-6: the side panels narrow while a hand is played (unless 넓게 was chosen) */
+body.roomPlaying .gameLayout:not(.sideWide){--side-w:280px}

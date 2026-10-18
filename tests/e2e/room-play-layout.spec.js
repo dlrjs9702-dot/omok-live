@@ -24,13 +24,13 @@ async function login(page) {
   return (await res.json()).sessionToken;
 }
 
-for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
-  test(`판 진행 중 한 화면 ${w}×${h}: 오목`, async ({ page, request }) => {
+for (const [w, h, game] of [[1920, 1080, 'omok'], [1366, 768, 'omok'], [393, 851, 'omok'], [375, 667, 'omok'], [1366, 768, 'yut'], [375, 667, 'yut']]) {
+  test(`판 진행 중 한 화면 ${w}×${h}: ${game}`, async ({ page, request }) => {
     test.setTimeout(90_000);
     const errors = []; page.on('pageerror', (e) => errors.push(e.message));
     await page.setViewportSize({ width: w, height: h });
     const black = await login(page);
-    await page.evaluate(() => document.querySelector('[data-game="omok"]').click());
+    await page.evaluate((game) => document.querySelector(`[data-game="${game}"]`).click(), game);
     const [res] = await Promise.all([
       page.waitForResponse((r) => r.url().endsWith('/api/rooms') && r.request().method() === 'POST'),
       page.locator('#createRoomBtn').click(),
@@ -46,6 +46,15 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
     await expect(page.locator('.roomInfoArea')).toBeHidden();
     await page.locator('#roomInfoBtn').click(); await expect(page.locator('.roomInfoArea')).toBeVisible();
     await page.locator('#roomInfoBtn').click(); await expect(page.locator('.roomInfoArea')).toBeHidden();
+    if (game === 'yut') { // G1-3: the throw under the board, within the screen
+      await expect(page.locator('.boardCard #yutThrowBtn')).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(300);
+      const t = await page.locator('#yutThrowBtn').boundingBox(); expect(t.y + t.height).toBeLessThanOrEqual(h + 1);
+      await expect(page.locator('#blackPlayer .turnRing, .teamPlayer .turnRing')).toHaveCount(1);
+      expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
+      await expect(page.locator('#gameInfoPanel #gameActionsPanel')).toHaveCount(1); // back in the side panel
+      return;
+    }
     // my clock round my card (the black seat moves first), then the other's after my move
     await expect(page.locator('#blackPlayer .turnRing b')).toHaveText(/^\d:\d\d$/);
     expect((await api(request, '/api/room/move', black, { x: 7, y: 7 })).status).toBe(200);
@@ -61,8 +70,14 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
       const overlap = b.x < box.x + box.width && b.x + b.width > box.x && b.y < box.y + box.height && b.y + b.height > box.y;
       expect(overlap, `${id}이 판을 가림`).toBe(false);
     }
+    // G1-6 빠른 말: a set word, shown a moment on the name card
+    await page.locator('#quickChat button', { hasText: '좋은 수!' }).click();
+    await expect(page.locator('.seatBubble')).toHaveText('좋은 수!');
     expect((await api(request, '/api/room/resign', white, {})).status).toBe(200);
     await expect(page.locator('body')).not.toHaveClass(/roomPlaying/);
+    // G1-7: the result on the board with the way on
+    await expect(page.locator('#boardOverlay .resultActions button', { hasText: '게임관으로' })).toBeVisible();
+    await expect(page.locator('#boardOverlay .resultPoints')).toContainText('P');
     expect(errors).toEqual([]);
   });
 }
