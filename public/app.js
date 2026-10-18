@@ -8453,7 +8453,7 @@
       ? `guess:${g.history.length}:${latestDavinciGuess.seat}:${latestDavinciGuess.target}:${latestDavinciGuess.id}:${latestDavinciGuess.number}`
       : null);
     const seconds = g.deadlineAt ? Math.max(0, Math.ceil((g.deadlineAt - Date.now()) / 1000)) : 0;
-    const inlineTimer = !active || !desktopActionTimerOwns('davinci');
+    const inlineTimer = (!active || !desktopActionTimerOwns('davinci')) && String(state.turnTimer?.seat) !== String(g.turn); // (A3 G1-4: the turn's ring on the name card says it)
     const inlineTimerText = inlineTimer && g.deadlineAt ? ` · 남은 시간 ${seconds}초` : '';
     davinciStatus.textContent = g.status === 'selecting' ? '2~4명이 자리를 선택하면 방장이 시작합니다.'
       : g.status === 'finished' ? `승리: ${(g.winner || []).map(s => state.players[s]?.label || s + '번').join(', ')}`
