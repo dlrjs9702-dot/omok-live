@@ -1735,7 +1735,7 @@
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
     // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
     byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
-    gameMenuDialog.showModal();
+    gameMenuDialog.showModal(); guideDone('menu');
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
@@ -1807,12 +1807,12 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true);
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2053,7 +2053,7 @@
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
 
   async function openGamehall() {
-    if (plazaDialog.open) plazaDialog.close();
+    if (plazaDialog.open) plazaDialog.close(); guideDone('games');
     showView('gamehall');
     try { hallIcons ||= { ...(await import('/reflex/js/icons.js')), ...(await import('/reflex/js/store.js')) }; } catch {}
     paintSoundBtn(); renderGamehall();
@@ -2268,7 +2268,7 @@
       const p = plaza.controller?.pose?.(); // my position first, so the server knows I am at the counter
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place, requestId: islandPlaceRequest.id }) });
-      islandPlaceRequest = null;
+      islandPlaceRequest = null; if (place === 'office') guideDone('deliver');
       islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
       drawIslandPlace(data.bag); loadPoints();
     } catch (error) {
@@ -2335,7 +2335,7 @@
       const body = JSON.stringify({ weedId: id, requestId: crypto.randomUUID() });
       let data;
       try { data = await api('/api/island/weed/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; data = await api('/api/island/weed/finish', { method: 'POST', body }); }
-      completed=true; plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
+      completed=true; plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.(); guideDone('weed');
       showToast(`🌱 잡초 +1${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       if (data.bonus) loadPoints();
     } catch (error) {
@@ -2792,6 +2792,60 @@
       lostCard.replaceChildren(head, list, close); openTalk(name);
     } catch (error) { showToast(error.message); }
   }
+  // B 47 처음 온 사람 안내 (사용자 2026-10-18: 첫 접속이면 무조건, 끝난 뒤에도 광장 한쪽 안내 주민이 말 걸면 가르쳐 줌): a big
+  // line over the island for the step, the arrow toward its place, each step marked done where it happens in the game
+  const touchNow = () => document.body.classList.contains('touchIsland');
+  const GUIDE = {
+    move: { title: '걸어 보기', pc: '방향키(←↑↓→)를 눌러 걸어 보세요.', phone: '왼쪽 아래 조이스틱을 밀어서 걸어 보세요.' },
+    camera: { title: '화면 돌려 보기', pc: 'A·D 키(또는 마우스로 화면 끌기)로 화면을 돌려 보세요. W·S는 위아래로 봐요.', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
+    talk: { title: '주민에게 말 걸기', pc: '화살표를 따라 광장의 안내 주민이나 걸어 다니는 주민 가까이 가서 Space를 누르세요.', phone: '주민 가까이 가서 오른쪽 아래 행동 버튼을 누르세요.' },
+    weed: { title: '잡초 하나 뽑기', pc: '풀숲의 잡초 가까이 가서 Space를 1초쯤 누르고 있으세요.', phone: '잡초 가까이 가서 행동 버튼을 1초쯤 누르고 있으세요.' },
+    deliver: { title: '관공서에 납품하기', pc: '화살표를 따라 관공서에 들어가 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.', phone: '화살표를 따라 관공서 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.' },
+    games: { title: '게임관 들어가 보기', pc: '화살표를 따라 게임관 앞에서 Space를 눌러 들어가 보세요.', phone: '화살표를 따라 게임관 앞에서 행동 버튼을 눌러 보세요.' },
+    menu: { title: '메뉴 열어 보기', pc: 'Esc 키를 누르면 메뉴가 열려요. 테마·전체 화면·접속 종료가 여기 있어요.', phone: '왼쪽 위 ☰ 버튼을 누르면 메뉴가 열려요.' },
+  };
+  let guideNow = null; let guideWatch = null;
+  const guidePanel = document.createElement('div'); guidePanel.id = 'guidePanel'; guidePanel.className = 'guidePanel hidden'; guidePanel.setAttribute('role', 'status'); document.body.append(guidePanel);
+  function guideTargetOf(kind) {
+    const T = globalThis.IslandTerrain; if (!T) return null;
+    if (kind === 'talk') return T.VILLAGE.guide; if (kind === 'deliver') return T.facilityDoor('townhall'); if (kind === 'games') return T.facilityDoor('games');
+    return null;
+  }
+  function showGuide(d) {
+    guideNow = d && d.active ? d : null; clearInterval(guideWatch);
+    const kind = guideNow?.steps[guideNow.step]; plaza.controller?.setGuideTarget?.(kind ? guideTargetOf(kind) : null);
+    guidePanel.classList.toggle('hidden', !kind); if (!kind) return;
+    const g = GUIDE[kind]; const el = (tag, cls, text) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; return n; };
+    guidePanel.replaceChildren(el('span', 'guideStep', `안내 ${guideNow.step + 1}/${guideNow.steps.length}`), el('strong', 'guideTitle', g.title), el('span', 'guideText', touchNow() ? g.phone : g.pc));
+    if (kind === 'move' || kind === 'camera') { // watched here (the island knows where I am and how the view turned)
+      const D = () => plaza.controller?.debug?.(); const start = D(); if (!start) return;
+      guideWatch = setInterval(() => { const n = D(); if (!n) return; if (kind === 'move' ? Math.hypot(n.x - start.x, n.z - start.z) > 3 : Math.abs((n.camYaw ?? 0) - (start.camYaw ?? 0)) > 0.6) guideDone(kind); }, 500);
+    }
+  }
+  function refreshGuide(body = null) {
+    return api('/api/island/guide', body ? { method: 'POST', body: JSON.stringify(body) } : {}).then((d) => {
+      showGuide(d);
+      if (d.gift) showToast(`🎉 안내를 모두 마쳤어요! 환영 선물 +${Number(d.gift).toLocaleString('ko-KR')}P`, 7000);
+      else if (d.done && body?.done) showToast('🎉 안내를 모두 마쳤어요!', 5000);
+      return d;
+    }).catch(() => null);
+  }
+  function guideDone(kind) { if (guideNow && guideNow.steps[guideNow.step] === kind) { guideNow = null; clearInterval(guideWatch); refreshGuide({ done: kind }); } }
+  // talking to her: what each step is again, or the whole guide from the start
+  function talkGuide() {
+    guideDone('talk');
+    const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = '「어서 와요! 궁금한 걸 골라 보세요. 처음부터 같이 해 봐도 좋아요.」';
+    const list = document.createElement('div'); list.className = 'guideTopics';
+    for (const [kind, g] of Object.entries(GUIDE)) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = g.title;
+      b.addEventListener('click', () => { line.textContent = `「${touchNow() ? g.phone : g.pc}」`; });
+      list.append(b);
+    }
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '처음부터 다시 배우기';
+    again.addEventListener('click', () => { plazaDialog.close(); refreshGuide({ restart: true }); });
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'ghost'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(line, list, again, close); openTalk('안내 주민');
+  }
   // B 47 생일: today's names on the plaza's corner, my birthday's gift (once a year), my birthday in 내 정보
   let birthdayMine = null; let birthdaySeq = 0; // (a pushed change wins over a slower read)
   function refreshBirthday() {
@@ -2896,6 +2950,7 @@
   setInterval(refreshErrands, 20000);
   let residentBusy = false;
   async function talkResident(n) {
+    guideDone('talk'); // B 47 안내
     if (residentBusy) return; residentBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});

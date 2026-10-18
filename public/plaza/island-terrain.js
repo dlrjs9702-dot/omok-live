@@ -351,9 +351,9 @@
     // A2c: the gazebo grandpa and his 오목 table, west of the gazebo
     omokTable: Object.freeze({ x: -25.4, z: 24.2, yaw: toPlaza(-25.4, 24.2), r: 1.4 }), grandpa: Object.freeze({ x: -25.5, z: 27 }),
     // B 47 함께하는 섬: the 우체통 on the plaza's east side, the birthday corner on its north-west (decorations only on the day)
-    mailbox: Object.freeze({ x: 11, z: -6, yaw: toPlaza(11, -6), r: 0.5 }), birthday: Object.freeze({ x: -9, z: 8.5, yaw: toPlaza(-9, 8.5) }),
+    mailbox: Object.freeze({ x: 11, z: -6, yaw: toPlaza(11, -6), r: 0.5 }), guide: Object.freeze({ x: 3.2, z: 9, yaw: toPlaza(3.2, 9), r: 0.45 }), /* (the guide resident, by the spawn, always there) */ birthday: Object.freeze({ x: -9, z: 8.5, yaw: toPlaza(-9, 8.5) }),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide];
   const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {

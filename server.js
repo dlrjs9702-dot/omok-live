@@ -4445,6 +4445,25 @@ async function requestHandler(req, res) {
     notifyAccount(to, 'birthdayCheered', { name: String(session.label || '누군가').slice(0, 24), count: out.doc.cheers[t.year].length });
     return sendJson(res, 200, { ok: true, count: out.doc.cheers[t.year].length });
   }
+  // B 47 처음 온 사람 안내: where my guide is (a new account starts it on its first island; tests start it themselves),
+  // a step done (only the current one counts) or started again by talking to the guide (사용자 2026-10-18: 첫 접속이면 무조건,
+  // 건너뛰기 없음; 끝난 뒤에도 광장 한쪽에서 말 걸면 가르쳐 줌); the last step pays the welcome once
+  if (pathname === '/api/island/guide' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const body = req.method === 'POST' ? await parseJson(req) : {};
+    let doc = (await pointStore.questDoc(account, 'guide')).doc;
+    if (req.method === 'GET' && !doc.started && !doc.skipped && session.guestKeyId && process.env.NODE_ENV !== 'test') {
+      const key = await accessStore.get(session.guestKeyId);
+      if (key && Date.parse(key.createdAt) >= Together.GUIDE_FROM) doc = (await pointStore.questApply(account, 'guide', (d) => (d.started ? null : { doc: { ...d, started: true, step: 0 } })))?.doc || doc;
+    }
+    let gift = 0;
+    if (body.restart === true) doc = (await pointStore.questApply(account, 'guide', (d) => ({ doc: { started: true, step: 0, paid: d.paid } })))?.doc || doc;
+    else if (typeof body.done === 'string' && doc.started && !doc.skipped) {
+      const out = await pointStore.questApply(account, 'guide', (d) => { const next = Together.guideAfter(d, body.done); if (!next) return null; return next.done && !d.paid ? { doc: { ...next, paid: true }, reward: Together.GUIDE_GIFT, payKey: `guide:${account}` } : { doc: next }; });
+      if (out?.doc) doc = out.doc; if (out?.reward) { gift = out.reward; notifyPointsChanged([account]); }
+    }
+    return sendJson(res, 200, { ok: true, active: Boolean(doc.started && !doc.skipped && !doc.done), step: doc.step || 0, done: Boolean(doc.done), steps: Together.GUIDE_STEPS, gift });
+  }
   // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
   if (pathname === '/api/island/mail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;

@@ -2221,3 +2221,11 @@ body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
 .mailForm textarea { resize: vertical; min-height: 64px; }
 .birthdayForm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .birthdayForm #birthdayDay { width: 72px; }
+
+/* B 47 처음 온 사람 안내 */
+.guidePanel { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; max-width: min(92vw, 640px); display: grid; gap: 2px; padding: 10px 16px; border-radius: 14px; background: rgba(16, 24, 40, 0.88); color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); text-align: center; pointer-events: none; }
+body:not(.plazaMode) .guidePanel { display: none; }
+.guideStep { font-size: 0.8rem; color: #f2c14e; }
+.guideTitle { font-size: 1.15rem; }
+.guideText { font-size: 1rem; line-height: 1.4; }
+.guideTopics { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
