@@ -156,7 +156,7 @@ function waterTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
+export function buildIsland(scene, { mat, mesh, solids, assets = null, software = false }) {
   const disposables = [];
   const keep = (x) => { disposables.push(x); return x; };
 
@@ -217,7 +217,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null }) {
     return { grass: t('ground.grass_gray', true), soil: t('ground.soil_gray', true), sand: t('ground.sand_gray', true), edge: t('ground.grass_soil_edge_mask', false, true) };
   })();
   const GRAIN = 0.5; // how strongly the grains show
-  const grainOn = { value: GRAIN }; // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
+  const grainOn = { value: software ? 0 : GRAIN }; // (none on a software renderer: SwiftShader, llvmpipe -- no GPU) // (0 on the lowest quality tier: a slow device -- or a software renderer -- skips the samples)
   const grained = (material, path) => {
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, { tGrass: { value: groundTex.grass }, tSoil: { value: groundTex.soil }, tSand: { value: groundTex.sand }, tEdge: { value: groundTex.edge }, uGrain: grainOn });
@@ -722,7 +722,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
     coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
   }
-  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = tier >= 1 ? GRAIN : 0; }; // (B 48: the grain from tier 1)
+  const setCoverQuality = (tier) => { coverFlat.visible = tier >= 1; coverLow.visible = tier >= 2; grainOn.value = tier >= 1 && !software ? GRAIN : 0; }; // (B 48: the grain from tier 1)
   for (const g of groups) assets.batch(g.target, [...g.cells.values()]);
 
   // v1.10.29 원경 (섬 밖 원경 결정 2026-10-05): far land, mountain ridges, a peak, a glacier and ice floes out at sea, well

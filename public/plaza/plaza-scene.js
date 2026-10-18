@@ -262,7 +262,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.0 게임 아일랜드: the island itself (terrain, sea, streams, bridges, walks, woods, harbour) comes from island.js;
   // here is the raised central plaza: the fountain whose water runs off into the streams, benches, lamps, flower beds
   // and the two empty plinths kept for the donation statues.
-  const island = buildIsland(scene, { mat, mesh, solids, assets });
+  const island = buildIsland(scene, { mat, mesh, solids, assets, software: /swiftshader|llvmpipe|softpipe|software/i.test(made.gpu || '') }); // (B 48: no ground grain without a GPU)
   // v1.10.29: a season day moves the models (assets) and the ground's colours (island) together
   const setSeasonDay = (day) => { assets.setDay(day); island.setSeasonDay(day); };
   island.setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now()));
