@@ -1143,7 +1143,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -3449,7 +3449,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.98' });
+    return sendJson(res, 200, { ok: true, version: '1.10.99' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5534,16 +5534,60 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     return sendJson(res, 200, { ok: true, ...(await errandView(pointAccountForSession(session))) });
   }
+  // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): anyone walking by, held for the talk on every screen while its
+  // window is open (keep: the window's renewal, bye: closed; a walk-off past TALK_FAR lets go), then the choices --
+  // topic 'how' (their story), 'rumor' (the island today), 'errand' (the day's errand). The first talk of the day +1.
+  const TALK_FAR = 6;
+  const talkKey = (session) => `talk:${session.plazaId}`;
+  const residentsChanged = () => broadcastIsland('residents', { list: islandEvents.residents() });
+  if ((pathname === '/api/island/resident/keep' || pathname === '/api/island/resident/bye') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const n = Number((await parseJson(req)).n); const who = talkKey(session);
+    const mine = islandEvents.residentTalking(who) === n; // (Codex review: a late bye or keep of an earlier talk leaves a newer one alone)
+    if (pathname.endsWith('/bye')) { if (mine && islandEvents.residentBye(who)) residentsChanged(); return sendJson(res, 200, { ok: true, residents: islandEvents.residents() }); }
+    const pos = plazaPresence.get(session.token); const hold = islandEvents.residents()[n]?.hold;
+    if (!pos || !hold || hold.eventId !== who || Math.hypot(pos.x - hold.x, pos.z - hold.z) > TALK_FAR || !islandEvents.residentKeep(n, who)) {
+      if (mine && islandEvents.residentBye(who)) residentsChanged();
+      return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.');
+    }
+    return sendJson(res, 200, { ok: true });
+  }
   if (pathname === '/api/island/resident/talk' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const body = await parseJson(req); const n = Number(body.n);
-    if (!Number.isInteger(n) || !IslandCast.WALKERS[n]) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
-    const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
-    const state = islandEvents.residents()[n];
-    if (state?.hold) return sendError(res, 409, 'RESIDENT_BUSY', '지금은 다른 일로 바빠 보여요.');
+    const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
+    if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
+    const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
+    const state = islandEvents.residents()[n]; const who = talkKey(session);
+    if (state?.hold && state.hold.eventId !== who) {
+      const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
+      return sendError(res, 409, 'RESIDENT_BUSY', other ? `지금은 ${other.name || '다른 분'}님과 이야기 중이에요.` : '지금은 다른 일로 바빠 보여요.');
+    }
+    if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
     const at = IslandNpcs.residentAt(n, nowMs(), state);
-    if (!pos || Math.hypot(pos.x - at.x, pos.z - at.z) > 4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (!pos || Math.hypot(pos.x - at.x, pos.z - at.z) > (state?.hold ? TALK_FAR : 4)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    if (!state?.hold) { islandEvents.residentTalk(n, who, Math.atan2(pos.x - at.x, pos.z - at.z)); residentsChanged(); }
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
+    const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
+    const now = nowMs(); const phase = islandPhase((await pointStore.worldValue('time'))?.mode, now);
+    const weather = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode || 'auto').kind;
+    const contest = await contestState(); const star = IslandStars.around(starNow(now)).next;
+    const decor = (await pointStore.worldValue('decor'))?.mode || 'auto';
+    const winter = decor === 'winter' || (decor === 'auto' && IslandTerrain.isWinterFest(now)); const halloween = decor === 'halloween' || (decor === 'auto' && IslandTerrain.isHalloween(now));
+    const starSoon = Boolean(star) && star.at - starNow(now) < 6 * 3600000;
+    const moods = [weather === 'rain' && 'rain', weather === 'rainbow' && 'rainbow', phase === 'night' && starSoon && 'stars', ['live', 'soon'].includes(contest.phase) && 'contest', winter && 'winter'].filter(Boolean);
+    const affinityView = (points) => ({ points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name });
+    if (topic === 'how' || topic === 'rumor') {
+      let say;
+      if (topic === 'how') say = [IslandCast.walkerLine(n, Math.random, 'day', level, String(session.label || ''))];
+      else {
+        const errands = IslandErrands.errandsOf(day); const stages = errandStages.get(`${day}|${account}`) || {};
+        const mine = errands.find((e) => stages[e.id] === 1 && e.kind !== 'buy' && e.to !== n) || errands.find((e) => stages[e.id] === 2 && e.from !== n);
+        const other = mine ? (stages[mine.id] === 2 ? mine.from : mine.to) : (n + 1 + Math.floor(Math.random() * (IslandCast.WALKERS.length - 1))) % IslandCast.WALKERS.length;
+        say = [IslandCast.rumor({ weather, night: phase === 'night', starSoon, contest: { phase: contest.phase, name: contest.name, soonDays: (contest.start - now) / 86400000 >= 0 ? (contest.start - now) / 86400000 : null },
+          plants: (await pointStore.islandPlants()).length, winter, halloween, hint: { n: other, where: IslandNpcs.hangout(other), errand: Boolean(mine) } })];
+      }
+      return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward: 0, errand: false, choices: true, affinity: affinityView((await pointStore.affinityOf(account))[n] || 0) });
+    }
     const errands = IslandErrands.errandsOf(day); const key = `${day}|${account}`;
     const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id)));
     const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId)); // v1.10.92: what I carry, for a 'buy' errand
@@ -5558,10 +5602,9 @@ async function requestHandler(req, res) {
       errandStages.set(key, r.stages);
       if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
-    const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
-    const say = r ? r.say : [IslandCast.walkerLine(n, Math.random, islandPhase((await pointStore.worldValue('time'))?.mode, nowMs()), level, String(session.label || ''))];
-    const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0;
-    return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), affinity: { points, level: IslandCast.levelOf(points), name: IslandCast.LEVELS[IslandCast.levelOf(points)].name }, ...(await errandView(account)) });
+    const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
+    const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
+    return sendJson(res, 200, { ok: true, n, name: c.name, role: c.role, say, reward, errand: Boolean(r), choices: true, affinity: affinityView(points), ...(await errandView(account)) });
   }
   // A4 날씨: the island's weather now (the same for everyone) and when it changes; the administrator may hold it
   if (pathname === '/api/island/weather' && req.method === 'GET') {
@@ -6455,7 +6498,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.98 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.99 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

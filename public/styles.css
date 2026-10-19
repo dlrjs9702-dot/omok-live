@@ -1763,12 +1763,19 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.talkMode::backdrop{background:transparent}
 .plazaDialog.talkMode::after{content:"";position:absolute;left:46px;top:-11px;width:18px;height:18px;background:inherit;border-left:2px solid #60a5fa;border-top:2px solid #60a5fa;transform:rotate(45deg)}
 .plazaDialog.talkMode .recordsDialogHead h2{flex:0 1 auto;padding:3px 12px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:.86rem}
-.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between}
+.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between;background:none;border-bottom:1px solid #334155;padding:0 0 8px;margin:0 0 10px} /* A-6 대화창 통일: one bubble -- no wood bar over it */
+.plazaDialog.talkMode .recordsDialogHead .ghost{background:#1e293b;color:#cbd5e1;border-color:#334155}
 .plazaDialog.talkMode .plazaDialogBody{display:block}
 .plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1rem}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
 .lostRequestLine.talkPending{display:none}
+/* A-6 주민 대화 선택지: a list under the words, numbered for the keys (1~4) */
+.plazaDialog.talkMode .talkChoices{flex:1 0 100%;display:grid;gap:6px;counter-reset:choice;margin-top:4px}
+.plazaDialog.talkMode .lostRequest .talkChoices button{justify-self:stretch;text-align:left;margin:0;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;font-size:.95rem}
+.plazaDialog.talkMode .talkChoices button::before{counter-increment:choice;content:counter(choice) ". ";color:#93c5fd}
+.plazaDialog.talkMode .lostRequest .talkChoices button:hover,.plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:#60a5fa;background:#172554;outline:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending) .talkChoices{display:none}
 .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
 @media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
 .lostRequest:focus{outline:none}
@@ -2255,3 +2262,11 @@ body:not(.plazaMode) .bugCatchBtn { display: none; }
 /* 두 세계 영웅전: a window over everything (사용자 2026-10-19) */
 .herosurvFrame { position: fixed; inset: 0; width: 100vw; height: 100dvh; border: 0; z-index: 1000; background: #000; }
 body.herosurvOpen { overflow: hidden; }
+/* A-6 대화창 통일 6② (docs/residents-talk-hills-20261018.md 6): the confirm windows (접속 종료·포인트 지급·대국 일시 중단 ...)
+   take the same card as every other window -- 22px corners, the window surface and line, the title on a head bar of the
+   window's pair (--g1/--g2). The event window keeps its gold frame (the event's own look), only the card. */
+.logoutDialog{--g1:#334155;--g2:#1e293b;border-color:#334155;border-radius:22px;background:#111827;padding:0 22px 20px;overflow:hidden}
+.logoutDialog>h2:first-child{margin:0 -22px 14px;padding:14px 22px;background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;font-size:1.12rem;font-weight:900}
+.logoutDialog.pauseDialog{--g1:#b45309;--g2:#92400e}
+.logoutDialog.pauseDialog>h2:first-child{color:#fff}
+.logoutDialog.eventDialog{padding:22px}

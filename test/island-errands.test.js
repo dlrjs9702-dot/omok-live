@@ -79,3 +79,16 @@ test('호감도 저장(PostgreSQL): 같은 규칙, 새 표 resident_affinity', a
   const pg = new PostgresPointStore(database.url, { initialGrant: 1_000_000 }); t.after(() => pg.pool.end()); await pg.init();
   await affinityBehaves(pg, null);
 });
+
+test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
+  // 수다: a, b, a, a quiet beat, then b opens; names filled
+  const lines = [0, 1, 2, 3, 4].map((s) => Cast.chatLine(3, 8, s));
+  assert.deepEqual(lines.map((l) => l?.who ?? null), [3, 8, 3, null, 8]);
+  assert.match(lines[0].text, /^이솔, /); assert.match(lines[4].text, /^두리, /);
+  // 소문: what the island has today; my errand's islander first
+  assert.match(Cast.rumor({ weather: 'rain' }, () => 0.9), /비가/);
+  assert.match(Cast.rumor({ weather: 'clear', hint: { n: 3, where: '섬 북쪽 언덕', errand: true } }, () => 0.9), /^두리는 요즘 섬 북쪽 언덕 근처/);
+  assert.match(Cast.rumor({ contest: { phase: 'live', name: '낚시 대회' } }, () => 0), /낚시 대회/);
+  for (const k of Object.keys(Cast.MOODS)) assert.equal(Cast.MOODS[k].length, 10);
+  assert.equal(Cast.walkerLine(0, () => 0, 'day', 1, '', ['rain']), Cast.MOODS.rain[0]);
+});

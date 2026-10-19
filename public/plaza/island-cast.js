@@ -142,14 +142,52 @@
       ['{me}님은 사탕 친구예요!', '{me}님한테만 제일 큰 사탕 줄게요.'],
       ['내년 할로윈에도 {me}님이랑 다닐 거예요!', '{me}님은 제 최고의 할로윈 짝꿍이에요!']] }),
   });
+  // A-6 (사용자 2026-10-18): each walker's word for the island's day, by index -- rain, a rainbow, a star night, the
+  // weekend contest, the winter festival
+  const MOODS = Object.freeze({
+    rain: ['비 오는 날엔 꽃들이 물을 실컷 마셔요. 저도 덩달아 기분 좋아요.', '비 오는 날 바다는 회색이지만, 물고기는 더 잘 문다네.', '빗소리 들으면서 쓰면 문장이 촉촉해져요.', '비 오는 날엔 벌들이 집에 있어요. 저도 쉬는 날이에요.', '비 오는 날엔 우산 꼭 챙겨. 감기 걸린다.',
+      '비 오는 날엔 발자국이 잘 남지. 수사하기 딱 좋아.', '비 오는 날엔 반죽이 잘 안 부풀어요. 습해서요.', '비 오는 날 배달이 제일 힘들어요. 편지가 젖으면 안 되거든요.', '비 오면 별을 못 봐서 슬퍼요….', '비 오는 날 탐험은 장화가 필수예요!'],
+    rainbow: ['무지개다! 꽃잎 색깔이 다 저기 있어요.', '바다 위 무지개는 선원들한테 좋은 징조야.', '무지개를 한 문장으로 쓰려니 너무 어려워요.', '무지개 뜨면 벌들이 신나서 붕붕거려요!', '어이구, 무지개구나. 오래 살고 볼 일이야.',
+      '무지개 끝에 보물이 있다는 제보가 들어왔어. 조사 중이야.', '무지개 케이크를 만들어 보고 싶어요!', '배달하다 무지개 봤어요! 오늘 운 좋은 날이에요.', '무지개는 햇빛이 물방울에서 꺾여서 생기는 거래요.', '무지개 끝까지 가 볼 거예요! 따라올래요?'],
+    stars: ['별똥별 뜨는 밤엔 꽃집 창가에서 소원을 빌어요.', '별똥별 떨어지는 밤엔 옛 항해가 생각나는구먼.', '별똥별이 떨어지는 장면을 소설에 넣었어요.', '밤엔 벌들도 자요. 별똥별은 저 혼자 봐요.', '별똥별 보면 소원 빌어. 나는 늘 섬 사람들 건강을 빌지.',
+      '밤하늘에 수상한 불빛… 아, 별똥별이군.', '별 모양 쿠키를 구웠어요. 오늘 밤 별똥별 기념이에요.', '별똥별 뜨는 밤엔 늦게까지 배달해도 안 힘들어요.', '오늘 밤 별똥별 온대요! 언덕에서 같이 봐요!', '별똥별 주우러 갈 거예요! 어디 떨어지는지 봐 줘요.'],
+    contest: ['오늘 섬 대회 나가요? 이기면 꽃 한 송이 드릴게요!', '대회라고? 젊은이들 기운이 좋구먼. 나도 한창땐….', '오늘 대회 장면, 소설에 쓰려고 구경 왔어요.', '대회 나가세요? 꿀 한 숟가락 먹고 가요, 힘 나게!', '오늘 대회 있다며? 구경 가야지.',
+      '대회 날엔 사건이 많아. 내가 지켜보고 있지.', '대회 끝나면 빵집 와요. 응원 빵 드릴게요!', '대회 소식은 제가 섬 구석구석 다 알렸어요!', '대회요? 별 세기 대회면 제가 일등 할 텐데.', '대회 나가요? 저도 크면 꼭 나갈 거예요!'],
+    winter: ['겨울 축제라 꽃집에 포인세티아가 들어왔어요.', '겨울 축제라… 배 위에서 보낸 크리스마스가 떠오르네.', '겨울 축제 이야기로 단편을 하나 써 볼까 해요.', '겨울엔 벌들이 꼭 붙어서 겨울을 나요. 축제 소리에 깰까 봐 걱정이에요.', '겨울 축제엔 따뜻한 차 한 잔이 최고야.',
+      '축제 트리 장식이 하나 없어졌다는 제보가… 아직 수사 중이야.', '겨울 축제라 생강 쿠키를 잔뜩 구웠어요!', '겨울 축제라 카드 배달이 엄청 많아요!', '겨울 밤하늘이 제일 맑아요. 축제 불빛만 좀 줄이면요.', '눈사람 만들 거예요! 축제 트리보다 크게요!'],
+  });
+  // A-6 주민끼리 수다: two walkers standing together trade lines -- each one's [to the other ({you}), an answer, a goodbye]
+  const CHATS = Object.freeze([
+    ['{you}, 오늘 꽃 한 송이 어때요?', '와, 좋아요! 벌써 기분이 좋아지네요.', '그럼 이따 꽃집에서 봐요!'],
+    ['{you}, 같이 바다 보러 가겠나?', '허허, 그거 좋구먼.', '자, 그럼 또 걸어 볼까.'],
+    ['{you}, 이야기 하나 들려줄래요?', '좋아요! 그거 소설에 써도 돼요?', '잊기 전에 적어 둘게요!'],
+    ['{you}, 꿀 한 숟가락 맛볼래요?', '좋아요! 벌들도 좋아할 거예요.', '벌들 보러 가야겠어요. 또 봐요!'],
+    ['{you}야, 같이 좀 걸을까?', '그래그래, 좋지.', '천천히 다니거라.'],
+    ['{you}, 수사 좀 도와주겠나?', '좋아. 내 수첩에 적어 두지.', '수사는 계속된다!'],
+    ['{you}, 새로 구운 빵 맛볼래요?', '좋아요! 빵 하나 들고 갈게요.', '반죽 보러 가야 해요. 안녕!'],
+    ['{you}, 이따 편지 한 통 써 줄래요?', '좋아요! 배달 끝나면 갈게요.', '배달 가야 해요. 다음에 봐요!'],
+    ['{you}, 오늘 밤 별 보러 갈래요?', '좋아요… 하암, 졸리지만요.', '그 전에 낮잠 좀 자야겠어요.'],
+    ['{you}, 같이 탐험 가요!', '좋아요, 대원 한 명 추가!', '출발! 저 언덕까지!'],
+  ].map((l) => Object.freeze(l)));
+  // the line of a chat between walkers a and b in time slot `slot` (the server clock's, so every screen shows the same):
+  // { who, text } -- a opens, b answers, a says goodbye, a quiet beat; then b opens
+  function chatLine(a, b, slot) {
+    const [x, y] = Math.floor(slot / 4) % 2 ? [b, a] : [a, b]; const k = ((slot % 4) + 4) % 4;
+    if (k === 3 || !WALKERS[x] || !WALKERS[y]) return null;
+    const who = k === 1 ? y : x;
+    return { who, text: CHATS[who][k].split('{you}').join(WALKERS[k === 1 ? x : y].name) };
+  }
   const PHASES = ['morning', 'day', 'evening', 'night'];
   const hasFinal = (word) => { const c = String(word).charCodeAt(String(word).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
   const josa = (word, pair) => `${word}${hasFinal(word) ? pair[0] : pair[1]}`; // josa('봄이', '이가') -> 봄이가
   const fill = (line, me) => line.split('{me}').join(me || '친구');
   const pick = (list, random) => list[Math.floor(random() * list.length) % list.length];
-  // a walker's line for a talk with nothing to ask, by 호감도 level (sometimes the one for this time of day)
-  function walkerLine(n, random = Math.random, phase = 'day', level = 1, me = '') {
+  // a walker's line for a talk with nothing to ask, by 호감도 level (sometimes the one for this time of day, or -- A-6 --
+  // for what the island has today: `moods`, keys of MOODS)
+  function walkerLine(n, random = Math.random, phase = 'day', level = 1, me = '', moods = []) {
     const c = WALKERS[n]; if (!c) return null;
+    const mood = moods.filter((k) => MOODS[k]?.[n]);
+    if (mood.length && random() < 0.4) return MOODS[pick(mood, random)][n];
     if ((phase === 'morning' || phase === 'night') && c[phase] && random() < 0.3) return c[phase];
     return fill(pick(c.lines[Math.max(0, Math.min(3, level))], random), me);
   }
@@ -157,6 +195,26 @@
     const k = KEEPERS[id === 'photomemory' ? 'photographer' : id]; if (!k) return null;
     return fill(pick(k.lines[Math.max(0, Math.min(3, level))], random), me);
   }
+  // A-6 「섬 소문 있어요?」: one thing going on on the island today, from what the server knows -- ctx { weather, night,
+  // starSoon, contest: { phase, name, soonDays }, plants, winter, halloween, hint: { n, where } } (hint: where another
+  // islander is often seen; the server gives the one my errand is about first)
+  function rumor(ctx = {}, random = Math.random) {
+    const out = [];
+    if (ctx.weather === 'rain') out.push('비가 오면 물고기가 더 잘 문대요. 강가에 가 보세요.');
+    if (ctx.weather === 'rainbow') out.push('지금 하늘에 무지개가 떴대요! 금방 사라지니까 얼른 보세요.');
+    if (ctx.weather === 'clear') out.push('날이 맑아서 풀밭에 곤충이 많대요. 잠자리채 있어요?');
+    if (ctx.starSoon) out.push(ctx.night ? '오늘 밤 별똥별이 떨어질 거래요. 보이면 얼른 소원 빌어요.' : '밤 8시가 넘으면 별똥별이 가끔 떨어진대요. 소원 하나 준비해 둬요.');
+    const k = ctx.contest;
+    if (k?.phase === 'live') out.push(`지금 「${k.name}」 대회가 한창이래요! 얼른 가 봐요.`);
+    else if (k?.phase === 'soon') out.push(`곧 「${k.name}」 대회가 시작한대요!`);
+    else if (k?.name && k.soonDays != null && k.soonDays <= 4) out.push(`이번 주말에 「${k.name}」 대회가 열린대요. 연습해 둬요!`);
+    if (Number.isFinite(ctx.plants)) out.push(ctx.plants > 0 ? `섬 사람들이 심은 꽃·나무가 벌써 ${ctx.plants}그루래요.` : '잡화점 씨앗을 땅에 심으면 꽃이 핀대요. 아직 아무도 안 심었대요.');
+    if (ctx.winter) out.push('광장에 겨울 축제가 열렸대요. 트리 보러 가요!');
+    if (ctx.halloween) out.push('할로윈이라 섬 곳곳에 호박이 놓였대요. 꼬마들이 사탕을 찾아다녀요.');
+    const h = ctx.hint && WALKERS[ctx.hint.n] ? `${josa(WALKERS[ctx.hint.n].name, '은는')} 요즘 ${ctx.hint.where} 근처에서 자주 보인대요.` : null;
+    if (h && (ctx.hint.errand || !out.length || random() < 0.35)) return h;
+    return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
+  }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, PHASES, levelOf, walkerLine, keeperLine, keeperN, josa, hasFinal, fill };
+  return { WALKERS, KEEPERS, LEVELS, GAIN, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
 }));
