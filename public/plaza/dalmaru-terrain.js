@@ -111,7 +111,7 @@
     niches: [[270, 14], [261, 10], [279, 10], [253, 7], [287, 7], [246, 7], [294, 7]].map(([a, m], i) => ({ ...deg(RIDGE.inner - 1.5, a), m, now: i < 3 })), // 기부 1위·2위·대회 우승 now, the rest empty
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 227.5), to: deg(RIDGE.inner - 2, 212) }, // up the cliff face westward beside 관공서
-    lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 6 },
+    lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)
     gamehall: { x: 56, z: -66 }, notice: { x: -34, z: -62 }, village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당

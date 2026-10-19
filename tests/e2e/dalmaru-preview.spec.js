@@ -18,13 +18,13 @@ test('달마루섬 미리보기: 관리자 스위치일 때만 새 섬, 미리�
     const posted = []; page.on('request', (r) => { if (r.url().includes('/api/plaza/state')) posted.push(r.url()); });
     await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); localStorage.setItem('gc.islandMap', 'dalmaru'); });
     await page.reload();
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 90000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running).catch(() => false), { timeout: 90000 }).toBe(true); // (the page may reload itself on the way)
     // (the page asked the server, which says 'classic' to a guest -- so it went back: the preview is the administrator's)
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('gc.islandMap')), { timeout: 30000 }).toBe(null);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('gc.islandMap')).catch(() => 'reloading'), { timeout: 30000 }).toBe(null);
     await page.evaluate(() => localStorage.setItem('gc.islandMap', 'dalmaru'));
     await page.route('**/api/island/map', (route) => route.fulfill({ json: { ok: true, map: 'dalmaru' } })); // (as for an administrator)
     await page.reload();
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 90000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running).catch(() => false), { timeout: 90000 }).toBe(true); // (the page may reload itself on the way)
     expect(await page.evaluate(() => window.IslandTerrain.MAP)).toBe('dalmaru');
     const at = await page.evaluate(() => { const d = window.PlazaDebug(); const P = window.IslandTerrain.dalmaru.PLAZA; return { x: d.x, z: d.z, inPlaza: Math.abs(d.x - P.x) < P.hw && d.z > P.d0 && d.z < P.d1 }; });
     expect(at.inPlaza).toBe(true); // 대청마당

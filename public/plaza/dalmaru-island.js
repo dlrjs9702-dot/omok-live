@@ -141,24 +141,28 @@
   // 배 타는 곳 (dock.boat) off 물가 거리 before 대청마당 -- both walked on
   const CAPE = D.CAPES[1]; const pierL = Math.hypot(PL.pier.x - CAPE.x, PL.pier.z - CAPE.z);
   const PIER_DIR = [(PL.pier.x - CAPE.x) / pierL, (PL.pier.z - CAPE.z) / pierL];
-  const PIER = { x: PL.pier.x + PIER_DIR[0] * 10, z: PL.pier.z + PIER_DIR[1] * 10, ux: PIER_DIR[0], uz: PIER_DIR[1], half: 10, w: 3.6, deck: 0.69, root: { x: PL.pier.x, z: PL.pier.z, yaw: Math.atan2(PIER_DIR[0], PIER_DIR[1]) } }; // (its front, the far end, out to sea)
-  const DOCK = { x: PL.dock.x, z: PL.dock.z, ux: 0, uz: 1, half: 4, w: 4, deck: 0.45, root: { x: PL.dock.x, z: PL.dock.z - 2, yaw: 0 } };
+  const pierY = Math.max(SEA, D.ground(PL.pier.x, PL.pier.z)) - 0.5; // (its deck a step over the beach at its root)
+  const PIER = { x: PL.pier.x + PIER_DIR[0] * 10, z: PL.pier.z + PIER_DIR[1] * 10, ux: PIER_DIR[0], uz: PIER_DIR[1], half: 10, w: 3.6, deck: pierY + 0.69, root: { x: PL.pier.x, z: PL.pier.z, y: pierY, yaw: Math.atan2(PIER_DIR[0], PIER_DIR[1]) } }; // (its front, the far end, out to sea)
+  // (dock.boat: a 12 x 3 m float, its gangway 4.2 m back to the shore -- the model's -Z, here north)
+  const DOCK = { x: PL.dock.x, z: PL.dock.z - 2, root: { x: PL.dock.x, z: PL.dock.z - 2, y: 0, yaw: 0 },
+    rects: [{ x: PL.dock.x, z: PL.dock.z - 2, ux: 1, uz: 0, half: 6, w: 3, deck: 0.15 }, { x: PL.dock.x, z: PL.dock.z - 5.6, ux: 0, uz: 1, half: 2.3, w: 1.6, deck: 0.3 }] };
+  const onDock = (x, z, grow = 0) => DOCK.rects.find((r) => inRect(r, x, z, grow));
   const inRect = (r, x, z, grow = 0) => { const dx = x - r.x; const dz = z - r.z; return Math.abs(dx * r.ux + dz * r.uz) <= r.half + grow && Math.abs(-dx * r.uz + dz * r.ux) <= r.w / 2 + grow; };
 
   function heightAt(x, z) {
     const hit = onBridge(x, z); if (hit) return deckAt(hit);
     const st = onStairs(x, z); if (st) return Math.max(STAIRS.base + stairRise(st.u), ground(x, z));
     if (inRect(PIER, x, z)) return PIER.deck;
-    if (inRect(DOCK, x, z)) return DOCK.deck;
+    const dock = onDock(x, z); if (dock) return dock.deck;
     return Math.max(ground(x, z), SEA);
   }
-  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || inRect(DOCK, x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2);
+  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2);
   // the cliff faces and the ridge's sea cliffs read as rock
   const cliffAt = (x, z) => Math.min(1, D.ridgeAt(x, z) * smooth(0.25, 0.9, D.slopeAt(x, z)) + (D.ridgeAt(x, z) > 0.3 ? smooth(20, 4, D.coastDist(x, z)) : 0));
   // fishing: a walkable spot with water within 2.4 m -- the sea (and 윤슬만) or fresh water (the lake, rivers, pools)
   function fishWater(x, z) {
     if (!walkable(x, z) || onBridge(x, z) || onStairs(x, z)) return null;
-    if (inRect(PIER, x, z, 0.2) || inRect(DOCK, x, z, 0.2)) return 'sea';
+    if (inRect(PIER, x, z, 0.2) || onDock(x, z, 0.2)) return 'sea';
     for (const [dx, dz] of [[2.4, 0], [-2.4, 0], [0, 2.4], [0, -2.4]]) {
       const wx = x + dx; const wz = z + dz; if (!isWater(wx, wz)) continue;
       return D.coastDist(wx, wz) < 0 ? 'sea' : 'river';
