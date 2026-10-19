@@ -36,7 +36,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   await lines();
   const choices = page.locator('#plazaDialog .talkChoices button');
   await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '부탁할 거 있어요?', '잘 가요']);
-  await expect.poll(() => holdOn(other.page, idle), { timeout: 15000 }).toMatch(/^talk:/);
+  await expect.poll(() => holdOn(other.page, idle), { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner)
   const at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
   await page.waitForTimeout(13000); // past the server's lease: the window renews it
   expect(await holdOn(other.page, idle)).toMatch(/^talk:/);
