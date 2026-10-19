@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // CI 2차 단축: refresh tools/ci-timings.json (each browser test's seconds, `<project> tests/e2e/<file>:<line>`) from a
-// green CI run's part logs -- `node tools/ci-timings.js <run id>` (needs the gh CLI). The parts run one worker each, so
+// CI run's green part logs -- `node tools/ci-timings.js <run id>` (needs the gh CLI). The parts run one worker each, so
 // a test's time is from the result line before it (or the part's start) to its own; a retry adds to the first try.
 // Refresh now and then (tests move lines, new ones count 60 s until then): tools/ci-split.js reads the table.
 const { execFileSync } = require('node:child_process');
@@ -26,5 +26,7 @@ for (const job of jobs) {
 }
 if (!Object.keys(out).length) { console.error('no test lines (is the run green, are its logs kept?)'); process.exit(1); }
 const file = path.join(__dirname, 'ci-timings.json');
-fs.writeFileSync(file, `${JSON.stringify(Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b))), null, 1)}\n`);
+const kept = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {}; // (a failed part's tests keep their last time)
+const all = { ...kept, ...out };
+fs.writeFileSync(file, `${JSON.stringify(Object.fromEntries(Object.entries(all).sort(([a], [b]) => a.localeCompare(b))), null, 1)}\n`);
 console.log(`${Object.keys(out).length} tests from ${jobs.length} parts -> ${path.relative(process.cwd(), file)}`);

@@ -19,7 +19,7 @@ jobs:
   # v1.10.98 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side. The repository is
   # public: runner time is free, so the parts run at once and a PR waits for the longest. docs/release.md: split rather
   # than raise the limit. 2차 단축 (사용자 「두 가지 다 해 보자」): by time, not by count or by file -- npm test alone, every
-  # spec on PC in nine parts and the phone run in two, each about 12 minutes of tests (tools/ci-split.js over
+  # spec on PC in twelve parts and the phone run in three, each about 12 minutes of tests (with its setup, under 15) (tools/ci-split.js over
   # tools/ci-timings.json; the assets and plaza parts were 30 minutes and decided every run).
   part:
     name: e2e part (${{ matrix.group }})
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [unit, chromium-1, chromium-2, chromium-3, chromium-4, chromium-5, chromium-6, chromium-7, chromium-8, chromium-9, mobile-1, mobile-2]
+        group: [unit, chromium-1, chromium-2, chromium-3, chromium-4, chromium-5, chromium-6, chromium-7, chromium-8, chromium-9, chromium-10, chromium-11, chromium-12, mobile-1, mobile-2, mobile-3]
     env:
       # (the island's 3D specs on PC: since 2차 단축 every spec runs on PC, kept for reference until the next tidy)
       PLAZA_PC: >-
@@ -90,8 +90,8 @@ jobs:
           GROUP: ${{ matrix.group }}
         run: |
           case "$GROUP" in
-            chromium-*) PROJECT=chromium; LIST=$(node tools/ci-split.js chromium 9 ${GROUP#chromium-}) || exit 1 ;;
-            mobile-*) PROJECT=mobile-chromium; LIST=$(node tools/ci-split.js mobile 2 ${GROUP#mobile-}) || exit 1 ;;
+            chromium-*) PROJECT=chromium; LIST=$(node tools/ci-split.js chromium 12 ${GROUP#chromium-}) || exit 1 ;;
+            mobile-*) PROJECT=mobile-chromium; LIST=$(node tools/ci-split.js mobile 3 ${GROUP#mobile-}) || exit 1 ;;
             *) echo "unknown part $GROUP"; exit 1 ;;
           esac
           test -n "$LIST" || exit 1

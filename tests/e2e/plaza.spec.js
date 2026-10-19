@@ -328,7 +328,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
   test.setTimeout(180000); // two 3D island pages at once (a slow CI runner went past 60 s, v1.10.2)
   const a = await intoPlaza(browser, request, '앨리스');
   const b = await intoPlaza(browser, request, '밥');
-  const idOf = (who) => expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy().then(() => who.page.evaluate(() => window.PlazaDebug().myId));
+  const idOf = (who) => expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 30000 }) /* (the server's join reply: past 10 s on a busy runner) */.toBeTruthy().then(() => who.page.evaluate(() => window.PlazaDebug().myId));
   const aId = await idOf(a); const bId = await idOf(b);
   const seen = (who, id) => who.page.evaluate((other) => (window.PlazaDebug()?.others || []).find((o) => o.id === other) || null, id);
   await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
@@ -1184,12 +1184,21 @@ test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 �
 // v1.10.32 운반·전달: a lost thing picked up stays in my hands (in front of the chest, the arms holding it) while I stand
 // and walk, the other players see it in mine; given back, the owner takes it hand to hand and only then goes
 test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 보이며, 주인이 받아 든 뒤 떠난다', async ({ browser, request }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000); // (two island pages; a CI runner took past two minutes)
   const a = await intoPlaza(browser, request, '운반꾼');
   const b = await intoPlaza(browser, request, '구경꾼');
   const { page } = a;
   const lost = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
   expect(lost?.npc).toBeTruthy();
+  // The event borrows the same resident on both screens: ten walkers, one identity, exact server wait position (CI 2차: before talking to them --
+  // still on the way there, the 말 걸기 by them was another islander's)
+  for (const who of [a,b]) {
+    await expect.poll(()=>who.page.evaluate(id=>{
+      const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
+      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
+        near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
+    },lost.id),{timeout:30000}).toEqual({n:lost.npc.resident,reused:true,count:10,near:true});
+  }
   // v1.10.34 부탁: talking to the owner -- what they lost, and its place on my map from anywhere
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
@@ -1199,14 +1208,6 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await expect(page.locator('.lostRequest')).toContainText('사례 10,000P');
   await page.locator('.lostRequest button').click();
   await expect(page.locator('#plazaDialog')).toBeHidden();
-  // The event borrows the same resident on both screens: ten walkers, one identity, exact server wait position.
-  for (const who of [a,b]) {
-    await expect.poll(()=>who.page.evaluate(id=>{
-      const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
-      return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
-        near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
-    },lost.id)).toEqual({n:lost.npc.resident,reused:true,count:10,near:true});
-  }
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
