@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.101 꾸미기 창 새 단장(3-1): 참고 그림 모양·큰 미리보기·착용 전후, 스킨 선물
+
+- 근거: gamecenter-notes 확정 순서(사용자 2026-10-19) 5 — 3-1 상점·내 정보 입어 보기 통일을 달마루 단계 사이에. 모양은 사용자 참고 그림(`docs/img/shop-ui-reference-20261019.webp`, 사용자 선택 「1」), 그림 에셋 assets 56(`public/assets/shop/ui/`).
+- 꾸미기 창(`app.js` `dressView`·`dressParts`·`dressStart`): 상점 7곳(스킨·옷·소품·미용실·성형외과·염색사·변신 의상실)과 내 정보가 한 틀 — 나무 간판 제목, 왼쪽 목록(카드에 마우스를 올리면 미리보기, 누르면 선택·초록 테두리), 오른쪽 큰 미리보기(정원 배경, ⟲·＋·－, 정면·옆·뒤·걷기 ‹ › 점), 「착용 전 → 착용 후」 비교(`tryOnShot`: 따로 그리는 렌더러로 한 장씩), 상세, 아래 버튼 줄(포인트·구매·착용·선물하기·닫기 — 구매·착용은 카드 버튼을 그대로 누름). 휴대폰(700px 이하)은 한 줄, 버튼 줄은 아래에 붙음. 얼굴·염색·변신 카드도 같은 미리보기(`lookTried`·`tfDress`).
+- 스킨 선물(사용자 2026-10-19 「선물 허용으로」「우체국으로 쪽지 오는걸로」, 결정 「1」): 상점 「선물하기」 → 받는 사람(우체통 목록)·쪽지 → 확인 → `POST /api/skins/gift`(IP 스킨 거절 → 받는 사람 확인(나 자신 안 됨) → 하루 횟수·요청 번호를 퀘스트 문서 `skinGifts`에 먼저 잡음(같은 요청은 한 번만, 경제 값 `gift:skinPerDay` 기본 5) → 이미 가졌으면 되돌림 → `pointStore.giftSkin`(주는 사람 원장 `skin_gift` 「선물 ○○ → △△」, 받는 사람 소유, JSON·PG 둘 다) → 받는 사람 우체통 쪽지(🎁 선물받은 스킨) → 알림). 받는 사람을 고르면 `/api/skins/gift/check`로 「이미 가지고 있어요」. 규칙은 `lib/skins.js` 머리말.
+- 고침(gamecenter-notes bugs-20261019 10, 「상점 창이 한번 열면 다른 거 할 때도 계속 떠」): 섬 창(`openPlazaWindow`)은 열 때도 닫을 때도 같은 정리(`sendPlazaHome`) — 빌려 온 카드는 원래 자리로, 창 전용 카드(변신 의상실)는 치움. 바로 이어 연 창(성형외과)에 앞 창 목록이 남던 문제. 성형외과·염색사 카드가 기다리는 자리(body)는 보이지 않게, 건물에 들어가고 나올 때 섬 창(`closeIslandWindows`)을 닫음. 시험은 dress-room(변신 의상실 → 성형외과, 닫은 뒤 화면에 남는 것 없음)·백화점 들어가기 도우미는 문 앞 이동·들어가기를 될 때까지 다시.
+- 남은 3-1 일: 품목 그림을 3D로 한 번 그려 저장(지금은 2D 미리보기), 게임 스킨 상점 오른쪽 2D 그림.
+- 검증: 단위(skin-gift·point-store 선물 — 두 저장소), e2e dress-room(PC·휴대폰, 선물 끝까지)·transform-shop·shop-browse·plaza 가족 탭, theme-light. Codex 검토 대기(사용량 한도 10/25).
+
 ## v1.10.100 작은 버그 한 묶음(A-7), 달마루섬 개편 1단계(관리자 미리보기)
 
 - 근거: gamecenter-notes 확정 순서(사용자 2026-10-19) 2·3 — `docs/bugs-20261019.md`의 위치와 무관한 것 + 보이지 않는 벽 2곳(대회 동상 자리·깨진 길·역 길은 개편이 흡수), `docs/dalmaru-implementation-20261019.md` 1단계.
@@ -38,18 +47,3 @@
 - 1.10.98 공지의 박물관 방향을 남동쪽으로 고침(지도 북쪽 = -z). CI 주석·docs/release.md의 「v1.10.99 CI 단축」을 실제 배포판 v1.10.98로.
 - 시험: 단위 island-errands(수다 차례·소문·상황 대사). resident-talk.spec(두 화면 멈춤·13초 넘게 유지·「이야기 중」·선택지·닫으면 풀림·심부름 사례, PC·휴대폰), 단위 island-residents(붙잡기·갱신·풀림·3분). CI에서만 흔들리던 plaza 관광열차(두 번째 타기 — 4.6초 문 열림을 놓치면 다시 열고 누름)·사진가 기념품(CI 120초).
 - 검증: 위 시험 로컬 통과. 실제 휴대폰 미검증.
-
-## v1.10.98 함께하는 섬(B 47): 생일·우체통·안내 주민·곤충 채집·박물관·반려동물, 낚싯대 판매, 관리자 「문제 기록」, 두 세계 영웅전 정리
-
-- 생일(`lib/island-together.js`, 계정 문서 birthday): 내 정보에서 월·일·숨김, 관리자는 계정 이름으로. 당일 광장 북서쪽 장식(현수막에 이름), 칭호 「생일 주인공」(lookFor), 선물 1,000P 한 해 한 번(payKey), 곁(4m)에서 「축하하기」 하루 한 사람 한 번·폭죽, 올해 축하 수. 오늘 생일 목록은 서버 메모리(하루·저장 때 다시 읽음 -- ponytail: 계정 수가 커지면 생일 색인).
-- 우체통(광장 동쪽 `VILLAGE.mailbox`): 모든 활성 계정에게 편지 200자·하루 5통·30일·읽음, 소포는 선물 포장지 규칙(islandGift) 그대로, 받는 사람 접속 중이면 바로 알림.
-- 안내 주민(`VILLAGE.guide`, 광장 스폰 동쪽 7m에 늘): 2026-10-19 이후 만든 계정은 첫 섬에서 무조건 7단계(걷기·화면 돌리기·말 걸기·잡초·납품·게임관·메뉴), 건너뛰기 없음, 화살표, 끝나면 2,000P 한 번. 말 걸면 주제별 설명·처음부터 다시(사용자 2026-10-18). 시험 서버(NODE_ENV=test)에서는 자동 시작 안 함.
-- 곤충 채집(`lib/island-insects.js`): 잠자리채(잡화점 1,500P, 쓰고도 남음)로 광장·길 밖 풀밭에서, 서버가 구역 계절·밤낮(관리자 시간대 포함)·비로 12종 중 하나와 오는 때를 정함, 2.5초 안에 Space/「잡기」. 도감에 곤충 12(대도감 완성 조건은 23 그대로), 상인 판매, 그림은 납품 SVG.
-- 박물관(`MUSEUM` (28, 34), 외관만): 물고기·곤충 종류마다 한 번 기증, 처음 기증자 이름(worldValue museum, 기증은 한 줄로 차례대로). 다 채운 섬 보상·실내는 다음.
-- 반려동물: 강아지·고양이 8,000P·어깨 새 6,000P(잡화점), 가방에서 「데리고 다니기」(이름 10자), 계정 문서 pet + 접속 표시에 실려 모두에게, 뒤쪽 옆을 따라옴(Walk·Idle, 내가 앉으면 Sit), 실제 시간으로 따라감. asset-loader `creature`.
-- 낚싯대(사용자 2026-10-18): 잡화점 1,500P, 가방에 없으면 낚시 안 됨(NO_ROD). 기존 계정도 사야 함.
-- 47 모델 29종 together-v1(우체통·생일·박물관 외관·안내 화살표만 입장 전 묶음, 나머지는 처음 쓸 때), 안내 주민은 characters/. 반려동물 노드 예산 12(budgets pet).
-- 관리자 「문제 기록」(docs/admin-issue-log-20261018.md): Esc 메뉴(☰) 「문제 기록」 → 내용·종류(버그/어색함/개선), 화면(섬 위치·계절·시간대·날씨·화질/게임방/게임관/열린 창)·기기·FPS·최근 브라우저 오류 8줄·섬 사진(JPEG ≤60KB, `snapshot`) 자동, worldValue issueLog 500개, /api/admin/issues(사진은 ?shots=1), 관리자 창 카드(상태 열림/고치는 중/해결·지우기·열린 것 Markdown 복사).
-- 두 세계 영웅전 정리(docs/herosurv-fix-20261019.md): 게임별 랭킹에 최고 기록(게임이 마지막으로 연 보드, worldValue herosurvBoard), 섬 위 전체 화면 iframe(페이지 frame-ancestors self·X-Frame-Options SAMEORIGIN, 「나가기」는 postMessage로 창만 닫음 — 다시 불러오기·재로그인 없음), 엔진 시작 전 IndexedDB /userfs에 참가 파일(leaderboard_<sha256(api 주소) 앞 16자>.cfg [guest]) 미리 써서 이름·메일 창 없음. 게임 파일(pck)은 그대로 — 남는 「이름 변경」 버튼 숨기기(빌드 수정)는 이 세션의 권한 검사가 막아 사용자 결정 대기. 원작 표기(카드·NOTICE.md, 원작: 스마트대디).
-- CI: 느린 러너에서만 흔들리던 시험 정리(기본 대기 15초, 곁 사람 폭죽 보기는 CI 주석, 걷는 주민 말 걸기는 CI 건너뜀 — A-6에서 다시 씀).
-- 검증: 단위 시험 전체, e2e island-together·island-guide·island-insects·island-pets(반복 2회)·general-store·plaza 낚시·river-fishing·island-assets 등록부. 실제 휴대폰·GPU 미검증.

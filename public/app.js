@@ -1575,20 +1575,24 @@
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
-    for (const [node, mark] of [...plazaHomes]) if (!nodes.includes(node)) { mark.replaceWith(node); plazaHomes.delete(node); }
+    for (const node of [...plazaHomes.keys()]) if (!nodes.includes(node)) sendPlazaHome(node);
     for (const node of nodes) {
       if (!node || plazaHomes.has(node)) continue;
       const mark = document.createComment('plaza'); node.before(mark); plazaHomes.set(node, mark); plazaDialogBody.append(node);
     }
     if (!plazaDialog.open) plazaDialog.showModal();
   }
+  // (bugs 10, 사용자 2026-10-19 「상점 창이 한번 열면 다른 거 할 때도 계속 떠」) a window's content back where it came
+  // from -- or, made for the window alone (no home on the page), away: never left in the next window or on the page
+  function sendPlazaHome(node) { const mark = plazaHomes.get(node); if (mark?.isConnected) mark.replaceWith(node); else node.remove(); plazaHomes.delete(node); }
+  // the island's windows close when I go in or out of a building (the place they belong to is gone)
+  const closeIslandWindows = () => { for (const id of ['plazaDialog', 'skinShopDialog', 'islandPlaceDialog']) { const d = byId(id); if (d?.open) d.close(); } };
   let questDepartureDialog = null;
   plazaDialog.addEventListener('close', () => {
     if (plazaDialog.open) return; // a queued close from the previous window must not empty a newly opened one
     const departed = questDepartureDialog; questDepartureDialog = null;
     if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
-    for (const [node, mark] of plazaHomes) { if (mark.isConnected) mark.replaceWith(node); else node.remove(); } // (3-1: a card made for the window alone -- the 변신 의상실's -- has no home to go back to: it leaves, not lingers into the next window)
-    plazaHomes.clear();
+    for (const node of [...plazaHomes.keys()]) sendPlazaHome(node); // (3-1: the 변신 의상실's card has no home: it leaves, not lingers into the next window)
     plazaDialog.classList.remove('talkMode');
     plaza.controller?.talkCamera?.(false); // back to the player's own view
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
@@ -2544,7 +2548,7 @@
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       if (entering) { storeGoods = (await api('/api/island/store')).goods; plaza.controller?.setGoodsPrices?.(Object.fromEntries(storeGoods.map((g) => [g.id, { name: g.name, price: g.price }]))); }
       const r = await api(entering ? '/api/island/store/enter' : '/api/island/store/leave', { method: 'POST', body: '{}' });
-      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
     } catch (error) { showToast(error.message); } finally { storeBusy = false; }
   }
   function storeKeeperTalk() {
@@ -2577,7 +2581,7 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api(entering ? '/api/island/townhall/enter' : '/api/island/townhall/leave', { method: 'POST', body: '{}' });
-      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
   // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;

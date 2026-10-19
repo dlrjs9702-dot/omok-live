@@ -45,14 +45,17 @@ test('꾸미기 창: 열자마자 내 모습, 항목을 가리키면 바로 입�
   await page.locator('#skinShopCloseBtn').click();
   await expect(shopView).toBeHidden();
   // 성형외과: a face part on the face; 변신 의상실: the transformation on me
-  for (const [place, item] of [['faces', '.lookShop button[data-part]'], ['transform', '#transformShop .tfRow strong']]) {
+  // (bugs 10: the 변신 의상실 first, then 성형외과 -- whose window shows none of the other's list; closed, neither stays on the page)
+  for (const [place, item] of [['transform', '#transformShop .tfRow strong'], ['faces', '.lookShop button[data-part]']]) {
     press = await intoMall(page, place, isMobile); await press();
     const view = page.locator('#plazaDialogBody .dressSide');
     await expect(view.locator('canvas.dressCanvas')).toBeVisible({ timeout: 15000 });
     const el = page.locator(item).nth(1); const label = (await el.textContent()).trim();
     await point(el);
     await expect(view.locator('.skinTryOnCap strong')).toContainText(label.replace(/ · 지금$/, ''));
+    if (place === 'faces') await expect(page.locator('#plazaDialogBody #transformShop')).toHaveCount(0);
     await page.locator('#plazaCloseBtn').click(); await expect(view).toBeHidden();
+    await expect(page.locator('.dressRoom:visible, .lookShop:visible, #transformShop:visible')).toHaveCount(0);
   }
   expect(await page.evaluate(() => window.PlazaDebug().transformation ?? null)).toBe(null); // (pointed at, never worn)
   await expectNoScriptError(page);

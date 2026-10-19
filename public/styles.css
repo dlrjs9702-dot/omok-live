@@ -2364,6 +2364,7 @@ body.herosurvOpen { overflow: hidden; }
 .dressing .skinSlotTabs [role=tab][data-slot="shoes"]::before{background-image:url("/assets/shop/ui/cat_shoes.webp")}
 .dressing .skinSlotTabs [role=tab][data-slot="transform"]::before{background-image:url("/assets/shop/ui/cat_transform.webp")}
 /* the 성형외과·염색사·변신 의상실 frame: their list beside the same preview */
+body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card waits here, unseen, between its windows) */
 .dressRoom{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,46%);gap:14px;align-items:start}
 .dressRoom>.skinTryOn{position:sticky;top:0;margin:0}
 @media (max-width:700px){
