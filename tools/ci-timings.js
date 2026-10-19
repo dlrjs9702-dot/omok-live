@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // CI 2차 단축: refresh tools/ci-timings.json (each browser test's seconds, `<project> tests/e2e/<file>:<line>`) from a
-// CI run's green part logs -- `node tools/ci-timings.js <run id>` (needs the gh CLI). The parts run one worker each, so
+// CI run's green part logs -- `node tools/ci-timings.js <run id> [attempt]` (needs the gh CLI). The parts run one worker each, so
 // a test's time is from the result line before it (or the part's start) to its own; a retry adds to the first try.
 // Refresh now and then (tests move lines, new ones count 60 s until then): tools/ci-split.js reads the table.
 const { execFileSync } = require('node:child_process');
@@ -9,9 +9,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const run = process.argv[2];
-if (!/^\d+$/.test(run || '')) { console.error('usage: ci-timings.js <run id>'); process.exit(2); }
+if (!/^\d+$/.test(run || '')) { console.error('usage: ci-timings.js <run id> [attempt]'); process.exit(2); }
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
-const jobs = JSON.parse(gh('run', 'view', run, '--json', 'jobs')).jobs.filter((j) => /^e2e part/.test(j.name) && j.conclusion === 'success');
+const attempt = process.argv[3]; // (optional: an earlier attempt of the run -- a green one before a rerun)
+const jobs = JSON.parse(gh('run', 'view', run, ...(attempt ? ['--attempt', attempt] : []), '--json', 'jobs')).jobs.filter((j) => /^e2e part/.test(j.name) && j.conclusion === 'success');
 const out = {};
 for (const job of jobs) {
   let prev = null;
