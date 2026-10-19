@@ -1530,6 +1530,25 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   const deck = await a.page.evaluate(() => { const d=window.PlazaDebug(),p=d.train().platform;const q=window.IslandTrain.platformClamp(p.line,p.station,d.x,d.z);return { station:p.station, drift:Math.hypot(q.x-d.x,q.z-d.z),height:q.y,y:d.train().y }; });
   expect(deck.station).toBe('D');expect(deck.drift).toBeLessThan(.01);expect(deck.y).toBeCloseTo(deck.height,1);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
+  await post(request, '/api/test/train-shift', a.token, { ms: 0 });
+  await expectNoScriptError(a.page); await expectNoScriptError(b.page);
+  await a.context.close(); await b.context.close();
+});
+
+// (CI 2차 단축: the menu's ride on its own -- the whole was past three minutes on the CI runner) up at the second stop's
+// platform: the menu says when, 타기 only while a train stands there, then off and down again
+test('관광열차 메뉴: 승강장에서 시간에 맞춰 타기·내리기·내려가기', async ({ browser, request }) => {
+  test.setTimeout(180000);
+  const a = await intoPlaza(browser, request, '열차메뉴', 0, 120000);
+  const round = 240000;
+  const clickDockButton = (button) => button.evaluate(b => b.click());
+  const shiftTo = async (sec) => { const now = Date.now(); const r = await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now }); expect(r.status).toBe(200); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().shift), { timeout: 10000 }).toBe(r.data.trainShift); };
+  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('D').spot);
+  await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
+  await expect(a.page.locator('#trainMainBtn')).toHaveText('승강장 올라가기', { timeout: 15000 });
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('D');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   await shiftTo(348); // renew the stop window after waiting for the other software-rendered page
   await expect(a.page.locator('#trainMainBtn')).toHaveText('타기 · 관광 열차', { timeout: 15000 });
   await a.page.locator('#trainMenuBtn').click();
@@ -1554,8 +1573,8 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   expect(await a.page.evaluate(() => window.PlazaDebug().train().platform)).toBe(null);
   await post(request, '/api/test/train-shift', a.token, { ms: 0 });
-  await expectNoScriptError(a.page); await expectNoScriptError(b.page);
-  await a.context.close(); await b.context.close();
+  await expectNoScriptError(a.page);
+  await a.context.close();
 });
 
 // v1.10.44 앉기·이모트·게임 초대: SPACE by a plaza bench sits (the seat is mine on the server; the other screen draws me
