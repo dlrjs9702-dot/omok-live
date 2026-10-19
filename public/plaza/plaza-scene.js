@@ -75,7 +75,7 @@ export function createPlaza(host, options) {
 
 function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, made) {
   const { renderer } = made;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, navigator.webdriver ? 1 : 1.5)); // (automated tests: 1 -- the CI runner draws in software; a phone profile is 2.75)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -939,6 +939,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (ride && !o.ride) { o.c.anim?.loop?.('rideLook') || o.c.anim?.loop?.('sitIdle'); o.c.noTuck = true; o.c.tailTucked = true; o.c.tuckTail?.(true); }
       if (!ride && o.ride) { o.c.noTuck = false; o.c.anim?.release?.(); o.c.tailTucked = false; o.c.tuckTail?.(false); }
       o.ride = ride; o.platform = p.platform || null; o.space = p.space || 'island'; // v1.10.84
+      o.pet = p.pet || null; // B 47 반려동물
     }
     for (const [id, o] of others) if (!seen.has(id)) { disposeCharacter(o.c); others.delete(id); for (const [seat, who] of takenSeats) if (who === id) takenSeats.delete(seat); }
   }
@@ -1342,6 +1343,111 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (const p of s.parts) { if (s.t < p.delay) { p.m.visible = false; continue; } p.m.visible = true; p.m.position.addScaledVector(p.v, dt); if (s.kind === 'firework') p.v.y -= 2.2 * dt; p.m.material.opacity = Math.max(0, (s.kind === 'firework' ? 1 : 0.55) * (1 - (s.t - p.delay) / (s.life - p.delay))); }
       if (s.t >= s.life) { for (const p of s.parts) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); } if (s.kind === 'balloon') assets.letGo(s.c, 'balloon'); shows.splice(i, 1); }
     }
+  }
+  // B 47 함께하는 섬: the 우체통 east of the plaza (always; a letter's notice is the app's), the birthday corner north-west
+  // (banner with today's names drawn on, balloons, a cake) only on someone's birthday, and a cheer's confetti over them
+  let together = null;
+  function prepareTogether() {
+    if (together) return together;
+    const V = globalThis.IslandTerrain.VILLAGE;
+    const holder = (parent, x, y, z, yaw, id, fallback) => { const root = new THREE.Group(); root.position.set(x, y, z); root.rotation.y = yaw; parent.add(root); root.add(fallback); assets.attach(id, root, fallback); return root; };
+    const box = (w, h, d, color) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(w, h, d), mat(color), 0, h / 2, 0, g); return g; };
+    const M = V.mailbox; holder(scene, M.x, heightAt(M.x, M.z), M.z, M.yaw, 'together.mailbox', box(0.55, 1.4, 0.5, 0xc0392b));
+    eventDoors.mailbox = { x: M.x - Math.sin(M.yaw) * 1.1, z: M.z - Math.cos(M.yaw) * 1.1, name: '우체통' };
+    const MU = globalThis.IslandTerrain.MUSEUM; holder(scene, MU.x, heightAt(MU.x, MU.z), MU.z, MU.yaw, 'together.museum_exterior', box(9, 5, 7, 0xe8dcc4)); // B 47 박물관 (the outside)
+    eventDoors.museum = { x: MU.x - Math.sin(MU.yaw) * 4.9, z: MU.z - Math.cos(MU.yaw) * 4.9, name: '섬 박물관' }; // (lib/island-together.js museumDoor, the server's)
+    const B = V.birthday; const corner = new THREE.Group(); corner.position.set(B.x, heightAt(B.x, B.z), B.z); corner.rotation.y = B.yaw; corner.visible = false; scene.add(corner);
+    holder(corner, 0, 0, 0, 0, 'together.birthday_banner', box(3.2, 2.3, 0.1, 0xf6d6e0));
+    for (const x of [-2.1, 2.1]) holder(corner, x, 0, 0.1, 0, 'together.birthday_balloons', box(0.6, 2, 0.4, 0xff8fab));
+    holder(corner, 0, 0, -1.3, 0, 'together.birthday_cake', box(0.5, 0.5, 0.5, 0xfff1e6));
+    const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 192;
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 0.5), new THREE.MeshBasicMaterial({ map: texture, transparent: true })); label.position.set(0, 1.62, -0.24); label.rotation.y = Math.PI; corner.add(label);
+    together = { corner, canvas, texture, names: [] };
+    return together;
+  }
+  // B 47 안내 주민: always by the spawn (talking to her teaches again); while a guide step points somewhere, an arrow on
+  // the ground a little ahead of me turns toward it (gone once I am there)
+  let guide = null;
+  function prepareGuide() {
+    if (guide) return guide;
+    const G = globalThis.IslandTerrain.VILLAGE.guide;
+    const c = makeCharacter({ shirt: 0x4f9d8a, hair: 0x5a3a28, skin: 0xffdcbc }); c.root.position.set(G.x, heightAt(G.x, G.z), G.z); c.root.rotation.y = G.yaw + Math.PI; scene.add(c.root);
+    assets.dress(['character.guide', 'character.npc'], c); dressUp(c, { gender: 'female' }, { shirt: 0x4f9d8a });
+    c.home = { x: G.x, z: G.z, yaw: G.yaw + Math.PI, id: 'guide' }; npcs.push(c);
+    eventDoors.guide = { x: G.x - Math.sin(G.yaw) * 1.2, z: G.z - Math.cos(G.yaw) * 1.2, name: '안내 주민' };
+    const arrow = new THREE.Group(); arrow.visible = false; scene.add(arrow);
+    const fallback = new THREE.Group(); const cone = mesh(new THREE.ConeGeometry(0.25, 0.6, 12), mat(0xffd166), 0, 0.05, 0, fallback); cone.rotation.x = -Math.PI / 2; arrow.add(fallback); assets.attach('together.guide_arrow', arrow, fallback);
+    guide = { c, arrow, target: null };
+    return guide;
+  }
+  function setGuideTarget(target) { prepareGuide().target = target && Number.isFinite(target.x) ? { x: target.x, z: target.z } : null; }
+  function stepGuideArrow() {
+    if (!guide) return; const t = guide.target; const p = me.root.position;
+    const dx = t ? t.x - p.x : 0; const dz = t ? t.z - p.z : 0; const d = Math.hypot(dx, dz);
+    guide.arrow.visible = Boolean(t) && d > 3 && !photoMode; if (!guide.arrow.visible) return;
+    const x = p.x + (dx / d) * 1.6; const z = p.z + (dz / d) * 1.6; guide.arrow.position.set(x, heightAt(x, z) + 0.05, z); guide.arrow.rotation.y = Math.atan2(-dx, -dz); // (its front, -Z, toward the place)
+  }
+  // B 47 곤충 채집: the net in my right hand (assets 47 attach values), the insect the server picked circling me while it
+  // can be caught, then gone -- caught (a cheer) or flown off
+  let bug = null;
+  function bugBegin(species, comeMs, windowMs) {
+    bugEnd(false);
+    assets.hold(me, 'together.tool_bugnet', 0, { key: 'bugnet', at: [-0.06507324, -0.046534647, 0], rot: [0, 0, -0.95] });
+    const root = new THREE.Group(); root.visible = false; scene.add(root); const fallback = new THREE.Group(); mesh(new THREE.SphereGeometry(0.06, 8, 6), mat(0xffd166), 0, 0, 0, fallback); root.add(fallback);
+    assets.attach(`together.insect_${species}`, root, fallback);
+    bug = { root, t: 0, start: performance.now(), come: comeMs / 1000, end: (comeMs + windowMs) / 1000 }; // (real time: the server's window)
+  }
+  function stepBug(dt) {
+    if (!bug) return; bug.t = (performance.now() - bug.start) / 1000; const on = bug.t >= bug.come && bug.t <= bug.end; bug.root.visible = on;
+    if (on) { const a = bug.t * 2.2; const p = me.root.position; bug.root.position.set(p.x + Math.cos(a) * 1.2, p.y + 1.1 + Math.sin(bug.t * 6) * 0.15, p.z + Math.sin(a) * 1.2); bug.root.rotation.y = -a; }
+    if (bug.t > bug.end + 0.6) bugEnd(false);
+  }
+  function bugEnd(caught) { if (!bug) return; scene.remove(bug.root); bug = null; if (caught) me.anim?.play('cheer'); setTimeout(() => { if (!bug) assets.letGo(me, 'bugnet'); }, caught ? 1400 : 300); }
+  // B 47 반려동물: one small animal walks a little behind and beside its owner (me or another player), Walk while it
+  // catches up, Sit when the owner sits, Idle otherwise; its name over it. Far off (a door, a ride) it is simply there.
+  const pets = new Map(); let myPet = null;
+  function setMyPet(want) { myPet = want?.kind ? { kind: want.kind, name: want.name || '' } : null; }
+  function petTag(name) {
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 64; const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(name, 128, 32); ctx.fillStyle = '#fff'; ctx.fillText(name, 128, 32);
+    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
+    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); tag.scale.set(0.9, 0.225, 1); return tag;
+  }
+  function petHolder(kind) { // (play: the clip to show, crossfaded once the model is in; dispose: away)
+    const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false,
+      play(name) { c.want = name; if (!c.mixer || c.now === name) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; next.reset().fadeIn(0.2).play(); c.actions[c.now]?.fadeOut(0.2); c.now = name; },
+      dispose() { c.gone = true; c.root.removeFromParent(); } };
+    scene.add(c.root); assets.creature([`together.pet_${kind}`], c); return c;
+  }
+  let petClock = 0;
+  function stepPets() {
+    const now = performance.now(); const dt = Math.min(0.5, (now - (petClock || now)) / 1000); petClock = now; // (real time: a slow or hidden frame does not leave it behind)
+    const want = new Map([['me', myPet], ...[...others].map(([id, o]) => [id, o.pet])]);
+    for (const [key, p] of pets) { const w = want.get(key); if (!w || w.kind !== p.kind || w.name !== p.name) { p.c.dispose(); pets.delete(key); } }
+    for (const [key, w] of want) {
+      const owner = key === 'me' ? me : others.get(key)?.c; if (!w || !owner?.root) continue;
+      let p = pets.get(key);
+      if (!p) { p = { c: petHolder(w.kind), kind: w.kind, name: w.name }; const o = owner.root.position; p.c.root.position.set(o.x + 0.8, heightAt(o.x + 0.8, o.z), o.z); if (w.name) { const tag = petTag(w.name); tag.position.y = 0.85; p.c.root.add(tag); } pets.set(key, p); }
+      const yaw = owner.root.rotation.y; const fx = Math.sin(yaw); const fz = Math.cos(yaw); // (game yaw 0 faces +z)
+      const tx = owner.root.position.x - fx * 0.9 + fz * 0.6; const tz = owner.root.position.z - fz * 0.9 - fx * 0.6;
+      const r = p.c.root.position; const dx = tx - r.x; const dz = tz - r.z; const d = Math.hypot(dx, dz);
+      if (d > 12) r.set(tx, heightAt(tx, tz), tz);
+      else if (d > 0.2) { const step = Math.min(d, Math.max(2.5, d * 3) * dt); r.x += (dx / d) * step; r.z += (dz / d) * step; r.y = Math.max(owner.root.position.y - 0.05, heightAt(r.x, r.z)); p.c.root.rotation.y = Math.atan2(-dx, -dz); } // (its front, -Z, the way it goes)
+      const sat = key === 'me' ? Boolean(sitting) : Boolean(others.get(key)?.seat);
+      p.c.play(d > 0.3 ? 'Walk' : sat ? 'Sit' : 'Idle');
+    }
+  }
+  function setBirthdays(names) {
+    const t = prepareTogether(); t.names = (names || []).slice(0, 4); t.corner.visible = t.names.length > 0; if (!t.names.length) return;
+    const ctx = t.canvas.getContext('2d'); ctx.clearRect(0, 0, 1024, 192); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#b8325a'; ctx.font = 'bold 84px sans-serif'; ctx.fillText(`🎂 ${t.names.map((n) => `${n}님`).join(' · ')} 생일 축하해요`, 512, 96, 1000); t.texture.needsUpdate = true;
+  }
+  function birthdayCheer(toId) { // confetti over the one cheered (the pack's burst, popping up and away) and the firework's sparks
+    const c = toId === 'me' ? me : others.get(toId)?.c; if (!c?.root) return; // ('me': the app knows my id)
+    playShow(c, 'firework');
+    const root = new THREE.Group(); root.position.copy(c.root.position); root.position.y += 2.2; scene.add(root); const fallback = new THREE.Group(); root.add(fallback); assets.attach('together.confetti_burst', root, fallback);
+    const t0 = performance.now(); const tick = () => { const k = (performance.now() - t0) / 1800; if (k >= 1) { scene.remove(root); return; } root.scale.setScalar(0.4 + k); root.position.y += 0.004; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
   }
   function useShow(kind) { playShow(me, kind); myAct.act = `show:${kind}`; myAct.seat = null; const n = ++myAct.n; setTimeout(() => { if (myAct.n === n && myAct.act === `show:${kind}`) myAct.act = null; }, 8000); } // (8 s: a slow screen nearby still gets it)
   function remoteFish(o, p) {
@@ -1931,6 +2037,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   { const cs = globalThis.IslandTerrain.CONTEST_STATUE; solids.push({ x: cs.x, z: cs.z, r: 1.4 }); } // A4: the contest winner's plinth
   // v1.10.93 마을 소품 (the mural, easel, stage, lamps, toolbox, book cart): solid from the start, as the grid is made once
   for (const v of globalThis.IslandTerrain.villageSolids()) solids.push({ x: v.x, z: v.z, r: v.r * 0.8 });
+  prepareTogether(); prepareGuide(); // B 47: the 우체통 and the guide resident (their solids are village ones)
   const GRID = 8; const grid = new Map();
   for (const s of solids) {
     const reach = s.r + 0.5;
@@ -2283,6 +2390,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npc.wasClose = close;
       animate(npc, dt, false);
     }
+    stepGuideArrow(); stepBug(dt); stepPets(); // B 47
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -2456,7 +2564,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), weather: () => ({ kind: weatherKind, rain: Boolean(weatherFx?.rain.visible), snow: Boolean(weatherFx?.snow.visible), bow: Boolean(document.getElementById('plazaRainbow')?.classList.contains('on')) }), village: (view) => { if (view) setVillage(view); return village ? { mural: village.mural, busk: village.busk, lamps: village.lit, stones: village.stone, books: village.cart.visible } : null; }, pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: (sec = 1.5) => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast' || fishing.phase === 'bite')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + sec; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, at: { x: bobberHolder.position.x, z: bobberHolder.position.z }, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), bug: () => (bug ? { on: bug.root.visible, t: bug.t } : null), pets: () => [...pets].map(([key, p]) => ({ key, kind: p.kind, name: p.name, clip: p.c.now, loaded: Boolean(p.c.mixer), x: +p.c.root.position.x.toFixed(2), z: +p.c.root.position.z.toFixed(2) })), guide: () => ({ arrow: Boolean(guide?.arrow.visible), target: guide?.target || null, door: eventDoors.guide || null }), together: () => ({ birthday: Boolean(together?.corner.visible), names: together?.names || [], mailbox: Boolean(eventDoors.mailbox) }), weather: () => ({ kind: weatherKind, rain: Boolean(weatherFx?.rain.visible), snow: Boolean(weatherFx?.snow.visible), bow: Boolean(document.getElementById('plazaRainbow')?.classList.contains('on')) }), village: (view) => { if (view) setVillage(view); return village ? { mural: village.mural, busk: village.busk, lamps: village.lit, stones: village.stone, books: village.cart.visible } : null; }, pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: (sec = 1.5) => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast' || fishing.phase === 'bite')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + sec; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, at: { x: bobberHolder.position.x, z: bobberHolder.position.z }, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       // (tests) by islander n and talking to them at once -- the server still checks I stand by them
       talkResident: (n) => { const o = wanderers.find((w) => w.n === n); if (!o) return false; const x = o.w.x + 1.1; const z = o.w.z; me.root.position.set(x, heightAt(x, z), z); correction = null; lastTalk = { id: `resident:${n}`, x: o.w.x, z: o.w.z }; onInteract?.(`resident:${n}`); return true; },
       tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), time: () => ({ mode: timeMode, phase }), setTime: (m) => setTimeMode(m), setWeather: (k) => setWeather(k), teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
@@ -2564,6 +2672,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const hideForPhoto = () => scene.traverse((o) => { if (o.isSprite && o.visible) { o.visible = false; photoHidden.add(o); } });
   const actionBusy = () => Boolean(gather || fishing || sitting || riding || liftRide); // v1.10.81: 포즈 촬영 waits for these
   const photoPose = (on = true) => { if (!on) return me.anim?.release?.(); me.targetYaw = Math.atan2(camera.position.x - me.root.position.x, camera.position.z - me.root.position.z); return me.anim?.loop?.('photo'); }; // turned to the camera, held through the countdown and the shot
+  function snapshot() { // (관리자 「문제 기록」)
+    renderer.render(scene, camera); const src = renderer.domElement; const w = 480; const h = Math.round((w * src.height) / Math.max(1, src.width));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(src, 0, 0, w, h);
+    for (const q of [0.7, 0.5, 0.35, 0.2]) { const url = c.toDataURL('image/jpeg', q); if (url.length <= 60000) return Promise.resolve(url); }
+    return Promise.resolve(null);
+  }
   function capture() { if (!photoMode) return Promise.resolve(null); hideForPhoto(); renderer.render(scene, camera); return new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png')); }
   // v1.10.91 주민 심부름: a yellow star over an islander with an ask for me, a check over one I bring news or a thing to
   let residentMarks = {};
@@ -2581,6 +2695,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setSpace, space: () => mySpace, setGoodsPrices, useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

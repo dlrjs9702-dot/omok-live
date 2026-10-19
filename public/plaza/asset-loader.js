@@ -491,6 +491,19 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
     }).catch((error) => onError(hit.id, error));
   }
 
+  // B 47 반려동물: a small animal with its own rig and its clips (Idle, Walk, Sit -- assets 47 petPlayback) loaded into the
+  // scene's holder `c` ({ root, want, play, gone }): the model under c.root, c.mixer and c.actions set, its mixer run in tick()
+  const creatures = new Set();
+  function creature(ids, c) {
+    const hit = P.pick(registry, ids, off, null); if (!hit) return; creatures.add(c);
+    cache.get(hit.entry.url).then((gltf) => {
+      if (disposed || !gltf || c.gone) { creatures.delete(c); return; }
+      const object = cloneObject(gltf.scene); place(object, hit.entry); c.root.add(object); object.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      c.mixer = new THREE.AnimationMixer(object); for (const clip of gltf.animations) c.actions[clip.name] = c.mixer.clipAction(clip);
+      const w = c.want; c.now = null; c.play(w);
+    }).catch((error) => onError(hit.id, error));
+  }
+
   // v1.10.29 계절 낙하 입자: a few falling petals (spring), leaves (autumn) or snowflakes (winter) around the player,
   // each from a ground emitter whose zone's season today picks the kind (summer and the neutral plaza: none). One
   // model each (fx.petal / fx.leaf / fx.snow: a single flake with its FallLoop clip); every emitter is a copy in one
@@ -545,6 +558,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
   }
   // each frame: the one-off clips and the falling flakes
   function tick(dt, x, z, reduceMotion = false) {
+    for (const c of creatures) { if (c.gone) { c.mixer?.stopAllAction(); creatures.delete(c); } else c.mixer?.update(dt); } // B 47 반려동물
     for (let i = playing.length - 1; i >= 0; i -= 1) {
       const p = playing[i]; p.t += dt; p.mixer.update(dt);
       p.root.getWorldPosition(at); const below = at.y < p.holder.position.y;
@@ -879,5 +893,5 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
+  return { creature, attach, dress, wear, release, batch, refill, unbatch, hold, letGo, handOver, update, setDay, setNight, setQuality, once, ambient, tick, dispose, debug: () => ({ glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe, fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };
 }

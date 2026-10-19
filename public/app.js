@@ -35,6 +35,12 @@
   const lobbyConnectedCount = document.getElementById('lobbyConnectedCount');
   const logoutBtn = document.getElementById('logoutBtn');
   const adminWindowBtn = document.getElementById('adminWindowBtn');
+  // 관리자 「문제 기록」: the last few browser errors and the frame rate, kept quietly to go with a record
+  const recentErrors = []; const keepError = (text) => { recentErrors.push({ at: Date.now(), text: String(text).slice(0, 300) }); if (recentErrors.length > 8) recentErrors.shift(); };
+  window.addEventListener('error', (event) => keepError(event.message || event.error));
+  window.addEventListener('unhandledrejection', (event) => keepError(event.reason?.message || event.reason));
+  { const realError = console.error.bind(console); console.error = (...args) => { keepError(args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); realError(...args); }; }
+  let fpsNow = null; { let n = 0; let t0 = performance.now(); const tick = (t) => { n += 1; if (t - t0 >= 2000) { fpsNow = Math.round((n * 1000) / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   const myInfoBtn = document.getElementById('myInfoBtn');
   const myInfoDialog = document.getElementById('myInfoDialog');
   const myInfoCloseBtn = document.getElementById('myInfoCloseBtn');
@@ -1735,11 +1741,11 @@
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
     // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
     byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
-    gameMenuDialog.showModal();
+    byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin'); gameMenuDialog.showModal(); guideDone('menu');
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
-  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
+  for (const btn of [myInfoBtn, adminWindowBtn, logoutBtn, byId('issueLogBtn')]) btn.addEventListener('click', () => gameMenuDialog.close(), true); // the next window replaces the menu
   gameMenuDialog.addEventListener('close', () => { if (document.body.classList.contains('plazaMode') && !document.querySelector('dialog[open]')) plazaStage.focus({ preventScroll: true }); });
   // v1.10.63 게임방: the same menu, with 게임 선택으로 돌아가기 on top (the room's own buttons stay in its top bar)
   const menuLeaveRoomBtn = byId('menuLeaveRoomBtn');
@@ -1807,12 +1813,12 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1837,6 +1843,68 @@
     return inspectorCard;
   }
   assetInspectorCard();
+  // 관리자 「문제 기록」 (사용자 2026-10-18): where I am and what the page knows, gathered the moment the window opens
+  const issueDialog = byId('issueDialog'); let issueShot = null;
+  function issueContext() {
+    const openDialogs = [...document.querySelectorAll('dialog[open]')].filter((d) => d !== issueDialog).map((d) => d.querySelector('h2')?.textContent || d.id);
+    const ctx = { screen: !roomView.classList.contains('hidden') ? 'room' : document.body.classList.contains('plazaMode') ? 'island' : !document.getElementById('gamehallView')?.classList.contains('hidden') ? 'gamehall' : 'lobby', windows: openDialogs,
+      device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
+    if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
+    const d = plaza.controller?.debug?.();
+    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality }; }
+    return ctx;
+  }
+  async function openIssue() {
+    if (sessionRole !== 'admin' || issueDialog.open) return;
+    issueShot = await plaza.controller?.snapshot?.() || null; // (the island's picture as it is now; other screens have none)
+    byId('issueShot').src = issueShot || ''; byId('issueShot').classList.toggle('hidden', !issueShot); byId('issueShotOn').disabled = !issueShot; byId('issueShotOn').checked = Boolean(issueShot);
+    byId('issueStatus').textContent = ''; issueDialog.dataset.ctx = ''; issueDialog.ctx = issueContext(); issueDialog.showModal(); byId('issueText').focus();
+  }
+  byId('issueLogBtn').addEventListener('click', openIssue);
+  byId('issueCloseBtn').addEventListener('click', () => issueDialog.close());
+  byId('issueShotOn').addEventListener('change', (event) => byId('issueShot').classList.toggle('hidden', !event.target.checked || !issueShot));
+  byId('issueText').addEventListener('keydown', (event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); byId('issueForm').requestSubmit(); } });
+  byId('issueForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'add', text: byId('issueText').value, kind: byId('issueKind').value, shot: byId('issueShotOn').checked ? issueShot : null, ctx: issueDialog.ctx }) });
+      byId('issueText').value = ''; issueDialog.close(); showToast('문제를 기록했어요.'); if (issueCard.open) loadIssues();
+    } catch (error) { byId('issueStatus').textContent = error.message; }
+  });
+  // the 관리자 창's card: newest first, by state; a state changed, a record removed, the open ones copied as Markdown
+  const ISSUE_KIND = { bug: '버그', odd: '어색함', idea: '개선' }; const ISSUE_STATE = { open: '열림', doing: '고치는 중', done: '해결' };
+  const issueCard = document.createElement('details'); issueCard.id = 'issueCard'; issueCard.className = 'economyBox issueCard';
+  issueCard.innerHTML = '<summary>문제 기록</summary><div class="issueTools"><select id="issueFilter" aria-label="상태"><option value="open">열림</option><option value="doing">고치는 중</option><option value="done">해결</option><option value="">전체</option></select><button id="issueNewBtn" type="button" class="ghost tiny">새로 적기</button><button id="issueCopyBtn" type="button" class="ghost tiny">열린 것 복사</button></div><div id="issueList" class="issueList" role="list"></div>';
+  adminPanel.append(issueCard);
+  let issues = [];
+  const issueWhere = (i) => [i.ctx?.screen === 'room' ? `게임방 ${i.ctx.room?.game || ''}` : i.ctx?.screen === 'island' ? `섬 (${i.ctx.island?.x}, ${i.ctx.island?.z})${i.ctx.island?.space && i.ctx.island.space !== 'island' ? ` · ${i.ctx.island.space}` : ''}` : i.ctx?.screen || '', ...(i.ctx?.windows || [])].filter(Boolean).join(' · ');
+  async function loadIssues() {
+    try { issues = (await api('/api/admin/issues')).issues; } catch (error) { byId('issueList').textContent = error.message; return; }
+    const want = byId('issueFilter').value; const list = byId('issueList'); list.replaceChildren();
+    const shown = issues.filter((i) => !want || i.status === want); if (!shown.length) list.textContent = '기록이 없어요.';
+    for (const i of shown) {
+      const row = document.createElement('details'); row.className = 'issueItem'; row.setAttribute('role', 'listitem');
+      const head = document.createElement('summary'); head.textContent = `[${ISSUE_KIND[i.kind]}] ${i.text.split('\n')[0].slice(0, 80)} · ${issueWhere(i)} · ${new Date(i.at).toLocaleString('ko-KR')} · v${i.version}`;
+      const body = document.createElement('div'); body.className = 'issueBody';
+      const text = document.createElement('p'); text.className = 'mailText'; text.textContent = i.text;
+      const info = document.createElement('pre'); info.className = 'issueInfo'; info.textContent = JSON.stringify(i.ctx, null, 1);
+      const status = document.createElement('select'); status.setAttribute('aria-label', '상태'); for (const [v, label] of Object.entries(ISSUE_STATE)) status.append(new Option(label, v)); status.value = i.status;
+      status.addEventListener('change', async () => { try { await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'status', id: i.id, status: status.value }) }); loadIssues(); } catch (error) { showToast(error.message); } });
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'ghost tiny'; del.textContent = '지우기';
+      del.addEventListener('click', async () => { if (!window.confirm('이 기록을 지울까요?')) return; try { await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'delete', id: i.id }) }); loadIssues(); } catch (error) { showToast(error.message); } });
+      body.append(text, status, del, info);
+      row.addEventListener('toggle', async () => { if (!row.open || !i.hasShot || body.querySelector('img')) return; const all = (await api('/api/admin/issues?shots=1')).issues; const one = all.find((x) => x.id === i.id); if (one?.shot) { const img = document.createElement('img'); img.className = 'issueShot'; img.alt = '기록한 화면'; img.src = one.shot; body.prepend(img); } });
+      row.append(head, body); list.append(row);
+    }
+  }
+  issueCard.addEventListener('toggle', () => { if (issueCard.open) loadIssues(); });
+  byId('issueFilter').addEventListener('change', loadIssues);
+  byId('issueNewBtn').addEventListener('click', () => { plazaDialog.open && plazaDialog.close(); openIssue(); });
+  byId('issueCopyBtn').addEventListener('click', async () => {
+    const open = issues.filter((i) => i.status === 'open');
+    const md = open.map((i) => `- [${ISSUE_KIND[i.kind]}] ${i.text.replace(/\n/g, ' ')} — ${issueWhere(i)}, ${new Date(i.at).toLocaleString('ko-KR')}, v${i.version}${i.ctx?.fps != null ? `, ${i.ctx.fps}fps` : ''}${i.ctx?.errors?.length ? `, 오류: ${i.ctx.errors.map((e) => e.text).join(' / ')}` : ''}`).join('\n');
+    try { await navigator.clipboard.writeText(md || '(열린 기록 없음)'); showToast(`열린 기록 ${open.length}개를 복사했어요.`); } catch { showToast('복사하지 못했어요.'); }
+  });
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
   let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
@@ -1991,10 +2059,25 @@
   renderGameGuide(document.getElementById('minesGuide'), 'minesweeper');
   // v1.10.61 두 세계 영웅전: its own page in this tab; it ranks by this session (guest or admin), handed over in the tab's
   // sessionStorage. The browser's back returns here (a guest resumes; an admin, whose login lives only in this page, logs in again).
-  document.getElementById('soloHerosurvBtn').addEventListener('click', () => {
-    try { sessionStorage.setItem('herosurvSession', sessionToken); } catch {}
-    location.href = '/herosurv/';
-  });
+  // (사용자 2026-10-19) now in a window over the island -- the same tab, so its sessionStorage hands the session over; the
+  // island sleeps meanwhile and its sounds stop; 「나가기」 closes the window (the whole game, its memory too) and the
+  // island is where it was -- nothing loads again, an administrator stays logged in
+  let herosurvFrame = null;
+  function openHerosurv() {
+    if (herosurvFrame) return;
+    try { sessionStorage.setItem('herosurvSession', sessionToken); sessionStorage.setItem('herosurvName', String(sessionLabel || (sessionRole === 'admin' ? '관리자' : '게스트'))); } catch {} // (the name for its 명예의 전당 join, written in advance)
+    plaza.controller?.stop(); document.body.classList.add('herosurvOpen');
+    const frame = document.createElement('iframe'); frame.className = 'herosurvFrame'; frame.title = '두 세계 영웅전'; frame.src = '/herosurv/'; frame.allow = 'fullscreen; gamepad; autoplay';
+    document.body.append(frame); herosurvFrame = frame; frame.addEventListener('load', () => frame.contentWindow?.document.getElementById('canvas')?.focus());
+  }
+  function closeHerosurv() {
+    if (!herosurvFrame) return;
+    herosurvFrame.src = 'about:blank'; herosurvFrame.remove(); herosurvFrame = null; document.body.classList.remove('herosurvOpen');
+    if (document.body.classList.contains('plazaMode') && gamehallView.classList.contains('hidden')) plaza.controller?.start();
+    (byId('soloHerosurvBtn').offsetParent ? byId('soloHerosurvBtn') : document.querySelector('#gamehallView:not(.hidden) .gameCard'))?.focus({ preventScroll: true });
+  }
+  window.addEventListener('message', (event) => { if (event.origin === location.origin && event.data?.type === 'herosurv-exit') closeHerosurv(); });
+  document.getElementById('soloHerosurvBtn').addEventListener('click', openHerosurv);
   // v1.10.68 순발력 게임 (한판마당 자료): its own screen over the island; the module (public/reflex/reflex.js and the
   // engine under it) loads the first time it is opened (reflexGames is declared by showView)
   // v1.10.69 퍼즐 (스도쿠·네모로직·다리 잇기·회로 연결): the same screen with the puzzle list
@@ -2053,7 +2136,7 @@
   const roomsOf = (g) => (lobbyState.rooms || []).filter((r) => r.gameType === g.room || (g.room === 'omok' && r.gameType === 'omok2v2'));
 
   async function openGamehall() {
-    if (plazaDialog.open) plazaDialog.close();
+    if (plazaDialog.open) plazaDialog.close(); guideDone('games');
     showView('gamehall');
     try { hallIcons ||= { ...(await import('/reflex/js/icons.js')), ...(await import('/reflex/js/store.js')) }; } catch {}
     paintSoundBtn(); renderGamehall();
@@ -2112,7 +2195,7 @@
     byId('gameSheetArt').innerHTML = gameArtHtml(g);
     byId('gameSheetName').textContent = g.name;
     byId('gameSheetMeta').textContent = `${g.cats.map(catName).join(' · ')} · ${g.players}${g.soon ? ' · 준비 중' : ''}`;
-    byId('gameSheetIntro').textContent = g.intro;
+    byId('gameSheetIntro').textContent = g.credit ? `${g.intro} (${g.credit})` : g.intro; // (두 세계 영웅전: its maker, public/herosurv/NOTICE.md)
     byId('gameSheetHow').replaceChildren(...g.how.map((line) => hallEl('li', null, line)));
     const actions = byId('gameSheetActions'); actions.replaceChildren();
     const act = (label, cls, fn) => { const b = hallEl('button', cls, label); b.type = 'button'; b.addEventListener('click', fn); actions.append(b); return b; };
@@ -2176,7 +2259,7 @@
   const SHOW_GOODS = new Set(['firework', 'balloon', 'bubbles']); // v1.10.92: 「쓰기」 in the bag, seen by everyone near
   function itemIcon(item) {
     const id = ITEM_ALIAS[item.itemId] || item.itemId;
-    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : GOOD_ICONS.has(id) ? `/assets/items/goods/${id}.png` : null; // (v1.10.92 잡화점: assets 41 icons)
+    const src = ITEM_SVG.has(id) ? `/assets/items/${id}.svg` : id.startsWith('fish_') ? `/assets/dex/${id}.png` : id.startsWith('insect_') ? `/assets/dex/${id}.svg` : GOOD_ICONS.has(id) ? `/assets/items/goods/${id}.png` : null; // (v1.10.92 잡화점: assets 41 icons)
     if (!src) return document.createTextNode(item.icon);
     const img = document.createElement('img'); img.className = 'itemIcon'; img.src = src; img.alt = ''; img.width = 32; img.height = 32; return img;
   }
@@ -2191,12 +2274,43 @@
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : '';
         slot.append(itemIcon(item), name, qty);
         if (PLANT_GOODS[item.itemId]) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = PLANT_GOODS[item.itemId]; use.addEventListener('click', () => plantGood(item.itemId)); slot.append(use); } // B 45
+        if (item.itemId.startsWith('pet_')) { const kind = item.itemId.slice(4); const walking = myPet?.kind === kind; const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = walking ? '집에 두기' : '데리고 다니기'; use.addEventListener('click', () => choosePet(walking ? null : kind)); slot.append(use); } // B 47
+        if (item.itemId === 'bugnet') { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '채집하기'; use.addEventListener('click', () => { islandBagDialog.close(); startBugSwing(); }); slot.append(use); } // B 47
         if (SHOW_GOODS.has(item.itemId)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'ghost tiny'; use.textContent = '쓰기'; use.addEventListener('click', () => useGood(item.itemId)); slot.append(use); }
       } else slot.setAttribute('aria-label', '빈 칸');
       grid.append(slot);
     }
     document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`;
   }
+  // B 47 반려동물: one of mine walks with me (a name asked the first time), everyone sees it
+  let myPet = null;
+  async function choosePet(kind) {
+    let name = myPet?.kind === kind ? myPet.name : '';
+    if (kind && !name) name = (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10);
+    try { const r = await api('/api/island/pet', { method: 'POST', body: JSON.stringify({ kind, name }) }); myPet = r.pet; plaza.controller?.setMyPet?.(myPet); islandBagDialog.close(); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); } catch (error) { showToast(error.message); }
+  }
+  // B 47 곤충 채집: the server picks the insect and when it comes; Space (or the big button) while it circles me catches it
+  let bugNow = null;
+  const bugBtn = document.createElement('button'); bugBtn.type = 'button'; bugBtn.className = 'bugCatchBtn hidden'; bugBtn.textContent = '🥅 잡기!'; document.body.append(bugBtn);
+  async function startBugSwing() {
+    if (bugNow) return;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      const d = await api('/api/island/bug/start', { method: 'POST', body: '{}' });
+      bugNow = d; plaza.controller?.bugBegin?.(d.species, d.comeIn, d.window); showToast('잠자리채를 들고 기다려요… 곤충이 오면 Space!', 3000);
+      setTimeout(() => { if (bugNow === d) bugBtn.classList.remove('hidden'); }, d.comeIn);
+      setTimeout(() => { if (bugNow === d) { bugNow = null; bugBtn.classList.add('hidden'); plaza.controller?.bugEnd?.(false); showToast(`${d.name}이(가) 날아가 버렸어요.`); api('/api/island/bug/cancel', { method: 'POST', body: '{}' }).catch(() => {}); } }, d.comeIn + d.window + 900);
+    } catch (error) { showToast(error.message, 4000); }
+  }
+  async function catchBug() {
+    const d = bugNow; if (!d) return; bugNow = null; bugBtn.classList.add('hidden');
+    try {
+      const r = await api('/api/island/bug/finish', { method: 'POST', body: JSON.stringify({ bugId: d.bugId }) });
+      plaza.controller?.bugEnd?.(true); showToast(`${r.grade === 'rare' ? '🎉 ' : ''}${r.name} +1${r.firstTime ? ' · 도감 등록' : ''}`); if (r.bag) drawIslandBag(r.bag);
+    } catch (error) { plaza.controller?.bugEnd?.(false); showToast(error.message); }
+  }
+  bugBtn.addEventListener('click', catchBug);
+  window.addEventListener('keydown', (event) => { if (event.code === 'Space' && bugNow && !bugBtn.classList.contains('hidden') && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); catchBug(); } }, true);
   // B 45 꽃·나무 심기: a seed or the sapling into the ground where I stand; fertilizer onto the plant nearest me
   const PLANT_GOODS = { seed_flower_red: '심기', seed_flower_yellow: '심기', seed_flower_white: '심기', seed_flower_pink: '심기', seed_flower_purple: '심기', sapling: '심기', fertilizer: '비료 주기' };
   async function plantGood(itemId) {
@@ -2268,7 +2382,7 @@
       const p = plaza.controller?.pose?.(); // my position first, so the server knows I am at the counter
       if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const data = await api('/api/island/sell', { method: 'POST', body: JSON.stringify({ place, requestId: islandPlaceRequest.id }) });
-      islandPlaceRequest = null;
+      islandPlaceRequest = null; if (place === 'office') guideDone('deliver');
       islandPlaceStatus.textContent = `+${Number(data.paid || 0).toLocaleString('ko-KR')}P${data.capped ? ' · 오늘은 여기까지 받습니다' : ''}`;
       drawIslandPlace(data.bag); loadPoints();
     } catch (error) {
@@ -2335,7 +2449,7 @@
       const body = JSON.stringify({ weedId: id, requestId: crypto.randomUUID() });
       let data;
       try { data = await api('/api/island/weed/finish', { method: 'POST', body }); } catch (error) { if (error.status) throw error; data = await api('/api/island/weed/finish', { method: 'POST', body }); }
-      completed=true; plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.();
+      completed=true; plaza.controller?.finishGather?.(true); plaza.controller?.removeWeeds?.([id]); plaza.controller?.holdWeed?.(); guideDone('weed');
       showToast(`🌱 잡초 +1${data.bonus ? ` · 주간 생활활동 +${Number(data.bonus).toLocaleString('ko-KR')}P` : ''}`);
       if (data.bonus) loadPoints();
     } catch (error) {
@@ -2651,7 +2765,7 @@
           cell.append(icon, name, day); return cell;
         }
         const cell = document.createElement('div'); cell.className = `islandDexCell${e.count ? '' : ' unfound'}`; cell.setAttribute('role', 'listitem');
-        const img = document.createElement('img'); img.src = `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; img.alt = ''; img.width = 64; img.height = 64;
+        const img = document.createElement('img'); img.src = e.kind === 'insect' ? `/assets/dex/${e.id}.svg` : `/assets/dex/${DEX_ICON[e.id] || e.id}.png`; // (B 47: the insects' drawn icons) img.alt = ''; img.width = 64; img.height = 64;
         const name = document.createElement('span'); name.textContent = e.count ? e.name : '???';
         const n = document.createElement('small'); n.textContent = e.count ? `×${e.count}` : '';
         cell.append(img, name, n); return cell;
@@ -2774,6 +2888,9 @@
         } catch (error) { showToast(error.message); }
       }),
       make('선물하기', 'ghost', () => openGift(plazaId, who?.name || '상대'))); // v1.10.92 선물 포장지
+    if (plazaPlayers.find((p) => p.id === plazaId)?.title === '생일 주인공') lostCard.prepend(make('🎉 생일 축하하기', 'primary', async () => { // B 47: once a day each
+      try { await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(plaza.controller.pose()) }).catch(() => {}); const d = await api('/api/island/birthday/cheer', { method: 'POST', body: JSON.stringify({ plazaId }) }); plaza.controller?.emote?.('clap'); showToast(`축하했어요! (올해 ${d.count}명이 축하)`); } catch (error) { showToast(error.message); }
+    }));
     openTalk(who?.name || '');
   }
   // v1.10.92 선물: what of my bag can be given (not a lost thing, not the wrap itself), one tap gives one
@@ -2788,6 +2905,142 @@
       const close = document.createElement('button'); close.type = 'button'; close.className = 'primary'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
       lostCard.replaceChildren(head, list, close); openTalk(name);
     } catch (error) { showToast(error.message); }
+  }
+  // B 47 처음 온 사람 안내 (사용자 2026-10-18: 첫 접속이면 무조건, 끝난 뒤에도 광장 한쪽 안내 주민이 말 걸면 가르쳐 줌): a big
+  // line over the island for the step, the arrow toward its place, each step marked done where it happens in the game
+  const touchNow = () => document.body.classList.contains('touchIsland');
+  const GUIDE = {
+    move: { title: '걸어 보기', pc: '방향키(←↑↓→)를 눌러 걸어 보세요.', phone: '왼쪽 아래 조이스틱을 밀어서 걸어 보세요.' },
+    camera: { title: '화면 돌려 보기', pc: 'A·D 키(또는 마우스로 화면 끌기)로 화면을 돌려 보세요. W·S는 위아래로 봐요.', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
+    talk: { title: '주민에게 말 걸기', pc: '화살표를 따라 광장의 안내 주민이나 걸어 다니는 주민 가까이 가서 Space를 누르세요.', phone: '주민 가까이 가서 오른쪽 아래 행동 버튼을 누르세요.' },
+    weed: { title: '잡초 하나 뽑기', pc: '풀숲의 잡초 가까이 가서 Space를 1초쯤 누르고 있으세요.', phone: '잡초 가까이 가서 행동 버튼을 1초쯤 누르고 있으세요.' },
+    deliver: { title: '관공서에 납품하기', pc: '화살표를 따라 관공서에 들어가 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.', phone: '화살표를 따라 관공서 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.' },
+    games: { title: '게임관 들어가 보기', pc: '화살표를 따라 게임관 앞에서 Space를 눌러 들어가 보세요.', phone: '화살표를 따라 게임관 앞에서 행동 버튼을 눌러 보세요.' },
+    menu: { title: '메뉴 열어 보기', pc: 'Esc 키를 누르면 메뉴가 열려요. 테마·전체 화면·접속 종료가 여기 있어요.', phone: '왼쪽 위 ☰ 버튼을 누르면 메뉴가 열려요.' },
+  };
+  let guideNow = null; let guideWatch = null;
+  const guidePanel = document.createElement('div'); guidePanel.id = 'guidePanel'; guidePanel.className = 'guidePanel hidden'; guidePanel.setAttribute('role', 'status'); document.body.append(guidePanel);
+  function guideTargetOf(kind) {
+    const T = globalThis.IslandTerrain; if (!T) return null;
+    if (kind === 'talk') return T.VILLAGE.guide; if (kind === 'deliver') return T.facilityDoor('townhall'); if (kind === 'games') return T.facilityDoor('games');
+    return null;
+  }
+  function showGuide(d) {
+    guideNow = d && d.active ? d : null; clearInterval(guideWatch);
+    const kind = guideNow?.steps[guideNow.step]; plaza.controller?.setGuideTarget?.(kind ? guideTargetOf(kind) : null);
+    guidePanel.classList.toggle('hidden', !kind); if (!kind) return;
+    const g = GUIDE[kind]; const el = (tag, cls, text) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; return n; };
+    guidePanel.replaceChildren(el('span', 'guideStep', `안내 ${guideNow.step + 1}/${guideNow.steps.length}`), el('strong', 'guideTitle', g.title), el('span', 'guideText', touchNow() ? g.phone : g.pc));
+    if (kind === 'move' || kind === 'camera') { // watched here (the island knows where I am and how the view turned)
+      const D = () => plaza.controller?.debug?.(); const start = D(); if (!start) return;
+      guideWatch = setInterval(() => { const n = D(); if (!n) return; if (kind === 'move' ? Math.hypot(n.x - start.x, n.z - start.z) > 3 : Math.abs((n.camYaw ?? 0) - (start.camYaw ?? 0)) > 0.6) guideDone(kind); }, 500);
+    }
+  }
+  function refreshGuide(body = null) {
+    return api('/api/island/guide', body ? { method: 'POST', body: JSON.stringify(body) } : {}).then((d) => {
+      showGuide(d);
+      if (d.gift) showToast(`🎉 안내를 모두 마쳤어요! 환영 선물 +${Number(d.gift).toLocaleString('ko-KR')}P`, 7000);
+      else if (d.done && body?.done) showToast('🎉 안내를 모두 마쳤어요!', 5000);
+      return d;
+    }).catch(() => null);
+  }
+  function guideDone(kind) { if (guideNow && guideNow.steps[guideNow.step] === kind) { guideNow = null; clearInterval(guideWatch); refreshGuide({ done: kind }); } }
+  // talking to her: what each step is again, or the whole guide from the start
+  function talkGuide() {
+    guideDone('talk');
+    const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = '「어서 와요! 궁금한 걸 골라 보세요. 처음부터 같이 해 봐도 좋아요.」';
+    const list = document.createElement('div'); list.className = 'guideTopics';
+    for (const [kind, g] of Object.entries(GUIDE)) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = g.title;
+      b.addEventListener('click', () => { line.textContent = `「${touchNow() ? g.phone : g.pc}」`; });
+      list.append(b);
+    }
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'primary'; again.textContent = '처음부터 다시 배우기';
+    again.addEventListener('click', () => { plazaDialog.close(); refreshGuide({ restart: true }); });
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'ghost'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
+    lostCard.replaceChildren(line, list, again, close); openTalk('안내 주민');
+  }
+  // B 47 생일: today's names on the plaza's corner, my birthday's gift (once a year), my birthday in 내 정보
+  let birthdayMine = null; let birthdaySeq = 0; // (a pushed change wins over a slower read)
+  function refreshBirthday() {
+    const seq = birthdaySeq;
+    return api('/api/island/birthday').then((d) => {
+      birthdayMine = d.mine; if (seq === birthdaySeq) plaza.controller?.setBirthdays?.(d.today.map((t) => t.name)); showBirthdayForm();
+      if (d.gift) showToast(`🎂 생일 축하해요! 생일 선물 +${Number(d.gift).toLocaleString('ko-KR')}P · 오늘 하루 「생일 주인공」`, 7000);
+    }).catch(() => {});
+  }
+  function showBirthdayForm() {
+    const m = birthdayMine; if (!m) return;
+    byId('birthdayMonth').value = m.month || ''; byId('birthdayDay').value = m.day || ''; byId('birthdayHidden').checked = Boolean(m.hidden);
+    byId('birthdayStatus').textContent = m.month ? (m.cheers ? `올해 ${m.cheers}명이 축하해 줬어요.` : '') : '생일을 넣으면 그날 광장에 장식이 서고 친구들이 축하할 수 있어요.';
+  }
+  byId('birthdayForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try { await api('/api/island/birthday', { method: 'POST', body: JSON.stringify({ month: Number(byId('birthdayMonth').value), day: Number(byId('birthdayDay').value), hidden: byId('birthdayHidden').checked }) }); byId('birthdayStatus').textContent = '저장했어요.'; refreshBirthday(); } catch (error) { byId('birthdayStatus').textContent = error.message; }
+  });
+  byId('adminBirthdayForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try { await api('/api/admin/birthday', { method: 'POST', body: JSON.stringify({ label: byId('adminBirthdayName').value, month: Number(byId('adminBirthdayMonth').value), day: Number(byId('adminBirthdayDay').value) }) }); showToast('생일을 넣었어요.'); } catch (error) { showToast(error.message, 4000); }
+  });
+  // B 47 우체통: letters for me (30 days), a new one to anyone (200 characters; a parcel is one thing of my bag and a gift wrap)
+  let mailUnread = 0;
+  function refreshMail(notice = false) {
+    return api('/api/island/mail').then((d) => { if (notice && d.unread && d.unread !== mailUnread) showToast(`✉️ 읽지 않은 편지가 ${d.unread}통 있어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); mailUnread = d.unread; return d; }).catch(() => null);
+  }
+  // B 47 박물관: what is on show with its giver, and my fish and insects that are not yet (one tap gives one)
+  async function openMuseum() {
+    try {
+      const [d, bag] = await Promise.all([api('/api/island/museum'), api('/api/island/bag')]);
+      const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+      const box = el('div', 'mailBox');
+      const mine = bag.items.filter((e) => d.exhibits.some((x) => x.id === e.itemId && !x.by));
+      const give = el('div', 'guideTopics');
+      if (!mine.length) give.append(el('p', 'smallMuted', '아직 전시되지 않은 물고기·곤충이 가방에 없어요.'));
+      for (const e of mine) { const b = el('button', 'ghost', `🎁 ${e.name}`); b.type = 'button'; b.addEventListener('click', async () => { try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/museum/donate', { method: 'POST', body: JSON.stringify({ itemId: e.itemId }) }); showToast(`${e.name}을(를) 기증했어요. 박물관에 이름이 남아요!`); openMuseum(); } catch (error) { showToast(error.message); } }); give.append(b); }
+      const list = el('div', 'museumList'); list.setAttribute('role', 'list');
+      for (const x of d.exhibits) { const row = el('div', `museumItem${x.by ? '' : ' empty'}`); row.setAttribute('role', 'listitem'); row.append(el('span', '', x.by ? x.name : '???'), el('small', 'smallMuted', x.by ? `${x.by}님 기증` : '빈 자리')); list.append(row); }
+      box.append(el('h3', '', `전시 ${d.shown}/${d.total}`), el('p', 'smallMuted', '물고기와 곤충을 종류마다 한 번 기증하면 섬 모두의 전시가 되고, 처음 기증한 사람의 이름이 남아요.'), el('h3', '', '기증하기'), give, el('h3', '', '전시 목록'), list);
+      openPlazaWindow('섬 박물관', [box]);
+    } catch (error) { showToast(error.message); }
+  }
+  async function openMailbox(replyTo = null) {
+    const d = await refreshMail(); if (!d) { showToast('우체통을 열지 못했어요.'); return; }
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const box = el('div', 'mailBox');
+    const list = el('div', 'mailList'); list.setAttribute('role', 'list');
+    if (!d.letters.length) list.append(el('p', 'smallMuted', '받은 편지가 없어요.'));
+    for (const l of d.letters) {
+      const row = el('div', `mailLetter${l.read ? '' : ' unread'}`); row.setAttribute('role', 'listitem');
+      const head = el('div', 'mailHead'); head.append(el('strong', '', `${l.fromName}님`), el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
+      row.append(head, el('p', 'mailText', l.text));
+      if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
+      const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
+      row.append(reply);
+      if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
+      list.append(row);
+    }
+    const form = el('form', 'mailForm');
+    const to = el('select'); to.setAttribute('aria-label', '받는 사람'); to.append(new Option('받는 사람', ''), ...d.people.map((p) => new Option(p.label, p.id))); if (replyTo) to.value = replyTo;
+    const text = el('textarea'); text.maxLength = d.max; text.rows = 3; text.placeholder = `편지 (${d.max}자까지)`; text.setAttribute('aria-label', '편지 내용');
+    const bag = await api('/api/island/bag').catch(() => ({ items: [] })); const wraps = bag.items.filter((e) => e.itemId === 'gift_wrap').reduce((n, e) => n + e.qty, 0);
+    const item = el('select'); item.setAttribute('aria-label', '함께 보낼 선물');
+    item.append(new Option(wraps ? `선물 없이 (포장지 ${wraps}장)` : '선물 없이 (선물은 포장지가 있어야 해요)', ''));
+    if (wraps) for (const e of bag.items.filter((x) => !['lost', 'wallet', 'gift_wrap'].includes(x.itemId))) item.append(new Option(`🎁 ${e.name} ×${e.qty}`, e.itemId));
+    const send = el('button', 'primary', `보내기 (오늘 ${d.left}통 남음)`); send.type = 'submit'; send.disabled = d.left <= 0;
+    const status = el('p', 'smallMuted'); status.setAttribute('role', 'status');
+    form.append(to, text, item, send, status);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); if (!to.value) { status.textContent = '받는 사람을 골라 주세요.'; return; }
+      send.disabled = true;
+      try {
+        const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+        const r = await api('/api/island/mail/send', { method: 'POST', body: JSON.stringify({ to: to.value, text: text.value, itemId: item.value || null, requestId: crypto.randomUUID() }) });
+        showToast(`${r.to}님에게 편지를 보냈어요.`); plazaDialog.close();
+      } catch (error) { status.textContent = error.message; send.disabled = false; }
+    });
+    box.append(el('h3', '', `받은 편지${d.unread ? ` (새 편지 ${d.unread})` : ''}`), list, el('h3', '', '편지 쓰기'), form);
+    openPlazaWindow('우체통', [box]);
+    mailUnread = 0;
   }
   async function sendIslandInvite() {
     const to = islandInviteTo; islandInviteTo = null;
@@ -2827,6 +3080,7 @@
   setInterval(refreshErrands, 20000);
   let residentBusy = false;
   async function talkResident(n) {
+    guideDone('talk'); // B 47 안내
     if (residentBusy) return; residentBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -3063,6 +3317,7 @@
       .catch(() => {}).finally(() => { if (plazaStateRequest === abort) { plazaStateRequest = null; plazaSending = false; } });
   }
   function showPlazaPlayers() {
+    const meNow = plazaPlayers.find((p) => p.id === plazaMyId); if (meNow && JSON.stringify(meNow.pet || null) !== JSON.stringify(myPet)) { myPet = meNow.pet || null; plaza.controller?.setMyPet?.(myPet); } // B 47 (my pet, as the server has it)
     plaza.controller?.setOthers?.(plazaPlayers.filter((p) => p.id !== plazaMyId));
     const mine = plazaPlayers.find((p) => p.id === plazaMyId); // the server says when my champion mark starts or ends (v1.9.5)
     if (mine && Boolean(mine.champion) !== plazaChampion) { plazaChampion = Boolean(mine.champion); applyPlazaAvatar(); }
@@ -3224,7 +3479,7 @@
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
       adminPresencePanel.classList.toggle('hidden', sessionRole !== 'admin');
-      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin');
+      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin'); byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin');
       announcementAddBtn.classList.toggle('hidden', sessionRole !== 'admin');
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');
@@ -5006,7 +5261,7 @@
   skinShopDialog.addEventListener('close', () => hideTryOn('shop'));
   myInfoBtn.addEventListener('click', () => {
     setPointHistoryOpen(false);
-    myInfoDialog.showModal();
+    myInfoDialog.showModal(); refreshBirthday(); // B 47 생일
     loadPoints();
     loadMyInfoSkins();
   });
@@ -5522,6 +5777,10 @@
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
+    if (event === 'birthdays') { birthdaySeq += 1; plaza.controller?.setBirthdays?.(parsed.names || []); return; } // B 47 생일
+    if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
+    if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }
+    if (event === 'mail') { showToast(`✉️ ${parsed.from}님에게서 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통
     if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
@@ -10270,7 +10529,7 @@
   const rankingDialog = document.getElementById('rankingDialog');
   const rankingGame = document.getElementById('rankingGame');
   let rankingWeek = 'this';
-  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)));
+  rankingGame.replaceChildren(...[...gameRulesSelect.options].filter((o) => !['cityking', 'rpg'].includes(o.value)).map((o) => new Option(o.textContent, o.value)), new Option('두 세계 영웅전 (최고 기록)', 'herosurv')); // (사용자 2026-10-19)
   async function loadRanking() {
     const list = document.getElementById('rankingList'); const mine = document.getElementById('rankingMe');
     const game = rankingGame.value; const week = rankingWeek;
@@ -10279,15 +10538,15 @@
     try { data = await api(`/api/records/ranking?game=${encodeURIComponent(game)}&week=${week}`); }
     catch (error) { mine.textContent = error.message; return; }
     if (game !== rankingGame.value || week !== rankingWeek) return; // changed meanwhile
-    const line = (r) => `${r.label} · ${r.w}승 ${r.d}무 ${r.l}패 (${r.n}판)`;
+    const line = data.kind === 'score' ? (r) => `${r.label} · ${Number(r.score).toLocaleString('ko-KR')}점${r.hero ? ` · ${r.hero}` : ''}${r.stage != null ? ` · ${r.stage}단계` : ''}` : (r) => `${r.label} · ${r.w}승 ${r.d}무 ${r.l}패 (${r.n}판)`; // (두 세계 영웅전: each one's best, all time)
     list.replaceChildren(...data.top.map((r) => {
       const li = document.createElement('li'); li.className = r.me ? 'me' : '';
       const place = document.createElement('b'); place.textContent = `${r.rank}위`;
       li.append(place, document.createTextNode(` ${line(r)}`));
       return li;
     }));
-    if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
-    mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : `${data.min}판을 두면 순위에 올라요.`;
+    if (!data.top.length) list.append(Object.assign(document.createElement('li'), { className: 'rankingEmpty', textContent: data.kind === 'score' ? '아직 기록이 없어요.' : `아직 ${data.min}판 넘게 둔 사람이 없어요.` }));
+    mine.textContent = data.me ? `내 순위 ${data.me.rank}위 · ${line(data.me)}` : data.kind === 'score' ? '한 판을 끝내면 최고 기록이 올라요. (주간 구분 없음)' : `${data.min}판을 두면 순위에 올라요.`;
   }
   document.getElementById('rankingBtn').addEventListener('click', () => {
     rankingGame.value = [...rankingGame.options].some((o) => o.value === gameRulesSelect.value) ? gameRulesSelect.value : 'omok'; // 랜드킹·잿빛 원정: no board (Codex review)

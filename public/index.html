@@ -381,6 +381,7 @@
           <form id="islandWeatherForm" class="joinForm islandTimeForm"><label for="islandWeatherSelect">섬 날씨</label><select id="islandWeatherSelect"><option value="auto">자동 (서버 시계)</option><option value="clear">맑음</option><option value="rain">비 (겨울 구역은 눈)</option><option value="rainbow">무지개</option></select><button class="secondary" type="submit">적용</button></form>
           <form id="islandSeasonForm" class="joinForm islandTimeForm"><label for="islandSeasonSelect">계절 회전</label><select id="islandSeasonSelect"><option value="auto">자동 (날마다 돎)</option><option value="hold">지금 배치로 멈춤</option></select><button class="secondary" type="submit">적용</button></form>
           <form id="islandDecorForm" class="joinForm islandTimeForm"><label for="islandDecorSelect">이벤트 장식</label><select id="islandDecorSelect"><option value="auto">자동 (10월 할로윈·12월 겨울 축제)</option><option value="halloween">할로윈</option><option value="winter">겨울 축제</option><option value="off">끔</option></select><button class="secondary" type="submit">적용</button></form>
+          <form id="adminBirthdayForm" class="joinForm islandTimeForm"><label for="adminBirthdayName">생일 넣기</label><input id="adminBirthdayName" type="text" placeholder="계정 이름" required><input id="adminBirthdayMonth" type="number" min="1" max="12" placeholder="월" aria-label="월" required><input id="adminBirthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일" required><button class="secondary" type="submit">적용</button></form>
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestDay">주말 섬 대회</label><select id="contestDay"><option value="0">일</option><option value="1">월</option><option value="2">화</option><option value="3">수</option><option value="4">목</option><option value="5">금</option><option value="6">토</option></select><input id="contestTime" type="time" value="20:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
           <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
@@ -1098,6 +1099,16 @@
         <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
       </section>
     </section>
+    <section class="myInfoSection" aria-labelledby="myInfoBirthdayTitle"><!-- B 47 생일 -->
+      <div class="myInfoSectionHead"><h3 id="myInfoBirthdayTitle">생일</h3></div>
+      <form id="birthdayForm" class="joinForm birthdayForm">
+        <select id="birthdayMonth" aria-label="월"><option value="">월</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select>
+        <input id="birthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일">
+        <label><input id="birthdayHidden" type="checkbox"> 다른 사람에게 숨기기</label>
+        <button class="secondary" type="submit">저장</button>
+      </form>
+      <p id="birthdayStatus" class="smallMuted" role="status"></p>
+    </section>
     <section class="myInfoSection" aria-labelledby="myInfoSkinsTitle">
       <div class="myInfoSectionHead"><h3 id="myInfoSkinsTitle">보유 스킨</h3></div>
       <p id="myInfoSkinStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
@@ -1245,12 +1256,25 @@
       <div id="eventList" class="missionList" role="list"></div>
     </section>
   </dialog>
+  <!-- 관리자 「문제 기록」: over whatever is on screen -->
+  <dialog id="issueDialog" class="recordsDialog issueDialog" aria-labelledby="issueTitle">
+    <div class="recordsDialogHead"><h2 id="issueTitle">문제 기록</h2><button id="issueCloseBtn" type="button" class="ghost tiny">닫기</button></div>
+    <form id="issueForm" class="issueForm">
+      <textarea id="issueText" maxlength="1000" rows="4" placeholder="무엇이 문제인가요? (Ctrl+Enter 저장)" aria-label="내용" required></textarea>
+      <div class="issueRow"><select id="issueKind" aria-label="종류"><option value="bug">버그</option><option value="odd">어색함</option><option value="idea">개선</option></select>
+        <label><input id="issueShotOn" type="checkbox" checked> 화면 사진 같이</label></div>
+      <img id="issueShot" class="issueShot hidden" alt="저장할 화면 사진">
+      <p id="issueStatus" class="smallMuted" role="status"></p>
+      <button class="primary" type="submit">저장</button>
+    </form>
+  </dialog>
   <dialog id="gameMenuDialog" class="recordsDialog gameMenuDialog" aria-labelledby="gameMenuTitle">
     <div class="recordsDialogHead"><h2 id="gameMenuTitle">메뉴</h2><button id="gameMenuCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div class="gameMenuList">
       <button id="menuLeaveRoomBtn" type="button" class="secondary hidden">게임관으로 돌아가기</button>
       <button id="myInfoBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="myInfoDialog">내 정보</button>
       <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
+      <button id="issueLogBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="issueDialog">문제 기록</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
         <div class="gameMenuThemes" role="radiogroup" aria-label="화면 테마">

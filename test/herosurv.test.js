@@ -85,6 +85,9 @@ test('영웅전 API: 게임센터 닉네임으로 기록·순위, 판마다 한 
   assert.equal(board.data.entries[0].playerId, guest.data.playerId);
   assert.deepEqual([board.data.myRank.rank, board.data.myRank.score], [1, 2746]);
   assert.equal((await call('boards/heroes-r14', 'GET', null, other)).data.myRank.rank, null);
+  // (사용자 2026-10-19) 게임센터 「게임별 랭킹」: the same bests, by nickname, on the board the game last played
+  const ranking = await fetch(base + '/api/records/ranking?game=herosurv', { headers: { 'X-Session-Token': session } }).then((r) => r.json());
+  assert.deepEqual([ranking.kind, ranking.board, ranking.top.map((r) => [r.rank, r.label, r.score, r.me]), ranking.me?.rank], ['score', 'heroes-r14', [[1, '영웅', 2746, true]], 1]);
 
   const page = await fetch(base + '/herosurv/', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/140.0.0.0', 'Sec-CH-UA': '"Google Chrome";v="140"' } });
   assert.equal(page.status, 200);
@@ -92,5 +95,6 @@ test('영웅전 API: 게임센터 닉네임으로 기록·순위, 판마다 한 
   assert.match(html, /<script src="\/herosurv\/boot\.js\?h=/);
   assert.doesNotMatch(html, /__HEROSURV_ASSETS__|<script>/);
   assert.match(page.headers.get('content-security-policy'), /connect-src 'self' https:\/\/gamecenter-games\.dlrjs9702\.workers\.dev;/);
+  assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'self'/); assert.equal(page.headers.get('x-frame-options'), 'SAMEORIGIN'); // (사용자 2026-10-19: in a window over the island, our page only)
   assert.equal((await req('/herosurv/index.html')).status, 404); // the page only through its route
 });

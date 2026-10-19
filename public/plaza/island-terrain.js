@@ -68,6 +68,7 @@
   }
   const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
+  const MUSEUM = Object.freeze({ x: 28, z: 34, yaw: Math.atan2(28 - 22.9, 34 - 24), r: 5 }); // (r: nothing grows within 5.8 m -- its door clear; solid at 4) // B 47 섬 박물관 (its door, -Z, toward the north-east walk; the outside only)
   const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props)
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
@@ -189,7 +190,7 @@
     if (cd < 0) h = -0.95 + cd * 0.45;
     return h;
   }
-  const PADS = [[0, -44, 9.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...COTTAGES.map((c) => [c.x, c.z, 4.6]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4 && s.kind !== 'townhall').map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
+  const PADS = [[0, -44, 9.5], [MUSEUM.x, MUSEUM.z, 6.5], ...RESERVED_LOTS.map((l) => [l.x, l.z, 5]), ...COTTAGES.map((c) => [c.x, c.z, 4.6]), ...Object.values(SPOTS).filter((s) => Math.hypot(s.x, s.z) > PLAZA_R + 4 && s.kind !== 'townhall').map((s) => [s.x, s.z, s.kind === 'hall' ? 11 : 4.5])]
     .map(([x, z, r]) => ({ x, z, r, h: rawLand(x, z) }));
   function land(x, z) {
     let h = rawLand(x, z);
@@ -350,8 +351,10 @@
     bookcart: Object.freeze({ x: -20.6, z: 2.6, yaw: toPlaza(-20.6, 2.6), r: 0.8 }), librarian: Object.freeze({ x: -18.5, z: 1.5 }),
     // A2c: the gazebo grandpa and his 오목 table, west of the gazebo
     omokTable: Object.freeze({ x: -25.4, z: 24.2, yaw: toPlaza(-25.4, 24.2), r: 1.4 }), grandpa: Object.freeze({ x: -25.5, z: 27 }),
+    // B 47 함께하는 섬: the 우체통 on the plaza's east side, the birthday corner on its north-west (decorations only on the day)
+    mailbox: Object.freeze({ x: 11, z: -6, yaw: toPlaza(11, -6), r: 0.5 }), guide: Object.freeze({ x: 7, z: 8, yaw: toPlaza(7, 8), r: 0.45 }), /* (the guide resident, east of the spawn, always there -- 7 m off it, so two players at the spawn greet each other) */ birthday: Object.freeze({ x: -9, z: 8.5, yaw: toPlaza(-9, 8.5) }),
   });
-  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable];
+  const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
   const inVillage = (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8);
   function addNatureBlock(fn) { natureBlocks.push(fn); natureCache = null; }
   function nature() {
@@ -522,5 +525,5 @@
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
   const isWinterFest = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 11; // B 46 겨울 축제: December (Asia/Seoul)
-  return { TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, CONTEST_STATUE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, isWinterFest, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { MUSEUM, TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, CONTEST_STATUE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, isWinterFest, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

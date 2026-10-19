@@ -2206,3 +2206,52 @@ body.roomPlaying .gostopFelt .gostopBacks{flex-wrap:nowrap;white-space:nowrap}
 @media(max-width:640px){.contestBar{top:56px;max-width:calc(100% - 24px);font-size:.76rem}}
 /* A5 공지 예약 */
 .noticeQueue{display:grid;gap:4px;margin:6px 0}.noticeQueueRow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:#fde68a}
+
+/* B 47 우체통·생일 */
+.mailBox { display: grid; gap: 8px; max-height: min(70vh, 560px); overflow-y: auto; text-align: left; }
+.mailBox h3 { margin: 4px 0 0; font-size: 1rem; }
+.mailList { display: grid; gap: 6px; }
+.mailLetter { border: 1px solid var(--line, #33415a); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; }
+.mailLetter.unread { border-color: #f2c14e; }
+.mailLetter.unread .mailHead strong::after { content: ' · 새 편지'; color: #f2c14e; font-weight: 600; }
+.mailHead { display: flex; justify-content: space-between; gap: 8px; }
+.mailText { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mailLetter button { justify-self: end; }
+.mailForm { display: grid; gap: 6px; }
+.mailForm textarea { resize: vertical; min-height: 64px; }
+.birthdayForm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.birthdayForm #birthdayDay { width: 72px; }
+
+/* B 47 처음 온 사람 안내 */
+.guidePanel { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; max-width: min(92vw, 640px); display: grid; gap: 2px; padding: 10px 16px; border-radius: 14px; background: rgba(16, 24, 40, 0.88); color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); text-align: center; pointer-events: none; }
+body:not(.plazaMode) .guidePanel { display: none; }
+.guideStep { font-size: 0.8rem; color: #f2c14e; }
+.guideTitle { font-size: 1.15rem; }
+.guideText { font-size: 1rem; line-height: 1.4; }
+.guideTopics { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* B 47 곤충 채집 */
+.bugCatchBtn { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 31; font-size: 1.3rem; padding: 14px 28px; border-radius: 999px; background: #f2c14e; color: #1b1b1b; border: 0; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+body:not(.plazaMode) .bugCatchBtn { display: none; }
+
+/* B 47 박물관 */
+.museumList { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.museumItem { border: 1px solid var(--line, #33415a); border-radius: 8px; padding: 6px 8px; display: grid; gap: 2px; }
+.museumItem.empty { opacity: 0.55; }
+
+/* 관리자 「문제 기록」 */
+.issueDialog { max-width: min(92vw, 520px); }
+.issueForm { display: grid; gap: 8px; }
+.issueForm textarea { resize: vertical; min-height: 90px; }
+.issueRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.issueShot { max-width: 100%; border-radius: 8px; }
+.issueTools { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.issueList { display: grid; gap: 6px; }
+.issueItem { border: 1px solid var(--line, #33415a); border-radius: 8px; padding: 6px 8px; }
+.issueItem summary { cursor: pointer; overflow-wrap: anywhere; }
+.issueBody { display: grid; gap: 6px; margin-top: 6px; }
+.issueInfo { font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; margin: 0; }
+
+/* 두 세계 영웅전: a window over everything (사용자 2026-10-19) */
+.herosurvFrame { position: fixed; inset: 0; width: 100vw; height: 100dvh; border: 0; z-index: 1000; background: #000; }
+body.herosurvOpen { overflow: hidden; }

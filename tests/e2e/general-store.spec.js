@@ -35,7 +35,7 @@ test('잡화점: 들어가기 → 진열된 미끼 앞 SPACE → 사기 → 가�
 // one thing goes from my bag to theirs (PC: the two-player view)
 test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물하면 상대 가방에', async ({ browser, request, isMobile }) => {
   test.skip(isMobile, 'PC 전용 검증');
-  test.setTimeout(180000);
+  test.setTimeout(process.env.CI ? 360000 : 180000); // (two island pages on a software renderer: CI is slow)
   const { post } = require('./skin-support');
   const a = await shopper(browser, request, '폭죽가', 100000, 'male');
   const b = await shopper(browser, request, '받는이', 100000, 'female');

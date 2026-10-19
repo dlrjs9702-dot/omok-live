@@ -39,9 +39,9 @@
     ['seed_flower_red', [8.805, 1.12, 7.3]], ['seed_flower_yellow', [9.045, 1.12, 7.3]], ['seed_flower_white', [9.355, 1.12, 7.3]], ['seed_flower_pink', [9.595, 1.12, 7.3]],
     ['seed_flower_purple', [9.905, 1.12, 7.3]], ['sapling', [10.145, 1.12, 7.3]], ['bait', [10.455, 1.12, 7.3]], ['bait_premium', [10.695, 1.12, 7.3]],
     ['fertilizer', [11.625, 1.12, 7.3]], ['guitar_string', [12.055, 1.12, 7.3]], ['nail_box', [12.295, 1.12, 7.3]], ['milk', [12.605, 1.12, 7.3]],
-    ['bread', [12.845, 1.12, 7.3]], ['bulb', [13.155, 1.12, 7.3]], ['paint', [13.395, 1.12, 7.3]], ['bouquet', [9.78, 0.82, 4.12]], ['gift_wrap', [10.02, 0.82, 4.12]],
+    ['bread', [12.845, 1.12, 7.3]], ['bulb', [13.155, 1.12, 7.3]], ['paint', [13.395, 1.12, 7.3]], ['bouquet', [9.78, 0.82, 4.12]], ['gift_wrap', [10.02, 0.82, 4.12]], ['bugnet', [10.3, 0.82, 4.12]] /* (B 47) */, ['fishing_rod', [10.58, 0.82, 4.12]],
     ['frame', [12.87, 1.02, 4.6]] /* (the table's middle row could not be reached either) */, ['letter_paper', [11.16, 1.12, 7.3]] /* (Codex review: in the table's middle it could not be reached -- the gap of the back shelf) */, ['firework', [9.54, 0.82, 4.98]], ['bubbles', [9.9, 0.82, 4.98]], ['balloon', [10.26, 0.82, 4.98]],
-    ['badge', [11.73, 1.02, 4.6]],
+    ['badge', [11.73, 1.02, 4.6]], ['pet_puppy', [12.03, 1.02, 4.6]], ['pet_kitten', [12.31, 1.02, 4.6]], ['pet_bird', [12.59, 1.02, 4.6]], // (B 47: between the badge and the frame)
   ].map(([id, at]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false }))); // (B 45: the seeds, the sapling and fertilizer on sale)
   const REACH = 1.2; // a good within this of me (on the floor plan) is the one SPACE buys
   // where one may stand: inside the walls (0.45 m off them), out of the furniture (0.35 m round it)

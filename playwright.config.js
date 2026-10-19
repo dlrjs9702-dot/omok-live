@@ -16,7 +16,7 @@ module.exports = defineConfig({
   // Keep the expensive 3D suites in independent CI jobs; the two general shards exclude both.
   // v1.10.90: the newer island 3D specs (run in the CI plaza job) left the games shards too (games-2 went past 40 minutes)
   testIgnore: [...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') ? ['**/island-assets.spec.js', '**/native-assets.spec.js', '**/plaza.spec.js'] : []),
-    ...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') || process.env.PLAYWRIGHT_SKIP_ISLAND === '1' ? ['**/river-fishing.spec.js', '**/weed-board.spec.js', '**/island-time.spec.js', '**/island-weather.spec.js', '**/island-stars.spec.js', '**/island-contest.spec.js', '**/island-admin-look.spec.js', '**/island-plants.spec.js', '**/asset-inspector.spec.js', '**/shop-browse.spec.js', '**/title-hall.spec.js', '**/action-lock.spec.js', '**/resident-talk.spec.js', '**/transform-shop.spec.js', '**/general-store.spec.js'] : [])],
+    ...(process.env.PLAYWRIGHT_TEST_GROUP?.startsWith('games-') || process.env.PLAYWRIGHT_SKIP_ISLAND === '1' ? ['**/river-fishing.spec.js', '**/weed-board.spec.js', '**/island-time.spec.js', '**/island-weather.spec.js', '**/island-stars.spec.js', '**/island-contest.spec.js', '**/island-admin-look.spec.js', '**/island-plants.spec.js', '**/island-together.spec.js', '**/island-guide.spec.js', '**/island-insects.spec.js', '**/island-pets.spec.js', '**/asset-inspector.spec.js', '**/shop-browse.spec.js', '**/title-hall.spec.js', '**/action-lock.spec.js', '**/resident-talk.spec.js', '**/transform-shop.spec.js', '**/general-store.spec.js'] : [])],
   timeout: 30_000,
   expect: {
     timeout: process.env.CI ? 15_000 : 5_000, // (CI 2026-10-19: the GitHub runner draws the island at a few frames a second -- a state the page sets a moment later is missed at 5 s)
@@ -25,7 +25,7 @@ module.exports = defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // One retry locally too: a test that fails once and passes on the retry is reported as "flaky" (with a trace, see
   // `trace: 'on-first-retry'`), so an occasional infrastructure hiccup is told apart from a real failure, which fails twice.
-  retries: process.env.CI ? 2 : 1,
+  retries: 1, // (v1.10.99 CI 단축: 2 → 1 on CI too -- a 3D test is about 3 minutes, so a real failure cost 9; a flaky one still shows as "flaky")
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ['list'],

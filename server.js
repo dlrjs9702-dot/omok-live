@@ -45,6 +45,12 @@ const RoomAi = require('./lib/room-ai');
 const IslandWeather = require('./lib/island-weather'); // A4 날씨
 const IslandStars = require('./lib/island-stars'); // A4 별똥별
 const IslandContest = require('./lib/island-contest'); // A4 주말 섬 대회
+const Together = require('./lib/island-together'); // B 47 생일·우체통
+const SERVER_VERSION = require('./package.json').version; // (관리자 「문제 기록」에 붙는 버전)
+const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
+const bugSwings = new Map(); // session token -> the swing (one at a time)
+const petOf = new Map(); // B 47 반려동물: account -> { kind, name } | null (read from its 'pet' doc once)
+const PET_KINDS = ['puppy', 'kitten', 'bird'];
 const IslandPlants = require('./lib/island-plants'); // B 45 꽃·나무 심기 // v1.10.72 게임방 AI 자리
 const IslandQuests = require('./lib/island-quests'); // v1.10.37 연계 퀘스트
 const IslandErrands = require('./lib/island-errands'); // v1.10.91 주민 심부름
@@ -276,7 +282,8 @@ function sendHerosurv(res) {
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Length': Buffer.byteLength(herosurvTemplate),
     'Cache-Control': 'no-store',
-    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${assetOrigin}; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+    'X-Frame-Options': 'SAMEORIGIN', // (사용자 2026-10-19: opened in a window over the island, our own page only)
+    'Content-Security-Policy': `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'${assetOrigin}; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'self'; form-action 'self'`,
   }));
   res.end(herosurvTemplate);
 }
@@ -929,6 +936,7 @@ function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mo
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
+const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
@@ -1051,10 +1059,49 @@ const PRISON_OUTFIT = 'avatar_outfit_2';
 function lookFor(account, equipped) {
   const shown = avatarLookOf(equipped);
   const weekly = weeklyTitleOf(equipped?.avatar?.title); if (weekly) shown.title = holdsWeekly(weekly[0], account) ? weekly[1].name : null; // v1.10.89 낚시왕 · v1.10.90 제초왕
+  if (birthdays.today.has(account)) shown.title = Together.BIRTHDAY_TITLE; // B 47 생일: the day's title
   if (!(taxDebt.get(account) > 0)) return shown;
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
 }
+// B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
+// and whenever one is set (ponytail: one read per account; a birthday index if the accounts grow into the hundreds)
+const birthdays = { day: null, today: new Map(), loading: null, gen: 0 };
+function refreshBirthdays(force = false) {
+  const day = kstDate(nowMs()); if (!pointStore || (!force && birthdays.day === day)) return birthdays.loading;
+  birthdays.day = day;
+  const gen = ++birthdays.gen; // (an older read finishing late does not undo a newer one -- Codex review)
+  birthdays.loading = (async () => {
+    const today = new Map();
+    for (const key of await accessStore.list()) {
+      if (key.revokedAt || key.pendingAt) continue; const account = `guest:${key.id}`;
+      const doc = (await pointStore.questDoc(account, 'birthday')).doc;
+      if (!doc.hidden && Together.isBirthday(doc, nowMs())) today.set(account, String(key.label || '').slice(0, 24));
+    }
+    if (gen !== birthdays.gen) return;
+    const changed = [...today.keys()].join() !== [...birthdays.today.keys()].join(); birthdays.today = today;
+        if (changed) { refreshTaxLooks(); broadcastIsland('birthdays', { names: [...today.values()] }); }
+  })().catch((error) => { birthdays.day = null; console.error('생일 확인 실패:', error.message); }).finally(() => { if (gen === birthdays.gen) birthdays.loading = null; });
+  return birthdays.loading;
+}
+setInterval(() => refreshBirthdays(), 60000).unref?.();
+// B 47 박물관: one gift at a time (two at once for the same kind: the first stays), the thing out of the giver's bag
+let museumChain = Promise.resolve();
+function museumGive(account, itemId, name) {
+  const run = museumChain.then(async () => {
+    const shown = (await pointStore.worldValue('museum')) || {}; if (shown[itemId]) return 'shown';
+    await pointStore.setWorldValue('museum', { ...shown, [itemId]: { by: name, at: nowMs() } }); // (on show first: a failure after it never loses the thing -- Codex review)
+    const out = await pointStore.questApply(account, 'museumGiven', (d) => ({ doc: { ...d, [itemId]: (d[itemId] || 0) + 1 }, take: { itemId, qty: 1 } })).catch(() => null);
+    if (!out?.doc) { await pointStore.setWorldValue('museum', shown); return 'missing'; }
+    return 'ok';
+  });
+  museumChain = run.catch(() => {}); return run;
+}
+// one account's open lobby streams get an event (a letter came)
+function notifyAccount(account, type, data) {
+  for (const entry of [...lobbyStreams]) { const session = sessions.get(entry.sessionToken); if (!session || pointAccountForSession(session) !== account) continue; try { sseWrite(entry.res, type, data); } catch { lobbyStreams.delete(entry); } }
+}
+const nearMailbox = (session) => { const me = plazaPresence.get(session.token); const m = IslandTerrain.VILLAGE.mailbox; return Boolean(me && (me.space || 'island') === 'island' && Math.hypot(me.x - m.x, me.z - m.z) <= 3); };
 // the day each account last came in, once a day per account (lib/point-store.js bankAccrue: no interest after 7 days away)
 const visitNoted = new Map();
 function noteVisit(account) {
@@ -1094,7 +1141,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -1243,6 +1290,7 @@ const puzzleStarts = new Map(); // v1.10.69 오늘의 문제: 'account|game|leve
 const cardRuns = new Map(); // v1.10.70 카드 게임: round id -> { account, game, level, seed, at } (memory only)
 // v1.10.61 두 세계 영웅전: runs started and not yet reported (memory only; a restart just loses runs in progress)
 const herosurvRuns = new Map(); // runId -> { account, board, at }
+let herosurvLatest = null; // the board the game last started a run on (kept in the world values)
 const HEROSURV_RUN_MS = 5 * 60 * 60 * 1000;
 function herosurvPlayerId(account) { // stable, and reveals nothing about the account
   const h = crypto.createHash('sha256').update(`herosurv:${account}`).digest('hex');
@@ -3401,7 +3449,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.97' });
+    return sendJson(res, 200, { ok: true, version: '1.10.98' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4241,8 +4289,9 @@ async function requestHandler(req, res) {
     }
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
+    if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, { kind: doc.kind, name: String(doc.name || '').slice(0, 10) }); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
     plazaPresence.set(session.token, {
-      id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
+      pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
@@ -4375,6 +4424,142 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
     return sendJson(res, 200, { ok: true, goods: IslandStore.SHELF.map((s) => { const def = IslandItems.ITEMS[s.id]; return { id: s.id, name: def?.name || ({ seed_flower_red: '빨강 꽃씨', seed_flower_yellow: '노랑 꽃씨', seed_flower_white: '흰 꽃씨', seed_flower_pink: '분홍 꽃씨', seed_flower_purple: '보라 꽃씨', sapling: '묘목', fertilizer: '비료' })[s.id] || s.id, price: def?.good && !s.soon ? Economy.value(`good:${s.id}`) : 0, use: def?.use || null }; }) });
+  }
+  // B 47 생일: mine (set, hidden, how many cheered this year), today's birthdays; my own birthday pays its gift once a year
+  if (pathname === '/api/island/birthday' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); await refreshBirthdays();
+    const doc = (await pointStore.questDoc(account, 'birthday')).doc; const t = Together.seoul(nowMs()); let gift = 0;
+    if (!doc.hidden && Together.isBirthday(doc, nowMs()) && !doc.paid?.[t.year]) {
+      const out = await pointStore.questApply(account, 'birthday', (d) => (d.paid?.[t.year] ? null : { doc: { ...d, paid: { ...(d.paid || {}), [t.year]: true } }, reward: Together.BIRTHDAY_GIFT, payKey: `birthday:${account}:${t.year}` }));
+      if (out?.reward) { gift = out.reward; notifyPointsChanged([account]); }
+    }
+    return sendJson(res, 200, { ok: true, mine: { month: doc.month || null, day: doc.day || null, hidden: Boolean(doc.hidden), cheers: (doc.cheers?.[t.year] || []).length }, today: [...birthdays.today.entries()].map(([id, name]) => ({ id: id === account ? 'me' : null, name })), gift });
+  }
+  if (pathname === '/api/island/birthday' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (session.role === 'admin') return sendError(res, 400, 'BAD_BIRTHDAY', '관리자 창에서 계정마다 정해 주세요.');
+    const body = await parseJson(req); const clear = body.clear === true; const month = Number(body.month); const day = Number(body.day);
+    if (!clear && !Together.validDay(month, day)) return sendError(res, 400, 'BAD_BIRTHDAY', '월·일을 확인해 주세요.');
+    await pointStore.questApply(pointAccountForSession(session), 'birthday', (d) => ({ doc: clear ? { cheers: d.cheers, paid: d.paid } : { ...d, month, day, hidden: body.hidden === true } }));
+    await refreshBirthdays(true); return sendJson(res, 200, { ok: true });
+  }
+  if (pathname === '/api/admin/birthday' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req); const name = String(body.label || '').trim(); const key = (await accessStore.list()).find((k) => !k.revokedAt && (k.id === body.keyId || (name && k.label === name))); const month = Number(body.month); const day = Number(body.day);
+    if (!key || !Together.validDay(month, day)) return sendError(res, 400, 'BAD_BIRTHDAY', '계정과 월·일을 확인해 주세요.');
+    await pointStore.questApply(`guest:${key.id}`, 'birthday', (d) => ({ doc: { ...d, month, day, hidden: body.hidden === true } }));
+    await refreshBirthdays(true); return sendJson(res, 200, { ok: true });
+  }
+  // 축하하기: by someone whose birthday it is, once a day from each person (counted in their year), confetti for everyone
+  if (pathname === '/api/island/birthday/cheer' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); prunePlazaPresence();
+    const target = [...sessions.entries()].find(([token, x]) => x.plazaId && x.plazaId === body.plazaId && token !== session.token);
+    const me = plazaPresence.get(session.token); const them = target && plazaPresence.get(target[0]);
+    if (!me || !them) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '상대가 섬을 떠났습니다.');
+    if ((me.space || 'island') !== (them.space || 'island') || Math.hypot(me.x - them.x, me.z - them.z) > 4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const to = pointAccountForSession(target[1]); const from = pointAccountForSession(session);
+    if (!birthdays.today.has(to)) return sendError(res, 409, 'NOT_BIRTHDAY', '오늘이 생일인 사람에게만 축하할 수 있어요.');
+    const t = Together.seoul(nowMs()); const mark = `${from}@${kstDate(nowMs())}`;
+    const out = await pointStore.questApply(to, 'birthday', (d) => { const list = d.cheers?.[t.year] || []; return list.includes(mark) ? null : { doc: { ...d, cheers: { [t.year]: [...list, mark] } } }; });
+    if (!out?.doc) return sendError(res, 409, 'ALREADY_CHEERED', '오늘은 이미 축하했어요.');
+    broadcastIsland('birthdayCheer', { to: target[1].plazaId, by: session.plazaId });
+    notifyAccount(to, 'birthdayCheered', { name: String(session.label || '누군가').slice(0, 24), count: out.doc.cheers[t.year].length });
+    return sendJson(res, 200, { ok: true, count: out.doc.cheers[t.year].length });
+  }
+  // B 47 처음 온 사람 안내: where my guide is (a new account starts it on its first island; tests start it themselves),
+  // a step done (only the current one counts) or started again by talking to the guide (사용자 2026-10-18: 첫 접속이면 무조건,
+  // 건너뛰기 없음; 끝난 뒤에도 광장 한쪽에서 말 걸면 가르쳐 줌); the last step pays the welcome once
+  if (pathname === '/api/island/guide' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const body = req.method === 'POST' ? await parseJson(req) : {};
+    let doc = (await pointStore.questDoc(account, 'guide')).doc;
+    if (req.method === 'GET' && !doc.started && !doc.skipped && session.guestKeyId && process.env.NODE_ENV !== 'test') {
+      const key = await accessStore.get(session.guestKeyId);
+      if (key && Date.parse(key.createdAt) >= Together.GUIDE_FROM) doc = (await pointStore.questApply(account, 'guide', (d) => (d.started ? null : { doc: { ...d, started: true, step: 0 } })))?.doc || doc;
+    }
+    let gift = 0;
+    if (body.restart === true) doc = (await pointStore.questApply(account, 'guide', (d) => ({ doc: { started: true, step: 0, paid: d.paid } })))?.doc || doc;
+    else if (typeof body.done === 'string' && doc.started && !doc.skipped) {
+      const out = await pointStore.questApply(account, 'guide', (d) => { const next = Together.guideAfter(d, body.done); if (!next) return null; return next.done && !d.paid ? { doc: { ...next, paid: true }, reward: Together.GUIDE_GIFT, payKey: `guide:${account}` } : { doc: next }; });
+      if (out?.doc) doc = out.doc; if (out?.reward) { gift = out.reward; notifyPointsChanged([account]); }
+    }
+    return sendJson(res, 200, { ok: true, active: Boolean(doc.started && !doc.skipped && !doc.done), step: doc.step || 0, done: Boolean(doc.done), steps: Together.GUIDE_STEPS, gift });
+  }
+  // B 47 박물관: what is on show (each fish and insect once, the first giver's name) and a gift from my bag at its door
+  if (pathname === '/api/island/museum' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const shown = (await pointStore.worldValue('museum')) || {};
+    const kinds = IslandFishing.DEX.filter((d) => d.kind === 'fish' || d.kind === 'insect');
+    return sendJson(res, 200, { ok: true, exhibits: kinds.map((d) => ({ id: d.id, name: d.name, kind: d.kind, by: shown[d.id]?.by || null, at: shown[d.id]?.at || null })), shown: kinds.filter((d) => shown[d.id]).length, total: kinds.length });
+  }
+  if (pathname === '/api/island/museum/donate' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const me = plazaPresence.get(session.token); const door = Together.museumDoor(IslandTerrain.MUSEUM);
+    if (!me || (me.space || 'island') !== 'island' || Math.hypot(me.x - door.x, me.z - door.z) > 3.5) return sendError(res, 409, 'TOO_FAR', '박물관 앞에서 기증할 수 있어요.');
+    const body = await parseJson(req); const itemId = String(body.itemId || '');
+    if (!IslandFishing.DEX.some((d) => d.id === itemId && (d.kind === 'fish' || d.kind === 'insect'))) return sendError(res, 400, 'BAD_DONATION', '물고기나 곤충만 기증할 수 있어요.');
+    const out = await museumGive(pointAccountForSession(session), itemId, String(session.label || '게스트').slice(0, 24));
+    if (out === 'shown') return sendError(res, 409, 'ALREADY_SHOWN', '이미 전시돼 있어요.');
+    if (out === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    broadcastIsland('museum', { id: itemId, by: String(session.label || '게스트').slice(0, 24) });
+    return sendJson(res, 200, { ok: true });
+  }
+  // B 47 반려동물: which of mine walks with me (one bought at the 잡화점, a name of up to 10 characters), or none
+  if (pathname === '/api/island/pet' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const body = await parseJson(req);
+    const kind = body.kind == null ? null : String(body.kind); const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
+    if (kind && !PET_KINDS.includes(kind)) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
+    if (kind && !((await pointStore.islandBag(account)).items || []).some((e) => e.itemId === `pet_${kind}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+    await pointStore.questApply(account, 'pet', () => ({ doc: kind ? { kind, name } : {} }));
+    petOf.set(account, kind ? { kind, name } : null);
+    for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+    plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
+  }
+  // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
+  if (pathname === '/api/island/mail' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const now = nowMs();
+    const letters = Together.freshLetters((await pointStore.questDoc(account, 'mail')).doc.letters, now);
+    const sent = (await pointStore.questDoc(account, 'mailSent')).doc; const t = Together.seoul(now);
+    const people = (await accessStore.list()).filter((k) => !k.revokedAt && !k.pendingAt && `guest:${k.id}` !== account).map((k) => ({ id: k.id, label: k.label }));
+    return sendJson(res, 200, { ok: true, letters, unread: letters.filter((l) => !l.read).length, people, left: Together.SEND_PER_DAY - (sent.day === `${t.year}-${t.month}-${t.day}` ? sent.n : 0), max: Together.LETTER_MAX });
+  }
+  if (pathname === '/api/island/mail/send' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-mail:${session.token}`, 10, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    if (!nearMailbox(session)) return sendError(res, 409, 'TOO_FAR', '우체통 앞에서 보낼 수 있어요.');
+    const body = await parseJson(req); const text = Together.letterText(body.text); const requestId = String(body.requestId || '');
+    const key = await accessStore.get(String(body.to || '')); const from = pointAccountForSession(session);
+    if (!key || key.revokedAt || key.pendingAt || `guest:${key.id}` === from) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
+    if (!text) return sendError(res, 400, 'BAD_LETTER', `편지는 1~${Together.LETTER_MAX}자로 써 주세요.`);
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_LETTER', '다시 시도해 주세요.');
+    const to = `guest:${key.id}`;
+    const sentAt = nowMs(); // (the day's count taken first -- two at once cannot both slip under it, Codex review)
+    const reserved = await pointStore.questApply(from, 'mailSent', (d) => { const next = Together.sentAfter(d, sentAt); return next ? { doc: next } : null; });
+    if (!reserved?.doc) return sendError(res, 409, 'MAIL_LIMIT', `편지는 하루 ${Together.SEND_PER_DAY}통까지 보낼 수 있어요.`);
+    const giveBack = () => pointStore.questApply(from, 'mailSent', (d) => (d.day === reserved.doc.day && d.n > 0 ? { doc: { ...d, n: d.n - 1 } } : null)).catch(() => {});
+    const itemId = body.itemId ? String(body.itemId) : null;
+    if (itemId) { // the parcel: the gift wrap's rule (one thing, a wrap used), straight into their bag
+      let out; try { out = await pointStore.islandGift({ userId: from, to, itemId, requestId }); } catch { await giveBack(); return sendError(res, 400, 'BAD_GIFT', '선물할 수 없는 물건입니다.'); }
+      if (out.reason) await giveBack();
+      if (out.reason === 'no-wrap') return sendError(res, 409, 'NO_GIFT_WRAP', '소포에는 선물 포장지가 필요합니다. 잡화점에서 살 수 있어요.');
+      if (out.reason === 'missing') return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      if (out.reason === 'full') return sendError(res, 409, 'THEIR_BAG_FULL', '상대의 가방이 가득 찼습니다.');
+    }
+    const now = nowMs(); const letter = { id: requestId, from: session.guestKeyId || 'admin', fromName: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), text, itemId, itemName: itemId ? (IslandItems.ITEMS[itemId]?.name || null) : null, at: now, read: false };
+    const put = await pointStore.questApply(to, 'mail', (d) => ((d.letters || []).some((l) => l.id === letter.id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+    if (!put?.doc) await giveBack(); // (the same letter again: not counted twice)
+    notifyAccount(to, 'mail', { from: letter.fromName });
+    return sendJson(res, 200, { ok: true, to: key.label });
+  }
+  if (pathname === '/api/island/mail/read' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const id = String(body.id || '');
+    await pointStore.questApply(pointAccountForSession(session), 'mail', (d) => ((d.letters || []).some((l) => l.id === id && !l.read) ? { doc: { ...d, letters: d.letters.map((l) => (l.id === id ? { ...l, read: true } : l)) } } : null));
+    return sendJson(res, 200, { ok: true });
   }
   // v1.10.92 선물 포장지: one thing from my bag to someone standing by me on the island (a wrap of mine used)
   if (pathname === '/api/island/gift' && req.method === 'POST') {
@@ -4686,6 +4871,7 @@ async function requestHandler(req, res) {
       for (const [id, run] of herosurvRuns) if (now - run.at > HEROSURV_RUN_MS) herosurvRuns.delete(id);
       const runId = crypto.randomUUID();
       herosurvRuns.set(runId, { account, board: m[1], at: now });
+      if (herosurvLatest !== m[1]) { herosurvLatest = m[1]; pointStore.setWorldValue('herosurvBoard', m[1]).catch(() => {}); } // (게임별 랭킹 follows the game's board)
       return sendJson(res, 201, { runId, expiresInSeconds: HEROSURV_RUN_MS / 1000, rulesVersion: m[1].slice(7), protocolVersion: 1 });
     }
     m = /^runs\/([0-9a-f-]{36})$/.exec(route);
@@ -4799,6 +4985,7 @@ async function requestHandler(req, res) {
     const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
     // v1.10.92 잡화점 미끼: a bait in the bag goes on this cast by itself (the better one first)
     const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
+    if (!bag.some((e) => e.itemId === 'fishing_rod')) return sendError(res, 409, 'NO_ROD', '낚싯대가 필요해요. 잡화점에서 살 수 있어요.'); // (사용자 2026-10-18)
     let bait = ['bait_premium', 'bait'].find((b) => bag.some((e) => e.itemId === b)) || null;
     if (bait && !(await pointStore.islandUse({ userId: account, requestId: `bait-${id}`, itemId: bait })).applied) bait = null;
     const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain'; // (A4: rain helps the catch)
@@ -4827,6 +5014,41 @@ async function requestHandler(req, res) {
     if (outcome.applied) { islandProgress('fish', account, 1); contestNote(account, session, 'fish', f.price); } // (A4: a contest catch)
     return sendJson(res, 200, c.done);
   }
+  // B 47 곤충 채집: a 잠자리채 in the bag, on the island's grass (not the plaza); the server picks what comes and when
+  if (pathname === '/api/island/bug/start' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!checkRateLimit(`island-bug:${session.token}`, 30, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const account = pointAccountForSession(session); const bag = (await pointStore.islandBag(account)).items || [];
+    if (!bag.some((e) => e.itemId === 'bugnet')) return sendError(res, 409, 'NO_BUGNET', '잠자리채가 필요해요. 잡화점에서 살 수 있어요.');
+    const at = plazaPresence.get(session.token);
+    if (!at || (at.space || 'island') !== 'island' || Math.hypot(at.x, at.z) < IslandTerrain.PLAZA_R + 2 || !IslandTerrain.walkable(at.x, at.z) || IslandTerrain.walkDist(at.x, at.z) < 2) return sendError(res, 409, 'NOT_BUG_SPOT', '광장과 길 밖, 풀밭에서 채집할 수 있어요.');
+    const now = nowMs(); const held = (await pointStore.worldValue('season'))?.day; const zone = IslandTerrain.seasonZoneAt(at.x, at.z);
+    const season = Number.isInteger(held) ? IslandTerrain.zoneSeason(zone, held) : IslandTerrain.seasonAt(at.x, at.z, now);
+    const mode = (await pointStore.worldValue('time'))?.mode || 'auto'; const hour = new Date(now + 9 * 3600000).getUTCHours();
+    const night = mode === 'night' || (mode === 'auto' && (hour >= 20 || hour < 6));
+    const rain = IslandWeather.weatherAt(now, (await pointStore.worldValue('weather'))?.mode).kind === 'rain';
+    const c = IslandInsects.swing(now, Math.random, { season: season || 'summer', night, rain });
+    if (!c) return sendError(res, 409, 'NO_BUGS', season === 'winter' ? '겨울 구역에는 곤충이 없어요.' : '지금 여기에는 곤충이 없어요.');
+    const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    bugSwings.set(session.token, { id, ...c, at: { x: at.x, z: at.z }, done: null });
+    const b = IslandInsects.SPECIES[c.species];
+    return sendJson(res, 200, { ok: true, bugId: id, species: c.species, name: b.name, comeIn: c.comeAt - now, window: IslandInsects.CATCH_MS });
+  }
+  if (pathname === '/api/island/bug/finish' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const c = bugSwings.get(session.token);
+    if (!c || c.id !== body.bugId) return sendError(res, 409, 'BUG_GONE', '놓쳤어요.');
+    if (c.done) return sendJson(res, 200, c.done);
+    const verdict = IslandInsects.judge(c, nowMs()); const at = plazaPresence.get(session.token);
+    if (verdict !== 'ok' || !at || Math.hypot(at.x - c.at.x, at.z - c.at.z) > IslandInsects.MOVE_R) { bugSwings.delete(session.token); return sendError(res, 409, verdict === 'early' ? 'BUG_EARLY' : 'BUG_GONE', verdict === 'early' ? '아직 오지 않았어요.' : '놓쳤어요.'); }
+    const account = pointAccountForSession(session); const itemId = `insect_${c.species}`;
+    const outcome = await pointStore.islandGive({ userId: account, claimId: `bug:${c.id}`, itemId, qty: 1, meta: null, dexEntry: itemId }, nowMs());
+    if (outcome.reason === 'full') { bugSwings.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.'); }
+    const b = IslandInsects.SPECIES[c.species];
+    c.done = { ok: true, species: c.species, name: b.name, grade: b.grade, price: b.price, firstTime: outcome.dex?.first || false, bag: outcome.bag };
+    return sendJson(res, 200, c.done);
+  }
+  if (pathname === '/api/island/bug/cancel' && req.method === 'POST') { const session = requireSession(req, res); if (!session) return; bugSwings.delete(session.token); return sendJson(res, 200, { ok: true }); }
   if (pathname === '/api/island/fish/cancel' && req.method === 'POST') {
     const session = requireSession(req, res);
     if (!session) return;
@@ -5432,6 +5654,36 @@ async function requestHandler(req, res) {
     for (const dir of ['assets/gamehall/cards', 'assets/items', 'assets/dex']) for (const f of await fsp.readdir(path.join(PUBLIC_DIR, dir)).catch(() => [])) if (/\.(svg|png)$/i.test(f)) files.push(`/${dir}/${f}`);
     return sendJson(res, 200, { ok: true, files });
   }
+  // 관리자 「문제 기록」 (사용자 2026-10-18, docs/admin-issue-log-20261018.md): what an administrator saw go wrong, written where
+  // it happened -- the words, a kind, what the page knew (screen, place, device, frame rate, recent errors) and a small
+  // picture; newest first, open / doing / done, up to 500. GET gives the pictures only with ?shots=1 (Claude reads the rest).
+  if (pathname === '/api/admin/issues' && (req.method === 'GET' || req.method === 'POST')) {
+    if (!requireAdmin(req, res)) return;
+    if (req.method === 'GET') {
+      const shots = url.searchParams.get('shots') === '1'; const list = (await pointStore.worldValue('issueLog')) || [];
+      return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: list.map((i) => (shots ? i : { ...i, shot: undefined, hasShot: Boolean(i.shot) })) });
+    }
+    const body = await parseJson(req);
+    return worldEdit(async () => {
+      const list = (await pointStore.worldValue('issueLog')) || [];
+      if (body.action === 'add') {
+        const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
+        if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
+        if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
+        const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
+        let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
+        const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot };
+        await pointStore.setWorldValue('issueLog', [issue, ...list]);
+        return sendJson(res, 201, { ok: true, id: issue.id });
+      }
+      const i = list.findIndex((x) => x.id === body.id); if (i < 0) return sendError(res, 404, 'ISSUE_NOT_FOUND', '기록을 찾을 수 없습니다.');
+      if (body.action === 'status' && ISSUE_STATUS.includes(body.status)) list[i] = { ...list[i], status: body.status, changedAt: nowMs() };
+      else if (body.action === 'delete') list.splice(i, 1);
+      else return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
+      await pointStore.setWorldValue('issueLog', list);
+      return sendJson(res, 200, { ok: true });
+    });
+  }
   if (pathname === '/api/admin/asset-notes' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, notes: (await pointStore.worldValue('assetNotes')) || {} });
@@ -5794,6 +6046,13 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const game = String(url.searchParams.get('game') || '');
+    if (game === 'herosurv') { // (사용자 2026-10-19) 두 세계 영웅전: each account's best on the game's board -- its word, no points
+      const board = herosurvLatest || (herosurvLatest = (await pointStore.worldValue('herosurvBoard')) || 'heroes-r14');
+      const rows = await pointStore.herosurvBoard(board); const account = pointAccountForSession(session);
+      const view = (row, i) => ({ rank: i + 1, label: row.name, score: row.score, hero: row.meta?.hero || null, stage: row.meta?.stage ?? row.meta?.wave ?? row.meta?.level ?? null, me: row.userId === account });
+      const mine = rows.findIndex((row) => row.userId === account);
+      return sendJson(res, 200, { ok: true, game, kind: 'score', board, top: rows.slice(0, 20).map(view), me: mine < 0 ? null : view(rows[mine], mine) });
+    }
     if (!/^[a-z0-9]{2,20}$/.test(game)) return sendError(res, 400, 'BAD_GAME', '고를 수 없는 게임입니다.');
     const all = url.searchParams.get('week') === 'all';
     try {
@@ -6196,7 +6455,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.97 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.98 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
