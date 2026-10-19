@@ -841,7 +841,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const S = T.STRUCTURES;
     const piece = (id, x, y, z, yaw, fallback, walked = false) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g); g.add(fallback); assets.attach(id, g, fallback); g.userData.piece = id; g.userData.walked = walked; pieces.push(g); return g; };
     const box = (w, h, d, color, oz = 0) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(w, h, d), mat(color), 0, h / 2, oz, g); return g; };
-    const L = S.lighthouse; piece('dalmaru.lighthouse_choseung', L.x, heightAt(L.x, L.z), L.z, 0, box(4, 14, 4, 0xf4f1ea)); solids.push({ x: L.x, z: L.z, r: L.r });
+    const L = S.lighthouse; piece('dalmaru.lighthouse_choseung', L.x, heightAt(L.x, L.z), L.z, 0, box(4, 14, 4, 0xf4f1ea));
+    solids.push(...T.structureSolids()); // (the shared circles: the islanders' routes keep off them too)
     piece('dalmaru.pier_dalkkeut', S.pier.x, S.pier.y, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10), true);
     piece('dalmaru.dock_boat', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(12, 0.15, 3, 0xc58b5a), true);
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
@@ -849,21 +850,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
     for (let u = 0; u < st.len; u += 1) { const y = T.heightAt(st.x + st.ux * (u + 0.5) + st.nx * 1.7, st.z + st.uz * (u + 0.5) + st.nz * 1.7) - S.stairs.base; mesh(new THREE.BoxGeometry(1, Math.max(0.1, y), 3), mat(0xc9bfae), -(u + 0.5), y / 2, 1.7, flights); }
     stairs.position.set(S.stairs.x, S.stairs.base, S.stairs.z); stairs.rotation.y = S.stairs.yaw; scene.add(stairs); assets.attach('dalmaru.stairs_ridge', stairs, flights);
-    for (let u = 0.6; u <= st.len; u += 0.5) for (const v of [-0.05, 3.45]) solids.push({ x: st.x + st.ux * u + st.nx * v, z: st.z + st.uz * u + st.nz * v, r: 0.28 });
     // 영웅마루's niches: the frame stands out of the cliff, its foot walked round; an empty one says what it waits for
     for (const [k, n] of (T.NICHES || []).entries()) {
       const g = piece('dalmaru.niche_hero', n.x, heightAt(n.x, n.z), n.z, n.yawToCentre, box(0.85, 1.28, 0.22, 0xcfc6b6, 0.04)); g.scale.setScalar(n.m);
-      for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) solids.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
       if (!n.now) { const s = sign('곧 새겨질 자리', g, 0.45); s.scale.multiplyScalar(2.2 / n.m); }
       void k;
     }
     // 툇마루섬: the players' houses come with 「내 집」 -- till then a board says so (assets: the notice board's look)
     const I = T.dalmaru.ISLE; const post = new THREE.Group(); mesh(new THREE.BoxGeometry(2.2, 1.2, 0.12), mat(0xe9d8b4), 0, 1.5, 0, post); for (const x of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a6a48), x, 0.8, 0, post);
-    const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 곧 열려요', board, 2.7); solids.push({ x: I.x, z: I.z - 4, r: 1.1 });
+    const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 곧 열려요', board, 2.7);
     const W = T.WATERFRONT;
-    for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); for (const d of [-1.6, -0.55, 0.55, 1.6]) solids.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 }); }
-    for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); solids.push({ x: l.x, z: l.z, r: l.r }); }
-    for (const b of W.benches) { piece('dalmaru.bench_waterfront', b.x, heightAt(b.x, b.z), b.z, b.yaw, box(1.8, 0.5, 0.5, 0xc58b5a)); solids.push({ x: b.x, z: b.z, r: b.r }); }
+    for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); }
+    for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); }
+    for (const b of W.benches) { piece('dalmaru.bench_waterfront', b.x, heightAt(b.x, b.z), b.z, b.yaw, box(1.8, 0.5, 0.5, 0xc58b5a)); }
   }
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const firstTrainSolid = solids.length;

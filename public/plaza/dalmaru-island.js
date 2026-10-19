@@ -196,6 +196,18 @@
     }
     return { rails, lamps, benches };
   })();
+  // what one walks round at the structures (the scene's collision and the islanders' route grid alike): 초승등대, the
+  // stairs' walls (the open side and the stone under the steps), each niche's foot, 툇마루섬's board, 물가 거리's railing,
+  // lamps and benches
+  function structureSolids() {
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }];
+    for (let u = 0.6; u <= SL; u += 0.5) for (const v of [-0.05, 3.45]) out.push({ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28 });
+    for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
+    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
+    for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r });
+    for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r });
+    return out;
+  }
   const STRUCTURES = { // the pieces of assets 55 that stand once (plaza-scene draws them; solids are theirs)
     lighthouse: { ...PL.lighthouse, r: 3.2 }, pier: PIER.root, dock: DOCK.root, stairs: { x: SF.x, z: SF.z, yaw: Math.atan2(STAIRS.nx, STAIRS.nz), base: STAIRS.base }, // (its model, turned, runs along local -x: the chord)
   };
@@ -271,7 +283,7 @@
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees: () => [], AREAS, WATERFRONT, STRUCTURES, FACADE,
-    addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: [], HALLOWEEN_EXTRAS: [], dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     inTownhall: () => false, inTownhallYard: () => false,
   });
