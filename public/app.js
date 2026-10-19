@@ -1573,6 +1573,9 @@
   function openPlazaWindow(title, nodes) {
     plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
+    // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
+    // the earlier one's content in it; whatever is not part of this window goes back home first)
+    for (const [node, mark] of [...plazaHomes]) if (!nodes.includes(node)) { mark.replaceWith(node); plazaHomes.delete(node); }
     for (const node of nodes) {
       if (!node || plazaHomes.has(node)) continue;
       const mark = document.createComment('plaza'); node.before(mark); plazaHomes.set(node, mark); plazaDialogBody.append(node);
@@ -1584,7 +1587,7 @@
     if (plazaDialog.open) return; // a queued close from the previous window must not empty a newly opened one
     const departed = questDepartureDialog; questDepartureDialog = null;
     if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
-    for (const [node, mark] of plazaHomes) mark.replaceWith(node);
+    for (const [node, mark] of plazaHomes) { if (mark.isConnected) mark.replaceWith(node); else node.remove(); } // (3-1: a card made for the window alone -- the 변신 의상실's -- has no home to go back to: it leaves, not lingers into the next window)
     plazaHomes.clear();
     plazaDialog.classList.remove('talkMode');
     plaza.controller?.talkCamera?.(false); // back to the player's own view

@@ -25,6 +25,11 @@ test('변신 의상실: 사기(확인창) → 변신하기 → 변신 풀기', a
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().transformation), { timeout: 60000 }).toBe('animal-cat');
   await cat.getByRole('button', { name: '변신 풀기' }).click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().transformation), { timeout: 30000 }).toBe(null);
+  // (3-1 사용자 2026-10-19: the 성형외과 window opened after this one showed this list too) the next window is its own
+  await page.locator('#plazaCloseBtn').click();
+  const press = await require('./skin-support').intoMall(page, 'faces', isMobile); await press();
+  await expect(page.locator('#plazaDialogTitle')).toHaveText('성형외과');
+  await expect(page.locator('#plazaDialogBody #transformShop')).toHaveCount(0);
   await expectNoScriptError(page);
   await who.context.close();
 });
