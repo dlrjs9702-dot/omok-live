@@ -8,7 +8,12 @@
 }(typeof self !== 'undefined' ? self : this, (T) => {
   const { lerp } = T;
   const SEA = -0.6; // the sea's surface in the game (the drawing's heights are over the sea)
-  const TRAVEL = 114; const DWELL = 6; const CYCLE = 2 * (TRAVEL + DWELL); // each half 120s, full circuit 240s
+  const TRAVEL = 114; const DWELL = 6; // each leg 120s
+  // 달마루섬 4단계 (docs/dalmaru-implementation-20261019.md 4, 관리자 미리보기): one high ring round the island over the sea
+  // (dalmaru-terrain TRAIN, r 184), four stations -- 달끝역 (east cape), 툇마루역 (the isle's south), 초승역 (west cape),
+  // 영웅마루역 (the ridge's back) -- each a 40 m straight drawn in until its lift stands on land; the same carriages,
+  // timetable, blocks and lifts, a leg per station
+  const DAL = T.MAP === 'dalmaru' ? T.dalmaru : null;
   const SURFACE = 0.025; // the running line over the rail's glass (the carriage's root stands on it)
   const CLEAR = 2.6; // a carriage's underside over ground one can walk on, anywhere but at a station
   // the carriage (Codex train_carriage, front -Z, doors on its left): four seats -- the avatar's root, facing forward
@@ -17,13 +22,27 @@
   const DOCK = [3.24, -0.55, 0]; // the carriage's root in its platform's frame (the platform on the carriage's left)
   // a line's `side`: the doors' side of the way it runs (-1 left, the model as made; +1 right: the view line's stations are
   // on its right, so its carriage is drawn mirrored across its length -- doors, seats and all)
-  const STATIONS = { B: { name: '동해안역', entry: [99.78, -8.73] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
+  const DAL_STOPS = DAL ? { E: { name: '달끝역', a: (DAL.TRAIN.stations.east * 180) / Math.PI, r: 179, y: 14, lift: 1 }, I: { name: '툇마루역', a: 90, r: 175.5, y: 12, lift: 1 },
+    W: { name: '초승역', a: (DAL.TRAIN.stations.west * 180) / Math.PI, r: 179, y: 14, lift: -1 }, N: { name: '영웅마루역', a: 270, r: 165, y: 27, lift: 1 } } : null;
+  const STATIONS = DAL ? Object.fromEntries(Object.entries(DAL_STOPS).map(([id, s]) => [id, { name: s.name }])) : { B: { name: '동해안역', entry: [99.78, -8.73] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
   const LINES = {
-    tour: { name: '관광 열차', side: -1, order: ['B', 'D'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 60 }, { id: 3, offset: 120 }, { id: 4, offset: 180 }] },
+    tour: { name: '관광 열차', side: DAL ? 1 : -1, order: DAL ? ['E', 'I', 'W', 'N'] : ['B', 'D'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 60 }, { id: 3, offset: 120 }, { id: 4, offset: 180 }] }, // (달마루섬: the platforms on the island's side)
   };
   // Wide seaward sightseeing curves and 40m straight docking corridors.
   const corridor = (x,z,y,dx,dz,id) => [-20,-10,0,10,20].map(k => [x+dx*k,z+dz*k,y,k===0?id:null,dx,dz]);
-  const routes = { tour: [
+  const ringRoute = () => { // round by rising angle (x east, z south): each station's straight, ring points between
+    const at = (a, r, y, id = null, tangent = false) => { const t = (a * Math.PI) / 180; return [r * Math.cos(t), r * Math.sin(t), y, id, ...(tangent ? [-Math.sin(t), Math.cos(t)] : [])]; };
+    const out = []; const stops = LINES.tour.order.map((id) => ({ id, ...DAL_STOPS[id] }));
+    stops.forEach((s, k) => {
+      const t = (s.a * Math.PI) / 180; const dx = -Math.sin(t); const dz = Math.cos(t); const [cx, cz] = at(s.a, s.r, 0);
+      out.push(...corridor(cx, cz, s.y, dx, dz, s.id));
+      const next = stops[(k + 1) % stops.length]; let a1 = next.a; if (a1 <= s.a) a1 += 360;
+      const gap = a1 - s.a; const n = Math.max(0, Math.round(gap / 24) - 1);
+      for (let i = 1; i <= n; i += 1) { const a = s.a + (gap * i) / (n + 1); const nearN = Math.abs(((a % 360) + 360) % 360 - 270) < 40; out.push(at(a, 184, nearN ? 27 : 18)); }
+    });
+    return out;
+  };
+  const routes = DAL ? { tour: ringRoute() } : { tour: [
     ...corridor(109.7,-9.6,7,.8,-.6,'B'), [150,-70,12], [120,-160,15], [30,-130,18],
     [0,0,18,null,-.5,Math.sqrt(.75)], [-45,85,15], ...corridor(-90.8,76.2,7,-.8,-.6,'D'),
     [-150,30,12], [-145,-95,18], [-65,-60,24], [0,0,24,null,.8,.6], [50,55,14]
@@ -47,6 +66,12 @@
     distance+=Math.hypot(xs[0]-xs.at(-1),zs[0]-zs.at(-1)); xs.push(xs[0]);zs.push(zs[0]);ys.push(ys[0]);S.push(distance);
     line.route={xs,zs,ys,S,LENGTH:distance};line.stops=stops;
   }
+  // each leg's time: 114 s on 지금 섬; on 달마루섬 by its length (about 3.5 m/s, 30 s at least) -- the trains a quarter
+  // of the round apart
+  const TL = LINES.tour; const LEGS = TL.order.map((id, k) => { if (!DAL) return TRAVEL; const s0 = TL.stops[id]; let s1 = TL.stops[TL.order[(k + 1) % TL.order.length]]; if (s1 <= s0) s1 += TL.route.LENGTH; return Math.max(30, Math.round((s1 - s0) / 3.5)); });
+  const LEG_AT = LEGS.reduce((a, t) => [...a, a.at(-1) + t + DWELL], [0]);
+  const CYCLE = LEG_AT.at(-1); // (지금 섬 240s)
+  if (DAL) TL.trains.forEach((t, i) => { t.offset = Math.round((CYCLE * i) / TL.trains.length); });
   function pointAt(line, s) {
     const { xs, zs, ys, S, LENGTH } = LINES[line].route; s = ((s % LENGTH) + LENGTH) % LENGTH;
     let lo = 0; let hi = S.length - 1;
@@ -57,23 +82,23 @@
   const TRAINS = Object.entries(LINES).flatMap(([line, L]) => L.trains.map((t) => ({ ...t, line })));
   const trainOf = (id) => TRAINS.find((t) => t.id === id) || null;
   // the timetable: from a stop TRAVEL to the next (gently off and gently in), DWELL there, on round the line's order
-  const ease = (u) => { const t = u * TRAVEL; const ramp = 4; const distance = TRAVEL - ramp;
+  const ease = (u, T = TRAVEL) => { const t = u * T; const ramp = 4; const distance = T - ramp;
     if (t < ramp) return t * t / (2 * ramp * distance);
-    if (t > TRAVEL - ramp) return 1 - (TRAVEL - t) ** 2 / (2 * ramp * distance);
+    if (t > T - ramp) return 1 - (T - t) ** 2 / (2 * ramp * distance);
     return (t - ramp / 2) / distance;
   };
   function timetableAt(id, ms) {
     const t = trainOf(id); const L = LINES[t.line]; const p = (((ms / 1000 - t.offset) % CYCLE) + CYCLE) % CYCLE;
-    const leg = Math.floor(p / (TRAVEL + DWELL)); const inLeg = p - leg * (TRAVEL + DWELL);
+    let leg = 0; while (leg < LEGS.length - 1 && p >= LEG_AT[leg + 1]) leg += 1; const inLeg = p - LEG_AT[leg]; const TT = LEGS[leg];
     const from = L.order[leg]; const to = L.order[(leg + 1) % L.order.length];
     const s0 = L.stops[from]; let s1 = L.stops[to]; if (s1 <= s0) s1 += L.route.LENGTH;
-    if (inLeg < TRAVEL) return { id, line: t.line, from, s: lerp(s0, s1, ease(inLeg / TRAVEL)), stop: null, next: to, eta: TRAVEL - inLeg, wait: 0, moved: s1 - s0 };
-    return { id, line: t.line, from, s: s1, stop: to, next: L.order[(leg + 2) % L.order.length], eta: 0, wait: TRAVEL + DWELL - inLeg, moved: 0 };
+    if (inLeg < TT) return { id, line: t.line, from, s: lerp(s0, s1, ease(inLeg / TT, TT)), stop: null, next: to, eta: TT - inLeg, wait: 0, moved: s1 - s0 };
+    return { id, line: t.line, from, s: s1, stop: to, next: L.order[(leg + 2) % L.order.length], eta: 0, wait: TT + DWELL - inLeg, moved: 0 };
   }
   let service = null;
   function setService(snapshot) { service = snapshot || null; }
   // The station block starts BEFORE braking, so a queued train cannot reach an occupied platform.
-  const boundaries = [0, 38, 76, 110, 120, 158, 196, 230, 240];
+  const boundaries = [...LEGS.flatMap((T1, k) => [0, T1 / 3, (2 * T1) / 3, T1 - 4].map((v) => v + LEG_AT[k])), CYCLE]; // (지금 섬: 0 38 76 110 120 158 196 230 240)
   function blockAt(id, cursor) {
     const phase = ((cursor / 1000 - trainOf(id).offset) % CYCLE + CYCLE) % CYCLE;
     const zone = boundaries.findIndex((end, i) => i > 0 && phase < end) - 1;
@@ -163,7 +188,9 @@
   function liftOf(station) {
     const p = PLATFORMS.find(p => p.station === station);
     // Beyond the deck's end, on the same side of the track: neither shaft nor upper walkway crosses a carriage.
-    return { x: p.x + Math.sin(p.yaw) * (station==='B'?-5.5:5.5), z: p.z + Math.cos(p.yaw) * (station==='B'?-5.5:5.5), y: T.heightAt(...STATIONS[station].entry) };
+    const k = DAL ? DAL_STOPS[station].lift * 5.5 : station === 'B' ? -5.5 : 5.5; const x = p.x + Math.sin(p.yaw) * k; const z = p.z + Math.cos(p.yaw) * k;
+    if (DAL && !STATIONS[station].entry) { const r = Math.hypot(x, z); STATIONS[station].entry = [x - (x / r) * 7, z - (z / r) * 7]; } // (달마루섬: the way in 7 m inland of the lift)
+    return { x, z, y: T.heightAt(...STATIONS[station].entry) };
   }
   // Distance from the centre to the deck's near edge along the approach direction.
   function platformEdgeDistance(p, x, z) {

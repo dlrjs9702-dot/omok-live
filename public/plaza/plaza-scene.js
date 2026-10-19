@@ -864,10 +864,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const firstTrainSolid = solids.length;
   const train = trainScene({ scene, assets, solids, vcMat, sign }); // v1.10.47 관광열차 (its steps are walked round)
-  if (BARE) train.group.visible = false;
+  if (BARE && !globalThis.IslandTerrain.STRUCTURES) train.group.visible = false; // (달마루섬 4단계: its own ring)
   const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
-  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = firstTrainSolid; } // (달마루섬 미리보기: nor their circles)
+  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = globalThis.IslandTerrain.STRUCTURES ? firstYardSolid : firstTrainSolid; } // (달마루섬 미리보기: nor their circles)
   buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
   if (!BARE) doors.mayor = yard.door;
   dalmaruStructures(); // 달마루섬 2단계
@@ -2739,6 +2739,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (T.STRUCTURES) {
       const S = T.STRUCTURES; const st = T.STAIRS;
       targets.push(['lighthouse', S.lighthouse.x + 5, S.lighthouse.z - 1], ['pierEnd', T.PIER.x + T.PIER.ux * 8, T.PIER.z + T.PIER.uz * 8], ['dock', T.DOCK.x, T.DOCK.z], ['isle', T.dalmaru.ISLE.x, T.dalmaru.ISLE.z], ['stairsTop', st.x + st.ux * 34 + st.nx * 1.7, st.z + st.uz * 34 + st.nz * 1.7], ['ridge', st.x + st.ux * 35 - st.nx * 8, st.z + st.uz * 35 - st.nz * 8]);
+      for (const [id, st] of Object.entries(globalThis.IslandTrain?.STATIONS || {})) if (st.entry) targets.push([`station:${id}`, ...st.entry]);
       for (const k of ['MUSEUM', 'FARM', 'CONTEST_STATUE']) { const p = T[k]; targets.push([k, p.x + (k === 'MUSEUM' ? -Math.sin(p.yaw) * 6 : 0), p.z + (k === 'MUSEUM' ? -Math.cos(p.yaw) * 6 : k === 'FARM' ? -4 : 0)]); }
     }
     const unreachable = targets.filter(([, x, z]) => !reached(x, z)).map(([name, x, z]) => [name, r1(x), r1(z)]);
