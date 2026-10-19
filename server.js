@@ -1085,6 +1085,23 @@ function refreshBirthdays(force = false) {
   return birthdays.loading;
 }
 setInterval(() => refreshBirthdays(), 60000).unref?.();
+// 달마루섬 5단계 (사용자 결정: 심은 꽃·나무는 전부 씨앗으로): once, when the server first runs on the new island -- every
+// planted flower back to its owner's bag as its seed, every tree as a sapling (「달마루섬 이사 돌려받기」, no activity
+// bonus), then the ground cleared. Each return is its own claim (a restart half way never gives twice); a full bag
+// keeps that plant in the list for the next start.
+async function dalmaruMoveIn() {
+  if (IslandTerrain.MAP !== 'dalmaru' || !pointStore || await pointStore.worldValue('dalmaruMoved')) return;
+  if (!(await pointStore.worldValue('dalmaruWeeds'))) { await pointStore.islandWeedReset(); await pointStore.setWorldValue('dalmaruWeeds', { at: new Date().toISOString() }); } // (잡초: the new island's own, numbered afresh)
+  const plants = await pointStore.islandPlants(); const returned = []; let kept = 0;
+  for (const p of plants) {
+    const itemId = p.kind === 'tree' ? 'sapling' : `seed_flower_${p.color}`;
+    const out = await pointStore.islandGive({ userId: p.owner, itemId, qty: 1, claimId: `dalmaru-move:${p.id}`, note: '달마루섬 이사 돌려받기', quiet: true }).catch(() => null);
+    if (out && (out.applied || out.kind === 'island_give')) returned.push(p.id); else kept += 1;
+  }
+  await pointStore.islandClearPlants(returned);
+  if (!kept) await pointStore.setWorldValue('dalmaruMoved', { at: new Date().toISOString(), returned: returned.length });
+  if (plants.length) console.log(`달마루섬 이사: 심은 꽃·나무 ${returned.length}개를 씨앗으로 돌려줌${kept ? `, ${kept}개는 가방이 가득 차 다음에` : ''}`);
+}
 // B 47 박물관: one gift at a time (two at once for the same kind: the first stays), the thing out of the giver's bag
 let museumChain = Promise.resolve();
 function museumGive(account, itemId, name) {
@@ -6483,6 +6500,7 @@ async function main() {
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
+  await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
