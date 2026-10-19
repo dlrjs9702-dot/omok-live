@@ -1949,8 +1949,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       c.waving=false; delete c.returnEmote;
       c.targetYaw = c.talkYaw ?? c.chatYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk; A-6: to the one they chat with)
       c.lookAt = c.talkYaw != null || c.chatYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
-      // A-6 동산: on a hill stop, its little something once on arrival (looking about, the beehive)
-      if (w.pose.moving) c.actStop = null; else if (w.pose.act && c.actStop !== w.pose.stop && w.speed < 0.2 && !lessMotion?.matches) { c.actStop = w.pose.stop; c.anim?.play?.(w.pose.act); }
       animate(c, dt, w.speed > 0.3, w.speed);
     }
     if ((chatCheck -= dt) <= 0) { chatCheck = 0.25; chatter(); }

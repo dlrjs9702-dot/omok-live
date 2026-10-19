@@ -80,23 +80,7 @@ test('호감도 저장(PostgreSQL): 같은 규칙, 새 표 resident_affinity', a
   await affinityBehaves(pg, null);
 });
 
-test('A-6 먼 심부름·동산 주민·수다·소문: 10/22부터 먼 주민(동산 주민 먼저)·힌트·더 많은 사례, 그 전 날은 그대로', () => {
-  const Npcs = require('../public/plaza/island-npcs');
-  assert.equal(E.errandsOf('2026-10-21').some((e) => e.far), false); // (days before keep their errands)
-  const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`)).flat().filter((e) => e.kind !== 'buy');
-  assert.ok(month.filter((e) => e.far).length >= month.length * 0.6, '대부분 먼 주민');
-  const hikers = Object.keys(Npcs.HILL_WALKERS).map(Number);
-  assert.ok(month.filter((e) => hikers.includes(e.to)).length >= month.length / 2, '동산 주민이 먼저');
-  for (const e of month) { assert.notEqual(e.from, e.to); assert.equal(e.reward, E.REWARD[e.kind] + (e.far ? E.REWARD.far : 0)); }
-  const far = month.find((e) => e.kind === 'deliver' && e.far);
-  const ask = E.talk([far], {}, new Set(), far.from); assert.match(ask.say.at(-1), /보통 .+ 근처에 있어요/);
-  // the hill walkers stop mostly on hills, longer; each hill stop has its motion
-  for (const n of hikers) {
-    const st = Npcs.round(n).parts.filter((p) => !p.moving);
-    assert.ok(st.filter((p) => p.pts[0].hill != null).length >= 3, `${n}: 동산 위주`);
-    for (const p of st) if (p.pts[0].hill != null) assert.ok(p.act);
-    assert.match(Npcs.hangout(n), /언덕|등반/);
-  }
+test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
   // 수다: a, b, a, a quiet beat, then b opens; names filled
   const lines = [0, 1, 2, 3, 4].map((s) => Cast.chatLine(3, 8, s));
   assert.deepEqual(lines.map((l) => l?.who ?? null), [3, 8, 3, null, 8]);

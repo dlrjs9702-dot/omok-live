@@ -5599,7 +5599,7 @@ async function requestHandler(req, res) {
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0) + (r.pay.far ? Economy.value('errand:far') : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
     const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0; // (daily: the first talk of the day only, whatever is chosen)

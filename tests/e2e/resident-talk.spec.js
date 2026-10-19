@@ -6,11 +6,11 @@ const { shopper, get, post, expectNoScriptError } = require('./skin-support');
 // A-6 (docs/residents-talk-hills-20261018.md 1·2): walking or not; held on every screen while the window is open (also past
 // the old 3-9 s stop), the choices after their words, let go on closing; someone else's talk says with whom.
 test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심부름 받고 끝내면 사례', async ({ browser, request }) => {
-  test.setTimeout(300000);
+  test.setTimeout(process.env.CI ? 600000 : 300000);
   const who = await shopper(browser, request, '심부름꾼', 500000, 'male');
   const other = await shopper(browser, request, '구경꾼', 0, 'female');
   const { page, token } = who;
-  for (const p of [page, other.page]) { await p.evaluate(() => localStorage.removeItem('gc.testClassic')); await p.reload(); }
+  for (const p of [page, other.page]) { await p.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }); await p.reload(); } // (the stand-ins: the talk needs no models -- two islands with them overran CI's phone run)
   for (const p of [page, other.page]) await expect.poll(() => p.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const dialog = page.locator('#plazaDialog');
   const talking = async () => /talkMode/.test(await dialog.getAttribute('class') || '');
