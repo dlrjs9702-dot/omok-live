@@ -654,7 +654,7 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
 // no turning while typing or while a window is open; the camera stays above the ground and out of buildings; the
 // arrow keys still walk.
 test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리고, 하늘 쪽 45°·아래 15° 안, 입력창·창이 열린 동안은 무시, 지면·건물 밖', async ({ browser, request }) => {
-  test.setTimeout(150000);
+  test.setTimeout(process.env.CI ? 300000 : 150000); // (CI: the slow runner's frames -- it ran out at 150 s)
   const a = await intoPlaza(browser, request, '카메라');
   const { page } = a;
   const cam = () => page.evaluate(() => { const d = window.PlazaDebug(); return { yaw: d.camYaw, pitch: d.camPitch, max: d.pitchMax, sky: d.skyMax, camera: d.camera }; });
