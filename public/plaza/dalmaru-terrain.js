@@ -121,7 +121,7 @@
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
     mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -27, z: -68, face: [-34, -62] },
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
-    hallLamps: [[-1.4, -22], [1.2, -30], [-1.4, -38]], // the three lamps the electrician mends, by the walk to the water
+    hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)

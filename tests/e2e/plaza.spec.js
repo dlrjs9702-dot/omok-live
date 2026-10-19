@@ -8,6 +8,11 @@ test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 // walk into this one, and several software-rendered pages at once are slow).
 test.describe.configure({ mode: process.env.CI ? 'parallel' : 'default' }); // (CI: each part has its own server and runs one test at a time -- 'parallel' lets the three PC parts split this file's tests, not the whole file into one)
 
+// 달마루섬 5단계: the island the server runs (the same terrain file, ISLAND_MAP) -- the places these tests walk to come
+// from it on either island
+const T = require('../../public/plaza/island-terrain.js'); const DAL = T.MAP === 'dalmaru';
+const PC = T.PLAZA_C || { x: 0, z: 0 };
+const LANE = DAL ? { x: 0.6, z: -40 } : { x: -1, z: 22 }; // a straight walk going south (the harbour walk / 대청마당 to 물가 거리)
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
 
 // These tests check movement, sync, collision and the island's rules, not its 3D models (tests/e2e/island-assets.spec.js
@@ -347,8 +352,8 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
   // v1.10.8: a walks down the harbour walk; on b's screen a moves on evenly -- never backward, never faster than a
   // run in a frame (no surge after a late update), and arrives where a stopped
-  await a.page.evaluate(() => window.PlazaWarp(-1, 22));
-  await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x + 1, o.z - 22) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
+  await a.page.evaluate((p) => window.PlazaWarp(p.x, p.z), LANE);
+  await expect.poll(async () => { const o = await seen(b, aId); return o ? Math.hypot(o.x - LANE.x, o.z - LANE.z) : 99; }, { timeout: 10000 }).toBeLessThan(0.5);
   const watching = b.page.evaluate((id) => new Promise((resolve) => { // until a stands still on b's screen again
     const out = []; const start = performance.now(); window.__walkDone = false;
     const tick = () => {
@@ -359,7 +364,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
     requestAnimationFrame(tick);
   }), aId);
   await a.page.keyboard.down('ArrowDown'); // held until a has walked a few steps (a slow runner draws few frames)
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().z), { timeout: 15000 }).toBeGreaterThan(24);
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().z), { timeout: 15000 }).toBeGreaterThan(LANE.z + 2);
   await a.page.keyboard.up('ArrowDown');
   await a.page.waitForTimeout(300);
   const end = await a.page.evaluate(() => window.PlazaDebug().z);
@@ -459,34 +464,39 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   const teleport = (who, x, z) => who.page.evaluate(([px, pz]) => window.PlazaWarp(px, pz), [x, z]);
   const settle = async (who, id, x, z) => expect.poll(async () => { const o = await seen(who, id); return o ? Math.hypot(o.x - x, o.z - z) : 99; }, { timeout: 10000 }).toBeLessThan(0.05);
 
+  // (달마루섬: the same moves on an open part of 대청마당 -- 지금 섬's plaza is round the origin)
+  const O = DAL ? { x: 20, z: -75 } : { x: 0, z: 0 };
+  const tp = (who, x, z) => teleport(who, O.x + x, O.z + z); const meR = async (who) => { const m = await me(who); return { x: m.x - O.x, z: m.z - O.z }; };
+  const settleR = (who, id, x, z) => settle(who, id, O.x + x, O.z + z);
+
   // 1) head-on: A walks straight at B and stops at the contact, never inside
-  await teleport(b, 0, 10); await teleport(a, 0, 8.2);
-  await settle(a, bId, 0, 10);
+  await tp(b, 0, 10); await tp(a, 0, 8.2);
+  await settleR(a, bId, 0, 10);
   await a.page.keyboard.down('ArrowDown'); await a.page.waitForTimeout(1200); await a.page.keyboard.up('ArrowDown');
-  let pa = await me(a);
+  let pa = await meR(a);
   expect(Math.hypot(pa.x, pa.z - 10)).toBeGreaterThan(0.86);
   expect(pa.z).toBeLessThan(10);
 
   // 2) at an angle: A slides along B and gets past, never closer than the contact
-  await teleport(a, -0.35, 8.4);
+  await tp(a, -0.35, 8.4);
   let closest = 99;
   await a.page.keyboard.down('ArrowDown'); await a.page.keyboard.down('ArrowRight');
-  for (let i = 0; i < 16; i += 1) { await a.page.waitForTimeout(60); pa = await me(a); closest = Math.min(closest, Math.hypot(pa.x, pa.z - 10)); }
+  for (let i = 0; i < 16; i += 1) { await a.page.waitForTimeout(60); pa = await meR(a); closest = Math.min(closest, Math.hypot(pa.x, pa.z - 10)); }
   await a.page.keyboard.up('ArrowDown'); await a.page.keyboard.up('ArrowRight');
   expect(closest).toBeGreaterThan(0.86);
   expect(pa.z).toBeGreaterThan(10.2); // got past B's side
   expect(pa.x).toBeGreaterThan(0.6);
 
   // 3) both at once, toward each other: no passing through, no jumps
-  await teleport(a, 0, 8.4); await teleport(b, 0, 10.8);
-  await settle(a, bId, 0, 10.8); await settle(b, aId, 0, 8.4);
+  await tp(a, 0, 8.4); await tp(b, 0, 10.8);
+  await settleR(a, bId, 0, 10.8); await settleR(b, aId, 0, 8.4);
   await a.page.keyboard.down('ArrowDown'); await b.page.keyboard.down('ArrowUp');
   // what each player sees: my character against the other one as drawn on my screen
   const onScreen = async (who, id) => { const [m, o] = [await me(who), await seen(who, id)]; return o ? Math.hypot(m.x - o.x, m.z - o.z) : 99; };
-  let prevA = await me(a); let prevB = await me(b); let biggestStep = 0; let nearestSeen = 99;
+  let prevA = await meR(a); let prevB = await meR(b); let biggestStep = 0; let nearestSeen = 99;
   for (let i = 0; i < 15; i += 1) {
     await a.page.waitForTimeout(100);
-    const [na, nb] = [await me(a), await me(b)];
+    const [na, nb] = [await meR(a), await meR(b)];
     biggestStep = Math.max(biggestStep, Math.hypot(na.x - prevA.x, na.z - prevA.z), Math.hypot(nb.x - prevB.x, nb.z - prevB.z));
     nearestSeen = Math.min(nearestSeen, await onScreen(a, bId), await onScreen(b, aId));
     prevA = na; prevB = nb;
@@ -496,9 +506,9 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   expect(nearestSeen).toBeGreaterThan(0.45); // never drawn inside each other (a glide may briefly close the gap while the server settles)
   expect(biggestStep).toBeLessThan(1.2); // no teleporting back and forth
   // at rest: comes still (a server correction may still be gliding for a moment on a slow runner), and apart
-  let ra = await me(a);
-  await expect.poll(async () => { const now = await me(a); const moved = Math.hypot(now.x - ra.x, now.z - ra.z); ra = now; return moved; }, { timeout: 5000, intervals: [400] }).toBeLessThan(0.05);
-  const rb = await me(b);
+  let ra = await meR(a);
+  await expect.poll(async () => { const now = await meR(a); const moved = Math.hypot(now.x - ra.x, now.z - ra.z); ra = now; return moved; }, { timeout: 5000, intervals: [400] }).toBeLessThan(0.05);
+  const rb = await meR(b);
   expect(Math.hypot(ra.x - rb.x, ra.z - rb.z)).toBeGreaterThan(0.5);
 
   // 4) B stands right in the shop's door: A still reaches the shop and opens it
@@ -519,6 +529,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
 // v1.10.0 게임 아일랜드 지형: start in the raised central plaza; the sea, streams and pond stop you while bridges and
 // the pier carry you; every facility's entrance stands on walkable ground; the map board opens the island map.
 test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 다리·선착장은 건넌다, 모든 시설 입구에 닿고 안내 지도가 열린다', async ({ browser, request }) => {
+  test.skip(DAL, "지금 섬 전용 (달마루섬: dalmaru-walk의 걷기·막힘 검사)");
   test.setTimeout(90000);
   const a = await intoPlaza(browser, request, '섬탐험');
   const { page } = a;
@@ -768,7 +779,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   }
 
   // looking back at the game hall from its door: the hall between the camera and me is see-through
-  await page.evaluate(async () => { const at = window.PlazaDebug().doors.games; await window.PlazaWarp(at.x,at.z); window.PlazaDebug().setCamYaw(Math.PI); });
+  await page.evaluate(async (hall) => { const at = window.PlazaDebug().doors.games; await window.PlazaWarp(at.x,at.z); window.PlazaDebug().setCamYaw(Math.atan2(hall.x - at.x, hall.z - at.z)); }, T.SPOTS.games); // (the camera on the hall's side: 지금 섬 north, 달마루섬 east)
   // The 0.25s fade advances on frames; a snap at the same scene clock only records the obstruction.
   await expect.poll(async () => (await cam()).camera.faded, {timeout:3000}).toBeGreaterThan(0);
   await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(0); d.teleport(d.doors.games.x, d.doors.games.z); });
@@ -833,14 +844,14 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   const idOf = async (who) => { await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.myId), { timeout: 10000 }).toBeTruthy(); return who.page.evaluate(() => window.PlazaDebug().myId); };
   const aId = await idOf(a);
   for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues.filter((s) => s.rank)), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]); // (a weekend contest winner may stand too)
-  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual([2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st
+  expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual(DAL ? [4.2, 3] : [2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
 
   // Each full-size landmark fades and recovers. Staying behind it neither rebuilds sight
   // bounds nor creates more ghost materials (the source materials stay on the other statue).
-  for (const spot of [{ x: 12, z: 0 }, { x: 5.5, z: 7.5 }]) {
+  for (const spot of DAL ? [] : [{ x: 12, z: 0 }, { x: 5.5, z: 7.5 }]) { // (달마루섬: the statues stand in 영웅마루's niches -- never between the camera and me)
     await a.page.evaluate(async (p) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(0); await window.PlazaWarp(p.x, p.z); }, spot);
     await expect.poll(() => a.page.evaluate(p => window.PlazaDebug().camera.occlusion.active.some(r => r.x === p.x && r.z === p.z + 5), spot)).toBe(true);
     const samples = await a.page.evaluate(async () => {
@@ -860,7 +871,7 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   // the donation box: amount, a second press naming it, then the points are gone (burned) and this week's total shows
   const page = b.page;
   const before = (await get(request, '/api/points', b.token)).data.balance;
-  await page.evaluate(() => window.PlazaDebug().place('donate'));
+  await page.evaluate(async () => { const d = window.PlazaDebug().doors.donate; await window.PlazaWarp(d.x, d.z); window.PlazaDebug().place('donate'); }); // (by it first: on 달마루섬 the other player at the spawn stands on the way)
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 기부');
   await page.keyboard.press('Space');
   await expect(page.locator('#donationDialog')).toBeVisible();
@@ -925,13 +936,14 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '위치복원');
   const { page } = a;
-  await page.evaluate(() => window.PlazaWarp(25, 4)); // the shop street walk
-  await expect.poll(async () => (await get(request, '/api/plaza/spot', a.token)).data.spot, { timeout: 10000 }).toEqual({ x: 25, z: 4 });
+  const mid = T.walkCurves[1].pts[Math.floor(T.walkCurves[1].pts.length / 2)]; const SPOT = { x: Math.round(mid[0]), z: Math.round(mid[1]) }; // (a walk: the shop street, or 물가 거리)
+  await page.evaluate((p) => window.PlazaWarp(p.x, p.z), SPOT);
+  await expect.poll(async () => (await get(request, '/api/plaza/spot', a.token)).data.spot, { timeout: 10000 }).toEqual(SPOT);
   await page.reload();
   await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
   await expect.poll(() => state(page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
   const at = await state(page);
-  expect(Math.hypot(at.x - 25, at.z - 4)).toBeLessThan(0.6);
+  expect(Math.hypot(at.x - SPOT.x, at.z - SPOT.z)).toBeLessThan(0.6);
   await expectNoScriptError(page);
   await a.context.close();
 });
@@ -1167,7 +1179,7 @@ test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 �
   expect(lost?.npc).toBeTruthy();
   const n = lost.npc.resident;
   await expect.poll(() => gap(n), { timeout: 15000 }).not.toBeNull();
-  await page.evaluate(({ n, x, z }) => { const r = Math.hypot(x, z); window.PlazaDebug().placeWanderer(n, (-x / r) * 7, (-z / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z });
+  await page.evaluate(({ n, x, z, pc }) => { const dx = x - pc.x; const dz = z - pc.z; const r = Math.hypot(dx, dz); window.PlazaDebug().placeWanderer(n, pc.x - (dx / r) * 7, pc.z - (dz / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z, pc: PC }); // (across the plaza's middle from it)
   await expect.poll(() => gap(n), { timeout: 60000, intervals: [1000] }).toBeLessThan(0.05);
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 1, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
@@ -1288,6 +1300,7 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
 // v1.10.41 관공서 확장: the mayor stands in the yard's gate; without his leave a step into the yard is put back out at the
 // gate (the server), SPACE by him asks once and he lets me in for the rest of the visit, stepping aside
 test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말을 걸어 허가받으면 비켜서고 들어갈 수 있다', async ({ browser, request }) => {
+  test.skip(DAL, '지금 섬 전용 (달마루섬: 관공서는 절벽 정면 -- 담장 마당·시장 문 없음)');
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '시장손님');
   const { page } = a;
@@ -1353,9 +1366,11 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   const a = await intoPlaza(browser, request, '낚시꾼');
   const { page } = a;
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200); // (사용자 2026-10-18: 낚싯대는 잡화점에서)
-  await page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x, d.pier.z + 9); });
+  // (the pier's far end: 지금 섬's runs south, 달끝나루 out from the east cape)
+  const pierAt = (k, side) => (DAL ? { x: T.PIER.x + T.PIER.ux * k - T.PIER.uz * side, z: T.PIER.z + T.PIER.uz * k + T.PIER.ux * side } : { x: T.PIER.x + side, z: T.PIER.z + k });
+  await page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 7 : 9, 0));
   const b = await intoPlaza(browser, request, '구경꾼'); // v1.10.89 원격 낚시: someone close by sees it
-  await b.page.evaluate(() => { const d = window.PlazaDebug(); window.PlazaWarp(d.pier.x + 2.5, d.pier.z + 10); });
+  await b.page.evaluate((p) => window.PlazaWarp(p.x, p.z), pierAt(DAL ? 4 : 10, DAL ? 1 : 2.5));
   const seen = () => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act?.startsWith('fish:'))?.act || null);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 낚시', { timeout: 10000 });
@@ -1392,7 +1407,7 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '사진가');
   const { page } = a;
-  await page.evaluate(() => window.PlazaWarp(0, 7));
+  await page.evaluate((p) => window.PlazaWarp(p.x, p.z + 7), PC);
   await page.locator('#islandPhotoTab').click();
   await expect(page.locator('body')).toHaveClass(/photoMode/);
   await expect(page.locator('#photoBar')).toBeVisible();
@@ -1403,7 +1418,7 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
   const download = page.waitForEvent('download');
   await page.locator('#photoShootBtn').click();
   expect((await download).suggestedFilename()).toMatch(/^game-island-\d{8}-\d{6}\.png$/);
-  await expect(page.locator('.toast')).toContainText('중앙광장');
+  await expect(page.locator('.toast')).toContainText(DAL ? '대청마당' : '중앙광장');
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).not.toHaveClass(/photoMode/);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().photo())).toEqual({ on: false, hidden: 0 });
@@ -1416,7 +1431,7 @@ test('기념사진: 사진 모드에서 UI·이름표를 숨기고, 촬영하면
 test('기념사진: 카운트다운·캡처 대기 취소, 재진입과 접속 종료가 이전 촬영을 저장하지 않는다', async ({ browser, request }) => {
   test.setTimeout(120000);
   const a=await intoPlaza(browser,request,'취소사진');const {page}=a;
-  await page.evaluate(()=>window.PlazaWarp(0,7));
+  await page.evaluate((p)=>window.PlazaWarp(p.x, p.z + 7), PC);
   let downloads=0;let records=0;
   page.on('download',()=>downloads++);
   page.on('request',r=>{if(r.url().endsWith('/api/island/photo') && r.method()==='POST') records++;});
@@ -1442,7 +1457,7 @@ test('기념사진: 카운트다운·캡처 대기 취소, 재진입과 접속 �
     return !document.getElementById('photoCount').classList.contains('hidden');
   })).toBe(true); // old finally must not release the new countdown/pose; no CDP delay between these actions
   const saved=await newDownload;expect(saved.suggestedFilename()).toMatch(/\.png$/);
-  await expect(page.locator('.toast')).toContainText('중앙광장');
+  await expect(page.locator('.toast')).toContainText(DAL ? '대청마당' : '중앙광장');
   expect(downloads).toBe(1);expect(records).toBe(1);
   await page.keyboard.press('Escape');
   await page.locator('#islandPhotoTab').click();
@@ -1491,7 +1506,11 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   test.setTimeout(180000);
   const a = await intoPlaza(browser, request, '열차손님', 0, 120000);
   const b = await intoPlaza(browser, request, '열차구경');
-  const round = 240000;
+  // (either island's timetable: train 1's last stop of a round, S0, and the next, S1 -- 지금 섬 동해안역 then 남서해안역)
+  const plan = await a.page.evaluate(() => { const R = window.IslandTrain; const out = []; for (let s = 0; s < R.CYCLE * 2; s += 0.5) { const st = R.timetableAt(1, s * 1000).stop; if (st && (!out.length || out[out.length - 1].st !== st || s - out[out.length - 1].at > 10)) out.push({ at: s, st }); } return { cycle: R.CYCLE, out, names: Object.fromEntries(Object.entries(R.STATIONS).map(([k, v]) => [k, v.name])) }; });
+  const k0 = plan.out.filter((x) => x.at < plan.cycle).length - 1; const [A0, A1] = [plan.out[k0], plan.out[k0 + 1]];
+  const S0 = A0.st; const S1 = A1.st; const N1 = plan.names[S1]; const round = plan.cycle * 1000;
+  const T0 = A0.at - 6; const T1 = A1.at - 6; const MID = A0.at + 6 + (A1.at - A0.at - 6) / 3;
   // Native click honors disabled state. Avoid the multi-frame pointer actionability delay on a software GPU,
   // which can itself consume the entire 4.6s open-door window; the rendered hint is checked before each action.
   const clickDockButton = (button) => button.evaluate(b => b.click());
@@ -1502,38 +1521,38 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   }, { timeout: 90000, intervals: [200] }).toBe(true);
   const riding = () => a.page.evaluate(() => window.PlazaDebug().train().riding?.id ?? null);
   const shiftTo = async (sec) => { const now = Date.now(); const r = await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now }); expect(r.status).toBe(200); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().shift), { timeout: 10000 }).toBe(r.data.trainShift); };
-  await shiftTo(228); // approach the east stop before the open-door window
-  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('B').spot);
+  await shiftTo(T0); // approach the east stop before the open-door window
+  const stop = await a.page.evaluate((S0) => window.IslandTrain.stationOf(S0).spot, S0);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
   await expect(a.page.locator('#trainMainBtn')).toHaveText('승강장 올라가기', { timeout: 15000 });
   await expect(a.page.locator('#trainMainBtn')).toBeVisible(); await expect(a.page.locator('#plazaHint')).toBeHidden();
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('B');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S0);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   const beforeWalk = await state(a.page);
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('ArrowRight'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowRight');
   const afterWalk = await state(a.page); expect(Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z)).toBeGreaterThan(.2);
-  await inWindow(228, async () => await riding() === 1, async () => {
+  await inWindow(T0, async () => await riding() === 1, async () => {
     await expect(a.page.locator('#trainMainBtn')).toHaveText('타기 · 관광 열차', { timeout: 15000 }); await expect(a.page.locator('#plazaHint')).toBeHidden();
     await clickDockButton(a.page.locator('#trainMainBtn'));
   });
   expect((await a.page.evaluate(() => window.PlazaDebug().train())).y).toBeGreaterThan(2.5); // up on the car's seat over the stream
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(1);
   // between stops: the next stop and when, not a key to press
-  await shiftTo(280);
-  await expect(a.page.locator('#plazaHint')).toContainText('다음 정류장 · 남서해안역', { timeout: 15000 });
+  await shiftTo(MID);
+  await expect(a.page.locator('#plazaHint')).toContainText(`다음 정류장 · ${N1}`, { timeout: 15000 });
   await expect(a.page.locator('#plazaHint')).not.toContainText('SPACE');
   await expect(a.page.locator('#plazaHint')).toBeVisible(); await expect(a.page.locator('#trainMainBtn')).toBeHidden();
   await expect(a.page.locator('#trainMainBtn')).toHaveText('');
   // at the southwest stop: off, anywhere inside its walkable platform
-  await inWindow(348, async () => await riding() === null, async () => {
-    await expect(a.page.locator('#trainMainBtn')).toHaveText('내리기 · 남서해안역', { timeout: 15000 });
+  await inWindow(T1, async () => await riding() === null, async () => {
+    await expect(a.page.locator('#trainMainBtn')).toHaveText(`내리기 · ${N1}`, { timeout: 15000 });
     await expect(a.page.locator('#trainMainBtn')).toBeVisible(); await expect(a.page.locator('#plazaHint')).toBeHidden();
     await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
   });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   const deck = await a.page.evaluate(() => { const d=window.PlazaDebug(),p=d.train().platform;const q=window.IslandTrain.platformClamp(p.line,p.station,d.x,d.z);return { station:p.station, drift:Math.hypot(q.x-d.x,q.z-d.z),height:q.y,y:d.train().y }; });
-  expect(deck.station).toBe('D');expect(deck.drift).toBeLessThan(.01);expect(deck.y).toBeCloseTo(deck.height,1);
+  expect(deck.station).toBe(S1);expect(deck.drift).toBeLessThan(.01);expect(deck.y).toBeCloseTo(deck.height,1);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().train().othersRiding), { timeout: 15000 }).toBe(0);
   await post(request, '/api/test/train-shift', a.token, { ms: 0 });
   await expectNoScriptError(a.page); await expectNoScriptError(b.page);
@@ -1545,32 +1564,36 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
 test('관광열차 메뉴: 승강장에서 시간에 맞춰 타기·내리기·내려가기', async ({ browser, request }) => {
   test.setTimeout(180000);
   const a = await intoPlaza(browser, request, '열차메뉴', 0, 120000);
-  const round = 240000;
+  // (either island's timetable: train 1's last stop of a round, S0, and the next, S1 -- 지금 섬 동해안역 then 남서해안역)
+  const plan = await a.page.evaluate(() => { const R = window.IslandTrain; const out = []; for (let s = 0; s < R.CYCLE * 2; s += 0.5) { const st = R.timetableAt(1, s * 1000).stop; if (st && (!out.length || out[out.length - 1].st !== st || s - out[out.length - 1].at > 10)) out.push({ at: s, st }); } return { cycle: R.CYCLE, out, names: Object.fromEntries(Object.entries(R.STATIONS).map(([k, v]) => [k, v.name])) }; });
+  const k0 = plan.out.filter((x) => x.at < plan.cycle).length - 1; const [A0, A1] = [plan.out[k0], plan.out[k0 + 1]];
+  const S0 = A0.st; const S1 = A1.st; const N1 = plan.names[S1]; const round = plan.cycle * 1000;
+  const T0 = A0.at - 6; const T1 = A1.at - 6; const MID = A0.at + 6 + (A1.at - A0.at - 6) / 3;
   const clickDockButton = (button) => button.evaluate(b => b.click());
   const shiftTo = async (sec) => { const now = Date.now(); const r = await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now }); expect(r.status).toBe(200); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().shift), { timeout: 10000 }).toBe(r.data.trainShift); };
-  const stop = await a.page.evaluate(() => window.IslandTrain.stationOf('D').spot);
+  const stop = await a.page.evaluate((S) => window.IslandTrain.stationOf(S).spot, S1);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [stop.x, stop.z]);
   await expect(a.page.locator('#trainMainBtn')).toHaveText('승강장 올라가기', { timeout: 15000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe('D');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.station)).toBe(S1);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
-  await shiftTo(348); // renew the stop window after waiting for the other software-rendered page
+  await shiftTo(T1); // renew the stop window after waiting for the other software-rendered page
   await expect(a.page.locator('#trainMainBtn')).toHaveText('타기 · 관광 열차', { timeout: 15000 });
   await a.page.locator('#trainMenuBtn').click();
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeVisible(); // a PC clock 2 minutes fast: the menu uses the same corrected server clock as the train
-  await shiftTo(340);
+  await shiftTo(T1 - 8);
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeDisabled();
-  await shiftTo(348);
+  await shiftTo(T1);
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeEnabled({ timeout: 15000 });
   // (CI: a slow runner can miss the 4.6 s door window between the check and the click -- open it again and press again)
   await expect.poll(async () => {
     if (await a.page.evaluate(() => window.PlazaDebug().train().riding?.id) === 1) return 1;
-    await shiftTo(348); const go = a.page.getByRole('button', { name: '타기', exact: true });
+    await shiftTo(T1); const go = a.page.getByRole('button', { name: '타기', exact: true });
     if (!await go.isVisible()) await a.page.locator('#trainMenuBtn').click();
     if (await expect(go).toBeEnabled({ timeout: 15000 }).then(() => true, () => false)) await clickDockButton(go);
     await a.page.waitForTimeout(1500); return a.page.evaluate(() => window.PlazaDebug().train().riding?.id);
   }, { timeout: 60000, intervals: [200] }).toBe(1);
-  await shiftTo(348); await expect(a.page.locator('#trainMainBtn')).toHaveText('내리기 · 남서해안역', { timeout: 15000 }); const offResponse = a.page.waitForResponse(r => r.url().endsWith('/api/island/train/alight')); await clickDockButton(a.page.locator('#trainMainBtn')); const offResult = await offResponse; expect(await offResult.json()).toMatchObject({ ok: true, stop: 'D' });
+  await shiftTo(T1); await expect(a.page.locator('#trainMainBtn')).toHaveText(`내리기 · ${N1}`, { timeout: 15000 }); const offResponse = a.page.waitForResponse(r => r.url().endsWith('/api/island/train/alight')); await clickDockButton(a.page.locator('#trainMainBtn')); const offResult = await offResponse; expect(await offResult.json()).toMatchObject({ ok: true, stop: S1 });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('tour');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
   await a.page.locator('#trainMenuBtn').click();
@@ -1700,17 +1723,17 @@ test('의상 주색: 근접 염색 결제와 무료 원색 복구', async ({ bro
 test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지와 중복 없는 주민',async({browser,request})=>{
   test.setTimeout(90000); // a 3D island page: slower on CI
   const a=await intoPlaza(browser,request,'사진가첫이야기'),{page}=a;
-  await page.evaluate(()=>window.PlazaWarp(12.8,28));
+  const PG = T.dalmaru ? T.dalmaru.PLACES.quests.photographer : { x: 12, z: 28 }; await page.evaluate((p)=>window.PlazaWarp(p.x + 0.8, p.z), PG);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기');
   await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialogTitle')).toHaveText('첫 섬 나들이');
   await expect(page.locator('#plazaDialog')).toContainText('사진 부탁');
   await page.locator('#plazaDialog button').filter({hasText:'할게요'}).click();
-  await expect.poll(()=>page.evaluate(()=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-12)<.01&&Math.abs(m.z-28)<.01)};})).toEqual({mark:null,position:true});
+  await expect.poll(()=>page.evaluate((pg)=>{const d=window.PlazaDebug();return {mark:d.quests().find(q=>q.id==='questphotomemory')?.mark,position:d.markers.some(m=>Math.abs(m.x-pg.x)<.01&&Math.abs(m.z-pg.z)<.01)};},PG)).toEqual({mark:null,position:true});
   expect((await post(request,'/api/test/quest/note',a.token,{what:'photo',qty:3,scope:'fixed'})).status).toBe(200);
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().quests().find(q=>q.id==='questphotomemory')?.mark)).toBe('ready');
   await page.locator('#plazaStage').focus();await page.keyboard.press('Space');
-  await expect(page.locator('#plazaDialog')).toContainText('개울 다리');
+  await expect(page.locator('#plazaDialog')).toContainText(DAL ? '윤슬다리' : '개울 다리');
   const state=await page.evaluate(()=>{const d=window.PlazaDebug();return {walkers:d.wanderers.length,photoActors:d.quests().filter(q=>['questphotomemory','questphotographer'].includes(q.id)).length};});
   expect(state).toEqual({walkers:10,photoActors:1});
   await expectNoScriptError(page);await a.context.close();
