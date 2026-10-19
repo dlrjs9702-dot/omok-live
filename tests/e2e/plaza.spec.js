@@ -791,6 +791,8 @@ test('첫 접속 성별 선택: 처음 한 번만 묻고, 내 캐릭터·다른 
   await page.keyboard.press('Escape');
   await expect(page.locator('#genderDialog')).toBeVisible(); // a choice is needed
   await expect(page.locator('#genderConfirmBtn')).toBeDisabled();
+  let settled = await state(page); // (CI 2차: first still -- a just-started island may still be gliding to its spot on a slow runner)
+  await expect.poll(async () => { const now = await state(page); const d = Math.hypot(now.x - settled.x, now.z - settled.z); settled = now; return d; }, { timeout: 15000, intervals: [500] }).toBeLessThan(0.005);
   const before = await state(page);
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(300); await page.keyboard.up('ArrowUp');
   expect(Math.hypot((await state(page)).x - before.x, (await state(page)).z - before.z)).toBeLessThan(0.01);
