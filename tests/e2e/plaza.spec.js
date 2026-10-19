@@ -976,15 +976,19 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
   await page.keyboard.press('Space'); // v1.10.84: in, to the 민원실 -- its counter settles
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('townhall');
-  await page.evaluate(() => window.PlazaDebug().place('room:desk'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 민원 창구');
+  // A-7: the window opens from its customer's chair -- seated, the camera on the clerk; closing it stands me up
+  await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 민원 창구 업무');
   await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
   await page.locator('#islandPlaceSubmit').click();
   await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().z - window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil').z)).toBeGreaterThan(0.5); // (stood up, back into the hall -- not behind the desk)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   await page.evaluate(() => window.PlazaDebug().place('room:exit'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나가기');
   await page.keyboard.press('Space');

@@ -1277,7 +1277,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function stepGather(dt) {
     if (!gather) return;
-    if (isBlocked()) { endGather(false); return; }
+    if (isBlocked() && !(gather.kind === 'sit' && sitting?.seat.counter)) { endGather(false); return; } // (A-7: a window's chair keeps me seated while its window is open)
     if (gather.waitServer && me.anim && me.anim.state !== gather.anim) me.anim.play(gather.anim,{ms:gather.ms,hold:true,elapsed:gather.t});
     if (gather.pending) return;
     gather.t = gather.waitServer ? (performance.now()-gather.startedAt)/1000 : gather.t+dt;
@@ -1740,16 +1740,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] });
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: 0, id } });
     });
+    for (const c of globalThis.IslandTerrain.COUNTERS) put('townhall3.chair_marble', c.lx, 0, c.lz, 0, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // A-7: the customer's chair at each window, toward its clerk
     for (const [, lx, lz, yaw] of L.seats.filter(([id]) => id.startsWith('desk.'))) put('townhall3.chair_marble', lx, 0, lz, yaw + Math.PI, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // (a seat's yaw faces the sitter's way; the chair's front is -z)
     for (const [file, lx, y, lz, yaw] of L.props) put(`townhall3.${file}`, lx, y, lz, yaw, (f) => mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), mat(0xd9d4c8), 0, 0.4, 0, f));
     for (const lx of [-9, 0, 9]) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
     room = { group: g, clerks }; npcs.push(...clerks);
     return room;
   }
-  doors['room:desk'] = { ...roomAt(ROOM.desk.lx, ROOM.desk.lz), name: '민원 창구' };
   doors['room:exit'] = { ...roomAt(ROOM.exit.lx, ROOM.exit.lz), name: '나가기' };
-  doors['room:bank'] = { ...roomAt(ROOM.bank.lx, ROOM.bank.lz), name: '예금 창구' }; // v1.10.85
-  doors['room:tax'] = { ...roomAt(ROOM.tax.lx, ROOM.tax.lz), name: '세금 창구' }; // v1.10.86
+  // (A-7: the three windows -- 민원 v1.10.84, 예금 v1.10.85, 세금 v1.10.86 -- open from their customer's chair, not from a spot)
   if (doors.townhall) { doors.townhall.mapName = doors.townhall.name; doors.townhall.name = '관공서 들어가기'; }
   // v1.10.92 잡화점 (IslandStore, assets 41): its room far off the island like the 민원실 -- the keeper behind the counter,
   // the goods where the manifest stands them; SPACE by a good buys it (the price on the prompt), by the door goes out
@@ -2471,7 +2470,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!best && !gather && !fishing) {
       const m = me.root.position; let seat = null; let sd = 1.6;
       for (const s of SEATS) { const d = Math.hypot(s.x - m.x, s.z - m.z); if (d < sd && !takenSeats.has(s.id)) { seat = s; sd = d; } }
-      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: '앉기' }; best = `seat:${seat.id}`; }
+      const busyCounter = !seat && SEATS.find((s) => s.counter && takenSeats.has(s.id) && Math.hypot(s.x - m.x, s.z - m.z) < 1.6); // (A-7)
+      if (seat) { eventDoors[`seat:${seat.id}`] = { x: seat.x, z: seat.z, name: seat.counter ? `앉아서 ${seat.name} 업무` : '앉기' }; best = `seat:${seat.id}`; }
+      else if (busyCounter) { eventDoors[`seat:${busyCounter.id}`] = { x: busyCounter.x, z: busyCounter.z, name: '다른 분이 업무 중이에요', plain: true }; best = `seat:${busyCounter.id}`; }
       else {
         let who = null; let wd = 2.2;
         for (const [id, o] of others) { const d = Math.hypot(o.c.root.position.x - m.x, o.c.root.position.z - m.z); if (d < wd) { who = [id, o]; wd = d; } }
@@ -2673,6 +2674,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const q = R.platformClamp(platform.line, platform.station, me.root.position.x, me.root.position.z); me.root.position.set(q.x, q.y, q.z);
     }
   }
+  // A-7: seated at a window, the talk camera on its clerk (as with an islander)
+  function counterCamera(doorId) { const s = SEATS.find((x) => x.door === doorId); if (!s) return false; lastTalk = { id: doorId, x: s.x, z: s.z - 3.25 }; return talkCamera('talk'); }
   function sit(seatId) {
     const s = SEATS.find((x) => x.id === seatId); if (!s || gather || fishing) return false;
     if (!startGather({ kind: 'sit', ms: Infinity, anim: 'sitDown', onDone: () => standUp(false) })) return false;
@@ -2686,7 +2689,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.(); lockForClip(me.anim?.play('standUp'));
     // a step forward, off the bench -- A-7: indoors on the room's floor and kept inside it (the island's ground under the
     // 민원실, out at sea, sank me into the floor)
-    let x = s.x + Math.sin(s.yaw) * 1.0; let z = s.z + Math.cos(s.yaw) * 1.0; let y;
+    const step = s.counter ? -1.0 : 1.0; let x = s.x + Math.sin(s.yaw) * step; let z = s.z + Math.cos(s.yaw) * step; let y; // (a window's chair: back, away from the desk)
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); x = q.x; z = q.z; y = ROOM.y; }
     else if (mySpace === 'store') { const q = STORE.clamp(x, z); x = q.x; z = q.z; y = STORE.ROOM.y; }
     else y = heightAt(x, z);
@@ -2734,6 +2737,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setSpace, space: () => mySpace, setGoodsPrices, useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }
