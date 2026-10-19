@@ -933,7 +933,7 @@ async function errandView(account) {
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
-const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
+const OPS_DEFAULTS = { signups: true, messenger: true, dalmaruPreview: false }; let opsCache = null; // (달마루섬 미리보기: the administrator's island only)
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
@@ -5756,6 +5756,13 @@ async function requestHandler(req, res) {
       if (out.error) return sendError(res, 400, 'BAD_ECONOMY', out.error === 'RANGE' ? '허용 범위를 벗어난 값입니다.' : '바꿀 값이 없습니다.');
     }
     return sendJson(res, 200, { ok: true, ...Economy.view(await pointStore.worldValue('economy')) });
+  }
+  // 달마루섬 개편 (docs/dalmaru-implementation-20261019.md): which island a page shows -- the new one only for an
+  // administrator while the preview switch is on (that page walks it on its own: it sends no positions); everyone else
+  // the island they have
+  if (pathname === '/api/island/map' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, map: session.role === 'admin' && (await opsSwitches()).dalmaruPreview === true ? 'dalmaru' : 'classic' });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
     if (!requireAdmin(req, res)) return;

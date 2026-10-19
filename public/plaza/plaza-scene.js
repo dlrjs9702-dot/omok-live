@@ -267,7 +267,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const setSeasonDay = (day) => { assets.setDay(day); island.setSeasonDay(day); };
   island.setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now()));
   const PH = heightAt(0, 0);
-  const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain);
+  // 달마루섬 미리보기 1단계 (dalmaru-island.js): the bare new island -- the old plaza's things, the train, the town hall's
+  // yard, October's decorations and the islanders stay away, and nothing from the server is placed on it
+  const BARE = Boolean(globalThis.IslandTerrain.TERRAIN_ONLY);
+  const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain); fountain.visible = !BARE;
   mesh(new THREE.CylinderGeometry(2.9, 3.1, 0.6, 44), mat(0xeae3d6), 0, 0.3, 0, fountain);
   mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.1, 44), mat(0x86d0f0, { roughness: 0.45 }), 0, 0.56, 0, fountain); // v1.10.13: no metal shine
   mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 20), mat(0xeae3d6), 0, 1.2, 0, fountain);
@@ -318,10 +321,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let night = null; let halloweenOverride = null;
   const lampModel = () => lamps.length > 0 && !lamps[0].parent.visible; // v1.10.38: the lamp model stands in place of the stand-in
   const isHalloween = globalThis.IslandTerrain.isHalloween; // October, Asia/Seoul
-  function setIsland(halloweenOn, now) { // (every few seconds) the decorations, then the light of this time of day
+  function setIsland(halloweenOn, now) {
+    if (BARE) halloweenOn = false; // (달마루섬 미리보기: no decorations on the bare island) // (every few seconds) the decorations, then the light of this time of day
     phase = halloweenOverride != null ? (halloweenOverride ? 'night' : 'day') : timeMode === 'auto' ? phaseAt(now) : timeMode;
     if (decorOn !== halloweenOn) { decorOn = halloweenOn; halloween.visible = halloweenOn; decor.setOn(halloweenOn); }
-    const winterOn = !halloweenOn && (decorMode === 'winter' || (decorMode === 'auto' && globalThis.IslandTerrain.isWinterFest(now))); setWinter(winterOn);
+    const winterOn = !BARE && !halloweenOn && (decorMode === 'winter' || (decorMode === 'auto' && globalThis.IslandTerrain.isWinterFest(now))); setWinter(winterOn);
     fountain.visible = !halloweenOn && !winterOn; // (the pumpkin or the tree stands on the fountain's spot)
     const dark = phase === 'night'; const lit = dark || phase === 'evening'; const key = `${phase}:${halloweenOn}:${weatherKind}`;
     if (lightKey === key) return; lightKey = key; night = dark;
@@ -390,6 +394,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const plants = new Map(); // id -> { root, key, data }
   const plantModel = (p) => (p.kind === 'tree' ? `plant.tree_stage${p.stage}` : p.stage < 2 ? `plant.flower_stage${p.stage}` : `plant.flower_stage${p.stage}_${p.color}`);
   function setPlants(list) {
+    if (BARE) return; // (달마루섬 미리보기)
     const seen = new Set();
     for (const p of Array.isArray(list) ? list : []) {
       seen.add(p.id); const key = `${plantModel(p)}:${p.fertilized}`; const had = plants.get(p.id); if (had?.key === key) { had.data = p; continue; }
@@ -817,8 +822,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
 
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const train = trainScene({ scene, assets, solids, vcMat, sign }); // v1.10.47 관광열차 (its steps are walked round)
+  if (BARE) train.group.visible = false;
   const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
+  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; }
   buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
   doors.mayor = yard.door;
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
@@ -907,6 +914,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const others = new Map(); // id -> { c, target: { x, z, yaw, moving }, key }
   const OTHER_BASE = { shirt: 0x7cb8ff, hair: 0x4a3326, skin: 0xffe0c4 };
   function setOthers(list) {
+    if (BARE) return; // (달마루섬 미리보기)
     const seen = new Set();
     for (const p of list || []) {
       if (!p?.id) continue;
@@ -1205,6 +1213,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     weedBoard = { root, door: d };
   }
   function setWeeds(list) {
+    if (BARE) return; // (달마루섬 미리보기)
     prepareWeedBoard();
     if (weedCells.length) { assets.unbatch(weedCells); for (const c of weedCells) { scene.remove(c.procedural[0]); c.procedural[0].dispose(); } }
     weedCells = []; weedById.clear(); weedGrid = new Map();
@@ -1917,7 +1926,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     clockRtt = Math.min(clockRtt, rtt); serverOffset = serverMs + rtt / 2 - receivedAt;
   }
   const wanderersTimer = setTimeout(() => { // after the first frames: the islanders' map takes a moment to work out
-    if (!IslandNpcs) return;
+    if (!IslandNpcs || BARE) return;
     // v1.10.16: walked through the scene's own collision circles and ground (the route grid is only the long plan)
     walkers = IslandNpcs.createWalkers({ walkable, solidsNear, poseAt:residentPose });
     for (let n = 0; n < IslandNpcs.COUNT; n += 1) {
@@ -2609,8 +2618,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const drawMap = (canvas) => island.drawMap(canvas.getContext('2d'), canvas.width, canvas.height, { x: me.root.position.x, z: me.root.position.z });
   // v1.10.2: a chat message over someone's head ('me' or another player's id)
   const speak = (id, text) => say(id === 'me' ? me : others.get(id)?.c, text);
-  const setStatuesPublic = (list) => setStatues(list);
-  const setEventsPublic = (list) => setEvents(list);
+  const setStatuesPublic = (list) => (BARE ? undefined : setStatues(list));
+  const setEventsPublic = (list) => (BARE ? undefined : setEvents(list));
   // v1.10.31: an event's motion when the server took it (pick up, give back, a photo), the weed in hand
   const playMine = (name) => { const played = Boolean(me.anim?.play(name)); lockForClip(played); return played; };
   const holdWeed = () => assets.hold(me, 'prop.weedRooted', 900);

@@ -1807,8 +1807,16 @@
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
     const spotToday = api('/api/plaza/spot').then((data) => data.spot || null).catch(() => null);
+    // 달마루섬 미리보기: the island the server says this page shows (kept for island-map.js, which runs before the island's
+    // scripts) -- a change reloads the page once (only when it could be kept: no reload loop without storage)
+    const islandMap = api('/api/island/map').then((d) => {
+      const want = d.map === 'dalmaru' ? 'dalmaru' : null; let have = null; try { have = localStorage.getItem('gc.islandMap'); } catch {}
+      if (have === want) return;
+      try { if (want) localStorage.setItem('gc.islandMap', want); else localStorage.removeItem('gc.islandMap'); if (localStorage.getItem('gc.islandMap') === want) { location.reload(); return new Promise(() => {}); } } catch {}
+    }).catch(() => {});
     const sceneModule = import('/plaza/plaza-scene.js').catch((error) => { throw Object.assign(error, { code: 'module' }); });
-    plaza.loading = Promise.all([sceneModule, spotToday]).then(([mod, startAt]) => {
+    plaza.loading = Promise.all([sceneModule, spotToday, islandMap]).then(([mod, savedSpot]) => {
+      const startAt = globalThis.IslandTerrain?.MAP === 'dalmaru' ? null : savedSpot; // (the preview starts at its own 대청마당)
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
@@ -2675,7 +2683,7 @@
   const drawSwitches = (sw) => { for (const c of opsBox?.querySelectorAll('input[data-switch]') || []) c.checked = sw[c.dataset.switch] !== false; };
   opsBox?.addEventListener('change', async (event) => {
     const c = event.target.closest('input[data-switch]'); if (!c) return;
-    try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
+    try { drawSwitches((await api('/api/admin/switches', { method: 'POST', body: JSON.stringify({ [c.dataset.switch]: c.checked }) })).switches); showToast(`${c.parentElement.textContent.trim()}: ${c.checked ? '켬' : '끔'}`); if (c.dataset.switch === 'dalmaruPreview') { try { if (c.checked) localStorage.setItem('gc.islandMap', 'dalmaru'); else localStorage.removeItem('gc.islandMap'); } catch {} setTimeout(() => location.reload(), 800); } } catch (error) { c.checked = !c.checked; showToast(error.message, 4000); }
   });
   new MutationObserver(() => { if (!adminPanel.classList.contains('hidden')) { api('/api/admin/contest').then(({ config: c }) => { byId('contestDay').value = String(c.day); byId('contestTime').value = `${String(c.hour).padStart(2, '0')}:${String(c.minute).padStart(2, '0')}`; byId('contestMinutes').value = String(c.minutes); byId('contestEnabled').checked = c.enabled; }).catch(() => {}); // (A4 대회 일정)
  api('/api/admin/switches').then((d) => drawSwitches(d.switches)).catch(() => {}); api('/api/island/time').then((d) => { const sel = byId('islandTimeSelect'); if (sel) sel.value = d.mode; }).catch(() => {}); } }).observe(adminPanel, { attributes: true, attributeFilter: ['class'] });
@@ -3325,6 +3333,7 @@
   function plazaPresenceTick() {
     const c = plaza.controller;
     if (!c?.pose || plazaSending || plazaDeparture || !document.body.classList.contains('plazaMode')) return;
+    if (globalThis.IslandTerrain?.MAP === 'dalmaru') return; // (달마루섬 미리보기: walked on this screen only -- the server keeps the island it has)
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
       || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once

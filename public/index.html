@@ -384,7 +384,7 @@
           <form id="adminBirthdayForm" class="joinForm islandTimeForm"><label for="adminBirthdayName">생일 넣기</label><input id="adminBirthdayName" type="text" placeholder="계정 이름" required><input id="adminBirthdayMonth" type="number" min="1" max="12" placeholder="월" aria-label="월" required><input id="adminBirthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일" required><button class="secondary" type="submit">적용</button></form>
           <form id="contestForm" class="joinForm islandTimeForm"><label for="contestDay">주말 섬 대회</label><select id="contestDay"><option value="0">일</option><option value="1">월</option><option value="2">화</option><option value="3">수</option><option value="4">목</option><option value="5">금</option><option value="6">토</option></select><input id="contestTime" type="time" value="20:00" aria-label="시작 시각"><input id="contestMinutes" type="number" min="10" max="120" value="30" aria-label="길이(분)"><label><input id="contestEnabled" type="checkbox" checked> 열기</label><button class="secondary" type="submit">적용</button></form>
           <!-- v1.10.90 운영 스위치 (IDEAS #future-admin-console ②) -->
-          <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label></fieldset>
+          <fieldset id="opsSwitches" class="opsSwitches"><legend>운영 스위치</legend><label><input type="checkbox" data-switch="signups" /> 새 가입 신청 받기</label><label><input type="checkbox" data-switch="messenger" /> 메신저 켜기</label><label><input type="checkbox" data-switch="dalmaruPreview" /> 달마루섬 미리보기(관리자만, 새로고침)</label></fieldset>
           <!-- v1.10.91 경제 값 관리 (IDEAS #future-admin-console ②) -->
           <details id="economyBox" class="economyBox"><summary>경제 값 관리</summary><p class="lookMeta">값을 바꾸고 「저장」을 누르면 확인 뒤 바로 적용됩니다. 빈칸은 기본값.</p><div id="economyTable"></div><button id="economySave" class="primary" type="button">저장</button><h4>변경 이력</h4><ol id="economyHistory"></ol></details>
           <h3 class="keySectionTitle">가입 신청</h3>
@@ -1364,7 +1364,10 @@
   <script src="/skin-art-ip.js"></script>
   <script src="/skin-art-avatar.js"></script>
   <script src="/climb/climb-sim.js"></script>
+  <script src="/plaza/island-map.js"></script>
   <script src="/plaza/island-terrain.js"></script>
+  <script src="/plaza/dalmaru-terrain.js"></script>
+  <script src="/plaza/dalmaru-island.js"></script><!-- 달마루섬 미리보기: replaces IslandTerrain before the island scripts read it -->
   <script src="/plaza/island-train.js"></script>
   <script src="/plaza/island-npcs.js"></script>
   <script src="/plaza/island-cast.js"></script>
