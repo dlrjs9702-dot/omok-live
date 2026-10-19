@@ -210,8 +210,10 @@ async function island(browser, request, label, registry, { failLoader = false } 
   });
   const { page } = who;
   // shopper already waits for the lobby, which opens after GameBoot.ready and
-  // the asynchronous session request. Check the actual scene, without rechecking it.
-  try { await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 }); }
+  // the asynchronous session request. Check the actual scene, without rechecking it. (CI 2차: first the island's own
+  // signal that it is shown -- ISLAND_BOOT_FAILURE on CI was a scene still coming up after 15 s (no failure, lobby still
+  // in front); a real start failure still fails here, with its diagnostics)
+  try { await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug?.()?.running || window.PlazaDiagnostics)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); }
   catch (error) {
     console.log('ISLAND_BOOT_FAILURE', await page.evaluate(() => ({
       lobbyHidden: document.getElementById('lobbyView')?.classList.contains('hidden'),

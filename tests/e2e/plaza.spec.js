@@ -30,8 +30,10 @@ async function intoPlaza(browser, request, label, points = 0, clockSkew = 0) {
   if (clockSkew) await who.page.addInitScript((skew) => { const realNow = Date.now.bind(Date); Date.now = () => realNow() + skew; }, clockSkew);
   await islandPage(who.page);
   await expect(who.page.locator('#lobbyView')).toBeVisible();
-  await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
-  await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
+  // (CI 2차: the island's own signal that it is shown -- on a busy runner the scene takes longer than 15 s to come up
+  // after the lobby; the canvas is checked once it says so)
+  await expect.poll(() => state(who.page).then((s) => s?.running), { timeout: 60000 }).toBe(true);
+  await expect(who.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible();
   // v1.10.41: these tests are about the island itself -- October's night (its decor, bats and lights) is the Halloween
   // tests' (island-assets.spec), and on a software-rendered runner it made this file too slow for its shard
   await who.page.evaluate(() => window.PlazaDebug().halloween.set(false));
