@@ -66,7 +66,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some(w => w.transformation === 'mymelody' && !w.high)), { timeout: 30000 }).toBe(true);
   await b.context.close(); // remote LOD is verified; release its 3D renderer before the remaining local interactions
   const seat = await a.page.evaluate(() => {
-    const d=window.PlazaDebug(); const seat=d.seats.find(s => !d.takenSeats()[s.id]); d.teleport(seat.x,seat.z); return seat;
+    const d=window.PlazaDebug(); const seat=d.seats.find(s => !s.room && !d.takenSeats()[s.id]); /* (CI 2차: an island bench -- not the 민원실's seats, off the island) */ d.teleport(seat.x,seat.z); return seat;
   });
   await expect(a.page.locator('#plazaHint')).toContainText('앉');
   if (isMobile) await a.page.locator('#plazaHint').tap();
@@ -74,6 +74,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
   expect(await a.page.evaluate(() => window.PlazaDebug().act().clip)).toMatch(/SitDown|SitIdle/); // both are valid phases of the seated animation
   await a.page.screenshot({ path: testInfo.outputPath('kuromi-seated.png') });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (CI 2차: the sit-down motion over -- an arrow during it went nowhere)
   await a.page.keyboard.down('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await a.page.keyboard.up('ArrowUp');
