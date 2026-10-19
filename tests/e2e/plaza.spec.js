@@ -144,7 +144,7 @@ test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석
 });
 
 test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 창을 열며 창이 열린 동안 멈춘다', async ({ browser, request }) => {
-  test.setTimeout(60000); // a software-rendered 3D page walking to two facilities: about 21-29 s on a CI runner already
+  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */ // a software-rendered 3D page walking to two facilities: about 21-29 s on a CI runner already
   const a = await intoPlaza(browser, request, '광장');
   const { page } = a;
   await expect(page.locator('#announcementsCard')).toBeHidden(); // the classic lobby sections are put away
@@ -279,14 +279,14 @@ test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 
 
 // v1.9.2 광장 V2: 상점의 광장 아바타 탭(헤어·의상·모자, 칭호)과 광장 캐릭터가 같은 모습이고, 장착하면 바로 바뀐다.
 test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호가 광장 캐릭터와 이름표에 바로 나온다', async ({ browser, request }) => {
-  test.setTimeout(60000); // a software-rendered 3D page through the shop: 18-29 s on a CI runner, at the default 30 s on a slow one
+  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */ // a software-rendered 3D page through the shop: 18-29 s on a CI runner, at the default 30 s on a slow one
   const a = await shopper(browser, request, '아바타', 7_000_000);
   const { page } = a;
   await buyAndEquip(request, a, ['avatar_hair_6', 'avatar_outfit_5', 'omok_l1']);
   expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_4' })).status).toBe(200); // owned, not worn yet
   expect((await post(request, '/api/skins/title', a.token, { skinId: 'omok_l1' })).status).toBe(200);
   await islandPage(page);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // (CI 2차: up to 60 s on the runner)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().look), { timeout: 8000 }).toEqual({ hair: 'avatar_hair_6', outfit: 'avatar_outfit_5', gender: 'male' }); // v1.10.3: the look carries the chosen body
   expect(await page.evaluate(() => window.PlazaDebug().title)).toBe('천상 바둑');
   expect(await page.evaluate(() => window.PlazaDebug().tag)).toBe(true);
@@ -385,7 +385,7 @@ test('멀티유저 광장: 서로의 캐릭터와 이동이 보이고 입장·�
 
   // b reloads (a reconnect): a is still there.
   await b.page.reload();
-  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => b.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // (CI 2차: up to 60 s on the runner)
   await expect.poll(() => seen(b, aId), { timeout: 10000 }).not.toBeNull();
   for (const who of [a, b]) await expectNoScriptError(who.page);
   for (const who of [a, b]) await who.context.close();
@@ -890,11 +890,11 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
 
 // v1.9.4 등반 입구 (kept with the other plaza tests: the plaza is one shared square, so its tests run one after another)
 test('광장 등반 입구: Space와 클릭이 등반 창을 열고, 창이 열린 동안 멈췄다가 닫으면 다시 걷는다', async ({ browser, request }) => {
-  test.setTimeout(60000);
+  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
   const a = await shopper(browser, request, '입구');
   const { page } = a;
   await islandPage(page);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // (CI 2차: up to 60 s on the runner)
   await page.evaluate(() => window.PlazaDebug().place('climb'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 등반 도전');
   await page.keyboard.press('Space');
@@ -1663,7 +1663,7 @@ async function appearanceShop(browser, request, label, door, name, outfit = fals
   if (outfit) await buyAndEquip(request, a, ['avatar_outfit_6']);
   const { page } = a;
   await islandPage(page);
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); // (CI 2차: up to 60 s on the runner)
   await require('./skin-support').intoMall(page, door); // (v1.10.92: in the 백화점)
   await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');

@@ -472,7 +472,7 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
 // is one zone further clockwise (the files stay the same, each fetched once); a season without a file leaves that
 // zone's copies procedural; back to automatic, the day is the server clock's
 test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계방향으로 한 구역씩 이동, 파일 없는 계절은 코드 생성형', async ({ browser, request }) => {
-  test.setTimeout(60000);
+  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
   const a = await island(browser, request, '계절', { __only: true, 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // the round-rock model alone (the whole registry is the next test's)
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.41: rocks only -- October's decor would slow a software-rendered runner
@@ -580,6 +580,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // 관리실: admins only; the whale only now and then (below); a wardrobe part only on whoever wears it, a find's prop only
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
   const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
+  if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it)
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -667,7 +668,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
 // v1.10.28 섬 전체 High/Low LOD (사용자 결정 2026-10-05): the registered models as players get them -- near the player a
 // tree is the full model, far away the same design simplified (never the procedural look), and the switch has a band
 test('High/Low LOD: 가까운 나무는 High, 먼 나무는 같은 디자인의 Low, 경계에는 히스테리시스, 생성형으로 돌아가지 않는다', async ({ browser, request }) => {
-  test.setTimeout(60000);
+  test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
   const a = await island(browser, request, 'LOD', null);
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.39: trees only -- October's decor and bats would slow a software-rendered runner
