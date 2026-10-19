@@ -11,7 +11,7 @@ const { boot } = require('../test-support/test-server');
 test('달마루섬 이사: 심은 꽃은 씨앗, 나무는 묘목으로 한 번만 돌려받고 땅은 비운다', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dal-move-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const was = process.env.ISLAND_MAP; t.after(() => { if (was === undefined) delete process.env.ISLAND_MAP; else process.env.ISLAND_MAP = was; });
-  delete process.env.ISLAND_MAP;
+  process.env.ISLAND_MAP = 'classic'; // (the old island first: the move happens on the next start)
   let server = await boot(t, dir);
   const key = await server.issue('이사손님'); let s = await server.enter(key);
   const balance = (await server.req('/api/points', s)).data.balance;

@@ -3,8 +3,9 @@
 // people walking about). Pure numbers, no Three.js. Moved here unchanged from island.js (v1.10.0).
 (function (root, factory) {
   const api = factory();
-  // (달마루섬 5단계: the server's island -- ISLAND_MAP=dalmaru builds the new one over this, as the browser does)
-  if (typeof module === 'object' && module.exports) module.exports = process.env.ISLAND_MAP === 'dalmaru' ? require('./dalmaru-island.js')(require('./dalmaru-terrain.js'), api, { live: true }) : api;
+  // (달마루섬 5단계: the server's island -- 달마루섬, built over this as the browser does; ISLAND_MAP=classic keeps the old one
+  // until its code goes, the deploy after the move)
+  if (typeof module === 'object' && module.exports) module.exports = (process.env.ISLAND_MAP || 'dalmaru') === 'dalmaru' ? require('./dalmaru-island.js')(require('./dalmaru-terrain.js'), api, { live: true }) : api;
   else root.IslandTerrain = api;
 }(typeof self !== 'undefined' ? self : this, () => {
 
