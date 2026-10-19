@@ -138,9 +138,9 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
     if (hall && nightOn && (litAgo += dt) > 1) { litAgo = 0; moonlit(true); } // the model (and its High / Low) comes in later and swaps
     const route = pass ? [mid, aside] : [mid, gate]; const p = mayor.root.position;
     let to = route[Math.min(leg, 1)]; let d = Math.hypot(to.x - p.x, to.z - p.z);
-    if (d <= 0.05 && leg < 1) { leg = 1; to = route[1]; d = Math.hypot(to.x - p.x, to.z - p.z); } const busy = mayor.anim && mayor.anim.state !== 'idle' && mayor.anim.state !== 'walk';
+    if (d <= 0.05 && leg < 1) { leg = 1; to = route[1]; d = Math.hypot(to.x - p.x, to.z - p.z); } const busy = mayor.anim && !['idle', 'slow', 'walk', 'run'].includes(mayor.anim.state); /* (A-7: any gait is not busy -- at 1.6 m/s the gait is 'slow', which stopped him, which idled him, which let him go: a shake every frame) */
     const moving = d > 0.05 && !busy; const speed = moving ? 1.6 : 0;
-    if (moving) { const k = Math.min(1, (speed * dt) / d); p.x += (to.x - p.x) * k; p.z += (to.z - p.z) * k; p.y = heightAt(p.x, p.z); mayor.targetYaw = Math.atan2(to.x - p.x, to.z - p.z); }
+    if (moving) { mayor.targetYaw = Math.atan2(to.x - p.x, to.z - p.z); const k = Math.min(1, (speed * dt) / d); p.x += (to.x - p.x) * k; p.z += (to.z - p.z) * k; p.y = heightAt(p.x, p.z); } /* (A-7: facing taken before the step -- after it, on arrival, it came from a zero vector) */
     else if (leg >= 1) mayor.targetYaw = pass ? ry + Math.PI / 2 : ry; // in the gate facing out; aside, facing across it
     const near = Math.hypot(me.root.position.x - out.x, me.root.position.z - out.z) < 3;
     if (near && !bowed && !pass) { bowed = mayor.anim?.play('bow') ?? false; }
@@ -150,5 +150,5 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
   const line = () => MAYOR_LINES[(lineAt++) % MAYOR_LINES.length];
   const dispose = () => { for (const x of made) x.dispose(); scene.remove(group); scene.remove(mayor.root); };
   return { group, mayor, door: { x: out.x, z: out.z, name: '말 걸기' }, gateSolid, isOpen: () => pass, setPass, setNight, step, line, dispose,
-    debug: () => ({ pass, solidOpen: pass, lit: lights[0].visible, mayorAt: { x: +mayor.root.position.x.toFixed(2), z: +mayor.root.position.z.toFixed(2) }, gate: { x: gate.x, z: gate.z }, mid, aside, out, lights: lights.map((l) => l.intensity), pools: pools.visible, poolY: +(new THREE.Vector3().setFromMatrixPosition(m4.fromArray(pools.instanceMatrix.array)).y - y0).toFixed(2), wallGlow: hall ? (() => { let g = 0; hall.traverse((x) => { for (const m of [].concat(x.material || [])) if (m.emissive && m.emissive.getHex() === WALL_NIGHT.getHex()) g += 1; }); return g; })() : null, worn: Boolean(mayor.assetRoot), clip: mayor.anim?.clip || null, kinds: Object.fromEntries(Object.entries(place).map(([k, v]) => [k, v.length])) }) };
+    debug: () => ({ pass, solidOpen: pass, lit: lights[0].visible, mayorAt: { x: +mayor.root.position.x.toFixed(2), z: +mayor.root.position.z.toFixed(2) }, gate: { x: gate.x, z: gate.z }, mid, aside, out, lights: lights.map((l) => l.intensity), pools: pools.visible, poolY: +(new THREE.Vector3().setFromMatrixPosition(m4.fromArray(pools.instanceMatrix.array)).y - y0).toFixed(2), wallGlow: hall ? (() => { let g = 0; hall.traverse((x) => { for (const m of [].concat(x.material || [])) if (m.emissive && m.emissive.getHex() === WALL_NIGHT.getHex()) g += 1; }); return g; })() : null, worn: Boolean(mayor.assetRoot), clip: mayor.anim?.clip || null, gait: mayor.anim?.state ?? null, kinds: Object.fromEntries(Object.entries(place).map(([k, v]) => [k, v.length])) }) };
 }

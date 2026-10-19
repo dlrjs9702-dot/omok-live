@@ -69,7 +69,10 @@
   const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const MUSEUM = Object.freeze({ x: 28, z: 34, yaw: Math.atan2(28 - 22.9, 34 - 24), r: 5 }); // (r: nothing grows within 5.8 m -- its door clear; solid at 4) // B 47 섬 박물관 (its door, -Z, toward the north-east walk; the outside only)
-  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props)
+  // A4 주말 섬 대회 우승자 -- A-7 (사용자 2026-10-19 「관공서 입구 길을 막고 있는 것 같은데」): off the straight way from the
+  // plaza to the town hall's gate, 10 m from the middle by the notice board (lamp 2.7 m, flower bed 3 m, board 4.8 m;
+  // (-5.7, 8.2) would be as clear but 3.3 m from the birthday corner)
+  const CONTEST_STATUE = Object.freeze({ x: -5.7, z: -8.2 });
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
   // far end of the shop street. Decoration only (no door to enter); each `style` picks a different build (plaza-scene).
