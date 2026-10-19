@@ -1597,13 +1597,17 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !s.room && !taken[s.id]); }); // a free plaza bench (another test's sitter may still hold one; the 민원실's seats are far off the island)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
+  await expect.poll(async () => { // (CI 2차: SPACE when the bench is what it reaches and no motion holds -- again until seated)
+    const d = await a.page.evaluate(() => ({ sitting: window.PlazaDebug().act().sitting, near: window.PlazaDebug().near, locked: window.PlazaDebug().actLocked }));
+    if (d.sitting) return true; if (d.locked || !d.near?.startsWith('seat:')) return false;
+    await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); await a.page.waitForTimeout(800);
+    return a.page.evaluate(() => window.PlazaDebug().act().sitting);
+  }, { timeout: 30000, intervals: [500] }).toBe(true);
   const aId = await a.page.evaluate(() => window.PlazaDebug().playerId?.() ?? null);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.seat), { timeout: 15000 }).toBe(seat.id);
   expect(await b.page.evaluate(() => window.PlazaDebug().takenSeats())).toEqual(expect.objectContaining({ [seat.id]: expect.any(String) }));
   // v1.10.45: on the bench's seat, not in it -- lifted on both screens
-  expect((await a.page.evaluate(() => window.PlazaDebug().act())).lift).toBeCloseTo(0.28, 1);
+  await expect.poll(async () => (await a.page.evaluate(() => window.PlazaDebug().act())).lift).toBeCloseTo(0.28, 1); // (CI 2차: settled onto the seat by the sit-down motion)
   expect((await a.page.evaluate(() => window.PlazaDebug().act())).tail).toBe(true); // v1.10.46: a tail tucked while seated
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().find((o) => o.act === 'sit')?.lift), { timeout: 10000 }).toBeCloseTo(0.28, 1);
   // Updating the appearance while seated keeps the local pose flag and remote seat claim.
@@ -1620,15 +1624,23 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await expect.poll(() => b.page.evaluate(() => Object.keys(window.PlazaDebug().takenSeats()).length), { timeout: 15000 }).toBe(0);
   // beside the other player: 인사
   const bp = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (CI 2차: the stand-up motion over -- a SPACE during it went nowhere)
+  // (CI 2차: an islander walking by comes first for SPACE -- their talk is closed and SPACE pressed again by the player;
+  // nor during a motion's hold, when a SPACE goes nowhere)
+  const playerMenu = () => expect.poll(async () => {
+    if (await a.page.getByRole('button', { name: '인사', exact: true }).isVisible()) return true;
+    if (await a.page.locator('#plazaDialog').isVisible()) { await a.page.keyboard.press('Escape'); await a.page.waitForTimeout(300); }
+    const d = await a.page.evaluate(() => ({ near: window.PlazaDebug().near, locked: window.PlazaDebug().actLocked }));
+    if (d.locked) return false;
+    if (!d.near?.startsWith('player:')) { await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]); return false; }
+    await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); await a.page.waitForTimeout(500);
+    return a.page.getByRole('button', { name: '인사', exact: true }).isVisible();
+  }, { timeout: 45000, intervals: [500] }).toBe(true);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]);
-  await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 인사', { timeout: 10000 });
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await playerMenu();
   await a.page.getByRole('button', { name: '인사', exact: true }).click();
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'bow')), { timeout: 15000 }).toBe(true);
   // 게임 초대: the game hall (v1.10.73 its own screen), a game's sheet, a room, and the invite (CI 2차: once the bow is over and the prompt is back -- a SPACE during it went nowhere)
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 인사', { timeout: 10000 });
-  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
+  await playerMenu();
   await a.page.getByRole('button', { name: '게임 초대' }).click();
   await expect(a.page.locator('#gamehallView')).toBeVisible({ timeout: 10000 });
   await a.page.locator('.gameCard[data-game="omok"]').click();
