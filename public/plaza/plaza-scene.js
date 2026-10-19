@@ -75,7 +75,7 @@ export function createPlaza(host, options) {
 
 function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, made) {
   const { renderer } = made;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, navigator.webdriver ? 1 : 1.5)); // (automated tests: 1 -- the CI runner draws in software; a phone profile is 2.75)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;

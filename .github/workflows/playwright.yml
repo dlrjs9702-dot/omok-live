@@ -1,35 +1,39 @@
-name: Playwright E2E
-
-# A pull request runs once (pull_request); a push runs only on main (after a merge). A push to a PR branch used to run
-# the same suite a second time, doubling the runner time and the chance of meeting a flaky test.
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-permissions:
-  contents: read
-
-# One run per PR: a new push cancels the PR's run still in progress (main runs are keyed by SHA, so they never cancel).
-concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
-
+name: Playwright E2E
+
+# A pull request runs once (pull_request); a push runs only on main (after a merge). A push to a PR branch used to run
+# the same suite a second time, doubling the runner time and the chance of meeting a flaky test.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# One run per PR: a new push cancels the PR's run still in progress (main runs are keyed by SHA, so they never cancel).
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
-  e2e:
+  # v1.10.99 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side -- npm test alone,
+  # the general games in three shards and their phone run, the two asset specs, the island specs on PC in three shards and
+  # on a phone. The repository is public: runner time is free, so the parts run at once and a PR waits for the longest
+  # (the plaza group used to run PC then phone in one job: 50-75 minutes). docs/release.md: split rather than raise the limit.
+  part:
+    name: e2e part (${{ matrix.group }})
     runs-on: ubuntu-latest
-    # A normal run took 8–15 minutes, by 2026-10 20–37 (more 3D tests on a software renderer). Without a limit a hung
-    # step waits for GitHub's 6-hour default.
-    # v1.10.32: past the 40-minute limit (docs/release.md: split rather than raise it) -- the browser tests in two
-    # shards side by side; the static checks and npm test once, in the first. v1.10.41: three shards (the island's
-    # October night and the town hall made the plaza tests slower; a shard went past 40 minutes)
-    # v1.10.47: one shard reached 39.3m while the others took 6-8m. Split the two 3D suites from general games.
-    # v1.10.90: 60 (the plaza job also runs the newer island specs on PC and phone)
-    timeout-minutes: 90 # (the plaza group with the island specs runs 40~60 min on a slow runner)
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        group: [games-1, games-2, assets, plaza]
+        group: [unit, games-1, games-2, games-3, games-mobile, assets, plaza-1, plaza-2, plaza-3, plaza-mobile]
+    env:
+      # the island's 3D specs (playwright.config.js keeps them out of the games parts); on a phone those that differ there
+      PLAZA_PC: >-
+        tests/e2e/plaza.spec.js tests/e2e/river-fishing.spec.js tests/e2e/weed-board.spec.js tests/e2e/island-time.spec.js tests/e2e/island-weather.spec.js tests/e2e/island-stars.spec.js tests/e2e/island-contest.spec.js tests/e2e/island-admin-look.spec.js tests/e2e/island-plants.spec.js tests/e2e/island-together.spec.js tests/e2e/island-guide.spec.js tests/e2e/island-insects.spec.js tests/e2e/island-pets.spec.js tests/e2e/asset-inspector.spec.js tests/e2e/shop-browse.spec.js tests/e2e/title-hall.spec.js tests/e2e/action-lock.spec.js tests/e2e/resident-talk.spec.js tests/e2e/transform-shop.spec.js tests/e2e/general-store.spec.js
+      PLAZA_MOBILE: >-
+        tests/e2e/river-fishing.spec.js tests/e2e/weed-board.spec.js tests/e2e/island-time.spec.js tests/e2e/island-weather.spec.js tests/e2e/island-stars.spec.js tests/e2e/island-contest.spec.js tests/e2e/island-admin-look.spec.js tests/e2e/island-plants.spec.js tests/e2e/island-together.spec.js tests/e2e/island-guide.spec.js tests/e2e/island-insects.spec.js tests/e2e/island-pets.spec.js tests/e2e/shop-browse.spec.js tests/e2e/title-hall.spec.js tests/e2e/resident-talk.spec.js tests/e2e/transform-shop.spec.js tests/e2e/general-store.spec.js
 
     steps:
       - name: Checkout
@@ -38,6 +42,7 @@ jobs:
           fetch-depth: 0
 
       - name: Static checks
+        if: ${{ matrix.group == 'unit' }}
         run: |
           git diff --check origin/main...HEAD
           node --check server.js
@@ -61,6 +66,7 @@ jobs:
       # The runner's apt mirror sometimes stops answering (2026-09-30: stuck 53 minutes in apt update).
       # Normally 30 s to 7 min, so each attempt gets 10 minutes and a stuck one is retried once.
       - name: Install Playwright Chromium
+        if: ${{ matrix.group != 'unit' }}
         run: |
           for attempt in 1 2; do
             timeout 10m npx playwright install --with-deps chromium && exit 0
@@ -71,25 +77,26 @@ jobs:
           exit 1
 
       - name: Run unit and integration tests
-        if: ${{ matrix.group == 'games-1' }}
+        if: ${{ matrix.group == 'unit' }}
         run: npm test
 
-      # Disjoint groups retain the full desktop suite. Mobile runs whole with the general-group filter cleared.
+      # The parts are disjoint and together the whole suite. The plaza parts stop after 10 failures (a broken run does not
+      # hold a runner for an hour).
       - name: Run browser tests
+        if: ${{ matrix.group != 'unit' }}
         env:
-          PLAYWRIGHT_TEST_GROUP: ${{ matrix.group }}
+          GROUP: ${{ matrix.group }}
         run: |
-          case "$PLAYWRIGHT_TEST_GROUP" in
-            games-*) npm run test:e2e -- --project=chromium --shard=${PLAYWRIGHT_TEST_GROUP#games-}/2 ;;
+          case "$GROUP" in
+            games-mobile) PLAYWRIGHT_SKIP_ISLAND=1 npm run test:e2e -- --project=mobile-chromium ;;
+            games-*) PLAYWRIGHT_TEST_GROUP=$GROUP npm run test:e2e -- --project=chromium --shard=${GROUP#games-}/3 ;;
             assets) npm run test:e2e -- --project=chromium tests/e2e/island-assets.spec.js tests/e2e/native-assets.spec.js ;;
-            # v1.10.90: the newer island 3D specs here too (playwright.config.js keeps them out of the games shards)
-            plaza) npm run test:e2e -- --project=chromium tests/e2e/plaza.spec.js tests/e2e/river-fishing.spec.js tests/e2e/weed-board.spec.js tests/e2e/island-time.spec.js tests/e2e/island-weather.spec.js tests/e2e/island-stars.spec.js tests/e2e/island-contest.spec.js tests/e2e/island-admin-look.spec.js tests/e2e/island-plants.spec.js tests/e2e/island-together.spec.js tests/e2e/island-guide.spec.js tests/e2e/island-insects.spec.js tests/e2e/island-pets.spec.js tests/e2e/asset-inspector.spec.js tests/e2e/shop-browse.spec.js tests/e2e/title-hall.spec.js tests/e2e/action-lock.spec.js tests/e2e/resident-talk.spec.js tests/e2e/transform-shop.spec.js tests/e2e/general-store.spec.js
-              npm run test:e2e -- --project=mobile-chromium tests/e2e/river-fishing.spec.js tests/e2e/weed-board.spec.js tests/e2e/island-time.spec.js tests/e2e/island-weather.spec.js tests/e2e/island-stars.spec.js tests/e2e/island-contest.spec.js tests/e2e/island-admin-look.spec.js tests/e2e/island-plants.spec.js tests/e2e/island-together.spec.js tests/e2e/island-guide.spec.js tests/e2e/island-insects.spec.js tests/e2e/island-pets.spec.js tests/e2e/shop-browse.spec.js tests/e2e/title-hall.spec.js tests/e2e/resident-talk.spec.js tests/e2e/transform-shop.spec.js tests/e2e/general-store.spec.js ;;
+            plaza-mobile) npm run test:e2e -- --project=mobile-chromium --max-failures=10 $PLAZA_MOBILE ;;
+            plaza-*) npm run test:e2e -- --project=chromium --max-failures=10 --shard=${GROUP#plaza-}/3 $PLAZA_PC ;;
           esac
-          if [ "$PLAYWRIGHT_TEST_GROUP" = "games-2" ]; then PLAYWRIGHT_TEST_GROUP= PLAYWRIGHT_SKIP_ISLAND=1 npm run test:e2e -- --project=mobile-chromium; fi
 
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.group != 'unit' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.group }}
@@ -97,9 +104,27 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload browser test results
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.group != 'unit' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results-${{ matrix.group }}
           path: test-results/
           if-no-files-found: ignore
+
+  # main's protection asks for these four names (e2e (games-1), (games-2), (assets), (plaza)): each waits for every part and
+  # passes only if all of them did. always(): a gate skipped because a part failed would count as passed (GitHub treats a
+  # skipped required check as success) -- so a gate always runs and fails itself instead.
+  e2e:
+    name: e2e (${{ matrix.gate }})
+    needs: part
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        gate: [games-1, games-2, assets, plaza]
+    steps:
+      - name: Every part passed
+        run: |
+          echo "parts: ${{ needs.part.result }}"
+          test "${{ needs.part.result }}" = "success"
