@@ -304,11 +304,12 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.73 길 3단계: 마을 길 (the hall, the shop street, and the climb and harbour walks within TOWN_R of the plaza),
   // 산책로 (the ring, those two walks beyond the town), 오솔길 (the nature area, the gazebo) -- one colour each
   const TOWN_R = 32;
-  const tierAt = (wi, x, z) => (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
+  const tierAt = (wi, x, z) => walkCurves[wi].tier || (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
   const TIER_COLOR = { town: 0xe7e1d3, walk: 0xe6d8bd, trail: 0xcdb48c };
   const pathMat = keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), true));
   const grassEdge = new THREE.Color(0xa7d483);
   const plazaPaving = new THREE.Color(0xf3e6c8);
+  const plazaDist = T.inPlaza ? (x, z) => { const P = T.dalmaru.PLAZA; return Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1); } : (x, z) => Math.hypot(x, z) - PLAZA_R; // (달마루섬: 대청마당 is a rectangle)
   const pathStrip = (pts, width, base) => {
     const v = []; const col = []; const idx = []; const gr = []; let along = 0; const c0 = new THREE.Color(base); const cm = new THREE.Color(); const ce = new THREE.Color(); const cols = 4;
     for (let i = 0; i < pts.length; i += 1) {
@@ -316,7 +317,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       const dx = b[0] - a[0]; const dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1;
       const nx = -dz / l; const nz = dx / l; const [x, z] = pts[i]; if (i) along += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
       const mottle = 0.94 + 0.08 * Math.sin(x * 0.7 + z * 0.4) * Math.cos(z * 0.53 - x * 0.2);
-      const plazaBlend = 1 - smooth(PLAZA_R - 1, PLAZA_R + 6, Math.hypot(x, z));
+      const plazaBlend = 1 - smooth(-1, 6, plazaDist(x, z));
       const halfWidth = width / 2 * (1 + 0.35 * plazaBlend);
       cm.copy(c0).multiplyScalar(mottle).lerp(plazaPaving, plazaBlend);
       ce.copy(cm).lerp(grassEdge, 0.55 * (1 - plazaBlend));
@@ -341,7 +342,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.13: every building off the plaza gets a short path from its door to the nearest walk (doors no longer open
   // onto bare grass a few steps away from the path), in that walk's colour.
   for (const b of BUILDINGS) {
-    if (b.kind === 'cottage' || b.kind === 'hall' || Math.hypot(b.x, b.z) < PLAZA_R + 3) continue; // cottages have stepping stones; the hall its square
+    if (b.kind === 'cottage' || b.kind === 'hall' || b.kind === 'facade' || plazaDist(b.x, b.z) < 3) continue; // cottages have stepping stones; the hall its square
     const dx = b.face[0] - b.x; const dz = b.face[1] - b.z; const l = Math.hypot(dx, dz) || 1;
     const door = [b.x + (dx / l) * 2.4, b.z + (dz / l) * 2.4];
     let best = null;
@@ -354,6 +355,10 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     pathStrip(pts, 1.7, TIER_COLOR[tierAt(best.wi, best.x, best.z)]);
   }
   const disc = (x, z, r, material, lift = 0.04, seg = 48) => { const m = new THREE.Mesh(keep(new THREE.CircleGeometry(r, seg)), material); m.rotation.x = -Math.PI / 2; m.position.set(x, land(x, z) + lift, z); m.receiveShadow = true; scene.add(m); return m; };
+  if (T.inPlaza) { // 대청마당 (달마루섬): one paved terrace, a band round the fountain
+    const P = T.dalmaru.PLAZA; const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), paveMat); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
+    const edge = new THREE.Mesh(keep(new THREE.RingGeometry(10.6, 11.1, 64)), mat(0xe6d3ab)); edge.rotation.x = -Math.PI / 2; edge.position.set(T.PLAZA_C.x, P.h + 0.04, T.PLAZA_C.z); scene.add(edge);
+  } else {
   disc(0, 0, PLAZA_R, paveMat, 0.03, 64);
   const rim = new THREE.Mesh(keep(new THREE.RingGeometry(PLAZA_R - 0.4, PLAZA_R, 64)), mat(0xe2cfa6)); rim.rotation.x = -Math.PI / 2; rim.position.y = PLAZA_H + 0.045; scene.add(rim);
   disc(0, -44, 9, paveMat, 0.05);
@@ -361,6 +366,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   band(0, 0, 6.6, 7.1, 0xe6d3ab, 0.04); band(0, 0, 11.3, 11.7, 0xe6d3ab, 0.04); band(0, 0, 3.6, 4.1, 0xd9c49a, 0.04); // paving rings
   band(0, -44, 3, 3.5, 0xd9c49a, 0.06); band(0, -44, 6.8, 7.2, 0xe6d3ab, 0.06);
   disc(0, -44, 1.6, mat(0x6aa9e8), 0.065, 32); // an inlaid emblem in front of the hall
+  }
 
   // Bridges: an arched wooden deck with rails.
   // v1.10.29: the bridge model (prop.bridge) is fitted to each bridge's logical deck -- its length 2 x half, its width w
@@ -380,6 +386,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       const u = (k / 2) * (b.half - 0.2); mesh(keep(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 8)), post, side * (b.w / 2 - 0.1), deckAt({ b, u }) + 0.4, u, visual);
     }
     for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, b.half * 2)), post, side * (b.w / 2 - 0.1), b.deck + 0.9, 0, visual); rail.castShadow = false; }
+    if (b.model) { // (달마루섬 윤슬다리: its own model, whose arched deck is the one walked on -- deckAt)
+      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); scene.add(h); assets?.attach(b.model, h, visual); continue;
+    }
     // in the bridge's frame (z along it, the entry turns the model's length onto z and sizes it by `scale`)
     g.userData.fit = (v) => {
       const zm = v.z / BRIDGE_SCALE; const u = Math.max(-b.half, Math.min(b.half, zm * (b.half / BRIDGE.half)));
@@ -589,7 +598,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // marks the way in. Decoration only: nothing here is walked round (the kerbs' old rule).
   const pathParts = { slab: [], terrazzo: [], border: [], edge: [], step: [], disc: [], planter: [] };
   const opening = (wi, x, z, pad) => walkCurves.some((o, oi) => oi !== wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < o.w / 2 + pad)); // another walk joins here
-  const offPath = (x, z) => Math.hypot(x, z) < PLAZA_R + 0.6 || Math.hypot(x, z + 44) < 9.4 || onBridge(x, z) || streamDist(x, z) < STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5);
+  const offPath = (x, z) => plazaDist(x, z) < 0.6 || (!T.inPlaza && Math.hypot(x, z + 44) < 9.4) || onBridge(x, z) || streamDist(x, z) < STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5);
   // junctions: where one walk meets another outside the plaza (joins and crossings), one disc each
   walkCurves.forEach((w, wi) => w.pts.forEach(([x, z]) => {
     if (offPath(x, z) || pathParts.disc.some((d) => Math.hypot(d.x - x, d.z - z) < 7)) return;
@@ -741,7 +750,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
   // 달마루섬 미리보기: the new island's map drawn once from its ground (1 dot per 2 m): sand by the sea, grass, the cliff
-  // rock, fresh water -- then its bridges on top (step 2 adds the walks and places)
+  // rock, fresh water -- then its walks, 대청마당 and bridges on top
   let landImage = null;
   function dalmaruLand() {
     if (landImage) return landImage;
@@ -759,6 +768,8 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     ctx.fillStyle = '#7fcbe9'; ctx.fillRect(-2 * w, -2 * h, 5 * w, 5 * h); // the sea (wide enough for a turned minimap)
     if (T.MAP === 'dalmaru') {
       ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), 400 * s, 400 * s);
+      for (const wk of walkCurves) { ctx.beginPath(); wk.pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.strokeStyle = '#e8d2a2'; ctx.lineWidth = (wk.w + 1) * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); }
+      const P = T.dalmaru.PLAZA; ctx.fillStyle = '#f3e6c8'; ctx.fillRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s); ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 2; ctx.strokeRect(X(P.x - P.hw), Z(P.d0), P.hw * 2 * s, (P.d1 - P.d0) * s);
       for (const b of bridges) { ctx.beginPath(); ctx.moveTo(X(b.x - b.ux * b.half), Z(b.z - b.uz * b.half)); ctx.lineTo(X(b.x + b.ux * b.half), Z(b.z + b.uz * b.half)); ctx.strokeStyle = '#b07a4f'; ctx.lineWidth = b.w * s; ctx.stroke(); }
       return;
     }
