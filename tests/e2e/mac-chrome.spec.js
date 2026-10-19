@@ -57,6 +57,7 @@ async function macUser(browser, request, label, gl = 'ok', omitMotionScript = fa
 const classicShown = (page) => page.evaluate(() => !document.body.classList.contains('plazaMode'));
 
 test('macOS Chrome: Chrome으로 판정되어 게임 아일랜드로 들어가고 기존 로비는 보이지 않는다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const { context, page, errors } = await macUser(browser, request, '맥크롬');
   expect(await page.evaluate(() => window.BrowserGate.classifyBrowser({ brands: navigator.userAgentData.brands, ua: navigator.userAgent, vendor: navigator.vendor }))).toBe('chrome');
   await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
@@ -88,6 +89,7 @@ test('WebGL이 없으면 기존 로비가 아니라 오류 화면, 원인은 진
 });
 
 test('렌더러 컨텍스트를 끝내 못 만들면 오류 화면, 다시 시도로 아일랜드에 들어간다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const { context, page } = await macUser(browser, request, '맥컨텍스트', 'refuse');
   await expect(page.locator('#plazaError')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => window.PlazaDiagnostics.code)).toBe('webgl-context');

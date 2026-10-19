@@ -264,6 +264,7 @@ test('관공서 실물 High/Low: 기단 보정 뒤 주야간 재질 렌더링과
 });
 
 test('길가 장식과 실물 4계절 회전', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const { REGISTRY } = require('../../public/plaza/island-assets');
   const a = await island(browser, request, '길가', { __only: true, 'deco.layer.edge': REGISTRY['deco.layer.edge'] });
   const sample = () => a.page.evaluate(() => {
@@ -324,6 +325,7 @@ test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browse
 });
 
 test('동일 URL 에셋: 변경된 크기·회전·그림자 재적용, 늦은 이전 선택 배제, 다운로드 재사용', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await island(browser, request, '변환', { __only: true });
   await a.page.evaluate(async url => {
     const THREE = await import('/vendor/three/three.module.js');
@@ -352,6 +354,7 @@ test('동일 URL 에셋: 변경된 크기·회전·그림자 재적용, 늦은 �
 });
 
 test('등록 없음: 로더를 받지 않고 모든 대상이 코드 생성형, 섬은 그대로 동작한다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await island(browser, request, '에셋없음', 'none');
   const d = await debug(a.page);
   expect(d.assets).toMatchObject({ registered: [], loader: 'none' });
@@ -396,6 +399,7 @@ test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받�
 });
 
 test('실패·비활성화: 없는 파일·손상된 파일·꺼진 등록은 그 대상만 코드 생성형으로 남고 섬은 계속 동작한다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await island(browser, request, '에셋실패', {
     __only: true,
     'facility.townhall': { url: '/assets/island/__e2e/missing.glb' },
@@ -417,6 +421,7 @@ test('실패·비활성화: 없는 파일·손상된 파일·꺼진 등록은 �
 });
 
 test('로더 자체를 받지 못해도 모든 대상이 코드 생성형으로 남고 섬은 계속 동작한다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await island(browser, request, '로더실패', { 'facility.townhall': { url: BOX } }, { failLoader: true });
   await expect.poll(async () => (await debug(a.page)).assets.loader, { timeout: 10000 }).toBe('failed');
   expect(a.hits).toEqual({});
@@ -428,6 +433,7 @@ test('로더 자체를 받지 못해도 모든 대상이 코드 생성형으로 
 // v1.10.28: with a model, every copy at every distance is the model (no procedural copies left); without a Low file
 // (here it is missing) the full model is used far away too
 test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기존 자리·회전·크기에 배치하고, 모든 거리에서 모델(Low 없으면 High), 실패한 종류는 코드 생성형, 소품도 교체된다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await island(browser, request, '자연물', {
     __only: true,
     'nature.tree.round': { url: BOX, scale: 1.5, low: { url: '/assets/island/__e2e/missing-low.glb' } },

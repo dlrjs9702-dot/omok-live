@@ -73,6 +73,7 @@ test('Esc 메뉴: 섬에서 Esc로 열고 닫기, 입력 중에는 열리지 않
 });
 
 test('광장 시설: 원거리 클릭은 창을 열지 않고 근처에서만 클릭·SPACE 실행', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await intoPlaza(browser, request, '근접 클릭');
   const { page } = a;
   try {
@@ -97,6 +98,7 @@ test('광장 시설: 원거리 클릭은 창을 열지 않고 근처에서만 �
 });
 
 test('상점 전환: 이전 목록을 비우고 늦은 응답이 새 상점을 덮지 않는다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await intoPlaza(browser, request, '상점 응답'); const { page } = a;
   let release; let firstSeen; const pending = new Promise((resolve) => { release = resolve; });
   const seen = new Promise((resolve) => { firstSeen = resolve; }); let requests = 0;
@@ -124,6 +126,7 @@ test('상점 전환: 이전 목록을 비우고 늦은 응답이 새 상점을 �
 });
 
 test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석·미션은 유지', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to the 60 s waited for below)
   const a = await shopper(browser, request, '보유 외형', 100000);
   try {
     await buyAndEquip(request, a, ['avatar_animal_cat_outfit']);
@@ -211,6 +214,7 @@ test('광장: 방향키로 걷고, 시설 앞 안내, Space와 클릭이 같은 
 // sleeps), every game is a card, a card opens its sheet, 방 만들기 there makes the room; out of the room back to the game
 // hall, and 「‹ 섬으로」 (or Esc) back to the island where I was
 test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 → 방 만들기, 나오면 게임관, ‹ 섬으로 아일랜드 유지', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: the island's start alone may take up to 60 s on a busy runner)
   const a = await intoPlaza(browser, request, '게임관');
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().place('games'));

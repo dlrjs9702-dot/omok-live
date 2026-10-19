@@ -72,9 +72,8 @@ test('peek reveals one card to the peeker only, is one-shot, and requires my tur
 });
 
 test('a peek result is invalidated the moment the target reshuffles or any draw happens', () => {
-  const g = oldmaid.create();
-  oldmaid.setMode(g, 'special');
-  oldmaid.start(g, ['1', '2']);
+  let g; // (a deal can end the game at once -- a hand empty after its pairs, about 1 in 7,000: deal again)
+  do { g = oldmaid.create(); oldmaid.setMode(g, 'special'); oldmaid.start(g, ['1', '2']); } while (g.status !== 'playing');
   g.abilities['1'] = 'peek';
   g.turn = '1'; g.target = '2';
   oldmaid.peekCard(g, '1', 0, g.revision);
