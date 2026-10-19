@@ -95,7 +95,8 @@ test('배회 NPC 이동(가혹한 장면): 경로 위에 경로 계획이 모르
 test('배회 NPC 이동: 경로를 가로막은 소품 벽에도 끼어 떨지 않고 원 안에 들어가지 않으며, 곧 자기 경로로 돌아간다', () => {
   // a wall of touching props right across islander 0's way (worse than anything the scene has)
   const t0 = 13_000_000; let s = 2; let p = null;
-  for (; s < 60; s += 0.5) { p = P.at(0, t0 + s * 1000); if (p.moving && !T.onBridge(p.x, p.z)) break; }
+  // (away from the walks' lamps: a lamp either side of the wall would close the way round it altogether)
+  for (; s < 60; s += 0.5) { p = P.at(0, t0 + s * 1000); if (p.moving && !T.onBridge(p.x, p.z) && T.nature().lampSpots.every((l) => Math.hypot(l.x - p.x, l.z - p.z) > 6)) break; }
   const wall = [-2, -1, 0, 1, 2].map((k) => ({ x: p.x + Math.cos(p.yaw) * k * 1.2, z: p.z - Math.sin(p.yaw) * k * 1.2, r: 0.75 }));
   const { solidsNear } = world(wall);
   const walkers = P.createWalkers({ walkable: T.walkable, solidsNear });

@@ -491,7 +491,7 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
     }
     return zones;
   };
-  const day0 = 20736; // any day: 20736 % 4 === 0, zone k shows season k (north spring, east summer, south autumn, west winter)
+  const day0 = 20736;
   const first = await expectDay(day0);
   if (first[0]) expect(first[0].look).toBe('spring');
   const next = await expectDay(day0 + 1);
@@ -552,7 +552,8 @@ test('겨울 지붕 눈: 그날 겨울 구역의 집·시설만 지붕 모양에
     for (const r of list.filter((x) => x.look !== 'winter')) expect(['none', 'hidden']).toContain(r.snow);
     return list;
   };
-  const day0 = 20736;
+  // (the first day from 20736 whose winter zone and the next day's both hold buildings -- 달마루섬's stand in two zones of four)
+  const day0 = await page.evaluate(() => { const t = window.IslandTerrain; const b = [...t.COTTAGES, ...Object.values(t.SPOTS)]; const w = (d) => b.some((x) => t.zoneSeason(t.seasonZoneAt(x.x, x.z), d) === 'winter'); for (let d = 20736; d < 20744; d += 1) if (w(d) && w(d + 1)) return d; return 20736; }); // any day: 20736 % 4 === 0, zone k shows season k (north spring, east summer, south autumn, west winter)
   const first = await check(day0);
   const kinds = new Set(first.filter((r) => r.look === 'winter').map((r) => r.snow));
   const next = await check(day0 + 1);
