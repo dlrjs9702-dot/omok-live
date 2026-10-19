@@ -1309,7 +1309,6 @@ test('잡초 채집: 가장 가까운 한 포기만, Space 약 1초 뒤 가방 +
 // v1.10.41 관공서 확장: the mayor stands in the yard's gate; without his leave a step into the yard is put back out at the
 // gate (the server), SPACE by him asks once and he lets me in for the rest of the visit, stepping aside
 test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말을 걸어 허가받으면 비켜서고 들어갈 수 있다', async ({ browser, request }) => {
-  test.skip(DAL, '지금 섬 전용 (달마루섬: 관공서는 절벽 정면 -- 담장 마당·시장 문 없음)');
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '시장손님');
   const { page } = a;
@@ -1357,12 +1356,13 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
       expect(view.camera.clear).toBeGreaterThan(0.9); expect(view.distance).toBeGreaterThanOrEqual(4);
     }
   }
-  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(0); });
+  // (달마루섬: the cliff front -- the walk straight at it, stopped within a body's half-width and its circles' scallop of the front)
+  await page.evaluate((DAL) => { const d = window.PlazaDebug(); d.setCamPitch(0); d.setCamYaw(DAL ? window.IslandTerrain.TOWNHALL.ry : 0); }, DAL);
   for (const lx of [0, 4.6, -6.5]) {
     await page.evaluate((x) => { const p = window.IslandTerrain.townhallWorld(x, 9.5); window.PlazaDebug().teleport(p.x, p.z); }, lx);
     await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1800); await page.keyboard.up('ArrowUp');
     const at = await page.evaluate(() => { const d = window.PlazaDebug(); return window.IslandTerrain.townhallLocal(d.x, d.z); });
-    expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
+    expect(at.lz, `${lx}: ${JSON.stringify(at)}`).toBeGreaterThan(DAL ? T.TOWNHALL.body.z1 - 0.65 : Math.abs(at.lx) < 3.3 ? 7.4 : 6.3);
   }
   await expectNoScriptError(page);
   await a.context.close();

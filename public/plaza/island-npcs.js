@@ -322,7 +322,9 @@
     const list = [];
     // a new islander starts where its round has it now (not at the origin, walking over to it)
     function add(n, ms) {
-      const pose = poseAt(n, ms); const [x, z] = pose.held ? [pose.x, pose.z] : pushOut(pose.x, pose.z);
+      const pose = poseAt(n, ms); let [x, z] = pose.held ? [pose.x, pose.z] : pushOut(pose.x, pose.z);
+      // (not on top of one already out: set apart now, rather than shoved apart by the first frame)
+      if (!pose.held) for (const o of list) { const d = Math.hypot(x - o.x, z - o.z); if (d < SEP) { const a = d < 1e-5 ? n : Math.atan2(z - o.z, x - o.x); [x, z] = move(x, z, o.x + Math.cos(a) * (SEP + 0.005), o.z + Math.sin(a) * (SEP + 0.005)); } }
       const w = { n, x, z, px: x, pz: z, bx: pose.x, bz: pose.z, pose, speed: 0, heading: null };
       list.push(w); return w;
     }

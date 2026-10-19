@@ -20,7 +20,7 @@ test('달마루섬 이사: 심은 꽃은 씨앗, 나무는 묘목으로 한 번�
   const owner = `guest:${key.id}`; const at = new Date().toISOString();
   data.island ||= { bags: {}, days: {} };
   data.island.plants = [{ id: 'p1', owner, kind: 'flower', color: 'red', x: 30, z: 30, plantedAt: Date.now() }, { id: 'p2', owner, kind: 'tree', color: null, x: 40, z: 40, plantedAt: Date.now() }];
-  data.island.weeds = { day: '2026-10-19', removed: { w3: at }, added: [{ id: 'g1-0', x: 10, z: 10 }], pulled: 4 };
+  data.island.weeds = { day: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) /* (today in KST: no day's roll over the test) */, removed: { w3: at }, added: [{ id: 'g1-0', x: 10, z: 10 }], pulled: 4 };
   await fs.writeFile(file, JSON.stringify(data));
   process.env.ISLAND_MAP = 'dalmaru';
   for (let round = 0; round < 2; round += 1) { // (a second start gives nothing more)

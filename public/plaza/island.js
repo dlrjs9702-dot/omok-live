@@ -564,11 +564,14 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const busy = (x, z) => T.inTownhall(x, z, 2) || Math.hypot(x, z) < PLAZA_R + 1.5 || Math.hypot(x, z + 44) < 10 || onBridge(x, z) || BUILDINGS.some((s) => Math.hypot(x - s.x, z - s.z) < 4.5);
   const along = (pts, step, fn) => { let acc = 0; for (let i = 1; i < pts.length; i += 1) { const [x0, z0] = pts[i - 1]; const [x1, z1] = pts[i]; const l = Math.hypot(x1 - x0, z1 - z0); acc += l; if (acc < step) continue; acc = 0; fn(x1, z1, (x1 - x0) / (l || 1), (z1 - z0) / (l || 1), i); } };
   // v1.10.73: the walks' own edges are the path tiers below (the stream banks keep their soft scatter)
-  streamCurves.forEach((st, si) => along(st, 1.1, (x, z, dx, dz, i) => {
+  // (달마루섬: its rivers -- straight runs, cut into half-metre points -- the scatter on the bank's top, past its cut)
+  const banks = T.dalmaru ? T.dalmaru.RIVERS.map((r) => ({ half: r.w / 2 + 2.05, pts: r.pts.slice(1).flatMap(([x1, z1], k) => { const [x0, z0] = r.pts[k]; const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.5)); return Array.from({ length: n }, (_, j) => [x0 + ((x1 - x0) * (j + 1)) / n, z0 + ((z1 - z0) * (j + 1)) / n]); }) }))
+    : streamCurves.map((pts) => ({ pts, half: STREAM_HALF }));
+  banks.forEach(({ pts: st, half }, si) => along(st, 1.1, (x, z, dx, dz, i) => {
     if (coastDist(x, z) < 3) return;
     for (const side of [-1, 1]) {
-      const h = hash(x, z + side, si + 7); const off = STREAM_HALF + 0.35 + hash(x, z, i) * 0.7; const px = x - dz * off * side; const pz = z + dx * off * side;
-      if (busy(px, pz) || walkDist(px, pz) < 0.3) continue;
+      const h = hash(x, z + side, si + 7); const off = half + 0.35 + hash(x, z, i) * 0.7; const px = x - dz * off * side; const pz = z + dx * off * side;
+      if (busy(px, pz) || walkDist(px, pz) < 0.3 || (T.dalmaru && !walkable(px, pz))) continue;
       if (h < 0.35) edgeStones.push({ x: px, z: pz, s: 0.14 + hash(px, pz) * 0.18 });
       else if (h < 0.6) {
         if (hash(px, pz, 37) < 0.06) edgeSeason.push({ x: px, z: pz, s: 0.18, r: -Math.atan2(dz, dx), v: 2 });
@@ -638,6 +641,13 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       s -= l;
     }
   });
+  // (달마루섬: a walk is one tier end to end -- the planters mark a 산책로 or 오솔길 where it leaves a town walk, 1.5 m in)
+  if (T.dalmaru) walkCurves.forEach((w, wi) => { if (w.tier === 'town') return; for (const end of [0, w.pts.length - 1]) {
+    const [ex, ez] = w.pts[end]; if (!walkCurves.some((o, oi) => oi !== wi && o.tier === 'town' && o.pts.some(([ox, oz]) => Math.hypot(ox - ex, oz - ez) < o.w / 2 + 0.9))) continue;
+    const [nx, nz] = w.pts[end ? Math.max(0, end - 4) : Math.min(w.pts.length - 1, 4)]; const l = Math.hypot(nx - ex, nz - ez) || 1; const dx = (nx - ex) / l; const dz = (nz - ez) / l;
+    const x = ex + dx * 1.5; const z = ez + dz * 1.5;
+    for (const side of [-1, 1]) { const o = w.w / 2 + 0.9; const px = x - dz * o * side; const pz = z + dx * o * side; if (walkable(px, pz)) pathParts.planter.push({ x: px, z: pz, r: -Math.atan2(dz, dx) }); }
+  } });
   const onGround = (x, z) => T.meshGroundHeight(x, z);
   const placeFlat = (lift) => (p) => setM(p.x, onGround(p.x, p.z) + lift, p.z, p.s ?? 1, 1, p.r);
   // Without a piece's model (switched off, not registered) nothing stands in: the walk strips above already show each

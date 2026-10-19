@@ -380,8 +380,8 @@ test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받�
   const d = await debug(page);
   expect(d.assets.loader).toBe('ready');
   expect(d.assets.files).toMatchObject({ [BOX]: 'loaded', [RIG]: 'loaded' });
-  expect(a.hits).toEqual({ [BOX]: 1, [RIG]: 1 }); // one download each: the town hall, nine cottages (two LOD levels) and me
-  expect(d.assets.lods).toBe(9);
+  expect(a.hits).toEqual({ [BOX]: 1, [RIG]: 1 }); // one download each: the town hall, the cottages (two LOD levels) and me
+  expect(d.assets.lods).toBe(require('../../public/plaza/island-terrain.js').COTTAGES.length); // (지금 섬 9, 달마루섬 10)
   expect(a.code).toEqual(expect.arrayContaining(['/plaza/asset-loader.js', '/vendor/three/addons/loaders/GLTFLoader.js', '/vendor/three/addons/utils/SkeletonUtils.js']));
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors); // doors (and with them interaction) are the game's, not the model's
 
@@ -515,7 +515,8 @@ test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — �
   const a = await island(browser, request, '바다구경', { __only: true, 'sea.boat': { url: BOX }, 'sea.gull': { url: BOX }, 'sea.dolphin': { url: BOX }, 'sea.splash': { url: BOX } });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 30000 }).toBe('ready');
-  await page.evaluate(() => window.PlazaWarp(98, 0)); // on the east beach, the open sea before it (the harbour is south)
+  // on the east beach, the open sea before it (the harbour is south); 달마루섬: the east arm's outer beach, looking out to sea
+  await page.evaluate((DAL) => { if (!DAL) return window.PlazaWarp(98, 0); window.PlazaWarp(142.5, 82.2); window.PlazaDebug().setCamYaw(-2.012); }, Boolean(require('../../public/plaza/island-terrain.js').dalmaru));
   const sights = () => page.evaluate(() => ({ at: window.PlazaDebug().sea.at(), me: { x: window.PlazaDebug().x, z: window.PlazaDebug().z } }));
   const out = (p) => page.evaluate(([x, z]) => window.IslandTerrain.coastDist(x, z), [p.x, p.z]);
   for (const kind of ['boat', 'gulls', 'dolphins']) {
@@ -581,7 +582,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
   const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it)
-  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
+  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.startsWith('/assets/island/'));

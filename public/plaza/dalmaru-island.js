@@ -66,6 +66,17 @@
   const bayAt = (a, r = 101) => [Math.round(r * Math.cos(rad(a)) * 10) / 10, Math.round((D.BAY_Z + r * Math.sin(rad(a))) * 10) / 10];
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
+  // 관공서 앞마당 (5단계): the walled yard and the mayor's gate before the cliff front, in the old hall's frame -- its origin
+  // 2.75 m into the cliff, so the front stands at lz 7.35 as the old hall's did and island-townhall builds the yard as it is
+  const TOWNHALL = (() => {
+    const s = SPOTS.townhall; const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const back = 7.35 - FACADE.d;
+    return { x: s.x - Math.sin(ry) * back, z: s.z - Math.cos(ry) * back, ry, cos: Math.cos(ry), sin: Math.sin(ry), body: { hx: 8.3, z0: back, z1: 7.35 }, yard: { hx: 8.3, z0: 7.35, z1: 16.35 }, gate: { hw: 1.6 } };
+  })();
+  const townhallLocal = (x, z) => { const dx = x - TOWNHALL.x; const dz = z - TOWNHALL.z; return { lx: TOWNHALL.cos * dx - TOWNHALL.sin * dz, lz: TOWNHALL.sin * dx + TOWNHALL.cos * dz }; };
+  const townhallWorld = (lx, lz) => ({ x: TOWNHALL.x + TOWNHALL.cos * lx + TOWNHALL.sin * lz, z: TOWNHALL.z - TOWNHALL.sin * lx + TOWNHALL.cos * lz });
+  const inTownhall = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const b = TOWNHALL.body; return Math.abs(lx) <= b.hx + m && lz >= b.z0 - m && lz <= TOWNHALL.yard.z1 + m; };
+  const inTownhallYard = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const y = TOWNHALL.yard; return Math.abs(lx) <= y.hx - m && lz >= y.z0 - m && lz <= y.z1 - m; };
+  const thPt = (lx, lz) => { const p = townhallWorld(lx, lz); return [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10]; };
   // tier: 'town' (대청마당 round and 물가 거리 before it), 'walk' (the arms, the bridges, 잔치마루), 'trail' (푸른숲골)
   const WALKS = [
     { tier: 'town', w: 3.2, pts: [[0, -54], [0.6, -30], [0, -8]] }, // 대청마당 → 물가 거리 (배 타는 곳)
@@ -73,7 +84,8 @@
     { tier: 'walk', w: 2.8, pts: [...arc(234, 156), [-88, 140]] }, // 물가 거리 → the west arm → its cape (초승등대)
     { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146]] }, // → the east arm → its cape (달끝나루)
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
-    { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], doorPt('townhall'), [-79, -95], [-84, -92]] }, // → 관공서 → the ridge's stairs
+    { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
+    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-11, 8.5), [-84, -92]] }, // → round the yard → the ridge's stairs
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-42, -66], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34]] }, // 이웃골 → the west arm's shore
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-82, -2], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
@@ -86,7 +98,7 @@
   // ---- the ground: dalmaru-terrain's, levelled under what stands and filled where the stairs meet the ridge ----
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
   const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
-  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
+  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
     ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5])]
     .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
   // 능선 계단 (assets 55 stairs.ridge): three flights of 7 m (9.52 m each) and two 3 m landings along the chord from its
@@ -317,6 +329,6 @@
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
-    inTownhall: () => false, inTownhallYard: () => false,
+    TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,
   });
 }));

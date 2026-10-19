@@ -870,7 +870,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   if (BARE && !globalThis.IslandTerrain.STRUCTURES) train.group.visible = false; // (달마루섬 4단계: its own ring)
   const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
-  const noYard = BARE || globalThis.IslandTerrain.MAP === 'dalmaru'; // (달마루섬: the 관공서 is a cliff front -- no walled yard, no mayor at a gate)
+  const noYard = BARE; // (달마루섬 5단계: the yard and the mayor's gate before the cliff front too)
   if (noYard) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = globalThis.IslandTerrain.STRUCTURES ? firstYardSolid : firstTrainSolid; } // (nor their circles)
   buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
   if (!noYard) doors.mayor = yard.door;
@@ -1458,6 +1458,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // where the water is from here: the nearest open water round me (sea), a few metres out
   function waterFrom(x, z) {
     const T = globalThis.IslandTerrain; let best = null;
+    if (T.dalmaru && T.fishWater(x, z) === 'river') { // (달마루섬: rivers, 거울호수, pools -- the ground cut below the sea's level, the surface at it)
+      const D = T.dalmaru;
+      for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
+        const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const g = D.ground(wx, wz);
+        if (D.isWater(wx, wz) && D.coastDist(wx, wz) >= 0 && !T.onBridge(wx, wz) && (!best || g < best.cd)) best = { x: wx, z: wz, cd: g, yaw: a, y: D.SEA };
+      }
+      if (best) return best;
+    }
     if (T.fishWater?.(x, z) === 'river') { // v1.10.90 강 낚시: the nearest point of the stream, the float at its surface
       for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
         const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const d = T.streamDist(wx, wz);

@@ -23,7 +23,7 @@ const MAYOR_LINES = ['관공서에 무슨 용무로 오셨소?', '이곳은 섬�
 
 export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall = null }) {
   const TH = T.TOWNHALL; const Y = TH.yard; const at = T.townhallWorld; const ry = TH.ry;
-  const y0 = heightAt(TH.x, TH.z);
+  const y0 = heightAt(at(0, 11.5).x, at(0, 11.5).z); // (the yard's middle: 달마루섬's frame starts inside the cliff)
   const group = new THREE.Group(); group.name = 'townhall-yard'; scene.add(group);
   const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true }); const made = [glowMat];
   const place = Object.fromEntries(Object.keys(SHAPES).map((k) => [k, []]));

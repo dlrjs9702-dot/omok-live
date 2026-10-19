@@ -148,7 +148,7 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
   await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),placed.data);
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().questScenes()), { timeout: 15000 }).toMatchObject({ flower: 'empty', frame: false });
   // someone far off: the name tag is drawn out of the fog, the chat bubble only near
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().farSight()), { timeout: 20000 }).toEqual([expect.objectContaining({ tag: true })]);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().farSight()), { timeout: 30000 }).toEqual([expect.objectContaining({ tag: true })]); // (30 s: an earlier test's player leaves in 15)
   await expectNoScriptError(page);
   await a.context.close(); await b.context.close();
 });
@@ -162,6 +162,8 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().quests().some((q) => q.id === 'questfisher')), { timeout: 20000 }).toBe(true);
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questfisher'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');
+  // (an earlier test's player by the fisher would take the SPACE -- the server lets them go in 15 s)
+  await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); return d.others.filter((o) => Math.hypot(o.x - d.x, o.z - d.z) < 3).length; }), { timeout: 30000 }).toBe(0);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('해안 쓰레기 5개');
   await page.locator('#plazaDialog .lostRequest button, #plazaDialog button.primary').first().click(); // closes the talk
