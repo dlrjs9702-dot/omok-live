@@ -292,7 +292,7 @@ test('광장 아바타: 상점에서 산 헤어·의상·모자와 전설 칭호
     await expect(page.locator('#plazaHint')).toHaveText(`SPACE · ${name}`);
     await page.keyboard.press('Space');
     await expect(dialog.locator('#skinShopTitle')).toHaveText(name);
-    await expect(dialog.getByRole('tab').first()).toHaveText('광장 아바타'); // game skins are sold next door
+    await expect(dialog.locator('.skinTab:not([data-slot])')).toHaveCount(1); await expect(dialog.locator('.skinTab:not([data-slot])')).toHaveAttribute('data-family', 'avatar'); // game skins are sold next door (3-1: the lone tab not shown)
     await expect(dialog.locator('.skinCard')).toHaveCount(count);
   };
   await visit('hair', '미용실', 34); // v1.10.74: +17 original hairstyles

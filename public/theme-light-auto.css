@@ -1085,3 +1085,49 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .logoutDialog{border-color:#d6c3a5;background:#fffaf1}
 :root[data-theme="light"] .logoutDialog>h2:first-child{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff}
 :root[data-theme="light"] .logoutDialog.pauseDialog>h2:first-child{color:#fff}
+:root[data-theme="light"] .skinShopDialog.dressing>.recordsDialogHead,:root[data-theme="light"] .plazaDialog:has(.dressRoom)>.recordsDialogHead{background:linear-gradient(180deg,#a8743f,#7c4f26);border-bottom:3px solid #5b3714}
+:root[data-theme="light"] .skinShopDialog.dressing>.recordsDialogHead h2{background:#8b5a2b;box-shadow:inset 0 0 0 2px #c58b4f,0 2px 0 #4a2c10}
+:root[data-theme="light"] .dressing .skinCard.selected{outline:2px solid #22c55e}
+:root[data-theme="light"] .dressing .skinCard.selected::before{background:#22c55e;color:#fff}
+:root[data-theme="light"] .dressStage{background:linear-gradient(180deg,#cfe8ff 0%,#e7f4ff 52%,#bfe3a5 52%,#a7d58c 100%)}
+:root[data-theme="light"] .dressStage .dressCanvas{background:transparent}
+:root[data-theme="light"] .dressPedestal{background:radial-gradient(ellipse at 50% 40%,#e9d8b8,#c9a777 70%,#a5814f);box-shadow:0 6px 0 #8a6a3d}
+:root[data-theme="light"] .dressChip{background:#7c4f26;color:#fff}
+:root[data-theme="light"] .dressNote{color:#1e3a5f}
+:root[data-theme="light"] .dressSideTools{background:rgba(255,255,255,.75)}
+:root[data-theme="light"] .dressTool{border:1px solid #d6c3a5;background:#fffaf1;color:#4a3324}
+:root[data-theme="light"] .dressDots i{background:rgba(255,255,255,.7)}
+:root[data-theme="light"] .dressDots i.on{background:#7c4f26}
+:root[data-theme="light"] .dressCompare{background:rgba(255,250,241,.92);border:1px solid #d6c3a5}
+:root[data-theme="light"] .dressCompare img{background:#e7f4ff}
+:root[data-theme="light"] .dressCompare figcaption{color:#4a3324}
+:root[data-theme="light"] .dressCompare figure:last-child figcaption{color:#15803d}
+:root[data-theme="light"] .dressArrow{color:#7c4f26}
+:root[data-theme="light"] .dressDetail{background:#f3e9d8;border:1px solid #d6c3a5}
+:root[data-theme="light"] .dressDetail p{color:#7a6650}
+:root[data-theme="light"] .dressTags i{background:#d6c3a5;color:#5e4d3b}
+:root[data-theme="light"] .dressBar{background:#fffaf1;border:1px solid #d6c3a5}
+:root[data-theme="light"] .dressPoints{color:#8a5a00}
+:root[data-theme="light"] .dressBar button{border:0;color:#fff}
+:root[data-theme="light"] .dressBar .dressBuy{background:#16a34a}
+:root[data-theme="light"] .dressBar .dressWear{background:#23806f}
+:root[data-theme="light"] .dressBar .dressGift{background:#db2777}
+:root[data-theme="light"] .dressBar .dressClose{background:#c9b394}
+:root[data-theme="light"] .skinShopDialog.dressing>.recordsDialogHead h2,:root[data-theme="light"] .plazaDialog:has(.dressRoom):not(.talkMode)>.recordsDialogHead h2{background:url("/assets/shop/ui/sign_blank.webp") center/100% 100% no-repeat;box-shadow:none;color:#fff}
+:root[data-theme="light"] .dressStage{background:url("/assets/shop/ui/preview_bg.webp") center/cover no-repeat}
+:root[data-theme="light"] .dressNote{color:#fff}
+:root[data-theme="light"] .dressing .skinCard>button[data-action="buy"]::before,:root[data-theme="light"] .dressPoints::before{background:url("/assets/shop/ui/coin.webp") center/contain no-repeat}
+:root[data-theme="light"] .dressBar .dressBuy::before,:root[data-theme="light"] .dressBar .dressWear::before,:root[data-theme="light"] .dressBar .dressGift::before,:root[data-theme="light"] .dressBar .dressClose::before{background:center/contain no-repeat}
+:root[data-theme="light"] .dressBar .dressBuy::before{background-image:url("/assets/shop/ui/btn_cart.webp")}
+:root[data-theme="light"] .dressBar .dressWear::before{background-image:url("/assets/shop/ui/btn_hanger.webp")}
+:root[data-theme="light"] .dressBar .dressGift::before{background-image:url("/assets/shop/ui/btn_gift.webp")}
+:root[data-theme="light"] .dressBar .dressClose::before{background-image:url("/assets/shop/ui/btn_close.webp")}
+:root[data-theme="light"] .dressing input.skinSearch{background-image:url("/assets/shop/ui/btn_search.webp"),radial-gradient(circle at 17px 50%,#7c4f26 11px,transparent 12px)}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab]::before{background:url("/assets/shop/ui/cat_accessories.webp") center/contain no-repeat}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab][data-slot=""]::before{background-image:url("/assets/shop/ui/cat_all.webp")}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab]:is([data-slot="outfit"],[data-slot="top"],[data-slot="bottom"])::before{background-image:url("/assets/shop/ui/cat_clothes.webp")}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab]:is([data-slot="hat"],[data-slot="hair"])::before{background-image:url("/assets/shop/ui/cat_hat.webp")}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab][data-slot="shoes"]::before{background-image:url("/assets/shop/ui/cat_shoes.webp")}
+:root[data-theme="light"] .dressing .skinSlotTabs [role=tab][data-slot="transform"]::before{background-image:url("/assets/shop/ui/cat_transform.webp")}
+:root[data-theme="light"] .dressGiftForm{background:#f3e9d8;border:1px solid #db2777}
+:root[data-theme="light"] .dressGiftForm .dressGift{background:#db2777;color:#fff;border:0}

@@ -3432,7 +3432,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
   // World actions keep their existing classic/room entry paths; while on the island, the server checks the door too.
   const placeActions = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
-  if (req.method === 'POST' && (placeActions[pathname] || pathname === '/api/skins/buy' || (req.headers['x-island-facility'] && ['/api/skins/equip', '/api/skins/title'].includes(pathname)))) {
+  if (req.method === 'POST' && (placeActions[pathname] || pathname === '/api/skins/buy' || pathname === '/api/skins/gift' || (req.headers['x-island-facility'] && ['/api/skins/equip', '/api/skins/title'].includes(pathname)))) {
     const session = requireSession(req, res); if (!session) return;
     const at = plazaPresence.get(session.token);
     if (at) {
@@ -3441,7 +3441,7 @@ async function requestHandler(req, res) {
       const avatar = skin?.game === 'avatar' || skin?.family === 'avatar' || body.game === 'avatar';
       const slot = skin?.slot || body.slot;
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
-      const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
+      const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
       const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
@@ -3863,6 +3863,29 @@ async function requestHandler(req, res) {
     if (result.applied) notifyPointsChanged([account]);
     // Already owned is a normal answer (nothing charged), never an error.
     return sendJson(res, 200, { ok: true, skinId: skin.id, purchased: result.applied, owned: true, balance: result.balance });
+  }
+
+  // 3-1 스킨 선물 (사용자 2026-10-19 「선물 허용으로」「우체국으로 쪽지 오는걸로」): at the shop, for anyone with an account
+  // (the 우체통's list): I pay, it is theirs, and a note says so in their 우체통 (it does not count against my letters)
+  if (pathname === '/api/skins/gift' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skingift:${account}`, 10, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const skin = skinById(body.skinId); const requestId = String(body.requestId || '');
+    if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_GIFT', '다시 시도해 주세요.');
+    const key = await accessStore.get(String(body.to || '')); const to = key ? `guest:${key.id}` : null;
+    if (!key || key.revokedAt || key.pendingAt || to === account) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
+    const note = Together.letterText(body.text || '') || '';
+    const result = await pointStore.giftSkin({ userId: account, to, skinId: skin.id, price: skin.price, title: `${skin.name} · ${key.label}에게 선물` });
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 부족합니다. ${skin.price.toLocaleString('ko-KR')}P가 필요합니다.`, { balance: result.balance, price: skin.price });
+    if (result.reason === 'owned') return sendError(res, 409, 'ALREADY_OWNED', `${key.label}님은 이미 가지고 있어요.`);
+    notifyPointsChanged([account]);
+    const now = nowMs(); const fromName = String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24);
+    const letter = { id: requestId, from: session.guestKeyId || 'admin', fromName, text: note || `${skin.name}을(를) 선물했어요!`, itemId: null, skinId: skin.id, skinName: skin.name, at: now, read: false };
+    await pointStore.questApply(to, 'mail', (d) => ((d.letters || []).some((l) => l.id === letter.id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+    notifyAccount(to, 'mail', { from: fromName }); notifyAccount(to, 'skins', {});
+    return sendJson(res, 200, { ok: true, skinId: skin.id, to: key.label, balance: result.balance });
   }
 
   if (pathname === '/api/skins/equip' && req.method === 'POST') {

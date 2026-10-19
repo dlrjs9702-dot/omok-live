@@ -28,13 +28,13 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
   await shop.locator('input.skinSearch').fill('없는이름xyz');
   await expect(shop.locator('.skinResults')).toContainText('조건에 맞는 스킨이 없습니다');
   await shop.locator('input.skinSearch').fill('');
-  // 파츠 미리보기: 3D, the item worn
-  await shop.locator('.skinCard').first().getByRole('button', { name: /미리보기$/ }).click();
+  // 파츠 미리보기 (3-1 꾸미기 창): the 3D beside the list from the start, a card pressed is worn there; gone with the window
   await expect(page.locator('#skinShopTryOn')).toBeVisible();
+  await shop.locator('.skinCard').first().locator('.skinName').click();
+  await expect(page.locator('#skinShopTryOn .dressName')).toContainText((await shop.locator('.skinCard').first().locator('.skinName').textContent()).trim());
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().tryOn()?.model), { timeout: 20000 }).toBe(true); // the 3D character came
-  await page.locator('#skinShopTryOn').getByRole('button', { name: '미리보기 닫기' }).click();
-  await expect(page.locator('#skinShopTryOn')).toBeHidden();
   await shop.locator('#skinShopCloseBtn').click();
+  await expect(page.locator('#skinShopTryOn')).toBeHidden();
 
   // 내 정보: 부위 tabs with counts, the bought ones only
   await page.keyboard.press('Escape'); await page.locator('#myInfoBtn').click(); // (in the Esc menu)
@@ -44,7 +44,7 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
   await expect(mine.locator('.skinCard')).toHaveCount(2);
   await mine.locator('.skinSlotTabs [role=tab]').filter({ hasText: '헤어' }).click();
   await expect(mine.locator('.skinCard')).toHaveCount(1);
-  await mine.locator('.skinCard').getByRole('button', { name: /미리보기$/ }).click();
+  await mine.locator('.skinCard .skinName').click();
   await expect(page.locator('#myInfoTryOn canvas')).toBeVisible();
   const box = await page.locator('#myInfoDialog').boundingBox(); const vw = page.viewportSize().width;
   expect(box.x + box.width).toBeLessThanOrEqual(vw + 1); // fits a phone too
