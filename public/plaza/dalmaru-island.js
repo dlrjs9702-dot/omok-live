@@ -86,9 +86,10 @@
 
   // ---- the ground: dalmaru-terrain's, levelled under what stands and filled where the stairs meet the ridge ----
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
-  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...COTTAGES.map((c) => [c.x, c.z, 4.6]),
+  const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
+  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
     ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5])]
-    .map(([x, z, r]) => ({ x, z, r, h: D.landHeight(x, z) }));
+    .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
   // 능선 계단 (assets 55 stairs.ridge): three flights of 7 m (9.52 m each) and two 3 m landings along the chord from its
   // foot to its top, against the cliff (its treads 0.2-3.2 m out from it)
   const SF = PL.stairs.from; const ST = PL.stairs.to; const SL = 34.56;
@@ -269,7 +270,34 @@
     natureCache = { trees, flowers, bushes, tufts, rocks, posts: [], lampSpots: [] };
     return natureCache;
   }
-  const natureSolids = () => [...nature().trees.map((t) => ({ x: t.x, z: t.z, r: 0.55 * t.s })), ...nature().rocks.filter((r) => r.s > 0.9).map((r) => ({ x: r.x, z: r.z, r: 0.45 * r.s }))];
+  // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free
+  // spot at its trunk; fruit trees are kept clear of walks, buildings and the plaza
+  let harvestOf = null; let harvestCache = [];
+  function harvestTrees() {
+    const n = nature(); if (harvestOf === n) return harvestCache;
+    const out = [];
+    const approachOf = (t) => {
+      const p = { x: t.x, z: t.z + 0.685 };
+      if (inPlaza(p.x, p.z, 4) || !walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || D.riverDist(p.x, p.z) < 3 || D.lakeDist(p.x, p.z) < 3) return null;
+      if (n.trees.some((o) => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some((o) => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) return null;
+      if (BUILDINGS.some((b) => Math.hypot(p.x - b.x, p.z - b.z) < (b.kind === 'hall' ? 14 : b.kind === 'facade' ? 18 : 7))) return null;
+      return p;
+    };
+    const add = (t, p) => out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
+    for (const t of n.trees) { if (out.length === 20) break; const p = approachOf(t); if (!p || out.some((o) => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue; add(t, p); }
+    for (const t of n.trees) { if (C.treeKind(t) !== 'fruit' || out.some((o) => Math.hypot(o.x - t.x, o.z - t.z) < 5)) continue; const p = approachOf(t); if (p) add(t, p); }
+    harvestOf = n; harvestCache = out; return out;
+  }
+  // the shore within a few metres of the water (sea or 윤슬만, not the cliffs) -- where the tide leaves things, and the
+  // views: a 2 m sample, worked out once
+  let shoreCells = null;
+  function shoreSpots() {
+    if (shoreCells) return shoreCells;
+    shoreCells = [];
+    for (let x = -D.R_OUT; x <= D.R_OUT; x += 2) for (let z = -D.R_OUT; z <= D.R_OUT; z += 2) { const cd = D.coastDist(x, z); if (cd > 2.6 && cd < 9 && cliffAt(x, z) < 0.3 && walkable(x, z)) shoreCells.push({ x, z, cd }); }
+    return shoreCells;
+  }
+  const natureSolids = () => { const n = nature(); const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s }))]; }; // (as the scene walks round them: island.js)
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
@@ -282,7 +310,7 @@
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
-    seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees: () => [], AREAS, WATERFRONT, STRUCTURES, FACADE,
+    seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
     structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: [], HALLOWEEN_EXTRAS: [], dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     inTownhall: () => false, inTownhallYard: () => false,
