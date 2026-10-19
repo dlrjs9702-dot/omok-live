@@ -26,6 +26,12 @@ test('달마루섬 2단계: 보이는 것 = 막는 것, 뜨거나 묻힌 것 없
   expect(r.sunk).toEqual([]);
   expect(r.unreachable).toEqual([]);
   expect(r.reachedCells).toBeGreaterThan(30000);
+  // 3단계 영웅마루: the donors' 1st and 2nd and the contest's winner carved into the niches -- one stone each
+  const N = await page.evaluate(() => window.IslandTerrain.NICHES);
+  await page.evaluate(() => window.PlazaDebug().carveStatues([{ rank: 1, name: '일등', look: {} }, { rank: 2, name: '이등', look: {} }, { contest: true, name: '우승', look: {} }], '2026-W42'));
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().carveStatues().map((s) => s.stone)), { timeout: 30000 }).toEqual([true, true, true]);
+  const at = await page.evaluate(() => window.PlazaDebug().carveStatues());
+  at.forEach((s, k) => expect(Math.hypot(s.x - N[k].x, s.z - N[k].z)).toBeLessThan(1));
   await expectNoScriptError(page);
   await who.context.close();
 });
