@@ -1833,7 +1833,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
+      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -1921,7 +1921,7 @@
     try { await navigator.clipboard.writeText(md || '(열린 기록 없음)'); showToast(`열린 기록 ${open.length}개를 복사했어요.`); } catch { showToast('복사하지 못했어요.'); }
   });
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
-  let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = [];
+  let plazaAvatar = null; let plazaChampion = false; let plazaHoguking = false; let plazaStatues = []; let plazaStatuesWeek = null;
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
   // time, its own colour back costs the same). A choice is pressed twice (the first press says the price); one request
   // id per choice until the server answers, so a lost answer is never paid twice.
@@ -3290,7 +3290,7 @@
       }
       if (!data.ranking.length) { const empty = document.createElement('p'); empty.className = 'emptyState'; empty.textContent = '이번 주 기부가 아직 없습니다.'; list.append(empty); }
       document.getElementById('donationLast').textContent = data.hoguking ? `지난주 호구왕 · ${data.hoguking}` : '';
-      plazaStatues = data.statues || plazaStatues; plaza.controller?.setStatues?.(plazaStatues);
+      plazaStatues = data.statues || plazaStatues; plazaStatuesWeek = data.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek);
     } catch (error) { donationStatusEl.textContent = error.message; }
   }
   function openDonation() {
@@ -5978,7 +5978,7 @@
     if (event === 'contest') { refreshContest(); return; } // A4 주말 섬 대회 (soon, start, end)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
     if (event === 'islandWeeds') { loadWeeds(); return; } // a new day: the weeds pulled yesterday grew back elsewhere
-    if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plaza.controller?.setStatues?.(plazaStatues); return; } // v1.10.5
+    if (event === 'statues') { plazaStatues = Array.isArray(parsed.statues) ? parsed.statues : []; plazaStatuesWeek = parsed.week ?? plazaStatuesWeek; plaza.controller?.setStatues?.(plazaStatues, plazaStatuesWeek); return; } // v1.10.5
     if (event === 'lobbyState') {
       lobbyState = parsed || { messages: [], connectedCount: 0, rooms: [], invitations: [] };
       // Announced from the stream only: the first snapshot after entering the lobby is just the baseline.
