@@ -3111,7 +3111,7 @@
   }
   async function askResident(n, topic) {
     if (residentBusy) return; residentBusy = true;
-    try { showResidentTalk(await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic }) }), false); }
+    try { const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic }) }); if (residentTalk?.n === n) showResidentTalk(data, false); } // (Codex review: closed meanwhile -- the answer is dropped)
     catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
   }
   async function talkResident(n) {

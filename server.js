@@ -5543,10 +5543,11 @@ async function requestHandler(req, res) {
   if ((pathname === '/api/island/resident/keep' || pathname === '/api/island/resident/bye') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const n = Number((await parseJson(req)).n); const who = talkKey(session);
-    if (pathname.endsWith('/bye')) { if (islandEvents.residentBye(who)) residentsChanged(); return sendJson(res, 200, { ok: true, residents: islandEvents.residents() }); }
+    const mine = islandEvents.residentTalking(who) === n; // (Codex review: a late bye or keep of an earlier talk leaves a newer one alone)
+    if (pathname.endsWith('/bye')) { if (mine && islandEvents.residentBye(who)) residentsChanged(); return sendJson(res, 200, { ok: true, residents: islandEvents.residents() }); }
     const pos = plazaPresence.get(session.token); const hold = islandEvents.residents()[n]?.hold;
     if (!pos || !hold || hold.eventId !== who || Math.hypot(pos.x - hold.x, pos.z - hold.z) > TALK_FAR || !islandEvents.residentKeep(n, who)) {
-      if (islandEvents.residentBye(who)) residentsChanged();
+      if (mine && islandEvents.residentBye(who)) residentsChanged();
       return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.');
     }
     return sendJson(res, 200, { ok: true });
@@ -5555,7 +5556,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const body = await parseJson(req); const n = Number(body.n); const topic = body.topic == null ? null : String(body.topic);
     if (!Number.isInteger(n) || !IslandCast.WALKERS[n] || (topic !== null && !['how', 'rumor', 'errand'].includes(topic))) return sendError(res, 400, 'BAD_RESIDENT', '잘못된 요청입니다.');
-    const pos = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
+    const pos = plazaPresence.get(session.token); // (Codex review: on the island now -- one who left holds no one)
     const state = islandEvents.residents()[n]; const who = talkKey(session);
     if (state?.hold && state.hold.eventId !== who) {
       const other = state.hold.eventId.startsWith('talk:') ? [...plazaPresence.values()].find((p) => `talk:${p.id}` === state.hold.eventId) : null;
