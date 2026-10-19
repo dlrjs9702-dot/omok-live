@@ -25,7 +25,7 @@ module.exports = defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // One retry locally too: a test that fails once and passes on the retry is reported as "flaky" (with a trace, see
   // `trace: 'on-first-retry'`), so an occasional infrastructure hiccup is told apart from a real failure, which fails twice.
-  retries: 1, // (v1.10.99 CI 단축: 2 → 1 on CI too -- a 3D test is about 3 minutes, so a real failure cost 9; a flaky one still shows as "flaky")
+  retries: 1, // (v1.10.98 CI 단축: 2 → 1 on CI too -- a 3D test is about 3 minutes, so a real failure cost 9; a flaky one still shows as "flaky")
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ['list'],

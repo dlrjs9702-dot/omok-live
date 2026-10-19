@@ -1763,12 +1763,19 @@ body.touchIsland .plazaStage { height: calc(100dvh - 12px); min-height: 0; }
 .plazaDialog.talkMode::backdrop{background:transparent}
 .plazaDialog.talkMode::after{content:"";position:absolute;left:46px;top:-11px;width:18px;height:18px;background:inherit;border-left:2px solid #60a5fa;border-top:2px solid #60a5fa;transform:rotate(45deg)}
 .plazaDialog.talkMode .recordsDialogHead h2{flex:0 1 auto;padding:3px 12px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:.86rem}
-.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between}
+.plazaDialog.talkMode .recordsDialogHead{justify-content:space-between;background:none;border-bottom:1px solid #334155;padding:0 0 8px;margin:0 0 10px} /* A-6 대화창 통일: one bubble -- no wood bar over it */
+.plazaDialog.talkMode .recordsDialogHead .ghost{background:#1e293b;color:#cbd5e1;border-color:#334155}
 .plazaDialog.talkMode .plazaDialogBody{display:block}
 .plazaDialog.talkMode .lostRequest{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .plazaDialog.talkMode .lostRequestLine,.plazaDialog.talkMode .lookMeta{flex:1 0 100%;font-size:1rem}
 .plazaDialog.talkMode .lostRequest button:first-of-type{margin-left:auto}
 .lostRequestLine.talkPending{display:none}
+/* A-6 주민 대화 선택지: a list under the words, numbered for the keys (1~4) */
+.plazaDialog.talkMode .talkChoices{flex:1 0 100%;display:grid;gap:6px;counter-reset:choice;margin-top:4px}
+.plazaDialog.talkMode .lostRequest .talkChoices button{justify-self:stretch;text-align:left;margin:0;padding:8px 12px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;font-size:.95rem}
+.plazaDialog.talkMode .talkChoices button::before{counter-increment:choice;content:counter(choice) ". ";color:#93c5fd}
+.plazaDialog.talkMode .lostRequest .talkChoices button:hover,.plazaDialog.talkMode .lostRequest .talkChoices button:focus-visible{border-color:#60a5fa;background:#172554;outline:none}
+.plazaDialog.talkMode .lostRequest:has(.talkPending) .talkChoices{display:none}
 .plazaDialog.talkMode .lostRequest:has(.talkPending)::after{content:"▼ 다음 (Space · 터치)";flex:1 0 100%;text-align:right;font-size:.72rem;color:#94a3b8}
 @media(max-width:520px){.plazaDialog.talkMode{padding:10px 12px 12px}.plazaDialog.talkMode .lostRequestLine{font-size:.92rem}}
 .lostRequest:focus{outline:none}

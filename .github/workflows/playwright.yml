@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # v1.10.99 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side -- npm test alone,
+  # v1.10.98 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side -- npm test alone,
   # the general games in three shards and their phone run, the two asset specs, the island specs on PC in three shards and
   # on a phone. The repository is public: runner time is free, so the parts run at once and a PR waits for the longest
   # (the plaza group used to run PC then phone in one job: 50-75 minutes). docs/release.md: split rather than raise the limit.

@@ -2486,7 +2486,7 @@
     if (event.key === ' ' || event.key === 'Enter') {
       const pending = lostCard.querySelector('.talkPending');
       if (pending) { event.preventDefault(); pending.classList.remove('talkPending'); return; }
-      if (!buttons.includes(event.target) && event.target !== byId('plazaCloseBtn')) { event.preventDefault(); (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); }
+      if (!buttons.includes(event.target) && event.target !== byId('plazaCloseBtn')) { event.preventDefault(); if (lostCard.querySelector('.talkChoices')) buttons[0]?.focus(); else (lostCard.querySelector('button.primary:not(:disabled)') || buttons[0])?.click(); } // (A-6: in the choices, Space first points at one)
       return; // a focused answer (or 닫기) is pressed by the browser
     }
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
@@ -3078,21 +3078,49 @@
   }
   function refreshErrands() { if (document.body.classList.contains('plazaMode')) api('/api/island/errands').then(showErrands).catch(() => {}); }
   setInterval(refreshErrands, 20000);
-  let residentBusy = false;
+  // A-6 주민 대화 (docs/residents-talk-hills-20261018.md 1·2): whoever walks by talks; the server holds them on every screen
+  // while this window is open (renewed every few seconds, let go when it closes), and after their words come the choices
+  let residentBusy = false; let residentTalk = null; // { n, timer } while a talk is open
+  const TALK_CHOICES = [['how', '요즘 어때요?'], ['rumor', '섬 소문 있어요?'], ['errand', '부탁할 거 있어요?'], ['bye', '잘 가요']];
+  function endResidentTalk() {
+    const t = residentTalk; residentTalk = null; if (!t) return;
+    clearInterval(t.timer);
+    api('/api/island/resident/bye', { method: 'POST', body: JSON.stringify({ n: t.n }) }).then((d) => plaza.controller?.setResidents?.(d.residents)).catch(() => {});
+  }
+  plazaDialog.addEventListener('close', () => { if (!plazaDialog.open) endResidentTalk(); });
+  function showResidentTalk(data, first) {
+    showErrands(data);
+    const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
+    const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
+    meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
+    const list = document.createElement('div'); list.className = 'talkChoices';
+    for (const [topic, label] of TALK_CHOICES) {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.topic = topic; b.textContent = label;
+      b.addEventListener('click', () => (topic === 'bye' ? plazaDialog.close() : askResident(data.n, topic)));
+      list.append(b);
+    }
+    lostCard.replaceChildren(...lines, meta, list);
+    openTalk(data.name, Boolean(data.reward));
+    if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
+    if (first) {
+      residentTalk = { n: data.n, timer: setInterval(() => {
+        if (!plazaDialog.open || !plazaDialog.classList.contains('talkMode') || lostCard.classList.contains('hidden')) { endResidentTalk(); return; }
+        api('/api/island/resident/keep', { method: 'POST', body: JSON.stringify({ n: data.n }) }).catch((error) => { if (error.status === 409 && residentTalk?.n === data.n) plazaDialog.close(); });
+      }, 4000) };
+    }
+  }
+  async function askResident(n, topic) {
+    if (residentBusy) return; residentBusy = true;
+    try { showResidentTalk(await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n, topic }) }), false); }
+    catch (error) { showToast(error.message); if (error.status === 409) plazaDialog.close(); } finally { residentBusy = false; }
+  }
   async function talkResident(n) {
     guideDone('talk'); // B 47 안내
     if (residentBusy) return; residentBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      const data = await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) });
-      showErrands(data);
-      const lines = data.say.map((s) => { const line = document.createElement('p'); line.className = 'lostRequestLine'; line.textContent = `「${s}」`; return line; });
-      const meta = document.createElement('p'); meta.className = 'lookMeta'; const heart = data.affinity ? ` · ${data.affinity.name} ${'♥'.repeat(data.affinity.level + 1)}` : ''; // v1.10.91 호감도
-      meta.textContent = data.reward ? `+${Number(data.reward).toLocaleString('ko-KR')}P · 심부름 완료${heart}` : `${data.role}${heart}`;
-      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = data.errand && !data.reward ? '알겠어요' : '확인'; ok.addEventListener('click', () => plazaDialog.close());
-      lostCard.replaceChildren(...lines, meta, ok);
-      openTalk(data.name, Boolean(data.reward));
-      if (data.reward) { plaza.controller?.emote?.('clap'); loadPoints(); }
+      endResidentTalk();
+      showResidentTalk(await api('/api/island/resident/talk', { method: 'POST', body: JSON.stringify({ n }) }), true);
     } catch (error) { showToast(error.message); } finally { residentBusy = false; }
   }
   let islandEventBusy = false;
@@ -5777,6 +5805,7 @@
     if (event === 'islandWeed') { plaza.controller?.removeWeeds?.(parsed.gone); return; } // v1.10.31: a weed pulled by someone
     if (event === 'islandTime') { refreshIslandTime(); return; } // v1.10.90 섬 시간대 (A5: with the season and the decorations, asked again)
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
+    if (event === 'residents') { plaza.controller?.setResidents?.(parsed.list); return; } // A-6: a talk holds or lets go of an islander
     if (event === 'birthdays') { birthdaySeq += 1; plaza.controller?.setBirthdays?.(parsed.names || []); return; } // B 47 생일
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }

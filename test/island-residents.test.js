@@ -64,3 +64,25 @@ test('주민 예약: 안전 위치의 기존10명만 사용하고 가용 주민�
   assert.equal(new Set(owners).size, 10);
   assert.equal(all.reserve('event-10'), null);
 });
+
+test('A-6 주민 대화 붙잡기: 창이 열린 동안 멈춤(갱신), 닫거나 갱신이 끊기면 그 자리에서 이어 걷고, 3분을 넘지 않음', () => {
+  const { TALK_LEASE, TALK_MAX } = require('../lib/island-residents');
+  let t = 1_000_000;
+  const r = createIslandResidents({ now: () => t, random: () => 0 });
+  const p = Npcs.at(2, t);
+  assert.deepEqual(r.talk(2, 'talk:a', 1.5), { ok: true });
+  assert.deepEqual(r.talk(2, 'talk:b', 0), { busy: 'talk:a' }); // someone else's talk
+  assert.equal(r.reserve('event-x').n, 0); // an event never takes a resident in a talk
+  for (let k = 0; k < 10; k += 1) { t += TALK_LEASE - 1000; assert.equal(r.keep(2, 'talk:a'), true); } // kept open
+  assert.equal(r.keep(2, 'talk:b'), false);
+  assert.equal(r.talkOf('talk:a'), 2);
+  assert.deepEqual(Npcs.residentAt(2, t, r.snapshot()[2]), { x: p.x, z: p.z, yaw: 1.5, moving: false, held: true });
+  const start = t - 10 * (TALK_LEASE - 1000);
+  r.release('talk:a');
+  const s = r.snapshot()[2]; assert.equal(s.hold, null); assert.equal(s.delay, t - start);
+  const back = Npcs.residentAt(2, t, s); assert.ok(Math.hypot(back.x - p.x, back.z - p.z) < 1e-9); // on from where it stood
+  r.talk(2, 'talk:a'); t += TALK_LEASE + 1; assert.equal(r.snapshot()[2].hold, null); // no renewal: let go
+  r.talk(3, 'talk:a'); r.talk(4, 'talk:a'); assert.equal(r.talkOf('talk:a'), 4); assert.equal(r.snapshot()[3].hold?.returning ?? null, null); // one at a time
+  const t0 = t; for (; t < t0 + TALK_MAX + TALK_LEASE; t += 5000) r.keep(4, 'talk:a');
+  assert.equal(r.snapshot()[4].hold, null); // never past TALK_MAX
+});

@@ -214,6 +214,17 @@
     return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: true };
   }
 
+  // A-6 섬 소문: where islander n is often seen -- the map's place nearest the middle of their stops, else a side of the island
+  // (north is -z on the map)
+  function hangout(n) {
+    const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
+    const x = st.reduce((a, p) => a + p.x, 0) / st.length; const z = st.reduce((a, p) => a + p.z, 0) / st.length;
+    let best = null; let bd = 30;
+    for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { best = a.label; bd = d; } }
+    if (best) return best;
+    const side = ['북쪽', '북동쪽', '동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽'][Math.round(((Math.atan2(x, -z) / (Math.PI * 2)) * 8 + 8)) % 8];
+    return `섬 ${side}`;
+  }
   // A server reservation pauses this resident's existing round, rather than creating another NPC.
   function residentAt(n, ms, state = null) {
     const hold = state?.hold;
@@ -383,5 +394,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

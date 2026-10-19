@@ -2430,9 +2430,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
-    if (!best && !gather && !fishing) { // v1.10.91 주민 대화: an islander standing by me (not one an event holds) talks
+    if (!best && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
       const m = me.root.position; let who = null; let wd = 2.2;
-      for (const { n, c, w } of wanderers) { if (w.pose.held || !c.root.visible || (!w.arrived && w.speed > 0.3 && c.talkYaw == null)) continue; const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd) { who = { n, w }; wd = d; } }
+      for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:')) || !c.root.visible) continue; /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd) { who = { n, w }; wd = d; } }
       if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.WALKERS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
     }
     if (!best && !gather && !fishing) {
