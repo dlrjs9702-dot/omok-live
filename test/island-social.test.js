@@ -65,3 +65,12 @@ test('앉기 서버: 좌석은 먼저 앉은 사람 것, 일어나면 비고, �
   await req('/api/island/stand', a, {});
   assert.equal((await req('/api/island/sit', b, { seat: s.id })).status, 200, '일어나면 다른 사람이 앉는다');
 });
+
+// A-7 민원실 창구 (사용자 2026-10-19): a customer's chair at each window, seated within the server's 1.8 m of its counter
+test('민원실 창구 의자: 세 창구마다 손님 의자, 앉은 자리는 그 창구의 1.8m 안', () => {
+  const R = T.TOWNHALL_ROOM; const at = { civil: R.desk, tax: R.tax, bank: R.bank };
+  const chairs = T.plazaProps().seats.filter((s) => s.counter);
+  assert.deepEqual(chairs.map((s) => s.door).sort(), ['room:bank', 'room:desk', 'room:tax']);
+  for (const s of chairs) { const w = T.roomWorld(at[s.counter].lx, at[s.counter].lz); assert.ok(Math.hypot(s.x - w.x, s.z - w.z) <= 1.8, s.id); assert.equal(s.y, R.y); }
+  for (const s of chairs) { const q = T.roomClamp(s.x, s.z + 1.0); assert.ok(q.z > s.z + 0.5, `${s.id}: stands up into the hall`); }
+});

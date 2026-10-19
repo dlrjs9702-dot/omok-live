@@ -22,7 +22,7 @@ test('심기: 꽃씨를 심으면 둘 다 보이고, 비료는 한 번, 광장·
   const call = (path, body) => a.page.evaluate(async ([path, body]) => { const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session-Token': document.body.dataset.session }, body: JSON.stringify({ ...body, requestId: crypto.randomUUID() }) }); return { status: r.status, data: await r.json() }; }, [path, body]);
   const stand = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await a.page.waitForTimeout(1500); };
   await stand(0, 6); expect((await call('/api/island/plant', { itemId: 'seed_flower_pink' })).status).toBe(409); // the plaza
-  await stand(spot.x, spot.z);
+  await require('./skin-support').standAt(request, a, spot.x, spot.z); // (CI: a long jump the server put back -- again until it holds)
   let planted = null; // (again until the server has me there -- a slow runner sends the move later)
   await expect.poll(async () => (planted = await call('/api/island/plant', { itemId: 'seed_flower_pink' })).status, { timeout: 20000 }).toBe(200);
   expect(planted.status, JSON.stringify(planted.data)).toBe(200); expect(planted.data.plant.stage).toBe(0);

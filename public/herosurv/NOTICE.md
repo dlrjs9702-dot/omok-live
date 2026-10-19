@@ -10,11 +10,18 @@
 | index.pck | `132a93c0ea50dd1b7a04281aa148c257ad74ed13239ba1a5fcfc1bfaede4fed0` |
 | index.wasm | `fc74679e3b97f76878947fcd4fbe1268cbfa6188182a2e33bbc3f5dc9bfa57d0` |
 
-게임 파일(pck·wasm·엔진 JS)은 원본 그대로입니다. 큰 파일 두 개는 R2 버킷 `gamecenter-games`에 위 sha256 이름으로 있습니다.
+wasm·엔진 JS는 원본 그대로입니다. pck는 원본 파일을 한 바이트도 바꾸지 않고 스크립트 하나(`res://gc_patch.gd`)와 그것을 autoload로 더한 설정(`project.binary`)만 덧붙인 게임센터용 빌드입니다(아래). 원본 pck도 R2 버킷 `gamecenter-games`에 위 sha256 이름으로 그대로 있습니다(되돌리기: `public/herosurv/boot.js`의 `BIG`·`fileSizes`를 원본으로).
+
+## 게임센터용 빌드
+
+| 파일 | sha256 | 만드는 법 |
+| --- | --- | --- |
+| index.pck | `5a2d176dbd1a2547b580e47111de255c251eb7c2bef37ac0dd22fa25d9ef2c55` | `node tools/herosurv/repack.js <원본 index.pck> <새 index.pck>` (원본 sha256 확인, 원본 파일 그대로인지 스스로 검사) |
 
 ## 게임센터용으로 고친 것 (페이지 쪽만)
 
 | 날짜 | 고친 것 |
 | --- | --- |
 | 2026-10-11 (v1.10.61) | 내보내기 HTML의 인라인 스크립트·스타일을 `boot.js`·`herosurv.css`로 옮김(CSP). 큰 파일을 R2에서 받는 fetch 연결, 랭킹 호출에 게임센터 세션을 붙임, 게임이 `JavaScriptBridge.eval`로 묻는 고정 식 5개에 답함. 「나가기」 버튼. |
+| 2026-10-19 (v1.10.100, 사용자 빌드 수정 허락) | **게임 빌드:** `tools/herosurv/gc_patch.gd`를 autoload로 더해 게임 자체의 이름·메일 참가 흐름에 딸린 버튼(「이름 변경」·「변경하기」·「랭킹 참가」·「랭킹에 올리기」·「참가하기」·「이름 정하고 랭킹 등록」)과 메일 입력·안내 문구, 「랭킹 참가 ○○」 표시, 「[랭킹 참가]를 누르면…」 안내를 숨김. 「오픈소스 라이선스」·설정·강화 상점·내 전적·랭킹 보기·다시 전송은 그대로. |
 | 2026-10-19 | 섬 위 전체 화면 창(같은 사이트 iframe)으로 열고 「나가기」는 창만 닫음. 엔진 시작 전 게임 저장소(IndexedDB `/userfs`)에 랭킹 참가 정보(`leaderboard_<…>.cfg`)를 게임센터 닉네임으로 미리 써 두어 이름·메일 참가 창이 뜨지 않게 함. 게임센터 「게임별 랭킹」에 최고 기록. |

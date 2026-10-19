@@ -7,7 +7,7 @@
 (function () {
 	const BIG = {
 		'index.wasm': 'fc74679e3b97f76878947fcd4fbe1268cbfa6188182a2e33bbc3f5dc9bfa57d0.wasm',
-		'index.pck': '132a93c0ea50dd1b7a04281aa148c257ad74ed13239ba1a5fcfc1bfaede4fed0.pck',
+		'index.pck': '5a2d176dbd1a2547b580e47111de255c251eb7c2bef37ac0dd22fa25d9ef2c55.pck', // 게임센터용(gc_patch.gd 추가, tools/herosurv/repack.js) -- 원본 132a93c0…
 	};
 	const assets = document.querySelector('meta[name="herosurv-assets"]').content;
 	const realFetch = window.fetch.bind(window);
@@ -82,7 +82,7 @@ function herosurvPrejoin() {
 	})).catch(() => {});
 }
 
-const GODOT_CONFIG ={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":72447648,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG ={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":72456039,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

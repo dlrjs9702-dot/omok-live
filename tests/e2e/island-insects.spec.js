@@ -24,12 +24,13 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   // from the bag's button: the net in hand, the insect comes, Space catches it
   const started = page.waitForResponse((r) => r.url().includes('/api/island/bug/start'));
   await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="bugnet"] button').click();
-  const swing = await (await started).json();
-  await expect(page.locator('.bugCatchBtn')).toBeVisible({ timeout: 10000 });
-  expect(await page.evaluate(() => Boolean(window.PlazaDebug().bug()))).toBe(true); // (the net in hand, the insect on its way)
-  if (process.env.CI) { // (the GitHub runner draws a few frames a second: a key pressed now is handled after the window -- the catch itself goes to the server for the same swing)
+  const swing = await (await started).json(); const swungAt = Date.now();
+  if (process.env.CI) { // (the GitHub runner draws a few frames a second: a key pressed now is handled after the window -- the catch itself goes to the server for the same swing, as the insect arrives, before anything on the slow screen is waited on)
+    await new Promise((ok) => setTimeout(ok, Math.max(0, swing.comeIn + 300 - (Date.now() - swungAt))));
     const done = await post(request, '/api/island/bug/finish', a.token, { bugId: swing.bugId }); expect(done.status, JSON.stringify(done.data)).toBe(200);
   } else {
+    await expect(page.locator('.bugCatchBtn')).toBeVisible({ timeout: 10000 });
+    expect(await page.evaluate(() => Boolean(window.PlazaDebug().bug()))).toBe(true); // (the net in hand, the insect on its way)
     const finish = page.waitForResponse((r) => r.url().includes('/api/island/bug/finish'));
     await page.keyboard.press('Space');
     const done = await finish; expect(done.status(), await done.text()).toBe(200);

@@ -69,7 +69,7 @@
   const RESERVED_LOTS = []; // v1.10.30: the shop street's reserved lot became the 미용실 (more lots come with land reclamation)
   const STATUE_SPOTS = [{ x: 12, z: 5 }, { x: 5.5, z: 12.5 }]; // 기부 동상 자리 (rules not decided yet: plinths only)
   const MUSEUM = Object.freeze({ x: 28, z: 34, yaw: Math.atan2(28 - 22.9, 34 - 24), r: 5 }); // (r: nothing grows within 5.8 m -- its door clear; solid at 4) // B 47 섬 박물관 (its door, -Z, toward the north-east walk; the outside only)
-  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props)
+  const CONTEST_STATUE = Object.freeze({ x: -11, z: 0 }); // A4 주말 섬 대회 우승자 (west of the plaza, clear of its props; its new place comes with the 달마루섬 map)
   const SPAWN = { x: 0, z: 8 };
   // v1.10.13 생활 마을: islanders' cottages on empty ground beside the walks -- a lane down to the harbour and two at the
   // far end of the shop street. Decoration only (no door to enter); each `style` picks a different build (plaza-scene).
@@ -313,6 +313,11 @@
     obstacles: [[9,-4.5,3.4,1.1],[11.03,0.6,1.14,1.28],[9.68,0.6,1.14,1.28],[8.32,0.6,1.14,1.28],[6.97,0.6,1.14,1.28],[0,-4.5,3.4,1.1],[2.02,0.6,1.14,1.28],[0.68,0.6,1.14,1.28],[-0.68,0.6,1.14,1.28],[-2.02,0.6,1.14,1.28],[-9,-4.5,3.4,1.1],[-6.97,0.6,1.14,1.28],[-8.32,0.6,1.14,1.28],[-9.68,0.6,1.14,1.28],[-11.03,0.6,1.14,1.28],[6,5,3.98,1.28],[-6,5,3.98,1.28],[2.7,6.61,0.68,0.54],[-2.7,6.6,1.65,0.55],[12.4,-6.6,1.02,1.02],[-12.4,-6.6,1.02,1.02],[0,-8.6,2.5,0.48],[11.86,-2.4,1.41,0.72],[-12.3,3.05,0.66,0.72],[12.3,-3.8,2.18,0.37],[3.3,-3.8,2.18,0.37],[-5.7,-3.8,2.18,0.37],[13,4.7,0.96,0.96],[13,-1,0.96,0.96],[4.5,-7.2,0.96,0.96],[-4.5,-7.2,0.96,0.96],[-13,-1,0.96,0.96],[-13,4.7,0.96,0.96],[0,-8.9,28,0.2],[13.9,0,0.2,18],[7.75,8.9,12.5,0.2],[-13.9,0,0.2,18],[-7.75,8.9,12.5,0.2]], // [lx, lz, w, d]
   });
   const TOWNHALL_ROOM = Object.freeze({ x: 0, z: -330, y: 0.4, w: 28, d: 18, entry: Object.freeze({ lx: 0, lz: 7.7 }), exit: Object.freeze({ lx: 0, lz: 8.3 }), desk: Object.freeze({ lx: 9, lz: -2.5 }), tax: Object.freeze({ lx: 0, lz: -2.5 }), bank: Object.freeze({ lx: -9, lz: -2.5 }), layout: TH });
+  // A-7 (사용자 2026-10-19 「앞에 의자를 놓고 그 의자에 앉으면 공무원과 대화하는 것처럼 ... 업무 보게」): a customer's chair at
+  // each window, facing its clerk -- the window's business opens only seated there (the chair stands where the queue spot
+  // was: the server's 1.8 m of the counter still holds)
+  const COUNTERS = Object.freeze([['civil', 9, 'room:desk', '민원 창구'], ['tax', 0, 'room:tax', '세금 창구'], ['bank', -9, 'room:bank', '예금 창구']]
+    .map(([id, lx, door, name]) => Object.freeze({ id, lx, lz: -2.9, door, name })));
   const roomWorld = (lx, lz) => ({ x: TOWNHALL_ROOM.x + lx, z: TOWNHALL_ROOM.z + lz });
   const inRoom = (x, z, pad = 0) => Math.abs(x - TOWNHALL_ROOM.x) <= TOWNHALL_ROOM.w / 2 + pad && Math.abs(z - TOWNHALL_ROOM.z) <= TOWNHALL_ROOM.d / 2 + pad;
   // where one may stand inside: within the walls (0.6 m off them) and in front of the counter
@@ -321,7 +326,7 @@
     let lx = Math.max(-R.w / 2 + 0.6, Math.min(R.w / 2 - 0.6, fin(x, R.x + R.entry.lx) - R.x));
     let lz = Math.max(-R.d / 2 + 0.6, Math.min(R.d / 2 - 0.6, fin(z, R.z + R.entry.lz) - R.z));
     // (B 44: out of the desks, chairs and props -- of the four ways out of a piece, the nearest clear one, as in the 백화점)
-    const hit = (x, z) => R.layout.obstacles.find(([ox, oz, w, d]) => Math.abs(x - ox) < w / 2 + 0.35 - 1e-6 && Math.abs(z - oz) < d / 2 + 0.35 - 1e-6);
+    const hit = (x, z) => [...R.layout.obstacles, ...COUNTERS.map((c) => [c.lx, c.lz, 1.14, 1.28])].find(([ox, oz, w, d]) => Math.abs(x - ox) < w / 2 + 0.35 - 1e-6 && Math.abs(z - oz) < d / 2 + 0.35 - 1e-6);
     for (let pass = 0, o = hit(lx, lz); o && pass < 4; pass += 1, o = hit(lx, lz)) {
       const hx = o[2] / 2 + 0.35; const hz = o[3] / 2 + 0.35;
       const ways = [[o[0] - hx, lz], [o[0] + hx, lz], [lx, o[1] - hz], [lx, o[1] + hz]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
@@ -452,6 +457,7 @@
     const seats = benches.map((b, k) => { const ry = Math.atan2(-b.x, -b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // B 44: the 민원실's 18 marble seats (y: the room's floor -- not the island's ground)
     const R = TOWNHALL_ROOM; seats.push(...R.layout.seats.map(([, lx, lz, yaw], k) => ({ id: `t${k}`, x: R.x + lx, z: R.z + lz, yaw, y: R.y, room: 'townhall' })));
+    seats.push(...COUNTERS.map((c) => ({ id: `c-${c.id}`, x: R.x + c.lx, z: R.z + c.lz, yaw: Math.PI, y: R.y, room: 'townhall', counter: c.id, door: c.door, name: c.name }))); // A-7
     return { benches, lamps, beds, seats };
   }
   // Things a character walks around, with their radius (the same circles the browser uses).
@@ -525,5 +531,5 @@
   const HALLOWEEN_EXTRAS = [['broom',-46,50,0.6],['broom',-60,-24,2.1],['hay',-44,40,1.2]];
   const isHalloween = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 9;
   const isWinterFest = (ms) => new Date(ms + 9 * 3600 * 1000).getUTCMonth() === 11; // B 46 겨울 축제: December (Asia/Seoul)
-  return { MUSEUM, TOWNHALL_ROOM, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, CONTEST_STATUE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, isWinterFest, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
+  return { MUSEUM, TOWNHALL_ROOM, COUNTERS, roomWorld, inRoom, roomClamp, FARM, VILLAGE, villageSolids, CONTEST_STATUE, HALLOWEEN_FIELDS, HALLOWEEN_EXTRAS, facilityDoor, harvestTrees, treeKind, addNatureBlock, addTreeBlock, RIVER_WIDE, riverExtra, isHalloween, isWinterFest, canFish, TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard, SEASON_ORDER, SEASON_NEUTRAL_R, seasonZoneAt, seasonDay, zoneSeason, seasonAt, fishWater, nature, natureSolids, plazaProps, coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, BUILDINGS, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, streamDepth, streamWaterHeight, walkCurves, segDist, lineDist, streamDist, walkDist, rawLand, PADS, land, ground, meshGroundHeight, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER };
 }));

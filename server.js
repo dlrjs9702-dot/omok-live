@@ -933,7 +933,7 @@ async function errandView(account) {
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
-const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
+const OPS_DEFAULTS = { signups: true, messenger: true, dalmaruPreview: false }; let opsCache = null; // (달마루섬 미리보기: the administrator's island only)
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
@@ -3449,7 +3449,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.99' });
+    return sendJson(res, 200, { ok: true, version: '1.10.100' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5564,7 +5564,9 @@ async function requestHandler(req, res) {
     }
     if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
     const at = IslandNpcs.residentAt(n, nowMs(), state);
-    if (!pos || Math.hypot(pos.x - at.x, pos.z - at.z) > (state?.hold ? TALK_FAR : 4)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
+    const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
+    if (!pos || ![0, 1500, 3000, 4500].some((back) => reach(IslandNpcs.residentAt(n, nowMs() - back, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!state?.hold) { islandEvents.residentTalk(n, who, Math.atan2(pos.x - at.x, pos.z - at.z)); residentsChanged(); }
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
     const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
@@ -5756,6 +5758,13 @@ async function requestHandler(req, res) {
       if (out.error) return sendError(res, 400, 'BAD_ECONOMY', out.error === 'RANGE' ? '허용 범위를 벗어난 값입니다.' : '바꿀 값이 없습니다.');
     }
     return sendJson(res, 200, { ok: true, ...Economy.view(await pointStore.worldValue('economy')) });
+  }
+  // 달마루섬 개편 (docs/dalmaru-implementation-20261019.md): which island a page shows -- the new one only for an
+  // administrator while the preview switch is on (that page walks it on its own: it sends no positions); everyone else
+  // the island they have
+  if (pathname === '/api/island/map' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, map: session.role === 'admin' && (await opsSwitches()).dalmaruPreview === true ? 'dalmaru' : 'classic' });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
     if (!requireAdmin(req, res)) return;
@@ -6498,7 +6507,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.99 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.100 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

@@ -654,7 +654,7 @@ test('게임 아일랜드 시점: 마우스로 끌어 회전, 방향키는 화�
 // no turning while typing or while a window is open; the camera stays above the ground and out of buildings; the
 // arrow keys still walk.
 test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리고, 하늘 쪽 45°·아래 15° 안, 입력창·창이 열린 동안은 무시, 지면·건물 밖', async ({ browser, request }) => {
-  test.setTimeout(150000);
+  test.setTimeout(process.env.CI ? 300000 : 150000); // (CI: the slow runner's frames -- it ran out at 150 s)
   const a = await intoPlaza(browser, request, '카메라');
   const { page } = a;
   const cam = () => page.evaluate(() => { const d = window.PlazaDebug(); return { yaw: d.camYaw, pitch: d.camPitch, max: d.pitchMax, sky: d.skyMax, camera: d.camera }; });
@@ -976,20 +976,25 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 관공서 들어가기');
   await page.keyboard.press('Space'); // v1.10.84: in, to the 민원실 -- its counter settles
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('townhall');
-  await page.evaluate(() => window.PlazaDebug().place('room:desk'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 민원 창구');
+  // A-7: the window opens from its customer's chair -- seated, the camera on the clerk; closing it stands me up
+  await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 민원 창구 업무');
   await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:desk');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('정산 +14,000P');
   await page.locator('#islandPlaceSubmit').click();
   await expect(page.locator('#islandPlaceStatus')).toContainText('+14,000P');
   await expect(page.locator('#islandPlaceSubmit')).toBeDisabled();
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000); // v1.10.35 단가: 쓰레기 1,000 × 4 + 지갑 10,000
   await page.locator('#islandPlaceCloseBtn').click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().z - window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil').z)).toBeGreaterThan(0.5); // (stood up, back into the hall -- not behind the desk)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
   await page.evaluate(() => window.PlazaDebug().place('room:exit'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나가기');
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');
-  await page.evaluate(() => window.PlazaDebug().place('trader'));
+  // (a jump straight after leaving the hall can be put back by the server: again until it holds -- A-7)
+  await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +8,000P');
@@ -1558,7 +1563,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   expect(atShop.status).toBe(200);
   await a.page.evaluate(p => window.PlazaWarp(p.x, p.z), atShop.data);
   expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
-  const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id]); }); // a free one (another test's sitter may still hold one)
+  const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !s.room && !taken[s.id]); }); // a free plaza bench (another test's sitter may still hold one; the 민원실's seats are far off the island)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');

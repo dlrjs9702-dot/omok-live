@@ -239,7 +239,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     material.customProgramCacheKey = () => (path ? 'ground-path' : 'ground');
     return material;
   };
-  const SIZE = 250; const SEG = 125;
+  const SIZE = T.GROUND?.size ?? 250; const SEG = T.GROUND?.seg ?? 125; // (달마루섬 미리보기: its own, larger ground)
   const geo = keep(new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG)); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position; const colors = new Float32Array(pos.count * 3);
   const grass = new THREE.Color(0x9fd67f); const grass2 = new THREE.Color(0x8cc96c); const sand = new THREE.Color(0xf1dfae);
@@ -388,7 +388,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     assets?.attach('prop.bridge', g, visual);
   }
 
-  // Harbour: pier on posts, a few boats, the breakwater and its lighthouse.
+  // Harbour: pier on posts, a few boats, the breakwater and its lighthouse. (달마루섬 미리보기: not there -- 달끝나루 comes in step 2)
+  const bareHarbour = Boolean(T.TERRAIN_ONLY);
+  const harbourFrom = scene.children.length;
   const pier = new THREE.Group(); pier.position.set(PIER.x, 0, PIER.z); pier.rotation.y = Math.atan2(PIER.ux, PIER.uz); scene.add(pier);
   const pierDeck = mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
   const pierPosts = new THREE.Group(); pier.add(pierPosts);
@@ -416,6 +418,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const sail = mesh(keep(new THREE.PlaneGeometry(1, 1.4)), mat(0xfffaf0, { side: THREE.DoubleSide }), 0.02, 1.5, -0.2, boat); sail.rotation.y = Math.PI / 2;
     boats.push(boat);
   }
+  if (bareHarbour) for (const o of scene.children.slice(harbourFrom)) o.visible = false;
 
   // Instanced nature: trees, flowers, rocks, fence posts. Placement is fixed (seeded) and keeps walks, water, the
   // plaza and every building clear.
@@ -737,8 +740,28 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
 
   // The map board's picture: the island as it is (coast, water, walks, areas) and where I am.
   // The island's shapes (sea, shore, grass, walks, water, plaza, harbour, bridges) at a scale `s` around a centre.
+  // 달마루섬 미리보기: the new island's map drawn once from its ground (1 dot per 2 m): sand by the sea, grass, the cliff
+  // rock, fresh water -- then its bridges on top (step 2 adds the walks and places)
+  let landImage = null;
+  function dalmaruLand() {
+    if (landImage) return landImage;
+    const D = T.dalmaru; const N = 200; const cv = document.createElement('canvas'); cv.width = N; cv.height = N; const g = cv.getContext('2d'); const img = g.createImageData(N, N);
+    const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+    const SEA_C = rgb(0x7fcbe9); const SAND = rgb(0xf1dfae); const GRASS = rgb(0x9fd67f); const ROCK = rgb(0xb7ad9e); const FRESH = rgb(0x5fb4e0);
+    for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
+      const x = -200 + i * 2 + 1; const z = -200 + j * 2 + 1; const cd = D.coastDist(x, z);
+      const c = cd < 0 ? SEA_C : D.isWater(x, z) ? FRESH : cliffAt(x, z) > 0.5 ? ROCK : cd < 4 ? SAND : GRASS;
+      img.data.set([...c, 255], (j * N + i) * 4);
+    }
+    g.putImageData(img, 0, 0); landImage = cv; return cv;
+  }
   function drawGround(ctx, w, h, X, Z, s) {
     ctx.fillStyle = '#7fcbe9'; ctx.fillRect(-2 * w, -2 * h, 5 * w, 5 * h); // the sea (wide enough for a turned minimap)
+    if (T.MAP === 'dalmaru') {
+      ctx.imageSmoothingEnabled = true; ctx.drawImage(dalmaruLand(), X(-200), Z(-200), 400 * s, 400 * s);
+      for (const b of bridges) { ctx.beginPath(); ctx.moveTo(X(b.x - b.ux * b.half), Z(b.z - b.uz * b.half)); ctx.lineTo(X(b.x + b.ux * b.half), Z(b.z + b.uz * b.half)); ctx.strokeStyle = '#b07a4f'; ctx.lineWidth = b.w * s; ctx.stroke(); }
+      return;
+    }
     const shore = (grow) => { ctx.beginPath(); for (let i = 0; i <= 180; i += 1) { const a = (i / 180) * TAU; const R = coastR(a) + grow; const px = X(Math.cos(a) * R); const pz = Z(Math.sin(a) * R); if (i) ctx.lineTo(px, pz); else ctx.moveTo(px, pz); } ctx.closePath(); };
     shore(0); ctx.fillStyle = '#f1dfae'; ctx.fill();
     shore(-5); ctx.fillStyle = '#9fd67f'; ctx.fill();
@@ -761,7 +784,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
   }
   function drawMap(ctx, w, h, me) {
-    const s = Math.min(w, h) / 236; const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;
+    const s = Math.min(w, h) / (T.MAP === 'dalmaru' ? 380 : 236); /* (달마루섬: about twice across) */ const X = (x) => w / 2 + x * s; const Z = (z) => h / 2 + z * s;
     drawGround(ctx, w, h, X, Z, s);
     ctx.font = `800 ${Math.round(w / 28)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const area of Object.values(AREAS)) {
