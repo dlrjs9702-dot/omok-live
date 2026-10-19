@@ -1082,3 +1082,6 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .museumItem{border:1px solid var(--line, #33415a)}
 :root[data-theme="light"] .issueItem{border:1px solid var(--line, #33415a)}
 :root[data-theme="light"] .herosurvFrame{border:0;background:#000}
+:root[data-theme="light"] .logoutDialog{border-color:#d6c3a5;background:#fffaf1}
+:root[data-theme="light"] .logoutDialog>h2:first-child{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff}
+:root[data-theme="light"] .logoutDialog.pauseDialog>h2:first-child{color:#fff}

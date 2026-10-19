@@ -2262,3 +2262,11 @@ body:not(.plazaMode) .bugCatchBtn { display: none; }
 /* 두 세계 영웅전: a window over everything (사용자 2026-10-19) */
 .herosurvFrame { position: fixed; inset: 0; width: 100vw; height: 100dvh; border: 0; z-index: 1000; background: #000; }
 body.herosurvOpen { overflow: hidden; }
+/* A-6 대화창 통일 6② (docs/residents-talk-hills-20261018.md 6): the confirm windows (접속 종료·포인트 지급·대국 일시 중단 ...)
+   take the same card as every other window -- 22px corners, the window surface and line, the title on a head bar of the
+   window's pair (--g1/--g2). The event window keeps its gold frame (the event's own look), only the card. */
+.logoutDialog{--g1:#334155;--g2:#1e293b;border-color:#334155;border-radius:22px;background:#111827;padding:0 22px 20px;overflow:hidden}
+.logoutDialog>h2:first-child{margin:0 -22px 14px;padding:14px 22px;background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;font-size:1.12rem;font-weight:900}
+.logoutDialog.pauseDialog{--g1:#b45309;--g2:#92400e}
+.logoutDialog.pauseDialog>h2:first-child{color:#fff}
+.logoutDialog.eventDialog{padding:22px}
