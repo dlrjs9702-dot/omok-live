@@ -3,10 +3,12 @@
 // dalmaru-terrain.js (assets 54). Only for the administrator's preview (island-map.js sets GC_ISLAND_MAP): everyone
 // else, and the server, keep island-terrain.js. Step 1 laid the land; step 2 the walks and what stands on them, all
 // from dalmaru-terrain's one table PLACES (the structures are assets 55). What the server places (islanders, events,
-// statues, plants, the train) stays off until the server reads this island too (step 5): TERRAIN_ONLY.
-(function (root) {
-  if (root.GC_ISLAND_MAP !== 'dalmaru' || !root.DalmaruTerrain || !root.IslandTerrain) return;
-  const D = root.DalmaruTerrain; const C = root.IslandTerrain;
+// statues, plants, the train) stays off on the preview -- until the server reads this island too (step 5: `live`, the
+// server's own island; TERRAIN_ONLY otherwise). The server builds it with island-terrain.js (ISLAND_MAP=dalmaru).
+(function (root, build) {
+  if (typeof module === 'object' && module.exports) { module.exports = build; return; }
+  if (root.GC_ISLAND_MAP === 'dalmaru' && root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain, { live: Boolean(root.GC_ISLAND_LIVE) });
+}(typeof self !== 'undefined' ? self : this, (D, C, { live = false } = {}) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
@@ -260,9 +262,9 @@
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
 
-  root.IslandTerrain = Object.freeze({
+  return Object.freeze({
     ...C,
-    MAP: 'dalmaru', TERRAIN_ONLY: true, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
+    MAP: 'dalmaru', TERRAIN_ONLY: !live, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
@@ -273,4 +275,4 @@
     HALLOWEEN_FIELDS: [], HALLOWEEN_EXTRAS: [], dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     inTownhall: () => false, inTownhallYard: () => false,
   });
-}(typeof self !== 'undefined' ? self : this));
+}));

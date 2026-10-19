@@ -1817,13 +1817,13 @@
     // 달마루섬 미리보기: the island the server says this page shows (kept for island-map.js, which runs before the island's
     // scripts) -- a change reloads the page once (only when it could be kept: no reload loop without storage)
     const islandMap = api('/api/island/map').then((d) => {
-      const want = d.map === 'dalmaru' ? 'dalmaru' : null; let have = null; try { have = localStorage.getItem('gc.islandMap'); } catch {}
+      const want = d.map === 'dalmaru' ? (d.live ? 'dalmaru:live' : 'dalmaru') : null; let have = null; try { have = localStorage.getItem('gc.islandMap'); } catch {}
       if (have === want) return;
       try { if (want) localStorage.setItem('gc.islandMap', want); else localStorage.removeItem('gc.islandMap'); if (localStorage.getItem('gc.islandMap') === want) { location.reload(); return new Promise(() => {}); } } catch {}
     }).catch(() => {});
     const sceneModule = import('/plaza/plaza-scene.js').catch((error) => { throw Object.assign(error, { code: 'module' }); });
     plaza.loading = Promise.all([sceneModule, spotToday, islandMap]).then(([mod, savedSpot]) => {
-      const startAt = globalThis.IslandTerrain?.MAP === 'dalmaru' ? null : savedSpot; // (the preview starts at its own 대청마당)
+      const startAt = globalThis.IslandTerrain?.TERRAIN_ONLY ? null : savedSpot; // (the preview starts at its own 대청마당)
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
@@ -3358,7 +3358,7 @@
   function plazaPresenceTick() {
     const c = plaza.controller;
     if (!c?.pose || plazaSending || plazaDeparture || !document.body.classList.contains('plazaMode')) return;
-    if (globalThis.IslandTerrain?.MAP === 'dalmaru') return; // (달마루섬 미리보기: walked on this screen only -- the server keeps the island it has)
+    if (globalThis.IslandTerrain?.TERRAIN_ONLY) return; // (달마루섬 미리보기: walked on this screen only -- the server keeps the island it has)
     const p = c.pose(); const now = Date.now(); const prev = plazaLastSent;
     const changed = !prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 0.05 || Math.abs(p.yaw - prev.yaw) > 0.05 || p.moving !== prev.moving
       || p.act !== prev.act || p.actN !== prev.actN || p.seat !== prev.seat; // v1.10.44: a sit, a wave or a cheer goes at once

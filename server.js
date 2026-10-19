@@ -5807,6 +5807,7 @@ async function requestHandler(req, res) {
   // the island they have
   if (pathname === '/api/island/map' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
+    if (IslandTerrain.MAP === 'dalmaru') return sendJson(res, 200, { ok: true, map: 'dalmaru', live: true }); // (5단계: the server's own island, everyone's)
     return sendJson(res, 200, { ok: true, map: session.role === 'admin' && (await opsSwitches()).dalmaruPreview === true ? 'dalmaru' : 'classic' });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
