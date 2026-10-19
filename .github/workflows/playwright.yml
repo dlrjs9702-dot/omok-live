@@ -1,20 +1,20 @@
-name: Playwright E2E
-
-# A pull request runs once (pull_request); a push runs only on main (after a merge). A push to a PR branch used to run
-# the same suite a second time, doubling the runner time and the chance of meeting a flaky test.
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-permissions:
-  contents: read
-
-# One run per PR: a new push cancels the PR's run still in progress (main runs are keyed by SHA, so they never cancel).
-concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
-
+name: Playwright E2E
+
+# A pull request runs once (pull_request); a push runs only on main (after a merge). A push to a PR branch used to run
+# the same suite a second time, doubling the runner time and the chance of meeting a flaky test.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# One run per PR: a new push cancels the PR's run still in progress (main runs are keyed by SHA, so they never cancel).
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   # v1.10.99 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side -- npm test alone,
   # the general games in three shards and their phone run, the two asset specs, the island specs on PC in three shards and

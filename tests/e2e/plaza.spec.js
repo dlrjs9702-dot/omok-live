@@ -6,7 +6,7 @@ const { post, get, shopper, buyAndEquip, expectNoScriptError } = require('./skin
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 // The plaza is one shared square and each page renders 3D: these run one after another (users of another test would
 // walk into this one, and several software-rendered pages at once are slow).
-test.describe.configure({ mode: 'default' });
+test.describe.configure({ mode: process.env.CI ? 'parallel' : 'default' }); // (CI: each part has its own server and runs one test at a time -- 'parallel' lets the three PC parts split this file's tests, not the whole file into one)
 
 const state = (page) => page.evaluate(() => { const d = window.PlazaDebug(); return d && { x: d.x, z: d.z, near: d.near, running: d.running }; });
 
