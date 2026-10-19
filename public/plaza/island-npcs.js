@@ -156,17 +156,44 @@
     return stops;
   }
 
+  // A-6 동산 주민 (docs/residents-talk-hills-20261018.md 3): 두리 (the beekeeper: the north hills), 이솔 (the stargazer: the
+  // tower's hill, the east and west ones) and 가람 (the explorer: any hill) mostly go round the hills -- stopping places on their tops
+  // and slopes (free cells, a gentle slope, clear of doors, reachable from the walks), where they stay longer and do a
+  // little something (`act`: a motion the browser plays on arrival). The others keep to the village.
+  const HILL_STOP = [15, 30]; // seconds on a hill stop
+  const HILL_WALKERS = Object.freeze({ 3: { hills: [1, 2], act: 'interact' }, 8: { hills: [0, 4, 5], act: 'look' }, 9: { hills: null, act: 'look' } });
+  let hillStops = null;
+  function hillPlaces() {
+    if (hillStops) return hillStops;
+    buildGrid(); hillStops = [];
+    const from = stopPlaces()[0];
+    T.HILLS.forEach(([hx, hz, , hw], hill) => {
+      for (const [rr, k] of [[0, 1], [0.25, 6], [0.45, 8], [0.65, 10]]) for (let a = 0; a < k; a += 1) {
+        const th = (a / k) * Math.PI * 2 + 0.4; const x = hx + Math.cos(th) * hw * rr; const z = hz + Math.sin(th) * hw * rr;
+        const [ci, cj] = cellOf(x, z); if (!free(ci, cj) || !T.walkable(x, z)) continue;
+        if (Math.hypot(T.heightAt(x + 1, z) - T.heightAt(x - 1, z), T.heightAt(x, z + 1) - T.heightAt(x, z - 1)) / 2 > 0.45) continue; // (a gentle slope)
+        if (Object.values(T.SPOTS).some((p) => Math.hypot(x - p.x, z - p.z) < 8)) continue;
+        if (hillStops.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
+        if (!findPath(from, { x, z })) continue;
+        hillStops.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, hill });
+      }
+    });
+    return hillStops;
+  }
+
   // One islander's round: legs between stopping places and the time each part takes. Cached.
   const rounds = new Map();
-  function round(n) {
+  function round(n, attempt = 0) {
     if (rounds.has(n)) return rounds.get(n);
-    const rnd = seeded(0x5eed1 + n * 7919);
+    const rnd = seeded(0x5eed1 + n * 7919 + attempt * 104729); // (a hill walker whose round does not close tries another seed)
     const places = stopPlaces();
+    const hiker = HILL_WALKERS[n]; const hills = hiker ? hillPlaces().filter((p) => !hiker.hills || hiker.hills.includes(p.hill)) : null;
     const speed = 1.25 + rnd() * 0.5;
-    const route = [places[Math.floor(rnd() * places.length)]];
+    const route = [(hills || places)[Math.floor(rnd() * (hills || places).length)]];
     for (let guard = 0; route.length < 5 + Math.floor(rnd() * 3) && guard < 400; guard += 1) {
       const last = route[route.length - 1]; const before = route[route.length - 2];
-      const next = places[Math.floor(rnd() * places.length)];
+      const pool = hills && guard < 300 && rnd() < 0.7 ? hills : places; // (a hill walker: mostly hills, the village between)
+      const next = pool[Math.floor(rnd() * pool.length)];
       const d = Math.hypot(next.x - last.x, next.z - last.z);
       if (d < 14 || d > 55 || route.includes(next)) continue;
       if (before && Math.hypot(next.x - before.x, next.z - before.z) < 10) continue; // never straight back
@@ -182,11 +209,12 @@
       if (!findPath(last, next)) continue; // across water with no bridge near: somewhere else
       route.push(next);
     }
+    if (hiker && (route.length < 5 || route.filter((p) => p.hill != null).length < 3) && attempt < 60) return round(n, attempt + 1); // (mostly hills: three stops at least)
     const parts = []; let t = 0;
     for (let k = 0; k < route.length; k += 1) {
       const a = route[k]; const b = route[(k + 1) % route.length];
-      const stop = STOP_MIN + rnd() * (STOP_MAX - STOP_MIN);
-      parts.push({ t0: t, t1: t + stop, pts: [a], moving: false }); t += stop;
+      const stop = a.hill != null ? HILL_STOP[0] + rnd() * (HILL_STOP[1] - HILL_STOP[0]) : STOP_MIN + rnd() * (STOP_MAX - STOP_MIN); // (on a hill: a while longer)
+      parts.push({ t0: t, t1: t + stop, pts: [a], moving: false, act: a.hill != null ? hiker?.act || 'look' : null }); t += stop;
       const path = findPath(a, b) || findPath(b, a)?.slice().reverse() || [a, a];
       for (let m = 0; m < path.length - 1; m += 1) {
         const p = path[m]; const q = path[m + 1]; const len = Math.hypot(q.x - p.x, q.z - p.z);
@@ -208,7 +236,7 @@
     const part = r.parts[lo];
     if (!part.moving) { // standing: facing the way they will walk next
       const next = r.parts[(lo + 1) % r.parts.length]; const p = part.pts[0]; const q = next.pts[1] || next.pts[0];
-      return { x: p.x, z: p.z, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: false };
+      return { x: p.x, z: p.z, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: false, act: part.act || null, stop: lo };
     }
     const [p, q] = part.pts; const k = (t - part.t0) / (part.t1 - part.t0);
     return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, yaw: Math.atan2(q.x - p.x, q.z - p.z), moving: true };
@@ -216,14 +244,24 @@
 
   // A-6 섬 소문: where islander n is often seen -- the map's place nearest the middle of their stops, else a side of the island
   // (north is -z on the map)
+  // where islander n's round is centred (their stops' middle): how far apart two islanders usually are
+  function homeOf(n) { const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]); return { x: st.reduce((a, p) => a + p.x, 0) / st.length, z: st.reduce((a, p) => a + p.z, 0) / st.length }; }
+  const SIDES = ['북쪽', '북동쪽', '동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽'];
+  const sideOf = (x, z) => SIDES[Math.round(((Math.atan2(x, -z) / (Math.PI * 2)) * 8 + 8)) % 8];
   function hangout(n) {
     const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
+    const onHills = st.filter((p) => p.hill != null);
+    if (onHills.length * 2 >= st.length) { // (their hill: the one they stop on most)
+      const counts = new Map(); for (const p of onHills) counts.set(p.hill, (counts.get(p.hill) || 0) + 1);
+      const hill = [...counts].sort((a, b) => b[1] - a[1])[0][0]; const [hx, hz] = T.HILLS[hill];
+      const near = Object.values(T.SPOTS).find((p) => p.kind === 'tower' && Math.hypot(p.x - hx, p.z - hz) < 12);
+      return near ? '탑이 있는 언덕' : `섬 ${sideOf(hx, hz)} 언덕`;
+    }
     const x = st.reduce((a, p) => a + p.x, 0) / st.length; const z = st.reduce((a, p) => a + p.z, 0) / st.length;
     let best = null; let bd = 30;
     for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { best = a.label; bd = d; } }
     if (best) return best;
-    const side = ['북쪽', '북동쪽', '동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽'][Math.round(((Math.atan2(x, -z) / (Math.PI * 2)) * 8 + 8)) % 8];
-    return `섬 ${side}`;
+    return `섬 ${sideOf(x, z)}`;
   }
   // A server reservation pauses this resident's existing round, rather than creating another NPC.
   function residentAt(n, ms, state = null) {
@@ -394,5 +432,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, HILL_WALKERS, HILL_STOP, round, at, residentAt, hangout, homeOf, hillPlaces, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

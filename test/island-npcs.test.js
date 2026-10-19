@@ -31,7 +31,8 @@ test('배회 NPC: 서는 곳은 시설 입구에서 떨어져 있고, 왔던 곳
     const stops = r.parts.filter((p) => !p.moving);
     assert.ok(stops.length >= 5 && stops.length <= 7, `${n}: 정류 ${stops.length}`);
     for (const s of stops) {
-      assert.ok(s.t1 - s.t0 >= 3 && s.t1 - s.t0 <= 9);
+      if (s.pts[0].hill != null) assert.ok(s.t1 - s.t0 >= P.HILL_STOP[0] && s.t1 - s.t0 <= P.HILL_STOP[1], '동산: 더 오래'); // A-6 동산 주민
+      else assert.ok(s.t1 - s.t0 >= 3 && s.t1 - s.t0 <= 9);
       for (const spot of Object.values(T.SPOTS)) assert.ok(Math.hypot(s.pts[0].x - spot.x, s.pts[0].z - spot.z) >= 8, '입구를 막지 않음');
     }
     for (let k = 2; k < stops.length; k += 1) assert.ok(Math.hypot(stops[k].pts[0].x - stops[k - 2].pts[0].x, stops[k].pts[0].z - stops[k - 2].pts[0].z) >= 10, '바로 되돌아가지 않음');

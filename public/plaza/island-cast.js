@@ -156,6 +156,27 @@
     winter: ['겨울 축제라 꽃집에 포인세티아가 들어왔어요.', '겨울 축제라… 배 위에서 보낸 크리스마스가 떠오르네.', '겨울 축제 이야기로 단편을 하나 써 볼까 해요.', '겨울엔 벌들이 꼭 붙어서 겨울을 나요. 축제 소리에 깰까 봐 걱정이에요.', '겨울 축제엔 따뜻한 차 한 잔이 최고야.',
       '축제 트리 장식이 하나 없어졌다는 제보가… 아직 수사 중이야.', '겨울 축제라 생강 쿠키를 잔뜩 구웠어요!', '겨울 축제라 카드 배달이 엄청 많아요!', '겨울 밤하늘이 제일 맑아요. 축제 불빛만 좀 줄이면요.', '눈사람 만들 거예요! 축제 트리보다 크게요!'],
   });
+  // A-6 주민끼리 수다: two walkers standing together trade lines -- each one's [to the other ({you}), an answer, a goodbye]
+  const CHATS = Object.freeze([
+    ['{you}, 오늘 꽃 한 송이 어때요?', '와, 좋아요! 벌써 기분이 좋아지네요.', '그럼 이따 꽃집에서 봐요!'],
+    ['{you}, 같이 바다 보러 가겠나?', '허허, 그거 좋구먼.', '자, 그럼 또 걸어 볼까.'],
+    ['{you}, 이야기 하나 들려줄래요?', '좋아요! 그거 소설에 써도 돼요?', '잊기 전에 적어 둘게요!'],
+    ['{you}, 꿀 한 숟가락 맛볼래요?', '좋아요! 벌들도 좋아할 거예요.', '벌들 보러 가야겠어요. 또 봐요!'],
+    ['{you}야, 같이 좀 걸을까?', '그래그래, 좋지.', '천천히 다니거라.'],
+    ['{you}, 수사 좀 도와주겠나?', '좋아. 내 수첩에 적어 두지.', '수사는 계속된다!'],
+    ['{you}, 새로 구운 빵 맛볼래요?', '좋아요! 빵 하나 들고 갈게요.', '반죽 보러 가야 해요. 안녕!'],
+    ['{you}, 이따 편지 한 통 써 줄래요?', '좋아요! 배달 끝나면 갈게요.', '배달 가야 해요. 다음에 봐요!'],
+    ['{you}, 오늘 밤 별 보러 갈래요?', '좋아요… 하암, 졸리지만요.', '그 전에 낮잠 좀 자야겠어요.'],
+    ['{you}, 같이 탐험 가요!', '좋아요, 대원 한 명 추가!', '출발! 저 언덕까지!'],
+  ].map((l) => Object.freeze(l)));
+  // the line of a chat between walkers a and b in time slot `slot` (the server clock's, so every screen shows the same):
+  // { who, text } -- a opens, b answers, a says goodbye, a quiet beat; then b opens
+  function chatLine(a, b, slot) {
+    const [x, y] = Math.floor(slot / 4) % 2 ? [b, a] : [a, b]; const k = ((slot % 4) + 4) % 4;
+    if (k === 3 || !WALKERS[x] || !WALKERS[y]) return null;
+    const who = k === 1 ? y : x;
+    return { who, text: CHATS[who][k].split('{you}').join(WALKERS[k === 1 ? x : y].name) };
+  }
   const PHASES = ['morning', 'day', 'evening', 'night'];
   const hasFinal = (word) => { const c = String(word).charCodeAt(String(word).length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
   const josa = (word, pair) => `${word}${hasFinal(word) ? pair[0] : pair[1]}`; // josa('봄이', '이가') -> 봄이가
@@ -195,5 +216,5 @@
     return out.length ? pick(out, random) : '요즘은 섬이 조용해요. 평화로운 게 제일이죠.';
   }
   const keeperN = (id) => KEEPERS[id === 'photomemory' ? 'photographer' : id]?.n ?? null;
-  return { WALKERS, KEEPERS, LEVELS, GAIN, PHASES, MOODS, levelOf, walkerLine, rumor, keeperLine, keeperN, josa, hasFinal, fill };
+  return { WALKERS, KEEPERS, LEVELS, GAIN, PHASES, MOODS, CHATS, levelOf, walkerLine, rumor, chatLine, keeperLine, keeperN, josa, hasFinal, fill };
 }));

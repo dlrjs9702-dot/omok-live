@@ -1947,10 +1947,32 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         animate(c,dt,!w.arrived && w.speed>.3,w.speed); continue;
       }
       c.waving=false; delete c.returnEmote;
-      c.targetYaw = c.talkYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk)
-      c.lookAt = c.talkYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      c.targetYaw = c.talkYaw ?? c.chatYaw ?? (w.speed > 0.4 && w.heading != null ? w.heading : w.pose.yaw); // (v1.10.91: turned to me in a talk; A-6: to the one they chat with)
+      c.lookAt = c.talkYaw != null || c.chatYaw != null || w.pose.moving || lessMotion?.matches ? null : Math.sin(clock * 0.35 + w.n * 1.7) * 0.6; // standing: looking about
+      // A-6 동산: on a hill stop, its little something once on arrival (looking about, the beehive)
+      if (w.pose.moving) c.actStop = null; else if (w.pose.act && c.actStop !== w.pose.stop && w.speed < 0.2 && !lessMotion?.matches) { c.actStop = w.pose.stop; c.anim?.play?.(w.pose.act); }
       animate(c, dt, w.speed > 0.3, w.speed);
     }
+    if ((chatCheck -= dt) <= 0) { chatCheck = 0.25; chatter(); }
+    const now = performance.now(); for (const { c } of wanderers) stepBubble(c, now);
+  }
+  // A-6 주민끼리 수다: two islanders standing at the same stop (within CHAT_R) face each other and trade lines over their
+  // heads (IslandCast.chatLine, by the server clock's 3-second slots: the same on every screen). A talk with me comes first.
+  const CHAT_R = 3.2; let chatCheck = 0;
+  function chatter() {
+    const slot = Math.floor((Date.now() + serverOffset) / 3000);
+    const free = wanderers.filter(({ c, w }) => c.root.visible && !w.pose.moving && !w.pose.held && c.talkYaw == null && w.speed < 0.2);
+    const paired = new Set();
+    for (let i = 0; i < free.length; i += 1) for (let j = i + 1; j < free.length; j += 1) {
+      const A = free[i]; const B = free[j];
+      if (paired.has(A.n) || paired.has(B.n) || Math.hypot(A.w.x - B.w.x, A.w.z - B.w.z) > CHAT_R) continue;
+      paired.add(A.n); paired.add(B.n);
+      A.c.chatYaw = Math.atan2(B.w.x - A.w.x, B.w.z - A.w.z); B.c.chatYaw = Math.atan2(A.w.x - B.w.x, A.w.z - B.w.z);
+      const [a, b] = A.n < B.n ? [A, B] : [B, A]; const line = globalThis.IslandCast?.chatLine(a.n, b.n, slot);
+      const speaker = line && (line.who === a.n ? a : b);
+      if (speaker && speaker.c.chatSlot !== slot) { speaker.c.chatSlot = slot; say(speaker.c, line.text); }
+    }
+    for (const { n, c } of wanderers) if (!paired.has(n)) delete c.chatYaw;
   }
 
   let near = null; let nearName = null;
