@@ -6,6 +6,7 @@ const { shopper, get, post, adminToken, expectNoScriptError } = require('./skin-
 // the bare island on its own (nothing of its position goes to the server), with its own map. PC 전용.
 test.skip(({ isMobile }) => isMobile, 'PC 전용 검증');
 test('달마루섬 미리보기: 관리자 스위치일 때만 새 섬, 미리보기 화면은 혼자 걷고 위치를 보내지 않음', async ({ browser, request }) => {
+  test.skip(require('../../public/plaza/island-terrain.js').MAP === 'dalmaru', '달마루섬이 모두의 섬이 된 뒤에는 미리보기 스위치가 없음 (5단계)');
   test.setTimeout(240000);
   const admin = await adminToken(request);
   const who = await shopper(browser, request, '미리보기', 0, 'male'); const { page, token } = who;

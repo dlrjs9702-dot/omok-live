@@ -950,7 +950,8 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
 
 // v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 30,000P (v1.10.35) on a second press, shows at
 // once, and the next change waits 24 hours.
-test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', { skip: DAL && '지금 섬 전용 (달마루섬: 관공서 개명 신청 창구 -- 가방·관공서·상인 시험과 townhall-room 단위 시험)' }, async ({ browser, request }) => {
+test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
+  test.skip(DAL, '지금 섬 전용 (달마루섬: 관공서 개명 신청 창구 -- 가방·관공서·상인 시험과 townhall-room 단위 시험)');
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '작명손님', 200_000);
   const { page } = a;
