@@ -124,6 +124,8 @@
     hallLamps: [[-1.4, -22], [1.2, -30], [-1.4, -38]], // the three lamps the electrician mends, by the walk to the water
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
+    // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)
+    halloween: { fields: [[-60, 20], [60, 20], [120, 40], [-8, 150], [-132, 30]], extras: [['broom', -112, -22, 0.6], ['broom', -96, 36, 2.1], ['hay', -122, 46, 1.2], ['cauldron', -82, -24, 1.57]] },
     quests: { photographer: { x: -12, z: -12 }, gardener: { x: -56, z: 14 }, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
       station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };

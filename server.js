@@ -1369,7 +1369,7 @@ const trainNow = () => nowMs() + trainShift;
 const trainDocked = (stopId, id = null, line = null) => { trainService(); const candidates = IslandTrain.TRAINS.map((t) => IslandTrain.trainAt(t.id, trainNow())).filter((st) => st.stop && st.wait > 0.7 && st.wait <= IslandTrain.DWELL - 0.7 && (!stopId || st.stop === stopId) && (id === null || st.id === id) && (!line || st.line === line)); return candidates[0] || null; };
 function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) seatTaken.delete(id); }
 const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
-const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
+const passesGate = (session) => IslandTerrain.MAP === 'dalmaru' /* (달마루섬: no walled yard before the cliff front -- the 관공서 door is open) */ || townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
 function notePlazaSpot(account, x, z, now = nowMs()) {
   if (!account || !plazaStandable(x, z)) return; // only a spot one may stand on is kept
   plazaSpots.set(account, { day: kstDate(now), x, z, dirty: true });

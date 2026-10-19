@@ -61,6 +61,8 @@ const SHAPES = {
 
 export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, benches, spots, lampModel }) {
   const group = new THREE.Group(); group.visible = false; group.name = 'halloween-decor'; scene.add(group);
+  const PC = T.PLAZA_C || { x: 0, z: 0 }; // (the plaza's middle: 지금 섬's origin, 달마루섬's 대청마당)
+  const nearPlaza = (x, z, m) => (T.inPlaza ? T.inPlaza(x, z, m) : Math.hypot(x, z) < T.PLAZA_R + m);
   const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true });
   const made = []; const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
   const place = { pumpkinA: [], pumpkinB: [], stack: [], hay: [], scarecrow: [], cauldron: [], broom: [], bunting: [], lights: [] };
@@ -82,20 +84,20 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   // doors: cottages and facilities (spots worked out where they are built)
   for (const s of spots) put(s.kind, s.x, s.z, s.ry, s.y ?? heightAt(s.x, s.z)); // laid out against the walls, clear of the yard's fences and mailbox
   // the plaza: a pumpkin at each end of each bench, two cauldrons
-  for (const b of benches) { const ry = Math.atan2(-b.x, -b.z); for (const side of [-1, 1]) put(side < 0 ? 'pumpkinA' : 'pumpkinB', b.x + Math.cos(ry) * 1.15 * side, b.z - Math.sin(ry) * 1.15 * side, ry + Math.PI, PH); }
-  for (const [x, z] of [[7.6, -2.8], [-7.6, 2.8]]) if (free(x, z, R.cauldron)) put('cauldron', x, z, Math.atan2(x, z), PH);
+  for (const b of benches) { const ry = Math.atan2(PC.x - b.x, PC.z - b.z); for (const side of [-1, 1]) put(side < 0 ? 'pumpkinA' : 'pumpkinB', b.x + Math.cos(ry) * 1.15 * side, b.z - Math.sin(ry) * 1.15 * side, ry + Math.PI, PH); }
+  for (const [dx, dz] of [[7.6, -2.8], [-7.6, 2.8]]) { const x = PC.x + dx; const z = PC.z + dz; if (free(x, z, R.cauldron)) put('cauldron', x, z, Math.atan2(dx, dz), PH); }
   // the walks: a small jack-o'-lantern every few metres, sides taking turns, kept off the plaza, water, bridges and lamps
   let n = 0;
   for (const w of T.walkCurves) for (let i = 4; i < w.pts.length - 1; i += 10) {
     const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
-    if (Math.hypot(x, z) < T.PLAZA_R + 6) continue;
+    if (nearPlaza(x, z, 6)) continue;
     const side = n % 2 ? 1 : -1; const off = w.w / 2 + 0.7;
     const px = x - ((z2 - z) / l) * off * side; const pz = z + ((x2 - x) / l) * off * side;
     if (!walkable(px, pz) || T.streamDist(px, pz) < T.STREAM_HALF + 1 || T.onBridge(px, pz) || !free(px, pz, 0.25)) continue;
     put(n % 3 === 2 ? 'pumpkinB' : 'pumpkinA', px, pz, Math.atan2(x - px, z - pz) + Math.PI); n += 1; // facing the walk
   }
   // the fields: a scarecrow and a hay bale in each flower field, a witch's broom in the nature area, a cauldron by the pond
-  for (const [x, z] of T.HALLOWEEN_FIELDS) { const ry = Math.atan2(-x, -z) + Math.PI; if (fit('scarecrow', x, z, ry)) fit('hay', x + 1.8, z + 0.6, ry + 0.4); }
+  for (const [x, z] of T.HALLOWEEN_FIELDS) { const ry = Math.atan2(PC.x - x, PC.z - z) + Math.PI; if (fit('scarecrow', x, z, ry)) fit('hay', x + 1.8, z + 0.6, ry + 0.4); }
   for (const [kind,x,z,ry] of T.HALLOWEEN_EXTRAS) fit(kind,x,z,ry);
   fit('cauldron', T.POND.x + T.POND.r + 1.8, T.POND.z, Math.PI / 2);
   // strings: lights from lamp to lamp round the plaza, bunting between each walk's neighbouring lamps
@@ -107,9 +109,9 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
       place[kind].push(new THREE.Matrix4().makeTranslation(a.x + dx * t, y0, a.z + dz * t).multiply(rot).multiply(new THREE.Matrix4().makeScale(Math.hypot(len, y1 - y0) / 4, 1, 1)));
     }
   };
-  const ring = [...plazaLamps].sort((a, b) => Math.atan2(a.z, a.x) - Math.atan2(b.z, b.x));
+  const ring = [...plazaLamps].sort((a, b) => Math.atan2(a.z - PC.z, a.x - PC.x) - Math.atan2(b.z - PC.z, b.x - PC.x));
   ring.forEach((a, i) => { const b = ring[(i + 1) % ring.length]; if (Math.hypot(b.x - a.x, b.z - a.z) < 19) string('lights', a, b, PH + 2.35, PH + 2.35); });
-  for (const l of plazaLamps) { const d = Math.hypot(l.x, l.z); string('lights', l, { x: (l.x / d) * 3.1, z: (l.z / d) * 3.1 }, PH + 2.35, PH + 2.2); } // and down to the pedestal's rim
+  for (const l of plazaLamps) { const d = Math.hypot(l.x - PC.x, l.z - PC.z); string('lights', l, { x: PC.x + ((l.x - PC.x) / d) * 3.1, z: PC.z + ((l.z - PC.z) / d) * 3.1 }, PH + 2.35, PH + 2.2); } // and down to the pedestal's rim
   const walkLamps = T.nature().lampSpots;
   for (let i = 0; i + 1 < walkLamps.length; i += 1) { const a = walkLamps[i]; const b = walkLamps[i + 1]; const L = Math.hypot(b.x - a.x, b.z - a.z); if (L > 6 && L < 14) string('bunting', a, b, heightAt(a.x, a.z) + 2.1, heightAt(b.x, b.z) + 2.1); }
 
@@ -138,7 +140,7 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   shades.computeBoundingSphere(); shades.castShadow = false; shades.visible = false; group.add(shades);
 
   // will-o'-wisps: little orange lights drifting low among the woods' trees
-  const trees = T.nature().trees.filter((t, i) => i % 9 === 0 && Math.hypot(t.x, t.z) > T.PLAZA_R + 8).slice(0, 48);
+  const trees = T.nature().trees.filter((t, i) => i % 9 === 0 && !nearPlaza(t.x, t.z, 8)).slice(0, 48);
   const wispGeo = new THREE.SphereGeometry(0.13, 8, 6); made.push(wispGeo);
   const wispMat = new THREE.MeshBasicMaterial({ color: 0xffc070 }); const wisps = new THREE.InstancedMesh(wispGeo, wispMat, trees.length);
   const wispAt = trees.map((t, i) => ({ x: t.x + 1.4 * Math.cos(i), z: t.z + 1.4 * Math.sin(i), y: heightAt(t.x, t.z) + 1.1, p: i * 1.7 }));
