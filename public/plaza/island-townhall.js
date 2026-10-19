@@ -31,7 +31,7 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
   const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
   const put = (kind, lx, lz, turn = 0, sx = 1) => {
     const p = at(lx, lz); place[kind].push(m4.compose(new THREE.Vector3(p.x, heightAt(p.x, p.z), p.z), q.setFromAxisAngle(up, ry + turn), new THREE.Vector3(sx, 1, 1)).clone());
-    if (R[kind]) solids.push({ ...p, r: R[kind] });
+    if (R[kind]) solids.push({ ...p, r: R[kind], batch: true }); // (batch: drawn instanced -- the map check counts it as seen)
   };
   // a wall from (ax, az) to (bx, bz) in the hall's frame: 2 m panels stretched to fit, a post every third panel, walked round
   function wall(ax, az, bx, bz) {
@@ -41,7 +41,7 @@ export function townhallYard({ scene, assets, solids, vcMat, makeCharacter, dres
       const t = k / n; put('wall', ax + (bx - ax) * t, az + (bz - az) * t, turn, seg / 2);
       if (k > 0 && k % 3 === 0) put('post', ax + (bx - ax) * t, az + (bz - az) * t);
     }
-    for (let d = 0; d <= len; d += 0.5) { const t = d / len; solids.push({ ...at(ax + (bx - ax) * t, az + (bz - az) * t), r: 0.32 }); }
+    for (let d = 0; d <= len; d += 0.5) { const t = d / len; solids.push({ ...at(ax + (bx - ax) * t, az + (bz - az) * t), r: 0.32, batch: true }); }
   }
   const gx = TH.gate.hw + 0.45; // the gate pillars' centres, ±2.05
   wall(-Y.hx, Y.z1, -gx - 0.45, Y.z1); wall(gx + 0.45, Y.z1, Y.hx, Y.z1); // the front, either side of the gate

@@ -530,6 +530,7 @@ test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — �
   const inPicture = await page.evaluate((list) => list.map(([x, y, z]) => window.PlazaDebug().sea.inPicture(x, y, z)), [...at.boat, ...at.gulls, ...at.dolphins].map((p) => [p.x, p.y, p.z]));
   expect(inPicture.filter(Boolean).length).toBeGreaterThan(0); // chosen where the default picture shows the sea (the gulls wheel in and out of it)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/sea.png` });
+  await page.evaluate(() => window.PlazaDebug().setCamYaw(0)); // (the arrows walk screen-relative)
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();
@@ -583,6 +584,9 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
   const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it)
+  // (달마루섬: its cliff fronts are shown as facility.townhall/store, their aliases; the 작명소 and the trader are indoors --
+  // the 개명 신청 window and the 백화점's 노점, built on the way in)
+  if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
   await expect.poll(async () => { const s = (await debug(page)).assets.shown; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
@@ -616,7 +620,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(files.some(([url, state]) => url === zone.low && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));
-  expect(bridges.length).toBe(4);
+  expect(bridges.length).toBe(await page.evaluate(() => { const B = window.IslandTerrain.bridges; return (typeof B === 'function' ? B() : B).filter((b) => !b.model).length; })); // (지금 섬 4; 달마루섬 2 -- 윤슬다리 is its own model)
   for (const b of bridges) expect(b.url).toContain(`/${b.look}/bridge_${b.look}_v1.glb`);
   expect(d.assets.attaches.filter((x) => x.ids.includes('prop.fence')).length).toBeGreaterThanOrEqual(18); // two runs per cottage
   // Required island files of every season are ready before entry; complete transformations are fetched when worn.
@@ -656,7 +660,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // v1.10.29: the falling flakes are ready for every season that has them, and a whale breaches once (LoopOnce) with a
   // splash where it breaks the surface and where it falls back, then is gone
   expect(d.assets.ambient.kinds.sort()).toEqual(['autumn', 'spring', 'winter']);
-  await page.evaluate(() => { const p = window.PlazaDebug(); p.teleport(-70, 75); p.setCamYaw(Math.PI * 0.75); });
+  await page.evaluate(() => { const p = window.PlazaDebug(); if (window.IslandTerrain.dalmaru) { p.teleport(142.5, 82.2); p.setCamYaw(-2.012); } else { p.teleport(-70, 75); p.setCamYaw(Math.PI * 0.75); } }); // (달마루섬: the east arm's outer beach -- -70, 75 is 윤슬만)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().whale()), { timeout: 5000 }).toBe(true);
   // the clip runs on the scene's clock (a frame counts at most 0.05 s), so on a slow software-rendered runner its 6 s take longer
   await expect.poll(async () => (await debug(page)).assets.played, { timeout: 90000 }).toEqual({ 'sea.whale': 1, 'sea.splash': 2 });

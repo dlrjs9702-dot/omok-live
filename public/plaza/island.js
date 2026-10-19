@@ -565,8 +565,8 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const along = (pts, step, fn) => { let acc = 0; for (let i = 1; i < pts.length; i += 1) { const [x0, z0] = pts[i - 1]; const [x1, z1] = pts[i]; const l = Math.hypot(x1 - x0, z1 - z0); acc += l; if (acc < step) continue; acc = 0; fn(x1, z1, (x1 - x0) / (l || 1), (z1 - z0) / (l || 1), i); } };
   // v1.10.73: the walks' own edges are the path tiers below (the stream banks keep their soft scatter)
   // (달마루섬: its rivers -- straight runs, cut into half-metre points -- the scatter on the bank's top, past its cut)
-  const banks = T.dalmaru ? T.dalmaru.RIVERS.map((r) => ({ half: r.w / 2 + 2.05, pts: r.pts.slice(1).flatMap(([x1, z1], k) => { const [x0, z0] = r.pts[k]; const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.5)); return Array.from({ length: n }, (_, j) => [x0 + ((x1 - x0) * (j + 1)) / n, z0 + ((z1 - z0) * (j + 1)) / n]); }) }))
-    : streamCurves.map((pts) => ({ pts, half: STREAM_HALF }));
+  const banks = T.dalmaru ? T.dalmaru.RIVERS.map((r) => ({ half: r.w / 2 + 2.05, rock: r.w / 2 - 0.6, pts: r.pts.slice(1).flatMap(([x1, z1], k) => { const [x0, z0] = r.pts[k]; const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.5)); return Array.from({ length: n }, (_, j) => [x0 + ((x1 - x0) * (j + 1)) / n, z0 + ((z1 - z0) * (j + 1)) / n]); }) }))
+    : streamCurves.map((pts) => ({ pts, half: STREAM_HALF, rock: 0.75 }));
   banks.forEach(({ pts: st, half }, si) => along(st, 1.1, (x, z, dx, dz, i) => {
     if (coastDist(x, z) < 3) return;
     for (const side of [-1, 1]) {
@@ -581,17 +581,38 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
   }));
   const bendRocks = [];
-  streamCurves.forEach((st) => { for (let i = 6; i < st.length - 6; i += 3) {
+  banks.forEach(({ pts: st, rock }) => { for (let i = 6; i < st.length - 6; i += 3) { // (rock: how far out from the middle, on the outer bank)
     const [ax, az] = st[i - 3]; const [bx, bz] = st[i]; const [cx, cz] = st[i + 3];
     const turn = Math.abs(wrap(Math.atan2(cz - bz, cx - bx) - Math.atan2(bz - az, bx - ax)));
     if (turn < 0.16 || coastDist(bx, bz) < 4 || bendRocks.some((r) => Math.hypot(r.x - bx, r.z - bz) < 12) || bridges.some((b) => Math.hypot(b.x - bx, b.z - bz) < 5)) continue;
     const l = Math.hypot(cx - ax, cz - az) || 1; const side = wrap(Math.atan2(cz - bz, cx - bx) - Math.atan2(bz - az, bx - ax)) > 0 ? -1 : 1; // the outer bank
-    bendRocks.push({ x: bx - ((cz - az) / l) * 0.75 * side, z: bz + ((cx - ax) / l) * 0.75 * side, s: 0.32 + hash(bx, bz) * 0.15, along: -Math.atan2(cz - az, cx - ax) });
+    bendRocks.push({ x: bx - ((cz - az) / l) * rock * side, z: bz + ((cx - ax) / l) * rock * side, s: 0.32 + hash(bx, bz) * 0.15, along: -Math.atan2(cz - az, cx - ax) });
   } });
   // v1.10.32 강둑 돌: the stones on the outer bank of each bend are the made bank stones (04 pack), along the stream
-  instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.along), { cell: 60, color: (r, c) => c.set(0xb8b0a4), target: 'nature.riverBank' });
+  const bedAt = (T.dalmaru ? ground : land); // (달마루섬: the river's own bed)
+  instanced(pebble, natureMat, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.05, r.z, r.s, r.s * 0.7, r.along), { cell: 60, color: (r, c) => c.set(0xb8b0a4), target: 'nature.riverBank' });
   const foam = keep(new THREE.MeshStandardMaterial({ color: 0xe9f7ff, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false }));
-  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, land(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
+  // 달마루섬 5단계 폭포: at each pool a sheet from the ridge's lip (the steepest way up from the pool) down to its water,
+  // the river's water texture running down it, foam where it lands and a little spray
+  let fallTex = null; const falls = [];
+  if (T.dalmaru) {
+    fallTex = keep(flowTex.clone()); fallTex.needsUpdate = true; fallTex.repeat.set(1.5, 3);
+    const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide }));
+    const sprayMat = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.35, depthWrite: false }));
+    const puffGeo = keep(new THREE.SphereGeometry(0.7, 10, 8)); const ringGeo = keep(new THREE.RingGeometry(1.2, 2.6, 24).rotateX(-Math.PI / 2)); const SEA_Y = T.dalmaru.SEA;
+    for (const p of T.dalmaru.POOLS) {
+      let a = 0; let top = -Infinity;
+      for (let k = 0; k < 72; k += 1) { const t = (k / 72) * TAU; const h = heightAt(p.x + Math.cos(t) * (p.r + 4), p.z + Math.sin(t) * (p.r + 4)); if (h > top) { top = h; a = t; } }
+      const ux = Math.cos(a); const uz = Math.sin(a); const vx = -uz; const vz = ux; const hw = 2.2; const lip = p.r + 3.4; const foot = p.r + 0.4;
+      const pos = []; for (const [d, y] of [[foot, SEA_Y + 0.02], [lip, top + 0.05]]) for (const side of [-1, 1]) pos.push(p.x + ux * d + vx * hw * side, y, p.z + uz * d + vz * hw * side);
+      const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2)); g.setIndex([0, 1, 2, 2, 1, 3]); g.computeVertexNormals();
+      const sheet = new THREE.Mesh(g, fallMat); sheet.name = 'waterfall'; scene.add(sheet);
+      const ring = new THREE.Mesh(ringGeo, foam); ring.position.set(p.x + ux * (foot - 1), SEA_Y + 0.03, p.z + uz * (foot - 1)); scene.add(ring);
+      const puffs = [-1, 0, 1].map((k) => { const m = new THREE.Mesh(puffGeo, sprayMat); m.position.set(p.x + ux * (foot - 0.8) + vx * k * 1.3, SEA_Y + 0.5, p.z + uz * (foot - 0.8) + vz * k * 1.3); scene.add(m); return m; });
+      falls.push({ sheet, puffs });
+    }
+  }
+  instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
   instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, ground(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
   // v1.10.73 마을 환경정비사업 ① 길 3단계 (IDEAS #future-path-tiers): laid along each walk's one centre line instead of the
   // random kerb tiles, pebbles and flowers -- 마을 길 (the hall, the shop street, and the walks within TOWN_R of the plaza):
@@ -641,11 +662,11 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       s -= l;
     }
   });
-  // (달마루섬: a walk is one tier end to end -- the planters mark a 산책로 or 오솔길 where it leaves a town walk, 1.5 m in)
+  // (달마루섬: a walk is one tier end to end -- the planters mark a 산책로 or 오솔길 where it leaves a town walk, 4.2 m in)
   if (T.dalmaru) walkCurves.forEach((w, wi) => { if (w.tier === 'town') return; for (const end of [0, w.pts.length - 1]) {
     const [ex, ez] = w.pts[end]; if (!walkCurves.some((o, oi) => oi !== wi && o.tier === 'town' && o.pts.some(([ox, oz]) => Math.hypot(ox - ex, oz - ez) < o.w / 2 + 0.9))) continue;
     const [nx, nz] = w.pts[end ? Math.max(0, end - 4) : Math.min(w.pts.length - 1, 4)]; const l = Math.hypot(nx - ex, nz - ez) || 1; const dx = (nx - ex) / l; const dz = (nz - ez) / l;
-    const x = ex + dx * 1.5; const z = ez + dz * 1.5;
+    const x = ex + dx * 4.2; const z = ez + dz * 4.2; // (past the junction's disc: none within 3.4 of one)
     for (const side of [-1, 1]) { const o = w.w / 2 + 0.9; const px = x - dz * o * side; const pz = z + dx * o * side; if (walkable(px, pz)) pathParts.planter.push({ x: px, z: pz, r: -Math.atan2(dz, dx) }); }
   } });
   const onGround = (x, z) => T.meshGroundHeight(x, z);
@@ -695,7 +716,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const lampBulb = mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }); // v1.10.38: orange in October (plaza-scene)
   instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z), p.z, 1),
     { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), lampBulb, false]] });
-  for (const p of lampSpots) solids.push({ x: p.x, z: p.z, r: 0.3 });
+  for (const p of lampSpots) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 }); // (instanced like the trees: mapCheck counts them as drawn)
   // v1.10.29 지면 레이어: low flat drifts of the zone's season -- spring petals, summer clover, autumn leaves, winter
   // snow (deco.layer.*: three shapes) -- on level open grass inside the zones only (not the plaza, walks, water, banks,
   // shores, bridges, building yards or the pond), from fixed spots. Decoration: nothing to walk round or pick up.
@@ -866,7 +887,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     return { turn, shown };
   }
 
-  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar(0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1)))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
-  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
+  return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }

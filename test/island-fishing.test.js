@@ -23,6 +23,15 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   }
   assert.equal(seen.size, 21); assert.equal(Object.keys(F.SPECIES).length, 21);
   const avg = evs.reduce((a, b) => a + b, 0) / evs.length; assert.ok(avg > 1000 && avg < 1400, `평균 ${avg}`);
+  // (달마루섬 5단계) five waters: 윤슬만 the sea's without the open-water fish, 거울호수 the river's without the stream fish,
+  // the waterfall pools the river's without the common ones -- every season something, a pool's cast worth more
+  const ev = (list) => list.reduce((a, id) => a + F.SPECIES[id].weight * F.SPECIES[id].price, 0) / list.reduce((a, id) => a + F.SPECIES[id].weight, 0);
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    for (const water of ['bay', 'lake', 'pool']) assert.ok(F.listFor(water, season).length >= 2, `${water} ${season}`);
+    assert.ok(!F.listFor('bay', season).some((id) => ['giant_tuna', 'mackerel', 'cutlassfish', 'stingray'].includes(id)));
+    assert.ok(!F.listFor('lake', season).some((id) => ['pale_chub', 'sweetfish', 'mandarin_fish'].includes(id)));
+    assert.ok(ev(F.listFor('pool', season)) > ev(F.listFor('river', season)), `pool ${season}`);
+  }
   assert.equal(F.waterAt(T.PIER.x, T.PIER.z), 'sea');
   assert.equal(F.canFish(T.PIER.x, T.PIER.z), true); assert.equal(F.canFish(0, 8), false); assert.equal(F.canFish(30, 30), false);
   const c = { biteAt: 10_000 };

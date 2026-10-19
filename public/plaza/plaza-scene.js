@@ -1458,7 +1458,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // where the water is from here: the nearest open water round me (sea), a few metres out
   function waterFrom(x, z) {
     const T = globalThis.IslandTerrain; let best = null;
-    if (T.dalmaru && T.fishWater(x, z) === 'river') { // (달마루섬: rivers, 거울호수, pools -- the ground cut below the sea's level, the surface at it)
+    if (T.dalmaru && ['river', 'lake', 'pool'].includes(T.fishWater(x, z))) { // (달마루섬: rivers, 거울호수, pools -- the ground cut below the sea's level, the surface at it)
       const D = T.dalmaru;
       for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
         const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const g = D.ground(wx, wz);
@@ -2758,7 +2758,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (box.max.x - box.min.x > 60 || box.max.z - box.min.z > 60) return; boxes.push(box.clone());
     });
     const r1 = (v) => Math.round(v * 10) / 10;
-    const unseen = live.filter((s) => !s.nature && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.3)).map((s) => [r1(s.x), r1(s.z), s.r]);
+    const unseen = live.filter((s) => !s.nature && !s.batch && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.3)).map((s) => [r1(s.x), r1(s.z), s.r]);
     const things = [...buildingRoots.map((r) => [r.userData.facility || 'house', r]), ...pieces.map((g) => [g.userData.piece, g])].filter(([, r]) => r.visible && r.parent);
     const unblocked = []; const floating = []; const sunk = [];
     for (const [name, root] of things) {
