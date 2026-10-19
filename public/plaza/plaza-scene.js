@@ -9,7 +9,6 @@ import { townhallYard } from './island-townhall.js';
 import { trainScene } from './island-train-scene.js';
 import { createOcclusion } from './occlusion.js';
 import { cameraEase, cameraSkyAim } from './camera-motion.js';
-import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
 
 const TAU = Math.PI * 2;
 // v1.10.79 이동 3단계 (assets 36): 느리게 걷기 1.0 / 걷기 4.2 / 뛰기 6.2 units per second. Shift (or the phone's 걸음
@@ -897,7 +896,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       let g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(out, 3)); if (src.index) { g.setIndex(src.index.clone()); g = g.toNonIndexed(); } geos.push(g);
     });
     if (!geos.length) return null;
-    const geometry = mergeGeometries(geos); geos.forEach((g) => g.dispose()); geometry.computeVertexNormals();
+    const all = new Float32Array(geos.reduce((n, g) => n + g.attributes.position.array.length, 0)); let at = 0; for (const g of geos) { all.set(g.attributes.position.array, at); at += g.attributes.position.array.length; g.dispose(); } // (positions only: no addon fetched for this -- an island without models loads none)
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(all, 3)); geometry.computeVertexNormals();
     const stone = new THREE.Mesh(geometry, STATUE_STONE); stone.castShadow = true; stone.receiveShadow = true;
     if (c.assetRoot) c.assetRoot.visible = false; c.body.visible = false; c.root.add(stone); return stone;
   }
