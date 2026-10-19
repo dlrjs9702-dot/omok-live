@@ -1179,7 +1179,7 @@ test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 �
   expect(lost?.npc).toBeTruthy();
   const n = lost.npc.resident;
   await expect.poll(() => gap(n), { timeout: 15000 }).not.toBeNull();
-  await page.evaluate(({ n, x, z, pc }) => { const dx = x - pc.x; const dz = z - pc.z; const r = Math.hypot(dx, dz); window.PlazaDebug().placeWanderer(n, pc.x - (dx / r) * 7, pc.z - (dz / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z, pc: PC }); // (across the plaza's middle from it)
+  await page.evaluate(({ n, x, z, pc, dal }) => { const dx = x - pc.x; const dz = z - pc.z; const r = Math.hypot(dx, dz); window.PlazaDebug().placeWanderer(n, dal ? x - (dx / r) * Math.min(20, r) : pc.x - (dx / r) * 7, dal ? z - (dz / r) * Math.min(20, r) : pc.z - (dz / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z, pc: PC, dal: DAL }); // (across the plaza's middle from it; 달마루섬 is far bigger -- 20 m from it toward the plaza)
   await expect.poll(() => gap(n), { timeout: 60000, intervals: [1000] }).toBeLessThan(0.05);
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 1, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
@@ -1213,7 +1213,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
       const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
       return actor && {n:actor.n,reused:actor.reused,count:d.wanderers.length,
         near:Math.hypot(actor.x-d.residentReservations[actor.n].hold.x,actor.z-d.residentReservations[actor.n].hold.z)<.01};
-    },lost.id),{timeout:30000}).toEqual({n:lost.npc.resident,reused:true,count:10,near:true});
+    },lost.id),{timeout:60000}).toEqual({n:lost.npc.resident,reused:true,count:10,near:true}); // (달마루섬 is bigger: the walk there takes longer)
   }
   // v1.10.34 부탁: talking to the owner -- what they lost, and its place on my map from anywhere
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
