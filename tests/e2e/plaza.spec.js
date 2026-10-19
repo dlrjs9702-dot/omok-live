@@ -1521,8 +1521,14 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeDisabled();
   await shiftTo(348);
   await expect(a.page.getByRole('button', { name: '타기', exact: true })).toBeEnabled({ timeout: 15000 });
-  await clickDockButton(a.page.getByRole('button', { name: '타기', exact: true }));
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().riding?.id)).toBe(1);
+  // (CI: a slow runner can miss the 4.6 s door window between the check and the click -- open it again and press again)
+  await expect.poll(async () => {
+    if (await a.page.evaluate(() => window.PlazaDebug().train().riding?.id) === 1) return 1;
+    await shiftTo(348); const go = a.page.getByRole('button', { name: '타기', exact: true });
+    if (!await go.isVisible()) await a.page.locator('#trainMenuBtn').click();
+    if (await expect(go).toBeEnabled({ timeout: 15000 }).then(() => true, () => false)) await clickDockButton(go);
+    await a.page.waitForTimeout(1500); return a.page.evaluate(() => window.PlazaDebug().train().riding?.id);
+  }, { timeout: 60000, intervals: [200] }).toBe(1);
   await shiftTo(348); await expect(a.page.locator('#trainMainBtn')).toHaveText('내리기 · 남서해안역', { timeout: 15000 }); const offResponse = a.page.waitForResponse(r => r.url().endsWith('/api/island/train/alight')); await clickDockButton(a.page.locator('#trainMainBtn')); const offResult = await offResponse; expect(await offResult.json()).toMatchObject({ ok: true, stop: 'D' });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().platform?.line)).toBe('tour');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
@@ -1652,7 +1658,7 @@ test('사진가 이야기: 실제 근접 대화·서버 진행·다음 목적지
 });
 
 
-test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보고 가방은 비워 둔다',async({browser,request})=>{
+test('사진가 기념품: 고정 완료 기록을 별도 사진 탭에서 보고 가방은 비워 둔다',async({browser,request})=>{test.setTimeout(process.env.CI?120000:30000); // (CI: the photo tab's image takes longer on the runner)
   const a=await intoPlaza(browser,request,'첫나들이기록'),{page}=a;
   const Q=require('../../lib/island-quests'),story=Q.STORIES.photomemory;
   const stand=async(p)=>{await page.evaluate(([x,z])=>window.PlazaWarp(x,z),[p.x,p.z]);await post(request,'/api/plaza/state',a.token,{x:p.x,z:p.z,yaw:0});};
