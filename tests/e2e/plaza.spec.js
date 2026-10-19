@@ -1620,6 +1620,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await expect.poll(() => b.page.evaluate(() => Object.keys(window.PlazaDebug().takenSeats()).length), { timeout: 15000 }).toBe(0);
   // beside the other player: 인사
   const bp = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (CI 2차: the stand-up motion over -- a SPACE during it went nowhere)
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 인사', { timeout: 10000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');
