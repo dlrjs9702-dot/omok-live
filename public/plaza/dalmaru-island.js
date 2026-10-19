@@ -217,7 +217,8 @@
   // flowers, bushes, grass, shore rocks -- seeded, the same on every screen, clear of the walks and what stands
   // 영웅마루's foot, from 대청마당 to the cliff along the niches and the two fronts: kept open, so the statues are seen
   const heroYard = (x, z) => { const r = Math.hypot(x, z); const a = (((Math.atan2(z, x) * 180) / Math.PI) + 360) % 360; return r > 106 && r < 131 && a > 236 && a < 304; };
-  let natureCache = null;
+  let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
+  const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   function nature() {
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -227,7 +228,7 @@
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
     const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
-      && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
+      && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z) && !natureBlocks.some((fn) => fn(x, z, 1.5));
     const trees = [];
     const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24]];
     for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 14; tries += 1) {
@@ -268,7 +269,7 @@
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees: () => [], AREAS, WATERFRONT, STRUCTURES, FACADE,
-    NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: [], HALLOWEEN_EXTRAS: [], dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     inTownhall: () => false, inTownhallYard: () => false,
   });
