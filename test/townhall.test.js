@@ -6,7 +6,7 @@ const { createIslandEvents } = require('../lib/island-events');
 
 // v1.10.41 관공서 확장: the marble town hall and its walled yard stand on ground at the plaza's top, clear of the stream
 // and every walk; nothing of the island's nature, no event and no weed is laid inside them; the door is in the yard.
-test('관공서 확장: 광장 높이 대지, 개울·산책로와 겹치지 않고, 안에는 자연물·이벤트가 없다', () => {
+test('관공서 확장: 광장 높이 대지, 개울·산책로와 겹치지 않고, 안에는 자연물·이벤트가 없다', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   const TH = T.TOWNHALL;
   for (const [lx, lz] of [[0, 0], [-8, -6], [8, 6], [0, 12], [-8, 16], [8, 16], [0, 20]]) {
     const p = T.townhallWorld(lx, lz); assert.ok(Math.abs(T.heightAt(p.x, p.z) - T.PLAZA_H) < 1e-6, `${lx},${lz} 높이`);

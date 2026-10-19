@@ -8,7 +8,7 @@ const T = require('../public/plaza/island-terrain.js');
 const R = require('../public/plaza/island-train.js');
 const { boot } = require('../test-support/test-server');
 
-test('관광열차: 해안2역·8자1노선·4대, 보행 여유와 중앙 입체 교차', () => {
+test('관광열차: 해안2역·8자1노선·4대, 보행 여유와 중앙 입체 교차', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   assert.deepEqual(Object.keys(R.STATIONS), ['B', 'D']);
   assert.deepEqual(Object.keys(R.LINES), ['tour']);
   assert.deepEqual(R.TRAINS.map(t => t.id), [1,2,3,4]); assert.equal(R.PLATFORMS.length,2);
@@ -24,7 +24,7 @@ test('관광열차: 해안2역·8자1노선·4대, 보행 여유와 중앙 입�
   for(const p of R.PLATFORMS) assert.ok(Math.abs(p.y-p.car.y-.55)<1e-9);
 });
 
-test('관광열차 시간표: 반바퀴120초·이동114초·정차6초·회차240초·60초 간격', () => {
+test('관광열차 시간표: 반바퀴120초·이동114초·정차6초·회차240초·60초 간격', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   assert.equal(R.CYCLE,240);assert.equal(R.TRAVEL,114);assert.equal(R.DWELL,6);
   const at=(id,s)=>R.timetableAt(id,s*1000);
   assert.equal(at(1,0).stop,null);assert.equal(at(1,114).stop,'D');assert.equal(at(1,119.9).stop,'D');
@@ -37,7 +37,7 @@ test('관광열차 시간표: 반바퀴120초·이동114초·정차6초·회차2
   }
 });
 
-test('관광열차 안전정지: 막힌 블록과 후속열차 대기, 해제 뒤 위치 보존', () => {
+test('관광열차 안전정지: 막힌 블록과 후속열차 대기, 해제 뒤 위치 보존', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   const traffic=R.createTraffic(0);traffic.block('tour:zone:0',true);
   const stopped=traffic.advance(300000);
   assert.equal(stopped.clocks[0].cursor,0);assert.equal(stopped.clocks[0].held,true);
@@ -52,7 +52,7 @@ test('관광열차 안전정지: 막힌 블록과 후속열차 대기, 해제 �
   R.setService(null);
 });
 
-test('관광열차 서버: 탑승창·4좌석 경합·이동 잠금·운행중 하차 금지·두 해안역·이탈 좌석 해제', async (t) => {
+test('관광열차 서버: 탑승창·4좌석 경합·이동 잠금·운행중 하차 금지·두 해안역·이탈 좌석 해제', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'train-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
   const riders = []; for (let i = 0; i < 5; i++) riders.push(await server.enter(await server.issue('승객' + i)));
@@ -98,7 +98,7 @@ test('관광열차 서버: 탑승창·4좌석 경합·이동 잠금·운행중 �
 });
 
 // The entire docking corridor must clear the platform, including the rotating carriage corners.
-test('열차 접근: 승강기 다리·길 여유, 해상 기둥만 1/3, 긴 순항 선로와 승강장 출발 여유', () => {
+test('열차 접근: 승강기 다리·길 여유, 해상 기둥만 1/3, 긴 순항 선로와 승강장 출발 여유', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   for (const id of Object.keys(R.STATIONS)) {
     const lift = R.liftOf(id); assert.ok(T.walkDist(lift.x, lift.z) >= 3.2);
     assert.ok(T.nature().rocks.every(p=>T.segDist(p.x,p.z,...R.STATIONS[id].entry,lift.x,lift.z)>=1+p.s),'접근로 돌 간섭 제거');
