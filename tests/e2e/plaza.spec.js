@@ -1563,7 +1563,7 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   expect(atShop.status).toBe(200);
   await a.page.evaluate(p => window.PlazaWarp(p.x, p.z), atShop.data);
   expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
-  const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id]); }); // a free one (another test's sitter may still hold one)
+  const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !s.room && !taken[s.id]); }); // a free plaza bench (another test's sitter may still hold one; the 민원실's seats are far off the island)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space');

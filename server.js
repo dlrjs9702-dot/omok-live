@@ -5564,7 +5564,9 @@ async function requestHandler(req, res) {
     }
     if (topic && !state?.hold) return sendError(res, 409, 'TALK_OVER', '대화가 끝났어요.'); // (a choice only inside a talk still held)
     const at = IslandNpcs.residentAt(n, nowMs(), state);
-    if (!pos || Math.hypot(pos.x - at.x, pos.z - at.z) > (state?.hold ? TALK_FAR : 4)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    // (a slow screen draws a walker a few steps behind its round: one by where it was in the last few seconds is by it too)
+    const reach = (p) => pos && Math.hypot(pos.x - p.x, pos.z - p.z) <= (state?.hold ? TALK_FAR : 4);
+    if (!pos || ![0, 1500, 3000, 4500].some((back) => reach(IslandNpcs.residentAt(n, nowMs() - back, state)))) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (!state?.hold) { islandEvents.residentTalk(n, who, Math.atan2(pos.x - at.x, pos.z - at.z)); residentsChanged(); }
     const account = pointAccountForSession(session); const day = kstDate(nowMs());
     const c = IslandCast.WALKERS[n]; const level = IslandCast.levelOf((await pointStore.affinityOf(account))[n] || 0); // (the words go by the level before this talk)
