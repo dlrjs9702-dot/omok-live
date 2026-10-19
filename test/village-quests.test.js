@@ -24,7 +24,7 @@ test('마을 주민: 화가·역무원·거리 악단은 매주, 미니게임 �
   assert.equal(Q.talk({}, 'busker', [], { x: 0, z: 0 }, weekOf('busker')).error, 'TOO_FAR');
   for (const v of [T.VILLAGE.painter, T.VILLAGE.busker, T.VILLAGE.stationmaster, T.VILLAGE.electrician, T.VILLAGE.builder, T.VILLAGE.librarian]) assert.ok(T.walkable(v.x, v.z));
   // A2b: the puzzle residents -- today's 오늘의 문제 (쉬움), any right answer counts; then a look at the lamps, stones, cart
-  for (const [id, game, look] of [['electrician', 'circuit', T.VILLAGE.lamps[1]], ['builder', 'hashi', { x: 15, z: 18.6 }], ['librarian', 'nonogram', T.VILLAGE.bookcart]]) {
+  for (const [id, game, look] of [['electrician', 'circuit', T.VILLAGE.lamps[1]], ['builder', 'hashi', Q.STORIES.builder.steps[1].spot], ['librarian', 'nonogram', T.VILLAGE.bookcart]]) {
     now = weekOf(id); const at = { x: T.VILLAGE[id].x, z: T.VILLAGE[id].z };
     let d = Q.talk({}, id, [], at, now).doc; const step = Q.STORIES[id].steps[0];
     assert.equal(step.game, game); assert.equal(step.level, 'easy'); assert.ok(step.puzzle);

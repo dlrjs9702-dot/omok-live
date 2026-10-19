@@ -122,6 +122,10 @@
     mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -27, z: -68, face: [-34, -62] },
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
     hallLamps: [[-1.4, -22], [1.2, -30], [-1.4, -38]], // the three lamps the electrician mends, by the walk to the water
+    stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
+    // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
+    quests: { photographer: { x: -12, z: -12 }, gardener: { x: -56, z: 14 }, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
+      station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };
   const TRAIN = { r: 184, stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };

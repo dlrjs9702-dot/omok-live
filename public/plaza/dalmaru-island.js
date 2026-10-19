@@ -50,7 +50,7 @@
   const VILLAGE = Object.freeze({
     mural: prop(PL.mural, 2.4), easel: prop({ ...off(PL.mural, 3.4, -1.6), face: PL.mural.face }, 0.7), painter: off(PL.mural, 2.6, -2.8),
     busk: prop(PL.busk, 2.0), busker: off(PL.busk, -1.7, -1.2),
-    stationmaster: off(PL.dock, 10000, 0), // (the train comes in step 4)
+    stationmaster: Object.freeze({ ...PL.stationmaster }),
     lamps: Object.freeze(PL.hallLamps.map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))), electrician: off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -1.2, 1.9),
     toolbox: prop({ ...off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -2.1, 2.6), face: [PLAZA_C.x, PLAZA_C.z] }, 0.4),
     stones: Object.freeze({ ...PL.stones, yaw: stoneYaw }), builder: off(PL.stones, 4.2, -2),
