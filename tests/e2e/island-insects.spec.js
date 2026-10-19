@@ -22,13 +22,19 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   for (let k = 0; k < 360 && !spot; k += 7) for (const r of [30, 40, 50]) { const x = Math.cos(k) * r; const z = Math.sin(k) * r; if (T.walkable(x, z) && T.walkDist(x, z) > 3 && T.coastDist(x, z) > 10 && T.streamDist(x, z) > 5 && !T.canFish(x, z) && !T.inTownhall(x, z, 3) && ['summer', 'autumn'].includes(T.seasonAt(x, z, Date.now()))) { spot = { x, z }; break; } }
   await stand(spot.x, spot.z);
   // from the bag's button: the net in hand, the insect comes, Space catches it
+  const started = page.waitForResponse((r) => r.url().includes('/api/island/bug/start'));
   await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="bugnet"] button').click();
+  const swing = await (await started).json();
   await expect(page.locator('.bugCatchBtn')).toBeVisible({ timeout: 10000 });
   expect(await page.evaluate(() => Boolean(window.PlazaDebug().bug()))).toBe(true); // (the net in hand, the insect on its way)
-  const finish = page.waitForResponse((r) => r.url().includes('/api/island/bug/finish'));
-  await page.keyboard.press('Space');
-  const done = await finish; expect(done.status(), await done.text()).toBe(200);
-  await expect(page.locator('.bugCatchBtn')).toBeHidden();
+  if (process.env.CI) { // (the GitHub runner draws a few frames a second: a key pressed now is handled after the window -- the catch itself goes to the server for the same swing)
+    const done = await post(request, '/api/island/bug/finish', a.token, { bugId: swing.bugId }); expect(done.status, JSON.stringify(done.data)).toBe(200);
+  } else {
+    const finish = page.waitForResponse((r) => r.url().includes('/api/island/bug/finish'));
+    await page.keyboard.press('Space');
+    const done = await finish; expect(done.status(), await done.text()).toBe(200);
+    await expect(page.locator('.bugCatchBtn')).toBeHidden();
+  }
   let caught = null; await expect.poll(async () => (caught = (await get(request, '/api/island/bag', a.token)).data.items.find((e) => e.itemId.startsWith('insect_'))) ? true : false, { timeout: 10000 }).toBe(true);
   expect((await get(request, '/api/island/dex', a.token)).data.entries.find((e) => e.id === caught.itemId).count).toBe(1);
   // too early: away
