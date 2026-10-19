@@ -30,13 +30,14 @@ test('섬 채팅: 지상 20m 안만, 같은 열차 승객끼리만, 섬 밖 대�
   const settle = () => new Promise((r) => setTimeout(r, 300));
   const say = (name, text) => req('/api/lobby/chat', people[name], { text });
 
-  const B = R.stationOf('B');
+  const S0 = Object.keys(R.STATIONS)[0]; const B = R.stationOf(S0); // (the first station: 동해안역 or 달끝역)
   for (const name of ['탑승1', '탑승2', '역옆']) await req('/api/plaza/state', people[name], { ...B.spot, yaw: 0, moving: false });
   await req('/api/plaza/state', people['근처'], { x: B.spot.x + 12, z: B.spot.z, yaw: 0, moving: false });
   await req('/api/plaza/state', people['멀리'], { x: B.spot.x + 45, z: B.spot.z, yaw: 0, moving: false });
-  for (const name of ['탑승1', '탑승2']) assert.equal((await req('/api/island/train/platform', people[name], { stop: 'B', line: 'tour' })).status, 200);
-  const now = Date.now(); await req('/api/test/train-shift', people['탑승1'], { ms: Math.ceil(now / 240000) * 240000 + 236000 - now });
-  for (const name of ['탑승1', '탑승2']) assert.equal((await req('/api/island/train/board', people[name], { stop: 'B', line: 'tour' })).status, 200);
+  for (const name of ['탑승1', '탑승2']) assert.equal((await req('/api/island/train/platform', people[name], { stop: S0, line: 'tour' })).status, 200);
+  const now = Date.now(); let at = now; while (!(R.docked(at, S0).length && R.docked(at + 2500, S0).length)) at += 250; // (a train standing at the station in a moment: either island's timetable)
+  await req('/api/test/train-shift', people['탑승1'], { ms: at - now });
+  for (const name of ['탑승1', '탑승2']) assert.equal((await req('/api/island/train/board', people[name], { stop: S0, line: 'tour' })).status, 200);
 
   assert.equal((await say('역옆', '지상 안녕')).status, 200); await settle();
   assert.deepEqual(['역옆', '근처', '멀리', '탑승1', '대기방'].map((n) => texts(n).includes('지상 안녕')), [true, true, false, false, false]);
