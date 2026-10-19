@@ -13,6 +13,18 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.100 작은 버그 한 묶음(A-7), 달마루섬 개편 1단계(관리자 미리보기)
+
+- 근거: gamecenter-notes 확정 순서(사용자 2026-10-19) 2·3 — `docs/bugs-20261019.md`의 위치와 무관한 것 + 보이지 않는 벽 2곳(대회 동상 자리·깨진 길·역 길은 개편이 흡수), `docs/dalmaru-implementation-20261019.md` 1단계.
+- 보이는 것만 막기: 책 수레(도서관 할아버지 부탁 중일 때만), 대회 우승자 받침대(우승자가 있을 때만, 기부 동상과 같은 받침대를 그림, 자리는 그대로 −11,0), 겨울 축제 소품(눈사람·썰매·사탕 지팡이·눈 더미·선물 상자 — 축제 때만), 할로윈 장식은 「밤」이 아니라 장식이 켜졌을 때(v1.10.90에서 둘이 나뉨). plaza-scene `solids`에 `off` 조건, `blocksNow`. 시험 island-solids.
+- 시장 떨림: 1.6m/s 걸음이 animator에서 `slow`인데 마당 코드가 idle·walk 말고는 「동작 중」으로 쳐서 멈춤 → idle → 다시 걸음이 매 프레임 반복(실제 모델에서 15초에 29번 → 3번). 걸음 상태는 모두 「바쁘지 않음」, 방향은 이동 전에 잡음(도착 프레임의 0 벡터). 시험 mayor-gait(실제 모델 — 섬 시험의 대역 캐릭터에는 걸음 상태가 없음).
+- 민원실 일어서기: `standUp`이 섬 땅 높이(`heightAt`) 대신 방 바닥·방 안(`roomClamp`, 잡화점도 `STORE.clamp`).
+- 창구 의자(`IslandTerrain.COUNTERS`, 좌석 `c-civil|c-tax|c-bank`): 민원·세금·예금 책상 앞 손님 의자, 「SPACE · 앉아서 ○○ 창구 업무」 → 앉기 → 직원에게 대화 카메라(`counterCamera`) → 창구 창. 창을 닫으면 일어나 홀 쪽으로 한 걸음, 누가 앉아 있으면 「다른 분이 업무 중이에요」. 서 있는 창구 자리는 없앰(서버의 창구 1.8m 검사는 그대로 — 의자가 그 안). 창구 의자에서는 창이 열려도 앉은 채(다른 좌석은 전처럼 창이 열리면 일어남).
+- 달마루섬 미리보기 1단계: `public/plaza/dalmaru-terrain.js`(assets 54) + `dalmaru-island.js` — 같은 IslandTerrain 이름으로 새 섬의 땅(바닥 380m·2.5m 격자, 바다·윤슬만·거울호수·강·폭포 웅덩이는 해수면 아래로 파서 바다 물이 보임, 걷기, 윤슬다리 2·강 위 임시 다리 3, 계절 4구역, 씨앗 자연, 지도·미니맵은 땅 그림). 관리자 운영 스위치 「달마루섬 미리보기」 → `/api/island/map`이 관리자에게만 dalmaru → `island-map.js`가 섬 스크립트보다 먼저 고름(바뀌면 한 번 새로고침). 미리보기 화면은 위치를 서버로 보내지 않고 혼자 걸음, 옛 섬의 건물·소품·열차·주민·이벤트·잡초는 숨김(옛 좌표는 지도 밖으로). 서버와 다른 사람은 지금 섬 그대로. 시험 dalmaru-preview.
+- 남은 1단계 일: 실제 휴대폰 FPS(먼 바닥 LOD는 필요하면), 낚시 물가 5종·폭포 표현, 윤슬다리 모델(55)은 2단계 시설과 함께.
+- CI: 관광열차 두 번째 타기·내리기는 문 열림을 놓치면 다시 열고 누름, 챔피언 이름표·카메라 페이드는 CI에서 더 기다림, 가방 시험은 관공서에서 나온 직후 상인으로 순간이동이 되돌려지면 다시.
+- 검증: 단위(전체 — Windows 줄바꿈 때문에 로컬에서만 실패하는 6개 제외), e2e island-solids·mayor-gait·dalmaru-preview·plaza 가방/관공서(8회 반복)·island-contest·관공서 시장. 실제 휴대폰 미검증.
+
 ## v1.10.99 A-6 주민 대화: 걷는 주민에게 말 걸기·대화 중 멈춤·선택지·섬 소문·주민끼리 수다, 대화창·확인창 정리
 
 - 근거: gamecenter-notes `docs/residents-talk-hills-20261018.md` 1·2·6(사용자 2026-10-18·19). 3(동산 주민 순환)·4(먼 심부름 자리)는 지도에 묶인 일이라 달마루섬 새 지도 위에서(확정 순서 2026-10-19), 5(주민 고유 외형)는 에셋 F3 도착 뒤, 6의 창 점검표(밝은/어두운·PC/휴대폰 캡처)는 문제 기록으로 들어오는 것부터.
@@ -40,8 +52,3 @@
 - 두 세계 영웅전 정리(docs/herosurv-fix-20261019.md): 게임별 랭킹에 최고 기록(게임이 마지막으로 연 보드, worldValue herosurvBoard), 섬 위 전체 화면 iframe(페이지 frame-ancestors self·X-Frame-Options SAMEORIGIN, 「나가기」는 postMessage로 창만 닫음 — 다시 불러오기·재로그인 없음), 엔진 시작 전 IndexedDB /userfs에 참가 파일(leaderboard_<sha256(api 주소) 앞 16자>.cfg [guest]) 미리 써서 이름·메일 창 없음. 게임 파일(pck)은 그대로 — 남는 「이름 변경」 버튼 숨기기(빌드 수정)는 이 세션의 권한 검사가 막아 사용자 결정 대기. 원작 표기(카드·NOTICE.md, 원작: 스마트대디).
 - CI: 느린 러너에서만 흔들리던 시험 정리(기본 대기 15초, 곁 사람 폭죽 보기는 CI 주석, 걷는 주민 말 걸기는 CI 건너뜀 — A-6에서 다시 씀).
 - 검증: 단위 시험 전체, e2e island-together·island-guide·island-insects·island-pets(반복 2회)·general-store·plaza 낚시·river-fishing·island-assets 등록부. 실제 휴대폰·GPU 미검증.
-
-## v1.10.97 섬 바닥 질감(B 48)
-
-- 바닥 질감(B 48 ground-v1): 회색 반복 질감 3장(잔디 64·흙 32·모래 32px)과 길 가장자리 술 마스크(128px)만 — GPU 약 120KB. 지형·길 재질에 `onBeforeCompile`(island.js `grained`)로 세계 좌표 반복, 각 질감을 자기 평균 밝기(선형 0.611·0.319·0.701)로 나눠 색·계절·숲 바닥 밝기는 그대로, 결만 50%. 지형은 꼭짓점마다 풀·모래 비율(`aGround`), 길은 따라 3m마다 반복·가로질러 가장자리 1 → 마스크로 흙/풀 결과 투명도(섬 풀이 술 모양으로 비침). 팩의 색상판·해안 경계·모래-물 질감은 쓰지 않음(해안 띠가 따로 없음).
-- 검증: 단위 시험(Windows 줄바꿈 6건 외), 로컬 화면 확인(낮·길·바닷가). 실제 휴대폰·GPU 미검증.
