@@ -21,7 +21,7 @@ test('생일·우체통: 오늘 생일이면 광장 장식·선물 한 번·칭�
   expect((await post(request, '/api/island/birthday', a.token, { month, day })).status).toBe(200);
   const first = (await get(request, '/api/island/birthday', a.token)).data; const again = (await get(request, '/api/island/birthday', a.token)).data;
   expect([first.gift, again.gift, first.mine.month]).toEqual([1000, 0, month]);
-  for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().together()), { timeout: 20000 }).toMatchObject({ birthday: true, names: expect.arrayContaining(['생일손님']), mailbox: true });
+  for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().together()), { timeout: 45000 }) /* (CI 2차: two island pages on the runner -- each check slow) */.toMatchObject({ birthday: true, names: expect.arrayContaining(['생일손님']), mailbox: true });
   // 축하하기: by her side, once a day
   const at = (w) => w.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
   const stand = (w, x, z) => require('./skin-support').standAt(request, w, x, z); // (until page and server agree)
