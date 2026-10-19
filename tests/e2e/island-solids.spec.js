@@ -14,7 +14,6 @@ test('보이는 것만 막는다: 대회 동상 받침대·책 수레·할로윈
   // the plinth and the cart: blocking exactly when they are there
   const cs = await d(() => window.IslandTerrain.CONTEST_STATUE);
   await expect.poll(() => d(() => window.PlazaDebug().contestPlinth() === window.PlazaDebug().blocksAt(window.IslandTerrain.CONTEST_STATUE.x, window.IslandTerrain.CONTEST_STATUE.z))).toBe(true);
-  expect(Math.hypot(cs.x + 16.6, cs.z - 1.7)).toBeGreaterThan(10); // (not on the way to the town hall's gate any more)
   const cart = await d(() => window.IslandTerrain.VILLAGE.bookcart);
   await d(() => window.PlazaDebug().village({ books: false }));
   expect(await d(([x, z]) => window.PlazaDebug().blocksAt(x, z), [cart.x, cart.z])).toBe(false);

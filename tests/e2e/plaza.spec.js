@@ -993,7 +993,8 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나가기');
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');
-  await page.evaluate(() => window.PlazaDebug().place('trader'));
+  // (a jump straight after leaving the hall can be put back by the server: again until it holds -- A-7)
+  await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
   await page.keyboard.press('Space');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +8,000P');
