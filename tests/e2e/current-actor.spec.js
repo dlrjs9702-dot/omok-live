@@ -63,7 +63,8 @@ async function joinAsSpectator(browser, code) {
   await expect(page.locator('#roomView')).toBeVisible();
   // Two-seat games use #chooseSpectatorBtn, numbered-seat games #teamSpectatorBtn; either way the
   // viewer ends up without a seat.
-  await page.locator('#chooseSpectatorBtn:visible, #teamSpectatorBtn:visible').first().click({ timeout: 5000 });
+  const spectate = page.locator('#chooseSpectatorBtn:visible, #teamSpectatorBtn:visible').first(); // (CI 2차: the role buttons come a moment after the room view -- past a fixed 5 s on the runner)
+  await expect(spectate).toBeVisible(); await spectate.click();
   return { context, page };
 }
 

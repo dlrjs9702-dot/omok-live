@@ -69,7 +69,7 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
           const before = await page.locator('#gostopHand .hwatu').count();
           await card.tap(); await expect(card).toHaveClass(/gostopArmed/); await expect(page.locator('#gostopFloor .gostopMatch')).toHaveCount(await matches.count());
           await page.waitForTimeout(500); expect(await page.locator('#gostopHand .hwatu').count()).toBe(before);
-          await card.tap(); await expect(page.locator('#gostopHand .hwatu')).toHaveCount(before - 1);
+          await page.locator('#gostopHand .hwatu.gostopArmed').tap(); await expect(page.locator('#gostopHand .hwatu')).toHaveCount(before - 1); // (CI 2차: the armed card itself -- a re-render can make another one "first")
         } else { await card.hover(); await expect(page.locator('#gostopFloor .gostopMatch')).toHaveCount(await matches.count()); }
       }
     }

@@ -16,10 +16,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # v1.10.98 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side -- npm test alone,
-  # the general games in three shards and their phone run, the two asset specs, the island specs on PC in three shards and
-  # on a phone. The repository is public: runner time is free, so the parts run at once and a PR waits for the longest
-  # (the plaza group used to run PC then phone in one job: 50-75 minutes). docs/release.md: split rather than raise the limit.
+  # v1.10.98 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side. The repository is
+  # public: runner time is free, so the parts run at once and a PR waits for the longest. docs/release.md: split rather
+  # than raise the limit. 2차 단축 (사용자 「두 가지 다 해 보자」): by time, not by count or by file -- npm test alone, every
+  # spec on PC in fourteen parts and the phone run in three, each about 10 minutes of tests by the table (a runner takes up to a third more; with setup, under 15) (tools/ci-split.js over
+  # tools/ci-timings.json; the assets and plaza parts were 30 minutes and decided every run).
   part:
     name: e2e part (${{ matrix.group }})
     runs-on: ubuntu-latest
@@ -27,9 +28,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [unit, games-1, games-2, games-3, games-mobile, assets, plaza-1, plaza-2, plaza-3, plaza-mobile]
+        group: [unit, chromium-1, chromium-2, chromium-3, chromium-4, chromium-5, chromium-6, chromium-7, chromium-8, chromium-9, chromium-10, chromium-11, chromium-12, chromium-13, chromium-14, mobile-1, mobile-2, mobile-3]
     env:
-      # the island's 3D specs (playwright.config.js keeps them out of the games parts); on a phone those that differ there
+      # (the island's 3D specs on PC: since 2차 단축 every spec runs on PC, kept for reference until the next tidy)
       PLAZA_PC: >-
         tests/e2e/plaza.spec.js tests/e2e/river-fishing.spec.js tests/e2e/weed-board.spec.js tests/e2e/island-time.spec.js tests/e2e/island-weather.spec.js tests/e2e/island-stars.spec.js tests/e2e/island-contest.spec.js tests/e2e/island-admin-look.spec.js tests/e2e/island-plants.spec.js tests/e2e/island-together.spec.js tests/e2e/island-guide.spec.js tests/e2e/island-insects.spec.js tests/e2e/island-pets.spec.js tests/e2e/asset-inspector.spec.js tests/e2e/shop-browse.spec.js tests/e2e/title-hall.spec.js tests/e2e/action-lock.spec.js tests/e2e/resident-talk.spec.js tests/e2e/transform-shop.spec.js tests/e2e/general-store.spec.js tests/e2e/mayor-gait.spec.js tests/e2e/island-solids.spec.js tests/e2e/dalmaru-preview.spec.js tests/e2e/dress-room.spec.js
       PLAZA_MOBILE: >-
@@ -80,20 +81,21 @@ jobs:
         if: ${{ matrix.group == 'unit' }}
         run: npm test
 
-      # The parts are disjoint and together the whole suite. The plaza parts stop after 10 failures (a broken run does not
-      # hold a runner for an hour).
+      # The parts are disjoint and together the whole suite (tools/ci-split.js checks every test is in exactly one part;
+      # a split that fails stops the part -- never an empty list, which would run everything). A part stops after 10
+      # failures (a broken run does not hold a runner for an hour).
       - name: Run browser tests
         if: ${{ matrix.group != 'unit' }}
         env:
           GROUP: ${{ matrix.group }}
         run: |
           case "$GROUP" in
-            games-mobile) PLAYWRIGHT_SKIP_ISLAND=1 npm run test:e2e -- --project=mobile-chromium ;;
-            games-*) PLAYWRIGHT_TEST_GROUP=$GROUP npm run test:e2e -- --project=chromium --shard=${GROUP#games-}/3 ;;
-            assets) npm run test:e2e -- --project=chromium tests/e2e/island-assets.spec.js tests/e2e/native-assets.spec.js ;;
-            plaza-mobile) npm run test:e2e -- --project=mobile-chromium --max-failures=10 $PLAZA_MOBILE ;;
-            plaza-*) npm run test:e2e -- --project=chromium --max-failures=10 --shard=${GROUP#plaza-}/3 $PLAZA_PC ;;
+            chromium-*) PROJECT=chromium; LIST=$(node tools/ci-split.js chromium 14 ${GROUP#chromium-}) || exit 1 ;;
+            mobile-*) PROJECT=mobile-chromium; LIST=$(node tools/ci-split.js mobile 3 ${GROUP#mobile-}) || exit 1 ;;
+            *) echo "unknown part $GROUP"; exit 1 ;;
           esac
+          test -n "$LIST" || exit 1
+          npm run test:e2e -- --project=$PROJECT --max-failures=10 $LIST
 
       - name: Upload Playwright report
         if: ${{ !cancelled() && matrix.group != 'unit' }}
@@ -112,7 +114,7 @@ jobs:
           if-no-files-found: ignore
 
   # main's protection asks for these four names (e2e (games-1), (games-2), (assets), (plaza)): each waits for every part and
-  # passes only if all of them did. always(): a gate skipped because a part failed would count as passed (GitHub treats a
+  # passes only if all of them did (the names stay: the parts behind them changed in 2차 단축). always(): a gate skipped because a part failed would count as passed (GitHub treats a
   # skipped required check as success) -- so a gate always runs and fails itself instead.
   e2e:
     name: e2e (${{ matrix.gate }})

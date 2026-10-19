@@ -252,8 +252,8 @@ test.describe('포인트와 고스톱·맞고', () => {
     await expect(a.page.locator('#gostopStartBtn')).toHaveText('고스톱 시작 (3인)');
     await a.page.locator('#gostopStartBtn').click();
     const tokenOf = { 1: a.token, 2: b.token, 3: c.token };
+    await expect.poll(async () => (await roomState(request, a.token)).game?.mode ?? null, { timeout: 15000 }).toBe('gostop'); // (CI 2차: the start lands a moment after the click)
     let state = await roomState(request, a.token);
-    expect(state.game.mode).toBe('gostop');
     expect(state.game.floor.length + (state.game.seats[state.game.firstSeat].captured.length)).toBeGreaterThanOrEqual(6);
     for (const seat of ['1', '2', '3']) expect(state.game.seats[seat].handCount).toBe(7);
     await expect(a.page.locator('#gostopHand .hwatu')).toHaveCount(7);

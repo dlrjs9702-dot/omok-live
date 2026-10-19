@@ -38,6 +38,7 @@ test('할리갈리 스킨: 모든 카드 프레임에서 이름과 장수가 프
 });
 
 test('도둑잡기 스킨: 방장 테마가 모든 화면에 같고, 각 자리의 카드 뒷면은 그 사람의 스킨이다', async ({ browser, request }) => {
+  test.setTimeout(90000); // (CI 2차: three pages and their reloads -- past the 30 s default on a busy runner)
   const a = await shopper(browser, request, '방장', 6_000_000);
   const b = await shopper(browser, request, '둘째', 600_000);
   const c = await shopper(browser, request, '셋째', 600_000);

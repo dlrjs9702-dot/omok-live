@@ -44,6 +44,18 @@ test('꾸미기 창: 열자마자 내 모습, 항목을 가리키면 바로 입�
   for (let k = 0; k < 3; k += 1) await shopView.getByRole('button', { name: '다음 모습' }).click(); // 정면 → 옆 → 뒤 → 걷기
   await page.locator('#skinShopCloseBtn').click();
   await expect(shopView).toBeHidden();
+  await expectNoScriptError(page);
+  await who.context.close();
+});
+
+// (CI 2차 단축: on its own -- the whole was past four minutes on the phone run) 성형외과 and the 변신 의상실
+test('꾸미기 창: 성형외과·변신 의상실도 열자마자 내 모습, 가리키면 입은 모습, 닫으면 아무것도 남지 않음', async ({ browser, request, isMobile }) => {
+  test.setTimeout(240000);
+  const who = await shopper(browser, request, '꾸미기둘', 1000000, 'female'); const { page } = who;
+  await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
+  const point = async (el) => { if (isMobile) await el.tap(); else await el.hover(); };
+  let press;
   // 성형외과: a face part on the face; 변신 의상실: the transformation on me
   // (bugs 10: the 변신 의상실 first, then 성형외과 -- whose window shows none of the other's list; closed, neither stays on the page)
   for (const [place, item] of [['transform', '#transformShop .tfRow strong'], ['faces', '.lookShop button[data-part]']]) {

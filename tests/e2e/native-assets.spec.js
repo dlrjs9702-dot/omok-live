@@ -29,6 +29,7 @@ async function nativeShopper(browser, request, label, isMobile) {
   });
 }
 async function transformed(who, id, mode = 'native') {
+  await expect.poll(() => who.page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); // (CI 2차: the island shown first, then its model)
   await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.transformation), { timeout: 60000 }).toBe(id);
   await expect.poll(() => who.page.evaluate(id => window.PlazaDebug().assets.wearing.find(w=>w.transformation===id)?.transformationMode,id)).toBe(mode);
   expect(await who.page.evaluate(() => window.PlazaDebug().nativeRig)).toBe(native(id).variants[mode].rig.id);
@@ -65,7 +66,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some(w => w.transformation === 'mymelody' && !w.high)), { timeout: 30000 }).toBe(true);
   await b.context.close(); // remote LOD is verified; release its 3D renderer before the remaining local interactions
   const seat = await a.page.evaluate(() => {
-    const d=window.PlazaDebug(); const seat=d.seats.find(s => !d.takenSeats()[s.id]); d.teleport(seat.x,seat.z); return seat;
+    const d=window.PlazaDebug(); const seat=d.seats.find(s => !s.room && !d.takenSeats()[s.id]); /* (CI 2차: an island bench -- not the 민원실's seats, off the island) */ d.teleport(seat.x,seat.z); return seat;
   });
   await expect(a.page.locator('#plazaHint')).toContainText('앉');
   if (isMobile) await a.page.locator('#plazaHint').tap();
@@ -73,6 +74,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(true);
   expect(await a.page.evaluate(() => window.PlazaDebug().act().clip)).toMatch(/SitDown|SitIdle/); // both are valid phases of the seated animation
   await a.page.screenshot({ path: testInfo.outputPath('kuromi-seated.png') });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (CI 2차: the sit-down motion over -- an arrow during it went nowhere)
   await a.page.keyboard.down('ArrowUp');
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().act().sitting)).toBe(false);
   await a.page.keyboard.up('ArrowUp');
@@ -132,7 +134,7 @@ test('변신 체형 선택: 상점·내 정보, 저장·무료 변경·부분 �
     await a.page.evaluate(theme=>{document.documentElement.dataset.theme=theme;},theme);
     const layout=await group.evaluate(el=>({buttons:[...el.querySelectorAll('button')].map(b=>({width:b.getBoundingClientRect().width,height:b.getBoundingClientRect().height,left:b.getBoundingClientRect().left,right:b.getBoundingClientRect().right})),viewport:innerWidth}));
     expect(layout.buttons).toHaveLength(2);
-    for(const button of layout.buttons){expect(button.width).toBeGreaterThanOrEqual(44);expect(button.height).toBeGreaterThanOrEqual(44);expect(button.left).toBeGreaterThanOrEqual(0);expect(button.right).toBeLessThanOrEqual(layout.viewport);}
+    for(const button of layout.buttons){expect(Math.round(button.width)).toBeGreaterThanOrEqual(44);expect(Math.round(button.height)).toBeGreaterThanOrEqual(44); /* (CI 2차: a layout's 43.99998 px is 44) */expect(button.left).toBeGreaterThanOrEqual(0);expect(button.right).toBeLessThanOrEqual(layout.viewport);}
     await a.page.screenshot({path:testInfo.outputPath(`transformation-choice-${theme}.png`)});
   }
   await a.page.reload();group=await openShop();
