@@ -1593,6 +1593,9 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   const atShop = await post(request, '/api/plaza/state', a.token, { x: shopDoor.x, z: shopDoor.z, yaw: 0, moving: false });
   expect(atShop.status).toBe(200);
   await a.page.evaluate(p => window.PlazaWarp(p.x, p.z), atShop.data);
+  // (CI 2차: the hat bought by the API off the island -- with my place on it the server wants the 백화점's 소품 sector, so
+  // whether this passed hung on whether the page had reported its place yet; the page puts it back with its next one)
+  expect((await post(request, '/api/plaza/leave', a.token, {})).status).toBe(200);
   expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
   const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !s.room && !taken[s.id]); }); // a free plaza bench (another test's sitter may still hold one; the 민원실's seats are far off the island)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
@@ -1631,11 +1634,12 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
     if (await a.page.locator('#plazaDialog').isVisible()) { await a.page.keyboard.press('Escape'); await a.page.waitForTimeout(300); }
     const d = await a.page.evaluate(() => ({ near: window.PlazaDebug().near, locked: window.PlazaDebug().actLocked }));
     if (d.locked) return false;
-    if (!d.near?.startsWith('player:')) { await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]); return false; }
+    if (!d.near?.startsWith('player:')) { await standAt(request, a, bp.x + 1.3, bp.z); return false; }
     await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); await a.page.waitForTimeout(500);
     return a.page.getByRole('button', { name: '인사', exact: true }).isVisible();
   }, { timeout: 45000, intervals: [500] }).toBe(true);
-  await a.page.evaluate(([x, z]) => window.PlazaWarp(x + 1.3, z), [bp.x, bp.z]);
+  const { standAt } = require('./skin-support');
+  await standAt(request, b, bp.x, bp.z); await standAt(request, a, bp.x + 1.3, bp.z); // (CI 2차: the invite is checked on the server's places -- page and server agreeing)
   await playerMenu();
   await a.page.getByRole('button', { name: '인사', exact: true }).click();
   await expect.poll(() => b.page.evaluate(() => window.PlazaDebug().othersActs().some((o) => o.act === 'bow')), { timeout: 15000 }).toBe(true);
