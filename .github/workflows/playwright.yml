@@ -19,7 +19,7 @@ jobs:
   # v1.10.98 CI 단축 (사용자 2026-10-19, docs/ci-speedup-20261019.md): the suite in parts side by side. The repository is
   # public: runner time is free, so the parts run at once and a PR waits for the longest. docs/release.md: split rather
   # than raise the limit. 2차 단축 (사용자 「두 가지 다 해 보자」): by time, not by count or by file -- npm test alone, every
-  # spec on PC in fourteen parts and the phone run in three, each about 9 minutes of tests by the table (a runner takes up to a third more; with setup, under 15) (tools/ci-split.js over
+  # spec on PC in fourteen parts and the phone run in three, each about 10 minutes of tests by the table (a runner takes up to a third more; with setup, under 15) (tools/ci-split.js over
   # tools/ci-timings.json; the assets and plaza parts were 30 minutes and decided every run).
   part:
     name: e2e part (${{ matrix.group }})
