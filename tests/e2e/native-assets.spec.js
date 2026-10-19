@@ -133,7 +133,7 @@ test('변신 체형 선택: 상점·내 정보, 저장·무료 변경·부분 �
     await a.page.evaluate(theme=>{document.documentElement.dataset.theme=theme;},theme);
     const layout=await group.evaluate(el=>({buttons:[...el.querySelectorAll('button')].map(b=>({width:b.getBoundingClientRect().width,height:b.getBoundingClientRect().height,left:b.getBoundingClientRect().left,right:b.getBoundingClientRect().right})),viewport:innerWidth}));
     expect(layout.buttons).toHaveLength(2);
-    for(const button of layout.buttons){expect(button.width).toBeGreaterThanOrEqual(44);expect(button.height).toBeGreaterThanOrEqual(44);expect(button.left).toBeGreaterThanOrEqual(0);expect(button.right).toBeLessThanOrEqual(layout.viewport);}
+    for(const button of layout.buttons){expect(Math.round(button.width)).toBeGreaterThanOrEqual(44);expect(Math.round(button.height)).toBeGreaterThanOrEqual(44); /* (CI 2차: a layout's 43.99998 px is 44) */expect(button.left).toBeGreaterThanOrEqual(0);expect(button.right).toBeLessThanOrEqual(layout.viewport);}
     await a.page.screenshot({path:testInfo.outputPath(`transformation-choice-${theme}.png`)});
   }
   await a.page.reload();group=await openShop();
