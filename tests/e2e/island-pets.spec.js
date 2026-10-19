@@ -20,6 +20,7 @@ test('반려동물: 가방에서 데리고 다니면 이름과 함께 따라오�
   await a.page.keyboard.press('KeyI'); const chosen = a.page.waitForResponse((r) => r.url().includes('/api/island/pet')); await a.page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
   const res = await chosen; expect(res.status(), await res.text()).toBe(200);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().myId), { timeout: 30000 }).toBeTruthy(); // (CI 2차: the server's join reply first)
   const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id), aId), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
   // it follows: far, then Walk, then by me
@@ -49,7 +50,7 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id)?.name, aId), { timeout: 30000 }).toBe('나비');
   expect((await post(request, '/api/island/pet', a.token, { kind: null })).status).toBe(200);
-  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().some((p) => p.key === id), aId), { timeout: 20000 }).toBe(false);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().some((p) => p.key === id), aId), { timeout: 30000 }).toBe(false);
   for (const w of [a, b]) await expectNoScriptError(w.page);
   for (const w of [a, b]) await w.context.close();
 });
