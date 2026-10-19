@@ -13,7 +13,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   const weeds = (await get(request, '/api/island/weeds', token)).data.weeds || [];
   const spot = await page.evaluate((weeds) => { // the river bank spot nearest the plaza with no weed in reach (a weed's prompt comes first)
     const T = window.IslandTerrain; let best = null;
-    for (let x = -70; x <= 70; x += .5) for (let z = -70; z <= 70; z += .5) if (T.fishWater(x, z) === 'river' && weeds.every(([, wx, wz]) => Math.hypot(wx - x, wz - z) > 4)) { const d = Math.hypot(x, z); if (!best || d < best.d) best = { x, z, d }; }
+    const R = T.dalmaru ? 170 : 70; const step = T.dalmaru ? 1 : 0.5; const PC = T.PLAZA_C || { x: 0, z: 0 }; /* (달마루섬: its rivers and lake are further out) */ for (let x = -R; x <= R; x += step) for (let z = -R; z <= R; z += step) if (T.fishWater(x, z) === 'river' && weeds.every(([, wx, wz]) => Math.hypot(wx - x, wz - z) > 4)) { const d = Math.hypot(x - PC.x, z - PC.z); if (!best || d < best.d) best = { x, z, d }; }
     return best;
   }, weeds);
   expect(spot).not.toBeNull();
@@ -22,7 +22,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect(page.locator('#plazaHint')).toHaveText(/낚시$/, { timeout: 10000 }) // (a phone shows no SPACE);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
-  expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; return window.IslandTerrain.streamDist(b.x, b.z) < window.IslandTerrain.STREAM_HALF; })).toBe(true); // the float is on the stream
+  expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.riverDist(b.x, b.z) < 0 || T.dalmaru.lakeDist(b.x, b.z) < 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: a river or 거울호수) the float is on the stream
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
   await expect(page.locator('#plazaHint')).toHaveText(/당기기$/);
   expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);

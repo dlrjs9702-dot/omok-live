@@ -113,7 +113,7 @@ test('연계 퀘스트: 할머니 노란 별 → 말 걸기 부탁·추적 줄 �
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('강가에 꽃');
   await page.keyboard.press('Escape');
-  await move(a,{x:47,z:38.3});
+  await move(a,{...require('../../lib/island-quests').STORIES.granny.steps.find((st)=>st.kind==='visit').spot}); // (the riverside flowers, either island)
   await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
   await talk();
   await expect(page.locator('#plazaDialog')).toContainText('정원이 환해졌');
