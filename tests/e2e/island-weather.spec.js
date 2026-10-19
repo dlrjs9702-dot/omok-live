@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, adminToken, get, expectNoScriptError } = require('./skin-support');
+const { shopper, adminToken, get, intoMall, expectNoScriptError } = require('./skin-support');
 
 // A4 날씨 (IDEAS 「함께하는 섬」): the server's weather is the same for everyone; the administrator can hold it -- rain falls
 // round me (snow in the winter zone), a rainbow arcs over the sea; 자동 lets the server clock decide again. PC 전용 (the
@@ -27,6 +27,11 @@ test('섬 날씨: 관리자가 비·무지개로 정하면 모두의 섬이 따�
     expect((await set('rainbow')).status()).toBe(200);
     await expect.poll(async () => (await weather()).bow, { timeout: 15000 }).toBe(true);
     expect((await weather()).rain || (await weather()).snow).toBe(false);
+    // (bugs 9, 사용자 2026-10-19 「실내에서 눈이나 비가 와」) indoors -- the 백화점 -- no rain, snow, flakes or rainbow
+    expect((await set('rain')).status()).toBe(200);
+    await expect.poll(async () => (await weather()).kind, { timeout: 15000 }).toBe('rain');
+    await intoMall(page);
+    await expect.poll(async () => { const w = await weather(); return [w.indoors, w.rain, w.snow, w.bow, w.flakes]; }, { timeout: 15000 }).toEqual([true, false, false, false, 0]);
   } finally { await set('auto'); }
   expect((await get(request, '/api/island/weather', token)).data).toMatchObject({ mode: 'auto', fixed: false });
   await expectNoScriptError(page);
