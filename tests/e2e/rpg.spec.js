@@ -55,7 +55,7 @@ async function takeSeatAndClass(view, seat, className) {
 }
 
 test.describe('잿빛 원정', () => {
-  test('방향키 이동·대각선·스크롤 없음·Space/Q·채팅 입력 중 차단·포커스 해제·퇴장 시 3D 정리', async ({ browser, request }) => {
+  test('방향키 이동·대각선·스크롤 없음·Space/Q·채팅 입력 중 차단·포커스 해제', async ({ browser, request }) => {
     test.setTimeout(120_000);
     const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
     const me = await guest(browser, request, admin, '건');
@@ -112,7 +112,20 @@ test.describe('잿빛 원정', () => {
     await me.page.evaluate(() => window.dispatchEvent(new Event('blur')));
     await expect.poll(async () => (await debug(me.page)).held).toBe(0);
     await me.page.keyboard.up('ArrowDown');
+    expect(me.errors).toEqual([]);
+    await me.context.close();
+  });
 
+  // (CI 2차 단축: on its own -- the whole was past two minutes on the CI runner)
+  test('퇴장 시 3D 정리: 방을 나가면 장면이 풀리고 로비 방향키는 원래대로', async ({ browser, request }) => {
+    test.setTimeout(120_000);
+    const admin = (await api(request, '/api/admin/login', null, { password: adminPassword })).data.sessionToken;
+    const me = await guest(browser, request, admin, '곤');
+    await createRoom(me);
+    await takeSeatAndClass(me, '1', '사냥꾼');
+    await me.page.getByRole('button', { name: /원정 시작/ }).click();
+    await expect.poll(async () => (await debug(me.page))?.ticks || 0).toBeGreaterThan(5);
+    await expect(me.page.locator('canvas.rpgCanvas')).toHaveCount(1);
     // Leaving the room releases the 3D scene; a new RPG room gets exactly one canvas again.
     await me.page.locator('#leaveRoomBtn').click();
     const confirm = me.page.getByRole('button', { name: /나가기|확인/ });

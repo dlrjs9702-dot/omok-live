@@ -1360,12 +1360,15 @@ test('낚시: 물가에서 SPACE로 던지고, 입질 때 당기면 가방·도�
   const still = await state(page); expect(Math.hypot(still.x - from.x, still.z - from.z)).toBeLessThan(0.05); // fishing holds me in place
   // (a long bite on the page, the server's bite just before the pull: one PlazaDebug() call alone took ~2 s on CI, past
   // the server's 2.2 s window)
-  await page.evaluate(() => window.PlazaDebug().fishBiteNow(12));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 당기기');
+  // (CI 2차: on a slow runner the cast's own wait can run out before this -- cast again then, until the bite is on)
+  await expect.poll(async () => {
+    if (!(await page.evaluate(() => window.PlazaDebug().fishing()?.phase))) { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); return 'cast again'; }
+    await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); return page.locator('#plazaHint').textContent();
+  }, { timeout: 40000, intervals: [1500] }).toBe('SPACE · 당기기');
   await expect.poll(seen, { timeout: 5000 }).toBe('fish:reel');
   expect((await post(request, '/api/test/fish/bite', a.token, { species: 'mackerel' })).data.ok).toBe(true);
   await page.keyboard.press('Space');
-  await expect.poll(seen, { timeout: 5000 }).toBe('fish:catch'); // the server's own catch
+  await expect.poll(seen, { timeout: 8000 }).not.toBe('fish:reel'); // past the reel there (the catch -- a moment's pose a slow page may miss -- or done); the bag below is the server's own catch
   await expect.poll(async () => ((await get(request, '/api/island/bag', a.token)).data.items || []).find((e) => e.itemId === 'fish_mackerel')?.qty || 0, { timeout: 10000 }).toBe(1);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   await expect.poll(seen, { timeout: 8000 }).toBe(null); await b.context.close();
