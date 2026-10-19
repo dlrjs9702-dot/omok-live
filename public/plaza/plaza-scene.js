@@ -266,11 +266,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.10.29: a season day moves the models (assets) and the ground's colours (island) together
   const setSeasonDay = (day) => { assets.setDay(day); island.setSeasonDay(day); };
   island.setSeasonDay(globalThis.IslandTerrain.seasonDay(Date.now()));
-  const PH = heightAt(0, 0);
-  // 달마루섬 미리보기 1단계 (dalmaru-island.js): the bare new island -- the old plaza's things, the train, the town hall's
-  // yard, October's decorations and the islanders stay away, and nothing from the server is placed on it
+  const PLAZA_C = globalThis.IslandTerrain.PLAZA_C || { x: 0, z: 0 }; // (달마루섬: 대청마당's middle)
+  const PH = heightAt(PLAZA_C.x, PLAZA_C.z);
+  // 달마루섬 미리보기 (dalmaru-island.js): the new island with its walks and buildings, but what the server places --
+  // the islanders, events, statues, plants, other players -- and the train, the old town hall's yard and the seasons'
+  // decorations stay away until the server has the new island too (step 5)
   const BARE = Boolean(globalThis.IslandTerrain.TERRAIN_ONLY);
-  const fountain = new THREE.Group(); fountain.position.y = PH; scene.add(fountain); fountain.visible = !BARE;
+  const fountain = new THREE.Group(); fountain.position.set(PLAZA_C.x, PH, PLAZA_C.z); scene.add(fountain);
   mesh(new THREE.CylinderGeometry(2.9, 3.1, 0.6, 44), mat(0xeae3d6), 0, 0.3, 0, fountain);
   mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.1, 44), mat(0x86d0f0, { roughness: 0.45 }), 0, 0.56, 0, fountain); // v1.10.13: no metal shine
   mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 20), mat(0xeae3d6), 0, 1.2, 0, fountain);
@@ -566,6 +568,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       sign(facility.name, root, 0.5 + h + 5.6);
       boxSolids(0, 0.7, w + 1.2, depth + 2.6);
       for (const cx of [-5.4, -3.4, -1.5, 1.5, 3.4, 5.4]) solids.push({ ...at(cx, depth / 2 + 1.25), r: 0.4 });
+    } else if (spot.kind === 'facade') { // 달마루섬 2단계: 관공서·백화점 set against 영웅마루 (assets 55 facade.*: 30 x 14, 4.6 out of the cliff)
+      const F = globalThis.IslandTerrain.FACADE; depth = F.d;
+      mesh(new THREE.BoxGeometry(F.w, 14, F.d), mat(facility.id === 'store' ? 0xd9c9ad : 0xf2ede4), 0, 7, F.d / 2, visual);
+      mesh(new THREE.BoxGeometry(4, 5, 0.1), mat(0x8a5a3b), 0, 2.5, F.d + 0.05, visual); // the door
+      sign(facility.name, root, 15.4);
+      boxSolids(0, F.d / 2, F.w, F.d, 1.1);
     } else if (spot.kind === 'tower') { // v1.10.1 등반 도전: a tall stone tower on the hill, a landmark from anywhere on the island
       depth = 6.4;
       const stone = mat(0xd8d0c2); const band = mat(0xb8ae9e); const roofM = mat(0x6f8fd8);
@@ -825,14 +833,37 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   assets.ambient(scene); // v1.10.29 the seasonal falling flakes round me
 
+  // 달마루섬 2단계 (assets 55): 초승등대, 달끝나루, 배 타는 곳, the ridge's stairs, and 물가 거리's railing, lamps and benches
+  // -- each a holder with a plain stand-in until its model comes; what one cannot walk through is solid
+  function dalmaruStructures() {
+    const T = globalThis.IslandTerrain; if (!T.STRUCTURES) return;
+    const S = T.STRUCTURES;
+    const piece = (id, x, y, z, yaw, fallback) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g); g.add(fallback); assets.attach(id, g, fallback); return g; };
+    const box = (w, h, d, color, oz = 0) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(w, h, d), mat(color), 0, h / 2, oz, g); return g; };
+    const L = S.lighthouse; piece('dalmaru.lighthouse_choseung', L.x, heightAt(L.x, L.z), L.z, 0, box(4, 14, 4, 0xf4f1ea)); solids.push({ x: L.x, z: L.z, r: L.r });
+    piece('dalmaru.pier_dalkkeut', S.pier.x, 0, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10));
+    piece('dalmaru.dock_boat', S.dock.x, 0, S.dock.z, S.dock.yaw, box(4, 0.2, 8, 0xc58b5a, 4));
+    // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
+    // under the steps) are walked round, its ends are open
+    const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
+    for (let u = 0; u < st.len; u += 1) { const y = T.heightAt(st.x + st.ux * (u + 0.5) + st.nx * 1.7, st.z + st.uz * (u + 0.5) + st.nz * 1.7) - S.stairs.base; mesh(new THREE.BoxGeometry(1, Math.max(0.1, y), 3), mat(0xc9bfae), -(u + 0.5), y / 2, 1.7, flights); }
+    stairs.position.set(S.stairs.x, S.stairs.base, S.stairs.z); stairs.rotation.y = S.stairs.yaw; scene.add(stairs); assets.attach('dalmaru.stairs_ridge', stairs, flights);
+    for (let u = 0.6; u <= st.len; u += 0.5) for (const v of [-0.05, 3.45]) solids.push({ x: st.x + st.ux * u + st.nx * v, z: st.z + st.uz * u + st.nz * v, r: 0.28 });
+    const W = T.WATERFRONT;
+    for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); for (const d of [-1.6, -0.55, 0.55, 1.6]) solids.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 }); }
+    for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); solids.push({ x: l.x, z: l.z, r: l.r }); }
+    for (const b of W.benches) { piece('dalmaru.bench_waterfront', b.x, heightAt(b.x, b.z), b.z, b.yaw, box(1.8, 0.5, 0.5, 0xc58b5a)); solids.push({ x: b.x, z: b.z, r: b.r }); }
+  }
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
+  const firstTrainSolid = solids.length;
   const train = trainScene({ scene, assets, solids, vcMat, sign }); // v1.10.47 관광열차 (its steps are walked round)
   if (BARE) train.group.visible = false;
   const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
-  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; }
+  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = firstTrainSolid; } // (달마루섬 미리보기: nor their circles)
   buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
-  doors.mayor = yard.door;
+  if (!BARE) doors.mayor = yard.door;
+  dalmaruStructures(); // 달마루섬 2단계
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
   // when the week closed, with a small plate. Rebuilt only when the server sends a different pair.

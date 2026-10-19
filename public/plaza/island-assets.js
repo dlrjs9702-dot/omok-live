@@ -387,5 +387,11 @@
   REGISTRY['mall.interior'] = { url: '/assets/island/mall-v1/mall_interior.glb', low: { url: '/assets/island/mall-v1/mall_interior_low.glb' } };
   REGISTRY['character.storekeeper'] = { url: `${CH}/npc_storekeeper.glb`, low: { url: `${CH}/npc_storekeeper_low.glb` }, rotationY: Math.PI, motions: true };
   for (const id of ['bait', 'bait_premium', 'seed_flower_red', 'seed_flower_yellow', 'seed_flower_white', 'seed_flower_pink', 'seed_flower_purple', 'sapling', 'fertilizer', 'firework', 'balloon', 'bubbles', 'gift_wrap', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge']) REGISTRY[`good.${id}`] = st(id, { shadows: false });
+  // 달마루섬 2단계 (assets 55, Claude Code's Blender build): the structures that stand once -- front -Z in the files, turned
+  // to the game's +Z; on the preview the 관공서 and 백화점 are their cliff fronts (the rooms inside are as now)
+  const DAL = '/assets/island/dalmaru-v1';
+  const dal = (file, extra = {}) => ({ url: `${DAL}/${file}.glb`, low: { url: `${DAL}/${file}_low.glb` }, rotationY: Math.PI, near: 90, ...extra });
+  for (const f of ['bridge_yunseul', 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
+  if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = dal('facade_townhall', { near: 140 }); REGISTRY['facility.store'] = dal('facade_mall', { near: 140 }); }
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });
