@@ -4785,7 +4785,7 @@
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '체납 세금 납부';
-    if (item.reason === 'skin_gift') return `스킨 선물 · ${item.memo || '선물'}`; // 3-1
+    if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
         const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
@@ -5265,6 +5265,10 @@
     const status = document.createElement('p'); status.className = 'smallMuted'; status.setAttribute('role', 'status');
     form.append(head, who, note, send, cancel, status);
     const requestId = crypto.randomUUID(); // (one per form: a lost answer is never paid twice)
+    who.addEventListener('change', async () => { // (as they are picked: one who has it already cannot get it)
+      status.textContent = ''; send.disabled = !who.value; if (!who.value) return;
+      try { const c = await api('/api/skins/gift/check', { method: 'POST', body: JSON.stringify({ skinId: skin.id, to: who.value }) }); if (c.owned) { status.textContent = `${who.selectedOptions[0].textContent}님은 이미 가지고 있어요.`; send.disabled = true; } } catch {}
+    });
     form.onsubmit = async (event) => {
       event.preventDefault(); if (!who.value) { status.textContent = '받는 사람을 골라 주세요.'; return; }
       const name = who.selectedOptions[0].textContent;
@@ -5291,7 +5295,8 @@
     const id = dressPicked[view]; const own = (view === 'shop' ? skinShopBody : myInfoSkinBody).querySelector(`.skinCard[data-pick="${id}"] button[data-skin="${id}"]`);
     const act = own?.dataset.action; bar.buy.disabled = act !== 'buy'; bar.wear.disabled = !(act === 'equip' || act === 'unequip');
     bar.buy.textContent = act === 'buy' ? own.textContent : own && !act ? own.textContent : act ? '보유' : '구매'; bar.wear.textContent = act === 'unequip' ? '벗기' : '착용';
-    const pickedSkin = id && skins.catalog?.flatMap((fam) => fam.skins).find((x) => x.id === id); bar.gift.disabled = !pickedSkin || (skins.balance ?? 0) < pickedSkin.price; // (3-1 선물: a picked skin I can pay for)
+    const pickedSkin = id && skins.catalog?.flatMap((fam) => fam.skins).find((x) => x.id === id); bar.gift.disabled = !pickedSkin || Boolean(pickedSkin.ip) || (skins.balance ?? 0) < pickedSkin.price; // (3-1 선물: a picked skin I can pay for, never an IP one)
+    bar.gift.title = pickedSkin?.ip ? 'IP 스킨은 선물할 수 없어요' : '';
   }
   // the window opened: what I wear now, before anything is pointed at
   function dressStart(view, skins, on) {
