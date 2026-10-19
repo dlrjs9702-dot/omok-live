@@ -125,7 +125,7 @@ test('재생된 열매 취소: 새 세대 SPACE·Escape, 서버 자원 유지·�
 });
 
 test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
-  test.setTimeout(180000);
+  test.setTimeout(process.env.CI ? 300000 : 180000); // (CI 2차: two pages with every wardrobe model and two reloads -- about three minutes on the runner)
   const { REGISTRY, wardrobeOf } = require('../../public/plaza/island-assets');
   const partIds = ['character.base', ...wardrobeOf({}).parts, ...wardrobeOf({gender:'female'}).parts,
     ...['cat','fox'].flatMap(animal => ['outfit','hat','tail','shoes','necklace'].map(slot => `wear.animal_${animal}_${slot}`))];
