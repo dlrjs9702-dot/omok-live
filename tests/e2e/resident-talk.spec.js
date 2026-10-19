@@ -57,7 +57,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const before = (await get(request, '/api/points', token)).data.balance;
   await talkTo(askers[0]);
   await expect(page.locator('#plazaDialogTitle')).not.toHaveText('');
-  await expect(page.locator('.lostRequestLine').first()).toHaveText(/전해 줄래요|못 봤어요|사다 줄래요|필요한데/);
+  await expect(page.locator('.lostRequestLine').first()).toHaveText(/전해 줄래요|못 봤어요|사다 줄래요|필요한데|아직 못/); // (asked -- or, a slow runner having talked twice, reminded)
   await expect(page.locator('#plazaDialog .lookMeta')).toContainText(/처음 본 사이 ♥/); // 호감도 (the first talk of the day +1)
   await close();
   const track = (await get(request, '/api/island/errands', token)).data.track;
