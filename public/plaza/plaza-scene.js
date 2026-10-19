@@ -886,11 +886,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const s = new THREE.Scene(); s.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.4));
       const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(2, 5, 4); s.add(sun); s.add(sun.target);
       const cam = new THREE.PerspectiveCamera(30, (canvas.clientWidth || canvas.width) / (canvas.clientHeight || canvas.height), 0.1, 50);
-      const v = tryOnView = { canvas, renderer: r, scene: s, camera: cam, sun, c: null, key: '', yaw: 0.4, last: performance.now(), raf: 0 };
+      // 3-1 꾸미기 창: it turns by itself until it is turned by hand (tryOnPose), zooms, and walks on the spot or stands
+      const v = tryOnView = { canvas, renderer: r, scene: s, camera: cam, sun, c: null, key: '', yaw: 0.4, auto: true, dist: 5.4, walk: false, last: performance.now(), raf: 0 };
       const loop = (now) => {
         if (tryOnView !== v) return; if (!canvas.isConnected) { tryOnClose(); return; }
-        const dt = Math.min(0.1, (now - v.last) / 1000); v.last = now; v.yaw += dt * 0.7;
-        if (v.c) { v.c.root.rotation.y = v.yaw; v.c.anim?.update(dt, 0); }
+        const dt = Math.min(0.1, (now - v.last) / 1000); v.last = now; if (v.auto) v.yaw += dt * 0.7;
+        const w = canvas.clientWidth; const h = canvas.clientHeight; // (the window's layout can change: phone turned, window resized)
+        if (w && h && (w !== v.w || h !== v.h)) { v.w = w; v.h = h; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+        if (v.c) {
+          v.c.root.rotation.y = v.yaw; v.c.targetYaw = v.yaw;
+          if (v.c.anim) v.c.anim.update(dt, v.walk ? SLOW_SPEED * 1.6 : 0); else animate(v.c, dt, v.walk, v.walk ? SLOW_SPEED * 1.6 : 0);
+          const p = v.c.root.position; cam.position.set(p.x, 1.05 + v.dist * 0.05, p.z + v.dist); cam.lookAt(p.x, 1.05, p.z);
+        }
         r.render(s, cam); v.raf = requestAnimationFrame(loop);
       };
       v.raf = requestAnimationFrame(loop);
@@ -902,6 +909,35 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       v.scene.add(v.c.root); dressUp(v.c, look || {});
       v.camera.position.set(p.x, 1.3, p.z + 5.4); v.camera.lookAt(p.x, 1.05, p.z); v.sun.position.set(p.x + 2, 5, p.z + 4); v.sun.target.position.set(p.x, 1, p.z);
     }
+    return true;
+  }
+  // 3-1: the preview turned by hand (yaw: a view -- 0 its back to me, π its face; turn: a drag), zoomed (zoom: + nearer),
+  // walking on the spot or standing (walk)
+  function tryOnPose({ yaw = null, turn = 0, zoom = 0, walk = null } = {}) {
+    const v = tryOnView; if (!v) return null;
+    if (yaw != null) { v.yaw = yaw; v.auto = false; }
+    if (turn) { v.yaw += turn; v.auto = false; }
+    if (zoom) v.dist = Math.max(2.6, Math.min(8, v.dist - zoom));
+    if (walk != null) v.walk = Boolean(walk);
+    return { yaw: v.yaw, auto: v.auto, dist: v.dist, walk: v.walk };
+  }
+  // 3-1 꾸미기 창 「착용 전 → 착용 후」: a still picture of me in a look (a small renderer of its own, kept), facing the
+  // front; `done(url)` comes at once and again once the models are in (they load a moment later)
+  let shotView = null;
+  function tryOnShot(look, done, { w = 150, h = 190 } = {}) {
+    if (!shotView) {
+      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+      let r; try { r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch { return false; }
+      r.outputColorSpace = renderer.outputColorSpace; r.toneMapping = renderer.toneMapping; r.toneMappingExposure = renderer.toneMappingExposure; r.setSize(w, h, false);
+      const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.4)); const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(2, 5, 4); sc.add(sun);
+      const cam = new THREE.PerspectiveCamera(30, w / h, 0.1, 50); cam.position.set(0, 1.3, 5.2); cam.lookAt(0, 1.0, 0);
+      shotView = { canvas, renderer: r, scene: sc, camera: cam, seq: 0 };
+    }
+    const v = shotView; const seq = ++v.seq;
+    if (v.c) { v.scene.remove(v.c.root); disposeCharacter(v.c); } // (one look at a time on its little stage)
+    const c = v.c = makeCharacter({ ...ME_BASE, look }); c.root.position.set(0, 0, 0); v.scene.add(c.root); dressUp(c, look || {});
+    const take = () => { if (v.seq !== seq) return; v.renderer.render(v.scene, v.camera); done(v.canvas.toDataURL('image/png')); };
+    take(); setTimeout(take, 1600);
     return true;
   }
   function tryOnClose() {
@@ -2746,6 +2782,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   return { setSpace, space: () => mySpace, setGoodsPrices, useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }

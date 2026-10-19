@@ -192,6 +192,27 @@ async function exercise(t, makeStore) {
     await assert.rejects(store.setAvatarGender({ userId: D, gender: 'other' }), RangeError);
   });
 
+  await t.test('스킨 선물(3-1, 사용자 2026-10-19): 주는 사람이 내고 받는 사람 것, 받는 사람은 나중에도 결제 안 됨, 두 번·자기에게·부족은 안 됨', async () => {
+    const G = 'guest:55555555-5555-4555-8555-555555555555'; const R = 'guest:66666666-6666-4666-8666-666666666666';
+    await store.ensureAccount(G); await store.ensureAccount(R);
+    const gift = (to = R) => store.giftSkin({ userId: G, to, skinId: 'avatar_hair_1', price: 50_000, title: '헤어 · 선물' });
+    const poorG = (await store.getAccount(G)).balance;
+    if (poorG < 50_000) { const out = await gift(); assert.deepEqual([out.applied, out.reason], [false, 'insufficient']); }
+    await store.adminGrant({ grantId: 'admin-grant:gift-test-1', userId: G, amount: 500_000, category: 'event', memo: '' });
+    const before = (await store.getAccount(G)).balance; const theirs = (await store.getAccount(R)).balance;
+    await assert.rejects(() => gift(G), RangeError); // (not to oneself)
+    const results = await Promise.all([gift(), gift()]);
+    assert.equal(results.filter((r) => r.applied).length, 1, '한 번만');
+    assert.equal(results.find((r) => !r.applied).reason, 'owned');
+    assert.equal((await store.getAccount(G)).balance, before - 50_000, '주는 사람이 냄');
+    assert.equal((await store.getAccount(R)).balance, theirs, '받는 사람은 그대로');
+    assert.ok((await store.skinState(R)).owned.includes('avatar_hair_1'), '받는 사람 것');
+    assert.equal((await store.skinState(G)).owned.includes('avatar_hair_1'), false);
+    const later = await store.buySkin({ userId: R, skinId: 'avatar_hair_1', price: 50_000, title: '헤어' });
+    assert.deepEqual([later.applied, later.reason], [false, 'owned']); assert.equal((await store.getAccount(R)).balance, theirs, '나중에 사도 결제 안 됨');
+    const rows = (await store.ledger(G, 1000)).filter((row) => row.reason === 'skin_gift'); assert.equal(rows.length, 1); assert.equal(rows[0].delta, -50_000);
+    assert.equal((await store.history(G, { limit: 50 })).items.find((i) => i.reason === 'skin_gift').memo, '헤어 · 선물');
+  });
   await t.test('캐릭터 체형: 무료·보유 전체 착용 확인·캐릭터별 보존·다른 외형 동시 저장', async () => {
     const userId = 'guest:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     const { transformationById, avatarLookOf, skinById } = require('../lib/skins');

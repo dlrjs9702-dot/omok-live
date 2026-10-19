@@ -2270,3 +2270,120 @@ body.herosurvOpen { overflow: hidden; }
 .logoutDialog.pauseDialog{--g1:#b45309;--g2:#92400e}
 .logoutDialog.pauseDialog>h2:first-child{color:#fff}
 .logoutDialog.eventDialog{padding:22px}
+/* 3-1 꾸미기 창 (docs/shop-tryon-20261019.md, 사용자 참고 그림 「화면 모양」): the list on the left (search, chips, item rows --
+   picture · name · tags · price, the picked one with a green edge and a check), on the right the largest part: the preview
+   stage (my character on a round pedestal, turn·zoom on its right, ◀ ● ▶ under it, 착용 전 → 착용 후), the detail strip,
+   then the bar (보유 포인트 · 구매 · 착용 · 선물하기 · 닫기). A phone: the preview on top, the list under it, the bar fixed. */
+.skinShopDialog.dressing[open],.myInfoSection.dressing{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,48%);grid-template-areas:"head head" "status status" "list view" "list detail" "list bar";grid-template-rows:auto auto auto auto 1fr;column-gap:16px;row-gap:10px;align-items:start}
+.skinShopDialog.dressing[open]{width:min(1180px,96vw)}
+.skinShopDialog.dressing>.recordsDialogHead,.myInfoSection.dressing>.myInfoSectionHead{grid-area:head}
+.skinShopDialog.dressing>.skinShopStatus,.myInfoSection.dressing>.skinShopStatus{grid-area:status}
+.skinShopDialog.dressing>.skinShopBody,.myInfoSection.dressing>.skinShopBody{grid-area:list;max-height:70vh;overflow:auto;padding-right:4px}
+.skinShopDialog.dressing>.skinTryOn,.myInfoSection.dressing>.skinTryOn{grid-area:view;margin:0 16px 0 0;position:static}
+.skinShopDialog.dressing>.dressDetail,.myInfoSection.dressing>.dressDetail{grid-area:detail;margin-right:16px}
+.skinShopDialog.dressing>.dressBar,.myInfoSection.dressing>.dressBar{grid-area:bar;margin:0 16px 0 0}
+.myInfoSection.dressing>.skinTryOn,.myInfoSection.dressing>.dressDetail,.myInfoSection.dressing>.dressBar{margin-right:0}
+.skinShopDialog:not(.dressing) .dressDetail,.skinShopDialog:not(.dressing) .dressBar,.myInfoSection:not(.dressing) .dressDetail,.myInfoSection:not(.dressing) .dressBar{display:none}
+/* the title as a wooden sign */
+.skinShopDialog.dressing>.recordsDialogHead,.plazaDialog:has(.dressRoom)>.recordsDialogHead{background:linear-gradient(180deg,#a8743f,#7c4f26);border-bottom:3px solid #5b3714}
+.skinShopDialog.dressing>.recordsDialogHead h2{padding:4px 16px;border-radius:12px;background:#8b5a2b;box-shadow:inset 0 0 0 2px #c58b4f,0 2px 0 #4a2c10}
+.skinShopDialog.dressing>.recordsDialogHead h2::before{content:"🏪 "}
+/* item rows */
+.dressing .skinGrid{display:grid;grid-template-columns:1fr;gap:8px}
+.dressing .skinCard{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"pic name buy" "pic meta buy";align-items:center;column-gap:12px;padding:8px 10px;border-radius:14px;position:relative;cursor:pointer}
+.dressing .skinCard>canvas{grid-area:pic;width:88px;height:44px;border-radius:10px}
+.dressing .skinCard>.skinName{grid-area:name}
+.dressing .skinCard>.skinMeta{grid-area:meta}
+.dressing .skinCard>button{grid-area:buy;white-space:nowrap}
+.dressing .skinCard.selected{outline:2px solid #22c55e;outline-offset:-2px}
+.dressing .skinCard.selected::before{content:"✓";position:absolute;left:-6px;top:-6px;width:20px;height:20px;border-radius:50%;background:#22c55e;color:#fff;font-size:.75rem;font-weight:900;display:grid;place-items:center}
+/* the preview stage */
+.skinTryOn.dressSide,.dressing>.skinTryOn{flex-direction:column;align-items:stretch;gap:6px;padding:8px}
+.dressStage{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#cfe8ff 0%,#e7f4ff 52%,#bfe3a5 52%,#a7d58c 100%)}
+.dressStage .dressCanvas{display:block;width:100%;height:auto;aspect-ratio:5/4;max-height:52vh;touch-action:none;cursor:grab;background:transparent;position:relative;z-index:1}
+.dressStage .dressCanvas:active{cursor:grabbing}
+.dressPedestal{position:absolute;left:50%;bottom:13%;width:46%;height:12%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#e9d8b8,#c9a777 70%,#a5814f);box-shadow:0 6px 0 #8a6a3d}
+.dressChip{position:absolute;left:10px;top:10px;z-index:2;padding:4px 12px;border-radius:999px;background:#7c4f26;color:#fff;font-weight:900;font-size:.85rem}
+.dressChip::before{content:"👕 "}
+.dressNote{position:absolute;left:12px;top:40px;z-index:2;margin:0;max-width:46%;font-size:.75rem;color:#1e3a5f;text-shadow:0 1px 0 #fff}
+.dressSideTools{position:absolute;right:10px;top:10px;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:14px;background:rgba(255,255,255,.75)}
+.dressTool{min-width:34px;min-height:34px;border-radius:50%;border:1px solid #d6c3a5;background:#fffaf1;color:#4a3324;font-weight:900;padding:0}
+.dressNav{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:8px}
+.dressDots{display:flex;gap:6px}
+.dressDots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.7)}
+.dressDots i.on{background:#7c4f26}
+.dressCompare{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:4px;padding:6px;border-radius:12px;background:rgba(255,250,241,.92);border:1px solid #d6c3a5}
+.dressCompare.hidden{display:none}
+.dressCompare figure{margin:0;text-align:center}
+.dressCompare img{width:58px;height:74px;object-fit:contain;display:block;border-radius:8px;background:#e7f4ff}
+.dressCompare figcaption{font-size:.68rem;color:#4a3324;font-weight:800}
+.dressCompare figure:last-child figcaption{color:#15803d}
+.dressArrow{color:#7c4f26;font-weight:900}
+.skinTryOn .dressName{font-size:.95rem}
+/* detail strip and the bar */
+.dressDetail{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid #334155}
+.dressDetail.hidden{display:none}
+.dressDetail strong{font-size:1rem}
+.dressDetail p{grid-column:1/-1;margin:0;font-size:.8rem;color:#94a3b8}
+.dressTags{display:flex;flex-wrap:wrap;gap:4px}
+.dressTags i{font-style:normal;font-size:.72rem;padding:2px 8px;border-radius:999px;background:#334155;color:#cbd5e1}
+.dressBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:14px;background:#111827;border:1px solid #334155}
+.dressPoints{margin-right:auto;font-weight:900;color:#fde68a}
+.dressBar button{min-height:42px;padding:0 18px;border-radius:12px;border:0;font-weight:900;color:#fff}
+.dressBar .dressBuy{background:#16a34a}
+.dressBar .dressWear{background:#2563eb}
+.dressBar .dressGift{background:#db2777}
+.dressBar .dressClose{background:#475569}
+.dressBar button:disabled{opacity:.45;cursor:not-allowed}
+/* (tidy: the sign its own size, no empty status line or lone family tab, the price once -- on the button) */
+.skinShopDialog.dressing>.recordsDialogHead h2{flex:0 1 auto}
+.dressing>.skinShopStatus:empty{display:none}
+.skinShopDialog.dressing .skinTabs:not(.skinSlotTabs):has(>:only-child){display:none}
+.dressing .skinCard .skinMeta>span:last-child{display:none}
+.dressBar{flex-wrap:nowrap}
+.dressBar button{flex:none;padding:0 10px;font-size:.9rem}
+.dressPoints{flex:none;white-space:nowrap;font-size:.9rem}
+/* 3-1 꾸미기 창 그림 (assets 56, 사용자가 만든 그림 -- 게임에 그대로): the wooden sign under the shop's name, the island
+   garden behind the preview (its stone pedestal is where my feet stand), the coin, the chips' and buttons' icons */
+.skinShopDialog.dressing>.recordsDialogHead h2,.plazaDialog:has(.dressRoom):not(.talkMode)>.recordsDialogHead h2{flex:0 0 auto;width:270px;height:89px;margin:-14px 0 -16px -8px;padding:0 14px 4px 114px;display:flex;align-items:center;background:url("/assets/shop/ui/sign_blank.webp") center/100% 100% no-repeat;box-shadow:none;border-radius:0;color:#fff;font-size:1.3rem;text-shadow:0 2px 0 #6b3f17,0 0 6px #6b3f17}
+.skinShopDialog.dressing>.recordsDialogHead h2::before{content:none}
+.dressStage{background:url("/assets/shop/ui/preview_bg.webp") center/cover no-repeat}
+.dressPedestal{display:none}
+.dressNote{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+.dressing .skinCard>button[data-action="buy"]::before,.dressPoints::before{content:"";display:inline-block;width:1.15em;height:1.15em;margin-right:5px;vertical-align:-.2em;background:url("/assets/shop/ui/coin.webp") center/contain no-repeat}
+.dressBar .dressBuy::before,.dressBar .dressWear::before,.dressBar .dressGift::before,.dressBar .dressClose::before{content:"";display:inline-block;width:1.1em;height:1.1em;margin-right:6px;vertical-align:-.18em;background:center/contain no-repeat}
+.dressBar .dressBuy::before{background-image:url("/assets/shop/ui/btn_cart.webp")}
+.dressBar .dressWear::before{background-image:url("/assets/shop/ui/btn_hanger.webp")}
+.dressBar .dressGift::before{background-image:url("/assets/shop/ui/btn_gift.webp")}
+.dressBar .dressClose::before{background-image:url("/assets/shop/ui/btn_close.webp")}
+.dressing input.skinSearch{padding-left:36px;background-image:url("/assets/shop/ui/btn_search.webp"),radial-gradient(circle at 17px 50%,#7c4f26 11px,transparent 12px);background-repeat:no-repeat;background-position:10px center,0 0;background-size:14px,auto}
+.dressing .skinSlotTabs [role=tab]::before{content:"";display:inline-block;width:1.2em;height:1.2em;margin-right:4px;vertical-align:-.25em;background:url("/assets/shop/ui/cat_accessories.webp") center/contain no-repeat}
+.dressing .skinSlotTabs [role=tab][data-slot=""]::before{background-image:url("/assets/shop/ui/cat_all.webp")}
+.dressing .skinSlotTabs [role=tab]:is([data-slot="outfit"],[data-slot="top"],[data-slot="bottom"])::before{background-image:url("/assets/shop/ui/cat_clothes.webp")}
+.dressing .skinSlotTabs [role=tab]:is([data-slot="hat"],[data-slot="hair"])::before{background-image:url("/assets/shop/ui/cat_hat.webp")}
+.dressing .skinSlotTabs [role=tab][data-slot="shoes"]::before{background-image:url("/assets/shop/ui/cat_shoes.webp")}
+.dressing .skinSlotTabs [role=tab][data-slot="transform"]::before{background-image:url("/assets/shop/ui/cat_transform.webp")}
+/* the 성형외과·염색사·변신 의상실 frame: their list beside the same preview */
+body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card waits here, unseen, between its windows) */
+.dressRoom{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,46%);gap:14px;align-items:start}
+.dressRoom>.skinTryOn{position:sticky;top:0;margin:0}
+@media (max-width:700px){
+  .skinShopDialog.dressing[open],.myInfoSection.dressing{grid-template-columns:1fr;grid-template-areas:"head" "status" "view" "detail" "list" "bar"}
+  .skinShopDialog.dressing>.skinShopBody,.myInfoSection.dressing>.skinShopBody{max-height:none;overflow:visible}
+  .skinShopDialog.dressing>.skinTryOn,.skinShopDialog.dressing>.dressDetail{margin:0 12px}
+  .skinShopDialog.dressing>.dressBar,.myInfoSection.dressing>.dressBar{position:sticky;bottom:0;margin:0;z-index:4;border-radius:14px 14px 0 0}
+  .dressStage .dressCanvas{aspect-ratio:auto;height:34vh;max-height:none}
+  .dressRoom{grid-template-columns:1fr}
+  .dressRoom>.skinTryOn{grid-row:1;position:static}
+  .dressRoom>:not(.skinTryOn){grid-row:2}
+  .dressNote{display:none}
+}
+/* 3-1 스킨 선물: who it is for and a note, above the bar */
+.dressGiftForm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid #db2777}
+.dressGiftForm.hidden{display:none}
+.dressGiftForm strong{flex:1 0 100%}
+.dressGiftForm select,.dressGiftForm input{flex:1 1 160px;min-width:0}
+.dressGiftForm p{flex:1 0 100%;margin:0}
+.dressGiftForm .dressGift{background:#db2777;color:#fff;border:0;border-radius:12px;min-height:38px;padding:0 14px;font-weight:900}
+.skinShopDialog.dressing>.dressGiftForm{grid-area:detail;margin-right:16px;z-index:3}
+.skinShopDialog.dressing:has(.dressGiftForm:not(.hidden))>.dressDetail{display:none}

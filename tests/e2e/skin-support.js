@@ -125,12 +125,14 @@ module.exports.standInMall = standInMall;
 // phone), then standing at the sector's spot (`place`: the shop's facility id) with its prompt showing
 async function intoMall(page, place = null, isMobile = false) {
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
-  if (await page.evaluate(() => window.PlazaDebug().space) !== 'store') {
-    await page.evaluate(() => window.PlazaDebug().place('store'));
-    await expect(page.locator('#plazaHint')).toContainText('백화점 들어가기', { timeout: 15000 });
+  // (on a busy runner the server may set me back from a first teleport, or not have my place yet when I press: to the
+  // door and in again until I am inside)
+  for (let tries = 0; tries < 4 && await page.evaluate(() => window.PlazaDebug().space) !== 'store'; tries += 1) {
+    await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
     await press();
-    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('store');
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 10000 }).toBe('store').catch(() => {});
   }
+  expect(await page.evaluate(() => window.PlazaDebug().space)).toBe('store');
   if (place) {
     // (the walk-in may still place me at the door after a first teleport on a slow runner: again until the prompt is the sector's)
     const name = await page.evaluate((place) => window.PlazaDebug().doors[place].name, place);

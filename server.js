@@ -3432,7 +3432,7 @@ async function requestHandler(req, res) {
   const pathname = decodeURIComponent(url.pathname);
   // World actions keep their existing classic/room entry paths; while on the island, the server checks the door too.
   const placeActions = { '/api/points/attendance': 'attendance', '/api/donation': 'donate', '/api/nickname': 'naming', '/api/climb/start': 'climb', '/api/avatar/surgery': 'faces', '/api/avatar/dye': 'dye' };
-  if (req.method === 'POST' && (placeActions[pathname] || pathname === '/api/skins/buy' || (req.headers['x-island-facility'] && ['/api/skins/equip', '/api/skins/title'].includes(pathname)))) {
+  if (req.method === 'POST' && (placeActions[pathname] || pathname === '/api/skins/buy' || pathname === '/api/skins/gift' || (req.headers['x-island-facility'] && ['/api/skins/equip', '/api/skins/title'].includes(pathname)))) {
     const session = requireSession(req, res); if (!session) return;
     const at = plazaPresence.get(session.token);
     if (at) {
@@ -3441,7 +3441,7 @@ async function requestHandler(req, res) {
       const avatar = skin?.game === 'avatar' || skin?.family === 'avatar' || body.game === 'avatar';
       const slot = skin?.slot || body.slot;
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
-      const place = placeActions[pathname] || (pathname !== '/api/skins/buy' && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
+      const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
       const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
@@ -3449,7 +3449,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.100' });
+    return sendJson(res, 200, { ok: true, version: '1.10.101' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3863,6 +3863,49 @@ async function requestHandler(req, res) {
     if (result.applied) notifyPointsChanged([account]);
     // Already owned is a normal answer (nothing charged), never an error.
     return sendJson(res, 200, { ok: true, skinId: skin.id, purchased: result.applied, owned: true, balance: result.balance });
+  }
+
+  // 3-1 스킨 선물 (사용자 2026-10-19 「선물 허용으로」「우체국으로 쪽지 오는걸로」): at the shop, for anyone with an account
+  // (the 우체통's list): I pay, it is theirs, and a note says so in their 우체통 (it does not count against my letters)
+  if (pathname === '/api/skins/gift/check' && req.method === 'POST') { // (the form, as a recipient is picked: 「이미 가지고 있어요」)
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const skin = skinById(body.skinId); const key = await accessStore.get(String(body.to || ''));
+    if (!skin || !key || key.revokedAt || key.pendingAt) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
+    return sendJson(res, 200, { ok: true, owned: (await pointStore.skinState(`guest:${key.id}`)).owned.includes(skin.id), giftable: !(SkinCatalog.IP_SKIN_IDS.includes(skin.id) || skin.ip) });
+  }
+  if (pathname === '/api/skins/gift' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session);
+    if (!checkRateLimit(`skingift:${account}`, 10, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const skin = skinById(body.skinId); const requestId = String(body.requestId || '');
+    if (!skin) return sendError(res, 404, 'SKIN_NOT_FOUND', '판매 중인 스킨이 아닙니다.');
+    if (SkinCatalog.IP_SKIN_IDS.includes(skin.id) || skin.ip) return sendError(res, 403, 'NOT_GIFTABLE', 'IP 스킨은 선물할 수 없어요.'); // (they may be taken back and refunded later)
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) return sendError(res, 400, 'BAD_GIFT', '다시 시도해 주세요.');
+    const key = await accessStore.get(String(body.to || '')); const to = key ? `guest:${key.id}` : null;
+    if (!key || key.revokedAt || key.pendingAt || to === account) return sendError(res, 404, 'RECIPIENT_NOT_FOUND', '받는 사람을 찾을 수 없습니다.');
+    // the day's count and this request taken first (two at once cannot both slip under it; the same request is paid once)
+    const day = kstDate(nowMs()); const cap = Economy.value('gift:skinPerDay');
+    const reserved = await pointStore.questApply(account, 'skinGifts', (d) => {
+      const today = d.day === day ? d : { day, n: 0, ids: [] };
+      if ((today.ids || []).includes(requestId)) return { doc: today, already: true };
+      if (today.n >= cap) return null;
+      return { doc: { day, n: today.n + 1, ids: [...(today.ids || []), requestId].slice(-50) } };
+    });
+    if (!reserved?.doc) return sendError(res, 409, 'GIFT_LIMIT', `스킨 선물은 하루 ${cap}번까지 할 수 있어요.`);
+    if (reserved.already) return sendJson(res, 200, { ok: true, skinId: skin.id, to: key.label, already: true });
+    const giveBack = () => pointStore.questApply(account, 'skinGifts', (d) => (d.day === day && (d.ids || []).includes(requestId) ? { doc: { ...d, n: Math.max(0, d.n - 1), ids: d.ids.filter((x) => x !== requestId) } } : null)).catch(() => {});
+    if ((await pointStore.skinState(to)).owned.includes(skin.id)) { await giveBack(); return sendError(res, 409, 'ALREADY_OWNED', `${key.label}님은 이미 가지고 있어요.`); }
+    const note = Together.letterText(body.text || '') || '';
+    const result = await pointStore.giftSkin({ userId: account, to, skinId: skin.id, price: skin.price, title: `선물 ${skin.name} → ${key.label}` });
+    if (result.reason) await giveBack();
+    if (result.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 부족합니다. ${skin.price.toLocaleString('ko-KR')}P가 필요합니다.`, { balance: result.balance, price: skin.price });
+    if (result.reason === 'owned') return sendError(res, 409, 'ALREADY_OWNED', `${key.label}님은 이미 가지고 있어요.`);
+    notifyPointsChanged([account]);
+    const now = nowMs(); const fromName = String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24);
+    const letter = { id: requestId, from: session.guestKeyId || 'admin', fromName, text: note || `${skin.name}을(를) 선물했어요!`, itemId: null, skinId: skin.id, skinName: skin.name, at: now, read: false };
+    await pointStore.questApply(to, 'mail', (d) => ((d.letters || []).some((l) => l.id === letter.id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, letter, now) } }));
+    notifyAccount(to, 'mail', { from: fromName }); notifyAccount(to, 'skins', {});
+    return sendJson(res, 200, { ok: true, skinId: skin.id, to: key.label, balance: result.balance });
   }
 
   if (pathname === '/api/skins/equip' && req.method === 'POST') {
@@ -6507,7 +6550,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.100 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.101 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

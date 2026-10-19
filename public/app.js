@@ -1573,19 +1573,26 @@
   function openPlazaWindow(title, nodes) {
     plazaDialog.classList.remove('talkMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
     plazaDialogTitle.textContent = title;
+    // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
+    // the earlier one's content in it; whatever is not part of this window goes back home first)
+    for (const node of [...plazaHomes.keys()]) if (!nodes.includes(node)) sendPlazaHome(node);
     for (const node of nodes) {
       if (!node || plazaHomes.has(node)) continue;
       const mark = document.createComment('plaza'); node.before(mark); plazaHomes.set(node, mark); plazaDialogBody.append(node);
     }
     if (!plazaDialog.open) plazaDialog.showModal();
   }
+  // (bugs 10, 사용자 2026-10-19 「상점 창이 한번 열면 다른 거 할 때도 계속 떠」) a window's content back where it came
+  // from -- or, made for the window alone (no home on the page), away: never left in the next window or on the page
+  function sendPlazaHome(node) { const mark = plazaHomes.get(node); if (mark?.isConnected) mark.replaceWith(node); else node.remove(); plazaHomes.delete(node); }
+  // the island's windows close when I go in or out of a building (the place they belong to is gone)
+  const closeIslandWindows = () => { for (const id of ['plazaDialog', 'skinShopDialog', 'islandPlaceDialog']) { const d = byId(id); if (d?.open) d.close(); } };
   let questDepartureDialog = null;
   plazaDialog.addEventListener('close', () => {
     if (plazaDialog.open) return; // a queued close from the previous window must not empty a newly opened one
     const departed = questDepartureDialog; questDepartureDialog = null;
     if (departed === plaza.controller) departed?.holdQuestDeparture?.(false);
-    for (const [node, mark] of plazaHomes) mark.replaceWith(node);
-    plazaHomes.clear();
+    for (const node of [...plazaHomes.keys()]) sendPlazaHome(node); // (3-1: the 변신 의상실's card has no home: it leaves, not lingers into the next window)
     plazaDialog.classList.remove('talkMode');
     plaza.controller?.talkCamera?.(false); // back to the player's own view
     if (document.body.classList.contains('plazaMode')) plazaStage.focus({ preventScroll: true });
@@ -1918,7 +1925,9 @@
   // v1.10.30 성형외과·염색사: change one face part (30,000P each time, v1.10.35) or the colour of one owned item (5,000P each
   // time, its own colour back costs the same). A choice is pressed twice (the first press says the price); one request
   // id per choice until the server answers, so a lost answer is never paid twice.
-  const lookCard = document.createElement('section'); lookCard.className = 'lobbyCard lookShop hidden'; document.body.append(lookCard);
+  const lookCard = document.createElement('section'); lookCard.className = 'lobbyCard lookShop hidden';
+  const lookDress = document.createElement('div'); lookDress.className = 'skinTryOn dressSide hidden'; lookDress.setAttribute('aria-live', 'polite');
+  const lookRoom = document.createElement('div'); lookRoom.className = 'dressRoom'; lookRoom.append(lookCard, lookDress); document.body.append(lookRoom); // (3-1 꾸미기 창)
   let lookState = null; let lookArmed = null; let lookRequest = null; let lookArmTimer = null;
   async function openLookShop(kind) {
     lookArmed = null; lookRequest = null;
@@ -1927,9 +1936,24 @@
       lookState = { kind, shop, skins, item: null, status: '' };
     } catch (error) { showToast(error.message); return; }
     renderLookShop(); lookCard.classList.remove('hidden');
-    openPlazaWindow(kind === 'surgery' ? '성형외과' : '염색사', [lookCard]);
+    openPlazaWindow(kind === 'surgery' ? '성형외과' : '염색사', [lookRoom]);
+    dressView(lookDress, lookState.skins.avatar?.look || {}, '지금 내 모습');
   }
-  plazaDialog.addEventListener('close', () => { lookCard.classList.add('hidden'); clearTimeout(lookArmTimer); });
+  plazaDialog.addEventListener('close', () => { lookCard.classList.add('hidden'); clearTimeout(lookArmTimer); closeDress(lookDress); closeDress(tfDress); });
+  // 3-1: a choice tried on -- a face part, or a colour on the item it is for (hair, eyes and skin have their own colours)
+  function lookTried(b) {
+    const base = lookState?.skins.avatar?.look || {}; const d = b.dataset;
+    if (d.part) return { ...base, face: { ...(base.face || {}), [d.part]: d.design } };
+    if (d.color != null && lookState.item) {
+      const hex = d.hex || null; const item = lookState.item;
+      if (item === 'base_hair') return { ...base, hairColor: hex || undefined };
+      if (item === 'eyes') return { ...base, eyeColor: hex || undefined };
+      if (item === 'skin') return { ...base, skinColor: hex || undefined };
+      const dye = { ...(base.dye || {}) }; if (hex) dye[item] = hex; else delete dye[item]; return { ...base, dye };
+    }
+    return base;
+  }
+  for (const type of ['pointerover', 'focusin', 'click']) lookCard.addEventListener(type, (event) => { const b = event.target.closest('button[data-key]'); if (b && lookState) dressView(lookDress, lookTried(b), b.textContent.replace(/^한 번 더 누르면.*/, '').trim() || '미리 보기'); });
   function renderLookShop() {
     const { kind, shop, skins } = lookState; lookCard.textContent = '';
     const price = kind === 'surgery' ? shop.surgeryFee : shop.dyeFee;
@@ -1967,7 +1991,7 @@
         const current = skins.equipped?.avatar?.[`dye_${lookState.item}`] || null;
         const row = document.createElement('div'); row.className = 'lookChoices';
         row.append(choice('기본색', `${lookState.item}:`, current === null, { free: true, data: { color: '' } }));
-        for (const c of lookState.item === 'skin' ? shop.skinTones : shop.palette) row.append(choice(c.name, `${lookState.item}:${c.id}`, current === c.id, { swatch: c.hex, data: { color: c.id } }));
+        for (const c of lookState.item === 'skin' ? shop.skinTones : shop.palette) row.append(choice(c.name, `${lookState.item}:${c.id}`, current === c.id, { swatch: c.hex, data: { color: c.id, hex: c.hex } }));
         lookCard.append(row);
       }
     }
@@ -2524,7 +2548,7 @@
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       if (entering) { storeGoods = (await api('/api/island/store')).goods; plaza.controller?.setGoodsPrices?.(Object.fromEntries(storeGoods.map((g) => [g.id, { name: g.name, price: g.price }]))); }
       const r = await api(entering ? '/api/island/store/enter' : '/api/island/store/leave', { method: 'POST', body: '{}' });
-      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
     } catch (error) { showToast(error.message); } finally { storeBusy = false; }
   }
   function storeKeeperTalk() {
@@ -2557,7 +2581,7 @@
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
       const r = await api(entering ? '/api/island/townhall/enter' : '/api/island/townhall/leave', { method: 'POST', body: '{}' });
-      plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space === 'townhall');
     } catch (error) { showToast(error.message); } finally { townhallBusy = false; }
   }
   // v1.10.85 관공서 예금 창구 (사용자 2026-10-17): the wallet and the deposit, 4% a day added at each Seoul midnight;
@@ -3033,6 +3057,7 @@
       const head = el('div', 'mailHead'); head.append(el('strong', '', `${l.fromName}님`), el('span', 'smallMuted', new Date(l.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })));
       row.append(head, el('p', 'mailText', l.text));
       if (l.itemId) row.append(el('p', 'smallMuted', `🎁 함께 온 선물: ${l.itemName || "선물"} (가방에 들어 있어요)`));
+      if (l.skinId) row.append(el('p', 'smallMuted', `🎁 선물받은 스킨: ${l.skinName || '스킨'} (내 정보에서 입을 수 있어요)`)); // 3-1 스킨 선물
       const reply = el('button', 'ghost tiny', '답장'); reply.type = 'button'; reply.addEventListener('click', () => { const pick = d.people.find((p) => p.label === l.fromName); if (pick) { to.value = pick.id; text.focus(); } });
       row.append(reply);
       if (!l.read) api('/api/island/mail/read', { method: 'POST', body: JSON.stringify({ id: l.id }) }).catch(() => {});
@@ -4764,6 +4789,7 @@
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '체납 세금 납부';
+    if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
     if (item.reason === 'game_win' || item.reason === 'game_loss') {
       if (item.gameType === 'gostop') {
         const game = item.mode === 'matgo' ? '맞고' : item.mode === 'gostop' ? '고스톱' : '고스톱·맞고';
@@ -5138,41 +5164,156 @@
     }
     return tabs;
   }
-  // v1.10.89 파츠 미리보기: my character with the item on (what I wear stays), turning, in 3D from the island's own parts
-  // (plaza-scene tryOn) -- above the cards, kept through the redraws, gone with the window
+  // 3-1 꾸미기 창 (사용자 2026-10-19, gamecenter-notes docs/shop-tryon-20261019.md): every dress-up window -- the 옷가게·
+  // 미용실·소품 가게 (the skin shop's avatar parts), 성형외과·염색사, 변신 의상실, 내 정보's equipment -- shows my character
+  // in 3D beside its list from the moment it opens (a phone: above it). Pointing at, focusing or pressing an item puts it
+  // on there at once; nothing is bought or worn by that, and the preview goes with the window. Drag: turn · wheel or two
+  // fingers: nearer/further · 정면/옆/뒤 · 걷기/서기. One preview at a time (plaza-scene tryOn).
   const tryOnHosts = { shop: 'skinShopTryOn', mine: 'myInfoTryOn' };
   const canTryOn = (skin) => skin.id.startsWith('avatar_') && skin.slot && typeof plaza.controller?.tryOn === 'function';
-  function showTryOn(view, skins, skin) {
-    const box = document.getElementById(tryOnHosts[view]);
-    const look = { ...(skins.avatar?.look || {}), [skin.slot]: skin.id };
-    let canvas = box.querySelector('canvas');
-    if (!canvas) {
-      canvas = document.createElement('canvas'); canvas.setAttribute('role', 'img');
-      const cap = document.createElement('div'); cap.className = 'skinTryOnCap';
-      const name = document.createElement('strong'); const note = document.createElement('span'); note.className = 'smallMuted'; note.textContent = '지금 입은 옷에 이 파츠만 바꿔 입은 모습';
-      const close = document.createElement('button'); close.type = 'button'; close.className = 'ghost tiny'; close.textContent = '미리보기 닫기';
-      close.addEventListener('click', () => hideTryOn(view));
-      cap.append(name, note, close); box.replaceChildren(canvas, cap);
+  const dressRooms = new Map(); // box -> { canvas, name }
+  // (사용자 참고 그림 2026-10-19, docs/shop-tryon 「화면 모양」) the preview: a 「미리보기」 chip, my character on a round
+  // pedestal over a light sky-and-grass stage, turn (drag) · nearer · further on the right, ◀ ▶ through 정면·옆·뒤·걷기 under
+  // it, and a small 「착용 전 → 착용 후」 pair when the look differs from what I wear
+  const DRESS_VIEWS = [['정면', 0, false], ['옆', Math.PI / 2, false], ['뒤', Math.PI, false], ['걷기', 0, true]];
+  const dressShots = new Map(); let dressShotChain = Promise.resolve();
+  const dressShot = (look) => { const key = JSON.stringify(look || {}); if (dressShots.has(key)) return Promise.resolve(dressShots.get(key));
+    return (dressShotChain = dressShotChain.then(() => new Promise((done) => { let n = 0; if (!plaza.controller?.tryOnShot?.(look, (url) => { n += 1; if (n === 2) { dressShots.set(key, url); done(url); } })) done(null); }))); };
+  function dressView(box, look, label, base = null) {
+    if (!box || typeof plaza.controller?.tryOn !== 'function') return false;
+    let room = dressRooms.get(box);
+    if (!room || !box.contains(room.canvas)) {
+      const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+      const stage = el('div', 'dressStage'); const canvas = el('canvas', 'dressCanvas'); canvas.setAttribute('role', 'img');
+      const chip = el('span', 'dressChip', '미리보기'); const note = el('p', 'dressNote', '선택한 아이템을 착용한 모습을 3D로 미리 볼 수 있어요.');
+      const side = el('div', 'dressSideTools');
+      const tool = (parent, text, title, fn) => { const b = el('button', 'dressTool', text); b.type = 'button'; b.title = title; b.setAttribute('aria-label', title); b.addEventListener('click', fn); parent.append(b); return b; };
+      tool(side, '⟲', '캐릭터 회전(끌어서 돌리기)', () => plaza.controller?.tryOnPose?.({ turn: Math.PI / 4 }));
+      tool(side, '＋', '확대', () => plaza.controller?.tryOnPose?.({ zoom: 0.6 })); tool(side, '－', '축소', () => plaza.controller?.tryOnPose?.({ zoom: -0.6 }));
+      const nav = el('div', 'dressNav'); const dots = el('span', 'dressDots'); let at = 0;
+      const go = (k) => { at = (k + DRESS_VIEWS.length) % DRESS_VIEWS.length; const [name, yaw, walk] = DRESS_VIEWS[at]; plaza.controller?.tryOnPose?.({ yaw, walk }); dots.replaceChildren(...DRESS_VIEWS.map((v, n) => { const d = el('i', n === at ? 'on' : ''); d.title = v[0]; return d; })); dots.title = name; };
+      tool(nav, '‹', '이전 모습', () => go(at - 1)); nav.append(dots); tool(nav, '›', '다음 모습', () => go(at + 1)); go(0);
+      const compare = el('div', 'dressCompare hidden'); const fig = (cap) => { const f = el('figure'); const img = el('img'); img.alt = cap; f.append(img, el('figcaption', '', cap)); compare.append(f); return img; };
+      const before = fig('착용 전'); compare.append(el('span', 'dressArrow', '›')); const after = fig('착용 후');
+      const touches = new Map(); let pinch = 0;
+      canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); touches.set(e.pointerId, [e.clientX, e.clientY]); pinch = 0; });
+      canvas.addEventListener('pointermove', (e) => {
+        const was = touches.get(e.pointerId); if (!was) return; touches.set(e.pointerId, [e.clientX, e.clientY]);
+        if (touches.size === 1) plaza.controller?.tryOnPose?.({ turn: (e.clientX - was[0]) * 0.012 });
+        else if (touches.size === 2) { const [a, b] = [...touches.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) plaza.controller?.tryOnPose?.({ zoom: (d - pinch) * 0.02 }); pinch = d; }
+      });
+      for (const end of ['pointerup', 'pointercancel']) canvas.addEventListener(end, (e) => { touches.delete(e.pointerId); pinch = 0; });
+      canvas.addEventListener('wheel', (e) => { e.preventDefault(); plaza.controller?.tryOnPose?.({ zoom: -e.deltaY * 0.004 }); }, { passive: false });
+      stage.append(chip, note, el('div', 'dressPedestal'), canvas, side, nav, compare);
+      const name = el('strong', 'dressName'); const cap = el('div', 'skinTryOnCap'); cap.append(name);
+      box.replaceChildren(stage, cap); room = { canvas, name, compare, before, after, shown: '' }; dressRooms.set(box, room);
     }
-    box.classList.remove('hidden');
-    box.querySelector('.skinTryOnCap strong').textContent = `${skin.name} · ${skin.slotLabel || ''}`;
-    canvas.setAttribute('aria-label', `${skin.name}을(를) 입은 내 캐릭터`);
-    if (!plaza.controller.tryOn(canvas, look)) { hideTryOn(view); return; }
+    box.classList.remove('hidden'); room.name.textContent = label; room.canvas.setAttribute('aria-label', `${label} -- 내 캐릭터`);
+    if (!plaza.controller.tryOn(room.canvas, look || {})) { closeDress(box); return false; }
+    // 착용 전 → 착용 후 (only when it differs; the pictures come once the models are in)
+    const key = JSON.stringify([base, look]); const differs = base && JSON.stringify(base) !== JSON.stringify(look || {});
+    room.compare.classList.toggle('hidden', !differs);
+    if (differs && room.shown !== key && typeof plaza.controller?.tryOnShot === 'function') {
+      room.shown = key; dressShot(base).then((url) => { if (room.shown === key && url) room.before.src = url; }).then(() => dressShot(look)).then((url) => { if (room.shown === key && url) room.after.src = url; });
+    }
+    return true;
   }
-  function hideTryOn(view) {
-    const box = document.getElementById(tryOnHosts[view]); if (!box || box.classList.contains('hidden')) return;
-    box.classList.add('hidden'); box.replaceChildren(); plaza.controller?.tryOnClose?.();
-  }
+  function closeDress(box) { if (!box || !dressRooms.has(box)) return; box.classList.add('hidden'); box.replaceChildren(); dressRooms.delete(box); plaza.controller?.tryOnClose?.(); }
+  // an item's card or button: pointing at it, focusing it or pressing it shows it on (the look: what I wear with it)
+  function dressOnHover(el, box, look, label) { const show = () => dressView(box, look(), label); el.addEventListener('pointerenter', show); el.addEventListener('focusin', show); el.addEventListener('click', show); }
+  function showTryOn(view, skins, skin) { dressView(document.getElementById(tryOnHosts[view]), { ...(skins.avatar?.look || {}), [skin.slot]: skin.id }, `${skin.name} · ${skin.slotLabel || ''}`); }
+  function hideTryOn(view) { closeDress(document.getElementById(tryOnHosts[view])); }
+  const dressPicked = { shop: null, mine: null }; // the card picked in each window (its skin id)
   function skinCardButtons(card, skin, view, skins) {
     if (!canTryOn(skin)) return;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny skinTryOnBtn'; b.textContent = '미리보기';
-    b.setAttribute('aria-label', `${skin.name} 미리보기`); b.addEventListener('click', () => showTryOn(view, skins, skin)); card.append(b);
+    const box = document.getElementById(tryOnHosts[view]); const base = () => skins.avatar?.look || {}; const look = () => ({ ...base(), [skin.slot]: skin.id });
+    card.dataset.pick = skin.id; card.classList.toggle('selected', dressPicked[view] === skin.id);
+    card.addEventListener('pointerenter', () => dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()));
+    card.addEventListener('click', (event) => { // (its own button still does its own thing -- the bar's buttons press it)
+      dressPicked[view] = skin.id; for (const c of card.parentElement.parentElement.parentElement.querySelectorAll('.skinCard.selected')) c.classList.remove('selected'); card.classList.add('selected');
+      dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()); dressDetail(view, skin); dressBarSync(view);
+      if (event.target.closest('button')) return;
+    });
+    if (dressPicked[view] === skin.id) { dressDetail(view, skin); }
+  }
+  // 아래 상세 띠: the picked item -- its picture, name, tags (grade, slot, character), a line about it
+  const dressBars = { shop: null, mine: null };
+  function dressParts(view) {
+    if (dressBars[view]?.isConnected) return dressBars[view];
+    const host = view === 'shop' ? skinShopDialog : document.getElementById('myInfoTryOn').closest('.myInfoSection');
+    const detail = document.createElement('div'); detail.className = 'dressDetail hidden';
+    const bar = document.createElement('div'); bar.className = 'dressBar';
+    const points = document.createElement('span'); points.className = 'dressPoints';
+    const make = (cls, text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text; b.addEventListener('click', fn); bar.append(b); return b; };
+    bar.append(points);
+    const press = (action) => { const id = dressPicked[view]; const body = view === 'shop' ? skinShopBody : myInfoSkinBody; body.querySelector(`.skinCard[data-pick="${id}"] button[data-skin="${id}"]`)?.click(); };
+    const buy = make('dressBuy', '구매', () => press('buy')); const wear = make('dressWear', '착용', () => press('equip'));
+    const gift = make('dressGift', '선물하기', () => openSkinGift(view)); gift.hidden = view !== 'shop'; // (3-1 사용자 2026-10-19 「선물 허용으로」: from the shop, for someone else)
+    make('dressClose', '닫기', () => (view === 'shop' ? skinShopDialog : myInfoDialog).close());
+    const giftForm = document.createElement('form'); giftForm.className = 'dressGiftForm hidden';
+    host.append(detail, giftForm, bar); dressBars[view] = bar; Object.assign(bar, { detail, points, buy, wear, gift, giftForm });
+    return bar;
+  }
+  // 3-1 스킨 선물 (사용자 2026-10-19 「선물 허용으로」「우체국으로 쪽지 오는걸로」): the picked skin for someone with an account (the
+  // 우체통's list), a note if I like; I pay, it is theirs, the note comes to their 우체통
+  async function openSkinGift(view) {
+    const bar = dressParts(view); const id = dressPicked[view]; const skin = skinShop?.catalog.flatMap((fam) => fam.skins).find((x) => x.id === id); if (!skin) return;
+    const form = bar.giftForm; form.classList.remove('hidden'); form.replaceChildren();
+    let people = []; try { people = (await api('/api/island/mail')).people || []; } catch (error) { showToast(error.message); }
+    const head = document.createElement('strong'); head.textContent = `${skin.name} 선물하기 · ${skinPrice(skin.price)}`;
+    const who = document.createElement('select'); who.required = true; who.setAttribute('aria-label', '받는 사람');
+    who.append(Object.assign(document.createElement('option'), { value: '', textContent: '받는 사람 고르기' }), ...people.map((p) => Object.assign(document.createElement('option'), { value: p.id, textContent: p.label })));
+    const note = document.createElement('input'); note.type = 'text'; note.maxLength = 200; note.placeholder = '함께 보낼 쪽지(비워 두면 「선물했어요!」)'; note.setAttribute('aria-label', '쪽지');
+    const send = document.createElement('button'); send.type = 'submit'; send.className = 'dressGift'; send.textContent = '보내기';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ghost'; cancel.textContent = '취소'; cancel.addEventListener('click', () => form.classList.add('hidden'));
+    const status = document.createElement('p'); status.className = 'smallMuted'; status.setAttribute('role', 'status');
+    form.append(head, who, note, send, cancel, status);
+    const requestId = crypto.randomUUID(); // (one per form: a lost answer is never paid twice)
+    who.addEventListener('change', async () => { // (as they are picked: one who has it already cannot get it)
+      status.textContent = ''; send.disabled = !who.value; if (!who.value) return;
+      try { const c = await api('/api/skins/gift/check', { method: 'POST', body: JSON.stringify({ skinId: skin.id, to: who.value }) }); if (c.owned) { status.textContent = `${who.selectedOptions[0].textContent}님은 이미 가지고 있어요.`; send.disabled = true; } } catch {}
+    });
+    form.onsubmit = async (event) => {
+      event.preventDefault(); if (!who.value) { status.textContent = '받는 사람을 골라 주세요.'; return; }
+      const name = who.selectedOptions[0].textContent;
+      if (!window.confirm(`${name}님에게 ${skin.name}을(를) ${skinPrice(skin.price)}에 선물할까요?`)) return;
+      send.disabled = true;
+      try {
+        const out = await api('/api/skins/gift', { method: 'POST', body: JSON.stringify({ skinId: skin.id, to: who.value, text: note.value, requestId }) });
+        showToast(`${out.to}님에게 ${skin.name}을(를) 보냈어요. 우체통으로 쪽지가 가요.`); form.classList.add('hidden'); loadPoints(); loadSkinShop();
+      } catch (error) { status.textContent = error.message; send.disabled = false; }
+    };
+  }
+  function dressDetail(view, skin) {
+    const { detail } = dressParts(view); detail.classList.remove('hidden');
+    const name = document.createElement('strong'); name.textContent = skin.name;
+    const tags = document.createElement('span'); tags.className = 'dressTags';
+    for (const t of [skin.slotLabel, skin.tierLabel, skin.ip ? `${skin.ip} 캐릭터` : null].filter(Boolean)) { const c = document.createElement('i'); c.textContent = t; tags.append(c); }
+    const line = document.createElement('p'); line.textContent = '지금 입은 모습에 이것만 바꿔 입어요. 사기 전에 오른쪽에서 미리 입어 볼 수 있어요.';
+    detail.replaceChildren(name, tags, line);
+  }
+  // 맨 아래 버튼 줄: 보유 포인트 · 구매(초록) · 착용(파랑) · 선물하기(분홍) · 닫기 -- 구매·착용 press the picked card's own button
+  function dressBarSync(view) {
+    const bar = dressParts(view); const skins = view === 'shop' ? skinShop : myInfoSkins; if (!skins) return;
+    bar.points.textContent = skinPrice(skins.balance ?? 0); bar.points.title = `보유 포인트 ${skinPrice(skins.balance ?? 0)}`; bar.points.setAttribute('aria-label', bar.points.title);
+    const id = dressPicked[view]; const own = (view === 'shop' ? skinShopBody : myInfoSkinBody).querySelector(`.skinCard[data-pick="${id}"] button[data-skin="${id}"]`);
+    const act = own?.dataset.action; bar.buy.disabled = act !== 'buy'; bar.wear.disabled = !(act === 'equip' || act === 'unequip');
+    bar.buy.textContent = act === 'buy' ? own.textContent : own && !act ? own.textContent : act ? '보유' : '구매'; bar.wear.textContent = act === 'unequip' ? '벗기' : '착용';
+    const pickedSkin = id && skins.catalog?.flatMap((fam) => fam.skins).find((x) => x.id === id); bar.gift.disabled = !pickedSkin || Boolean(pickedSkin.ip) || (skins.balance ?? 0) < pickedSkin.price; // (3-1 선물: a picked skin I can pay for, never an IP one)
+    bar.gift.title = pickedSkin?.ip ? 'IP 스킨은 선물할 수 없어요' : '';
+  }
+  // the window opened: what I wear now, before anything is pointed at
+  function dressStart(view, skins, on) {
+    const box = document.getElementById(tryOnHosts[view]); (view === 'shop' ? skinShopDialog : box?.closest('.myInfoSection'))?.classList.toggle('dressing', Boolean(on));
+    if (!on) { closeDress(box); return; }
+    if (!dressRooms.has(box)) dressView(box, skins.avatar?.look || {}, '지금 내 모습');
   }
 
   let myInfoSkinSlot = '';
   function renderMyInfoSkins() {
     myInfoSkinBody.replaceChildren();
     if (!myInfoSkins) return;
+    dressStart('mine', myInfoSkins, typeof plaza.controller?.tryOn === 'function'); // (3-1: my character beside what I own)
     const families = myInfoSkins.catalog
       .map((family) => ({ ...family, skins: family.skins.filter((skin) => myInfoSkins.owned.has(skin.id)) }))
       .filter((family) => family.skins.length);
@@ -5261,7 +5402,7 @@
         results.append(section);
       }
     };
-    skinResults.mine = fill; fill();
+    skinResults.mine = () => { fill(); if (typeof plaza.controller?.tryOn === 'function') dressBarSync('mine'); }; skinResults.mine();
   }
 
   async function loadMyInfoSkins() {
@@ -5336,6 +5477,7 @@
     if (!skinShop) return;
     skinShopBalance.textContent = `보유 ${skinPrice(skinShop.balance)}`;
     const avatarMode = skinShopMode.startsWith('avatar');
+    dressStart('shop', skinShop, avatarMode && typeof plaza.controller?.tryOn === 'function'); // (3-1: the parts shops -- my character beside the list)
     const families = skinShop.catalog.filter(f => skinShopMode === 'all' || avatarMode === (f.family === 'avatar'));
     if (!families.some(f => f.family === skinShopFamily)) skinShopFamily = families[0]?.family;
     const tabs = document.createElement('div');
@@ -5415,7 +5557,7 @@
         results.append(section);
       }
     };
-    skinResults.shop = fill; fill();
+    skinResults.shop = () => { fill(); if (avatarMode) dressBarSync('shop'); }; skinResults.shop();
     if (family.family === 'avatar' && (!slotOnly || slotOnly === 'outfit')) skinShopBody.append(renderTitlePicker());
   }
 
@@ -5509,6 +5651,8 @@
   // v1.10.91 변신 의상실 (사용자 2026-10-18, A안): transformations bought and chosen here, apart from the parts -- a card per
   // character: buy (a confirm with the price), 변신하기 / 변신 풀기, and its body (우리 체형 / 고유 체형) once chosen
   const tfCard = document.createElement('div'); tfCard.className = 'tfShop'; tfCard.id = 'transformShop';
+  const tfDress = document.createElement('div'); tfDress.className = 'skinTryOn dressSide hidden'; tfDress.setAttribute('aria-live', 'polite');
+  const tfRoom = document.createElement('div'); tfRoom.className = 'dressRoom'; tfRoom.append(tfCard, tfDress); // (3-1 꾸미기 창)
   let tfBusy = false;
   async function drawTransformShop() {
     const { list } = await api('/api/transformations');
@@ -5521,6 +5665,7 @@
       act.textContent = t.owned ? (t.chosen ? '변신 풀기' : '변신하기') : '사기';
       act.addEventListener('click', () => transformAction(t));
       row.append(name, meta, act);
+      dressOnHover(row, tfDress, () => ({ ...(plazaAvatar?.look || {}), transform: t.character }), `${t.name}`); // (3-1: the transformation tried on)
       if (t.chosen && t.modes.length > 1) for (const [value, label] of [['current', '우리 체형'], ['native', '고유 체형']]) { const b = document.createElement('button'); b.type = 'button'; b.className = `ghost tiny${t.mode === value ? ' selected' : ''}`; b.textContent = label; b.setAttribute('aria-pressed', String(t.mode === value));
         b.addEventListener('click', async () => { try { const data = await api('/api/avatar/transformation', { method: 'POST', body: JSON.stringify({ characterId: t.character, mode: value }) }); applySkinEquipment(data); drawTransformShop(); } catch (error) { showToast(error.message); } }); row.append(b); }
       return row; }));
@@ -5534,7 +5679,7 @@
     } catch (error) { showToast(error.message, 4000); } finally { skinShopMode = was; tfBusy = false; }
   }
   async function openTransformShop() {
-    try { await drawTransformShop(); openPlazaWindow('변신 의상실', [tfCard]); } catch (error) { showToast(error.message); }
+    try { await drawTransformShop(); openPlazaWindow('변신 의상실', [tfRoom]); dressView(tfDress, plazaAvatar?.look || {}, '지금 내 모습'); } catch (error) { showToast(error.message); }
   }
   function openSkinShop(mode = 'all') {
     ++skinShopEpoch; clearTimeout(skinBuyTimer);
