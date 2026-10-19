@@ -147,3 +147,25 @@ async function outOfMall(page) {
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('island');
 }
 module.exports.outOfMall = outOfMall;
+
+// B 47 시험: put a player at (x, z) on the island and keep them there until both the page and the server say so -- a page
+// may send its own older place a moment later (a slow runner), which would undo a single post
+async function standAt(request, who, x, z) {
+  const near = (p) => p && Math.hypot(p.x - x, p.z - z) < 0.6;
+  let last = null;
+  for (let i = 0; i < 12; i += 1) {
+    await who.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]);
+    let r = await post(request, '/api/plaza/state', who.token, { x, z, yaw: 0, moving: false });
+    if (!near(r.data) && r.data) { // (the server never lets one walk through another player: round them, 4 m to the side)
+      const side = r.data.z + (i % 2 ? -4 : 4);
+      for (const [px, pz] of [[r.data.x, side], [x, side], [x, z]]) { await who.page.evaluate(([px, pz]) => window.PlazaDebug().teleport(px, pz), [px, pz]); r = await post(request, '/api/plaza/state', who.token, { x: px, z: pz, yaw: 0, moving: false }); }
+    }
+    await who.page.waitForTimeout(600);
+    const page = await who.page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });
+    const again = await post(request, '/api/plaza/state', who.token, { x, z, yaw: 0, moving: false });
+    last = { first: r.data && [r.data.x, r.data.z, r.data.corrected], page: [page.x, page.z], again: again.data && [again.data.x, again.data.z, again.data.corrected] };
+    if (near(r.data) && near(page) && near(again.data)) return;
+  }
+  throw new Error(`could not stand at ${x}, ${z}: ${JSON.stringify(last)}`);
+}
+module.exports.standAt = standAt;

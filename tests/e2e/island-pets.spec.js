@@ -23,7 +23,7 @@ test('반려동물: 가방에서 데리고 다니면 이름과 함께 따라오�
   const aId = await a.page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id), aId), { timeout: 30000 }).toMatchObject({ kind: 'puppy', name: '바둑이', loaded: true });
   // it follows: far, then Walk, then by me
-  const stand = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); for (let i = 0; i < 10; i += 1) { const r = await post(request, '/api/plaza/state', a.token, { x, z, yaw: 0, moving: false }); if (Math.hypot(r.data.x - x, r.data.z - z) < 0.6) break; await new Promise((ok) => setTimeout(ok, 300)); } }; // (until the server has me there)
+  const stand = (x, z) => require('./skin-support').standAt(request, a, x, z); // (until page and server agree)
   await a.page.bringToFront(); // (a background page's frames are slowed)
   const clips = a.page.evaluate(() => new Promise((done) => { const seen = new Set(); const t0 = performance.now(); const f = () => { seen.add(window.PlazaDebug().pets().find((p) => p.key === 'me')?.clip); if (performance.now() - t0 < 3000) requestAnimationFrame(f); else done([...seen]); }; requestAnimationFrame(f); }));
   await stand(8, 6);

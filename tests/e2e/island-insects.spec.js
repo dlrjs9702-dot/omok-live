@@ -13,7 +13,7 @@ test('곤충 채집: 잠자리채로 기다렸다 Space로 잡으면 가방·도
   const { page } = a;
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
-  const stand = async (x, z) => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); for (let i = 0; i < 10; i += 1) { const r = await post(request, '/api/plaza/state', a.token, { x, z, yaw: 0, moving: false }); if (Math.hypot(r.data.x - x, r.data.z - z) < 0.6) break; await new Promise((ok) => setTimeout(ok, 300)); } }; // (until the server has me there)
+  const stand = (x, z) => require('./skin-support').standAt(request, a, x, z); // (until page and server agree)
   expect((await post(request, '/api/island/bug/start', a.token, {})).data.error).toBe('NO_BUGNET');
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
   await stand(0, 6); expect((await post(request, '/api/island/bug/start', a.token, {})).data.error).toBe('NOT_BUG_SPOT');
