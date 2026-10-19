@@ -32,6 +32,10 @@ test('달마루섬 2단계: 보이는 것 = 막는 것, 뜨거나 묻힌 것 없
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().carveStatues().map((s) => s.stone)), { timeout: 30000 }).toEqual([true, true, true]);
   const at = await page.evaluate(() => window.PlazaDebug().carveStatues());
   at.forEach((s, k) => expect(Math.hypot(s.x - N[k].x, s.z - N[k].z)).toBeLessThan(1));
+  // (5단계) the two waterfalls, their water running
+  const fall = () => page.evaluate(() => window.PlazaDebug().environment.water);
+  expect((await fall()).falls).toBe(2);
+  const f0 = (await fall()).fall; await expect.poll(async () => (await fall()).fall).not.toBe(f0);
   await expectNoScriptError(page);
   await who.context.close();
 });

@@ -75,7 +75,7 @@ for (const [w, h] of [[1920, 1080], [1366, 768], [393, 851], [375, 667]]) {
     }
     let n = 0; let state = true;
     while (n < 26 && state === true) { state = await step(request, tokens); n += 1; }
-    await check('late');
+    if (state !== false) await check('late'); // (CI: a deal can end the game before then -- the result board is laid out apart)
     // G2-5: played to the end (a go/stop choice stops), the result is a window on screen with the way on
     for (let k = 0; k < 80 && (await step(request, tokens, { go: true })); k += 1);
     const actions = page.locator('#gostopResult .gostopResultActions');

@@ -108,9 +108,10 @@ test('아일랜드 모듈 실패 뒤 다시 시도하면 새 문서로 복구하
   const { context, page } = await macUser(browser, request, '맥모듈', 'ok', false,
     c => c.route('**/plaza/plaza-scene.js*', route => route.fulfill({ status: 500, body: 'no' })));
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('gameCenterGuestSession')).token);
-  const saved = await post(request, '/api/plaza/state', token, { x: 25, z: 4, yaw: 0, moving: false });
+  const W = require('../../public/plaza/island-terrain.js').walkCurves[1].pts; const mid = W[Math.floor(W.length / 2)]; const SPOT = { x: Math.round(mid[0]), z: Math.round(mid[1]) }; // (a walk, either island)
+  const saved = await post(request, '/api/plaza/state', token, { ...SPOT, yaw: 0, moving: false });
   expect(saved.status).toBe(200);
-  expect((await get(request, '/api/plaza/spot', token)).data.spot).toEqual({ x: 25, z: 4 });
+  expect((await get(request, '/api/plaza/spot', token)).data.spot).toEqual(SPOT);
   await expect(page.locator('#plazaError')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => window.PlazaDiagnostics.code)).toBe('module');
   expect(await classicShown(page)).toBe(false);
@@ -119,7 +120,7 @@ test('아일랜드 모듈 실패 뒤 다시 시도하면 새 문서로 복구하
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 15000 }).toBe(true);
   const restored = await page.evaluate(() => ({ spot: window.PlazaDebug(), token: JSON.parse(sessionStorage.getItem('gameCenterGuestSession')).token }));
   expect(restored.token).toBe(token);
-  expect(Math.hypot(restored.spot.x - 25, restored.spot.z - 4)).toBeLessThan(0.6);
+  expect(Math.hypot(restored.spot.x - SPOT.x, restored.spot.z - SPOT.z)).toBeLessThan(0.6);
   await expect(page.locator('#plazaError')).toBeHidden();
   await context.close();
 });

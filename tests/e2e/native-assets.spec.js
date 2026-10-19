@@ -51,7 +51,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
     const mode = who === a ? 'current' : 'native';
     expect((await post(request,'/api/avatar/transformation',who.token,{characterId:id,mode})).status).toBe(200);
     await startIsland(who,id,mode);
-    await who.page.evaluate(async id => { const d=window.PlazaDebug();d.halloween.set(false);d.setCamYaw(0);await window.PlazaWarp(id==='kuromi'?-10:-4,0); },id);
+    await who.page.evaluate(async id => { const d=window.PlazaDebug();d.halloween.set(false);d.setCamYaw(0);const S=window.IslandTerrain.SPAWN;await window.PlazaWarp(S.x+(id==='kuromi'?-3:3),S.z); },id); // (either island: beside its spawn, open ground north of it)
     await expect.poll(()=>who.page.evaluate(()=>window.PlazaDebug().halloween.on())).toBe(false);
     await who.page.screenshot({ path: testInfo.outputPath(`${id}.png`) });
   }
@@ -62,7 +62,7 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await a.page.keyboard.up('ArrowUp');
   expect(await a.page.evaluate(() => window.PlazaDebug().z)).toBeLessThan(start);
   await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
-  await b.page.evaluate(async () => { await window.PlazaWarp(65,65); });
+  await b.page.evaluate(async (p) => { await window.PlazaWarp(p.x + 65, p.z + 65); }, require('../../public/plaza/island-terrain.js').PLAZA_C || { x: 0, z: 0 }); // (far off, either island)
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some(w => w.transformation === 'mymelody' && !w.high)), { timeout: 30000 }).toBe(true);
   await b.context.close(); // remote LOD is verified; release its 3D renderer before the remaining local interactions
   const seat = await a.page.evaluate(() => {

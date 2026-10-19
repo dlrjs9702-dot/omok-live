@@ -380,8 +380,8 @@ test('등록 + 성공: 같은 모델은 여러 대상이 써도 한 번만 받�
   const d = await debug(page);
   expect(d.assets.loader).toBe('ready');
   expect(d.assets.files).toMatchObject({ [BOX]: 'loaded', [RIG]: 'loaded' });
-  expect(a.hits).toEqual({ [BOX]: 1, [RIG]: 1 }); // one download each: the town hall, nine cottages (two LOD levels) and me
-  expect(d.assets.lods).toBe(9);
+  expect(a.hits).toEqual({ [BOX]: 1, [RIG]: 1 }); // one download each: the town hall, the cottages (two LOD levels) and me
+  expect(d.assets.lods).toBe(require('../../public/plaza/island-terrain.js').COTTAGES.length); // (지금 섬 9, 달마루섬 10)
   expect(a.code).toEqual(expect.arrayContaining(['/plaza/asset-loader.js', '/vendor/three/addons/loaders/GLTFLoader.js', '/vendor/three/addons/utils/SkeletonUtils.js']));
   if (proceduralDoors) expect(d.doors).toEqual(proceduralDoors); // doors (and with them interaction) are the game's, not the model's
 
@@ -491,7 +491,7 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
     }
     return zones;
   };
-  const day0 = 20736; // any day: 20736 % 4 === 0, zone k shows season k (north spring, east summer, south autumn, west winter)
+  const day0 = 20736;
   const first = await expectDay(day0);
   if (first[0]) expect(first[0].look).toBe('spring');
   const next = await expectDay(day0 + 1);
@@ -515,7 +515,8 @@ test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — �
   const a = await island(browser, request, '바다구경', { __only: true, 'sea.boat': { url: BOX }, 'sea.gull': { url: BOX }, 'sea.dolphin': { url: BOX }, 'sea.splash': { url: BOX } });
   const { page } = a;
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 30000 }).toBe('ready');
-  await page.evaluate(() => window.PlazaWarp(98, 0)); // on the east beach, the open sea before it (the harbour is south)
+  // on the east beach, the open sea before it (the harbour is south); 달마루섬: the east arm's outer beach, looking out to sea
+  await page.evaluate((DAL) => { if (!DAL) return window.PlazaWarp(98, 0); window.PlazaWarp(142.5, 82.2); window.PlazaDebug().setCamYaw(-2.012); }, Boolean(require('../../public/plaza/island-terrain.js').dalmaru));
   const sights = () => page.evaluate(() => ({ at: window.PlazaDebug().sea.at(), me: { x: window.PlazaDebug().x, z: window.PlazaDebug().z } }));
   const out = (p) => page.evaluate(([x, z]) => window.IslandTerrain.coastDist(x, z), [p.x, p.z]);
   for (const kind of ['boat', 'gulls', 'dolphins']) {
@@ -529,6 +530,7 @@ test('해상 볼거리: 바다의 배, 바다 위 갈매기 떼, 돌고래 — �
   const inPicture = await page.evaluate((list) => list.map(([x, y, z]) => window.PlazaDebug().sea.inPicture(x, y, z)), [...at.boat, ...at.gulls, ...at.dolphins].map((p) => [p.x, p.y, p.z]));
   expect(inPicture.filter(Boolean).length).toBeGreaterThan(0); // chosen where the default picture shows the sea (the gulls wheel in and out of it)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/sea.png` });
+  await page.evaluate(() => window.PlazaDebug().setCamYaw(0)); // (the arrows walk screen-relative)
   await stillPlays(page);
   expect(a.errors).toEqual([]);
   await a.context.close();
@@ -551,7 +553,8 @@ test('겨울 지붕 눈: 그날 겨울 구역의 집·시설만 지붕 모양에
     for (const r of list.filter((x) => x.look !== 'winter')) expect(['none', 'hidden']).toContain(r.snow);
     return list;
   };
-  const day0 = 20736;
+  // (the first day from 20736 whose winter zone and the next day's both hold buildings -- 달마루섬's stand in two zones of four)
+  const day0 = await page.evaluate(() => { const t = window.IslandTerrain; const b = [...t.COTTAGES, ...Object.values(t.SPOTS)]; const w = (d) => b.some((x) => t.zoneSeason(t.seasonZoneAt(x.x, x.z), d) === 'winter'); for (let d = 20736; d < 20744; d += 1) if (w(d) && w(d + 1)) return d; return 20736; }); // any day: 20736 % 4 === 0, zone k shows season k (north spring, east summer, south autumn, west winter)
   const first = await check(day0);
   const kinds = new Set(first.filter((r) => r.look === 'winter').map((r) => r.snow));
   const next = await check(day0 + 1);
@@ -581,7 +584,10 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // where that find is, the pulled weed only in a hand; native transformations only after a complete set (native-assets.spec)
   const ids = (await page.evaluate(() => Object.keys(window.IslandAssets.REGISTRY))).filter((id) => id !== 'facility.admin' && !['sea.whale', 'sea.splash', 'prop.weedRooted', 'sea.boat', 'sea.gull', 'sea.dolphin', 'halloween.candyBag', 'halloween.candyBasket', 'quest.fishing_rod', 'quest.watering_can', 'quest.camera_bag', 'farm.mallet'].includes(id) && !id.startsWith('tree.harvest.') && !id.startsWith('tree.fruitLayer.') && !id.startsWith('prop.harvest.') && !id.startsWith('wear.') && !id.startsWith('character.transform.') && !id.startsWith('prop.event.') && !id.startsWith('struct.') && !id.startsWith('fish') && !id.startsWith('good.') && !id.startsWith('village.') && !id.startsWith('winter.') && !id.startsWith('townhall3.') && !id.startsWith('plant.') /* (B 45: only where someone planted) */ && !id.startsWith('together.') && id !== 'character.guide' /* (B 47: on a birthday, at the 우체통, with the guide, the insects, the museum and pets) */ && !id.startsWith('character.clerk_') /* (B 44: inside the 민원실 only) */ /* (B 46: December or the administrator's switch only) */ && !['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'gazebo_grandpa'].map((n) => 'character.' + n).includes(id) /* (v1.10.93: with the week's resident story only, village-quests.test) */ && !['mall.interior', 'character.storekeeper', 'character.transformer', ...['shop', 'avatar', 'faces', 'hair', 'accessories', 'dye'].map((f) => 'facility.' + f)].includes(id)); /* (v1.10.92: the shops, their keepers and the goods are inside the 백화점 -- shown once one walks in, general-store.spec) */ // Harvest is preregistered; held quest tools use the character socket, not an environmental attach.
   if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it)
-  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return ids.map((id) => s[id]); }, { timeout: 60000 }).toEqual(ids.map(() => 'model'));
+  // (달마루섬: its cliff fronts are shown as facility.townhall/store, their aliases; the 작명소 and the trader are indoors --
+  // the 개명 신청 window and the 백화점's 노점, built on the way in)
+  if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
+  await expect.poll(async () => { const s = (await debug(page)).assets.shown; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)
   const d = await debug(page);
   expect(d.assets.day).toBe(await page.evaluate(() => window.PlazaDebug().seasonDay()));
   const files = Object.entries(d.assets.files).filter(([url]) => url.startsWith('/assets/island/'));
@@ -614,7 +620,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
     expect(files.some(([url, state]) => url === zone.low && state === 'loaded')).toBe(true);
   }
   const bridges = d.assets.attaches.filter((x) => x.ids.includes('prop.bridge'));
-  expect(bridges.length).toBe(4);
+  expect(bridges.length).toBe(await page.evaluate(() => { const B = window.IslandTerrain.bridges; return (typeof B === 'function' ? B() : B).filter((b) => !b.model).length; })); // (지금 섬 4; 달마루섬 2 -- 윤슬다리 is its own model)
   for (const b of bridges) expect(b.url).toContain(`/${b.look}/bridge_${b.look}_v1.glb`);
   expect(d.assets.attaches.filter((x) => x.ids.includes('prop.fence')).length).toBeGreaterThanOrEqual(18); // two runs per cottage
   // Required island files of every season are ready before entry; complete transformations are fetched when worn.
@@ -654,7 +660,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   // v1.10.29: the falling flakes are ready for every season that has them, and a whale breaches once (LoopOnce) with a
   // splash where it breaks the surface and where it falls back, then is gone
   expect(d.assets.ambient.kinds.sort()).toEqual(['autumn', 'spring', 'winter']);
-  await page.evaluate(() => { const p = window.PlazaDebug(); p.teleport(-70, 75); p.setCamYaw(Math.PI * 0.75); });
+  await page.evaluate(() => { const p = window.PlazaDebug(); if (window.IslandTerrain.dalmaru) { p.teleport(142.5, 82.2); p.setCamYaw(-2.012); } else { p.teleport(-70, 75); p.setCamYaw(Math.PI * 0.75); } }); // (달마루섬: the east arm's outer beach -- -70, 75 is 윤슬만)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().whale()), { timeout: 5000 }).toBe(true);
   // the clip runs on the scene's clock (a frame counts at most 0.05 s), so on a slow software-rendered runner its 6 s take longer
   await expect.poll(async () => (await debug(page)).assets.played, { timeout: 90000 }).toEqual({ 'sea.whale': 1, 'sea.splash': 2 });
@@ -895,21 +901,24 @@ test('관광열차 실물: 4객차·2승강장 High/Low 로드와 문 열기·�
   expect(await a.page.evaluate(() => window.PlazaDebug().train().cars.map((c) => ({ mixers: c.mixers, wheels: c.wheels })))).toEqual([{ mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }, { mixers: 2, wheels: 8 }]);
   const d = await debug(a.page); expect(d.assets.shown).toMatchObject({ 'train.car': 'model', 'train.platform': 'model' });
   expect(d.assets.files).toMatchObject({ '/assets/island/train-v1/train_carriage.glb': 'loaded', '/assets/island/train-v1/train_carriage_low.glb': 'loaded', '/assets/island/train-v1/train_platform.glb': 'loaded', '/assets/island/train-v1/train_platform_low.glb': 'loaded' });
-  const shift = async (sec) => { const now = Date.now(); await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / 240000) * 240000 + sec * 1000 - now }); };
-  await shift(235);
+  // (either island's timetable: train 1's last stop of a round, S0, then the next, S1 -- 지금 섬 동해안역 then 남서해안역)
+  const plan = await a.page.evaluate(() => { const R = window.IslandTrain; const out = []; for (let s = 0; s < R.CYCLE * 2; s += 0.5) { const st = R.timetableAt(1, s * 1000).stop; if (st && (!out.length || out[out.length - 1].st !== st || s - out[out.length - 1].at > 10)) out.push({ at: s, st }); } return { cycle: R.CYCLE, out }; });
+  const k0 = plan.out.filter((x) => x.at < plan.cycle).length - 1; const [A0, A1] = [plan.out[k0], plan.out[k0 + 1]]; const round = plan.cycle * 1000;
+  const shift = async (sec) => { const now = Date.now(); await post(request, '/api/test/train-shift', a.token, { ms: Math.ceil(now / round) * round + sec * 1000 - now }); };
+  await shift(A0.at + 1);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 1).opened), { timeout: 12000 }).toBe(true);
-  const st = await a.page.evaluate(() => window.IslandTrain.stationOf('B').spot);
+  const st = await a.page.evaluate((S) => window.IslandTrain.stationOf(S).spot, A0.st);
   await a.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [st.x, st.z]);
-  await a.page.evaluate(() => { const p=window.IslandTrain.stationOf('B').spot,l=window.IslandTrain.liftOf('B');window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); });
+  await a.page.evaluate((S) => { const p=window.IslandTrain.stationOf(S).spot,l=window.IslandTrain.liftOf(S);window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); }, A0.st);
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-station.png') });
   await a.page.evaluate(() => window.PlazaDebug().overview(true));
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-route-overview.png') });
-  await shift(355);
-  const south = await a.page.evaluate(() => window.IslandTrain.stationOf('D').spot);
+  await shift(A1.at + 1);
+  const south = await a.page.evaluate((S) => window.IslandTrain.stationOf(S).spot, A1.st);
   await a.page.evaluate(([x,z]) => { window.PlazaDebug().overview(false); window.PlazaWarp(x,z); }, [south.x,south.z]);
-  await a.page.evaluate(() => { const p=window.IslandTrain.stationOf('D').spot,l=window.IslandTrain.liftOf('D');window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); });
+  await a.page.evaluate((S) => { const p=window.IslandTrain.stationOf(S).spot,l=window.IslandTrain.liftOf(S);window.PlazaDebug().setCamYaw(Math.atan2(p.x-l.x,p.z-l.z)); }, A1.st);
   await a.page.screenshot({ path: require('node:path').join(test.info().outputDir, 'train-south-station.png') });
-  await shift(280);
+  await shift(A0.at + 6 + (A1.at - A0.at - 6) / 3);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().cars.find((c) => c.id === 1).opened), { timeout: 12000 }).toBe(false);
   await post(request, '/api/test/train-shift', a.token, { ms: 0 }); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
 });

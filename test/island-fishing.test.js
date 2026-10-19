@@ -23,6 +23,15 @@ test('낚시 규칙: 확률·기대값, 물가에서만, 입질 시간 판정, �
   }
   assert.equal(seen.size, 21); assert.equal(Object.keys(F.SPECIES).length, 21);
   const avg = evs.reduce((a, b) => a + b, 0) / evs.length; assert.ok(avg > 1000 && avg < 1400, `평균 ${avg}`);
+  // (달마루섬 5단계) five waters: 윤슬만 the sea's without the open-water fish, 거울호수 the river's without the stream fish,
+  // the waterfall pools the river's without the common ones -- every season something, a pool's cast worth more
+  const ev = (list) => list.reduce((a, id) => a + F.SPECIES[id].weight * F.SPECIES[id].price, 0) / list.reduce((a, id) => a + F.SPECIES[id].weight, 0);
+  for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    for (const water of ['bay', 'lake', 'pool']) assert.ok(F.listFor(water, season).length >= 2, `${water} ${season}`);
+    assert.ok(!F.listFor('bay', season).some((id) => ['giant_tuna', 'mackerel', 'cutlassfish', 'stingray'].includes(id)));
+    assert.ok(!F.listFor('lake', season).some((id) => ['pale_chub', 'sweetfish', 'mandarin_fish'].includes(id)));
+    assert.ok(ev(F.listFor('pool', season)) > ev(F.listFor('river', season)), `pool ${season}`);
+  }
   assert.equal(F.waterAt(T.PIER.x, T.PIER.z), 'sea');
   assert.equal(F.canFish(T.PIER.x, T.PIER.z), true); assert.equal(F.canFish(0, 8), false); assert.equal(F.canFish(30, 30), false);
   const c = { biteAt: 10_000 };
@@ -85,14 +94,15 @@ test('낚시왕 집계: 어부 판매만, 그 주 안의 것만, 계정별 합�
 // v1.10.43 기념사진: a picture by a photo spot is kept once on the account (spot and day, no image); elsewhere nothing;
 // the spots are in the 도감 beside the fish and finds
 test('기념사진 서버: 장소 근처에서만 기록, 처음 한 번 표시, 도감에 들어간다', async (t) => {
-  assert.equal(F.photoSpotAt(0, 3).id, 'photo_plaza'); assert.equal(F.photoSpotAt(60, 60), null);
+  const PC = T.PLAZA_C || { x: 0, z: 0 }; // (the plaza's middle, either island)
+  assert.equal(F.photoSpotAt(PC.x, PC.z + 3).id, 'photo_plaza'); assert.equal(F.photoSpotAt(PC.x + 60, PC.z + 60), null);
   for (const s of F.PHOTO_SPOTS) assert.ok(T.walkable(s.x, s.z), s.name);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'photo-')); t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const server = await boot(t, dir); const { req } = server;
   const sa = await server.enter(await server.issue('사진가')); assert.ok(sa, server.logs());
-  await req('/api/plaza/state', sa, { x: 60, z: 60, yaw: 0, moving: false });
+  await req('/api/plaza/state', sa, { x: PC.x + 40, z: PC.z + 40, yaw: 0, moving: false });
   assert.equal((await req('/api/island/photo', sa, {})).data.spot, null);
-  await req('/api/plaza/state', sa, { x: 0, z: 6, yaw: 0, moving: false });
+  await req('/api/plaza/state', sa, { x: PC.x, z: PC.z + 6, yaw: 0, moving: false });
   const first = (await req('/api/island/photo', sa, {})).data; assert.deepEqual([first.spot.id, first.first], ['photo_plaza', true]);
   assert.equal((await req('/api/island/photo', sa, {})).data.first, false);
   const dex = (await req('/api/island/dex', sa)).data;

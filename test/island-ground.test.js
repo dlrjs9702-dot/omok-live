@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const T = require('../public/plaza/island-terrain');
 const THREE = require('three');
 
-test('길 높이: 경사·물길 시작점에서도 실제 지형 삼각형 표면과 일치한다', () => {
+test('길 높이: 경사·물길 시작점에서도 실제 지형 삼각형 표면과 일치한다', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   const geometry = new THREE.PlaneGeometry(250, 250, 125, 125).rotateX(-Math.PI / 2);
   const positions = geometry.attributes.position;
   for (let i = 0; i < positions.count; i++) positions.setY(i, T.ground(positions.getX(i), positions.getZ(i)));
@@ -17,7 +17,7 @@ test('길 높이: 경사·물길 시작점에서도 실제 지형 삼각형 표�
   geometry.dispose(); mesh.material.dispose();
 });
 
-test('광장 네 물길: 가장자리에서 급단차 없이 내려가며 물은 얕은 바닥 위·둑 아래에 있다', () => {
+test('광장 네 물길: 가장자리에서 급단차 없이 내려가며 물은 얕은 바닥 위·둑 아래에 있다', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   for (const degree of [45, 135, 225, 315]) {
     const angle = degree * Math.PI / 180, x = Math.cos(angle), z = Math.sin(angle);
     for (let r = 14; r < 26; r += 0.05) {

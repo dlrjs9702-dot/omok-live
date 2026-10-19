@@ -320,7 +320,7 @@ test('코드는 해시 주소로 받아 HTTP 캐시에 오래 두고, 리소스 
   const code = [];
   const violations = [];
   page.on('console', msg => { if (/Content Security Policy/i.test(msg.text())) violations.push(msg.text()); });
-  page.on('response', r => { const u = new URL(r.url()); if (/\.(js|css)$/.test(u.pathname) && u.pathname !== '/sw.js') code.push([u.pathname + u.search, r.headers()['cache-control']]); });
+  page.on('response', r => { const u = new URL(r.url()); if (/\.(js|css)$/.test(u.pathname) && u.pathname !== '/sw.js' && u.pathname !== '/plaza/island-live.js' /* (달마루섬: which island the server runs -- no-store, as /sw.js) */) code.push([u.pathname + u.search, r.headers()['cache-control']]); });
   await page.goto('/');
   await ready(page);
   expect(code.length).toBeGreaterThan(30);

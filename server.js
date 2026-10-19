@@ -1000,7 +1000,7 @@ async function climbRankingView(week, account) {
 // seconds while standing; the server sends everyone in the lobby one snapshot at most every PLAZA_TICK_MS.
 const PLAZA_TICK_MS = 150;
 const PLAZA_STALE_MS = 15000;
-const PLAZA_BOUND = 130; // v1.10.0: the whole island (public/plaza/island.js ISLAND_RADIUS)
+const PLAZA_BOUND = IslandTerrain.ISLAND_RADIUS; // v1.10.0: the whole island (130; 달마루섬 200)
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
 // v1.9.6 player collision: the last word on where a plaza player stands. Smaller than the screen's circles (0.45 each,
 // 0.28 at a door) so it only removes a real overlap (lag, a hand-made request) and never fights normal walking.
@@ -1085,6 +1085,23 @@ function refreshBirthdays(force = false) {
   return birthdays.loading;
 }
 setInterval(() => refreshBirthdays(), 60000).unref?.();
+// 달마루섬 5단계 (사용자 결정: 심은 꽃·나무는 전부 씨앗으로): once, when the server first runs on the new island -- every
+// planted flower back to its owner's bag as its seed, every tree as a sapling (「달마루섬 이사 돌려받기」, no activity
+// bonus), then the ground cleared. Each return is its own claim (a restart half way never gives twice); a full bag
+// keeps that plant in the list for the next start.
+async function dalmaruMoveIn() {
+  if (IslandTerrain.MAP !== 'dalmaru' || !pointStore || await pointStore.worldValue('dalmaruMoved')) return;
+  if (!(await pointStore.worldValue('dalmaruWeeds'))) { await pointStore.islandWeedReset(); await pointStore.setWorldValue('dalmaruWeeds', { at: new Date().toISOString() }); } // (잡초: the new island's own, numbered afresh)
+  const plants = await pointStore.islandPlants(); const returned = []; let kept = 0;
+  for (const p of plants) {
+    const itemId = p.kind === 'tree' ? 'sapling' : `seed_flower_${p.color}`;
+    const out = await pointStore.islandGive({ userId: p.owner, itemId, qty: 1, claimId: `dalmaru-move:${p.id}`, note: '달마루섬 이사 돌려받기', quiet: true }).catch(() => null);
+    if (out && (out.applied || out.kind === 'island_give')) returned.push(p.id); else kept += 1;
+  }
+  await pointStore.islandClearPlants(returned);
+  if (!kept) await pointStore.setWorldValue('dalmaruMoved', { at: new Date().toISOString(), returned: returned.length });
+  if (plants.length) console.log(`달마루섬 이사: 심은 꽃·나무 ${returned.length}개를 씨앗으로 돌려줌${kept ? `, ${kept}개는 가방이 가득 차 다음에` : ''}`);
+}
 // B 47 박물관: one gift at a time (two at once for the same kind: the first stays), the thing out of the giver's bag
 let museumChain = Promise.resolve();
 function museumGive(account, itemId, name) {
@@ -3443,13 +3460,14 @@ async function requestHandler(req, res) {
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
       const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
-      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : IslandTerrain.facilityDoor(place);
+      // (달마루섬 5단계: the 작명소's business at the 민원실's 개명 신청 window too)
+      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : place === 'naming' && townhallInside.has(session.token) ? IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.rename.lx, IslandTerrain.TOWNHALL_ROOM.rename.lz) : IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     }
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.103' });
+    return sendJson(res, 200, { ok: true, version: '1.10.104' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4707,10 +4725,11 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const place = ['office', 'merchant', 'fisher'].includes(body.place) ? body.place : null;
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
+    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader || null; // (달마루섬: none -- the 백화점's 노점) v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 1.8; })(); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
-    if (!atCounter && (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const atStall = place === 'merchant' && storeInside.has(session.token) && at && (() => { const d = IslandStore.sectorPoint('mall:stall'); return Math.hypot(at.x - d.x, at.z - d.z) < 2.4; })(); // (달마루섬 5단계: the 백화점's 노점)
+    if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found
@@ -5807,6 +5826,7 @@ async function requestHandler(req, res) {
   // the island they have
   if (pathname === '/api/island/map' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
+    if (IslandTerrain.MAP === 'dalmaru') return sendJson(res, 200, { ok: true, map: 'dalmaru', live: true }); // (5단계: the server's own island, everyone's)
     return sendJson(res, 200, { ok: true, map: session.role === 'admin' && (await opsSwitches()).dalmaruPreview === true ? 'dalmaru' : 'classic' });
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
@@ -6456,6 +6476,9 @@ async function requestHandler(req, res) {
     if (pathname === '/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
     if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
+    // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
+    // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
+    if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end(IslandTerrain.MAP === 'dalmaru' ? "self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n" : '\n'); }
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }
@@ -6482,6 +6505,7 @@ async function main() {
   await require('./lib/nickname-recovery').recoverNicknamePayments(pointStore, accessStore);
   for (const [account, debt] of Object.entries(await pointStore.taxDebts())) taxDebt.set(account, debt); // v1.10.86
   settleClimbWeeks(); // v1.9.5: weeks that ended while the server was down are settled right away
+  await dalmaruMoveIn().catch((error) => console.error('달마루섬 이사 실패:', error.message)); // 5단계: once, the first start on the new island
   weedState().catch((error) => console.error('잡초 보충 실패:', error.message)); // v1.10.31: and the weeds of the days it missed grow back
   settleDonationWeeks(); // v1.10.5: the same for donation weeks (statues, 호구왕)
   Economy.load(await pointStore.worldValue('economy')); // v1.10.91 경제 값 관리: the administrator's values
@@ -6550,7 +6574,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.103 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.104 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

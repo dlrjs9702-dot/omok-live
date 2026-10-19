@@ -112,9 +112,10 @@ test('할로윈 꼬마: 10월(서울)에만 말을 걸 수 있고, 사탕 주머
   assert.equal(Q.markOf('kid', doc.kid, bag), 'ready');
   let r = Q.talk(doc, 'kid', bag, at('kid'), oct); doc = r.doc;
   assert.deepEqual([r.reward, r.take], [3000, { itemId: 'candy', qty: 3 }]);
-  assert.equal(Q.note(doc, 'at', { x: 0, z: 5.5, now: nov }), null, '11월에는 진행되지 않음');
-  doc = Q.note(doc, 'at', { x: 0, z: 5.5, now: oct }); doc = Q.talk(doc, 'kid', [], at('kid'), oct).doc;
-  doc = Q.note(doc, 'at', { x: 5.5, z: 39, now: oct }); r = Q.talk(doc, 'kid', [], at('kid'), oct);
+  const [pumpkin, granny] = [Q.STORIES.kid.steps[1].spot, Q.STORIES.kid.steps[2].spot]; // (광장 큰 호박, 할머니 댁 -- either island)
+  assert.equal(Q.note(doc, 'at', { ...pumpkin, now: nov }), null, '11월에는 진행되지 않음');
+  doc = Q.note(doc, 'at', { ...pumpkin, now: oct }); doc = Q.talk(doc, 'kid', [], at('kid'), oct).doc;
+  doc = Q.note(doc, 'at', { ...granny, now: oct }); r = Q.talk(doc, 'kid', [], at('kid'), oct);
   assert.deepEqual([r.reward, r.done], [17000, true]);
 });
 

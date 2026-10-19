@@ -70,11 +70,12 @@ test('게임 아일랜드 당일 위치: 저장·복원, 재시작 유지, 날�
   assert.ok(session, server.logs());
   assert.equal((await server.req('/api/plaza/spot', session)).data.spot, null, '처음에는 중앙광장');
 
-  const there = { x: 25, z: 4 }; // the shop street walk
+  const mid = T.walkCurves[1].pts[Math.floor(T.walkCurves[1].pts.length / 2)]; const there = { x: Math.round(mid[0]), z: Math.round(mid[1]) }; // (a walk: the shop street, or 물가 거리)
   assert.ok(T.walkable(there.x, there.z));
   assert.equal((await server.req('/api/plaza/state', session, { ...there, yaw: 0, moving: false })).status, 200);
-  assert.ok(!T.walkable(0, 120), '바다');
-  assert.equal((await server.req('/api/plaza/state', session, { x: 0, z: 120, yaw: 0, moving: false })).status, 200);
+  const sea = T.dalmaru ? { x: 0, z: 60 } : { x: 0, z: 120 }; // (달마루섬: 윤슬만)
+  assert.ok(!T.walkable(sea.x, sea.z), '바다');
+  assert.equal((await server.req('/api/plaza/state', session, { ...sea, yaw: 0, moving: false })).status, 200);
   assert.deepEqual((await server.req('/api/plaza/spot', session)).data.spot, there, '바다 위치는 저장하지 않는다');
   assert.equal((await server.req('/api/plaza/leave', session, {})).status, 200); // a room, logout: saved now
 
@@ -89,14 +90,14 @@ test('게임 아일랜드 당일 위치: 저장·복원, 재시작 유지, 날�
   const file = path.join(dir, 'points.json');
   const data = JSON.parse(await fs.readFile(file, 'utf8'));
   const userId = `guest:${who.id}`;
-  data.plaza.spots[userId] = { day: kstDate(Date.now() - 86400000), x: 25, z: 4 };
+  data.plaza.spots[userId] = { day: kstDate(Date.now() - 86400000), ...there };
   await fs.writeFile(file, JSON.stringify(data));
   server = await boot(t, dir);
   session = await server.enter(who);
   assert.equal((await server.req('/api/plaza/spot', session)).data.spot, null, '전날 위치는 무효(중앙광장)');
   await server.stop();
 
-  const wet = T.streamCurves[0].find(([x, z], i) => i > 10 && !T.walkable(x, z)); // a point in the first stream
+  const wet = T.dalmaru ? T.dalmaru.RIVERS[1].pts[2] : T.streamCurves[0].find(([x, z], i) => i > 10 && !T.walkable(x, z)); // a point in the first stream (달마루섬: 서쪽 강)
   assert.ok(!T.walkable(wet[0], wet[1]));
   data.plaza.spots[userId] = { day: kstDate(), x: wet[0], z: wet[1] };
   await fs.writeFile(file, JSON.stringify(data));

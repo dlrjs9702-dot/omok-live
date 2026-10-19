@@ -293,7 +293,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // pedestal with a jack-o'-lantern bigger than it, lit from inside (an orange light on what is near, a slow candle
   // flicker; held still when the PC asks for less motion). Its footprint is the fountain's, so walking is unchanged.
   // The 2026-10-06 Halloween pack's models (landmark.halloween.*) replace the stand-in drawn here.
-  const halloween = new THREE.Group(); halloween.position.y = PH; halloween.visible = false; scene.add(halloween);
+  const halloween = new THREE.Group(); halloween.position.set(PLAZA_C.x, PH, PLAZA_C.z); halloween.visible = false; scene.add(halloween); // (on the fountain's place)
   const pedestal = new THREE.Group(); halloween.add(pedestal);
   const pedestalLook = new THREE.Group(); pedestal.add(pedestalLook);
   mesh(new THREE.CylinderGeometry(3.05, 3.17, 1.05, 40), mat(0x4a3f52), 0, 0.525, 0, pedestalLook);
@@ -386,7 +386,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setWinter(on) {
     if (on === winterOn) return; winterOn = on;
     if (on && !winterFx) {
-      const group = new THREE.Group(); group.position.y = PH; scene.add(group); const overlays = [];
+      const group = new THREE.Group(); group.position.set(PLAZA_C.x, PH, PLAZA_C.z); scene.add(group); const overlays = []; // (the plaza's middle)
       const put = (file, x, y, z, ry = 0, parent = group, s = 1) => { const root = new THREE.Group(); root.position.set(x, y, z); root.rotation.y = ry; root.scale.setScalar(s); parent.add(root); const stand = new THREE.Group(); root.add(stand); assets.attach(`winter.${file}`, root, stand); return root; };
       put('landmark_winter_base', 0, 0, 0); put('landmark_winter_tree', 0, 0.12, 0);
       for (const [f, x, y, z, ry] of [['snowman_classic', -8, 0, -6, 0], ['snowman_little', -9.7, 0, -6.5, 0], ['sleigh', 8, 0, 5.5, -0.6], ['candy_cane', -9, 0, 5.8, 0], ['candy_cane', 9, 0, -6, 0], ['snow_pile_round', -9, 0, -7.8, 0], ['snow_pile_long', 9, 0, 7, 0], ['gift_box_red', 8, 0, 4, 0], ['gift_box_green', 9.1, 0, 4.2, 0.3], ['gift_box_blue', 7.4, 0, 5.3, -0.2]]) put(f, x, y, z, ry); // (the pack's garland, wreath and string lights hang on a rail this plaza does not have: left out -- the lamps' own ribbons say it)
@@ -466,7 +466,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const ring = mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 26), mat(0xd9a520), cs.x, PH + 1.41, cs.z, contestPlinth); ring.rotation.x = Math.PI / 2;
     solids.push({ x: cs.x, z: cs.z, r: 1.3, off: () => !contestPlinth.visible }); }
   // A-7: the winter festival's things on the plaza are walked round while they are out
-  for (const [x, z, r] of [[-8, -6, 0.6], [-9.7, -6.5, 0.4], [8, 5.5, 1.1], [-9, 5.8, 0.2], [9, -6, 0.2], [-9, -7.8, 0.7], [9, 7, 0.9], [8, 4, 0.35], [9.1, 4.2, 0.35], [7.4, 5.3, 0.35]]) solids.push({ x, z, r, off: () => !winterOn });
+  for (const [x, z, r] of [[-8, -6, 0.6], [-9.7, -6.5, 0.4], [8, 5.5, 1.1], [-9, 5.8, 0.2], [9, -6, 0.2], [-9, -7.8, 0.7], [9, 7, 0.9], [8, 4, 0.35], [9.1, 4.2, 0.35], [7.4, 5.3, 0.35]]) solids.push({ x: PLAZA_C.x + x, z: PLAZA_C.z + z, r, off: () => !winterOn });
 
   // Name signs: a canvas sprite over each facility.
   const textures = [];
@@ -841,7 +841,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const S = T.STRUCTURES;
     const piece = (id, x, y, z, yaw, fallback, walked = false) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g); g.add(fallback); assets.attach(id, g, fallback); g.userData.piece = id; g.userData.walked = walked; pieces.push(g); return g; };
     const box = (w, h, d, color, oz = 0) => { const g = new THREE.Group(); mesh(new THREE.BoxGeometry(w, h, d), mat(color), 0, h / 2, oz, g); return g; };
-    const L = S.lighthouse; piece('dalmaru.lighthouse_choseung', L.x, heightAt(L.x, L.z), L.z, 0, box(4, 14, 4, 0xf4f1ea)); solids.push({ x: L.x, z: L.z, r: L.r });
+    const L = S.lighthouse; piece('dalmaru.lighthouse_choseung', L.x, heightAt(L.x, L.z), L.z, 0, box(4, 14, 4, 0xf4f1ea));
+    solids.push(...T.structureSolids()); // (the shared circles: the islanders' routes keep off them too)
     piece('dalmaru.pier_dalkkeut', S.pier.x, S.pier.y, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10), true);
     piece('dalmaru.dock_boat', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(12, 0.15, 3, 0xc58b5a), true);
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
@@ -849,21 +850,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
     for (let u = 0; u < st.len; u += 1) { const y = T.heightAt(st.x + st.ux * (u + 0.5) + st.nx * 1.7, st.z + st.uz * (u + 0.5) + st.nz * 1.7) - S.stairs.base; mesh(new THREE.BoxGeometry(1, Math.max(0.1, y), 3), mat(0xc9bfae), -(u + 0.5), y / 2, 1.7, flights); }
     stairs.position.set(S.stairs.x, S.stairs.base, S.stairs.z); stairs.rotation.y = S.stairs.yaw; scene.add(stairs); assets.attach('dalmaru.stairs_ridge', stairs, flights);
-    for (let u = 0.6; u <= st.len; u += 0.5) for (const v of [-0.05, 3.45]) solids.push({ x: st.x + st.ux * u + st.nx * v, z: st.z + st.uz * u + st.nz * v, r: 0.28 });
     // 영웅마루's niches: the frame stands out of the cliff, its foot walked round; an empty one says what it waits for
     for (const [k, n] of (T.NICHES || []).entries()) {
       const g = piece('dalmaru.niche_hero', n.x, heightAt(n.x, n.z), n.z, n.yawToCentre, box(0.85, 1.28, 0.22, 0xcfc6b6, 0.04)); g.scale.setScalar(n.m);
-      for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) solids.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
       if (!n.now) { const s = sign('곧 새겨질 자리', g, 0.45); s.scale.multiplyScalar(2.2 / n.m); }
       void k;
     }
     // 툇마루섬: the players' houses come with 「내 집」 -- till then a board says so (assets: the notice board's look)
     const I = T.dalmaru.ISLE; const post = new THREE.Group(); mesh(new THREE.BoxGeometry(2.2, 1.2, 0.12), mat(0xe9d8b4), 0, 1.5, 0, post); for (const x of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a6a48), x, 0.8, 0, post);
-    const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 곧 열려요', board, 2.7); solids.push({ x: I.x, z: I.z - 4, r: 1.1 });
+    const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 곧 열려요', board, 2.7);
     const W = T.WATERFRONT;
-    for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); for (const d of [-1.6, -0.55, 0.55, 1.6]) solids.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 }); }
-    for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); solids.push({ x: l.x, z: l.z, r: l.r }); }
-    for (const b of W.benches) { piece('dalmaru.bench_waterfront', b.x, heightAt(b.x, b.z), b.z, b.yaw, box(1.8, 0.5, 0.5, 0xc58b5a)); solids.push({ x: b.x, z: b.z, r: b.r }); }
+    for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); }
+    for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); }
+    for (const b of W.benches) { piece('dalmaru.bench_waterfront', b.x, heightAt(b.x, b.z), b.z, b.yaw, box(1.8, 0.5, 0.5, 0xc58b5a)); }
   }
   const buildingSolids = solids.slice(firstBuildingSolid); // facilities, keepers' stands, the reserved lot, the houses
   const firstTrainSolid = solids.length;
@@ -871,9 +870,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   if (BARE && !globalThis.IslandTerrain.STRUCTURES) train.group.visible = false; // (달마루섬 4단계: its own ring)
   const firstYardSolid = solids.length;
   const yard = townhallYard({ scene, assets, solids, vcMat, makeCharacter, dressUp, makeTag, fitTag, hall: buildingRoots.find((r) => r.userData.facility === 'townhall') }); // v1.10.41
-  if (BARE) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = globalThis.IslandTerrain.STRUCTURES ? firstYardSolid : firstTrainSolid; } // (달마루섬 미리보기: nor their circles)
+  const noYard = BARE; // (달마루섬 5단계: the yard and the mayor's gate before the cliff front too)
+  if (noYard) { yard.group.visible = false; yard.mayor.root.visible = false; solids.length = globalThis.IslandTerrain.STRUCTURES ? firstYardSolid : firstTrainSolid; } // (nor their circles)
   buildingSolids.push(...solids.slice(firstYardSolid).filter(s => !s.gate));
-  if (!BARE) doors.mayor = yard.door;
+  if (!noYard) doors.mayor = yard.door;
   dalmaruStructures(); // 달마루섬 2단계
   const decor = halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps: PROPS.lamps, benches: PROPS.benches, spots: hwSpots, lampModel }); // v1.10.38
   // v1.10.5 기부 동상: last week's 1st (gold) and 2nd (silver) donors stand on the two plinths, in the look they had
@@ -1458,6 +1458,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // where the water is from here: the nearest open water round me (sea), a few metres out
   function waterFrom(x, z) {
     const T = globalThis.IslandTerrain; let best = null;
+    if (T.dalmaru && ['river', 'lake', 'pool'].includes(T.fishWater(x, z))) { // (달마루섬: rivers, 거울호수, pools -- the ground cut below the sea's level, the surface at it)
+      const D = T.dalmaru;
+      for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
+        const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const g = D.ground(wx, wz);
+        if (D.isWater(wx, wz) && D.coastDist(wx, wz) >= 0 && !T.onBridge(wx, wz) && (!best || g < best.cd)) best = { x: wx, z: wz, cd: g, yaw: a, y: D.SEA };
+      }
+      if (best) return best;
+    }
     if (T.fishWater?.(x, z) === 'river') { // v1.10.90 강 낚시: the nearest point of the stream, the float at its surface
       for (let k = 0; k < 24; k += 1) for (const r of [1.6, 2.4, 3.2]) {
         const a = (k / 24) * TAU; const wx = x + Math.sin(a) * r; const wz = z + Math.cos(a) * r; const d = T.streamDist(wx, wz);
@@ -1877,9 +1885,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it (no island here)
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
     put('townhall3.townhall_interior', 0, 0, 0, Math.PI, (f) => { mesh(new THREE.BoxGeometry(ROOM.w, 0.2, ROOM.d), mat(0xf2efe8), 0, -0.1, 0, f); const wall = mat(0xf2efe8); mesh(new THREE.BoxGeometry(ROOM.w, 3.2, 0.3), wall, 0, 1.6, ROOM.d / 2, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.2, ROOM.d), wall, s * ROOM.w / 2, 1.6, 0, f); });
-    const SHIRT = { civil: 0x3f7d68, tax: 0x7f1d1d, bank: 0xb45309 };
+    const SHIRT = { civil: 0x3f7d68, tax: 0x7f1d1d, bank: 0xb45309, rename: 0x4c3a8f };
     const clerks = L.desks.map((d) => {
-      put(`townhall3.desk_${d.id}`, d.lx, 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
+      put(`townhall3.desk_${d.id === 'rename' ? 'civil' : d.id}`, d.lx, /* (개명 신청: the 민원 desk's model again) */ 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
       const c = makeCharacter({ shirt: SHIRT[d.id], hair: 0x2b2b2b, skin: 0xffdcbc }); c.root.position.set(d.lx, 0, d.keeper); g.add(c.root);
       assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] });
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: 0, id } });
@@ -1887,7 +1895,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const c of globalThis.IslandTerrain.COUNTERS) put('townhall3.chair_marble', c.lx, 0, c.lz, 0, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // A-7: the customer's chair at each window, toward its clerk
     for (const [, lx, lz, yaw] of L.seats.filter(([id]) => id.startsWith('desk.'))) put('townhall3.chair_marble', lx, 0, lz, yaw + Math.PI, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // (a seat's yaw faces the sitter's way; the chair's front is -z)
     for (const [file, lx, y, lz, yaw] of L.props) put(`townhall3.${file}`, lx, y, lz, yaw, (f) => mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), mat(0xd9d4c8), 0, 0.4, 0, f));
-    for (const lx of [-9, 0, 9]) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
+    for (const { lx } of L.desks) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
     room = { group: g, clerks }; npcs.push(...clerks);
     return room;
   }
@@ -1907,11 +1915,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     assets.attach('mall.interior', shell, fallback);
     for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
     // a keeper in every sector (the 잡화 keeper and the 변신 keeper their own models, the rest the shop keepers' look)
-    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8 };
+    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8, stall: 0x6bbf73 };
     const keepers = STORE.SECTORS.map((s, i) => {
       const k = makeCharacter({ shirt: SHIRTS[s.id], hair: [0x3d2b1f, 0x6b4a2b, 0x2b2b2b][i % 3], skin: 0xffdcbc });
       k.root.position.set(s.keeper[0], 0, s.keeper[1]); k.root.rotation.y = s.keeper[2] + Math.PI; g.add(k.root);
       assets.dress([s.id === 'store' ? 'character.storekeeper' : s.id === 'transform' ? 'character.transformer' : 'character.npc'], k); dressUp(k, { gender: i % 2 ? 'female' : 'male' }, { shirt: SHIRTS[s.id] });
+      if (s.stall) { const root = new THREE.Group(); root.position.set(s.stall[0], 0, s.stall[1]); root.rotation.y = -Math.PI / 2; g.add(root); const v = new THREE.Group(); root.add(v); mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), mat(0xb07a4f), 0, 0.45, 0.1, v); assets.attach('facility.trader', root, v); } // (the island's stall model, its front toward the hall)
       const w = STORE.world(s.keeper[0], s.keeper[1]); k.home = { x: w.x, z: w.z, yaw: 0, id: s.place }; return k;
     });
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }
@@ -2749,7 +2758,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (box.max.x - box.min.x > 60 || box.max.z - box.min.z > 60) return; boxes.push(box.clone());
     });
     const r1 = (v) => Math.round(v * 10) / 10;
-    const unseen = live.filter((s) => !s.nature && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.3)).map((s) => [r1(s.x), r1(s.z), s.r]);
+    const unseen = live.filter((s) => !s.nature && !s.batch && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.3)).map((s) => [r1(s.x), r1(s.z), s.r]);
     const things = [...buildingRoots.map((r) => [r.userData.facility || 'house', r]), ...pieces.map((g) => [g.userData.piece, g])].filter(([, r]) => r.visible && r.parent);
     const unblocked = []; const floating = []; const sunk = [];
     for (const [name, root] of things) {

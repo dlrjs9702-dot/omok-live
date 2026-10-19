@@ -12,7 +12,10 @@
   else root.IslandNpcs = api;
 }(typeof self !== 'undefined' ? self : this, (T) => {
   const COUNT = 10; // IDEAS: about 10
-  const CELL = 1.5; const EXTENT = 120; const N = Math.round((EXTENT * 2) / CELL);
+  // 달마루섬 (5단계): the bigger island's grid; where one may stand is the island's own walkable (rivers, the lake, the
+  // cliffs, the stairs), the cliff fronts are rectangles, the structures' circles shared with the scene
+  const DAL = T.MAP === 'dalmaru'; const PC = T.PLAZA_C || { x: 0, z: 0 };
+  const CELL = 1.5; const EXTENT = DAL ? 200 : 120; const N = Math.round((EXTENT * 2) / CELL);
   const MARGIN = 1.1; // more than half a cell's diagonal: every point of a free cell is standable
   const STOP_MIN = 3; const STOP_MAX = 9; // seconds standing at each stopping place
   const LOOKS = [ // shirt, hair, skin, hat (null = none)
@@ -25,6 +28,7 @@
   const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   // v1.10.92 백화점: its 24 x 14 m body (and a margin) in its own frame, the front toward `face`
   const inMall = (s, x, z) => { const a = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const dx = x - s.x; const dz = z - s.z; const lx = Math.cos(a) * dx - Math.sin(a) * dz; const lz = Math.sin(a) * dx + Math.cos(a) * dz; return Math.abs(lx) < 12 + MARGIN && Math.abs(lz) < 7 + MARGIN; };
+  const inFacade = (s, x, z) => { const a = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const dx = x - s.x; const dz = z - s.z; const lx = Math.cos(a) * dx - Math.sin(a) * dz; const lz = Math.sin(a) * dx + Math.cos(a) * dz; return Math.abs(lx) < T.FACADE.w / 2 + MARGIN && lz > -2 && lz < T.FACADE.d + MARGIN; };
   const BUILDING_R = { cottage: 3.9, hall: 13, shop: 3.4, house: 3.4, office: 3.4, townhall: 3.4, tower: 3.5, gazebo: 3.2, board: 1.6, npc: 1.6, desk: 1.6, stall: 1.8, donation: 1.4, mapboard: 1.4 };
 
   // On a bridge deck, with a little room (a bridge is a way over its stream).
@@ -36,7 +40,7 @@
   function buildGrid() {
     if (grid) return grid;
     const blocked = new Uint8Array(N * N); const cost = new Float32Array(N * N);
-    const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r }))]; // (v1.10.93 마을 소품)
+    const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r })), ...(T.structureSolids?.() || [])]; // (v1.10.93 마을 소품; 달마루섬 구조물)
     const near = new Map(); // a coarse bucket of the nature solids
     for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
     const spots = T.BUILDINGS; // v1.10.13: the cottages too
@@ -44,8 +48,9 @@
     const sceneProps = [...props.benches, ...props.lamps, ...props.beds, ...T.RESERVED_LOTS.map((l) => ({ x: l.x, z: l.z, r: 3.2 }))];
     for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
       const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
-      let bad = T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
-      if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
+      let bad = DAL ? (T.onStairs(x, z) || (!onAnyBridge(x, z) && (!T.walkable(x, z) || T.coastDist(x, z) < 2.2 + MARGIN || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz)))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
+        : T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
+      if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
       if (!bad && T.inTownhall(x, z, MARGIN + 0.5)) bad = true; // v1.10.41: the town hall and its walled yard (the islanders keep out)
       if (!bad) for (const s of T.STATUE_SPOTS) if (Math.hypot(x - s.x, z - s.z) < 1.9) { bad = true; break; }
       // v1.10.16: the plaza's benches, lamps and flower beds and the shop street's reserved lot, as the scene places them.
@@ -156,6 +161,28 @@
     return stops;
   }
 
+  // 달마루섬: on the big island a random next stop is rarely in reach -- each step picks among the stops 14-55 m on that
+  // keep every rule of the round (never straight back, the closing leg like any other, a real path), starting afresh
+  // from another first stop when it runs out (the same seed: the same round everywhere)
+  const far = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+  function dalmaruRoute(rnd, places) {
+    let best = null;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const want = 5 + Math.floor(rnd() * 3); const route = [places[Math.floor(rnd() * places.length)]];
+      while (route.length < want) {
+        const last = route[route.length - 1]; const before = route[route.length - 2]; const first = route[0]; const finalStep = route.length === want - 1;
+        const pool = places.filter((p) => !route.includes(p) && far(p, last) >= 14 && far(p, last) <= 55 && (!before || far(p, before) >= 10) && (route.length < 2 || far(p, first) >= 10)
+          && (!finalStep || (far(p, first) >= 14 && far(p, first) <= 55 && far(p, route[1]) >= 10)));
+        let next = null;
+        while (pool.length && !next) { const k = Math.floor(rnd() * pool.length); const p = pool.splice(k, 1)[0]; if (findPath(last, p) && (!finalStep || findPath(p, first))) next = p; }
+        if (!next) break;
+        route.push(next);
+      }
+      if (route.length === want) return route;
+      if (!best || route.length > best.length) best = route;
+    }
+    return best;
+  }
   // One islander's round: legs between stopping places and the time each part takes. Cached.
   const rounds = new Map();
   function round(n) {
@@ -163,8 +190,8 @@
     const rnd = seeded(0x5eed1 + n * 7919);
     const places = stopPlaces();
     const speed = 1.25 + rnd() * 0.5;
-    const route = [places[Math.floor(rnd() * places.length)]];
-    for (let guard = 0; route.length < 5 + Math.floor(rnd() * 3) && guard < 400; guard += 1) {
+    const route = DAL ? dalmaruRoute(rnd, places) : [places[Math.floor(rnd() * places.length)]];
+    for (let guard = 0; !DAL && route.length < 5 + Math.floor(rnd() * 3) && guard < 400; guard += 1) {
       const last = route[route.length - 1]; const before = route[route.length - 2];
       const next = places[Math.floor(rnd() * places.length)];
       const d = Math.hypot(next.x - last.x, next.z - last.z);
@@ -295,7 +322,9 @@
     const list = [];
     // a new islander starts where its round has it now (not at the origin, walking over to it)
     function add(n, ms) {
-      const pose = poseAt(n, ms); const [x, z] = pose.held ? [pose.x, pose.z] : pushOut(pose.x, pose.z);
+      const pose = poseAt(n, ms); let [x, z] = pose.held ? [pose.x, pose.z] : pushOut(pose.x, pose.z);
+      // (not on top of one already out: set apart now, rather than shoved apart by the first frame)
+      if (!pose.held) for (const o of list) { const d = Math.hypot(x - o.x, z - o.z); if (d < SEP) { const a = d < 1e-5 ? n : Math.atan2(z - o.z, x - o.x); [x, z] = move(x, z, o.x + Math.cos(a) * (SEP + 0.005), o.z + Math.sin(a) * (SEP + 0.005)); } }
       const w = { n, x, z, px: x, pz: z, bx: pose.x, bz: pose.z, pose, speed: 0, heading: null };
       list.push(w); return w;
     }

@@ -25,12 +25,12 @@ test('안내 주민: 단계마다 큰 안내·화살표, 걷기·화면 돌리�
   await page.getByRole('button', { name: '처음부터 다시 배우기' }).click();
   await expect(page.locator('#guidePanel')).toContainText('안내 1/7'); await expect(page.locator('#guidePanel')).toContainText('걸어 보기');
   // 1 걷기, 2 화면 돌리기: watched on the page
-  await page.evaluate(() => window.PlazaDebug().teleport(0, 0));
+  await page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), T.PLAZA_C || { x: 0, z: 0 }); // (the plaza's middle, either island)
   await expect(page.locator('#guidePanel')).toContainText('화면 돌려 보기', { timeout: 10000 });
   await page.evaluate(() => window.PlazaDebug().setCamYaw(1.5));
   await expect(page.locator('#guidePanel')).toContainText('주민에게 말 걸기', { timeout: 10000 });
   // 3 말 걸기: the arrow toward her while far, gone by her; talking to her marks it
-  await page.evaluate(() => window.PlazaDebug().teleport(-20, -20)); await page.waitForTimeout(800);
+  await page.evaluate((p) => window.PlazaDebug().teleport(p.x - 20, p.z - 20), T.PLAZA_C || { x: 0, z: 0 }); await page.waitForTimeout(800);
   expect(await page.evaluate(() => window.PlazaDebug().guide())).toMatchObject({ arrow: true, target: { x: G.x, z: G.z } });
   await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [door.x, door.z]); await page.waitForTimeout(600);
   expect((await page.evaluate(() => window.PlazaDebug().guide())).arrow).toBe(false);

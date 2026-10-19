@@ -3,10 +3,12 @@
 // dalmaru-terrain.js (assets 54). Only for the administrator's preview (island-map.js sets GC_ISLAND_MAP): everyone
 // else, and the server, keep island-terrain.js. Step 1 laid the land; step 2 the walks and what stands on them, all
 // from dalmaru-terrain's one table PLACES (the structures are assets 55). What the server places (islanders, events,
-// statues, plants, the train) stays off until the server reads this island too (step 5): TERRAIN_ONLY.
-(function (root) {
-  if (root.GC_ISLAND_MAP !== 'dalmaru' || !root.DalmaruTerrain || !root.IslandTerrain) return;
-  const D = root.DalmaruTerrain; const C = root.IslandTerrain;
+// statues, plants, the train) stays off on the preview -- until the server reads this island too (step 5: `live`, the
+// server's own island; TERRAIN_ONLY otherwise). The server builds it with island-terrain.js (ISLAND_MAP=dalmaru).
+(function (root, build) {
+  if (typeof module === 'object' && module.exports) { module.exports = build; return; }
+  if (root.GC_ISLAND_MAP === 'dalmaru' && root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain, { live: Boolean(root.GC_ISLAND_LIVE) });
+}(typeof self !== 'undefined' ? self : this, (D, C, { live = false } = {}) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
@@ -25,7 +27,6 @@
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
     board: { ...court(180), kind: 'board' }, map: { ...court(225), kind: 'mapboard' }, attendance: { ...court(270), kind: 'npc' }, donate: { ...court(135), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
-    trader: spot(PL.trader, 'stall'), naming: spot(PL.naming, 'desk'),
   };
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
   function facilityDoor(id) {
@@ -48,7 +49,7 @@
   const VILLAGE = Object.freeze({
     mural: prop(PL.mural, 2.4), easel: prop({ ...off(PL.mural, 3.4, -1.6), face: PL.mural.face }, 0.7), painter: off(PL.mural, 2.6, -2.8),
     busk: prop(PL.busk, 2.0), busker: off(PL.busk, -1.7, -1.2),
-    stationmaster: off(PL.dock, 10000, 0), // (the train comes in step 4)
+    stationmaster: Object.freeze({ ...PL.stationmaster }),
     lamps: Object.freeze(PL.hallLamps.map(([x, z]) => Object.freeze({ x, z, r: 0.4 }))), electrician: off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -1.2, 1.9),
     toolbox: prop({ ...off({ x: PL.hallLamps[0][0], z: PL.hallLamps[0][1] }, -2.1, 2.6), face: [PLAZA_C.x, PLAZA_C.z] }, 0.4),
     stones: Object.freeze({ ...PL.stones, yaw: stoneYaw }), builder: off(PL.stones, 4.2, -2),
@@ -65,6 +66,17 @@
   const bayAt = (a, r = 101) => [Math.round(r * Math.cos(rad(a)) * 10) / 10, Math.round((D.BAY_Z + r * Math.sin(rad(a))) * 10) / 10];
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
+  // 관공서 앞마당 (5단계): the walled yard and the mayor's gate before the cliff front, in the old hall's frame -- its origin
+  // 2.75 m into the cliff, so the front stands at lz 7.35 as the old hall's did and island-townhall builds the yard as it is
+  const TOWNHALL = (() => {
+    const s = SPOTS.townhall; const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const back = 7.35 - FACADE.d;
+    return { x: s.x - Math.sin(ry) * back, z: s.z - Math.cos(ry) * back, ry, cos: Math.cos(ry), sin: Math.sin(ry), body: { hx: 8.3, z0: back, z1: 7.35 }, yard: { hx: 8.3, z0: 7.35, z1: 16.35 }, gate: { hw: 1.6 } };
+  })();
+  const townhallLocal = (x, z) => { const dx = x - TOWNHALL.x; const dz = z - TOWNHALL.z; return { lx: TOWNHALL.cos * dx - TOWNHALL.sin * dz, lz: TOWNHALL.sin * dx + TOWNHALL.cos * dz }; };
+  const townhallWorld = (lx, lz) => ({ x: TOWNHALL.x + TOWNHALL.cos * lx + TOWNHALL.sin * lz, z: TOWNHALL.z - TOWNHALL.sin * lx + TOWNHALL.cos * lz });
+  const inTownhall = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const b = TOWNHALL.body; return Math.abs(lx) <= b.hx + m && lz >= b.z0 - m && lz <= TOWNHALL.yard.z1 + m; };
+  const inTownhallYard = (x, z, m = 0) => { const { lx, lz } = townhallLocal(x, z); const y = TOWNHALL.yard; return Math.abs(lx) <= y.hx - m && lz >= y.z0 - m && lz <= y.z1 - m; };
+  const thPt = (lx, lz) => { const p = townhallWorld(lx, lz); return [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10]; };
   // tier: 'town' (대청마당 round and 물가 거리 before it), 'walk' (the arms, the bridges, 잔치마루), 'trail' (푸른숲골)
   const WALKS = [
     { tier: 'town', w: 3.2, pts: [[0, -54], [0.6, -30], [0, -8]] }, // 대청마당 → 물가 거리 (배 타는 곳)
@@ -72,7 +84,8 @@
     { tier: 'walk', w: 2.8, pts: [...arc(234, 156), [-88, 140]] }, // 물가 거리 → the west arm → its cape (초승등대)
     { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146]] }, // → the east arm → its cape (달끝나루)
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
-    { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], doorPt('townhall'), [-79, -95], [-84, -92]] }, // → 관공서 → the ridge's stairs
+    { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
+    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-11, 8.5), [-84, -92]] }, // → round the yard → the ridge's stairs
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-42, -66], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34]] }, // 이웃골 → the west arm's shore
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-82, -2], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
@@ -84,9 +97,10 @@
 
   // ---- the ground: dalmaru-terrain's, levelled under what stands and filled where the stairs meet the ridge ----
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
-  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], ...COTTAGES.map((c) => [c.x, c.z, 4.6]),
+  const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
+  const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
     ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5])]
-    .map(([x, z, r]) => ({ x, z, r, h: D.landHeight(x, z) }));
+    .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
   // 능선 계단 (assets 55 stairs.ridge): three flights of 7 m (9.52 m each) and two 3 m landings along the chord from its
   // foot to its top, against the cliff (its treads 0.2-3.2 m out from it)
   const SF = PL.stairs.from; const ST = PL.stairs.to; const SL = 34.56;
@@ -165,7 +179,11 @@
     if (inRect(PIER, x, z, 0.2) || onDock(x, z, 0.2)) return 'sea';
     for (const [dx, dz] of [[2.4, 0], [-2.4, 0], [0, 2.4], [0, -2.4]]) {
       const wx = x + dx; const wz = z + dz; if (!isWater(wx, wz)) continue;
-      return D.coastDist(wx, wz) < 0 ? 'sea' : 'river';
+      // (5단계: five waters -- the open sea, 윤슬만, the still water (거울호수, 툇마루섬's pond), the waterfall pools, the rivers)
+      if (D.coastDist(wx, wz) < 0) return D.inBay(wx, wz) ? 'bay' : 'sea';
+      if (D.POOLS.some((p) => Math.hypot(wx - p.x, wz - p.z) < p.r + 0.5)) return 'pool';
+      if (D.lakeDist(wx, wz) < 0.5 || Math.hypot((wx - D.ISLE_POND.x) / D.ISLE_POND.rx, (wz - D.ISLE_POND.z) / D.ISLE_POND.rz) < 1.2) return 'lake';
+      return 'river';
     }
     return null;
   }
@@ -194,6 +212,18 @@
     }
     return { rails, lamps, benches };
   })();
+  // what one walks round at the structures (the scene's collision and the islanders' route grid alike): 초승등대, the
+  // stairs' walls (the open side and the stone under the steps), each niche's foot, 툇마루섬's board, 물가 거리's railing,
+  // lamps and benches
+  function structureSolids() {
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }];
+    for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28 });
+    for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
+    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
+    for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r });
+    for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r });
+    return out;
+  }
   const STRUCTURES = { // the pieces of assets 55 that stand once (plaza-scene draws them; solids are theirs)
     lighthouse: { ...PL.lighthouse, r: 3.2 }, pier: PIER.root, dock: DOCK.root, stairs: { x: SF.x, z: SF.z, yaw: Math.atan2(STAIRS.nx, STAIRS.nz), base: STAIRS.base }, // (its model, turned, runs along local -x: the chord)
   };
@@ -217,6 +247,8 @@
   // flowers, bushes, grass, shore rocks -- seeded, the same on every screen, clear of the walks and what stands
   // 영웅마루's foot, from 대청마당 to the cliff along the niches and the two fronts: kept open, so the statues are seen
   const heroYard = (x, z) => { const r = Math.hypot(x, z); const a = (((Math.atan2(z, x) * 180) / Math.PI) + 360) % 360; return r > 106 && r < 131 && a > 236 && a < 304; };
+  // (no weed at a quest giver's or a keeper's feet: SPACE there is for talking)
+  const nearKeeper = (x, z) => Object.values(PL.quests).some((q) => Math.hypot(x - q.x, z - q.z) < 3.5) || [VILLAGE.painter, VILLAGE.busker, VILLAGE.electrician, VILLAGE.builder, VILLAGE.librarian, VILLAGE.grandpa, VILLAGE.guide, FARM.farmer].some((q) => Math.hypot(x - q.x, z - q.z) < 3.5);
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   function nature() {
@@ -228,7 +260,7 @@
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
     const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
-      && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z) && !natureBlocks.some((fn) => fn(x, z, 1.5));
+      && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
     const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24]];
     for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 14; tries += 1) {
@@ -246,31 +278,74 @@
     const bushes = [];
     for (let tries = 0; bushes.length < 520 && tries < 7000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (clearOf(x, z)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 }); }
     const tufts = [];
-    for (let tries = 0; tufts.length < 2200 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7 }); }
+    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7 }); }
     const rocks = [];
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);
       if (cd > -1 && cd < 4 && !D.inBay(x, z) && !built(x, z) && !onBridge(x, z)) rocks.push({ x, z, s: 0.5 + rnd() * (D.ridgeAt(x, z) > 0.3 ? 1.6 : 0.8), r: rnd() * 6 });
     }
-    natureCache = { trees, flowers, bushes, tufts, rocks, posts: [], lampSpots: [] };
+    // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
+    // numbered by the tufts (island-weeds `w<index>`): the server and every screen must have the same ones
+    const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r));
+    const keptTrees = trees.filter((t) => !blocked(t, 1.5)); const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
+    // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of
+    // their curve -- on standable ground, off 대청마당 (its own lamps), the stairs, the bridges, the 관공서 yard, another
+    // walk, what is built and the trees (after the tufts: the weeds keep their numbers)
+    const lampSpots = [];
+    for (const w of walkCurves) { if (w.tier === 'trail') continue; for (let i = 8; i < w.pts.length - 4; i += 14) {
+      const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
+      const lx = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
+      if (!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || walkDist(lx, lz) < 0.2) continue;
+      if (structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4))) continue;
+      if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
+      lampSpots.push({ x: lx, z: lz });
+    } }
+    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks, posts: [], lampSpots };
     return natureCache;
   }
-  const natureSolids = () => [...nature().trees.map((t) => ({ x: t.x, z: t.z, r: 0.55 * t.s })), ...nature().rocks.filter((r) => r.s > 0.9).map((r) => ({ x: r.x, z: r.z, r: 0.45 * r.s }))];
+  // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free
+  // spot at its trunk; fruit trees are kept clear of walks, buildings and the plaza
+  let harvestOf = null; let harvestCache = [];
+  function harvestTrees() {
+    const n = nature(); if (harvestOf === n) return harvestCache;
+    const out = [];
+    const approachOf = (t) => {
+      const p = { x: t.x, z: t.z + 0.685 };
+      if (inPlaza(p.x, p.z, 4) || !walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || D.riverDist(p.x, p.z) < 3 || D.lakeDist(p.x, p.z) < 3) return null;
+      if (n.trees.some((o) => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some((o) => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) return null;
+      if (BUILDINGS.some((b) => Math.hypot(p.x - b.x, p.z - b.z) < (b.kind === 'hall' ? 14 : b.kind === 'facade' ? 18 : 7))) return null;
+      return p;
+    };
+    const add = (t, p) => out.push({ x: t.x, z: t.z, s: 1, yaw: -Math.atan2(0.515, 0.53), approach: p });
+    for (const t of n.trees) { if (out.length === 20) break; const p = approachOf(t); if (!p || out.some((o) => Math.hypot(t.x - o.x, t.z - o.z) < 14)) continue; add(t, p); }
+    for (const t of n.trees) { if (C.treeKind(t) !== 'fruit' || out.some((o) => Math.hypot(o.x - t.x, o.z - t.z) < 5)) continue; const p = approachOf(t); if (p) add(t, p); }
+    harvestOf = n; harvestCache = out; return out;
+  }
+  // the shore within a few metres of the water (sea or 윤슬만, not the cliffs) -- where the tide leaves things, and the
+  // views: a 2 m sample, worked out once
+  let shoreCells = null;
+  function shoreSpots() {
+    if (shoreCells) return shoreCells;
+    shoreCells = [];
+    for (let x = -D.R_OUT; x <= D.R_OUT; x += 2) for (let z = -D.R_OUT; z <= D.R_OUT; z += 2) { const cd = D.coastDist(x, z); if (cd > 2.6 && cd < 9 && cliffAt(x, z) < 0.3 && walkable(x, z)) shoreCells.push({ x, z, cd }); }
+    return shoreCells;
+  }
+  const natureSolids = () => { const n = nature(); const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))]; }; // (as the scene walks round them: island.js)
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
 
-  root.IslandTerrain = Object.freeze({
+  return Object.freeze({
     ...C,
-    MAP: 'dalmaru', TERRAIN_ONLY: true, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
+    MAP: 'dalmaru', TERRAIN_ONLY: !live, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
-    seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees: () => [], AREAS, WATERFRONT, STRUCTURES, FACADE,
-    addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
-    HALLOWEEN_FIELDS: [], HALLOWEEN_EXTRAS: [], dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
-    inTownhall: () => false, inTownhallYard: () => false,
+    seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
+    structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
+    TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,
   });
-}(typeof self !== 'undefined' ? self : this));
+}));
