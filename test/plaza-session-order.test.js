@@ -103,7 +103,7 @@ test('열린 광장 SSE는 위치 전송이 15초 멈춰도 캐릭터를 유지�
   const check = await fetch(fx.base + '/api/lobby/events', { headers: { 'X-Session-Token': observer } });
   const checkReader = check.body.getReader();
   let text = '';
-  while (!text.includes('event: plaza\n')) text += decoder.decode((await checkReader.read()).value);
+  while (!text.includes('event: plaza\n')) { const { value, done } = await checkReader.read(); if (done) break; text += decoder.decode(value); } // (CI 2차: read() at a stream's end answers at once, forever -- the loop froze the whole run)
   await checkReader.cancel();
   const frame = text.split('\n\n').find(f => f.startsWith('event: plaza\n'));
   assert.ok(frame, text);

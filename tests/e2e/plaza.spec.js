@@ -129,7 +129,7 @@ test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석
     await buyAndEquip(request, a, ['avatar_animal_cat_outfit']);
     await expect(a.page.locator('#islandFacilityActions')).toBeVisible();
     await islandPage(a.page);
-    await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => a.page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
     await expect(a.page.locator('#islandFacilityActions')).toBeHidden();
     await a.page.keyboard.press('Escape'); await a.page.locator('#myInfoBtn').click(); // v1.10.63: Esc 메뉴
     await a.page.locator('#myInfoDialog button[data-action="unequip"]').click();
@@ -267,7 +267,7 @@ test('게임 아일랜드: 게임관 전용 화면 → 카드 → 상세 시트 
   expect(Math.hypot(back.x - at.x, back.z - at.z)).toBeLessThan(0.5);
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await page.reload();
-  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
   await expect(page.locator('#lobbyModeBtn')).toHaveCount(0);
   await expectNoScriptError(page);
   await a.context.close();
@@ -922,7 +922,7 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
   await page.evaluate(() => window.PlazaWarp(25, 4)); // the shop street walk
   await expect.poll(async () => (await get(request, '/api/plaza/spot', a.token)).data.spot, { timeout: 10000 }).toEqual({ x: 25, z: 4 });
   await page.reload();
-  await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible({ timeout: 15000 });
+  await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)
   await expect.poll(() => state(page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
   const at = await state(page);
   expect(Math.hypot(at.x - 25, at.z - 4)).toBeLessThan(0.6);
