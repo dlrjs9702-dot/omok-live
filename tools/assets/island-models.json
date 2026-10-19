@@ -5699,6 +5699,94 @@
       "lowSrc": "together47:02. Low/pet_bird_low.glb",
       "lowSha256": "744c10c6f53898eafcd4be1847b28af1c253b80ccf666da416a4285a03c586da",
       "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/bench_waterfront.glb",
+      "src": "dalmaru55:01. High/bench_waterfront.glb",
+      "sha256": "800ffa7dbede3c5f61f8a6ef47e6798fbb713812470e930220bcad7e4b43ff0a",
+      "lowSrc": "dalmaru55:02. Low/bench_waterfront_low.glb",
+      "lowSha256": "bfcb5ad2f9f1a93bd373ba5784750383aea28fa77d0cdc406f71b9d263ea79f5",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/bridge_yunseul.glb",
+      "src": "dalmaru55:01. High/bridge_yunseul.glb",
+      "sha256": "2d71f61910f319ea59e4e0b29741fe63ceba486dcd63f57791f3259f538293a2",
+      "lowSrc": "dalmaru55:02. Low/bridge_yunseul_low.glb",
+      "lowSha256": "a53f0e4f5a2ceb301a8a3d2e83da939ba9357f3a8ae5063eecad65f0197dd08f",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/dock_boat.glb",
+      "src": "dalmaru55:01. High/dock_boat.glb",
+      "sha256": "2ae423ffddf39f72d5547a0c63ddc1dbb183850752819bb8ff55befcc03b2721",
+      "lowSrc": "dalmaru55:02. Low/dock_boat_low.glb",
+      "lowSha256": "4c1302dd363eae12dba2e951b42cd80f908892a3904237d8a902320b70c1398a",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/facade_mall.glb",
+      "src": "dalmaru55:01. High/facade_mall.glb",
+      "sha256": "8760ca525c02aadafd2e333b54674656f3caa255363d34efc80bc5cbe503b5af",
+      "lowSrc": "dalmaru55:02. Low/facade_mall_low.glb",
+      "lowSha256": "4d60fbbdd7693b5024e277d2942e86b8f91b22878440835c16cdb552f092981e",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/facade_townhall.glb",
+      "src": "dalmaru55:01. High/facade_townhall.glb",
+      "sha256": "f517e8372ab5075405bec554497001d082d476fdf1ebe4f7b5f7a7dbf24c0c79",
+      "lowSrc": "dalmaru55:02. Low/facade_townhall_low.glb",
+      "lowSha256": "086b8ef78871ef6b74eb8155dcc612c15ae2af9a993c4d0892ca948a6f4619a9",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/lamp_waterfront.glb",
+      "src": "dalmaru55:01. High/lamp_waterfront.glb",
+      "sha256": "1655d72562f3aa06eb1d1bd2f741620ac1e1484a11260087dac8bcdd2ddcb329",
+      "lowSrc": "dalmaru55:02. Low/lamp_waterfront_low.glb",
+      "lowSha256": "7a198690407543c7b1e67d6db2635244361f91cf50c5ecbcf8d169c9d1a04f8b",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/lighthouse_choseung.glb",
+      "src": "dalmaru55:01. High/lighthouse_choseung.glb",
+      "sha256": "182c8924b57f1e8ac3cfc88cf6a31ff3ae6e8a2cdbde068720ac80618d78eb64",
+      "lowSrc": "dalmaru55:02. Low/lighthouse_choseung_low.glb",
+      "lowSha256": "9d78ee1d6169139fa80d7d06cfc1f95bf7b8d08e1f6017bb937b78e0d800424c",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/niche_hero.glb",
+      "src": "dalmaru55:01. High/niche_hero.glb",
+      "sha256": "26d1761060cf44449ff10e3afca90b01291d05646f8206eb05bb6678e928a985",
+      "lowSrc": "dalmaru55:02. Low/niche_hero_low.glb",
+      "lowSha256": "dc99fb24f4517b72ffcab1edc3c4cf3d590a9666e517dd8defe94244e783fbd0",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/pier_dalkkeut.glb",
+      "src": "dalmaru55:01. High/pier_dalkkeut.glb",
+      "sha256": "c698beec719738379b2405c6288ac34e44b7067b3e8f4093a46a9986496eef39",
+      "lowSrc": "dalmaru55:02. Low/pier_dalkkeut_low.glb",
+      "lowSha256": "f02092efe5ef35c4d4af232954411b775c8df0721941be9342d80c7179dc3654",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/rail_waterfront.glb",
+      "src": "dalmaru55:01. High/rail_waterfront.glb",
+      "sha256": "3bc28536facf4f45e80192ae2e1fa6075725c41faa40f62aaec903be687df795",
+      "lowSrc": "dalmaru55:02. Low/rail_waterfront_low.glb",
+      "lowSha256": "a511dca2e3eea3e730042ebf44f9fa20c2d4d68e8a02207cb8276568e3e4ea0e",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/stairs_ridge.glb",
+      "src": "dalmaru55:01. High/stairs_ridge.glb",
+      "sha256": "b31849afe9182c565986da3fbf30f2a88575a759cef94ec7b5a771a876c082ca",
+      "lowSrc": "dalmaru55:02. Low/stairs_ridge_low.glb",
+      "lowSha256": "ddc6cb3db1b8dd90aeb01319e7b3680330434d2135dee60d4f9b00da45015957",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -5731,6 +5819,7 @@
     "winter46": "46. Game Island winter event 2026-10-18",
     "townhall44": "44. Game Island townhall interior 2026-10-18",
     "planting45": "45. Game Island planting growth 2026-10-18",
-    "together47": "47. Game Island together island 2026-10-18"
+    "together47": "47. Game Island together island 2026-10-18",
+    "dalmaru55": "55. Game Island Dalmaru structures 2026-10-19"
   }
 }
