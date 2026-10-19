@@ -33,6 +33,12 @@ test('관공서 실내: 문에서만 입장, 실내 안에서만 이동, 창구 
   const desk = T.roomWorld(R.desk.lx, R.desk.lz); await stand(a, desk.x, desk.z);
   const sold = await req('/api/island/sell', a, { place: 'office', requestId: 'room-sell-0001' });
   assert.equal(sold.status, 200, JSON.stringify(sold.data));
+  // (달마루섬 5단계) the 작명소's business at the 개명 신청 window -- not from the 민원 window
+  assert.equal((await req('/api/test/points-credit', a, { amount: 30_000 })).status, 200);
+  assert.equal((await req('/api/nickname', a, { name: '창구 손님', requestId: 'room-name-0001' })).data.error, 'TOO_FAR');
+  const rename = T.roomWorld(R.rename.lx, R.rename.lz); await stand(a, rename.x, rename.z);
+  const named = await req('/api/nickname', a, { name: '창구 손님', requestId: 'room-name-0002' });
+  assert.equal(named.status, 200, JSON.stringify(named.data));
   // chat: the room does not reach the door outside (the two are 0 m apart in neither space)
   assert.equal((await req('/api/island/townhall/leave', a, {})).data.error, 'TOO_FAR', '창구에서는 못 나감');
   const exit = T.roomWorld(R.exit.lx, R.exit.lz); await stand(a, exit.x, exit.z);

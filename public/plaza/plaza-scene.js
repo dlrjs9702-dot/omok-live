@@ -1877,9 +1877,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it (no island here)
     const put = (id, lx, y, lz, yaw, stand) => { const root = new THREE.Group(); root.position.set(lx, y, lz); root.rotation.y = yaw; g.add(root); const fallback = new THREE.Group(); root.add(fallback); stand?.(fallback); assets.attach(id, root, fallback); return root; };
     put('townhall3.townhall_interior', 0, 0, 0, Math.PI, (f) => { mesh(new THREE.BoxGeometry(ROOM.w, 0.2, ROOM.d), mat(0xf2efe8), 0, -0.1, 0, f); const wall = mat(0xf2efe8); mesh(new THREE.BoxGeometry(ROOM.w, 3.2, 0.3), wall, 0, 1.6, ROOM.d / 2, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 3.2, ROOM.d), wall, s * ROOM.w / 2, 1.6, 0, f); });
-    const SHIRT = { civil: 0x3f7d68, tax: 0x7f1d1d, bank: 0xb45309 };
+    const SHIRT = { civil: 0x3f7d68, tax: 0x7f1d1d, bank: 0xb45309, rename: 0x4c3a8f };
     const clerks = L.desks.map((d) => {
-      put(`townhall3.desk_${d.id}`, d.lx, 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
+      put(`townhall3.desk_${d.id === 'rename' ? 'civil' : d.id}`, d.lx, /* (개명 신청: the 민원 desk's model again) */ 0, d.lz, Math.PI, (f) => mesh(new THREE.BoxGeometry(3.4, 1.05, 1.1), mat(0xd9d4c8), 0, 0.525, 0, f));
       const c = makeCharacter({ shirt: SHIRT[d.id], hair: 0x2b2b2b, skin: 0xffdcbc }); c.root.position.set(d.lx, 0, d.keeper); g.add(c.root);
       assets.dress([`character.clerk_${d.id}`, 'character.npc'], c); dressUp(c, { gender: d.id === 'tax' ? 'male' : 'female', outfit: 'npc_outfit_suit' }, { shirt: SHIRT[d.id] });
       const id = d.id === 'civil' ? 'room:desk' : `room:${d.id}`; return Object.assign(c, { home: { x: ROOM.x + d.lx, z: ROOM.z + d.keeper, yaw: 0, id } });
@@ -1887,7 +1887,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const c of globalThis.IslandTerrain.COUNTERS) put('townhall3.chair_marble', c.lx, 0, c.lz, 0, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // A-7: the customer's chair at each window, toward its clerk
     for (const [, lx, lz, yaw] of L.seats.filter(([id]) => id.startsWith('desk.'))) put('townhall3.chair_marble', lx, 0, lz, yaw + Math.PI, (f) => mesh(new THREE.BoxGeometry(1.1, 0.54, 1.1), mat(0xd9d4c8), 0, 0.27, 0, f)); // (a seat's yaw faces the sitter's way; the chair's front is -z)
     for (const [file, lx, y, lz, yaw] of L.props) put(`townhall3.${file}`, lx, y, lz, yaw, (f) => mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), mat(0xd9d4c8), 0, 0.4, 0, f));
-    for (const lx of [-9, 0, 9]) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
+    for (const { lx } of L.desks) { const light = new THREE.PointLight(0xffe7bc, 22, 16, 1.2); light.position.set(lx, 4, -1); g.add(light); } // a lit hall at any hour
     room = { group: g, clerks }; npcs.push(...clerks);
     return room;
   }
@@ -1907,11 +1907,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     assets.attach('mall.interior', shell, fallback);
     for (const s of STORE.SHELF) { const at = new THREE.Group(); at.position.set(s.at[0], s.at[1], s.at[2]); at.rotation.y = s.yaw; g.add(at); const v = new THREE.Group(); mesh(new THREE.BoxGeometry(0.14, 0.18, 0.1), mat(0xd8c3a0), 0, 0.09, 0, v); at.add(v); assets.attach(`good.${s.id}`, at, v); }
     // a keeper in every sector (the 잡화 keeper and the 변신 keeper their own models, the rest the shop keepers' look)
-    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8 };
+    const SHIRTS = { game: 0x6aa9e8, clothes: 0xe87a9e, hair: 0xd98b5f, accessories: 0xc9a14a, surgery: 0x5fa39a, dye: 0x9b7fd6, transform: 0x5b3f8f, store: 0xf3e6c8, stall: 0x6bbf73 };
     const keepers = STORE.SECTORS.map((s, i) => {
       const k = makeCharacter({ shirt: SHIRTS[s.id], hair: [0x3d2b1f, 0x6b4a2b, 0x2b2b2b][i % 3], skin: 0xffdcbc });
       k.root.position.set(s.keeper[0], 0, s.keeper[1]); k.root.rotation.y = s.keeper[2] + Math.PI; g.add(k.root);
       assets.dress([s.id === 'store' ? 'character.storekeeper' : s.id === 'transform' ? 'character.transformer' : 'character.npc'], k); dressUp(k, { gender: i % 2 ? 'female' : 'male' }, { shirt: SHIRTS[s.id] });
+      if (s.stall) { const root = new THREE.Group(); root.position.set(s.stall[0], 0, s.stall[1]); root.rotation.y = -Math.PI / 2; g.add(root); const v = new THREE.Group(); root.add(v); mesh(new THREE.BoxGeometry(2.0, 0.9, 0.8), mat(0xb07a4f), 0, 0.45, 0.1, v); assets.attach('facility.trader', root, v); } // (the island's stall model, its front toward the hall)
       const w = STORE.world(s.keeper[0], s.keeper[1]); k.home = { x: w.x, z: w.z, yaw: 0, id: s.place }; return k;
     });
     for (const [lx, lz] of [[-9, -4], [0, -4], [9, -4], [-9, 4], [0, 4], [9, 4]]) { const light = new THREE.PointLight(0xfff1d6, 14, 16, 1.2); light.position.set(lx, 3.6, lz); g.add(light); }

@@ -1829,7 +1829,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -2902,8 +2902,8 @@
   // A-7 민원실 창구 (사용자 2026-10-19): a window's business opens seated in its customer's chair, the camera on the clerk;
   // closing the window stands me up (and standing up closes it)
   let counterSeat = null; // { door, dialog } while seated at a window
-  const COUNTER_OPEN = { 'room:desk': () => openIslandPlace('office'), 'room:tax': () => openTax(), 'room:bank': () => openBank() };
-  const counterDialogs = { 'room:desk': islandPlaceDialog, 'room:tax': taxDialog, 'room:bank': bankDialog };
+  const COUNTER_OPEN = { 'room:desk': () => openIslandPlace('office'), 'room:tax': () => openTax(), 'room:bank': () => openBank(), 'room:rename': () => openNaming() }; // (달마루섬 5단계: 개명 신청 = the 작명소)
+  const counterDialogs = { 'room:desk': islandPlaceDialog, 'room:tax': taxDialog, 'room:bank': bankDialog, 'room:rename': document.getElementById('namingDialog') };
   for (const [door, dialog] of Object.entries(counterDialogs)) dialog.addEventListener('close', () => { if (counterSeat?.door === door && !dialog.open) { counterSeat = null; plaza.controller?.talkCamera?.(false); plaza.controller?.standUp?.(); } });
   async function sitDown(seat) {
     try {
@@ -3490,7 +3490,7 @@
         headers['X-Island-Facility'] = place;
       }
       if (place) {
-        if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');
+        if (!(place === 'naming' && counterSeat?.door === 'room:rename') && !plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.'); // (seated at 개명 신청: the server checks the window)
         const pose = plaza.controller.pose();
         await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) });
         if (!plaza.controller?.canInteract?.(place)) throw new Error('가까이 가서 다시 시도해 주세요.');

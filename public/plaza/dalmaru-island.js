@@ -27,7 +27,6 @@
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
     board: { ...court(180), kind: 'board' }, map: { ...court(225), kind: 'mapboard' }, attendance: { ...court(270), kind: 'npc' }, donate: { ...court(135), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
-    trader: spot(PL.trader, 'stall'), naming: spot(PL.naming, 'desk'),
   };
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
   function facilityDoor(id) {

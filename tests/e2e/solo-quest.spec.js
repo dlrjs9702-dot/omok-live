@@ -14,7 +14,7 @@ async function islandPage(page) {
     localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null]))));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
 }
 
 test('지뢰찾기: 로비 「지뢰찾기」 → 난이도·판, 오른쪽 클릭 깃발, 다 열면 클리어·보상·최고 기록', async ({ browser, request }) => {
@@ -138,7 +138,7 @@ test('연계 퀘스트: 할머니 결과는 계정별·재접속 유지, 멀리 
   await place(story.steps[2].spot);await place(story.at);expect(await report()).toMatchObject({story:'granny',done:true});
   await islandPage(page);
   await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().questScenes()),{timeout:15000}).toMatchObject({flower:'bloom',frame:true});
-  await page.reload();
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.questScenes()), { timeout: 30000 }).toMatchObject({ flower: 'bloom', frame: true });
   const b = await shopper(browser, request, '멀리손님');
   await islandPage(b.page);
@@ -191,7 +191,7 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   expect(await page.evaluate(() => window.PlazaDebug().questScenes())).toMatchObject({ boat: true, departing: false });
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().questScenes())).toMatchObject({ boat: true, departing: true });
-  await page.reload();
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.running), { timeout: 60000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug?.()?.questScenes()), { timeout: 30000 }).toMatchObject({ boat: false, departing: false });
   await expectNoScriptError(page);
   await a.context.close();

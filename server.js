@@ -3460,7 +3460,8 @@ async function requestHandler(req, res) {
       const shopPlace = ['shop', 'avatar', 'hair', 'accessories', 'transform'].includes(req.headers['x-island-facility']) ? req.headers['x-island-facility'] : null;
       const place = placeActions[pathname] || (!['/api/skins/buy', '/api/skins/gift'].includes(pathname) && shopPlace) || (avatar ? slot === 'transform' ? 'transform' : slot === 'outfit' ? 'avatar' : slot === 'hair' ? 'hair' : 'accessories' : 'shop'); // (v1.10.91 변신 의상실)
       // v1.10.92 백화점: the shops are its sectors -- inside, at that sector's spot
-      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : IslandTerrain.facilityDoor(place);
+      // (달마루섬 5단계: the 작명소's business at the 민원실's 개명 신청 window too)
+      const door = IslandStore.sectorOf(place) ? (storeInside.has(session.token) ? IslandStore.sectorPoint(place) : null) : place === 'naming' && townhallInside.has(session.token) ? IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.rename.lx, IslandTerrain.TOWNHALL_ROOM.rename.lz) : IslandTerrain.facilityDoor(place);
       if (!door || trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) >= 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     }
   }
@@ -4724,10 +4725,11 @@ async function requestHandler(req, res) {
     const body = await parseJson(req);
     const place = ['office', 'merchant', 'fisher'].includes(body.place) ? body.place : null;
     if (!place || typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader; // v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
+    const spot = place === 'office' ? IslandTerrain.townhallWorld(0, 8.6) : place === 'fisher' ? IslandQuests.STORIES.fisher.at : IslandTerrain.SPOTS.trader || null; // (달마루섬: none -- the 백화점's 노점) v1.10.41: the town hall's door, inside its yard; v1.10.42 the harbour fisherman
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     const atCounter = place === 'office' && townhallInside.has(session.token) && at && (() => { const d = IslandTerrain.roomWorld(IslandTerrain.TOWNHALL_ROOM.desk.lx, IslandTerrain.TOWNHALL_ROOM.desk.lz); return Math.hypot(at.x - d.x, at.z - d.z) <= 1.8; })(); // v1.10.84 (v1.10.86: 1.8 m, each window its own)
-    if (!atCounter && (!at || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const atStall = place === 'merchant' && storeInside.has(session.token) && at && (() => { const d = IslandStore.sectorPoint('mall:stall'); return Math.hypot(at.x - d.x, at.z - d.z) < 2.4; })(); // (달마루섬 5단계: the 백화점's 노점)
+    if (!atCounter && !atStall && (!at || !spot || Math.hypot(at.x - spot.x, at.z - spot.z) > 8)) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
     if (place === 'office' && !atCounter) return sendError(res, 409, 'TOO_FAR', '관공서 안 민원 창구에서 맡겨 주세요.'); // v1.10.84: the counter is inside now (Codex review)
     const account = pointAccountForSession(session);
     const result = await pointStore.islandSell({ userId: account, requestId: body.requestId, place, activeLost: islandEvents.activeLost() }, nowMs()); // a lost thing whose owner has gone: lost and found

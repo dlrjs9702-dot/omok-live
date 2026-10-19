@@ -31,6 +31,12 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
   const shop = require('../public/plaza/island-store').sectorPoint('avatar');
   await req('/api/plaza/state', token, { ...shop, yaw: 0, moving: false });
   assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_animal_cat_outfit' })).status, 200, '가까운 옷가게에서 기존 구매가 정상 실행된다');
+  // (달마루섬 5단계) the 9th sector, 노점: the trader's buy-back there, not from the 옷가게
+  await req('/api/test/island/give', token, { itemId: 'herb', qty: 2 });
+  assert.equal((await req('/api/island/sell', token, { place: 'merchant', requestId: 'mall-sell-0001' })).data.error, 'TOO_FAR');
+  await req('/api/plaza/state', token, { ...require('../public/plaza/island-store').sectorPoint('mall:stall'), yaw: 0, moving: false });
+  const sold = await req('/api/island/sell', token, { place: 'merchant', requestId: 'mall-sell-0002' });
+  assert.equal(sold.status, 200, JSON.stringify(sold.data));
 });
 
 test('섬 초대: 원거리 준비와 준비 후 게임방에 간 수신자를 거부', async (t) => {
@@ -67,10 +73,10 @@ test('앉기 서버: 좌석은 먼저 앉은 사람 것, 일어나면 비고, �
 });
 
 // A-7 민원실 창구 (사용자 2026-10-19): a customer's chair at each window, seated within the server's 1.8 m of its counter
-test('민원실 창구 의자: 세 창구마다 손님 의자, 앉은 자리는 그 창구의 1.8m 안', () => {
-  const R = T.TOWNHALL_ROOM; const at = { civil: R.desk, tax: R.tax, bank: R.bank };
+test('민원실 창구 의자: 네 창구마다 손님 의자, 앉은 자리는 그 창구의 1.8m 안', () => {
+  const R = T.TOWNHALL_ROOM; const at = { civil: R.desk, tax: R.tax, bank: R.bank, rename: R.rename };
   const chairs = T.plazaProps().seats.filter((s) => s.counter);
-  assert.deepEqual(chairs.map((s) => s.door).sort(), ['room:bank', 'room:desk', 'room:tax']);
+  assert.deepEqual(chairs.map((s) => s.door).sort(), ['room:bank', 'room:desk', 'room:rename', 'room:tax']);
   for (const s of chairs) { const w = T.roomWorld(at[s.counter].lx, at[s.counter].lz); assert.ok(Math.hypot(s.x - w.x, s.z - w.z) <= 1.8, s.id); assert.equal(s.y, R.y); }
   for (const s of chairs) { const q = T.roomClamp(s.x, s.z + 1.0); assert.ok(q.z > s.z + 0.5, `${s.id}: stands up into the hall`); }
 });

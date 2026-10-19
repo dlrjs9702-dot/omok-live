@@ -950,7 +950,7 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
 
 // v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 30,000P (v1.10.35) on a second press, shows at
 // once, and the next change waits 24 hours.
-test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
+test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', { skip: DAL && '지금 섬 전용 (달마루섬: 관공서 개명 신청 창구 -- 가방·관공서·상인 시험과 townhall-room 단위 시험)' }, async ({ browser, request }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '작명손님', 200_000);
   const { page } = a;
@@ -1009,13 +1009,22 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   await page.locator('#islandPlaceCloseBtn').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().z - window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil').z)).toBeGreaterThan(0.5); // (stood up, back into the hall -- not behind the desk)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false); // (the stand-up motion done)
+  // (달마루섬 5단계) the fourth window, 개명 신청: the 작명소's window from its chair
+  await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-rename'); window.PlazaDebug().teleport(c.x, c.z + 1.1); });
+  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉아서 개명 신청 업무');
+  await page.keyboard.press('Space');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().talkView?.id)).toBe('room:rename');
+  await expect(page.locator('#namingCurrent')).toContainText('가방손님');
+  await page.locator('#namingCloseBtn').click();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().actLocked)).toBe(false);
   await page.evaluate(() => window.PlazaDebug().place('room:exit'));
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 나가기');
   await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space)).toBe('island');
   // (a jump straight after leaving the hall can be put back by the server: again until it holds -- A-7)
-  await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 상인');
+  if (DAL) await require('./skin-support').intoMall(page, 'mall:stall'); // (달마루섬: the trader is the 백화점's 노점)
+  else await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('trader')); await page.waitForTimeout(1200); return page.evaluate(() => window.PlazaDebug().near); }, { timeout: 30000 }).toBe('trader');
+  await expect(page.locator('#plazaHint')).toHaveText(DAL ? 'SPACE · 노점' : 'SPACE · 상인');
   await page.keyboard.press('Space');
   await expect(page.locator('#islandPlaceSubmit')).toHaveText('판매 +8,000P');
   await page.locator('#islandPlaceSubmit').click();

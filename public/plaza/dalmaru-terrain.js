@@ -117,7 +117,7 @@
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
     records: { x: 53, z: -90, face: [40, -88] }, missions: { x: 50, z: -54, face: [40, -62] }, // beside the 게임관
     admin: { x: -54, z: -72, face: [-40, -76] }, chat: { x: -86, z: -4, face: [-100, -20] }, climb: { x: -128, z: -12, face: [-112, -10] },
-    trader: { x: 58, z: -78, face: [40, -82] }, naming: { x: -58, z: -82, face: [-40, -84] }, // (for now outside -- they move indoors, the 노점 into the 백화점 and 개명 신청 to a 관공서 window)
+    // (the trader and the 작명소 are indoors: the 백화점's 노점 and the 관공서's 개명 신청 window)
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
     mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -27, z: -68, face: [-34, -62] },
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },

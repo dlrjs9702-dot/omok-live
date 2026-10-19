@@ -24,6 +24,8 @@
     { id: 'dye', place: 'dye', name: '염색사', interact: [-3.7, 4.1], keeper: [-3.7, 6.75, 0] },
     { id: 'transform', place: 'transform', name: '변신 의상실', interact: [5.3, 3.65], keeper: [5.3, 5.3, 0] },
     { id: 'store', place: 'mall:store', name: '잡화점', interact: [12.3, 3.3], keeper: [12.3, 6, 0] },
+    // (달마루섬 5단계: the trader's stall, 9th -- its buy-back window as outside -- along the wall at local +x, the keeper behind it)
+    { id: 'stall', place: 'mall:stall', name: '노점', interact: [11.9, 0], keeper: [14.05, 0, Math.PI / 2], stall: [13.2, 0] },
   ].map((s) => Object.freeze(s)));
   const sectorOf = (place) => SECTORS.find((s) => s.place === place) || null;
   const sectorPoint = (place) => { const s = sectorOf(place); return s ? world(s.interact[0], s.interact[1]) : null; };
@@ -32,7 +34,7 @@
     [-5.5, -7.6, 1.42, 0.72], [-1.9, -4.5, 0.97, 0.62], [-4.7, -4.6, 2.32, 0.82], [4.95, -5.4, 1.07, 1.22], [2.45, -5.4, 1.07, 1.22], [4.95, -7, 1.32, 0.52],
     [2.45, -7, 1.32, 0.52], [12.7, -4.9, 1.37, 1.27], [11.6, -7.1, 3.52, 0.82], [9.9, -4.6, 2.12, 0.82], [-11.1, 5.55, 2.32, 1.07], [-12.9, 4.5, 0.82, 0.92],
     [-9.45, 7.15, 0.92, 0.52], [-3.7, 5.4, 3.42, 0.97], [-3.7, 7.95, 4.62, 0.62], [2.55, 6.1, 2.12, 2.52], [5.3, 7, 1.12, 0.62], [9.75, 7.35, 2.52, 0.82],
-    [12.45, 7.35, 2.52, 0.82], [9.9, 4.55, 1.92, 1.52], [12.3, 4.7, 2.12, 0.82],
+    [12.45, 7.35, 2.52, 0.82], [9.9, 4.55, 1.92, 1.52], [12.3, 4.7, 2.12, 0.82], [13.2, 0, 0.9, 2.2] /* (the 노점's stall) */,
   ].map(([x, z, w, d]) => Object.freeze({ x, z, w, d })));
   // where each good stands in the 잡화 sector (assets 43 manifest.goodsSlots); seeds, the sapling and fertilizer wait for planting
   const SHELF = Object.freeze([

@@ -22,7 +22,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect(page.locator('#plazaHint')).toHaveText(/낚시$/, { timeout: 10000 }) // (a phone shows no SPACE);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()?.bobber), { timeout: 10000 }).toBe(true);
-  expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.riverDist(b.x, b.z) < 0 || T.dalmaru.lakeDist(b.x, b.z) < 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: a river or 거울호수) the float is on the stream
+  expect(await page.evaluate(() => { const b = window.PlazaDebug().fishing().at; const T = window.IslandTerrain; return T.dalmaru ? T.dalmaru.isWater(b.x, b.z) && T.dalmaru.coastDist(b.x, b.z) >= 0 : T.streamDist(b.x, b.z) < T.STREAM_HALF; })).toBe(true); // (달마루섬: inland water -- a river, 거울호수 or a pool) the float is on the stream
   await page.evaluate(() => window.PlazaDebug().fishBiteNow(12)); // (a long bite on the page; the server's just before the pull -- see plaza.spec)
   await expect(page.locator('#plazaHint')).toHaveText(/당기기$/);
   expect((await post(request, '/api/test/fish/bite', token, { species: 'catfish' })).data.ok).toBe(true);
