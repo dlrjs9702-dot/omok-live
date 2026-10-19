@@ -124,7 +124,7 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
 // v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전 (사용자 결정 2026-10-05; the v1.10.19 monthly whole-island season
 // is gone): four zones always show the four seasons, the central plaza is neutral, at 00:00 Asia/Seoul every season
 // moves one zone clockwise and the arrangement comes back every 4 days; only the seasons move, never places.
-test('게임 아일랜드 계절 구역: 중앙광장 중립, 섬은 네 구역으로 고르게 나뉘고 경계는 직선이 아니다', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
+test('게임 아일랜드 계절 구역: 중앙광장 중립, 섬은 네 구역으로 고르게 나뉘고 경계는 직선이 아니다', { skip: require('../public/plaza/island-terrain.js').MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   const T = require('../public/plaza/island-terrain.js');
   assert.equal(T.seasonZoneAt(0, 0), -1);
   for (const id of ['board', 'attendance', 'map', 'donate']) assert.equal(T.seasonZoneAt(T.SPOTS[id].x, T.SPOTS[id].z), -1, `${id}: 광장 중립`);
@@ -144,7 +144,7 @@ test('게임 아일랜드 계절 구역: 중앙광장 중립, 섬은 네 구역�
   assert.equal(T.seasonZoneAt(40, -50), T.seasonZoneAt(40, -50));
 });
 
-test('게임 아일랜드 계절 회전: 날마다 네 계절이 모두 있고 서울 00:00에 시계방향으로 한 구역, 4일마다 원래대로', { skip: T.MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
+test('게임 아일랜드 계절 회전: 날마다 네 계절이 모두 있고 서울 00:00에 시계방향으로 한 구역, 4일마다 원래대로', { skip: require('../public/plaza/island-terrain.js').MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
   const T = require('../public/plaza/island-terrain.js');
   const kst = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 9, min); // Seoul wall time -> ms
   const day = T.seasonDay(kst(2026, 10, 5, 12));
