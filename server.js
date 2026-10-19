@@ -6474,6 +6474,9 @@ async function requestHandler(req, res) {
     if (pathname === '/') return browserBlocked(req) ? sendChromeOnly(res) : sendIndex(res, {});
     if (pathname === '/herosurv') { res.writeHead(301, securityHeaders({ Location: '/herosurv/' })); return res.end(); }
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
+    // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
+    // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
+    if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end(IslandTerrain.MAP === 'dalmaru' ? "self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n" : '\n'); }
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }

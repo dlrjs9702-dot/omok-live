@@ -1817,6 +1817,7 @@
     // 달마루섬 미리보기: the island the server says this page shows (kept for island-map.js, which runs before the island's
     // scripts) -- a change reloads the page once (only when it could be kept: no reload loop without storage)
     const islandMap = api('/api/island/map').then((d) => {
+      if (d.live && globalThis.GC_ISLAND_LIVE) return; // (already told by the server before the scripts: island-live.js)
       const want = d.map === 'dalmaru' ? (d.live ? 'dalmaru:live' : 'dalmaru') : null; let have = null; try { have = localStorage.getItem('gc.islandMap'); } catch {}
       if (have === want) return;
       try { if (want) localStorage.setItem('gc.islandMap', want); else localStorage.removeItem('gc.islandMap'); if (localStorage.getItem('gc.islandMap') === want) { location.reload(); return new Promise(() => {}); } } catch {}
