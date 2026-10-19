@@ -45,7 +45,7 @@ test('생일·우체통: 오늘 생일이면 광장 장식·선물 한 번·칭�
   expect((await post(request, '/api/island/mail/read', a.token, { id: box.letters[0].id })).status).toBe(200);
   expect((await get(request, '/api/island/mail', a.token)).data.unread).toBe(0);
   // her window: the letter in the box
-  await a.page.evaluate(() => window.PlazaDebug().teleport(0, 0));
+  await a.page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), T.PLAZA_C || { x: 0, z: 0 });
   for (const w of [a, b]) await expectNoScriptError(w.page);
   await post(request, '/api/island/birthday', a.token, { clear: true });
   for (const w of [a, b]) await w.context.close();

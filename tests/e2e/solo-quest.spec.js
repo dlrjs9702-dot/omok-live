@@ -176,7 +176,7 @@ test('어부 결과 장면: 기존 주간 이야기 완료 대화를 닫은 후 
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   await expect(page.locator('#plazaDialog')).toContainText('출항');
   await page.keyboard.press('Escape');
-  await page.evaluate(() => window.PlazaDebug().teleport(5, 92));
+  await page.evaluate((p) => window.PlazaDebug().teleport(p.x, p.z), require('../../lib/island-quests').STORIES.fisher.steps.find((st) => st.kind === 'visit').spot); // (the pier's end, either island)
   await expect(page.locator('#questTracker')).toContainText('완료 ✓', { timeout: 15000 });
   await page.evaluate(() => window.PlazaDebug().place('ev:quest_npc:questfisher'));
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().near), { timeout: 10000 }).toBe('ev:quest_npc:questfisher');

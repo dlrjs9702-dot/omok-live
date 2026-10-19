@@ -41,7 +41,8 @@ test('잡화점 물건 쓰기: 폭죽은 둘 다 보이고, 포장지로 선물�
   const b = await shopper(browser, request, '받는이', 100000, 'female');
   for (const w of [a, b]) { await w.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await w.page.reload(); await expect.poll(() => w.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   for (const [itemId, qty] of [['firework', 1], ['gift_wrap', 1], ['bread', 2]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
-  await a.page.evaluate(() => window.PlazaWarp(4, 4)); await b.page.evaluate(() => window.PlazaWarp(5.2, 4));
+  const PC = require('../../public/plaza/island-terrain.js').PLAZA_C || { x: 0, z: 0 }; // (the plaza, either island)
+  await a.page.evaluate((p) => window.PlazaWarp(p.x + 4, p.z + 4), PC); await b.page.evaluate((p) => window.PlazaWarp(p.x + 5.2, p.z + 4), PC);
   for (const w of [a, b]) await expect.poll(() => w.page.evaluate(() => window.PlazaDebug().others.length), { timeout: 20000 }).toBeGreaterThan(0);
   await b.page.evaluate(() => { window.__zzSeen = false; const d = window.PlazaDebug(); window.__zzWatch = setInterval(() => { if (d.othersActs().some((o) => o.act === 'show:firework')) window.__zzSeen = true; }, 100); }); // (CI: one PlazaDebug() takes ~2 s, the show 6 s -- watch with one debug object)
   await a.page.bringToFront(); // (a background page sends its acts late -- CI)
