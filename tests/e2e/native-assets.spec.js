@@ -29,6 +29,7 @@ async function nativeShopper(browser, request, label, isMobile) {
   });
 }
 async function transformed(who, id, mode = 'native') {
+  await expect.poll(() => who.page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); // (CI 2차: the island shown first, then its model)
   await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.transformation), { timeout: 60000 }).toBe(id);
   await expect.poll(() => who.page.evaluate(id => window.PlazaDebug().assets.wearing.find(w=>w.transformation===id)?.transformationMode,id)).toBe(mode);
   expect(await who.page.evaluate(() => window.PlazaDebug().nativeRig)).toBe(native(id).variants[mode].rig.id);

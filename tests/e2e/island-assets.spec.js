@@ -908,6 +908,7 @@ test('관광열차 실물: 4객차·2승강장 High/Low 로드와 문 열기·�
 });
 
 test('늦은 캐릭터 실물: 앉은 자세·꼬리 복구와 Low 없는 고양이 귀 이름표 높이', async ({ browser, request }) => {
+  test.setTimeout(process.env.CI ? 120000 : 30000); // (CI 2차: the default 30 s is less than the island's own start on the CI runner; the waits inside are on states)
   const a = await island(browser, request, '늦은착장', { __only: true });
   let release; const gate = new Promise(resolve => { release = resolve; }); let arrived;
   const requested = new Promise(resolve => { arrived = resolve; });
