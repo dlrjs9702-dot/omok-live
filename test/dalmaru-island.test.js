@@ -68,4 +68,14 @@ test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기�
     for (const sec of [10, 40, 70, 100, 130, 0, 25, 55]) { const now = now0 + trial * 1000; const t0 = Date.now(); traffic.advance(Math.ceil(now / round) * round + sec * 1000); worst = Math.max(worst, Date.now() - t0); }
   }
   assert.ok(worst < 500, `${worst} ms`);
+
+// 문제 기록 14 「빈 집터가 공중에 떠 있어」: every home lot on 툇마루섬's flat top, its whole 10 x 10 m square level and at
+// least 2 m in from where the beach starts to fall (7 m from the water)
+test('툇마루섬 집터: 12곳 모두 평평한 땅, 바닷가 비탈에서 2m 이상 안쪽', { skip }, () => {
+  const bad = [];
+  for (const l of T.HOME_LOTS) for (let dx = -5; dx <= 5; dx += 1) for (let dz = -5; dz <= 5; dz += 1) {
+    const x = l.x + dx; const z = l.z + dz;
+    if (Math.abs(T.heightAt(x, z) - 0.9) > 0.05 || T.dalmaru.coastDist(x, z) < 9) { bad.push(`${l.x},${l.z}`); dx = dz = 99; }
+  }
+  assert.equal(T.HOME_LOTS.length, 12); assert.deepEqual(bad, []);
 });
