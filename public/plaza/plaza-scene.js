@@ -2074,7 +2074,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const l of lots || []) {
       const lot = HOME.lotById(l.id); if (!lot) continue;
       const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}`; const was = homesShown.get(l.id); if (was?.key === key) continue;
-      was?.root.removeFromParent();
+      if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
       const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot); const who = l.owner || '이웃';
       if (l.owner !== null) {
@@ -2086,7 +2086,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         assets.attach('home.lot_sign', root, f); sign('빈 집터', root, 2.0).scale.multiplyScalar(0.5);
         doors[`home:${l.id}`] = { x: d.x, z: d.z, name: '빈 집터 · 관공서 민원 창구에서 신청해요', plain: true };
       }
-      homesShown.set(l.id, { key, root, owned: l.owner !== null });
+      homesShown.set(l.id, { key, root, owned: l.owner !== null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
     }
   }
   function buildHomeRoom() {
