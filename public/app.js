@@ -1814,6 +1814,7 @@
     // v1.10.7 당일 위치: a new island screen (a login, a reload) starts at today's last spot; coming back from a room
     // keeps the screen and so the spot it had.
     const spotToday = api('/api/plaza/spot').then((data) => data.spot || null).catch(() => null);
+    const skinsToday = api('/api/skins').catch(() => null); // (my look, asked for alongside the scene: worn as the island appears, not after it -- the big island takes a while)
     try { localStorage.removeItem('gc.islandMap'); } catch {} // (묶음 3: the old preview's mark, gone with it)
     const sceneModule = import('/plaza/plaza-scene.js').catch((error) => { throw Object.assign(error, { code: 'module' }); });
     plaza.loading = Promise.all([sceneModule, spotToday]).then(([mod, savedSpot]) => {
@@ -1828,7 +1829,7 @@
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); // (자전거; 묶음 4 집들)
-      refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
+      refreshPlazaAvatar(skinsToday); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2036,8 +2037,8 @@
     renderLookShop();
   });
 
-  async function refreshPlazaAvatar() {
-    try { const data = await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); plazaHoguking = Boolean(data.hoguking); } catch { return; }
+  async function refreshPlazaAvatar(asked = null) {
+    try { const data = (await asked) || await api('/api/skins'); plazaAvatar = data.avatar || null; plazaChampion = Boolean(data.champion); plazaHoguking = Boolean(data.hoguking); } catch { return; }
     applyPlazaAvatar();
     plazaLastSent = null; // others see the new look with the next pose
     if (sessionRole !== 'admin' && !plazaAvatar?.look?.gender && document.body.classList.contains('plazaMode')) openGenderChoice();
