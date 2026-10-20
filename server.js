@@ -1072,6 +1072,7 @@ const FRIEND_MAX = 50;
 async function friendsOf(account) { const f = (await pointStore.worldValue(`friends:${account}`)) || {}; return { list: f.list || [], incoming: f.incoming || [] }; }
 async function saveFriends(account, f) { await pointStore.setWorldValue(`friends:${account}`, { list: f.list, incoming: f.incoming.slice(-50) }); }
 async function canFriend(session) { if (session?.role === 'admin') return true; const key = session?.guestKeyId ? await accessStore.get(session.guestKeyId) : null; return Boolean(key?.loginId); }
+async function accountName(a) { const on = [...plazaPresence.values()].find((p) => p.account === a); if (on?.name) return String(on.name).slice(0, 24); const key = a.startsWith('guest:') ? await accessStore.get(a.slice(6)) : null; return String(key?.label || (a === 'admin' ? '관리자' : '')).slice(0, 24); }
 async function mayVisit(owner, visitor) { if (owner === visitor) return true; const h = await homeOf(owner); const v = h?.visit || 'anyone'; return v === 'anyone' || (v === 'friends' && (await friendsOf(owner)).list.includes(visitor)); }
 // 자전거 (docs/bicycle-20261020.md): the colours in an account's bag, read at most every 30 s (a pose says which it rides)
 const BIKE_COLORS = ['mint', 'red', 'sky', 'butter']; const bikesOf = new Map(); // account -> { at, colors }
@@ -3738,6 +3739,19 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tax' && req.method === 'POST') { // v1.10.86: a day's tax now
     const body = await parseJson(req); taxDay = null; await collectTaxes(nowMs(), String(body.day || '')); return sendJson(res, 200, { ok: true });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/login-id' && req.method === 'POST') { // 묶음 4 친구: an entry-file key with a login id
+    const body = await parseJson(req); const row = await accessStore.setLogin(String(body.keyId || ''), normalizeLoginId(body.loginId), await hashPassword('secret123'));
+    return sendJson(res, row ? 200 : 409, { ok: Boolean(row) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const ids = (Array.isArray(body.ids) ? body.ids : []).filter((id) => IslandFurniture.good(id));
+    return worldEdit(async () => { const owned = (await pointStore.worldValue(`furniture:${account}`)) || []; const add = ids.map((id) => ({ uid: crypto.randomUUID(), id, at: nowMs(), price: 0, claim: `test:${crypto.randomUUID()}` })); await pointStore.setWorldValue(`furniture:${account}`, [...owned, ...add]); return sendJson(res, 200, { ok: true, pieces: add }); });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/friends/fill' && req.method === 'POST') { // 묶음 4 친구: my list grown to n (made-up friends)
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    return worldEdit(async () => { const f = await friendsOf(account); const list = [...f.list]; for (let i = 0; list.length < Number(body.n); i += 1) list.push(`guest:00000000-0000-4000-8000-${String(i).padStart(12, '0')}`); await saveFriends(account, { ...f, list }); return sendJson(res, 200, { ok: true, n: list.length }); });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/account-setup' && req.method === 'POST') {
     const body = await parseJson(req); setupRequiredKeys.add(String(body.keyId || ''));
     return sendJson(res, 200, { ok: true });
@@ -4420,7 +4434,7 @@ async function requestHandler(req, res) {
       bike: BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null, // (자전거: theirs, out on the island)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      home: homeInside.get(session.token) || null, // (묶음 4: whose house -- one sees the people in the same one)
+      home: homeInside.has(session.token) ? homeCache.get(homeInside.get(session.token))?.lot || null : null, // (묶음 4: which house, by its lot -- one sees the people in the same one)
       space: homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
@@ -4565,8 +4579,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/home' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const lots = await homeLots(); const names = new Map();
-    for (const owner of new Set(Object.values(lots))) { const key = owner.startsWith('guest:') ? await accessStore.get(owner.slice(6)) : null; names.set(owner, String(key?.label || (owner === 'admin' ? '관리자' : '')).slice(0, 24)); }
-    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, ownerId: owner ? Buffer.from(owner).toString('base64url') : null }; }));
+    for (const owner of new Set(Object.values(lots))) names.set(owner, await accountName(owner));
+    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null }; }));
     return sendJson(res, 200, { ok: true, lots: out, mine: await homeOf(account), price: Economy.value('home:price'), style: Economy.value('home:style') });
   }
   // a house: at the 관공서 (in the 민원실), one an account, a free lot, paid at once
@@ -4608,7 +4622,7 @@ async function requestHandler(req, res) {
     if (!await mayVisit(owner, account)) return sendError(res, 403, 'NOT_WELCOME', '지금은 손님을 받지 않는 집이에요.');
     freeSeat(session.token); homeInside.set(session.token, owner);
     const spot = IslandHome.world(lot, IslandHome.ENTRY[0], IslandHome.ENTRY[1]);
-    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'home', home: owner, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'home', home: lot.id, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: 'home', x: spot.x, z: spot.z, lot: lot.id, owner: owner === account ? 'me' : 'other' });
   }
   // a house's inside (for whoever is in it): the room's look, the pieces, the fish in the tanks, the owner's pets (those not
@@ -4619,7 +4633,7 @@ async function requestHandler(req, res) {
     const h = await homeOf(owner); const walking = (await pointStore.questDoc(owner, 'pet')).doc;
     const pets = (await myPets(owner)).filter((p) => !(walking.uid ? walking.uid === p.uid : p.from === 'bag' && walking.kind === p.kind)).map((p) => ({ uid: p.uid, kind: p.kind, coat: p.coat, name: p.name }));
     const dex = owner === pointAccountForSession(session) ? await pointStore.dexOf(owner) : {};
-    return sendJson(res, 200, { ok: true, mine: owner === pointAccountForSession(session), home: h, pets, photos: Object.fromEntries(IslandFishing.PHOTO_SPOTS.map((s) => [s.id, s.name])), myPhotos: IslandFishing.PHOTO_SPOTS.filter((s) => dex[s.id]).map((s) => s.id) });
+    return sendJson(res, 200, { ok: true, mine: owner === pointAccountForSession(session), home: h, pets, photos: Object.fromEntries(IslandFishing.PHOTO_SPOTS.map((s) => [s.id, s.name])), names: Object.fromEntries(Object.values(h.tanks).flat().map((f) => [f.itemId, IslandItems.ITEMS[f.itemId]?.name || f.itemId])), myPhotos: IslandFishing.PHOTO_SPOTS.filter((s) => dex[s.id]).map((s) => s.id) });
   }
   // the owner, inside: a piece from the 가구 창고 placed (or moved, or turned), or put back
   if (pathname === '/api/home/place' && req.method === 'POST') {
@@ -4656,7 +4670,7 @@ async function requestHandler(req, res) {
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
         next[k] = body[k]; notifyPointsChanged([account]);
       }
-      await saveHome(account, next); if (body.roof) broadcastIsland('homes', { lot: h.lot });
+      await saveHome(account, next); if (next.roof !== h.roof || next.visit !== h.visit) broadcastIsland('homes', { lot: h.lot }); // (the door says who may come in)
       return sendJson(res, 200, { ok: true, home: next });
     });
   }
@@ -4675,7 +4689,7 @@ async function requestHandler(req, res) {
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
         if (fishes.length >= T.slots) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : '수조가 가득 찼어요.');
         if (total >= IslandHome.MAX_FISH) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${IslandHome.MAX_FISH}마리까지예요.`);
-        const out = await pointStore.islandUse({ userId: account, claimId: claim, itemId });
+        const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
         const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim }] } }; await saveHome(account, next);
         return sendJson(res, 200, { ok: true, home: next });
@@ -4691,11 +4705,10 @@ async function requestHandler(req, res) {
   // my friends (where each is now, if here), the asks waiting for me, whether I may use it
   if (pathname === '/api/friends' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const f = await friendsOf(account);
-    const nameOf = async (a) => { const key = a.startsWith('guest:') ? await accessStore.get(a.slice(6)) : null; return String(key?.label || (a === 'admin' ? '관리자' : '')).slice(0, 24); };
     const whereOf = (a) => { const e = [...plazaPresence.values()].find((p) => p.account === a); return !e ? null : e.space === 'home' ? '내 집' : e.space === 'island' ? '섬' : ['store', 'furniture', 'petshop'].includes(e.space) ? '백화점' : e.space === 'townhall' ? '관공서' : '섬'; };
     return sendJson(res, 200, { ok: true, allowed: await canFriend(session), max: FRIEND_MAX,
-      friends: await Promise.all(f.list.map(async (a) => ({ id: Buffer.from(a).toString('base64url'), name: await nameOf(a), where: whereOf(a) }))),
-      incoming: await Promise.all(f.incoming.map(async (r) => ({ id: Buffer.from(r.from).toString('base64url'), name: await nameOf(r.from), at: r.at }))) });
+      friends: await Promise.all(f.list.map(async (a) => ({ id: Buffer.from(a).toString('base64url'), name: await accountName(a), where: whereOf(a) }))),
+      incoming: await Promise.all(f.incoming.map(async (r) => ({ id: Buffer.from(r.from).toString('base64url'), name: await accountName(r.from), at: r.at }))) });
   }
   // ask someone on the island (by their island id) -- they hear of it; both must log in; 50 at most; a few asks a minute
   if ((pathname === '/api/friends/request' || pathname === '/api/friends/answer' || pathname === '/api/friends/remove') && req.method === 'POST') {

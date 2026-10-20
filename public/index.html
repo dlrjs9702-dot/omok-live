@@ -116,6 +116,7 @@
         <button id="islandActBtn" class="islandCtl islandActBtn" type="button" aria-label="상호작용 (SPACE)">상호<br>작용</button>
         <button id="islandWalkBtn" class="islandCtl islandWalkBtn" type="button" aria-label="걸음 바꾸기 (느리게·보통)">걷기</button>
         <button id="islandRunBtn" class="islandCtl islandRunBtn" type="button" aria-label="누르고 있는 동안 뛰기">뛰기</button>
+        <button id="homeEditBtn" class="homeEditBtn hidden" type="button">꾸미기</button>
         <button id="islandBikeBtn" class="islandCtl islandBikeBtn hidden" type="button" aria-label="자전거 타기·내리기 (B)" aria-pressed="false">🚲</button>
         <!-- v1.10.67 조이스틱 조정: drag the stick to move it, the slider sizes it (kept on this device) -->
         <div id="stickEditBar" class="stickEditBar hidden" role="group" aria-label="조작 버튼 위치·크기 조정"><span id="stickEditHint">조작 버튼을 끌어서 옮기고, 누른 버튼의 크기를 바꾸세요 · 조이스틱</span><label>크기 <input id="stickSizeInput" type="range" min="80" max="180" step="2" /></label><button id="stickResetBtn" class="ghost tiny" type="button">기본값</button><button id="stickDoneBtn" class="primary tiny" type="button">완료</button></div>
@@ -1100,6 +1101,7 @@
         <button id="pointHistoryMore" type="button" class="ghost tiny hidden">더 보기</button>
       </section>
     </section>
+    <section id="myFriends" class="myInfoSection myFriends" role="list" aria-label="친구"></section><!-- 묶음 4 친구 -->
     <section class="myInfoSection" aria-labelledby="myInfoBirthdayTitle"><!-- B 47 생일 -->
       <div class="myInfoSectionHead"><h3 id="myInfoBirthdayTitle">생일</h3></div>
       <form id="birthdayForm" class="joinForm birthdayForm">
@@ -1158,6 +1160,7 @@
     <div class="recordsDialogHead"><h2 id="islandPlaceTitle"></h2><button id="islandPlaceCloseBtn" type="button" class="ghost tiny">닫기</button></div>
     <div id="islandPlaceList" class="islandPlaceList" role="list"></div>
     <button id="islandPlaceSubmit" type="button" class="secondary"></button>
+    <button id="homeApplyBtn" type="button" class="primary hidden">내 집 신청</button>
     <p id="islandPlaceStatus" class="skinShopStatus" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="namingDialog" class="recordsDialog namingDialog" aria-labelledby="namingTitle">
@@ -1278,6 +1281,7 @@
       <button id="adminWindowBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="plazaDialog">관리자 창</button>
       <button id="issueLogBtn" type="button" class="ghost hidden" aria-haspopup="dialog" aria-controls="issueDialog">문제 기록</button>
       <button id="furnitureStorageBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">가구 창고</button>
+      <button id="myHomeBtn" type="button" class="ghost" aria-haspopup="dialog" aria-controls="plazaDialog">내 집</button>
       <section class="gameMenuSettings" aria-labelledby="gameMenuSettingsTitle">
         <h3 id="gameMenuSettingsTitle">환경설정</h3>
         <div class="gameMenuThemes" role="radiogroup" aria-label="화면 테마">

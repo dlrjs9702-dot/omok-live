@@ -1092,6 +1092,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .myPetRow.walking{border-color:#34d399}
 :root[data-theme="light"] .myTransformRow{border:1px solid #d6c3a5}
 :root[data-theme="light"] .myTransformRow.chosen{border-color:#34d399}
+:root[data-theme="light"] .homeLots .selected,:root[data-theme="light"] .homeChoice .selected{outline:2px solid #23806f}
+:root[data-theme="light"] .homeEditBtn{background:rgba(37,99,235,.8);color:#fff;border:1px solid rgba(191,219,254,.7)}
 :root[data-theme="light"] .furnitureList .furniturePiece.selected{outline:2px solid #34d399}
 :root[data-theme="light"] .dressing>.skinShopBody .skinFilterBar{background:#fffaf1}
 :root[data-theme="light"] .dressing .skinCard.selected{outline:2px solid #22c55e}
