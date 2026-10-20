@@ -128,7 +128,11 @@ async function intoMall(page, place = null, isMobile = false) {
   // (on a busy runner the server may set me back from a first teleport, or not have my place yet when I press: to the
   // door and in again until I am inside)
   for (let tries = 0; tries < 4 && await page.evaluate(() => window.PlazaDebug().space) !== 'store'; tries += 1) {
-    await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
+    // (a slow entry from the last try may land me inside meanwhile: then no more door -- placed at it from inside, I would
+    // stand at the room's wall with no prompt)
+    const inside = () => page.evaluate(() => window.PlazaDebug().space === 'store');
+    await expect.poll(async () => { if (await inside()) return '백화점 들어가기'; await page.evaluate(() => window.PlazaDebug().place('store')); await page.waitForTimeout(600); return (await inside()) ? '백화점 들어가기' : page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('백화점 들어가기');
+    if (await inside()) break;
     await press();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 10000 }).toBe('store').catch(() => {});
   }
