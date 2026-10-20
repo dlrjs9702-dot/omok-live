@@ -5303,17 +5303,20 @@
   function closeDress(box) { if (!box || !dressRooms.has(box)) return; box.classList.add('hidden'); box.replaceChildren(); dressRooms.delete(box); plaza.controller?.tryOnClose?.(); }
   // an item's card or button: pointing at it, focusing it or pressing it shows it on (the look: what I wear with it)
   function dressOnHover(el, box, look, label) { const show = () => dressView(box, look(), label); el.addEventListener('pointerenter', show); el.addEventListener('focusin', show); el.addEventListener('click', show); }
-  function showTryOn(view, skins, skin) { dressView(document.getElementById(tryOnHosts[view]), { ...(skins.avatar?.look || {}), [skin.slot]: skin.id }, `${skin.name} · ${skin.slotLabel || ''}`); }
+  // (2026-10-20 내 정보 변신 온·오프: while transformed, another item is shown on me untransformed -- the island keeps the transformation)
+  const tryOnLook = (base, skin) => { const look = { ...base, [skin.slot]: skin.id }; if (skin.slot !== 'transform') delete look.transform; return look; };
+  const tryOnLabel = (base, skin) => `${skin.name} · ${skin.slotLabel || ''}${base.transform && skin.slot !== 'transform' ? ' · 변신 중이라 섬에서는 변신 모습이에요' : ''}`;
+  function showTryOn(view, skins, skin) { const base = skins.avatar?.look || {}; dressView(document.getElementById(tryOnHosts[view]), tryOnLook(base, skin), tryOnLabel(base, skin)); }
   function hideTryOn(view) { closeDress(document.getElementById(tryOnHosts[view])); }
   const dressPicked = { shop: null, mine: null }; // the card picked in each window (its skin id)
   function skinCardButtons(card, skin, view, skins) {
     if (!canTryOn(skin)) return;
-    const box = document.getElementById(tryOnHosts[view]); const base = () => skins.avatar?.look || {}; const look = () => ({ ...base(), [skin.slot]: skin.id });
+    const box = document.getElementById(tryOnHosts[view]); const base = () => skins.avatar?.look || {}; const look = () => tryOnLook(base(), skin);
     card.dataset.pick = skin.id; card.classList.toggle('selected', dressPicked[view] === skin.id);
-    card.addEventListener('pointerenter', () => dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()));
+    card.addEventListener('pointerenter', () => dressView(box, look(), tryOnLabel(base(), skin), base()));
     card.addEventListener('click', (event) => { // (its own button still does its own thing -- the bar's buttons press it)
       dressPicked[view] = skin.id; for (const c of card.parentElement.parentElement.parentElement.querySelectorAll('.skinCard.selected')) c.classList.remove('selected'); card.classList.add('selected');
-      dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()); dressDetail(view, skin); dressBarSync(view);
+      dressView(box, look(), tryOnLabel(base(), skin), base()); dressDetail(view, skin); dressBarSync(view);
       if (event.target.closest('button')) return;
     });
     if (dressPicked[view] === skin.id) { dressDetail(view, skin); }
@@ -5393,6 +5396,42 @@
   }
 
   let myInfoSkinSlot = '';
+  // (사용자 2026-10-20 「캐릭터 변신도 내 정보에서 다른 스킨 장착할 때 온·오프」) the transformations I own, on and off here as
+  // at the 변신 의상실 -- what else I wear stays saved under it and shows again once it is off; buying stays the 의상실's
+  let myTransforms = null; let myTransformBusy = false;
+  function transformBlock() {
+    const box = document.createElement('div'); box.className = 'myTransforms'; box.id = 'myTransforms';
+    const act = (t, label, cls) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.dataset.transform = t.character;
+      b.addEventListener('click', async () => {
+        if (myTransformBusy) return; myTransformBusy = true; b.disabled = true;
+        try {
+          const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify(t.chosen ? { skinId: null, game: 'avatar', slot: 'transform' } : { skinId: t.skinId }) });
+          applySkinEquipment(data); myTransforms = (await api('/api/transformations')).list; showToast(t.chosen ? '변신을 풀었어요' : `${t.name}(으)로 변신했어요`); renderMyInfoSkins();
+        } catch (error) { showToast(error.message, 4000); } finally { myTransformBusy = false; b.disabled = false; }
+      });
+      return b;
+    };
+    const draw = () => {
+      const owned = (myTransforms || []).filter((t) => t.owned); const on = owned.find((t) => t.chosen);
+      const line = document.createElement('div'); line.className = 'myTransformLine';
+      const text = document.createElement('strong'); text.textContent = on ? `변신 중: ${on.name}` : '변신 안 함'; line.append(text);
+      if (on) line.append(act(on, '풀기', 'ghost tiny'));
+      const list = document.createElement('div'); list.className = 'myTransformList'; list.setAttribute('role', 'list');
+      for (const t of owned) {
+        const row = document.createElement('div'); row.className = `myTransformRow${t.chosen ? ' chosen' : ''}`; row.setAttribute('role', 'listitem');
+        const name = document.createElement('span'); name.textContent = t.name;
+        row.append(name, act(t, t.chosen ? '변신 풀기' : '변신하기', t.chosen ? 'ghost tiny' : 'primary tiny'));
+        dressOnHover(row, document.getElementById(tryOnHosts.mine), () => ({ ...(myInfoSkins?.avatar?.look || {}), transform: t.character }), t.name);
+        list.append(row);
+      }
+      const hint = document.createElement('p'); hint.className = 'lookMeta'; hint.textContent = '변신은 백화점 변신 의상실에서 살 수 있어요.';
+      box.replaceChildren(line, owned.length ? list : hint);
+    };
+    if (myTransforms) draw();
+    api('/api/transformations').then((r) => { myTransforms = r.list; if (box.isConnected) draw(); }).catch(() => {});
+    return box;
+  }
   function renderMyInfoSkins() {
     myInfoSkinBody.replaceChildren();
     if (!myInfoSkins) return;
@@ -5423,6 +5462,7 @@
     const family = families.find((item) => item.family === myInfoSkinFamily);
     if (!family) return;
     if (family.family === 'avatar') {
+      myInfoSkinBody.append(transformBlock()); // (2026-10-20: on and off here too)
       const choice = renderTransformationChoice(myInfoSkins);
       if (choice) myInfoSkinBody.append(choice);
     }

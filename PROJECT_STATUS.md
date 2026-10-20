@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.107 패치 묶음 2: 가구점(백화점 2층), 내 정보 변신 켜기·끄기
+
+- 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 2, `docs/furniture-shop-20261019.md`(사용자 확정), `docs/shop-tryon-20261019.md` 「내 정보에서 변신 켜기/끄기」.
+- 가구점(`public/plaza/island-furniture.js`, 브라우저·서버 공용): 상품 145(48 모양 × 색 판, 이름·구역·희귀도), 2층 방(1층처럼 섬 밖, 반 바퀴 돌린 방), 구역 4 × 받침대 3 + 뒷벽 걸이 3 + 넓은 자리 1 = 하루 16점, 늘 파는 4점. `displayOf(day)` 서울 날짜로 모두 같은 진열(흔함 6·보통 3·드묾 1 가중치, 모양 겹침 없음, 벽면 수조는 넓은 자리에서 약 9일에 1번).
+- 서버: 1층 왼쪽 벽 승강기(`IslandStore.LIFT`) ↔ 2층(`/api/island/furniture/up·down`, `furnitureInside` ⊂ `storeInside`, space `furniture`), `GET /api/island/furniture`(진열·팔림·내 오늘 수), `POST .../buy`(그 가구 옆에서, worldEdit로 먼저 온 한 명만 — 늦은 사람 `SOLD`·포인트 그대로, 전시품 하루 `furniture:perDay` 3점, 늘 파는 것은 요청 번호마다 한 번), `GET .../mine`(가구 창고 — world `furniture:<계정>`, 300점까지). 결제는 새 `pointStore.charge`(JSON·PostgreSQL, 정산 id `furniture:…` 한 번만, 원장 사유 furniture). 팔리면 SSE `furniture`.
+- 경제 값: `furniture:common` 3,000 · `uncommon` 6,000 · `rare` 15,000 · `base` 1,000 · `perDay` 3.
+- 화면: 2층(assets 57 `furniture-v1` 157개 — 방·승강기·간판·구역 러그·받침대·가격표 받침·「팔렸어요」 상자·계산대), 받침대 위 가구와 가격 글씨, SPACE로 가구 창(사기), 메뉴 「가구 창고」(꾸미기 창의 3D 미리보기에 가구 — `tryOn(canvas, { model })`). 계단 모델은 쓰지 않음(승강기로 오르내림).
+- 내 정보 변신: 꾸미기 창 위 「변신 중: ○○ · 풀기」 줄과 가진 변신 목록(변신하기/변신 풀기 = 기존 장착·해제, 장소 확인 없음). 변신 중에 다른 항목을 가리키면 3D는 변신을 끈 모습 + 「변신 중이라 섬에서는 변신 모습이에요」.
+- 검증: 단위(가구점 진열 규칙, 승강기·동시 구매·하루 3점·늘 파는 것·창고), e2e 가구점·내 정보 변신(PC·휴대폰), 꾸미기 창·dalmaru-walk. Codex 검토 대기(10/25).
+
 ## v1.10.106 F1·G·F2: 가는 몸의 옷·소품, 걷기·뛰기 다듬기
 
 - 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「F1 완료」「G 완료」, F2(assets 50) — 묶음 1과 2 사이에 끼운 에셋 연결(`docs/patch-bundles-20261020.md`).
@@ -32,14 +42,3 @@
 - 문제 기록 허용: 관리자 계정 목록의 「문제 기록 허용」(world `issueWriters`), 허용 계정은 `/api/issues`로 쓰기(하루 30)·자기 기록만 보기, 관리자 목록에 쓴 사람과 거르기.
 - 옛 섬(`ISLAND_MAP=classic`) 코드·시험은 이사 결과(운영 로그) 확인 전까지 되돌릴 길로 남김 — 다음 묶음에서 정리.
 - 검증: 단위 전체(Windows 줄바꿈 6개 제외), dalmaru-walk mapCheck(보이지 않는 벽·뜬 것·묻힌 것·못 가는 곳 0), island-admin-look·dress-room e2e, 대청마당 그리기 호출 400(main 410)·삼각형 +6%. Codex 검토 대기(사용량 한도 10/25).
-
-## v1.10.104 달마루섬 개편 5단계: 모두 새 섬으로 이사
-
-- 근거: gamecenter-notes `docs/dalmaru-implementation-20261019.md` 5단계, 확정 순서 3. 서버 기본 섬이 달마루섬(`island-terrain.js`가 `dalmaru-island.js`로 만듦; `ISLAND_MAP=classic`이면 지금 섬 — 옛 섬 코드는 다음 배포에서 정리). 페이지는 섬 스크립트보다 먼저 `/plaza/island-live.js`로 섬을 알게 됨.
-- 이사(`dalmaruMoveIn`, 서버 시작 때 한 번 — world `dalmaruMoved`): 심은 꽃은 씨앗·나무는 묘목으로 주인 가방에(포인트 없음, 쪽지 「달마루섬 이사 돌려받기」), 땅 비움; 잡초 한 번 새로(`dalmaruWeeds`). PostgreSQL은 추가만.
-- 서버가 새 섬 기준: 주민 순환(걷는 땅·절벽 정면·구조물 원), 퀘스트·사진 자리(`PLACES.quests`), 생활 자원·해안 자리·열매 나무, 잡초 1,400, 위치 경계 200, 할로윈·겨울 장식(대청마당 가운데·새 섬 들).
-- 관공서: 창구 4개(민원·세금·예금·**개명 신청** — 작명소 업무, 6.8 m 간격), 절벽 정면 앞에 담장 마당·시장 정문(지금 섬 마당 그대로, 틀은 정면 앞면이 옛 관공서 앞면 자리). 백화점 9구역 **노점**(상인 매입). 새 섬에서는 밖의 작명소·상인 없음.
-- 낚시 물가 5종(`fishWater`: sea·bay·lake·river·pool, 출현표는 바다/강 표에서 — 윤슬만은 먼바다 물고기 빼고, 호수는 개울 물고기 빼고, 폭포 웅덩이는 흔한 것 빼고), 폭포 2곳(떨어지는 물면·거품·물보라). 강 낚시 찌가 새 섬 강·호수·웅덩이 위로.
-- 섬 꾸밈: 길 가로등 61개(밤길·할로윈 깃발줄), 강둑 자갈·꽃·계절 장식과 굽이 돌, 산책로 갈림 화분. 고침: 주민 첫 자리 겹침(첫 장면 순간이동), 능선 계단 양 끝의 보이지 않는 난간 충돌.
-- 시험: 단위·e2e를 두 섬 모두에서(지금 섬 모양 전용 시험은 달마루섬에서 건너뜀), 새 섬 열차·계절·이사·창구·노점·물가 시험 추가.
-- 검증: 단위 전체(두 섬 — Windows 줄바꿈 6개 제외), e2e 섬 시험(달마루섬). Codex 검토 대기(사용량 한도 10/25).
