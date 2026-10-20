@@ -17,7 +17,9 @@
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
   // ---- the plan (the numbers in the plan page) ----
-  const R_OUT = 165, R_BAY = 95, BAY_Z = 95, R_ISLE = 34;
+  // (문제 기록 14 「빈 집터가 공중에 떠 있어. 섬을 확장하는 방향으로」: 툇마루섬 34 -> 41 m, every lot on its flat top at least
+  // 2 m in from where the beach starts; 윤슬다리 shortened to meet it, 툇마루역 still clear -- the ring is r 194 since 묶음 5)
+  const R_OUT = 165, R_BAY = 95, BAY_Z = 95, R_ISLE = 41;
   const TIP_Z = (R_OUT * R_OUT - R_BAY * R_BAY + BAY_Z * BAY_Z) / (2 * BAY_Z); // 143.3
   const TIP_X = Math.sqrt(R_OUT * R_OUT - TIP_Z * TIP_Z); // 81.8
   const ISLE = { x: 0, z: TIP_Z, r: R_ISLE };
@@ -107,7 +109,7 @@
     return deg >= 115 && deg < 225 ? 0 : deg >= 225 && deg < 315 ? 1 : 2;
   }
   const BRIDGE_Z = 140; // 윤슬다리 (assets 55 bridge.yunseul, 50 m): centred over the 45 m of water between 툇마루섬 and each cape, 2.5 m on land at each end
-  const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 55.35, z: BRIDGE_Z, length: 50, ends: [[sgn * 30.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] }));
+  const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 59.35, z: BRIDGE_Z, length: 42, ends: [[sgn * 38.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] })); // (the model is 50 m: drawn to this length)
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {

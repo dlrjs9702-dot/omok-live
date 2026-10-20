@@ -392,7 +392,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
     for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, b.half * 2)), post, side * (b.w / 2 - 0.1), b.deck + 0.9, 0, visual); rail.castShadow = false; }
     if (b.model) { // (달마루섬 윤슬다리: its own model, whose arched deck is the one walked on -- deckAt)
-      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); scene.add(h); assets?.attach(b.model, h, visual); continue;
+      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = (b.half * 2) / 50; scene.add(h); assets?.attach(b.model, h, visual); continue;
     }
     // in the bridge's frame (z along it, the entry turns the model's length onto z and sizes it by `scale`)
     g.userData.fit = (v) => {
