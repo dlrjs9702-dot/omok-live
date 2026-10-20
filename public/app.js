@@ -1834,6 +1834,7 @@
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
+      plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); // (자전거)
       refreshPlazaAvatar(); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
@@ -2379,10 +2380,15 @@
     try { const r = await api('/api/island/goods/use', { method: 'POST', body: JSON.stringify({ itemId: kind, requestId: crypto.randomUUID() }) }); if (islandBagDialog.open) islandBagDialog.close(); plaza.controller?.useShow?.(kind); if (r.bag) drawIslandBag(r.bag); }
     catch (error) { showToast(error.message); }
   }
+  // 자전거 (docs/bicycle-20261020.md): the colours in my bag go to the island (B or 🚲 rides one); the button only with a bike
+  const bikeBtn = byId('islandBikeBtn');
+  const showBikes = (bag) => { const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); bikeBtn.classList.toggle('hidden', !colors.length); };
+  async function refreshBikes() { try { showBikes(await api('/api/island/bag')); } catch {} }
+  bikeBtn.addEventListener('click', () => { plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); });
   async function openIslandBag() {
     showDex(false);
     if (!islandBagDialog.open) islandBagDialog.showModal();
-    try { drawIslandBag(await api('/api/island/bag')); } catch (error) { showToast(error.message); }
+    try { const bag = await api('/api/island/bag'); drawIslandBag(bag); showBikes(bag); } catch (error) { showToast(error.message); }
   }
   function drawIslandPlace(bag) {
     const list = document.getElementById('islandPlaceList'); list.replaceChildren();
@@ -2561,7 +2567,7 @@
   // v1.10.92 잡화점 (IDEAS #future-general-store): in and out like the 민원실; inside, standing at a good on its shelf, SPACE
   // opens it (what it is for, 1·5·10 to buy -- paid and in the bag at once); the keeper behind the counter greets
   let storeBusy = false; let storeGoods = [];
-  const GOOD_USE = { bait: '가방에 있으면 낚시할 때 자동으로 씁니다. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 씁니다.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
+  const GOOD_USE = { bike: '가방에 있으면 섬에서 B(휴대폰은 🚲 단추)로 타고 내려요. 걷기보다 빨라요(실내·계단·다리·사람 많은 곳에서는 내려요).', bait: '가방에 있으면 낚시할 때 자동으로 씁니다. 입질이 빨라져요.', show: '가방에서 「쓰기」를 누르면 그 자리에서 모두가 볼 수 있어요.', gift: '다른 사람에게 가방 물건을 선물할 때 하나 씁니다.', errand: '주민이 사다 달라고 부탁하는 물건이에요.', keep: '기념으로 간직하는 물건이에요.' };
   async function storeDoor(entering) {
     if (storeBusy) return; storeBusy = true;
     try {
@@ -2687,14 +2693,14 @@
   let goodBusy = false;
   function openGood(id) {
     const g = storeGoods.find((x) => x.id === id); if (!g || !g.price) { showToast('곧 판매할 물건이에요.'); return; }
-    const img = document.createElement('img'); img.src = `/assets/items/goods/${id}.png`; img.alt = ''; img.className = 'goodIcon';
+    const img = GOOD_ICONS.has(id) ? Object.assign(document.createElement('img'), { src: `/assets/items/goods/${id}.png`, alt: '', className: 'goodIcon' }) : Object.assign(document.createElement('span'), { textContent: '🚲', className: 'goodIcon' }); // (자전거: no picture of its own -- its mark)
     const name = document.createElement('strong'); name.textContent = `${g.name} · ${Number(g.price).toLocaleString('ko-KR')}P`;
     const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = GOOD_USE[g.use] || '';
     const row = document.createElement('div'); row.className = 'goodBuy';
     for (const qty of [1, 5, 10]) { const b = document.createElement('button'); b.type = 'button'; b.className = qty === 1 ? 'primary' : 'secondary'; b.textContent = `${qty}개 · ${Number(g.price * qty).toLocaleString('ko-KR')}P`; b.dataset.qty = qty;
       b.addEventListener('click', async () => {
         if (goodBusy) return; goodBusy = true;
-        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/store/buy', { method: 'POST', body: JSON.stringify({ itemId: id, qty, requestId: crypto.randomUUID() }) }); showToast(`🛍️ ${g.name} ${qty}개를 가방에 넣었어요.`); loadPoints(); }
+        try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); await api('/api/island/store/buy', { method: 'POST', body: JSON.stringify({ itemId: id, qty, requestId: crypto.randomUUID() }) }); showToast(`🛍️ ${g.name} ${qty}개를 가방에 넣었어요.`); loadPoints(); if (id.startsWith('bike_')) refreshBikes(); }
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);

@@ -1058,6 +1058,13 @@ const townhallInside = new Set();
 const storeInside = new Set(); // v1.10.92 잡화점: who is in the store's room (the same rules as the 민원실)
 const furnitureInside = new Set(); // 묶음 2 가구점: who is up on the 2nd floor (still in the store: storeInside too)
 const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the 3rd floor (in the store too)
+// 자전거 (docs/bicycle-20261020.md): the colours in an account's bag, read at most every 30 s (a pose says which it rides)
+const BIKE_COLORS = ['mint', 'red', 'sky', 'butter']; const bikesOf = new Map(); // account -> { at, colors }
+async function bikeColors(account) {
+  const hit = bikesOf.get(account); if (hit && nowMs() - hit.at < 30000) return hit.colors;
+  const colors = ((await pointStore.islandBag(account)).items || []).map((e) => e.itemId).filter((id) => id.startsWith('bike_')).map((id) => id.slice(5)).filter((c) => BIKE_COLORS.includes(c));
+  bikesOf.set(account, { at: nowMs(), colors }); return colors;
+}
 // the floor I am on in the 백화점, its room's way of standing, and where its lift is
 const mallFloor = (token) => (!storeInside.has(token) ? 0 : petshopInside.has(token) ? 3 : furnitureInside.has(token) ? 2 : 1);
 const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFurniture, space: 'furniture' }, 3: { R: IslandPetShop, space: 'petshop' } };
@@ -1183,7 +1190,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
+  return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null })) }; // (자전거: the colour ridden)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
@@ -4390,6 +4397,7 @@ async function requestHandler(req, res) {
       pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
+      bike: BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null, // (자전거: theirs, out on the island)
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       space: townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
@@ -4798,7 +4806,7 @@ async function requestHandler(req, res) {
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
-    if (out.applied) notifyPointsChanged([account]);
+    if (out.applied) notifyPointsChanged([account]); bikesOf.delete(account); /* (자전거: a new one rides at once) */
     return sendJson(res, 200, { ok: true, itemId: s.id, qty, bag: out.bag, balance: out.balance ?? null });
   }
   if ((pathname === '/api/island/townhall/enter' || pathname === '/api/island/townhall/leave') && req.method === 'POST') {
@@ -5535,7 +5543,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const body = await parseJson(req);
-    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs());
+    const result = await pointStore.islandGive({ userId: pointAccountForSession(session), claimId: crypto.randomUUID(), itemId: String(body.itemId), qty: Number(body.qty) || 1, meta: body.meta || null }, nowMs()); bikesOf.delete(pointAccountForSession(session));
     return sendJson(res, 200, { ok: true, ...result });
   }
 

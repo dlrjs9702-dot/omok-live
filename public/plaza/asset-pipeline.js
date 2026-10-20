@@ -133,7 +133,9 @@
       seekOnce(elapsed) { if (once && onceHeld) { const time=Math.min(once.getClip().duration,Math.max(0,elapsed)*once.timeScale); mixer.update(Math.max(0,(time-once.time)/once.timeScale)); } },
       onceLeft() { return once && !onceHeld && once.isRunning() ? (once.getClip().duration - once.time) / (once.timeScale || 1) : 0; }, // v1.10.89: seconds left of a one-off clip
       finishOnce() { onceHeld = false; once?.stop(); once = null; state = ''; current = null; },
-      loop(name) { const action = actions[name]; if (!action) return false; action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = 1; held = name; if (!once) { state = name; fadeTo(action); } return true; },
+      loop(name, rate = 1) { const action = actions[name]; if (!action) return false; if (held === name) { action.timeScale = rate; return true; } action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = rate; held = name; if (!once) { state = name; fadeTo(action); } return true; }, // (자전거: the rate kept up to date while held)
+      heldTime() { return held && actions[held] ? actions[held].time : 0; },
+      get held() { return held; },
       release() { held = null; if (!once) { state = 'idle'; fadeTo(actionFor('idle')); } },
       dispose() { mixer.stopAllAction(); mixer.uncacheRoot(rootObject); },
     };

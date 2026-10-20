@@ -144,7 +144,7 @@
   // colour of each dyed item (염색, the part's dye material only). A player wearing an item that has no part yet keeps
   // the procedural character (WARDROBE null): nobody's item is swapped for something else.
   const CH = '/assets/island/characters';
-  const MOTIONS = ['Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround', 'Nod', 'Clap', 'PickFruit',
+  const MOTIONS = ['BikeRide', 'BikeIdle', 'Idle', 'Walk', 'Run', 'Wave', 'Interact', 'Cheer', 'GatherWeed', 'Pickup', 'Give', 'Receive', 'PhotoPose', 'CarryIdle', 'SitDown', 'SitIdle', 'StandUp', 'GuardIdle', 'Bow', 'Usher', 'FishCast', 'FishWait', 'FishReel', 'FishCatch', 'FishBite', 'FishMiss', 'RideLookAround', 'Nod', 'Clap', 'PickFruit',
     'SlowWalk', 'IdleLookAround', 'NoticeNeighbor', 'GreetingSmall']; // v1.10.79 assets 36
   // v1.10.79 3인칭 동작·어깨 정비 (assets 36): the motions hold the arms where they belong (no runtime arm tuck any more);
   // the shoulders' skin weights were repaired on the bare body and on 운동복·후드 together with a body made for each
@@ -152,7 +152,7 @@
   REGISTRY['character.base'] = { url: `${CH}/body_core.glb`, low: { url: `${CH}/body_core_low.glb` }, near: 22, rotationY: Math.PI,
     bare: { url: `${CH}/body_bare.glb`, lowUrl: `${CH}/body_bare_low.glb` },
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
-    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
+    animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', bikeRide: 'BikeRide', bikeIdle: 'BikeIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
     speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (걸음 3판 2026-10-20 사용자 「추천대로」: made for 1, 4.2 and 6.2 m/s -- 2, 2.5 and 4 steps a second, the feet gliding a little as in 동물의 숲)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
@@ -416,6 +416,11 @@
   for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
   for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60 });
   REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
+  // 자전거 (assets 61 bike-v1): the frame in four colours, a wheel (front and back), the crank -- the game turns the last two;
+  // in the 잡화점 a small one on the floor
+  const BK = '/assets/island/bike-v1'; const bk = (file, extra = {}) => ({ url: `${BK}/${file}.glb`, low: { url: `${BK}/${file}_low.glb` }, near: 30, ...extra });
+  for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`); REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { scale: 0.55, shadows: false }); }
+  REGISTRY['bike.wheel'] = bk('bike_wheel'); REGISTRY['bike.crank'] = bk('bike_crank');
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
