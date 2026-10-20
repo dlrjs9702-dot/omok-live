@@ -46,6 +46,7 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   for (const [itemId, qty] of [['fish_goby', 2], ['fish_giant_tuna', 1], ['insect_ladybird', 1]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
 
   // 관공서 민원 창구 → 「내 집 신청」: a free lot, the blue roof, paid at once
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); } // (both start at the same spot: the server never lets one pass through the other -- round them first)
   await through(page, 'townhall', '관공서 들어가기', 'townhall');
   await expect.poll(async () => { await page.evaluate(() => { const c = window.IslandTerrain.plazaProps().seats.find((x) => x.id === 'c-civil'); window.PlazaDebug().teleport(c.x, c.z + 1.1); }); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 15000 }).toContain('앉아서 민원 창구 업무');
   await press();
@@ -138,6 +139,7 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   test.setTimeout(600000);
   const { a, b, page, press, openMenu, goTo, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'n' : 'q');
   // the house (the 민원실, as the other test does by its window)
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); } // (both start at the same spot: the server never lets one pass through the other -- round them first)
   await through(page, 'townhall', '관공서 들어가기', 'townhall');
   const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
   expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'green' })).status).toBe(200);
