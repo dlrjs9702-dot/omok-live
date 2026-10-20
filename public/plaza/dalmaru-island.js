@@ -7,8 +7,8 @@
 // server's own island; TERRAIN_ONLY otherwise). The server builds it with island-terrain.js (ISLAND_MAP=dalmaru).
 (function (root, build) {
   if (typeof module === 'object' && module.exports) { module.exports = build; return; }
-  if (root.GC_ISLAND_MAP === 'dalmaru' && root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain, { live: Boolean(root.GC_ISLAND_LIVE) });
-}(typeof self !== 'undefined' ? self : this, (D, C, { live = false } = {}) => {
+  if (root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain); // (묶음 3: the only island)
+}(typeof self !== 'undefined' ? self : this, (D, C) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
@@ -101,6 +101,8 @@
     { tier: 'town', w: 3, pts: [doorPt('admin'), [-43, -73]] }, // → 관리실, from 대청마당
     { tier: 'walk', w: 2.8, pts: [[98.5, 52], [102.5, 53.2], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door
     { tier: 'walk', w: 2.8, pts: [[12, 141.5], [17, 149], [14, 158], [7, 162.5], [5.3, 165.3]] }, // 툇마루섬 → 툇마루역 (its way in: island-train pulls the stop's straight inward), round its pond
+    // (묶음 3: the villagers' places on a walk too -- the busker's corner, the builder by the stepping stones, the gazebo's grandpa)
+    { tier: 'trail', w: 2.4, pts: [[13.6, -5], [13.8, -9.6]] }, { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
     { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, 1.7), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
@@ -378,7 +380,7 @@
 
   return Object.freeze({
     ...C,
-    MAP: 'dalmaru', TERRAIN_ONLY: !live, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
+    MAP: 'dalmaru', GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,

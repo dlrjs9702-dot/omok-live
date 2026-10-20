@@ -526,50 +526,6 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   for (const who of [a, b]) await who.context.close();
 });
 
-// v1.10.0 게임 아일랜드 지형: start in the raised central plaza; the sea, streams and pond stop you while bridges and
-// the pier carry you; every facility's entrance stands on walkable ground; the map board opens the island map.
-test('게임 아일랜드 지형: 중앙광장 시작, 바다·물길은 막고 다리·선착장은 건넌다, 모든 시설 입구에 닿고 안내 지도가 열린다', async ({ browser, request }) => {
-  test.skip(DAL, "지금 섬 전용 (달마루섬: dalmaru-walk의 걷기·막힘 검사)");
-  test.setTimeout(90000);
-  const a = await intoPlaza(browser, request, '섬탐험');
-  const { page } = a;
-  const d = () => page.evaluate(() => window.PlazaDebug());
-  const start = await d();
-  expect(Math.hypot(start.x, start.z)).toBeLessThan(12); // the plaza (radius 16) around the fountain
-  const plazaH = await page.evaluate(() => window.PlazaDebug().heightAt(0, 8));
-  expect(plazaH).toBeGreaterThan(await page.evaluate(() => window.PlazaDebug().heightAt(0, 30)) + 0.4); // a little higher than around it
-  // about 40 s across: land reaches far out on both sides, the sea beyond
-  const reach = await page.evaluate(() => { const w = window.PlazaDebug().walkable; let east = 0; let west = 0; for (let x = 0; x < 140; x += 1) { if (w(x, 0)) east = x; if (w(-x, 0)) west = x; } return east + west; });
-  expect(reach / 5.2).toBeGreaterThan(30); expect(reach / 5.2).toBeLessThan(48);
-  // streams block, their bridges do not
-  const bridges = start.bridges; expect(bridges.length).toBeGreaterThanOrEqual(4);
-  for (const b of bridges) {
-    expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x, b.z])).toBe(true);
-    expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [b.x - b.uz * (b.w / 2 + 0.5), b.z + b.ux * (b.w / 2 + 0.5)])).toBe(false); // just past its rail: water
-  }
-  // every facility's entrance is reachable ground
-  const inside = await page.evaluate(() => ['store:exit', ...globalThis.IslandStore.SECTORS.map((s) => s.place)]); // (v1.10.92: the 백화점's own doors are in its room)
-  for (const [id, door] of Object.entries(start.doors)) if (!inside.includes(id)) expect(await page.evaluate(([x, z]) => window.PlazaDebug().walkable(x, z), [door.x, door.z]), id).toBe(true);
-  // walking south down the pier stops at its end, over the sea
-  const pier = start.pier;
-  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [pier.x, pier.z + pier.half - 3]);
-  await page.keyboard.down('ArrowDown'); // held until it reaches the end (a slow runner draws few frames), then a little more
-  await expect.poll(async () => (await d()).z, { timeout: 15000 }).toBeGreaterThan(pier.z + pier.half - 1.5);
-  await page.waitForTimeout(800); await page.keyboard.up('ArrowDown');
-  const end = await d();
-  expect(end.z).toBeLessThan(pier.z + pier.half + 0.5); // stopped at the end, over the sea
-  // the map board opens the island map in a window
-  await page.evaluate(() => window.PlazaDebug().place('map'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 안내 지도');
-  await page.keyboard.press('Space');
-  await expect(page.locator('#plazaDialog #islandMapCanvas')).toBeVisible();
-  const painted = await page.evaluate(() => { const c = document.getElementById('islandMapCanvas'); const px = c.getContext('2d').getImageData(c.width / 2, c.height / 2, 1, 1).data; return px[3] > 0; });
-  expect(painted).toBe(true);
-  await page.locator('#plazaCloseBtn').click();
-  await expectNoScriptError(page);
-  await a.context.close();
-});
-
 // v1.10.2 게임 아일랜드 채팅: Enter opens the input right on the island (walking keys type, they do not walk), Enter sends
 // through the lobby chat, the message pops up over the sender on both screens, Esc cancels, and the 「채팅」 tab shows
 // the conversation in a see-through panel. No facility needed.
@@ -944,38 +900,6 @@ test('당일 위치: 새로고침하면 오늘 마지막으로 서 있던 곳에
   await expect.poll(() => state(page).then((s) => s?.running), { timeout: 10000 }).toBe(true);
   const at = await state(page);
   expect(Math.hypot(at.x - SPOT.x, at.z - SPOT.z)).toBeLessThan(0.6);
-  await expectNoScriptError(page);
-  await a.context.close();
-});
-
-// v1.10.9 작명소: the desk on the shop street opens the window; a new name costs 30,000P (v1.10.35) on a second press, shows at
-// once, and the next change waits 24 hours.
-test('작명소: 상점가 책상에서 이름을 바꾸면 30,000P 차감, 바로 반영, 24시간 대기', async ({ browser, request }) => {
-  test.skip(DAL, '지금 섬 전용 (달마루섬: 관공서 개명 신청 창구 -- 가방·관공서·상인 시험과 townhall-room 단위 시험)');
-  test.setTimeout(120000);
-  const a = await intoPlaza(browser, request, '작명손님', 200_000);
-  const { page } = a;
-  const before = (await get(request, '/api/points', a.token)).data.balance;
-  await page.evaluate(() => window.PlazaDebug().place('naming'));
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 작명소');
-  await page.keyboard.press('Space');
-  await expect(page.locator('#namingDialog')).toBeVisible();
-  await expect(page.locator('#namingCurrent')).toContainText('작명손님');
-  await page.locator('#namingInput').fill('abc');
-  await page.locator('#namingSubmit').click();
-  await expect(page.locator('#namingStatus')).toContainText('한글·숫자·공백');
-  await page.locator('#namingInput').fill('새 손님 7');
-  await page.locator('#namingSubmit').click();
-  await expect(page.locator('#namingSubmit')).toHaveText('30,000P 변경 확인'); // nothing is taken by the first press
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before);
-  await page.locator('#namingSubmit').click();
-  await expect(page.locator('#namingStatus')).toContainText('새 손님 7');
-  await expect(page.locator('#namingCurrent')).toContainText('새 손님 7');
-  await expect(page.locator('#namingWait')).toContainText('다시 바꿀 수 있습니다');
-  await expect(page.locator('#namingSubmit')).toBeDisabled();
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 30_000);
-  await expect(page.locator('#identityLabel')).toContainText('새 손님 7');
-  await page.locator('#namingCloseBtn').click();
   await expectNoScriptError(page);
   await a.context.close();
 });

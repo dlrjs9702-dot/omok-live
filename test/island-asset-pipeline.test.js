@@ -121,54 +121,6 @@ test('운영 등록부: 연결한 모델은 (계절 대상은 사계절) 파일�
   }
 });
 
-// v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전 (사용자 결정 2026-10-05; the v1.10.19 monthly whole-island season
-// is gone): four zones always show the four seasons, the central plaza is neutral, at 00:00 Asia/Seoul every season
-// moves one zone clockwise and the arrangement comes back every 4 days; only the seasons move, never places.
-test('게임 아일랜드 계절 구역: 중앙광장 중립, 섬은 네 구역으로 고르게 나뉘고 경계는 직선이 아니다', { skip: require('../public/plaza/island-terrain.js').MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
-  const T = require('../public/plaza/island-terrain.js');
-  assert.equal(T.seasonZoneAt(0, 0), -1);
-  for (const id of ['board', 'attendance', 'map', 'donate']) assert.equal(T.seasonZoneAt(T.SPOTS[id].x, T.SPOTS[id].z), -1, `${id}: 광장 중립`);
-  for (const [x, z] of [[0, 10], [12, -12], [-15, 15]]) assert.equal(T.seasonZoneAt(x, z), -1);
-  // far from the edges: north, east, south, west are zones 0..3 (clockwise seen from above, north = -z)
-  assert.equal(T.seasonZoneAt(0, -70), 0); assert.equal(T.seasonZoneAt(70, 0), 1); assert.equal(T.seasonZoneAt(0, 70), 2); assert.equal(T.seasonZoneAt(-70, 0), 3);
-  const counts = [0, 0, 0, 0]; let land = 0;
-  for (let x = -130; x <= 130; x += 2) for (let z = -130; z <= 130; z += 2) {
-    if (!T.walkable(x, z)) continue;
-    land += 1; const zone = T.seasonZoneAt(x, z); if (zone >= 0) counts[zone] += 1;
-  }
-  for (const n of counts) assert.ok(n > land * 0.18 && n < land * 0.32, `구역 크기 ${counts}`);
-  // an edge is not one straight line: along the north-east diagonal the zone changes back and forth with distance
-  const along = []; for (let r = 30; r <= 110; r += 4) along.push(T.seasonZoneAt(r * Math.SQRT1_2, -r * Math.SQRT1_2));
-  assert.ok(new Set(along).size === 2 && along.some((zone, i) => i > 0 && zone !== along[i - 1]), along.join(''));
-  // a place's zone never changes (the day only moves the seasons)
-  assert.equal(T.seasonZoneAt(40, -50), T.seasonZoneAt(40, -50));
-});
-
-test('게임 아일랜드 계절 회전: 날마다 네 계절이 모두 있고 서울 00:00에 시계방향으로 한 구역, 4일마다 원래대로', { skip: require('../public/plaza/island-terrain.js').MAP === 'dalmaru' && '지금 섬 전용 (달마루섬: dalmaru 검사)' }, () => {
-  const T = require('../public/plaza/island-terrain.js');
-  const kst = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 9, min); // Seoul wall time -> ms
-  const day = T.seasonDay(kst(2026, 10, 5, 12));
-  for (let d = day; d < day + 8; d += 1) {
-    const seasons = [0, 1, 2, 3].map((zone) => T.zoneSeason(zone, d));
-    assert.deepEqual([...seasons].sort(), ['autumn', 'spring', 'summer', 'winter']); // all four, every day
-    for (let zone = 0; zone < 4; zone += 1) {
-      assert.equal(T.zoneSeason((zone + 1) % 4, d + 1), T.zoneSeason(zone, d)); // a season moves one zone clockwise
-      assert.equal(T.zoneSeason(zone, d + 4), T.zoneSeason(zone, d)); // back every 4 days
-    }
-    assert.equal(T.zoneSeason(-1, d), null); // the plaza has none
-  }
-  // the day turns at 00:00 Seoul, not at the viewer's or UTC midnight
-  assert.equal(T.seasonDay(kst(2026, 10, 5, 23, 59)), T.seasonDay(kst(2026, 10, 5, 0, 0)));
-  assert.equal(T.seasonDay(kst(2026, 10, 6, 0, 0)), T.seasonDay(kst(2026, 10, 5, 23, 59)) + 1);
-  assert.equal(T.seasonDay(Date.UTC(2026, 9, 5, 15, 0)), T.seasonDay(kst(2026, 10, 6, 0, 0))); // 15:00 UTC = 00:00 KST
-  assert.equal(T.seasonAt(0, -70, kst(2026, 10, 5, 12)), T.zoneSeason(0, day));
-  assert.equal(T.seasonAt(0, 0, kst(2026, 10, 5, 12)), null);
-  // month ends and years do not matter any more: only the count of days
-  assert.equal(T.seasonDay(kst(2027, 1, 1)) - T.seasonDay(kst(2026, 12, 31)), 1);
-  assert.equal(P.NEUTRAL_LOOK, 'summer'); // the plaza's seasonal props show the plain green files
-  assert.equal(P.seasonOf, undefined); // the monthly rule is gone
-});
-
 test('에셋 등록부 조회: 비활성·운영 차단·주소 없음은 쓰지 않고, 구체 id부터 고른다', () => {
   const registry = {
     'cottage': { url: '/assets/island/cottage.glb' },

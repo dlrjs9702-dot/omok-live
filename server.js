@@ -935,7 +935,7 @@ async function errandView(account) {
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
-const OPS_DEFAULTS = { signups: true, messenger: true, dalmaruPreview: false }; let opsCache = null; // (달마루섬 미리보기: the administrator's island only)
+const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
@@ -3499,7 +3499,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.110' });
+    return sendJson(res, 200, { ok: true, version: '1.10.111' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5989,8 +5989,7 @@ async function requestHandler(req, res) {
   // the island they have
   if (pathname === '/api/island/map' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
-    if (IslandTerrain.MAP === 'dalmaru') return sendJson(res, 200, { ok: true, map: 'dalmaru', live: true }); // (5단계: the server's own island, everyone's)
-    return sendJson(res, 200, { ok: true, map: session.role === 'admin' && (await opsSwitches()).dalmaruPreview === true ? 'dalmaru' : 'classic' });
+    return sendJson(res, 200, { ok: true, map: 'dalmaru', live: true }); // (5단계: the server's own island, everyone's -- 묶음 3: the only one)
   }
   if (pathname === '/api/admin/switches' && (req.method === 'GET' || req.method === 'POST')) { // v1.10.90 운영 스위치
     if (!requireAdmin(req, res)) return;
@@ -6654,7 +6653,7 @@ async function requestHandler(req, res) {
     if (pathname === '/herosurv/') return browserBlocked(req) ? sendChromeOnly(res) : sendHerosurv(res);
     // 달마루섬 5단계: the server's own island, told before the island's scripts load (island-map.js) -- a page on it never
     // loads twice to learn the map; on 지금 섬 nothing (the administrator's preview keeps its own way)
-    if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end(IslandTerrain.MAP === 'dalmaru' ? "self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n" : '\n'); }
+    if (pathname === '/plaza/island-live.js') { res.writeHead(200, securityHeaders({ 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })); return res.end("self.GC_ISLAND_MAP = 'dalmaru'; self.GC_ISLAND_LIVE = true;\n"); }
     if (await serveVendor(req, res, pathname)) return;
     if (await serveStatic(res, pathname, req)) return;
   }
@@ -6750,7 +6749,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.110 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.111 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
