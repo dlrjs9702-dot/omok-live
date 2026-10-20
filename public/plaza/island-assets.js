@@ -402,8 +402,8 @@
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
-  // parts (hair -- but the two hanging tails, made in F2 --, hats, face) and the IP sets are narrowed at run time as before (the head is not narrowed anyway)
-  const HEAD = /\/wear\/(hair(?!_ponytail|_twin_tail)|hat|eyes|nose|mouth|face_|cat_ears|x2_hair|x2_hat|animal_[a-z]+_hat)|\/wear-winter\/wear_hat|\/wear-ip\//;
+  // parts (hair, hats, face) and the IP sets are narrowed at run time as before (the head is not narrowed anyway)
+  const HEAD = /\/wear\/(hair|hat|eyes|nose|mouth|face_|cat_ears|x2_hair|x2_hat|animal_[a-z]+_hat)|\/wear-winter\/wear_hat|\/wear-ip\//;
   const body = REGISTRY['character.base']; body.baked = true; body.bare.baked = true;
   for (const e of Object.values(REGISTRY)) {
     if (typeof e.url === 'string' && /\/characters\/wear(-winter)?\//.test(e.url) && !HEAD.test(e.url)) e.baked = true;

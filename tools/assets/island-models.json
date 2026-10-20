@@ -671,11 +671,10 @@
     },
     {
       "out": "characters/wear/hair_ponytail.glb",
-      "src": "slim50:01. High/wear/hair_ponytail.glb",
-      "sha256": "0563d7aea08f31c1f53159385f275612d493f54d723a6620052a440fd4d4f27f",
-      "lowSrc": "slim50:02. Low/wear/hair_ponytail_low.glb",
-      "lowSha256": "173f3147924a2bf36310e5c8a73932a5f3760600951659728df20e09cad6ae2b",
-      "precompressed": true
+      "src": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/01. High/hair_05_ponytail_high.glb",
+      "sha256": "b6fc66fcb9071033d18545b8d3c9350f40b45d61f2de0a952bf857fa00a12d15",
+      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/02. Low/hair_05_ponytail_low.glb",
+      "lowSha256": "86732534c2a20dca69182ed067031ae0b0b0579153580f08e5b0aa7d17a4223d"
     },
     {
       "out": "characters/wear/hair_spiky.glb",
@@ -686,11 +685,10 @@
     },
     {
       "out": "characters/wear/hair_twin_tail.glb",
-      "src": "slim50:01. High/wear/hair_twin_tail.glb",
-      "sha256": "9938a5d89772bf1e3aa70856fc7e9b07f6076088e971e4899beb093382ea0fc3",
-      "lowSrc": "slim50:02. Low/wear/hair_twin_tail_low.glb",
-      "lowSha256": "a91a9151f97d4a7469418ef60ffd63bdbe90123b7d094bf0531f9cd350f3c205",
-      "precompressed": true
+      "src": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/01. High/hair_06_twin_tail_high.glb",
+      "sha256": "ef7dcb64097d5a52af70354496d0b242890781a8a39eb380492dba57f1c9f48f",
+      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/02. Low/hair_06_twin_tail_low.glb",
+      "lowSha256": "6a339da50d1e8c56169c51fd6bd97126b5af1147f8b17876f44b7c2eb1af05ad"
     },
     {
       "out": "characters/wear/hat_crown.glb",

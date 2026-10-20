@@ -16,8 +16,8 @@
 ## v1.10.106 F1·G·F2: 가는 몸의 옷·소품, 걷기·뛰기 다듬기
 
 - 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「F1 완료」「G 완료」, F2(assets 50) — 묶음 1과 2 사이에 끼운 에셋 연결(`docs/patch-bundles-20261020.md`).
-- 에셋: assets 49(몸 5종·옷 55벌, 새 셸 방식), 50(신발 42·목걸이 42·망토 22·꼬리 42, IP 제외), 53(SlowWalk·Walk·Run G 판) — `island-models.json` 211개를 이미 압축된 파일로(`precompressed`). 기본 셔츠·바지·치마·멜빵바지도 Low 파일 사용.
-- `baked`: 이 파일들은 새 몸에 맞춰 만든 것이라 `asset-loader`의 `slimmedGeometry`를 건너뜀(`island-assets.js` 끝의 규칙 — 머리 부위·IP 경로만 실행 중 줄이기; 두 갈래 머리 둘은 F2라 구운 것). 규칙이 고른 파일 = 납품 파일 208개(모션 제외) 일치 확인.
+- 에셋: assets 49(몸 5종·옷 55벌, 새 셸 방식), 50(신발 42·목걸이 42·망토 22·꼬리 40, IP 제외), 53(SlowWalk·Walk·Run G 판) — `island-models.json` 209개를 이미 압축된 파일로(`precompressed`). 기본 셔츠·바지·치마·멜빵바지도 Low 파일 사용.
+- `baked`: 이 파일들은 새 몸에 맞춰 만든 것이라 `asset-loader`의 `slimmedGeometry`를 건너뜀(`island-assets.js` 끝의 규칙 — 머리 부위·IP 경로만 실행 중 줄이기). 규칙이 고른 파일 = 납품 파일 206개(모션 제외) 일치 확인. F2의 hair_ponytail·hair_twin_tail은 「tail」 이름 때문에 꼬리로 잘못 처리(가중치가 모두 Hips)된 것이라 빼고 게임 원래 파일 그대로 — 시험 「머리카락: Head 가중치가 대부분이고 baked가 아니다」.
 - G: Walk·Run이 게임 속도 4.2·6.2로 만들어져 `rates` walk·run 1.0(slow 1.72 그대로).
 - `budgets.json`: 옛 운동복·후드 몸·옷의 비양자화 예외 8개 삭제.
 - 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36·island-assets·dress-room e2e 30개. Codex 검토 대기(사용량 한도 10/25).
