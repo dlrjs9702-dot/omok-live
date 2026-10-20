@@ -43,7 +43,7 @@ function places() {
   out.push(['농부 밭', T.FARM.farmer]);
   // (묶음 3) the village's minigame residents where they stand
   for (const k of ['painter', 'busker', 'stationmaster', 'electrician', 'builder', 'librarian', 'grandpa']) if (T.VILLAGE?.[k]) out.push([`주민:${k}`, T.VILLAGE[k]]);
-  for (const lot of require('../public/plaza/island-home.js').LOTS) out.push([`집터:${lot.id}`, require('../public/plaza/island-home.js').doorOf(lot)]); // (묶음 4)
+  for (const lot of require('../public/plaza/island-home.js').LOTS) for (const st of [1, 2, 3]) out.push([`집터:${lot.id}:${st}단계`, require('../public/plaza/island-home.js').doorOf(lot, st)]); // (묶음 4; 4-2: each stage's door)
   return out.filter(([, p]) => p && Number.isFinite(p.x));
 }
 

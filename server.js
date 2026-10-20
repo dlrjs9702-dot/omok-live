@@ -4659,13 +4659,13 @@ async function requestHandler(req, res) {
       if (!owner || !lot || !at) return sendError(res, 409, 'TOO_FAR', '방에서 다시 시도해 주세요.');
       const en = IslandHome.entryOf((await homeOf(owner))?.stage); const way = IslandHome.world(lot, en[0], en[1] - 0.6);
       if (Math.hypot(at.x - way.x, at.z - way.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '문간에서 다시 시도해 주세요.');
-      homeInside.delete(session.token); const d = IslandHome.doorOf(lot);
+      homeInside.delete(session.token); const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
       plazaPresence.set(session.token, { ...at, x: d.x, z: d.z, space: 'island', home: null, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
       return sendJson(res, 200, { ok: true, space: 'island', x: d.x, z: d.z });
     }
     const lots = await homeLots(); const lot = IslandHome.lotById(body.lot); const owner = lot && lots[lot.id];
     if (!owner) return sendError(res, 404, 'NO_HOME', '아직 집이 없는 집터예요.');
-    const d = IslandHome.doorOf(lot);
+    const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
     if (!at || homeInside.has(session.token) || storeInside.has(session.token) || townhallInside.has(session.token) || Math.hypot(at.x - d.x, at.z - d.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '문 앞에서 다시 시도해 주세요.');
     if (!await mayVisit(owner, account)) return sendError(res, 403, 'NOT_WELCOME', '지금은 손님을 받지 않는 집이에요.');
     freeSeat(session.token); homeInside.set(session.token, owner);

@@ -14,8 +14,10 @@
   const LOTS = Object.freeze((T.HOME_LOTS || []).map((l) => [l.x, l.z])
     .map(([x, z], i) => { const yaw = Math.atan2(x - ISLE.x, z - 140.5); return Object.freeze({ id: `lot${i + 1}`, n: i + 1, x, z, yaw }); })); // (yaw: the house's front, -Z, toward the walk across the isle at z 140.5)
   const lotById = (id) => LOTS.find((l) => l.id === id) || null;
-  // the house's door: in front of its steps (assets 58 seats kind door, local 0, -3.9) -- model -Z is the front
-  const doorOf = (lot) => ({ x: Math.round((lot.x - Math.sin(lot.yaw) * 4.6) * 100) / 100, z: Math.round((lot.z - Math.cos(lot.yaw) * 4.6) * 100) / 100 });
+  // the house's door: 0.7 m in front of its steps (assets 58 seats kind door: the 오두막 -2.9, the 작은 집 -3.9, the 큰 집
+  // -6.2 past its veranda) -- model -Z is the front
+  const DOOR = { 1: 3.6, 2: 4.6, 3: 6.9 };
+  const doorOf = (lot, stage = 2) => { const d = DOOR[stage] || DOOR[2]; return { x: Math.round((lot.x - Math.sin(lot.yaw) * d) * 100) / 100, z: Math.round((lot.z - Math.cos(lot.yaw) * d) * 100) / 100 }; };
   const ROOFS = Object.freeze(['red', 'blue', 'green', 'brown']);
   const FLOORS = Object.freeze(['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']);
   const WALLS = Object.freeze(['cream', 'mint', 'pink', 'sky']);

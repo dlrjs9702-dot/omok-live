@@ -2158,7 +2158,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}:${l.stage}:${l.building}`; const was = homesShown.get(l.id); if (was?.key === key) continue;
       if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
-      const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot); const who = l.owner || '이웃';
+      const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot, l.owner !== null ? HOME.stageOf(l.stage).n : 2); const who = l.owner || '이웃';
       if (l.owner !== null) {
         const st = HOME.stageOf(l.stage); const w = { 1: [4.4, 2.6, 3.8], 2: [6, 3.2, 5], 3: [9.4, 3.6, 6.6] }[st.n]; // (묶음 4-2: the 오두막 first, then the 작은 집, the 큰 집)
         mesh(new THREE.BoxGeometry(w[0], w[1], w[2]), mat(0xe9dcc4), 0, w[1] / 2, 0, f); assets.attach(`home.${st.house}__${HOME.ROOFS.includes(l.roof) ? l.roof : 'red'}`, root, f);
@@ -2170,7 +2170,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         assets.attach('home.lot_sign', root, f); sign('빈 집터', root, 2.0).scale.multiplyScalar(0.5);
         doors[`home:${l.id}`] = { x: d.x, z: d.z, name: '빈 집터 · 관공서 민원 창구에서 신청해요', plain: true };
       }
-      homesShown.set(l.id, { key, root, owned: l.owner !== null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
+      homesShown.set(l.id, { key, root, owned: l.owner !== null, stage: l.owner !== null ? HOME.stageOf(l.stage).n : null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
     }
   }
   function buildHomeRoom() {
@@ -2560,7 +2560,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // -- A-7: the book cart only while it is out (the librarian's ask; it stood unseen in the town hall's yard)
   for (const v of globalThis.IslandTerrain.villageSolids()) solids.push({ x: v.x, z: v.z, r: v.r * 0.8, ...(v === globalThis.IslandTerrain.VILLAGE.bookcart ? { off: () => !village?.cart?.visible } : {}) });
   prepareTogether(); prepareGuide(); // B 47: the 우체통 and the guide resident (their solids are village ones)
-  for (const lot of HOME.LOTS) for (const lx of [-1.5, 1.5]) { const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); solids.push({ x: lot.x + lx * c + 0.3 * s, z: lot.z - lx * s + 0.3 * c, r: 2.5, off: () => !homesShown.get(lot.id)?.owned }); } // 묶음 4: a house stands in the way (6 x 5 m, two circles), an empty lot does not
+  // 묶음 4: a house stands in the way, an empty lot does not -- 4-2: as big as its stage (the 오두막 one circle, the 작은 집
+  // 6 x 5 m two, the 큰 집 9.4 x 6.6 m and its veranda six; house-local x, z (front -z), r)
+  const HOUSE_CIRCLES = { 1: [[0, 0.2, 2.2]], 2: [[-1.5, 0.3, 2.5], [1.5, 0.3, 2.5]], 3: [[-3.2, 1.2, 3], [0, 1.2, 3], [3.2, 1.2, 3], [-3.3, -2.3, 2.3], [0, -2.3, 2.3], [3.3, -2.3, 2.3]] };
+  for (const lot of HOME.LOTS) for (const [st, list] of Object.entries(HOUSE_CIRCLES)) for (const [lx, lz, r] of list) { const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); solids.push({ x: lot.x + lx * c + lz * s, z: lot.z - lx * s + lz * c, r, off: () => !homesShown.get(lot.id)?.owned || homesShown.get(lot.id).stage !== Number(st) }); }
   const GRID = 8; const grid = new Map();
   for (const s of solids) {
     const reach = s.r + 0.5;
