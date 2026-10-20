@@ -1935,7 +1935,7 @@
   byId('issueNewBtn').addEventListener('click', () => { plazaDialog.open && plazaDialog.close(); openIssue(); });
   byId('issueCopyBtn').addEventListener('click', async () => {
     const open = issues.filter((i) => i.status === 'open');
-    const md = open.map((i) => `- [${ISSUE_KIND[i.kind]}] ${i.text.replace(/\n/g, ' ')} — ${issueWhere(i)}, ${new Date(i.at).toLocaleString('ko-KR')}, v${i.version}${i.ctx?.fps != null ? `, ${i.ctx.fps}fps` : ''}${i.ctx?.errors?.length ? `, 오류: ${i.ctx.errors.map((e) => e.text).join(' / ')}` : ''}`).join('\n');
+    const md = open.map((i) => `- [${ISSUE_KIND[i.kind]}] ${i.text.replace(/\n/g, ' ')} — ${issueWhere(i)}, ${new Date(i.at).toLocaleString('ko-KR')}, v${i.version}${i.ctx?.fps != null ? `, ${i.ctx.fps}fps` : ''}${i.hasShot ? ', 사진 있음(행을 펼치면 보여요)' : ''}${i.ctx?.errors?.length ? `, 오류: ${i.ctx.errors.map((e) => e.text).join(' / ')}` : ''}`).join('\n');
     try { await navigator.clipboard.writeText(md || '(열린 기록 없음)'); showToast(`열린 기록 ${open.length}개를 복사했어요.`); } catch { showToast('복사하지 못했어요.'); }
   });
   // v1.9.2: my plaza look (avatar items + title) comes from the server's skin state; the name tag shows my nickname.
