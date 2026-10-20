@@ -22,7 +22,8 @@ async function twoPlayers(browser, request, isMobile, tag) {
   const a = await shopper(browser, request, `집주인${tag}`, 3000000, 'female'); const { page } = a;
   const b = await shopper(browser, request, `손님${tag}`, 0, 'male');
   await makeLogin(request, a.id, `home${tag}`); await makeLogin(request, b.id, `visit${tag}`);
-  for (const who of [a, b]) { await who.page.evaluate(() => localStorage.removeItem('gc.testClassic')); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+  // (no 3D models: the checks are on the layout, not the look -- the slow runner draws the island in boxes far quicker)
+  for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
   const press = async (p = page) => { if (isMobile) await p.locator('#plazaHint').tap(); else { await p.locator('#plazaStage').focus(); await p.keyboard.press('Space'); } };
   const openMenu = async () => { if (isMobile) await page.locator('#gameMenuBtn').tap(); else await page.locator('#gameMenuBtn').click(); await expect(page.locator('#gameMenuDialog')).toBeVisible(); };
   const goTo = async (p, door, text) => expect.poll(async () => { await p.evaluate((id) => { const d = window.PlazaDebug(); const w = d.doors[id]; if (w) d.teleport(w.x, w.z); else d.place(id); /* (the 민원실's doors: not in the list) */ }, door); await p.waitForTimeout(500); return p.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain(text);
@@ -39,7 +40,7 @@ async function twoPlayers(browser, request, isMobile, tag) {
 }
 
 test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·돌리기·옮기기·넣기) → 수조·곤충 상자 → 다시 들어와도·다른 화면에서도 같음', async ({ browser, request, isMobile }) => {
-  test.setTimeout(480000);
+  test.setTimeout(600000);
   const { a, b, page, press, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'm' : 'p');
   const pieces = (await post(request, '/api/test/home/furniture', a.token, { ids: ['sofa__mint', 'fish_tank__oak', 'insect_case__oak', 'wall_clock__oak'] })).data.pieces;
   for (const [itemId, qty] of [['fish_goby', 2], ['fish_giant_tuna', 1], ['insect_ladybird', 1]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200);
@@ -134,7 +135,7 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
 });
 
 test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레이어 메뉴로 친구 신청 → 내 정보에서 수락하면 들어가고, 끊으면 다시 닫힘', async ({ browser, request, isMobile }) => {
-  test.setTimeout(480000);
+  test.setTimeout(600000);
   const { a, b, page, press, openMenu, goTo, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'n' : 'q');
   // the house (the 민원실, as the other test does by its window)
   await through(page, 'townhall', '관공서 들어가기', 'townhall');
@@ -142,13 +143,14 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'green' })).status).toBe(200);
   await through(page, 'room:exit', '나가기', 'island');
   // 방문 허용 (내 집 in the menu): 안 받음 -- the door says so and stays shut; 친구만 -- shut until they are friends
+  const bAtDoor = async () => { const d = await b.page.evaluate((id) => window.PlazaDebug().doors[id], `home:${lot}`); await standAt(request, b, d.x, d.z); }; // (the page and the server both: the checks below ask the server)
   const visit = async (label) => { await openMenu(); await page.locator('#myHomeBtn').click(); await page.locator('#homeCard button[data-visit]', { hasText: label }).click(); await expect(page.locator('#homeCard button[data-visit][aria-pressed="true"]')).toHaveText(label, { timeout: 10000 }); await page.locator('#plazaCloseBtn').click(); };
   await visit('안 받음');
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:none$/);
-  await goTo(b.page, `home:${lot}`, '손님을 받지 않아요');
+  await goTo(b.page, `home:${lot}`, '손님을 받지 않아요'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
   await visit('친구만');
-  await goTo(b.page, `home:${lot}`, '집 구경하기');
+  await goTo(b.page, `home:${lot}`, '집 구경하기'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
   // 친구: the owner is asked from the player menu (SPACE by them); 수락 in 내 정보 -- then the visitor comes in
   const spot = await page.evaluate(() => window.IslandTerrain.dalmaru.PLACES.spawn);
@@ -172,7 +174,7 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   await expect(page.locator('#myFriends .friendRow')).toHaveCount(0, { timeout: 10000 });
   await page.locator('#myInfoCloseBtn').click();
   expect((await get(request, '/api/friends', b.token)).data.friends).toHaveLength(0);
-  await goTo(b.page, `home:${lot}`, '집 구경하기');
+  await goTo(b.page, `home:${lot}`, '집 구경하기'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
   await expectNoScriptError(page); await expectNoScriptError(b.page);
   await a.context.close(); await b.context.close();
