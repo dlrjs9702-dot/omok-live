@@ -153,7 +153,7 @@
     bare: { url: `${CH}/body_bare.glb`, lowUrl: `${CH}/body_bare_low.glb` },
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
-    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1.7201344052996752, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (G 2026-10-20: Walk and Run made at 4.2 and 6.2 m/s, the feet not sliding)
+    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (걸음 3판 2026-10-20 사용자 「추천대로」: made for 1, 4.2 and 6.2 m/s -- 2, 2.5 and 4 steps a second, the feet gliding a little as in 동물의 숲)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
   // pieces that give way to a worn slot (`hideWith`)
