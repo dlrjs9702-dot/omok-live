@@ -2741,11 +2741,14 @@
     openPlazaWindow('내 집 신청', [homeCard]); draw();
   }
   // 내 집 (the menu): my lot, who may come in, the floor, wallpaper and roof (each change a small price), 꾸미기 when inside
+  // (the window drawn only by the newest call -- an older one finishing later drew the house as it had been; a choice
+  // made while another of the house's requests is out waits for it rather than being dropped)
+  let myHomeDraw = 0;
   async function openMyHome() {
-    await refreshHomes(); const h = homesState?.mine;
+    const draw = ++myHomeDraw; await refreshHomes(); if (draw !== myHomeDraw) return; const h = homesState?.mine;
     if (!h) { homeCard.replaceChildren(line(`아직 집이 없어요. 관공서 민원 창구에서 「내 집 신청」을 해 주세요 (${Number(homesState?.price || 0).toLocaleString('ko-KR')}P).`)); openPlazaWindow('내 집', [homeCard]); return; }
     const style = async (body) => {
-      if (homeBusy) return; homeBusy = true;
+      for (let i = 0; homeBusy && i < 100; i += 1) await new Promise((done) => setTimeout(done, 50)); if (homeBusy) return; homeBusy = true;
       try { const r = await api('/api/home/style', { method: 'POST', body: JSON.stringify({ ...body, requestId: crypto.randomUUID() }) }); if (homeInside?.mine) showHome({ ...homeInside, home: r.home }); await refreshHomes(); loadPoints(); showToast('바꿨어요'); } catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; }
       openMyHome();
     };
