@@ -2160,7 +2160,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
       const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot); const who = l.owner || '이웃';
       if (l.owner !== null) {
-        const st = HOME.stageOf(l.stage); const w = st.n === 1 ? [4.4, 2.6, 3.8] : [6, 3.2, 5]; // (묶음 4-2: the 오두막 first, the 작은 집 once made bigger)
+        const st = HOME.stageOf(l.stage); const w = { 1: [4.4, 2.6, 3.8], 2: [6, 3.2, 5], 3: [9.4, 3.6, 6.6] }[st.n]; // (묶음 4-2: the 오두막 first, then the 작은 집, the 큰 집)
         mesh(new THREE.BoxGeometry(w[0], w[1], w[2]), mat(0xe9dcc4), 0, w[1] / 2, 0, f); assets.attach(`home.${st.house}__${HOME.ROOFS.includes(l.roof) ? l.roof : 'red'}`, root, f);
         if (l.building) { const b = new THREE.Group(); b.position.set(-2.2, 0, -3.2); root.add(b); const bf = new THREE.Group(); b.add(bf); mesh(new THREE.BoxGeometry(2.4, 1.2, 0.1), mat(0xf2c94c), 0, 0.9, 0, bf); assets.attach('home.build_sign', b, bf); sign('공사 중 · 내일 완성', b, 2.1).scale.multiplyScalar(0.5); } // (that day only: 「집 넓히기」)
         const plate = new THREE.Group(); plate.position.set(1.1, 0, -2.6); root.add(plate); assets.attach('home.nameplate', plate, new THREE.Group());
@@ -2183,13 +2183,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return homeRoomV;
   }
   const homeLayer = (kind, id, scale = 1, stand = null) => { const R = homeRoomV; const key = `${id}:${scale}`; if (R.layers[kind]?.key === key) return; R.layers[kind]?.root.removeFromParent(); const root = new THREE.Group(); root.scale.set(scale, 1, scale); R.group.add(root); const f = new THREE.Group(); root.add(f); stand?.(f); assets.attach(id, root, f); R.layers[kind] = { key, root }; };
-  const roomStand = (size) => (f) => { const wall = mat(0xf2ede4); const h = size / 2; mesh(new THREE.BoxGeometry(size, 0.2, size), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(size, 3, 0.2), wall, 0, 1.5, h, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 3, size), wall, s * h, 1.5, 0, f); };
+  const roomStand = (st) => (f) => { const wall = mat(0xf2ede4); mesh(new THREE.BoxGeometry(st.w, 0.2, st.d), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(st.w, 3, 0.2), wall, 0, 1.5, st.d / 2, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 3, st.d), wall, s * st.w / 2, 1.5, 0, f); for (const b of st.fixed) mesh(new THREE.BoxGeometry(b.x1 - b.x0, 2.3, b.z1 - b.z0), wall, (b.x0 + b.x1) / 2, 1.15, (b.z0 + b.z1) / 2, f); };
   const pieceKey = (p) => `${homeHere.home.stage || 2}:${p.id}:${p.x}:${p.z}:${p.rot}:${p.photo || ''}:${(homeHere.home.tanks[p.uid] || []).map((f) => f.fid).join(',')}`;
   const BACK = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // (a piece's back, +Z as made, after rot quarters -- IslandHome)
   function hungAt(p) { // a hung piece drawn flat against its wall (it is placed on the 0.25 m steps, within 0.2 of it)
     const s = HOME.SIZE[HOME.shapeOf(p.id)]; if (!HOME.HUNG.has(HOME.shapeOf(p.id)) || !s) return { x: p.x, z: p.z };
-    const [bx, bz] = BACK[p.rot]; const H = HOME.stageOf(homeHere?.home.stage).half;
-    return bz === 1 ? { x: p.x, z: H - s[1] / 2 } : bx === 1 ? { x: H - s[1] / 2, z: p.z } : bx === -1 ? { x: -H + s[1] / 2, z: p.z } : { x: p.x, z: p.z };
+    const [bx, bz] = BACK[p.rot]; const { hx, hz } = HOME.stageOf(homeHere?.home.stage);
+    return bz === 1 ? { x: p.x, z: hz - s[1] / 2 } : bx === 1 ? { x: hx - s[1] / 2, z: p.z } : bx === -1 ? { x: -hx + s[1] / 2, z: p.z } : { x: p.x, z: p.z };
   }
   const swimTo = (T, bottom) => { if (T.cylinder) { const r = Math.sqrt(Math.random()) * (T.max[0] - T.min[0]) * 0.45; const a = Math.random() * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * r, bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), Math.sin(a) * r); } return new THREE.Vector3(T.min[0] + Math.random() * (T.max[0] - T.min[0]), bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), T.min[2] + Math.random() * (T.max[2] - T.min[2])); };
   function drawPiece(p, ghost = false) {
@@ -2221,18 +2221,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!homeHere?.lot) { homeHere = null; if (homeRoomV) { for (const h of homeRoomV.pets) h.c.dispose(); homeRoomV.pets = []; } return; }
     const R = buildHomeRoom(); const { lot, home } = homeHere; const r = HOME.roomOf(lot); R.group.position.set(r.x, HOME.ROOM.y - 0.04, r.z); // (the floor's layer, 4 cm, under my feet)
     const st = HOME.stageOf(home.stage); const en = HOME.entryOf(home.stage); const e = HOME.world(lot, en[0], en[1] - 0.6); doors['home:exit'] = { x: e.x, z: e.z, name: '나가기' };
-    homeLayer('room', `home.${st.room}`, 1, roomStand(st.size)); homeLayer('floor', `home.floor__${home.floor}`, st.size / 8); homeLayer('wall', `home.wallpaper__${home.wall}`, st.size / 8); // (the 8 x 8 floor and wallpaper drawn smaller in the 오두막)
+    // (the floor and wallpaper made for each room's size -- assets 58 _s1 9 x 9, as named 12 x 12, _s3 16 x 13)
+    const [fk, fv] = String(home.floor).split('__'); homeLayer('room', `home.${st.room}`, 1, roomStand(st)); homeLayer('floor', `home.floor_${fk}${st.tile}__${fv}`); homeLayer('wall', `home.wallpaper${st.tile}__${home.wall}`);
     const want = new Map(home.pieces.map((p) => [p.uid, p]));
     for (const [uid, v] of R.pieces) { const p = want.get(uid); if (!p || v.key !== pieceKey(p) || R.lot !== lot.id) { v.root.removeFromParent(); R.pieces.delete(uid); } }
     R.lot = lot.id;
     for (const p of home.pieces) if (!R.pieces.has(p.uid)) R.pieces.set(p.uid, drawPiece(p));
-    for (const p of home.pieces) SEATS.push(...HOME.seatsOf(lot, p).map((s) => ({ ...s, name: '앉기' })));
+    SEATS.push(...HOME.allSeatsOf(lot, home).map((s) => ({ ...s, name: '앉기' }))); // (the 큰 집's window seat too)
     if (inside.pets) { // (the pets: only when the server sends them -- a placing keeps those roaming)
       for (const h of R.pets) h.c.dispose(); R.pets = [];
       for (const p of inside.pets.slice(0, 12)) { const c = petHolder(p.kind, p.coat); const q = homeSpot(); c.root.position.set(q.x, HOME.ROOM.y, q.z); R.pets.push({ c, to: null, wait: Math.random() * 3 }); }
     }
   }
-  const homeSpot = () => { const r = (HOME.stageOf(homeHere.home.stage).half - 0.5) * 2; const w = HOME.world(homeHere.lot, (Math.random() - 0.5) * r, (Math.random() - 0.5) * r); return HOME.clamp(homeHere.lot, w.x, w.z, homeHere.home.pieces, homeHere.home.stage); };
+  const homeSpot = () => { const { hx, hz } = HOME.stageOf(homeHere.home.stage); const w = HOME.world(homeHere.lot, (Math.random() - 0.5) * (hx - 0.5) * 2, (Math.random() - 0.5) * (hz - 0.5) * 2); return HOME.clamp(homeHere.lot, w.x, w.z, homeHere.home.pieces, homeHere.home.stage); };
   function stepHome(dt) {
     if (mySpace !== 'home' || !homeRoomV || !homeHere) return;
     for (const v of homeRoomV.pieces.values()) {

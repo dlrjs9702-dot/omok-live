@@ -2706,13 +2706,14 @@
   async function openHomeApply() {
     islandPlaceDialog.close(); await refreshHomes(); if (!homesState) return;
     if (homesState.mine) { // 묶음 4-2 「집 넓히기」: the 오두막 made a 작은 집, done the next day
-      const m = homesState.mine; if (m.upgradeDay || (m.stage || 2) >= 2) { showToast(m.upgradeDay ? '집을 넓히는 중이에요. 내일 완성돼요.' : `벌써 내 집이 있어요 (${lotName(m.lot)}).`); return; }
+      const H = window.IslandHome; const m = homesState.mine; const now = H.stageOf(m.stage); if (m.upgradeDay || now.n >= H.TOP_STAGE) { showToast(m.upgradeDay ? '집을 넓히는 중이에요. 내일 완성돼요.' : `벌써 내 집이 있어요 (${lotName(m.lot)}). 지금은 더 넓힐 수 없어요.`); return; }
+      const to = H.stageOf(now.n + 1);
       const go = btn(`넓히기 · ${Number(homesState.grow).toLocaleString('ko-KR')}P`, 'primary', async () => {
         if (homeBusy) return; homeBusy = true; go.disabled = true;
-        try { await api('/api/home/upgrade', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast('공사를 시작했어요! 내일 작은 집이 돼요.', 5000); await refreshHomes(); loadPoints(); }
+        try { await api('/api/home/upgrade', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`공사를 시작했어요! 내일 ${to.name}이 돼요.`, 5000); await refreshHomes(); loadPoints(); }
         catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; go.disabled = false; }
       });
-      homeCard.replaceChildren(line('오두막을 작은 집으로 넓혀요. 방이 8×8m로 커지고 가구 40점·물고기 20마리까지 둘 수 있어요. 오늘 공사하고 내일(00:00) 완성돼요. 가구는 그 자리 그대로예요.'), go);
+      homeCard.replaceChildren(line(`${now.name}을 ${to.name}으로 넓혀요. 방이 ${to.w}×${to.d}m로 커지고 가구 ${to.pieces}점·물고기 ${to.fish}마리까지 둘 수 있어요. 오늘 공사하고 내일(00:00) 완성돼요. 가구는 그 자리 그대로예요.`), go);
       openPlazaWindow('집 넓히기', [homeCard]); return;
     }
     let lot = homesState.lots.find((l) => l.owner === null)?.id || null; let roof = 'red';

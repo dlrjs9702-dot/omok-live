@@ -1082,7 +1082,10 @@ async function homeOf(account) {
   const h = homeCache.get(account);
   // 묶음 4-2: made bigger the day after 「집 넓히기」 (from 00:00) -- the pieces where they stood, the hung ones onto the new
   // walls; held so here at once, saved with the next change of the house
-  if (h?.upgradeDay && kstDate(nowMs()) > h.upgradeDay) { const g = IslandHome.grownPieces(h.pieces, 2); const keep = new Set(g.pieces.map((p) => p.uid)); const next = { ...h, stage: 2, upgradeDay: null, pieces: g.pieces, tanks: Object.fromEntries(Object.entries(h.tanks || {}).filter(([uid]) => keep.has(uid))) }; homeCache.set(account, next); return next; }
+  // (묶음 4-2 실내 크기, 2026-10-21: the rooms made bigger -- a house from before (roomV < 2) once: its hung pieces onto the
+  // new walls, the rest where they stood from the middle)
+  if (h && !h.upgradeDay && (h.roomV || 1) < 2) { const g = IslandHome.grownPieces(h.pieces, homeStage(h).n); const next = { ...h, roomV: 2, pieces: [...g.pieces, ...h.pieces.filter((p) => g.back.includes(p.uid))] }; homeCache.set(account, next); return next; }
+  if (h?.upgradeDay && kstDate(nowMs()) > h.upgradeDay) { const to = Math.min(IslandHome.TOP_STAGE, IslandHome.stageOf(h.stage).n + 1); const g = IslandHome.grownPieces(h.pieces, to); const keep = new Set(g.pieces.map((p) => p.uid)); const next = { ...h, stage: to, roomV: 2, upgradeDay: null, pieces: g.pieces, tanks: Object.fromEntries(Object.entries(h.tanks || {}).filter(([uid]) => keep.has(uid))) }; homeCache.set(account, next); return next; }
   return h;
 }
 const homeStage = (h) => IslandHome.stageOf(h?.stage);
@@ -4608,7 +4611,8 @@ async function requestHandler(req, res) {
     const lots = await homeLots(); const names = new Map();
     for (const owner of new Set(Object.values(lots))) names.set(owner, await accountName(owner));
     const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay) }; }));
-    return sendJson(res, 200, { ok: true, lots: out, mine: await homeOf(account), price: Economy.value('home:price_1'), grow: Economy.value('home:price_2'), style: Economy.value('home:style') });
+    const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
+    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style') });
   }
   // a house: at the 관공서 (in the 민원실), one an account, a free lot, paid at once
   if (pathname === '/api/home/apply' && req.method === 'POST') {
@@ -4623,7 +4627,7 @@ async function requestHandler(req, res) {
       if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       await pointStore.setWorldValue('homeLots', { ...lots, [lot.id]: account });
-      const home = { lot: lot.id, stage: 1, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
+      const home = { lot: lot.id, stage: 1, roomV: 2, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
       await saveHome(account, home); notifyPointsChanged([account]); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, home });
     });
@@ -4636,9 +4640,9 @@ async function requestHandler(req, res) {
     return worldEdit(async () => {
       const h = await homeOf(account); if (!h) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
       if (h.upgradeDay) return sendError(res, 409, 'BUILDING', '공사 중이에요. 내일 완성돼요.');
-      if (homeStage(h).n >= 2) return sendError(res, 409, 'TOP_STAGE', '지금은 더 넓힐 수 없어요.');
-      const day = kstDate(nowMs());
-      const out = await pointStore.charge({ userId: account, claimId: `home:grow:${account}:${homeStage(h).n}`, price: Economy.value('home:price_2'), title: '집 넓히기' }).catch(() => null);
+      if (homeStage(h).n >= IslandHome.TOP_STAGE) return sendError(res, 409, 'TOP_STAGE', '지금은 더 넓힐 수 없어요.');
+      const day = kstDate(nowMs()); const to = homeStage(h).n + 1;
+      const out = await pointStore.charge({ userId: account, claimId: `home:grow:${account}:${homeStage(h).n}`, price: Economy.value(`home:price_${to}`), title: `집 넓히기(${IslandHome.stageOf(to).name})` }).catch(() => null);
       if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       const next = { ...h, upgradeDay: day }; await saveHome(account, next); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
@@ -5616,7 +5620,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req);
     let seat = SEATS.get(String(body.seat || ''));
-    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const h = await homeOf(homeInside.get(session.token)); const lot = IslandHome.lotById(h?.lot); seat = lot ? h.pieces.flatMap((p) => IslandHome.seatsOf(lot, p)).find((s) => s.id === body.seat) : null; } // (묶음 4: a house's sofa, bed...)
+    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const h = await homeOf(homeInside.get(session.token)); const lot = IslandHome.lotById(h?.lot); seat = lot ? IslandHome.allSeatsOf(lot, h).find((s) => s.id === body.seat) : null; } // (묶음 4: a house's sofa, bed...)
     if (!seat) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - seat.x, at.z - seat.z) > 2.8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');

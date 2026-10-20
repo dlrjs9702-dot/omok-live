@@ -425,8 +425,11 @@
   // the room, one at a time), the nameplate, an empty lot's sign
   const HV = '/assets/island/home-v1'; const hv = (file, extra = {}) => ({ url: `${HV}/${file}.glb`, low: { url: `${HV}/${file}_low.glb` }, near: 60, ...extra });
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.house__${r}`] = hv(`home_house__${r}`, { near: 90 });
-  for (const f of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']) REGISTRY[`home.floor__${f}`] = hv(`home_floor_${f}`, { shadows: false });
-  for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper__${w}`] = hv(`home_wallpaper__${w}`, { shadows: false });
+  // (묶음 4-2 실내 크기, assets 58 2026-10-21: each room's own floor and wallpaper -- _s1 9 x 9, as named 12 x 12, _s3 16 x 13)
+  for (const t of ['_s1', '', '_s3']) {
+    for (const [k, v] of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink'].map((f) => f.split('__'))) REGISTRY[`home.floor_${k}${t}__${v}`] = hv(`home_floor_${k}${t}__${v}`, { shadows: false });
+    for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper${t}__${w}`] = hv(`home_wallpaper${t}__${w}`, { shadows: false });
+  }
   // 묶음 5 각진 자연물 (assets 63 angular-v1 -- EmaceArt LumaGrove free pack made ours: vertex colours, our sizes, four
   // seasons; in the game only, never handed out apart): three trees and a bush in each season (mixed in with the round
   // ones, island.js), stones, the purple crystal heap, reeds by the water, cliff pieces at the island's edge
@@ -439,7 +442,8 @@
   // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
   for (const sp of ['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail']) REGISTRY[`insect.${sp}`] = { url: `/assets/island/insects-v1/insect_${sp}.glb`, low: { url: `/assets/island/insects-v1/insect_${sp}_low.glb` }, near: 25, shadows: false };
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.hut__${r}`] = hv(`home_hut__${r}`, { near: 90 }); // (묶음 4-2: the 오두막, its room, the 공사 중 sign)
-  REGISTRY['home.hut_room'] = hv('home_hut_room__base'); REGISTRY['home.build_sign'] = hv('home_build_sign__base', { shadows: false });
+  for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.manor__${r}`] = hv(`home_manor__${r}`, { near: 90 }); // (3단계 큰 집)
+  REGISTRY['home.manor_room'] = hv('home_manor_room__base'); REGISTRY['home.hut_room'] = hv('home_hut_room__base'); REGISTRY['home.build_sign'] = hv('home_build_sign__base', { shadows: false });
   REGISTRY['home.room'] = hv('home_room__base'); REGISTRY['home.nameplate'] = hv('home_nameplate__base', { shadows: false }); REGISTRY['home.lot_sign'] = hv('home_lot_sign__base', { shadows: false });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --

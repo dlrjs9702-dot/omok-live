@@ -22,26 +22,36 @@
   const VISITS = Object.freeze(['anyone', 'friends', 'none']); // (사용자 2026-10-20: 아무나 / 친구만 / 안 받음, 아무나 first)
   // the room: 8 x 8 m (assets 58 home.room), its low wall and doorway at local -Z (toward the camera), turned half
   // round in the world like the 백화점's floors; each lot's room 200 m from the next
-  const ROOM = Object.freeze({ w: 8, d: 8, y: 0.4, half: 3.85 });
+  const ROOM = Object.freeze({ w: 12, d: 12, y: 0.4, half: 5.85 }); // (the 작은 집's; each stage its own -- STAGES)
   const roomOf = (lot) => ({ x: 300 + lot.n * 200, z: -330, y: ROOM.y });
   const world = (lot, lx, lz) => { const r = roomOf(lot); return { x: Math.round((r.x - lx) * 100) / 100, z: Math.round((r.z - lz) * 100) / 100 }; };
   const local = (lot, x, z) => { const r = roomOf(lot); return { lx: r.x - x, lz: r.z - z }; };
-  // 묶음 4-2 집 단계 (docs/my-home-20261020.md 「단계」, 사용자 「첫 주택은 오두막에서 진화해 나가는 걸로」): every house starts as
-  // a 오두막 (its room 6 x 6 m, 20 pieces, 10 fish) and is made a 작은 집 at the 관공서 (8 x 8 m, 40, 20) -- the same room's
-  // middle, so the pieces stay where they stood; a house without a stage (v1.10.112) is a 작은 집
-  const STAGES = Object.freeze({ 1: Object.freeze({ n: 1, size: 6, half: 2.85, pieces: 20, fish: 10, house: 'hut', room: 'hut_room', name: '오두막' }), 2: Object.freeze({ n: 2, size: 8, half: 3.85, pieces: 40, fish: 20, house: 'house', room: 'room', name: '작은 집' }) });
+  // 묶음 4-2 집 단계 (docs/my-home-20261020.md 「단계」·「실내 크기 다시」, 사용자 「첫 주택은 오두막에서 진화해 나가는 걸로」·「좀
+  // 작은데 1단계부터 다시」): every house starts as a 오두막 (its room 9 x 9 m, 25 pieces, 10 fish), is made a 작은 집 at the
+  // 관공서 (12 x 12, 45, 20) and then a 큰 집 (16 x 13, 70, 30; walls 3.4 m, a half wall with an arch on its right third and
+  // a window seat) -- each the same room's middle, so the pieces stay where they stood; a house without a stage
+  // (v1.10.112) is a 작은 집. hx, hz: the inside of the walls (assets 58: the wallpaper 0.05 m in, the walls 0.15)
+  const STAGES = Object.freeze({
+    1: Object.freeze({ n: 1, w: 9, d: 9, hx: 4.35, hz: 4.35, pieces: 25, fish: 10, house: 'hut', room: 'hut_room', tile: '_s1', name: '오두막', fixed: [], seats: [] }),
+    2: Object.freeze({ n: 2, w: 12, d: 12, hx: 5.85, hz: 5.85, pieces: 45, fish: 20, house: 'house', room: 'room', tile: '', name: '작은 집', fixed: [], seats: [] }),
+    3: Object.freeze({ n: 3, w: 16, d: 13, hx: 7.85, hz: 6.35, pieces: 70, fish: 30, house: 'manor', room: 'manor_room', tile: '_s3', name: '큰 집',
+      // (home.manor_room: the half wall at x 2.67 with its arch |z| < 1.4 and two posts, the window seat on the back wall)
+      fixed: [{ x0: 2.55, x1: 2.79, z0: 1.25, z1: 6.5 }, { x0: 2.55, x1: 2.79, z0: -5.3, z1: -1.25 }, { x0: -4.0, x1: -1.2, z0: 5.9, z1: 6.5 }],
+      seats: [{ x: -2.6, z: 6.05 }] }),
+  });
+  const TOP_STAGE = 3;
   const stageOf = (n) => STAGES[n] || STAGES[2];
-  const inRoom = (lot, x, z, pad = 0, stage = 2) => { const { lx, lz } = local(lot, x, z); const h = stageOf(stage).size / 2; return Math.abs(lx) <= h + pad && Math.abs(lz) <= h + pad; };
-  const entryOf = (stage = 2) => [0, -stageOf(stage).half + 0.75]; // where one stands coming in (the doorway behind)
-  const doorwayOf = (stage = 2) => { const h = stageOf(stage).size / 2; return { x0: -0.8, x1: 0.8, z0: -h, z1: -h + 1.4 }; }; // kept clear (the way out)
+  const inRoom = (lot, x, z, pad = 0, stage = 2) => { const { lx, lz } = local(lot, x, z); const st = stageOf(stage); return Math.abs(lx) <= st.w / 2 + pad && Math.abs(lz) <= st.d / 2 + pad; };
+  const entryOf = (stage = 2) => [0, Math.round((-stageOf(stage).hz + 0.75) * 100) / 100]; // where one stands coming in (the doorway behind)
+  const doorwayOf = (stage = 2) => { const h = stageOf(stage).d / 2; return { x0: -0.8, x1: 0.8, z0: -h, z1: -h + 1.4 }; }; // kept clear (the way out)
   const ENTRY = Object.freeze(entryOf(2)); const DOORWAY = Object.freeze(doorwayOf(2));
-  const MAX_PIECES = 40; const MAX_FISH = 20;
+  const MAX_PIECES = STAGES[TOP_STAGE].pieces; const MAX_FISH = STAGES[TOP_STAGE].fish;
   // what each furniture shape takes (assets 57 manifest: width x, depth z, height), and which ones hang on a wall
   const SIZE = { aquarium_big: [2.4, 0.82, 1.82], aquarium_pillar: [1.9, 1.9, 2.65], aquarium_wall: [4.2, 1.46, 2.85], armchair: [0.9, 0.85, 0.88], bed: [1.16, 2.12, 0.95], bookshelf: [1.04, 0.37, 1.85], bunk_bed: [1.04, 1.9, 1.6], cheongsa_lantern: [0.52, 0.26, 1.32], coffee_table: [1.1, 0.6, 0.54], counter: [1.64, 0.66, 1.11], cupboard: [1.04, 0.49, 1.71], curtain_window: [1.41, 0.17, 1.29], desk: [1.2, 0.63, 0.85], dining_chair: [0.46, 0.46, 0.98], dining_table: [1.4, 0.85, 1.08], dresser: [1, 0.49, 0.85], fence_piece: [1.93, 0.13, 0.94], fish_bowl: [0.48, 0.48, 1.21], fish_tank: [0.92, 0.42, 1.01], floor_cushion: [0.59, 0.6, 0.11], floor_lamp: [0.52, 0.52, 1.71], folding_screen: [1.79, 0.18, 1.4], fridge: [0.7, 0.7, 1.75], garden_bench: [1.6, 0.53, 0.93], hanger_rack: [1.25, 0.45, 1.5], insect_case: [0.6, 0.34, 0.7], mini_lighthouse: [0.36, 0.36, 0.81], mirror_stand: [0.55, 0.3, 1.6], moon_lamp: [0.34, 0.32, 0.62], nightstand: [0.45, 0.44, 0.84], onggi: [0.6, 0.6, 0.79], parasol_table: [2.1, 2.1, 2.25], piano: [1.4, 0.74, 1.23], picture_frame: [0.7, 0.07, 0.55], plant_pot: [0.64, 0.61, 1.14], planter_box: [1.2, 0.45, 0.71], radio: [0.43, 0.2, 0.52], rug_round: [1.9, 1.9, 0.03], shell_lamp: [0.58, 0.28, 0.58], soban: [0.8, 0.8, 0.37], sofa: [1.9, 0.85, 0.84], stool: [0.36, 0.36, 0.52], tall_clock: [0.52, 0.35, 1.9], toy_box: [0.74, 0.49, 0.65], tv_stand: [1.3, 0.43, 1.16], wall_clock: [0.44, 0.07, 0.44], wall_shelf: [0.9, 0.24, 0.36], wardrobe: [1.26, 0.64, 2.06] };
   const HUNG = new Set(['picture_frame', 'wall_clock', 'curtain_window', 'wall_shelf']); // (their backs on a wall, at the height made)
   const FLAT = new Set(['rug_round']); // (under the rest)
   // where one sits (assets 57 manifest seats, model local: x, height, z) -- 'lie' and 'floor' sit too for now
-  const SEATS = { armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.45, 0.46, -0.12], [0.45, 0.46, -0.12]], stool: [[0, 0.51, 0]], bed: [[0, 0.5, 0]], bunk_bed: [[0, 0.42, 0]] };
+  const SEATS = { window_seat: [[0, 0.5, 0]], armchair: [[0, 0.46, -0.12]], dining_chair: [[0, 0.53, -0.02]], floor_cushion: [[0, 0.1, 0]], garden_bench: [[-0.4, 0.47, 0], [0.4, 0.47, 0]], sofa: [[-0.45, 0.46, -0.12], [0.45, 0.46, -0.12]], stool: [[0, 0.51, 0]], bed: [[0, 0.5, 0]], bunk_bed: [[0, 0.42, 0]] };
   // the tanks (assets 57 manifest swim): where fish swim (model local), how many, the biggest size they take, how small fish show
   const TANKS = {
     fish_bowl: { min: [-0.1, 0.88, -0.1], max: [0.1, 1.08, 0.1], slots: 1, biggest: 'small', fishScale: 0.5 },
@@ -72,10 +82,11 @@
   function placeError(p, others = [], stage = 2) {
     const shape = shapeOf(p.id); if (!SIZE[shape]) return '놓을 수 없는 가구예요.';
     if (![0, 1, 2, 3].includes(p.rot) || !Number.isFinite(p.x) || !Number.isFinite(p.z) || Math.abs(p.x * 4 - Math.round(p.x * 4)) > 1e-6 || Math.abs(p.z * 4 - Math.round(p.z * 4)) > 1e-6) return '자리를 확인해 주세요.';
-    const b = boxOf(p); const H = stageOf(stage).half;
-    if (b.x0 < -H - 1e-6 || b.x1 > H + 1e-6 || b.z0 < -H - 1e-6 || b.z1 > H + 1e-6) return '방 밖으로 나가요.';
+    const b = boxOf(p); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
+    if (b.x0 < -HX - 1e-6 || b.x1 > HX + 1e-6 || b.z0 < -HZ - 1e-6 || b.z1 > HZ + 1e-6) return '방 밖으로 나가요.';
+    if (st.fixed.some((w) => overlap(b, w))) return '방의 벽이나 창가 의자와 겹쳐요.';
     if (HUNG.has(shape)) { // its back against the back or a side wall (the low front wall holds nothing)
-      const [bx, bz] = backDir(p.rot); const ok = (bz === 1 && b.z1 > H - 0.2) || (bx === 1 && b.x1 > H - 0.2) || (bx === -1 && b.x0 < -H + 0.2); // (on the 0.25 m steps: drawn flat against the wall)
+      const [bx, bz] = backDir(p.rot); const ok = (bz === 1 && b.z1 > HZ - 0.2) || (bx === 1 && b.x1 > HX - 0.2) || (bx === -1 && b.x0 < -HX + 0.2); // (on the 0.25 m steps: drawn flat against the wall)
       if (!ok) return '벽에 거는 가구예요. 뒤가 벽에 닿게 놓아 주세요.';
       return others.some((o) => HUNG.has(shapeOf(o.id)) && overlap(b, boxOf(o))) ? '다른 장식과 겹쳐요.' : null;
     }
@@ -85,33 +96,35 @@
   }
   // where one may stand inside: in the walls, out of the floor pieces (0.3 m round them)
   function clamp(lot, x, z, pieces = [], stage = 2) {
-    const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d); const H = stageOf(stage).half;
+    const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
     const en = entryOf(stage); const e = world(lot, en[0], en[1]);
     let { lx, lz } = local(lot, fin(x, e.x), fin(z, e.z));
-    lx = Math.max(-H + 0.35, Math.min(H - 0.35, lx)); lz = Math.max(-H + 0.35, Math.min(H - 0.35, lz));
-    const solid = pieces.filter((p) => !HUNG.has(shapeOf(p.id)) && !FLAT.has(shapeOf(p.id))).map(boxOf).filter(Boolean);
+    lx = Math.max(-HX + 0.35, Math.min(HX - 0.35, lx)); lz = Math.max(-HZ + 0.35, Math.min(HZ - 0.35, lz));
+    const solid = [...pieces.filter((p) => !HUNG.has(shapeOf(p.id)) && !FLAT.has(shapeOf(p.id))).map(boxOf).filter(Boolean), ...st.fixed];
     const hit = (x, z) => solid.find((b) => x > b.x0 - 0.3 && x < b.x1 + 0.3 && z > b.z0 - 0.3 && z < b.z1 + 0.3);
     for (let pass = 0, b = hit(lx, lz); b && pass < 4; pass += 1, b = hit(lx, lz)) {
       const ways = [[b.x0 - 0.3, lz], [b.x1 + 0.3, lz], [lx, b.z0 - 0.3], [lx, b.z1 + 0.3]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
-      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= H - 0.35 && Math.abs(z) <= H - 0.35) || ways[0];
+      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= HX - 0.35 && Math.abs(z) <= HZ - 0.35) || ways[0];
     }
     return world(lot, lx, lz);
   }
   // the house made bigger: each piece where it stood (the same middle), the hung ones moved out onto the new walls; one
   // that no longer fits (none should) goes back to the 가구 창고 -> { pieces, back: [uid] }
   function grownPieces(pieces, stage) {
-    const H = stageOf(stage).half; const out = []; const back = [];
+    const { hx: HX, hz: HZ } = stageOf(stage); const out = []; const back = [];
     for (const p of pieces) {
       const shape = shapeOf(p.id); const s = SIZE[shape]; let q = { ...p };
-      if (HUNG.has(shape) && s) { const [bx, bz] = backDir(p.rot); const d = s[1]; const snap = (v) => Math.round(v * 4) / 4; q = bz === 1 ? { ...q, z: snap(H - d / 2) } : bx === 1 ? { ...q, x: snap(H - d / 2) } : bx === -1 ? { ...q, x: snap(-H + d / 2) } : q; }
-      if (placeError(q, out, stage)) back.push(p.uid); else out.push(q);
+      if (HUNG.has(shape) && s) { const [bx, bz] = backDir(p.rot); const d = s[1]; const snap = (v) => Math.round(v * 4) / 4; q = bz === 1 ? { ...q, z: snap(HZ - d / 2) } : bx === 1 ? { ...q, x: snap(HX - d / 2) } : bx === -1 ? { ...q, x: snap(-HX + d / 2) } : q; }
+      if (placeError(q, out, stage) && !TANKS[shape]) back.push(p.uid); else out.push(q); // (a tank stays, with its fish, even in the 큰 집's half wall -- moved by its owner)
     }
     return { pieces: out, back };
   }
+  // every seat in a house: its pieces' and the room's own (the 큰 집's window seat: id home:room<k>:0)
+  const allSeatsOf = (lot, home) => [...(home?.pieces || []).flatMap((p) => seatsOf(lot, p)), ...stageOf(home?.stage).seats.flatMap((q, k) => seatsOf(lot, { uid: `room${k}`, id: 'window_seat', x: q.x, z: q.z, rot: 0 }))];
   // a piece's seats in the world (room-local turned by rot, then into the world)
   function seatsOf(lot, p) {
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - 0.45, yaw: a }; /* (y: as the scene lifts a seat 0.28 and a sitter's hips sit 0.17 below the seat; yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
+  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, STAGES, TOP_STAGE, allSeatsOf, stageOf, entryOf, doorwayOf, grownPieces, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
 }));
