@@ -94,9 +94,13 @@ test('배치 점검: 서 있는 것은 길 폭 밖, 서로 1m 이상, 게시판�
   const P = T.plazaProps(); P.benches.forEach((b, i) => add(`광장 벤치${i}`, b.x, b.z, b.r, 'thing')); P.lamps.forEach((l, i) => add(`광장 등${i}`, l.x, l.z, l.r, 'thing'));
   T.paving().gardens.forEach((g, i) => add(`정원${i}`, g.x, g.z, g.kind === 'round' ? 3.05 : 4.5, 'thing'));
   T.WATERFRONT.lamps.forEach((l, i) => add(`물가 등${i}`, l.x, l.z, l.r, 'thing')); T.WATERFRONT.benches.forEach((b, i) => add(`물가 벤치${i}`, b.x, b.z, b.r, 'thing'));
+  // (문제 기록 11: the quest givers too -- the gardener stood in the waterfront rail -- and the rails, a circle every 1.6 m)
+  const givers = new Map(Object.entries(require('../lib/island-quests').STORIES).map(([k, s]) => [`${s.at.x},${s.at.z}`, [k, s.at]]));
+  for (const [k, at] of givers.values()) if (!things.some((t) => t.kind === 'keeper' && Math.hypot(t.x - at.x, t.z - at.z) < 3)) add(`퀘스트 ${k}`, at.x, at.z, 0.4, 'thing');
+  T.WATERFRONT.rails.forEach((r, i) => { for (const s of [-1.6, 0, 1.6]) add(`물가 난간${i}`, r.x + Math.cos(r.yaw) * s, r.z - Math.sin(r.yaw) * s, 0.4, 'rail'); });
   const seg = (x, z, pts) => { let d = Infinity; for (let i = 1; i < pts.length; i += 1) { const [ax, az] = pts[i - 1]; const [bx, bz] = pts[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); d = Math.min(d, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return d; };
   const onWalk = [];
-  for (const t of things) T.walkCurves.forEach((w, wi) => {
+  for (const t of things) if (t.kind !== 'rail') T.walkCurves.forEach((w, wi) => {
     const toDoor = t.door && [w.pts[0], w.pts[w.pts.length - 1]].some(([x, z]) => Math.hypot(x - t.door.x, z - t.door.z) < 3);
     const pts = toDoor ? w.pts.filter(([x, z]) => Math.hypot(x - t.door.x, z - t.door.z) > t.r * 0.6 + 2) : w.pts; if (pts.length < 2) return;
     const gap = t.kind === 'keeper' ? seg(t.x, t.z, pts) - (w.w / 2 - 0.6) : seg(t.x, t.z, pts) - w.w / 2 - t.r;
@@ -105,7 +109,7 @@ test('배치 점검: 서 있는 것은 길 폭 밖, 서로 1m 이상, 게시판�
   const own = [['busk', 'busker'], ['mural', 'painter'], ['easel', 'painter'], ['mural', 'easel'], ['toolbox', 'electrician'], ['stones', 'builder'], ['bookcart', 'librarian'], ['omokTable', 'grandpa'], ['mailbox', 'guide']];
   const crowded = [];
   for (let i = 0; i < things.length; i += 1) for (let j = i + 1; j < things.length; j += 1) {
-    const a = things[i]; const b = things[j]; if (own.some(([p, q]) => (a.name === p && b.name === q) || (a.name === q && b.name === p))) continue;
+    const a = things[i]; const b = things[j]; if (a.kind === 'rail' && b.kind === 'rail') continue; if (own.some(([p, q]) => (a.name === p && b.name === q) || (a.name === q && b.name === p))) continue;
     if (Math.hypot(a.x - b.x, a.z - b.z) - a.r - b.r < 1) crowded.push(`${a.name}↔${b.name}`);
   }
   const boards = things.filter((t) => t.kind === 'board'); const piled = boards.filter((b) => boards.filter((o) => Math.hypot(o.x - b.x, o.z - b.z) < 8).length > 3).map((b) => b.name);
