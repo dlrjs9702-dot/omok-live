@@ -373,7 +373,7 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
             let k = 0; cell.matrices.forEach((m, i) => { if (p.zones[i] === zone) im.setMatrixAt(k++, both.multiplyMatrices(m, local).multiply(matrix)); });
             im.computeBoundingSphere(); // over every copy of the group, so culling never hides one the update brings in
             im.count = 0; im.visible = false; im.castShadow = shadow; im.receiveShadow = true;
-            cell.parent.add(im); return im;
+            cell.parent.add(im); invalidateOcclusion(cell.parent); return im; // (a building's batched parts: its sight boxes again)
           });
           p.groups.set(zone, { high: meshesOf(gltf, cell.shadow && entry.shadows !== false), low: lowGltf ? meshesOf(lowGltf, false) : null, a: 0, b: 0 });
         }

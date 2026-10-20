@@ -24,15 +24,20 @@ export function createOcclusion(camera) {
   }
   function build(root) {
     remove(root); root.updateWorldMatrix(true, true);
-    const rec = { revision: root.userData.occlusionRevision || 0, meshes: [], box: new THREE.Box3(), ghosts: new Map(), prepared: false, a: 0, seen: -Infinity, opacity: null };
+    // meshes: whose materials fade; tests: one box each -- an instanced mesh (the yard's walls) one per instance, 문제 기록 7
+    const rec = { revision: root.userData.occlusionRevision || 0, meshes: [], tests: [], box: new THREE.Box3(), ghosts: new Map(), prepared: false, a: 0, seen: -Infinity, opacity: null };
+    const im = new THREE.Matrix4();
     root.traverse((mesh) => {
       if (!mesh.isMesh) return;
       if (mesh.isSkinnedMesh) { mesh.skeleton.update(); mesh.computeBoundingBox(); }
       else if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
       const box = (mesh.isSkinnedMesh ? mesh.boundingBox : mesh.geometry.boundingBox)?.clone();
-      if (box && !box.isEmpty()) {
-        rec.meshes.push({ mesh, box, inverse: mesh.matrixWorld.clone().invert(), original: null });
-        rec.box.union(box.clone().applyMatrix4(mesh.matrixWorld));
+      if (!box || box.isEmpty()) return;
+      rec.meshes.push({ mesh, original: null });
+      for (let i = 0; i < (mesh.isInstancedMesh ? mesh.instanceMatrix.count : 1); i += 1) {
+        const world = mesh.isInstancedMesh ? (mesh.getMatrixAt(i, im), im.premultiply(mesh.matrixWorld)).clone() : mesh.matrixWorld.clone();
+        rec.tests.push({ mesh, box, world, inverse: world.clone().invert() });
+        rec.box.union(box.clone().applyMatrix4(world));
       }
     });
     records.set(root, rec); stats.builds += 1;
@@ -84,11 +89,11 @@ export function createOcclusion(camera) {
         stats.boxTests += 1;
         // intersectBox returns the exit when the origin is inside: that exit can be beyond the player.
         if (!rec.box.containsPoint(ray.origin) && (!ray.intersectBox(rec.box, hit) || hit.distanceToSquared(camera.position) >= far * far)) continue;
-        for (const item of rec.meshes) {
+        for (const item of rec.tests) {
           if (!visible(item.mesh, root)) continue;
           // Local boxes retain each mesh's rotation; gaps between separate parts stay open.
           inverse.copy(item.inverse); localRay.copy(ray).applyMatrix4(inverse); stats.boxTests += 1;
-          if (item.box.containsPoint(localRay.origin) || (localRay.intersectBox(item.box, hit) && hit.applyMatrix4(item.mesh.matrixWorld).distanceToSquared(camera.position) < far * far)) { blocked = true; break; }
+          if (item.box.containsPoint(localRay.origin) || (localRay.intersectBox(item.box, hit) && hit.applyMatrix4(item.world).distanceToSquared(camera.position) < far * far)) { blocked = true; break; }
         }
         if (blocked) break;
       }
