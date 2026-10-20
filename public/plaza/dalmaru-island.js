@@ -226,8 +226,34 @@
   // what one walks round at the structures (the scene's collision and the islanders' route grid alike): 초승등대, the
   // stairs' walls (the open side and the stone under the steps), each niche's foot, 툇마루섬's board, 물가 거리's railing,
   // lamps and benches
+  // 묶음 1 대청마당 바닥 (assets 59 plaza-v1, notes 88eb828): a stone disc round the fountain, a ring, kerbs along the
+  // south, east and west edges (open where a walk comes in; the north runs on into 영웅마루's yard), a water channel each
+  // side of the disc and six garden islands -- the pack's suggested places moved off the walks, doors, 알림마루's court
+  // and the plaza's own places (spawn, 책수레, 생일, 벽화). Places from the fountain: x east, z south.
+  let paving_ = null;
+  function paving() {
+    if (paving_) return paving_;
+    const c = (x, z, extra) => ({ x: PLAZA_C.x + x, z: PLAZA_C.z + z, ...extra });
+    const channels = [];
+    for (const s of [1, -1]) { for (let k = 0; k < 4; k += 1) channels.push(c(s * (11.5 + 4 * k), 0, { yaw: 0 })); channels.push(c(s * 26.5, 0, { yaw: (s * Math.PI) / 2, end: true })); }
+    const gardens = [['long', -18, 18], ['long', 24, 18], ['round', -33, -12], ['round', 33, -12], ['round', -29, 27], ['round', 38, 25]].map(([kind, x, z]) => c(x, z, { kind }));
+    const S = P.d1 - PLAZA_C.z - 0.18; const E = P.hw - 0.18; // (the kerb's middle, 0.18 in from the edge)
+    const open = (x, z, alongX) => [-2, -1, 0, 1, 2].some((d) => { const px = alongX ? x + d : x; const pz = alongX ? z : z + d; return walkCurves.some((w) => w.pts.some(([a, b]) => Math.hypot(a - px, b - pz) < w.w / 2 + 0.8)) || Object.keys(SPOTS).some((id) => { const o = facilityDoor(id); return o && Math.hypot(o.x - px, o.z - pz) < 2.5; }); });
+    const curbs = [];
+    for (let x = -40; x <= 40; x += 4) if (!open(PLAZA_C.x + x, PLAZA_C.z + S, true)) curbs.push(c(x, S, { yaw: 0 }));
+    for (const s of [1, -1]) for (let z = S - 3.8; z > P.d0 - PLAZA_C.z + 2; z -= 4) if (!open(PLAZA_C.x + s * E, PLAZA_C.z + z, false)) curbs.push(c(s * E, z, { yaw: Math.PI / 2 }));
+    const corners = [c(-E, S, { yaw: 0 }), c(E, S, { yaw: Math.PI / 2 })]; // (its arms run +x and -z)
+    return (paving_ = { disc: c(0, 0), channels, gardens, curbs, corners });
+  }
+  // a garden's rim and a channel's bank are walked round (a garden's rim sat on: plazaProps' seats)
+  function pavingSolids() {
+    const { channels, gardens } = paving(); const out = [];
+    for (const g of gardens) if (g.kind === 'round') out.push({ x: g.x, z: g.z, r: 3.05 }); else for (const d of [-3.2, -1.6, 0, 1.6, 3.2]) out.push({ x: g.x + d, z: g.z, r: 1.8 });
+    for (const ch of channels) if (ch.end) out.push({ x: ch.x, z: ch.z, r: 1 }); else for (const d of [-1.5, -0.5, 0.5, 1.5]) out.push({ x: ch.x + d, z: ch.z, r: 0.65 });
+    return out;
+  }
   function structureSolids() {
-    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }];
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }, ...pavingSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
@@ -250,6 +276,11 @@
     const beds = [];
     for (let i = 0; i < 12; i += 1) { const p = at(Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62), 13.8); if (!busy(p.x, p.z, 3.4)) beds.push({ ...p, r: 1.1, i }); }
     const seats = benches.map((b, k) => { const ry = Math.atan2(PLAZA_C.x - b.x, PLAZA_C.z - b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
+    // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
+    paving().gardens.forEach((g, k) => {
+      const at = g.kind === 'round' ? [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * 2.23, b * 2.23]) : [-3, 0, 3].flatMap((x) => [[x, 1.95], [x, -1.95]]);
+      at.forEach(([dx, dz], n) => seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }));
+    });
     seats.push(...C.plazaProps().seats.filter((s) => s.room));
     return { benches, lamps, beds, seats };
   }
@@ -355,7 +386,7 @@
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
-    structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    structureSolids, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,
   });

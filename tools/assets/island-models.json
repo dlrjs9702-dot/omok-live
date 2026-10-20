@@ -5787,6 +5787,118 @@
       "lowSrc": "dalmaru55:02. Low/stairs_ridge_low.glb",
       "lowSha256": "ddc6cb3db1b8dd90aeb01319e7b3680330434d2135dee60d4f9b00da45015957",
       "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_band_ring.glb",
+      "src": "plaza59:01. High/plaza_band_ring__base.glb",
+      "sha256": "32de29fe52e686e306fce41e49bec3d1a9fc9e27728ab522c7a62fca3406e75b",
+      "lowSrc": "plaza59:02. Low/plaza_band_ring__base_low.glb",
+      "lowSha256": "1589e4eac910c8b9541cf5f538f212734744c26d0a2af87c82007ac33e4ea41a",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_channel.glb",
+      "src": "plaza59:01. High/plaza_channel__base.glb",
+      "sha256": "0d690328c32fe5c218d90312167f6535c589136bea49a72e45bcc4fda0ee9999",
+      "lowSrc": "plaza59:02. Low/plaza_channel__base_low.glb",
+      "lowSha256": "5b177627419a014ab360f9a327b2ce76f1cb8821dff7feac16ad92e8d9bfb467",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_channel_end.glb",
+      "src": "plaza59:01. High/plaza_channel_end__base.glb",
+      "sha256": "56a0e01d45d03db9ec525b8525621ad41d45d82a004c4505ceec492fbc44f861",
+      "lowSrc": "plaza59:02. Low/plaza_channel_end__base_low.glb",
+      "lowSha256": "863ca1b3cadd32fa0f65052c0ea940f2ee9cf2e61167d02028e5bb8cbab80410",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_curb.glb",
+      "src": "plaza59:01. High/plaza_curb__base.glb",
+      "sha256": "89f13a6abd50a7e76714da25ca57a1788d6e79f1b75668357b3a6223d91d4c9d",
+      "lowSrc": "plaza59:02. Low/plaza_curb__base_low.glb",
+      "lowSha256": "025506a309cde73d0a06c5efa5a95d5a73bd53a1a10b533eb323e80be79edaf9",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_curb_corner.glb",
+      "src": "plaza59:01. High/plaza_curb_corner__base.glb",
+      "sha256": "1506384640e865bf6f42835992e98263ab99d6e1e4e540143a5298be0de88f53",
+      "lowSrc": "plaza59:02. Low/plaza_curb_corner__base_low.glb",
+      "lowSha256": "540b6ddf9549c5a255bc7a876f99c63934d3039e066f7dff0c9a9c448b10d87a",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_spring.glb",
+      "src": "plaza59:01. High/plaza_garden_long__spring.glb",
+      "sha256": "f0e9a3866ff2c6f8a8a819b9c711567b0e73248a5d2658c818b5328959864e36",
+      "lowSrc": "plaza59:02. Low/plaza_garden_long__spring_low.glb",
+      "lowSha256": "512e0f53d86ac0ddb7803486726a78e297c96be4f6723a2757dc4aab4ba05a53",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_summer.glb",
+      "src": "plaza59:01. High/plaza_garden_long__summer.glb",
+      "sha256": "1bf59a83e4513ed734705860e5364a71bc4b242fa70d79abc99d0c62579d58d3",
+      "lowSrc": "plaza59:02. Low/plaza_garden_long__summer_low.glb",
+      "lowSha256": "fa2dcb1905c686c816b7d863490f28e3b5cd4d6f0e3c8d4ca2ccb49742ade5cf",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_autumn.glb",
+      "src": "plaza59:01. High/plaza_garden_long__autumn.glb",
+      "sha256": "e2623cfdceb2be5fcccd7c4af9489d2bb6d23a114eb9257acc1725f27197ed9a",
+      "lowSrc": "plaza59:02. Low/plaza_garden_long__autumn_low.glb",
+      "lowSha256": "b4efc756b8849524fd04f67609b8fb4d3baeccc903a7a959f5b64ba058185698",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_long_winter.glb",
+      "src": "plaza59:01. High/plaza_garden_long__winter.glb",
+      "sha256": "b66f5cffd67185885cee6a011d73eaeae0f093a3bebb64c15f3c6e339bb0b1e5",
+      "lowSrc": "plaza59:02. Low/plaza_garden_long__winter_low.glb",
+      "lowSha256": "e947628aec531f7641c6b92d23f1dd645dc54c3f3a85f54b836f44f9a2881d9b",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_round_spring.glb",
+      "src": "plaza59:01. High/plaza_garden_round__spring.glb",
+      "sha256": "b276daa86f349bbd9c8ba00a104b1ac863f6fd0c77d58beddd5d54963295c596",
+      "lowSrc": "plaza59:02. Low/plaza_garden_round__spring_low.glb",
+      "lowSha256": "d98bbf1f2da2dd52793d0989b89c2a95092293d8f9dde87b429de1a889f160b5",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_round_summer.glb",
+      "src": "plaza59:01. High/plaza_garden_round__summer.glb",
+      "sha256": "17786abd4207e0369e78a0dc4060b094046dcb64f4ecb0f4b4b17bf95718a111",
+      "lowSrc": "plaza59:02. Low/plaza_garden_round__summer_low.glb",
+      "lowSha256": "8792a8328348fd8c039a95de1874f7f50f789f636b4499986de3010927abd308",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_round_autumn.glb",
+      "src": "plaza59:01. High/plaza_garden_round__autumn.glb",
+      "sha256": "d94c3fd6686f112f9d719914244dd00dff4feea5bc9b7750193d984ae4ac6463",
+      "lowSrc": "plaza59:02. Low/plaza_garden_round__autumn_low.glb",
+      "lowSha256": "15ee5d2733aa8f24b768ebcf8f056b775fe08fc140b643014c0b45f0dacfe241",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_garden_round_winter.glb",
+      "src": "plaza59:01. High/plaza_garden_round__winter.glb",
+      "sha256": "5e39fe3b2383b2c73ccd33d6f9111339d0baca154083f3415d6ad73f70c5528f",
+      "lowSrc": "plaza59:02. Low/plaza_garden_round__winter_low.glb",
+      "lowSha256": "d04adfbe67d852740582ad68204a752a02afbf03cd8ca1a5ea06cab8d9e83bcf",
+      "precompressed": true
+    },
+    {
+      "out": "plaza-v1/plaza_medallion.glb",
+      "src": "plaza59:01. High/plaza_medallion__base.glb",
+      "sha256": "fe6015ecf24c0d1e01f7d3be7bc5b64f7597e65e8c589233314929a9324d6a87",
+      "lowSrc": "plaza59:02. Low/plaza_medallion__base_low.glb",
+      "lowSha256": "65644fcbf65b3f466f7ff3ca930efe07feeb8359a6daddba09c99b6161ee597c",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -5820,6 +5932,7 @@
     "townhall44": "44. Game Island townhall interior 2026-10-18",
     "planting45": "45. Game Island planting growth 2026-10-18",
     "together47": "47. Game Island together island 2026-10-18",
-    "dalmaru55": "55. Game Island Dalmaru structures 2026-10-19"
+    "dalmaru55": "55. Game Island Dalmaru structures 2026-10-19",
+    "plaza59": "59. Game Island plaza paving 2026-10-20"
   }
 }

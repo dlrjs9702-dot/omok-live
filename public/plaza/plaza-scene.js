@@ -865,6 +865,19 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // 툇마루섬: the players' houses come with 「내 집」 -- till then a board says so (assets: the notice board's look)
     const I = T.dalmaru.ISLE; const post = new THREE.Group(); mesh(new THREE.BoxGeometry(2.2, 1.2, 0.12), mat(0xe9d8b4), 0, 1.5, 0, post); for (const x of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a6a48), x, 0.8, 0, post);
     const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 곧 열려요', board, 2.7);
+    // 묶음 1 대청마당 바닥 (assets 59): the disc, ring and kerbs walked over, just above the paving (the kerbs one batch);
+    // the channels and gardens walked round (dalmaru-island's pavingSolids)
+    if (T.paving) {
+      const V = T.paving(); const y = T.dalmaru.PLAZA.h + 0.035; const none = () => new THREE.Group();
+      piece('plaza.medallion', V.disc.x, y, V.disc.z, 0, none(), true); piece('plaza.band_ring', V.disc.x, y, V.disc.z, 0, none(), true);
+      for (const k of V.corners) piece('plaza.curb_corner', k.x, y - 0.015, k.z, k.yaw, none(), true);
+      const im = new THREE.InstancedMesh(new THREE.BoxGeometry(3.98, 0.14, 0.36).translate(0, 0.07, 0), mat(0xc9bfae), V.curbs.length); const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0); const one = new THREE.Vector3(1, 1, 1);
+      const matrices = V.curbs.map((k, i) => { m4.compose(new THREE.Vector3(k.x, y - 0.015, k.z), q.setFromAxisAngle(up, k.yaw), one); im.setMatrixAt(i, m4); return m4.clone(); });
+      im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+      assets.batch('plaza.curb', [{ x: V.disc.x, z: V.disc.z, parent: scene, procedural: [im], matrices, colors: null, shadow: false }]);
+      for (const ch of V.channels) piece(ch.end ? 'plaza.channel_end' : 'plaza.channel', ch.x, y, ch.z, ch.yaw, ch.end ? box(2, 0.34, 2, 0xd8d0c2) : box(4, 0.2, 1.3, 0xd8d0c2));
+      for (const g of V.gardens) piece(`plaza.garden_${g.kind}`, g.x, heightAt(g.x, g.z), g.z, 0, g.kind === 'round' ? box(6, 0.45, 6, 0x9fbf7f) : box(10, 0.45, 3.6, 0x9fbf7f));
+    }
     const W = T.WATERFRONT;
     for (const r of W.rails) { piece('dalmaru.rail_waterfront', r.x, heightAt(r.x, r.z), r.z, r.yaw, box(4.2, 1, 0.15, 0x8a6a48)); }
     for (const l of W.lamps) { piece('dalmaru.lamp_waterfront', l.x, heightAt(l.x, l.z), l.z, 0, box(0.2, 4.4, 0.2, 0x4d5560)); }
@@ -2773,8 +2786,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
       box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (box.max.x - box.min.x > 60 || box.max.z - box.min.z > 60) return; boxes.push(box.clone());
     });
-    const r1 = (v) => Math.round(v * 10) / 10;
-    const unseen = live.filter((s) => !s.nature && !s.batch && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.3)).map((s) => [r1(s.x), r1(s.z), s.r]);
+    const r1 = (v) => Math.round(v * 10) / 10; /* (묶음 1: drawn = standing 0.15 m over the ground -- a plaza channel's bank is 0.17) */
+    const unseen = live.filter((s) => !s.nature && !s.batch && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.15)).map((s) => [r1(s.x), r1(s.z), s.r]);
     const things = [...buildingRoots.map((r) => [r.userData.facility || 'house', r]), ...pieces.map((g) => [g.userData.piece, g])].filter(([, r]) => r.visible && r.parent);
     const unblocked = []; const floating = []; const sunk = [];
     for (const [name, root] of things) {

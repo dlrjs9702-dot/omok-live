@@ -393,6 +393,12 @@
   const dal = (file, extra = {}) => ({ url: `${DAL}/${file}.glb`, low: { url: `${DAL}/${file}_low.glb` }, rotationY: Math.PI, near: 90, ...extra });
   for (const f of ['bridge_yunseul', 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
   for (const f of ['facade_townhall', 'facade_mall']) REGISTRY[`dalmaru.${f}`] = dal(f, { near: 140 });
+  // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,
+  // channels; the gardens in four seasons (each its zone's)
+  const PV = '/assets/island/plaza-v1';
+  for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
+  const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
+  for (const f of ['garden_long', 'garden_round']) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });

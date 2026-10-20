@@ -356,8 +356,10 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   }
   const disc = (x, z, r, material, lift = 0.04, seg = 48) => { const m = new THREE.Mesh(keep(new THREE.CircleGeometry(r, seg)), material); m.rotation.x = -Math.PI / 2; m.position.set(x, land(x, z) + lift, z); m.receiveShadow = true; scene.add(m); return m; };
   if (T.inPlaza) { // 대청마당 (달마루섬): one paved terrace, a band round the fountain
-    const P = T.dalmaru.PLAZA; const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), paveMat); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
-    const edge = new THREE.Mesh(keep(new THREE.RingGeometry(10.6, 11.1, 64)), mat(0xe6d3ab)); edge.rotation.x = -Math.PI / 2; edge.position.set(T.PLAZA_C.x, P.h + 0.04, T.PLAZA_C.z); scene.add(edge);
+    // (묶음 1, assets 59: 박석 -- one 6 m tile repeated over it; the disc, ring, kerbs, channels and gardens are plaza-scene's)
+    const P = T.dalmaru.PLAZA; const tex = keep(new THREE.TextureLoader().load(`/assets/island/plaza-v1/plaza_pave${software ? '_low' : ''}.webp`));
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.repeat.set((P.hw * 2) / 6, (P.d1 - P.d0) / 6);
+    const pave = new THREE.Mesh(keep(new THREE.PlaneGeometry(P.hw * 2, P.d1 - P.d0)), keep(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }))); pave.rotation.x = -Math.PI / 2; pave.position.set(P.x, P.h + 0.03, (P.d0 + P.d1) / 2); pave.receiveShadow = true; scene.add(pave);
   } else {
   disc(0, 0, PLAZA_R, paveMat, 0.03, 64);
   const rim = new THREE.Mesh(keep(new THREE.RingGeometry(PLAZA_R - 0.4, PLAZA_R, 64)), mat(0xe2cfa6)); rim.rotation.x = -Math.PI / 2; rim.position.y = PLAZA_H + 0.045; scene.add(rim);

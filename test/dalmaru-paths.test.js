@@ -57,3 +57,22 @@ test('달마루섬 길: 모든 장소가 대청마당에서 길로 이어지고,
   } });
   assert.deepEqual({ cut, unreached, dead }, { cut: [], unreached: [], dead: [] });
 });
+
+// 묶음 1 대청마당 바닥 (assets 59): what is walked round -- the gardens and channels -- keeps off the walks, the doors,
+// 알림마루 and the plaza's places, and every rim seat is stood by on open ground (the server lets one sit within 2.8 m)
+test('대청마당 바닥: 정원·물길은 길·문·알림마루·광장 자리를 비키고, 정원 앉을 자리는 모두 다가갈 수 있다', { skip: !ON && '달마루섬 전용' }, () => {
+  const D = T.dalmaru; const PL = D.PLACES; const V = T.paving(); const S = T.structureSolids();
+  const mine = S.filter((s) => [...V.gardens, ...V.channels].some((g) => Math.hypot(g.x - s.x, g.z - s.z) < 5.5));
+  assert.ok(V.gardens.length === 6 && V.channels.length === 10 && V.curbs.length > 20);
+  const hits = [];
+  for (const s of mine) {
+    T.walkCurves.forEach((w, i) => { if (w.pts.some(([x, z]) => Math.hypot(x - s.x, z - s.z) < w.w / 2 + s.r + 0.3)) hits.push(`길${i + 1}`); });
+    for (const id of Object.keys(T.SPOTS)) { const d = T.facilityDoor(id); if (d && Math.hypot(d.x - s.x, d.z - s.z) < s.r + 2.5) hits.push(`문:${id}`); }
+    for (const k of ['notice', 'spawn', 'mural', 'bookcart', 'birthday']) if (Math.hypot(PL[k].x - s.x, PL[k].z - s.z) < s.r + 3.5) hits.push(k);
+  }
+  const blocked = (x, z) => !T.walkable(x, z) || S.some((s) => Math.hypot(s.x - x, s.z - z) < s.r + 0.35) || T.plazaProps().benches.some((b) => Math.hypot(b.x - x, b.z - z) < b.r + 0.35);
+  const seats = T.plazaProps().seats.filter((s) => s.id.startsWith('g'));
+  const lonely = seats.filter((s) => { for (let r = 0.4; r <= 2.6; r += 0.2) for (let a = 0; a < 16; a += 1) if (!blocked(s.x + Math.cos(a) * r, s.z + Math.sin(a) * r)) return false; return true; }).map((s) => s.id);
+  assert.equal(seats.length, 4 * 4 + 2 * 6);
+  assert.deepEqual({ hits: [...new Set(hits)], lonely }, { hits: [], lonely: [] });
+});
