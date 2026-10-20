@@ -79,3 +79,11 @@ test('툇마루섬 집터: 12곳 모두 평평한 땅, 바닷가 비탈에서 2m
   }
   assert.equal(T.HOME_LOTS.length, 12); assert.deepEqual(bad, []);
 });
+
+// (넓힌 툇마루섬과 본섬 둘레: walked to the waterline's sand and no further -- no walkable ground under the water)
+test('섬 둘레: 본섬·툇마루섬 해안에서 물 아래는 걸을 수 없음', { skip }, () => {
+  const D = T.dalmaru; const wet = [];
+  const ring = (cx, cz, r0, r1) => { for (let a = 0; a < Math.PI * 2; a += Math.PI / 180) for (let r = r0; r < r1; r += 0.5) { const x = cx + Math.cos(a) * r; const z = cz + Math.sin(a) * r; if (!T.onBridge(x, z) && T.walkable(x, z) && T.heightAt(x, z) < D.SEA - 0.05) wet.push([+x.toFixed(1), +z.toFixed(1)]); } };
+  ring(D.ISLE.x, D.ISLE.z, D.ISLE.r - 6, D.ISLE.r + 12); ring(0, 0, 150, 190);
+  assert.deepEqual(wet.slice(0, 5), []);
+});
