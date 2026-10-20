@@ -399,6 +399,15 @@
   for (const f of ['medallion', 'band_ring', 'curb', 'curb_corner', 'channel', 'channel_end']) REGISTRY[`plaza.${f}`] = { url: `${PV}/plaza_${f}.glb`, low: { url: `${PV}/plaza_${f}_low.glb` }, near: 90, shadows: false };
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
   for (const f of ['garden_long', 'garden_round']) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };
+  // 묶음 2 가구점 (assets 57 furniture-v1): every piece in each of its colours (furn.<shape>__<colour>, island-furniture.js),
+  // the display's plinths, rugs, price stands and the counter, the 2nd floor, its lift and sign
+  const FURN = typeof module === 'object' && module.exports ? require('./island-furniture.js') : globalThis.IslandFurniture;
+  const FV = '/assets/island/furniture-v1';
+  const fv = (file, extra = {}) => ({ url: `${FV}/${file}.glb`, low: { url: `${FV}/${file}_low.glb` }, near: 26, ...extra });
+  for (const g of FURN?.GOODS || []) REGISTRY[g.model] = fv(`furn_${g.id}`);
+  for (const f of ['plinth_l', 'plinth_s', 'price_stand', 'sold_sign', 'checkout']) REGISTRY[`shop.${f}`] = fv(`shop_${f}`, { shadows: false });
+  for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false });
+  for (const f of ['floor2', 'elevator', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's

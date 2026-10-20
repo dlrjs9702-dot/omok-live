@@ -1829,7 +1829,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:up' ? furnitureLift(true) : id === 'furniture:down' ? furnitureLift(false) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1892,6 +1892,7 @@
     byId('issueStatus').textContent = ''; issueDialog.dataset.ctx = ''; issueDialog.ctx = issueContext(); issueDialog.showModal(); byId('issueText').focus();
   }
   byId('issueLogBtn').addEventListener('click', openIssue);
+  byId('furnitureStorageBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); openFurnitureStorage(); }); // 묶음 2 가구 창고
   byId('issueCloseBtn').addEventListener('click', () => issueDialog.close());
   byId('issueShotOn').addEventListener('change', (event) => byId('issueShot').classList.toggle('hidden', !event.target.checked || !issueShot));
   byId('issueText').addEventListener('keydown', (event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); byId('issueForm').requestSubmit(); } });
@@ -2568,6 +2569,58 @@
       const r = await api(entering ? '/api/island/store/enter' : '/api/island/store/leave', { method: 'POST', body: '{}' });
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z); document.body.classList.toggle('townhallRoom', r.space !== 'island');
     } catch (error) { showToast(error.message); } finally { storeBusy = false; }
+  }
+  // 묶음 2 가구점 (백화점 2층): up and down by the lift; the day's display from the server (and again when a piece is sold
+  // anywhere: SSE 'furniture'); SPACE by a piece opens its window -- bought, it goes to the 가구 창고
+  let furnitureBusy = false; let furnitureState = null;
+  async function refreshFurniture() {
+    try { furnitureState = await api('/api/island/furniture'); plaza.controller?.setFurniture?.(furnitureState); } catch {}
+  }
+  async function furnitureLift(up) {
+    if (furnitureBusy) return; furnitureBusy = true;
+    try {
+      const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+      if (up) await refreshFurniture();
+      const r = await api(up ? '/api/island/furniture/up' : '/api/island/furniture/down', { method: 'POST', body: '{}' });
+      closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z);
+    } catch (error) { showToast(error.message); } finally { furnitureBusy = false; }
+  }
+  const furnitureCard = document.createElement('div'); furnitureCard.className = 'goodCard furnitureCard'; furnitureCard.id = 'furnitureCard';
+  const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구' };
+  function openFurniture(slot) {
+    const d = furnitureState && [...furnitureState.display, ...furnitureState.base].find((x) => x.slot === slot);
+    if (!d || d.sold) { showToast('팔렸어요. 내일 새 가구가 들어와요.'); return; }
+    const name = document.createElement('strong'); name.textContent = `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`;
+    const what = document.createElement('p'); what.className = 'lookMeta';
+    what.textContent = d.rarity === 'base' ? '늘 파는 가구예요. 산 가구는 가구 창고에 들어가요.' : `${FURNITURE_RARITY[d.rarity]} · 하나뿐이에요 — 사면 다른 사람에게서도 사라지고 내일 새 가구가 들어와요. 오늘 ${furnitureState.mine}/${furnitureState.perDay}점 샀어요.`;
+    const row = document.createElement('div'); row.className = 'goodBuy';
+    const buy = document.createElement('button'); buy.type = 'button'; buy.className = 'primary'; buy.textContent = '사기';
+    buy.addEventListener('click', async () => {
+      if (furnitureBusy) return; furnitureBusy = true; buy.disabled = true;
+      try {
+        const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+        const r = await api('/api/island/furniture/buy', { method: 'POST', body: JSON.stringify({ slot, requestId: crypto.randomUUID() }) });
+        plazaDialog.close(); showToast(`${r.name} — 가구 창고에 넣었어요`, 4000); await refreshFurniture(); /* (the points: the server tells, notifyPointsChanged) */
+      } catch (error) { showToast(error.message, 4000); await refreshFurniture(); } finally { furnitureBusy = false; buy.disabled = false; }
+    });
+    const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
+    row.append(buy, no); furnitureCard.replaceChildren(name, what, row);
+    openPlazaWindow('가구점', [furnitureCard]);
+  }
+  // 가구 창고: what I bought, each turned round in 3D (the 꾸미기 창's preview) -- placed once 내 집 comes
+  const storageBox = document.createElement('div'); storageBox.className = 'furnitureStorage'; storageBox.id = 'furnitureStorage';
+  async function openFurnitureStorage() {
+    let pieces = []; try { pieces = (await api('/api/island/furniture/mine')).pieces; } catch (error) { showToast(error.message); return; }
+    const canvas = document.createElement('canvas'); canvas.className = 'dressCanvas furnitureCanvas';
+    const cap = document.createElement('p'); cap.className = 'lookMeta';
+    const list = document.createElement('div'); list.className = 'furnitureList'; list.setAttribute('role', 'list');
+    const show = (p, btn) => { for (const b of list.children) b.classList.toggle('selected', b === btn); cap.textContent = `${p.name} · ${FURNITURE_RARITY[p.rarity] || ''}`; plaza.controller?.tryOn?.(canvas, { model: p.model }); };
+    if (!pieces.length) cap.textContent = '아직 산 가구가 없어요. 백화점 2층 가구점에 가 보세요.';
+    for (const p of pieces) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost furniturePiece'; b.setAttribute('role', 'listitem'); b.textContent = p.name; b.addEventListener('click', () => show(p, b)); list.append(b); }
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `${pieces.length}점 · 내 집이 생기면 놓을 수 있어요`;
+    storageBox.replaceChildren(canvas, cap, note, list);
+    openPlazaWindow('가구 창고', [storageBox]);
+    if (pieces.length) show(pieces[0], list.firstElementChild);
   }
   function storeKeeperTalk() {
     const lines = ['「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
@@ -5250,17 +5303,20 @@
   function closeDress(box) { if (!box || !dressRooms.has(box)) return; box.classList.add('hidden'); box.replaceChildren(); dressRooms.delete(box); plaza.controller?.tryOnClose?.(); }
   // an item's card or button: pointing at it, focusing it or pressing it shows it on (the look: what I wear with it)
   function dressOnHover(el, box, look, label) { const show = () => dressView(box, look(), label); el.addEventListener('pointerenter', show); el.addEventListener('focusin', show); el.addEventListener('click', show); }
-  function showTryOn(view, skins, skin) { dressView(document.getElementById(tryOnHosts[view]), { ...(skins.avatar?.look || {}), [skin.slot]: skin.id }, `${skin.name} · ${skin.slotLabel || ''}`); }
+  // (2026-10-20 내 정보 변신 온·오프: while transformed, another item is shown on me untransformed -- the island keeps the transformation)
+  const tryOnLook = (base, skin) => { const look = { ...base, [skin.slot]: skin.id }; if (skin.slot !== 'transform') delete look.transform; return look; };
+  const tryOnLabel = (base, skin) => `${skin.name} · ${skin.slotLabel || ''}${base.transform && skin.slot !== 'transform' ? ' · 변신 중이라 섬에서는 변신 모습이에요' : ''}`;
+  function showTryOn(view, skins, skin) { const base = skins.avatar?.look || {}; dressView(document.getElementById(tryOnHosts[view]), tryOnLook(base, skin), tryOnLabel(base, skin)); }
   function hideTryOn(view) { closeDress(document.getElementById(tryOnHosts[view])); }
   const dressPicked = { shop: null, mine: null }; // the card picked in each window (its skin id)
   function skinCardButtons(card, skin, view, skins) {
     if (!canTryOn(skin)) return;
-    const box = document.getElementById(tryOnHosts[view]); const base = () => skins.avatar?.look || {}; const look = () => ({ ...base(), [skin.slot]: skin.id });
+    const box = document.getElementById(tryOnHosts[view]); const base = () => skins.avatar?.look || {}; const look = () => tryOnLook(base(), skin);
     card.dataset.pick = skin.id; card.classList.toggle('selected', dressPicked[view] === skin.id);
-    card.addEventListener('pointerenter', () => dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()));
+    card.addEventListener('pointerenter', () => dressView(box, look(), tryOnLabel(base(), skin), base()));
     card.addEventListener('click', (event) => { // (its own button still does its own thing -- the bar's buttons press it)
       dressPicked[view] = skin.id; for (const c of card.parentElement.parentElement.parentElement.querySelectorAll('.skinCard.selected')) c.classList.remove('selected'); card.classList.add('selected');
-      dressView(box, look(), `${skin.name} · ${skin.slotLabel || ''}`, base()); dressDetail(view, skin); dressBarSync(view);
+      dressView(box, look(), tryOnLabel(base(), skin), base()); dressDetail(view, skin); dressBarSync(view);
       if (event.target.closest('button')) return;
     });
     if (dressPicked[view] === skin.id) { dressDetail(view, skin); }
@@ -5340,6 +5396,42 @@
   }
 
   let myInfoSkinSlot = '';
+  // (사용자 2026-10-20 「캐릭터 변신도 내 정보에서 다른 스킨 장착할 때 온·오프」) the transformations I own, on and off here as
+  // at the 변신 의상실 -- what else I wear stays saved under it and shows again once it is off; buying stays the 의상실's
+  let myTransforms = null; let myTransformBusy = false;
+  function transformBlock() {
+    const box = document.createElement('div'); box.className = 'myTransforms'; box.id = 'myTransforms';
+    const act = (t, label, cls) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; b.dataset.transform = t.character;
+      b.addEventListener('click', async () => {
+        if (myTransformBusy) return; myTransformBusy = true; b.disabled = true;
+        try {
+          const data = await api('/api/skins/equip', { method: 'POST', body: JSON.stringify(t.chosen ? { skinId: null, game: 'avatar', slot: 'transform' } : { skinId: t.skinId }) });
+          applySkinEquipment(data); myTransforms = (await api('/api/transformations')).list; showToast(t.chosen ? '변신을 풀었어요' : `${t.name}(으)로 변신했어요`); renderMyInfoSkins();
+        } catch (error) { showToast(error.message, 4000); } finally { myTransformBusy = false; b.disabled = false; }
+      });
+      return b;
+    };
+    const draw = () => {
+      const owned = (myTransforms || []).filter((t) => t.owned); const on = owned.find((t) => t.chosen);
+      const line = document.createElement('div'); line.className = 'myTransformLine';
+      const text = document.createElement('strong'); text.textContent = on ? `변신 중: ${on.name}` : '변신 안 함'; line.append(text);
+      if (on) line.append(act(on, '풀기', 'ghost tiny'));
+      const list = document.createElement('div'); list.className = 'myTransformList'; list.setAttribute('role', 'list');
+      for (const t of owned) {
+        const row = document.createElement('div'); row.className = `myTransformRow${t.chosen ? ' chosen' : ''}`; row.setAttribute('role', 'listitem');
+        const name = document.createElement('span'); name.textContent = t.name;
+        row.append(name, act(t, t.chosen ? '변신 풀기' : '변신하기', t.chosen ? 'ghost tiny' : 'primary tiny'));
+        dressOnHover(row, document.getElementById(tryOnHosts.mine), () => ({ ...(myInfoSkins?.avatar?.look || {}), transform: t.character }), t.name);
+        list.append(row);
+      }
+      const hint = document.createElement('p'); hint.className = 'lookMeta'; hint.textContent = '변신은 백화점 변신 의상실에서 살 수 있어요.';
+      box.replaceChildren(line, owned.length ? list : hint);
+    };
+    if (myTransforms) draw();
+    api('/api/transformations').then((r) => { myTransforms = r.list; if (box.isConnected) draw(); }).catch(() => {});
+    return box;
+  }
   function renderMyInfoSkins() {
     myInfoSkinBody.replaceChildren();
     if (!myInfoSkins) return;
@@ -5370,6 +5462,7 @@
     const family = families.find((item) => item.family === myInfoSkinFamily);
     if (!family) return;
     if (family.family === 'avatar') {
+      myInfoSkinBody.append(transformBlock()); // (2026-10-20: on and off here too)
       const choice = renderTransformationChoice(myInfoSkins);
       if (choice) myInfoSkinBody.append(choice);
     }
@@ -6010,6 +6103,7 @@
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'residents') { plaza.controller?.setResidents?.(parsed.list); return; } // A-6: a talk holds or lets go of an islander
     if (event === 'birthdays') { birthdaySeq += 1; plaza.controller?.setBirthdays?.(parsed.names || []); return; } // B 47 생일
+    if (event === 'furniture') { if (plaza.controller?.space?.() === 'furniture') refreshFurniture(); else furnitureState = null; return; } // 묶음 2: a piece sold somewhere
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }
     if (event === 'mail') { showToast(`✉️ ${parsed.from}님에게서 편지가 왔어요 · 광장 동쪽 우체통에서 열어 보세요`, 6000); return; } // B 47 우체통

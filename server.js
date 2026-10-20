@@ -59,6 +59,7 @@ require('./lib/island-items').setPriceHook(Economy.priceOf);
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
+const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
@@ -1054,6 +1055,12 @@ let plazaDirty = false;
 // room; leaving the island or the visit ends it -- a new visit starts outside the hall's door.
 const townhallInside = new Set();
 const storeInside = new Set(); // v1.10.92 잡화점: who is in the store's room (the same rules as the 민원실)
+const furnitureInside = new Set(); // 묶음 2 가구점: who is up on the 2nd floor (still in the store: storeInside too)
+// the day's display and what of it is sold (world 'furniture': { day, sold: { slot: account }, buys: { account: n } })
+async function furnitureDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('furniture')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
+const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('furniture:perDay'), mine: st.buys[account] || 0,
+  display: Object.entries(IslandFurniture.displayOf(st.day)).map(([slot, id]) => { const g = IslandFurniture.good(id); return { slot, id, name: g.name, rarity: g.rarity, price: Economy.value(`furniture:${g.rarity}`), sold: Boolean(st.sold[slot]) }; }),
+  base: IslandFurniture.BASE_SLOTS.map((s) => { const g = IslandFurniture.good(s.good); return { slot: s.id, id: g.id, name: g.name, rarity: 'base', price: Economy.value('furniture:base'), sold: false }; }) });
 // v1.10.86 주민세 (사용자 2026-10-17): every account pays each Seoul day 3% of what it has (wallet + deposit), at least
 // 20,000P (lib/point-store.js taxCollect); what it cannot pay is owed, up to 200,000P. Anyone owing is a 체납자: that title
 // over any other, and the 줄무늬 outfit in white and black over whatever is worn, until it is paid at the 민원 창구.
@@ -1163,7 +1170,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -3470,7 +3477,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.106' });
+    return sendJson(res, 200, { ok: true, version: '1.10.107' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4330,6 +4337,11 @@ async function requestHandler(req, res) {
     if (ride) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
+    } else if (furnitureInside.has(session.token)) { // 묶음 2 가구점 (as the 1st floor)
+      const here = plazaPresence.get(session.token);
+      spot = IslandFurniture.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandFurniture.clamp(body.x, body.z) : { x: here.x, z: here.z };
+      Object.assign(wanted, IslandFurniture.clamp(body.x, body.z));
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('store'));
     } else if (storeInside.has(session.token)) { // v1.10.92 (as the 민원실 below)
       const here = plazaPresence.get(session.token);
       spot = IslandStore.inStore(Number(body.x), Number(body.z), 2) || !here ? IslandStore.clamp(body.x, body.z) : { x: here.x, z: here.z };
@@ -4360,7 +4372,7 @@ async function requestHandler(req, res) {
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      space: townhallInside.has(session.token) ? 'townhall' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92
+      space: townhallInside.has(session.token) ? 'townhall' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
         const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
@@ -4484,6 +4496,56 @@ async function requestHandler(req, res) {
     plazaPresence.set(session.token, { ...at, x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100, space: entering ? 'store' : 'island', moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'store' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
+  }
+  // 묶음 2 가구점: the lift -- up from in front of the 1st floor's, down from in front of the 2nd floor's
+  if ((pathname === '/api/island/furniture/up' || pathname === '/api/island/furniture/down') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); const up = pathname.endsWith('/up');
+    const from = up ? IslandStore.world(...IslandStore.LIFT.stand) : IslandFurniture.world(...IslandFurniture.LIFT.stand);
+    if (!at || !storeInside.has(session.token) || furnitureInside.has(session.token) === up || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.');
+    if (up) furnitureInside.add(session.token); else furnitureInside.delete(session.token);
+    const spot = up ? IslandFurniture.world(...IslandFurniture.LIFT.stand) : IslandStore.world(...IslandStore.LIFT.stand);
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: up ? 'furniture' : 'store', moving: false, at: nowMs(), act: null, seat: null });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: up ? 'furniture' : 'store', x: spot.x, z: spot.z });
+  }
+  // the day's display (and what is sold), the always-on-sale ones, my buys today
+  if (pathname === '/api/island/furniture' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, ...furnitureView(await furnitureDay(), pointAccountForSession(session)) });
+  }
+  // a piece bought where it stands (on the 2nd floor, by it): the first one only -- the next hears it was just sold and
+  // pays nothing -- three of the display a day each; it goes to my storage (가구 창고) and from every screen at once
+  if (pathname === '/api/island/furniture/buy' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const at = plazaPresence.get(session.token);
+    const place = at && furnitureInside.has(session.token) ? IslandFurniture.placeAt(at.x, at.z) : null;
+    if (!place || place.id !== body.slot) return sendError(res, 409, 'TOO_FAR', '가구 가까이 가서 다시 시도해 주세요.');
+    const account = pointAccountForSession(session); const base = Boolean(place.good);
+    if (base && (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId))) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    return worldEdit(async () => {
+      const st = await furnitureDay(); const id = base ? place.good : IslandFurniture.displayOf(st.day)[place.id]; const g = IslandFurniture.good(id);
+      if (!base && st.sold[place.id]) return sendError(res, 409, 'SOLD', '방금 팔렸어요. 내일 새 가구가 들어와요.');
+      if (!base && (st.buys[account] || 0) >= Economy.value('furniture:perDay')) return sendError(res, 429, 'FURNITURE_DAY_LIMIT', `전시 가구는 하루 ${Economy.value('furniture:perDay')}점까지 살 수 있어요.`);
+      const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
+      if (owned.length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.');
+      const price = Economy.value(base ? 'furniture:base' : `furniture:${g.rarity}`);
+      const claimId = base ? `furniture:base:${body.requestId}` : `furniture:${st.day}:${place.id}:${account}`;
+      let out; try { out = await pointStore.charge({ userId: account, claimId, price, title: `가구점 · ${g.name}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      if (!base) await pointStore.setWorldValue('furniture', { day: st.day, sold: { ...st.sold, [place.id]: account }, buys: { ...st.buys, [account]: (st.buys[account] || 0) + 1 } });
+      const piece = { uid: crypto.randomUUID(), id, at: nowMs(), price, claim: claimId };
+      if (!owned.some((p) => p.claim === claimId)) await pointStore.setWorldValue(`furniture:${account}`, [...owned, piece]); // (a paid one tried again: kept once)
+      if (out.applied) notifyPointsChanged([account]);
+      if (!base) broadcastIsland('furniture', { day: st.day, sold: place.id });
+      return sendJson(res, 200, { ok: true, piece, name: g.name, balance: out.balance ?? null });
+    });
+  }
+  // my storage: what I bought, newest first
+  if (pathname === '/api/island/furniture/mine' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const owned = (await pointStore.worldValue(`furniture:${pointAccountForSession(session)}`)) || [];
+    return sendJson(res, 200, { ok: true, pieces: owned.slice().reverse().map((p) => ({ ...p, ...(() => { const g = IslandFurniture.good(p.id); return g ? { name: g.name, model: g.model, rarity: g.rarity, shape: g.shape } : {}; })() })) });
   }
   if (pathname === '/api/island/store' && req.method === 'GET') {
     if (!requireSession(req, res)) return;
@@ -6607,7 +6669,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.106 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.107 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }
