@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.106 F1·G·F2: 가는 몸의 옷·소품, 걷기·뛰기 다듬기
+
+- 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「F1 완료」「G 완료」, F2(assets 50) — 묶음 1과 2 사이에 끼운 에셋 연결(`docs/patch-bundles-20261020.md`).
+- 에셋: assets 49(몸 5종·옷 55벌, 새 셸 방식), 50(신발 42·목걸이 42·망토 22·꼬리 42, IP 제외), 53(SlowWalk·Walk·Run G 판) — `island-models.json` 211개를 이미 압축된 파일로(`precompressed`). 기본 셔츠·바지·치마·멜빵바지도 Low 파일 사용.
+- `baked`: 이 파일들은 새 몸에 맞춰 만든 것이라 `asset-loader`의 `slimmedGeometry`를 건너뜀(`island-assets.js` 끝의 규칙 — 머리 부위·IP 경로만 실행 중 줄이기; 두 갈래 머리 둘은 F2라 구운 것). 규칙이 고른 파일 = 납품 파일 208개(모션 제외) 일치 확인.
+- G: Walk·Run이 게임 속도 4.2·6.2로 만들어져 `rates` walk·run 1.0(slow 1.72 그대로).
+- `budgets.json`: 옛 운동복·후드 몸·옷의 비양자화 예외 8개 삭제.
+- 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36·island-assets·dress-room e2e 30개. Codex 검토 대기(사용량 한도 10/25).
+
 ## v1.10.105 패치 묶음 1: 달마루섬 마무리·섬 길 정리, 대청마당 바닥(assets 59), 버그 11·12, 문제 기록 허용
 
 - 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 1(하나의 PR·배포), `docs/bugs-20261020.md` 11·12, 문제 기록 허용(b04796d), assets 59(88eb828).
@@ -34,11 +43,3 @@
 - 섬 꾸밈: 길 가로등 61개(밤길·할로윈 깃발줄), 강둑 자갈·꽃·계절 장식과 굽이 돌, 산책로 갈림 화분. 고침: 주민 첫 자리 겹침(첫 장면 순간이동), 능선 계단 양 끝의 보이지 않는 난간 충돌.
 - 시험: 단위·e2e를 두 섬 모두에서(지금 섬 모양 전용 시험은 달마루섬에서 건너뜀), 새 섬 열차·계절·이사·창구·노점·물가 시험 추가.
 - 검증: 단위 전체(두 섬 — Windows 줄바꿈 6개 제외), e2e 섬 시험(달마루섬). Codex 검토 대기(사용량 한도 10/25).
-
-## v1.10.103 달마루섬 개편 2~4단계(관리자 미리보기): 길·건물·구조물, 영웅마루 조각상, 관광열차 고리
-
-- 근거: gamecenter-notes `docs/dalmaru-implementation-20261019.md`, 확정 순서(사용자 2026-10-19) 3 — 단계마다 미리보기 뒤에 두고 자동 검사로 확인(사용자 「단계마다 확인하기 곤란한 환경이라 일단 구현하는 걸로」). 모두에게 바꾸는 것은 5단계.
-- 2단계: `dalmaru-terrain.js` `PLACES`(시설·주민·퀘스트·할로윈 자리) + `dalmaru-island.js` 길(`WALKS`·`tier`)·다리(윤슬다리 아치, 강 다리)·능선 계단(경사면 채움)·부두·배 타는 곳·마을(이웃골 집 10)·박물관·농부 밭, 관공서·백화점은 절벽 정면(assets 55 `facade.*`, 30×14, 절벽에서 4.6m). `plaza-scene` `mapCheck()`(보이는 것 = 막는 것, 뜨거나 묻힌 것, 문·집·명소까지 걸어서 닿는지) + `dalmaru-walk.spec`.
-- 3단계: 영웅마루 홈 7칸(55 `niche.hero`) — 기부 1·2위·주말 대회 우승자 캐릭터를 손 흔드는 자세로 굳혀 한 메시·한 돌 재질로 굽기(모델이 늦게 오면 다시), 이름판 「제 ○주 기부 ○위」, 새로 새길 때 먼지, 빈 홈 「곧 새겨질 자리」. 굽기는 위치만 이어 붙여 덧붙임 모듈을 받지 않음(모델 없는 섬은 아무것도 더 받지 않는 시험 그대로).
-- 4단계: `island-train.js` 달마루섬 노선 — 바깥 고리(r 184, 바다 위) + 역 4곳(달끝역·툇마루역·초승역·영웅마루역, 역 앞 직선을 안쪽으로 당겨 승강기가 땅 위), 구간 시간은 길이대로, 4대가 1/4 바퀴 간격. 지금 섬 8자 노선은 그대로.
-- 검증: 단위 전체(두 섬 — Windows 줄바꿈 6개 제외), e2e dalmaru-walk·dalmaru-preview·plaza(지금 섬). Codex 검토 대기(사용량 한도 10/25).
