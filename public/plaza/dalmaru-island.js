@@ -138,8 +138,15 @@
     return u >= 0 && u <= STAIRS.len + 0.4 && v >= STAIRS.w0 - 0.1 && v <= STAIRS.w1 ? { u, v } : null;
   }
   const TOP = { x: ST.x + STAIRS.nx * 1.7 + STAIRS.ux * 0.4, z: ST.z + STAIRS.nz * 1.7 + STAIRS.uz * 0.4, h: STAIRS.base + 21 }; // the top landing, run back onto the ridge
+  // 문제 기록 15 「백화점이 떠 있어서 이상해. 절벽을 파고 들어가 절벽 안에 지었구나 싶게」: either side of each front the ridge
+  // comes forward to its face, 5 m of cliff -- 관공서·백화점 stand in a cut in 영웅마루, not before it
+  const CUTS = Object.values(SPOTS).filter((s) => s.kind === 'facade').map((s) => { const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); return { x: s.x, z: s.z, c: Math.cos(ry), s: Math.sin(ry), top: D.landHeight(s.x - Math.sin(ry) * 7, s.z - Math.cos(ry) * 7) }; });
   function land(x, z) {
     let h = D.landHeight(x, z);
+    for (const k of CUTS) {
+      const dx = x - k.x; const dz = z - k.z; const side = Math.abs(dx * k.c - dz * k.s) - FACADE.w / 2; const lz = dx * k.s + dz * k.c;
+      const edge = Math.max(0.3 - side, side - 5.3, lz - FACADE.d - 0.2, -3 - lz); if (edge < 1.2) h = Math.max(h, lerp(k.top, h, smooth(0, 1.2, edge)));
+    }
     for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
