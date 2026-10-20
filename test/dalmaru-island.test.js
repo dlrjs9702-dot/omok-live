@@ -87,3 +87,11 @@ test('섬 둘레: 본섬·툇마루섬 해안에서 물 아래는 걸을 수 없
   ring(D.ISLE.x, D.ISLE.z, D.ISLE.r - 6, D.ISLE.r + 12); ring(0, 0, 150, 190);
   assert.deepEqual(wet.slice(0, 5), []);
 });
+
+// (등록부의 사계절 모델: every season zone holds each tree kind the seasonal models are for -- 툇마루섬, a zone of its own,
+// once had a day without its tall trees)
+test('계절 구역마다 나무 종류(둥근·층층·키 큰·꽃)가 모두 있음', { skip }, () => {
+  const H = T.harvestTrees(); const by = {};
+  for (const t of T.nature().trees) { if (H.some((h) => h.x === t.x && h.z === t.z)) continue; const z = T.seasonZoneAt(t.x, t.z); (by[z] ||= new Set()).add(T.treeKind(t)); }
+  for (const z of [0, 1, 2, 3]) for (const k of ['round', 'tiered', 'tall', 'blossom']) assert.ok(by[z]?.has(k), `구역 ${z}: ${k}`);
+});

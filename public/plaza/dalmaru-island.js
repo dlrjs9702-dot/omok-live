@@ -325,10 +325,17 @@
     const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
       && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
-    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24], [0, 152, 30, 22]]; // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses)
-    for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 14; tries += 1) {
-      const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
-      if (clearOf(x, z) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.4)) { trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); k += 1; }
+    // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses; 묶음 5: on the wider isle, and sure to hold
+    // every kind of tree each season shows -- with 22 picked at random a day's season there could miss its tall trees)
+    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24], [0, 150, 36, 30, { tall: 3, tiered: 3, round: 4, blossom: 2, pine: 2 }]];
+    for (const [wx, wz, wr, n, need = {}] of woods) {
+      const has = {}; const short = () => Object.entries(need).some(([k, m]) => (has[k] || 0) < m);
+      for (let k = 0, tries = 0; (k < n || short()) && tries < n * 40; tries += 1) {
+        const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
+        if (!clearOf(x, z) || !trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.4)) continue;
+        const kind = C.treeKind({ x, z }); if (k >= n && (has[kind] || 0) >= (need[kind] || 0)) continue; // (past n: only the kinds still short)
+        trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); has[kind] = (has[kind] || 0) + 1; k += 1;
+      }
     }
     for (let tries = 0; trees.length < 420 && tries < 9000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R;
