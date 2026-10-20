@@ -1099,7 +1099,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       setCarry(o.c, p.carry || null); // v1.10.32 운반
       // v1.10.44: their act -- sitting (the clips, on their seat), or a new wave or cheer
       if (p.act === 'sit' && p.seat) { takenSeats.set(p.seat, p.id); if (o.act !== 'sit') { o.c.anim?.play('sitDown'); o.c.anim?.loop?.('sitIdle'); o.c.tailTucked = true; o.c.tuckTail?.(true); } }
-      else if (o.act === 'sit') { o.c.anim?.release?.(); o.c.anim?.play('standUp'); o.c.tailTucked = false; o.c.tuckTail?.(false); }
+      else if (o.act === 'sit') { o.c.anim?.release?.(); if (!o.c.anim?.play('sitDown', { reverse: true })) o.c.anim?.play('standUp'); o.c.tailTucked = false; o.c.tuckTail?.(false); }
       if (['gather','pickup','pickFruit'].includes(o.act) && !['gather','pickup','pickFruit'].includes(p.act)) { o.c.anim?.finishOnce?.(); assets.letGo(o.c,'fruit'); }
       if (['gather','pickup','pickFruit'].includes(p.act) && p.actN !== o.actN) { o.c.anim?.play(p.act,{ms:p.actMs,hold:true,elapsed:Math.max(0,(Date.now()+serverOffset-p.actAt)/1000)}); if (p.actTarget) o.c.root.rotation.y=Math.atan2(p.actTarget.x-p.x,p.actTarget.z-p.z); }
       if (['wave', 'cheer', 'nod', 'clap', 'bow'].includes(p.act) && p.actN !== o.actN) o.c.anim?.play(p.act);
@@ -1136,7 +1136,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (Math.hypot(correction.x - p.x, correction.z - p.z) < 0.05) correction = null;
   }
   function stepOthers(dt) {
-    stepCorrection(dt);
+    stepCorrection(dt); stepRising();
     const now = performance.now();
     for (const o of others.values()) {
       // v1.10.8: drawn a little in the past between two real poses (even speed however the updates arrive), walking
@@ -1287,6 +1287,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (event.key === 'Escape' && gather?.waitServer) { endGather(false); event.preventDefault(); return; }
     // v1.10.21: W/A/S/D turn the camera (the physical keys, so a Korean input mode works too); the arrows still walk
     if (CAM_KEYS.has(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) { camKeys.add(event.code); event.preventDefault(); return; }
+    // 문제 기록 9: Q nearer, E further -- a wheel notch's step, kept the same way (gc.islandZoom); held, it goes on
+    if ((event.code === 'KeyQ' || event.code === 'KeyE') && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); setZoom(zoomDist * Math.exp((event.code === 'KeyQ' ? -100 : 100) * 0.0012)); return; }
     if (event.code === 'KeyB' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && (event.target === document.body || host.contains(event.target))) { event.preventDefault(); const r = toggleBike(); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return; } // (자전거)
     if (event.code === 'Space' && (event.target === document.body || host.contains(event.target))) {
       event.preventDefault();
@@ -1470,6 +1472,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // ends. The clip's own length (a short default without one), never past 3 s; a window, Esc or leaving lets go at once.
   let actLock = 0;
   const actLocked = () => performance.now() < actLock;
+  // standing up: on the seat while the clip plays, then a short glide out (another move, a door or a ride cancels it)
+  let rising = null;
+  function stepRising() {
+    if (!rising) return; if (rising.space !== mySpace || sitting || me.root.position.distanceTo(rising.last || rising.from) > 0.05) { rising = null; return; } // (moved by something else meanwhile)
+    const u = (performance.now() - rising.at) / 350; if (u < 0) return;
+    const k = Math.min(1, u); me.root.position.lerpVectors(rising.from, rising.to, k * k * (3 - 2 * k)); rising.last = me.root.position.clone(); if (k >= 1) rising = null;
+  }
   function lockForClip(played) { actLock = performance.now() + Math.min(3000, (played && me.anim?.onceLeft?.() * 1000) || 900); }
   function startGather({ kind, id = null, ms, anim = 'gather', at = null, onStep = null, waitServer = false, onDone }) {
     if (gather) return false;
@@ -3174,18 +3183,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     return true;
   }
   function standUp(release = true) {
-    if (!sitting) return; const s = sitting.seat; sitting = null;
-    myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.(); lockForClip(me.anim?.play('standUp'));
-    // a step forward, off the bench -- A-7: indoors on the room's floor and kept inside it (the island's ground under the
-    // 민원실, out at sea, sank me into the floor)
-    const step = s.counter ? -1.0 : 1.0; let x = s.x + Math.sin(s.yaw) * step; let z = s.z + Math.cos(s.yaw) * step; let y; // (a window's chair: back, away from the desk)
+    if (!sitting) return; const s = sitting.seat; const sitting0 = sitting; sitting = null;
+    myAct.act = null; myAct.seat = null; me.tailTucked = false; me.tuckTail?.(false); me.anim?.release?.();
+    const reversed = Boolean(me.anim?.play('sitDown', { reverse: true })); lockForClip(reversed || me.anim?.play('standUp')); // (문제 기록 6: sitting down, backwards)
+    // off the seat to where I came from (the side I sat down from; a step forward if that was far) -- A-7: indoors on the
+    // room's floor and kept inside it (the island's ground under the 민원실, out at sea, sank me into the floor)
+    const back = sitting0?.from && Math.hypot(sitting0.from.x - s.x, sitting0.from.z - s.z) < 2.2 ? sitting0.from : null;
+    const step = s.counter ? -1.0 : 1.0; let x = back ? back.x : s.x + Math.sin(s.yaw) * step; let z = back ? back.z : s.z + Math.cos(s.yaw) * step; let y; // (a window's chair: back, away from the desk)
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); x = q.x; z = q.z; y = ROOM.y; }
     else if (mySpace === 'store') { const q = STORE.clamp(x, z); x = q.x; z = q.z; y = STORE.ROOM.y; }
     else if (mySpace === 'furniture') { const q = FURN.clamp(x, z); x = q.x; z = q.z; y = FURN.ROOM.y; }
     else if (mySpace === 'petshop') { const q = PETS.clamp(x, z); x = q.x; z = q.z; y = PETS.ROOM.y; }
     else if (mySpace === 'home') { const q = homeRoom.clamp(x, z); x = q.x; z = q.z; y = HOME.ROOM.y; }
     else y = heightAt(x, z);
-    me.root.position.set(x, y, z);
+    rising = { from: me.root.position.clone(), to: new THREE.Vector3(x, y, z), at: performance.now() + Math.max(0, (me.anim?.onceLeft?.() || 0.6) * 1000 - 350), space: mySpace }; // (glides off as the clip ends)
     if (release && gather?.kind === 'sit') { gather.onDone = () => {}; endGather(false); }
     onInteract?.('seat:stand');
   }

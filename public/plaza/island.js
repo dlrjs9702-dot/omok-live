@@ -521,7 +521,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const root=new THREE.Group(); root.position.set(t.x,ground(t.x,t.z),t.z); root.rotation.y=t.yaw; scene.add(root);
     const fallback=new THREE.Mesh(keep(mergeColored(TREE_KINDS[0][2])),natureMat); root.add(fallback); assets.attach('tree.harvest',root,fallback);
   }
-  for (const t of trees) solids.push({ nature: true, x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s });
+  for (const t of trees) solids.push({ nature: true, x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s }); // (문제 기록 13: a fruit tree's trunk, not 0.2 -- one walked into it)
 
   // Flowers: one mesh, each a little bloom with its colour per copy.
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];

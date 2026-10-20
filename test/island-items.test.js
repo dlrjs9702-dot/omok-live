@@ -21,7 +21,7 @@ test('제초 요청: 2026-10-06 하루만 잡초 3배, 전후는 기본값, 가�
 
 test('잡초 총량·집계(v1.10.90): 전날 뽑은 양으로 목표, 넘치면 시듦, 뽑기·납품 계정별 합계', () => {
   const W = require('../lib/island-weeds'); const { weedTotals } = require('../lib/point-store');
-  assert.deepEqual([0, 139, 140, 349, 350, 900].map(W.targetFor), [1680, 1680, 1400, 1400, 1120, 1120]);
+  assert.deepEqual([0, 279, 280, 699, 700, 1800].map(W.targetFor), [3360, 3360, 2800, 2800, 2240, 2240]); // (잡초 2배, 2026-10-21)
   const state = { removed: {}, added: [] }; const gone = W.wilt(9, 280, state);
   assert.equal(new Set(gone).size, 280); assert.deepEqual(W.wilt(9, 280, state), gone, '같은 날은 같은 선택');
   const at = (h) => `2026-10-17T0${h}:00:00.000Z`;

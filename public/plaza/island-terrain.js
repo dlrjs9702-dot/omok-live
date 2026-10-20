@@ -498,7 +498,7 @@
   function natureSolids() {
     const n = nature();
     const harvest = harvestTrees();
-    return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some(h => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
+    return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some(h => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))];
   }
 
   // --- seasons (v1.10.27 게임 아일랜드 4계절 동시 존재·일일 회전, 사용자 결정 2026-10-05) ----------------------------

@@ -37,8 +37,10 @@
   const adminWindowBtn = document.getElementById('adminWindowBtn');
   // 관리자 「문제 기록」: the last few browser errors and the frame rate, kept quietly to go with a record
   const recentErrors = []; const keepError = (text) => { recentErrors.push({ at: Date.now(), text: String(text).slice(0, 300) }); if (recentErrors.length > 8) recentErrors.shift(); };
-  window.addEventListener('error', (event) => keepError(event.message || event.error));
-  window.addEventListener('unhandledrejection', (event) => keepError(event.reason?.message || event.reason));
+  // (문제 기록 진단: where it broke too -- the file:line:column and the stack's first frame)
+  const firstFrame = (err) => String(err?.stack || '').split('\n').map((l) => l.trim()).find((l) => l.startsWith('at ')) || '';
+  window.addEventListener('error', (event) => keepError(`${event.message || event.error} @ ${String(event.filename || '').split('/').pop()}:${event.lineno}:${event.colno} ${firstFrame(event.error)}`));
+  window.addEventListener('unhandledrejection', (event) => keepError(`${event.reason?.message || event.reason} ${firstFrame(event.reason)}`));
   { const realError = console.error.bind(console); console.error = (...args) => { keepError(args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); realError(...args); }; }
   let fpsNow = null; { let n = 0; let t0 = performance.now(); const tick = (t) => { n += 1; if (t - t0 >= 2000) { fpsNow = Math.round((n * 1000) / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   const myInfoBtn = document.getElementById('myInfoBtn');
@@ -1499,7 +1501,7 @@
     { id: 'attendance', name: '출석', open: () => { const btn = byId('attendanceBtn'); if (btn.disabled) showToast(btn.textContent); else btn.click(); } },
     { id: 'climb', name: '등반 도전', open: () => byId('climbBtn').click() },
     { id: 'donate', name: '기부', open: () => openDonation() }, // v1.10.5 기부 동상
-    { id: 'naming', name: '작명소', open: () => openNaming() }, // v1.10.9 작명소
+    { id: 'naming', name: '개명소', open: () => openNaming() }, // v1.10.9 작명소
     { id: 'townhall', name: '관공서', open: () => townhallDoor(true) }, // v1.10.10 이벤트 인벤토리; v1.10.84 in through the door (the 민원 창구 inside)
     { id: 'trader', name: '상인', open: () => openIslandPlace('merchant') },
     { id: 'map', name: '안내 지도', open: () => { openPlazaWindow('안내 지도', [byId('islandMapCard')]); plaza.controller?.drawMap?.(byId('islandMapCanvas')); } }, // v1.10.0
@@ -3242,7 +3244,7 @@
   const touchNow = () => document.body.classList.contains('touchIsland');
   const GUIDE = {
     move: { title: '걸어 보기', pc: '방향키(←↑↓→)를 눌러 걸어 보세요.', phone: '왼쪽 아래 조이스틱을 밀어서 걸어 보세요.' },
-    camera: { title: '화면 돌려 보기', pc: 'A·D 키(또는 마우스로 화면 끌기)로 화면을 돌려 보세요. W·S는 위아래로 봐요.', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
+    camera: { title: '화면 돌려 보기', pc: 'A·D 키(또는 마우스로 화면 끌기)로 화면을 돌려 보세요. W·S는 위아래로 봐요. Q는 가까이, E는 멀리 봐요(마우스 휠과 같아요).', phone: '조이스틱이 아닌 빈 화면을 손가락으로 끌어서 돌려 보세요.' },
     talk: { title: '주민에게 말 걸기', pc: '화살표를 따라 광장의 안내 주민이나 걸어 다니는 주민 가까이 가서 Space를 누르세요.', phone: '주민 가까이 가서 오른쪽 아래 행동 버튼을 누르세요.' },
     weed: { title: '잡초 하나 뽑기', pc: '풀숲의 잡초 가까이 가서 Space를 1초쯤 누르고 있으세요.', phone: '잡초 가까이 가서 행동 버튼을 1초쯤 누르고 있으세요.' },
     deliver: { title: '관공서에 납품하기', pc: '화살표를 따라 관공서에 들어가 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.', phone: '화살표를 따라 관공서 민원 창구에서 잡초를 납품하세요. 포인트를 받아요.' },
@@ -5110,9 +5112,9 @@
     if (item.reason === 'weekly_mission') return `주간 미션 · ${item.memo || '완료'}`;
     if (item.reason === 'climb_daily') return `등반 도전 · ${item.memo || '기록'}`; // v1.9.4
     if (item.reason === 'donation') return `기부 · ${item.memo || '소각'}`; // v1.10.5
-    if (item.reason === 'nickname') return `작명소 · ${item.memo || '이름 변경'}`; // v1.10.9
+    if (item.reason === 'nickname') return `개명소 · ${item.memo || '이름 변경'}`; // v1.10.9
     if (item.reason === 'island_sale') return `게임 아일랜드 · ${item.memo || '정산'}`; // v1.10.10
-    if (item.reason === 'nickname_refund') return `작명소 환불 · ${item.memo || '이름 변경'}`;
+    if (item.reason === 'nickname_refund') return `개명소 환불 · ${item.memo || '이름 변경'}`;
     if (item.reason === 'climb_weekly_rank') return `등반 주간 순위 · ${item.memo || '보상'}`; // v1.9.5
     if (item.reason === 'first_win') return item.memo || '첫 승리 보너스';
     return '기타 시스템 조정';

@@ -1265,7 +1265,7 @@ async function weedState(now = nowMs()) {
     let grown = []; let wilt = [];
     if (state.day !== null) {
       const target = IslandWeeds.targetFor(state.day === kstDate(now - 86400e3) ? state.pulled : 0); /* (a skipped day pulled nothing) */ const out = IslandWeeds.active(state).length; const day = IslandTerrain.seasonDay(now);
-      if (out < target) grown = IslandWeeds.grow(day, target - out, state); else if (out > target) wilt = IslandWeeds.wilt(day, out - target, state);
+      if (out < target) grown = IslandWeeds.grow(day, Math.min(IslandWeeds.GROW_MAX, target - out), state); else if (out > target) wilt = IslandWeeds.wilt(day, out - target, state);
     }
     const before = state.day;
     state = await pointStore.islandWeedRoll({ day: today, grown, wilt });

@@ -362,7 +362,7 @@
     const n = nature(); if (harvestOf === n) return harvestCache;
     const out = [];
     const approachOf = (t) => {
-      const p = { x: t.x, z: t.z + 0.685 };
+      const p = { x: t.x, z: t.z + 0.5 * t.s + 0.55 }; // (문제 기록 13: just outside the trunk -- the tree is walked round like the rest)
       if (inPlaza(p.x, p.z, 4) || !walkable(p.x, p.z) || walkDist(p.x, p.z) < 1.5 || D.riverDist(p.x, p.z) < 3 || D.lakeDist(p.x, p.z) < 3) return null;
       if (n.trees.some((o) => o !== t && Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91) || n.bushes.some((o) => Math.hypot(p.x - o.x, p.z - o.z) < 0.75 * o.s + 0.91)) return null;
       if (BUILDINGS.some((b) => Math.hypot(p.x - b.x, p.z - b.z) < (b.kind === 'hall' ? 14 : b.kind === 'facade' ? 18 : 7))) return null;
@@ -382,7 +382,7 @@
     for (let x = -D.R_OUT; x <= D.R_OUT; x += 2) for (let z = -D.R_OUT; z <= D.R_OUT; z += 2) { const cd = D.coastDist(x, z); if (cd > 2.6 && cd < 9 && cliffAt(x, z) < 0.3 && walkable(x, z)) shoreCells.push({ x, z, cd }); }
     return shoreCells;
   }
-  const natureSolids = () => { const n = nature(); const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))]; }; // (as the scene walks round them: island.js)
+  const natureSolids = () => { const n = nature(); const harvest = harvestTrees(); return [...n.trees.map((t) => ({ x: t.x, z: t.z, r: harvest.some((h) => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s })), ...n.bushes.map((b) => ({ x: b.x, z: b.z, r: 0.75 * b.s })), ...n.lampSpots.map((p) => ({ x: p.x, z: p.z, r: 0.3 }))]; }; // (as the scene walks round them: island.js)
   const AREAS = Object.fromEntries([['plaza', { x: P.x, z: P.z, label: D.NAMES.plaza }], ['notice', { ...PL.notice, label: D.NAMES.notice }], ['village', { ...PL.village, label: D.NAMES.village }],
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
