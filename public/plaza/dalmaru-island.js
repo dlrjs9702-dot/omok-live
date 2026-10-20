@@ -66,6 +66,10 @@
   const bayAt = (a, r = 101) => [Math.round(r * Math.cos(rad(a)) * 10) / 10, Math.round((D.BAY_Z + r * Math.sin(rad(a))) * 10) / 10];
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
+  const po = (deg, r) => [Math.round(r * Math.cos(rad(deg)) * 10) / 10, Math.round(r * Math.sin(rad(deg)) * 10) / 10];
+  const stationPt = (deg, r) => po(deg, r); // (island-train's stops: its way in, 7 m inland of the lift)
+  const stairsAt = (u, v) => { const F = PL.stairs.from; const T2 = PL.stairs.to; const l = Math.hypot(T2.x - F.x, T2.z - F.z); const ux = (T2.x - F.x) / l; const uz = (T2.z - F.z) / l; return [Math.round((F.x + ux * u + uz * v) * 10) / 10, Math.round((F.z + uz * u - ux * v) * 10) / 10]; }; // (u along the stairs from the foot, v out from the cliff)
+  const stairsTop = () => { const F = PL.stairs.from; const T2 = PL.stairs.to; return [Math.round((T2.x + (T2.x - F.x) * 0.04) * 10) / 10, Math.round((T2.z + (T2.z - F.z) * 0.04) * 10) / 10]; };
   // 관공서 앞마당 (5단계): the walled yard and the mayor's gate before the cliff front, in the old hall's frame -- its origin
   // 2.75 m into the cliff, so the front stands at lz 7.35 as the old hall's did and island-townhall builds the yard as it is
   const TOWNHALL = (() => {
@@ -82,15 +86,23 @@
     { tier: 'town', w: 3.2, pts: [[0, -54], [0.6, -30], [0, -8]] }, // 대청마당 → 물가 거리 (배 타는 곳)
     { tier: 'town', w: 3.2, pts: arc(234, 306) }, // 물가 거리, before 대청마당
     { tier: 'walk', w: 2.8, pts: [...arc(234, 156), [-88, 140]] }, // 물가 거리 → the west arm → its cape (초승등대)
-    { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146]] }, // → the east arm → its cape (달끝나루)
+    { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146], [97, 149]] }, // → the east arm → its cape (달끝나루, the pier's foot)
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
     { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
-    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-11, 8.5), [-84, -92]] }, // → round the yard → the ridge's stairs
+    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-17.5, 11)] }, // → round the yard, past the cliff front's corner
+    { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(1.1, 4.6), stairsAt(1, 2)] }, // → onto the ridge's stairs, from their open side by the foot
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-42, -66], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34]] }, // 이웃골 → the west arm's shore
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-82, -2], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
-    { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-128, 43]] }, // → the farm
-    { tier: 'walk', w: 2.8, pts: [[44, -60], [66, -48], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-128, 43], [-124.5, 45.8]] }, // → the farm (its farmer)
+    { tier: 'walk', w: 2.8, pts: [doorPt('games'), [44, -60], [66, -48], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    // (묶음 1 섬 길 정리: every place on a walk -- the doors the walks passed by, 툇마루역 round 툇마루섬's pond, and the
+    // ridge: from the stairs' top along 달마루 능선 (its flat crest, r 138) to 영웅마루역's lift, a lookout on the way)
+    { tier: 'trail', w: 2.4, pts: [[-84, -3], doorPt('chat')] }, // → the gazebo
+    { tier: 'town', w: 3, pts: [doorPt('admin'), [-43, -73]] }, // → 관리실, from 대청마당
+    { tier: 'walk', w: 2.8, pts: [[98.5, 52], [102.5, 53.2], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door
+    { tier: 'walk', w: 2.8, pts: [[12, 141.5], [17, 149], [14, 158], [7, 162.5], [5.3, 165.3]] }, // 툇마루섬 → 툇마루역 (its way in: island-train pulls the stop's straight inward), round its pond
+    { tier: 'walk', w: 2.8, pts: [stairsTop(), po(212, 132), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -300,7 +312,7 @@
       if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
       lampSpots.push({ x: lx, z: lz });
     } }
-    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks, posts: [], lampSpots };
+    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free

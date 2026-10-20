@@ -850,6 +850,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
     for (let u = 0; u < st.len; u += 1) { const y = T.heightAt(st.x + st.ux * (u + 0.5) + st.nx * 1.7, st.z + st.uz * (u + 0.5) + st.nz * 1.7) - S.stairs.base; mesh(new THREE.BoxGeometry(1, Math.max(0.1, y), 3), mat(0xc9bfae), -(u + 0.5), y / 2, 1.7, flights); }
     stairs.position.set(S.stairs.x, S.stairs.base, S.stairs.z); stairs.rotation.y = S.stairs.yaw; scene.add(stairs); assets.attach('dalmaru.stairs_ridge', stairs, flights);
+    // (묶음 1: its sides each in one face, under the steps' edge -- each step showed its own side, a row of planks)
+    const side = new THREE.Shape(); side.moveTo(0, 0);
+    for (let u = 0; u <= st.len + 1e-6; u += 0.5) side.lineTo(-u, Math.max(0, T.heightAt(st.x + st.ux * u + st.nx * 1.7, st.z + st.uz * u + st.nz * 1.7) - S.stairs.base - 0.05));
+    side.lineTo(-st.len, 0); side.lineTo(0, 0);
+    const sideGeo = new THREE.ShapeGeometry(side); const sideMat = mat(0xc9bfae, { side: THREE.DoubleSide });
+    for (const z of [st.w1 + 0.04, st.w0 - 0.04]) mesh(sideGeo, sideMat, 0, 0, z, stairs); // (and its cliff side: the stairs run straight, the cliff curves away from their middle)
     // 영웅마루's niches: the frame stands out of the cliff, its foot walked round; an empty one says what it waits for
     for (const [k, n] of (T.NICHES || []).entries()) {
       const g = piece('dalmaru.niche_hero', n.x, heightAt(n.x, n.z), n.z, n.yawToCentre, box(0.85, 1.28, 0.22, 0xcfc6b6, 0.04)); g.scale.setScalar(n.m);

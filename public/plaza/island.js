@@ -861,8 +861,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       if (Math.hypot(p.x - me.x, p.z - me.z) > MINI_RANGE * 1.1) continue;
       const [px, pz] = at(p.x, p.z);
       ctx.beginPath(); ctx.arc(px, pz, size / 45, 0, TAU); ctx.fillStyle = '#5b4632'; ctx.fill();
-      if (labels.some(([lx, lz]) => Math.abs(lx - px) < size / 3 && Math.abs(lz - pz) < size / 12)) continue; // the dot only when names would overlap
-      labels.push([px, pz]);
+      const lw = ctx.measureText(p.name).width; const lh = (size / 15) * 2; // (묶음 1: by each name's own width and a stroked line's height -- 「관공서」 and 「말 걸기」 touched)
+      if (labels.some(([lx, lz, w]) => Math.abs(lx - px) < (w + lw) / 2 + 4 && Math.abs(lz - pz) < lh)) continue; // the dot only when names would overlap
+      labels.push([px, pz, lw]);
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(p.name, px, pz - size / 18); ctx.fillStyle = '#3d2f22'; ctx.fillText(p.name, px, pz - size / 18);
     }
     ctx.font = `900 ${Math.round(size / 9)}px Pretendard, "Malgun Gothic", system-ui, sans-serif`;
