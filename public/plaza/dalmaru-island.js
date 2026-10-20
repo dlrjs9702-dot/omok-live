@@ -273,8 +273,7 @@
     const benches = [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38].map((a) => ({ ...at(a, 5), r: 0.9 }));
     const lamps = [];
     for (let k = 0; k < 8; k += 1) { const p = at(Math.PI / 8 + (k * Math.PI) / 4, 12); if (!busy(p.x, p.z, 3)) lamps.push({ ...p, r: 0.35 }); }
-    const beds = [];
-    for (let i = 0; i < 12; i += 1) { const p = at(Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62), 13.8); if (!busy(p.x, p.z, 3.4)) beds.push({ ...p, r: 1.1, i }); }
+    const beds = []; // (묶음 1 광장 소품 정리: the wooden planters round the lamps gave way to assets 59's gardens and disc)
     const seats = benches.map((b, k) => { const ry = Math.atan2(PLAZA_C.x - b.x, PLAZA_C.z - b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
