@@ -152,6 +152,13 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   await post(request, '/api/test/home/next-day', a.token, {});
   expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 2, upgradeDay: null });
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:2:false$/);
+  // (3단계 큰 집, 2026-10-21: once more -- 16 x 13 m, its own price; and no further)
+  const grow3 = (await get(request, '/api/home', a.token)).data.grow; expect(grow3).toBeGreaterThan(50000);
+  expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200);
+  await post(request, '/api/test/home/next-day', a.token, {});
+  expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 3, upgradeDay: null });
+  expect((await post(request, '/api/home/upgrade', a.token, {})).data.error).toBe('TOP_STAGE');
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:3:false$/);
   await through(page, 'room:exit', '나가기', 'island');
   // 방문 허용 (내 집 in the menu): 안 받음 -- the door says so and stays shut; 친구만 -- shut until they are friends
   const bAtDoor = async () => { const d = await b.page.evaluate((id) => window.PlazaDebug().doors[id], `home:${lot}`); await standAt(request, b, d.x, d.z); }; // (the page and the server both: the checks below ask the server)
@@ -164,7 +171,7 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   await goTo(b.page, `home:${lot}`, '집 구경하기'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
   // 친구: the owner is asked from the player menu (SPACE by them); 수락 in 내 정보 -- then the visitor comes in
-  const spot = await page.evaluate(() => window.IslandTerrain.dalmaru.PLACES.spawn);
+  const spot = await page.evaluate(() => { const s = window.IslandTerrain.dalmaru.PLACES.spawn; return { x: s.x + 8, z: s.z }; }); // (8 m from the first spot: a test beside this one starts its people there -- SPACE greeted one of them)
   await standAt(request, a, spot.x, spot.z); await standAt(request, b, spot.x + 1.5, spot.z);
   await expect(b.page.locator('#plazaHint')).toContainText('인사', { timeout: 15000 });
   await press(b.page);
