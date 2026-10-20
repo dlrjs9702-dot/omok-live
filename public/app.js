@@ -1927,7 +1927,7 @@
       const del = document.createElement('button'); del.type = 'button'; del.className = 'ghost tiny'; del.textContent = '지우기';
       del.addEventListener('click', async () => { if (!window.confirm('이 기록을 지울까요?')) return; try { await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'delete', id: i.id }) }); loadIssues(); } catch (error) { showToast(error.message); } });
       body.append(text, status, del, info);
-      row.addEventListener('toggle', async () => { if (!row.open || !i.hasShot || body.querySelector('img')) return; const all = (await api('/api/admin/issues?shots=1')).issues; const one = all.find((x) => x.id === i.id); if (one?.shot) { const img = document.createElement('img'); img.className = 'issueShot'; img.alt = '기록한 화면'; img.src = one.shot; body.prepend(img); } });
+      row.addEventListener('toggle', async () => { if (!row.open || !i.hasShot || body.querySelector('img')) return; const one = await api(`/api/admin/issues/${i.id}/shot`).catch(() => null); if (one?.shot) { const img = document.createElement('img'); img.className = 'issueShot'; img.alt = '기록한 화면'; img.src = one.shot; body.prepend(img); } });
       row.append(head, body); list.append(row);
     }
   }

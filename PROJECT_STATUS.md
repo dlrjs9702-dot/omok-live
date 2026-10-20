@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.114 문제 기록 저장 정리, [issue] 서버 로그
+
+- 근거: gamecenter-notes `docs/admin-issue-log-20261018.md` 「저장 정리 + 로그인 없이 확인」(사용자 2026-10-21 「그 방식으로 하되」).
+- 사진 따로: 기록 목록(world `issueLog`)에는 `hasShot`만, 사진은 world `issueShot:<id>` — 추가·상태 바꾸기 때 사진까지 다시 쓰지 않음. 관리자 창은 행을 펼칠 때 그 한 장만 `GET /api/admin/issues/<id>/shot`(`?shots=1` 전부 받기 없앰). 지우면 사진도 지움(`deleteWorldValue`, JSON·PostgreSQL 같은 이름 — 표 변경 없음).
+- 정리(`lib/issue-log.js` tidy): 서울 하루의 첫 문제 기록 요청이 한 번 — 옛 기록의 사진을 목록 밖으로 옮김(기존 16건은 배포 뒤 첫 요청에), 해결(`changedAt`, 없으면 쓴 때) 7일 뒤 사진만 지움, 30일 뒤 기록 지움.
+- 서버 로그: 추가·상태·지우기·만료마다 `[issue] {JSON}` 한 줄(id·때·버전·종류·상태·닉네임·화면·공간·x·z·계절·시간·화질·기기 pc/phone w×h·글(줄바꿈은 공백, 1,000자)·첫 오류 줄·hasShot). 사진·계정 id·토큰·IP 없음 → Render 로그로 로그인 없이 읽음. 「열린 것 복사」에 사진 유무(위치는 이미 있음).
+- 검증: 단위 `issue-log`(정리 규칙·로그 줄)·`issue-log-server`(옛 기록 옮기기·7일/30일·사진 한 장·지우기·로그 순서, 로그에 사진 없음), e2e 문제 기록. Codex 검토 대기(10/25).
+
 ## v1.10.113 문제 기록: 벤치 방향, 대청마당 둘레 바닥, 일어나기, Q/E 확대, 열매 나무, 잡초 2배
 
 - 근거: gamecenter-notes `docs/issue-log-review-20261021.md`(관리자 「문제 기록」 정리) 1·3번, 2차 5·6·9·13번, 「잡초 양 2배」.
@@ -40,12 +48,3 @@
 - 친구: 플레이어 메뉴 「친구 신청」 → 받는 사람 알림(SSE `friends`) → 내 정보 「친구」에서 수락/거절(거절은 안 알림)·목록(지금 있는 곳)·끊기(양쪽에서). 최대 50명, 신청 시간당 10번, 로그인 아이디가 있는 계정만(입장 파일 손님 = 아이디 없음은 불가). 저장 world `friends:<account>`.
 - 저장: world `homeLots`, `home:<account>`(집터·지붕·바닥·벽지·방문·가구·수조) — 기존 world 값 저장소, PostgreSQL 변경 없음.
 - 검증: e2e 내 집(PC·휴대폰: 민원 창구 신청 → 섬의 집 → 꾸미기 놓기·돌리기·옮기기·겹침 빨강·벽 가구·넣기 → 수조 넣기·꺼내기·크기 초과 → 다시 들어와도 같음 → 손님은 같은 배치·못 움직임), 방문 허용(안 받음·친구만, 플레이어 메뉴 친구 신청 → 수락하면 들어감 → 끊으면 다시 닫힘), 친구 API(거절·끊기·50명·손님 불가·횟수 제한), 단위 `island-home`·등록부·길, 가구점·펫샵·자전거·반려동물·등록부 e2e. Codex 검토 대기(10/25).
-
-## v1.10.111 패치 묶음 3: 새 섬 주민 미니게임 자리, 말 걸기 우선, 옛 섬 정리, 자전거 8 m/s
-
-- 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 3 — 목록 대부분(기념사진 2버튼 v1.10.81, 근거리·같은 열차 채팅 v1.10.82, 통합 UI 6~8 v1.10.83, 주민 미니게임 2단계·정자 할아버지 AI v1.10.93, 게임관 G1~G4 v1.10.94·95, 관리자 계절 고정·장식 수동·공지 예약·대회 일정 v1.10.96)은 이미 배포돼 있어 남은 ①②③만(묶음 조율 세션 확인). 「카드」(정자 할아버지 × 클론다이크)는 사용자 미정이라 뺌.
-- ① 마을 주민 미니게임 자리: 거리 악단·공사 인부(징검돌)·정자 할아버지까지 샛길(`dalmaru-island.js` WALKS, 광장 판석·물길·악단 무대와 겹치지 않음), `test/dalmaru-paths.test.js` 장소에 마을 주민 7명. NPC 가혹 시험(`island-npc-walk`)은 경로 옆 소품을 양쪽에 땅이 있는 곳에만 — 능선 길의 맨땅 옆에 둔 소품은 돌아갈 길이 없는 장면이라 섬에 없는 일(새 샛길로 주민 순환이 바뀌며 드러남).
-- 말 걸기 우선: 주민(걷는 주민·이벤트 주민) 옆에 잡초가 있어도 바라보는 쪽(앞 60°)의 주민이면 「말 걸기」가 먼저(`plaza-scene` 대상 고르기).
-- ② 옛 섬 정리(이사 결과 확인 뒤): `ISLAND_MAP` 스위치(서버는 늘 달마루섬), 관리자 「달마루섬 미리보기」 스위치·`/api/island/map`의 지금 섬 갈래·`gc.islandMap` 새로고침, `TERRAIN_ONLY`·`BARE`·`bareHarbour` 갈래 삭제. 옛 섬 전용 시험 12개(단위 10·e2e 2)와 `dalmaru-preview` e2e 삭제, 빈 시험 파일 3개(island-train·island-ground·townhall) 삭제. 이사 코드(`dalmaruMoveIn`)와 그 시험은 남김(시험은 첫 시작 뒤 이사 표시를 지우고 다시 시작). `island-terrain.js`의 바탕 함수·자료(달마루섬이 그 위에 만듦)는 그대로.
-- ③ 자전거 8 m/s(사용자 「자전거 이동속도는 8로 하자」, 동작 재생 = 속도/4 그대로 — 2배).
-- 검증: 단위 전체(Windows 줄바꿈 6개 제외, 건너뜀 0), e2e dalmaru-walk·island-admin-look·island-assets 29개. Codex 검토 대기(10/25).
