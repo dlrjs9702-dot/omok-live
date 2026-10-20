@@ -2292,6 +2292,11 @@ body.herosurvOpen { overflow: hidden; }
 .dressing .skinGrid{display:grid;grid-template-columns:1fr;gap:8px}
 .dressing .skinCard{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"pic name buy" "pic meta buy";align-items:center;column-gap:12px;padding:8px 10px;border-radius:14px;position:relative;cursor:pointer}
 .dressing .skinCard>canvas{grid-area:pic;width:88px;height:44px;border-radius:10px}
+/* 묶음 2 가구 창고: the piece in 3D above, the list under it */
+.furnitureStorage{display:grid;gap:8px}
+.furnitureStorage .furnitureCanvas{width:100%;height:min(42vh,320px);display:block;border-radius:12px;background:radial-gradient(circle at 50% 40%,#2b3446,#151a24)}
+.furnitureList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:34vh;overflow:auto}
+.furnitureList .furniturePiece.selected{outline:2px solid #34d399}
 .dressing .skinCard{content-visibility:auto;contain-intrinsic-size:auto 64px} /* (bugs 12: a long list lays out only what is in sight) */
 .dressing .skinCard.noPic{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name buy" "meta buy";padding:10px 12px}
 .dressing>.skinShopBody .skinFilterBar{position:sticky;top:0;z-index:3;background:#111827;padding:4px 0 8px} /* (bugs 11: the search stays in sight -- its top was cut where the list had scrolled) */

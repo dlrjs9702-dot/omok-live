@@ -6108,6 +6108,1262 @@
       "lowSrc": "plaza59:02. Low/plaza_medallion__base_low.glb",
       "lowSha256": "65644fcbf65b3f466f7ff3ca930efe07feeb8359a6daddba09c99b6161ee597c",
       "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_big__oak.glb",
+      "src": "furniture57:01. High/furn_aquarium_big__oak.glb",
+      "sha256": "e4f830d19427d93eb8d0e0bd6a61162494016538fcf5449fc3ad5aafd4afc44e",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_big__oak_low.glb",
+      "lowSha256": "14fee96a6aa77279da323f44c35530032c04382510aa8077587fb95a7e4178e2",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_big__white.glb",
+      "src": "furniture57:01. High/furn_aquarium_big__white.glb",
+      "sha256": "f9a42b4043c0c76d17f1f0c52f5a2d2906301842b58321677cd00ae9effb4c2f",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_big__white_low.glb",
+      "lowSha256": "fc50bccb289551ae08fb61cd9d2be019ff28509f9ec9c6f23ce1638d2427c4f0",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_big__walnut.glb",
+      "src": "furniture57:01. High/furn_aquarium_big__walnut.glb",
+      "sha256": "54af7ef099fb98759726fde5d42587c6e1d4040443ff950f0ac61f476c774a8a",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_big__walnut_low.glb",
+      "lowSha256": "13c00a7be428cfb11087ef6f38727f47bdb1846755679d82b457dc01cc31f870",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_big__navy.glb",
+      "src": "furniture57:01. High/furn_aquarium_big__navy.glb",
+      "sha256": "2fe5749aeca5427c231ad0a58e0567522b80ce0c5a11918846dcec892a5051dc",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_big__navy_low.glb",
+      "lowSha256": "7f0662362ca241e5b7d3fe229337bf43077a6370a82274a4c62b5d57e2a52dbb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_pillar__white.glb",
+      "src": "furniture57:01. High/furn_aquarium_pillar__white.glb",
+      "sha256": "cf6b82b4e5ca672db5a69ddfc273ca4d60f7bfa2a64c49f05a5c43a9ab2b51bf",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_pillar__white_low.glb",
+      "lowSha256": "b61c6d0a75e52b48cbbe63e4b5ecc8607a37d5b738b9a03a8b0beaa4aa0c020a",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_pillar__oak.glb",
+      "src": "furniture57:01. High/furn_aquarium_pillar__oak.glb",
+      "sha256": "551bc7344e6b8ca0e23310735d8fe9a1169f1f95b225fc8d402785befd579724",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_pillar__oak_low.glb",
+      "lowSha256": "d8b39228ef753f261e3aea180be5fe7a5b62b79d232659217c8a4b5f607cb0d5",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_pillar__navy.glb",
+      "src": "furniture57:01. High/furn_aquarium_pillar__navy.glb",
+      "sha256": "ca9d06ea1ff58bf8ef7eae7a45d3f6155fd3bfd164abd046c9b76131febae1ae",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_pillar__navy_low.glb",
+      "lowSha256": "efe3b9816e63e596d72ccc93676b11ee2f8c30d78b29582e15574dcb3296ba9a",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_wall__stone.glb",
+      "src": "furniture57:01. High/furn_aquarium_wall__stone.glb",
+      "sha256": "d8dd337d411ba7a6160028656f1808957b24d323abaa91591a4793fd7aea5709",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_wall__stone_low.glb",
+      "lowSha256": "88bc386516914208d63ee9336c0b7a6ccdbf9f71d73d262ce6ca1dd481c3f35b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_wall__oak.glb",
+      "src": "furniture57:01. High/furn_aquarium_wall__oak.glb",
+      "sha256": "0262813ac8fbeadf3f61779e8fff8b801696b935fe4ab4890b348c9a01484225",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_wall__oak_low.glb",
+      "lowSha256": "6a4d7ece8c9774da199a9e845859a315a066a1b1b03d5d19e7cc9c6ce2c5f9f5",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_aquarium_wall__white.glb",
+      "src": "furniture57:01. High/furn_aquarium_wall__white.glb",
+      "sha256": "4757c50fe8da5114ae53b15f9389d432b21526b8c96b9249b30653325081d281",
+      "lowSrc": "furniture57:02. Low/furn_aquarium_wall__white_low.glb",
+      "lowSha256": "1f1ca0c4213f23e60fd6fa5da750e5ec1bd178e93e525b99c613129b23a94d32",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_armchair__mint.glb",
+      "src": "furniture57:01. High/furn_armchair__mint.glb",
+      "sha256": "939b1efdb77ff0f930cd08678af71fb134df2e7f7c09ddf61e7e3b599dd4022d",
+      "lowSrc": "furniture57:02. Low/furn_armchair__mint_low.glb",
+      "lowSha256": "e9d4c697421d89bc2d9cb48d568349392ecffa171eec8b44e49f71aeeedc4874",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_armchair__coral.glb",
+      "src": "furniture57:01. High/furn_armchair__coral.glb",
+      "sha256": "8981c843af8ab1ab207b472811b5ba374bea762c497157210a1ccb5a344894b5",
+      "lowSrc": "furniture57:02. Low/furn_armchair__coral_low.glb",
+      "lowSha256": "3f369b27e63d7675487a3ef9d8b1bd22aca13d0336ea4688bf44cd8296c6dfc4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_armchair__lavender.glb",
+      "src": "furniture57:01. High/furn_armchair__lavender.glb",
+      "sha256": "418ba834c72c8aac2d74a4d2472c778ff2d3521e1dee6161dd975168b27874a6",
+      "lowSrc": "furniture57:02. Low/furn_armchair__lavender_low.glb",
+      "lowSha256": "b0226f33ba95be4e5e589cbb82484a63138c41cfc623a1693eb85d194829778a",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bed__sky.glb",
+      "src": "furniture57:01. High/furn_bed__sky.glb",
+      "sha256": "41ab0f8624315a7d283c5ce9cf542390feaedf82e48d4b3d65c87baedbb62d44",
+      "lowSrc": "furniture57:02. Low/furn_bed__sky_low.glb",
+      "lowSha256": "41e83afb4cccd8baa246dee40c725359841aa00e805d88969eef9c184edc0987",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bed__pink.glb",
+      "src": "furniture57:01. High/furn_bed__pink.glb",
+      "sha256": "eb928c44818c1ffda239ece73c35f45cce136e003eb5cb6f9524fecba55e1195",
+      "lowSrc": "furniture57:02. Low/furn_bed__pink_low.glb",
+      "lowSha256": "06958c3db25549373da0315bc57176966075aa3291d801dba01a67b0f9b8578f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bed__sage.glb",
+      "src": "furniture57:01. High/furn_bed__sage.glb",
+      "sha256": "b830ab9505cb6cf7c332050b5e434c4f6b3bfd19c1aa3dea267fc2eea974ef5b",
+      "lowSrc": "furniture57:02. Low/furn_bed__sage_low.glb",
+      "lowSha256": "0569464047527acc8cf45d4f5b5e1fa5309111429a8b83759fe17e5c7e435d03",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bed__butter.glb",
+      "src": "furniture57:01. High/furn_bed__butter.glb",
+      "sha256": "5fe69dbfdee635ba97c08a9b1a2d4e3105baed4c398f16be5ad10a3ae5207be3",
+      "lowSrc": "furniture57:02. Low/furn_bed__butter_low.glb",
+      "lowSha256": "5675467d3c50315179ec2bb9834954ae412cf2e08f0999c4fa13c82f080ab4ed",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bookshelf__oak.glb",
+      "src": "furniture57:01. High/furn_bookshelf__oak.glb",
+      "sha256": "a225758fa377299f1a231b4974308a98e080d7dcfc435e2d0b321dacbce3b08e",
+      "lowSrc": "furniture57:02. Low/furn_bookshelf__oak_low.glb",
+      "lowSha256": "2091b5323a067a2b61f0f2d75003c34cc2baba121dcf4c3523ffc606109f60d5",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bookshelf__white.glb",
+      "src": "furniture57:01. High/furn_bookshelf__white.glb",
+      "sha256": "a5ab89fccc997efd1ca0f906f1383f9612e6a0bd6bda9e5c90e76bb419ee1417",
+      "lowSrc": "furniture57:02. Low/furn_bookshelf__white_low.glb",
+      "lowSha256": "0c1de9cc77b9841e06ae2f51f2948d616648cbb05d3419091fe998b95a407dbf",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bookshelf__mint.glb",
+      "src": "furniture57:01. High/furn_bookshelf__mint.glb",
+      "sha256": "9b4dec06872698dbde1ec304340ca0a26902e405a9c5cd2c00db640716f56546",
+      "lowSrc": "furniture57:02. Low/furn_bookshelf__mint_low.glb",
+      "lowSha256": "d9b0fc915d9c20093d60381b7bb888fa8684b280e5215182b61bae6f9821db6b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bunk_bed__oak.glb",
+      "src": "furniture57:01. High/furn_bunk_bed__oak.glb",
+      "sha256": "c8b7a6330276225f2b4ffef65abb492b9a5a86a32161afa842f02c394afab17e",
+      "lowSrc": "furniture57:02. Low/furn_bunk_bed__oak_low.glb",
+      "lowSha256": "20f58056ca3f224d5259e0d0a97b3bb77a7c6bc46a7d8e4929be712f41c98521",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_bunk_bed__white.glb",
+      "src": "furniture57:01. High/furn_bunk_bed__white.glb",
+      "sha256": "0344a68bc076bcc1ba912cc144cefc057887c591e0e0ac2d9e9b17ab4e5d5102",
+      "lowSrc": "furniture57:02. Low/furn_bunk_bed__white_low.glb",
+      "lowSha256": "91adfbdd36426046f876eaaac337b1987caeb77fc4d31e8a2d88d7baa3058593",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_cheongsa_lantern__blue_red.glb",
+      "src": "furniture57:01. High/furn_cheongsa_lantern__blue_red.glb",
+      "sha256": "e3435006c2f9b895093d6e867e2ffd9032f4b39654d96a10ac72d83f277762f7",
+      "lowSrc": "furniture57:02. Low/furn_cheongsa_lantern__blue_red_low.glb",
+      "lowSha256": "e98875b1b8bb318c09da7fc94a08c92914dc0cc38aa45ddd7fb0ad52579fd38f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_coffee_table__oak.glb",
+      "src": "furniture57:01. High/furn_coffee_table__oak.glb",
+      "sha256": "b4118a4b8e87ae02d657223ea623eeb6325f4adacaee1884231af827dda14a66",
+      "lowSrc": "furniture57:02. Low/furn_coffee_table__oak_low.glb",
+      "lowSha256": "505aa7948a4f30ffb2ffb7fd6b4280c7bb33abd680f099763d551ee0e6b706bf",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_coffee_table__white.glb",
+      "src": "furniture57:01. High/furn_coffee_table__white.glb",
+      "sha256": "0e31946923f31daba4eb4ea688a18c1c21123c7954d83fc7a1b016c437e3fe73",
+      "lowSrc": "furniture57:02. Low/furn_coffee_table__white_low.glb",
+      "lowSha256": "1383545f6e23653c11c63527ca3bda7375341e438b2422bec63765967f39f899",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_coffee_table__walnut.glb",
+      "src": "furniture57:01. High/furn_coffee_table__walnut.glb",
+      "sha256": "dc5248d705329587e76ae54364ac01a867c417508a0101370a3e510c1028c757",
+      "lowSrc": "furniture57:02. Low/furn_coffee_table__walnut_low.glb",
+      "lowSha256": "1efc52f82fdc4b4dd24c4529ccf5adfd2b364d2ac2e8aee869ba23a85c9c2aa1",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_counter__white.glb",
+      "src": "furniture57:01. High/furn_counter__white.glb",
+      "sha256": "3aeab648bfa7cb52a75afe5c8445497f211668ae6c6ba7723acfdf432a1a1144",
+      "lowSrc": "furniture57:02. Low/furn_counter__white_low.glb",
+      "lowSha256": "6f92066d239b6549c3417438483e2eef602fe6da542fa8dcc6cca19a93c89c6d",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_counter__oak.glb",
+      "src": "furniture57:01. High/furn_counter__oak.glb",
+      "sha256": "12862fceab57fac7b64448f45f4b4d8e886441e81e6ccf0eda4ed98ffec6f70e",
+      "lowSrc": "furniture57:02. Low/furn_counter__oak_low.glb",
+      "lowSha256": "e238617d8e1601e46841a0d794c70e2b6092ac705ca3a6ad6d44b3b9dc0fffa4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_counter__navy.glb",
+      "src": "furniture57:01. High/furn_counter__navy.glb",
+      "sha256": "39124f3029f6d974d810046640f11c7c4f0c34a60178bcc402bbe3392f7b1efe",
+      "lowSrc": "furniture57:02. Low/furn_counter__navy_low.glb",
+      "lowSha256": "e6ff0770e160eeb5dc5a9ecbbd5c636dfa09cbfd6cefdf7e0753acf435516c65",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_cupboard__oak.glb",
+      "src": "furniture57:01. High/furn_cupboard__oak.glb",
+      "sha256": "6042898023d0fc39d7b017cb072136d88b72e3ecd9e7b9447daa1ac3ee03c66c",
+      "lowSrc": "furniture57:02. Low/furn_cupboard__oak_low.glb",
+      "lowSha256": "1d16ac161267b8c20716e361624159040e9f72269974d8007ae34d24141d046b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_cupboard__white.glb",
+      "src": "furniture57:01. High/furn_cupboard__white.glb",
+      "sha256": "de82d5cccb6f6fe96fd7805e3425a8e60330c3c0438db32749d9e213124c9749",
+      "lowSrc": "furniture57:02. Low/furn_cupboard__white_low.glb",
+      "lowSha256": "c1a68e17ca39fc90d31a4d093273cbaece7bd045c7173d94a106b5f6de65abfd",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_cupboard__walnut.glb",
+      "src": "furniture57:01. High/furn_cupboard__walnut.glb",
+      "sha256": "586b7256cf411b0073f5e1f9691cb4573006a69bab06a55b97d89b5edb90d277",
+      "lowSrc": "furniture57:02. Low/furn_cupboard__walnut_low.glb",
+      "lowSha256": "9675a9f5557bef946aa1e59341220b2b51e95619e4a7d18e5004230a205a3d2a",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_cupboard__mint.glb",
+      "src": "furniture57:01. High/furn_cupboard__mint.glb",
+      "sha256": "1522712cd7888f36202fa46bcfd7eee443bf3125f0b7911ad39b38799e89f6e3",
+      "lowSrc": "furniture57:02. Low/furn_cupboard__mint_low.glb",
+      "lowSha256": "e373361858e4372b02e32a088c604ac41e78e6eee708ea50f82af0962313a439",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_curtain_window__pink.glb",
+      "src": "furniture57:01. High/furn_curtain_window__pink.glb",
+      "sha256": "62c212e1e207e1b291aca3cc7c8a65591f4fee0c01654b5e2c305f43cd89fc32",
+      "lowSrc": "furniture57:02. Low/furn_curtain_window__pink_low.glb",
+      "lowSha256": "0d70e1d124b4721a0bf1d78d27df9f1e6b5befd84976f72e2b97288448ff4cff",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_curtain_window__sage.glb",
+      "src": "furniture57:01. High/furn_curtain_window__sage.glb",
+      "sha256": "fd5452f98ae33f3afa1e59234c38e6a32c13d3cfab2d8e7077dbfdaad8c7b894",
+      "lowSrc": "furniture57:02. Low/furn_curtain_window__sage_low.glb",
+      "lowSha256": "910d4301de4145349ff5f490e3a08bc6265e0c7b258733d42502a61e0d2383d0",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_curtain_window__sky.glb",
+      "src": "furniture57:01. High/furn_curtain_window__sky.glb",
+      "sha256": "1259d2c2462afe805f2a1be1ec751b2e224db9f0eacb52726263bfdccb517c11",
+      "lowSrc": "furniture57:02. Low/furn_curtain_window__sky_low.glb",
+      "lowSha256": "c02cefaa09005a16bfce146689730ef0334e8e13bce44fc6bd5fa09b108ffb1c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_curtain_window__butter.glb",
+      "src": "furniture57:01. High/furn_curtain_window__butter.glb",
+      "sha256": "21b676f19d8e1f0c05edf4760febecd356aedb837f54ea9e90ef5fd7f0a4596d",
+      "lowSrc": "furniture57:02. Low/furn_curtain_window__butter_low.glb",
+      "lowSha256": "052b0d6b4c99b5fb9d8a72ffefe9717900234955d68a009092c1c98ec1096f05",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_desk__oak.glb",
+      "src": "furniture57:01. High/furn_desk__oak.glb",
+      "sha256": "e481792ce5bc199e84b142d719a467b4a51aafcf3ff83c8cf7b16a690cb0c030",
+      "lowSrc": "furniture57:02. Low/furn_desk__oak_low.glb",
+      "lowSha256": "6abfa45fb81e5a1958f5d36b8a84c01586cde5ebbb5e45009e6c838502f71dc6",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_desk__white.glb",
+      "src": "furniture57:01. High/furn_desk__white.glb",
+      "sha256": "fc3a0156cf842875b723abc6736c7ea84ff2479d7a15a332b69cac022ca753cc",
+      "lowSrc": "furniture57:02. Low/furn_desk__white_low.glb",
+      "lowSha256": "a773864a16a390aa2dd662659576730d511fc04cfd29860bbfefc89f530cbbb6",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_desk__walnut.glb",
+      "src": "furniture57:01. High/furn_desk__walnut.glb",
+      "sha256": "eb17f97af14a92b4b92451c1acfcff8559419af7c097127a68582eaa62b845d6",
+      "lowSrc": "furniture57:02. Low/furn_desk__walnut_low.glb",
+      "lowSha256": "b9b168a69bd63dc0968606a723e766b8166dff764a72648fe148a89f564aa0fb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_chair__oak.glb",
+      "src": "furniture57:01. High/furn_dining_chair__oak.glb",
+      "sha256": "e33618472b538d721c99e806fe284ef4865c6f4492a5f13e78cb19a92930837b",
+      "lowSrc": "furniture57:02. Low/furn_dining_chair__oak_low.glb",
+      "lowSha256": "581ea48a3f21dfe23192158a911bac858cc0fb8b01e697e08f2449a89c798cac",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_chair__white.glb",
+      "src": "furniture57:01. High/furn_dining_chair__white.glb",
+      "sha256": "ff2ddd32665934757636fe78c003c95f06551a23e01004789c83be3b1e8c5b19",
+      "lowSrc": "furniture57:02. Low/furn_dining_chair__white_low.glb",
+      "lowSha256": "f14f27f9c1269ed9ceffe435b650ed8cfadf08a386f29617e9d6125f63e9daad",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_chair__walnut.glb",
+      "src": "furniture57:01. High/furn_dining_chair__walnut.glb",
+      "sha256": "51f416822785f71c43729c3948cee8148db07d0f48d8cfdf2ef64d8de448fd27",
+      "lowSrc": "furniture57:02. Low/furn_dining_chair__walnut_low.glb",
+      "lowSha256": "48d17e57ca581daf940d97b74a398d55b842d4410b5aa3e8678ebbafb1eff603",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_table__oak.glb",
+      "src": "furniture57:01. High/furn_dining_table__oak.glb",
+      "sha256": "cfa691453d1b260bf49b6646a0b98f2ca146068f8d822e75cd16a8a2230afdf6",
+      "lowSrc": "furniture57:02. Low/furn_dining_table__oak_low.glb",
+      "lowSha256": "4db45513436971a7da31b36a38bab3b6de13207e5f8c9660d9236a8daccf886e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_table__white.glb",
+      "src": "furniture57:01. High/furn_dining_table__white.glb",
+      "sha256": "f88c3a7ce3a5036c4429213d0c361c66400c5318eaec782ad28092058201b906",
+      "lowSrc": "furniture57:02. Low/furn_dining_table__white_low.glb",
+      "lowSha256": "ad0341fc23765fd56ffa3fb0cd6effc8cf8de4b42bfd88168efe07a9a963b326",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dining_table__walnut.glb",
+      "src": "furniture57:01. High/furn_dining_table__walnut.glb",
+      "sha256": "d64826d614d2a9a0edcd96128ad626a38be6d0db9e4ffdfe88298a0cf39c8cca",
+      "lowSrc": "furniture57:02. Low/furn_dining_table__walnut_low.glb",
+      "lowSha256": "3ad42fc07eb62c679e43082665fc975c25407efaf9848b2e7555bd774d225ef8",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dresser__oak.glb",
+      "src": "furniture57:01. High/furn_dresser__oak.glb",
+      "sha256": "28d68db7b1586a651c3d443eff8fe6bae02f4497cc525cbab4ce95f1bd0b5963",
+      "lowSrc": "furniture57:02. Low/furn_dresser__oak_low.glb",
+      "lowSha256": "489e457942fbac7829d244e2f3786fea31bd44017717eb5cc648f517e08c9b3e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dresser__white.glb",
+      "src": "furniture57:01. High/furn_dresser__white.glb",
+      "sha256": "5c528e09c70b0d93c5ce519932c632229054e845ba6decb3b74aa24d6423a46f",
+      "lowSrc": "furniture57:02. Low/furn_dresser__white_low.glb",
+      "lowSha256": "d51d6d11a1b8707ae29c9d2f80abe93857da2a56453c69258becce0b07817482",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dresser__walnut.glb",
+      "src": "furniture57:01. High/furn_dresser__walnut.glb",
+      "sha256": "6475dcd469dc06461ae3a35ef41132e32bec8540c2545ca5d5a770232842e1b9",
+      "lowSrc": "furniture57:02. Low/furn_dresser__walnut_low.glb",
+      "lowSha256": "6b1787e082734731afa8596466340c5d24160d8f5c2e8e78a0e72ca1f36d93f4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_dresser__pink.glb",
+      "src": "furniture57:01. High/furn_dresser__pink.glb",
+      "sha256": "bfbc0b93ee5388793b77d2c869ff32957b6429427ff83b466b504f2b32f71a5d",
+      "lowSrc": "furniture57:02. Low/furn_dresser__pink_low.glb",
+      "lowSha256": "13473d9993ba9560dc75814443764ef522e813d0a5d8faf612de8f0485b58312",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fence_piece__white.glb",
+      "src": "furniture57:01. High/furn_fence_piece__white.glb",
+      "sha256": "19f655631aad47f4247048a6fc3cf51d6786a658424e1c60d47bebd27e1a07d1",
+      "lowSrc": "furniture57:02. Low/furn_fence_piece__white_low.glb",
+      "lowSha256": "a74be70ff8893c1bab3228fda6bed5c54f7dd8c5d987641f747999d3655682cb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fence_piece__oak.glb",
+      "src": "furniture57:01. High/furn_fence_piece__oak.glb",
+      "sha256": "171c40a63c8b777d899d63591cb0b31946cb0445c85630e15468c76d1ab45aa7",
+      "lowSrc": "furniture57:02. Low/furn_fence_piece__oak_low.glb",
+      "lowSha256": "e15ddd8262b6de7fd2b35e2c940ce969b6fe0ad73705dde19fb36760d4b3195e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fence_piece__mint.glb",
+      "src": "furniture57:01. High/furn_fence_piece__mint.glb",
+      "sha256": "6825aaedf50e9a548a71ede4f421248740795d7d3578e9077acd4d7f20a91309",
+      "lowSrc": "furniture57:02. Low/furn_fence_piece__mint_low.glb",
+      "lowSha256": "0225d983ff7256f1ee5eaecf6c773f577b121f5933f147e0f77f69dafc440f00",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fish_bowl__white.glb",
+      "src": "furniture57:01. High/furn_fish_bowl__white.glb",
+      "sha256": "347edc297840a9718796694dcefde7f090e5f590b025f872cc991bd5dd6de527",
+      "lowSrc": "furniture57:02. Low/furn_fish_bowl__white_low.glb",
+      "lowSha256": "604cfb72396fff53934af8b766d832e4ea975c980bb47ca4ea2cfaed5d2c7982",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fish_bowl__walnut.glb",
+      "src": "furniture57:01. High/furn_fish_bowl__walnut.glb",
+      "sha256": "9f6194c708c239fa804f5b75f9a97559858c0359b2a815c1c9f2936a8358da3b",
+      "lowSrc": "furniture57:02. Low/furn_fish_bowl__walnut_low.glb",
+      "lowSha256": "85a6d01d18c6c41decb03a54e769fe0bafe44783ecdc14f069d6f7e9d7625301",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fish_tank__oak.glb",
+      "src": "furniture57:01. High/furn_fish_tank__oak.glb",
+      "sha256": "ef794e7e53ad29728ef87e20afeb08bec4accf6b06323b11b4fb1eddbf19217e",
+      "lowSrc": "furniture57:02. Low/furn_fish_tank__oak_low.glb",
+      "lowSha256": "144fcaab929ef5f7f2e35ad0baaa0ad08c93dfd0e331dd1fda50e167b98733c3",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fish_tank__white.glb",
+      "src": "furniture57:01. High/furn_fish_tank__white.glb",
+      "sha256": "316aef1fa05774b8acb7b4c33add7a4392ba69df4ef30642f1e618b6be20f9ab",
+      "lowSrc": "furniture57:02. Low/furn_fish_tank__white_low.glb",
+      "lowSha256": "e8f99aaa8c35f0d16920bdee74525ac00f4f29b411b3b6951ea87118c4da4071",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fish_tank__walnut.glb",
+      "src": "furniture57:01. High/furn_fish_tank__walnut.glb",
+      "sha256": "c5c02de03a2b945b404dd17cc4b8a7ed0f958d82937f6efa74ed018d53e65920",
+      "lowSrc": "furniture57:02. Low/furn_fish_tank__walnut_low.glb",
+      "lowSha256": "a4892b8ced4f650781efd48922381c535782c9cfa416acb6ab88a305fe8bf851",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_cushion__red.glb",
+      "src": "furniture57:01. High/furn_floor_cushion__red.glb",
+      "sha256": "887d1004c9ab133076e346fc7ab4fd3a330774ed381e2c061aea5276a45c64d2",
+      "lowSrc": "furniture57:02. Low/furn_floor_cushion__red_low.glb",
+      "lowSha256": "4c2cf5a4f5bac386fe1b9b39740142fd9915c7f16beb0a0e46316e3f28295619",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_cushion__navy.glb",
+      "src": "furniture57:01. High/furn_floor_cushion__navy.glb",
+      "sha256": "0877814558e888878b1a185261b07bf23e8d50205b2851e19829aa3005b765f1",
+      "lowSrc": "furniture57:02. Low/furn_floor_cushion__navy_low.glb",
+      "lowSha256": "2eb8cd16438d05977865d3c31b34972692aa2251fabb8095f6cb2e5903e630fb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_cushion__mint.glb",
+      "src": "furniture57:01. High/furn_floor_cushion__mint.glb",
+      "sha256": "e0c25758be49cafb5c2c070a2ac4da4956b5828da4cefb85ed07695fbcceefb0",
+      "lowSrc": "furniture57:02. Low/furn_floor_cushion__mint_low.glb",
+      "lowSha256": "885cc4170099a3eac5b41c654e8363a55cac0093c69eead6368332e08972a19f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_cushion__lavender.glb",
+      "src": "furniture57:01. High/furn_floor_cushion__lavender.glb",
+      "sha256": "b03c3cba677d792b92d5e8de096f093f38e24331216afba3e15f037b9e4d14ee",
+      "lowSrc": "furniture57:02. Low/furn_floor_cushion__lavender_low.glb",
+      "lowSha256": "d4607179b518469da1f4d0ae43b62c5828d4399ab1a8be0c50a5042e80757243",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_lamp__cream.glb",
+      "src": "furniture57:01. High/furn_floor_lamp__cream.glb",
+      "sha256": "ef5cac2c741b59f601805304dfffb2eb831bdc075518638fc6fe2acf6c68ced8",
+      "lowSrc": "furniture57:02. Low/furn_floor_lamp__cream_low.glb",
+      "lowSha256": "bf0001ccd0967d15ec18c493916aa514e4d8a701778d785956fdbe135a57ec6e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_lamp__mint.glb",
+      "src": "furniture57:01. High/furn_floor_lamp__mint.glb",
+      "sha256": "fdbbdba31540383f179a1d8353babca54de08a701849bf290977dc97b9b0917d",
+      "lowSrc": "furniture57:02. Low/furn_floor_lamp__mint_low.glb",
+      "lowSha256": "b5c06b44dd37178ee8c11bc95beba17394cc95a53f0003e4df749a62f514afca",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_floor_lamp__pink.glb",
+      "src": "furniture57:01. High/furn_floor_lamp__pink.glb",
+      "sha256": "d9a7f890e8bd6dbf91d3a550031d9c0b2705030a2d902c032e884552266832b9",
+      "lowSrc": "furniture57:02. Low/furn_floor_lamp__pink_low.glb",
+      "lowSha256": "0bcd82d98327d463b9286169a5c9a81efca9a4470b5d7653ab1aa0bb24d8c2ba",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_folding_screen__walnut.glb",
+      "src": "furniture57:01. High/furn_folding_screen__walnut.glb",
+      "sha256": "0a414ec0e15dfd27b281671b01f5954dcd50c048994c0ac2e972dc1593ef0d6b",
+      "lowSrc": "furniture57:02. Low/furn_folding_screen__walnut_low.glb",
+      "lowSha256": "832a860df5ebf0d5a1c5ed92fedd133f74bc12b9b81d8a7e89bd568aa494f0c7",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_folding_screen__red.glb",
+      "src": "furniture57:01. High/furn_folding_screen__red.glb",
+      "sha256": "bf3f0174a7ec3ceb4ad0b1cac02825472afc6ed44053267ea4fb1f9058ab76fa",
+      "lowSrc": "furniture57:02. Low/furn_folding_screen__red_low.glb",
+      "lowSha256": "43542a27d236a09711a0f5006c76a88b7c2adc4ce502221e3475172ecb71059f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_folding_screen__oak.glb",
+      "src": "furniture57:01. High/furn_folding_screen__oak.glb",
+      "sha256": "2574ab6301d0faabae6a2d7a36dcb9b1173c6316a42db1210ad6584ab676f41a",
+      "lowSrc": "furniture57:02. Low/furn_folding_screen__oak_low.glb",
+      "lowSha256": "fcecbd70f972bca56ce5d3bb6d65726aac3bd942e7a183032f082903f374bff2",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fridge__white.glb",
+      "src": "furniture57:01. High/furn_fridge__white.glb",
+      "sha256": "421252ff4b6f51052592f3fe38abd721b8db6f019bb10b08f16b5621edec61f9",
+      "lowSrc": "furniture57:02. Low/furn_fridge__white_low.glb",
+      "lowSha256": "ede2df473b448cac69a452616fb6dda1e1e971d34cc77e41a7936bc8b4fb83f0",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fridge__mint.glb",
+      "src": "furniture57:01. High/furn_fridge__mint.glb",
+      "sha256": "dab2112657aa9a8035f3c6c559329476b5331ec35434853e9124789df3f511d6",
+      "lowSrc": "furniture57:02. Low/furn_fridge__mint_low.glb",
+      "lowSha256": "569de9cfaece4dd8b68803ecb8dfe8f6cc8a0c6d167b53f8cbcb50cc0a7f4ef4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fridge__butter.glb",
+      "src": "furniture57:01. High/furn_fridge__butter.glb",
+      "sha256": "4210e686c5c66b8c5fbd384fce14824980218e9fdd6d7ec1264ed1cc251d9a76",
+      "lowSrc": "furniture57:02. Low/furn_fridge__butter_low.glb",
+      "lowSha256": "7fe52897295097cb98d0d439d5d3d28078af1dd0c4a5a7373c5240e6b256a09c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_fridge__red.glb",
+      "src": "furniture57:01. High/furn_fridge__red.glb",
+      "sha256": "891dbd647752b0c632ad39d8aa791e626c09fe66ae3c153e11ffd2b151596df9",
+      "lowSrc": "furniture57:02. Low/furn_fridge__red_low.glb",
+      "lowSha256": "edd42e84885b7ea8a2933a2591b131d7ff53b5f906d52653ede07b78ab786b98",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_garden_bench__oak.glb",
+      "src": "furniture57:01. High/furn_garden_bench__oak.glb",
+      "sha256": "5e0aa9fa0a7beda242a2baf633f84a317cc6b7072f693a49794299c84d6f843b",
+      "lowSrc": "furniture57:02. Low/furn_garden_bench__oak_low.glb",
+      "lowSha256": "565317ed67d3d474988fef0118a8d790f227bb31fc36efd05f8c08070c3d85a9",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_garden_bench__white.glb",
+      "src": "furniture57:01. High/furn_garden_bench__white.glb",
+      "sha256": "4c722b498f3878bfe78f044f01af3c22ba963731f762adfb7474fc048af8da89",
+      "lowSrc": "furniture57:02. Low/furn_garden_bench__white_low.glb",
+      "lowSha256": "4035e05a06642ec2999b5a4c45d094fe181e2d50c4c491046308334337ba9ba2",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_garden_bench__mint.glb",
+      "src": "furniture57:01. High/furn_garden_bench__mint.glb",
+      "sha256": "5f3d9e2eddb84a7c94700f2e7e2e1c25b9e2e0bcacf352d3f1296bb3bdfe3c63",
+      "lowSrc": "furniture57:02. Low/furn_garden_bench__mint_low.glb",
+      "lowSha256": "2f6aaa5783d39c8937d0dcdd8a60ef55928ac171a1604fc614dc7f63ced3c1a4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_hanger_rack__oak.glb",
+      "src": "furniture57:01. High/furn_hanger_rack__oak.glb",
+      "sha256": "680a49b15e67301664d44f81bc48496d1dd0dceb7866a5e664bd85f8d8978137",
+      "lowSrc": "furniture57:02. Low/furn_hanger_rack__oak_low.glb",
+      "lowSha256": "05d0783acb74350fbd556be5218a04a464cd11c570d683f823a0e525a2bf638d",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_hanger_rack__charcoal.glb",
+      "src": "furniture57:01. High/furn_hanger_rack__charcoal.glb",
+      "sha256": "4267044631d710e407947ba03904839e9f56d1d6fcc598cfb532308422707454",
+      "lowSrc": "furniture57:02. Low/furn_hanger_rack__charcoal_low.glb",
+      "lowSha256": "d9e50638536e972209bf01897be2153bbe589b7912fd3bb48a7d2a5e736fd846",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_insect_case__oak.glb",
+      "src": "furniture57:01. High/furn_insect_case__oak.glb",
+      "sha256": "859e96a4ca5804edcfa295d7d76049c5692047c27247ce88905bb7e47985a216",
+      "lowSrc": "furniture57:02. Low/furn_insect_case__oak_low.glb",
+      "lowSha256": "e239cda8cbaed5bf085f89ebd5c5d855bada5b4b4a7372be6f54545f3d2ad2bb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_insect_case__walnut.glb",
+      "src": "furniture57:01. High/furn_insect_case__walnut.glb",
+      "sha256": "da64ab390f35b4b1f4fef904157c56ca6678f95c611176551927e6fc2f845c02",
+      "lowSrc": "furniture57:02. Low/furn_insect_case__walnut_low.glb",
+      "lowSha256": "ef0766b91eba5435c350e3ebe325bc707647a62c0c1d011303f8dee5dfa0b040",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_mini_lighthouse__classic.glb",
+      "src": "furniture57:01. High/furn_mini_lighthouse__classic.glb",
+      "sha256": "3c29543a9eae1ebb8f8bfd66c31043fa55dbd1a84f5fb673a14547f5d0a20b9c",
+      "lowSrc": "furniture57:02. Low/furn_mini_lighthouse__classic_low.glb",
+      "lowSha256": "92793988b3ff785c955de406ebc4f747580efacb131c96a25fd64b14792cac33",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_mini_lighthouse__navy.glb",
+      "src": "furniture57:01. High/furn_mini_lighthouse__navy.glb",
+      "sha256": "fb2d372b8f0438fd4182d8d8579598a63fc561fc27b67fc8d2f2a3726ae96115",
+      "lowSrc": "furniture57:02. Low/furn_mini_lighthouse__navy_low.glb",
+      "lowSha256": "0b6555dcc7e63b2fb1ba983dd8ca7a367566008e4ec9d8050ed8197399817d0c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_mirror_stand__oak.glb",
+      "src": "furniture57:01. High/furn_mirror_stand__oak.glb",
+      "sha256": "3b44066051e4aae729a7c32e1a395103229a6527bcc2d562600da374ad3df698",
+      "lowSrc": "furniture57:02. Low/furn_mirror_stand__oak_low.glb",
+      "lowSha256": "62810db94313f7e6fa1c7ec231c10b5a59a2b643efacffa34c21ec2a218da511",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_mirror_stand__white.glb",
+      "src": "furniture57:01. High/furn_mirror_stand__white.glb",
+      "sha256": "b74c7f82b36fabd4e00892af2e0c2b0ddcb057aeb6d0bc6f465e0bd48e13b448",
+      "lowSrc": "furniture57:02. Low/furn_mirror_stand__white_low.glb",
+      "lowSha256": "ed2f7ae659beea502906397467da7af7ed1254fee73a70454a5c8bad7cd24e87",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_mirror_stand__gold.glb",
+      "src": "furniture57:01. High/furn_mirror_stand__gold.glb",
+      "sha256": "15e1854924949082cddaedaf8583653a0f924531477a5c719f34da8573563cd6",
+      "lowSrc": "furniture57:02. Low/furn_mirror_stand__gold_low.glb",
+      "lowSha256": "316651f0e504d47ba1136ea84a0331e707cbf04a7686a6027fd98d317e000538",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_moon_lamp__gold.glb",
+      "src": "furniture57:01. High/furn_moon_lamp__gold.glb",
+      "sha256": "60095a67af61a33db5c7104f3afcd71bac812f520d77961c60225c27839bc985",
+      "lowSrc": "furniture57:02. Low/furn_moon_lamp__gold_low.glb",
+      "lowSha256": "cbeccf14f6fcc6aceec3f24ffbbff8ec8f518b43a95efb11b40d7e7bba0f3849",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_moon_lamp__navy.glb",
+      "src": "furniture57:01. High/furn_moon_lamp__navy.glb",
+      "sha256": "16c69793c46aaf8340e76d3f971f3bf361cceaf362d104d71b1f2efa03a6f1b0",
+      "lowSrc": "furniture57:02. Low/furn_moon_lamp__navy_low.glb",
+      "lowSha256": "c1574e4b8ea7c73eb1199f3654b921be454485158989a211883c3c478e7c1998",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_moon_lamp__white.glb",
+      "src": "furniture57:01. High/furn_moon_lamp__white.glb",
+      "sha256": "8cdd39a2d8f85c736549217a876721fb7804b326589517f4720df5ceadf86ea9",
+      "lowSrc": "furniture57:02. Low/furn_moon_lamp__white_low.glb",
+      "lowSha256": "2576f1fe83590c6fc5bec2e45b8457c8aa8f1c653a0f17ba8971cf18df293a52",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_nightstand__oak.glb",
+      "src": "furniture57:01. High/furn_nightstand__oak.glb",
+      "sha256": "a3af2f77cb8fc5ba1093c60807c33636046206bb9637911ec25b19bb5670079f",
+      "lowSrc": "furniture57:02. Low/furn_nightstand__oak_low.glb",
+      "lowSha256": "53de4f82ec6ac1e3f8fc6158caae4d2d2b23155c66432b8c34e16b4300a5782b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_nightstand__white.glb",
+      "src": "furniture57:01. High/furn_nightstand__white.glb",
+      "sha256": "f49ea98ab492b30b1acd5bab456eb4f7a8e0a845c3a0d43e986049d1e4bd169b",
+      "lowSrc": "furniture57:02. Low/furn_nightstand__white_low.glb",
+      "lowSha256": "dfc620fc70b7eb5af84206d75ebd75dff1d70c4711af4ce321cbe665e2ecfed7",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_nightstand__walnut.glb",
+      "src": "furniture57:01. High/furn_nightstand__walnut.glb",
+      "sha256": "4f761f19723b80e90a597889316641084c409efc4ac322e8f07b855f68ffa25d",
+      "lowSrc": "furniture57:02. Low/furn_nightstand__walnut_low.glb",
+      "lowSha256": "a3749820c3a0e411ee582766e6ea4416cee65a224a5f8df4e39beb810671da23",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_onggi__brown.glb",
+      "src": "furniture57:01. High/furn_onggi__brown.glb",
+      "sha256": "9f4fc68f9a4d3d693c6d03aff9be0f416d070347f60c46cf2a103847bce9db7e",
+      "lowSrc": "furniture57:02. Low/furn_onggi__brown_low.glb",
+      "lowSha256": "54402db36c1f4a1a8e66aedd4e0758153638e775b3300acc211a5eb589a3fedd",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_onggi__charcoal.glb",
+      "src": "furniture57:01. High/furn_onggi__charcoal.glb",
+      "sha256": "1932c9f70c7883fae6196f765e20084e27e4157a7ba3a9ba9031e93ac049bd41",
+      "lowSrc": "furniture57:02. Low/furn_onggi__charcoal_low.glb",
+      "lowSha256": "f0d8961cf622486f76e3073b969481cbed4d8faa2bf04cce3b64e5846479aa92",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_onggi__white.glb",
+      "src": "furniture57:01. High/furn_onggi__white.glb",
+      "sha256": "74fd135875967d7fcbfc989109b677bf64df370023e83f86352836f2fa9cd7e7",
+      "lowSrc": "furniture57:02. Low/furn_onggi__white_low.glb",
+      "lowSha256": "98649489d27cf4cb53e3cf8215970fdf508fffa190e6063dbe1c6a8b80815f5e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_parasol_table__red.glb",
+      "src": "furniture57:01. High/furn_parasol_table__red.glb",
+      "sha256": "83c601d0221714d4a087fb2b4849d3d5b992cf8d0e637cc889d87de9da3f374d",
+      "lowSrc": "furniture57:02. Low/furn_parasol_table__red_low.glb",
+      "lowSha256": "4231cfba3ad5e4ea57d7825f4e32e5073bccc3f9fac4ea5f07f4286747ee6ef9",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_parasol_table__mint.glb",
+      "src": "furniture57:01. High/furn_parasol_table__mint.glb",
+      "sha256": "3b5c325e8c7afa4dd089c703dd37eaba420809f8f5c13f21b4d177bb716b461e",
+      "lowSrc": "furniture57:02. Low/furn_parasol_table__mint_low.glb",
+      "lowSha256": "254ef895406c7fd840a6b26baee67815bae7a5a503e2b4baac7f025ba7463882",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_parasol_table__navy.glb",
+      "src": "furniture57:01. High/furn_parasol_table__navy.glb",
+      "sha256": "c3229ea4ee9ee941399cfc6b9a1c98fafe628cc421797a7b8c8bf041067ae8c7",
+      "lowSrc": "furniture57:02. Low/furn_parasol_table__navy_low.glb",
+      "lowSha256": "35ca72b1482bcbccb6ce63d2c71121e16176bd0a85adf4458b85b03e0b528f8f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_piano__black.glb",
+      "src": "furniture57:01. High/furn_piano__black.glb",
+      "sha256": "cb1fbd6f54e189791c07ac05bc5ce48fea287187ac2d4cdbc29da9525e929576",
+      "lowSrc": "furniture57:02. Low/furn_piano__black_low.glb",
+      "lowSha256": "a44fe722a7d96323ffb0883ea2f6a42e067cf3976c372db94988ee8fdfede4f0",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_piano__white.glb",
+      "src": "furniture57:01. High/furn_piano__white.glb",
+      "sha256": "fa123e43d26f63f364bfb85cd3f7cf5295e99bc8d9dcb293f856d72a6a34c876",
+      "lowSrc": "furniture57:02. Low/furn_piano__white_low.glb",
+      "lowSha256": "b12991737ac8054ad0fc4a91395b3edd08e80a7b864f16667594769af323659d",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_piano__walnut.glb",
+      "src": "furniture57:01. High/furn_piano__walnut.glb",
+      "sha256": "33e846ccf3d247a5c22a1e8e5dc79e1edef074b4aec80b6117f2475459ee8691",
+      "lowSrc": "furniture57:02. Low/furn_piano__walnut_low.glb",
+      "lowSha256": "9d83ba4c6553a04900f9c14417913370e380d61d217166ed81a961a5798f81ba",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_picture_frame__oak.glb",
+      "src": "furniture57:01. High/furn_picture_frame__oak.glb",
+      "sha256": "9fe7684a663580588e7fc74832585d76ef1bd657d8c0d8d87b0a49a43c884f3d",
+      "lowSrc": "furniture57:02. Low/furn_picture_frame__oak_low.glb",
+      "lowSha256": "34ef40d0bec3cb9677d43481c981dd2c0336dc9bef8a1c9bc196a292d6dccee4",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_picture_frame__gold.glb",
+      "src": "furniture57:01. High/furn_picture_frame__gold.glb",
+      "sha256": "5ca7680bd5bd6c7e33b3156afd9965fad324c36650adf9d44c802764561e5856",
+      "lowSrc": "furniture57:02. Low/furn_picture_frame__gold_low.glb",
+      "lowSha256": "080ce0b6457729ad51d5a4d4e3247944241d1774123247c195e4f96533a2519f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_picture_frame__white.glb",
+      "src": "furniture57:01. High/furn_picture_frame__white.glb",
+      "sha256": "23e16f2506e3c9f5742e40dc5169cf46570e5c1ae9d559ac35e4a34888fa2213",
+      "lowSrc": "furniture57:02. Low/furn_picture_frame__white_low.glb",
+      "lowSha256": "f303f2479bf36fba67264914503f0cdcaa4b29ab971491026328ff088e74bdd1",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_plant_pot__terracotta.glb",
+      "src": "furniture57:01. High/furn_plant_pot__terracotta.glb",
+      "sha256": "2e789ca932914aabc5a311b56e185c0bacc048b1397966d4d547743eb294b8ab",
+      "lowSrc": "furniture57:02. Low/furn_plant_pot__terracotta_low.glb",
+      "lowSha256": "ab9921250acd035ba87bae6f5b9368ba5967496ce6e1c0f2a9e8044e1dd54737",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_plant_pot__white.glb",
+      "src": "furniture57:01. High/furn_plant_pot__white.glb",
+      "sha256": "5d889ed3c91da85eeaffad1358afc2e5d676628d2ad454a6370016259daf9303",
+      "lowSrc": "furniture57:02. Low/furn_plant_pot__white_low.glb",
+      "lowSha256": "a00fbed1a2b7055c2d1407a0a38f741f63cbbe0942fa04206c62f5edaa75272f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_plant_pot__navy.glb",
+      "src": "furniture57:01. High/furn_plant_pot__navy.glb",
+      "sha256": "4670a5dc5baa1fbd930d0357409cdfae8bcfd7aea023b682f48178f964b27ae2",
+      "lowSrc": "furniture57:02. Low/furn_plant_pot__navy_low.glb",
+      "lowSha256": "627d3f336609515d94c69808b8a2a981ce612085248b5ec5622e52612e4bedb8",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_planter_box__oak.glb",
+      "src": "furniture57:01. High/furn_planter_box__oak.glb",
+      "sha256": "d5e8614024246001bd246d4ed567ae283d1f4343fa78ed3a35e9404180c6250e",
+      "lowSrc": "furniture57:02. Low/furn_planter_box__oak_low.glb",
+      "lowSha256": "9eb337a22926ada7934c8547bb677adf97f21d1b7e58f46b0e9b6bbe5cf6c412",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_planter_box__white.glb",
+      "src": "furniture57:01. High/furn_planter_box__white.glb",
+      "sha256": "e3d0771f1e9fbc8ada6dad624e31c86f426d16475a4d25c67100baf64cb50ba9",
+      "lowSrc": "furniture57:02. Low/furn_planter_box__white_low.glb",
+      "lowSha256": "5c7635feffc29b36c86505b7746b7da29fbc9d4d2e6c4847fc7c6b899f2960fc",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_planter_box__walnut.glb",
+      "src": "furniture57:01. High/furn_planter_box__walnut.glb",
+      "sha256": "c607f27086fb77cedd4eb2c2e21f0e6469237543f89abee7ae9f32db6d1baaf0",
+      "lowSrc": "furniture57:02. Low/furn_planter_box__walnut_low.glb",
+      "lowSha256": "e25f4ca391f9f9603ac42541210ffea78772842c1a92e8f76a3bfc285d2682ff",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_radio__red.glb",
+      "src": "furniture57:01. High/furn_radio__red.glb",
+      "sha256": "8f015420aab6e84bda7d9eb967a5fb87e424d575daa899ca191d6cf12e683f23",
+      "lowSrc": "furniture57:02. Low/furn_radio__red_low.glb",
+      "lowSha256": "0775abfcf7c81bb4014e0b0d3bd822f519ce623c8e45387f96468dc50becffab",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_radio__mint.glb",
+      "src": "furniture57:01. High/furn_radio__mint.glb",
+      "sha256": "5a187e7d6798efe493dae797d75fe0c2369c5e929724ee1ba9357bfce30590f6",
+      "lowSrc": "furniture57:02. Low/furn_radio__mint_low.glb",
+      "lowSha256": "a3e0617dda259306abef80762e9c2cdf9dc6ed272a86e0ad9ffa4562508f75fd",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_radio__oak.glb",
+      "src": "furniture57:01. High/furn_radio__oak.glb",
+      "sha256": "9a99ce268a7eb7fe4e7c8df73a36de9c3e11c32084565693a990885205744173",
+      "lowSrc": "furniture57:02. Low/furn_radio__oak_low.glb",
+      "lowSha256": "342d68abdc93c36392567d2dfcd3dcc6a4e47940b94eac691dc134f787765c2c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_rug_round__sage.glb",
+      "src": "furniture57:01. High/furn_rug_round__sage.glb",
+      "sha256": "7b37ef69faf22cd6e9eb39c9d0f694c064a24982eee4d32f88b5735ec79ce69e",
+      "lowSrc": "furniture57:02. Low/furn_rug_round__sage_low.glb",
+      "lowSha256": "0670f11d21d8bbab184dd14c02a0487cc39f611b8e8168709faef8d817224071",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_rug_round__pink.glb",
+      "src": "furniture57:01. High/furn_rug_round__pink.glb",
+      "sha256": "624c31c504184583c42b64831ffee3f94fc6970f5a9837e64935e1ae1fc4b4d7",
+      "lowSrc": "furniture57:02. Low/furn_rug_round__pink_low.glb",
+      "lowSha256": "6dd3c0da570bc7ee3734150e461de9f2514a5124d1729607f75b6e833dd2ba05",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_rug_round__navy.glb",
+      "src": "furniture57:01. High/furn_rug_round__navy.glb",
+      "sha256": "fb85824a831ecfb46fcba93b65c3179970a81d8ec7dd9ce8ec48e65b350b66b0",
+      "lowSrc": "furniture57:02. Low/furn_rug_round__navy_low.glb",
+      "lowSha256": "35ba8506d857caf59dce30d7cbba83d3acf74601ebadf9168d3773b27b71bb2e",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_rug_round__butter.glb",
+      "src": "furniture57:01. High/furn_rug_round__butter.glb",
+      "sha256": "18b98ab854535b118f3aefd4e7b1e14b3b75ae5f6c8ae14b2777745704ef57a7",
+      "lowSrc": "furniture57:02. Low/furn_rug_round__butter_low.glb",
+      "lowSha256": "73c1ed69a768df26232b08c5dea9be4cad4c15009ca8e07bad9c1ff8153f9bda",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_shell_lamp__pink.glb",
+      "src": "furniture57:01. High/furn_shell_lamp__pink.glb",
+      "sha256": "9656d2e58c0bcb44b64e25bf6640285d284564f29908f5931088d4750e58628a",
+      "lowSrc": "furniture57:02. Low/furn_shell_lamp__pink_low.glb",
+      "lowSha256": "ae91ec86930102ef03bf2896259971a9097270f74efbe39eab45ab89853590cb",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_shell_lamp__cream.glb",
+      "src": "furniture57:01. High/furn_shell_lamp__cream.glb",
+      "sha256": "bf0c66e3cb360439763cfa56c37e180337cf9d720b16a08da7ff39ccf6997296",
+      "lowSrc": "furniture57:02. Low/furn_shell_lamp__cream_low.glb",
+      "lowSha256": "c12403a617ac74344d51bd92ceeb61095fc3f92747530c3ba15901a4459d4da0",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_shell_lamp__sky.glb",
+      "src": "furniture57:01. High/furn_shell_lamp__sky.glb",
+      "sha256": "2261f66c7f3cbc5979f02c8046b9a35aba5efe75f1740d277f66b9b84fdbf1c2",
+      "lowSrc": "furniture57:02. Low/furn_shell_lamp__sky_low.glb",
+      "lowSha256": "c8549f2c8801dd802de72cc17c2d4e77bc0ade44e35385e57be85f084d53d0ba",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_soban__walnut.glb",
+      "src": "furniture57:01. High/furn_soban__walnut.glb",
+      "sha256": "ae4b5e9c5d965887fc4513b26f4cb3956773eff3e5a3858a4ae6ce37db5d1111",
+      "lowSrc": "furniture57:02. Low/furn_soban__walnut_low.glb",
+      "lowSha256": "0308a8ffbe97936f41a52c525da01bf0a576390e6f78bbed5878de365888bdee",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_soban__red.glb",
+      "src": "furniture57:01. High/furn_soban__red.glb",
+      "sha256": "e00cf431a07be1e570c8852d160a30480a8739adca16d7ff11e689a4c3e114cf",
+      "lowSrc": "furniture57:02. Low/furn_soban__red_low.glb",
+      "lowSha256": "82027a491eaae48adea47b82a2c977c1142c75d43c59a568cd35bbfe08ca75cf",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_soban__oak.glb",
+      "src": "furniture57:01. High/furn_soban__oak.glb",
+      "sha256": "a0b9a74a1528d9111db4db9440f9bd15314cab7fa1a25cf270adc502157ee409",
+      "lowSrc": "furniture57:02. Low/furn_soban__oak_low.glb",
+      "lowSha256": "0d7c9e348e299d4804ca515501c190330fe53527f9e316679acad16e50e14121",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_sofa__mint.glb",
+      "src": "furniture57:01. High/furn_sofa__mint.glb",
+      "sha256": "cb8ad0982a3c21671f3a5f49e0a24d295ff96efc04d3d38da278730c29611230",
+      "lowSrc": "furniture57:02. Low/furn_sofa__mint_low.glb",
+      "lowSha256": "55dae545e8c770278ad3dea29862439ae329555e996b72ed8d2e67dbc15a36ee",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_sofa__coral.glb",
+      "src": "furniture57:01. High/furn_sofa__coral.glb",
+      "sha256": "1421805907685a3e00bd7b307cc85ea241cabd3029e52c629f2f5c10eb3dd800",
+      "lowSrc": "furniture57:02. Low/furn_sofa__coral_low.glb",
+      "lowSha256": "94d7604fe137ba45237811967af0add73cf5a4099f0e2a2f32111c0432990301",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_sofa__navy.glb",
+      "src": "furniture57:01. High/furn_sofa__navy.glb",
+      "sha256": "5b589925dd1e409c181f8be2eaf9ef294f27690c77d4378a7c2bf18fea1d05be",
+      "lowSrc": "furniture57:02. Low/furn_sofa__navy_low.glb",
+      "lowSha256": "bcb6b7171b53cee5064ab63f8071851ac91f945d52de6c9090019ada2f2fdc1b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_sofa__sage.glb",
+      "src": "furniture57:01. High/furn_sofa__sage.glb",
+      "sha256": "30614880ed15827dd4c5385ef8c59b9746c2ca7eaefd3ecda86375ad78a4f6f3",
+      "lowSrc": "furniture57:02. Low/furn_sofa__sage_low.glb",
+      "lowSha256": "d13afcc5ce9560ab3104020f90a6556c5d407250d6ca30de7e7edc6bc9fd1a34",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_stool__oak.glb",
+      "src": "furniture57:01. High/furn_stool__oak.glb",
+      "sha256": "6ea91f19dad86f9f60942c166aefd092f91a682899c888a1a07983c1e39ab41d",
+      "lowSrc": "furniture57:02. Low/furn_stool__oak_low.glb",
+      "lowSha256": "d3a365fd3cf03489f7a17e9082eaa5b241c2c9499ccba944c137bb23015eb9b5",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_stool__walnut.glb",
+      "src": "furniture57:01. High/furn_stool__walnut.glb",
+      "sha256": "62ca3741f738525a474587f3d28b53ae43ac54fdb44131849594a7607417ba7a",
+      "lowSrc": "furniture57:02. Low/furn_stool__walnut_low.glb",
+      "lowSha256": "0ea4ae7234b1d972393bb362e1b4be6b8e268c8e94cbf0e1b50e616c34628f71",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_stool__white.glb",
+      "src": "furniture57:01. High/furn_stool__white.glb",
+      "sha256": "1aa193b0f26bcc475f3aab0bef1df3830f865ea1fefeae42229744ffd3e0de7d",
+      "lowSrc": "furniture57:02. Low/furn_stool__white_low.glb",
+      "lowSha256": "8a8d020502abc26ab17d3d76c516e0a8d5f63fb55be1098a56485e9d4d067f3d",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_tall_clock__walnut.glb",
+      "src": "furniture57:01. High/furn_tall_clock__walnut.glb",
+      "sha256": "62c544e4ba68d271df5738feb7c2c501668e1a1d0c99b62b9d094b20288b7f91",
+      "lowSrc": "furniture57:02. Low/furn_tall_clock__walnut_low.glb",
+      "lowSha256": "3616e5c0b8f67fed44c2dd7d34dde877120bb45943830c67abba3f03525d7605",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_tall_clock__white.glb",
+      "src": "furniture57:01. High/furn_tall_clock__white.glb",
+      "sha256": "484edda380da10a9c050977d2321c43e8a734a0eb9b9f142e753d2fd4a3c9dac",
+      "lowSrc": "furniture57:02. Low/furn_tall_clock__white_low.glb",
+      "lowSha256": "61cf1986f1030f4c02af14b2665ce9c190d30611157bad274c8a1fc5d1614994",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_toy_box__sky.glb",
+      "src": "furniture57:01. High/furn_toy_box__sky.glb",
+      "sha256": "ccc8deb339dc801e404bca2d8aba6c69d49dee48ad3d2b856cacbbb489640f00",
+      "lowSrc": "furniture57:02. Low/furn_toy_box__sky_low.glb",
+      "lowSha256": "6f9c5c43c09ed1a9808a6b31671ff948bc2bceffc88a1d616e7c280d32dd7dc3",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_toy_box__pink.glb",
+      "src": "furniture57:01. High/furn_toy_box__pink.glb",
+      "sha256": "93dcfc4db821f90497ac847621a80f21718a18f6bc22d7517e0a163e394eaed9",
+      "lowSrc": "furniture57:02. Low/furn_toy_box__pink_low.glb",
+      "lowSha256": "20c4ffe4f0d4baa7efa1acb02ad1301350aba590e353a4ddd322b0f85031974f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_toy_box__oak.glb",
+      "src": "furniture57:01. High/furn_toy_box__oak.glb",
+      "sha256": "e937135444c73fc1d383b0880020fa9cc20cea58b69a2c06846f9e3255b030d0",
+      "lowSrc": "furniture57:02. Low/furn_toy_box__oak_low.glb",
+      "lowSha256": "d45b309faf07034ae59abb0c3bb13845e69648c2b5ac3e4aad7ab7204491dce1",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_tv_stand__oak.glb",
+      "src": "furniture57:01. High/furn_tv_stand__oak.glb",
+      "sha256": "5ccd4b533b63e740f4df31da80b2507734669d00c63bdfce10420ac495fbb71e",
+      "lowSrc": "furniture57:02. Low/furn_tv_stand__oak_low.glb",
+      "lowSha256": "2bf737ae27178d56a8ecd3784d819a15a6cd6a59af6ac3f2dc8c144833e9f509",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_tv_stand__white.glb",
+      "src": "furniture57:01. High/furn_tv_stand__white.glb",
+      "sha256": "038fcc5eea1e861e3cb95849807f14c5a0ee639d9b0b64665fc00635b3d4c586",
+      "lowSrc": "furniture57:02. Low/furn_tv_stand__white_low.glb",
+      "lowSha256": "959071985d88314f42b8d4bcbf91ed0dcfe4bf9bcf3ada3e067592111749be5f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_tv_stand__walnut.glb",
+      "src": "furniture57:01. High/furn_tv_stand__walnut.glb",
+      "sha256": "a5c6b1ec588ee19444776fccf9ad2be47c76550fdb35e3ab41edd3e39b42c934",
+      "lowSrc": "furniture57:02. Low/furn_tv_stand__walnut_low.glb",
+      "lowSha256": "1664a338bd1576e31d7c27ab5d194aacba6543460f9ec64e0d8b06113043e00c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wall_clock__oak.glb",
+      "src": "furniture57:01. High/furn_wall_clock__oak.glb",
+      "sha256": "6330df75294009fe7f5bf41769b2e3ccaab4cdf368d088bc29ca795c17a44c47",
+      "lowSrc": "furniture57:02. Low/furn_wall_clock__oak_low.glb",
+      "lowSha256": "c2e3c8d952ba1f2b513c8c209ddf93225f66a535e6ccf4d37522062e6ee6b3a3",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wall_clock__mint.glb",
+      "src": "furniture57:01. High/furn_wall_clock__mint.glb",
+      "sha256": "dfb1f76cad485888b58a21cec67341af150ac57fb71340aa5d1b0a93b2102da0",
+      "lowSrc": "furniture57:02. Low/furn_wall_clock__mint_low.glb",
+      "lowSha256": "699bc2e495b4079a3b0990c06dc1ff94eb223154f3df4773e4db1ca73a679e26",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wall_clock__red.glb",
+      "src": "furniture57:01. High/furn_wall_clock__red.glb",
+      "sha256": "194ece9f34ee9cab9a68cb3572a5a943fbe437db8855c414a464cc6587647691",
+      "lowSrc": "furniture57:02. Low/furn_wall_clock__red_low.glb",
+      "lowSha256": "89e9e2fdff29eeb4ed43cae44bc7e4866bcc718cbca1ee8e5537344f0943e3b6",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wall_shelf__oak.glb",
+      "src": "furniture57:01. High/furn_wall_shelf__oak.glb",
+      "sha256": "94b54effc9b8f5ecc13694d896a2249e4ed86f214abfa03ca03141ec68e439a7",
+      "lowSrc": "furniture57:02. Low/furn_wall_shelf__oak_low.glb",
+      "lowSha256": "c1a1d4bf8cd14fb6d28c240c6962a1ef5a8bafb048aede6ee35130b898cd2606",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wall_shelf__white.glb",
+      "src": "furniture57:01. High/furn_wall_shelf__white.glb",
+      "sha256": "6c84524e716b9c382dbaf064752d4e4ddef36464d26043c852cc3335c0e078bf",
+      "lowSrc": "furniture57:02. Low/furn_wall_shelf__white_low.glb",
+      "lowSha256": "168ca70ea779586d7e55fa87d2c19358745aa1899ce6f99463d773e61459f88f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wardrobe__oak.glb",
+      "src": "furniture57:01. High/furn_wardrobe__oak.glb",
+      "sha256": "eb6acaadee0cdf3143e99144829f63c16f3b803f8a9b297bef63f2bc8fed079e",
+      "lowSrc": "furniture57:02. Low/furn_wardrobe__oak_low.glb",
+      "lowSha256": "5d4ab01c014c15c46eaad4291406e490f62d0db2379ebd02ffa1e1868c9372da",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wardrobe__white.glb",
+      "src": "furniture57:01. High/furn_wardrobe__white.glb",
+      "sha256": "6f4caa401dd2ea22db36f14c678e57efd97139b8ba470480377619e4743de895",
+      "lowSrc": "furniture57:02. Low/furn_wardrobe__white_low.glb",
+      "lowSha256": "5f73c7d37fd8adf72b491e62dcb3cb8ab5596db79de98e623269abb968694f5c",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wardrobe__walnut.glb",
+      "src": "furniture57:01. High/furn_wardrobe__walnut.glb",
+      "sha256": "65b41f62b469bd44e15a0097c1923eaed1e300216b2019fdc5793cbd0f39f01b",
+      "lowSrc": "furniture57:02. Low/furn_wardrobe__walnut_low.glb",
+      "lowSha256": "98d5eb4023fb97e7ecfdb440338c6cdaabfa642630bdd436571d35e9b5ad51c6",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/furn_wardrobe__mint.glb",
+      "src": "furniture57:01. High/furn_wardrobe__mint.glb",
+      "sha256": "121af621af10dfcfd1e2f6f06796c43531fa281b908f69733305a6b7c5bc9ec7",
+      "lowSrc": "furniture57:02. Low/furn_wardrobe__mint_low.glb",
+      "lowSha256": "7c7782258b9f5ddd61908f79793580b5d8266c8383ae7e50af1cf4d800ad1485",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/mall_elevator.glb",
+      "src": "furniture57:01. High/mall_elevator__base.glb",
+      "sha256": "aed7e7b23940feb1b31eb56349f2c8011be2c52d0f8d19e285b5fc0886e39e75",
+      "lowSrc": "furniture57:02. Low/mall_elevator__base_low.glb",
+      "lowSha256": "5b0e68420fa2c99d024954281c023ec334706e0cf89f457162bce060088cb42f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/mall_floor2.glb",
+      "src": "furniture57:01. High/mall_floor2__base.glb",
+      "sha256": "b0331d72df2038cd56c15616183c76e00beed098fe5a98669f1517682f883558",
+      "lowSrc": "furniture57:02. Low/mall_floor2__base_low.glb",
+      "lowSha256": "dcdf5287a311f80d6f30885708dc811e25311a9fbc4ad360d7ed7fc7dc8d2078",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/mall_floor2_sign.glb",
+      "src": "furniture57:01. High/mall_floor2_sign__base.glb",
+      "sha256": "264236df336b4da4b3c7336b8c6763ee088cdbc99a2a20df12110367dc684f00",
+      "lowSrc": "furniture57:02. Low/mall_floor2_sign__base_low.glb",
+      "lowSha256": "30cbbc8718d89f5116937f788e46e5b08c8be5f76f4a358c34e97d76f84c3867",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_checkout.glb",
+      "src": "furniture57:01. High/shop_checkout__base.glb",
+      "sha256": "284f2dab97c2d2383c81fae9fde951bd8ef455419d4ffeb6f309de943653fc99",
+      "lowSrc": "furniture57:02. Low/shop_checkout__base_low.glb",
+      "lowSha256": "f8e2f8f2b607dd39f50f02f119d7fdceee9d6a1e1bd23088b05500ad33ed626f",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_plinth_l.glb",
+      "src": "furniture57:01. High/shop_plinth_l__base.glb",
+      "sha256": "7063333730be0ade6631034bc503934afa86f966b7e9931859608f0c7afde203",
+      "lowSrc": "furniture57:02. Low/shop_plinth_l__base_low.glb",
+      "lowSha256": "b5e216a10355576a4ec41c6f8ae23beced4a31bd5210b7bec7df6274bd130fa1",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_plinth_s.glb",
+      "src": "furniture57:01. High/shop_plinth_s__base.glb",
+      "sha256": "4a1c553b9543597f7b96600817d2bb16353ab634d2ea6792015f31c39bb21b52",
+      "lowSrc": "furniture57:02. Low/shop_plinth_s__base_low.glb",
+      "lowSha256": "8e298e7f8009058c5ee8bed538f2b5d7bb2da51a4736119c607360ab094747e5",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_price_stand.glb",
+      "src": "furniture57:01. High/shop_price_stand__base.glb",
+      "sha256": "527d2306220c8b34d9261547389260ce3ab7645504c900f0890012ed1951420c",
+      "lowSrc": "furniture57:02. Low/shop_price_stand__base_low.glb",
+      "lowSha256": "e720af9b2249220ab5abb9463ee437f5565c11e6202da2d39f9011f984763711",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_rug_zone__living.glb",
+      "src": "furniture57:01. High/shop_rug_zone__living.glb",
+      "sha256": "799c6ad4c2e1cb70667faf7b487af9c459b71919bfb4d642efa7284eb1c9e898",
+      "lowSrc": "furniture57:02. Low/shop_rug_zone__living_low.glb",
+      "lowSha256": "e9a73bc1002ef92e13a7059e9dd5f472513ff36b8eb2bfe0169db0ef1937845b",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_rug_zone__bedroom.glb",
+      "src": "furniture57:01. High/shop_rug_zone__bedroom.glb",
+      "sha256": "670c61a5e2b9593922a04d270ed4dd6b548609e0c7d554ef840e1f0629486919",
+      "lowSrc": "furniture57:02. Low/shop_rug_zone__bedroom_low.glb",
+      "lowSha256": "cdf19a407d370c6e79ada3c8f0a8d0e632b15e81aa517eaf57bc1f2c39e3f0e9",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_rug_zone__kitchen.glb",
+      "src": "furniture57:01. High/shop_rug_zone__kitchen.glb",
+      "sha256": "c667e349efacfcc0ea2254a6cd85c03896ec956ed243fe89a2ed38644b14d7ea",
+      "lowSrc": "furniture57:02. Low/shop_rug_zone__kitchen_low.glb",
+      "lowSha256": "c446e87c74dc8679d3c59e9ea686b649711b9519954dc2395b4de5d7cfc17017",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_rug_zone__garden.glb",
+      "src": "furniture57:01. High/shop_rug_zone__garden.glb",
+      "sha256": "8acbb7257e064dd2803d9ecd959849366e9006245a6baaf945d34d1c90309481",
+      "lowSrc": "furniture57:02. Low/shop_rug_zone__garden_low.glb",
+      "lowSha256": "8fc135d93dc51948913082e01dbb0274f36585f9e29a6e497f938efc51235402",
+      "precompressed": true
+    },
+    {
+      "out": "furniture-v1/shop_sold_sign.glb",
+      "src": "furniture57:01. High/shop_sold_sign__base.glb",
+      "sha256": "667208928cdb7c92009b572b0ccd8690654605bcf2637eb569ab711f3b924749",
+      "lowSrc": "furniture57:02. Low/shop_sold_sign__base_low.glb",
+      "lowSha256": "1291df523405a5b6241c334cf615c0463df3d650d7019405832b2fa44dfaa426",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -6144,6 +7400,7 @@
     "dalmaru55": "55. Game Island Dalmaru structures 2026-10-19",
     "plaza59": "59. Game Island plaza paving 2026-10-20",
     "slim49": "49. Game Island slim body 2026-10-18",
-    "slim50": "50. Game Island slim body accessories 2026-10-20"
+    "slim50": "50. Game Island slim body accessories 2026-10-20",
+    "furniture57": "57. Game Island furniture shop 2026-10-19"
   }
 }
