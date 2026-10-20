@@ -1246,10 +1246,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const paceUp = () => { if (!paceDownAt) return; if (!paceRun) pace = pace === 'walk' ? 'slow' : 'walk'; shifts.clear(); paceDownAt = 0; paceRun = false; clearTimeout(paceTimer); };
   const paceSpeed = () => (cycling ? BIKE_SPEED : paceRun ? RUN_SPEED : pace === 'slow' ? SLOW_SPEED : SPEED);
   // 자전거 (gamecenter-notes docs/bicycle-20261020.md, assets 61): B (or the phone's button) gets on and off one of the
-  // bikes in my bag; 7 m/s; off by itself indoors, on stairs and bridges, among people (3 within 5 m); bumping into
+  // bikes in my bag; 8 m/s (사용자 2026-10-20 「자전거 이동속도는 8로」); off by itself indoors, on stairs and bridges, among people (3 within 5 m); bumping into
   // something just stops it. Everyone sees it (the pose's `bike`, the colour). Under a rider: the frame, two wheels
   // turning with the ground and the crank turning with BikeRide (one turn a loop, its rate the speed / 4).
-  const BIKE_SPEED = 7; const BIKE = { wheelR: 0.24, front: [0, 0.24, -0.42], rear: [0, 0.24, 0.42], crank: [0, 0.27, 0.02] };
+  const BIKE_SPEED = 8; const BIKE = { wheelR: 0.24, front: [0, 0.24, -0.42], rear: [0, 0.24, 0.42], crank: [0, 0.27, 0.02] };
   let bikes = []; let cycling = null; let onBike = null; // (the colours in my bag; the one I ride; the app's ear)
   function bikeWhy() { // why not here, or null
     if (mySpace !== 'island') return '실내에서는 자전거에서 내려요.';
