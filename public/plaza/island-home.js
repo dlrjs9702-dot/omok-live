@@ -43,12 +43,15 @@
     aquarium_big: { min: [-1.05, 0.85, -0.28], max: [1.05, 1.6, 0.28], slots: 8, biggest: 'medium', fishScale: 0.85 },
     aquarium_pillar: { min: [-0.6, 0.6, -0.6], max: [0.6, 2.25, 0.6], slots: 8, biggest: 'medium', fishScale: 0.85, cylinder: true },
     aquarium_wall: { min: [-1.75, 0.45, -0.4], max: [1.75, 2.2, 0.4], slots: 12, biggest: 'large', fishScale: 1 },
+    insect_case: { min: [-0.12, 0.3, -0.05], max: [0.12, 0.5, 0.05], slots: 1, insects: true }, // (곤충 상자: one insect, sitting)
   };
+  // the twelve insects (lib/island-insects.js, bag items insect_<id>)
+  const INSECTS = new Set(['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail'].map((s) => `insect_${s}`));
   const FISH_SIZE = { fish_anchovy: 'small', fish_crucian_carp: 'small', fish_gizzard_shad: 'small', fish_goby: 'small', fish_mackerel: 'small', fish_pale_chub: 'small', fish_smelt: 'small', fish_sweetfish: 'small', fish_pufferfish: 'small',
     fish_carp: 'medium', fish_catfish: 'medium', fish_cutlassfish: 'medium', fish_eel: 'medium', fish_flatfish: 'medium', fish_mandarin_fish: 'medium', fish_mullet: 'medium', fish_octopus: 'medium', fish_rockfish: 'medium', fish_sea_bass: 'medium', fish_stingray: 'medium', fish_giant_tuna: 'large' };
   const BOTTOM = new Set(['fish_octopus', 'fish_stingray', 'fish_flatfish']); // (they keep to the sand)
   const SIZE_RANK = { small: 1, medium: 2, large: 3 };
-  const fits = (tankShape, fishId) => Boolean(TANKS[tankShape] && FISH_SIZE[fishId] && SIZE_RANK[FISH_SIZE[fishId]] <= SIZE_RANK[TANKS[tankShape].biggest]);
+  const fits = (tankShape, id) => { const t = TANKS[tankShape]; return Boolean(t && (t.insects ? INSECTS.has(id) : FISH_SIZE[id] && SIZE_RANK[FISH_SIZE[id]] <= SIZE_RANK[t.biggest])); };
   const shapeOf = (goodId) => String(goodId || '').split('__')[0];
   // a placed piece's floor box (room-local): its footprint turned by rot quarters about (x, z)
   function boxOf(p) {
@@ -93,5 +96,5 @@
     const list = SEATS[shapeOf(p.id)] || []; const a = (p.rot * Math.PI) / 2;
     return list.map(([sx, sy, sz], k) => { const lx = p.x + sx * Math.cos(a) + sz * Math.sin(a); const lz = p.z - sx * Math.sin(a) + sz * Math.cos(a); const w = world(lot, lx, lz); return { id: `home:${p.uid}:${k}`, x: w.x, z: w.z, y: ROOM.y + sy - 0.45, yaw: a }; /* (y: as the scene lifts a seat 0.28 and a sitter's hips sit 0.17 below the seat; yaw: the piece's front, the room turned half round) */ });
   }
-  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
+  return { LOTS, lotById, doorOf, ROOFS, FLOORS, WALLS, VISITS, ROOM, roomOf, world, local, inRoom, ENTRY, DOORWAY, MAX_PIECES, MAX_FISH, SIZE, HUNG, FLAT, SEATS, TANKS, FISH_SIZE, INSECTS, BOTTOM, fits, shapeOf, boxOf, placeError, clamp, seatsOf };
 }));

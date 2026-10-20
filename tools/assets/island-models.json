@@ -7616,6 +7616,134 @@
       "src": "bike61:01. High/motions/BikeIdle.glb",
       "sha256": "ec58698855c520ad6a2a6f471f9b85a0b82f099b6a82ff748718397dcaa0186e",
       "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_boards__birch.glb",
+      "src": "home58:01. High/home_floor_boards__birch.glb",
+      "sha256": "5ab06fe6f7b26a234b00a2738f7e1534c132d459aed0ee05b822a560fd300969",
+      "lowSrc": "home58:02. Low/home_floor_boards__birch_low.glb",
+      "lowSha256": "884d0531277c77f2bb4b90a8e253a7837adb291c413c07282669e37e81bfd63d",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_boards__oak.glb",
+      "src": "home58:01. High/home_floor_boards__oak.glb",
+      "sha256": "152e72cff7f892fe80bf5b4f35d0982d5df68f80a6a18216d3fc7934160ef80f",
+      "lowSrc": "home58:02. Low/home_floor_boards__oak_low.glb",
+      "lowSha256": "6db09bec163572ee264cb96596a0e238aba18ecc56c53c4f2bbd7948e8a2b6f1",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_boards__walnut.glb",
+      "src": "home58:01. High/home_floor_boards__walnut.glb",
+      "sha256": "23cb6d09a9fd6e255c4e1836a331fb17b19bd78616030e64acaa1c420449f077",
+      "lowSrc": "home58:02. Low/home_floor_boards__walnut_low.glb",
+      "lowSha256": "fdf74ebe846801cb3e7534564c7a9b9685d37f5c543ba6ec7085ca8ffd346445",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_tiles__mint.glb",
+      "src": "home58:01. High/home_floor_tiles__mint.glb",
+      "sha256": "7a8d90ce45bcc8429bd71c12fd167ef378f95c20df9c447a8f363318bb010564",
+      "lowSrc": "home58:02. Low/home_floor_tiles__mint_low.glb",
+      "lowSha256": "9bac8579524cc51c91004d3c9bec5fc2f5401d3807d2c0b6d07457ee7bcef0e0",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_floor_tiles__pink.glb",
+      "src": "home58:01. High/home_floor_tiles__pink.glb",
+      "sha256": "d0ba3e1f2f115e4fbfb7d07dffa6edfb1f4d164b70549b79613bd717d946b414",
+      "lowSrc": "home58:02. Low/home_floor_tiles__pink_low.glb",
+      "lowSha256": "35cbe08af0971788a4c1990ad2e48b78150eeef32ce30638a20334615c19ad99",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_house__blue.glb",
+      "src": "home58:01. High/home_house__blue.glb",
+      "sha256": "e668be506efeb56f1c5fe239e1ba3a7947cc1a7fe3e51c13b08c7faf6202ca5a",
+      "lowSrc": "home58:02. Low/home_house__blue_low.glb",
+      "lowSha256": "336c3bb9f9dfeffc7d07c101af632439430946d19521d58a7d9e04d4a0261997",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_house__brown.glb",
+      "src": "home58:01. High/home_house__brown.glb",
+      "sha256": "9c79dc0549ea29416a4d23aec5e5d0f302d8cdce9047c341cd58044debdf1635",
+      "lowSrc": "home58:02. Low/home_house__brown_low.glb",
+      "lowSha256": "9a94f099c65307ab2662d014fc64eae7dfd61baca8c1ca812f2abf26ea03d636",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_house__green.glb",
+      "src": "home58:01. High/home_house__green.glb",
+      "sha256": "b14684410847836c21d449fa9bf976f6b71b8f78c094b584a533a2cbab7ef1fa",
+      "lowSrc": "home58:02. Low/home_house__green_low.glb",
+      "lowSha256": "f14835a4efce93f5547ed39737cb2e7438940f17047bc760afab62d4b3d498f8",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_house__red.glb",
+      "src": "home58:01. High/home_house__red.glb",
+      "sha256": "ee556670bf5dba7071bedbf386d3934deba448d8bed6b02c30a97bfcd7566016",
+      "lowSrc": "home58:02. Low/home_house__red_low.glb",
+      "lowSha256": "ed980a1544e36954e3e5812147d17ea9987641276e9723ec1ce96f0362706fac",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_lot_sign__base.glb",
+      "src": "home58:01. High/home_lot_sign__base.glb",
+      "sha256": "218f52fed62090df97de104dafa4c8c55b55aa3e9d70bed05e77e68dcd888e5e",
+      "lowSrc": "home58:02. Low/home_lot_sign__base_low.glb",
+      "lowSha256": "03d81186580ed259e85fc3d3ed0e9347632d6c1a25ad903f224131fccbcf30ee",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_nameplate__base.glb",
+      "src": "home58:01. High/home_nameplate__base.glb",
+      "sha256": "f2c0ca6dbe74e3ab8fe5d722822abf054fadd86eb02b89ffa2a9c527db521983",
+      "lowSrc": "home58:02. Low/home_nameplate__base_low.glb",
+      "lowSha256": "7ada5162dcfeeb0808453cb94346de4b58b3f4affe9ba4e2ac785352f2c06e6d",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_room__base.glb",
+      "src": "home58:01. High/home_room__base.glb",
+      "sha256": "dcd2c4a16ff5e473f17bef4bb43a28ba3e6d767fe09137b983ccf04e62a9dc19",
+      "lowSrc": "home58:02. Low/home_room__base_low.glb",
+      "lowSha256": "5088eb973160d5ec69563728de9e0147a351dd35c5b831e86cccbc4f5f081c32",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper__cream.glb",
+      "src": "home58:01. High/home_wallpaper__cream.glb",
+      "sha256": "4360b4df218147e80694f568328102808462169d3b4432d7d8dd4bfc282175ad",
+      "lowSrc": "home58:02. Low/home_wallpaper__cream_low.glb",
+      "lowSha256": "a8faf5fb917574136d30a7b3d5b53446d91a0d3e6c8a380c973e08b5c4e904b2",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper__mint.glb",
+      "src": "home58:01. High/home_wallpaper__mint.glb",
+      "sha256": "4c52edbafe60c53d8a42bd7c3022ca99565bbcb6f5a34f37b85df7fbdc09f1f1",
+      "lowSrc": "home58:02. Low/home_wallpaper__mint_low.glb",
+      "lowSha256": "1850170c9a37cb641b0d381af3f7b0baaf9304641c3988ffac6222bccf1833d0",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper__pink.glb",
+      "src": "home58:01. High/home_wallpaper__pink.glb",
+      "sha256": "2fc33d17a37b78e194d8088e181d9a6940938991acd547b760de31c0b7f36b35",
+      "lowSrc": "home58:02. Low/home_wallpaper__pink_low.glb",
+      "lowSha256": "106fcf2254e2178fa2e8008a5a7bea658b1c2c51e173930b7d8a9be65ab36ee5",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_wallpaper__sky.glb",
+      "src": "home58:01. High/home_wallpaper__sky.glb",
+      "sha256": "bd3f2b4c7144537f6faa73d428df82d84ae87db587c451ffc6e8712e26873e53",
+      "lowSrc": "home58:02. Low/home_wallpaper__sky_low.glb",
+      "lowSha256": "a91cda422721bad0f1b3e4e275aa4a2e0fb17745883dc9b6b1562d33640c2ffe",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7655,6 +7783,7 @@
     "slim50": "50. Game Island slim body accessories 2026-10-20",
     "furniture57": "57. Game Island furniture shop 2026-10-19",
     "petshop60": "60. Game Island pet shop 2026-10-20",
-    "bike61": "61. Game Island bicycle 2026-10-20"
+    "bike61": "61. Game Island bicycle 2026-10-20",
+    "home58": "58. Game Island my home 2026-10-20"
   }
 }
