@@ -7556,6 +7556,66 @@
       "lowSrc": "petshop60:02. Low/pet_puppy__white_low.glb",
       "lowSha256": "d63735d19448af334c90f6302c7c871f6b88ab90f3c37d97b5ad6893ff6ea282",
       "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_crank.glb",
+      "src": "bike61:01. High/bike_crank__base.glb",
+      "sha256": "976d5ca3501d5a1940ca6a0db0fb53d44cb431a3bf71aad82d4b002e238c2b13",
+      "lowSrc": "bike61:02. Low/bike_crank__base_low.glb",
+      "lowSha256": "86fd30746de4cca99696c4f04b30767aaf98234238286c148481da7b3c8173fc",
+      "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_frame__butter.glb",
+      "src": "bike61:01. High/bike_frame__butter.glb",
+      "sha256": "8530ffea3398d5dbab08366fc610c00b58c3ea8877fb781229b5d41fea7ea2fd",
+      "lowSrc": "bike61:02. Low/bike_frame__butter_low.glb",
+      "lowSha256": "19c854f6419af70d8f24605f8514ca7c3b46992c1e44e5d1f5b74ac79120f440",
+      "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_frame__mint.glb",
+      "src": "bike61:01. High/bike_frame__mint.glb",
+      "sha256": "41ef3d9a1bcf0eab998d8905e508bd3b14e31aa0e0096c05ed6606568292c3e7",
+      "lowSrc": "bike61:02. Low/bike_frame__mint_low.glb",
+      "lowSha256": "8ec2b4a317cb7a4d9b71d5a5446d34a554e136b968bdc70e2e62a9f7950a677c",
+      "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_frame__red.glb",
+      "src": "bike61:01. High/bike_frame__red.glb",
+      "sha256": "96d6350761a201b401551feb3065955b54f3ae3186369f961df764903c307740",
+      "lowSrc": "bike61:02. Low/bike_frame__red_low.glb",
+      "lowSha256": "b8cd04cf02a134890a5bd573e306aea670edd858399775a280ad36c06e307b2c",
+      "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_frame__sky.glb",
+      "src": "bike61:01. High/bike_frame__sky.glb",
+      "sha256": "c2c2c19a8ffd8c089ff22caffae21b254615426a9adfd052420f57e95e936e4c",
+      "lowSrc": "bike61:02. Low/bike_frame__sky_low.glb",
+      "lowSha256": "0ac466a7f3b9389239b1f2c3590c7315694f4d5e59d6e288296cee27a3974961",
+      "precompressed": true
+    },
+    {
+      "out": "bike-v1/bike_wheel.glb",
+      "src": "bike61:01. High/bike_wheel__base.glb",
+      "sha256": "cf45baa3235f70a6f336b8ffd6317dfaa7ba325d4f83a192fc2ff50c0c437d46",
+      "lowSrc": "bike61:02. Low/bike_wheel__base_low.glb",
+      "lowSha256": "0e0743b75d095827966096fa7efdc2440741af074998a3abcda33ba2f786cc48",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/BikeRide.glb",
+      "src": "bike61:01. High/motions/BikeRide.glb",
+      "sha256": "0adb933aa7c719d03dc23fd14da3cc0839fcd8cd74da2d6db7f38b22f6ad8974",
+      "precompressed": true
+    },
+    {
+      "out": "characters/motions/BikeIdle.glb",
+      "src": "bike61:01. High/motions/BikeIdle.glb",
+      "sha256": "ec58698855c520ad6a2a6f471f9b85a0b82f099b6a82ff748718397dcaa0186e",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7594,6 +7654,7 @@
     "slim49": "49. Game Island slim body 2026-10-18",
     "slim50": "50. Game Island slim body accessories 2026-10-20",
     "furniture57": "57. Game Island furniture shop 2026-10-19",
-    "petshop60": "60. Game Island pet shop 2026-10-20"
+    "petshop60": "60. Game Island pet shop 2026-10-20",
+    "bike61": "61. Game Island bicycle 2026-10-20"
   }
 }

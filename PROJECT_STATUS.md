@@ -13,6 +13,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.110 자전거
+
+- 근거: gamecenter-notes `docs/bicycle-20261020.md`(사용자 「자전거부터」 → 「그렇게 해」), assets 61.
+- 물건: 잡화점 `bike_mint·red·sky·butter`(12,000P — 반려동물 6,000~8,000P보다 한 단계 위, 경제 값 `good:bike_*`), 쓰임 `bike`(가방에 있는 동안 탐). 잡화 코너 앞 바닥에 작은 자전거 넷(펫이 있던 진열 대신).
+- 타기: **B 키**(빈 키) · 휴대폰 🚲 단추(자전거가 가방에 있을 때만, 걷기·뛰기 단추 위). 속도 7 m/s(`BIKE_SPEED`), 부딪히면 그냥 멈춤(기존 충돌). SPACE로 무엇을 하면 먼저 내림.
+- 저절로 내림(그 자리에서 이유 한 줄): 실내(공간이 섬이 아님 — 백화점 각 층·관공서), 열차·승강장, 능선 계단·다리, 사람 많은 곳(5 m 안에 다른 사람 3명).
+- 모습: 캐릭터 안에 몸체(색)·바퀴 둘·크랭크(assets 61 `bike-v1`, bike.json 위치) — 바퀴는 속도 / 0.24로, 크랭크는 `BikeRide` 재생 시간으로 돔(재생 속도 = 속도 / 4), 멈추면 `BikeIdle`(크랭크 −3π/2). 동작 파일 `characters/motions/BikeRide·BikeIdle`. `createAnimator.loop(name, rate)`·`heldTime()`.
+- 다른 사람: 자리 정보 `bike`(색) — 서버는 가방에 그 색이 있고 섬 위(실내·열차 아님)일 때만 받음(가방 색은 30초 캐시, 살 때 비움). `plazaSnapshot`에 `bike`.
+- 함께 고침: 내 화면에서 내 반려동물의 무늬가 빠지던 것(`setMyPet`).
+- 검증: e2e 자전거(PC·휴대폰: 단추 없음/있음, B·🚲로 타고 내리기, 다른 화면에 색, 계단·사람 많은 곳·백화점에서 저절로 내림), 잡화점·반려동물 e2e, 단위(잡화점 32종, 등록부). Codex 검토 대기(10/25).
+
 ## v1.10.109 걸음 3판(최종)
 
 - 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「걸음 3판 = 최종」(사용자 2026-10-20 「추천대로 가자」 — 동물의 숲 녹화 측정, 속도 그대로 + 여유 있는 걸음 + 발 미끄러짐 허용; 2판 2.5/5.0은 버림).
@@ -28,13 +39,3 @@
 - 고침: SPACE 대상 순서(지난 프레임의 대상이 남아 있으면 반려동물 대상이 한 프레임 걸러 사라지던 것), `budgets.pet` 노드 12 → 13(무늬 판).
 - 걷기·뛰기 2판(걷기 2.5·뛰기 5)은 사용자 비교 중이라 보류(지금 G1·4.2/6.2 그대로).
 - 검증: 단위(펫샵 하루·마당 안·승강기·동시·하루 한 마리·내 반려동물, 가구점), e2e 펫샵·가구점(PC·휴대폰), 광장·motion36. Codex 검토 대기(10/25).
-
-## v1.10.107 패치 묶음 2: 가구점(백화점 2층), 내 정보 변신 켜기·끄기
-
-- 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 2, `docs/furniture-shop-20261019.md`(사용자 확정), `docs/shop-tryon-20261019.md` 「내 정보에서 변신 켜기/끄기」.
-- 가구점(`public/plaza/island-furniture.js`, 브라우저·서버 공용): 상품 145(48 모양 × 색 판, 이름·구역·희귀도), 2층 방(1층처럼 섬 밖, 반 바퀴 돌린 방), 구역 4 × 받침대 3 + 뒷벽 걸이 3 + 넓은 자리 1 = 하루 16점, 늘 파는 4점. `displayOf(day)` 서울 날짜로 모두 같은 진열(흔함 6·보통 3·드묾 1 가중치, 모양 겹침 없음, 벽면 수조는 넓은 자리에서 약 9일에 1번).
-- 서버: 1층 왼쪽 벽 승강기(`IslandStore.LIFT`) ↔ 2층(`/api/island/furniture/up·down`, `furnitureInside` ⊂ `storeInside`, space `furniture`), `GET /api/island/furniture`(진열·팔림·내 오늘 수), `POST .../buy`(그 가구 옆에서, worldEdit로 먼저 온 한 명만 — 늦은 사람 `SOLD`·포인트 그대로, 전시품 하루 `furniture:perDay` 3점, 늘 파는 것은 요청 번호마다 한 번), `GET .../mine`(가구 창고 — world `furniture:<계정>`, 300점까지). 결제는 새 `pointStore.charge`(JSON·PostgreSQL, 정산 id `furniture:…` 한 번만, 원장 사유 furniture). 팔리면 SSE `furniture`.
-- 경제 값: `furniture:common` 3,000 · `uncommon` 6,000 · `rare` 15,000 · `base` 1,000 · `perDay` 3.
-- 화면: 2층(assets 57 `furniture-v1` 157개 — 방·승강기·간판·구역 러그·받침대·가격표 받침·「팔렸어요」 상자·계산대), 받침대 위 가구와 가격 글씨, SPACE로 가구 창(사기), 메뉴 「가구 창고」(꾸미기 창의 3D 미리보기에 가구 — `tryOn(canvas, { model })`). 계단 모델은 쓰지 않음(승강기로 오르내림).
-- 내 정보 변신: 꾸미기 창 위 「변신 중: ○○ · 풀기」 줄과 가진 변신 목록(변신하기/변신 풀기 = 기존 장착·해제, 장소 확인 없음). 변신 중에 다른 항목을 가리키면 3D는 변신을 끈 모습 + 「변신 중이라 섬에서는 변신 모습이에요」.
-- 검증: 단위(가구점 진열 규칙, 승강기·동시 구매·하루 3점·늘 파는 것·창고), e2e 가구점·내 정보 변신(PC·휴대폰), 꾸미기 창·dalmaru-walk. Codex 검토 대기(10/25).

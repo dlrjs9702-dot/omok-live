@@ -1006,6 +1006,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .messengerUnread{background:#ef4444;color:#fff}
 :root[data-theme="light"] .islandCtl{background:rgba(247,239,225,.55);color:#33281d;border:1px solid rgba(179,156,124,.5)}
 :root[data-theme="light"] .islandActBtn{background:rgba(37, 99, 235, .72);border-color:rgba(191, 219, 254, .7)}
+:root[data-theme="light"] .islandBikeBtn[aria-pressed="true"]{background:rgba(16, 185, 129, .75)}
 :root[data-theme="light"] .islandRunBtn.on,:root[data-theme="light"] .islandRunBtn:active{background:rgba(220, 38, 38, .75)}
 :root[data-theme="light"] body.stickEdit .islandCtl{outline:2px dashed #facc15}
 :root[data-theme="light"] body.stickEdit .ctlSelected{outline:3px solid #facc15 !important}
