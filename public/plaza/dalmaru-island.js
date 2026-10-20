@@ -281,11 +281,11 @@
   function plazaProps() {
     const busy = (x, z, gap) => Object.values(SPOTS).some((s) => Math.hypot(s.x - x, s.z - z) < gap);
     const at = (a, r) => ({ x: PLAZA_C.x + Math.cos(a) * r, z: PLAZA_C.z + Math.sin(a) * r });
-    const benches = [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38].map((a) => ({ ...at(a, 5), r: 0.9 }));
+    const benches = [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38].map((a) => { const p = at(a, 5); return { ...p, r: 0.9, yaw: Math.atan2(PLAZA_C.x - p.x, PLAZA_C.z - p.z) }; }); // (facing the fountain: the bench and its seat alike)
     const lamps = [];
     for (let k = 0; k < 8; k += 1) { const p = at(Math.PI / 8 + (k * Math.PI) / 4, 12); if (!busy(p.x, p.z, 3)) lamps.push({ ...p, r: 0.35 }); }
     const beds = []; // (묶음 1 광장 소품 정리: the wooden planters round the lamps gave way to assets 59's gardens and disc)
-    const seats = benches.map((b, k) => { const ry = Math.atan2(PLAZA_C.x - b.x, PLAZA_C.z - b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
+    const seats = benches.map((b, k) => { const ry = b.yaw; return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
     // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
     paving().gardens.forEach((g, k) => {
       const at = g.kind === 'round' ? [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * 2.23, b * 2.23]) : [-3, 0, 3].flatMap((x) => [[x, 1.95], [x, -1.95]]);

@@ -421,7 +421,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const benchHolders = []; const lampHolders = []; // (B 46: the winter overlays sit on these)
   const propHolder = (x, z, ry = 0) => { const holder = new THREE.Group(); holder.position.set(x, PH, z); holder.rotation.y = ry; scene.add(holder); const visual = new THREE.Group(); holder.add(visual); return [holder, visual]; };
   for (const b of PROPS.benches) { // benches facing the fountain, clear of the channels
-    const [bench, visual] = propHolder(b.x, b.z, Math.atan2(-b.x, -b.z));
+    const [bench, visual] = propHolder(b.x, b.z, b.yaw ?? Math.atan2(PLAZA_C.x - b.x, PLAZA_C.z - b.z)); // (문제 기록 ①: its own facing, the one its seat has -- not the old island's middle)
     mesh(new THREE.BoxGeometry(1.7, 0.12, 0.55), mat(0xc58b5a), 0, 0.5, 0, visual);
     mesh(new THREE.BoxGeometry(1.7, 0.45, 0.1), mat(0xc58b5a), 0, 0.8, -0.25, visual);
     for (const x of [-0.7, 0.7]) mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), mat(0x6b5a4a), x, 0.25, 0, visual);
@@ -439,7 +439,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   for (const bed of PROPS.beds) { // beds along the plaza rim, between the walks and channels
     const { i } = bed;
-    const [holder, visual] = propHolder(bed.x, bed.z, Math.atan2(-bed.x, -bed.z)); // v1.10.20: facing the fountain (a planter model lies along the rim)
+    const [holder, visual] = propHolder(bed.x, bed.z, Math.atan2(PLAZA_C.x - bed.x, PLAZA_C.z - bed.z)); // v1.10.20: facing the fountain (a planter model lies along the rim)
     mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.3, 20), mat(0xb98b62), 0, 0.15, 0, visual);
     mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.06, 20), mat(0x6b4f3a), 0, 0.31, 0, visual);
     for (let k = 0; k < 9; k += 1) {
@@ -961,7 +961,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const spot = st.contest ? globalThis.IslandTerrain.CONTEST_STATUE : STATUE_SPOTS[st.rank - 1]; if (!spot) continue;
       const size = st.contest ? STATUE_SIZE * 0.6 : st.rank === 1 ? STATUE_SIZE : STATUE_SIZE * 0.7;
       const c = makeCharacter({ ...ME_BASE, look: st.look || {} });
-      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(-spot.x, -spot.z) + 0.35; c.root.scale.setScalar(size);
+      const walk = globalThis.IslandTerrain.walkCurves.flatMap((w) => w.pts).reduce((p, q) => (Math.hypot(q[0] - spot.x, q[1] - spot.z) < Math.hypot(p[0] - spot.x, p[1] - spot.z) ? q : p)); // (toward the walk it is seen from -- not the old island's middle)
+      c.root.position.set(spot.x, PH + 1.4, spot.z); c.root.rotation.y = Math.atan2(walk[0] - spot.x, walk[1] - spot.z) + 0.35; c.root.scale.setScalar(size);
       c.armR.rotation.z = 2.4; // a wave, frozen (the procedural character)
       scene.add(c.root); statueRoots.push(c.root); statueChars.push(c); c.root.userData.building = true; buildingRoots.push(c.root);
       dressUp(c, st.look || {});
@@ -2235,7 +2236,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
             farmer: [{ gender: 'male', outfit: 'avatar_outfit_1', hat: 'avatar_hat_1' }, { shirt: 0x6b8f3a, hair: 0x4a3326, skin: 0xffd6b0, hat: 0xe2c27a }], // v1.10.80 (until his model is in)
             kid: [{ gender: 'male', outfit: 'avatar_outfit_16', hat: 'avatar_hat_14' }, { shirt: 0xf08a24, hair: 0x6b4a2b, skin: 0xffe0c4, hat: 0xf08a24 }] }; // v1.10.39: in a pumpkin costume
           const [look, spec] = QUEST_LOOKS[ev.story] || [{gender:'female',outfit:'avatar_outfit_16',hat:'avatar_hat_1'},{shirt:0xffd166,hair:0x2b2b2b,skin:0xffdcbc,hat:0xff8a5c}];
-          npc = makeCharacter(spec); root.rotation.y = Math.atan2(-ev.x, -ev.z);
+          npc = makeCharacter(spec); root.rotation.y = Math.atan2(PLAZA_C.x - ev.x, PLAZA_C.z - ev.z); // (facing 대청마당, not the old island's middle)
           root.add(npc.root); npc.home = { x: ev.x, z: ev.z, yaw: root.rotation.y, id: key };
           if (ev.story === 'farmer') { assets.dress(['character.farmer'], npc); assets.hold(npc, 'farm.mallet', 0, { key: 'questTool', at: [0, -0.18, -0.025] }); prepareFarm(); } // v1.10.80 his own model, the mallet in hand
           else if (['painter', 'stationmaster', 'busker', 'electrician', 'builder', 'librarian', 'grandpa'].includes(ev.story)) { assets.dress([`character.${ev.story === 'grandpa' ? 'gazebo_grandpa' : ev.story}`, 'character.npc'], npc); if (ev.story === 'busker') assets.hold(npc, 'village.guitar', 0, { key: 'questTool', at: [0, -0.505, 0] }); prepareVillage(); } // v1.10.93 assets 39
