@@ -41,6 +41,8 @@ function places() {
   const L = PL.lighthouse; const lw = [-88, 140]; const ll = Math.hypot(lw[0] - L.x, lw[1] - L.z); out.push(['초승등대', { x: L.x + ((lw[0] - L.x) / ll) * 4.5, z: L.z + ((lw[1] - L.z) / ll) * 4.5 }]);
   out.push(['달끝나루 부두', T.PIER.root], ['배 타는 곳', { x: T.DOCK.rects[1].x, z: T.DOCK.rects[1].z - T.DOCK.rects[1].half }]);
   out.push(['농부 밭', T.FARM.farmer]);
+  // (묶음 3) the village's minigame residents where they stand
+  for (const k of ['painter', 'busker', 'stationmaster', 'electrician', 'builder', 'librarian', 'grandpa']) if (T.VILLAGE?.[k]) out.push([`주민:${k}`, T.VILLAGE[k]]);
   return out.filter(([, p]) => p && Number.isFinite(p.x));
 }
 

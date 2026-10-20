@@ -38,6 +38,10 @@ function routeProps() {
       if (!p.moving || T.onBridge(p.x, p.z) || Math.hypot(p.x, p.z) < 6) continue;
       const prop = { x: p.x + Math.cos(p.yaw) * 0.25, z: p.z - Math.sin(p.yaw) * 0.25, r: 0.9 };
       if ([...others, ...props].some((o) => Math.hypot(o.x - prop.x, o.z - prop.z) < o.r + prop.r + 2 * R + 0.1)) continue;
+      // (묶음 3: only where there is ground either side of it -- on 달마루섬's ridge walk a prop against the drop or a
+      // bare patch left no way past the walkers' steering finds, a scene the island never has)
+      const side = (s) => [0.5, 1].every((k) => T.walkable(prop.x + Math.cos(p.yaw) * s * (prop.r + 2 * R * k + 0.15), prop.z - Math.sin(p.yaw) * s * (prop.r + 2 * R * k + 0.15)));
+      if (!side(1) || !side(-1)) continue;
       props.push(prop);
     }
   }

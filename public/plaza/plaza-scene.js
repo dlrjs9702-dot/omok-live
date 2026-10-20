@@ -2744,6 +2744,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const d = Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z);
       if (d < (door.resource ? WEED_REACH : EVENT_REACH) && d < bestD + 1) { best = id; bestD = d - 1; }
     }
+    // (묶음 3: a weed beside someone to talk to -- the one I face is talked to first; the weed is pulled facing it)
+    const facing = (x, z) => { const m = me.root.position; const d = Math.hypot(x - m.x, z - m.z) || 1; return ((x - m.x) * Math.sin(me.root.rotation.y) + (z - m.z) * Math.cos(me.root.rotation.y)) / d > 0.5; };
+    if (best && eventDoors[best]?.resource) for (const [id, door] of Object.entries(eventDoors)) if (!door.resource && !door.plain && door.name?.startsWith('말 걸기') && Math.hypot(door.x - me.root.position.x, door.z - me.root.position.z) < EVENT_REACH && facing(door.x, door.z)) { best = id; break; }
     // v1.10.47 관광열차: on board, SPACE gets off at a stop (between stops the hint says which comes next); by a stop's
     // boarding spot, SPACE gets on the train standing there (or the hint says when the next one comes)
     for (const k of Object.keys(eventDoors)) if (k.startsWith('train:')) delete eventDoors[k];
@@ -2777,9 +2780,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
-    if (!best && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
-      const m = me.root.position; let who = null; let wd = 2.2;
-      for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:')) || !c.root.visible) continue; /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd) { who = { n, w }; wd = d; } }
+    if ((!best || eventDoors[best]?.resource) && !gather && !fishing) { // v1.10.91 주민 대화: an islander by me (not one an event holds) talks -- A-6: walking too
+      const m = me.root.position; let who = null; let wd = 2.2; const overWeed = Boolean(best); // (묶음 3: over a weed only the one I face)
+      for (const { n, c, w } of wanderers) { if ((w.pose.held && !residentStates[n]?.hold?.eventId?.startsWith('talk:')) || !c.root.visible) continue; /* (in someone else's talk: the server says with whom) */ const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < wd && (!overWeed || facing(w.x, w.z))) { who = { n, w }; wd = d; } }
       if (who) { eventDoors[`resident:${who.n}`] = { x: who.w.x, z: who.w.z, name: `말 걸기 · ${globalThis.IslandCast?.WALKERS[who.n]?.name || '주민'}` }; best = `resident:${who.n}`; }
     }
     if (!best && !gather && !fishing) {
