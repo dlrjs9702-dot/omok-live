@@ -474,7 +474,7 @@
     {
       "out": "characters/motions/Run.glb",
       "src": "slim49:01. High/motions/Run.glb",
-      "sha256": "ce15d9a7f6079acd6504b45d9965b907efd5996610edeba9327022965ec7aa7c",
+      "sha256": "30b4a2c995d5a107079206a6069e8ae68be3cd3efeff333cd3397ef7342fae04",
       "precompressed": true
     },
     {
@@ -495,7 +495,7 @@
     {
       "out": "characters/motions/Walk.glb",
       "src": "slim49:01. High/motions/Walk.glb",
-      "sha256": "36468bcec572ee6eed2e6819688f5bce7819078114c2e49e27d8ffc862a25a26",
+      "sha256": "c35b50a1af1c38e5ec93244a7d37cc0f855f94596ddb8293c17fd88afa6449fb",
       "precompressed": true
     },
     {
@@ -4555,7 +4555,7 @@
     {
       "out": "characters/motions/SlowWalk.glb",
       "src": "slim49:01. High/motions/SlowWalk.glb",
-      "sha256": "f88946595f1a6af8ef181f437d1cbc17384741debeb9736288b7d3c2065e0b76",
+      "sha256": "ce53db4bbd32be1579e1ba587a34b1259c634b09f6960cd8b3f77094a890d062",
       "precompressed": true
     },
     {

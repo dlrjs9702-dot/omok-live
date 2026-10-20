@@ -13,7 +13,7 @@ import { cameraEase, cameraSkyAim } from './camera-motion.js';
 const TAU = Math.PI * 2;
 // v1.10.79 이동 3단계 (assets 36): 느리게 걷기 1.0 / 걷기 4.2 / 뛰기 6.2 units per second. Shift (or the phone's 걸음
 // button) tapped switches the two walks; held 0.3 s it runs until let go, then the walk it was comes back.
-const SPEED = 2.5; const SLOW_SPEED = 1; const RUN_SPEED = 5.0; /* (2026-10-20 사용자 「걷기는 2.5, 뛰기는 5」: short legs -- a bicycle comes for speed) */ const RUN_HOLD_MS = 300;
+const SPEED = 4.2; const SLOW_SPEED = 1; const RUN_SPEED = 6.2; const RUN_HOLD_MS = 300;
 const REACH = 2.4; // how close to a facility's door counts as "near"
 // v1.9.6 player collision (plaza only): every character is the same circle at its feet on the ground (hair, capes and
 // halos do not make it bigger). Close to a facility's door the circle shrinks so a crowd can never block an entrance.
