@@ -27,7 +27,10 @@
   const PLAZA = { x: 0, z: -84, hw: 44, d0: -112, d1: -52, h: 1.2 }; // 대청마당: a terrace before the cliff (half width, north and south edges)
   const SEA = -0.6;
 
-  const outerR = (th) => R_OUT + 3.2 * Math.sin(3 * th + 0.4) + 2.2 * Math.sin(7 * th + 1.3) + 1.2 * Math.sin(13 * th);
+  // 묶음 5 능선 위 넓히기 (docs/ridge-widen-20261020.md, 사용자 「절벽 위 공간이 굉장히 작은데 그 공간을 더 크게 키우자」): the coast
+  // behind the ridge 12 m further out (only along the ridge, easing to nothing over 0.3 rad at each end)
+  const ridgeBulge = (th) => { const a = ((th % TAU) + TAU) % TAU; return 12 * Math.min(smooth(RIDGE.a0 - 0.05, RIDGE.a0 + 0.3, a), smooth(RIDGE.a1 + 0.05, RIDGE.a1 - 0.3, a)); };
+  const outerR = (th) => R_OUT + ridgeBulge(th) + 3.2 * Math.sin(3 * th + 0.4) + 2.2 * Math.sin(7 * th + 1.3) + 1.2 * Math.sin(13 * th);
   const bayR = (th) => R_BAY + 2.4 * Math.sin(4 * th + 0.9) + 1.4 * Math.sin(9 * th + 2.1);
   // > 0 on land: distance (roughly, metres) inside the crescent or the island
   function coastDist(x, z) {
@@ -75,7 +78,7 @@
     let h = 0.6 + 0.9 * smooth(0, 60, cd) + 0.35 * Math.sin(x * 0.07) * Math.cos(z * 0.06);
     // the ridge: 22 m on top, a sheer inner face; its outer side falls to sea cliffs
     const rg = ridgeAt(x, z);
-    if (rg > 0) { const outerFall = smooth(4, 22, cd); h = lerp(h, RIDGE.top * (0.55 + 0.45 * outerFall) + 1.5 * Math.sin(x * 0.11), rg); }
+    if (rg > 0) { const outerFall = smooth(2, 9, cd); /* (묶음 5: flat nearly to the coast, then the sea cliff) */ h = lerp(h, RIDGE.top * (0.55 + 0.45 * outerFall) + 1.5 * Math.sin(x * 0.11), rg); }
     // 대청마당: a flat terrace up to the cliff's foot
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
@@ -129,7 +132,7 @@
     quests: { photographer: { x: -12, z: -12 }, gardener: { x: -56, z: 14 }, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
       station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };
-  const TRAIN = { r: 184, stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
+  const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
   return { CAPES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES,
