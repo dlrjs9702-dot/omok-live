@@ -1191,8 +1191,14 @@ test('이벤트 주민: 광장 반대편에서 길을 찾아 의뢰 자리에 �
   await expect.poll(() => gap(n), { timeout: 15000 }).not.toBeNull();
   await page.evaluate(({ n, x, z, pc, dal }) => { const dx = x - pc.x; const dz = z - pc.z; const r = Math.hypot(dx, dz); window.PlazaDebug().placeWanderer(n, dal ? x - (dx / r) * Math.min(20, r) : pc.x - (dx / r) * 7, dal ? z - (dz / r) * Math.min(20, r) : pc.z - (dz / r) * 7); }, { n, x: lost.npc.x, z: lost.npc.z, pc: PC, dal: DAL }); // (across the plaza's middle from it; 달마루섬 is far bigger -- 20 m from it toward the plaza)
   await expect.poll(() => gap(n), { timeout: 60000, intervals: [1000] }).toBeLessThan(0.05);
-  await page.evaluate(([x, z]) => window.PlazaWarp(x + 1, z), [lost.npc.x, lost.npc.z]);
-  await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
+  // (by them -- from the side no weed is on: a weed within reach takes SPACE first)
+  await expect.poll(async () => {
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [lost.npc.x + dx, lost.npc.z + dz]); await page.waitForTimeout(400);
+      if (await page.locator('#plazaHint').textContent() === 'SPACE · 말 걸기') return true;
+    }
+    return false;
+  }, { timeout: 30000 }).toBe(true);
   // paused: no frames while the request is taken, then a resident far from its place is drawn right at it
   await page.evaluate(() => { const raf = window.requestAnimationFrame; const held = []; window.__thaw = () => { window.requestAnimationFrame = raf; for (const cb of held.splice(0)) raf(cb); }; window.requestAnimationFrame = (cb) => { held.push(cb); return 0; }; });
   const next = (await post(request, '/api/test/island/lost', a.token, {})).data.event;
@@ -1218,6 +1224,9 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   expect(lost?.npc).toBeTruthy();
   // The event borrows the same resident on both screens: ten walkers, one identity, exact server wait position (CI 2차: before talking to them --
   // still on the way there, the 말 걸기 by them was another islander's)
+  // (both near the owner first: an event is sent to those within 90 m, and on 달마루섬 a lost thing's owner may stand
+  // farther than that from the plaza -- the reason this was flaky by the hour, not slowness)
+  for (const who of [a, b]) await who.page.evaluate(([x, z]) => window.PlazaWarp(x + 6, z), [lost.npc.x, lost.npc.z]);
   for (const who of [a,b]) {
     await expect.poll(()=>who.page.evaluate(id=>{
       const d=window.PlazaDebug(); const actor=d.eventResidents.find(e=>e.key===`ev:lost_owner:${id}`);
