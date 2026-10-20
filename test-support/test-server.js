@@ -49,7 +49,7 @@ async function boot(t, dir) {
     return (await res.text()).match(/data-session="([^"]+)"/)?.[1];
   };
   const release = (session) => req('/api/session/release', null, { sessionToken: session });
-  return { req, issue, enter, release, stop, base, logs: () => logs };
+  return { req, issue, enter, release, stop, base, admin, logs: () => logs };
 }
 
 module.exports = { boot, sleep };

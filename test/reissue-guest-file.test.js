@@ -231,7 +231,7 @@ test('administrator guest-key list exposes a visible reissue button and confirms
   const app = await fs.readFile(path.join(__dirname, '..', 'public/app.js'), 'utf8');
   const html = await fs.readFile(path.join(__dirname, '..', 'public/index.html'), 'utf8');
   assert.match(app, /reissueBtn\.textContent = '재발급'/);
-  assert.match(app, /actions\.append\(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, revokeBtn\)/); // v1.7.3: 재발급 옆 포인트 지급; v1.10.78 메신저 허용
+  assert.match(app, /actions\.append\(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, issueBtn, revokeBtn\)/); // v1.7.3: 재발급 옆 포인트 지급; v1.10.78 메신저 허용
   assert.match(app, /confirm\(`\$\{label\} 입장파일을 재발급할까요\?/);
   assert.match(app, /api\/admin\/keys\/\$\{id\}\/reissue/);
   assert.match(html, /재발급 시 기존 파일과 접속은 즉시 무효화됩니다/);

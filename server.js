@@ -630,7 +630,7 @@ function dropAccountTokens(keyId, keep = null) { for (const [t, row] of accountT
 const PASSWORD_MIN = 8; const PASSWORD_MAX = 64;
 const passwordOk = (p) => typeof p === 'string' && p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX;
 const accountView = (key) => ({ loginId: key.loginId, label: key.label, realName: key.realName || '' });
-const accountOut = async (key) => ({ ...accountView(key), messenger: (await messengerStore.allowedIds()).includes(key.id) }); // v1.10.78: shows 메신저
+const accountOut = async (key) => ({ ...accountView(key), messenger: (await messengerStore.allowedIds()).includes(key.id), issues: (await issueWriters()).includes(key.id) }); // v1.10.78: shows 메신저; 문제 기록 허용 (2026-10-20)
 
 function guestKeyInUse(guestKeyId) {
   const token = activeGuestSessions.get(guestKeyId);
@@ -937,6 +937,9 @@ const OPS_DEFAULTS = { signups: true, messenger: true, dalmaruPreview: false }; 
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
+const ISSUE_DAY_MAX = 30; // (2026-10-20: an allowed account writes up to this many a day -- the administrator has no cap)
+const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
+const canWriteIssues = async (session) => session?.role === 'admin' || Boolean(session?.guestKeyId && (await issueWriters()).includes(session.guestKeyId));
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
@@ -5764,6 +5767,32 @@ async function requestHandler(req, res) {
   // 관리자 「문제 기록」 (사용자 2026-10-18, docs/admin-issue-log-20261018.md): what an administrator saw go wrong, written where
   // it happened -- the words, a kind, what the page knew (screen, place, device, frame rate, recent errors) and a small
   // picture; newest first, open / doing / done, up to 500. GET gives the pictures only with ?shots=1 (Claude reads the rest).
+  const addIssue = async (res, body, by) => worldEdit(async () => {
+    const list = (await pointStore.worldValue('issueLog')) || [];
+    const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
+    if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
+    if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
+    if (by.id !== 'admin' && list.filter((i) => i.by?.id === by.id && kstDate(i.at) === kstDate(nowMs())).length >= ISSUE_DAY_MAX) return sendError(res, 429, 'ISSUE_DAY_LIMIT', `문제 기록은 하루 ${ISSUE_DAY_MAX}개까지 쓸 수 있어요.`);
+    const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
+    let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
+    const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot, by };
+    await pointStore.setWorldValue('issueLog', [issue, ...list]);
+    return sendJson(res, 201, { ok: true, id: issue.id });
+  });
+  // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
+  if (pathname === '/api/issues/me' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, allowed: await canWriteIssues(session) });
+  }
+  if (pathname === '/api/issues' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return;
+    if (!await canWriteIssues(session)) return sendError(res, 403, 'ISSUES_DENIED', '문제 기록은 관리자가 허용한 계정만 쓸 수 있습니다.');
+    const mine = session.role === 'admin' ? 'admin' : session.guestKeyId;
+    if (req.method === 'GET') { const list = (await pointStore.worldValue('issueLog')) || []; return sendJson(res, 200, { ok: true, issues: list.filter((i) => (i.by?.id || 'admin') === mine).map((i) => ({ ...i, shot: undefined, hasShot: Boolean(i.shot) })) }); }
+    const body = await parseJson(req); if (body.action !== 'add') return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
+    const label = session.role === 'admin' ? '관리자' : String((await accessStore.get(session.guestKeyId))?.label || '').slice(0, 24);
+    return addIssue(res, body, { id: mine, label });
+  }
   if (pathname === '/api/admin/issues' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'GET') {
@@ -5771,18 +5800,9 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: list.map((i) => (shots ? i : { ...i, shot: undefined, hasShot: Boolean(i.shot) })) });
     }
     const body = await parseJson(req);
+    if (body.action === 'add') return addIssue(res, body, { id: 'admin', label: '관리자' });
     return worldEdit(async () => {
       const list = (await pointStore.worldValue('issueLog')) || [];
-      if (body.action === 'add') {
-        const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
-        if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
-        if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
-        const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
-        let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
-        const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot };
-        await pointStore.setWorldValue('issueLog', [issue, ...list]);
-        return sendJson(res, 201, { ok: true, id: issue.id });
-      }
       const i = list.findIndex((x) => x.id === body.id); if (i < 0) return sendError(res, 404, 'ISSUE_NOT_FOUND', '기록을 찾을 수 없습니다.');
       if (body.action === 'status' && ISSUE_STATUS.includes(body.status)) list[i] = { ...list[i], status: body.status, changedAt: nowMs() };
       else if (body.action === 'delete') list.splice(i, 1);
@@ -5957,7 +5977,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
     const messenger = new Set(await messengerStore.allowedIds());
-    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id) }));
+    const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
+    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id), issues: writers.has(key.id) }));
     return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
   }
 
@@ -6011,6 +6032,18 @@ async function requestHandler(req, res) {
     if (!await accessStore.get(messengerMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
     await messengerStore.setAllowed(messengerMatch[1], body.allowed === true);
     return sendJson(res, 200, { ok: true, messenger: body.allowed === true });
+  }
+
+  const issuesMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/issues$/i); // (2026-10-20) 문제 기록 허용
+  if (issuesMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!await accessStore.get(issuesMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
+    return worldEdit(async () => {
+      const ids = new Set(await issueWriters()); if (body.allowed === true) ids.add(issuesMatch[1]); else ids.delete(issuesMatch[1]);
+      await pointStore.setWorldValue('issueWriters', [...ids]);
+      return sendJson(res, 200, { ok: true, issues: body.allowed === true });
+    });
   }
 
   const noteMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/note$/i);
