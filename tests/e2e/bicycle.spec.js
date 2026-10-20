@@ -34,8 +34,7 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   await toggle();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe(null);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersBikes()[id] ?? null, myId), { timeout: 20000 }).toBe(null);
-  // off by itself: on the ridge's stairs (PlazaWarp, not the bare teleport: a position update still in flight came back as a
-  // correction to where I had been -- on slow CI it pulled me off the stairs before a frame saw me on them)
+  // off by itself: on the ridge's stairs (off at once when put there -- on slow CI the next frame waited on the ridge's models)
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
   await page.evaluate(() => { const S = window.IslandTerrain.STAIRS; return window.PlazaWarp(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); });
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling), { timeout: 10000 }).toBe(null);
