@@ -68,6 +68,7 @@ test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기�
     for (const sec of [10, 40, 70, 100, 130, 0, 25, 55]) { const now = now0 + trial * 1000; const t0 = Date.now(); traffic.advance(Math.ceil(now / round) * round + sec * 1000); worst = Math.max(worst, Date.now() - t0); }
   }
   assert.ok(worst < 500, `${worst} ms`);
+});
 
 // 문제 기록 14 「빈 집터가 공중에 떠 있어」: every home lot on 툇마루섬's flat top, its whole 10 x 10 m square level and at
 // least 2 m in from where the beach starts to fall (7 m from the water)

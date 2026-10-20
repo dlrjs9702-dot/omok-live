@@ -1833,7 +1833,6 @@
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
       refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
->>>>>>> a7b2a52f (묶음 5: 보이는 곤충(서버가 10분마다 정하는 같은 곤충, 사는 곳에서 움직임, 걸어서 다가가 잡기·뛰면 달아남, 모두에게 사라짐), 각진 자연물 섞기(assets 63: 나무·덤불 3분의 1, 각진 돌, 수정 3곳, 물가 갈대, 절벽 조각), 툇마루섬 표지)
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
