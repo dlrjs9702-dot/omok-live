@@ -48,7 +48,8 @@
     const sceneProps = [...props.benches, ...props.lamps, ...props.beds, ...T.RESERVED_LOTS.map((l) => ({ x: l.x, z: l.z, r: 3.2 }))];
     for (let j = 0; j < N; j += 1) for (let i = 0; i < N; i += 1) {
       const x = -EXTENT + (i + 0.5) * CELL; const z = -EXTENT + (j + 0.5) * CELL; const id = j * N + i;
-      let bad = DAL ? (T.onStairs(x, z) || (!onAnyBridge(x, z) && (!T.walkable(x, z) || T.coastDist(x, z) < 2.2 + MARGIN || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz)))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
+      const stair = DAL && T.onStairs(x, z); // (묶음 1 주민 동산 순환: the ridge's stairs, their treads (a diagonal strip of the 1.5 m grid needs most of the 3 m to join up) -- the islanders go up to the ridge too)
+      let bad = DAL ? ((stair ? !(stair.v > 0.3 && stair.v < 3.1) : (!onAnyBridge(x, z) && (!T.walkable(x, z) || T.coastDist(x, z) < 2.2 + MARGIN || [[MARGIN, 0], [-MARGIN, 0], [0, MARGIN], [0, -MARGIN]].some(([dx, dz]) => !T.walkable(x + dx, z + dz))))) || Math.hypot(x - PC.x, z - PC.z) < 4.4)
         : T.coastDist(x, z) < 2.2 + T.cliffAt(x, z) * 1.2 + MARGIN || Math.hypot(x - T.POND.x, z - T.POND.z) < T.POND.r + 0.2 + MARGIN || Math.hypot(x, z) < 4.4;
       if (!bad) for (const s of spots) if (s.kind === 'mall' ? inMall(s, x, z) : s.kind === 'facade' ? inFacade(s, x, z) : s.kind !== 'townhall' && Math.hypot(x - s.x, z - s.z) < (BUILDING_R[s.kind] || 2)) { bad = true; break; }
       if (!bad && T.inTownhall(x, z, MARGIN + 0.5)) bad = true; // v1.10.41: the town hall and its walled yard (the islanders keep out)
@@ -60,7 +61,8 @@
         const dx = Math.max(0, Math.abs(x - s.x) - CELL / 2); const dz = Math.max(0, Math.abs(z - s.z) - CELL / 2);
         if (Math.hypot(dx, dz) < s.r + 0.5) { bad = true; break; }
       }
-      if (!bad) for (let a = -1; a <= 1 && !bad; a += 1) for (let b = -1; b <= 1 && !bad; b += 1) for (const s of near.get(`${Math.floor(x / 6) + a},${Math.floor(z / 6) + b}`) || []) if (Math.hypot(x - s.x, z - s.z) < s.r + 0.5) { bad = true; break; }
+      if (!bad) for (let a = -1; a <= 1 && !bad; a += 1) for (let b = -1; b <= 1 && !bad; b += 1) for (const s of near.get(`${Math.floor(x / 6) + a},${Math.floor(z / 6) + b}`) || []) if (Math.hypot(x - s.x, z - s.z) < s.r + (s.rail ? 0.15 : 0.5)) { bad = true; break; } // (a stair rail: a thin post the walkers step round themselves)
+      if (bad && DAL && [[0, 0], [0.75, 0], [-0.75, 0], [0, 0.75], [0, -0.75]].every(([dx, dz]) => T.walkable(x + dx, z + dz))) { /* (the whole cell standable) */ const S = T.STAIRS; const dx = x - S.x; const dz = z - S.z; const u = dx * S.ux + dz * S.uz; const v = dx * S.nx + dz * S.nz; if ((u > -0.5 && u < 2.2 && v > 0 && v < 4.6) || (u > 32.5 && u < 36.5 && v > -9 && v < 1)) bad = false; } // (the stairs' foot -- it faces the 관공서 front's side, the rail starts 1.1 m up -- and the landing at their top onto the ridge, a fill 4 m wide: the ways on and off, open to the islanders)
       blocked[id] = bad ? 1 : 0;
       cost[id] = 2.4;
     }
@@ -243,12 +245,22 @@
 
   // A-6 섬 소문: where islander n is often seen -- the map's place nearest the middle of their stops, else a side of the island
   // (north is -z on the map)
-  function hangout(n) {
+  function homeOf(n) { // (the middle of their stops -- 묶음 1 멀리 심부름: how far apart two islanders live)
     const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
-    const x = st.reduce((a, p) => a + p.x, 0) / st.length; const z = st.reduce((a, p) => a + p.z, 0) / st.length;
+    return { x: st.reduce((a, p) => a + p.x, 0) / st.length, z: st.reduce((a, p) => a + p.z, 0) / st.length };
+  }
+  function hangout(n) {
+    const { x, z } = homeOf(n);
     let best = null; let bd = 30;
     for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { best = a.label; bd = d; } }
     if (best) return best;
+    // (묶음 1: a round over a wide stretch -- its middle falls in the bay or a field: the place most of their stops are by)
+    const count = new Map();
+    for (const p of round(n).parts.filter((q) => !q.moving).map((q) => q.pts[0])) {
+      let near = null; let nd = 45; for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - p.x, a.z - p.z); if (d < nd) { near = a.label; nd = d; } }
+      if (near) count.set(near, (count.get(near) || 0) + 1);
+    }
+    const most = [...count].sort((a, b) => b[1] - a[1])[0]; if (most && most[1] >= 2) return most[0];
     const side = ['북쪽', '북동쪽', '동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽'][Math.round(((Math.atan2(x, -z) / (Math.PI * 2)) * 8 + 8)) % 8];
     return `섬 ${side}`;
   }
@@ -423,5 +435,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));

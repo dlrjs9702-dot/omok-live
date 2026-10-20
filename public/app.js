@@ -1748,7 +1748,7 @@
     byId('menuLeaveRoomBtn').classList.toggle('hidden', roomView.classList.contains('hidden')); // 게임방 only
     // v1.10.67 조이스틱 위치·크기: a touch screen on the island itself only (not a room's menu -- Codex review)
     byId('stickEditBtn').classList.toggle('hidden', !(document.body.classList.contains('touchIsland') && document.body.classList.contains('plazaMode') && roomView.classList.contains('hidden')));
-    byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin'); gameMenuDialog.showModal(); guideDone('menu');
+    byId('issueLogBtn').classList.toggle('hidden', !canIssue()); refreshIssueWriter(); gameMenuDialog.showModal(); guideDone('menu');
   };
   byId('gameMenuBtn').addEventListener('click', openGameMenu);
   byId('gameMenuCloseBtn').addEventListener('click', () => gameMenuDialog.close());
@@ -1861,6 +1861,20 @@
   assetInspectorCard();
   // 관리자 「문제 기록」 (사용자 2026-10-18): where I am and what the page knows, gathered the moment the window opens
   const issueDialog = byId('issueDialog'); let issueShot = null;
+  // (2026-10-20 「메신저 권한 주는 것처럼」) an account the administrator allows writes too, and sees only its own records
+  let issueWriter = false; const canIssue = () => sessionRole === 'admin' || issueWriter;
+  async function refreshIssueWriter() {
+    if (!sessionToken) return; const was = issueWriter;
+    try { issueWriter = sessionRole !== 'admin' && (await api('/api/issues/me')).allowed === true; } catch { issueWriter = false; }
+    if (was !== issueWriter) byId('issueLogBtn').classList.toggle('hidden', !canIssue());
+  }
+  async function loadMyIssues() {
+    const box = byId('issueMineList'); box.replaceChildren();
+    try {
+      const mine = (await api('/api/issues')).issues; if (!mine.length) { box.textContent = '아직 없어요.'; return; }
+      for (const i of mine) { const row = document.createElement('p'); row.setAttribute('role', 'listitem'); row.textContent = `[${ISSUE_STATE[i.status]}] ${i.text.split('\n')[0].slice(0, 60)} · ${new Date(i.at).toLocaleString('ko-KR')}`; box.append(row); }
+    } catch (error) { box.textContent = error.message; }
+  }
   function issueContext() {
     const openDialogs = [...document.querySelectorAll('dialog[open]')].filter((d) => d !== issueDialog).map((d) => d.querySelector('h2')?.textContent || d.id);
     const ctx = { screen: !roomView.classList.contains('hidden') ? 'room' : document.body.classList.contains('plazaMode') ? 'island' : !document.getElementById('gamehallView')?.classList.contains('hidden') ? 'gamehall' : 'lobby', windows: openDialogs,
@@ -1871,7 +1885,8 @@
     return ctx;
   }
   async function openIssue() {
-    if (sessionRole !== 'admin' || issueDialog.open) return;
+    if (!canIssue() || issueDialog.open) return;
+    byId('issueMine').classList.toggle('hidden', sessionRole === 'admin'); if (sessionRole !== 'admin') loadMyIssues(); // (the administrator has the 관리자 창's list)
     issueShot = await plaza.controller?.snapshot?.() || null; // (the island's picture as it is now; other screens have none)
     byId('issueShot').src = issueShot || ''; byId('issueShot').classList.toggle('hidden', !issueShot); byId('issueShotOn').disabled = !issueShot; byId('issueShotOn').checked = Boolean(issueShot);
     byId('issueStatus').textContent = ''; issueDialog.dataset.ctx = ''; issueDialog.ctx = issueContext(); issueDialog.showModal(); byId('issueText').focus();
@@ -1883,24 +1898,26 @@
   byId('issueForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      await api('/api/admin/issues', { method: 'POST', body: JSON.stringify({ action: 'add', text: byId('issueText').value, kind: byId('issueKind').value, shot: byId('issueShotOn').checked ? issueShot : null, ctx: issueDialog.ctx }) });
+      await api(sessionRole === 'admin' ? '/api/admin/issues' : '/api/issues', { method: 'POST', body: JSON.stringify({ action: 'add', text: byId('issueText').value, kind: byId('issueKind').value, shot: byId('issueShotOn').checked ? issueShot : null, ctx: issueDialog.ctx }) });
       byId('issueText').value = ''; issueDialog.close(); showToast('문제를 기록했어요.'); if (issueCard.open) loadIssues();
     } catch (error) { byId('issueStatus').textContent = error.message; }
   });
   // the 관리자 창's card: newest first, by state; a state changed, a record removed, the open ones copied as Markdown
   const ISSUE_KIND = { bug: '버그', odd: '어색함', idea: '개선' }; const ISSUE_STATE = { open: '열림', doing: '고치는 중', done: '해결' };
   const issueCard = document.createElement('details'); issueCard.id = 'issueCard'; issueCard.className = 'economyBox issueCard';
-  issueCard.innerHTML = '<summary>문제 기록</summary><div class="issueTools"><select id="issueFilter" aria-label="상태"><option value="open">열림</option><option value="doing">고치는 중</option><option value="done">해결</option><option value="">전체</option></select><button id="issueNewBtn" type="button" class="ghost tiny">새로 적기</button><button id="issueCopyBtn" type="button" class="ghost tiny">열린 것 복사</button></div><div id="issueList" class="issueList" role="list"></div>';
+  issueCard.innerHTML = '<summary>문제 기록</summary><div class="issueTools"><select id="issueWho" aria-label="쓴 사람"></select><select id="issueFilter" aria-label="상태"><option value="open">열림</option><option value="doing">고치는 중</option><option value="done">해결</option><option value="">전체</option></select><button id="issueNewBtn" type="button" class="ghost tiny">새로 적기</button><button id="issueCopyBtn" type="button" class="ghost tiny">열린 것 복사</button></div><div id="issueList" class="issueList" role="list"></div>';
   adminPanel.append(issueCard);
   let issues = [];
+  const issueBy = (i) => i.by?.label || '관리자';
   const issueWhere = (i) => [i.ctx?.screen === 'room' ? `게임방 ${i.ctx.room?.game || ''}` : i.ctx?.screen === 'island' ? `섬 (${i.ctx.island?.x}, ${i.ctx.island?.z})${i.ctx.island?.space && i.ctx.island.space !== 'island' ? ` · ${i.ctx.island.space}` : ''}` : i.ctx?.screen || '', ...(i.ctx?.windows || [])].filter(Boolean).join(' · ');
   async function loadIssues() {
     try { issues = (await api('/api/admin/issues')).issues; } catch (error) { byId('issueList').textContent = error.message; return; }
     const want = byId('issueFilter').value; const list = byId('issueList'); list.replaceChildren();
-    const shown = issues.filter((i) => !want || i.status === want); if (!shown.length) list.textContent = '기록이 없어요.';
+    const who = byId('issueWho'); const pick = who.value; const names = [...new Set(issues.map(issueBy))]; who.replaceChildren(new Option('쓴 사람 전체', ''), ...names.map((n) => new Option(n, n))); who.value = names.includes(pick) ? pick : '';
+    const shown = issues.filter((i) => (!want || i.status === want) && (!who.value || issueBy(i) === who.value)); if (!shown.length) list.textContent = '기록이 없어요.';
     for (const i of shown) {
       const row = document.createElement('details'); row.className = 'issueItem'; row.setAttribute('role', 'listitem');
-      const head = document.createElement('summary'); head.textContent = `[${ISSUE_KIND[i.kind]}] ${i.text.split('\n')[0].slice(0, 80)} · ${issueWhere(i)} · ${new Date(i.at).toLocaleString('ko-KR')} · v${i.version}`;
+      const head = document.createElement('summary'); head.textContent = `[${ISSUE_KIND[i.kind]}] ${i.text.split('\n')[0].slice(0, 80)} · ${issueBy(i)} · ${issueWhere(i)} · ${new Date(i.at).toLocaleString('ko-KR')} · v${i.version}`;
       const body = document.createElement('div'); body.className = 'issueBody';
       const text = document.createElement('p'); text.className = 'mailText'; text.textContent = i.text;
       const info = document.createElement('pre'); info.className = 'issueInfo'; info.textContent = JSON.stringify(i.ctx, null, 1);
@@ -1914,7 +1931,7 @@
     }
   }
   issueCard.addEventListener('toggle', () => { if (issueCard.open) loadIssues(); });
-  byId('issueFilter').addEventListener('change', loadIssues);
+  byId('issueFilter').addEventListener('change', loadIssues); byId('issueWho').addEventListener('change', loadIssues);
   byId('issueNewBtn').addEventListener('click', () => { plazaDialog.open && plazaDialog.close(); openIssue(); });
   byId('issueCopyBtn').addEventListener('click', async () => {
     const open = issues.filter((i) => i.status === 'open');
@@ -3553,7 +3570,7 @@
       roomIdentityLabel.textContent = identityText();
       adminPanel.classList.toggle('hidden', sessionRole !== 'admin');
       adminPresencePanel.classList.toggle('hidden', sessionRole !== 'admin');
-      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin'); byId('issueLogBtn').classList.toggle('hidden', sessionRole !== 'admin');
+      adminWindowBtn.classList.toggle('hidden', sessionRole !== 'admin'); byId('issueLogBtn').classList.toggle('hidden', !canIssue()); refreshIssueWriter();
       announcementAddBtn.classList.toggle('hidden', sessionRole !== 'admin');
       if (sessionRole === 'admin') await loadGuestKeys();
       const room = await api('/api/room');
@@ -4313,7 +4330,18 @@
           showToast(`${key.label}: 메신저 ${key.messenger ? '허용' : '해제'}`);
         } catch (err) { showToast(err.message, 4000); } finally { messengerBtn.disabled = false; }
       });
-      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, revokeBtn);
+      const issueBtn = document.createElement('button'); // (2026-10-20) 문제 기록 허용, as 메신저
+      issueBtn.className = 'ghost tiny compactAction'; issueBtn.type = 'button';
+      const issueLabel = () => { issueBtn.textContent = key.issues ? '문제 기록 해제' : '문제 기록 허용'; issueBtn.setAttribute('aria-pressed', String(Boolean(key.issues))); };
+      issueLabel();
+      issueBtn.addEventListener('click', async () => {
+        issueBtn.disabled = true;
+        try {
+          const data = await api(`/api/admin/keys/${key.id}/issues`, { method: 'POST', body: JSON.stringify({ allowed: !key.issues }) });
+          key.issues = data.issues; issueLabel(); showToast(`${key.label}: 문제 기록 ${key.issues ? '허용' : '해제'}`);
+        } catch (err) { showToast(err.message, 4000); } finally { issueBtn.disabled = false; }
+      });
+      actions.append(detailBtn, memoBtn, reissueBtn, grantBtn, messengerBtn, issueBtn, revokeBtn);
 
       const detail = document.createElement('div');
       detail.className = 'keyDetail hidden';
@@ -5249,6 +5277,7 @@
     bar.append(points);
     const press = (action) => { const id = dressPicked[view]; const body = view === 'shop' ? skinShopBody : myInfoSkinBody; body.querySelector(`.skinCard[data-pick="${id}"] button[data-skin="${id}"]`)?.click(); };
     const buy = make('dressBuy', '구매', () => press('buy')); const wear = make('dressWear', '착용', () => press('equip'));
+    if (view !== 'shop') { buy.hidden = true; points.hidden = true; } // (bugs 11: 내 정보 wears and takes off -- buying is the shops')
     const gift = make('dressGift', '선물하기', () => openSkinGift(view)); gift.hidden = view !== 'shop'; // (3-1 사용자 2026-10-19 「선물 허용으로」: from the shop, for someone else)
     make('dressClose', '닫기', () => (view === 'shop' ? skinShopDialog : myInfoDialog).close());
     const giftForm = document.createElement('form'); giftForm.className = 'dressGiftForm hidden';
@@ -5370,11 +5399,15 @@
           const equipped = myInfoSkins.equipped?.[family.family]?.[skin.slot] === skin.id;
           const card = document.createElement('div');
           card.className = `skinCard${equipped ? ' equipped' : ''}`;
-          const preview = document.createElement('canvas');
-          preview.width = 260; preview.height = 130;
-          preview.setAttribute('role', 'img');
-          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-          window.SkinLooks?.paintPreview(preview, skin.id);
+          // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
+          const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
+          const preview = noPic ? null : document.createElement('canvas');
+          if (preview) {
+            preview.width = 260; preview.height = 130;
+            preview.setAttribute('role', 'img');
+            preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+            window.SkinLooks?.paintPreview(preview, skin.id);
+          } else card.classList.add('noPic');
           const name = document.createElement('span');
           name.className = 'skinName'; name.textContent = skin.name;
           const meta = document.createElement('span');
@@ -5395,7 +5428,7 @@
             button.textContent = '장착';
             button.dataset.action = 'equip';
           }
-          card.append(preview, name, meta, button);
+          card.append(...(preview ? [preview] : []), name, meta, button);
           skinCardButtons(card, skin, 'mine', myInfoSkins);
           grid.append(card);
         }
@@ -5529,11 +5562,15 @@
           const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
           const card = document.createElement('div');
           card.className = `skinCard${equipped ? ' equipped' : ''}`;
-          const preview = document.createElement('canvas');
-          preview.width = 260; preview.height = 130;
-          preview.setAttribute('role', 'img');
-          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-          window.SkinLooks?.paintPreview(preview, skin.id);
+          // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
+          const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
+          const preview = noPic ? null : document.createElement('canvas');
+          if (preview) {
+            preview.width = 260; preview.height = 130;
+            preview.setAttribute('role', 'img');
+            preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+            window.SkinLooks?.paintPreview(preview, skin.id);
+          } else card.classList.add('noPic');
           const name = document.createElement('span');
           name.className = 'skinName';
           name.textContent = skin.name;
@@ -5550,7 +5587,7 @@
           else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
           else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
           else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
-          card.append(preview, name, meta, button);
+          card.append(...(preview ? [preview] : []), name, meta, button);
           skinCardButtons(card, skin, 'shop', skinShop);
           grid.append(card);
         }

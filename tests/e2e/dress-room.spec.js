@@ -15,6 +15,14 @@ test('꾸미기 창: 열자마자 내 모습, 항목을 가리키면 바로 입�
   const shopView = page.locator('#skinShopTryOn');
   await expect(shopView.locator('canvas.dressCanvas')).toBeVisible({ timeout: 15000 });
   await expect(shopView.locator('.skinTryOnCap strong')).toHaveText('지금 내 모습');
+  // (bugs 11·12) one line an item beside my 3D look, no pictures; the island under the window drawn twice a second, not
+  // every frame; the list to its end
+  await expect(page.locator('#skinShopBody .skinCard').first()).toBeVisible();
+  await expect(page.locator('#skinShopBody .skinCard canvas')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().covered)).toBe(true);
+  const drawn = await page.evaluate(() => window.PlazaDebug().draws); await page.waitForTimeout(2000);
+  expect(await page.evaluate(() => window.PlazaDebug().draws) - drawn).toBeLessThanOrEqual(6);
+  await page.locator('#skinShopBody .skinCard').last().scrollIntoViewIfNeeded(); await page.locator('#skinShopBody .skinCard').first().scrollIntoViewIfNeeded();
   const card = page.locator('#skinShopBody .skinCard').nth(2); const cardName = (await card.locator('.skinName').textContent()).trim();
   await point(card.locator('.skinName'));
   await expect(shopView.locator('.skinTryOnCap strong')).toContainText(cardName);

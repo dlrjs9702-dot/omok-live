@@ -465,7 +465,7 @@ test('광장 충돌: 정면 막힘·대각선 미끄러짐·동시 접근·입�
   const settle = async (who, id, x, z) => expect.poll(async () => { const o = await seen(who, id); return o ? Math.hypot(o.x - x, o.z - z) : 99; }, { timeout: 10000 }).toBeLessThan(0.05);
 
   // (달마루섬: the same moves on an open part of 대청마당 -- 지금 섬's plaza is round the origin)
-  const O = DAL ? { x: 20, z: -75 } : { x: 0, z: 0 };
+  const O = DAL ? { x: 12, z: -75 } : { x: 0, z: 0 }; // (묶음 1: x 20 is under the east long garden now)
   const tp = (who, x, z) => teleport(who, O.x + x, O.z + z); const meR = async (who) => { const m = await me(who); return { x: m.x - O.x, z: m.z - O.z }; };
   const settleR = (who, id, x, z) => settle(who, id, O.x + x, O.z + z);
 

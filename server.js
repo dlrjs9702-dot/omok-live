@@ -630,7 +630,7 @@ function dropAccountTokens(keyId, keep = null) { for (const [t, row] of accountT
 const PASSWORD_MIN = 8; const PASSWORD_MAX = 64;
 const passwordOk = (p) => typeof p === 'string' && p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX;
 const accountView = (key) => ({ loginId: key.loginId, label: key.label, realName: key.realName || '' });
-const accountOut = async (key) => ({ ...accountView(key), messenger: (await messengerStore.allowedIds()).includes(key.id) }); // v1.10.78: shows 메신저
+const accountOut = async (key) => ({ ...accountView(key), messenger: (await messengerStore.allowedIds()).includes(key.id), issues: (await issueWriters()).includes(key.id) }); // v1.10.78: shows 메신저; 문제 기록 허용 (2026-10-20)
 
 function guestKeyInUse(guestKeyId) {
   const token = activeGuestSessions.get(guestKeyId);
@@ -929,7 +929,7 @@ async function errandView(account) {
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-  return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done), done: done.size, total: errands.length };
+  return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done).map((t) => { const e = errands.find((x) => x.id === t.id); return { ...t, reward: Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0) }; }), done: done.size, total: errands.length };
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
@@ -937,6 +937,9 @@ const OPS_DEFAULTS = { signups: true, messenger: true, dalmaruPreview: false }; 
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
+const ISSUE_DAY_MAX = 30; // (2026-10-20: an allowed account writes up to this many a day -- the administrator has no cap)
+const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
+const canWriteIssues = async (session) => session?.role === 'admin' || Boolean(session?.guestKeyId && (await issueWriters()).includes(session.guestKeyId));
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
 async function opsSwitches() { if (!opsCache) opsCache = { ...OPS_DEFAULTS, ...((await pointStore.worldValue('switches')) || {}) }; return opsCache; }
 const WEEKLY_FIRST_WEEK = '2026-10-12';
@@ -3467,7 +3470,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.104' });
+    return sendJson(res, 200, { ok: true, version: '1.10.105' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -5664,7 +5667,7 @@ async function requestHandler(req, res) {
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + Economy.value('errand:far') * (r.pay.far || 0) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
     const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0; // (daily: the first talk of the day only, whatever is chosen)
@@ -5764,6 +5767,32 @@ async function requestHandler(req, res) {
   // 관리자 「문제 기록」 (사용자 2026-10-18, docs/admin-issue-log-20261018.md): what an administrator saw go wrong, written where
   // it happened -- the words, a kind, what the page knew (screen, place, device, frame rate, recent errors) and a small
   // picture; newest first, open / doing / done, up to 500. GET gives the pictures only with ?shots=1 (Claude reads the rest).
+  const addIssue = async (res, body, by) => worldEdit(async () => {
+    const list = (await pointStore.worldValue('issueLog')) || [];
+    const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
+    if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
+    if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
+    if (by.id !== 'admin' && list.filter((i) => i.by?.id === by.id && kstDate(i.at) === kstDate(nowMs())).length >= ISSUE_DAY_MAX) return sendError(res, 429, 'ISSUE_DAY_LIMIT', `문제 기록은 하루 ${ISSUE_DAY_MAX}개까지 쓸 수 있어요.`);
+    const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
+    let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
+    const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot, by };
+    await pointStore.setWorldValue('issueLog', [issue, ...list]);
+    return sendJson(res, 201, { ok: true, id: issue.id });
+  });
+  // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
+  if (pathname === '/api/issues/me' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, allowed: await canWriteIssues(session) });
+  }
+  if (pathname === '/api/issues' && (req.method === 'GET' || req.method === 'POST')) {
+    const session = requireSession(req, res); if (!session) return;
+    if (!await canWriteIssues(session)) return sendError(res, 403, 'ISSUES_DENIED', '문제 기록은 관리자가 허용한 계정만 쓸 수 있습니다.');
+    const mine = session.role === 'admin' ? 'admin' : session.guestKeyId;
+    if (req.method === 'GET') { const list = (await pointStore.worldValue('issueLog')) || []; return sendJson(res, 200, { ok: true, issues: list.filter((i) => (i.by?.id || 'admin') === mine).map((i) => ({ ...i, shot: undefined, hasShot: Boolean(i.shot) })) }); }
+    const body = await parseJson(req); if (body.action !== 'add') return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
+    const label = session.role === 'admin' ? '관리자' : String((await accessStore.get(session.guestKeyId))?.label || '').slice(0, 24);
+    return addIssue(res, body, { id: mine, label });
+  }
   if (pathname === '/api/admin/issues' && (req.method === 'GET' || req.method === 'POST')) {
     if (!requireAdmin(req, res)) return;
     if (req.method === 'GET') {
@@ -5771,18 +5800,9 @@ async function requestHandler(req, res) {
       return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: list.map((i) => (shots ? i : { ...i, shot: undefined, hasShot: Boolean(i.shot) })) });
     }
     const body = await parseJson(req);
+    if (body.action === 'add') return addIssue(res, body, { id: 'admin', label: '관리자' });
     return worldEdit(async () => {
       const list = (await pointStore.worldValue('issueLog')) || [];
-      if (body.action === 'add') {
-        const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
-        if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
-        if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
-        const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
-        let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
-        const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot };
-        await pointStore.setWorldValue('issueLog', [issue, ...list]);
-        return sendJson(res, 201, { ok: true, id: issue.id });
-      }
       const i = list.findIndex((x) => x.id === body.id); if (i < 0) return sendError(res, 404, 'ISSUE_NOT_FOUND', '기록을 찾을 수 없습니다.');
       if (body.action === 'status' && ISSUE_STATUS.includes(body.status)) list[i] = { ...list[i], status: body.status, changedAt: nowMs() };
       else if (body.action === 'delete') list.splice(i, 1);
@@ -5957,7 +5977,8 @@ async function requestHandler(req, res) {
   if (pathname === '/api/admin/keys' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
     const messenger = new Set(await messengerStore.allowedIds());
-    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id) }));
+    const writers = new Set(await issueWriters()); // (2026-10-20 문제 기록 허용)
+    const keys = (await accessStore.list()).map((key) => ({ ...key, presence: guestPresence(key.id), messenger: messenger.has(key.id), issues: writers.has(key.id) }));
     return sendJson(res, 200, { keys, persistence: DATABASE_URL ? 'database' : 'ephemeral-file' });
   }
 
@@ -6011,6 +6032,18 @@ async function requestHandler(req, res) {
     if (!await accessStore.get(messengerMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
     await messengerStore.setAllowed(messengerMatch[1], body.allowed === true);
     return sendJson(res, 200, { ok: true, messenger: body.allowed === true });
+  }
+
+  const issuesMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/issues$/i); // (2026-10-20) 문제 기록 허용
+  if (issuesMatch && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const body = await parseJson(req);
+    if (!await accessStore.get(issuesMatch[1])) return sendError(res, 404, 'KEY_NOT_FOUND', '입장 파일을 찾을 수 없습니다.');
+    return worldEdit(async () => {
+      const ids = new Set(await issueWriters()); if (body.allowed === true) ids.add(issuesMatch[1]); else ids.delete(issuesMatch[1]);
+      await pointStore.setWorldValue('issueWriters', [...ids]);
+      return sendJson(res, 200, { ok: true, issues: body.allowed === true });
+    });
   }
 
   const noteMatch = pathname.match(/^\/api\/admin\/keys\/([0-9a-f-]{36})\/note$/i);
@@ -6574,7 +6607,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.104 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.105 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

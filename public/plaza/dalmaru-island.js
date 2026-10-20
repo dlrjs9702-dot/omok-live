@@ -66,6 +66,9 @@
   const bayAt = (a, r = 101) => [Math.round(r * Math.cos(rad(a)) * 10) / 10, Math.round((D.BAY_Z + r * Math.sin(rad(a))) * 10) / 10];
   const arc = (a0, a1, step = 6) => { const n = Math.max(1, Math.round(Math.abs(a1 - a0) / step)); return Array.from({ length: n + 1 }, (_, k) => bayAt(a0 + ((a1 - a0) * k) / n)); };
   const doorPt = (id) => { const d = facilityDoor(id); return [d.x, d.z]; };
+  const po = (deg, r) => [Math.round(r * Math.cos(rad(deg)) * 10) / 10, Math.round(r * Math.sin(rad(deg)) * 10) / 10];
+  const stationPt = (deg, r) => po(deg, r); // (island-train's stops: its way in, 7 m inland of the lift)
+  const stairsAt = (u, v) => { const F = PL.stairs.from; const T2 = PL.stairs.to; const l = Math.hypot(T2.x - F.x, T2.z - F.z); const ux = (T2.x - F.x) / l; const uz = (T2.z - F.z) / l; return [Math.round((F.x + ux * u + uz * v) * 10) / 10, Math.round((F.z + uz * u - ux * v) * 10) / 10]; }; // (u along the stairs from the foot, v out from the cliff)
   // 관공서 앞마당 (5단계): the walled yard and the mayor's gate before the cliff front, in the old hall's frame -- its origin
   // 2.75 m into the cliff, so the front stands at lz 7.35 as the old hall's did and island-townhall builds the yard as it is
   const TOWNHALL = (() => {
@@ -82,15 +85,23 @@
     { tier: 'town', w: 3.2, pts: [[0, -54], [0.6, -30], [0, -8]] }, // 대청마당 → 물가 거리 (배 타는 곳)
     { tier: 'town', w: 3.2, pts: arc(234, 306) }, // 물가 거리, before 대청마당
     { tier: 'walk', w: 2.8, pts: [...arc(234, 156), [-88, 140]] }, // 물가 거리 → the west arm → its cape (초승등대)
-    { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146]] }, // → the east arm → its cape (달끝나루)
+    { tier: 'walk', w: 2.8, pts: [...arc(306, 384), [88, 140], [94, 146], [97, 149]] }, // → the east arm → its cape (달끝나루, the pier's foot)
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
     { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
-    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-11, 8.5), [-84, -92]] }, // → round the yard → the ridge's stairs
+    { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-17.5, 11)] }, // → round the yard, past the cliff front's corner
+    { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(1.1, 4.6), stairsAt(1, 2)] }, // → onto the ridge's stairs, from their open side by the foot
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-42, -66], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34]] }, // 이웃골 → the west arm's shore
     { tier: 'trail', w: 2.4, pts: [[-70, -8], [-82, -2], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
-    { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-128, 43]] }, // → the farm
-    { tier: 'walk', w: 2.8, pts: [[44, -60], [66, -48], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-128, 43], [-124.5, 45.8]] }, // → the farm (its farmer)
+    { tier: 'walk', w: 2.8, pts: [doorPt('games'), [44, -60], [66, -48], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    // (묶음 1 섬 길 정리: every place on a walk -- the doors the walks passed by, 툇마루역 round 툇마루섬's pond, and the
+    // ridge: from the stairs' top along 달마루 능선 (its flat crest, r 138) to 영웅마루역's lift, a lookout on the way)
+    { tier: 'trail', w: 2.4, pts: [[-84, -3], doorPt('chat')] }, // → the gazebo
+    { tier: 'town', w: 3, pts: [doorPt('admin'), [-43, -73]] }, // → 관리실, from 대청마당
+    { tier: 'walk', w: 2.8, pts: [[98.5, 52], [102.5, 53.2], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door
+    { tier: 'walk', w: 2.8, pts: [[12, 141.5], [17, 149], [14, 158], [7, 162.5], [5.3, 165.3]] }, // 툇마루섬 → 툇마루역 (its way in: island-train pulls the stop's straight inward), round its pond
+    { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, 1.7), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
   const walkDist = (x, z) => { let d = Infinity; for (const w of walkCurves) d = Math.min(d, lineDist(x, z, w.pts) - w.w / 2); return d; };
@@ -215,9 +226,35 @@
   // what one walks round at the structures (the scene's collision and the islanders' route grid alike): 초승등대, the
   // stairs' walls (the open side and the stone under the steps), each niche's foot, 툇마루섬's board, 물가 거리's railing,
   // lamps and benches
+  // 묶음 1 대청마당 바닥 (assets 59 plaza-v1, notes 88eb828): a stone disc round the fountain, a ring, kerbs along the
+  // south, east and west edges (open where a walk comes in; the north runs on into 영웅마루's yard), a water channel each
+  // side of the disc and six garden islands -- the pack's suggested places moved off the walks, doors, 알림마루's court
+  // and the plaza's own places (spawn, 책수레, 생일, 벽화). Places from the fountain: x east, z south.
+  let paving_ = null;
+  function paving() {
+    if (paving_) return paving_;
+    const c = (x, z, extra) => ({ x: PLAZA_C.x + x, z: PLAZA_C.z + z, ...extra });
+    const channels = [];
+    for (const s of [1, -1]) { for (let k = 0; k < 4; k += 1) channels.push(c(s * (11.5 + 4 * k), 0, { yaw: 0 })); channels.push(c(s * 26.5, 0, { yaw: (s * Math.PI) / 2, end: true })); }
+    const gardens = [['long', -18, 18], ['long', 24, 18], ['round', -33, -12], ['round', 33, -12], ['round', -29, 27], ['round', 38, 25]].map(([kind, x, z]) => c(x, z, { kind }));
+    const S = P.d1 - PLAZA_C.z - 0.18; const E = P.hw - 0.18; // (the kerb's middle, 0.18 in from the edge)
+    const open = (x, z, alongX) => [-2, -1, 0, 1, 2].some((d) => { const px = alongX ? x + d : x; const pz = alongX ? z : z + d; return walkCurves.some((w) => w.pts.some(([a, b]) => Math.hypot(a - px, b - pz) < w.w / 2 + 0.8)) || Object.keys(SPOTS).some((id) => { const o = facilityDoor(id); return o && Math.hypot(o.x - px, o.z - pz) < 2.5; }); });
+    const curbs = [];
+    for (let x = -40; x <= 40; x += 4) if (!open(PLAZA_C.x + x, PLAZA_C.z + S, true)) curbs.push(c(x, S, { yaw: 0 }));
+    for (const s of [1, -1]) for (let z = S - 3.8; z > P.d0 - PLAZA_C.z + 2; z -= 4) if (!open(PLAZA_C.x + s * E, PLAZA_C.z + z, false)) curbs.push(c(s * E, z, { yaw: Math.PI / 2 }));
+    const corners = [c(-E, S, { yaw: 0 }), c(E, S, { yaw: Math.PI / 2 })]; // (its arms run +x and -z)
+    return (paving_ = { disc: c(0, 0), channels, gardens, curbs, corners });
+  }
+  // a garden's rim and a channel's bank are walked round (a garden's rim sat on: plazaProps' seats)
+  function pavingSolids() {
+    const { channels, gardens } = paving(); const out = [];
+    for (const g of gardens) if (g.kind === 'round') out.push({ x: g.x, z: g.z, r: 3.05 }); else for (const d of [-3.2, -1.6, 0, 1.6, 3.2]) out.push({ x: g.x + d, z: g.z, r: 1.8 });
+    for (const ch of channels) if (ch.end) out.push({ x: ch.x, z: ch.z, r: 1 }); else for (const d of [-1.5, -0.5, 0.5, 1.5]) out.push({ x: ch.x + d, z: ch.z, r: 0.65 });
+    return out;
+  }
   function structureSolids() {
-    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }];
-    for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28 });
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }, ...pavingSolids()];
+    for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });
     for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r });
@@ -236,9 +273,13 @@
     const benches = [0.38, -0.38, Math.PI - 0.38, Math.PI + 0.38].map((a) => ({ ...at(a, 5), r: 0.9 }));
     const lamps = [];
     for (let k = 0; k < 8; k += 1) { const p = at(Math.PI / 8 + (k * Math.PI) / 4, 12); if (!busy(p.x, p.z, 3)) lamps.push({ ...p, r: 0.35 }); }
-    const beds = [];
-    for (let i = 0; i < 12; i += 1) { const p = at(Math.PI / 4 + ((i % 4) * Math.PI) / 2 + (i < 4 ? 0.3 : i < 8 ? -0.3 : 0.62), 13.8); if (!busy(p.x, p.z, 3.4)) beds.push({ ...p, r: 1.1, i }); }
+    const beds = []; // (묶음 1 광장 소품 정리: the wooden planters round the lamps gave way to assets 59's gardens and disc)
     const seats = benches.map((b, k) => { const ry = Math.atan2(PLAZA_C.x - b.x, PLAZA_C.z - b.z); return { id: `b${k}`, x: b.x + Math.sin(ry) * 0.18, z: b.z + Math.cos(ry) * 0.18, yaw: ry }; });
+    // (묶음 1, assets 59) the gardens' rims: 4 seats round a round one, 3 down each long side of a long one, facing out
+    paving().gardens.forEach((g, k) => {
+      const at = g.kind === 'round' ? [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * 2.23, b * 2.23]) : [-3, 0, 3].flatMap((x) => [[x, 1.95], [x, -1.95]]);
+      at.forEach(([dx, dz], n) => seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }));
+    });
     seats.push(...C.plazaProps().seats.filter((s) => s.room));
     return { benches, lamps, beds, seats };
   }
@@ -300,7 +341,7 @@
       if ([...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5)) continue;
       lampSpots.push({ x: lx, z: lz });
     } }
-    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks, posts: [], lampSpots };
+    natureCache = { trees: keptTrees, flowers: flowers.filter((p) => !blocked(p, 0.3)), bushes: keptBushes, tufts, rocks: rocks.filter((r) => slopeAt(r.x, r.z) < 1) /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free
@@ -344,7 +385,7 @@
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 200, SPAWN: { x: PL.spawn.x, z: PL.spawn.z }, PLAZA_R: 0, PLAZA_H: P.h,
     seasonZoneAt, seasonAt, nature, natureSolids, harvestTrees, shoreSpots, AREAS, WATERFRONT, STRUCTURES, FACADE,
-    structureSolids, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
+    structureSolids, paving, addNatureBlock, addTreeBlock: addNatureBlock, NICHES: PL.niches, SPOTS, facilityDoor, COTTAGES, BUILDINGS, RESERVED_LOTS: [], STATUE_SPOTS: [], plazaProps, villageSolids, inVillage: (x, z) => villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 0.8),
     HALLOWEEN_FIELDS: PL.halloween.fields, HALLOWEEN_EXTRAS: PL.halloween.extras, dalmaru: D, VILLAGE, MUSEUM, FARM, CONTEST_STATUE,
     TOWNHALL, townhallLocal, townhallWorld, inTownhall, inTownhallYard,
   });
