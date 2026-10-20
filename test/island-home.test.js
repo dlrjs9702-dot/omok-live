@@ -43,3 +43,14 @@ test('내 집: 앉을 자리는 가구를 따라 돌고, 서 있는 자리는 �
   const w = H.world(lot, 1, 1); const q = H.clamp(lot, w.x, w.z, [sofa]); const { lx, lz } = H.local(lot, q.x, q.z); const b = H.boxOf(sofa);
   assert.ok(lx < b.x0 - 0.29 || lx > b.x1 + 0.29 || lz < b.z0 - 0.29 || lz > b.z1 + 0.29);
 });
+
+test('집 단계(묶음 4-2): 오두막 6×6·가구 20·물고기 10, 넓히면 8×8 -- 가구는 그 자리, 벽 가구는 새 벽으로', () => {
+  assert.equal(H.stageOf(1).size, 6); assert.equal(H.stageOf(1).pieces, 20); assert.equal(H.stageOf(1).fish, 10); assert.equal(H.stageOf(undefined).n, 2); // (v1.10.112's houses: 작은 집)
+  const sofa = { uid: 's', id: 'sofa__mint', x: 0, z: 2.25, rot: 0 };
+  assert.match(H.placeError({ ...sofa, z: 2.75 }, [], 1), /방 밖/); assert.equal(H.placeError(sofa, [], 1), null);
+  assert.match(H.placeError({ ...sofa, z: -2.25 }, [], 1), /문 앞/); // (the 오두막's doorway, nearer the middle)
+  const clock = { uid: 'c', id: 'wall_clock__oak', x: 0, z: 2.75, rot: 0 }; assert.equal(H.placeError(clock, [], 1), null);
+  const g = H.grownPieces([clock, sofa], 2); assert.deepEqual(g.back, []);
+  assert.equal(g.pieces.find((p) => p.uid === 'c').z, 3.75); assert.equal(g.pieces.find((p) => p.uid === 's').z, 2.25);
+  assert.deepEqual(H.entryOf(1), [0, -2.1]);
+});

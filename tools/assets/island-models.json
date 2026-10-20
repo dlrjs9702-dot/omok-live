@@ -8048,6 +8048,54 @@
       "lowSrc": "angular63:02. Low/angular_tree_stack__winter_low.glb",
       "lowSha256": "f6e359c08891e4a3d27f333123c47fa87ef9099d12a224254b307ac3dde404e3",
       "precompressed": true
+    },
+    {
+      "out": "home-v1/home_build_sign__base.glb",
+      "src": "home58:01. High/home_build_sign__base.glb",
+      "sha256": "07eecf8ed10d94c057263267d428c7362d5a8976528a9d4f231410e066203f06",
+      "lowSrc": "home58:02. Low/home_build_sign__base_low.glb",
+      "lowSha256": "7fc3c6f1804378b62062d011f3b9063a1f5a8f4f80fe141a811e7ff1f26d2cd5",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_hut__blue.glb",
+      "src": "home58:01. High/home_hut__blue.glb",
+      "sha256": "f89a48d33d6dd82549c794e0a80f7a47c8e7a2d0a5958124398008514cc2cf4b",
+      "lowSrc": "home58:02. Low/home_hut__blue_low.glb",
+      "lowSha256": "e32c430cc2e74422be9ddf63b70dc26181bbca3434f1881b92111be6c8a945b5",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_hut__brown.glb",
+      "src": "home58:01. High/home_hut__brown.glb",
+      "sha256": "a0746d393553e2e076151d574cbc1dbf45cb7f87f8bc2c7202590fc6bcdbdea7",
+      "lowSrc": "home58:02. Low/home_hut__brown_low.glb",
+      "lowSha256": "62b997272d5e5a86941fe2cf382a5f9fac96a07219022500dd72f26568db1324",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_hut__green.glb",
+      "src": "home58:01. High/home_hut__green.glb",
+      "sha256": "1a082af1ecfd92071019002c3816d1fd76ab70c59a60d2ff4c3762b763bfaac4",
+      "lowSrc": "home58:02. Low/home_hut__green_low.glb",
+      "lowSha256": "c3945fb2a1f55cff138dfdae128751b523371be2e2557054476a07e95182a386",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_hut__red.glb",
+      "src": "home58:01. High/home_hut__red.glb",
+      "sha256": "8798323af9a60d6c6af5cbef93b317d516ac28ace7aec066590fc0e56760d206",
+      "lowSrc": "home58:02. Low/home_hut__red_low.glb",
+      "lowSha256": "92159b09fb4837be2568e12e891a1fd05511c19f1a7ad5940d5b279e685d50a8",
+      "precompressed": true
+    },
+    {
+      "out": "home-v1/home_hut_room__base.glb",
+      "src": "home58:01. High/home_hut_room__base.glb",
+      "sha256": "924db4ec34e9c1573cc2dffe80d328524cf8dfd7d7000f0024b225352a12fac7",
+      "lowSrc": "home58:02. Low/home_hut_room__base_low.glb",
+      "lowSha256": "488c929f83d8e367906377094e32de0a7e16e00f87375b5cdcc41ae1d29e517e",
+      "precompressed": true
     }
   ],
   "sources": {

@@ -57,13 +57,13 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   const before = (await get(request, '/api/points', a.token)).data.balance;
   await page.locator('#homeCard button', { hasText: '신청하기' }).click();
   await expect(page.locator('#homeCard')).toBeHidden({ timeout: 15000 });
-  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 50000);
-  expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ lot, roof: 'blue', visit: 'anyone' });
+  expect((await get(request, '/api/points', a.token)).data.balance).toBe(before - 20000); // (묶음 4-2: an 오두막 first)
+  expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ lot, roof: 'blue', visit: 'anyone', stage: 1 });
   expect((await post(request, '/api/home/apply', a.token, { lot: 'lot1', roof: 'red' })).data.error).toBe('HAS_HOME'); // (one a person)
   await through(page, 'room:exit', '나가기', 'island');
   // on 툇마루섬: the house (blue), seen from the other screen too; in by its door
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:blue:true:/);
-  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/^집주인.*:blue:false:anyone$/);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/^집주인.*:blue:false:anyone:1:false$/);
   await through(page, `home:${lot}`, '내 집 들어가기', 'home');
   await expect(page.locator('#homeEditBtn')).toBeVisible();
 
@@ -78,8 +78,8 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   const tapUntil = async (label, text) => { const b = edit.getByRole('button', { name: label, exact: true }); await b.evaluate((el, text) => { const st = el.closest('#homeEdit').querySelector('[role="status"]'); for (let i = 0; i < 40 && !st.textContent.includes(text); i += 1) el.click(); }, text); await expect(status).toContainText(text); };
   const mine = async () => (await get(request, '/api/home', a.token)).data.mine.pieces;
   const [sofa, tank, insectCase, clock] = pieces.map((p) => p.uid);
-  await standIn(0, -3); // (the piece at local 0, -2)
-  await choose(sofa); await expect(status).toContainText('여기에 놓을 수 있어요');
+  await standIn(0, -1.75); // (the piece starts a step in front of me: clear of the doorway in the 오두막 too)
+  await choose(sofa); // (묶음 4-2: in the 오두막 the doorway is nearer the middle -- a piece starts in it, red, until moved in)
   await tap('안쪽으로', 4); await tap('돌리기'); await expect(status).toContainText('여기에 놓을 수 있어요');
   await tap('놓기');
   await expect.poll(async () => (await mine()).find((p) => p.uid === sofa) || null, { timeout: 10000 }).toMatchObject({ rot: 1 });
@@ -145,12 +145,19 @@ test('내 집 방문 허용: 안 받음·친구만은 문이 닫히고, 플레�
   await through(page, 'townhall', '관공서 들어가기', 'townhall');
   const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
   expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'green' })).status).toBe(200);
+  // 묶음 4-2 「집 넓히기」: paid now, a 공사 중 sign that day, a 작은 집 the next (the test moves the day on)
+  expect((await post(request, '/api/home/upgrade', a.token, {})).status).toBe(200);
+  expect((await post(request, '/api/home/upgrade', a.token, {})).data.error).toBe('BUILDING');
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:1:true$/);
+  await post(request, '/api/test/home/next-day', a.token, {});
+  expect((await get(request, '/api/home', a.token)).data.mine).toMatchObject({ stage: 2, upgradeDay: null });
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:2:false$/);
   await through(page, 'room:exit', '나가기', 'island');
   // 방문 허용 (내 집 in the menu): 안 받음 -- the door says so and stays shut; 친구만 -- shut until they are friends
   const bAtDoor = async () => { const d = await b.page.evaluate((id) => window.PlazaDebug().doors[id], `home:${lot}`); await standAt(request, b, d.x, d.z); }; // (the page and the server both: the checks below ask the server)
   const visit = async (label) => { await openMenu(); await page.locator('#myHomeBtn').click(); await page.locator('#homeCard button[data-visit]', { hasText: label }).click(); await expect(page.locator('#homeCard button[data-visit][aria-pressed="true"]')).toHaveText(label, { timeout: 10000 }); await page.locator('#plazaCloseBtn').click(); };
   await visit('안 받음');
-  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:none$/);
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().homes()[id], lot), { timeout: 15000 }).toMatch(/:none:/);
   await goTo(b.page, `home:${lot}`, '손님을 받지 않아요'); await bAtDoor();
   expect((await post(request, '/api/home/enter', b.token, { lot })).data.error).toBe('NOT_WELCOME');
   await visit('친구만');
