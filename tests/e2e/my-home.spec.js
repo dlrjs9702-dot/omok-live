@@ -72,8 +72,10 @@ test('내 집: 민원 창구에서 신청 → 섬에 집 → 꾸미기(놓기·�
   const edit = page.locator('#homeEdit'); const status = edit.locator('[role="status"]');
   const standIn = async (lx, lz) => { if (await edit.isVisible()) await page.locator('#plazaCloseBtn').click(); await page.evaluate(([lot, lx, lz]) => { const w = window.IslandHome.world(window.IslandHome.lotById(lot), lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [lot, lx, lz]); };
   const choose = async (uid) => { if (!await edit.isVisible()) await page.locator('#homeEditBtn').click(); await expect(edit).toBeVisible(); await edit.locator(`.furniturePiece[data-uid="${uid}"]`).click(); };
-  const tap = async (label, n = 1) => { const b = edit.getByRole('button', { name: label, exact: true }); await b.click(); for (let i = 1; i < n; i += 1) await b.evaluate((el) => el.click()); };
-  const tapUntil = async (label, text) => { const b = edit.getByRole('button', { name: label, exact: true }); for (let i = 0; i < 40 && !(await status.textContent()).includes(text); i += 1) await b.evaluate((el) => el.click()); await expect(status).toContainText(text); };
+  // (the pad moves the piece on the page at once -- the repeats in one call, not one round trip each: on the slow phone
+  // runner those trips took minutes)
+  const tap = async (label, n = 1) => { const b = edit.getByRole('button', { name: label, exact: true }); await b.click(); if (n > 1) await b.evaluate((el, n) => { for (let i = 1; i < n; i += 1) el.click(); }, n); };
+  const tapUntil = async (label, text) => { const b = edit.getByRole('button', { name: label, exact: true }); await b.evaluate((el, text) => { const st = el.closest('#homeEdit').querySelector('[role="status"]'); for (let i = 0; i < 40 && !st.textContent.includes(text); i += 1) el.click(); }, text); await expect(status).toContainText(text); };
   const mine = async () => (await get(request, '/api/home', a.token)).data.mine.pieces;
   const [sofa, tank, insectCase, clock] = pieces.map((p) => p.uid);
   await standIn(0, -3); // (the piece at local 0, -2)
