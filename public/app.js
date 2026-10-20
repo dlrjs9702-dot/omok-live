@@ -5249,6 +5249,7 @@
     bar.append(points);
     const press = (action) => { const id = dressPicked[view]; const body = view === 'shop' ? skinShopBody : myInfoSkinBody; body.querySelector(`.skinCard[data-pick="${id}"] button[data-skin="${id}"]`)?.click(); };
     const buy = make('dressBuy', '구매', () => press('buy')); const wear = make('dressWear', '착용', () => press('equip'));
+    if (view !== 'shop') { buy.hidden = true; points.hidden = true; } // (bugs 11: 내 정보 wears and takes off -- buying is the shops')
     const gift = make('dressGift', '선물하기', () => openSkinGift(view)); gift.hidden = view !== 'shop'; // (3-1 사용자 2026-10-19 「선물 허용으로」: from the shop, for someone else)
     make('dressClose', '닫기', () => (view === 'shop' ? skinShopDialog : myInfoDialog).close());
     const giftForm = document.createElement('form'); giftForm.className = 'dressGiftForm hidden';
@@ -5370,11 +5371,15 @@
           const equipped = myInfoSkins.equipped?.[family.family]?.[skin.slot] === skin.id;
           const card = document.createElement('div');
           card.className = `skinCard${equipped ? ' equipped' : ''}`;
-          const preview = document.createElement('canvas');
-          preview.width = 260; preview.height = 130;
-          preview.setAttribute('role', 'img');
-          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-          window.SkinLooks?.paintPreview(preview, skin.id);
+          // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
+          const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
+          const preview = noPic ? null : document.createElement('canvas');
+          if (preview) {
+            preview.width = 260; preview.height = 130;
+            preview.setAttribute('role', 'img');
+            preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+            window.SkinLooks?.paintPreview(preview, skin.id);
+          } else card.classList.add('noPic');
           const name = document.createElement('span');
           name.className = 'skinName'; name.textContent = skin.name;
           const meta = document.createElement('span');
@@ -5395,7 +5400,7 @@
             button.textContent = '장착';
             button.dataset.action = 'equip';
           }
-          card.append(preview, name, meta, button);
+          card.append(...(preview ? [preview] : []), name, meta, button);
           skinCardButtons(card, skin, 'mine', myInfoSkins);
           grid.append(card);
         }
@@ -5529,11 +5534,15 @@
           const equipped = skinShop.equipped?.[family.family]?.[skin.slot] === skin.id;
           const card = document.createElement('div');
           card.className = `skinCard${equipped ? ' equipped' : ''}`;
-          const preview = document.createElement('canvas');
-          preview.width = 260; preview.height = 130;
-          preview.setAttribute('role', 'img');
-          preview.setAttribute('aria-label', `${skin.name} 미리보기`);
-          window.SkinLooks?.paintPreview(preview, skin.id);
+          // (bugs 11: no picture where my 3D look is beside the list -- one line each, and no canvas painted)
+          const noPic = family.family === 'avatar' && typeof plaza.controller?.tryOn === 'function';
+          const preview = noPic ? null : document.createElement('canvas');
+          if (preview) {
+            preview.width = 260; preview.height = 130;
+            preview.setAttribute('role', 'img');
+            preview.setAttribute('aria-label', `${skin.name} 미리보기`);
+            window.SkinLooks?.paintPreview(preview, skin.id);
+          } else card.classList.add('noPic');
           const name = document.createElement('span');
           name.className = 'skinName';
           name.textContent = skin.name;
@@ -5550,7 +5559,7 @@
           else if (owned) { button.className = 'secondary'; button.textContent = '장착'; button.dataset.action = 'equip'; }
           else if (skinShop.balance < skin.price) { button.className = 'ghost'; button.textContent = '포인트 부족'; button.disabled = true; }
           else { button.className = 'primary'; button.dataset.action = 'buy'; button.textContent = skinBuyArmed === skin.id ? `한 번 더 누르면 ${skinPrice(skin.price)} 결제` : `구매 ${skinPrice(skin.price)}`; }
-          card.append(preview, name, meta, button);
+          card.append(...(preview ? [preview] : []), name, meta, button);
           skinCardButtons(card, skin, 'shop', skinShop);
           grid.append(card);
         }

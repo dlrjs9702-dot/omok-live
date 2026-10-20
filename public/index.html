@@ -1102,8 +1102,8 @@
     <section class="myInfoSection" aria-labelledby="myInfoBirthdayTitle"><!-- B 47 생일 -->
       <div class="myInfoSectionHead"><h3 id="myInfoBirthdayTitle">생일</h3></div>
       <form id="birthdayForm" class="joinForm birthdayForm">
-        <select id="birthdayMonth" aria-label="월"><option value="">월</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select>
-        <input id="birthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="일">
+        <label class="birthdayField"><select id="birthdayMonth" aria-label="생일 월"><option value="">월</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select> 월</label>
+        <label class="birthdayField"><input id="birthdayDay" type="number" min="1" max="31" placeholder="일" aria-label="생일 일"> 일</label><!-- (bugs 11: the month and day say what they are once filled) -->
         <label><input id="birthdayHidden" type="checkbox"> 다른 사람에게 숨기기</label>
         <button class="secondary" type="submit">저장</button>
       </form>
