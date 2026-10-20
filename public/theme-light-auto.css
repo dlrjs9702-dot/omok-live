@@ -1087,6 +1087,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .logoutDialog.pauseDialog>h2:first-child{color:#fff}
 :root[data-theme="light"] .skinShopDialog.dressing>.recordsDialogHead,:root[data-theme="light"] .plazaDialog:has(.dressRoom)>.recordsDialogHead{background:linear-gradient(180deg,#a8743f,#7c4f26);border-bottom:3px solid #5b3714}
 :root[data-theme="light"] .skinShopDialog.dressing>.recordsDialogHead h2{background:#8b5a2b;box-shadow:inset 0 0 0 2px #c58b4f,0 2px 0 #4a2c10}
+:root[data-theme="light"] .myPetRow{border:1px solid #d6c3a5}
+:root[data-theme="light"] .myPetRow.walking{border-color:#34d399}
 :root[data-theme="light"] .myTransformRow{border:1px solid #d6c3a5}
 :root[data-theme="light"] .myTransformRow.chosen{border-color:#34d399}
 :root[data-theme="light"] .furnitureList .furniturePiece.selected{outline:2px solid #34d399}

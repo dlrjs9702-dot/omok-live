@@ -43,7 +43,7 @@
     ['fertilizer', [11.625, 1.12, 7.3]], ['guitar_string', [12.055, 1.12, 7.3]], ['nail_box', [12.295, 1.12, 7.3]], ['milk', [12.605, 1.12, 7.3]],
     ['bread', [12.845, 1.12, 7.3]], ['bulb', [13.155, 1.12, 7.3]], ['paint', [13.395, 1.12, 7.3]], ['bouquet', [9.78, 0.82, 4.12]], ['gift_wrap', [10.02, 0.82, 4.12]], ['bugnet', [10.3, 0.82, 4.12]] /* (B 47) */, ['fishing_rod', [10.58, 0.82, 4.12]],
     ['frame', [12.87, 1.02, 4.6]] /* (the table's middle row could not be reached either) */, ['letter_paper', [11.16, 1.12, 7.3]] /* (Codex review: in the table's middle it could not be reached -- the gap of the back shelf) */, ['firework', [9.54, 0.82, 4.98]], ['bubbles', [9.9, 0.82, 4.98]], ['balloon', [10.26, 0.82, 4.98]],
-    ['badge', [11.73, 1.02, 4.6]], ['pet_puppy', [12.03, 1.02, 4.6]], ['pet_kitten', [12.31, 1.02, 4.6]], ['pet_bird', [12.59, 1.02, 4.6]], // (B 47: between the badge and the frame)
+    ['badge', [11.73, 1.02, 4.6]], // (묶음 2-2: the pets moved up to the 펫샵, 3rd floor)
   ].map(([id, at]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false }))); // (B 45: the seeds, the sapling and fertilizer on sale)
   const REACH = 1.2; // a good within this of me (on the floor plan) is the one SPACE buys
   // 묶음 2 가구점: the lift on the left wall (assets 57 mall.elevator, its back on the wall) -- SPACE in front of it goes up

@@ -153,7 +153,7 @@
     bare: { url: `${CH}/body_bare.glb`, lowUrl: `${CH}/body_bare_low.glb` },
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
-    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1.7201344052996752, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (G 2026-10-20: Walk and Run made at 4.2 and 6.2 m/s, the feet not sliding)
+    speeds: { slow: 1, walk: 2.5, run: 5.0 }, rates: { slow: 1, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (G2 2026-10-20: the three made at 1, 2.5 and 5 m/s by one maker, the feet not sliding)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
   // pieces that give way to a worn slot (`hideWith`)
@@ -407,7 +407,15 @@
   for (const g of FURN?.GOODS || []) REGISTRY[g.model] = fv(`furn_${g.id}`);
   for (const f of ['plinth_l', 'plinth_s', 'price_stand', 'sold_sign', 'checkout']) REGISTRY[`shop.${f}`] = fv(`shop_${f}`, { shadows: false });
   for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false });
-  for (const f of ['floor2', 'elevator', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
+  for (const f of ['floor2', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
+  // 묶음 2-2 펫샵 (assets 60 petshop-v1): each pet in its four coats (pet.<kind>__<coat>, the same rig and motions as
+  // together.pet_<kind>), the 3rd floor and what stands in it, and the lift that goes up to it (in place of assets 57's)
+  const PS = '/assets/island/petshop-v1';
+  const ps = (file, extra = {}) => ({ url: `${PS}/${file}.glb`, low: { url: `${PS}/${file}_low.glb` }, near: 40, ...extra });
+  const PETS = { puppy: 'tan white black choco', kitten: 'grey cheese black white', bird: 'green yellow blue pink' };
+  for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
+  for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60 });
+  REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
