@@ -154,7 +154,7 @@
     for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
-    const edge = Math.max(Math.abs(along) - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge)));
+    const edge = Math.max(-along - 0.4, along - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
