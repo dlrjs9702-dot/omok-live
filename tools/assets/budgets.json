@@ -354,38 +354,6 @@
       "sourceSha256": "ce002aa841a60240b49f3244d24c53ecbe1132edda4a1f43124dfeebd4e358b2",
       "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
     },
-    "characters/body_sports.glb": {
-      "unquantized": true,
-      "sourceSha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d"
-    },
-    "characters/body_sports_low.glb": {
-      "unquantized": true,
-      "sourceSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f"
-    },
-    "characters/body_hoodie.glb": {
-      "unquantized": true,
-      "sourceSha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d"
-    },
-    "characters/body_hoodie_low.glb": {
-      "unquantized": true,
-      "sourceSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f"
-    },
-    "characters/wear/outfit_sports.glb": {
-      "unquantized": true,
-      "sourceSha256": "ea64e16543d54b1c51ace5506c9a5268f999eec7db893078513aae30dce37fc1"
-    },
-    "characters/wear/outfit_sports_low.glb": {
-      "unquantized": true,
-      "sourceSha256": "2006aa04585f59267a69922095061b79cf23af43a06af9e6cb2517b0b872a49e"
-    },
-    "characters/wear/outfit_hoodie.glb": {
-      "unquantized": true,
-      "sourceSha256": "0f104c66e54679c4a00c11440ecf44c4ece29bc90d243416995e5b243fe3f9f5"
-    },
-    "characters/wear/outfit_hoodie_low.glb": {
-      "unquantized": true,
-      "sourceSha256": "bbcc8eebdab1d2bee3e0205368b544b95069f8e86084b426112f6f8114da7b3e"
-    },
     "mall-v1/mall_exterior.glb": {
       "triangles": 30000,
       "reason": "v1.10.92 백화점 외관 24x14x9 m (assets 43 주문 C 상한 30,000)"

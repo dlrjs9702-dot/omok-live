@@ -491,3 +491,25 @@ test('앉은 꼬리: 등받이(엉덩이 뒤 0.40) 앞에서 끝나고 몸에 �
   assert.deepEqual(Array.from(out.slice(0, 3)).map((v) => +v.toFixed(3)), [0, 0.5, 0.1]);
   for (const i of [3, 6]) { assert.ok(out[i + 2] < 0.4, `z ${out[i + 2]}`); assert.ok(out[i + 1] > pos[i + 1], '위로 올라감'); }
 });
+
+// F2 (2026-10-20): hair follows the head -- a hair part weighted to the hips (two styles once sorted as tails by the
+// word 「tail」) stayed put while the head turned. Every hair file, High and Low, is mostly on the Head joint and is
+// narrowed at run time like the rest of the head (never `baked`).
+test('머리카락: 모든 머리 파일은 Head 가중치가 대부분이고 baked가 아니다', async () => {
+  const fs = require('node:fs'); const path = require('node:path');
+  const hair = Object.entries(REGISTRY).filter(([, e]) => e.fit?.slot === 'hair' && /\/characters\/wear\//.test(e.url));
+  assert.ok(hair.length >= 20, String(hair.length));
+  for (const [id, e] of hair) {
+    assert.ok(!e.baked, `${id} baked`);
+    for (const url of [e.url, e.low?.url].filter(Boolean)) {
+      const gltf = await parse(fs.readFileSync(path.join(__dirname, '..', 'public', url)));
+      let head = 0; let all = 0;
+      gltf.scene.traverse((o) => {
+        if (!o.isSkinnedMesh) return;
+        const bones = o.skeleton.bones.map((b) => b.name); const idx = o.geometry.attributes.skinIndex; const w = o.geometry.attributes.skinWeight;
+        for (let i = 0; i < w.count; i += 1) for (let k = 0; k < 4; k += 1) { const v = w.getComponent(i, k); all += v; if (bones[idx.getComponent(i, k)] === 'Head') head += v; }
+      });
+      assert.ok(all > 0 && head / all > 0.5, `${url}: Head ${(head / all).toFixed(2)}`);
+    }
+  }
+});
