@@ -174,6 +174,9 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
     for (let i = 0; i < n; i += 1) {
       const [x, z] = at(i);
       for (let k = 0; k < 9; k += 1) { const a = (k / 8) * TAU; const r = k === 8 ? 0 : SEASON_BLEND; weights[i * 5 + 1 + T.seasonZoneAt(x + Math.cos(a) * r, z + Math.sin(a) * r)] += 1 / 9; }
+      // (문제 기록 「배경이 안 이어져」: the season-less plaza is paved over -- its samples no longer pull the ground just outside
+      // it back to plain green; that ground takes its own zone's season up to the paving's edge)
+      const zoned = weights[i * 5 + 1] + weights[i * 5 + 2] + weights[i * 5 + 3] + weights[i * 5 + 4]; if (zoned > 0 && weights[i * 5] > 0) { for (let zone = 1; zone <= 4; zone += 1) weights[i * 5 + zone] /= zoned; weights[i * 5] = 0; }
       const [t, share] = kind(i); kinds[i * 2] = t; kinds[i * 2 + 1] = share;
     }
     painted.push({ attr, base: attr.array.slice(), weights, kinds });
@@ -518,7 +521,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const root=new THREE.Group(); root.position.set(t.x,ground(t.x,t.z),t.z); root.rotation.y=t.yaw; scene.add(root);
     const fallback=new THREE.Mesh(keep(mergeColored(TREE_KINDS[0][2])),natureMat); root.add(fallback); assets.attach('tree.harvest',root,fallback);
   }
-  for (const t of trees) solids.push({ nature: true, x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.2 : 0.75 * t.s });
+  for (const t of trees) solids.push({ nature: true, x: t.x, z: t.z, r: globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z) ? 0.5 * t.s : 0.75 * t.s }); // (문제 기록 13: a fruit tree's trunk, not 0.2 -- one walked into it)
 
   // Flowers: one mesh, each a little bloom with its colour per copy.
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];

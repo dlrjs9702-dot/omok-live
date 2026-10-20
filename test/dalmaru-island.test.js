@@ -57,3 +57,15 @@ test('달마루섬 관광열차 서버: 첫 역에서 타고 다음 역에서 �
   await shift(next); const off = await req('/api/island/train/alight', a, {});
   assert.equal(off.status, 200, JSON.stringify(off.data)); assert.equal(off.data.stop, S1);
 });
+
+// (관광열차 운행: the server catches the trains up on each request -- at today's absolute times and with the tests' clock
+// shifts it must always finish at once; a step under the times' float resolution once spun for minutes and the server
+// stopped answering)
+test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기기에서도 바로 끝남', () => {
+  const round = R.CYCLE * 1000; let worst = 0;
+  for (let trial = 0; trial < 40; trial += 1) {
+    const now0 = Date.now() + trial * 7777; const traffic = R.createTraffic(now0);
+    for (const sec of [10, 40, 70, 100, 130, 0, 25, 55]) { const now = now0 + trial * 1000; const t0 = Date.now(); traffic.advance(Math.ceil(now / round) * round + sec * 1000); worst = Math.max(worst, Date.now() - t0); }
+  }
+  assert.ok(worst < 500, `${worst} ms`);
+});

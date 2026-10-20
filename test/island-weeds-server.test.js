@@ -128,8 +128,9 @@ test('잡초 채집: 시작→1초 뒤 완료, 한 포기 한 명, 재요청 중
   server = await boot(t, dir);
   sa = await server.enter(ka);
   const after = await weeds(sa);
-  // v1.10.90: 1 pulled the day before (0~139) -> today's total is 1,680, the 281 short of it grow somewhere new
-  assert.equal(after.weeds.length, 1680, '적게 뽑은 다음 날은 1,680포기');
+  // v1.10.90 / 잡초 2배: 1 pulled the day before (0~279) -> today's total is 3,360; of the 1,961 short of it at most
+  // GROW_MAX (700) grow somewhere new tonight, the rest on the nights after
+  assert.equal(after.weeds.length, 1399 + 700, '적게 뽑은 다음 날은 3,360포기를 향해 하룻밤 700포기');
   assert.ok(!after.weeds.some(([w]) => w === id));
-  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 281);
+  assert.equal(after.weeds.filter(([w]) => w.startsWith('g')).length, 700);
 });

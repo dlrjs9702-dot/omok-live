@@ -148,7 +148,9 @@
         for (const c of moving) {
           dt = Math.min(dt, blockAt(c.id, c.cursor).remaining);
         }
-        if (dt < 0.00001) dt = Math.min(remaining, 0.001);
+        // (at least a microsecond: the cursors are absolute times, ~1.8e12 ms, whose float steps are ~2.4e-4 ms -- a smaller step
+        // left them where they were while `remaining` crept down, billions of turns, and the server stopped answering)
+        if (dt < 0.001) dt = Math.min(remaining, 0.001);
         for (const c of moving) c.cursor += dt;
         remaining -= dt; departures();
         if (!moving.length) break;

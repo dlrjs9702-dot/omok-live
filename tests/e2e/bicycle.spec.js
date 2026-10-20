@@ -34,12 +34,17 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   await toggle();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe(null);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersBikes()[id] ?? null, myId), { timeout: 20000 }).toBe(null);
-  // off by itself: on the ridge's stairs
+  // off by itself: on the ridge's stairs (off at once when put there -- on slow CI the next frame waited on the ridge's models)
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
-  await page.evaluate(() => { const S = window.IslandTerrain.STAIRS; window.PlazaDebug().teleport(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling), { timeout: 10000 }).toBe(null);
+  await page.evaluate(() => { const S = window.IslandTerrain.STAIRS; return window.PlazaWarp(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); });
+  try {
+    await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); const S = window.IslandTerrain.STAIRS; if (d.cycling) d.teleport(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); return window.PlazaDebug().cycling; }), { timeout: 10000 }).toBe(null); // (put there again while still riding: the first try on CI once rode on)
+  } catch (error) { // (CI only so far: what the page thought, to find why)
+    console.log('BIKE-STAIRS', JSON.stringify(await page.evaluate(() => { const d = window.PlazaDebug(); const T = window.IslandTerrain; return { cycling: d.cycling, x: d.x, z: d.z, space: d.space, map: T.MAP || T.dalmaru?.MAP || null, onStairs: T.onStairs ? T.onStairs(d.x, d.z) : 'none', stairs: T.STAIRS && { x: T.STAIRS.x, z: T.STAIRS.z, len: T.STAIRS.len, w0: T.STAIRS.w0, w1: T.STAIRS.w1 }, others: (d.others || []).length, train: d.train?.() }; })));
+    throw error;
+  }
   // ... among people: three standing within 5 m
-  await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [spot.x, spot.z]); await page.waitForTimeout(500);
+  await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]); await page.waitForTimeout(500);
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
   const crowd = await Promise.all([1, 2, 3].map((i) => apiGuest(request, `구경꾼${i}`)));
   const at = await page.evaluate(() => { const d = window.PlazaDebug(); return { x: d.x, z: d.z }; });

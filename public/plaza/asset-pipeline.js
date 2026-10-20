@@ -125,13 +125,14 @@
         mixer.update(dt);
       },
       // a named extra clip played once (e.g. 'wave'), then back to the gait; false when the model has no such clip
-      play(name, { ms = null, hold = false, elapsed = 0 } = {}) {
-        const action = actions[name]; if (!action) return false;
-        action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = hold; action.timeScale = ms ? action.getClip().duration / (ms / 1000) : 1; onceHeld = hold;
-        state = name; once = action; fadeTo(action); action.time = Math.min(action.getClip().duration, elapsed * action.timeScale); return true;
+      // (reverse: from its end back to its start -- 문제 기록 6: standing up is sitting down backwards)
+      play(name, { ms = null, hold = false, elapsed = 0, reverse = false } = {}) {
+        const action = actions[name]; if (!action) return false; const d = action.getClip().duration;
+        action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = hold; action.timeScale = (ms ? d / (ms / 1000) : 1) * (reverse ? -1 : 1); onceHeld = hold;
+        state = name; once = action; fadeTo(action); action.time = reverse ? Math.max(0, d - elapsed * -action.timeScale) : Math.min(d, elapsed * action.timeScale); return true;
       },
       seekOnce(elapsed) { if (once && onceHeld) { const time=Math.min(once.getClip().duration,Math.max(0,elapsed)*once.timeScale); mixer.update(Math.max(0,(time-once.time)/once.timeScale)); } },
-      onceLeft() { return once && !onceHeld && once.isRunning() ? (once.getClip().duration - once.time) / (once.timeScale || 1) : 0; }, // v1.10.89: seconds left of a one-off clip
+      onceLeft() { return once && !onceHeld && once.isRunning() ? (once.timeScale < 0 ? once.time / -once.timeScale : (once.getClip().duration - once.time) / (once.timeScale || 1)) : 0; }, // v1.10.89: seconds left of a one-off clip
       finishOnce() { onceHeld = false; once?.stop(); once = null; state = ''; current = null; },
       loop(name, rate = 1) { const action = actions[name]; if (!action) return false; if (held === name) { action.timeScale = rate; return true; } action.setLoop(THREE.LoopRepeat, Infinity); action.timeScale = rate; held = name; if (!once) { state = name; fadeTo(action); } return true; }, // (자전거: the rate kept up to date while held)
       heldTime() { return held && actions[held] ? actions[held].time : 0; },

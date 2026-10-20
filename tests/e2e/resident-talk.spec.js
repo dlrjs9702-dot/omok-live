@@ -37,7 +37,9 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const choices = page.locator('#plazaDialog .talkChoices button');
   await expect(choices).toHaveText(['요즘 어때요?', '섬 소문 있어요?', '부탁할 거 있어요?', '잘 가요']);
   await expect.poll(() => holdOn(other.page, idle), { timeout: 30000 }).toMatch(/^talk:/); // (the other screen hears it from the server: past 15 s on a slow runner)
-  const at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
+  // (a slow screen eases the islander into the place it is held at: measured once it stands there)
+  let at = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
+  await expect.poll(async () => { const now = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle); const d = Math.hypot(now.x - at.x, now.z - at.z); at = now; return d; }, { timeout: 20000, intervals: [1000] }).toBeLessThan(0.05);
   await page.waitForTimeout(13000); // past the server's lease: the window renews it
   expect(await holdOn(other.page, idle)).toMatch(/^talk:/);
   const still = await other.page.evaluate((n) => window.PlazaDebug().wanderers[n], idle);
@@ -69,7 +71,7 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   let now = (await get(request, '/api/island/errands', token)).data;
   if (now.done === 0) { await talkTo(now.track[0].to); await close(); now = (await get(request, '/api/island/errands', token)).data; }
   expect(now.done).toBe(1);
-  expect([1500, 2000]).toContain((await get(request, '/api/points', token)).data.balance - before);
+  expect((await get(request, '/api/points', token)).data.balance - before).toBe(track[0].reward); // (the errand's own pay: its kind and how far apart -- 묶음 1 errand:far)
   await expectNoScriptError(page);
   await who.context.close(); await other.context.close();
 });
