@@ -250,11 +250,16 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const grassy = new Float32Array(pos.count); // v1.10.29: how much of a vertex is grass (the season paints that part)
   const grains = new Float32Array(pos.count * 2); // B 48: the grass and the sand share of a vertex (its grains)
   const forestFloor = new THREE.Color(0x6f8a4c); // v1.10.73 숲 바닥: darker, mossy ground under the trees
+  // 문제 기록 1 「배경이 안 이어져」 (사진: 대청마당 박석이 곧은 선으로 끝나고 바로 겨울 눈 바닥): a gravel apron round the
+  // paving, 1.5 m sure and then ragged out to about 4 m, the season painting it only a little -- paving, gravel, the season
+  const PLZ = T.dalmaru?.PLAZA; const gravel = new THREE.Color(0xd6cbb2);
+  const apronAt = (x, z) => { if (!PLZ) return 0; const out = Math.hypot(Math.max(0, Math.abs(x - PLZ.x) - PLZ.hw), Math.max(0, PLZ.d0 - z, z - PLZ.d1)); return out <= 0 || z < PLZ.d0 ? 0 : 1 - smooth(1.5, 3.4 + 1.1 * Math.sin(x * 0.83) * Math.cos(z * 0.67), out); };
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i); const z = pos.getZ(i); const h = ground(x, z); pos.setY(i, h);
     const cd = coastDist(x, z); const cliff = cliffAt(x, z); let g = 1; let sd = 0;
     c.copy(grass).lerp(grass2, 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.cos(z * 0.13));
     const woods = forestAt(x, z); if (woods > 0) c.lerp(forestFloor, 0.55 * woods);
+    const apron = apronAt(x, z); if (apron > 0) { c.lerp(gravel, 0.85 * apron); g *= 1 - 0.8 * apron; }
     if (cd < 8 && cliff < 0.5) { const a = smooth(8, 4, cd); c.lerp(cd < 2.5 ? wet : sand, a); g *= 1 - a; sd = a; }
     if (cliff > 0.4 && cd < 4) { const a = smooth(4, 1, cd); c.lerp(rock, a); g *= 1 - a; sd *= 1 - a; }
     if (h < -0.4) { c.copy(wet); g = 0; sd = 1; }
