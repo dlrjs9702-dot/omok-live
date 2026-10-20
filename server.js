@@ -929,7 +929,7 @@ async function errandView(account) {
   for (const k of errandStages.keys()) if (!k.startsWith(`${day}|`)) errandStages.delete(k); // (yesterday's)
   const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); const stages = errandStages.get(`${day}|${account}`) || {};
   const goods = new Set(((await pointStore.islandBag(account)).items || []).map((e) => e.itemId));
-  return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done), done: done.size, total: errands.length };
+  return { marks: IslandErrands.marks(errands, stages, done, goods), track: IslandErrands.track(errands, stages, done).map((t) => { const e = errands.find((x) => x.id === t.id); return { ...t, reward: Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0) }; }), done: done.size, total: errands.length };
 }
 // the island's time of day for a resident's words (the administrator's fixed one, or Seoul's hour)
 function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mode; const h = new Date(ms + 9 * 3600000).getUTCHours(); return h >= 6 && h < 10 ? 'morning' : h >= 10 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'evening' : 'night'; }
@@ -5667,7 +5667,7 @@ async function requestHandler(req, res) {
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
       errandStages.set(key, r.stages);
-      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
+      if (r.pay) { const out = await pointStore.claimEvent({ eventId: r.pay.id, userId: account, amount: Economy.value(`errand:${r.pay.kind}`) + Economy.value('errand:far') * (r.pay.far || 0) + (r.pay.kind === 'buy' ? Economy.value(`good:${r.pay.good}`) : 0), title: `주민 심부름 · ${IslandErrands.title(r.pay)}` }); if (out.applied) { reward = out.amount; notifyPointsChanged([account]); gains.push({ n: r.pay.from, delta: IslandCast.GAIN.errandFrom }, ...(r.pay.to !== r.pay.from ? [{ n: r.pay.to, delta: IslandCast.GAIN.errandTo }] : [])); } }
     }
     const say = r ? r.say : topic === 'errand' ? ['오늘은 괜찮아요. 마음만 받을게요!'] : [IslandCast.walkerLine(n, Math.random, phase, level, String(session.label || ''), moods)];
     const points = (await pointStore.affinityAdd(account, day, gains))[n] || 0; // (daily: the first talk of the day only, whatever is chosen)

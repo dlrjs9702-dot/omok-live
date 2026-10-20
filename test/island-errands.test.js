@@ -92,3 +92,19 @@ test('A-6 주민끼리 수다·섬 소문·상황 대사', () => {
   for (const k of Object.keys(Cast.MOODS)) assert.equal(Cast.MOODS[k].length, 10);
   assert.equal(Cast.walkerLine(0, () => 0, 'day', 1, '', ['rain']), Cast.MOODS.rain[0]);
 });
+
+// 묶음 1 멀리 심부름 (residents-talk-hills-20261018.md 4): the one to find or bring to lives far from the asker (one of the
+// three farthest), a step more for the way, and the asker tells where they are usually seen -- in words only
+test('멀리 심부름: 상대는 부탁한 주민에게서 먼 주민, 거리 단계 보상, 어디 있는지 말로 힌트', () => {
+  const Npcs = require('../public/plaza/island-npcs');
+  const apart = (a, b) => { const p = Npcs.homeOf(a); const q = Npcs.homeOf(b); return Math.hypot(p.x - q.x, p.z - q.z); };
+  const month = Array.from({ length: 30 }, (_, i) => E.errandsOf(`2026-11-${String(i + 1).padStart(2, '0')}`)).flat().filter((e) => e.kind !== 'buy');
+  for (const e of month) {
+    const rank = Cast.WALKERS.map((_, n) => n).filter((n) => n !== e.from).sort((a, b) => apart(e.from, b) - apart(e.from, a)).indexOf(e.to);
+    assert.ok(rank < 3, `${e.id}: ${rank}`); assert.ok([0, 1, 2].includes(e.far) && e.where);
+  }
+  assert.ok(month.filter((e) => e.far > 0).length >= month.length * 0.6);
+  const e = month[0]; const r = E.talk([e], {}, new Set(), e.from);
+  assert.ok(r.say.some((l) => l.includes(e.where) && l.includes('근처')), r.say.join(' / '));
+  assert.match(E.talk([e], r.stages, new Set(), e.from).say[0], e.kind === 'find' ? new RegExp(e.where) : /아직 못 전했죠/);
+});

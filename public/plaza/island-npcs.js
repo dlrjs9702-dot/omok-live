@@ -245,12 +245,22 @@
 
   // A-6 섬 소문: where islander n is often seen -- the map's place nearest the middle of their stops, else a side of the island
   // (north is -z on the map)
-  function hangout(n) {
+  function homeOf(n) { // (the middle of their stops -- 묶음 1 멀리 심부름: how far apart two islanders live)
     const st = round(n).parts.filter((p) => !p.moving).map((p) => p.pts[0]);
-    const x = st.reduce((a, p) => a + p.x, 0) / st.length; const z = st.reduce((a, p) => a + p.z, 0) / st.length;
+    return { x: st.reduce((a, p) => a + p.x, 0) / st.length, z: st.reduce((a, p) => a + p.z, 0) / st.length };
+  }
+  function hangout(n) {
+    const { x, z } = homeOf(n);
     let best = null; let bd = 30;
     for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - x, a.z - z); if (d < bd) { best = a.label; bd = d; } }
     if (best) return best;
+    // (묶음 1: a round over a wide stretch -- its middle falls in the bay or a field: the place most of their stops are by)
+    const count = new Map();
+    for (const p of round(n).parts.filter((q) => !q.moving).map((q) => q.pts[0])) {
+      let near = null; let nd = 45; for (const a of Object.values(T.AREAS)) { const d = Math.hypot(a.x - p.x, a.z - p.z); if (d < nd) { near = a.label; nd = d; } }
+      if (near) count.set(near, (count.get(near) || 0) + 1);
+    }
+    const most = [...count].sort((a, b) => b[1] - a[1])[0]; if (most && most[1] >= 2) return most[0];
     const side = ['북쪽', '북동쪽', '동쪽', '남동쪽', '남쪽', '남서쪽', '서쪽', '북서쪽'][Math.round(((Math.atan2(x, -z) / (Math.PI * 2)) * 8 + 8)) % 8];
     return `섬 ${side}`;
   }
@@ -425,5 +435,5 @@
     return { list, add, step, pushOut, move, clear, resyncs: () => resyncs };
   }
 
-  return { COUNT, WALKER, round, at, residentAt, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
+  return { COUNT, WALKER, round, at, residentAt, homeOf, hangout, findPath, stopPlaces, buildGrid, createWalkers, free: (x, z) => { buildGrid(); const [i, j] = cellOf(x, z); return free(i, j); } };
 }));
