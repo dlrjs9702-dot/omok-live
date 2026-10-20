@@ -16,6 +16,9 @@
   // the ground); island-home.js turns each toward the walk across the isle, the walks above lead to each door
   const HOME_LOTS = Object.freeze([[-17, 160.3], [-4.5, 133.8], [-12.5, 122.3], [-14, 148.8], [11, 119.8], [-3, 157.8], [-0.5, 118.3], [8, 132.3], [-26, 149.3], [-16, 133.3], [25, 148.8], [20.5, 132.3]].map(([x, z]) => Object.freeze({ x, z })));
   const onLot = (x, z, pad = 0) => HOME_LOTS.some((l) => Math.abs(x - l.x) < 5 + pad && Math.abs(z - l.z) < 5 + pad);
+  // what a house takes (the 6 x 5 m house and its steps, a little round it, and in front of its door -- island-home's
+  // doorOf: 4.6 m toward the walk across the isle at z 140.5); trees and rocks may stand on the rest of the lot
+  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = Math.atan2(l.x, l.z - 140.5); const dx = l.x - Math.sin(a) * 4.6; const dz = l.z - Math.cos(a) * 4.6; return Math.hypot(x - l.x, z - l.z) < 5 || Math.hypot(x - dx, z - dz) < 2.5; });
   const rad = (a) => (a * Math.PI) / 180;
   const inPlaza = (x, z, m = 0) => Math.abs(x - P.x) < P.hw + m && z > P.d0 - m && z < P.d1 + m;
   const yawTo = (x, z, f) => Math.atan2(x - f[0], z - f[1]); // a model whose front is -Z, turned so it looks at f
@@ -304,14 +307,14 @@
     if (natureCache) return natureCache;
     let seed = 0x5a1d0e; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
     const R = D.R_OUT + 5;
-  const built = (x, z) => onLot(x, z, 1) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
+  const built = (x, z) => onHouse(x, z) || BUILDINGS.some((b) => Math.hypot(x - b.x, z - b.z) < (b.kind === 'facade' ? 18 : b.kind === 'hall' ? 13 : 7))
       || PADS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + 1.5) || onStairs(x, z) || Math.hypot(x - TOP.x, z - TOP.z) < 6
       || Math.hypot(x - PL.lighthouse.x, z - PL.lighthouse.z) < 6 || Math.hypot(x - PL.pier.x, z - PL.pier.z) < 6 || Math.hypot(x - PL.dock.x, z - PL.dock.z) < 8
       || villageSolids().some((v) => Math.hypot(x - v.x, z - v.z) < v.r + 2) || heroYard(x, z);
     const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
       && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
-    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24]];
+    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24], [0, 152, 30, 22]]; // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses)
     for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 14; tries += 1) {
       const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
       if (clearOf(x, z) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.4)) { trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); k += 1; }
