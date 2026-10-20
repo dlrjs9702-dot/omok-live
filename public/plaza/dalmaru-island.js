@@ -7,8 +7,8 @@
 // server's own island; TERRAIN_ONLY otherwise). The server builds it with island-terrain.js (ISLAND_MAP=dalmaru).
 (function (root, build) {
   if (typeof module === 'object' && module.exports) { module.exports = build; return; }
-  if (root.GC_ISLAND_MAP === 'dalmaru' && root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain, { live: Boolean(root.GC_ISLAND_LIVE) });
-}(typeof self !== 'undefined' ? self : this, (D, C, { live = false } = {}) => {
+  if (root.DalmaruTerrain && root.IslandTerrain) root.IslandTerrain = build(root.DalmaruTerrain, root.IslandTerrain); // (묶음 3: the only island)
+}(typeof self !== 'undefined' ? self : this, (D, C) => {
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
@@ -380,7 +380,7 @@
 
   return Object.freeze({
     ...C,
-    MAP: 'dalmaru', TERRAIN_ONLY: !live, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
+    MAP: 'dalmaru', GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,

@@ -215,7 +215,7 @@ test('운영 스위치: 가입 신청 멈춤·메신저 끄기, 관리자만', a
   const call = async (route, body, account) => { const res = await fetch(base + route, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Forwarded-For': `10.91.0.${Math.floor(Math.random() * 200) + 1}`, ...(account ? { 'X-Account-Token': account } : {}), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); return { status: res.status, data: await res.json().catch(() => ({})) }; };
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken;
   assert.equal((await req('/api/admin/switches', null, { signups: false })).status, 401);
-  assert.deepEqual((await req('/api/admin/switches', admin)).data.switches, { signups: true, messenger: true, dalmaruPreview: false });
+  assert.deepEqual((await req('/api/admin/switches', admin)).data.switches, { signups: true, messenger: true });
   assert.equal((await req('/api/admin/switches', admin, { signups: false })).data.switches.signups, false);
   assert.equal((await call('/api/account/signup', { realName: '닫힘', loginId: 'closed_1', password: 'secret123', nickname: '닫힘' })).data.error, 'SIGNUPS_CLOSED');
   await req('/api/admin/switches', admin, { signups: true });

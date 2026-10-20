@@ -400,8 +400,6 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   }
 
   // Harbour: pier on posts, a few boats, the breakwater and its lighthouse. (달마루섬 미리보기: not there -- 달끝나루 comes in step 2)
-  const bareHarbour = Boolean(T.TERRAIN_ONLY);
-  const harbourFrom = scene.children.length;
   const pier = new THREE.Group(); pier.position.set(PIER.x, 0, PIER.z); pier.rotation.y = Math.atan2(PIER.ux, PIER.uz); scene.add(pier);
   const pierDeck = mesh(keep(new THREE.BoxGeometry(PIER.w, 0.2, PIER.half * 2)), plank, 0, PIER.deck - 0.1, 0, pier);
   const pierPosts = new THREE.Group(); pier.add(pierPosts);
@@ -420,7 +418,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   for (let k = 0; k < 4; k += 1) mesh(keep(new THREE.CylinderGeometry(0.95 - k * 0.12, 1.05 - k * 0.12, 1.5, 18)), mat(k % 2 ? 0xe8443c : 0xffffff), 0, 0.75 + k * 1.5, 0, lh);
   mesh(keep(new THREE.CylinderGeometry(0.75, 0.75, 0.9, 14)), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.7 }), 0, 6.45, 0, lh);
   mesh(keep(new THREE.ConeGeometry(0.95, 0.9, 14)), mat(0xe8443c), 0, 7.35, 0, lh);
-  if (!bareHarbour) solids.push({ x: BREAKWATER.x + BREAKWATER.ux * (BREAKWATER.half - 1.3), z: BREAKWATER.z + BREAKWATER.uz * (BREAKWATER.half - 1.3), r: 1.2 });
+  solids.push({ x: BREAKWATER.x + BREAKWATER.ux * (BREAKWATER.half - 1.3), z: BREAKWATER.z + BREAKWATER.uz * (BREAKWATER.half - 1.3), r: 1.2 });
   const boats = [];
   for (const [bx, bz, col] of [[-6, bayR + 6, 0xff8a65], [14, bayR + 12, 0x5fb0ff], [-12, bayR + 15, 0xffd23f]]) {
     const boat = new THREE.Group(); boat.position.set(bx, -0.55, bz); boat.rotation.y = bx * 0.2; scene.add(boat);
@@ -429,7 +427,6 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const sail = mesh(keep(new THREE.PlaneGeometry(1, 1.4)), mat(0xfffaf0, { side: THREE.DoubleSide }), 0.02, 1.5, -0.2, boat); sail.rotation.y = Math.PI / 2;
     boats.push(boat);
   }
-  if (bareHarbour) for (const o of scene.children.slice(harbourFrom)) o.visible = false;
 
   // Instanced nature: trees, flowers, rocks, fence posts. Placement is fixed (seeded) and keeps walks, water, the
   // plaza and every building clear.

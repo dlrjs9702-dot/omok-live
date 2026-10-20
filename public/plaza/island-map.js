@@ -1,7 +1,4 @@
-// 달마루섬 개편 (gamecenter-notes docs/dalmaru-implementation-20261019.md): which island this page shows -- set before
-// the island's scripts load. 'dalmaru' only for the administrator's preview (the server tells the page, app.js keeps it
-// here and reloads once); everyone else gets the island they have.
+// 달마루섬: the island this page shows (set before the island's scripts load; 묶음 3 -- the only island, everyone's)
 (function (root) {
-  if (root.GC_ISLAND_LIVE) return; // (the server's own island: island-live.js said so)
-  try { const m = localStorage.getItem('gc.islandMap'); if (m === 'dalmaru' || m === 'dalmaru:live') root.GC_ISLAND_MAP = 'dalmaru'; if (m === 'dalmaru:live') root.GC_ISLAND_LIVE = true; } catch {} // (live: the server's island too -- 5단계)
+  root.GC_ISLAND_MAP = 'dalmaru'; root.GC_ISLAND_LIVE = true;
 }(typeof self !== 'undefined' ? self : this));
