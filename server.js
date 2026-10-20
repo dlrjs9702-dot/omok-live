@@ -939,6 +939,7 @@ function islandPhase(mode, ms) { if (IslandCast.PHASES.includes(mode)) return mo
 const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 // world values read-modify-written one at a time (one server process; two admin saves must not undo each other)
 let worldQueue = Promise.resolve();
+let issueTidyDay = null; // (문제 기록 저장 정리: the Seoul day the list was last tidied)
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
 const ISSUE_DAY_MAX = 30; // (2026-10-20: an allowed account writes up to this many a day -- the administrator has no cap)
 const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
@@ -1248,6 +1249,7 @@ islandEventTimer.unref?.();
 // player's GatherWeed): start says which weed (standing by it), finish pulls it -- once, for one player, then everyone's
 // screen drops it.
 const IslandWeeds = require('./lib/island-weeds');
+const IssueLog = require('./lib/issue-log');
 function collectionPose(token,pull=null) {
   const p=plazaPresence.get(token); if(!p) return;
   if(pull) Object.assign(p,{x:pull.pos.x,z:pull.pos.z,yaw:Math.atan2(pull.target.x-pull.pos.x,pull.target.z-pull.pos.z),moving:false,act:pull.anim,actN:pull.at,actAt:pull.at,actMs:pull.ms,actTarget:pull.target});
@@ -6120,7 +6122,22 @@ async function requestHandler(req, res) {
   }
   // 관리자 「문제 기록」 (사용자 2026-10-18, docs/admin-issue-log-20261018.md): what an administrator saw go wrong, written where
   // it happened -- the words, a kind, what the page knew (screen, place, device, frame rate, recent errors) and a small
-  // picture; newest first, open / doing / done, up to 500. GET gives the pictures only with ?shots=1 (Claude reads the rest).
+  // picture; newest first, open / doing / done, up to 500. 저장 정리 (2026-10-21, lib/issue-log.js): the picture is its own
+  // world value `issueShot:<id>` (GET /api/admin/issues/<id>/shot, one at a time); once a day the first request tidies --
+  // the older records' pictures moved out of the list, solved ones' pictures after 7 days, solved records after 30.
+  const issueTidy = async () => {
+    if (issueTidyDay === kstDate(nowMs())) return;
+    await worldEdit(async () => {
+      if (issueTidyDay === kstDate(nowMs())) return;
+      const raw = (await pointStore.worldValue('issueLog')) || []; let moved = 0;
+      for (const [k, i] of raw.entries()) if (typeof i.shot === 'string') { await pointStore.setWorldValue(`issueShot:${i.id}`, i.shot); const { shot, ...rest } = i; raw[k] = { ...rest, hasShot: true }; moved += 1; } else if ('shot' in i) { const { shot, ...rest } = i; raw[k] = { ...rest, hasShot: false }; moved += 1; }
+      const { list, dropShots, gone } = IssueLog.tidy(raw, nowMs());
+      for (const id of dropShots) await pointStore.deleteWorldValue(`issueShot:${id}`);
+      if (moved || dropShots.length || gone.length) await pointStore.setWorldValue('issueLog', list);
+      for (const i of gone) console.log(IssueLog.logLine('expire', i));
+      issueTidyDay = kstDate(nowMs());
+    });
+  };
   const addIssue = async (res, body, by) => worldEdit(async () => {
     const list = (await pointStore.worldValue('issueLog')) || [];
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
@@ -6129,8 +6146,9 @@ async function requestHandler(req, res) {
     if (by.id !== 'admin' && list.filter((i) => i.by?.id === by.id && kstDate(i.at) === kstDate(nowMs())).length >= ISSUE_DAY_MAX) return sendError(res, 429, 'ISSUE_DAY_LIMIT', `문제 기록은 하루 ${ISSUE_DAY_MAX}개까지 쓸 수 있어요.`);
     const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
     let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
-    const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, shot, by };
-    await pointStore.setWorldValue('issueLog', [issue, ...list]);
+    const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, hasShot: Boolean(shot), by };
+    if (shot) await pointStore.setWorldValue(`issueShot:${issue.id}`, shot);
+    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue));
     return sendJson(res, 201, { ok: true, id: issue.id });
   });
   // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
@@ -6141,27 +6159,31 @@ async function requestHandler(req, res) {
   if (pathname === '/api/issues' && (req.method === 'GET' || req.method === 'POST')) {
     const session = requireSession(req, res); if (!session) return;
     if (!await canWriteIssues(session)) return sendError(res, 403, 'ISSUES_DENIED', '문제 기록은 관리자가 허용한 계정만 쓸 수 있습니다.');
-    const mine = session.role === 'admin' ? 'admin' : session.guestKeyId;
-    if (req.method === 'GET') { const list = (await pointStore.worldValue('issueLog')) || []; return sendJson(res, 200, { ok: true, issues: list.filter((i) => (i.by?.id || 'admin') === mine).map((i) => ({ ...i, shot: undefined, hasShot: Boolean(i.shot) })) }); }
+    const mine = session.role === 'admin' ? 'admin' : session.guestKeyId; await issueTidy();
+    if (req.method === 'GET') { const list = (await pointStore.worldValue('issueLog')) || []; return sendJson(res, 200, { ok: true, issues: list.filter((i) => (i.by?.id || 'admin') === mine) }); }
     const body = await parseJson(req); if (body.action !== 'add') return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
     const label = session.role === 'admin' ? '관리자' : String((await accessStore.get(session.guestKeyId))?.label || '').slice(0, 24);
     return addIssue(res, body, { id: mine, label });
   }
+  const shotOf = pathname.match(/^\/api\/admin\/issues\/([\w-]{1,64})\/shot$/);
+  if (shotOf && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return; await issueTidy();
+    const shot = await pointStore.worldValue(`issueShot:${shotOf[1]}`);
+    return shot ? sendJson(res, 200, { ok: true, shot }) : sendError(res, 404, 'ISSUE_SHOT_NOT_FOUND', '사진이 없습니다.');
+  }
   if (pathname === '/api/admin/issues' && (req.method === 'GET' || req.method === 'POST')) {
-    if (!requireAdmin(req, res)) return;
-    if (req.method === 'GET') {
-      const shots = url.searchParams.get('shots') === '1'; const list = (await pointStore.worldValue('issueLog')) || [];
-      return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: list.map((i) => (shots ? i : { ...i, shot: undefined, hasShot: Boolean(i.shot) })) });
-    }
+    if (!requireAdmin(req, res)) return; await issueTidy();
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, max: ISSUE_MAX, issues: (await pointStore.worldValue('issueLog')) || [] });
     const body = await parseJson(req);
     if (body.action === 'add') return addIssue(res, body, { id: 'admin', label: '관리자' });
     return worldEdit(async () => {
       const list = (await pointStore.worldValue('issueLog')) || [];
       const i = list.findIndex((x) => x.id === body.id); if (i < 0) return sendError(res, 404, 'ISSUE_NOT_FOUND', '기록을 찾을 수 없습니다.');
+      const before = list[i];
       if (body.action === 'status' && ISSUE_STATUS.includes(body.status)) list[i] = { ...list[i], status: body.status, changedAt: nowMs() };
-      else if (body.action === 'delete') list.splice(i, 1);
+      else if (body.action === 'delete') { list.splice(i, 1); if (before.hasShot) await pointStore.deleteWorldValue(`issueShot:${before.id}`); }
       else return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
-      await pointStore.setWorldValue('issueLog', list);
+      await pointStore.setWorldValue('issueLog', list); console.log(IssueLog.logLine(body.action, list[i]?.id === before.id ? list[i] : before));
       return sendJson(res, 200, { ok: true });
     });
   }

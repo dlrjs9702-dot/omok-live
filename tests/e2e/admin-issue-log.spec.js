@@ -29,10 +29,12 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   await page.locator('#issueText').fill('광장 벤치가 공중에 떠 있음'); await page.locator('#issueKind').selectOption('odd');
   await page.locator('#issueText').press('Control+Enter');
   await expect(page.locator('#issueDialog')).toBeHidden();
-  const all = (await get(request, '/api/admin/issues?shots=1', admin)).data.issues; const mine = all.find((i) => i.text === '광장 벤치가 공중에 떠 있음');
-  expect(mine).toMatchObject({ kind: 'odd', status: 'open', version: expect.stringMatching(/^1\.10\./), ctx: { screen: 'island', island: { space: 'island' }, device: { touch: false } } });
-  expect(mine.shot).toMatch(/^data:image\/jpeg;base64,/); expect(mine.shot.length).toBeLessThanOrEqual(60000);
-  expect((await get(request, '/api/admin/issues', admin)).data.issues.find((i) => i.id === mine.id)).toMatchObject({ hasShot: true }); // (no picture without ?shots=1)
+  const all = (await get(request, '/api/admin/issues', admin)).data.issues; const mine = all.find((i) => i.text === '광장 벤치가 공중에 떠 있음');
+  expect(mine).toMatchObject({ kind: 'odd', status: 'open', hasShot: true, version: expect.stringMatching(/^1\.10\./), ctx: { screen: 'island', island: { space: 'island' }, device: { touch: false } } });
+  expect(mine.shot).toBeUndefined(); // (저장 정리 2026-10-21: the list has no pictures, each one is fetched on its own)
+  const shot = (await get(request, `/api/admin/issues/${mine.id}/shot`, admin)).data.shot;
+  expect(shot).toMatch(/^data:image\/jpeg;base64,/); expect(shot.length).toBeLessThanOrEqual(60000);
+  expect((await get(request, `/api/admin/issues/${mine.id}/shot`, guest.token)).status).toBe(403);
   // the card: listed, its state changed, removed
   await page.keyboard.press('Escape'); await page.locator('#adminWindowBtn').click();
   await page.locator('#issueCard summary').first().click();
@@ -46,6 +48,7 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   await page.locator('.issueItem', { hasText: '광장 벤치가 공중에 떠 있음' }).locator('summary').click();
   await page.locator('.issueItem', { hasText: '광장 벤치가 공중에 떠 있음' }).getByRole('button', { name: '지우기' }).click();
   await expect.poll(async () => (await get(request, '/api/admin/issues', admin)).data.issues.some((i) => i.id === mine.id)).toBe(false);
+  expect((await get(request, `/api/admin/issues/${mine.id}/shot`, admin)).status).toBe(404); // (its picture went with it)
   await expectNoScriptError(page);
   await context.close();
 });
