@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.109 걸음 3판(최종)
+
+- 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「걸음 3판 = 최종」(사용자 2026-10-20 「추천대로 가자」 — 동물의 숲 녹화 측정, 속도 그대로 + 여유 있는 걸음 + 발 미끄러짐 허용; 2판 2.5/5.0은 버림).
+- assets 49·53 `motions/` SlowWalk·Walk·Run 3판(`island-models.json` slim49, 이미 압축): 걷기 초당 2.5보·느리게 2보·뛰기 4보·상체 24°. `character.base` speeds 1/4.2/6.2 그대로, `rates` 셋 다 1(느리게 1.72 → 1).
+- 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36 e2e. Codex 검토 대기(10/25).
+
 ## v1.10.108 패치 묶음 2-2: 펫샵(백화점 3층), 승강기 1~3층
 
 - 근거: gamecenter-notes `docs/pet-shop-20261020.md`(사용자 2026-10-20), `docs/patch-bundles-20261020.md` 묶음 2-2.
@@ -32,12 +38,3 @@
 - 화면: 2층(assets 57 `furniture-v1` 157개 — 방·승강기·간판·구역 러그·받침대·가격표 받침·「팔렸어요」 상자·계산대), 받침대 위 가구와 가격 글씨, SPACE로 가구 창(사기), 메뉴 「가구 창고」(꾸미기 창의 3D 미리보기에 가구 — `tryOn(canvas, { model })`). 계단 모델은 쓰지 않음(승강기로 오르내림).
 - 내 정보 변신: 꾸미기 창 위 「변신 중: ○○ · 풀기」 줄과 가진 변신 목록(변신하기/변신 풀기 = 기존 장착·해제, 장소 확인 없음). 변신 중에 다른 항목을 가리키면 3D는 변신을 끈 모습 + 「변신 중이라 섬에서는 변신 모습이에요」.
 - 검증: 단위(가구점 진열 규칙, 승강기·동시 구매·하루 3점·늘 파는 것·창고), e2e 가구점·내 정보 변신(PC·휴대폰), 꾸미기 창·dalmaru-walk. Codex 검토 대기(10/25).
-
-## v1.10.106 F1·G·F2: 가는 몸의 옷·소품, 걷기·뛰기 다듬기
-
-- 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「F1 완료」「G 완료」, F2(assets 50) — 묶음 1과 2 사이에 끼운 에셋 연결(`docs/patch-bundles-20261020.md`).
-- 에셋: assets 49(몸 5종·옷 55벌, 새 셸 방식), 50(신발 42·목걸이 42·망토 22·꼬리 40, IP 제외), 53(SlowWalk·Walk·Run G 판) — `island-models.json` 209개를 이미 압축된 파일로(`precompressed`). 기본 셔츠·바지·치마·멜빵바지도 Low 파일 사용.
-- `baked`: 이 파일들은 새 몸에 맞춰 만든 것이라 `asset-loader`의 `slimmedGeometry`를 건너뜀(`island-assets.js` 끝의 규칙 — 머리 부위·IP 경로만 실행 중 줄이기). 규칙이 고른 파일 = 납품 파일 206개(모션 제외) 일치 확인. F2의 hair_ponytail·hair_twin_tail은 「tail」 이름 때문에 꼬리로 잘못 처리(가중치가 모두 Hips)된 것이라 빼고 게임 원래 파일 그대로 — 시험 「머리카락: Head 가중치가 대부분이고 baked가 아니다」.
-- G: Walk·Run이 게임 속도 4.2·6.2로 만들어져 `rates` walk·run 1.0(slow 1.72 그대로).
-- `budgets.json`: 옛 운동복·후드 몸·옷의 비양자화 예외 8개 삭제.
-- 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36·island-assets·dress-room e2e 30개. Codex 검토 대기(사용량 한도 10/25).
