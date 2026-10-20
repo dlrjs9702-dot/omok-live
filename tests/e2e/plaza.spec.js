@@ -1486,10 +1486,11 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   const beforeWalk = await state(a.page);
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('ArrowRight'); await a.page.waitForTimeout(300); await a.page.keyboard.up('ArrowRight');
   const afterWalk = await state(a.page); expect(Math.hypot(afterWalk.x - beforeWalk.x, afterWalk.z - beforeWalk.z)).toBeGreaterThan(.2);
-  // (CI 3차: the window put a second into the doors' open time and the button read and pressed in one call -- waiting for
-  // its text and then clicking took the slow runner past the 4.6 s window every time)
-  const pressIf = (text) => a.page.locator('#trainMainBtn').evaluate((b, text) => { if (b.textContent.includes(text) && !b.hidden && !b.disabled) b.click(); }, text);
-  await inWindow(A0.at + 1, async () => await riding() === 1, async () => {
+  // (CI 3차: the button watched on the page and pressed the moment it says so -- waiting for its text from here and then
+  // clicking took the slow runner past the 4.6 s window; the trains keep their own time behind a held one, so the window
+  // is waited for, not worked out from the timetable)
+  const pressIf = (text) => a.page.locator('#trainMainBtn').evaluate((b, text) => new Promise((done) => { const t0 = performance.now(); const tick = () => { if (b.textContent.includes(text) && !b.hidden && !b.disabled) { b.click(); done(true); } else if (performance.now() - t0 > 15000) done(false); else setTimeout(tick, 50); }; tick(); }), text);
+  await inWindow(T0, async () => await riding() === 1, async () => {
     await pressIf('타기 · 관광 열차');
   });
   expect((await a.page.evaluate(() => window.PlazaDebug().train())).y).toBeGreaterThan(2.5); // up on the car's seat over the stream
@@ -1501,7 +1502,7 @@ test('관광열차: 정류장에서 타고, 다른 화면에도 열차 위에 �
   await expect(a.page.locator('#plazaHint')).toBeVisible(); await expect(a.page.locator('#trainMainBtn')).toBeHidden();
   await expect(a.page.locator('#trainMainBtn')).toHaveText('');
   // at the southwest stop: off, anywhere inside its walkable platform
-  await inWindow(A1.at + 1, async () => await riding() === null, async () => {
+  await inWindow(T1, async () => await riding() === null, async () => {
     await pressIf(`내리기 · ${N1}`);
   });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().train().lifting)).toBe(false);
