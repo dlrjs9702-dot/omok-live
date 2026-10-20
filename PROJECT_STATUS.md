@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.111 패치 묶음 3: 새 섬 주민 미니게임 자리, 말 걸기 우선, 옛 섬 정리, 자전거 8 m/s
+
+- 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 3 — 목록 대부분(기념사진 2버튼 v1.10.81, 근거리·같은 열차 채팅 v1.10.82, 통합 UI 6~8 v1.10.83, 주민 미니게임 2단계·정자 할아버지 AI v1.10.93, 게임관 G1~G4 v1.10.94·95, 관리자 계절 고정·장식 수동·공지 예약·대회 일정 v1.10.96)은 이미 배포돼 있어 남은 ①②③만(묶음 조율 세션 확인). 「카드」(정자 할아버지 × 클론다이크)는 사용자 미정이라 뺌.
+- ① 마을 주민 미니게임 자리: 거리 악단·공사 인부(징검돌)·정자 할아버지까지 샛길(`dalmaru-island.js` WALKS, 광장 판석·물길·악단 무대와 겹치지 않음), `test/dalmaru-paths.test.js` 장소에 마을 주민 7명. NPC 가혹 시험(`island-npc-walk`)은 경로 옆 소품을 양쪽에 땅이 있는 곳에만 — 능선 길의 맨땅 옆에 둔 소품은 돌아갈 길이 없는 장면이라 섬에 없는 일(새 샛길로 주민 순환이 바뀌며 드러남).
+- 말 걸기 우선: 주민(걷는 주민·이벤트 주민) 옆에 잡초가 있어도 바라보는 쪽(앞 60°)의 주민이면 「말 걸기」가 먼저(`plaza-scene` 대상 고르기).
+- ② 옛 섬 정리(이사 결과 확인 뒤): `ISLAND_MAP` 스위치(서버는 늘 달마루섬), 관리자 「달마루섬 미리보기」 스위치·`/api/island/map`의 지금 섬 갈래·`gc.islandMap` 새로고침, `TERRAIN_ONLY`·`BARE`·`bareHarbour` 갈래 삭제. 옛 섬 전용 시험 12개(단위 10·e2e 2)와 `dalmaru-preview` e2e 삭제, 빈 시험 파일 3개(island-train·island-ground·townhall) 삭제. 이사 코드(`dalmaruMoveIn`)와 그 시험은 남김(시험은 첫 시작 뒤 이사 표시를 지우고 다시 시작). `island-terrain.js`의 바탕 함수·자료(달마루섬이 그 위에 만듦)는 그대로.
+- ③ 자전거 8 m/s(사용자 「자전거 이동속도는 8로 하자」, 동작 재생 = 속도/4 그대로 — 2배).
+- 검증: 단위 전체(Windows 줄바꿈 6개 제외, 건너뜀 0), e2e dalmaru-walk·island-admin-look·island-assets 29개. Codex 검토 대기(10/25).
+
 ## v1.10.110 자전거
 
 - 근거: gamecenter-notes `docs/bicycle-20261020.md`(사용자 「자전거부터」 → 「그렇게 해」), assets 61.
@@ -29,13 +38,3 @@
 - 근거: gamecenter-notes `docs/asset-orders-f-body-residents-20261018.md` 「걸음 3판 = 최종」(사용자 2026-10-20 「추천대로 가자」 — 동물의 숲 녹화 측정, 속도 그대로 + 여유 있는 걸음 + 발 미끄러짐 허용; 2판 2.5/5.0은 버림).
 - assets 49·53 `motions/` SlowWalk·Walk·Run 3판(`island-models.json` slim49, 이미 압축): 걷기 초당 2.5보·느리게 2보·뛰기 4보·상체 24°. `character.base` speeds 1/4.2/6.2 그대로, `rates` 셋 다 1(느리게 1.72 → 1).
 - 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36 e2e. Codex 검토 대기(10/25).
-
-## v1.10.108 패치 묶음 2-2: 펫샵(백화점 3층), 승강기 1~3층
-
-- 근거: gamecenter-notes `docs/pet-shop-20261020.md`(사용자 2026-10-20), `docs/patch-bundles-20261020.md` 묶음 2-2.
-- 펫샵(`public/plaza/island-petshop.js`, 브라우저·서버 공용): 3층 방(섬 밖), 놀이 마당 10×8 m(앞 문 2 m), 하루 여덟 마리(종류×무늬 12에서, 종류마다 둘 이상, 서울 날짜로 모두 같음), `petAt(day, slot, ms)` — 마당 안 여섯 곳을 도는 길이 날짜에서 정해져 모든 화면·서버가 같은 자리.
-- 서버: 승강기 하나로 1~3층(`/api/island/lift {to}`, 앞에서만 — 가구점의 up/down을 대신), `petshopInside`(⊂ storeInside, space `petshop`), `GET /api/island/petshop`, `POST .../adopt`(곁에서 — 지난 15초 안에 2.6 m 안이면, 이름 짓는 동안 걸어가도 됨; worldEdit로 먼저 온 한 명만, 1인 하루 한 마리, 값 = 경제 `good:pet_*`, 정산 `petshop:…`), `GET /api/island/pets`(펫샵 반려동물 world `pets:<계정>` + 잡화점에서 산 가방 반려동물 = 첫 무늬), `/api/island/pet`이 `uid`로도 고름. 반려동물 자리 정보에 `coat`. 잡화점 진열에서 반려동물 뺌(가진 것 그대로).
-- 화면: 3층(assets 60 `petshop-v1` — 방·놀이 마당·고양이 타워 2·새 횃대·방석 3·밥그릇·장난감·계산대·간판), 무늬 판 12(`pet.<종류>__<무늬>`, 따라다니는 반려동물도 그 무늬), 승강기는 3층짜리(`mall.elevator` → elevator3, 57의 2층짜리 파일 삭제)와 층 고르기 창, 반려동물 곁 SPACE → 이름·데려가기, 가방 「반려동물」 목록.
-- 고침: SPACE 대상 순서(지난 프레임의 대상이 남아 있으면 반려동물 대상이 한 프레임 걸러 사라지던 것), `budgets.pet` 노드 12 → 13(무늬 판).
-- 걷기·뛰기 2판(걷기 2.5·뛰기 5)은 사용자 비교 중이라 보류(지금 G1·4.2/6.2 그대로).
-- 검증: 단위(펫샵 하루·마당 안·승강기·동시·하루 한 마리·내 반려동물, 가구점), e2e 펫샵·가구점(PC·휴대폰), 광장·motion36. Codex 검토 대기(10/25).
