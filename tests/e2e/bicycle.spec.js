@@ -37,7 +37,7 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   // off by itself: on the ridge's stairs (off at once when put there -- on slow CI the next frame waited on the ridge's models)
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
   await page.evaluate(() => { const S = window.IslandTerrain.STAIRS; return window.PlazaWarp(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); });
-  await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling), { timeout: 10000 }).toBe(null);
+  await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); const S = window.IslandTerrain.STAIRS; if (d.cycling) d.teleport(S.x + S.ux * (S.len / 2) + S.nx * 1.7, S.z + S.uz * (S.len / 2) + S.nz * 1.7); return window.PlazaDebug().cycling; }), { timeout: 10000 }).toBe(null); // (put there again while still riding: the first try on CI once rode on)
   // ... among people: three standing within 5 m
   await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]); await page.waitForTimeout(500);
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
