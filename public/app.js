@@ -1819,7 +1819,8 @@
     const skinsToday = api('/api/skins').catch(() => null); // (my look, asked for alongside the scene: worn as the island appears, not after it -- the big island takes a while)
     try { localStorage.removeItem('gc.islandMap'); } catch {} // (묶음 3: the old preview's mark, gone with it)
     const sceneModule = import('/plaza/plaza-scene.js').catch((error) => { throw Object.assign(error, { code: 'module' }); });
-    plaza.loading = Promise.all([sceneModule, spotToday]).then(([mod, savedSpot]) => {
+    // (my look waited for with the scene: the island starts in it -- on a slow line it came seconds after the island did)
+    plaza.loading = Promise.all([sceneModule, spotToday, skinsToday]).then(([mod, savedSpot, skins]) => {
       const startAt = savedSpot;
       plaza.loading = null;
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
@@ -1831,7 +1832,7 @@
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); // (자전거; 묶음 4 집들)
-      refreshPlazaAvatar(skinsToday); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
+      refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
