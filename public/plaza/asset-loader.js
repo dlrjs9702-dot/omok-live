@@ -781,10 +781,10 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       // what each part gives way to in this combination (asset-pipeline fitWardrobe), worked out on the High files
       const fits = P.fitWardrobe(parts.map((p, i) => ({ id: plan.parts[i], fit: p.entry.fit || null, pos: meshesOf(byUrl.get(p.entry.url)).flatMap((m) => Array.from(restOf(m))) })));
       const tails = []; // v1.10.46: seated, a tail is swept up against the back (c.tuckTail)
-      const adopt = (gltf, colors, into, fit, tail = false) => {
+      const adopt = (gltf, colors, into, fit, tail = false, baked = false) => {
         for (const m of meshesOf(gltf)) {
           if (fit?.hide.some((name) => [].concat(m.material).some((x) => x.name === name))) continue; // given way to a worn part
-          m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is
+          if (!baked) m.geometry = slimmedGeometry(m, base.entry.slim); // v1.10.93 체형: every part narrowed as the body is (F1·F2: made so already)
           const sitGeometry = tail ? fittedGeometry(m, [...(fit?.ops || []), P.TAIL_TUCK]) : null;
           if (fit?.ops.length) m.geometry = fittedGeometry(m, fit.ops);
           if (sitGeometry) { m.userData.stand = m.geometry; m.userData.sit = sitGeometry; tails.push(m); }
@@ -794,14 +794,14 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
           m.frustumCulled = false; m.castShadow = true; own(m, colors); into.push(m);
         }
       };
-      object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } }); // (v1.10.93 체형)
+      object.updateMatrixWorld(true); object.traverse((o) => { if (o.isSkinnedMesh) { if (!body.baked) o.geometry = slimmedGeometry(o, base.entry.slim); o.frustumCulled = false; o.castShadow = true; own(o, null); high.push(o); } }); // (v1.10.93 체형)
       const lowBody = body.lowUrl ? byUrl.get(body.lowUrl) : null;
-      if (lowBody) adopt(lowBody, null, low, null);
+      if (lowBody) adopt(lowBody, null, low, null, false, body.baked);
       parts.forEach((p, i) => {
         const colors = plan.colors?.[plan.parts[i]]; const fit = fits[plan.parts[i]];
         const tail = p.entry.fit?.slot === 'tail';
-        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : always, fit, tail); // a part without a Low file shows at every distance
-        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail);
+        adopt(byUrl.get(p.entry.url), colors, p.entry.lowUrl ? high : always, fit, tail, p.entry.baked); // a part without a Low file shows at every distance
+        if (p.entry.lowUrl) adopt(byUrl.get(p.entry.lowUrl), colors, low, fit, tail, p.entry.baked);
       });
       c.wearMats = mats; c.wornColors = worn; c.fitted = Object.fromEntries(Object.entries(fits).filter(([, f]) => f.ops.length || f.hide.length).map(([id, f]) => [id, f.ops.map((op) => op.kind).concat(f.hide.length ? ['hide'] : [])]));
       const clips = clipUrls.map((url) => byUrl.get(url)?.animations?.[0]).filter(Boolean);

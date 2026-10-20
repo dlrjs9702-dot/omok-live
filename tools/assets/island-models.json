@@ -419,10 +419,11 @@
     },
     {
       "out": "characters/body_core.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/body_core_high.glb",
-      "sha256": "71c11aa475f9ddcdf66c6e125e47d7d1ad81511ae5b67bdb5f55b4df2611543e",
-      "lowSrc": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/body_core_low.glb",
-      "lowSha256": "4005e48de084df14c766282dfb5b32cc5a55f2a917b45faa295ef9d44111103f"
+      "src": "slim49:01. High/body_core.glb",
+      "sha256": "a0ee94ef505d8f2566c3d75558f3444d4723c7c14be61e9cc47cc9812784767a",
+      "lowSrc": "slim49:02. Low/body_core_low.glb",
+      "lowSha256": "416bb84bea6d240fbfd5ec925bc6aeea482e55a33128a7318919618a3ba011c0",
+      "precompressed": true
     },
     {
       "out": "characters/motions/CarryIdle.glb",
@@ -472,8 +473,9 @@
     },
     {
       "out": "characters/motions/Run.glb",
-      "src": "motion36:motions/Run.glb",
-      "sha256": "5608717d706248dbddd9c358e4df5024c0568472c9b960b0639eef8b813e7445"
+      "src": "slim49:01. High/motions/Run.glb",
+      "sha256": "30b4a2c995d5a107079206a6069e8ae68be3cd3efeff333cd3397ef7342fae04",
+      "precompressed": true
     },
     {
       "out": "characters/motions/SitDown.glb",
@@ -492,8 +494,9 @@
     },
     {
       "out": "characters/motions/Walk.glb",
-      "src": "motion36:motions/Walk.glb",
-      "sha256": "9745a61d9660b03b36876c0bb308c98e36a316bc558c85d4b5361bf849d876c2"
+      "src": "slim49:01. High/motions/Walk.glb",
+      "sha256": "c35b50a1af1c38e5ec93244a7d37cc0f855f94596ddb8293c17fd88afa6449fb",
+      "precompressed": true
     },
     {
       "out": "characters/motions/Wave.glb",
@@ -547,13 +550,19 @@
     },
     {
       "out": "characters/wear/basic_pants.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/basic_pants.glb",
-      "sha256": "e8cd9c41c4ad5cc389f65e2ac67c6d11881b2a7c70f367dadb39560a99c5a8ee"
+      "src": "slim49:01. High/wear/basic_pants.glb",
+      "sha256": "07116af82a180244b84af3b94ec0d7ec8a2833da4f2204ea994e6e09bd87691f",
+      "precompressed": true,
+      "lowSrc": "slim49:02. Low/wear/basic_pants_low.glb",
+      "lowSha256": "0a73e5cbf7e82c4b9a8e5fc53c41dbf15e76881d884f821dad52299176e23f9a"
     },
     {
       "out": "characters/wear/basic_shirt.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/basic_shirt.glb",
-      "sha256": "4f2a67be72f5034fb11db22653412a9e138d57918a7ab931f0b5ce40502206e5"
+      "src": "slim49:01. High/wear/basic_shirt.glb",
+      "sha256": "0dcab03197ffedd15638a713d594e30c91b33a49f3bd9399f8a02ddf52d6f1cf",
+      "precompressed": true,
+      "lowSrc": "slim49:02. Low/wear/basic_shirt_low.glb",
+      "lowSha256": "59aa77becb2bd9c84a859937413a1108471c1070896b45c2a961d798318f16a7"
     },
     {
       "out": "characters/wear/cat_ears.glb",
@@ -637,8 +646,11 @@
     },
     {
       "out": "characters/wear/female_shirt.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/female_shirt.glb",
-      "sha256": "a911ed9abff4eb5822fc3fd2c2373afd14bc65d113095663e6acab559cf5789f"
+      "src": "slim49:01. High/wear/female_shirt.glb",
+      "sha256": "744c57949c44e781d448e9a78877621acdc11061145205f973249190a2098856",
+      "precompressed": true,
+      "lowSrc": "slim49:02. Low/wear/female_shirt_low.glb",
+      "lowSha256": "9b83d110bf6cbbd2238f7c538ee2bb88a165bc532b55089fc0a16d5be635b791"
     },
     {
       "out": "characters/wear/hair_cap.glb",
@@ -659,10 +671,11 @@
     },
     {
       "out": "characters/wear/hair_ponytail.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/01. High/hair_05_ponytail_high.glb",
-      "sha256": "b6fc66fcb9071033d18545b8d3c9350f40b45d61f2de0a952bf857fa00a12d15",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/02. Low/hair_05_ponytail_low.glb",
-      "lowSha256": "86732534c2a20dca69182ed067031ae0b0b0579153580f08e5b0aa7d17a4223d"
+      "src": "slim50:01. High/wear/hair_ponytail.glb",
+      "sha256": "0563d7aea08f31c1f53159385f275612d493f54d723a6620052a440fd4d4f27f",
+      "lowSrc": "slim50:02. Low/wear/hair_ponytail_low.glb",
+      "lowSha256": "173f3147924a2bf36310e5c8a73932a5f3760600951659728df20e09cad6ae2b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/hair_spiky.glb",
@@ -673,10 +686,11 @@
     },
     {
       "out": "characters/wear/hair_twin_tail.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/01. High/hair_06_twin_tail_high.glb",
-      "sha256": "ef7dcb64097d5a52af70354496d0b242890781a8a39eb380492dba57f1c9f48f",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/04. Hair/02. Low/hair_06_twin_tail_low.glb",
-      "lowSha256": "6a339da50d1e8c56169c51fd6bd97126b5af1147f8b17876f44b7c2eb1af05ad"
+      "src": "slim50:01. High/wear/hair_twin_tail.glb",
+      "sha256": "9938a5d89772bf1e3aa70856fc7e9b07f6076088e971e4899beb093382ea0fc3",
+      "lowSrc": "slim50:02. Low/wear/hair_twin_tail_low.glb",
+      "lowSha256": "a91a9151f97d4a7469418ef60ffd63bdbe90123b7d094bf0531f9cd350f3c205",
+      "precompressed": true
     },
     {
       "out": "characters/wear/hat_crown.glb",
@@ -848,18 +862,25 @@
     },
     {
       "out": "characters/wear/overalls.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/overalls.glb",
-      "sha256": "c2c75d38d89916b446b5ae72fb9ee9e749246d47d105ce85a1daf20eeffd019b"
+      "src": "slim49:01. High/wear/overalls.glb",
+      "sha256": "1245d64986b3b87e0402b6aa9757731d4b5b082063db190ab5c6dc1405fac044",
+      "precompressed": true,
+      "lowSrc": "slim49:02. Low/wear/overalls_low.glb",
+      "lowSha256": "f54d100f0ed0feaa597ad4c737aa041e6c634c7dc9604bd5533a5852a51e1c16"
     },
     {
       "out": "characters/wear/shoes.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/shoes.glb",
-      "sha256": "6196801156367cbd0f7d8f3c1e50ad8d061471338908ad72574799950ab536e5"
+      "src": "slim50:01. High/wear/shoes.glb",
+      "sha256": "6ee409ef8acefa81755c8f442cde87fa2f156b5fa1093761857c356f2ff5c549",
+      "precompressed": true
     },
     {
       "out": "characters/wear/short_skirt.glb",
-      "src": "overhaul:refined/03. Game Island character 2026-10-05/03. Modular assets/short_skirt.glb",
-      "sha256": "60be34a4b47f562048239032b3083637ed75c70f8559cbc6182601b3f1768b9a"
+      "src": "slim49:01. High/wear/short_skirt.glb",
+      "sha256": "eaf1adb08425c1ca23d81b419dcb9c8883690b807578d66727985bd4ac3d78cc",
+      "precompressed": true,
+      "lowSrc": "slim49:02. Low/wear/short_skirt_low.glb",
+      "lowSha256": "9cd1ce1b48f57d3d93beb70c06951508de32ffb6f734e37735444a049071a660"
     },
     {
       "out": "gaps-v1/autumn/foundation_autumn.glb",
@@ -1396,354 +1417,402 @@
     },
     {
       "out": "characters/wear/cape_short.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_01_short_high.glb",
-      "sha256": "648f54141051e5b96745e6a55d9929f8a9bef838c17b4c17efb29bc37b0c5caf",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_01_short_low.glb",
-      "lowSha256": "8a4cf698769f263f2456ad9d4421ad969c25909254fd85fe71597f7b433fef20"
+      "src": "slim50:01. High/wear/cape_short.glb",
+      "sha256": "88d83e82c419d987b647f24ddd6f6f77586b829908f85f5fd691d826cee9b6e8",
+      "lowSrc": "slim50:02. Low/wear/cape_short_low.glb",
+      "lowSha256": "e8eb9b04a359342d474bf4da7e3729aa091acf83c53ce27b05b0f5babe623b3c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_long.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_02_long_high.glb",
-      "sha256": "ef6ae3a156ce5c837c1d98b8f437d2963c0c29b7093883545978f57141307723",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_02_long_low.glb",
-      "lowSha256": "cc510940445cf2c6bb0b2e8de928363e0238c2c861b6a699bd6fc11948906fd4"
+      "src": "slim50:01. High/wear/cape_long.glb",
+      "sha256": "f43fbaf8b8aa213427c67c364b290a6467c2171ec406fbb9ee0e663d775d6a31",
+      "lowSrc": "slim50:02. Low/wear/cape_long_low.glb",
+      "lowSha256": "ca30cb61d14f57d7d4f1da3b04fbc503fd63467adbf5e3ff5e3c73d00f0073e9",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_hooded.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_03_hooded_high.glb",
-      "sha256": "405fece35e7c10c6c4db40c59fad6d30d32096ad2fb0ca8f47a663f37e1218ab",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_03_hooded_low.glb",
-      "lowSha256": "52a80d3f25f0fa74b571e5e0d5968e9942de7d361d97b8e2883f676f45c409ce"
+      "src": "slim50:01. High/wear/cape_hooded.glb",
+      "sha256": "2283fad84c350de7af29d2279e58c07a05c2c310a80d42a85d4efc68274c5e73",
+      "lowSrc": "slim50:02. Low/wear/cape_hooded_low.glb",
+      "lowSha256": "9a6cdf0ef11a42c180ad5e3307235c0d175414c6195e270ff01a303b375af5f2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_split.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_04_split_high.glb",
-      "sha256": "36cf7bb116870af15edaad1a851b980e381c4073517496712b65c29cf9ef2ca0",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_04_split_low.glb",
-      "lowSha256": "c49b422755d560e8bf883bbd4d444a61fe1077d13e4bd3b3512ede315c55142a"
+      "src": "slim50:01. High/wear/cape_split.glb",
+      "sha256": "43b59d9387c8f9b5ad12d7d702597acaac7644ceb9ee138dc9b2c35637df567f",
+      "lowSrc": "slim50:02. Low/wear/cape_split_low.glb",
+      "lowSha256": "0a7db215f8ee8ab2f5a45cd5b755c6d04d3e7382245cf729375ffd49f4991f7d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_scallop.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_05_scallop_high.glb",
-      "sha256": "280ee4e16f2cfcbd31802b1505cae9945a96f549360306ecf5943745c51d55f4",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_05_scallop_low.glb",
-      "lowSha256": "6a859be0fca2964d7461b75b9cf7fb90ae01f05ab151fba94081b845546bb259"
+      "src": "slim50:01. High/wear/cape_scallop.glb",
+      "sha256": "d7e4bccf965f8e0c016f1aa46279b9ca34de67ec0d804a00865169c20f2ec9fb",
+      "lowSrc": "slim50:02. Low/wear/cape_scallop_low.glb",
+      "lowSha256": "3bf67d964db78ef9d47d4cb6cf555490ad91febfef876ebf916f5e1de6ed4183",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_leaf.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_06_leaf_high.glb",
-      "sha256": "3529038f5c5f2ee523e56ff81671061ce3ee241c2bd4d80fbddd699b06f9865b",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_06_leaf_low.glb",
-      "lowSha256": "7ae338d3d7a953511046ec2f0183d40999fa56f795bb0eed3fcfdd496014a74b"
+      "src": "slim50:01. High/wear/cape_leaf.glb",
+      "sha256": "5cec67969b1a7695bc289efeb1a3efe415fc93f0bd6345b3eb7098ea232a17f2",
+      "lowSrc": "slim50:02. Low/wear/cape_leaf_low.glb",
+      "lowSha256": "2c2841d45434b42e95a0905e5e56e43e9cbe39591442f4d6b4a7d11bef26f6fd",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_royal.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_07_royal_high.glb",
-      "sha256": "abbd721c077049642ba49ee6fbc1e527241c7d24d66246b1618151144b22dd4e",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_07_royal_low.glb",
-      "lowSha256": "d1eab5b363b449fac1bf18ffb50e3934076a37ba68188279bb32c0b7fdd73235"
+      "src": "slim50:01. High/wear/cape_royal.glb",
+      "sha256": "d55074e7133a5b761eeffa672ff8c94f148887abab51613a91799e8908d95281",
+      "lowSrc": "slim50:02. Low/wear/cape_royal_low.glb",
+      "lowSha256": "a2d8393bb893d4f962cc8f28694ebad89fd51585ce94c56ba0d4a2abc0b7992b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_star.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_08_star_high.glb",
-      "sha256": "0ac404730ee0e369cccbf40cff09a6cd2b275b8b995501db90863fb03eb37083",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_08_star_low.glb",
-      "lowSha256": "5aa3d2bca1a352d3925dc9d89be3791c7d5d0bdcee6442a792e807f47bb026c9"
+      "src": "slim50:01. High/wear/cape_star.glb",
+      "sha256": "08cb4e97678528d242acda29dd946098833af72b927c2064f4567a8d69bd0d5b",
+      "lowSrc": "slim50:02. Low/wear/cape_star_low.glb",
+      "lowSha256": "c229f968a47cf817395a65be75a7fa1af9732639cc3ec3c5414a08c2fa74934e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_wing.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_09_wing_high.glb",
-      "sha256": "6e67a1c411ad4014f067f0891e1fd7144ace22f9cac2452453d16bb96f4e5af7",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_09_wing_low.glb",
-      "lowSha256": "75f50563e84d853739f3cc4bd882e3a193dbe6d2c5f4b66800dc93a86f700a62"
+      "src": "slim50:01. High/wear/cape_wing.glb",
+      "sha256": "84cc59347de6362e1c99a1af3b081b6c4c948390940d71dee2fa9fda059924a4",
+      "lowSrc": "slim50:02. Low/wear/cape_wing_low.glb",
+      "lowSha256": "2ef348e27883d7a452e43c54204733c31f2051479aecceddc5c53a5fdee9108f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_poncho.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/01. High/cape_10_poncho_high.glb",
-      "sha256": "ac973992eb6111925ba412d3778b7e24db31a918a23805c90f220528019326ba",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/07. Cape/02. Low/cape_10_poncho_low.glb",
-      "lowSha256": "701d9b30423bd05f047854e8b8b8724b270f7f939975125f7058489f507c84c4"
+      "src": "slim50:01. High/wear/cape_poncho.glb",
+      "sha256": "a0d1b446ac56ccf8c12afd73a7ec662be9de5686b15c6dbcf65995fae0ae0c03",
+      "lowSrc": "slim50:02. Low/wear/cape_poncho_low.glb",
+      "lowSha256": "c7cc62ae96419887fa34d2b8f024db79523a3fb46cd4f1b8c1cea35823bcc305",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_cat.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_01_cat_high.glb",
-      "sha256": "7dcbb60616b776491f5ef7386413b32f55c5b64e0ab9addba0d8b43a9db590ae",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_01_cat_low.glb",
-      "lowSha256": "58c56564c45431e03ea3fde8f80a8eee1c6c45ad2014b999d31e6b02de17ff2a"
+      "src": "slim50:01. High/wear/tail_cat.glb",
+      "sha256": "829510fcd49d102b76372071fb34dbf8a4aacba960bbf2c1318ff1086f618a8a",
+      "lowSrc": "slim50:02. Low/wear/tail_cat_low.glb",
+      "lowSha256": "6fb66d5c6cd55ad06dde4e7a5ddfe356562dd932bc3c4098821fa4e96e029409",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_fox.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_02_fox_high.glb",
-      "sha256": "9495a79a90f2e6b3852425100df33a5d39dba1f760c6fcd96df580ed7b5a0240",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_02_fox_low.glb",
-      "lowSha256": "55ad723f2169649dc860d2e7ed487d8a178256ec8518d04f7c0da8ed1c1f2405"
+      "src": "slim50:01. High/wear/tail_fox.glb",
+      "sha256": "c2569ff6392cc775826715bcd4ecd34c42165fc0a963b46f8ac5cf3ab8072e0a",
+      "lowSrc": "slim50:02. Low/wear/tail_fox_low.glb",
+      "lowSha256": "0247e44de0ecbe582ac43fe4a5396ec40004465cbe54f28797bde2d2c1f64f07",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_bunny.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_03_bunny_high.glb",
-      "sha256": "a844a508c1869c6587e0eb706c5935013300946d92e89c04b85085a531d3e643",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_03_bunny_low.glb",
-      "lowSha256": "f2ca22a81b17cf00ed06bf9a87de4be2b9802b6237d47caf91fc9f378f9c6306"
+      "src": "slim50:01. High/wear/tail_bunny.glb",
+      "sha256": "e1f5e14113802d72c2d3e2a8320b7520a6767881d88f5ed64ccf8699fc369baa",
+      "lowSrc": "slim50:02. Low/wear/tail_bunny_low.glb",
+      "lowSha256": "339af928fdc4f73ba5deb453c5e82d28ddaea5015c181352d5bbd1657b9bb3ad",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_raccoon.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_04_raccoon_high.glb",
-      "sha256": "b36a79e3ea3a6bde760abfb978dc5dd2c8a394531b4dac6a7f524838983bdaf9",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_04_raccoon_low.glb",
-      "lowSha256": "dadf31250900fd82f30159701eec0ada2f2c5c19fac6bb78af1faca0dd759e82"
+      "src": "slim50:01. High/wear/tail_raccoon.glb",
+      "sha256": "c35709a3c88f8ef9654de540d5a5ce002b3d7b1c7b0331d92199fd0a37b866f6",
+      "lowSrc": "slim50:02. Low/wear/tail_raccoon_low.glb",
+      "lowSha256": "0758a902a41a0004a9721fe447fdc57c370e7d6d4cc7828c8f634fef1900a62f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_squirrel.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_05_squirrel_high.glb",
-      "sha256": "6b7e0995a34b55bd82c781393dd3a43725e3b226975a9a8abeb97f4d1d5d3aa9",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_05_squirrel_low.glb",
-      "lowSha256": "c2105cdbf723858bbba8b4cde3c01bb09037b7256fa65609054ec98a7bc8b6eb"
+      "src": "slim50:01. High/wear/tail_squirrel.glb",
+      "sha256": "8a555422d4bbbce9017a675880cdc2019f8f28e406c9b5273b5e48621f887d5c",
+      "lowSrc": "slim50:02. Low/wear/tail_squirrel_low.glb",
+      "lowSha256": "b2632e95aff2e17b94ad12a80b695d14c14813e129c5f7ca7f21d5a2fd4ac2c0",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_dragon.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_06_dragon_high.glb",
-      "sha256": "9552bdb73d2f0a818855ee5f620b7ae18f879c0ef188cf607681dd94f26d9c82",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_06_dragon_low.glb",
-      "lowSha256": "2991f5594c5dbc8c4f05db6380a6540616442e95f940681ec947f991f8016d24"
+      "src": "slim50:01. High/wear/tail_dragon.glb",
+      "sha256": "bf8cccbd32f531e2fff4e5a2d7fafceb67b13ac27535b8dbabc02f885005cde0",
+      "lowSrc": "slim50:02. Low/wear/tail_dragon_low.glb",
+      "lowSha256": "6e0a1e919c03b3a0cd188b76d6d9b58d29d823041059fe7b213e74de07a14410",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_lion.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_07_lion_high.glb",
-      "sha256": "98a984eb5e8d07793f8d8911a596933f721f6e75b381a3a5d5ab126c5b403e87",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_07_lion_low.glb",
-      "lowSha256": "07a5a08fb373bb1f173386c00e6d642ffec769208ea506c9a77912cf00355bb3"
+      "src": "slim50:01. High/wear/tail_lion.glb",
+      "sha256": "6fe1f58a07d98ba9d7eb6dc4357023f2661e7c34ec861cd016999f889154c062",
+      "lowSrc": "slim50:02. Low/wear/tail_lion_low.glb",
+      "lowSha256": "46dd99891870d35d0b7ea867236420490949cfb15c7ee1bb5a7bc75977e568f6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_dog.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_08_dog_high.glb",
-      "sha256": "1a6b363034fa15e2cd96d002a139dac78f89a6f74443df8a33ca0090521449ba",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_08_dog_low.glb",
-      "lowSha256": "6e086a6e45dd99ce7ec1c6a27685dae7d6342afb94309518b01fbc97c5bde27a"
+      "src": "slim50:01. High/wear/tail_dog.glb",
+      "sha256": "db57782b7cffb62378c71cbebd51733bb97d5cc9e54be83256f318fcb9eb10b2",
+      "lowSrc": "slim50:02. Low/wear/tail_dog_low.glb",
+      "lowSha256": "2f5cc90f1758c1130afc424863ecc3c28c7a33bcc0701cdad7ea1d1fa8464185",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_devil.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_09_devil_high.glb",
-      "sha256": "0c07fc6b5cc74dae9ad75cb7b5e3a966b07f7f56cf75496471d129d5df20f494",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_09_devil_low.glb",
-      "lowSha256": "17872140b4b2834e1394eb436b426837b19fc26bd6d3d1e737de64ac6a6320b5"
+      "src": "slim50:01. High/wear/tail_devil.glb",
+      "sha256": "1b6d9866334377d023e536a8943b85fe0a7d2b9e73dd1b3a01d4e5c46867597e",
+      "lowSrc": "slim50:02. Low/wear/tail_devil_low.glb",
+      "lowSha256": "eb1da626c44d139633922994ec7349d79ad136c4297d520495ff5db6050299f2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_ribbon.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/01. High/tail_10_ribbon_high.glb",
-      "sha256": "cbd0503d06417d471da9123f6b1b86a6b65e444ee74ef77b47284351beaf6ecb",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/08. Tail/02. Low/tail_10_ribbon_low.glb",
-      "lowSha256": "f477b53b6e6e2fc1fd1051a302642f868c10ba6fd84d1c89a51fd38618cca707"
+      "src": "slim50:01. High/wear/tail_ribbon.glb",
+      "sha256": "67dc5baba00897d3aacc3b7cd85b4c70396e7a819bd7f1e7b933ef0eee0d97ef",
+      "lowSrc": "slim50:02. Low/wear/tail_ribbon_low.glb",
+      "lowSha256": "5ef26c985391a86bfeb38a10958542dc9552e1a223ab569082de1686c09a88c5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_sneakers.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_01_sneakers_high.glb",
-      "sha256": "0095932023b456700b9b6dcff60b4f4a2c998a5120adc6f907c53e6e9a248baf",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_01_sneakers_low.glb",
-      "lowSha256": "9880984e79f551e1d13063ee65fec9d41abe93977dbf7b3ba90e0d8776c5634b"
+      "src": "slim50:01. High/wear/shoes_sneakers.glb",
+      "sha256": "36cc167760d2222e50fb8a0893308fba94eeed08e3718c66cd1212c4143365d1",
+      "lowSrc": "slim50:02. Low/wear/shoes_sneakers_low.glb",
+      "lowSha256": "97e462973c7d7d0a233d4f26d648b3656556d01959ecd067d7f872984c90054d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_boots.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_02_boots_high.glb",
-      "sha256": "8093c7fafab0eca82aa1709b0e9135c92262672948212e7efed8eb683616bb1c",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_02_boots_low.glb",
-      "lowSha256": "d38519cf7425f828d4807965c37039f5e1a35e862fcc56a23789a23d486b7f7c"
+      "src": "slim50:01. High/wear/shoes_boots.glb",
+      "sha256": "0dd7bbaab9f3d74c7ae5ba3f39669152786bb41be14a143c75c7e70896494faa",
+      "lowSrc": "slim50:02. Low/wear/shoes_boots_low.glb",
+      "lowSha256": "566f7557c54ae9ed1e9d384d2f3eb13ec779196dd54890239deaf1c2763903e8",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_rain.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_03_rain_high.glb",
-      "sha256": "9d72e26f0f27012a1736612abe78e331af5ace0ffb41c8a33df9679c0c69c7eb",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_03_rain_low.glb",
-      "lowSha256": "b0b4e79a573574a95dfd5c46a23fd6ccb4c8a1153d4f429eb7b2b0c083a9f458"
+      "src": "slim50:01. High/wear/shoes_rain.glb",
+      "sha256": "0723efbbfcba7a381723119410253741fcb8d50ce3fae0c7d1e7d41481fa361f",
+      "lowSrc": "slim50:02. Low/wear/shoes_rain_low.glb",
+      "lowSha256": "d9134ded0a68dc6f328673aa83489b50b96dc3d5b435d84f30bc786e47bf4cb7",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_sandals.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_04_sandals_high.glb",
-      "sha256": "11df7c861b6b31c95b8a787a9ecda954a4b6142771a47dd741f09043f5febf09",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_04_sandals_low.glb",
-      "lowSha256": "f2fb8d8058e19100fe935dae2502dfe826fc2c71f6fa2c5a96656b33896f14f0"
+      "src": "slim50:01. High/wear/shoes_sandals.glb",
+      "sha256": "8090a5b56f0441296d79ae1a0ae5292b5071d8520a4bbfec9cc39340736c6795",
+      "lowSrc": "slim50:02. Low/wear/shoes_sandals_low.glb",
+      "lowSha256": "699749139afa4d491ee3ebcb788514e782fba63b6ca153e5c81223f7ebe4709e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_loafers.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_05_loafers_high.glb",
-      "sha256": "233253ae6f8f1eb7b8c2b0a464df779a5a847a8bc9f4291f3a551f3ffe2cb568",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_05_loafers_low.glb",
-      "lowSha256": "08af6f31130bf92e2b0b4625dfe1b601bc92845b7f182333b0f4deae781d41e4"
+      "src": "slim50:01. High/wear/shoes_loafers.glb",
+      "sha256": "60947caeea01a12bd518c7008341e523ceb25baaf390b73f84909037aef48777",
+      "lowSrc": "slim50:02. Low/wear/shoes_loafers_low.glb",
+      "lowSha256": "e36d0251446309f9c46789bd0edc39f7a4faa69666a311dbb3a0a00d3fe24f8c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_ribbon.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_06_ribbon_high.glb",
-      "sha256": "e472ec4094e2dc1ace6bde6517434af18b313105e5170c5fc67cdf7b99060b38",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_06_ribbon_low.glb",
-      "lowSha256": "da4c7f4dcd09ae423ad31e10d40140221f8fd8041f439d248625d30f601520e1"
+      "src": "slim50:01. High/wear/shoes_ribbon.glb",
+      "sha256": "83ad755f94982a0c5745816ee0fb319b46cf418e91f57e2a4366d3fda8d2e86e",
+      "lowSrc": "slim50:02. Low/wear/shoes_ribbon_low.glb",
+      "lowSha256": "76cb39e108902f714d791b00f100c02ff9afdbb3633ab078e1cb900498475321",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_hiking.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_07_hiking_high.glb",
-      "sha256": "5d51ec6917d045e4996910bcf9822223f7ee2fb8544abbd35f43d33814cb1e26",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_07_hiking_low.glb",
-      "lowSha256": "c009f33faf64e9f2d6a20442fa7ed999000907ae2c9696b101338e6f1c90b27b"
+      "src": "slim50:01. High/wear/shoes_hiking.glb",
+      "sha256": "12c838d589f825ef6492b775eea630ca8b6a0e71d37893491bfd497167d306ad",
+      "lowSrc": "slim50:02. Low/wear/shoes_hiking_low.glb",
+      "lowSha256": "f7c0e6668330e5b0b5a52b9cf72685965092ee453fce27a1ca1658e98151fbe0",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_armor.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_08_armor_high.glb",
-      "sha256": "da7c209b8a58947c63312d0ae6290b64d0ce2d5eed08200cf0b0511558b678b1",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_08_armor_low.glb",
-      "lowSha256": "97ef3e983f254117dffaec57c8946356f13df0d686e06648310b171a358e57f2"
+      "src": "slim50:01. High/wear/shoes_armor.glb",
+      "sha256": "5c23b353a8274758320bfbb0284d3eee1b5910e4f2c30c5d64edcdb977329f99",
+      "lowSrc": "slim50:02. Low/wear/shoes_armor_low.glb",
+      "lowSha256": "c56d82fb45fb67d6a04b7f4781d0175608dee5b158b4611f3b8c6b66caae5719",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_fur.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_09_fur_high.glb",
-      "sha256": "f951535ef9a5469e28fe606ef6b63582b9f4c43ff2273522b096382dd6ff7ba0",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_09_fur_low.glb",
-      "lowSha256": "6059f1df1215bf76f2e8b2fe4aa29c42f9b8783f2f3de7feaefa795d92a672fd"
+      "src": "slim50:01. High/wear/shoes_fur.glb",
+      "sha256": "ffbb393300a485d391e5126dd5dfb02b6e0716d03502b01e93dcbb111bd83856",
+      "lowSrc": "slim50:02. Low/wear/shoes_fur_low.glb",
+      "lowSha256": "6941feeb65e104352f35484a8207f6dedf0ded48dd7fdf1c7a6a43eb470aa923",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_slippers.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/01. High/shoes_10_slippers_high.glb",
-      "sha256": "0b8f66d43fae8d41b8df2194f3beebe3ae3fae5310ea776304eb3facf2c82a0e",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/09. Shoes/02. Low/shoes_10_slippers_low.glb",
-      "lowSha256": "b34ed862ac984d2f7810c93cda77357cc5318f0a2c485e07bd39db762dd89b46"
+      "src": "slim50:01. High/wear/shoes_slippers.glb",
+      "sha256": "8d93224c3291b844feaac98de27012f82f6ec7f202439c37b745b1aa332680a7",
+      "lowSrc": "slim50:02. Low/wear/shoes_slippers_low.glb",
+      "lowSha256": "90df292d686be38b7e70a76ee65a56fa055fe30f105dbbd3b885690a1dd02b62",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_coin.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_01_coin_high.glb",
-      "sha256": "2557f9a9cdfbdee51b730ec5aabcad668ceb15189339051b233643fc72392366",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_01_coin_low.glb",
-      "lowSha256": "f53e458989feac685b827016d452a852e369ff23f5031739c6f77fcbf7cd8a0a"
+      "src": "slim50:01. High/wear/necklace_coin.glb",
+      "sha256": "4cf428fb28ed4c36fd0d8aac0c36f045aaee0e8e9810e24314c07206d3c0c0c5",
+      "lowSrc": "slim50:02. Low/wear/necklace_coin_low.glb",
+      "lowSha256": "a48424dcea457bc7c42f85bfd9e18b92de171b0b7a6db58d03f30bb7a1c2f879",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_star.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_02_star_high.glb",
-      "sha256": "b73347b3a7ebd86941492824a1d448fbd6839991330f9d28ae70756e3600f87a",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_02_star_low.glb",
-      "lowSha256": "ad1dc6d2955e09601a5ade426f6d81184dc71228188873cd3b8e1f00ef4f4a7a"
+      "src": "slim50:01. High/wear/necklace_star.glb",
+      "sha256": "12736d8c2887430bde4fffd498c41e4369435616ce8891351755688e1ff05aeb",
+      "lowSrc": "slim50:02. Low/wear/necklace_star_low.glb",
+      "lowSha256": "0ccadd12c86612229282d972becaeaad90789865681b72e97641f8ddfe9fb89f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_heart.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_03_heart_high.glb",
-      "sha256": "35ac1444cca3ff393a8546590832b2938aaf662b49bd6fe2ab550a24687da884",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_03_heart_low.glb",
-      "lowSha256": "a6ebd96a1ca05656cfd241c528885539c98e714f0497321eccf9f4e96c859818"
+      "src": "slim50:01. High/wear/necklace_heart.glb",
+      "sha256": "01a5fc1abfc4eb096edf948fd4e36fe30773dac3fd80f297d3b49618faff6b1f",
+      "lowSrc": "slim50:02. Low/wear/necklace_heart_low.glb",
+      "lowSha256": "da6dd51a9625e2187688cad38494f9063cbbebcadfcd712704f75e3fdbe67bc2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_moon.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_04_moon_high.glb",
-      "sha256": "5426fd3279ef1cb3e2bebc7bb85c7d1b9a9552c876477eb3322d0cba1362e88f",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_04_moon_low.glb",
-      "lowSha256": "81a706ee791ed0ff91c0959fcaa0b9c23125e3763c82efa1a7e01ddf30732efa"
+      "src": "slim50:01. High/wear/necklace_moon.glb",
+      "sha256": "9b1acebb3ed7af8bd9679593f0f5fb59c1de5b95aa5ffd1b6146b9ff90b41e5b",
+      "lowSrc": "slim50:02. Low/wear/necklace_moon_low.glb",
+      "lowSha256": "7a4b097f4042581c06a8b89aeb89ca366533cfd69e66ae7a191c98a7f13281cc",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_gem.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_05_gem_high.glb",
-      "sha256": "8e3f9b8c245b84019f3bc244e7723eea3481497c2a62234285555a8654d52660",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_05_gem_low.glb",
-      "lowSha256": "968d04cad75793ad375a077e075ef9329a46aa91b8a0ab37f62cebcc694ad8f1"
+      "src": "slim50:01. High/wear/necklace_gem.glb",
+      "sha256": "5195a27ee913d77ff31e4d1ff7ac486ae3d6c18c115e98eaf0b395f99dcf1736",
+      "lowSrc": "slim50:02. Low/wear/necklace_gem_low.glb",
+      "lowSha256": "202346725c72f5cd58a375f38f2651ff6a86fde6482761a0e4879598e4227ced",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_leaf.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_06_leaf_high.glb",
-      "sha256": "39ef39dccaaee0f55bd12498484ef7358f0a7089009cc463c2e2fe861cf3b568",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_06_leaf_low.glb",
-      "lowSha256": "ae905431a86cddb5ccf2089ba423a351cf529f34eb1a5fa66835593cec9f4475"
+      "src": "slim50:01. High/wear/necklace_leaf.glb",
+      "sha256": "169ce4e177f6642b31351ca667a0aa119afeeb45b038901060e055d72e68b766",
+      "lowSrc": "slim50:02. Low/wear/necklace_leaf_low.glb",
+      "lowSha256": "6eb434f2a3276e0d45c5ac33151eedc60da45aba24d43255c0f5f0d23717ecff",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_shell.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_07_shell_high.glb",
-      "sha256": "634175def90da9f02efd303237ff619572e38b5cb9099e86053ea28b8c0d536c",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_07_shell_low.glb",
-      "lowSha256": "d4a7d7cc12a49711c305c944691a532f9b370a8dc690a4760ff2f4b9f41f9ead"
+      "src": "slim50:01. High/wear/necklace_shell.glb",
+      "sha256": "4f9eb8795818b9362d1391dcc54999f2aa36494222ee20a519b704b62f6964dd",
+      "lowSrc": "slim50:02. Low/wear/necklace_shell_low.glb",
+      "lowSha256": "24efc9b281f694f7f85bcc32897f3bb3ad34a519cfc5c2fd2b9543348e246c06",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_key.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_08_key_high.glb",
-      "sha256": "de6ac30bff4b86da312114296899532a599fc72f22d0a4d9a1fcef9049390268",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_08_key_low.glb",
-      "lowSha256": "61b78cc94b39ff813fd976e2bedadb8346911f7bccc7d223744bf72e0fe56e68"
+      "src": "slim50:01. High/wear/necklace_key.glb",
+      "sha256": "b20b5ccf8cbc1ee7077eaeb3ed30523f68e35a4d7a1a84a4c123b2e149cb6ca6",
+      "lowSrc": "slim50:02. Low/wear/necklace_key_low.glb",
+      "lowSha256": "c641754c1e7f368a22c452033b5d6492ca3edb6e99353af604a3cc6da0271a5a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_bell.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_09_bell_high.glb",
-      "sha256": "6e98160ea7a4f58bbba2197c04feab1f2c5f0a5c9ffc361f7c3626823f664890",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_09_bell_low.glb",
-      "lowSha256": "bb1a0c9155716555c76df5e1291293b51275e1d1d6a3848be06201a3f2160411"
+      "src": "slim50:01. High/wear/necklace_bell.glb",
+      "sha256": "316eef430e1db8d8e73b98c78329fbf6f955dd24b1967ab8d868ece3a357330b",
+      "lowSrc": "slim50:02. Low/wear/necklace_bell_low.glb",
+      "lowSha256": "57934cbcb4143c5b57359003415bb962d65cb562944f29e62323e5ca4d6a53c6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_lock.glb",
-      "src": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/01. High/necklace_10_lock_high.glb",
-      "sha256": "d31830040b086c56171e835967dba416686f6df15a5ce51ed2601df4f4e8c747",
-      "lowSrc": "overhaul:refined/05. Game Island skins 2026-10-05/10. Necklace/02. Low/necklace_10_lock_low.glb",
-      "lowSha256": "a10c85c7ee95ebbb0ecae723cb3c267aff39dd0768085c84d924d03fe96a6fe1"
+      "src": "slim50:01. High/wear/necklace_lock.glb",
+      "sha256": "37f6c2741514b7bc9923c0b7314a929de664f2c33de2f07258e60cd28bc1cb59",
+      "lowSrc": "slim50:02. Low/wear/necklace_lock_low.glb",
+      "lowSha256": "deeec5172d62ca6a9db02bdae9c601fd8f7d39f0e2ed17344a72c0e7d56f9447",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_casual.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_casual_high.glb",
-      "sha256": "98e785e3c41325786e64127716f451239f0564668c5e73326f2b82d973ea1457",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_casual_low.glb",
-      "lowSha256": "e96ad0da5f4f204a5dc45fa98f78642348a48917befccdde96e35da68daae897"
+      "src": "slim49:01. High/wear/outfit_casual.glb",
+      "sha256": "b37f3354fb8ee5a2cf3604e9b5960d62baaf94687f5dfae6b34397c2db9c8957",
+      "lowSrc": "slim49:02. Low/wear/outfit_casual_low.glb",
+      "lowSha256": "d30cbda4e2789547b10a76a91b4ca4a3be2565930e3960cda8b0db7f2bdb2556",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hoodie.glb",
-      "src": "motion36:wardrobe/outfit_hoodie.glb",
-      "sha256": "0f104c66e54679c4a00c11440ecf44c4ece29bc90d243416995e5b243fe3f9f5",
-      "lowSrc": "motion36:wardrobe/outfit_hoodie_low.glb",
-      "lowSha256": "bbcc8eebdab1d2bee3e0205368b544b95069f8e86084b426112f6f8114da7b3e",
+      "src": "slim49:01. High/wear/outfit_hoodie.glb",
+      "sha256": "0626454dfd8040492e3b771abaa9db383901d961cfe3567d14429cef0c4b9628",
+      "lowSrc": "slim49:02. Low/wear/outfit_hoodie_low.glb",
+      "lowSha256": "ecfb8280707c03c43eb2fe7c534baaabccbee5ffb199a9b54ce6d46a1a1c5547",
       "precompressed": true
     },
     {
       "out": "characters/wear/outfit_sailor.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_sailor_high.glb",
-      "sha256": "e35804b762cfd82d13ac185341fe5891c32b64f8fe87c94cec398af15be4028e",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_sailor_low.glb",
-      "lowSha256": "2c19782b65c4d567b74b28e2b5c700bba8113e71e144367d21f7b8177a7ae80b"
+      "src": "slim49:01. High/wear/outfit_sailor.glb",
+      "sha256": "b637b1c1d4d9c2a135358f8013f6b2fdc7085668bd4560c9572379e606903bf3",
+      "lowSrc": "slim49:02. Low/wear/outfit_sailor_low.glb",
+      "lowSha256": "4d58b3ba415f3ac522e0c5f4a887a8d4b27b538cc80a1639a05e2dfb7de42ba6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_apron.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_apron_high.glb",
-      "sha256": "2565fa8083bf7a83ec1bc0404718215009494e364a9d93be6dc8522c1b9b0057",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_apron_low.glb",
-      "lowSha256": "dabb9a85cab838d8c3b081b0f51a5e648feefad441481b02978717f0a48975dc"
+      "src": "slim49:01. High/wear/outfit_apron.glb",
+      "sha256": "6f8b1d151d2048e1551e536ff7bd894d144798cda0c40f3408cb84086b298d05",
+      "lowSrc": "slim49:02. Low/wear/outfit_apron_low.glb",
+      "lowSha256": "a2809d4e2b5b8483e628af2ba06daa42279ce948b64ab32eb3072fe3e0858f37",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_explorer.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_explorer_high.glb",
-      "sha256": "c1fe8c55caa3493fd03a84303b758fd9b98e2df1bd31be31d2b5275678376173",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_explorer_low.glb",
-      "lowSha256": "912a26ab4dcfb188e64fae898dd4a086e32d468466221336a349cdcf8ac09f95"
+      "src": "slim49:01. High/wear/outfit_explorer.glb",
+      "sha256": "31d23cfc42422472f812d1cd045e4b294fea7eb570fd8489bc8bc608250661dc",
+      "lowSrc": "slim49:02. Low/wear/outfit_explorer_low.glb",
+      "lowSha256": "e5ae556db9fab388821d1254ef10d979882e0e3c629295d8410dccde4644afc6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_raincoat.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_raincoat_high.glb",
-      "sha256": "bee8080316237da697b489101e51c700d6483011b94a62f483ddf7287da0740d",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_raincoat_low.glb",
-      "lowSha256": "890bf05866130c76d6601ecef7fef94e72531b479a31ff4a816095d216cf3157"
+      "src": "slim49:01. High/wear/outfit_raincoat.glb",
+      "sha256": "b72283784588ddfd1e1dbf6895eded08eaac5707a31ca05f616671f6bfabb565",
+      "lowSrc": "slim49:02. Low/wear/outfit_raincoat_low.glb",
+      "lowSha256": "f52e7b2f89d6752652e6b1df548fdbefc6eae811e4085c03e8def4ea2e446a4a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_knight.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_knight_high.glb",
-      "sha256": "a35891b4ed2b9507a5e7da5482c81f1e8dfbfcf869ad200b232ff37f3694a93e",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_knight_low.glb",
-      "lowSha256": "edb0cfaa2d4444e02964c6832fe30330190e80e2e260188af6aaa1b0852264f6"
+      "src": "slim49:01. High/wear/outfit_knight.glb",
+      "sha256": "08bb6d4209f58b5e50cce8837c772c4d0f1fdff9dfd023af34877fa58a7900e0",
+      "lowSrc": "slim49:02. Low/wear/outfit_knight_low.glb",
+      "lowSha256": "5600b529b3367bccc24d1f3cb1529c5c9d672a96e73877c208c18f2241ad25cd",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_robe.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_robe_high.glb",
-      "sha256": "2f21c06cb32dc4172d94499b78c57eb1559e6f109b182cb43a1263397faa724d",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_robe_low.glb",
-      "lowSha256": "5977ab1bfb64c98c5330d37e8b35bb7f0fc3be71c31eb90b039c0ad27ae021a9"
+      "src": "slim49:01. High/wear/outfit_robe.glb",
+      "sha256": "578ab9a8285bc97b9be4fd691103c8e19737927b0bfe4812a2d72a630e1855fa",
+      "lowSrc": "slim49:02. Low/wear/outfit_robe_low.glb",
+      "lowSha256": "a1a6f7231a971fe8199ee4d4d48ac09ab8b63c3494ee8c30e8cc9b6dec83f5d8",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_dress.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/01. High/outfit_dress_high.glb",
-      "sha256": "49f859cc47184b69fcf1eb0c7ea2b45c23ed6f38fe96eb3b3a7c0cfdcc53275a",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/03. Fitted 05 outfits/02. Low/outfit_dress_low.glb",
-      "lowSha256": "d1b88ec67439760f8ba1b8ce02486ba034877a99b436dfc04e17515e23c0adb4"
+      "src": "slim49:01. High/wear/outfit_dress.glb",
+      "sha256": "ec9ea65c140ab9326ab43dbacb30477b19cf4dff738e54a9b79ba1bbd9e7d3f6",
+      "lowSrc": "slim49:02. Low/wear/outfit_dress_low.glb",
+      "lowSha256": "8bf7826835ea0a724934efe48251f4a79d982b2c101a7a712bb53c013c2f7200",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_sports.glb",
-      "src": "motion36:wardrobe/outfit_sports.glb",
-      "sha256": "ea64e16543d54b1c51ace5506c9a5268f999eec7db893078513aae30dce37fc1",
-      "lowSrc": "motion36:wardrobe/outfit_sports_low.glb",
-      "lowSha256": "2006aa04585f59267a69922095061b79cf23af43a06af9e6cb2517b0b872a49e",
+      "src": "slim49:01. High/wear/outfit_sports.glb",
+      "sha256": "e8fdbd19e39b40d9da316f6d2994a2b14cf03fb4b7f5a5463910ff571eab8f9b",
+      "lowSrc": "slim49:02. Low/wear/outfit_sports_low.glb",
+      "lowSha256": "1dff4f7e87b7ad8b69ecb47643e33d21fd4222da198e2cbfa2a85dea0409edff",
       "precompressed": true
     },
     {
@@ -1762,31 +1831,35 @@
     },
     {
       "out": "characters/wear/outfit_stripes.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/01. High/outfit_stripes_high.glb",
-      "sha256": "03e2ae6e4beb7cf56d25b5bcc0ba9179ad3f78ffaef07d6436dede61aaee5cc4",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/02. Low/outfit_stripes_low.glb",
-      "lowSha256": "459ba1f1d878a4241cd30792e31790e441808926eb42f9af457617e753fbc73f"
+      "src": "slim49:01. High/wear/outfit_stripes.glb",
+      "sha256": "556d880980eaf6e56b6f632230aa50c309cfdcd328f42badda553d9e0f6631a8",
+      "lowSrc": "slim49:02. Low/wear/outfit_stripes_low.glb",
+      "lowSha256": "af2f834d201ba9415f8429d9491a1a034c6af8e352bea8e494f8dc918379aa4d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hanbok.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/01. High/outfit_hanbok_high.glb",
-      "sha256": "b6919f942f646ccdc5871ea5db7b7d0344d9aa5a9612e467ec48315be30ae7ef",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/02. Low/outfit_hanbok_low.glb",
-      "lowSha256": "fc0998322d6a34c13a158d48ad94489ee045946efb9ef274e4c973ac79acc570"
+      "src": "slim49:01. High/wear/outfit_hanbok.glb",
+      "sha256": "a77324a066e8f14de4431ca8cb15ef052867cd3c3440dd8901713225388e0317",
+      "lowSrc": "slim49:02. Low/wear/outfit_hanbok_low.glb",
+      "lowSha256": "ffecd28884d036d61eff04312d2acb03b8595b70ba2e0d4b57a11ccaf9ae5c31",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_space.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/01. High/outfit_space_high.glb",
-      "sha256": "c567c9cb3cb68bc9fedc6b4f38801f9ff4cfda86ee46fa69da1c7bb68c5083e7",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/02. Low/outfit_space_low.glb",
-      "lowSha256": "3978ffb4a8669571e68fb868d288b6d279c8e275428c962388773a1a142c0a3e"
+      "src": "slim49:01. High/wear/outfit_space.glb",
+      "sha256": "8a35bc17dbd6a56cd92e0312ad57bf93d0a630f513c78633ea4f9ad3e3b82f0f",
+      "lowSrc": "slim49:02. Low/wear/outfit_space_low.glb",
+      "lowSha256": "5d6d1519b2dd718aa24439dc2ff732d53ae6ff3cae521027bf60fc4f67590cf0",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_royal.glb",
-      "src": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/01. High/outfit_royal_high.glb",
-      "sha256": "e29a67eaa9300bf988b4b5627b47efd0cf7a50dcf229cb821a1f23a255995bf7",
-      "lowSrc": "overhaul:refined/07. Game Island finish 2026-10-06/01. Legacy avatar parts/02. Low/outfit_royal_low.glb",
-      "lowSha256": "06f10cb46ea22950f01519f73799001fbd682da2b32b466a825d9e0ec5ee94b4"
+      "src": "slim49:01. High/wear/outfit_royal.glb",
+      "sha256": "7609a09c7deabe1183caa64943038c83a4561636d24fb43c92bf6596fd51ad49",
+      "lowSrc": "slim49:02. Low/wear/outfit_royal_low.glb",
+      "lowSha256": "dfc69f8962882eea4378134f53a2b0efa879fd0311d6743950c8ea7d934975b1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/hat_halo.glb",
@@ -1913,38 +1986,43 @@
     },
     {
       "out": "characters/wear/outfit_hw_pumpkin.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/01. High/outfit_01_pumpkin_high.glb",
-      "sha256": "310d64e170500faae71b184cd0d998d11d12dbe829d1408e010f401e39086d98",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/02. Low/outfit_01_pumpkin_low.glb",
-      "lowSha256": "8a0cd58253ed4ad39434f44a86b007ec7e7bb2f11ea11edbb43d60b85ec72c4c"
+      "src": "slim49:01. High/wear/outfit_hw_pumpkin.glb",
+      "sha256": "072e93cbf120bdb5573f9572fe41e7813a9a75ffa98a79cf619a2263289cf415",
+      "lowSrc": "slim49:02. Low/wear/outfit_hw_pumpkin_low.glb",
+      "lowSha256": "0244157177fc406491803f6577a3f5120ea6a867a5c03a330c3bacc6e70a210e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_witch.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/01. High/outfit_02_witch_high.glb",
-      "sha256": "1d07b12281d04c933247db5d32e6f480324d9930ae6e5b3d1d9b49bdfee5e675",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/02. Low/outfit_02_witch_low.glb",
-      "lowSha256": "7d793a73073bea8552f7f8852c70c34a9bd6aafa59db80c02750a1d4eb9e41ac"
+      "src": "slim49:01. High/wear/outfit_hw_witch.glb",
+      "sha256": "1e0d917ca69943a4a82391ef44786278b7afc20a95d12d0720e113045d870a89",
+      "lowSrc": "slim49:02. Low/wear/outfit_hw_witch_low.glb",
+      "lowSha256": "b3cf8550f2b50fd18a7271c2dbbab24154a58f9dced001715f8ae2e911b4fb12",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_vampire.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/01. High/outfit_03_vampire_high.glb",
-      "sha256": "077150b89baf8406cde52c2287d30727b7932c6904c575d741ed619c95c15188",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/02. Low/outfit_03_vampire_low.glb",
-      "lowSha256": "a0ce84d91fb5d6b971df41d05def11f07948b540adff4956f89e923af1a5f16d"
+      "src": "slim49:01. High/wear/outfit_hw_vampire.glb",
+      "sha256": "b262f1c0f4c675aa941acccba4e045ba89a222a6faf1a54291395dbcc60012f3",
+      "lowSrc": "slim49:02. Low/wear/outfit_hw_vampire_low.glb",
+      "lowSha256": "1e771acff115cc65d3932194d606d27593fff9b261f34f9322368aef1b63c14a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_mummy.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/01. High/outfit_04_mummy_high.glb",
-      "sha256": "7d5cb091cdbadac2dc25f4f619062b6dc004e848e1084a953ae089ebb670c520",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/02. Low/outfit_04_mummy_low.glb",
-      "lowSha256": "abf6fa01395c301c92812386e74889125e7b175625b1fdb64701e66f83599726"
+      "src": "slim49:01. High/wear/outfit_hw_mummy.glb",
+      "sha256": "2199489c698bc45505ae7681bdf1365f90c85d82928c0d1a10cd7ceadfd55c2d",
+      "lowSrc": "slim49:02. Low/wear/outfit_hw_mummy_low.glb",
+      "lowSha256": "c519e6db362e811ad469de77e4155a45104a2df7ce2a951308ef903a4487752e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/outfit_hw_ghost.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/01. High/outfit_05_ghost_high.glb",
-      "sha256": "498fbd1f6316db4e1dc44adb9b1841d6fcc5c44a661681ec7ee23ddb99052ec7",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/03. Outfit/02. Low/outfit_05_ghost_low.glb",
-      "lowSha256": "5d8b6f0656bc4e96b8432c0eb09642938e46cd4c74b8537a68531bada220ecdf"
+      "src": "slim49:01. High/wear/outfit_hw_ghost.glb",
+      "sha256": "78ddb28e47a642687747dcada98f38aa7b1f40a9be256d7bdf2b630f03f85fba",
+      "lowSrc": "slim49:02. Low/wear/outfit_hw_ghost_low.glb",
+      "lowSha256": "9c516fd566b22ac5bd0b282818681a8b14f6a67bd96d2ba960177753f908b336",
+      "precompressed": true
     },
     {
       "out": "characters/wear/hat_hw_witch.glb",
@@ -1983,87 +2061,99 @@
     },
     {
       "out": "characters/wear/cape_hw_bat.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/01. High/cape_01_bat_high.glb",
-      "sha256": "f0f711e61386062678a78f6dac7ebff9f963939797e6e6ebc0b749bff605730e",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/02. Low/cape_01_bat_low.glb",
-      "lowSha256": "969bad9081b940da1ed80ddfe62c6fd5bbb595c23f839d60c5f85756661b1b23"
+      "src": "slim50:01. High/wear/cape_hw_bat.glb",
+      "sha256": "3f2dee8ab85861742b98eac93f2ab1f12555b2e659c05de9098d1d95506e84a7",
+      "lowSrc": "slim50:02. Low/wear/cape_hw_bat_low.glb",
+      "lowSha256": "651da859c1b6ecbcb403e25776a649c090fe336c5876cb54482bed9aed4b2059",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_hw_moon.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/01. High/cape_02_moon_high.glb",
-      "sha256": "4518e9bea31c0f04c598df8fc7679891b1d15606cc3fea30ff5d10187a6682f8",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/02. Low/cape_02_moon_low.glb",
-      "lowSha256": "d61f09b5a78c64a70ec2257fc65a27b63d69277e4bd84171d2ec724a074189f6"
+      "src": "slim50:01. High/wear/cape_hw_moon.glb",
+      "sha256": "e810a327d8a36d23bc4d894e5a11deb67a1704c81dfc5d1ccc1118b6bdfc9e4d",
+      "lowSrc": "slim50:02. Low/wear/cape_hw_moon_low.glb",
+      "lowSha256": "32d1b6d9a75fc431fa0c380c8dd55c95bece4368eaf9b77a9089c083c46a577d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/cape_hw_ghost.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/01. High/cape_03_ghost_high.glb",
-      "sha256": "6263ce541f214e14e7313ea4983610c26240fd4b71e4338f89bd70c03ed227f8",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/05. Cape/02. Low/cape_03_ghost_low.glb",
-      "lowSha256": "3be4a9b161c1bba44ddf92ddf49b42c066f39e75223ca9a0fab039c2e8149cc6"
+      "src": "slim50:01. High/wear/cape_hw_ghost.glb",
+      "sha256": "dbaff59235c1c7e0560b8cc3b3cca0a49fda6bd935f25189cdca93ec9adda8a6",
+      "lowSrc": "slim50:02. Low/wear/cape_hw_ghost_low.glb",
+      "lowSha256": "d2b6d22110d0515f48eed11bc4d198c73fcbea411d0664ee56173ce54a9a30f2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_hw_devil.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/01. High/tail_01_devil_high.glb",
-      "sha256": "9f2a3b3e056d1add6bbda7be9a4799a4f9f36df4f483139dc7885093e0ec4588",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/02. Low/tail_01_devil_low.glb",
-      "lowSha256": "5ca3f136354ace5dd48cc1353215b9acccdf1e4304b65ee72e4488f74d746559"
+      "src": "slim50:01. High/wear/tail_hw_devil.glb",
+      "sha256": "548d1c470b2ceb9deb18a0fe65b740da5b4c6c300298f7f29d0d3e37522a8305",
+      "lowSrc": "slim50:02. Low/wear/tail_hw_devil_low.glb",
+      "lowSha256": "e65f798e3d1ff0b82985ecd3dc106439c248f74c67b9b2a2d6ec476afaa6d28a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_hw_wisp.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/01. High/tail_02_wisp_high.glb",
-      "sha256": "84c02c666f575aeaf29a84b5ccaaed58f432aee526cbb982e2dea58bd03c960a",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/02. Low/tail_02_wisp_low.glb",
-      "lowSha256": "56bd629ad2db421b485498111f2614d5fc21230e2439fbdf80b89f62bcddc466"
+      "src": "slim50:01. High/wear/tail_hw_wisp.glb",
+      "sha256": "9d0963e97847a18d4acfa89741f80493897fe42e79d13f8456f9ff688ca36ba9",
+      "lowSrc": "slim50:02. Low/wear/tail_hw_wisp_low.glb",
+      "lowSha256": "3af03042368f19c5c83854c85518b6d6a3704e3cb472de2f9eadb1e8eda8d6c7",
+      "precompressed": true
     },
     {
       "out": "characters/wear/tail_hw_vine.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/01. High/tail_03_vine_high.glb",
-      "sha256": "265ab27dcf2c94ebb19aab7fd1d218e4cf8b258a57ecce45ce4ddf77bd4c8563",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/06. Tail/02. Low/tail_03_vine_low.glb",
-      "lowSha256": "5d68eb5958b47d5576aefca3bf95e9252ee4e20b6cd919e669ad162dacca2bf7"
+      "src": "slim50:01. High/wear/tail_hw_vine.glb",
+      "sha256": "674c27f1b7a520ec8436ca11cb475fa2358aaf44ac932b27a0ee2c6da31966fb",
+      "lowSrc": "slim50:02. Low/wear/tail_hw_vine_low.glb",
+      "lowSha256": "32c10cf4267b151568242435fe6605670ef262b386e9852a84401c2fb2533a2a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_hw_witch.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/01. High/shoes_01_witch_high.glb",
-      "sha256": "52ece7177ccc5d69fad284ffd24eea58fc6f1162041e8107863a96f5bdf6592b",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/02. Low/shoes_01_witch_low.glb",
-      "lowSha256": "c8a317fed6bde990443ebb5d969cc17422f92a90fda049f045e650f8ba7dd82f"
+      "src": "slim50:01. High/wear/shoes_hw_witch.glb",
+      "sha256": "56b249c20dd313e672289f9d9cd8c10b1823d1190f977862098d0698e04eb1ba",
+      "lowSrc": "slim50:02. Low/wear/shoes_hw_witch_low.glb",
+      "lowSha256": "9a73c9b480c5548f8a9824026e54efbf85f24db48d1a02a737bbcbf53df5e20c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_hw_mummy.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/01. High/shoes_02_mummy_high.glb",
-      "sha256": "6a88353090217dc931cd216f5f693bfe4ad1560b6234df62431e1fd02f15f48f",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/02. Low/shoes_02_mummy_low.glb",
-      "lowSha256": "3327aedd6b0d731e5f651007e1c91128e2462c2feaea11a6aa00a1afec06d4f7"
+      "src": "slim50:01. High/wear/shoes_hw_mummy.glb",
+      "sha256": "46ec7c5270b67d614eee5df30df4592a21e6c2681260bdaf94f58ed8a75bb359",
+      "lowSrc": "slim50:02. Low/wear/shoes_hw_mummy_low.glb",
+      "lowSha256": "9cb4fdb63cf365d344d069d77c56f16ca4f4e93b9da1ac05ef5e38fd7bab7253",
+      "precompressed": true
     },
     {
       "out": "characters/wear/shoes_hw_pumpkin.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/01. High/shoes_03_pumpkin_high.glb",
-      "sha256": "d2294da378264894cbd784179da3211a5b9a7615f07093e48dfbc8e74124aa96",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/07. Shoes/02. Low/shoes_03_pumpkin_low.glb",
-      "lowSha256": "52ea30caa264dbe44277488ee9f74397d5cdffaec1d042240b052834ca1d76e8"
+      "src": "slim50:01. High/wear/shoes_hw_pumpkin.glb",
+      "sha256": "99e2bbfe9852769d0b1c91ba9d9efaeef5d5078017a490c92c38af521c52522d",
+      "lowSrc": "slim50:02. Low/wear/shoes_hw_pumpkin_low.glb",
+      "lowSha256": "821cd29e433c5e2c8f649ca4462dff7bfe9d4f3ccb9e2a49138924a54c3a3857",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_hw_pumpkin.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/01. High/necklace_01_pumpkin_high.glb",
-      "sha256": "1c04505b2ef80baa3957bbd86fcc8cc30fb178d1e6314627f3e52a592ce2ff62",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/02. Low/necklace_01_pumpkin_low.glb",
-      "lowSha256": "e02a8e269567cfebbdc385220438ffc80e689601033647b2b20684155c3a43c4"
+      "src": "slim50:01. High/wear/necklace_hw_pumpkin.glb",
+      "sha256": "43160e52725518a0db5be64bd6d050ccd3233c4b40df49eb37aab76b06e60fa7",
+      "lowSrc": "slim50:02. Low/wear/necklace_hw_pumpkin_low.glb",
+      "lowSha256": "ead99de4f4fddcf5d52c401505a4a0580a61a316e2add5efe86fb4d7188f9f86",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_hw_bat.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/01. High/necklace_02_bat_high.glb",
-      "sha256": "c7e438df6413188ac4bd220f68e421f375eccd0b6592d16d815a619b52880544",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/02. Low/necklace_02_bat_low.glb",
-      "lowSha256": "673ce4dff89e0b2229f27da2777ab6e6261b056f1d743569500bcde1f1bbed32"
+      "src": "slim50:01. High/wear/necklace_hw_bat.glb",
+      "sha256": "33ad674260b37ecf3de2d05a8046af8138a33948b6c7fe58aff32ebc85d11333",
+      "lowSrc": "slim50:02. Low/wear/necklace_hw_bat_low.glb",
+      "lowSha256": "03156cbf967ad8b462e4ff1bb0790fcd2a3593138bc0920601b7ad99e2e37c80",
+      "precompressed": true
     },
     {
       "out": "characters/wear/necklace_hw_moon_key.glb",
-      "src": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/01. High/necklace_03_moon_key_high.glb",
-      "sha256": "653bb2cda29f45bcb46d12fb1e59524d874543b12881a70f14aaea41dc9c92be",
-      "lowSrc": "overhaul:refined/08. Game Island Halloween 2026-10-06/08. Necklace/02. Low/necklace_03_moon_key_low.glb",
-      "lowSha256": "09a9af355eece269e1190e47a4f66bab335abc628de3817cf44ebaa0589d6456"
+      "src": "slim50:01. High/wear/necklace_hw_moon_key.glb",
+      "sha256": "5b19713d4fe6447779aabed930dd063c9bb362361e8f0f71d3b10efec3dba375",
+      "lowSrc": "slim50:02. Low/wear/necklace_hw_moon_key_low.glb",
+      "lowSha256": "7da8505a2b84f3855e961b2f3da4b769d7b0f3bcecc32b6fae8073245597949d",
+      "precompressed": true
     },
     {
       "out": "halloween-decor-v1/pumpkin_small_a.glb",
@@ -2204,10 +2294,11 @@
     },
     {
       "out": "characters/wear/outfit_suit.glb",
-      "src": "overhaul:refined/16. Game Island mayor and townhall 2026-10-07/03. Mayor/01. High/outfit_suit_high.glb",
-      "sha256": "e777f14b0d37b5be55607fc3e7fbce86cb5742911539f3741713911374c17584",
-      "lowSrc": "overhaul:refined/16. Game Island mayor and townhall 2026-10-07/03. Mayor/02. Low/outfit_suit_low.glb",
-      "lowSha256": "181e6a18768651e9724f799e7a1d0d1f09c9aa66f67a5be3e300b285d51e395f"
+      "src": "slim49:01. High/wear/outfit_suit.glb",
+      "sha256": "d6e6fb14c4f81e32e9f411b4fc33057fd04c58c07ef6d320a8e0acf75a064154",
+      "lowSrc": "slim49:02. Low/wear/outfit_suit_low.glb",
+      "lowSha256": "0430eadac11f2ea7cd87238f77a5c962bae8c3c507463959c05be22cfa6e17e0",
+      "precompressed": true
     },
     {
       "out": "characters/motions/GuardIdle.glb",
@@ -2348,10 +2439,11 @@
     },
     {
       "out": "characters/wear/animal_cat_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/outfit/outfit_cat_high.glb",
-      "sha256": "1b893cad39e020daca719af9a668135c9c0249da4402b6a2e84a2e658060d00c",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/outfit/outfit_cat_low.glb",
-      "lowSha256": "49719ae779d3f57f10dfd60f42144a651fdf0bec552735e67d5c5295122b3cd2"
+      "src": "slim49:01. High/wear/animal_cat_outfit.glb",
+      "sha256": "ebc8759a21f1473447355fe483fa6b68e0611ecd85441db36037fcbc71ccd1cb",
+      "lowSrc": "slim49:02. Low/wear/animal_cat_outfit_low.glb",
+      "lowSha256": "2b2a38964d4041197004aaa37d7558141a71757ae0979fe2b3625dc1ed4e013a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cat_hat.glb",
@@ -2362,31 +2454,35 @@
     },
     {
       "out": "characters/wear/animal_cat_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/tail/tail_cat_high.glb",
-      "sha256": "edf1de2f2b0fd471028296ccde25852a32539659b34f9275f0314849d3d52342",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/tail/tail_cat_low.glb",
-      "lowSha256": "63b9b6a36210a794956971938e024bd573934a6c63bc462e3faf4907cbfc7fd9"
+      "src": "slim50:01. High/wear/animal_cat_tail.glb",
+      "sha256": "fb1f09e9ac393eaeb498a6e8e0ad92d4a0f38031f7f42e38489614b7c02cf174",
+      "lowSrc": "slim50:02. Low/wear/animal_cat_tail_low.glb",
+      "lowSha256": "35659f749b23781db6207a3a7c18c4d81b0fd702119539bc475ac1f7a5e542c9",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cat_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/shoes/shoes_cat_high.glb",
-      "sha256": "73bf1b11e8d0392c14cab4131a412fabcbbb2ef1863705f59f62fd7969e44d19",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/shoes/shoes_cat_low.glb",
-      "lowSha256": "3577065448482919b5efdafce107d484eb3cfbfffb783525811049f224d814be"
+      "src": "slim50:01. High/wear/animal_cat_shoes.glb",
+      "sha256": "204092b89d143cbf364a5588cf737fb5944333d5e815cbaf153fabaff55ee5e6",
+      "lowSrc": "slim50:02. Low/wear/animal_cat_shoes_low.glb",
+      "lowSha256": "aaa1fe309772edb352e2ae906eeef493fdd1c71cc407660a69e4c189c3b84812",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cat_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/necklace/necklace_cat_high.glb",
-      "sha256": "f96d1bf5425b291b5640735a2eca1fd0c152e2993b5a63cc4e65833a248b6496",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/01. Cat/necklace/necklace_cat_low.glb",
-      "lowSha256": "0fa134935eaaf42cfb585aab63bca7fa7a2dfbea7df23400561272d047d0dbd9"
+      "src": "slim50:01. High/wear/animal_cat_necklace.glb",
+      "sha256": "7daa3b61447293d080c975a74d3baad94666714cca1014d256b71591fb5fa4e3",
+      "lowSrc": "slim50:02. Low/wear/animal_cat_necklace_low.glb",
+      "lowSha256": "a5c869bbf3619214f7f592a4bf14bcb7c513cb4d1d70f1f737846429bc16c3d6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_dog_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/outfit/outfit_dog_high.glb",
-      "sha256": "4f9cc9ddf34985bc3b91ce6896ad1496b3fd16730fd51c0ba3ccc8be16a0d536",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/outfit/outfit_dog_low.glb",
-      "lowSha256": "20801f75b5b67c286eea1eb5f9a6b88fb54ae8ad2b422dc9c3471252ed65ba63"
+      "src": "slim49:01. High/wear/animal_dog_outfit.glb",
+      "sha256": "3352da800562add90b96579353bbdd834fce2dbb675b4d3193a1baf017386aac",
+      "lowSrc": "slim49:02. Low/wear/animal_dog_outfit_low.glb",
+      "lowSha256": "454d0c5ca5d44493d52da2833693aed6bc52300121dd6a510a6db13ae0a46381",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_dog_hat.glb",
@@ -2397,31 +2493,35 @@
     },
     {
       "out": "characters/wear/animal_dog_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/tail/tail_dog_high.glb",
-      "sha256": "303c5e37b6e043d1fad9a71d6415577cc570bdede949246d55367cc74b544d97",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/tail/tail_dog_low.glb",
-      "lowSha256": "229c200b9db701e859ee35ea6385aaee6dc6eed4bf4f8497e8dd11728346bc19"
+      "src": "slim50:01. High/wear/animal_dog_tail.glb",
+      "sha256": "b512229247780708127b4415991b4866016e4d69a72d2268563e8306f82b8c07",
+      "lowSrc": "slim50:02. Low/wear/animal_dog_tail_low.glb",
+      "lowSha256": "4c4fbf5decefe35b10b45d125a58a7da7ae3c6d970afc0bf0dc84269367adc43",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_dog_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/shoes/shoes_dog_high.glb",
-      "sha256": "3c9cf2e2549a9f1f3d58ac6f60aa3c9d6c8d06040ce8a4565acef3f4e138698e",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/shoes/shoes_dog_low.glb",
-      "lowSha256": "696f41a094f36933e8336e9ac867b0152f67ccbb54f484be52a3d6a952aded92"
+      "src": "slim50:01. High/wear/animal_dog_shoes.glb",
+      "sha256": "c447616db186a8b766f1723388271509a34eeff13306a830e962b9ee3d17cb5a",
+      "lowSrc": "slim50:02. Low/wear/animal_dog_shoes_low.glb",
+      "lowSha256": "af8d96b4b309b76a12786cd1b11141c3b23ed9b063505382b2dd067d6e6caa35",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_dog_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/necklace/necklace_dog_high.glb",
-      "sha256": "d97680276645b8e914e62cb7e0f1b8a3b43351e5edc8e1a14ded23a1a79b07a9",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/02. Dog/necklace/necklace_dog_low.glb",
-      "lowSha256": "2e1bc0ce8614746c1f31f29e2e3999ffcf27a092f24888d2b759a5e027532426"
+      "src": "slim50:01. High/wear/animal_dog_necklace.glb",
+      "sha256": "f3181989efcf5ab8412bb87478b0d3e8e3ac884ff963b29e66d84fc70fa74180",
+      "lowSrc": "slim50:02. Low/wear/animal_dog_necklace_low.glb",
+      "lowSha256": "96f51bfd37599cc2572a65eae747fcaf04f5ccb0c01c84aff43fedbfae8954f0",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_sheep_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/outfit/outfit_sheep_high.glb",
-      "sha256": "850d57079ccb6722b6b5e7e68c969ee974f303f39317c1e0830456e4a2885ef4",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/outfit/outfit_sheep_low.glb",
-      "lowSha256": "f07cb3c81b605f82d580e039cdba727d825402dde51e0d903f9fb5ab7f171be1"
+      "src": "slim49:01. High/wear/animal_sheep_outfit.glb",
+      "sha256": "29f2b82908a308ab7cbfa5de826c55d31342cdc92f581cd877b3c4219f3575fa",
+      "lowSrc": "slim49:02. Low/wear/animal_sheep_outfit_low.glb",
+      "lowSha256": "65754f9c2faa559c9986af14163ebe1806a5c3151a1ecfea74de3f013d7688d1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_sheep_hat.glb",
@@ -2432,31 +2532,35 @@
     },
     {
       "out": "characters/wear/animal_sheep_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/tail/tail_sheep_high.glb",
-      "sha256": "52c2a37fc2aaf558b50c88d32888b1ac9540d3375a53673102e30f29022f3702",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/tail/tail_sheep_low.glb",
-      "lowSha256": "9d5c89689018a316be24cb196396156647f6d1595c43f1fdd34118af3d4cfd6b"
+      "src": "slim50:01. High/wear/animal_sheep_tail.glb",
+      "sha256": "bbe6c4af1ac86cb7e369ca6f9bc7a4b36f5089cbae37d62c8b387f545f1ebdd8",
+      "lowSrc": "slim50:02. Low/wear/animal_sheep_tail_low.glb",
+      "lowSha256": "26fff1bfda92fbaf347fd206f26dd5f8473fbb82bae93860e81d63b147d5bc3b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_sheep_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/shoes/shoes_sheep_high.glb",
-      "sha256": "bc151796c438239c9621dee4ea693cea69a38625fb003f147775f10f24472329",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/shoes/shoes_sheep_low.glb",
-      "lowSha256": "969037ddc3f0cdcd547619ff711b3ea50132feadd5f653af22e5f546f1900171"
+      "src": "slim50:01. High/wear/animal_sheep_shoes.glb",
+      "sha256": "0f68cae313e1b15a3ba2a36049144e92ea28e13a532c891586289b1e11d00bd0",
+      "lowSrc": "slim50:02. Low/wear/animal_sheep_shoes_low.glb",
+      "lowSha256": "7b08d058f7a04c741351669e068aee5bd523406c6f3270c361f1027cf8ef7cbc",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_sheep_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/necklace/necklace_sheep_high.glb",
-      "sha256": "17ea15fd2d3aa03a0ce87e13627b7aded4cd09e8195cbde30122fbb414d1cdc1",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/03. Sheep/necklace/necklace_sheep_low.glb",
-      "lowSha256": "e7690082e74be23f0a022b23e33306be2f29543bfc2bcd5b917a1df4f484cdb8"
+      "src": "slim50:01. High/wear/animal_sheep_necklace.glb",
+      "sha256": "48af4d698a0bb9f045b0fad74e68047736f80956a20b3e47abcd9bca24711f59",
+      "lowSrc": "slim50:02. Low/wear/animal_sheep_necklace_low.glb",
+      "lowSha256": "7ef34eede541cb587c0942bcf130fb680925404eea38add0ef452c39a6118355",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_rabbit_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/outfit/outfit_rabbit_high.glb",
-      "sha256": "ad05df40b71a7a1f25bc91a7f340bbe4b3bbb12adde68c704995d897b9f712b9",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/outfit/outfit_rabbit_low.glb",
-      "lowSha256": "1b48311b1e970c44d709daeb34e7b767970399ee8aaa5a01842b540bc603c772"
+      "src": "slim49:01. High/wear/animal_rabbit_outfit.glb",
+      "sha256": "00c275493a16e09d152eca7645937631bad30d3344dfae06f5f0b5ace5b0b916",
+      "lowSrc": "slim49:02. Low/wear/animal_rabbit_outfit_low.glb",
+      "lowSha256": "b4348bbe8dcfcf64fbf6556ad5028b5c798c2967be9a52f2f90553ac12599e0b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_rabbit_hat.glb",
@@ -2467,31 +2571,35 @@
     },
     {
       "out": "characters/wear/animal_rabbit_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/tail/tail_rabbit_high.glb",
-      "sha256": "4e18a36091c834a0871e65a7c63723a547906ab7b10e5a07932fab6d1f4f5282",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/tail/tail_rabbit_low.glb",
-      "lowSha256": "c7278450728f112b544797eba6c765c3dc2ca5ca3c57c5ee6cbde7b0320ed66b"
+      "src": "slim50:01. High/wear/animal_rabbit_tail.glb",
+      "sha256": "733b481c55cf0ab46f8013659628aec4fec999c0402ea676f13990f5f6395202",
+      "lowSrc": "slim50:02. Low/wear/animal_rabbit_tail_low.glb",
+      "lowSha256": "f52c4940c9895f5494945f723d3999738a7a6a31633c4b4cd3dfbad91e168ea7",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_rabbit_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/shoes/shoes_rabbit_high.glb",
-      "sha256": "590c5b1f9dddf069dddce70452abd7b7caf88d7c4e2259be88caf02c57e10df1",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/shoes/shoes_rabbit_low.glb",
-      "lowSha256": "c3c8e877b5d34cff4f6ad4cd4a81541412f8313925e0703a02df18f03e75b387"
+      "src": "slim50:01. High/wear/animal_rabbit_shoes.glb",
+      "sha256": "b115664a31c0eaeb8016a388dfe5cae5e5827fbc17e0880a7c55288b00964a04",
+      "lowSrc": "slim50:02. Low/wear/animal_rabbit_shoes_low.glb",
+      "lowSha256": "5b61132152d364bc2407071e19bd98fae51f9a687e02b45a7ccaca8f804b1189",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_rabbit_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/necklace/necklace_rabbit_high.glb",
-      "sha256": "818b25c99e39ecf5bdc1d8088834cbd9e20dcc57e12b23599c18e3041fce68e6",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/04. Rabbit/necklace/necklace_rabbit_low.glb",
-      "lowSha256": "d99cdaad01fa9ae804f71058d4b86bdd132ec4e644f5fcab951f786ddec92e02"
+      "src": "slim50:01. High/wear/animal_rabbit_necklace.glb",
+      "sha256": "9882f1a9c1ddcce1e506ddfc1e9c2b6729c7dda320b0d138082bcf5a0fb8819c",
+      "lowSrc": "slim50:02. Low/wear/animal_rabbit_necklace_low.glb",
+      "lowSha256": "066f1657bbec0cbb6603af99e7080f1af0c6b56577a0c8cb36f7cfd19dca1e25",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_bear_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/outfit/outfit_bear_high.glb",
-      "sha256": "ca8a3cfad9066c18ed040551f095f33c20c961d3598d4155554a4cc5b0d55f93",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/outfit/outfit_bear_low.glb",
-      "lowSha256": "e3fb6ed2a41215f40e94cecfc01245fb9db8c9940445f459f519110a19e5bf14"
+      "src": "slim49:01. High/wear/animal_bear_outfit.glb",
+      "sha256": "d06eb4ab89b4458fe5a535dd8225da7839da4407cfd435247177729f5f857f4d",
+      "lowSrc": "slim49:02. Low/wear/animal_bear_outfit_low.glb",
+      "lowSha256": "7c45f111c51300366aa90233f9f0948888357a55925f5a3dec2ee0cce3dade64",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_bear_hat.glb",
@@ -2502,31 +2610,35 @@
     },
     {
       "out": "characters/wear/animal_bear_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/tail/tail_bear_high.glb",
-      "sha256": "18be574e37094bf1fddb5549513329265d8764833ae06a8dabdb23103822bf97",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/tail/tail_bear_low.glb",
-      "lowSha256": "e777ab43761606aedd939c8a2ac85064a4a993db57d7ca89d23e2b3b6eb351b9"
+      "src": "slim50:01. High/wear/animal_bear_tail.glb",
+      "sha256": "350303559ff48a67b20e2f389f36dbe9c8747367c05f9334d3eeb45ea7cc0591",
+      "lowSrc": "slim50:02. Low/wear/animal_bear_tail_low.glb",
+      "lowSha256": "59046ee396911c936bbfbe55ecb44f42faa4b1cf998150dc2435224f9a42a671",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_bear_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/shoes/shoes_bear_high.glb",
-      "sha256": "d65ef572206a76504311ab7468e494398f983190484e9aa92c3aa9ceb108fc71",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/shoes/shoes_bear_low.glb",
-      "lowSha256": "91e8ee74c2b56807ce6e5b8a411e5c070184a53cf400b84c40a2501cf10cf5a2"
+      "src": "slim50:01. High/wear/animal_bear_shoes.glb",
+      "sha256": "6ee5c4d86693301d0b55d7efe8711d6380ec17000182340b9d2398bb343e1683",
+      "lowSrc": "slim50:02. Low/wear/animal_bear_shoes_low.glb",
+      "lowSha256": "064320cc11b9ced8bc46157a256b4ed5f7431b3335accd0554f7142be8b9f5a6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_bear_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/necklace/necklace_bear_high.glb",
-      "sha256": "4743f10df3b557f58e4dd4ce85cb04d7a6e5dcd7079c1426e5a9c9022b80e0df",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/05. Bear/necklace/necklace_bear_low.glb",
-      "lowSha256": "766bf655225685e3aafbd026e99ec4d8970b2591845dbcfa710bf7f8e9e81c8f"
+      "src": "slim50:01. High/wear/animal_bear_necklace.glb",
+      "sha256": "d612a125da12d1fc361034532432755b6d3f2b9bbead8cf5453e7ea503d7a58c",
+      "lowSrc": "slim50:02. Low/wear/animal_bear_necklace_low.glb",
+      "lowSha256": "995cb8e8809826b59f103de825339031e0d14c3a47e9bf4b09635e8b2a205078",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_panda_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/outfit/outfit_panda_high.glb",
-      "sha256": "190a58432681ad7518c7b6dbe61f537477de4e1f9f4743f3f3aeec8c235933ad",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/outfit/outfit_panda_low.glb",
-      "lowSha256": "b5fc8794d6974cd79a34ad143351b4899e9e1353d7280805ac6284eb404b7f67"
+      "src": "slim49:01. High/wear/animal_panda_outfit.glb",
+      "sha256": "3ec9a57d428081196f94096d113bf747ef1d0134240f2b0de1a57d737bc151bc",
+      "lowSrc": "slim49:02. Low/wear/animal_panda_outfit_low.glb",
+      "lowSha256": "505d9911b9bd34edf2346bfa6c7d7e6f0c411a7b7aff1dad4d4739ca0293e3e2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_panda_hat.glb",
@@ -2537,31 +2649,35 @@
     },
     {
       "out": "characters/wear/animal_panda_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/tail/tail_panda_high.glb",
-      "sha256": "0b7246589a364205025ca76b2db8fb1d67d51d0a19df6193241e4ee966b01ad2",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/tail/tail_panda_low.glb",
-      "lowSha256": "e3dbe1d21232aaae50314a6ba38e36f3a5495aa839347ca69902935ec24324fb"
+      "src": "slim50:01. High/wear/animal_panda_tail.glb",
+      "sha256": "ca9f64898f983425aa548496072938272a036e72afa9f647502f5ee6bc549e22",
+      "lowSrc": "slim50:02. Low/wear/animal_panda_tail_low.glb",
+      "lowSha256": "720437946c55edeb383a2ca3b06726600e0acf5d788156e7be7477cdbaed6df1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_panda_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/shoes/shoes_panda_high.glb",
-      "sha256": "7d5fd4370282e5b6d2fc6d28fbcfaa9283e53d940739489095dcb5dbfcb84b2f",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/shoes/shoes_panda_low.glb",
-      "lowSha256": "21019ae341d894aa7d1805391cac2cece6aa2150f99bacb7217b1d39a83a3f3a"
+      "src": "slim50:01. High/wear/animal_panda_shoes.glb",
+      "sha256": "617aa27546ad0595cfbb699fb8685c6aee19aa57521885b33d61c71cd1902f1b",
+      "lowSrc": "slim50:02. Low/wear/animal_panda_shoes_low.glb",
+      "lowSha256": "238227f35fef2ef8f99fcf3eb62ba3cbb63176005b64eac97e21b55d77048bfa",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_panda_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/necklace/necklace_panda_high.glb",
-      "sha256": "cb68c008431a291a007dc04765d9bdd1d8e2f1aee811829fdf33a66ff8586044",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/06. Panda/necklace/necklace_panda_low.glb",
-      "lowSha256": "78ded1e1e50f8c39deac8d82062f8c7190680eac41ea527af702c5713bee3dc1"
+      "src": "slim50:01. High/wear/animal_panda_necklace.glb",
+      "sha256": "a764d4051f89fd4af81966ea13b0ca494cecf09d258f86cc6041ee1a2fb8ba3c",
+      "lowSrc": "slim50:02. Low/wear/animal_panda_necklace_low.glb",
+      "lowSha256": "1257ead7b301720d3632c7d3dd02eb3f77cdfd46ec3bb721dc95cdf77acd4043",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_fox_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/outfit/outfit_fox_high.glb",
-      "sha256": "7c298cf12872f72d77630ad90a3f7783190ab5379be5725ba1098387a7c12783",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/outfit/outfit_fox_low.glb",
-      "lowSha256": "1ac85b4fc09bde31439064748f2310a37dc7831a310eb19d17e4c8ef58794081"
+      "src": "slim49:01. High/wear/animal_fox_outfit.glb",
+      "sha256": "ca7d0670cc3904f783035a72367285655480ea52953f011b87e06ee221bbd5a6",
+      "lowSrc": "slim49:02. Low/wear/animal_fox_outfit_low.glb",
+      "lowSha256": "f5c81d3accad588b564dd991fe3ca5c844b724de7d01defcf14bf821d08fe29d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_fox_hat.glb",
@@ -2572,31 +2688,35 @@
     },
     {
       "out": "characters/wear/animal_fox_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/tail/tail_fox_high.glb",
-      "sha256": "87456db6d24db809ea8a580dfc87c69f8f4980bdaee28b375b1b84ff140e4840",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/tail/tail_fox_low.glb",
-      "lowSha256": "a5e76211cc8b7051dd54ed7aa302d51cc5b3c60a3fc0a9593ff01dc0d03c9321"
+      "src": "slim50:01. High/wear/animal_fox_tail.glb",
+      "sha256": "9c1e6c8fc4de1e63ee9ce1dd3dda9cc8e8eb7cd3bb17f0ab37eb67417c5990a9",
+      "lowSrc": "slim50:02. Low/wear/animal_fox_tail_low.glb",
+      "lowSha256": "009bb19b6d385e59acae12957a75e05196313c82b98a588233d49b3ae60dc839",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_fox_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/shoes/shoes_fox_high.glb",
-      "sha256": "36b9c494a6426650cd0cbafb1391c3f37c346e3e3456145ba4ce26c56ffb2806",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/shoes/shoes_fox_low.glb",
-      "lowSha256": "3bcfb2eb8c9220e6485ddfd707b9faf58db8766707b7ff5cabce97ed975b37bb"
+      "src": "slim50:01. High/wear/animal_fox_shoes.glb",
+      "sha256": "eccb3c3fa0b1c0f730a1ed9fa92f89e43badbb64c39bfb4382e20b02ce3fe5cc",
+      "lowSrc": "slim50:02. Low/wear/animal_fox_shoes_low.glb",
+      "lowSha256": "feefa63bd9366a07068d63046d0bc9d9aac4c1092c26b70d31311bd18a62ca28",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_fox_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/necklace/necklace_fox_high.glb",
-      "sha256": "d77c32878cea1af10aa3ef7dd8bd19ffddb38745b584ec01a8c93820f8768ca9",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/07. Fox/necklace/necklace_fox_low.glb",
-      "lowSha256": "96a1cbc389a05e308ddbb713791f2b1e56027ba9350e140ae0742098a9c68a25"
+      "src": "slim50:01. High/wear/animal_fox_necklace.glb",
+      "sha256": "018f4a0c2fd63fb62fd762d8916658f5b8e608a2783bd753dd6d1d6b54b4bd43",
+      "lowSrc": "slim50:02. Low/wear/animal_fox_necklace_low.glb",
+      "lowSha256": "c8e67d4c9992f61fef307cdb7e6ae8e98599046df7c8e09d7e1ce8028e140e44",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_hamster_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/outfit/outfit_hamster_high.glb",
-      "sha256": "05a2b632560e1c5cad7cc37176e14e2eb63c50ce164d70406bf5414771934c13",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/outfit/outfit_hamster_low.glb",
-      "lowSha256": "8e597bad2d798f114ed613f5cd39acac3ded44802962f58d53d77baebe4659d5"
+      "src": "slim49:01. High/wear/animal_hamster_outfit.glb",
+      "sha256": "15271f7db4a9cbc2d1673bcebef140617033dc7c25a498a2eaf4ddcebe88a3ba",
+      "lowSrc": "slim49:02. Low/wear/animal_hamster_outfit_low.glb",
+      "lowSha256": "a9c3b6ef8de451fcc5aee37dc83bf949f37b9f5dfae8b83280b2d53491c04ac6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_hamster_hat.glb",
@@ -2607,31 +2727,35 @@
     },
     {
       "out": "characters/wear/animal_hamster_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/tail/tail_hamster_high.glb",
-      "sha256": "86f06961dd2151fe95ed32c48ab9000adf09a17d0443a02bd69fe08a58c3f807",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/tail/tail_hamster_low.glb",
-      "lowSha256": "cb0ec872d1a1dc46b4f1def1856d9812ab9261d868a0c22305ada423392ac83a"
+      "src": "slim50:01. High/wear/animal_hamster_tail.glb",
+      "sha256": "7ab49effa5f9e8386861dea195f1846e73d623c308e16cf971e2d37b5a5c558b",
+      "lowSrc": "slim50:02. Low/wear/animal_hamster_tail_low.glb",
+      "lowSha256": "fadd14bc5f43657c62e5d2915da8dffb6fc62fc571e859ffb14e6e68bce71125",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_hamster_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/shoes/shoes_hamster_high.glb",
-      "sha256": "430d8236ab9578b3c683f88e67d4b91fde0fbe87ce791eae7f36ebca5fb0ed15",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/shoes/shoes_hamster_low.glb",
-      "lowSha256": "74037cfc3bc0ff706a05a19cd646a319498be06f0572061312830f8feb89618a"
+      "src": "slim50:01. High/wear/animal_hamster_shoes.glb",
+      "sha256": "2e67d7778e1e11690e0253e2012279700c1f9d446f6262c49b867c0f2f47af0d",
+      "lowSrc": "slim50:02. Low/wear/animal_hamster_shoes_low.glb",
+      "lowSha256": "a8ad082f17d693185cfc75346e6fee1471e7fb44e2407976f705e640ba6d7296",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_hamster_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/necklace/necklace_hamster_high.glb",
-      "sha256": "9fa59daec165724c017b11a4550e9f1563b8d7f94abd462d084b9c41274b54c5",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/08. Hamster/necklace/necklace_hamster_low.glb",
-      "lowSha256": "7bd1e08d25208056d091c28a05e6ba1a0a3ef0d5623238e48dca4f828bc10c75"
+      "src": "slim50:01. High/wear/animal_hamster_necklace.glb",
+      "sha256": "2f7eda0423232dd0b8e5a3cac1952411ef29aaaad34a4d91f151c82064b0079d",
+      "lowSrc": "slim50:02. Low/wear/animal_hamster_necklace_low.glb",
+      "lowSha256": "998c7ce97ee202924b68ac1e963dc8bef7ee384ba201865060c115b76762f6a9",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_pig_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/outfit/outfit_pig_high.glb",
-      "sha256": "6e7251fd5d61649c0d10d546e8c30082d7739b0ccb58162d1d57bef5169374c7",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/outfit/outfit_pig_low.glb",
-      "lowSha256": "62a60fc1e0d2e7dd31e1cced67c84f081b45a90584bbaa36bda2348fc763d09b"
+      "src": "slim49:01. High/wear/animal_pig_outfit.glb",
+      "sha256": "a801a407dd04165aaf301f32b4af408953e127ea3cf624e478f1cba43d867cc3",
+      "lowSrc": "slim49:02. Low/wear/animal_pig_outfit_low.glb",
+      "lowSha256": "85101278b9b1e0aa21da554d8bb03c2261fe7f79423569b2a2005a9fa16692ac",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_pig_hat.glb",
@@ -2642,31 +2766,35 @@
     },
     {
       "out": "characters/wear/animal_pig_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/tail/tail_pig_high.glb",
-      "sha256": "9734de0d1f07cab21797b955b2ce011aa0340ea27a9cf800d43db34b7c230efb",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/tail/tail_pig_low.glb",
-      "lowSha256": "acd3b74c901c810fc3ac2a10228b7374aaa69ac17529e4d385be19fb06f895c9"
+      "src": "slim50:01. High/wear/animal_pig_tail.glb",
+      "sha256": "4dd221589468d4e951a1b00ffc1ae7ecf3496476449d3c6dd9d4f402419df719",
+      "lowSrc": "slim50:02. Low/wear/animal_pig_tail_low.glb",
+      "lowSha256": "4a7956f7399cf3185b7063c51462a59a46f5c650ce59bf4f56507fdcc38488f1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_pig_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/shoes/shoes_pig_high.glb",
-      "sha256": "d1624b2eb6277d2b1648c939962a51d0e4d24f9d62fa7e862b353b67da563f9a",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/shoes/shoes_pig_low.glb",
-      "lowSha256": "26cc9a3165432bc7db5f9122bce3c853af43d1c904778482f77e191dabe76c77"
+      "src": "slim50:01. High/wear/animal_pig_shoes.glb",
+      "sha256": "af0f10e6e95c064ff556472a450d9fdfc0c2ee27e52dce6e0db01d3a3d1623b1",
+      "lowSrc": "slim50:02. Low/wear/animal_pig_shoes_low.glb",
+      "lowSha256": "5a86e0b117496d58e55ed722d064de8264f32b6843c2c596e49b961044864031",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_pig_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/necklace/necklace_pig_high.glb",
-      "sha256": "b33dfad8cdaed6b736bfbd6cd6f66ae91c4d78f87ee8b76697b3c863bdf4d16e",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/09. Pig/necklace/necklace_pig_low.glb",
-      "lowSha256": "1849ab34abd87eb682c6b13343dcbb2a8fc3aafba401391af6bbe701bc1f520b"
+      "src": "slim50:01. High/wear/animal_pig_necklace.glb",
+      "sha256": "de98340e4ce0b683e145b8e94448a9656f66a45eb8ee2b4a37d068571f4b7478",
+      "lowSrc": "slim50:02. Low/wear/animal_pig_necklace_low.glb",
+      "lowSha256": "47fcec14ab1a08c511ed55c5bbfe6f34c1ef432ec32dd240499130ec9b37f153",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cow_outfit.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/outfit/outfit_cow_high.glb",
-      "sha256": "99f55cd86b72eb3b01757ffb3a72c1ceb5d3e94ad9229b0d1be1d7dfb607889a",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/outfit/outfit_cow_low.glb",
-      "lowSha256": "be06df22b6dacc7a556bbfac05c0a88d7fa10cc761549820fc8325913054ecce"
+      "src": "slim49:01. High/wear/animal_cow_outfit.glb",
+      "sha256": "43949b807c6227b73d7ad9827594e5a91f341886fed3c4336cbd97fe1a754c6d",
+      "lowSrc": "slim49:02. Low/wear/animal_cow_outfit_low.glb",
+      "lowSha256": "a29cb06e9ee506af5dc94855a4493b540cc3636b587a7846eda8515370ec9afe",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cow_hat.glb",
@@ -2677,24 +2805,27 @@
     },
     {
       "out": "characters/wear/animal_cow_tail.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/tail/tail_cow_high.glb",
-      "sha256": "dd6ce60fb368ab98f769ebf35837a34d2ed7c0f6fc70d6576ac5a367ef13b376",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/tail/tail_cow_low.glb",
-      "lowSha256": "e41b7f8829a6036a4daebb29e9422158bb4b3d57897f776bb48dae0cb5714020"
+      "src": "slim50:01. High/wear/animal_cow_tail.glb",
+      "sha256": "84570170f0152e896f3a80d9573154aca001f7e73ea76088232a17c368556f56",
+      "lowSrc": "slim50:02. Low/wear/animal_cow_tail_low.glb",
+      "lowSha256": "2b218e5b822ca25a6a0d5aa55ed5a6557a822f9a1ee0f31834be61d856bcc81f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cow_shoes.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/shoes/shoes_cow_high.glb",
-      "sha256": "49180dc27144cb5c346a9bc81c7b5448e7ec70a460757a6a6105302f0bafeabc",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/shoes/shoes_cow_low.glb",
-      "lowSha256": "2a289a6720891fb414a5c22fedc0f3d1d8611612cf683a47fe29cd7a1e092509"
+      "src": "slim50:01. High/wear/animal_cow_shoes.glb",
+      "sha256": "325209750fe588f160fb1d9c06cc8f29b5389b637ae7a217a2f1cc256bffe2a4",
+      "lowSrc": "slim50:02. Low/wear/animal_cow_shoes_low.glb",
+      "lowSha256": "c6fd712e2b2fed1521de0a518765481bccf89e6d6115b4598ee64f0bb267a1bb",
+      "precompressed": true
     },
     {
       "out": "characters/wear/animal_cow_necklace.glb",
-      "src": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/necklace/necklace_cow_high.glb",
-      "sha256": "1b1dbe3db37ce5988dc759d582b664e7d9b984a53b9146f585ad5927fb358a3b",
-      "lowSrc": "overhaul:refined/18. Game Island animal sets 2026-10-07/10. Cow/necklace/necklace_cow_low.glb",
-      "lowSha256": "796acda4f9d3d8670c4c42edcb7ded20155408383ff071e8fc16147252bd2ca7"
+      "src": "slim50:01. High/wear/animal_cow_necklace.glb",
+      "sha256": "6316f66a3743043cd7189bcf77fd0ea011f9fb67ad9f05cb3675d38a0523c819",
+      "lowSrc": "slim50:02. Low/wear/animal_cow_necklace_low.glb",
+      "lowSha256": "680df89f33f1e8a69bee06bde9679547fb081fa4195b0e836c72e641e104f71b",
+      "precompressed": true
     },
     {
       "out": "life-v1/tree_harvest_spring.glb",
@@ -3385,136 +3516,155 @@
     },
     {
       "out": "characters/wear/x2_outfit_tidal_surveyor.glb",
-      "src": "overhaul:general/outfit/tidal-surveyor.high.glb",
-      "sha256": "9d5bd0f548db2cde78eda1463b7b79579338ed3c0fdfc45e8040e42e77c610d5",
-      "lowSrc": "overhaul:general/outfit/tidal-surveyor.low.glb",
-      "lowSha256": "9d5bd0f548db2cde78eda1463b7b79579338ed3c0fdfc45e8040e42e77c610d5"
+      "src": "slim49:01. High/wear/x2_outfit_tidal_surveyor.glb",
+      "sha256": "ff23830d772165289e33812682457292a37eb94199837d15fef3983aacc74e77",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_tidal_surveyor_low.glb",
+      "lowSha256": "ad1c7be142decae900a2f5fb964cc0f499df4541e3a6b1985f915841e609d79f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_coral_diver.glb",
-      "src": "overhaul:general/outfit/coral-diver.high.glb",
-      "sha256": "4b8096bd226b35ad0721810b835414603ca31e086bce2aca80d722bb7225be95",
-      "lowSrc": "overhaul:general/outfit/coral-diver.low.glb",
-      "lowSha256": "c1d9e0c9922653565f8d74a9f0a33dcdad51d4307032375286d90ffa765f0db4"
+      "src": "slim49:01. High/wear/x2_outfit_coral_diver.glb",
+      "sha256": "88e92d4b303ef6c475cdeef17ef73bed73960d199433314cec5b396d763d8a97",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_coral_diver_low.glb",
+      "lowSha256": "a3a31bbc38014e20012daaf2e257ff20e4b9e22f65fb747cfa4020d34aed68f5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_tea_master.glb",
-      "src": "overhaul:general/outfit/tea-master.high.glb",
-      "sha256": "607b3731e0ce22d0bcf95e0a19bf5eba6f9be82ac6e78ef8f8ea54d4169285b2",
-      "lowSrc": "overhaul:general/outfit/tea-master.low.glb",
-      "lowSha256": "061065ac6c8129f7374981a92bb15a8e6dcdaed0211d086594e931b4444a49d6"
+      "src": "slim49:01. High/wear/x2_outfit_tea_master.glb",
+      "sha256": "04e4bf412f030c15279a02042b1dce174ae05d142705b80fe2618472f13afdfa",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_tea_master_low.glb",
+      "lowSha256": "c67ed165e475f5c331cee8cddf2cae3c592099941f35be46d7ef40ebf2c91506",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_potter_smock.glb",
-      "src": "overhaul:general/outfit/potter-smock.high.glb",
-      "sha256": "d5b439394fe49f0197c1b4bee8d3663cd6346a65742577e2298a582fe6a42788",
-      "lowSrc": "overhaul:general/outfit/potter-smock.low.glb",
-      "lowSha256": "674060a65da9c4f9758d832203c8d11239a26672b8b510c4d04840fa60526a99"
+      "src": "slim49:01. High/wear/x2_outfit_potter_smock.glb",
+      "sha256": "6d7bc97a2a90201fc31e9497a7acdc486c039f9dde58ac7c6ef1b5311814a155",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_potter_smock_low.glb",
+      "lowSha256": "f09c6a04639395c7584baf592840d09934bd7e82c4ea3facc9088ee04f8daf7b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_star_cartographer.glb",
-      "src": "overhaul:general/outfit/star-cartographer.high.glb",
-      "sha256": "9e3c564f1e149a2d8885c0843c980ec59fd876e2e6cc8bcaa381a58d3367b9a5",
-      "lowSrc": "overhaul:general/outfit/star-cartographer.low.glb",
-      "lowSha256": "9e3c564f1e149a2d8885c0843c980ec59fd876e2e6cc8bcaa381a58d3367b9a5"
+      "src": "slim49:01. High/wear/x2_outfit_star_cartographer.glb",
+      "sha256": "a62acaa4e466057ad119c5b03a21f221cace22e38dbdb5de9ec2578427d4183a",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_star_cartographer_low.glb",
+      "lowSha256": "da2f2778e54981bfbc3842450a1cb6a427675c6288180a1c1107d63167c43276",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_moon_courier.glb",
-      "src": "overhaul:general/outfit/moon-courier.high.glb",
-      "sha256": "a25da0b291c864d8542de0f068f6b3675b00ae7aae7efb6c523bd1f6f918d074",
-      "lowSrc": "overhaul:general/outfit/moon-courier.low.glb",
-      "lowSha256": "8f7d7113cef01d0f64fa6a7b7a84908e75229321b47dea6216db485760afba8e"
+      "src": "slim49:01. High/wear/x2_outfit_moon_courier.glb",
+      "sha256": "0f03488dee2d07072dfa65284c44eb6534247d532b9145c8b0dbef03d90975ae",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_moon_courier_low.glb",
+      "lowSha256": "1ca3ce5eb8d269a257840b2425f7a9fff23258126f9d668260a1416e906c916e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_bamboo_weaver.glb",
-      "src": "overhaul:general/outfit/bamboo-weaver.high.glb",
-      "sha256": "c1c0b967b0b64e6c5d29cd924360c22ca397104cb9f5c3085349e0f1474e0a26",
-      "lowSrc": "overhaul:general/outfit/bamboo-weaver.low.glb",
-      "lowSha256": "4ec760698fb267e44290909c296af16d38441ba44e9142c9a5f8388a7ed28079"
+      "src": "slim49:01. High/wear/x2_outfit_bamboo_weaver.glb",
+      "sha256": "d7efe99583274467b1be1f77bf320d953f70fdcb05d92a015823606eb1c67832",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_bamboo_weaver_low.glb",
+      "lowSha256": "666a98f1463b0d8b3a3912c4f72380f1e41afc426140de8431bef9fc4e52681d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_rain_gauge.glb",
-      "src": "overhaul:general/outfit/rain-gauge.high.glb",
-      "sha256": "13f83633028652ae99ab793bec81403ff9f96d126942a5541ec8e3ba30a5a85f",
-      "lowSrc": "overhaul:general/outfit/rain-gauge.low.glb",
-      "lowSha256": "767d087eeff254b856d5b121319384a3028bb4cd7c20e901afd44810e9a3e7ce"
+      "src": "slim49:01. High/wear/x2_outfit_rain_gauge.glb",
+      "sha256": "c31ce5a03c610b9db42c24e2963beadaac3f2b94f47771923e960b97decdad22",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_rain_gauge_low.glb",
+      "lowSha256": "d1ddef9acea92fbc1dc88dfa619305e06f0296b6d6ad33c56e7e0cb410e7506f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_orchard_keeper.glb",
-      "src": "overhaul:general/outfit/orchard-keeper.high.glb",
-      "sha256": "d52ed22bb06a7dd8fd5c3c02b901b23f9d3cf287d0b5b71dc9e1a344436bb458",
-      "lowSrc": "overhaul:general/outfit/orchard-keeper.low.glb",
-      "lowSha256": "9b49f6c7ac326b2aa38427024d6a97e264b14cbc0ef889f9cf97db8a53409420"
+      "src": "slim49:01. High/wear/x2_outfit_orchard_keeper.glb",
+      "sha256": "e65b21318726938d4f2589cd8cd474a105fc5e132173dd955b70c98714c04633",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_orchard_keeper_low.glb",
+      "lowSha256": "f859a67f484b7f592963c5a75d56338eabf0c1188264dd887cad05b6b4b9fac8",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_snow_rescuer.glb",
-      "src": "overhaul:general/outfit/snow-rescuer.high.glb",
-      "sha256": "ffff41689d5f644d9e231a1c3afb0e9b5dc397a42516ebab78562bb67b110038",
-      "lowSrc": "overhaul:general/outfit/snow-rescuer.low.glb",
-      "lowSha256": "d35ff29f2752f65fb3c2856d18b34c3f7c16f5a92b43cfced15d9ac45288be72"
+      "src": "slim49:01. High/wear/x2_outfit_snow_rescuer.glb",
+      "sha256": "9a73f124bae87703ca74748e27bdeb0c2f8e1c08f105360107f3a5dae1ed4c7a",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_snow_rescuer_low.glb",
+      "lowSha256": "c04a6ebf217bb51f744f8d5104540c9a234c8ba8c9056a03cd991a13116e2bfb",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_reef_chemist.glb",
-      "src": "overhaul:general/outfit/reef-chemist.high.glb",
-      "sha256": "a6cebc41c70a73648f36e3d97b636ff210b38cd573e688c0452ee0683148f1e2",
-      "lowSrc": "overhaul:general/outfit/reef-chemist.low.glb",
-      "lowSha256": "2da1cdb42f78875334bc6c6be399582bd32be303f7d0e9502b6cad50c03f6b46"
+      "src": "slim49:01. High/wear/x2_outfit_reef_chemist.glb",
+      "sha256": "d8fa7616e45179d3e7f802ebb40c851ab939a53bbf6fbdd2504553b905d92207",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_reef_chemist_low.glb",
+      "lowSha256": "a6320220f3e43b70ff26b2a0878561a576f2e23e85a6aa7236f005882bb6125f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_bakery_proof.glb",
-      "src": "overhaul:general/outfit/bakery-proof.high.glb",
-      "sha256": "508dd11529368387363d645088dfb2eda6eaaebe15d5315f1e4f6b7a7a1bf0fb",
-      "lowSrc": "overhaul:general/outfit/bakery-proof.low.glb",
-      "lowSha256": "ed6d880984b1fecba74119f6d3274258611586baf05cc2a0b8a27452c132fc6b"
+      "src": "slim49:01. High/wear/x2_outfit_bakery_proof.glb",
+      "sha256": "0f2a0851d7c608b8aa2ef017d36a2a8151177a8c68fc4df806e17a6cf24bac22",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_bakery_proof_low.glb",
+      "lowSha256": "5c1fd9cf99560ff1fa20bab468fa80865646817c5d993791afcc3fa1da777571",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_noodle_chef.glb",
-      "src": "overhaul:general/outfit/noodle-chef.high.glb",
-      "sha256": "1d38512fb4e16e5fcb2321f9359ab684c7c7bd1eeb16f67f96c5c69fd237bc51",
-      "lowSrc": "overhaul:general/outfit/noodle-chef.low.glb",
-      "lowSha256": "6407121a4efd2dbb74c96d0ea251b286badf91f47eb8a34f4fee482e7125e1ea"
+      "src": "slim49:01. High/wear/x2_outfit_noodle_chef.glb",
+      "sha256": "36801b5f7fe2d909fc056e83a65b37ff31595e712e45daea014487646fdca0ef",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_noodle_chef_low.glb",
+      "lowSha256": "e7823c86f8ba735067815388ed24f2330ca630ef19430f41991a15728212c2e2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_lantern_maker.glb",
-      "src": "overhaul:general/outfit/lantern-maker.high.glb",
-      "sha256": "6b92dc974a064242a0f9621a27fea5642f72f0f8efb5fbbd4424469bb67a67cf",
-      "lowSrc": "overhaul:general/outfit/lantern-maker.low.glb",
-      "lowSha256": "550e3f71b35aa5a0768333d74ec16f7c115235b4a46c1639201847d748aee5d0"
+      "src": "slim49:01. High/wear/x2_outfit_lantern_maker.glb",
+      "sha256": "17414c0d86cb514df3bc414da62065cb47a185344dc301d9cbd710ef524da9e6",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_lantern_maker_low.glb",
+      "lowSha256": "0a9f262131fd96288c8d4d5d09fce87776842d7e9f32e36b9c044cc00fb3a6e0",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_kite_festival.glb",
-      "src": "overhaul:general/outfit/kite-festival.high.glb",
-      "sha256": "32f799aa4a6a1e2c759e8c95a0026b2269f7e8bb0e170c23cba048790edec9d0",
-      "lowSrc": "overhaul:general/outfit/kite-festival.low.glb",
-      "lowSha256": "5734e06340f409235c9750f86973d1f7cafa0c142078027827b56906dc506788"
+      "src": "slim49:01. High/wear/x2_outfit_kite_festival.glb",
+      "sha256": "b6d7c844a13589412efc5df4b9facd05a6bfc1f72b36402af308ac9a46b26d25",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_kite_festival_low.glb",
+      "lowSha256": "a3747795530c171b1245eeda1beaa25b55b124a739b0b85c86a0c016c43dbc03",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_harbor_pilot.glb",
-      "src": "overhaul:general/outfit/harbor-pilot.high.glb",
-      "sha256": "e51f59d089c96106aec3ced62c3646003843bc7ba5dc12e6f969355a145ed6e9",
-      "lowSrc": "overhaul:general/outfit/harbor-pilot.low.glb",
-      "lowSha256": "e51f59d089c96106aec3ced62c3646003843bc7ba5dc12e6f969355a145ed6e9"
+      "src": "slim49:01. High/wear/x2_outfit_harbor_pilot.glb",
+      "sha256": "13d59d0fb78d32067863dcc01da7f3df1262352d7162d9ba923cb20633d4cdc1",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_harbor_pilot_low.glb",
+      "lowSha256": "006606c089d944aac263727e45c93d87ce1e1f9e73f67131f14a40d90a0bcf07",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_forest_listener.glb",
-      "src": "overhaul:general/outfit/forest-listener.high.glb",
-      "sha256": "9ab8d60519a1498548ba1e736ad4c3a74f0832a024edafb082ec31b584eb88b5",
-      "lowSrc": "overhaul:general/outfit/forest-listener.low.glb",
-      "lowSha256": "54cfb02e4263c15bbf86af98864f9ffc207941ae67deb4a5ad787d0e3841d410"
+      "src": "slim49:01. High/wear/x2_outfit_forest_listener.glb",
+      "sha256": "3660c5b3ad42fb4dd956923706c36e598d33d811cc5ce1539608cb348696b32f",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_forest_listener_low.glb",
+      "lowSha256": "2622a279cfc1d6300e3c82a7e2d375a84b4f7cae6ad96fc5e73def44b314184c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_solstice_coat.glb",
-      "src": "overhaul:general/outfit/solstice-coat.high.glb",
-      "sha256": "24e35b15a8e91b7b19ef6a9375d1daaab9e8e3fb6d093771e3d35cd0b63c1e90",
-      "lowSrc": "overhaul:general/outfit/solstice-coat.low.glb",
-      "lowSha256": "bd2e766cee60983b795464bfb7f1e81206fe793e8f80e3d5c15dbc084a6a9334"
+      "src": "slim49:01. High/wear/x2_outfit_solstice_coat.glb",
+      "sha256": "e99429dea6404f3ecb1b8c911e4f5c7aa22cd3d01bb1a58728fe8285d6856b07",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_solstice_coat_low.glb",
+      "lowSha256": "3a2823568a11a934c101196c3fa2638049be89760eec0d106866a8fad323332b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_outfit_observatory_tech.glb",
-      "src": "overhaul:general/outfit/observatory-tech.high.glb",
-      "sha256": "eb522d3d28286795c521c9bd6ddfcfb5657870f0fdf3c425519ea431d225be64",
-      "lowSrc": "overhaul:general/outfit/observatory-tech.low.glb",
-      "lowSha256": "1a7a3ee209454610a85b069613ce3558e1de9e23f4b09a8a37abdd996a13009b"
+      "src": "slim49:01. High/wear/x2_outfit_observatory_tech.glb",
+      "sha256": "969afa485ef5d8055e28d75726ae96aed38a1d2ec42a4575c811b64dd259c713",
+      "lowSrc": "slim49:02. Low/wear/x2_outfit_observatory_tech_low.glb",
+      "lowSha256": "706cb0de32640bcd12528757d2124260aa0df557da11b5bdf77f1730ecd10d9f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_hat_tide_compass.glb",
@@ -3630,423 +3780,483 @@
     },
     {
       "out": "characters/wear/x2_cape_tide_sail.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/tide-sail.high.glb",
-      "sha256": "2454d40f3f24c47ac76bcbc9081442251a3231f8ba62f89916a5b25df61b0ee6",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/tide-sail.low.glb",
-      "lowSha256": "3ec4439e0cb10bbde8e559a270a2cef0188f11e25510c45891012ce6a4a88030"
+      "src": "slim50:01. High/wear/x2_cape_tide_sail.glb",
+      "sha256": "b26362027c8eed2c9a7004c9a7dab9d4b6d459cfdd43586411dce6d657279086",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_tide_sail_low.glb",
+      "lowSha256": "dae3bfa4220637a4a8c121f02de7e2d90f10b074cb31ba74de637fc5fb3f561c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_bamboo_screen.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/bamboo-screen.high.glb",
-      "sha256": "ecd4be832c332968b944002d990e991c392066f9f910417a9935b53246dbdc66",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/bamboo-screen.low.glb",
-      "lowSha256": "ecd4be832c332968b944002d990e991c392066f9f910417a9935b53246dbdc66"
+      "src": "slim50:01. High/wear/x2_cape_bamboo_screen.glb",
+      "sha256": "fa454fa0676e99f8a8597206dc8fad69f4e826da8d37069de6cedc42b6083a54",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_bamboo_screen_low.glb",
+      "lowSha256": "fa454fa0676e99f8a8597206dc8fad69f4e826da8d37069de6cedc42b6083a54",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_nebula_panel.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/nebula-panel.high.glb",
-      "sha256": "5c19db09a491d6de3b6874ab56398243384fb425577ee1acf833840acc41a361",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/nebula-panel.low.glb",
-      "lowSha256": "f93676c92759ad04ebb9e2a1e01bb7af8de7a362454d5970e2982ef21be07e27"
+      "src": "slim50:01. High/wear/x2_cape_nebula_panel.glb",
+      "sha256": "858d8fdbe3cd2615d0376811c26d617de0f4a112714588439a725121ce1c253c",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_nebula_panel_low.glb",
+      "lowSha256": "6c3a38b80e41e788f40340a6365d0b19d863fbdd05cd7109c49064254994335d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_kite_rig.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/kite-rig.high.glb",
-      "sha256": "069bc7318e72a33bbce238929efc6bd76e171dadc12e70b660f81e9331e53981",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/kite-rig.low.glb",
-      "lowSha256": "7e78e6412113b687d605573131850b1ffa034ef4a258eb929e5573007f096ab5"
+      "src": "slim50:01. High/wear/x2_cape_kite_rig.glb",
+      "sha256": "ac1c0a2388ab5d92d86d0e76f75327154033b5dcb2d16c3e8a4c364969b4ecba",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_kite_rig_low.glb",
+      "lowSha256": "10e049cd04dc7229a76b68bcac97f96c92d7d228fcfade642de19a0f5c51722f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_snow_quilt.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/snow-quilt.high.glb",
-      "sha256": "43d8b0b2946c72e4df4fd8fd07c30b41a692a1d02569a48748d988627d71e0b5",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/snow-quilt.low.glb",
-      "lowSha256": "43d8b0b2946c72e4df4fd8fd07c30b41a692a1d02569a48748d988627d71e0b5"
+      "src": "slim50:01. High/wear/x2_cape_snow_quilt.glb",
+      "sha256": "60502c8e9e9b10431964816f15a0cc00e47d422ae9e579ec1d59349d1addc727",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_snow_quilt_low.glb",
+      "lowSha256": "60502c8e9e9b10431964816f15a0cc00e47d422ae9e579ec1d59349d1addc727",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_orchard_leaves.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/orchard-leaves.high.glb",
-      "sha256": "b30a76825a6ce647d9e6334a3b359599feb30596028806a97831852ba9bf319f",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/orchard-leaves.low.glb",
-      "lowSha256": "1a0b47184188004dd09c8528009278a5049731e2a958242dfa6a814231bc4b20"
+      "src": "slim50:01. High/wear/x2_cape_orchard_leaves.glb",
+      "sha256": "627b95f4231d525a9d5cb97b68fcc50be1aa9d892c2f739f71aea7520bb6046f",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_orchard_leaves_low.glb",
+      "lowSha256": "f55b45d4fea76de1b705144c0d9c663c2452fd44cb161535da7983899eab8bc8",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_harbor_map.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/harbor-map.high.glb",
-      "sha256": "32a4cc50074cefc7d233759dc580428f931452c1e88eab70f7c2da60b8667998",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/harbor-map.low.glb",
-      "lowSha256": "5440e04e66861ac784a87d8babfb8079f9ef6d0f0a5ccd58ee964bc22e119ba6"
+      "src": "slim50:01. High/wear/x2_cape_harbor_map.glb",
+      "sha256": "eaf072246b62be95df5c7d3640ddc9d1c400c1021ae16c4c4000ed8470953ba3",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_harbor_map_low.glb",
+      "lowSha256": "8026a5693886f01b161ad9cbdf6e8f9b703cb01a4b73eb62be4577c4cbdf9a62",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_cape_tea_fold.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/tea-fold.high.glb",
-      "sha256": "64b203d4fa4817118765669eb6a73f28138dd6832d0958fb2b6a1488972f9981",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/cape/tea-fold.low.glb",
-      "lowSha256": "64b203d4fa4817118765669eb6a73f28138dd6832d0958fb2b6a1488972f9981"
+      "src": "slim50:01. High/wear/x2_cape_tea_fold.glb",
+      "sha256": "03aa1576b5c244937679b00cabcc008af88d40f2e04de61aca6ea124a607aa98",
+      "lowSrc": "slim50:02. Low/wear/x2_cape_tea_fold_low.glb",
+      "lowSha256": "03aa1576b5c244937679b00cabcc008af88d40f2e04de61aca6ea124a607aa98",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_comet_stream.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/comet-stream.high.glb",
-      "sha256": "06d9081458dbb292ddd9e7cc425431af8bb33ab46203116554ef0ddc706d57f6",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/comet-stream.low.glb",
-      "lowSha256": "dee04c0271ff33a3bef3b4b97685fca9b463df15e5e8ba7f22790da8dc678241"
+      "src": "slim50:01. High/wear/x2_tail_comet_stream.glb",
+      "sha256": "9910d1387eb675c588cbe27b43db33c12cf99607de240f9f25bd6615258bd9e7",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_comet_stream_low.glb",
+      "lowSha256": "a180f2354e9c401738150850d360717b2051e086ea814dc52f613543cf4dd3ed",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_kelp_fan.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/kelp-fan.high.glb",
-      "sha256": "5a0ada9399e6982f18a8e0f707ed833846ddf755bdd6d41a394eefc6a4ae5539",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/kelp-fan.low.glb",
-      "lowSha256": "9c6cc93e65cefa3e10e086990dcc35bd123ff32cee82f6e585c3f4a3a86f6a6b"
+      "src": "slim50:01. High/wear/x2_tail_kelp_fan.glb",
+      "sha256": "1a929b933c41cf79982ba2fa5176581418f711cc1141ba68653cb282907592a9",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_kelp_fan_low.glb",
+      "lowSha256": "7fd76cdf0b2c29d397f4f6ac030d8bdb78dd7aa2106a7d79a60729e350e33242",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_coral_chain.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/coral-chain.high.glb",
-      "sha256": "1de9c7e989bcc2acc0037af217d14b7f9cd11c88e3829364b29ddad8002950b9",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/coral-chain.low.glb",
-      "lowSha256": "aeacb9144111128d4a8335b8191ae5670a8614f03285fa1e7bdbab7f2c4c2ac9"
+      "src": "slim50:01. High/wear/x2_tail_coral_chain.glb",
+      "sha256": "5732cf7c2a80c42c73b3e769db4368076623ec86eee65337293c7465672a6d8c",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_coral_chain_low.glb",
+      "lowSha256": "285117561c8658d751bfad8698dbb658d88ae49ff2e9031b3d213c82f7dd8d61",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_bubble_trail.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/bubble-trail.high.glb",
-      "sha256": "9159dbc03cb30fdc86fdf9d9affe843c40d21e44ea395ceb0403f47f0c586126",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/bubble-trail.low.glb",
-      "lowSha256": "ab8838e198f74cc0ec10fc12b43861d182487a12ef5433003f760c7bd679c201"
+      "src": "slim50:01. High/wear/x2_tail_bubble_trail.glb",
+      "sha256": "3ee12b92a2a38f3023473618b8550cb2e1311b9fa876378560783fe89c358434",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_bubble_trail_low.glb",
+      "lowSha256": "0d2cf18bc5525f78ad7e664fca9abd2030d2dbc42c073464a6d1feca304145c5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_bamboo_joint.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/bamboo-joint.high.glb",
-      "sha256": "f7d55297aed53c43da9a0db167fecbfb32901a7cb269bf0499260b0777e4dedb",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/bamboo-joint.low.glb",
-      "lowSha256": "2f277c749f372fdae50b8f4f5bf370ad1e5154273b36172f3b3dcaa9eab47de4"
+      "src": "slim50:01. High/wear/x2_tail_bamboo_joint.glb",
+      "sha256": "f607e188b2b8a4b8ec1a4809900998750016e58d07e1bf6df5b17db119942ef8",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_bamboo_joint_low.glb",
+      "lowSha256": "532d762f9b4fba7e3b9fed0b875eb2976fb2c436fa6adb293562c77c8200f7db",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_rice_tassel.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/rice-tassel.high.glb",
-      "sha256": "fe7a17eb31a52957f2bb3e309f13b5a267f7aaecf7f910a9a83f4b1c2fc875f7",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/rice-tassel.low.glb",
-      "lowSha256": "d5c21d6580ac7db53fc22f35eaef8583390376cf553bfc657b8262e346661faa"
+      "src": "slim50:01. High/wear/x2_tail_rice_tassel.glb",
+      "sha256": "673301939e71fa2ea0a88332a329b4eeb2d4b32ee002ccef4060d1e05bec4cc7",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_rice_tassel_low.glb",
+      "lowSha256": "97c8dd344fc17a5248621b57085c78b12f038dcd7542fb363fc47779c0c13840",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_tea_whorl.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/tea-whorl.high.glb",
-      "sha256": "210aadff923cd1b6bb5efcf88ccb2137798ddc99953d58fa6a4e13166ad281aa",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/tea-whorl.low.glb",
-      "lowSha256": "5a09b3df68653db243f3a16062595a4733b99d27c6bbbac22a6178e0c0b8b9ba"
+      "src": "slim50:01. High/wear/x2_tail_tea_whorl.glb",
+      "sha256": "46de14e3a384bea828a558df87ee563cc89490cf4e91eb01bb1c3b9877431edb",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_tea_whorl_low.glb",
+      "lowSha256": "f222917277139bd324f5c986bda31b33afe92ffa2043baad420f0de09e67a3bf",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_kite_ribbon.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/kite-ribbon.high.glb",
-      "sha256": "5673089674d1e2aac73b804b90139610925b2602a2bb5df3f99794678db7a86b",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/kite-ribbon.low.glb",
-      "lowSha256": "9fa1e50e9fde2eb242e0e25cccaf2216f052e0cdb180c6e0105cc192e15b0297"
+      "src": "slim50:01. High/wear/x2_tail_kite_ribbon.glb",
+      "sha256": "b43448ab3ba804c3e7088a716f72af61ce12352d79ad35275f4497094cf0115c",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_kite_ribbon_low.glb",
+      "lowSha256": "43e985b328b630588b5ae1d491ad03461dbcd0e8cb6529916f14e77a2efd4413",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_lantern_string.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/lantern-string.high.glb",
-      "sha256": "c91988bca767064d3ce4230a7b7889b7c93141c1efe66e1d04f16394043e1cc0",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/lantern-string.low.glb",
-      "lowSha256": "7ac9fb43719b9a25dc11c3b05da3d997fbb35891fb646633d7207cd94aa73d23"
+      "src": "slim50:01. High/wear/x2_tail_lantern_string.glb",
+      "sha256": "bbf4bd23b466278aeae93dbea79cdba43ba663d24f1e7ad332e90ad19c2beafc",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_lantern_string_low.glb",
+      "lowSha256": "88ede4fb097bec8ab6e09f95f1ffd27d8adabc6d9e4b6eb48a971fedd6093d8a",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_snow_puff.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/snow-puff.high.glb",
-      "sha256": "1b7de686d70b9188a16f28737f85dd16c0e48d1e962b5b20630bb95fb37e1835",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/snow-puff.low.glb",
-      "lowSha256": "996019f280f5b094937f4e79153bbda16fb77ccd48dcbb4e5be55e8684689e58"
+      "src": "slim50:01. High/wear/x2_tail_snow_puff.glb",
+      "sha256": "3ee12b92a2a38f3023473618b8550cb2e1311b9fa876378560783fe89c358434",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_snow_puff_low.glb",
+      "lowSha256": "0d2cf18bc5525f78ad7e664fca9abd2030d2dbc42c073464a6d1feca304145c5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_meteor_chain.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/meteor-chain.high.glb",
-      "sha256": "481e66f9042d8b5c7c5c94aaee9388bbf9c5f080bcff223f515471aaa8a7ec71",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/meteor-chain.low.glb",
-      "lowSha256": "c95c8687c44263dadf159aba05f714b69caa54f9acc396ce7239406299495001"
+      "src": "slim50:01. High/wear/x2_tail_meteor_chain.glb",
+      "sha256": "c689aa3b42c175d890f7602108eda1ad753a5b6363b7c98f581547321ab068ff",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_meteor_chain_low.glb",
+      "lowSha256": "384d690167b5ff5583cab6e211ddf204edec94e1e667bdd6602833ca5e76a762",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_planet_orbit.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/planet-orbit.high.glb",
-      "sha256": "f60a5eb7f6f669d0952214d91e5753e740116e5bc2cac49fb568002021a00259",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/planet-orbit.low.glb",
-      "lowSha256": "cf67fd68b96f06662ff8d73412e7b0f38a075f910953597e23911a773df0f5e6"
+      "src": "slim50:01. High/wear/x2_tail_planet_orbit.glb",
+      "sha256": "8ac5bc0026115a83c87af64e6d159c250c8bfc063b78fa46a755a901bf435168",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_planet_orbit_low.glb",
+      "lowSha256": "da839da19a0e8cab134363e1fe91609faba857bc383ff3522fd3ebc4c6597c2c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_noodle_twist.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/noodle-twist.high.glb",
-      "sha256": "c2084fce404a122b73c99f746e03aead942d71b4bdad348a69faa7493e9ddffd",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/noodle-twist.low.glb",
-      "lowSha256": "70f17ba0f152bba3048c4d7b34421028811c25c305672838470a8c900d6d8f16"
+      "src": "slim50:01. High/wear/x2_tail_noodle_twist.glb",
+      "sha256": "5ac9b505d346f7a4edf2753e1e9c7038923e4f6137d34bfe404085b2e4a8229d",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_noodle_twist_low.glb",
+      "lowSha256": "a685accd78c288ced6c7a717efd19467353c60cc665bd9b8ba73090f6697fdb2",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_leaf_cascade.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/leaf-cascade.high.glb",
-      "sha256": "3119e6edf57569927b3e25affa30480a2bb8238edd3a4ef8747bbc0d4963e171",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/leaf-cascade.low.glb",
-      "lowSha256": "3e7d6540c3cd15cc5653e199b5906d333ab847cfa1c4f8433a24ffc30f8c305f"
+      "src": "slim50:01. High/wear/x2_tail_leaf_cascade.glb",
+      "sha256": "9b37b43d6699129b5664316ba1c8a93fbfff4117d1973dca21ab4ff1a04b77c8",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_leaf_cascade_low.glb",
+      "lowSha256": "68948e0f818707a7f6d30fd4802eabb4e1099016fca70f36e69a9ee93677f8c3",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_harbor_rope.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/harbor-rope.high.glb",
-      "sha256": "a6fe99d2f608493d05d7bbee88bc259e76bd4315c1a61964759a56f66ce1eda0",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/harbor-rope.low.glb",
-      "lowSha256": "8b8cf69c390e096372f42d7a1fd5b7a1b50adcaf6643ae9ae1414792b0249f4c"
+      "src": "slim50:01. High/wear/x2_tail_harbor_rope.glb",
+      "sha256": "f92bb627ba73b2f31d0e84642d182da5f7714b02ef275e6ae0a14d803f643936",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_harbor_rope_low.glb",
+      "lowSha256": "fccd5dd2e581b619b7c23862a430aee964bc9b69a3eeb8c43bf0099ed930842d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_cloud_drift.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/cloud-drift.high.glb",
-      "sha256": "7d7e47f18b2820ba71c02fff06d2a9eff9cce5047c0baba1e0942a87aa657a83",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/cloud-drift.low.glb",
-      "lowSha256": "fe5d50f3a6b76bc2cf23f91fbe019fa693762ae12e7660cc97ad861996e283c5"
+      "src": "slim50:01. High/wear/x2_tail_cloud_drift.glb",
+      "sha256": "3ee12b92a2a38f3023473618b8550cb2e1311b9fa876378560783fe89c358434",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_cloud_drift_low.glb",
+      "lowSha256": "0d2cf18bc5525f78ad7e664fca9abd2030d2dbc42c073464a6d1feca304145c5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_tail_gear_link.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/gear-link.high.glb",
-      "sha256": "dc9d411bcdcfe9107fa1199e60e03b6f70f2241c01e6261820320e0caf129b6b",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/tail/gear-link.low.glb",
-      "lowSha256": "bcca82d5a249536f2ec228e8aab7fe4ed0606c87636d57a815a6a922dbf64825"
+      "src": "slim50:01. High/wear/x2_tail_gear_link.glb",
+      "sha256": "031a8e19c14173d2cb1bf25ca856b56d0f8250799daa57dc476b3340ee6334c9",
+      "lowSrc": "slim50:02. Low/wear/x2_tail_gear_link_low.glb",
+      "lowSha256": "63e5ad77c92069aa95086abd110f8dc1e9c220afae8c06312495a55eead91270",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_tidal_deck.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/tidal-deck.high.glb",
-      "sha256": "9c0c857b03ccd69bdce6b9ebb45a1c2a76da7b119e3d594fd2eaf25f9e7e39b5",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/tidal-deck.low.glb",
-      "lowSha256": "7ce912bb4d2c1a6c0c5f0b051679d77af5bcbf424f6021f1aed2dad4fcd17ae8"
+      "src": "slim50:01. High/wear/x2_shoes_tidal_deck.glb",
+      "sha256": "0ee7f5f3175421d87babe7d0cd6f1cdcc3c9d773ec6af6dbd52962582da0a1ea",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_tidal_deck_low.glb",
+      "lowSha256": "ffa19421ac8a802c60933eea4a791dd09e5b0abde8c623926cc84246a9a9648e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_coral_fin.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/coral-fin.high.glb",
-      "sha256": "c3955ca7d2a17fb039c65e30256e2c4bfedf8e4e408382ce0db27c9e71ed7f0a",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/coral-fin.low.glb",
-      "lowSha256": "428776ec92099c589c8ea04fa04bb5efe56909b3099476a9df388a52866acc49"
+      "src": "slim50:01. High/wear/x2_shoes_coral_fin.glb",
+      "sha256": "9b4809f04f29159d10c31a948c2166302ac7e44d2e966ce9c39751cfdf8a3e76",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_coral_fin_low.glb",
+      "lowSha256": "486b76ecaeb656597bdeca381834cf9b7a7eb8f51aeedc5e6d09b30ffd3e6c94",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_tea_clog.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/tea-clog.high.glb",
-      "sha256": "937f14d6761a177afd50977ee7ee2a7c8071b3a5f543c1216a2714652cc71d73",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/tea-clog.low.glb",
-      "lowSha256": "6b3b56e8e44fb83d15eba3d547102635aa332262a5cca7cc8ad86c392ba4b8e8"
+      "src": "slim50:01. High/wear/x2_shoes_tea_clog.glb",
+      "sha256": "7603dfea644b317e1bf5afdaf69086de8e21f80afd8aadd44063c647939f77d5",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_tea_clog_low.glb",
+      "lowSha256": "bb5c5231f3a998eda269e55a5d4a8522ec2c40506c688a09ba43c3f93f649192",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_pottery_heel.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/pottery-heel.high.glb",
-      "sha256": "d1f0126401ab9fd7d1dde34a00502752353982b01fe47ec033586ba67242cc76",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/pottery-heel.low.glb",
-      "lowSha256": "29265a41ba16ba1242279a58ea0422942e8ed2aee3c8a7cfdc5a36e2e47f30e8"
+      "src": "slim50:01. High/wear/x2_shoes_pottery_heel.glb",
+      "sha256": "554242291cc9dd1a3126f8fde4f3700de5b12f88ebff1f2cab54d9be4518538f",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_pottery_heel_low.glb",
+      "lowSha256": "528caea259c3690b28da0306c0fa1de34172a2594d7f1a977946deacc63546e1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_comet_toe.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/comet-toe.high.glb",
-      "sha256": "21331011cf76a71e582a0da40ed67a96230aaf580c40f4d7ddb4fe33cf5d238e",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/comet-toe.low.glb",
-      "lowSha256": "bd6654dd99a2139d28b00803a2013ac44af06173a6c75027451d303da637620e"
+      "src": "slim50:01. High/wear/x2_shoes_comet_toe.glb",
+      "sha256": "19c50ffd048a0fa0d1e92a94c2db988e2264bab6f8beb9e0da0eaf3f7f031896",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_comet_toe_low.glb",
+      "lowSha256": "61982e3163c171d9fa6da48ce44ef8171372966d7abfb5b295e9703543928e95",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_moon_step.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/moon-step.high.glb",
-      "sha256": "36c7c80c0ff4295f3920800160309083fd23a6b620092143be5b9d9e72a0de5d",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/moon-step.low.glb",
-      "lowSha256": "03c985a0811d05cc71a09f753e36f21b44b4c628a43ac9e34fa0412d7c4b842c"
+      "src": "slim50:01. High/wear/x2_shoes_moon_step.glb",
+      "sha256": "04ac4515a324bae221c0d8f8ab68c59f0c15def6e7ec448543df45390f8ea7d0",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_moon_step_low.glb",
+      "lowSha256": "0be9ceea70564da30650aeebfc1680183573055c5664940485dcd5d39b6d754c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_bamboo_lattice.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/bamboo-lattice.high.glb",
-      "sha256": "7d3ef7d36ef5d258b860ee7d49d69b07150db29c8a3c3b29fd957cbd17514910",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/bamboo-lattice.low.glb",
-      "lowSha256": "70d64c23f3dfd239a89825ac42aa882363740f98f51b018c56b8928abe646dd0"
+      "src": "slim50:01. High/wear/x2_shoes_bamboo_lattice.glb",
+      "sha256": "7acf7eddb91eec37f41a2da97b7b0dc46f067baa3c58d17dc8631a79b24b49ce",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_bamboo_lattice_low.glb",
+      "lowSha256": "6ac547c4ded4da2308ec92991269dd6083f18a5412fe5bdbcfa69ae9f48fdd9b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_rain_channel.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/rain-channel.high.glb",
-      "sha256": "a5c93f2952a79b514a802b7ea03cf21499d5c1369dce3f3ed84da87b3a5457c0",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/rain-channel.low.glb",
-      "lowSha256": "4fbbfdca6704ee4999344b898744f3279251d0a4df6d297f1cbce5441b75ed60"
+      "src": "slim50:01. High/wear/x2_shoes_rain_channel.glb",
+      "sha256": "125c7a756629ea6f70c7eba4df3754c035a234e0c05ca40468aa8ceea0ac538a",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_rain_channel_low.glb",
+      "lowSha256": "99cd2a99d4a480ce6578c28fe2b0cd1b15683d87553b7395d3a374b6a1ca2f9e",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_orchard_seed.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/orchard-seed.high.glb",
-      "sha256": "7ec1711f6196a2b837eb93f57932afafe3739598ebec73cee9caddcaa928a86e",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/orchard-seed.low.glb",
-      "lowSha256": "59aee161e565eb73751d462f0748ebfe0f7aec04794ef0ff099fa2ad6087863e"
+      "src": "slim50:01. High/wear/x2_shoes_orchard_seed.glb",
+      "sha256": "5abca837cd5b49109ad6d0100622df53206791b741d73755bbd41831743a022f",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_orchard_seed_low.glb",
+      "lowSha256": "12f45870de83c761f93133b76129d084e533c8f4a3fb0a8072daeb6923e5b390",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_snow_cleat.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/snow-cleat.high.glb",
-      "sha256": "abcb80f79ce276f0573c3106177468474c996de040967227857b45e8209da26a",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/snow-cleat.low.glb",
-      "lowSha256": "13b7517fb713be517c23c61b6e1522fec67c734d9db2f674d8dae9947ba51128"
+      "src": "slim50:01. High/wear/x2_shoes_snow_cleat.glb",
+      "sha256": "64f48d51a61ab56d0edfe9e04d4604c725d0010c0bb768416f3b8cf44f6f8218",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_snow_cleat_low.glb",
+      "lowSha256": "d2df7aff6e2fe315241d32b39f64a0702b8f5c12bc07a3e8d36b835a2be2af60",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_reef_sample.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/reef-sample.high.glb",
-      "sha256": "339ff2512a8ca6f690a56967f582405d3889401e6a10afe51adc86bf2e92a842",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/reef-sample.low.glb",
-      "lowSha256": "60bb7a7598ffb7c3ba8ed4fa703ee79ac9966994d6a982e290fdaf36c9bc6627"
+      "src": "slim50:01. High/wear/x2_shoes_reef_sample.glb",
+      "sha256": "a4920cf91ceb16cf3fc9b8ed32190ca35086e32085dd563b99cc6d8a7b6e026e",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_reef_sample_low.glb",
+      "lowSha256": "3e4a10dea6e11fe746fb9c4ba1b860407341beb1d405b81e19526cf3482dbe8b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_bakery_puff.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/bakery-puff.high.glb",
-      "sha256": "61d06a1f2cbda7c9e090c0a5ae5ae887176d47ffa8e23cfd3e63fc0d6ce3c4ac",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/bakery-puff.low.glb",
-      "lowSha256": "ed9e1308f1138da9de0f9dc26b961884a162031d9fdd500e5a05cbce03ffca30"
+      "src": "slim50:01. High/wear/x2_shoes_bakery_puff.glb",
+      "sha256": "ee7db383392c102545589058935a4229126c52aaa33e4e129347462403004cdf",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_bakery_puff_low.glb",
+      "lowSha256": "5d420a07404add20a3109fdda4d09dffd835813ce12aa26082125da8935107e5",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_noodle_knot.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/noodle-knot.high.glb",
-      "sha256": "96be6299299419206998c055a74608d65e64fe5820500eea2419039848f7f85c",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/noodle-knot.low.glb",
-      "lowSha256": "242f8c534d2ebd08f3f359fc2f2109ca17e7b2ba98b4f2d6064ffb5606865a3c"
+      "src": "slim50:01. High/wear/x2_shoes_noodle_knot.glb",
+      "sha256": "6fbb276e60990ece734167b4f97fb29f19ced4cb5828481be72827b6b9cbbca4",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_noodle_knot_low.glb",
+      "lowSha256": "3ba0f0e1512516a6f21662f7890b58877b5c1f1d49ad20661aa966191f16b9c6",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_lantern_sole.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/lantern-sole.high.glb",
-      "sha256": "57aaf1dc98d44df322e46d19e1605704e4c904d7590bd26429c3a612d11c7b4e",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/lantern-sole.low.glb",
-      "lowSha256": "06279696bfd5fc27ac827ae88dd2c050c6e9b8a2c232e1efbfb9a01f633d1a05"
+      "src": "slim50:01. High/wear/x2_shoes_lantern_sole.glb",
+      "sha256": "b703ccd8f1ae89f0047e895bd5c2798189d2b733117d2dd3467285902d590e2e",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_lantern_sole_low.glb",
+      "lowSha256": "c7656accf35c527093c00e3486e2bae44a0e20c40259666ce3e8754b338e4735",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_kite_tab.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/kite-tab.high.glb",
-      "sha256": "97873c801c60a5f4efbe0f89c0c37620fd109338ae76b7b82c3f244a4c5dc886",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/kite-tab.low.glb",
-      "lowSha256": "abda1e96da30e3969a15d2d5b835dc02454bf6322ed91afb48e91d84952e3582"
+      "src": "slim50:01. High/wear/x2_shoes_kite_tab.glb",
+      "sha256": "ba2dd409eaeb82ec040bd1e3c6d2abab878a35ee07d7b69e3429569912e9bcc3",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_kite_tab_low.glb",
+      "lowSha256": "aa72c84cbbe3d2f8f4a75e585d67674d41f23e35494d6ed1013849b6d78d8588",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_harbor_loop.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/harbor-loop.high.glb",
-      "sha256": "05f63cb67eb1dbb07ee023c0f0994619fd7d83b3444f360d4ae54f27b4d68877",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/harbor-loop.low.glb",
-      "lowSha256": "3c203abb4ca5eb8e071ec59fab9315c5e58d28006486d25ae37238b0c334c20f"
+      "src": "slim50:01. High/wear/x2_shoes_harbor_loop.glb",
+      "sha256": "999d10dca9f60dc7b577001fc6d2532a6fcde379bef298ea2728d6f58168f966",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_harbor_loop_low.glb",
+      "lowSha256": "15889d309750843f75c8eb680e8adf7559fac8928508e5532bd2fb2a84e9867f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_shoes_forest_tone.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/forest-tone.high.glb",
-      "sha256": "9f5eb26ea6ee28fd254db24159d881e68bd36fd47430c6cdb7013fe07c5d546e",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/shoes/forest-tone.low.glb",
-      "lowSha256": "33900d252dbc57de600baa2da4c8771682333f1522a9069de324787c0f950727"
+      "src": "slim50:01. High/wear/x2_shoes_forest_tone.glb",
+      "sha256": "c463307c4d8c81e595c25acc254135b47f7788827bb9263395d80dcada20735c",
+      "lowSrc": "slim50:02. Low/wear/x2_shoes_forest_tone_low.glb",
+      "lowSha256": "43d24693d3af032f7b4213cdbfdc2de98e4e993aa13e284467aad33f6a85f41d",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_tide_gauge.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/tide-gauge.high.glb",
-      "sha256": "753af592baa11f4cf617bf3d6e4f2d0014bfd5e9e7907a1bced17ff853148b78",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/tide-gauge.low.glb",
-      "lowSha256": "6f5e0f6af4cfe47f4eed2e33f635535272d0e11c857653d577ab79c87004eede"
+      "src": "slim50:01. High/wear/x2_necklace_tide_gauge.glb",
+      "sha256": "dcf739d1e2c026d9a01adea1e47fb016c1857675928652217d28a4ef09882943",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_tide_gauge_low.glb",
+      "lowSha256": "473ae74b0bef030c85c1bf60e9a67708da99742a634f0d7737bd0a299de1af00",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_coral_branch.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/coral-branch.high.glb",
-      "sha256": "0f3244d9bddad41b73496737152897f03fea07d75fad7f81d40a6b5b34f28116",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/coral-branch.low.glb",
-      "lowSha256": "423022d6090c96d21d90c2a3224f014509abccf6a9c5b4613a7ad74605f68393"
+      "src": "slim50:01. High/wear/x2_necklace_coral_branch.glb",
+      "sha256": "d3e617e6320afa21c187bc9ade99f63eca3ea2e56ba48463c52d99e39614e137",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_coral_branch_low.glb",
+      "lowSha256": "428f0bfebc832170f5f95f48081f439b49559fa1e676888b6d56f16ec58a43a1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_tea_cup.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/tea-cup.high.glb",
-      "sha256": "fb92fa99ab0ad642eecce5a78af4b1bf5453604bbf9516b9ca36328d4462283f",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/tea-cup.low.glb",
-      "lowSha256": "3f85e42f7ef2ddc8e7d855e0d951e34ae3342e241913330f3bab1759ca289bd6"
+      "src": "slim50:01. High/wear/x2_necklace_tea_cup.glb",
+      "sha256": "8e64735848b77c5497b7fd094ce97611df7de3948a1bf873b7c33fb4c773fcaf",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_tea_cup_low.glb",
+      "lowSha256": "cf4699638e60b1d2e6716e1e5082aa5c180fcfc777a8a950205b4d33263fc0ad",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_pottery_vase.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/pottery-vase.high.glb",
-      "sha256": "39bd33cc43f74c0331cbc5db7f3a1e7aec15dda37e219f68274353d5620e368c",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/pottery-vase.low.glb",
-      "lowSha256": "ff6e837c295bd47ff4ef808d4043380942e97789ce92f034cb0c0b6eea46e234"
+      "src": "slim50:01. High/wear/x2_necklace_pottery_vase.glb",
+      "sha256": "391a72565705527277eb4606c50909e6675a81af9c7aa6f25d09dc46ec62b559",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_pottery_vase_low.glb",
+      "lowSha256": "caef0c953da7488afc4241419ef7fb2cd584cdc63296dfc904d8a65730b29108",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_comet_arc.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/comet-arc.high.glb",
-      "sha256": "6e80d7f4ef10cd29221d38231077bc01a539fa5992a8f0dae327df5a199bcf91",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/comet-arc.low.glb",
-      "lowSha256": "6e47d5771d49457ea7bae4ab60de5bb3821dfab17ac38331a885e4f17dd60f9d"
+      "src": "slim50:01. High/wear/x2_necklace_comet_arc.glb",
+      "sha256": "df9167f134589d3c7a7c5ef3500f4d4b51314a2a9903951632d6701a3630ffee",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_comet_arc_low.glb",
+      "lowSha256": "9020e808409b377cc9c25b6f6922a567135fa1873e827de40a78b6aaea75dadc",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_moon_dial.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/moon-dial.high.glb",
-      "sha256": "917dc62e6bf29ef5ffb16f2b87acfacdbc8d19131071e278344d5183f4cf4294",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/moon-dial.low.glb",
-      "lowSha256": "2ef79f19d8d3f5531b99b02118a3f03b1e74cfa84c21c7d500fe0a7bb1382dfe"
+      "src": "slim50:01. High/wear/x2_necklace_moon_dial.glb",
+      "sha256": "1c8732d146143968a74f165fa347f99ec3d145f7212ecb23ff7f1d9c514d3f4b",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_moon_dial_low.glb",
+      "lowSha256": "cdc07bd9269040f9291fbfa33f74c8e9ab840e8e7c1da63ecda27520821b1af9",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_bamboo_knot.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/bamboo-knot.high.glb",
-      "sha256": "c9bd20f3dae30e3c2c49ebde345a20bc84005cf55baaf3c5b4b5dd699f4ce5f7",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/bamboo-knot.low.glb",
-      "lowSha256": "48211241c26b08123f6a7d52d424e4ba36cc5421d5eefad5a8d151baa3fed2ef"
+      "src": "slim50:01. High/wear/x2_necklace_bamboo_knot.glb",
+      "sha256": "7f21604b094ad77b6a4cd2aa352bf7b0a5ee2f556102b342de36c63bf924ff3c",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_bamboo_knot_low.glb",
+      "lowSha256": "383f9ca275431b522185736fcba66cbc074fdd929f7e471ee0ba691cd85907e1",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_rain_vial.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/rain-vial.high.glb",
-      "sha256": "f6fb9a248123285650a0bcea91a5a8f5dfc0bc114c407b7ec41ed128740f80b3",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/rain-vial.low.glb",
-      "lowSha256": "fd19a59b0f8b513ca12d9fab4579bfa10d9f2abdbc0a1466973fadb491df9475"
+      "src": "slim50:01. High/wear/x2_necklace_rain_vial.glb",
+      "sha256": "cae40532f3cea3c903e6a7f26d8c7a3d45083dbcbb906c7e18bda56f0c7c52ee",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_rain_vial_low.glb",
+      "lowSha256": "1282813848ef18d46089eaf4b8659bdc5d0ffd653dc9f9fbdb00e5f23da47745",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_orchard_seed.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/orchard-seed.high.glb",
-      "sha256": "1c37c240a5b1374a4befc67431221dda7b86f250978def03dc98628ca0287372",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/orchard-seed.low.glb",
-      "lowSha256": "dad2fb2b471956c28d03628c2de768f7f83cf57b4a5174c2173713e0783b34f1"
+      "src": "slim50:01. High/wear/x2_necklace_orchard_seed.glb",
+      "sha256": "bdcfcc7263eadffb5a9cad7d95c733d8851448007f92d9789c69540124d9253c",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_orchard_seed_low.glb",
+      "lowSha256": "f4eacd2987f831940f60850bfc5b97271b5bd80288765a1b83867dd235bdbd6b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_snow_crystal.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/snow-crystal.high.glb",
-      "sha256": "dbfdd288d564ec9670356094f10789e831438f7f2c232236bf891d5a33c88c2f",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/snow-crystal.low.glb",
-      "lowSha256": "1f505294bcfd78ed6ade34b6104c707cd026a6d53100e926ccdf0476952bf6c7"
+      "src": "slim50:01. High/wear/x2_necklace_snow_crystal.glb",
+      "sha256": "9afdde63b349b2ddbadce5580a776e6d23dcbdb5c4e9e60e781d610ce912ec78",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_snow_crystal_low.glb",
+      "lowSha256": "ab609544e43bbcb6051d4c73c71ff57b6a0fbab0d441492b35e9859d2926de95",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_reef_window.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/reef-window.high.glb",
-      "sha256": "f877e7d20ff91ce4e4bf022b2dcb3321e978444073fbe495872e371f31daa8cf",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/reef-window.low.glb",
-      "lowSha256": "a08166502b98a6cc6ab0bbfdee55e5171dd847e1c4302eeb673ec4445197f607"
+      "src": "slim50:01. High/wear/x2_necklace_reef_window.glb",
+      "sha256": "496b01005d373b72fd70e7cccff37ad1e2c9da88334d4cec1f49d8e0e51b9d9a",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_reef_window_low.glb",
+      "lowSha256": "19bb12a156e63e51cbab821f5c9c018d9bc9a5a25cb1790caa5f812ba60fda6f",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_bakery_wheat.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/bakery-wheat.high.glb",
-      "sha256": "a28aa1d574c8d6cd9206300b1faf76cea2832ab85e39337bb30008454d72cc36",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/bakery-wheat.low.glb",
-      "lowSha256": "688fc9136c9f0e3919c17fb13fa8cb6129a9fbd6e985457e82c69452d8ec79ac"
+      "src": "slim50:01. High/wear/x2_necklace_bakery_wheat.glb",
+      "sha256": "4592f900ae9b8a426df488c8459ae8141542aa24b122cc6d7bf2b156081635e3",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_bakery_wheat_low.glb",
+      "lowSha256": "2c8fb5c5c3a8ca87102419ef91760a0093e0d63c89810ff23aaea929e5cb50e9",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_noodle_bowl.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/noodle-bowl.high.glb",
-      "sha256": "8af5faf22260aa720a9034202332578bdc081027db37d184284a56ae12d22e4c",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/noodle-bowl.low.glb",
-      "lowSha256": "52aa6c543247e06ffb98de14eb346fcb7f20c234981041940a9f2ee65739657e"
+      "src": "slim50:01. High/wear/x2_necklace_noodle_bowl.glb",
+      "sha256": "8ab3996668acd1f1e920673060f55ac59cdf432d607a95d93b2d658bbe3b2c03",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_noodle_bowl_low.glb",
+      "lowSha256": "4039232a3db282c193b5428ab8067ba3de507cf520a1bf284bc10145df29952b",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_lantern_mini.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/lantern-mini.high.glb",
-      "sha256": "5fe5a2d8a1e85c8f7e78a8215df4c4eab5c2b62f23109e3aa6fb2574f75fb580",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/lantern-mini.low.glb",
-      "lowSha256": "19d83b82c441c55cbfe1555c464481515bf70aa2d59f44403cdc00a1dc62d1ea"
+      "src": "slim50:01. High/wear/x2_necklace_lantern_mini.glb",
+      "sha256": "ba4f9544e8c2e299a3f574c44232b0c8bd999b5c9ccf1001c7db5cd89c637d77",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_lantern_mini_low.glb",
+      "lowSha256": "5849e4a795cb4b2bbfcedeb2d51507823e83ee58188c16c57e55e203110f00bc",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_kite_diamond.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/kite-diamond.high.glb",
-      "sha256": "506a51baea349c5428643c69c16b6592697e77b7c3f2b2edfb371fdde01a19d9",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/kite-diamond.low.glb",
-      "lowSha256": "ee846c17b07efc3cbc3131130439b4324957fece8ff44b381fccc854c7c92e19"
+      "src": "slim50:01. High/wear/x2_necklace_kite_diamond.glb",
+      "sha256": "e3e2316a6992963ffa39a4926552d8f95408c93cd78281941333f3732040f825",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_kite_diamond_low.glb",
+      "lowSha256": "69956d6aedc85416176ef01096e3696a09fc1419984d6d3edd09a1b2a6ba5f99",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_harbor_wheel.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/harbor-wheel.high.glb",
-      "sha256": "b1da9ee16e5b1102fe591cd1f73b710aad3be4376a8465a3b899dfce51ef7a54",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/harbor-wheel.low.glb",
-      "lowSha256": "b0433abb31f55f46fca0365136aee2aa296b542183c38b75daba18cd4d340265"
+      "src": "slim50:01. High/wear/x2_necklace_harbor_wheel.glb",
+      "sha256": "cf1b3747cf19a7d6166f99aed91e10af0eaf822aab46f3d5e7941808ec6543a5",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_harbor_wheel_low.glb",
+      "lowSha256": "66e5436ef26892d7012a730b7adcf9f5ea6e66577c2d398b42a01f38ed6c7f15",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_forest_acorn.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/forest-acorn.high.glb",
-      "sha256": "2ca6d3bf5d0fa72ce2492e0cd12d720c5a4448b005e250ef1c76e4a25b7d1e1a",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/forest-acorn.low.glb",
-      "lowSha256": "04f2090976781d02bda5aa4f9675dacd1886d40dbd100caa97bbe093113dc913"
+      "src": "slim50:01. High/wear/x2_necklace_forest_acorn.glb",
+      "sha256": "60715872b1922f54e960cf3657bf98cb3435d03ebb945da44c32d7f5a0a9b373",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_forest_acorn_low.glb",
+      "lowSha256": "bf2346fa2f31cb1b9b64537a0d5724f8e67f58b22ba8159922b56268f2c6324c",
+      "precompressed": true
     },
     {
       "out": "characters/wear/x2_necklace_orbit_instrument.glb",
-      "src": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/orbit-instrument.high.glb",
-      "sha256": "b1be64032afd07e8669d41329028901b42a8412dd8cad5d4401045aaa1d475ac",
-      "lowSrc": "overhaul:refined/27. Game Island skins x2 2026-10-13/general/necklace/orbit-instrument.low.glb",
-      "lowSha256": "1ff80483ec32f4546cb56b99ce70cb55adc8faf1403f61531fada481467c4bd1"
+      "src": "slim50:01. High/wear/x2_necklace_orbit_instrument.glb",
+      "sha256": "0c27fa75d28b2c022bbc33a0fe453b8b3241054faf9776835f160c3bd23feb63",
+      "lowSrc": "slim50:02. Low/wear/x2_necklace_orbit_instrument_low.glb",
+      "lowSha256": "070003bb21a92dc736d87f91201f1c0140e1535b9dc7bf6814a6309d4d930ecb",
+      "precompressed": true
     },
     {
       "out": "characters/ip-characters/hellokitty.glb",
@@ -4346,8 +4556,9 @@
     },
     {
       "out": "characters/motions/SlowWalk.glb",
-      "src": "motion36:motions/SlowWalk.glb",
-      "sha256": "5afe64b0e7669cde90ce2459031f5c8c62069317846735f32a03160cc91f424c"
+      "src": "slim49:01. High/motions/SlowWalk.glb",
+      "sha256": "ce53db4bbd32be1579e1ba587a34b1259c634b09f6960cd8b3f77094a890d062",
+      "precompressed": true
     },
     {
       "out": "characters/motions/IdleLookAround.glb",
@@ -4366,26 +4577,26 @@
     },
     {
       "out": "characters/body_bare.glb",
-      "src": "motion36:wardrobe/body_core.glb",
-      "sha256": "e941403f2b4eedb592a09056239ceb798a67e0fea094201129dec2bc9dbdf585",
-      "lowSrc": "motion36:wardrobe/body_core_low.glb",
-      "lowSha256": "028b79720a554bffdf1b0fbe04e7f0cb6ed60af3557479fce3d4b913785f2129",
+      "src": "slim49:01. High/body_bare.glb",
+      "sha256": "a0ee94ef505d8f2566c3d75558f3444d4723c7c14be61e9cc47cc9812784767a",
+      "lowSrc": "slim49:02. Low/body_bare_low.glb",
+      "lowSha256": "416bb84bea6d240fbfd5ec925bc6aeea482e55a33128a7318919618a3ba011c0",
       "precompressed": true
     },
     {
       "out": "characters/body_sports.glb",
-      "src": "motion36:wardrobe/body_sports.glb",
-      "sha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d",
-      "lowSrc": "motion36:wardrobe/body_sports_low.glb",
-      "lowSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f",
+      "src": "slim49:01. High/body_sports.glb",
+      "sha256": "1438a54beecedad34f446ac47b7450c8e44e859a13a29367753825a9ef0acbec",
+      "lowSrc": "slim49:02. Low/body_sports_low.glb",
+      "lowSha256": "64d770a293835fa106163d0b5d486f79cb2af272fa24bf1a9b6158739864137a",
       "precompressed": true
     },
     {
       "out": "characters/body_hoodie.glb",
-      "src": "motion36:wardrobe/body_hoodie.glb",
-      "sha256": "3177c3bd592778ec0783d3651345d3f113ebdebb445676adf5245778f523cc5d",
-      "lowSrc": "motion36:wardrobe/body_hoodie_low.glb",
-      "lowSha256": "73ae41fab2bc560be330d447c35d6c7511f3c50273b3ae3b3267cdcac5b76c8f",
+      "src": "slim49:01. High/body_hoodie.glb",
+      "sha256": "1438a54beecedad34f446ac47b7450c8e44e859a13a29367753825a9ef0acbec",
+      "lowSrc": "slim49:02. Low/body_hoodie_low.glb",
+      "lowSha256": "64d770a293835fa106163d0b5d486f79cb2af272fa24bf1a9b6158739864137a",
       "precompressed": true
     },
     {
@@ -5158,42 +5369,42 @@
     },
     {
       "out": "characters/wear-winter/wear_outfit_santa.glb",
-      "src": "winter46:01. High/wear_outfit_santa.glb",
-      "sha256": "6a05b64fc8f6e1b709f879858a1a4b4e66bc8d3f2523a6238ffb08d28b6af731",
-      "lowSrc": "winter46:02. Low/wear_outfit_santa_low.glb",
-      "lowSha256": "99ef916fe4ca19fd9a76738f6bbf525e8aa42cbbeca7cc0d71911275ed2a9612",
+      "src": "slim49:01. High/wear-winter/wear_outfit_santa.glb",
+      "sha256": "e030142e5f3ba2a3dbe4fe438d49a94e63773a47db5f84f474e70b4babb750b3",
+      "lowSrc": "slim49:02. Low/wear-winter/wear_outfit_santa_low.glb",
+      "lowSha256": "5db44cc0a555c6bc7eaa766b65d552d1eae601d485d2c6a28777f4ce0443a9df",
       "precompressed": true
     },
     {
       "out": "characters/wear-winter/wear_necklace_fur.glb",
-      "src": "winter46:01. High/wear_necklace_fur.glb",
-      "sha256": "cb89bafcd42cb002373b22b148efa1e40d101b36e70254c48774639602abb78e",
-      "lowSrc": "winter46:02. Low/wear_necklace_fur_low.glb",
-      "lowSha256": "33bb8a0968e603cbc228fc3ed429fbc0d55419faa2c44f975a31783a2ef0c1c6",
+      "src": "slim50:01. High/wear-winter/wear_necklace_fur.glb",
+      "sha256": "f9cfc4a615b0727e0744ee1b2f5837d4dce230939e315a72831b663f115e2929",
+      "lowSrc": "slim50:02. Low/wear-winter/wear_necklace_fur_low.glb",
+      "lowSha256": "c764cd2f80699cea698d2347408d48ab5ce163cf4fde667c6a3fffd9513325c1",
       "precompressed": true
     },
     {
       "out": "characters/wear-winter/wear_shoes_fur.glb",
-      "src": "winter46:01. High/wear_shoes_fur.glb",
-      "sha256": "7eab8d3ce6b5c428428452ea0eda86fd6a5f5b178b8fed7d593784e6120b1b89",
-      "lowSrc": "winter46:02. Low/wear_shoes_fur_low.glb",
-      "lowSha256": "b5755bd0962f93627ff3e47566ee294e630e471872152e61372c978c5dcb12a9",
+      "src": "slim50:01. High/wear-winter/wear_shoes_fur.glb",
+      "sha256": "4672ac002c79a2cc3807a347bc11d2e145fbb8ba6649828d6902b6b810ae9b66",
+      "lowSrc": "slim50:02. Low/wear-winter/wear_shoes_fur_low.glb",
+      "lowSha256": "56911db4f6ec36bca3419d1d6b94cb969775593e2910cc489c53891f29304af4",
       "precompressed": true
     },
     {
       "out": "characters/wear-winter/wear_cape_snowflake.glb",
-      "src": "winter46:01. High/wear_cape_snowflake.glb",
-      "sha256": "5abf1df8a9c0b9a6c148eeee78ef25f6add148489528eb0983f581b8ac5e07ad",
-      "lowSrc": "winter46:02. Low/wear_cape_snowflake_low.glb",
-      "lowSha256": "425302e89eb37dc7598f6793e453ec2121d3a3f3ef49b8a15f725dd769766935",
+      "src": "slim50:01. High/wear-winter/wear_cape_snowflake.glb",
+      "sha256": "612c24ddd9f1f3c0304887fc6b4fefa0e87a7399ba84d0d9e2bf470770b10799",
+      "lowSrc": "slim50:02. Low/wear-winter/wear_cape_snowflake_low.glb",
+      "lowSha256": "bf2e8ad771c37d4d94960b0931234d94cb27b258575b1942f970fe82f4fdc11c",
       "precompressed": true
     },
     {
       "out": "characters/wear-winter/body_winter_fitted.glb",
-      "src": "winter46:01. High/body_winter_fitted.glb",
-      "sha256": "891a633e6d93809b09fb0fb2c1b334e6bc130b76597d314dafb5a4cda3351678",
-      "lowSrc": "winter46:02. Low/body_winter_fitted_low.glb",
-      "lowSha256": "695b82deaa14a7e8070fb95337afe8de982ad7a3f125a537a5c135543035c1a8",
+      "src": "slim49:01. High/wear-winter/body_winter_fitted.glb",
+      "sha256": "0500035cdd65dea4d1f7e012d7f1904e27e5f8af69dc34e85d2cda50333fbb7d",
+      "lowSrc": "slim49:02. Low/wear-winter/body_winter_fitted_low.glb",
+      "lowSha256": "043f81fc75b273fc28fa43e4ac3093ecb2ff629ae3fc0ccdde565364a12f74ea",
       "precompressed": true
     },
     {
@@ -5933,6 +6144,8 @@
     "planting45": "45. Game Island planting growth 2026-10-18",
     "together47": "47. Game Island together island 2026-10-18",
     "dalmaru55": "55. Game Island Dalmaru structures 2026-10-19",
-    "plaza59": "59. Game Island plaza paving 2026-10-20"
+    "plaza59": "59. Game Island plaza paving 2026-10-20",
+    "slim49": "49. Game Island slim body 2026-10-18",
+    "slim50": "50. Game Island slim body accessories 2026-10-20"
   }
 }

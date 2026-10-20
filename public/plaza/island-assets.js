@@ -153,16 +153,16 @@
     bare: { url: `${CH}/body_bare.glb`, lowUrl: `${CH}/body_bare_low.glb` },
     clips: Object.fromEntries(MOTIONS.map((clip) => [clip, `${CH}/motions/${clip}.glb`])),
     animations: { idle: 'Idle', walk: 'Walk', run: 'Run', wave: 'Wave', interact: 'Interact', cheer: 'Cheer', gather: 'GatherWeed', pickup: 'Pickup', give: 'Give', receive: 'Receive', photo: 'PhotoPose', carry: 'CarryIdle', sitDown: 'SitDown', sitIdle: 'SitIdle', rideLook: 'RideLookAround', standUp: 'StandUp', guard: 'GuardIdle', bow: 'Bow', usher: 'Usher', fishCast: 'FishCast', fishWait: 'FishWait', fishReel: 'FishReel', fishCatch: 'FishCatch', fishBite: 'FishBite', fishMiss: 'FishMiss', slow: 'SlowWalk', look: 'IdleLookAround', notice: 'NoticeNeighbor', greet: 'GreetingSmall' },
-    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1.7201344052996752, walk: 1.3148706575937297, run: 1.2603893452887727 } }; // the ground speed each loop was made for, and its playback rate there
+    speeds: { slow: 1, walk: 4.2, run: 6.2 }, rates: { slow: 1.7201344052996752, walk: 1, run: 1 } }; // the ground speed each loop was made for, and its playback rate there (G 2026-10-20: Walk and Run made at 4.2 and 6.2 m/s, the feet not sliding)
   // v1.10.32: every part says its `fit` (asset-pipeline fitWardrobe): its slot, what of the base it replaces, a hat's
   // `cover` (the line above which the hair is under its crown, where the crown is wider than the hair) and a part's own
   // pieces that give way to a worn slot (`hideWith`)
   const part = (file, slot, { low = true, dye = null, ...fit } = {}) => ({ url: `${CH}/wear/${file}.glb`, ...(low ? { low: { url: `${CH}/wear/${file}_low.glb` } } : {}), ...(dye ? { dye } : {}), fit: { slot, ...fit } });
   Object.assign(REGISTRY, {
     'wear.face_eyes_cheeks': part('face_eyes_cheeks', 'face', { low: false }), 'wear.hair_cap': part('hair_cap', 'hair', { low: false }), 'wear.hair_long': part('hair_long', 'hair', { low: false }),
-    'wear.basic_shirt': part('basic_shirt', 'top', { low: false }), 'wear.female_shirt': part('female_shirt', 'top', { low: false }),
-    'wear.basic_pants': part('basic_pants', 'bottom', { low: false }), 'wear.short_skirt': part('short_skirt', 'bottom', { low: false }), 'wear.shoes': part('shoes', 'shoes', { low: false }),
-    'wear.overalls': part('overalls', 'outfit', { low: false, dye: 'overalls' }), 'wear.cat_ears': part('cat_ears', 'hat', { low: false, dye: 'hair' }),
+    'wear.basic_shirt': part('basic_shirt', 'top'), 'wear.female_shirt': part('female_shirt', 'top'), // (F1: their Low files too)
+    'wear.basic_pants': part('basic_pants', 'bottom'), 'wear.short_skirt': part('short_skirt', 'bottom'), 'wear.shoes': part('shoes', 'shoes', { low: false }),
+    'wear.overalls': part('overalls', 'outfit', { dye: 'overalls' }), 'wear.cat_ears': part('cat_ears', 'hat', { low: false, dye: 'hair' }),
   });
   // hair (05 skins pack, and the two older looks remade on the common rig: 무지개 머리 in its five colours, 별빛 머리)
   for (const file of ['hair_twin_tail', 'hair_curly', 'hair_ponytail', 'hair_spiky', 'hair_crew', 'hair_side_part', 'hair_bob', 'hair_straight', 'hair_bun', 'hair_braid']) REGISTRY[`wear.${file}`] = part(file, 'hair', { dye: 'hair' });
@@ -400,5 +400,14 @@
   const pvSeasons = (f) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${PV}/plaza_${f.replace('{s}', s)}.glb`]));
   for (const f of ['garden_long', 'garden_round']) REGISTRY[`plaza.${f}`] = { seasons: pvSeasons(`${f}_{s}`), low: { seasons: pvSeasons(`${f}_{s}_low`) }, near: 90 };
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
+  // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
+  // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
+  // parts (hair -- but the two hanging tails, made in F2 --, hats, face) and the IP sets are narrowed at run time as before (the head is not narrowed anyway)
+  const HEAD = /\/wear\/(hair(?!_ponytail|_twin_tail)|hat|eyes|nose|mouth|face_|cat_ears|x2_hair|x2_hat|animal_[a-z]+_hat)|\/wear-winter\/wear_hat|\/wear-ip\//;
+  const body = REGISTRY['character.base']; body.baked = true; body.bare.baked = true;
+  for (const e of Object.values(REGISTRY)) {
+    if (typeof e.url === 'string' && /\/characters\/wear(-winter)?\//.test(e.url) && !HEAD.test(e.url)) e.baked = true;
+    if (e.body && !HEAD.test(e.body.url)) e.body.baked = true;
+  }
   return { REGISTRY, WARDROBE, LOOK_SLOTS, wardrobeOf };
 });
