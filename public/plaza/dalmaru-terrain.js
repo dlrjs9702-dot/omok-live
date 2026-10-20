@@ -60,7 +60,7 @@
     { name: '서쪽 강', w: 5.5, pts: [[-106, -12], [-111, 10], [-108, 30], [-99, 48], [-88, 62]] },
     { name: '은하내', w: 5, pts: [[111, -78], [114, -60], [124, -40], [146, -22], [168, -12]] },
   ];
-  const POOLS = [{ x: -124, z: -55, r: 7 }, { x: 111, z: -78, r: 7 }]; // 마루폭포 under the ridge's west end (204°), the east fall (325°) -- clear of 관공서·계단 (206–241°) and 백화점 (298–312°)
+  const POOLS = [{ x: -124, z: -55, r: 7 }, { x: 111, z: -78, r: 7, hw: 4.5 }]; // (hw: the sheet's half width -- 문제 기록 12 「폭포를 더 크게」: the east one twice as wide) // 마루폭포 under the ridge's west end (204°), the east fall (325°) -- clear of 관공서·계단 (206–241°) and 백화점 (298–312°)
   const ISLE_POND = { x: 8, z: TIP_Z + 4, rx: 6, rz: 4 };
   function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
   const lineDist = (x, z, pts) => { let d = Infinity; for (let i = 0; i + 1 < pts.length; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; };

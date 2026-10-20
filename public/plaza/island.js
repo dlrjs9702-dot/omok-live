@@ -644,12 +644,12 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     for (const p of T.dalmaru.POOLS) {
       let a = 0; let top = -Infinity;
       for (let k = 0; k < 72; k += 1) { const t = (k / 72) * TAU; const h = heightAt(p.x + Math.cos(t) * (p.r + 4), p.z + Math.sin(t) * (p.r + 4)); if (h > top) { top = h; a = t; } }
-      const ux = Math.cos(a); const uz = Math.sin(a); const vx = -uz; const vz = ux; const hw = 2.2; const lip = p.r + 3.4; const foot = p.r + 0.4;
+      const ux = Math.cos(a); const uz = Math.sin(a); const vx = -uz; const vz = ux; const hw = p.hw || 2.2; let lip = p.r; while (lip < p.r + 4 && heightAt(p.x + ux * lip, p.z + uz * lip) < top - 0.6) lip += 0.25; const foot = p.r - 1.2; const big = hw / 2.2; // (the sheet in front of the cliff, from where it has risen all the way -- from p.r + 3.4 it lay inside the steep face)
       const pos = []; for (const [d, y] of [[foot, SEA_Y + 0.02], [lip, top + 0.05]]) for (const side of [-1, 1]) pos.push(p.x + ux * d + vx * hw * side, y, p.z + uz * d + vz * hw * side);
       const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2)); g.setIndex([0, 1, 2, 2, 1, 3]); g.computeVertexNormals();
       const sheet = new THREE.Mesh(g, fallMat); sheet.name = 'waterfall'; scene.add(sheet);
-      const ring = new THREE.Mesh(ringGeo, foam); ring.position.set(p.x + ux * (foot - 1), SEA_Y + 0.03, p.z + uz * (foot - 1)); scene.add(ring);
-      const puffs = [-1, 0, 1].map((k) => { const m = new THREE.Mesh(puffGeo, sprayMat); m.position.set(p.x + ux * (foot - 0.8) + vx * k * 1.3, SEA_Y + 0.5, p.z + uz * (foot - 0.8) + vz * k * 1.3); scene.add(m); return m; });
+      const ring = new THREE.Mesh(ringGeo, foam); ring.position.set(p.x + ux * (foot - 1), SEA_Y + 0.03, p.z + uz * (foot - 1)); ring.scale.set(big, 1, big); scene.add(ring);
+      const n = Math.round(big); const puffs = []; for (let k = -n; k <= n; k += 1) { const m = new THREE.Mesh(puffGeo, sprayMat); m.position.set(p.x + ux * (foot - 0.8) + vx * k * 1.3, SEA_Y + 0.5, p.z + uz * (foot - 0.8) + vz * k * 1.3); m.userData.s = Math.sqrt(big); scene.add(m); puffs.push(m); }
       falls.push({ sheet, puffs });
     }
   }
@@ -929,7 +929,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     return { turn, shown };
   }
 
-  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar(0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1)))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
+  function step(clock, lessMotion = false) { if (lessMotion) clock = 0; flowTex.offset.y = -clock * 0.16; if (fallTex) { fallTex.offset.y = clock * 0.9; falls.forEach((w) => w.puffs.forEach((m, k) => m.scale.setScalar((m.userData.s || 1) * (0.8 + 0.25 * Math.sin(clock * 3 + k * 2.1))))); } foam.opacity = 0.45 + Math.sin(clock * 2.2) * 0.12; pondTex.offset.set(clock * 0.006, clock * 0.004); boats.forEach((b, i) => { b.position.y = -0.55 + Math.sin(clock * 1.3 + i) * 0.06; b.rotation.z = Math.sin(clock * 0.9 + i * 2) * 0.05; }); }
   function dispose() { disposables.forEach((d) => d.dispose?.()); }
   return { waterMotion: () => ({ flow: flowTex.offset.toArray(), pond: pondTex.offset.toArray(), foam: foam.opacity, falls: falls.length, fall: fallTex ? fallTex.offset.y : null }), groundCover: () => ({ ...coverCount, flat: coverFlat.visible, low: coverLow.visible }), setQuality: setCoverQuality, edgeDecor: { stones: edgeStones.length, tiles: pathParts.border.length, paths: Object.fromEntries(Object.entries(pathParts).map(([k, v]) => [k, v.length])), flowers: edgeFlowers.length, seasonal: edgeSeason.length, grass: 0 }, drawMap, drawMinimap, step, dispose, setSeasonDay, lampBulb, weedGeometry: clump, natureMaterial: natureMat, bridges: bridges.map(({ x, z, ux, uz, half, w }) => ({ x, z, ux, uz, half, w })), pier: { x: PIER.x, z: PIER.z, half: PIER.half } };
 }
