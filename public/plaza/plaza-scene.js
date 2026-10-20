@@ -3073,7 +3073,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     });
     const r1 = (v) => Math.round(v * 10) / 10; /* (묶음 1: drawn = standing 0.15 m over the ground -- a plaza channel's bank is 0.17) */
     const unseen = live.filter((s) => !s.nature && !s.batch && !s.hw && !boxes.some((b) => s.x > b.min.x - 0.3 && s.x < b.max.x + 0.3 && s.z > b.min.z - 0.3 && s.z < b.max.z + 0.3 && b.max.y > heightAt(s.x, s.z) + 0.15)).map((s) => [r1(s.x), r1(s.z), s.r]);
-    const things = [...buildingRoots.map((r) => [r.userData.facility || 'house', r]), ...pieces.map((g) => [g.userData.piece, g])].filter(([, r]) => r.visible && r.parent);
+    const things = [...buildingRoots.filter((r) => !r.userData.occlusionAt /* (the yard: a group laid out in world coordinates, its own place the origin) */).map((r) => [r.userData.facility || 'house', r]), ...pieces.map((g) => [g.userData.piece, g])].filter(([, r]) => r.visible && r.parent);
     const unblocked = []; const floating = []; const sunk = [];
     for (const [name, root] of things) {
       box.setFromObject(root); if (box.isEmpty()) continue;
@@ -3087,7 +3087,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // walk the island from the first spot
     const R = Math.ceil(T.ISLAND_RADIUS); const W = R * 2 + 1; const seen = new Uint8Array(W * W); const hAt = new Float32Array(W * W);
-    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3);
+    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => !o.gate && blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3); // (the mayor's gate: opened by him, not the map)
     const idx = (i, j) => (j + R) * W + (i + R);
     const s0 = [Math.round(T.SPAWN.x), Math.round(T.SPAWN.z)]; const queue = [s0]; seen[idx(...s0)] = 1; hAt[idx(...s0)] = heightAt(...s0);
     for (let q = 0; q < queue.length; q += 1) {
