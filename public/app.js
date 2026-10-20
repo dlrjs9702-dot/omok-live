@@ -1829,7 +1829,7 @@
       plaza.controller = mod.createPlaza(plazaStage, { // throws (with a code) when the island cannot start
         startAt,
         facilities: PLAZA_FACILITIES.filter((f) => !f.admin || sessionRole === 'admin').map(({ id, name }) => ({ id, name })),
-        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id === 'store:up' ? furnitureLift(true) : id === 'furniture:down' ? furnitureLift(false) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
+        onInteract: (id) => (id === 'museum' ? openMuseum() : id === 'guide' ? talkGuide() : id === 'mailbox' ? openMailbox() : id === 'room:desk' ? openIslandPlace('office') : id === 'room:tax' ? openTax() : id === 'room:bank' ? openBank() : id === 'room:exit' ? townhallDoor(false) : id.startsWith('train:') ? trainAction(id.slice(6)) : id === 'seat:stand' ? (api('/api/island/stand', { method: 'POST', body: '{}' }).catch(() => {}), counterSeat && counterDialogs[counterSeat.door]?.open && counterDialogs[counterSeat.door].close()) : id.startsWith('seat:') ? sitDown(id.slice(5)) : id.startsWith('player:') ? openPlayerMenu(id.slice(7)) : id === 'fish:spot' ? fishAction() : id === 'farm:harvest' ? harvestFarm() : id === 'weedboard' ? openPlazaWindow('잡초 게시판', [weedBoard()]) : id === 'mayor' ? openMayor() : id.startsWith('ev:') ? solveIslandEvent(id) : id.startsWith('resident:') ? talkResident(Number(id.slice(9))) : id.startsWith('lift:') ? openLift(Number(id.slice(5))) : id.startsWith('adopt:') ? openAdopt(id.slice(6)) : id.startsWith('furn:') ? openFurniture(id.slice(5)) : id === 'store:exit' ? storeDoor(false) : id === 'mall:store' ? storeKeeperTalk() : id === 'mall:stall' ? openIslandPlace('merchant') : id.startsWith('good:') ? openGood(id.slice(5)) : id.startsWith('weed:') ? pullWeed(id) : PLAZA_FACILITIES.find((f) => f.id === id)?.open()), // v1.10.11: an event, (v1.10.31) a weed, or a facility
         onNear: showPlazaHint,
         blocked: () => Boolean(document.querySelector('dialog[open]')) || document.activeElement === islandChatInput, // a window over the square, or typing a chat message, stops the character
       });
@@ -1892,6 +1892,7 @@
     byId('issueStatus').textContent = ''; issueDialog.dataset.ctx = ''; issueDialog.ctx = issueContext(); issueDialog.showModal(); byId('issueText').focus();
   }
   byId('issueLogBtn').addEventListener('click', openIssue);
+  byId('myPetsBtn').addEventListener('click', openMyPets); // 묶음 2-2
   byId('furnitureStorageBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); openFurnitureStorage(); }); // 묶음 2 가구 창고
   byId('issueCloseBtn').addEventListener('click', () => issueDialog.close());
   byId('issueShotOn').addEventListener('change', (event) => byId('issueShot').classList.toggle('hidden', !event.target.checked || !issueShot));
@@ -2576,14 +2577,69 @@
   async function refreshFurniture() {
     try { furnitureState = await api('/api/island/furniture'); plaza.controller?.setFurniture?.(furnitureState); } catch {}
   }
-  async function furnitureLift(up) {
+  // 묶음 2·2-2: the 백화점's lift -- which floor (the one I am on not among them)
+  const FLOORS = { 1: '1층 · 백화점', 2: '2층 · 가구점', 3: '3층 · 펫샵' };
+  const liftCard = document.createElement('div'); liftCard.className = 'goodCard liftCard'; liftCard.id = 'liftCard';
+  function openLift(here) {
+    const row = document.createElement('div'); row.className = 'goodBuy';
+    for (const [to, label] of Object.entries(FLOORS)) { if (Number(to) === here) continue; const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.dataset.floor = to; b.addEventListener('click', () => liftTo(Number(to))); row.append(b); }
+    const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `지금 ${FLOORS[here]}`;
+    liftCard.replaceChildren(note, row); openPlazaWindow('승강기', [liftCard]);
+  }
+  async function liftTo(to) {
     if (furnitureBusy) return; furnitureBusy = true;
     try {
       const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-      if (up) await refreshFurniture();
-      const r = await api(up ? '/api/island/furniture/up' : '/api/island/furniture/down', { method: 'POST', body: '{}' });
+      if (to === 2) await refreshFurniture(); if (to === 3) await refreshPetshop();
+      const r = await api('/api/island/lift', { method: 'POST', body: JSON.stringify({ to }) });
       closeIslandWindows(); plaza.controller?.setSpace?.(r.space, r.x, r.z);
     } catch (error) { showToast(error.message); } finally { furnitureBusy = false; }
+  }
+  // 묶음 2-2 펫샵: the day's eight from the server (again when one is taken anywhere: SSE 'petshop'); SPACE by one opens
+  // its window -- a name, 「데려가기」, and it walks with me at once
+  let petshopState = null;
+  async function refreshPetshop() { try { petshopState = await api('/api/island/petshop'); plaza.controller?.setPetshop?.(petshopState); } catch {} }
+  const adoptCard = document.createElement('div'); adoptCard.className = 'goodCard adoptCard'; adoptCard.id = 'adoptCard';
+  function openAdopt(slot) {
+    const p = petshopState?.pets.find((x) => x.slot === slot); if (!p || p.sold) { showToast('방금 다른 분이 데려갔어요.'); return; }
+    const name = document.createElement('strong'); name.textContent = `${p.name} · ${Number(p.price).toLocaleString('ko-KR')}P`;
+    const what = document.createElement('p'); what.className = 'lookMeta'; what.textContent = `한 마리뿐이에요 — 데려가면 다른 사람에게서도 사라지고 내일 새 친구들이 와요. 하루 한 마리(오늘 ${petshopState.mine}/${petshopState.perDay}).`;
+    const input = document.createElement('input'); input.type = 'text'; input.maxLength = 10; input.placeholder = '이름 (10자까지, 비워 두어도 돼요)'; input.className = 'adoptName'; input.setAttribute('aria-label', '이름');
+    const row = document.createElement('div'); row.className = 'goodBuy';
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'primary'; go.textContent = '데려가기';
+    go.addEventListener('click', async () => {
+      if (furnitureBusy) return; furnitureBusy = true; go.disabled = true;
+      try {
+        const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {});
+        const r = await api('/api/island/petshop/adopt', { method: 'POST', body: JSON.stringify({ slot, name: input.value.trim() }) });
+        myPet = r.pet; plaza.controller?.setMyPet?.(myPet); plazaDialog.close(); showToast(`${myPet.name || p.name}와(과) 함께 다녀요!`, 4000); await refreshPetshop();
+      } catch (error) { showToast(error.message, 4000); await refreshPetshop(); } finally { furnitureBusy = false; go.disabled = false; }
+    });
+    const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
+    row.append(go, no); adoptCard.replaceChildren(name, what, input, row);
+    openPlazaWindow('펫샵', [adoptCard]);
+  }
+  // my pets (the 펫샵's, each its coat and name, and those bought before at the 잡화점): which walks with me
+  const petsBox = document.createElement('div'); petsBox.className = 'myPets'; petsBox.id = 'myPets';
+  async function openMyPets() {
+    let list = []; try { list = (await api('/api/island/pets')).pets; } catch (error) { showToast(error.message); return; }
+    const names = window.IslandPetShop;
+    const rows = list.map((p) => {
+      const row = document.createElement('div'); row.className = `myPetRow${p.walking ? ' walking' : ''}`; row.setAttribute('role', 'listitem');
+      const label = document.createElement('span'); label.textContent = `${p.name ? `${p.name} · ` : ''}${names?.nameOf(p.kind, p.coat) || p.kind}`;
+      const b = document.createElement('button'); b.type = 'button'; b.className = p.walking ? 'ghost tiny' : 'primary tiny'; b.textContent = p.walking ? '집에 두기' : '데리고 다니기';
+      b.addEventListener('click', async () => {
+        try {
+          const name = p.from === 'bag' && !p.walking ? (window.prompt('이름을 지어 주세요 (10자까지, 비워 두어도 돼요)', '') || '').trim().slice(0, 10) : '';
+          const r = await api('/api/island/pet', { method: 'POST', body: JSON.stringify(p.walking ? { kind: null } : { uid: p.uid, name }) });
+          myPet = r.pet; plaza.controller?.setMyPet?.(myPet); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); openMyPets();
+        } catch (error) { showToast(error.message); }
+      });
+      row.append(label, b); return row;
+    });
+    const empty = document.createElement('p'); empty.className = 'lookMeta'; empty.textContent = '아직 반려동물이 없어요. 백화점 3층 펫샵에 가 보세요.';
+    petsBox.replaceChildren(...(rows.length ? rows : [empty]));
+    islandBagDialog.close(); openPlazaWindow('내 반려동물', [petsBox]);
   }
   const furnitureCard = document.createElement('div'); furnitureCard.className = 'goodCard furnitureCard'; furnitureCard.id = 'furnitureCard';
   const FURNITURE_RARITY = { common: '흔함', uncommon: '보통', rare: '드묾', base: '늘 파는 가구' };
@@ -6103,6 +6159,7 @@
     if (event === 'islandWeather') { refreshIslandWeather(); return; } // A4 날씨 (held or let go by the administrator)
     if (event === 'residents') { plaza.controller?.setResidents?.(parsed.list); return; } // A-6: a talk holds or lets go of an islander
     if (event === 'birthdays') { birthdaySeq += 1; plaza.controller?.setBirthdays?.(parsed.names || []); return; } // B 47 생일
+    if (event === 'petshop') { if (plaza.controller?.space?.() === 'petshop') refreshPetshop(); else petshopState = null; return; } // 묶음 2-2: one taken somewhere
     if (event === 'furniture') { if (plaza.controller?.space?.() === 'furniture') refreshFurniture(); else furnitureState = null; return; } // 묶음 2: a piece sold somewhere
     if (event === 'birthdayCheer') { plaza.controller?.birthdayCheer?.(parsed.to === plazaMyId ? 'me' : parsed.to); return; }
     if (event === 'birthdayCheered') { showToast(`🎉 ${parsed.name}님이 생일을 축하해 줬어요 (올해 ${parsed.count}명)`, 5000); return; }

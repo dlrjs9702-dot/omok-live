@@ -56,7 +56,7 @@ test('아일랜드 GLB 예산: 모든 모델이 파이프라인 출력(양자화
       continue;
     }
     for (const [key, max] of Object.entries(budgets.max)) {
-      const limit = budgets.fileOverrides?.[f]?.[key] ?? (f.startsWith('train-v1/train_carriage') && budgets.trainCarriage[key] ? budgets.trainCarriage[key] : info.animations && budgets.flapping[key] && f.startsWith('halloween-decor-v1/bat') ? budgets.flapping[key] : info.animations && budgets.pet[key] && f.startsWith('together-v1/pet_') ? budgets.pet[key] : key === 'nodes' && info.animations ? budgets.animatedNodes : key === 'triangles' && f.startsWith('halloween-v1/') ? budgets.landmark.triangles : max); // named, scoped exceptions; never relax the global budget
+      const limit = budgets.fileOverrides?.[f]?.[key] ?? (f.startsWith('train-v1/train_carriage') && budgets.trainCarriage[key] ? budgets.trainCarriage[key] : info.animations && budgets.flapping[key] && f.startsWith('halloween-decor-v1/bat') ? budgets.flapping[key] : info.animations && budgets.pet[key] && (f.startsWith('together-v1/pet_') || f.startsWith('petshop-v1/pet_')) ? budgets.pet[key] : key === 'nodes' && info.animations ? budgets.animatedNodes : key === 'triangles' && f.startsWith('halloween-v1/') ? budgets.landmark.triangles : max); // named, scoped exceptions; never relax the global budget
       assert.ok(info[key] <= limit, `${f}: ${key} ${info[key]} > ${limit}`);
     }
   }

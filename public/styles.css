@@ -2292,6 +2292,11 @@ body.herosurvOpen { overflow: hidden; }
 .dressing .skinGrid{display:grid;grid-template-columns:1fr;gap:8px}
 .dressing .skinCard{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"pic name buy" "pic meta buy";align-items:center;column-gap:12px;padding:8px 10px;border-radius:14px;position:relative;cursor:pointer}
 .dressing .skinCard>canvas{grid-area:pic;width:88px;height:44px;border-radius:10px}
+/* 묶음 2-2 펫샵: a pet's name, my pets */
+.adoptCard .adoptName{width:100%;margin:6px 0}
+.myPets{display:grid;gap:6px}
+.myPetRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border:1px solid #334155;border-radius:10px}
+.myPetRow.walking{border-color:#34d399}
 /* 내 정보 변신 켜기·끄기 (2026-10-20) */
 .myTransforms{display:grid;gap:6px;margin:4px 0 8px}
 .myTransformLine{display:flex;align-items:center;gap:8px}

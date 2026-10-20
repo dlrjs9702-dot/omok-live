@@ -60,6 +60,7 @@ const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이
 const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
 const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
+const IslandPetShop = require('./public/plaza/island-petshop'); // 묶음 2-2 펫샵 (백화점 3층)
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
 const ClimbSim = require('./public/climb/climb-sim.js');
@@ -1056,6 +1057,20 @@ let plazaDirty = false;
 const townhallInside = new Set();
 const storeInside = new Set(); // v1.10.92 잡화점: who is in the store's room (the same rules as the 민원실)
 const furnitureInside = new Set(); // 묶음 2 가구점: who is up on the 2nd floor (still in the store: storeInside too)
+const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the 3rd floor (in the store too)
+// the floor I am on in the 백화점, its room's way of standing, and where its lift is
+const mallFloor = (token) => (!storeInside.has(token) ? 0 : petshopInside.has(token) ? 3 : furnitureInside.has(token) ? 2 : 1);
+const MALL_FLOORS = { 1: { R: IslandStore, space: 'store' }, 2: { R: IslandFurniture, space: 'furniture' }, 3: { R: IslandPetShop, space: 'petshop' } };
+// 펫샵: the day's eight and who took which (world 'petshop': { day, sold: { slot: account }, buys: { account: n } })
+async function petshopDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('petshop')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
+const petPrice = (kind) => Economy.value(`good:pet_${kind}`);
+const petView = (p) => (p && IslandPetShop.KINDS[p.kind] ? { kind: p.kind, coat: IslandPetShop.coatOf(p.kind, p.coat), name: String(p.name || '').slice(0, 10) } : null);
+// my pets: those adopted at the 펫샵 (world 'pets:<account>', each its coat and name) and those bought before at the 잡화점 (in the bag, the first coat)
+async function myPets(account) {
+  const adopted = ((await pointStore.worldValue(`pets:${account}`)) || []).map((p) => ({ uid: p.uid, kind: p.kind, coat: p.coat, name: p.name, from: 'petshop' }));
+  const bag = ((await pointStore.islandBag(account)).items || []).filter((e) => e.itemId.startsWith('pet_') && IslandPetShop.KINDS[e.itemId.slice(4)]);
+  return [...adopted, ...bag.map((e) => ({ uid: `bag:${e.itemId.slice(4)}`, kind: e.itemId.slice(4), coat: IslandPetShop.COATS[e.itemId.slice(4)][0], name: '', from: 'bag' }))];
+}
 // the day's display and what of it is sold (world 'furniture': { day, sold: { slot: account }, buys: { account: n } })
 async function furnitureDay() { const day = kstDate(nowMs()); const st = (await pointStore.worldValue('furniture')) || {}; return st.day === day ? { day, sold: st.sold || {}, buys: st.buys || {} } : { day, sold: {}, buys: {} }; }
 const furnitureView = (st, account) => ({ day: st.day, perDay: Economy.value('furniture:perDay'), mine: st.buys[account] || 0,
@@ -1170,7 +1185,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null })) };
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -3477,7 +3492,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.107' });
+    return sendJson(res, 200, { ok: true, version: '1.10.108' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4337,6 +4352,11 @@ async function requestHandler(req, res) {
     if (ride) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
+    } else if (petshopInside.has(session.token)) { // 묶음 2-2 펫샵 (as the 2nd floor)
+      const here = plazaPresence.get(session.token);
+      spot = IslandPetShop.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandPetShop.clamp(body.x, body.z) : { x: here.x, z: here.z };
+      Object.assign(wanted, IslandPetShop.clamp(body.x, body.z));
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('store'));
     } else if (furnitureInside.has(session.token)) { // 묶음 2 가구점 (as the 1st floor)
       const here = plazaPresence.get(session.token);
       spot = IslandFurniture.inRoom(Number(body.x), Number(body.z), 2) || !here ? IslandFurniture.clamp(body.x, body.z) : { x: here.x, z: here.z };
@@ -4365,14 +4385,14 @@ async function requestHandler(req, res) {
     }
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
-    if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, { kind: doc.kind, name: String(doc.name || '').slice(0, 10) }); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
+    if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, petView(doc)); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
     plazaPresence.set(session.token, {
       pet: petOf.get(account) || null, id: session.plazaId, chatId: chatIdFor(session), account, champion: isChampion(account), hoguking: isHoguking(account), delinquent: Boolean(delinquent), name: String(session.label || (session.role === 'admin' ? '관리자' : '게스트')).slice(0, 24), look, title,
       x: spot.x, z: spot.z,
       yaw: Math.round(num(body.yaw, 10) * 100) / 100, moving: !collecting && body.moving === true, at: receivedAt, poseAt,
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
-      space: townhallInside.has(session.token) ? 'townhall' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2
+      space: townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
         const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
@@ -4497,17 +4517,62 @@ async function requestHandler(req, res) {
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'store' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
   }
-  // 묶음 2 가구점: the lift -- up from in front of the 1st floor's, down from in front of the 2nd floor's
-  if ((pathname === '/api/island/furniture/up' || pathname === '/api/island/furniture/down') && req.method === 'POST') {
+  // 묶음 2·2-2: the 백화점's lift -- from in front of the floor's own to the floor asked (1층 백화점, 2층 가구점, 3층 펫샵)
+  if (pathname === '/api/island/lift' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
-    const at = plazaPresence.get(session.token); const up = pathname.endsWith('/up');
-    const from = up ? IslandStore.world(...IslandStore.LIFT.stand) : IslandFurniture.world(...IslandFurniture.LIFT.stand);
-    if (!at || !storeInside.has(session.token) || furnitureInside.has(session.token) === up || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.');
-    if (up) furnitureInside.add(session.token); else furnitureInside.delete(session.token);
-    const spot = up ? IslandFurniture.world(...IslandFurniture.LIFT.stand) : IslandStore.world(...IslandStore.LIFT.stand);
-    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: up ? 'furniture' : 'store', moving: false, at: nowMs(), act: null, seat: null });
+    const at = plazaPresence.get(session.token); const body = await parseJson(req); const to = Number(body.to); const here = mallFloor(session.token);
+    const from = MALL_FLOORS[here] && MALL_FLOORS[here].R.world(...MALL_FLOORS[here].R.LIFT.stand);
+    if (!MALL_FLOORS[to] || to === here) return sendError(res, 400, 'BAD_FLOOR', '층을 확인해 주세요.');
+    if (!at || !from || Math.hypot(at.x - from.x, at.z - from.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '승강기 앞에서 다시 시도해 주세요.');
+    furnitureInside.delete(session.token); petshopInside.delete(session.token);
+    if (to === 2) furnitureInside.add(session.token); if (to === 3) petshopInside.add(session.token);
+    const { R, space } = MALL_FLOORS[to]; const spot = R.world(...R.LIFT.stand);
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space, moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;
-    return sendJson(res, 200, { ok: true, space: up ? 'furniture' : 'store', x: spot.x, z: spot.z });
+    return sendJson(res, 200, { ok: true, space, floor: to, x: spot.x, z: spot.z });
+  }
+  // 묶음 2-2 펫샵: the day's eight (and who is already taken), my adoptions today
+  if (pathname === '/api/island/petshop' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const st = await petshopDay(); const account = pointAccountForSession(session);
+    return sendJson(res, 200, { ok: true, day: st.day, perDay: 1, mine: st.buys[account] || 0, pets: IslandPetShop.displayOf(st.day).map((p) => ({ ...p, name: IslandPetShop.nameOf(p.kind, p.coat), price: petPrice(p.kind), sold: Boolean(st.sold[p.slot]) })) });
+  }
+  // a pet taken home: by it in the yard (where it is now -- its round is the server's too), the first one only, one a
+  // day each; named, it walks with me at once and is gone from everyone's yard till tomorrow
+  if (pathname === '/api/island/petshop/adopt' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const body = await parseJson(req); const at = plazaPresence.get(session.token); const account = pointAccountForSession(session);
+    if (!at || !petshopInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '펫샵에서 다시 시도해 주세요.');
+    const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
+    return worldEdit(async () => {
+      const st = await petshopDay(); const pet = IslandPetShop.displayOf(st.day).find((p) => p.slot === body.slot);
+      if (!pet) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
+      // (by it within the last 15 s: it walks on while its window is open and a name is typed)
+      const near = Array.from({ length: 31 }, (_, k) => IslandPetShop.petAt(st.day, pet.slot, nowMs() - k * 500)).some((w) => Math.hypot(at.x - w.x, at.z - w.z) <= IslandPetShop.REACH + 1.4);
+      if (!near) return sendError(res, 409, 'TOO_FAR', '반려동물 가까이 가서 다시 시도해 주세요.');
+      if (st.sold[pet.slot]) return sendError(res, 409, 'SOLD', '방금 다른 분이 데려갔어요. 내일 새 친구들이 와요.');
+      if ((st.buys[account] || 0) >= 1) return sendError(res, 429, 'PET_DAY_LIMIT', '반려동물은 하루 한 마리만 데려갈 수 있어요.');
+      const owned = (await pointStore.worldValue(`pets:${account}`)) || [];
+      if (owned.length >= 30) return sendError(res, 409, 'TOO_MANY_PETS', '반려동물이 너무 많아요.');
+      const claimId = `petshop:${st.day}:${pet.slot}:${account}`;
+      let out; try { out = await pointStore.charge({ userId: account, claimId, price: petPrice(pet.kind), title: `펫샵 · ${IslandPetShop.nameOf(pet.kind, pet.coat)}` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      await pointStore.setWorldValue('petshop', { day: st.day, sold: { ...st.sold, [pet.slot]: account }, buys: { ...st.buys, [account]: (st.buys[account] || 0) + 1 } });
+      const mine = { uid: crypto.randomUUID(), kind: pet.kind, coat: pet.coat, name, at: nowMs(), claim: claimId };
+      if (!owned.some((p) => p.claim === claimId)) await pointStore.setWorldValue(`pets:${account}`, [...owned, mine]);
+      await pointStore.questApply(account, 'pet', () => ({ doc: { kind: mine.kind, coat: mine.coat, name: mine.name, uid: mine.uid } }));
+      petOf.set(account, petView(mine));
+      for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+      plazaDirty = true; if (out.applied) notifyPointsChanged([account]);
+      broadcastIsland('petshop', { day: st.day, sold: pet.slot });
+      return sendJson(res, 200, { ok: true, pet: petOf.get(account), balance: out.balance ?? null });
+    });
+  }
+  // my pets (the 펫샵's and the 잡화점's), which one walks with me
+  if (pathname === '/api/island/pets' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const walking = (await pointStore.questDoc(account, 'pet')).doc;
+    return sendJson(res, 200, { ok: true, pets: (await myPets(account)).map((p) => ({ ...p, walking: walking.uid ? walking.uid === p.uid : p.from === 'bag' && walking.kind === p.kind })) });
   }
   // the day's display (and what is sold), the always-on-sale ones, my buys today
   if (pathname === '/api/island/furniture' && req.method === 'GET') {
@@ -4636,11 +4701,19 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/pet' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const body = await parseJson(req);
-    const kind = body.kind == null ? null : String(body.kind); const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
-    if (kind && !PET_KINDS.includes(kind)) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
-    if (kind && !((await pointStore.islandBag(account)).items || []).some((e) => e.itemId === `pet_${kind}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
-    await pointStore.questApply(account, 'pet', () => ({ doc: kind ? { kind, name } : {} }));
-    petOf.set(account, kind ? { kind, name } : null);
+    const name = String(body.name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 10);
+    let doc = {};
+    if (body.uid && !String(body.uid).startsWith('bag:')) { // (묶음 2-2: one adopted at the 펫샵 -- its coat and the name it was given)
+      const p = ((await pointStore.worldValue(`pets:${account}`)) || []).find((x) => x.uid === String(body.uid)); if (!p) return sendError(res, 409, 'NOT_MINE', '내 반려동물이 아닙니다.');
+      doc = { kind: p.kind, coat: p.coat, name: p.name, uid: p.uid };
+    } else {
+      const kind = body.uid ? String(body.uid).slice(4) : body.kind == null ? null : String(body.kind);
+      if (kind && !PET_KINDS.includes(kind)) return sendError(res, 400, 'BAD_PET', '반려동물을 확인해 주세요.');
+      if (kind && !((await pointStore.islandBag(account)).items || []).some((e) => e.itemId === `pet_${kind}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없습니다.');
+      if (kind) doc = { kind, name };
+    }
+    await pointStore.questApply(account, 'pet', () => ({ doc }));
+    petOf.set(account, petView(doc));
     for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
     plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
   }
@@ -6669,7 +6742,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.107 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.108 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

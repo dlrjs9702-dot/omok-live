@@ -12,8 +12,8 @@ test('가구점: 승강기로 2층, 진열된 가구 앞 SPACE로 사면 팔림 
   const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
   await intoMall(page, null, isMobile);
   // the lift: SPACE in front of it, up
-  await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['store:up']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('가구점');
-  await press();
+  await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:1']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('승강기');
+  await press(); await page.locator('#liftCard button[data-floor="2"]').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('furniture');
   // the day's sixteen and the four always on sale, each on its place
   await expect.poll(() => page.evaluate(() => Object.keys(window.PlazaDebug().furniture() || {}).length), { timeout: 15000 }).toBe(20);
@@ -37,8 +37,8 @@ test('가구점: 승강기로 2층, 진열된 가구 앞 SPACE로 사면 팔림 
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().tryOn?.())).not.toBe(null);
   await page.locator('#plazaCloseBtn').click();
   // down again
-  await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['furniture:down']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('1층');
-  await press();
+  await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); const l = d.doors['lift:2']; d.teleport(l.x, l.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 20000 }).toContain('승강기');
+  await press(); await page.locator('#liftCard button[data-floor="1"]').click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().space), { timeout: 15000 }).toBe('store');
   await expectNoScriptError(page);
   await who.context.close();

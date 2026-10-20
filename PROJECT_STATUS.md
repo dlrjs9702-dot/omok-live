@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.108 패치 묶음 2-2: 펫샵(백화점 3층), 승강기 1~3층
+
+- 근거: gamecenter-notes `docs/pet-shop-20261020.md`(사용자 2026-10-20), `docs/patch-bundles-20261020.md` 묶음 2-2.
+- 펫샵(`public/plaza/island-petshop.js`, 브라우저·서버 공용): 3층 방(섬 밖), 놀이 마당 10×8 m(앞 문 2 m), 하루 여덟 마리(종류×무늬 12에서, 종류마다 둘 이상, 서울 날짜로 모두 같음), `petAt(day, slot, ms)` — 마당 안 여섯 곳을 도는 길이 날짜에서 정해져 모든 화면·서버가 같은 자리.
+- 서버: 승강기 하나로 1~3층(`/api/island/lift {to}`, 앞에서만 — 가구점의 up/down을 대신), `petshopInside`(⊂ storeInside, space `petshop`), `GET /api/island/petshop`, `POST .../adopt`(곁에서 — 지난 15초 안에 2.6 m 안이면, 이름 짓는 동안 걸어가도 됨; worldEdit로 먼저 온 한 명만, 1인 하루 한 마리, 값 = 경제 `good:pet_*`, 정산 `petshop:…`), `GET /api/island/pets`(펫샵 반려동물 world `pets:<계정>` + 잡화점에서 산 가방 반려동물 = 첫 무늬), `/api/island/pet`이 `uid`로도 고름. 반려동물 자리 정보에 `coat`. 잡화점 진열에서 반려동물 뺌(가진 것 그대로).
+- 화면: 3층(assets 60 `petshop-v1` — 방·놀이 마당·고양이 타워 2·새 횃대·방석 3·밥그릇·장난감·계산대·간판), 무늬 판 12(`pet.<종류>__<무늬>`, 따라다니는 반려동물도 그 무늬), 승강기는 3층짜리(`mall.elevator` → elevator3, 57의 2층짜리 파일 삭제)와 층 고르기 창, 반려동물 곁 SPACE → 이름·데려가기, 가방 「반려동물」 목록.
+- 고침: SPACE 대상 순서(지난 프레임의 대상이 남아 있으면 반려동물 대상이 한 프레임 걸러 사라지던 것), `budgets.pet` 노드 12 → 13(무늬 판).
+- 걷기·뛰기 2판(걷기 2.5·뛰기 5)은 사용자 비교 중이라 보류(지금 G1·4.2/6.2 그대로).
+- 검증: 단위(펫샵 하루·마당 안·승강기·동시·하루 한 마리·내 반려동물, 가구점), e2e 펫샵·가구점(PC·휴대폰), 광장·motion36. Codex 검토 대기(10/25).
+
 ## v1.10.107 패치 묶음 2: 가구점(백화점 2층), 내 정보 변신 켜기·끄기
 
 - 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 2, `docs/furniture-shop-20261019.md`(사용자 확정), `docs/shop-tryon-20261019.md` 「내 정보에서 변신 켜기/끄기」.
@@ -31,14 +41,3 @@
 - G: Walk·Run이 게임 속도 4.2·6.2로 만들어져 `rates` walk·run 1.0(slow 1.72 그대로).
 - `budgets.json`: 옛 운동복·후드 몸·옷의 비양자화 예외 8개 삭제.
 - 검증: 단위 전체(Windows 줄바꿈 6개 제외), motion36·island-assets·dress-room e2e 30개. Codex 검토 대기(사용량 한도 10/25).
-
-## v1.10.105 패치 묶음 1: 달마루섬 마무리·섬 길 정리, 대청마당 바닥(assets 59), 버그 11·12, 문제 기록 허용
-
-- 근거: gamecenter-notes `docs/patch-bundles-20261020.md` 묶음 1(하나의 PR·배포), `docs/bugs-20261020.md` 11·12, 문제 기록 허용(b04796d), assets 59(88eb828).
-- 섬 길: 모든 장소(문·역·계단 양 끝·집·다리·알림마루·박물관·등대·부두·배 타는 곳·농부)가 대청마당에서 길로 이어짐(`test/dalmaru-paths.test.js`: 길 한 덩어리·장소 3.5 m 안·막다른 길 없음), 능선 위 길, 계단 옆면 한 면(`ShapeGeometry`), 절벽 면 돌 없앰(`slopeAt < 1`), 미니맵 글자 겹침(실제 너비).
-- 주민 동산 순환: 이동 격자에 능선 계단 디딤판·발치·꼭대기 연결, 난간 원 여유 0.15 — 능선 3·서쪽 3·마을 7. 멀리 심부름: 상대는 부탁한 주민에게서 가장 먼 셋 중 하나, 거리 단계(60·120 m)마다 경제 `errand:far`(500), 부탁·재촉 때 말로 위치 힌트(지도·나침반 표시 없음). 섬 소문 위치는 멈춤 자리가 가장 많은 곳.
-- 대청마당 바닥(assets 59 `plaza-v1`): 박석 그림 6 m 반복(`island.js`), 원판·고리·테두리돌(묶음 하나)·모서리, 물길 8칸 + 끝 수반(막음, `tank_water` depthWrite 끔), 정원 섬 6(계절 4판, 테두리 충돌, 앉을 자리 28) — 서쪽 긴 정원·둥근 정원 하나는 책수레·스폰·알림마루를 비켜 옮김. 옛 나무 화분 12개 뺌. mapCheck의 「그려진 것」 높이 0.3 → 0.15 m(물길 둑 0.17). 행사 배치는 구조물 원도 비킴.
-- 버그 11·12: 옷가게 목록은 그림 없이 한 줄(3D 미리보기 옆), 내 정보는 착용·해제만, 검색 줄 고정, 생일 칸 「월」·「일」. 창이 화면 대부분을 덮으면 섬은 0.5초마다 그림(`covered`), 휴대폰 미리보기는 DPR 1·안티앨리어싱 끔·바뀔 때만.
-- 문제 기록 허용: 관리자 계정 목록의 「문제 기록 허용」(world `issueWriters`), 허용 계정은 `/api/issues`로 쓰기(하루 30)·자기 기록만 보기, 관리자 목록에 쓴 사람과 거르기.
-- 옛 섬(`ISLAND_MAP=classic`) 코드·시험은 이사 결과(운영 로그) 확인 전까지 되돌릴 길로 남김 — 다음 묶음에서 정리.
-- 검증: 단위 전체(Windows 줄바꿈 6개 제외), dalmaru-walk mapCheck(보이지 않는 벽·뜬 것·묻힌 것·못 가는 곳 0), island-admin-look·dress-room e2e, 대청마당 그리기 호출 400(main 410)·삼각형 +6%. Codex 검토 대기(사용량 한도 10/25).

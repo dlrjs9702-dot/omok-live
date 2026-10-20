@@ -407,7 +407,15 @@
   for (const g of FURN?.GOODS || []) REGISTRY[g.model] = fv(`furn_${g.id}`);
   for (const f of ['plinth_l', 'plinth_s', 'price_stand', 'sold_sign', 'checkout']) REGISTRY[`shop.${f}`] = fv(`shop_${f}`, { shadows: false });
   for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false });
-  for (const f of ['floor2', 'elevator', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
+  for (const f of ['floor2', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
+  // 묶음 2-2 펫샵 (assets 60 petshop-v1): each pet in its four coats (pet.<kind>__<coat>, the same rig and motions as
+  // together.pet_<kind>), the 3rd floor and what stands in it, and the lift that goes up to it (in place of assets 57's)
+  const PS = '/assets/island/petshop-v1';
+  const ps = (file, extra = {}) => ({ url: `${PS}/${file}.glb`, low: { url: `${PS}/${file}_low.glb` }, near: 40, ...extra });
+  const PETS = { puppy: 'tan white black choco', kitten: 'grey cheese black white', bird: 'green yellow blue pink' };
+  for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
+  for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60 });
+  REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
