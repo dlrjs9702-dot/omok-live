@@ -59,7 +59,7 @@ const SHAPES = {
   lights: () => stringParts('lights'),
 };
 
-export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, benches, spots, lampModel }) {
+export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, benches, spots, lampModel, keepClear = [] }) {
   const group = new THREE.Group(); group.visible = false; group.name = 'halloween-decor'; scene.add(group);
   const PC = T.PLAZA_C || { x: 0, z: 0 }; // (the plaza's middle: 지금 섬's origin, 달마루섬's 대청마당)
   const nearPlaza = (x, z, m) => (T.inPlaza ? T.inPlaza(x, z, m) : Math.hypot(x, z) < T.PLAZA_R + m);
@@ -67,7 +67,7 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   const made = []; const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const up = new THREE.Vector3(0, 1, 0);
   const place = { pumpkinA: [], pumpkinB: [], stack: [], hay: [], scarecrow: [], cauldron: [], broom: [], bunting: [], lights: [] };
   const R = { pumpkinA: 0.25, pumpkinB: 0.25, stack: 0.35, hay: 0.55, scarecrow: 0.35, cauldron: 0.45, broom: 0.35 };
-  const free = (x, z, r) => solids.every((s) => Math.hypot(s.x - x, s.z - z) > s.r + r + 0.15);
+  const free = (x, z, r) => solids.every((s) => Math.hypot(s.x - x, s.z - z) > s.r + r + 0.15) && keepClear.every((k) => Math.hypot(k.x - x, k.z - z) > r + 0.7); // (keepClear: a keeper's walk, 문제 기록 8)
   const open = (x, z, r) => walkable(x, z) && T.walkDist(x, z) > r + 0.3 && T.streamDist(x, z) > T.STREAM_HALF + r + 0.4 && !T.onBridge(x, z) && free(x, z, r);
   function put(kind, x, z, ry, y = heightAt(x, z), solid = true) {
     const s = new THREE.Vector3(1, 1, 1);
@@ -82,7 +82,7 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   }
 
   // doors: cottages and facilities (spots worked out where they are built)
-  for (const s of spots) put(s.kind, s.x, s.z, s.ry, s.y ?? heightAt(s.x, s.z)); // laid out against the walls, clear of the yard's fences and mailbox
+  for (const s of spots) if (keepClear.every((k) => Math.hypot(k.x - s.x, k.z - s.z) > 1)) put(s.kind, s.x, s.z, s.ry, s.y ?? heightAt(s.x, s.z)); // laid out against the walls, clear of the yard's fences and mailbox
   // the plaza: a pumpkin at each end of each bench, two cauldrons
   for (const b of benches) { const ry = Math.atan2(PC.x - b.x, PC.z - b.z); for (const side of [-1, 1]) put(side < 0 ? 'pumpkinA' : 'pumpkinB', b.x + Math.cos(ry) * 1.15 * side, b.z - Math.sin(ry) * 1.15 * side, ry + Math.PI, PH); }
   for (const [dx, dz] of [[7.6, -2.8], [-7.6, 2.8]]) { const x = PC.x + dx; const z = PC.z + dz; if (free(x, z, R.cauldron)) put('cauldron', x, z, Math.atan2(dx, dz), PH); }
@@ -225,5 +225,5 @@ export function halloweenDecor({ scene, assets, solids, vcMat, PH, plazaLamps, b
   const setOn = (on) => { group.visible = on; };
   const dispose = () => { dropParts(); for (const g of made) g.dispose(); glowMat.dispose(); shadeMat.dispose(); wispMat.dispose(); scene.remove(group); };
   const launchBats = (at = null) => { through = at; for (const f of flights) { f.next = 0; f.start = null; } }; // tests: every flock off now
-  return { group, step, setOn, dispose, launchBats, debug: () => ({ shown: group.visible, batModels: batParts ? FLOCKS * PER : 0, batsFlapping: batParts ? FLOCKS * PER : 0, batsFlying, batsLow, batPoseLevels: batParts ? new Set(batParts.map((p) => p.level)).size : 0, batSeen: batSeen.slice(), batInstanced: batParts ? batParts.length : 0, flights: flights.map((f) => ({ on: f.start !== null, from: f.from, dir: f.dir, y: f.y })), kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
+  return { group, step, setOn, dispose, launchBats, debug: () => ({ shown: group.visible, pumpkins: [...place.pumpkinA, ...place.pumpkinB, ...place.stack, ...place.hay].map((m) => ({ x: m.elements[12], z: m.elements[14] })), batModels: batParts ? FLOCKS * PER : 0, batsFlapping: batParts ? FLOCKS * PER : 0, batsFlying, batsLow, batPoseLevels: batParts ? new Set(batParts.map((p) => p.level)).size : 0, batSeen: batSeen.slice(), batInstanced: batParts ? batParts.length : 0, flights: flights.map((f) => ({ on: f.start !== null, from: f.from, dir: f.dir, y: f.y })), kinds: { ...kinds }, wisps: wispAt.length, bats: batAt.length, lamps: lampAt.length, shades: shades.visible, moon: sky.children.includes(moon) }) };
 }

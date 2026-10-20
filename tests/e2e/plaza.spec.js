@@ -721,7 +721,8 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await expect.poll(async () => { const now = await state(page); return Math.hypot(now.x - from.x, now.z - from.z); }, { timeout: 10000 }).toBeGreaterThan(0.5);
   await page.keyboard.up('ArrowUp');
 
-  // all round the island at the lowest tilt: above the ground and outside buildings (behind the game hall, by houses, on the hill)
+  // all round the island at the lowest tilt: above gentle ground (문제 기록 7: a cliff or the ridge behind is seen through, the
+  // camera not lifted over it) and, inside a building, that building faded (behind the game hall, by houses, on the hill)
   await page.evaluate((m) => window.PlazaDebug().setCamPitch(-m), sky); // looking up at the sky: the camera at its lowest
   const spots = await page.evaluate(() => { const d = window.PlazaDebug(); return Object.values(d.doors).map((o) => [o.x, o.z]); });
   for (const [x, z] of spots) {
@@ -729,8 +730,8 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
       await page.evaluate(([x, z, yaw]) => { const d = window.PlazaDebug(); d.setCamYaw(yaw); d.teleport(x, z); }, [x, z, yaw]);
       const c = (await cam()).camera;
       expect(await page.evaluate(()=>window.PlazaDebug().camDist)).toBeGreaterThanOrEqual(4);
-      expect(c.clear, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBeGreaterThan(0.9);
-      expect(c.inBuilding, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBe(false);
+      expect((c.clear > 0.9 || c.rise > 3), `${x.toFixed(1)},${z.toFixed(1)} @${yaw} ${JSON.stringify(c)}`).toBe(true);
+      if (c.inBuilding) await expect.poll(async () => (await cam()).camera.faded, { timeout: 3000, message: `${x.toFixed(1)},${z.toFixed(1)} @${yaw}` }).toBeGreaterThan(0);
     }
   }
 
@@ -801,6 +802,11 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   const aId = await idOf(a);
   for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues.filter((s) => s.rank)), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]); // (a weekend contest winner may stand too)
   expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual(DAL ? [4.2, 3] : [2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
+  // 문제 기록 10: the statues keep their colours (not one stone), the plates are big and grow with the distance
+  if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 15000 }).toBeGreaterThan(3);
+  const plates = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await a.page.waitForTimeout(400); return a.page.evaluate(() => window.PlazaDebug().statueLook().plates); };
+  const nearP = await plates(0, -112); const farP = await plates(0, -10);
+  expect(Math.min(...nearP)).toBeGreaterThanOrEqual(4.4); expect(farP[0]).toBeGreaterThan(nearP[0] * 1.5);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
@@ -1266,12 +1272,16 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
   await expect(page.locator('#plazaDialog')).toHaveClass(/talkMode/); // still talking to him (v1.10.63: the speech bubble)
   await page.keyboard.press('Space'); // the bubble's one line is out: Space answers 「용무가 있습니다」
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().pass)).toBe(true);
+  // 문제 기록 8: the gate stays shut while he is still on his way aside; no October pumpkin on his walk
+  expect(await page.evaluate(() => window.PlazaDebug().townhall().solidOpen)).toBe(false);
+  expect(await page.evaluate(() => { const t = window.PlazaDebug().townhall(); const pts = [t.gate, t.mid, t.aside]; const near = (p) => pts.some((q, i) => { const r = pts[i + 1]; if (!r) return false; const dx = r.x - q.x; const dz = r.z - q.z; const k = Math.max(0, Math.min(1, ((p.x - q.x) * dx + (p.z - q.z) * dz) / (dx * dx + dz * dz))); return Math.hypot(p.x - q.x - dx * k, p.z - q.z - dz * k) < 0.8; }); return window.PlazaDebug().halloween.decor().pumpkins?.filter(near).length ?? 0; })).toBe(0);
   // he steps out of the gate, then aside along the outside of the wall: never back inside the yard behind the wall
   const walk = [];
   for (let k = 0; k < 40; k += 1) { walk.push(await page.evaluate(() => { const t = window.PlazaDebug().townhall(); return window.IslandTerrain.townhallLocal(t.mayorAt.x, t.mayorAt.z); })); await page.waitForTimeout(100); }
   const z1 = await page.evaluate(() => window.IslandTerrain.TOWNHALL.yard.z1);
   for (const w of walk) expect(Math.abs(w.lx) < 1.2 || w.lz > z1 + 0.6, JSON.stringify(w)).toBe(true);
   await expect.poll(async () => { const t = await page.evaluate(() => window.PlazaDebug().townhall()); return Math.hypot(t.mayorAt.x - t.aside.x, t.mayorAt.z - t.aside.z); }, { timeout: 15000 }).toBeLessThan(0.1); // he steps aside
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().townhall().solidOpen)).toBe(true); // (and then the gate opens)
   await page.evaluate(() => window.PlazaDebug().place('townhall'));
   await page.waitForTimeout(1500);
   const inside = await page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; });
@@ -1286,8 +1296,9 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
         d.teleport(p.x, p.z); d.setCamPitch(-d.skyMax); d.setCamYaw(yaw);
         const now = window.PlazaDebug(); return { camera: now.camera, distance: now.camDist };
       }, [lx, lz, yaw]);
-      expect(view.camera.inBuilding, `${lx},${lz}@${yaw}`).toBe(false);
-      expect(view.camera.clear).toBeGreaterThan(0.9); expect(view.distance).toBeGreaterThanOrEqual(4);
+      const c = view.camera; // (문제 기록 7: no lift -- a wall or the hall the camera stands in fades instead)
+      if (c.inBuilding) await expect.poll(() => page.evaluate(() => window.PlazaDebug().camera.faded), { timeout: 3000, message: `${lx},${lz}@${yaw}` }).toBeGreaterThan(0);
+      expect((c.clear > 0.9 || c.rise > 3), JSON.stringify(c)).toBe(true); expect(view.distance).toBeGreaterThanOrEqual(4);
     }
   }
   // (달마루섬: the cliff front -- the walk straight at it, stopped within a body's half-width and its circles' scallop of the front)

@@ -72,7 +72,7 @@ export function createOcclusion(camera) {
     for (const root of records.keys()) if (!live.has(root)) remove(root);
     for (const root of roots) {
       let rec = records.get(root);
-      if (root.position.distanceToSquared(p) >= 900 && !rec?.a) continue;
+      if ((root.userData.occlusionAt || root.position).distanceToSquared(p) >= 900 && !rec?.a) continue; // (a group laid out in world coordinates names where it is)
       if (!rec || rec.revision !== (root.userData.occlusionRevision || 0)) {
         const a = rec?.a || 0; const seen = rec?.seen ?? -Infinity;
         rec = build(root); rec.a = a; rec.seen = seen;
