@@ -79,3 +79,35 @@ test('대청마당 바닥: 정원·물길은 길·문·알림마루·광장 자�
   assert.equal(seats.length, 4 * 4 + 2 * 6);
   assert.deepEqual({ hits: [...new Set(hits)], lonely }, { hits: [], lonely: [] });
 });
+
+// 묶음 5 배치·동선 점검 (docs/layout-audit-20261020.md, 사용자 「게시판 같은 게 이상하게 모여 있고 길 중간에 건물이 있다」):
+// what stands -- facilities, houses, boards, the islanders' things, plaza and waterfront props, gardens -- keeps out of
+// every walk's width (a walk that ends at a thing's own door may reach it), keeps 1 m from the next (an islander from
+// their own thing excepted), and no more than three boards stand within 8 m of one another
+test('배치 점검: 서 있는 것은 길 폭 밖, 서로 1m 이상, 게시판류는 8m 안에 3개 이하', { skip: !ON && '달마루섬 전용' }, () => {
+  const R = { hall: 11, house: 3.2, office: 3.2, board: 1.1, mapboard: 1.1, npc: 0.5, donation: 0.8, gazebo: 3, tower: 3.6 };
+  const things = []; const add = (name, x, z, r, kind, door = null) => things.push({ name, x, z, r, kind, door });
+  for (const [id, s] of Object.entries(T.SPOTS)) if (s.kind !== 'facade') add(id, s.x, s.z, R[s.kind] ?? 1, ['board', 'mapboard', 'donation'].includes(s.kind) ? 'board' : s.kind === 'npc' ? 'keeper' : 'thing', T.facilityDoor(id));
+  T.COTTAGES.forEach((c, i) => add(`이웃골 집${i + 1}`, c.x, c.z, 3.4, 'thing'));
+  for (const [k, v] of Object.entries(T.VILLAGE)) { if (Array.isArray(v)) v.forEach((l, i) => add(`${k}${i}`, l.x, l.z, l.r || 0.4, 'thing')); else if (v?.x !== undefined) add(k, v.x, v.z, v.r || 0.5, v.r ? 'thing' : 'keeper'); }
+  const M = T.MUSEUM; add('박물관', M.x, M.z, M.r, 'thing', { x: M.x - Math.sin(M.yaw) * 4.9, z: M.z - Math.cos(M.yaw) * 4.9 });
+  const P = T.plazaProps(); P.benches.forEach((b, i) => add(`광장 벤치${i}`, b.x, b.z, b.r, 'thing')); P.lamps.forEach((l, i) => add(`광장 등${i}`, l.x, l.z, l.r, 'thing'));
+  T.paving().gardens.forEach((g, i) => add(`정원${i}`, g.x, g.z, g.kind === 'round' ? 3.05 : 4.5, 'thing'));
+  T.WATERFRONT.lamps.forEach((l, i) => add(`물가 등${i}`, l.x, l.z, l.r, 'thing')); T.WATERFRONT.benches.forEach((b, i) => add(`물가 벤치${i}`, b.x, b.z, b.r, 'thing'));
+  const seg = (x, z, pts) => { let d = Infinity; for (let i = 1; i < pts.length; i += 1) { const [ax, az] = pts[i - 1]; const [bx, bz] = pts[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); d = Math.min(d, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return d; };
+  const onWalk = [];
+  for (const t of things) T.walkCurves.forEach((w, wi) => {
+    const toDoor = t.door && [w.pts[0], w.pts[w.pts.length - 1]].some(([x, z]) => Math.hypot(x - t.door.x, z - t.door.z) < 3);
+    const pts = toDoor ? w.pts.filter(([x, z]) => Math.hypot(x - t.door.x, z - t.door.z) > t.r * 0.6 + 2) : w.pts; if (pts.length < 2) return;
+    const gap = t.kind === 'keeper' ? seg(t.x, t.z, pts) - (w.w / 2 - 0.6) : seg(t.x, t.z, pts) - w.w / 2 - t.r;
+    if (gap < -0.3) onWalk.push(`${t.name} 길${wi + 1}`);
+  });
+  const own = [['busk', 'busker'], ['mural', 'painter'], ['easel', 'painter'], ['mural', 'easel'], ['toolbox', 'electrician'], ['stones', 'builder'], ['bookcart', 'librarian'], ['omokTable', 'grandpa'], ['mailbox', 'guide']];
+  const crowded = [];
+  for (let i = 0; i < things.length; i += 1) for (let j = i + 1; j < things.length; j += 1) {
+    const a = things[i]; const b = things[j]; if (own.some(([p, q]) => (a.name === p && b.name === q) || (a.name === q && b.name === p))) continue;
+    if (Math.hypot(a.x - b.x, a.z - b.z) - a.r - b.r < 1) crowded.push(`${a.name}↔${b.name}`);
+  }
+  const boards = things.filter((t) => t.kind === 'board'); const piled = boards.filter((b) => boards.filter((o) => Math.hypot(o.x - b.x, o.z - b.z) < 8).length > 3).map((b) => b.name);
+  assert.deepEqual({ onWalk, crowded, piled }, { onWalk: [], crowded: [], piled: [] });
+});

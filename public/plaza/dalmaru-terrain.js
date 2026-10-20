@@ -115,14 +115,14 @@
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 227.5), to: deg(RIDGE.inner - 2, 212) }, // up the cliff face westward beside 관공서
     lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)
-    gamehall: { x: 56, z: -66 }, notice: { x: -34, z: -62 }, village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
+    gamehall: { x: 56, z: -66 }, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
-    records: { x: 53, z: -90, face: [40, -88] }, missions: { x: 50, z: -54, face: [40, -62] }, // beside the 게임관
+    records: { x: 64, z: -86, face: [60, -95] }, missions: { x: 46, z: -75, face: [40, -75] }, // beside the 게임관 (묶음 5 배치 점검: 기록관 off the 백화점 walk, facing it; 미션 게시판 by the hall's door, off its walk)
     admin: { x: -54, z: -72, face: [-40, -76] }, chat: { x: -86, z: -4, face: [-100, -20] }, climb: { x: -128, z: -12, face: [-112, -10] },
     // (the trader and the 작명소 are indoors: the 백화점's 노점 and the 관공서's 개명 신청 window)
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
-    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -27, z: -68, face: [-34, -62] },
+    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
     hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
