@@ -2306,6 +2306,15 @@ body.herosurvOpen { overflow: hidden; }
 .myTransformList{display:flex;flex-wrap:wrap;gap:6px}
 .myTransformRow{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #334155;border-radius:10px}
 .myTransformRow.chosen{border-color:#34d399}
+/* 묶음 4 내 집: the lot map and list, the 꾸미기 pad, the 꾸미기 button in my own house (PC and phone alike) */
+.homeCard,.homeEdit,.homeTank{display:grid;gap:8px}
+.homeLotMap{width:100%;max-width:300px;justify-self:center;border-radius:12px}
+.homeLots{display:flex;flex-wrap:wrap;gap:6px}
+.homeLots .selected,.homeChoice .selected{outline:2px solid #60a5fa}
+.homeChoice .goodBuy{flex-wrap:wrap;gap:6px}
+.homeEditPad{display:grid;grid-template-columns:repeat(5,minmax(44px,1fr));gap:6px}
+.homeEditBtn{position:absolute;z-index:3;top:12px;right:12px;padding:8px 16px;border-radius:999px;background:rgba(37,99,235,.8);color:#fff;border:1px solid rgba(191,219,254,.7)}
+.homeEditBtn.hidden{display:none}
 /* 묶음 2 가구 창고: the piece in 3D above, the list under it */
 .furnitureStorage{display:grid;gap:8px}
 .furnitureStorage .furnitureCanvas{width:100%;height:min(42vh,320px);display:block;border-radius:12px}

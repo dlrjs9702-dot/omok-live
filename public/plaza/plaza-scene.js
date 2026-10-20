@@ -492,7 +492,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function refreshMinimap(now) {
     if (now - minimapAt < 120) return;
     minimapAt = now;
-    const places = Object.entries(doors).filter(([id]) => !id.startsWith('room:')).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
+    const places = Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && (!id.startsWith('home:') || d.mine)).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
     ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, mapMarkers));
   }
 
@@ -1110,7 +1110,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const ride = p.ride && Number.isInteger(p.ride.id) && Number.isInteger(p.ride.seat) && R.TRAINS.some((t) => t.id === p.ride.id) && R.SEATS[p.ride.seat] ? { id: p.ride.id, seat: p.ride.seat } : null;
       if (ride && !o.ride) { o.c.anim?.loop?.('rideLook') || o.c.anim?.loop?.('sitIdle'); o.c.noTuck = true; o.c.tailTucked = true; o.c.tuckTail?.(true); }
       if (!ride && o.ride) { o.c.noTuck = false; o.c.anim?.release?.(); o.c.tailTucked = false; o.c.tuckTail?.(false); }
-      o.ride = ride; o.platform = p.platform || null; o.space = p.space || 'island'; // v1.10.84
+      o.ride = ride; o.platform = p.platform || null; o.space = p.space || 'island'; o.home = p.home || null; // v1.10.84 (묶음 4: which house)
       o.pet = p.pet || null; // B 47 반려동물
       o.bike = ['mint', 'red', 'sky', 'butter'].includes(p.bike) && (p.space || 'island') === 'island' ? p.bike : null; o.space = p.space || 'island'; // (자전거)
     }
@@ -1123,7 +1123,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
-    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : PETS; const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
+    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop' || mySpace === 'home') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : mySpace === 'petshop' ? PETS : homeRoom; const q = R.clamp(x, z); if (d > 0.3) { me.root.position.set(q.x, R.ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.92, 묶음 2
     if (d > 0.3) { me.root.position.set(x, heightAt(x, z), z); correction = null; } // the server's word, at once (a short hop)
     else if (d > 0.05) correction = { x, z };
   }
@@ -1154,8 +1154,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         p.x = m.x + ux * keep; p.z = m.z + uz * keep; f.nudge(p.x, p.z);
       }
       o.drawnGap = Math.hypot(p.x - m.x, p.z - m.z);
-      p.y = o.space === 'townhall' ? ROOM.y : o.space === 'store' ? STORE.ROOM.y : o.space === 'furniture' ? FURN.ROOM.y : o.space === 'petshop' ? PETS.ROOM.y : heightAt(p.x, p.z);
-      o.c.root.visible = o.space === mySpace; // v1.10.84: the 민원실 and the island never show each other
+      p.y = o.space === 'townhall' ? ROOM.y : o.space === 'store' ? STORE.ROOM.y : o.space === 'furniture' ? FURN.ROOM.y : o.space === 'petshop' ? PETS.ROOM.y : o.space === 'home' ? HOME.ROOM.y : heightAt(p.x, p.z);
+      o.c.root.visible = o.space === mySpace && (mySpace !== 'home' || o.home === homeHere?.lot?.id); // v1.10.84: the 민원실 and the island never show each other (묶음 4: nor two houses)
       // facing: the way they are drawn walking, and the server's facing once they stand
       o.c.targetYaw = f.speed > 0.8 && f.heading != null ? f.heading : at.yaw;
       if (o.collect && ['gather','pickup','pickFruit'].includes(o.act)) {
@@ -2063,12 +2063,127 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       furniture.shown[s.id] = { key, root, tag };
     }
   }
+  // 묶음 4 내 집 (IslandHome, assets 58): on 툇마루섬 each lot's house (its roof, the owner's name over the door) or the
+  // empty lot's sign; inside, one room far off (put where the house's own is) -- its floor and wallpaper, the pieces where
+  // the owner put them, the tanks' fish swimming and bubbling (the insect case's insect still), a frame's photo card, the
+  // owner's pets that stay home roaming, the seats sat on; the 꾸미기 창 shows a piece where it would go (green or red)
+  const HOME = globalThis.IslandHome; const homesShown = new Map(); let homeRoomV = null; let homeHere = null; let homeGhostV = null;
+  const homeRoom = { ROOM: HOME.ROOM, clamp: (x, z) => (homeHere?.lot ? HOME.clamp(homeHere.lot, x, z, homeHere.home.pieces) : { x, z }) };
+  const homesGroup = new THREE.Group(); scene.add(homesGroup);
+  function setHomes(lots) { // the server's lots (app.js: /api/home, again on SSE 'homes')
+    for (const l of lots || []) {
+      const lot = HOME.lotById(l.id); if (!lot) continue;
+      const key = `${l.owner}:${l.roof}:${l.mine}:${l.visit}`; const was = homesShown.get(l.id); if (was?.key === key) continue;
+      if (was) { was.root.removeFromParent(); occlusion.remove(was.root); const k = buildingRoots.indexOf(was.root); if (k >= 0) buildingRoots.splice(k, 1); }
+      const root = new THREE.Group(); root.position.set(lot.x, heightAt(lot.x, lot.z), lot.z); root.rotation.y = lot.yaw; homesGroup.add(root); // (the model's front, -Z, toward the walk)
+      const f = new THREE.Group(); root.add(f); const d = HOME.doorOf(lot); const who = l.owner || '이웃';
+      if (l.owner !== null) {
+        mesh(new THREE.BoxGeometry(6, 3.2, 5), mat(0xe9dcc4), 0, 1.6, 0, f); assets.attach(`home.house__${HOME.ROOFS.includes(l.roof) ? l.roof : 'red'}`, root, f);
+        const plate = new THREE.Group(); plate.position.set(1.1, 0, -2.6); root.add(plate); assets.attach('home.nameplate', plate, new THREE.Group());
+        sign(l.mine ? '내 집' : `${who}의 집`, plate, 2.4).scale.multiplyScalar(0.55);
+        doors[`home:${l.id}`] = { x: d.x, z: d.z, mine: l.mine, mapName: '내 집', name: l.mine ? '내 집 들어가기' : l.visit === 'none' ? `${who}의 집 · 손님을 받지 않아요` : `${who}의 집 구경하기`, plain: !l.mine && l.visit === 'none' };
+      } else {
+        assets.attach('home.lot_sign', root, f); sign('빈 집터', root, 2.0).scale.multiplyScalar(0.5);
+        doors[`home:${l.id}`] = { x: d.x, z: d.z, name: '빈 집터 · 관공서 민원 창구에서 신청해요', plain: true };
+      }
+      homesShown.set(l.id, { key, root, owned: l.owner !== null }); if (l.owner !== null) buildingRoots.push(root); // (faded when it stands between the camera and me, like the other buildings)
+    }
+  }
+  function buildHomeRoom() {
+    if (homeRoomV) return homeRoomV;
+    const g = new THREE.Group(); g.rotation.y = Math.PI; scene.add(g); // (turned half round like the 백화점's floors: the doorway toward the camera)
+    mesh(new THREE.BoxGeometry(90, 0.2, 90), mat(0x2a2f3a), 0, -0.4, 0, g); // the dark around it
+    const shell = new THREE.Group(); g.add(shell); const f = new THREE.Group(); shell.add(f); const wall = mat(0xf2ede4);
+    mesh(new THREE.BoxGeometry(8, 0.2, 8), mat(0xd9c3a0), 0, -0.1, 0, f); mesh(new THREE.BoxGeometry(8, 3, 0.2), wall, 0, 1.5, 4, f); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.2, 3, 8), wall, s * 4, 1.5, 0, f);
+    assets.attach('home.room', shell, f);
+    for (const lx of [-2, 2]) { const light = new THREE.PointLight(0xfff1d6, 10, 12, 1.2); light.position.set(lx, 2.8, 0); g.add(light); }
+    homeRoomV = { group: g, layers: {}, pieces: new Map(), pets: [] };
+    return homeRoomV;
+  }
+  const homeLayer = (kind, id) => { const R = homeRoomV; if (R.layers[kind]?.id === id) return; R.layers[kind]?.root.removeFromParent(); const root = new THREE.Group(); R.group.add(root); assets.attach(id, root, new THREE.Group()); R.layers[kind] = { id, root }; };
+  const pieceKey = (p) => `${p.id}:${p.x}:${p.z}:${p.rot}:${p.photo || ''}:${(homeHere.home.tanks[p.uid] || []).map((f) => f.fid).join(',')}`;
+  const BACK = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // (a piece's back, +Z as made, after rot quarters -- IslandHome)
+  function hungAt(p) { // a hung piece drawn flat against its wall (it is placed on the 0.25 m steps, within 0.2 of it)
+    const s = HOME.SIZE[HOME.shapeOf(p.id)]; if (!HOME.HUNG.has(HOME.shapeOf(p.id)) || !s) return { x: p.x, z: p.z };
+    const [bx, bz] = BACK[p.rot]; const H = HOME.ROOM.half;
+    return bz === 1 ? { x: p.x, z: H - s[1] / 2 } : bx === 1 ? { x: H - s[1] / 2, z: p.z } : bx === -1 ? { x: -H + s[1] / 2, z: p.z } : { x: p.x, z: p.z };
+  }
+  const swimTo = (T, bottom) => { if (T.cylinder) { const r = Math.sqrt(Math.random()) * (T.max[0] - T.min[0]) * 0.45; const a = Math.random() * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * r, bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), Math.sin(a) * r); } return new THREE.Vector3(T.min[0] + Math.random() * (T.max[0] - T.min[0]), bottom ? T.min[1] : T.min[1] + Math.random() * (T.max[1] - T.min[1]), T.min[2] + Math.random() * (T.max[2] - T.min[2])); };
+  function drawPiece(p, ghost = false) {
+    const shape = HOME.shapeOf(p.id); const good = globalThis.IslandFurniture?.good(p.id); const s = HOME.SIZE[shape] || [1, 1, 1]; const T = HOME.TANKS[shape];
+    const root = new THREE.Group(); const at = hungAt(p); root.position.set(at.x, 0.04, at.z); root.rotation.y = (p.rot * Math.PI) / 2; homeRoomV.group.add(root);
+    const f = new THREE.Group(); root.add(f); mesh(new THREE.BoxGeometry(s[0], s[2], s[1]), mat(0xc9a77c), 0, s[2] / 2, 0, f);
+    if (good) assets.attach(good.model, root, f);
+    const v = { root, key: ghost ? '' : pieceKey(p), swim: [], bubbles: [] };
+    if (shape === 'picture_frame' && p.photo) { // a photo card in the frame: the place and 「기념사진」 (the shot itself stays on the PC)
+      const c = document.createElement('canvas'); c.width = 256; c.height = 200; const x = c.getContext('2d'); const sky = x.createLinearGradient(0, 0, 0, 200); sky.addColorStop(0, '#9fd3f0'); sky.addColorStop(1, '#f6e7c8'); x.fillStyle = sky; x.fillRect(0, 0, 256, 200);
+      x.fillStyle = '#3d2b1f'; x.font = '700 30px Pretendard, "Malgun Gothic", sans-serif'; x.textAlign = 'center'; x.fillText(homeHere.photos[p.photo] || '', 128, 110); x.font = '500 20px Pretendard, "Malgun Gothic", sans-serif'; x.fillText('기념사진', 128, 150);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; textures.push(tex);
+      const card = new THREE.Mesh(new THREE.PlaneGeometry(s[0] * 0.78, s[2] * 0.72), new THREE.MeshBasicMaterial({ map: tex })); card.rotation.y = Math.PI; card.position.set(0, s[2] / 2 + 1.1, -s[1] / 2 - 0.005); root.add(card); // (the frame hangs at the height made; its face is -Z)
+    }
+    for (const fish of ghost || !T ? [] : homeHere.home.tanks[p.uid] || []) {
+      const fr = new THREE.Group(); root.add(fr); const fb = new THREE.Group(); fr.add(fb); mesh(new THREE.BoxGeometry(0.16, 0.06, 0.05), mat(0x9fb8c8), 0, 0, 0, fb);
+      if (T.insects) { assets.attach(`together.${fish.itemId}`, fr, fb); fr.position.set(0, T.min[1], 0); continue; } // (the insect sits)
+      assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb); fr.scale.setScalar(T.fishScale || 1);
+      const bottom = HOME.BOTTOM.has(fish.itemId); fr.position.copy(swimTo(T, bottom)); v.swim.push({ root: fr, T, bottom, to: swimTo(T, bottom), speed: 0.12 + Math.random() * 0.12, phase: Math.random() * 6 });
+    }
+    if (T && !T.insects && !ghost) for (let k = 0; k < 4; k += 1) { const b = mesh(new THREE.SphereGeometry(0.025, 6, 4), mat(0xeaf6ff, { transparent: true, opacity: 0.6 }), T.min[0] * 0.6, T.min[1] + Math.random() * (T.max[1] - T.min[1]), 0, root); b.castShadow = false; v.bubbles.push(b); }
+    return v;
+  }
+  function setHome(inside) { // the house I am in (app.js: /api/home/inside), null when out -- the room laid out again as it is now
+    homeGhost(null);
+    for (let i = SEATS.length - 1; i >= 0; i -= 1) if (String(SEATS[i].id).startsWith('home:')) SEATS.splice(i, 1);
+    delete doors['home:exit'];
+    homeHere = inside?.home ? { lot: HOME.lotById(inside.home.lot), home: inside.home, mine: Boolean(inside.mine), photos: inside.photos || {} } : null;
+    if (!homeHere?.lot) { homeHere = null; if (homeRoomV) { for (const h of homeRoomV.pets) h.c.dispose(); homeRoomV.pets = []; } return; }
+    const R = buildHomeRoom(); const { lot, home } = homeHere; const r = HOME.roomOf(lot); R.group.position.set(r.x, HOME.ROOM.y - 0.04, r.z); // (the floor's layer, 4 cm, under my feet)
+    const e = HOME.world(lot, HOME.ENTRY[0], HOME.ENTRY[1] - 0.6); doors['home:exit'] = { x: e.x, z: e.z, name: '나가기' };
+    homeLayer('floor', `home.floor__${home.floor}`); homeLayer('wall', `home.wallpaper__${home.wall}`);
+    const want = new Map(home.pieces.map((p) => [p.uid, p]));
+    for (const [uid, v] of R.pieces) { const p = want.get(uid); if (!p || v.key !== pieceKey(p) || R.lot !== lot.id) { v.root.removeFromParent(); R.pieces.delete(uid); } }
+    R.lot = lot.id;
+    for (const p of home.pieces) if (!R.pieces.has(p.uid)) R.pieces.set(p.uid, drawPiece(p));
+    for (const p of home.pieces) SEATS.push(...HOME.seatsOf(lot, p).map((s) => ({ ...s, name: '앉기' })));
+    if (inside.pets) { // (the pets: only when the server sends them -- a placing keeps those roaming)
+      for (const h of R.pets) h.c.dispose(); R.pets = [];
+      for (const p of inside.pets.slice(0, 12)) { const c = petHolder(p.kind, p.coat); const q = homeSpot(); c.root.position.set(q.x, HOME.ROOM.y, q.z); R.pets.push({ c, to: null, wait: Math.random() * 3 }); }
+    }
+  }
+  const homeSpot = () => { const w = HOME.world(homeHere.lot, (Math.random() - 0.5) * 6.6, (Math.random() - 0.5) * 6.6); return HOME.clamp(homeHere.lot, w.x, w.z, homeHere.home.pieces); };
+  function stepHome(dt) {
+    if (mySpace !== 'home' || !homeRoomV || !homeHere) return;
+    for (const v of homeRoomV.pieces.values()) {
+      for (const f of v.swim) {
+        const p = f.root.position; const d = p.distanceTo(f.to); if (d < 0.04) { f.to = swimTo(f.T, f.bottom); continue; }
+        p.lerp(f.to, Math.min(1, (f.speed * dt) / d)); f.root.rotation.y = Math.atan2(f.to.x - p.x, f.to.z - p.z) + Math.sin(clock * 9 + f.phase) * 0.18; // (the tail's wag)
+      }
+      for (const b of v.bubbles) { const T = HOME.TANKS[HOME.shapeOf(homeHere.home.pieces.find((x) => v.root === homeRoomV.pieces.get(x.uid)?.root)?.id)]; if (!T) continue; b.position.y += dt * 0.25; if (b.position.y > T.max[1]) b.position.y = T.min[1]; }
+    }
+    for (const h of homeRoomV.pets) { // slowly about the floor, now and then a rest
+      if (h.wait > 0) { h.wait -= dt; continue; }
+      if (!h.to) { h.to = homeSpot(); h.c.play('Walk'); }
+      const p = h.c.root.position; const dx = h.to.x - p.x; const dz = h.to.z - p.z; const d = Math.hypot(dx, dz);
+      if (d < 0.1) { h.to = null; h.wait = 2 + Math.random() * 5; h.c.play(Math.random() < 0.4 ? 'Sit' : 'Idle'); continue; }
+      const q = homeRoom.clamp(p.x + (dx / d) * Math.min(d, 0.7 * dt), p.z + (dz / d) * Math.min(d, 0.7 * dt));
+      if (Math.hypot(q.x - p.x, q.z - p.z) < 1e-4) { h.to = null; continue; } // (a piece in the way: elsewhere)
+      p.x = q.x; p.z = q.z; h.c.root.rotation.y = Math.atan2(dx, dz);
+    }
+  }
+  function homeGhost(p) { // -> why not (Korean) or null; the placed piece hides while its ghost shows
+    if (homeGhostV) { homeGhostV.root.removeFromParent(); homeGhostV.mark.removeFromParent(); if (homeGhostV.hid) homeGhostV.hid.visible = true; homeGhostV = null; }
+    if (!p || !homeRoomV || !homeHere) return null;
+    const why = HOME.placeError(p, homeHere.home.pieces.filter((x) => x.uid !== p.uid)); const b = HOME.boxOf(p); if (!b) return why;
+    const hid = homeRoomV.pieces.get(p.uid)?.root || null; if (hid) hid.visible = false;
+    const v = drawPiece(p, true); const mark = mesh(new THREE.BoxGeometry(b.x1 - b.x0, 0.03, b.z1 - b.z0), mat(why ? 0xe05050 : 0x4fbf6f, { transparent: true, opacity: 0.55 }), (b.x0 + b.x1) / 2, 0.06, (b.z0 + b.z1) / 2, homeRoomV.group); mark.castShadow = false;
+    homeGhostV = { root: v.root, mark, hid }; return why;
+  }
   // each sector's spot carries its old facility id (the shop's window and the server's place check stay the same)
   for (const s of STORE.SECTORS) doors[s.place] = { ...STORE.world(s.interact[0], s.interact[1]), name: s.name };
   if (doors.store) { doors.store.mapName = '백화점'; doors.store.name = '백화점 들어가기'; }
   function setGoodsPrices(prices) { goodsPrices = { ...(prices || {}) }; }
   function setSpace(space, x, z) { // the server moved me (in or out): there at once, the camera with me
-    mySpace = ['townhall', 'store', 'furniture', 'petshop'].includes(space) ? space : 'island';
+    mySpace = ['townhall', 'store', 'furniture', 'petshop', 'home'].includes(space) ? space : 'island';
+    if (mySpace === 'home') buildHomeRoom(); else if (homeHere) setHome(null); // (묶음 4: out of a house, its pets go)
     indoors = mySpace !== 'island'; lightKey = null; // (bugs 9: the weather stays outside)
     if (mySpace === 'townhall') buildRoom();
     if (mySpace === 'store') buildStore();
@@ -2077,10 +2192,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (petshop) for (const h of petshop.pets.values()) h.c.root.visible = mySpace === 'petshop'; // (the yard's pets stand in the world: only on the 3rd floor)
     // the island is not drawn while I am inside (IDEAS: no terrain, trees or sea in the room) -- only what is drawn now
     // is put away, and comes back as it was; the lights stay (they light the room too), people show by their space
-    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
-    if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room })[mySpace]?.group; } // (from floor to floor: the one I am on)
-    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; }
-    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : mySpace === 'store' ? STORE.ROOM.y : mySpace === 'furniture' ? FURN.ROOM.y : mySpace === 'petshop' ? PETS.ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y;
+    if (mySpace !== 'island' && !roomHidden.length) { const people = new Set([me.root, ...[...others.values()].map((o) => o.c.root)]); const here = mySpace === 'store' ? store.group : mySpace === 'furniture' ? furniture.group : mySpace === 'petshop' ? petshop.group : mySpace === 'home' ? homeRoomV.group : room.group; roomHidden = scene.children.filter((o) => o.visible && !o.isLight && o !== here && !people.has(o)); for (const o of roomHidden) o.visible = false; }
+    if (mySpace !== 'island' && roomHidden.length) { for (const r of [room, store, furniture, petshop, homeRoomV]) if (r) r.group.visible = r.group === ({ store, furniture, petshop, townhall: room, home: homeRoomV })[mySpace]?.group; } // (from floor to floor: the one I am on)
+    if (mySpace === 'island') { for (const o of roomHidden) o.visible = true; roomHidden = []; if (room) room.group.visible = true; if (store) store.group.visible = true; if (furniture) furniture.group.visible = true; if (petshop) petshop.group.visible = true; if (homeRoomV) homeRoomV.group.visible = true; }
+    keys.clear(); me.root.position.set(x, mySpace === 'townhall' ? ROOM.y : mySpace === 'store' ? STORE.ROOM.y : mySpace === 'furniture' ? FURN.ROOM.y : mySpace === 'petshop' ? PETS.ROOM.y : mySpace === 'home' ? HOME.ROOM.y : heightAt(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y;
     if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
   }
@@ -2361,6 +2476,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // -- A-7: the book cart only while it is out (the librarian's ask; it stood unseen in the town hall's yard)
   for (const v of globalThis.IslandTerrain.villageSolids()) solids.push({ x: v.x, z: v.z, r: v.r * 0.8, ...(v === globalThis.IslandTerrain.VILLAGE.bookcart ? { off: () => !village?.cart?.visible } : {}) });
   prepareTogether(); prepareGuide(); // B 47: the 우체통 and the guide resident (their solids are village ones)
+  for (const lot of HOME.LOTS) for (const lx of [-1.5, 1.5]) { const c = Math.cos(lot.yaw); const s = Math.sin(lot.yaw); solids.push({ x: lot.x + lx * c + 0.3 * s, z: lot.z - lx * s + 0.3 * c, r: 2.5, off: () => !homesShown.get(lot.id)?.owned }); } // 묶음 4: a house stands in the way (6 x 5 m, two circles), an empty lot does not
   const GRID = 8; const grid = new Map();
   for (const s of solids) {
     const reach = s.r + 0.5;
@@ -2400,7 +2516,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     if (platform) { const q = R.platformClamp(platform.line, platform.station, nx, nz); p.set(q.x, q.y, q.z); return; }
     if (mySpace === 'townhall') { [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = globalThis.IslandTerrain.roomClamp(nx, nz); p.set(q.x, ROOM.y, q.z); return; } // v1.10.84
-    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : PETS; [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
+    if (mySpace === 'store' || mySpace === 'furniture' || mySpace === 'petshop' || mySpace === 'home') { const R = mySpace === 'store' ? STORE : mySpace === 'furniture' ? FURN : mySpace === 'petshop' ? PETS : homeRoom; [nx, nz] = collidePlayers(p.x, p.z, nx, nz); const q = R.clamp(nx, nz); p.set(q.x, R.ROOM.y, q.z); return; } // v1.10.92, 묶음 2
     [nx, nz] = collidePlayers(p.x, p.z, nx, nz);
     [nx, nz] = pushOut(nx, nz);
     if (!walkable(nx, nz)) { // the sea, a stream, the pond or a cliff edge: slide along it if one axis still works
@@ -2725,7 +2841,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       npc.wasClose = close;
       animate(npc, dt, false);
     }
-    stepGuideArrow(); stepBug(dt); stepPets(); stepPetshop(); // B 47, 묶음 2-2
+    stepGuideArrow(); stepBug(dt); stepPets(); stepPetshop(); stepHome(dt); // B 47, 묶음 2-2, 묶음 4
     // Nearest facility within reach: hint + the head turns toward it.
     let best = null; let bestD = REACH;
     for (const [id, door] of Object.entries(doors)) {
@@ -2769,6 +2885,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (best && !doorOf(best)) best = null;
     if (mySpace === 'petshop' && !best && petshopState && petshop) { const m = me.root.position; let pick = null; let pd = PETS.REACH; for (const [slot, h] of petshop.pets) { const d = Math.hypot(h.c.root.position.x - m.x, h.c.root.position.z - m.z); if (d < pd) { pd = d; pick = slot; } } const p = pick && petshopState.pets.find((x) => x.slot === pick); if (p) { const h = petshop.pets.get(pick).c.root.position; eventDoors[`adopt:${pick}`] = { x: h.x, z: h.z, name: `${p.name} · ${Number(p.price).toLocaleString('ko-KR')}P` }; best = `adopt:${pick}`; } }
     if (mySpace === 'furniture' && !best && furnitureState) { const s = FURN.placeAt(me.root.position.x, me.root.position.z); const d = s && furnitureState.items[s.id]; if (d) { const w = FURN.world(s.lx, s.lz); eventDoors[`furn:${s.id}`] = { x: w.x, z: w.z, name: d.sold ? '팔렸어요 · 내일 새 가구가 들어와요' : `${d.name} · ${Number(d.price).toLocaleString('ko-KR')}P`, plain: d.sold }; best = `furn:${s.id}`; } }
+    for (const k of Object.keys(eventDoors)) if (k.startsWith('tank:') || k.startsWith('frame:')) delete eventDoors[k];
+    if (best && !doorOf(best)) best = null;
+    if (mySpace === 'home' && !best && homeHere?.mine) { // (묶음 4) the tank, insect case or frame by me
+      const { lx, lz } = HOME.local(homeHere.lot, me.root.position.x, me.root.position.z); let pick = null; let pd = 1.0;
+      for (const p of homeHere.home.pieces) { const shape = HOME.shapeOf(p.id); if (!HOME.TANKS[shape] && shape !== 'picture_frame') continue; const b = HOME.boxOf(p); const d = Math.hypot(Math.max(b.x0 - lx, 0, lx - b.x1), Math.max(b.z0 - lz, 0, lz - b.z1)); if (d < pd) { pd = d; pick = p; } }
+      if (pick) { const shape = HOME.shapeOf(pick.id); const w = HOME.world(homeHere.lot, pick.x, pick.z); const key = `${shape === 'picture_frame' ? 'frame' : 'tank'}:${pick.uid}`; eventDoors[key] = { x: w.x, z: w.z, name: shape === 'picture_frame' ? '액자 · 기념사진 걸기' : shape === 'insect_case' ? '곤충 상자 · 넣고 꺼내기' : '수조 · 물고기 넣고 꺼내기' }; best = key; }
+    }
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
@@ -2963,7 +3086,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     };
-    return { draws, covered, mapCheck, cycling, bikes: () => bikes, othersBikes: () => Object.fromEntries([...others].map(([id, o]) => [id, o.bike || null])), petshop: () => (petshop ? [...petshop.pets.keys()] : null), furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), carveStatues: (list, week) => { if (list) { statueKey = '[]'; statueList = []; setStatues(list, week); } return statueChars.map((c) => ({ stone: Boolean(c.stone), x: c.root.position.x, z: c.root.position.z })); }, blocksAt: (x, z) => solidsNear(x, z).filter(blocksNow).some((o) => Math.hypot(o.x - x, o.z - z) < o.r), hwAt: () => { const o = solids.find((s) => s.hw && !solids.some((t) => t !== s && !t.hw && Math.hypot(t.x - s.x, t.z - s.z) < t.r + s.r)); return o ? { x: o.x, z: o.z, decorOn } : null; }, contestPlinth: () => contestPlinth.visible, /* A-7 */ x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), bug: () => (bug ? { on: bug.root.visible, t: bug.t } : null), pets: () => [...pets].map(([key, p]) => ({ key, kind: p.kind, name: p.name, clip: p.c.now, loaded: Boolean(p.c.mixer), x: +p.c.root.position.x.toFixed(2), z: +p.c.root.position.z.toFixed(2) })), guide: () => ({ arrow: Boolean(guide?.arrow.visible), target: guide?.target || null, door: eventDoors.guide || null }), together: () => ({ birthday: Boolean(together?.corner.visible), names: together?.names || [], mailbox: Boolean(eventDoors.mailbox) }), weather: () => ({ indoors, flakes: Object.values(assets.ambientCounts?.() || {}).reduce((a, b) => a + b, 0), kind: weatherKind, rain: Boolean(weatherFx?.rain.visible), snow: Boolean(weatherFx?.snow.visible), bow: Boolean(document.getElementById('plazaRainbow')?.classList.contains('on')) }), village: (view) => { if (view) setVillage(view); return village ? { mural: village.mural, busk: village.busk, lamps: village.lit, stones: village.stone, books: village.cart.visible } : null; }, pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: (sec = 1.5) => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast' || fishing.phase === 'bite')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + sec; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, at: { x: bobberHolder.position.x, z: bobberHolder.position.z }, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
+    return { home: () => (homeHere ? { lot: homeHere.lot.id, pieces: homeRoomV ? [...homeRoomV.pieces.keys()] : [], fish: homeRoomV ? [...homeRoomV.pieces.values()].reduce((n, v) => n + v.swim.length, 0) : 0, pets: homeRoomV?.pets.length || 0, seats: SEATS.filter((s) => String(s.id).startsWith('home:')).length } : null), homes: () => Object.fromEntries([...homesShown].map(([k, v]) => [k, v.key])), draws, covered, mapCheck, cycling, bikes: () => bikes, othersBikes: () => Object.fromEntries([...others].map(([id, o]) => [id, o.bike || null])), petshop: () => (petshop ? [...petshop.pets.keys()] : null), furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), carveStatues: (list, week) => { if (list) { statueKey = '[]'; statueList = []; setStatues(list, week); } return statueChars.map((c) => ({ stone: Boolean(c.stone), x: c.root.position.x, z: c.root.position.z })); }, blocksAt: (x, z) => solidsNear(x, z).filter(blocksNow).some((o) => Math.hypot(o.x - x, o.z - z) < o.r), hwAt: () => { const o = solids.find((s) => s.hw && !solids.some((t) => t !== s && !t.hw && Math.hypot(t.x - s.x, t.z - s.z) < t.r + s.r)); return o ? { x: o.x, z: o.z, decorOn } : null; }, contestPlinth: () => contestPlinth.visible, /* A-7 */ x: p.x, z: p.z, yaw: me.root.rotation.y, near, talkView: talkView ? { id: talkView.id, shot: talkView.shot } : null, running, quality, webgl, assets: assets.debug(), environment: { edgeDecor: island.edgeDecor, groundCover: island.groundCover(), water: island.waterMotion?.(), ambient: { bodyScale: me.body.scale.y, arms: [me.armL.rotation.x, me.armR.rotation.x], drops: drops.slice(0, 3).map(d => d.position.toArray()), lamps: lamps.slice(0, 3).map(l => l.material.emissiveIntensity) } }, setAvatar, holdQuality: (tier) => { qualityHeld = tier !== null; if (tier !== null) { quality = tier; assets.setQuality(tier); island.setQuality(tier); } resetFrameSample(); }, setSeasonDay: (d) => { seasonOverride = d; setSeasonDay(d ?? globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset)); }, seasonDay: () => globalThis.IslandTerrain.seasonDay(Date.now() + serverOffset), gait: me.anim?.state ?? null, doors: Object.fromEntries(Object.entries(doors).filter(([id]) => !id.startsWith('room:'))) /* (the 민원실's doors are not on the island) */, screenOf, place: (id) => { const d = doorOf(id); if (d) { tryMove(d.x, d.z); placeCamera(true); } }, look: me.look || {}, title: me.title || null, champion: Boolean(me.champion), hoguking: Boolean(me.hoguking), statues: statueList.map(({ rank, name }) => ({ rank, name })), wardrobe: me.wardrobe || null, transformation: me.transformation || null, nativeRig: me.nativeRig || null, bodyUrl: me.bodyUrl || null, space: mySpace, farm: () => (farm ? { stage: farm.stage, names: farm.names } : null), plants: () => [...plants.values()].map(({ data, key }) => ({ id: data.id, stage: data.stage, key })), islandLook: () => ({ seasonHold, decorMode, winter: winterOn, fountain: fountain.visible }), bug: () => (bug ? { on: bug.root.visible, t: bug.t } : null), pets: () => [...pets].map(([key, p]) => ({ key, kind: p.kind, name: p.name, clip: p.c.now, loaded: Boolean(p.c.mixer), x: +p.c.root.position.x.toFixed(2), z: +p.c.root.position.z.toFixed(2) })), guide: () => ({ arrow: Boolean(guide?.arrow.visible), target: guide?.target || null, door: eventDoors.guide || null }), together: () => ({ birthday: Boolean(together?.corner.visible), names: together?.names || [], mailbox: Boolean(eventDoors.mailbox) }), weather: () => ({ indoors, flakes: Object.values(assets.ambientCounts?.() || {}).reduce((a, b) => a + b, 0), kind: weatherKind, rain: Boolean(weatherFx?.rain.visible), snow: Boolean(weatherFx?.snow.visible), bow: Boolean(document.getElementById('plazaRainbow')?.classList.contains('on')) }), village: (view) => { if (view) setVillage(view); return village ? { mural: village.mural, busk: village.busk, lamps: village.lit, stones: village.stone, books: village.cart.visible } : null; }, pace: (paceRun ? "run" : pace), statueSizes: statueChars.map((c) => +c.root.scale.x.toFixed(2)), whale: () => whale(true), sea: { show: (kind) => seaSight(kind), inPicture, active: () => [...seaActive.keys()], shown: () => ({ ...seaShown }), at: () => (seaPool ? Object.fromEntries(Object.entries(seaPool).map(([k, hs]) => [k, hs.filter((h) => h.visible).map((h) => ({ x: +h.position.x.toFixed(1), y: +h.position.y.toFixed(1), z: +h.position.z.toFixed(1) }))])) : {}) }, carry: { mine: me.carryId || null, arms: Boolean(me.carrying), held: Boolean(me.carryStand?.parent || me.holding?.carry), on: me.holding?.carry?.object?.parent?.name || (me.carryStand?.parent ? 'stand' : null), others: [...others.values()].filter((o) => o.c.carryId).length }, gather: gather ? { kind: gather.kind, id: gather.id, t: gather.t, pending:gather.pending } : null, weeds: { count: weedById.size, near: weedKey, gathering: gather?.kind === 'weed' ? gather.id : null, at: (id) => { const w = weedById.get(id); return w ? { x: w.x, z: w.z } : null; } }, tag: Boolean(me.tag), wornColors: me.wornColors || null, farSight: () => [...others.values()].map((o) => ({ tag: Boolean(o.c.tag?.visible && o.c.tag.material.fog === false), bubble: o.c.bubble ? o.c.bubble.visible : null, clear: (o.c.wearMats || []).every((r) => r.material.fog === false) && (o.c.wearMats || []).length > 0 })), resources: () => [...eventObjs].filter(([k,o])=>o.root.userData.fruit).map(([key,o])=>({key,fruit:o.root.userData.fruit.visible,x:o.root.position.x,z:o.root.position.z})), resourceRing:()=>({visible:weedRing.visible,x:weedRing.position.x,z:weedRing.position.z}), questScenes: () => questScenes ? { flower: questScenes.bloom.visible ? 'bloom' : 'empty', frame: questScenes.frame.visible, boat: questScenes.boat.visible, departing: questScenes.departure !== null } : null, quests: () => [...eventObjs].filter(([k]) => k.startsWith('ev:quest_npc:')).map(([k, o]) => ({ id: k.split(':')[2], mark: o.mark ?? null, worn: Boolean(o.npc?.assetRoot) })), fishBiteNow: (sec = 1.5) => { if (fishing && (fishing.phase === 'wait' || fishing.phase === 'cast' || fishing.phase === 'bite')) { fishing.biteAt = fishing.t; fishing.biteEnd = fishing.t + sec; } }, fishing: () => (fishing ? { phase: fishing.phase, rod: Boolean(me.holding?.rod?.object), held: Boolean(me.holding?.catch?.object), line: fishLine.visible, bobber: bobberHolder.visible, at: { x: bobberHolder.position.x, z: bobberHolder.position.z }, clip: me.anim?.clip || null } : null), canFish: () => globalThis.IslandTerrain.canFish(me.root.position.x, me.root.position.z), photo: () => ({ on: photoMode, hidden: photoHidden.size }), act: () => ({ ...myAct, tail: Boolean(me.tailTucked), sitting: Boolean(sitting), clip: me.anim?.clip || null, lift: +(me.root.position.y - heightAt(me.root.position.x, me.root.position.z)).toFixed(2) }), takenSeats: () => Object.fromEntries(takenSeats), seats: SEATS, othersActs: () => [...others].map(([id, o]) => ({ id, act: o.act, seat: o.seat, clip: o.c.anim?.clip || null, lift: +(o.c.root.position.y - heightAt(o.c.root.position.x, o.c.root.position.z)).toFixed(2) })), townhall: () => yard.debug(), train: () => ({ ...train.debug(), shift: trainShift, platform, lifting: Boolean(liftRide), riding: riding ? { id: riding.id, seat: riding.seat } : null, y: +me.root.position.y.toFixed(2), othersRiding: [...others.values()].filter((o) => o.ride).length }), halloween: { decor: () => decor.debug(), launchBats: (at) => decor.launchBats(at), on: () => night, set: (v) => { halloweenOverride = v; halloweenCheckedAt = -Infinity; }, fountain: () => fountain.visible, candle: () => candle.intensity, glows: () => lanternGlows.length, glass: () => assets.debug().glass, background: () => scene.background.getHex() }, tagLayout: me.tag ? { headTop: me.headTop, bottom: me.tag.position.y, top: me.tag.position.y + me.tag.scale.y, rows: me.tag.userData.rows, bubbleBottom: me.bubble ? me.bubble.position.y - me.bubble.scale.y / 2 : null } : null,
       // (tests) by islander n and talking to them at once -- the server still checks I stand by them
       talkResident: (n) => { const o = wanderers.find((w) => w.n === n); if (!o) return false; const at = residentPose(n, Date.now() + serverOffset); const x = at.x + 1.1; const z = at.z; /* (by where the server has them -- a slow screen draws a walker behind) */ me.root.position.set(x, heightAt(x, z), z); correction = null; lastTalk = { id: `resident:${n}`, x: o.w.x, z: o.w.z }; onInteract?.(`resident:${n}`); return true; },
       tryOn: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), actLocked: actLocked(), emote: (k) => emote(k), standUpNow: () => standUp(), time: () => ({ mode: timeMode, phase }), setTime: (m) => setTimeMode(m), setWeather: (k) => setWeather(k), teleport: (x, z) => { me.root.position.set(x, heightAt(x, z), z); correction = null; placeCamera(true); },
@@ -2985,7 +3108,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const fishingNow = () => (fishing ? fishing.phase : null); // v1.10.42
   // v1.10.44 앉기·이모트 (IDEAS ④): a seat on a plaza bench (the server keeps who sits), a wave or a cheer -- each sent with
   // my pose (act, a count telling a new wave from the last), played on everyone's screen with the same clips
-  const SEATS = globalThis.IslandTerrain.plazaProps().seats;
+  const SEATS = [...globalThis.IslandTerrain.plazaProps().seats]; // (묶음 4: a house's seats join while I am in it)
   // v1.10.46: SEATS 0.18 ahead of the bench's middle (island-terrain): a cape (0.41 behind the hips at most) clears its back
   // v1.10.45: SitIdle has the hips 0.38 up and the seat of the body 0.26 up; the bench's seat (at its 0.85 size) is 0.54
   // up -- lifted by the difference, I sit on it instead of in it
@@ -3059,6 +3182,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     else if (mySpace === 'store') { const q = STORE.clamp(x, z); x = q.x; z = q.z; y = STORE.ROOM.y; }
     else if (mySpace === 'furniture') { const q = FURN.clamp(x, z); x = q.x; z = q.z; y = FURN.ROOM.y; }
     else if (mySpace === 'petshop') { const q = PETS.clamp(x, z); x = q.x; z = q.z; y = PETS.ROOM.y; }
+    else if (mySpace === 'home') { const q = homeRoom.clamp(x, z); x = q.x; z = q.z; y = HOME.ROOM.y; }
     else y = heightAt(x, z);
     me.root.position.set(x, y, z);
     if (release && gather?.kind === 'sit') { gather.onDone = () => {}; endGather(false); }
@@ -3101,7 +3225,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
     }
   }
-  return { setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
+  return { setHomes, setHome, homeGhost, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (!isBlocked() && near) interact(near); }, // v1.10.62 모바일: the stick, and the hint tapped (= Space)
     canInteract, holdQuestDeparture, talkCamera, counterCamera, trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, bugBegin, bugEnd, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,

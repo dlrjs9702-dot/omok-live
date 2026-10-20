@@ -40,7 +40,7 @@
   function buildGrid() {
     if (grid) return grid;
     const blocked = new Uint8Array(N * N); const cost = new Float32Array(N * N);
-    const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r })), ...(T.structureSolids?.() || [])]; // (v1.10.93 마을 소품; 달마루섬 구조물)
+    const solids = [...T.natureSolids(), ...T.villageSolids().map((v) => ({ x: v.x, z: v.z, r: v.r })), ...(T.structureSolids?.() || []), ...(T.HOME_LOTS || []).map((l) => ({ x: l.x, z: l.z, r: 4.4 }))]; // (v1.10.93 마을 소품; 달마루섬 구조물; 묶음 4: the house lots, bought or not -- a house may stand there any day)
     const near = new Map(); // a coarse bucket of the nature solids
     for (const s of solids) { const k = `${Math.floor(s.x / 6)},${Math.floor(s.z / 6)}`; if (!near.has(k)) near.set(k, []); near.get(k).push(s); }
     const spots = T.BUILDINGS; // v1.10.13: the cottages too

@@ -421,6 +421,13 @@
   const BK = '/assets/island/bike-v1'; const bk = (file, extra = {}) => ({ url: `${BK}/${file}.glb`, low: { url: `${BK}/${file}_low.glb` }, near: 30, ...extra });
   for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`); REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { scale: 0.55, shadows: false }); }
   REGISTRY['bike.wheel'] = bk('bike_wheel'); REGISTRY['bike.crank'] = bk('bike_crank');
+  // 묶음 4 내 집 (assets 58 home-v1): the house in its four roofs (front -Z), the room, its floors and wallpapers (laid in
+  // the room, one at a time), the nameplate, an empty lot's sign
+  const HV = '/assets/island/home-v1'; const hv = (file, extra = {}) => ({ url: `${HV}/${file}.glb`, low: { url: `${HV}/${file}_low.glb` }, near: 60, ...extra });
+  for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.house__${r}`] = hv(`home_house__${r}`, { near: 90 });
+  for (const f of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']) REGISTRY[`home.floor__${f}`] = hv(`home_floor_${f}`, { shadows: false });
+  for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper__${w}`] = hv(`home_wallpaper__${w}`, { shadows: false });
+  REGISTRY['home.room'] = hv('home_room__base'); REGISTRY['home.nameplate'] = hv('home_nameplate__base', { shadows: false }); REGISTRY['home.lot_sign'] = hv('home_lot_sign__base', { shadows: false });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
