@@ -427,6 +427,17 @@
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.house__${r}`] = hv(`home_house__${r}`, { near: 90 });
   for (const f of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink']) REGISTRY[`home.floor__${f}`] = hv(`home_floor_${f}`, { shadows: false });
   for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper__${w}`] = hv(`home_wallpaper__${w}`, { shadows: false });
+  // 묶음 5 각진 자연물 (assets 63 angular-v1 -- EmaceArt LumaGrove free pack made ours: vertex colours, our sizes, four
+  // seasons; in the game only, never handed out apart): three trees and a bush in each season (mixed in with the round
+  // ones, island.js), stones, the purple crystal heap, reeds by the water, cliff pieces at the island's edge
+  const AV = '/assets/island/angular-v1';
+  const av4 = (f, extra = {}) => ({ seasons: Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${AV}/angular_${f}__${s}.glb`])), low: { seasons: Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `${AV}/angular_${f}__${s}_low.glb`])) }, near: 35, ...extra });
+  for (const f of ['tree_block', 'tree_stack', 'tree_spire']) REGISTRY[`angular.${f}`] = av4(f, { scale: 0.75 }); // (4.8-5.4 m as made: our trees' height)
+  REGISTRY['angular.bush'] = av4('bush', { near: 22, shadows: false });
+  for (const f of ['rock_block', 'rock_lump', 'rock_small', 'rock_stack', 'cliff_a', 'cliff_b', 'grass_a', 'grass_b', 'grass_c', 'grass_d']) REGISTRY[`angular.${f}`] = { url: `${AV}/angular_${f}.glb`, low: { url: `${AV}/angular_${f}_low.glb` }, near: f.startsWith('grass') ? 22 : 40, ...(f.startsWith('grass') ? { shadows: false } : {}) };
+  // 묶음 5 보이는 곤충 (assets 62 insects-v1): the twelve insects on a small rig with their clips (Fly, Rest, Crawl, Hop) --
+  // out on the island (plaza-scene stepInsects); the still ones (together.insect_*) stay for the hand, the case and the museum
+  for (const sp of ['butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_blue', 'dragonfly_red', 'dragonfly_emperor', 'cicada', 'rhinoceros_beetle', 'stag_beetle', 'ladybird', 'firefly', 'grasshopper', 'snail']) REGISTRY[`insect.${sp}`] = { url: `/assets/island/insects-v1/insect_${sp}.glb`, low: { url: `/assets/island/insects-v1/insect_${sp}_low.glb` }, near: 25, shadows: false };
   REGISTRY['home.room'] = hv('home_room__base'); REGISTRY['home.nameplate'] = hv('home_nameplate__base', { shadows: false }); REGISTRY['home.lot_sign'] = hv('home_lot_sign__base', { shadows: false });
   if ((typeof globalThis !== 'undefined' ? globalThis : {}).GC_ISLAND_MAP === 'dalmaru') { REGISTRY['facility.townhall'] = REGISTRY['dalmaru.facade_townhall']; REGISTRY['facility.store'] = REGISTRY['dalmaru.facade_mall']; }
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --

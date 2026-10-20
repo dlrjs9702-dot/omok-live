@@ -2241,8 +2241,6 @@ body:not(.plazaMode) .guidePanel { display: none; }
 .guideTopics { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 
 /* B 47 곤충 채집 */
-.bugCatchBtn { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 31; font-size: 1.3rem; padding: 14px 28px; border-radius: 999px; background: #f2c14e; color: #1b1b1b; border: 0; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
-body:not(.plazaMode) .bugCatchBtn { display: none; }
 
 /* B 47 박물관 */
 .museumList { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }

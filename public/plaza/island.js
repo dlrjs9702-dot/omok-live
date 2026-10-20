@@ -506,9 +506,14 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.77: the kind comes from island-terrain (one rule with the server's fruit trees); a fruit-kind tree that is not
   // a harvest tree (no free spot at its trunk) is drawn plain, so no tree shows fruit that cannot be picked
   const kindOf = (t) => { const name = globalThis.IslandTerrain.treeKind(t); const k = TREE_KINDS.findIndex(([n]) => n === name); return name === 'fruit' ? 0 : Math.max(0, k); };
+  // 묶음 5 각진 자연물 (assets 63): about a third of the round, tiered, pine and young trees stand as the angular ones (its
+  // place, size and turn as before -- the circle round it and the islanders' routes the same; the tall and the blossom
+  // stay, each season keeping every kind), never two of a kind side by side as a rule of the hash
+  const ANGULAR_TREES = ['block', 'stack', 'spire'];
+  const angularTree = (t) => ['round', 'tiered', 'pine', 'sapling'].includes(globalThis.IslandTerrain.treeKind(t)) && hash(t.x, t.z, 40) < 0.34 ? ANGULAR_TREES[Math.min(2, Math.floor(hash(t.x, t.z, 41) * 3))] : null;
   // v1.10.29: stumps come in two models (short, tall), each stump's from its place
   TREE_KINDS.forEach(([name, , parts], k) => {
-    const all = trees.filter((t) => kindOf(t) === k && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));
+    const all = trees.filter((t) => kindOf(t) === k && !angularTree(t) && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z));
     const splits = name === 'stump' ? [0, 1].map((v) => [all.filter((t) => (hash(t.x, t.z, 18) < 0.5 ? 0 : 1) === v), [`nature.tree.stump.${v}`, 'nature.tree.stump', 'nature.tree']]) : [[all, [`nature.tree.${name}`, 'nature.tree']]];
     const geo = mergeColored(parts);
     for (const [list, target] of splits) {
@@ -517,6 +522,14 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target });
     }
   });
+  const facet = (geo, color, x, y, z, s, sy = s) => part(geo, color, x, y, z, { sx: s, sy, sz: s, shade: SH });
+  const BOX = new THREE.BoxGeometry(1, 1, 1); const OCT = new THREE.OctahedronGeometry(0.5, 0);
+  const ANGULAR_STAND = { block: [trunk(1.6, 0.22), facet(BOX, 0x6fae4f, 0, 2.6, 0, 2.2, 1.9)], stack: [trunk(1.4, 0.2), facet(BOX, 0xc0504d, 0, 2.0, 0, 1.6, 0.9), facet(BOX, 0xd0645a, 0, 2.9, 0, 1.2, 0.9)], spire: [trunk(1.2, 0.18), facet(OCT, 0x4f8f5a, 0, 2.7, 0, 1.4, 3.2)] };
+  for (const name of ANGULAR_TREES) {
+    const list = trees.filter((t) => angularTree(t) === name && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z)); if (!list.length) continue;
+    instanced(mergeColored(ANGULAR_STAND[name]), natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
+      { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`angular.tree_${name}`] });
+  }
   for (const t of globalThis.IslandTerrain.harvestTrees()) {
     const root=new THREE.Group(); root.position.set(t.x,ground(t.x,t.z),t.z); root.rotation.y=t.yaw; scene.add(root);
     const fallback=new THREE.Mesh(keep(mergeColored(TREE_KINDS[0][2])),natureMat); root.add(fallback); assets.attach('tree.harvest',root,fallback);
@@ -536,7 +549,10 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     [crown(SPH, 0x6fbf5e, 0, 0.42, 0, 1.6, 1.05), crown(SPH, 0x7cc86a, 0.55, 0.35, 0.25, 1.05, 0.8), crown(SPH, 0x83cf6c, -0.5, 0.32, -0.15, 0.95, 0.7)],
     [crown(SPH, 0x66b85a, 0, 0.36, 0, 1.3, 0.85), crown(SPH, 0x74c463, 0.6, 0.3, 0, 1.0, 0.7), crown(SPH, 0x7cc86a, -0.55, 0.28, 0.2, 0.95, 0.65), crown(SPH, 0x8ad27a, 0.05, 0.62, 0.1, 0.8, 0.55)],
   ];
-  BUSH_KINDS.forEach((parts, k) => instanced(mergeColored(parts), natureMat, bushes.filter((b) => (hash(b.x, b.z, 6) < 0.5 ? 0 : 1) === k),
+  const bushKind = (b) => { const h = hash(b.x, b.z, 6); return h < 0.34 ? 0 : h < 0.67 ? 1 : 2; }; // (묶음 5: the third the angular bush)
+  instanced(mergeColored([facet(OCT, 0x6fae4f, 0, 0.5, 0, 1.3, 1.1), facet(BOX, 0x7cbc5c, 0.35, 0.35, 0.1, 0.7, 0.6)]), natureMat, bushes.filter((b) => bushKind(b) === 2),
+    (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: ['angular.bush'] });
+  BUSH_KINDS.forEach((parts, k) => instanced(mergeColored(parts), natureMat, bushes.filter((b) => bushKind(b) === k),
     (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: [`nature.bush.${k}`, 'nature.bush'] }));
   for (const b of bushes) solids.push({ nature: true, x: b.x, z: b.z, r: 0.75 * b.s });
   // Grass: small clumps of soft blades (not spikes), lighter at the tips.
@@ -552,13 +568,36 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.32 해안 돌: about half the rocks on the beaches (not the cliffs) are a low cluster of shore stones (04 pack),
   // lying along the shoreline, in the same places -- nothing new to walk round
   const shoreStones = (r) => cliffAt(r.x, r.z) < 0.4 && hash(r.x, r.z, 31) < 0.5;
+  // 묶음 5: the purple crystal heap at three places (the inland rocks lowest by their hash), and some inland rocks angular
+  const inland = rocks.filter((r) => !shoreStones(r)); const crystals = new Set(inland.slice().sort((a, b) => hash(a.x, a.z, 43) - hash(b.x, b.z, 43)).slice(0, 3));
+  const ANGULAR_ROCKS = ['rock_lump', 'rock_small', 'rock_block'];
+  const angularRock = (r) => (crystals.has(r) ? 'rock_stack' : hash(r.x, r.z, 41) < 0.3 ? ANGULAR_ROCKS[Math.min(2, Math.floor(hash(r.x, r.z, 42) * 3))] : null);
+  for (const name of [...ANGULAR_ROCKS, 'rock_stack']) instanced(pebble, natureMat, inland.filter((r) => angularRock(r) === name), (r) => setM(r.x, ground(r.x, r.z) + (name === 'rock_stack' ? 0 : 0.1), r.z, r.s, r.s * 0.7, r.r),
+    { cell: 60, color: (r, c) => c.set(name === 'rock_stack' ? 0x9b7fd6 : name === 'rock_block' ? 0xd99a9a : 0xb8b0a4), target: [`angular.${name}`] });
   for (let k = 0; k < 3; k += 1) {
-    instanced(pebble, natureMat, rocks.filter((r) => !shoreStones(r) && Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
+    instanced(pebble, natureMat, rocks.filter((r) => !shoreStones(r) && !angularRock(r) && Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
       { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: [`nature.rock.${k}`, 'nature.rock'] });
   }
   instanced(pebble, natureMat, rocks.filter(shoreStones), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, -(Math.atan2(r.z, r.x) + Math.PI / 2)),
     { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: ['nature.shoreStones', 'nature.rock.1', 'nature.rock'] });
   instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
+  // 묶음 5: reeds on the river's and the lake's banks (decoration -- nothing to walk round), cliff pieces on the cliff
+  // edges facing the sea (walked round: there is no going over the edge anyway)
+  const Dm = T.dalmaru;
+  if (Dm?.riverDist) {
+    const reeds = []; const cliffs = [];
+    for (let x = -160; x < 160; x += 2) for (let z = -160; z < 200; z += 2) {
+      if (coastDist(x, z) < 3 || walkDist(x, z) < 1.4 || onBridge(x, z) || hash(x, z, 44) > 0.4) continue;
+      const r = Dm.riverDist(x, z); const l = Dm.lakeDist(x, z); if ((r > 0.2 && r < 1.6) || (l > 0.2 && l < 1.6)) reeds.push({ x: x + (hash(x, z, 45) - 0.5), z: z + (hash(x, z, 46) - 0.5), k: Math.min(3, Math.floor(hash(x, z, 47) * 4)) });
+    }
+    for (let a = 0; a < TAU; a += TAU / 220) {
+      for (let rad = 60; rad < 200; rad += 1.5) { const x = Math.cos(a) * rad; const z = Math.sin(a) * rad; const cd = coastDist(x, z); if (cd > 1.2 && cd < 2.6 && cliffAt(x, z) > 0.7 && walkDist(x, z) > 3 && !cliffs.some((c) => Math.hypot(c.x - x, c.z - z) < 14)) { cliffs.push({ x, z, yaw: -a + Math.PI / 2, k: cliffs.length % 2 }); break; } }
+    }
+    const reedGeo = mergeColored([part(new THREE.CylinderGeometry(0.02, 0.03, 0.55, 4), 0x7a9a4a, 0, 0.27, 0), part(new THREE.CylinderGeometry(0.02, 0.03, 0.45, 4), 0x86a656, 0.08, 0.22, 0.04)]);
+    for (let k = 0; k < 4; k += 1) instanced(reedGeo, natureMat, reeds.filter((r) => r.k === k), (r) => setM(r.x, ground(r.x, r.z) - 0.02, r.z, 1, 1, hash(r.x, r.z, 48) * TAU), { shadow: false, cell: 60, target: [`angular.grass_${'abcd'[k]}`] });
+    for (let k = 0; k < 2; k += 1) instanced(mergeColored([facet(BOX, 0x8f8a7c, 0, 0.8, 0, 2.4, 1.6)]), natureMat, cliffs.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) - 0.2, c.z, 1, 1, c.yaw), { cell: 60, target: [`angular.cliff_${'ab'[k]}`] });
+    for (const c of cliffs) solids.push({ nature: true, x: c.x, z: c.z, r: 1.2 });
+  }
 
   // The edges of the walks and the stream banks: a soft scatter of pebbles, grass and a few flowers instead of a cut
   // line (decoration only -- nothing here is walked around). Spaced from each curve, so they follow every walk.
