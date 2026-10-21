@@ -156,7 +156,7 @@
       const dx = x - k.x; const dz = z - k.z; const lx = dx * k.c - dz * k.s; if (k.skip && Math.sign(lx) === k.skip && stairsBand(x, z)) continue; const side = Math.abs(lx) - FACADE.w / 2; const lz = dx * k.s + dz * k.c; // (2회차 16: only the stairs' own way left uncut -- the 관공서 dug in as the 백화점)
       const edge = Math.max(0.3 - side, side - 5.3, lz - FACADE.d - 0.2, -3 - lz); if (edge < 1.2) h = Math.max(h, lerp(k.top, h, smooth(0, 1.2, edge)));
     }
-    for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
+    for (const p of PADS) { if (Math.abs(x - p.x) >= p.r + 5 || Math.abs(z - p.z) >= p.r + 5) continue; /* (CI 3차: far off on one axis is far off -- 32 pads, most a long way) */ const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     const edge = Math.max(-along - 0.4, along - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
