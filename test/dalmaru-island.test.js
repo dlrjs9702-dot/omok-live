@@ -96,3 +96,12 @@ test('계절 구역마다 나무 종류(둥근·층층·키 큰·꽃)가 모두 
   for (const t of T.nature().trees) { if (H.some((h) => h.x === t.x && h.z === t.z)) continue; const z = T.seasonZoneAt(t.x, t.z); (by[z] ||= new Set()).add(T.treeKind(t)); }
   for (const z of [0, 1, 2, 3]) for (const k of ['round', 'tiered', 'tall', 'blossom']) assert.ok(by[z]?.has(k), `구역 ${z}: ${k}`);
 });
+
+// 문제 기록 2회차 4 「길과 다리가 안 이어져」: a walk's bridge meets each bank at its own height (no step off either end)
+test('자동 다리: 양 끝이 각자 둑 높이에 닿는다 (단차 10cm 미만), 가운데는 둑보다 높다', () => {
+  const auto = T.bridges.filter((b) => !b.model); assert.ok(auto.length >= 1);
+  for (const b of auto) {
+    for (const s of [-1, 1]) { const on = T.heightAt(b.x + b.ux * s * (b.half - 0.05), b.z + b.uz * s * (b.half - 0.05)); const off = T.heightAt(b.x + b.ux * s * (b.half + 0.3), b.z + b.uz * s * (b.half + 0.3)); assert.ok(Math.abs(on - off) < 0.1, `${b.x.toFixed(1)},${b.z.toFixed(1)} end ${s}: ${on.toFixed(2)} vs ${off.toFixed(2)}`); }
+    assert.ok(T.heightAt(b.x, b.z) > Math.max(b.e0, b.e1) + 0.3);
+  }
+});

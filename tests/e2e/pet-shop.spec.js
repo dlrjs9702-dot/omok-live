@@ -33,6 +33,13 @@ test('펫샵: 승강기 3층, 돌아다니는 반려동물 곁에서 SPACE → �
   if (isMobile) await page.locator('#islandBagTab').tap(); else await page.locator('#islandBagTab').click();
   await page.locator('#myPetsBtn').click();
   await expect(page.locator('#myPets .myPetRow.walking')).toContainText(`몽이 · ${label}`);
+  // 문제 기록 2회차 10: its name over it as the players', and changed here later (the nickname rule)
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.tag)).toBe(true);
+  page.once('dialog', (d) => d.accept('bad!name')); await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click();
+  await expect.poll(() => page.locator('#myPets .myPetRow.walking').textContent()).toContain('몽이');
+  page.once('dialog', (d) => d.accept('구름이')); await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click();
+  await expect(page.locator('#myPets .myPetRow.walking')).toContainText(`구름이 · ${label}`);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().pets().find((p) => p.key === 'me')?.name)).toBe('구름이');
   await page.locator('#plazaCloseBtn').click();
   await expectNoScriptError(page);
   await who.context.close();

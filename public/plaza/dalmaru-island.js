@@ -173,7 +173,9 @@
       const a = walk.pts[Math.max(0, run.i - 2)]; const b = walk.pts[Math.min(walk.pts.length - 1, run.i + 2)]; const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
       const ux = (b[0] - a[0]) / l; const uz = (b[1] - a[1]) / l; const half = 6;
       const ends = [D.ground(run.x - ux * half, run.z - uz * half), D.ground(run.x + ux * half, run.z + uz * half)];
-      if (!bridges.some((o) => Math.hypot(o.x - run.x, o.z - run.z) < 6)) bridges.push({ x: run.x, z: run.z, ux, uz, half, w: Math.max(2.6, walk.w), deck: Math.max(...ends, SEA + 0.6) + 0.1 });
+      // (문제 기록 2회차 4: one height for both ends left a step where the banks differ -- 65 cm on the west river's north bank;
+      // each end now meets its own bank, e0 at -half and e1 at +half, the middle no lower than before)
+      if (!bridges.some((o) => Math.hypot(o.x - run.x, o.z - run.z) < 6)) bridges.push({ x: run.x, z: run.z, ux, uz, half, w: Math.max(2.6, walk.w), deck: Math.max(...ends, SEA + 0.6) + 0.1, e0: ends[0] + 0.02, e1: ends[1] + 0.02 });
       run = null;
     };
     walk.pts.forEach(([x, z], i) => { const d = D.riverDist(x, z); if (d < 0.8) { if (!run || d < run.d) run = { d, i, x, z }; } else if (run) add(); });
@@ -186,7 +188,7 @@
     }
     return null;
   }
-  const deckAt = (hit) => (hit.b.arch ? hit.b.base + YB.top + hit.b.arch * Math.sin((Math.PI * (hit.u + hit.b.half)) / (2 * hit.b.half)) : hit.b.deck + 0.35 * (1 - (hit.u / hit.b.half) ** 2));
+  const deckAt = (hit) => (hit.b.arch ? hit.b.base + YB.top + hit.b.arch * Math.sin((Math.PI * (hit.u + hit.b.half)) / (2 * hit.b.half)) : hit.b.e0 !== undefined ? hit.b.e0 + (hit.b.e1 - hit.b.e0) * (hit.u / hit.b.half + 1) / 2 + Math.max(0.35, hit.b.deck + 0.35 - (hit.b.e0 + hit.b.e1) / 2) * (1 - (hit.u / hit.b.half) ** 2) : hit.b.deck + 0.35 * (1 - (hit.u / hit.b.half) ** 2));
   // 달끝나루 (assets 55 pier.dalkkeut: 20 m out from its root, deck top 0.69 over it) straight out from the east cape, and
   // 배 타는 곳 (dock.boat) off 물가 거리 before 대청마당 -- both walked on
   const CAPE = D.CAPES[1]; const pierL = Math.hypot(PL.pier.x - CAPE.x, PL.pier.z - CAPE.z);

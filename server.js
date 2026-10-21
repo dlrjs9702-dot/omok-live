@@ -4982,6 +4982,28 @@ async function requestHandler(req, res) {
     for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
     plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
   }
+  // 문제 기록 2회차 10 (사용자 「처음 데려갈 때 말고도 가방에서 이름 짓기」): a pet's name changed later -- one adopted at the
+  // 펫샵 (its own record), or the 잡화점's one walking with me; the nickname rule (한글·숫자·공백), 10 at most as before
+  if (pathname === '/api/island/pet/name' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!checkRateLimit(`petname:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const name = typeof body.name === 'string' ? body.name.trim() : ''; const uid = String(body.uid || '');
+    if (!nicknameFormatOk(name) || [...name].length > 10) return sendError(res, 400, 'BAD_NAME', '한글·숫자·공백으로 10자까지 입력해 주세요.');
+    return worldEdit(async () => {
+      const walking = (await pointStore.questDoc(account, 'pet')).doc;
+      if (!uid.startsWith('bag:')) {
+        const owned = (await pointStore.worldValue(`pets:${account}`)) || []; const i = owned.findIndex((p) => p.uid === uid);
+        if (i < 0) return sendError(res, 409, 'NOT_MINE', '내 반려동물이 아닙니다.');
+        owned[i] = { ...owned[i], name }; await pointStore.setWorldValue(`pets:${account}`, owned);
+      } else if (walking.uid || walking.kind !== uid.slice(4)) return sendError(res, 409, 'NOT_WALKING', '데리고 다니는 반려동물만 이름을 바꿀 수 있어요.');
+      if (walking.uid ? walking.uid === uid : walking.kind && uid === `bag:${walking.kind}`) {
+        const doc = { ...walking, name }; await pointStore.questApply(account, 'pet', () => ({ doc }));
+        petOf.set(account, petView(doc)); for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+        plazaDirty = true;
+      }
+      return sendJson(res, 200, { ok: true, name, pet: walking.uid === uid || uid === `bag:${walking.kind}` ? petOf.get(account) : null });
+    });
+  }
   // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
   if (pathname === '/api/island/mail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
