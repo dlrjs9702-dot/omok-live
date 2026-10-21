@@ -12,13 +12,15 @@
   const { TAU, smooth, lerp, catmull, lineDist } = C;
   const SEA = D.SEA; const P = D.PLAZA; const PL = D.PLACES;
   const PLAZA_C = { x: P.x, z: P.z }; // 대청마당's middle (the fountain)
-  // 묶음 4 내 집: 툇마루섬's twelve lots (10 x 10 m, clear of its walks, pond, station and shore -- worked out once over
-  // the ground); island-home.js turns each toward the walk across the isle, the walks above lead to each door
-  const HOME_LOTS = Object.freeze([[-17, 160.3], [-4.5, 133.8], [-12.5, 122.3], [-14, 148.8], [11, 119.8], [-3, 157.8], [-0.5, 118.3], [8, 132.3], [-26, 149.3], [-16, 133.3], [25, 148.8], [20.5, 132.3]].map(([x, z]) => Object.freeze({ x, z })));
+  // 묶음 4 내 집: 툇마루섬's twelve lots -- 2회차 15: laid out again on the isle widened toward 윤슬만 so that a 큰 집 (with
+  // its veranda, 6.5 m round) stands 2 m clear of every walk, way, the pond, the station way and the other lots: by the walk
+  // across the isle, a walk north from it and the station way; yaw: the house's front (-Z) square to its walk,
+  // the walks below lead from each door to it (worked out once: gamecenter-notes docs/issue-log-review-20261021-b.md 15)
+  const HOME_LOTS = Object.freeze([[-1.5, 172.5, -0.76], [19.5, 166.5, 0.73], [-1.5, 157, -2.24], [27, 150.5, 1.53], [-10, 108.5, -1.57], [-10, 123.5, -1.57], [10, 107.5, 1.57], [10, 122.5, 1.57], [-30.5, 150, -0.03], [-29, 130, 3.1], [28, 130, -3.09], [-15.5, 151.5, -0.07]].map(([x, z, yaw]) => Object.freeze({ x, z, yaw })));
   const onLot = (x, z, pad = 0) => HOME_LOTS.some((l) => Math.abs(x - l.x) < 5 + pad && Math.abs(z - l.z) < 5 + pad);
   // what a house takes (the 6 x 5 m house and its steps, a little round it, and in front of its door -- island-home's
   // doorOf: 4.6 m toward the walk across the isle at z 140.5); trees and rocks may stand on the rest of the lot
-  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = Math.atan2(l.x, l.z - 140.5); const dx = l.x - Math.sin(a) * 6.9; const dz = l.z - Math.cos(a) * 6.9; return Math.hypot(x - l.x, z - l.z) < 6.2 || Math.hypot(x - dx, z - dz) < 2.5; }); // (묶음 4-2: room for the 큰 집, 11 x 10 m with its eaves, and its door 6.9 m out)
+  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = l.yaw; const dx = l.x - Math.sin(a) * 6.9; const dz = l.z - Math.cos(a) * 6.9; return Math.hypot(x - l.x, z - l.z) < 6.2 || Math.hypot(x - dx, z - dz) < 2.5; }); // (묶음 4-2: room for the 큰 집, 11 x 10 m with its eaves, and its door 6.9 m out)
   const rad = (a) => (a * Math.PI) / 180;
   const inPlaza = (x, z, m = 0) => Math.abs(x - P.x) < P.hw + m && z > P.d0 - m && z < P.d1 + m;
   const yawTo = (x, z, f) => Math.atan2(x - f[0], z - f[1]); // a model whose front is -Z, turned so it looks at f
@@ -114,7 +116,8 @@
     // (묶음 3: the villagers' places on a walk too -- the busker's corner, the builder by the stepping stones, the gazebo's grandpa)
     { tier: 'trail', w: 2.4, pts: [[13.6, -5], [13.8, -9.6]] }, { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
     // (묶음 4 내 집: from each of 툇마루섬's twelve lots' door (island-home.js LOTS) to the walk across the isle, round the other houses)
-    { tier: 'trail', w: 2, pts: [[-14, 157], [-9, 151], [-9, 142.5]] }, { tier: 'trail', w: 2, pts: [[-2, 137.5], [-2, 140.5]] }, { tier: 'trail', w: 2, pts: [[-10, 126], [-10, 140.5]] }, { tier: 'trail', w: 2, pts: [[-10, 146.5], [-10, 142.5]] }, { tier: 'trail', w: 2, pts: [[9, 124], [13, 130.5], [13, 140.5]] }, { tier: 'trail', w: 2, pts: [[-2, 153.5], [-2, 142.5]] }, { tier: 'trail', w: 2, pts: [[-0.5, 123], [0.5, 133.5], [0.5, 140.5]] }, { tier: 'trail', w: 2, pts: [[5, 135.5], [5, 140.5]] }, { tier: 'trail', w: 2, pts: [[-21.5, 148], [-21, 142]] }, { tier: 'trail', w: 2, pts: [[-12, 135], [-12, 140.5]] }, { tier: 'trail', w: 2, pts: [[20.5, 147.5], [17.5, 147.5]] }, { tier: 'trail', w: 2, pts: [[16, 134], [16, 140]] },
+    { tier: 'walk', w: 2.4, pts: [[0, 141], [0, 124], [0, 107.3]] }, // (2회차 15: north from the walk across the isle into its widened part, four houses by it)
+    { tier: 'trail', w: 2, pts: [[1.7, 169.2], [4.5, 166.1]] }, { tier: 'trail', w: 2, pts: [[16.4, 163.1], [13.6, 159.9]] }, { tier: 'trail', w: 2, pts: [[2.1, 159.9], [5.4, 162.5]] }, { tier: 'trail', w: 2, pts: [[22.4, 150.3], [18.1, 150.1]] }, { tier: 'trail', w: 2, pts: [[-5.4, 108.5], [-0.9, 108.5]] }, { tier: 'trail', w: 2, pts: [[-5.4, 123.5], [-0.9, 123.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 107.5], [0.9, 107.5]] }, { tier: 'trail', w: 2, pts: [[5.4, 122.5], [0.9, 122.5]] }, { tier: 'trail', w: 2, pts: [[-30.4, 145.4], [-30.2, 141.2]] }, { tier: 'trail', w: 2, pts: [[-29.2, 134.6], [-29.4, 138.8]] }, { tier: 'trail', w: 2, pts: [[28.2, 134.6], [28.4, 138.9]] }, { tier: 'trail', w: 2, pts: [[-15.2, 146.9], [-14.9, 142.6]] },
     { tier: 'walk', w: 2.8, pts: [stairsAt(34.4, 1.7), stairsAt(34.4, -4.5), po(216, 138), ...[222, 230, 238, 246, 254].map((a) => po(a, 138)), po(261, 141), stationPt(270 - 2, 155)] }, // 능선 위 길 → 영웅마루역 (from the top step sideways onto the ridge: past the top the cliff drops)
   ];
   const walkCurves = WALKS.map((w) => ({ w: w.w, tier: w.tier, pts: catmull(w.pts, 0.8) }));
@@ -124,7 +127,8 @@
   const BUILDINGS = [...Object.values(SPOTS), ...COTTAGES.map((c) => ({ ...c, kind: 'cottage' }))];
   const laneH = COTTAGES.reduce((a, c) => a + D.landHeight(c.x, c.z), 0) / COTTAGES.length; // (이웃골: the houses' pads one level, so the yards between them stay flat)
   const PADS = [[PL.gamehall.x, PL.gamehall.z, 10], [MUSEUM.x, MUSEUM.z, 6.5], [PL.contest.x, PL.contest.z, 10], [FARM.x, FARM.z, 6], [townhallWorld(0, 11.5).x, townhallWorld(0, 11.5).z, 10] /* (관공서 앞마당, level under its marble) */, ...COTTAGES.map((c) => [c.x, c.z, 4.6, laneH]),
-    ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5])]
+    ...Object.values(SPOTS).filter((s) => s.kind !== 'facade' && s.kind !== 'hall' && !inPlaza(s.x, s.z)).map((s) => [s.x, s.z, s.kind === 'tower' ? 4.5 : 3.5]),
+    ...HOME_LOTS.map((l) => [l.x, l.z, 7.2, 0.9]) /* (2회차 15: each lot level, its big house by the shore too) */]
     .map(([x, z, r, h]) => ({ x, z, r, h: h ?? D.landHeight(x, z) }));
   // 능선 계단 (assets 55 stairs.ridge): three flights of 7 m (9.52 m each) and two 3 m landings along the chord from its
   // foot to its top, against the cliff (its treads 0.2-3.2 m out from it)
@@ -282,7 +286,7 @@
     return out;
   }
   function structureSolids() {
-    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x, z: D.ISLE.z - 4, r: 1.1 }, ...pavingSolids()];
+    const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - 7.3, r: 1.1 }, ...pavingSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3 });

@@ -22,7 +22,11 @@
   const R_OUT = 165, R_BAY = 95, BAY_Z = 95, R_ISLE = 41;
   const TIP_Z = (R_OUT * R_OUT - R_BAY * R_BAY + BAY_Z * BAY_Z) / (2 * BAY_Z); // 143.3
   const TIP_X = Math.sqrt(R_OUT * R_OUT - TIP_Z * TIP_Z); // 81.8
-  const ISLE = { x: 0, z: TIP_Z, r: R_ISLE };
+  // (문제 기록 2회차 15 「집터가 길을 침범하고 집끼리도 겹쳐. 섬을 더 확장해서 정리해」: wider toward 윤슬만 only -- an
+  // ellipse, rn its radius on that side (-z); the station and the train's ring on the other side and the bridges either side
+  // stay where they are. isleDist: the distance from its middle in units of its radius 41 there)
+  const ISLE = { x: 0, z: TIP_Z, r: R_ISLE, rn: 50 };
+  const isleDist = (x, z) => Math.hypot(x - ISLE.x, (z - ISLE.z) * (z < ISLE.z ? ISLE.r / ISLE.rn : 1));
   // the crescent's horns end in round capes (the bare tips are a point): 윤슬다리 lands on them, 초승등대 and 달끝나루 stand on them
   const CAPES = [{ x: -92, z: 140, r: 14 }, { x: 92, z: 140, r: 14 }];
   const RIDGE = { a0: (184 * Math.PI) / 180, a1: (356 * Math.PI) / 180, inner: 128, top: 22 }; // 달마루 능선: angles round the north, the cliff's foot radius, the ridge's height
@@ -40,7 +44,7 @@
     const dOut = outerR(th) - r;
     const bx = x, bz = z - BAY_Z; const dBay = Math.hypot(bx, bz) - bayR(Math.atan2(bz, bx));
     const crescent = Math.min(dOut, dBay);
-    const isle = ISLE.r + 1.2 * Math.sin(5 * Math.atan2(z - ISLE.z, x) + 0.7) - Math.hypot(x - ISLE.x, z - ISLE.z);
+    const isle = ISLE.r + 1.2 * Math.sin(5 * Math.atan2(z - ISLE.z, x) + 0.7) - isleDist(x, z);
     const cape = Math.max(...CAPES.map((c) => c.r - Math.hypot(x - c.x, z - c.z)));
     return Math.max(crescent, isle, cape);
   }
@@ -75,7 +79,7 @@
     const cd = coastDist(x, z);
     if (cd < 0) return SEA - 0.35 + cd * 0.35; // the sea floor going down
     const r = Math.hypot(x, z);
-    const onIsle = Math.hypot(x - ISLE.x, z - ISLE.z) < ISLE.r + 4;
+    const onIsle = isleDist(x, z) < ISLE.r + 4;
     // the fields: rise gently away from 윤슬만 and the coast, a little roll
     let h = 0.6 + 0.9 * smooth(0, 60, cd) + 0.35 * Math.sin(x * 0.07) * Math.cos(z * 0.06);
     // the ridge: 22 m on top, a sheer inner face; its outer side falls to sea cliffs
@@ -84,7 +88,7 @@
     // 대청마당: a flat terrace up to the cliff's foot
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
-    if (onIsle) h = lerp(0.9, h, smooth(ISLE.r - 6, ISLE.r + 4, Math.hypot(x - ISLE.x, z - ISLE.z)));
+    if (onIsle) h = lerp(0.9, h, smooth(ISLE.r - 2.5, ISLE.r + 4, isleDist(x, z))); // (2회차 15: flat nearer the shore -- the lots by it)
     // beaches: the last few metres to the water lie low (not under the ridge's sea cliffs)
     const beach = rg > 0.3 ? 1.2 : 7;
     if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);
@@ -121,7 +125,7 @@
 
   // 계절 구역 4곳: 푸른숲골(서쪽 팔), 북쪽 가운데, 잔치마루(동쪽 팔), 툇마루섬
   function seasonZoneAt(x, z) {
-    if (Math.hypot(x - ISLE.x, z - ISLE.z) < ISLE.r + 6) return 3;
+    if (isleDist(x, z) < ISLE.r + 6) return 3;
     const a = ((Math.atan2(z, x) % TAU) + TAU) % TAU; const deg = (a * 180) / Math.PI;
     return deg >= 115 && deg < 225 ? 0 : deg >= 225 && deg < 315 ? 1 : 2;
   }

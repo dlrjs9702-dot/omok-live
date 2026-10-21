@@ -72,11 +72,17 @@ test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기�
 
 // 문제 기록 14 「빈 집터가 공중에 떠 있어」: every home lot on 툇마루섬's flat top, its whole 10 x 10 m square level and at
 // least 2 m in from where the beach starts to fall (7 m from the water)
-test('툇마루섬 집터: 12곳 모두 평평한 땅, 바닷가 비탈에서 2m 이상 안쪽', { skip }, () => {
-  const bad = [];
-  for (const l of T.HOME_LOTS) for (let dx = -5; dx <= 5; dx += 1) for (let dz = -5; dz <= 5; dz += 1) {
-    const x = l.x + dx; const z = l.z + dz;
-    if (Math.abs(T.heightAt(x, z) - 0.9) > 0.05 || T.dalmaru.coastDist(x, z) < 9) { bad.push(`${l.x},${l.z}`); dx = dz = 99; }
+// (2회차 15 「집터가 길을 침범하고 집끼리도 겹쳐. 섬을 더 확장해서 정리해」: the isle wider toward 윤슬만; a 큰 집 with its veranda,
+// 6.5 m round, on each lot: 3 m off the shore all round, 2 m clear of the walks -- not its own door way -- and of each other)
+test('툇마루섬 집터: 12곳 모두 평평한 땅, 큰 집 둘레가 해안에서 3m·길과 서로 2m 이상', { skip }, () => {
+  const bad = []; const H = require('../public/plaza/island-home.js'); const R = 6.5;
+  const seg = (px, pz, ax, az, bx, bz) => { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
+  for (const l of H.LOTS) {
+    for (let dx = -5; dx <= 5; dx += 1) for (let dz = -5; dz <= 5; dz += 1) if (Math.abs(T.heightAt(l.x + dx, l.z + dz) - 0.9) > 0.05) { bad.push(`${l.id} flat`); dx = dz = 99; }
+    for (let a = 0; a < 24; a += 1) { const t = (a / 24) * Math.PI * 2; if (T.dalmaru.coastDist(l.x + Math.cos(t) * R, l.z + Math.sin(t) * R) < 3) { bad.push(`${l.id} shore`); break; } }
+    const door = H.doorOf(l, 2);
+    for (const w of T.walkCurves) { if (w.w === 2 && Math.hypot(w.pts[0][0] - door.x, w.pts[0][1] - door.z) < 1) continue; let d = Infinity; for (let i = 1; i < w.pts.length; i += 1) d = Math.min(d, seg(l.x, l.z, ...w.pts[i - 1], ...w.pts[i])); if (d - w.w / 2 - R < 1.95) bad.push(`${l.id} walk ${(d - w.w / 2 - R).toFixed(2)}`); }
+    for (const o of H.LOTS) if (o !== l && Math.hypot(o.x - l.x, o.z - l.z) < 2 * R + 1.95) bad.push(`${l.id}~${o.id}`);
   }
   assert.equal(T.HOME_LOTS.length, 12); assert.deepEqual(bad, []);
 });
