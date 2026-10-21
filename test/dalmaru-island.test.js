@@ -69,3 +69,30 @@ test('관광열차 운행 따라잡기: 지금 시각·시험의 시계 옮기�
   }
   assert.ok(worst < 500, `${worst} ms`);
 });
+
+// 문제 기록 14 「빈 집터가 공중에 떠 있어」: every home lot on 툇마루섬's flat top, its whole 10 x 10 m square level and at
+// least 2 m in from where the beach starts to fall (7 m from the water)
+test('툇마루섬 집터: 12곳 모두 평평한 땅, 바닷가 비탈에서 2m 이상 안쪽', { skip }, () => {
+  const bad = [];
+  for (const l of T.HOME_LOTS) for (let dx = -5; dx <= 5; dx += 1) for (let dz = -5; dz <= 5; dz += 1) {
+    const x = l.x + dx; const z = l.z + dz;
+    if (Math.abs(T.heightAt(x, z) - 0.9) > 0.05 || T.dalmaru.coastDist(x, z) < 9) { bad.push(`${l.x},${l.z}`); dx = dz = 99; }
+  }
+  assert.equal(T.HOME_LOTS.length, 12); assert.deepEqual(bad, []);
+});
+
+// (넓힌 툇마루섬과 본섬 둘레: walked to the waterline's sand and no further -- no walkable ground under the water)
+test('섬 둘레: 본섬·툇마루섬 해안에서 물 아래는 걸을 수 없음', { skip }, () => {
+  const D = T.dalmaru; const wet = [];
+  const ring = (cx, cz, r0, r1) => { for (let a = 0; a < Math.PI * 2; a += Math.PI / 180) for (let r = r0; r < r1; r += 0.5) { const x = cx + Math.cos(a) * r; const z = cz + Math.sin(a) * r; if (!T.onBridge(x, z) && T.walkable(x, z) && T.heightAt(x, z) < D.SEA - 0.05) wet.push([+x.toFixed(1), +z.toFixed(1)]); } };
+  ring(D.ISLE.x, D.ISLE.z, D.ISLE.r - 6, D.ISLE.r + 12); ring(0, 0, 150, 190);
+  assert.deepEqual(wet.slice(0, 5), []);
+});
+
+// (등록부의 사계절 모델: every season zone holds each tree kind the seasonal models are for -- 툇마루섬, a zone of its own,
+// once had a day without its tall trees)
+test('계절 구역마다 나무 종류(둥근·층층·키 큰·꽃)가 모두 있음', { skip }, () => {
+  const H = T.harvestTrees(); const by = {};
+  for (const t of T.nature().trees) { if (H.some((h) => h.x === t.x && h.z === t.z)) continue; const z = T.seasonZoneAt(t.x, t.z); (by[z] ||= new Set()).add(T.treeKind(t)); }
+  for (const z of [0, 1, 2, 3]) for (const k of ['round', 'tiered', 'tall', 'blossom']) assert.ok(by[z]?.has(k), `구역 ${z}: ${k}`);
+});

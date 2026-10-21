@@ -26,13 +26,15 @@
   // ---- what stands (PLACES) ----
   // the fronts against 영웅마루 (관공서, 백화점): x, z on the cliff's foot, the front toward the island's middle
   const facade = (p) => ({ x: p.x, z: p.z, face: [p.x * 0.5, p.z * 0.5] });
-  const NC = PL.notice; const court = (deg, r = 6) => ({ x: NC.x + r * Math.cos(rad(deg)), z: NC.z + r * Math.sin(rad(deg)), face: [NC.x, NC.z] }); // 알림마루: round its little court
+  // 알림마루 (묶음 5 배치 점검, 사용자 「갑자기 뜬금없이 모여 있어」): one row along 대청마당's west edge, 3 m apart, each facing
+  // the plaza with 4 m clear before it -- 게시판·지도판·기부함·우체통, the 출석 islander at its end where 관리실's walk comes in
+  const row = (k) => ({ x: -42.2, z: -65 - 3.4 * k, face: [-30, -65 - 3.4 * k] });
   const spot = (p, kind, extra) => ({ x: p.x, z: p.z, face: p.face, kind, ...extra });
   const SPOTS = {
     games: { ...PL.gamehall, face: [PL.gamehall.x - 16, PL.gamehall.z], kind: 'hall', wall: 0xffe3b3, roof: 0xf08a6b }, // 대청마당 동쪽 바로 옆
     records: spot(PL.records, 'house', { wall: 0xf3e2ff, roof: 0x9b7fd6 }), missions: spot(PL.missions, 'board', { tint: 0x8fd18a }),
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
-    board: { ...court(180), kind: 'board' }, map: { ...court(225), kind: 'mapboard' }, attendance: { ...court(270), kind: 'npc' }, donate: { ...court(135), kind: 'donation' },
+    board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(4), kind: 'npc' }, donate: { ...row(2), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
   };
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
@@ -62,7 +64,7 @@
     stones: Object.freeze({ ...PL.stones, yaw: stoneYaw }), builder: off(PL.stones, 4.2, -2),
     bookcart: prop(PL.bookcart, 0.8), librarian: off(PL.bookcart, 2.1, -1.1),
     omokTable: prop(PL.omokTable, 1.4), grandpa: off(PL.omokTable, -0.1, 2.8),
-    mailbox: prop(court(315), 0.5), guide: prop({ ...court(0), face: [PL.spawn.x, PL.spawn.z] }, 0.45), birthday: prop(PL.birthday, 0.3),
+    mailbox: prop(row(3), 0.5), guide: prop({ x: PL.spawn.x - 2, z: PL.spawn.z + 2, face: [PL.spawn.x, PL.spawn.z] }, 0.45), /* (the guide beside 첫 접속's spot) */ birthday: prop(PL.birthday, 0.3),
   });
   const villageSolids = () => [VILLAGE.mural, VILLAGE.easel, VILLAGE.busk, ...VILLAGE.lamps, VILLAGE.toolbox, VILLAGE.bookcart, VILLAGE.omokTable, VILLAGE.mailbox, VILLAGE.guide, MUSEUM];
   const MUSEUM = Object.freeze({ ...PL.museum, yaw: yawTo(PL.museum.x, PL.museum.z, [100, 46]), r: 5 }); // (its door toward 잔치마루's walk)
@@ -98,15 +100,16 @@
     { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-17.5, 11)] }, // → round the yard, past the cliff front's corner
     { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(1.1, 4.6), stairsAt(1, 2)] }, // → onto the ridge's stairs, from their open side by the foot
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
-    { tier: 'walk', w: 2.8, pts: [[-42, -66], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34]] }, // 이웃골 → the west arm's shore
-    { tier: 'trail', w: 2.4, pts: [[-70, -8], [-82, -2], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
+    { tier: 'walk', w: 2.8, pts: [[-41, -59], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34], [-86, 40.5], [-87.1, 43.8]] }, // (묶음 5: on to the stepping stones' walk -- no end in the field) // 이웃골 → the west arm's shore
+    { tier: 'trail', w: 2.4, pts: [[-70, -8], [-80, 1.5], [-86, 3.5], [-92, 2.5], [-96, 0], [-110, 2], [-122, -6], doorPt('climb')] }, // 푸른숲골: the gazebo, 거울호수, the river, 등반탑
     { tier: 'trail', w: 2.4, pts: [[-122, -6], [-131, 12], [-133, 32], [-128, 43], [-124.5, 45.8]] }, // → the farm (its farmer)
-    { tier: 'walk', w: 2.8, pts: [doorPt('games'), [44, -60], [66, -48], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
+    { tier: 'walk', w: 2.8, pts: [[42, -54], [46, -49], [66, -46], [88, -30], [104, -6], [116, 12], [112, 34], [100, 46], [96, 60]] }, // 잔치마루: the contest square, the museum
     // (묶음 1 섬 길 정리: every place on a walk -- the doors the walks passed by, 툇마루역 round 툇마루섬's pond, and the
     // ridge: from the stairs' top along 달마루 능선 (its flat crest, r 138) to 영웅마루역's lift, a lookout on the way)
-    { tier: 'trail', w: 2.4, pts: [[-84, -3], doorPt('chat')] }, // → the gazebo
-    { tier: 'town', w: 3, pts: [doorPt('admin'), [-43, -73]] }, // → 관리실, from 대청마당
-    { tier: 'walk', w: 2.8, pts: [[98.5, 52], [102.5, 53.2], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door
+    { tier: 'trail', w: 2.4, pts: [[-80.5, 1.2], [-81, -3.5], [-84.5, -8.6], doorPt('chat')] }, // → the gazebo (묶음 5: round its east side to its door)
+    { tier: 'town', w: 3, pts: [[43, -66], doorPt('games')] }, { tier: 'town', w: 2.4, pts: [[61.5, -95.3], doorPt('records')] }, // (기록관's door, off the 백화점 walk) // → 게임관's door, from 대청마당 (묶음 5)
+    { tier: 'town', w: 3, pts: [doorPt('admin'), [-47, -76], [-43, -79]] }, // → 관리실, from 대청마당 (묶음 5: at 알림마루's end)
+    { tier: 'walk', w: 2.8, pts: [[100.5, 47], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 8, MUSEUM.z - Math.cos(MUSEUM.yaw) * 8], [MUSEUM.x - Math.sin(MUSEUM.yaw) * 4.9, MUSEUM.z - Math.cos(MUSEUM.yaw) * 4.9]] }, // → the museum's door (묶음 5: straight at it, clear of its corner)
     { tier: 'walk', w: 2.8, pts: [[12, 141.5], [17, 149], [14, 158], [7, 162.5], [5.3, 165.3]] }, // 툇마루섬 → 툇마루역 (its way in: island-train pulls the stop's straight inward), round its pond
     // (묶음 3: the villagers' places on a walk too -- the busker's corner, the builder by the stepping stones, the gazebo's grandpa)
     { tier: 'trail', w: 2.4, pts: [[13.6, -5], [13.8, -9.6]] }, { tier: 'trail', w: 2.4, pts: [[-87.1, 43.8], [-97.8, 37.8]] }, { tier: 'trail', w: 2.4, pts: [[-93.6, -0.3], [-94, -3.9]] },
@@ -135,12 +138,23 @@
     return u >= 0 && u <= STAIRS.len + 0.4 && v >= STAIRS.w0 - 0.1 && v <= STAIRS.w1 ? { u, v } : null;
   }
   const TOP = { x: ST.x + STAIRS.nx * 1.7 + STAIRS.ux * 0.4, z: ST.z + STAIRS.nz * 1.7 + STAIRS.uz * 0.4, h: STAIRS.base + 21 }; // the top landing, run back onto the ridge
+  // 문제 기록 15 「백화점이 떠 있어서 이상해. 절벽을 파고 들어가 절벽 안에 지었구나 싶게」: either side of each front the ridge
+  // comes forward to its face, 5 m of cliff -- 관공서·백화점 stand in a cut in 영웅마루, not before it
+  // (not on the side where 영웅마루's stairs come down by the 관공서 -- its foot stands there)
+  const CUTS = Object.values(SPOTS).filter((s) => s.kind === 'facade').map((s) => { const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const c = Math.cos(ry); const sn = Math.sin(ry);
+    const foot = (u) => { const x = STAIRS.x + STAIRS.ux * u + STAIRS.nx * 1.7 - s.x; const z = STAIRS.z + STAIRS.uz * u + STAIRS.nz * 1.7 - s.z; return { lx: x * c - z * sn, lz: x * sn + z * c }; };
+    const near = [0, 2, 4, 6].map(foot).filter((p) => Math.abs(p.lx) < FACADE.w / 2 + 8 && p.lz > -4 && p.lz < FACADE.d + 3);
+    return { x: s.x, z: s.z, c, s: sn, top: D.landHeight(s.x - sn * 7, s.z - Math.cos(ry) * 7), skip: near.length ? Math.sign(near[0].lx) : 0 }; });
   function land(x, z) {
     let h = D.landHeight(x, z);
+    for (const k of CUTS) {
+      const dx = x - k.x; const dz = z - k.z; const lx = dx * k.c - dz * k.s; if (k.skip && Math.sign(lx) === k.skip) continue; const side = Math.abs(lx) - FACADE.w / 2; const lz = dx * k.s + dz * k.c;
+      const edge = Math.max(0.3 - side, side - 5.3, lz - FACADE.d - 0.2, -3 - lz); if (edge < 1.2) h = Math.max(h, lerp(k.top, h, smooth(0, 1.2, edge)));
+    }
     for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
     // the fill from the stairs' top back to the ridge: 4 m wide, from the treads to 8 m into the ridge
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
-    const edge = Math.max(Math.abs(along) - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge)));
+    const edge = Math.max(-along - 0.4, along - 2, -out - 1.5, out - 9); if (edge < 2) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
@@ -229,8 +243,9 @@
       if (Math.abs(a - 270) < 5) continue; // (the way down to the dock)
       const [x, z] = bayAt(a, r); const yaw = -(rad(a) + Math.PI / 2); // (its length along the shore)
       rails.push({ x, z, yaw });
-      if (k % 3 === 1) { const [lx, lz] = bayAt(a, r + 1.2); lamps.push({ x: lx, z: lz, r: 0.3 }); }
-      if (k % 6 === 4) { const [bx, bz] = bayAt(a, r + 2.6); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
+      // (묶음 5 배치 점검: off the walk (r 99.4-102.6) -- the lamps on its land side, the benches beyond them facing the water)
+      if (k % 3 === 1) { const [lx, lz] = bayAt(a, 103.1); lamps.push({ x: lx, z: lz, r: 0.3 }); }
+      if (k % 6 === 3) { const [bx, bz] = bayAt(a, 104.6); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
     }
     return { rails, lamps, benches };
   })();
@@ -247,7 +262,7 @@
     const c = (x, z, extra) => ({ x: PLAZA_C.x + x, z: PLAZA_C.z + z, ...extra });
     const channels = [];
     for (const s of [1, -1]) { for (let k = 0; k < 4; k += 1) channels.push(c(s * (11.5 + 4 * k), 0, { yaw: 0 })); channels.push(c(s * 26.5, 0, { yaw: (s * Math.PI) / 2, end: true })); }
-    const gardens = [['long', -18, 18], ['long', 24, 18], ['round', -33, -12], ['round', 33, -12], ['round', -29, 27], ['round', 38, 25]].map(([kind, x, z]) => c(x, z, { kind }));
+    const gardens = [['long', -18, 18], ['long', 24, 18], ['round', -33, -12], ['round', 33, -12], ['round', -29, 27], ['round', 39.5, 25]].map(([kind, x, z]) => c(x, z, { kind }));
     const S = P.d1 - PLAZA_C.z - 0.18; const E = P.hw - 0.18; // (the kerb's middle, 0.18 in from the edge)
     const open = (x, z, alongX) => [-2, -1, 0, 1, 2].some((d) => { const px = alongX ? x + d : x; const pz = alongX ? z : z + d; return walkCurves.some((w) => w.pts.some(([a, b]) => Math.hypot(a - px, b - pz) < w.w / 2 + 0.8)) || Object.keys(SPOTS).some((id) => { const o = facilityDoor(id); return o && Math.hypot(o.x - px, o.z - pz) < 2.5; }); });
     const curbs = [];
@@ -314,10 +329,17 @@
     const clearOf = (x, z) => walkable(x, z) && D.coastDist(x, z) > 5 && slopeAt(x, z) < 0.35 && D.riverDist(x, z) > 2.5 && D.lakeDist(x, z) > 3
       && !inPlaza(x, z, 4) && !onBridge(x, z) && walkDist(x, z) > 1.6 && !built(x, z);
     const trees = [];
-    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24], [0, 152, 30, 22]]; // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses)
-    for (const [wx, wz, wr, n] of woods) for (let k = 0, tries = 0; k < n && tries < n * 14; tries += 1) {
-      const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
-      if (clearOf(x, z) && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.4)) { trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); k += 1; }
+    // (묶음 4: 툇마루섬 -- a season zone of its own -- its grove round the houses; 묶음 5: on the wider isle, and sure to hold
+    // every kind of tree each season shows -- with 22 picked at random a day's season there could miss its tall trees)
+    const woods = [[-118, -10, 30, 70], [-100, 40, 22, 40], [95, -40, 22, 36], [-20, -130, 26, 30], [40, -132, 22, 24], [0, 150, 36, 30, { tall: 3, tiered: 3, round: 4, blossom: 2, pine: 2 }]];
+    for (const [wx, wz, wr, n, need = {}] of woods) {
+      const has = {}; const short = () => Object.entries(need).some(([k, m]) => (has[k] || 0) < m);
+      for (let k = 0, tries = 0; (k < n || short()) && tries < n * 40; tries += 1) {
+        const a = rnd() * TAU; const r = Math.sqrt(rnd()) * wr; const x = wx + Math.cos(a) * r; const z = wz + Math.sin(a) * r;
+        if (!clearOf(x, z) || !trees.every((t) => Math.hypot(t.x - x, t.z - z) > 3.4)) continue;
+        const kind = C.treeKind({ x, z }); if (k >= n && (has[kind] || 0) >= (need[kind] || 0)) continue; // (past n: only the kinds still short)
+        trees.push({ x, z, s: 0.8 + rnd() * 0.55 }); has[kind] = (has[kind] || 0) + 1; k += 1;
+      }
     }
     for (let tries = 0; trees.length < 420 && tries < 9000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R;

@@ -7744,6 +7744,310 @@
       "lowSrc": "home58:02. Low/home_wallpaper__sky_low.glb",
       "lowSha256": "a91cda422721bad0f1b3e4e275aa4a2e0fb17745883dc9b6b1562d33640c2ffe",
       "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_butterfly_blue.glb",
+      "src": "insects62:01. High/insect_butterfly_blue.glb",
+      "sha256": "253b09e43a976b25efd3079090a671f2b52f53b14c3fcc26bca8b2ed2f435fe2",
+      "lowSrc": "insects62:02. Low/insect_butterfly_blue_low.glb",
+      "lowSha256": "5f90f339a450c0c5625ac78bb622ea5c1022337bff8072e4e8e786a5ece82486",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_butterfly_cabbage.glb",
+      "src": "insects62:01. High/insect_butterfly_cabbage.glb",
+      "sha256": "8f188575dd0e99b1d5c51ee604d1dce98c147a0ad6eff78d377f8c3db2218bff",
+      "lowSrc": "insects62:02. Low/insect_butterfly_cabbage_low.glb",
+      "lowSha256": "a8bec24bc89d354517a555c43c38ba9eb4428bef7646014d04a40e8381f358ad",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_butterfly_swallowtail.glb",
+      "src": "insects62:01. High/insect_butterfly_swallowtail.glb",
+      "sha256": "a3f47478de166ab22f5f8606a62d8d1ce079cfa043342bad47a777344d721b52",
+      "lowSrc": "insects62:02. Low/insect_butterfly_swallowtail_low.glb",
+      "lowSha256": "a186f63b9bee544c0caac9933b5db06afda4134d431415cd276679c8f41a8c81",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_cicada.glb",
+      "src": "insects62:01. High/insect_cicada.glb",
+      "sha256": "c45060b0cf125a4aa56698c2f16198b82adb13f679c42b0b3821f5285e9649de",
+      "lowSrc": "insects62:02. Low/insect_cicada_low.glb",
+      "lowSha256": "20bc6412be390536774af6aacbe93ac73e23ad4da6fb5553e0219e24f4f7da19",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_dragonfly_emperor.glb",
+      "src": "insects62:01. High/insect_dragonfly_emperor.glb",
+      "sha256": "4c43bb77de620d26548c1502d8815be2d3b7c545077de2d3291271488dbf5e69",
+      "lowSrc": "insects62:02. Low/insect_dragonfly_emperor_low.glb",
+      "lowSha256": "3fa60c442ad275c6fbbe4d26620643602f108d4afe145ae04c13064e0070afbd",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_dragonfly_red.glb",
+      "src": "insects62:01. High/insect_dragonfly_red.glb",
+      "sha256": "5a42a800fe8da45692fcffb8170612240ec52f936f4ea03305be8efecce1451a",
+      "lowSrc": "insects62:02. Low/insect_dragonfly_red_low.glb",
+      "lowSha256": "907a53c96667c4e51fefa821b48bd11ff960234ee87f1c7131169abc338b2bfd",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_firefly.glb",
+      "src": "insects62:01. High/insect_firefly.glb",
+      "sha256": "5842d3b566c76f547b19ffa00f9653c9f8c8490677cf5328429a6efcdff8a7ce",
+      "lowSrc": "insects62:02. Low/insect_firefly_low.glb",
+      "lowSha256": "ec7deb225535b0393455cbe24daba909b97e0c6375f77dc788bd48f0bb490d5f",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_grasshopper.glb",
+      "src": "insects62:01. High/insect_grasshopper.glb",
+      "sha256": "0e7a2264c5c0d4a8423563a887eca1f026b86c8653a80874dc313692c3f0f70b",
+      "lowSrc": "insects62:02. Low/insect_grasshopper_low.glb",
+      "lowSha256": "d10ece40eaa90dc621b98e870c83ee7516f3c3e1ca263b9a5487130cf5cafb01",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_ladybird.glb",
+      "src": "insects62:01. High/insect_ladybird.glb",
+      "sha256": "5b42d54ae12c0c83b595aad612772a6e679a93ce1783e5c59a00f78bbc95677d",
+      "lowSrc": "insects62:02. Low/insect_ladybird_low.glb",
+      "lowSha256": "03d0414abe36757c9d0e8adfb009424e6cffa01ceb9ad33ab22f1797df765541",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_rhinoceros_beetle.glb",
+      "src": "insects62:01. High/insect_rhinoceros_beetle.glb",
+      "sha256": "edffd6aaead8c431576578c6f11f7325cb569498dc9db0fa47d02542cd5ff216",
+      "lowSrc": "insects62:02. Low/insect_rhinoceros_beetle_low.glb",
+      "lowSha256": "0d40a278831d87dd0916c86ba65b9ffe181d3d62f78a824a55f9d5fe3daf3c11",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_snail.glb",
+      "src": "insects62:01. High/insect_snail.glb",
+      "sha256": "8ecae137898dada5bd37165d8cf60ffeab24447cfa2a35469fa08d3b8c264ca7",
+      "lowSrc": "insects62:02. Low/insect_snail_low.glb",
+      "lowSha256": "46d52874fee65467603ed35fc0a1a30ec33c011f5cae5eb9e5c2d506fc4a31d3",
+      "precompressed": true
+    },
+    {
+      "out": "insects-v1/insect_stag_beetle.glb",
+      "src": "insects62:01. High/insect_stag_beetle.glb",
+      "sha256": "3fefa5812251db9eac63babc02f5650e98be23ec374d2cd25d99d0c0fcf95601",
+      "lowSrc": "insects62:02. Low/insect_stag_beetle_low.glb",
+      "lowSha256": "8d247fb7a5cd46c4466fa42702bc9a4581523bd42383b9a863c6f690ab42f7c5",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_bush__autumn.glb",
+      "src": "angular63:01. High/angular_bush__autumn.glb",
+      "sha256": "78c91ac4a12eedbe608d88a4f5a9b60d14cd4b71ba807ec4cc62d17ccfb28b60",
+      "lowSrc": "angular63:02. Low/angular_bush__autumn_low.glb",
+      "lowSha256": "cf2d4256e9b7cf4227accdb2019a40a2f51813260712b1c2036adf1313b2b364",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_bush__spring.glb",
+      "src": "angular63:01. High/angular_bush__spring.glb",
+      "sha256": "2e5013a90dcd9fe663488b7f364f5d2914dec1983f472fb8259518eee6a7f847",
+      "lowSrc": "angular63:02. Low/angular_bush__spring_low.glb",
+      "lowSha256": "af4c7b8d737fe0e83b9c915a935f4e141a9734ecfb560a754c532547a62484cb",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_bush__summer.glb",
+      "src": "angular63:01. High/angular_bush__summer.glb",
+      "sha256": "063f1d6676d8d4f062d6a2e1cf27e753a44b2aa328c9829621ccb9b846877291",
+      "lowSrc": "angular63:02. Low/angular_bush__summer_low.glb",
+      "lowSha256": "8dcf097975b60a689b6cc4565c6f2769f435bdb45bdbb6799d16c309e899fbf6",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_bush__winter.glb",
+      "src": "angular63:01. High/angular_bush__winter.glb",
+      "sha256": "a6b22cb2977e372d9eafb3dc053c25677dab3f0d5e7e4e449ac3dedef5fffcf5",
+      "lowSrc": "angular63:02. Low/angular_bush__winter_low.glb",
+      "lowSha256": "667007ffd035ae76634117d4a85a9ce8e12712192b1345e5aacbb31ffbebb33f",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_cliff_a.glb",
+      "src": "angular63:01. High/angular_cliff_a__base.glb",
+      "sha256": "d7fc4668480620e027ebe54d346cd97c9e11726aa973798075f15c827b9c4c95",
+      "lowSrc": "angular63:02. Low/angular_cliff_a__base_low.glb",
+      "lowSha256": "c1151324b7df93fb9f3d696de267bbe1a4526a020e2bc8310179e44d6421c2da",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_cliff_b.glb",
+      "src": "angular63:01. High/angular_cliff_b__base.glb",
+      "sha256": "a0fceac6653f272fb68dd2cee0862449b101c8447c492bd7ce81f44a3ca4ec4f",
+      "lowSrc": "angular63:02. Low/angular_cliff_b__base_low.glb",
+      "lowSha256": "4dea66ac27c59d0d95c0a5455c0807ec6ddd0b0044d606dc867f7fd28b456a8f",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_grass_a.glb",
+      "src": "angular63:01. High/angular_grass_a__base.glb",
+      "sha256": "88498cc547c56321eb37db9b273eea0d61f689fe272950d5d07e25734ba50a57",
+      "lowSrc": "angular63:02. Low/angular_grass_a__base_low.glb",
+      "lowSha256": "f6fae27601c8269e176df00b3dac7c24b4310396bc9712c324e19f386d561ff2",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_grass_b.glb",
+      "src": "angular63:01. High/angular_grass_b__base.glb",
+      "sha256": "71c60557a29ab35dbbdbd404d13d8c8a129c7a3e9c849e22931b311240bb581d",
+      "lowSrc": "angular63:02. Low/angular_grass_b__base_low.glb",
+      "lowSha256": "7ae8fecd3dadba172cc13e6057934adf7df79788676ce71d8a44337e5ee60c3a",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_grass_c.glb",
+      "src": "angular63:01. High/angular_grass_c__base.glb",
+      "sha256": "33c8ab7d6a886f573376b0b0d76a02e2c967bc1b18bf176d95c3b5c2b94be1a2",
+      "lowSrc": "angular63:02. Low/angular_grass_c__base_low.glb",
+      "lowSha256": "b8ee2efeab1f3fb22f9a60e7b5152de9a5c7c1b37cd8f2a0fc3bba9733da5fd2",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_grass_d.glb",
+      "src": "angular63:01. High/angular_grass_d__base.glb",
+      "sha256": "3940f25b1c3b4b19e9fe80d49faa4e3d9cb010207abb16587a262e306e15cb9c",
+      "lowSrc": "angular63:02. Low/angular_grass_d__base_low.glb",
+      "lowSha256": "ce22122ada302f828b2cd1664579fa9c933855e2030a81f8e03a060c9169c7e4",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_rock_block.glb",
+      "src": "angular63:01. High/angular_rock_block__base.glb",
+      "sha256": "29d4ac40f08bf0b83953630d61c991f5be67fe6164513c8238f154d424545336",
+      "lowSrc": "angular63:02. Low/angular_rock_block__base_low.glb",
+      "lowSha256": "597dc45c945913e45b5b8c7503249a988236f4f4a65fe57b618c7c710e689e3b",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_rock_lump.glb",
+      "src": "angular63:01. High/angular_rock_lump__base.glb",
+      "sha256": "e41e5b266d98b4402b986dabae7cfe5c99ee4a5a6618d6423495acda00c3d0fe",
+      "lowSrc": "angular63:02. Low/angular_rock_lump__base_low.glb",
+      "lowSha256": "e41e5b266d98b4402b986dabae7cfe5c99ee4a5a6618d6423495acda00c3d0fe",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_rock_small.glb",
+      "src": "angular63:01. High/angular_rock_small__base.glb",
+      "sha256": "026b02df0cb1d600a4e32dfc8a44e14a4cc092425e2ef282dcd9e532b9d471eb",
+      "lowSrc": "angular63:02. Low/angular_rock_small__base_low.glb",
+      "lowSha256": "026b02df0cb1d600a4e32dfc8a44e14a4cc092425e2ef282dcd9e532b9d471eb",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_rock_stack.glb",
+      "src": "angular63:01. High/angular_rock_stack__base.glb",
+      "sha256": "11fbed8e439f37270380ff5a97768ae9120b720e2cab93316606f5e77bb28f98",
+      "lowSrc": "angular63:02. Low/angular_rock_stack__base_low.glb",
+      "lowSha256": "687bfb8a127da7ea37dc98f5fc01f674670f0cd83ef614888a915b7851ec2a99",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_block__autumn.glb",
+      "src": "angular63:01. High/angular_tree_block__autumn.glb",
+      "sha256": "daa04d325c0a38ae68a00f155d0b485c1f8340a78418b500cb3e883fc8d690bb",
+      "lowSrc": "angular63:02. Low/angular_tree_block__autumn_low.glb",
+      "lowSha256": "aae5a0da04abc39904c9f927246ea2d36d8e3db4e066c362f8074d953930a31c",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_block__spring.glb",
+      "src": "angular63:01. High/angular_tree_block__spring.glb",
+      "sha256": "2a2b3c84884c9d1c5753404ad560416e1e880124e16085f631f6c8e73a8f3be9",
+      "lowSrc": "angular63:02. Low/angular_tree_block__spring_low.glb",
+      "lowSha256": "69fcbe245910992e1bcac3d11b31392e2fc67742dada8fcde323506fac8140c2",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_block__summer.glb",
+      "src": "angular63:01. High/angular_tree_block__summer.glb",
+      "sha256": "cde6cbfe0d4acab0c60f8ee4da5b441bc42c19574ef357b3991e127f346a0e3f",
+      "lowSrc": "angular63:02. Low/angular_tree_block__summer_low.glb",
+      "lowSha256": "0f974b40df1c17dabf12dfcb7457cbb431a9c301239f683f94d2d6b261ad6c60",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_block__winter.glb",
+      "src": "angular63:01. High/angular_tree_block__winter.glb",
+      "sha256": "9e8a243447bb0f05e5534340bafbe3ac98edcf890481022022fbeb34013202c1",
+      "lowSrc": "angular63:02. Low/angular_tree_block__winter_low.glb",
+      "lowSha256": "afb183fb314f373651d8bb8612550fec35f5507014c5022545e132eae05906fc",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_spire__autumn.glb",
+      "src": "angular63:01. High/angular_tree_spire__autumn.glb",
+      "sha256": "f8b5e54544d00bbd0a365fa5661d4b8e80832ad5db248fe8acc388114b785562",
+      "lowSrc": "angular63:02. Low/angular_tree_spire__autumn_low.glb",
+      "lowSha256": "d1c3f791918e177210b46910a9f9de823dc776c382ac7d7ce89d820693f9551b",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_spire__spring.glb",
+      "src": "angular63:01. High/angular_tree_spire__spring.glb",
+      "sha256": "60737bbd1d26470a432c3da706c58b39e7e1c4ab20ce2cb85d6be63d8d57b81f",
+      "lowSrc": "angular63:02. Low/angular_tree_spire__spring_low.glb",
+      "lowSha256": "52923c0c522ce41960c75866354bc94800174911b669a93f3d67d85afa6d918b",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_spire__summer.glb",
+      "src": "angular63:01. High/angular_tree_spire__summer.glb",
+      "sha256": "b4ac0a8858a193c4ef8c905968948005fa79c4cfa1cbca21b83d53162ced96c1",
+      "lowSrc": "angular63:02. Low/angular_tree_spire__summer_low.glb",
+      "lowSha256": "14e3c97cbd13c7ebf837183a7ef7c37dd6f7ef5231026083d5f34ae9d249412a",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_spire__winter.glb",
+      "src": "angular63:01. High/angular_tree_spire__winter.glb",
+      "sha256": "cf91835c55d4a07f6a5b1782634794efcd3ab3650edb055b805a9fb91fba33c1",
+      "lowSrc": "angular63:02. Low/angular_tree_spire__winter_low.glb",
+      "lowSha256": "a91e83a9ca2e0b435f1ca9337f5ea9f02eda111070066774b2bf9d5eb887830c",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_stack__autumn.glb",
+      "src": "angular63:01. High/angular_tree_stack__autumn.glb",
+      "sha256": "9c215f6529b6506204dc2ea9698835923713082a2316ce4228dbf73617766bae",
+      "lowSrc": "angular63:02. Low/angular_tree_stack__autumn_low.glb",
+      "lowSha256": "13569d1cdca3850a0b9f748925bff64a75eae041e6d6a5e160dad7031bc3790a",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_stack__spring.glb",
+      "src": "angular63:01. High/angular_tree_stack__spring.glb",
+      "sha256": "aa3210094f4a3fb5944bd90f593967f2e51e75c5f61b4cf3b81c50f2ba31bdfd",
+      "lowSrc": "angular63:02. Low/angular_tree_stack__spring_low.glb",
+      "lowSha256": "caa6affae94488c20f44d164f59c75c7fac76c02122f01871e01fcfeb72b5d2c",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_stack__summer.glb",
+      "src": "angular63:01. High/angular_tree_stack__summer.glb",
+      "sha256": "e4bf7917fc1b6e9fe3fc9f58b99e259cfcd9d5b1eeddca34928e0c1288e8a6f1",
+      "lowSrc": "angular63:02. Low/angular_tree_stack__summer_low.glb",
+      "lowSha256": "e13c209753d624938fecd881270b6c2eb1701cab3c03bb596533cbc6a4f07dbc",
+      "precompressed": true
+    },
+    {
+      "out": "angular-v1/angular_tree_stack__winter.glb",
+      "src": "angular63:01. High/angular_tree_stack__winter.glb",
+      "sha256": "14e6af1688dd8d02f0acd6bf12a1d0756fd46543c0d66a92cdecf064fe13fef8",
+      "lowSrc": "angular63:02. Low/angular_tree_stack__winter_low.glb",
+      "lowSha256": "f6e359c08891e4a3d27f333123c47fa87ef9099d12a224254b307ac3dde404e3",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -7784,6 +8088,8 @@
     "furniture57": "57. Game Island furniture shop 2026-10-19",
     "petshop60": "60. Game Island pet shop 2026-10-20",
     "bike61": "61. Game Island bicycle 2026-10-20",
-    "home58": "58. Game Island my home 2026-10-20"
+    "home58": "58. Game Island my home 2026-10-20",
+    "insects62": "62. Game Island insect motions 2026-10-20",
+    "angular63": "63. Game Island angular nature 2026-10-20"
   }
 }

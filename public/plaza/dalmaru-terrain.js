@@ -17,7 +17,9 @@
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
   // ---- the plan (the numbers in the plan page) ----
-  const R_OUT = 165, R_BAY = 95, BAY_Z = 95, R_ISLE = 34;
+  // (문제 기록 14 「빈 집터가 공중에 떠 있어. 섬을 확장하는 방향으로」: 툇마루섬 34 -> 41 m, every lot on its flat top at least
+  // 2 m in from where the beach starts; 윤슬다리 shortened to meet it, 툇마루역 still clear -- the ring is r 194 since 묶음 5)
+  const R_OUT = 165, R_BAY = 95, BAY_Z = 95, R_ISLE = 41;
   const TIP_Z = (R_OUT * R_OUT - R_BAY * R_BAY + BAY_Z * BAY_Z) / (2 * BAY_Z); // 143.3
   const TIP_X = Math.sqrt(R_OUT * R_OUT - TIP_Z * TIP_Z); // 81.8
   const ISLE = { x: 0, z: TIP_Z, r: R_ISLE };
@@ -27,7 +29,10 @@
   const PLAZA = { x: 0, z: -84, hw: 44, d0: -112, d1: -52, h: 1.2 }; // 대청마당: a terrace before the cliff (half width, north and south edges)
   const SEA = -0.6;
 
-  const outerR = (th) => R_OUT + 3.2 * Math.sin(3 * th + 0.4) + 2.2 * Math.sin(7 * th + 1.3) + 1.2 * Math.sin(13 * th);
+  // 묶음 5 능선 위 넓히기 (docs/ridge-widen-20261020.md, 사용자 「절벽 위 공간이 굉장히 작은데 그 공간을 더 크게 키우자」): the coast
+  // behind the ridge 12 m further out (only along the ridge, easing to nothing over 0.3 rad at each end)
+  const ridgeBulge = (th) => { const a = ((th % TAU) + TAU) % TAU; return 12 * Math.min(smooth(RIDGE.a0 - 0.05, RIDGE.a0 + 0.3, a), smooth(RIDGE.a1 + 0.05, RIDGE.a1 - 0.3, a)); };
+  const outerR = (th) => R_OUT + ridgeBulge(th) + 3.2 * Math.sin(3 * th + 0.4) + 2.2 * Math.sin(7 * th + 1.3) + 1.2 * Math.sin(13 * th);
   const bayR = (th) => R_BAY + 2.4 * Math.sin(4 * th + 0.9) + 1.4 * Math.sin(9 * th + 2.1);
   // > 0 on land: distance (roughly, metres) inside the crescent or the island
   function coastDist(x, z) {
@@ -57,7 +62,7 @@
     { name: '서쪽 강', w: 5.5, pts: [[-106, -12], [-111, 10], [-108, 30], [-99, 48], [-88, 62]] },
     { name: '은하내', w: 5, pts: [[111, -78], [114, -60], [124, -40], [146, -22], [168, -12]] },
   ];
-  const POOLS = [{ x: -124, z: -55, r: 7 }, { x: 111, z: -78, r: 7 }]; // 마루폭포 under the ridge's west end (204°), the east fall (325°) -- clear of 관공서·계단 (206–241°) and 백화점 (298–312°)
+  const POOLS = [{ x: -124, z: -55, r: 7 }, { x: 111, z: -78, r: 7, hw: 4.5 }]; // (hw: the sheet's half width -- 문제 기록 12 「폭포를 더 크게」: the east one twice as wide) // 마루폭포 under the ridge's west end (204°), the east fall (325°) -- clear of 관공서·계단 (206–241°) and 백화점 (298–312°)
   const ISLE_POND = { x: 8, z: TIP_Z + 4, rx: 6, rz: 4 };
   function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
   const lineDist = (x, z, pts) => { let d = Infinity; for (let i = 0; i + 1 < pts.length; i++) d = Math.min(d, segDist(x, z, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; };
@@ -75,7 +80,7 @@
     let h = 0.6 + 0.9 * smooth(0, 60, cd) + 0.35 * Math.sin(x * 0.07) * Math.cos(z * 0.06);
     // the ridge: 22 m on top, a sheer inner face; its outer side falls to sea cliffs
     const rg = ridgeAt(x, z);
-    if (rg > 0) { const outerFall = smooth(4, 22, cd); h = lerp(h, RIDGE.top * (0.55 + 0.45 * outerFall) + 1.5 * Math.sin(x * 0.11), rg); }
+    if (rg > 0) { const outerFall = smooth(2, 9, cd); /* (묶음 5: flat nearly to the coast, then the sea cliff) */ h = lerp(h, RIDGE.top * (0.55 + 0.45 * outerFall) + 1.5 * Math.sin(x * 0.11), rg); }
     // 대청마당: a flat terrace up to the cliff's foot
     const px = Math.max(0, Math.abs(x - PLAZA.x) - PLAZA.hw); const pz = Math.max(0, PLAZA.d0 - z, z - PLAZA.d1);
     const outP = Math.hypot(px, pz); if (outP < 8 && rg < 0.5) h = lerp(PLAZA.h, h, smooth(0, 8, outP));
@@ -104,7 +109,7 @@
     return deg >= 115 && deg < 225 ? 0 : deg >= 225 && deg < 315 ? 1 : 2;
   }
   const BRIDGE_Z = 140; // 윤슬다리 (assets 55 bridge.yunseul, 50 m): centred over the 45 m of water between 툇마루섬 and each cape, 2.5 m on land at each end
-  const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 55.35, z: BRIDGE_Z, length: 50, ends: [[sgn * 30.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] }));
+  const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 59.35, z: BRIDGE_Z, length: 42, ends: [[sgn * 38.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] })); // (the model is 50 m: drawn to this length)
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {
@@ -112,24 +117,24 @@
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 227.5), to: deg(RIDGE.inner - 2, 212) }, // up the cliff face westward beside 관공서
     lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)
-    gamehall: { x: 56, z: -66 }, notice: { x: -34, z: -62 }, village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
+    gamehall: { x: 56, z: -66 }, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
-    records: { x: 53, z: -90, face: [40, -88] }, missions: { x: 50, z: -54, face: [40, -62] }, // beside the 게임관
+    records: { x: 64, z: -86, face: [60, -95] }, missions: { x: 46, z: -75, face: [40, -75] }, // beside the 게임관 (묶음 5 배치 점검: 기록관 off the 백화점 walk, facing it; 미션 게시판 by the hall's door, off its walk)
     admin: { x: -54, z: -72, face: [-40, -76] }, chat: { x: -86, z: -4, face: [-100, -20] }, climb: { x: -128, z: -12, face: [-112, -10] },
     // (the trader and the 작명소 are indoors: the 백화점's 노점 and the 관공서's 개명 신청 window)
     lane: [[-52, -48], [-74, -4]], // 이웃골's street (the islanders' ten houses either side of it)
-    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -27, z: -68, face: [-34, -62] },
+    mural: { x: 30, z: -57, face: [0, -84] }, busk: { x: 16, z: -12, face: [0, -30] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: -12, z: -60, face: [0, -84] },
     hallLamps: [[-2.8, -22], [3.2, -30], [-2.8, -38]], // the three lamps the electrician mends, beside the walk to the water (off it)
     stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)
     halloween: { fields: [[-60, 20], [60, 20], [120, 40], [-8, 150], [-132, 30]], extras: [['broom', -112, -22, 0.6], ['broom', -96, 36, 2.1], ['hay', -122, 46, 1.2], ['cauldron', -82, -24, 1.57]] },
-    quests: { photographer: { x: -12, z: -12 }, gardener: { x: -56, z: 14 }, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
+    quests: { photographer: { x: -12, z: -12 }, gardener: { x: -57.8, z: 7.8 } /* (문제 기록 11: off the waterfront rail -- 2 m inland of the walk) */, flowers: { x: -94, z: 44 }, fisher: { x: 84, z: 133 }, pierEnd: { x: 107, z: 165 },
       station: { x: -88.3, z: 143.9 }, stonesBank: { x: -99, z: 36 }, kid: { x: -8, z: -64 }, pumpkin: { x: 0, z: -78.5 } },
   };
-  const TRAIN = { r: 184, stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
+  const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
   return { CAPES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES,

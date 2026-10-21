@@ -10,7 +10,7 @@
   const SEA = -0.6; // the sea's surface in the game (the drawing's heights are over the sea)
   const TRAVEL = 114; const DWELL = 6; // each leg 120s
   // 달마루섬 4단계 (docs/dalmaru-implementation-20261019.md 4, 관리자 미리보기): one high ring round the island over the sea
-  // (dalmaru-terrain TRAIN, r 184), four stations -- 달끝역 (east cape), 툇마루역 (the isle's south), 초승역 (west cape),
+  // (dalmaru-terrain TRAIN, r 194), four stations -- 달끝역 (east cape), 툇마루역 (the isle's south), 초승역 (west cape),
   // 영웅마루역 (the ridge's back) -- each a 40 m straight drawn in until its lift stands on land; the same carriages,
   // timetable, blocks and lifts, a leg per station
   const DAL = T.MAP === 'dalmaru' ? T.dalmaru : null;
@@ -38,7 +38,7 @@
       out.push(...corridor(cx, cz, s.y, dx, dz, s.id));
       const next = stops[(k + 1) % stops.length]; let a1 = next.a; if (a1 <= s.a) a1 += 360;
       const gap = a1 - s.a; const n = Math.max(0, Math.round(gap / 24) - 1);
-      for (let i = 1; i <= n; i += 1) { const a = s.a + (gap * i) / (n + 1); const nearN = Math.abs(((a % 360) + 360) % 360 - 270) < 40; out.push(at(a, 184, nearN ? 27 : 18)); }
+      for (let i = 1; i <= n; i += 1) { const a = s.a + (gap * i) / (n + 1); const nearN = Math.abs(((a % 360) + 360) % 360 - 270) < 40; out.push(at(a, DAL.TRAIN.r, nearN ? 27 : 18)); }
     });
     return out;
   };
