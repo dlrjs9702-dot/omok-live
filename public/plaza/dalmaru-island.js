@@ -158,7 +158,7 @@
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
-  const isWater = (x, z) => ground(x, z) < SEA;
+  const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z); // (2회차 18: the ponds over the falls are water too)
   const slopeAt = (x, z) => Math.hypot(ground(x + 1, z) - ground(x - 1, z), ground(x, z + 1) - ground(x, z - 1)) / 2;
 
   // ---- bridges: 윤슬다리 (its arched deck the model's), and a plain one wherever a walk crosses a river ----
