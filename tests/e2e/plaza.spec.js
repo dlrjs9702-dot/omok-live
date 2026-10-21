@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post, get, shopper, buyAndEquip, expectNoScriptError } = require('./skin-support');
+const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn } = require('./skin-support');
 
 // 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
 // v1.9.7부터 일반 사용자에게 기존 로비 전환 UI는 없고, 계정 메뉴는 관리자 창(관리자만)·내 정보·접속 종료만 둔다. PC 전용.
@@ -1165,7 +1165,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   // v1.10.34 부탁: talking to the owner -- what they lost, and its place on my map from anywhere
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 말 걸기', { timeout: 15000 });
-  await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
+  await expect.poll(() => spaceOn(page, `ev:lost_owner:${lost.id}`), { timeout: 15000 }).toBe(true); // (CI 3차: the owner, read and pressed at once)
   await expect(page.locator('#plazaDialogTitle')).toHaveText('분실물 찾아주기');
   await expect(page.locator('.lostRequest')).toContainText('잃어버렸어요');
   await expect(page.locator('.lostRequest')).toContainText('사례 10,000P');
@@ -1174,8 +1174,9 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_item:${id}`), lost.id), { timeout: 10000 }).toBe(true); // 12-32 away, on my map
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.25, z), [lost.x, lost.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 줍기', { timeout: 15000 });
-  await page.locator('#plazaStage').focus();
-  await page.keyboard.press('Space');
+  // (CI 3차, flaky at 1179: SPACE read and pressed at once while the thing is what it reaches -- and again until it is in my
+  // hands: a press taken by an islander walking by, or the server's answer missed, is not the end)
+  await expect.poll(async () => { if ((await page.evaluate(() => window.PlazaDebug().carry)).mine === lost.id) return true; await spaceOn(page, `ev:lost_item:${lost.id}`); await page.waitForTimeout(1000); return (await page.evaluate(() => window.PlazaDebug().carry)).mine === lost.id; }, { timeout: 30000, intervals: [500] }).toBe(true);
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 15000 }).toMatchObject({ mine: lost.id, arms: true, held: true });
   // walking with it
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(700); await page.keyboard.up('ArrowUp');
@@ -1187,7 +1188,7 @@ test('운반·전달: 주운 분실물을 들고 걷고, 다른 사람에게도 
   // given back: still in my hands a moment, then in the owner's, then the owner goes
   await page.evaluate(([x, z]) => window.PlazaWarp(x + 0.8, z), [lost.npc.x, lost.npc.z]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 돌려주기', { timeout: 15000 });
-  await page.keyboard.press('Space');
+  await expect.poll(() => spaceOn(page, `ev:lost_owner:${lost.id}`), { timeout: 15000 }).toBe(true); // (CI 3차: the owner, read and pressed at once)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().carry), { timeout: 10000 }).toMatchObject({ mine: null, arms: false, held: false });
   await expect.poll(() => page.evaluate((id) => window.PlazaDebug().events.includes(`ev:lost_owner:${id}`), lost.id), { timeout: 10000 }).toBe(false);
   // in that order: handed over (Give), held in the owner's hand (Receive) a while, then gone
@@ -1571,15 +1572,15 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   await a.page.evaluate(p => window.PlazaWarp(p.x, p.z), atShop.data);
   // (CI 2차: the hat bought by the API off the island -- with my place on it the server wants the 백화점's 소품 sector, so
   // whether this passed hung on whether the page had reported its place yet; the page puts it back with its next one)
-  expect((await post(request, '/api/plaza/leave', a.token, {})).status).toBe(200);
-  expect((await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status).toBe(200);
+  // (CI 3차: off the island and bought -- again if the page's next place came in between, 409 TOO_FAR, seen locally)
+  await expect.poll(async () => { expect((await post(request, '/api/plaza/leave', a.token, {})).status).toBe(200); return (await post(request, '/api/skins/buy', a.token, { skinId: 'avatar_hat_1' })).status; }, { timeout: 15000 }).toBe(200);
   const seat = await a.page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !s.room && !taken[s.id]); }); // a free plaza bench (another test's sitter may still hold one; the 민원실's seats are far off the island)
   await a.page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(a.page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
   await expect.poll(async () => { // (CI 2차: SPACE when the bench is what it reaches and no motion holds -- again until seated)
     const d = await a.page.evaluate(() => ({ sitting: window.PlazaDebug().act().sitting, near: window.PlazaDebug().near, locked: window.PlazaDebug().actLocked }));
-    if (d.sitting) return true; if (d.locked || !d.near?.startsWith('seat:')) return false;
-    await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); await a.page.waitForTimeout(800);
+    if (d.sitting) return true; if (d.locked || !(await spaceOn(a.page, 'seat:'))) return false; // (CI 3차: read and pressed at once)
+    await a.page.waitForTimeout(800);
     return a.page.evaluate(() => window.PlazaDebug().act().sitting);
   }, { timeout: 30000, intervals: [500] }).toBe(true);
   const aId = await a.page.evaluate(() => window.PlazaDebug().playerId?.() ?? null);
@@ -1605,15 +1606,18 @@ test('앉기·인사·게임 초대: 벤치에 앉고 다른 화면에도 보이
   const bp = await b.page.evaluate(() => ({ x: window.PlazaDebug().x, z: window.PlazaDebug().z }));
   // (CI 2차: an islander walking by comes first for SPACE -- their talk is closed and SPACE pressed again by the player;
   // nor during a motion's hold, when a SPACE goes nowhere)
+  // (CI 3차: SPACE read and pressed at once while the player is what it reaches; on failing, what it reached instead)
+  let lastNear = null;
   const playerMenu = () => expect.poll(async () => {
     if (await a.page.getByRole('button', { name: '인사', exact: true }).isVisible()) return true;
     if (await a.page.locator('#plazaDialog').isVisible()) { await a.page.keyboard.press('Escape'); await a.page.waitForTimeout(300); }
-    const d = await a.page.evaluate(() => ({ near: window.PlazaDebug().near, locked: window.PlazaDebug().actLocked }));
+    const d = await a.page.evaluate(() => { const g = window.PlazaDebug(); return { near: g.near, locked: g.actLocked, x: g.x, z: g.z }; }); lastNear = d;
     if (d.locked) return false;
     if (!d.near?.startsWith('player:')) { await standAt(request, a, bp.x + 1.3, bp.z); return false; }
-    await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('Space'); await a.page.waitForTimeout(500);
+    if (!(await spaceOn(a.page, 'player:'))) return false;
+    await a.page.waitForTimeout(500);
     return a.page.getByRole('button', { name: '인사', exact: true }).isVisible();
-  }, { timeout: 45000, intervals: [500] }).toBe(true);
+  }, { timeout: 45000, intervals: [500] }).toBe(true).catch((error) => { error.message += `\nlast: ${JSON.stringify(lastNear)} b: ${JSON.stringify(bp)}`; throw error; });
   const { standAt } = require('./skin-support');
   await standAt(request, b, bp.x, bp.z); await standAt(request, a, bp.x + 1.3, bp.z); // (CI 2차: the invite is checked on the server's places -- page and server agreeing)
   await playerMenu();

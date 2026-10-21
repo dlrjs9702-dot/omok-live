@@ -115,6 +115,18 @@ async function expectNoScriptError(page) {
   await expect(page.locator('#toast')).not.toContainText(/is not a function|is not defined|undefined|Cannot read/);
 }
 module.exports.expectNoScriptError = expectNoScriptError;
+// CI 3차: SPACE on the island when what it reaches (PlazaDebug().near) starts with `prefix` -- read and pressed in one call.
+// Read, then pressed by the keyboard, there were frames between (a second or more on the CI runner): an islander walking
+// by took the SPACE and opened a talk (운반·전달 「줍기」 at plaza.spec 1179, 앉기·인사 「인사」). false: something else is nearest.
+async function spaceOn(page, prefix) {
+  return page.evaluate((prefix) => {
+    if (!window.PlazaDebug()?.near?.startsWith(prefix)) return false;
+    const stage = document.getElementById('plazaStage'); stage.focus();
+    for (const type of ['keydown', 'keyup']) stage.dispatchEvent(new KeyboardEvent(type, { code: 'Space', key: ' ', bubbles: true }));
+    return true;
+  }, prefix);
+}
+module.exports.spaceOn = spaceOn;
 // v1.10.93: stand at a spot of the 백화점's room (local lx, lz) until its prompt shows -- on a slow runner the walk-in can
 // still put me at the door after a first teleport
 async function standInMall(page, lx, lz, text) {
