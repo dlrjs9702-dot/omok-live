@@ -1879,7 +1879,7 @@
       device: { touch: document.body.classList.contains('touchIsland'), w: innerWidth, h: innerHeight, dpr: devicePixelRatio, ua: navigator.userAgent.slice(0, 200) }, fps: fpsNow, errors: recentErrors.slice() };
     if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
     const d = plaza.controller?.debug?.();
-    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality }; }
+    if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality, camera: { yaw: +Number(d.camYaw).toFixed(2), pitch: +Number(d.camPitch).toFixed(2), zoom: +Number(d.zoom).toFixed(1) } }; } // (2회차: how it was looked at)
     return ctx;
   }
   async function openIssue() {

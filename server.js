@@ -6971,6 +6971,13 @@ async function main() {
     const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
     if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
   }
+  // 문제 기록 2회차 (2026-10-21): once, the pictures of the records still open or being fixed into the log as [issue-shot]
+  // lines -- they were stored before the log carried pictures
+  if (!(await pointStore.worldValue('issueShotLog'))) {
+    const open = ((await pointStore.worldValue('issueLog')) || []).filter((i) => (i.hasShot || i.shot) && i.status !== 'done'); let shots = 0; // (an older record keeps its picture in itself until the day's tidy moves it)
+    for (const i of open) { const shot = i.shot || await pointStore.worldValue(`issueShot:${i.id}`).catch(() => null); if (!shot) continue; shots += 1; for (const line of IssueLog.shotLines(i.id, shot)) console.log(line); }
+    await pointStore.setWorldValue('issueShotLog', { at: nowMs(), shots }); console.log(`문제 기록 사진 소급: ${shots}장`);
+  }
   // 변신 옷 정리 (사용자 2026-10-21): the parts that came with the transformations go -- what each owner paid comes back,
   // once (가방 기록 「변신 옷 정리 환불」), worn ones leave their slots (the plain look); a transformation owned stays
   if (!(await pointStore.worldValue('outfitRetire'))) {
