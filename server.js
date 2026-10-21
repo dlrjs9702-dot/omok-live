@@ -1077,7 +1077,18 @@ const petshopInside = new Set(); // 묶음 2-2 펫샵: who is up on the 3rd floo
 // pieces placed from the 가구 창고, the fish in each tank), who owns which lot (world 'homeLots'), who is inside whose
 // house (token -> owner account). Kept in memory as read (every change goes through worldEdit and here).
 const homeInside = new Map(); const homeCache = new Map();
-async function homeOf(account) { if (!homeCache.has(account)) homeCache.set(account, (await pointStore.worldValue(`home:${account}`)) || null); return homeCache.get(account); }
+async function homeOf(account) {
+  if (!homeCache.has(account)) homeCache.set(account, (await pointStore.worldValue(`home:${account}`)) || null);
+  const h = homeCache.get(account);
+  // 묶음 4-2: made bigger the day after 「집 넓히기」 (from 00:00) -- the pieces where they stood, the hung ones onto the new
+  // walls; held so here at once, saved with the next change of the house
+  // (묶음 4-2 실내 크기, 2026-10-21: the rooms made bigger -- a house from before (roomV < 2) once: its hung pieces onto the
+  // new walls, the rest where they stood from the middle)
+  if (h && !h.upgradeDay && (h.roomV || 1) < 2) { const g = IslandHome.grownPieces(h.pieces, homeStage(h).n); const next = { ...h, roomV: 2, pieces: [...g.pieces, ...h.pieces.filter((p) => g.back.includes(p.uid))] }; homeCache.set(account, next); return next; }
+  if (h?.upgradeDay && kstDate(nowMs()) > h.upgradeDay) { const to = Math.min(IslandHome.TOP_STAGE, IslandHome.stageOf(h.stage).n + 1); const g = IslandHome.grownPieces(h.pieces, to); const keep = new Set(g.pieces.map((p) => p.uid)); const next = { ...h, stage: to, roomV: 2, upgradeDay: null, pieces: g.pieces, tanks: Object.fromEntries(Object.entries(h.tanks || {}).filter(([uid]) => keep.has(uid))) }; homeCache.set(account, next); return next; }
+  return h;
+}
+const homeStage = (h) => IslandHome.stageOf(h?.stage);
 async function saveHome(account, home) { await pointStore.setWorldValue(`home:${account}`, home); homeCache.set(account, home); }
 async function homeLots() { return (await pointStore.worldValue('homeLots')) || {}; }
 // 친구 (docs/friends-20261020.md): world 'friends:<account>' = { list: [account], incoming: [{ from, at }] }; both say
@@ -3530,7 +3541,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.116' });
+    return sendJson(res, 200, { ok: true, version: '1.10.117' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -3757,6 +3768,10 @@ async function requestHandler(req, res) {
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/login-id' && req.method === 'POST') { // 묶음 4 친구: an entry-file key with a login id
     const body = await parseJson(req); const row = await accessStore.setLogin(String(body.keyId || ''), normalizeLoginId(body.loginId), await hashPassword('secret123'));
     return sendJson(res, row ? 200 : 409, { ok: Boolean(row) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/next-day' && req.method === 'POST') { // 묶음 4-2: as if 「집 넓히기」 were yesterday
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    return worldEdit(async () => { const h = await homeOf(account); if (h?.upgradeDay) { const next = { ...h, upgradeDay: '2000-01-01' }; await saveHome(account, next); broadcastIsland('homes', { lot: h.lot }); } return sendJson(res, 200, { ok: true }); });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/home/furniture' && req.method === 'POST') { // 묶음 4: pieces straight into my 가구 창고
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
@@ -4406,7 +4421,7 @@ async function requestHandler(req, res) {
     } else if (homeInside.has(session.token)) { // 묶음 4 내 집: in the house's room, round its furniture
       const owner = homeInside.get(session.token); const h = await homeOf(owner); const lot = IslandHome.lotById(h?.lot);
       const here = plazaPresence.get(session.token);
-      if (lot) { spot = IslandHome.inRoom(lot, Number(body.x), Number(body.z), 2) || !here ? IslandHome.clamp(lot, body.x, body.z, h.pieces) : { x: here.x, z: here.z }; Object.assign(wanted, IslandHome.clamp(lot, body.x, body.z, h.pieces)); plazaLastPos.set(session.token, IslandHome.doorOf(lot)); }
+      if (lot) { spot = IslandHome.inRoom(lot, Number(body.x), Number(body.z), 2, h.stage) || !here ? IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage) : { x: here.x, z: here.z }; Object.assign(wanted, IslandHome.clamp(lot, body.x, body.z, h.pieces, h.stage)); plazaLastPos.set(session.token, IslandHome.doorOf(lot)); }
       else spot = { x: here?.x ?? 0, z: here?.z ?? 0 };
     } else if (petshopInside.has(session.token)) { // 묶음 2-2 펫샵 (as the 2nd floor)
       const here = plazaPresence.get(session.token);
@@ -4595,8 +4610,9 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const lots = await homeLots(); const names = new Map();
     for (const owner of new Set(Object.values(lots))) names.set(owner, await accountName(owner));
-    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null }; }));
-    return sendJson(res, 200, { ok: true, lots: out, mine: await homeOf(account), price: Economy.value('home:price'), style: Economy.value('home:style') });
+    const out = await Promise.all(IslandHome.LOTS.map(async (l) => { const owner = lots[l.id]; const h = owner ? await homeOf(owner) : null; return { id: l.id, owner: owner ? names.get(owner) || '' : null, mine: owner === account, roof: h?.roof || null, visit: h?.visit || null, stage: h ? homeStage(h).n : null, building: Boolean(h?.upgradeDay) }; }));
+    const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
+    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style') });
   }
   // a house: at the 관공서 (in the 민원실), one an account, a free lot, paid at once
   if (pathname === '/api/home/apply' && req.method === 'POST') {
@@ -4607,13 +4623,30 @@ async function requestHandler(req, res) {
     return worldEdit(async () => {
       if (await homeOf(account)) return sendError(res, 409, 'HAS_HOME', '집은 한 사람에 한 채예요.');
       const lots = await homeLots(); if (lots[lot.id]) return sendError(res, 409, 'LOT_TAKEN', '방금 다른 분이 신청한 집터예요.');
-      const out = await pointStore.charge({ userId: account, claimId: `home:${lot.id}:${account}`, price: Economy.value('home:price'), title: '내 집' }).catch(() => null);
+      const out = await pointStore.charge({ userId: account, claimId: `home:${lot.id}:${account}`, price: Economy.value('home:price_1'), title: '내 집(오두막)' }).catch(() => null);
       if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
       await pointStore.setWorldValue('homeLots', { ...lots, [lot.id]: account });
-      const home = { lot: lot.id, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() };
+      const home = { lot: lot.id, stage: 1, roomV: 2, roof, floor: IslandHome.FLOORS[0], wall: IslandHome.WALLS[0], visit: 'anyone', pieces: [], tanks: {}, at: nowMs() }; // (묶음 4-2: a 오두막 first)
       await saveHome(account, home); notifyPointsChanged([account]); broadcastIsland('homes', { lot: lot.id });
       return sendJson(res, 200, { ok: true, home });
+    });
+  }
+  // 묶음 4-2 「집 넓히기」: at the 관공서 (in the 민원실), a 오두막 made a 작은 집 -- paid now, done the next day from 00:00 (that day
+  // a 공사 중 sign by its door; one lives in the 오두막 meanwhile)
+  if (pathname === '/api/home/upgrade' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!townhallInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '관공서 민원실에서 신청해 주세요.');
+    return worldEdit(async () => {
+      const h = await homeOf(account); if (!h) return sendError(res, 404, 'NO_HOME', '아직 집이 없어요.');
+      if (h.upgradeDay) return sendError(res, 409, 'BUILDING', '공사 중이에요. 내일 완성돼요.');
+      if (homeStage(h).n >= IslandHome.TOP_STAGE) return sendError(res, 409, 'TOP_STAGE', '지금은 더 넓힐 수 없어요.');
+      const day = kstDate(nowMs()); const to = homeStage(h).n + 1;
+      const out = await pointStore.charge({ userId: account, claimId: `home:grow:${account}:${homeStage(h).n}`, price: Economy.value(`home:price_${to}`), title: `집 넓히기(${IslandHome.stageOf(to).name})` }).catch(() => null);
+      if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      const next = { ...h, upgradeDay: day }; await saveHome(account, next); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
+      return sendJson(res, 200, { ok: true, home: next });
     });
   }
   // in by a house's door (on the island, in front of it) -- the owner always, others as the owner lets them; out by the
@@ -4624,19 +4657,19 @@ async function requestHandler(req, res) {
     if (pathname.endsWith('/leave')) {
       const owner = homeInside.get(session.token); const lot = IslandHome.lotById((await homeOf(owner))?.lot);
       if (!owner || !lot || !at) return sendError(res, 409, 'TOO_FAR', '방에서 다시 시도해 주세요.');
-      const way = IslandHome.world(lot, IslandHome.ENTRY[0], IslandHome.ENTRY[1] - 0.6);
+      const en = IslandHome.entryOf((await homeOf(owner))?.stage); const way = IslandHome.world(lot, en[0], en[1] - 0.6);
       if (Math.hypot(at.x - way.x, at.z - way.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '문간에서 다시 시도해 주세요.');
-      homeInside.delete(session.token); const d = IslandHome.doorOf(lot);
+      homeInside.delete(session.token); const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
       plazaPresence.set(session.token, { ...at, x: d.x, z: d.z, space: 'island', home: null, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
       return sendJson(res, 200, { ok: true, space: 'island', x: d.x, z: d.z });
     }
     const lots = await homeLots(); const lot = IslandHome.lotById(body.lot); const owner = lot && lots[lot.id];
     if (!owner) return sendError(res, 404, 'NO_HOME', '아직 집이 없는 집터예요.');
-    const d = IslandHome.doorOf(lot);
+    const d = IslandHome.doorOf(lot, homeStage(await homeOf(owner)).n);
     if (!at || homeInside.has(session.token) || storeInside.has(session.token) || townhallInside.has(session.token) || Math.hypot(at.x - d.x, at.z - d.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '문 앞에서 다시 시도해 주세요.');
     if (!await mayVisit(owner, account)) return sendError(res, 403, 'NOT_WELCOME', '지금은 손님을 받지 않는 집이에요.');
     freeSeat(session.token); homeInside.set(session.token, owner);
-    const spot = IslandHome.world(lot, IslandHome.ENTRY[0], IslandHome.ENTRY[1]);
+    const en = IslandHome.entryOf((await homeOf(owner))?.stage); const spot = IslandHome.world(lot, en[0], en[1]);
     plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: 'home', home: lot.id, moving: false, at: nowMs(), act: null, seat: null }); plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: 'home', x: spot.x, z: spot.z, lot: lot.id, owner: owner === account ? 'me' : 'other' });
   }
@@ -4665,8 +4698,8 @@ async function requestHandler(req, res) {
       }
       const p = { uid: piece.uid, id: piece.id, x: Number(body.x), z: Number(body.z), rot: Number(body.rot) };
       if (IslandHome.shapeOf(piece.id) === 'picture_frame') { const was = h.pieces.find((x) => x.uid === piece.uid)?.photo; const want = body.photo === undefined ? was : body.photo; if (want) { if (!IslandFishing.PHOTO_SPOTS.some((s) => s.id === want) || !(await pointStore.dexOf(account))[want]) return sendError(res, 409, 'NO_PHOTO', '찍은 기념사진만 걸 수 있어요.'); p.photo = want; } }
-      if (!h.pieces.some((x) => x.uid === p.uid) && h.pieces.length >= IslandHome.MAX_PIECES) return sendError(res, 409, 'TOO_MANY', `가구는 ${IslandHome.MAX_PIECES}점까지 놓을 수 있어요.`);
-      const why = IslandHome.placeError(p, others); if (why) return sendError(res, 409, 'BAD_PLACE', why);
+      if (!h.pieces.some((x) => x.uid === p.uid) && h.pieces.length >= homeStage(h).pieces) return sendError(res, 409, 'TOO_MANY', `가구는 ${homeStage(h).pieces}점까지 놓을 수 있어요.`);
+      const why = IslandHome.placeError(p, others, h.stage); if (why) return sendError(res, 409, 'BAD_PLACE', why);
       const next = { ...h, pieces: [...others, p] }; await saveHome(account, next); return sendJson(res, 200, { ok: true, home: next });
     });
   }
@@ -4703,7 +4736,7 @@ async function requestHandler(req, res) {
         if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: h });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
         if (fishes.length >= T.slots) return sendError(res, 409, 'TANK_FULL', T.insects ? '곤충 상자에는 한 마리만 넣어요.' : '수조가 가득 찼어요.');
-        if (total >= IslandHome.MAX_FISH) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${IslandHome.MAX_FISH}마리까지예요.`);
+        if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
         const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim }] } }; await saveHome(account, next);
@@ -5587,7 +5620,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const body = await parseJson(req);
     let seat = SEATS.get(String(body.seat || ''));
-    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const h = await homeOf(homeInside.get(session.token)); const lot = IslandHome.lotById(h?.lot); seat = lot ? h.pieces.flatMap((p) => IslandHome.seatsOf(lot, p)).find((s) => s.id === body.seat) : null; } // (묶음 4: a house's sofa, bed...)
+    if (!seat && String(body.seat || '').startsWith('home:') && homeInside.has(session.token)) { const h = await homeOf(homeInside.get(session.token)); const lot = IslandHome.lotById(h?.lot); seat = lot ? IslandHome.allSeatsOf(lot, h).find((s) => s.id === body.seat) : null; } // (묶음 4: a house's sofa, bed...)
     if (!seat) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const at = plazaPresence.get(session.token) || plazaLastPos.get(session.token);
     if (!at || Math.hypot(at.x - seat.x, at.z - seat.z) > 2.8) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
@@ -6998,7 +7031,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.116 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.117 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

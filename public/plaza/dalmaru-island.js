@@ -18,7 +18,7 @@
   const onLot = (x, z, pad = 0) => HOME_LOTS.some((l) => Math.abs(x - l.x) < 5 + pad && Math.abs(z - l.z) < 5 + pad);
   // what a house takes (the 6 x 5 m house and its steps, a little round it, and in front of its door -- island-home's
   // doorOf: 4.6 m toward the walk across the isle at z 140.5); trees and rocks may stand on the rest of the lot
-  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = Math.atan2(l.x, l.z - 140.5); const dx = l.x - Math.sin(a) * 4.6; const dz = l.z - Math.cos(a) * 4.6; return Math.hypot(x - l.x, z - l.z) < 5 || Math.hypot(x - dx, z - dz) < 2.5; });
+  const onHouse = (x, z) => HOME_LOTS.some((l) => { const a = Math.atan2(l.x, l.z - 140.5); const dx = l.x - Math.sin(a) * 6.9; const dz = l.z - Math.cos(a) * 6.9; return Math.hypot(x - l.x, z - l.z) < 6.2 || Math.hypot(x - dx, z - dz) < 2.5; }); // (묶음 4-2: room for the 큰 집, 11 x 10 m with its eaves, and its door 6.9 m out)
   const rad = (a) => (a * Math.PI) / 180;
   const inPlaza = (x, z, m = 0) => Math.abs(x - P.x) < P.hw + m && z > P.d0 - m && z < P.d1 + m;
   const yawTo = (x, z, f) => Math.atan2(x - f[0], z - f[1]); // a model whose front is -Z, turned so it looks at f

@@ -2419,6 +2419,7 @@
   });
   async function openIslandPlace(place) {
     islandPlace = place; islandPlaceStatus.textContent = ''; byId('homeApplyBtn').classList.toggle('hidden', place !== 'office'); // (묶음 4: the 민원 창구 takes the house too)
+    if (place === 'office') refreshHomes().then(() => { const m = homesState?.mine; const b = byId('homeApplyBtn'); b.textContent = !m ? '내 집 신청' : m.upgradeDay ? '집 넓히는 중 · 내일 완성' : (m.stage || 2) < 2 ? '집 넓히기' : '내 집'; b.disabled = Boolean(m && (m.upgradeDay || (m.stage || 2) >= 2)); }); // (묶음 4-2)
     document.getElementById('islandPlaceTitle').textContent = ISLAND_PLACES[place].title;
     if (!islandPlaceDialog.open) islandPlaceDialog.showModal();
     try { drawIslandPlace(await api('/api/island/bag')); } catch (error) { islandPlaceStatus.textContent = error.message; }
@@ -2688,7 +2689,14 @@
   const lotName = (id) => `집터 ${String(id || '').replace('lot', '')}`;
   const btn = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; if (fn) b.addEventListener('click', fn); return b; };
   const line = (text, cls = 'lookMeta') => { const p = document.createElement('p'); p.className = cls; p.textContent = text; return p; };
-  async function refreshHomes() { try { homesState = await api('/api/home'); plaza.controller?.setHomes?.(homesState.lots); } catch {} }
+  // (the newest ask wins: two in a row -- a house applied for, then made bigger -- and the older answer arriving last drew
+  // the houses as they had been until the next change)
+  let homesAsk = null;
+  async function refreshHomes() {
+    const ask = api('/api/home').catch(() => null); homesAsk = ask; const r = await ask;
+    if (homesAsk !== ask) { await homesAsk; return; }
+    if (r) { homesState = r; plaza.controller?.setHomes?.(r.lots); }
+  }
   function showHome(inside, pets = false) { homeInside = inside; plaza.controller?.setHome?.(inside ? (pets ? inside : { ...inside, pets: null }) : null); homeEditBtn.classList.toggle('hidden', !inside?.mine); }
   async function homeDoor(lot) {
     if (homeBusy) return; homeBusy = true;
@@ -2704,7 +2712,17 @@
   const homeCard = document.createElement('div'); homeCard.className = 'goodCard homeCard'; homeCard.id = 'homeCard';
   async function openHomeApply() {
     islandPlaceDialog.close(); await refreshHomes(); if (!homesState) return;
-    if (homesState.mine) { showToast(`벌써 내 집이 있어요 (${lotName(homesState.mine.lot)}).`); return; }
+    if (homesState.mine) { // 묶음 4-2 「집 넓히기」: the 오두막 made a 작은 집, done the next day
+      const H = window.IslandHome; const m = homesState.mine; const now = H.stageOf(m.stage); if (m.upgradeDay || now.n >= H.TOP_STAGE) { showToast(m.upgradeDay ? '집을 넓히는 중이에요. 내일 완성돼요.' : `벌써 내 집이 있어요 (${lotName(m.lot)}). 지금은 더 넓힐 수 없어요.`); return; }
+      const to = H.stageOf(now.n + 1);
+      const go = btn(`넓히기 · ${Number(homesState.grow).toLocaleString('ko-KR')}P`, 'primary', async () => {
+        if (homeBusy) return; homeBusy = true; go.disabled = true;
+        try { await api('/api/home/upgrade', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`공사를 시작했어요! 내일 ${to.name}이 돼요.`, 5000); await refreshHomes(); loadPoints(); }
+        catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; go.disabled = false; }
+      });
+      homeCard.replaceChildren(line(`${now.name}을 ${to.name}으로 넓혀요. 방이 ${to.w}×${to.d}m로 커지고 가구 ${to.pieces}점·물고기 ${to.fish}마리까지 둘 수 있어요. 오늘 공사하고 내일(00:00) 완성돼요. 가구는 그 자리 그대로예요.`), go);
+      openPlazaWindow('집 넓히기', [homeCard]); return;
+    }
     let lot = homesState.lots.find((l) => l.owner === null)?.id || null; let roof = 'red';
     const map = document.createElement('canvas'); map.width = 300; map.height = 220; map.className = 'homeLotMap'; map.setAttribute('aria-hidden', 'true');
     const lots = document.createElement('div'); lots.className = 'homeLots'; lots.setAttribute('role', 'list');
@@ -2717,7 +2735,7 @@
       for (const l of window.IslandHome.LOTS) { const s = homesState.lots.find((x) => x.id === l.id); const [x, y] = at(l); c.fillStyle = l.id === lot ? '#2563eb' : s?.owner !== null ? '#9ca3af' : '#f8fafc'; c.beginPath(); c.arc(x, y, 12, 0, Math.PI * 2); c.fill(); c.fillStyle = l.id === lot ? '#fff' : '#1f2937'; c.fillText(String(l.n), x, y); }
       for (const b of lots.children) { b.classList.toggle('selected', b.dataset.lot === lot); }
       for (const b of roofs.children) b.classList.toggle('selected', b.dataset.roof === roof);
-      go.disabled = !lot; note.textContent = lot ? `${lotName(lot)} · ${HOME_ROOFS[roof]} · ${Number(homesState.price).toLocaleString('ko-KR')}P (한 번에)` : '빈 집터가 없어요.';
+      go.disabled = !lot; note.textContent = lot ? `${lotName(lot)} · ${HOME_ROOFS[roof]} · 오두막 ${Number(homesState.price).toLocaleString('ko-KR')}P (한 번에)` : '빈 집터가 없어요.';
     };
     for (const l of homesState.lots) { const b = btn(`${lotName(l.id)}${l.owner !== null ? ` · ${l.owner || '이웃'}` : ''}`, 'ghost tiny', () => { lot = l.id; draw(); }); b.dataset.lot = l.id; b.disabled = l.owner !== null; b.setAttribute('role', 'listitem'); lots.append(b); }
     for (const [id, name] of Object.entries(HOME_ROOFS)) { const b = btn(name, 'ghost tiny', () => { roof = id; draw(); }); b.dataset.roof = id; roofs.append(b); }
@@ -2729,7 +2747,7 @@
         plazaDialog.close(); showToast(`내 집이 생겼어요! 툇마루섬 ${lotName(lot)}`, 5000); await refreshHomes(); loadPoints();
       } catch (error) { showToast(error.message, 4000); await refreshHomes(); draw(); } finally { homeBusy = false; go.disabled = !lot; }
     });
-    homeCard.replaceChildren(line('툇마루섬의 빈 집터를 골라 주세요. 한 사람에 한 채예요.'), map, lots, line('지붕 색'), roofs, note, go);
+    homeCard.replaceChildren(line('툇마루섬의 빈 집터를 골라 주세요. 한 사람에 한 채, 오두막부터 시작해 관공서에서 넓혀요.'), map, lots, line('지붕 색'), roofs, note, go);
     openPlazaWindow('내 집 신청', [homeCard]); draw();
   }
   // 내 집 (the menu): my lot, who may come in, the floor, wallpaper and roof (each change a small price), 꾸미기 when inside
@@ -2747,7 +2765,8 @@
     const row = (label, list, now, key, paid) => { const r = document.createElement('div'); r.className = 'homeChoice'; r.append(line(label)); const g = document.createElement('div'); g.className = 'goodBuy';
       for (const [id, name] of Object.entries(list)) { const b = btn(name, id === now ? 'primary tiny' : 'ghost tiny', () => { if (id !== now) style({ [key]: id }); }); b.dataset[key] = id; b.setAttribute('aria-pressed', String(id === now)); g.append(b); }
       if (paid) g.append(line(`바꿀 때 ${Number(homesState.style).toLocaleString('ko-KR')}P`)); r.append(g); return r; };
-    const nodes = [line(`툇마루섬 ${lotName(h.lot)} · 가구 ${h.pieces.length}점`, 'lostRequestLine'), row('방문 허용', HOME_VISITS, h.visit, 'visit', false), row('바닥', HOME_FLOORS, h.floor, 'floor', true), row('벽지', HOME_WALLS, h.wall, 'wall', true), row('지붕', HOME_ROOFS, h.roof, 'roof', true)];
+    const st = window.IslandHome.stageOf(h.stage);
+    const nodes = [line(`툇마루섬 ${lotName(h.lot)} · ${st.name}${h.upgradeDay ? ' (넓히는 중 · 내일 완성)' : ''} · 가구 ${h.pieces.length}/${st.pieces}점`, 'lostRequestLine'), row('방문 허용', HOME_VISITS, h.visit, 'visit', false), row('바닥', HOME_FLOORS, h.floor, 'floor', true), row('벽지', HOME_WALLS, h.wall, 'wall', true), row('지붕', HOME_ROOFS, h.roof, 'roof', true)];
     if (homeInside?.mine) nodes.push(btn('꾸미기', 'secondary', () => openHomeEdit()));
     else nodes.push(line('집 안에서 「꾸미기」로 가구를 놓을 수 있어요.'));
     homeCard.replaceChildren(...nodes); openPlazaWindow('내 집', [homeCard]);
@@ -2787,7 +2806,7 @@
     const put = btn('놓기', 'primary', () => homeEditing && send({ uid: homeEditing.uid, x: homeEditing.x, z: homeEditing.z, rot: homeEditing.rot }, `${homeEditing.name} — 놓았어요`));
     const back = btn('창고로 넣기', 'secondary', () => homeEditing && send({ uid: homeEditing.uid, remove: true }, `${homeEditing.name} — 가구 창고로 넣었어요`));
     const row = document.createElement('div'); row.className = 'goodBuy'; row.append(put, back);
-    editBox.replaceChildren(status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.MAX_PIECES}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
+    editBox.replaceChildren(status, pad, row, line(`가구 ${homeInside.home.pieces.length}/${H.stageOf(homeInside.home.stage).pieces}점 · 벽 가구(액자·시계·커튼 창·선반)는 뒤가 벽에 닿게`), list);
     homeEditing = null; openPlazaWindow('꾸미기', [editBox]); show();
     plazaDialog.addEventListener('close', () => { homeEditing = null; plaza.controller?.homeGhost?.(null); }, { once: true });
   }
