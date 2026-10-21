@@ -395,17 +395,20 @@
   const FURN = typeof module === 'object' && module.exports ? require('./island-furniture.js') : globalThis.IslandFurniture;
   const FV = '/assets/island/furniture-v1';
   const fv = (file, extra = {}) => ({ url: `${FV}/${file}.glb`, low: { url: `${FV}/${file}_low.glb` }, near: 26, ...extra });
+  // (2회차 9·10 「가구점 바닥이 갑자기 꺼졌어」: a floor one stands in keeps its High -- the Low of a 6 cm slab is squashed
+  // to one face looking down, so from a camera far from the room's middle the floor was gone; FLAT_LOW_LOST in the test)
+  const FLOOR = { low: null };
   for (const g of FURN?.GOODS || []) REGISTRY[g.model] = fv(`furn_${g.id}`);
   for (const f of ['plinth_l', 'plinth_s', 'price_stand', 'sold_sign', 'checkout']) REGISTRY[`shop.${f}`] = fv(`shop_${f}`, { shadows: false });
-  for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false });
-  for (const f of ['floor2', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60 });
+  for (const zone of ['living', 'bedroom', 'kitchen', 'garden']) REGISTRY[`shop.rug_zone__${zone}`] = fv(`shop_rug_zone__${zone}`, { shadows: false, ...FLOOR });
+  for (const f of ['floor2', 'floor2_sign']) REGISTRY[`mall.${f}`] = fv(`mall_${f}`, { near: 60, ...(f === 'floor2' ? FLOOR : {}) });
   // 묶음 2-2 펫샵 (assets 60 petshop-v1): each pet in its four coats (pet.<kind>__<coat>, the same rig and motions as
   // together.pet_<kind>), the 3rd floor and what stands in it, and the lift that goes up to it (in place of assets 57's)
   const PS = '/assets/island/petshop-v1';
   const ps = (file, extra = {}) => ({ url: `${PS}/${file}.glb`, low: { url: `${PS}/${file}_low.glb` }, near: 40, ...extra });
   const PETS = { puppy: 'tan white black choco', kitten: 'grey cheese black white', bird: 'green yellow blue pink' };
   for (const [kind, coats] of Object.entries(PETS)) for (const coat of coats.split(' ')) REGISTRY[`pet.${kind}__${coat}`] = ps(`pet_${kind}__${coat}`);
-  for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60 });
+  for (const f of ['floor3', 'playpen', 'cat_tower__beige', 'cat_tower__grey', 'bird_perch', 'pet_bed__pink', 'pet_bed__blue', 'pet_bed__brown', 'food_bowls', 'toys', 'counter', 'sign']) REGISTRY[`petshop.${f}`] = ps(`petshop_${f}`, { near: 60, ...(f === 'floor3' ? FLOOR : {}) });
   REGISTRY['mall.elevator'] = ps('petshop_elevator3', { near: 60 });
   // 자전거 (assets 61 bike-v1): the frame in four colours, a wheel (front and back), the crank -- the game turns the last two;
   // in the 잡화점 a small one on the floor
@@ -418,7 +421,7 @@
   for (const r of ['red', 'blue', 'green', 'brown']) REGISTRY[`home.house__${r}`] = hv(`home_house__${r}`, { near: 90 });
   // (묶음 4-2 실내 크기, assets 58 2026-10-21: each room's own floor and wallpaper -- _s1 9 x 9, as named 12 x 12, _s3 16 x 13)
   for (const t of ['_s1', '', '_s3']) {
-    for (const [k, v] of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink'].map((f) => f.split('__'))) REGISTRY[`home.floor_${k}${t}__${v}`] = hv(`home_floor_${k}${t}__${v}`, { shadows: false });
+    for (const [k, v] of ['boards__oak', 'boards__walnut', 'boards__birch', 'tiles__mint', 'tiles__pink'].map((f) => f.split('__'))) REGISTRY[`home.floor_${k}${t}__${v}`] = hv(`home_floor_${k}${t}__${v}`, { shadows: false, ...FLOOR });
     for (const w of ['cream', 'mint', 'pink', 'sky']) REGISTRY[`home.wallpaper${t}__${w}`] = hv(`home_wallpaper${t}__${w}`, { shadows: false });
   }
   // 묶음 5 각진 자연물 (assets 63 angular-v1 -- EmaceArt LumaGrove free pack made ours: vertex colours, our sizes, four
