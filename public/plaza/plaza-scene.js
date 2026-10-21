@@ -46,6 +46,11 @@ function islandAssetRegistry() {
 //   webgl-unavailable  the browser gives no WebGL2 at all (hardware acceleration off, GPU blocked)
 //   webgl-context      WebGL2 exists but no context with any of the settings
 //   init               the island failed while being built
+// CI 3차: automated tests draw the island lighter -- no antialiasing, half the pixels. Headless Chrome draws WebGL in
+// software and composites it by reading every frame back (GLES2::ReadPixels): the page's main thread waits out the whole
+// frame, 0.5 s here and seconds on the CI runner, and a test's page.evaluate waited behind it (the bicycle stairs poll
+// past 10 s). Off: 0.48 -> 0.33 s a frame, then half the pixels 0.17 s. Only navigator.webdriver; people see no change.
+const TEST_DRAW = typeof navigator !== 'undefined' && Boolean(navigator.webdriver);
 const RENDERER_TRIES = [
   { antialias: true, powerPreference: 'high-performance' },
   { antialias: true },
@@ -60,7 +65,7 @@ function createRenderer() {
   probe.getExtension('WEBGL_lose_context')?.loseContext(); // give the probe's context back before asking for the real one
   const errors = [];
   for (const [attempt, options] of RENDERER_TRIES.entries()) {
-    try { return { renderer: new THREE.WebGLRenderer(options), attempt, gpu }; } catch (error) { errors.push(error?.message || String(error)); }
+    try { return { renderer: new THREE.WebGLRenderer(TEST_DRAW ? { ...options, antialias: false } : options), attempt, gpu }; } catch (error) { errors.push(error?.message || String(error)); }
   }
   throw coded(new Error(`WebGL context: ${errors.join(' | ')}`), 'webgl-context', { gpu });
 }
@@ -75,7 +80,7 @@ export function createPlaza(host, options) {
 
 function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, made) {
   const { renderer } = made;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, navigator.webdriver ? 1 : 1.5)); // (automated tests: 1 -- the CI runner draws in software; a phone profile is 2.75)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TEST_DRAW ? 0.5 : 1.5)); // (automated tests: 0.5 -- the CI runner draws in software, TEST_DRAW; a phone profile is 2.75)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2836,7 +2841,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (sampled < 3) return;
     if (slowTime / sampled > 0.5) {
       quality -= 1;
-      if (quality === 1) renderer.setPixelRatio(1);
+      if (quality === 1) renderer.setPixelRatio(TEST_DRAW ? 0.5 : 1);
       else { renderer.shadowMap.enabled = false; sun.castShadow = false; mats.forEach((m) => { m.needsUpdate = true; }); }
       assets.setQuality(quality); island.setQuality(quality); // v1.10.73: the ground cover by tier
       resize();
