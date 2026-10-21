@@ -2689,7 +2689,14 @@
   const lotName = (id) => `집터 ${String(id || '').replace('lot', '')}`;
   const btn = (label, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; if (fn) b.addEventListener('click', fn); return b; };
   const line = (text, cls = 'lookMeta') => { const p = document.createElement('p'); p.className = cls; p.textContent = text; return p; };
-  async function refreshHomes() { try { homesState = await api('/api/home'); plaza.controller?.setHomes?.(homesState.lots); } catch {} }
+  // (the newest ask wins: two in a row -- a house applied for, then made bigger -- and the older answer arriving last drew
+  // the houses as they had been until the next change)
+  let homesAsk = null;
+  async function refreshHomes() {
+    const ask = api('/api/home').catch(() => null); homesAsk = ask; const r = await ask;
+    if (homesAsk !== ask) { await homesAsk; return; }
+    if (r) { homesState = r; plaza.controller?.setHomes?.(r.lots); }
+  }
   function showHome(inside, pets = false) { homeInside = inside; plaza.controller?.setHome?.(inside ? (pets ? inside : { ...inside, pets: null }) : null); homeEditBtn.classList.toggle('hidden', !inside?.mine); }
   async function homeDoor(lot) {
     if (homeBusy) return; homeBusy = true;
