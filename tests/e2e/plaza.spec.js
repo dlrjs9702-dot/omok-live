@@ -722,7 +722,7 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
   await page.keyboard.up('ArrowUp');
 
   // all round the island at the lowest tilt: above gentle ground (문제 기록 7: a cliff or the ridge behind is seen through, the
-  // camera not lifted over it) and, inside a building, that building faded (behind the game hall, by houses, on the hill)
+  // camera not lifted over it); nothing turns see-through out here any more (문제 기록 2회차 1)
   await page.evaluate((m) => window.PlazaDebug().setCamPitch(-m), sky); // looking up at the sky: the camera at its lowest
   const spots = await page.evaluate(() => { const d = window.PlazaDebug(); return Object.values(d.doors).map((o) => [o.x, o.z]); });
   for (const [x, z] of spots) {
@@ -731,16 +731,13 @@ test('게임 아일랜드 카메라: WASD·마우스가 같은 시점을 돌리�
       const c = (await cam()).camera;
       expect(await page.evaluate(()=>window.PlazaDebug().camDist)).toBeGreaterThanOrEqual(4);
       expect((c.clear > 0.9 || c.rise > 3), `${x.toFixed(1)},${z.toFixed(1)} @${yaw} ${JSON.stringify(c)}`).toBe(true);
-      if (c.inBuilding) await expect.poll(async () => (await cam()).camera.faded, { timeout: 3000, message: `${x.toFixed(1)},${z.toFixed(1)} @${yaw}` }).toBeGreaterThan(0);
+      expect(c.faded, `${x.toFixed(1)},${z.toFixed(1)} @${yaw}`).toBe(0); // (문제 기록 2회차 1: never see-through on the island)
     }
   }
 
-  // looking back at the game hall from its door: the hall between the camera and me is see-through
+  // looking back at the game hall from its door: out on the island nothing turns see-through (문제 기록 2회차 1, 2026-10-21)
   await page.evaluate(async (hall) => { const at = window.PlazaDebug().doors.games; await window.PlazaWarp(at.x,at.z); window.PlazaDebug().setCamYaw(Math.atan2(hall.x - at.x, hall.z - at.z)); }, T.SPOTS.games); // (the camera on the hall's side: 지금 섬 north, 달마루섬 east)
-  // The 0.25s fade advances on frames; a snap at the same scene clock only records the obstruction.
-  await expect.poll(async () => (await cam()).camera.faded, {timeout:3000}).toBeGreaterThan(0);
-  await page.evaluate(() => { const d = window.PlazaDebug(); d.setCamYaw(0); d.teleport(d.doors.games.x, d.doors.games.z); });
-  await expect.poll(async () => (await cam()).camera.faded, { timeout: process.env.CI ? 15000 : 3000 }).toBe(0); // v1.10.45: it eases back after a short hold (CI: slow frames)
+  await page.waitForTimeout(600); expect((await cam()).camera.faded).toBe(0);
 
   // a resized window keeps the tilt in range
   await page.setViewportSize({ width: 820, height: 600 }); await page.waitForTimeout(300);
@@ -802,11 +799,12 @@ test('기부 동상: 지난주 1·2위 동상, 같은 금액은 먼저 도달한
   const aId = await idOf(a);
   for (const who of [a, b]) await expect.poll(() => who.page.evaluate(() => window.PlazaDebug().statues.filter((s) => s.rank)), { timeout: 10000 }).toEqual([{ rank: 1, name: '기부왕' }, { rank: 2, name: '기부둘' }]); // (a weekend contest winner may stand too)
   expect(await a.page.evaluate(() => window.PlazaDebug().statueSizes.slice(0, 2))).toEqual(DAL ? [4.2, 3] : [2.6, 1.82]); // v1.10.30: a landmark, the 2nd 70% of the 1st (달마루섬: 영웅마루's 14 m and 10 m niches)
-  // 문제 기록 10: the statues keep their colours (not one stone), the plates are big and grow with the distance
+  // 문제 기록 10: the statues keep their colours (not one stone); 2회차 7·17: the names on plaques at the plinths' fronts, the
+  // same near and far (no name tag seen from everywhere)
   if (DAL) await expect.poll(() => a.page.evaluate(() => Math.min(...window.PlazaDebug().statueLook().colors.slice(0, 2))), { timeout: 15000 }).toBeGreaterThan(3);
   const plates = async (x, z) => { await a.page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [x, z]); await a.page.waitForTimeout(400); return a.page.evaluate(() => window.PlazaDebug().statueLook().plates); };
   const nearP = await plates(0, -112); const farP = await plates(0, -10);
-  expect(Math.min(...nearP)).toBeGreaterThanOrEqual(4.4); expect(farP[0]).toBeGreaterThan(nearP[0] * 1.5);
+  expect(nearP.filter((p) => /위 기부(왕|둘)$/.test(p.text)).length).toBe(2); expect(nearP.every((p) => !p.sprite && p.w > 1)).toBe(true); expect(farP).toEqual(nearP); // (a contest winner's plaque may be there too)
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().hoguking), { timeout: 10000 }).toBe(true);
   expect(await b.page.evaluate(() => window.PlazaDebug().hoguking)).toBe(false);
   await expect.poll(() => b.page.evaluate((id) => (window.PlazaDebug().others || []).find((o) => o.id === id)?.hoguking, aId), { timeout: 10000 }).toBe(true);
@@ -1297,7 +1295,7 @@ test('관공서 정문 시장: 허가 전에는 마당에 못 들어가고, 말�
         const now = window.PlazaDebug(); return { camera: now.camera, distance: now.camDist };
       }, [lx, lz, yaw]);
       const c = view.camera; // (문제 기록 7: no lift -- a wall or the hall the camera stands in fades instead)
-      if (c.inBuilding) await expect.poll(() => page.evaluate(() => window.PlazaDebug().camera.faded), { timeout: 3000, message: `${lx},${lz}@${yaw}` }).toBeGreaterThan(0);
+      expect(c.faded, `${lx},${lz}@${yaw}`).toBe(0); // (문제 기록 2회차 1: never see-through on the island)
       expect((c.clear > 0.9 || c.rise > 3), JSON.stringify(c)).toBe(true); expect(view.distance).toBeGreaterThanOrEqual(4);
     }
   }

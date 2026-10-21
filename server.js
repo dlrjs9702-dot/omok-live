@@ -954,7 +954,6 @@ const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 let worldQueue = Promise.resolve();
 let issueTidyDay = null; // (문제 기록 저장 정리: the Seoul day the list was last tidied)
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
-const ISSUE_DAY_MAX = 30; // (2026-10-20: an allowed account writes up to this many a day -- the administrator has no cap)
 const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
 const canWriteIssues = async (session) => session?.role === 'admin' || Boolean(session?.guestKeyId && (await issueWriters()).includes(session.guestKeyId));
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
@@ -6192,12 +6191,12 @@ async function requestHandler(req, res) {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
     if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
     if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
-    if (by.id !== 'admin' && list.filter((i) => i.by?.id === by.id && kstDate(i.at) === kstDate(nowMs())).length >= ISSUE_DAY_MAX) return sendError(res, 429, 'ISSUE_DAY_LIMIT', `문제 기록은 하루 ${ISSUE_DAY_MAX}개까지 쓸 수 있어요.`);
+    // (2026-10-21: no day cap any more -- the 500 above, the tidy and the request rate limit stay)
     const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
     let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
     const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, hasShot: Boolean(shot), by };
     if (shot) await pointStore.setWorldValue(`issueShot:${issue.id}`, shot);
-    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue));
+    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue)); for (const line of IssueLog.shotLines(issue.id, shot)) console.log(line);
     return sendJson(res, 201, { ok: true, id: issue.id });
   });
   // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
