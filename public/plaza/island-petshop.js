@@ -17,7 +17,7 @@
   const world = (lx, lz) => ({ x: Math.round((ROOM.x - lx) * 100) / 100, z: Math.round((ROOM.z - lz) * 100) / 100 });
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-12.4, 0]) });
+  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (2회차 8: before its door)
   // the play yard (assets 60 petshop.playpen, 10 x 8 m, its 2 m gate at its front, local -Z): the pets keep inside it
   const PEN = Object.freeze({ lx: 2, lz: 1.5, w: 10, d: 8, gate: 2 });
   const PROPS = Object.freeze([ // what stands (room-local): id, x, z, yaw, its footprint w x d (walked round)
@@ -30,7 +30,7 @@
   const FIXTURES = Object.freeze([ // the yard's fence (its gate open), what stands, the lift
     { x: PEN.lx, z: PEN.lz + PEN.d / 2, w: PEN.w, d: 0.2 }, { x: PEN.lx - PEN.w / 2, z: PEN.lz, w: 0.2, d: PEN.d }, { x: PEN.lx + PEN.w / 2, z: PEN.lz, w: 0.2, d: PEN.d },
     { x: PEN.lx - (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 }, { x: PEN.lx + (PEN.w + PEN.gate) / 4, z: PEN.lz - PEN.d / 2, w: (PEN.w - PEN.gate) / 2, d: 0.2 },
-    ...PROPS.filter((p) => p.w).map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d })), { x: LIFT.lx, z: LIFT.lz, w: 1.91, d: 2.1 },
+    ...PROPS.filter((p) => p.w).map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d })), { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
   ].map((f) => Object.freeze(f)));
   const COUNT = 8; const SPEED = 0.7; const REACH = 1.8;
   const seeded = (text) => { let s = 2166136261; for (const ch of text) s = Math.imul(s ^ ch.charCodeAt(0), 16777619) >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; };

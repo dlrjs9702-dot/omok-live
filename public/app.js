@@ -2633,7 +2633,14 @@
           myPet = r.pet; plaza.controller?.setMyPet?.(myPet); showToast(myPet ? `${myPet.name || '반려동물'}와(과) 함께 다녀요.` : '반려동물을 집에 두었어요.'); openMyPets();
         } catch (error) { showToast(error.message); }
       });
-      row.append(label, b); return row;
+      // (문제 기록 2회차 10: a name given or changed here too -- the 잡화점's one while it walks with me)
+      const rename = document.createElement('button'); rename.type = 'button'; rename.className = 'ghost tiny'; rename.textContent = '이름 바꾸기';
+      rename.hidden = p.from === 'bag' && !p.walking;
+      rename.addEventListener('click', async () => {
+        const name = (window.prompt('새 이름 (한글·숫자·공백, 10자까지)', p.name || '') || '').trim(); if (!name) return;
+        try { const r = await api('/api/island/pet/name', { method: 'POST', body: JSON.stringify({ uid: p.uid, name }) }); if (r.pet) { myPet = r.pet; plaza.controller?.setMyPet?.(myPet); } showToast(`이름을 「${r.name}」(으)로 바꿨어요.`); openMyPets(); } catch (error) { showToast(error.message); }
+      });
+      row.append(label, rename, b); return row;
     });
     const empty = document.createElement('p'); empty.className = 'lookMeta'; empty.textContent = '아직 반려동물이 없어요. 백화점 3층 펫샵에 가 보세요.';
     petsBox.replaceChildren(...(rows.length ? rows : [empty]));

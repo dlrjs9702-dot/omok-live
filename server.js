@@ -1459,6 +1459,14 @@ const trainNow = () => nowMs() + trainShift;
 const trainDocked = (stopId, id = null, line = null) => { trainService(); const candidates = IslandTrain.TRAINS.map((t) => IslandTrain.trainAt(t.id, trainNow())).filter((st) => st.stop && st.wait > 0.7 && st.wait <= IslandTrain.DWELL - 0.7 && (!stopId || st.stop === stopId) && (id === null || st.id === id) && (!line || st.line === line)); return candidates[0] || null; };
 function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) seatTaken.delete(id); }
 const TOWNHALL_GATE_OUT = (() => { const p = IslandTerrain.townhallWorld(0, IslandTerrain.TOWNHALL.yard.z1 + 1.4); return { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 }; })();
+// 문제 기록 2회차: the key signing the picture links (made once, kept in the world store, never sent anywhere)
+let shotKeyHeld = null;
+async function issueShotKey() {
+  if (shotKeyHeld) return shotKeyHeld;
+  let key = await pointStore.worldValue('issueShotKey');
+  if (typeof key !== 'string' || key.length < 32) { key = crypto.randomBytes(32).toString('hex'); await pointStore.setWorldValue('issueShotKey', key); }
+  return (shotKeyHeld = key);
+}
 const passesGate = (session) => townhallPass.has(session.token) || session.role === 'admin' || (process.env.NODE_ENV === 'test' && !townhallStrict.has(session.token));
 function notePlazaSpot(account, x, z, now = nowMs()) {
   if (!account || !plazaStandable(x, z)) return; // only a spot one may stand on is kept
@@ -3540,7 +3548,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.119' });
+    return sendJson(res, 200, { ok: true, version: '1.10.120' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -4982,6 +4990,28 @@ async function requestHandler(req, res) {
     for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
     plazaDirty = true; return sendJson(res, 200, { ok: true, pet: petOf.get(account) });
   }
+  // 문제 기록 2회차 10 (사용자 「처음 데려갈 때 말고도 가방에서 이름 짓기」): a pet's name changed later -- one adopted at the
+  // 펫샵 (its own record), or the 잡화점's one walking with me; the nickname rule (한글·숫자·공백), 10 at most as before
+  if (pathname === '/api/island/pet/name' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!checkRateLimit(`petname:${account}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const body = await parseJson(req); const name = typeof body.name === 'string' ? body.name.trim() : ''; const uid = String(body.uid || '');
+    if (!nicknameFormatOk(name) || [...name].length > 10) return sendError(res, 400, 'BAD_NAME', '한글·숫자·공백으로 10자까지 입력해 주세요.');
+    return worldEdit(async () => {
+      const walking = (await pointStore.questDoc(account, 'pet')).doc;
+      if (!uid.startsWith('bag:')) {
+        const owned = (await pointStore.worldValue(`pets:${account}`)) || []; const i = owned.findIndex((p) => p.uid === uid);
+        if (i < 0) return sendError(res, 409, 'NOT_MINE', '내 반려동물이 아닙니다.');
+        owned[i] = { ...owned[i], name }; await pointStore.setWorldValue(`pets:${account}`, owned);
+      } else if (walking.uid || walking.kind !== uid.slice(4)) return sendError(res, 409, 'NOT_WALKING', '데리고 다니는 반려동물만 이름을 바꿀 수 있어요.');
+      if (walking.uid ? walking.uid === uid : walking.kind && uid === `bag:${walking.kind}`) {
+        const doc = { ...walking, name }; await pointStore.questApply(account, 'pet', () => ({ doc }));
+        petOf.set(account, petView(doc)); for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = petOf.get(account); plazaPresence.set(token, e); }
+        plazaDirty = true;
+      }
+      return sendJson(res, 200, { ok: true, name, pet: walking.uid === uid || uid === `bag:${walking.kind}` ? petOf.get(account) : null });
+    });
+  }
   // B 47 우체통: my letters (30 days), whom I can write to (every active account), how many I sent today
   if (pathname === '/api/island/mail' && req.method === 'GET') {
     const session = requireSession(req, res); if (!session) return;
@@ -6196,7 +6226,7 @@ async function requestHandler(req, res) {
     let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
     const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, hasShot: Boolean(shot), by };
     if (shot) await pointStore.setWorldValue(`issueShot:${issue.id}`, shot);
-    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue)); for (const line of IssueLog.shotLines(issue.id, shot)) console.log(line);
+    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue, shot ? IssueLog.shotLink(await issueShotKey(), issue.id, nowMs()) : null));
     return sendJson(res, 201, { ok: true, id: issue.id });
   });
   // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
@@ -6212,6 +6242,19 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); if (body.action !== 'add') return sendError(res, 400, 'BAD_ISSUE', '잘못된 요청입니다.');
     const label = session.role === 'admin' ? '관리자' : String((await accessStore.get(session.guestKeyId))?.label || '').slice(0, 24);
     return addIssue(res, body, { id: mine, label });
+  }
+  // 문제 기록 2회차: a record's picture by the signed link in the log line (lib/issue-log.js shotLink) -- no sign-in, the one
+  // JPEG, never cached; a wrong, old or deleted one is a 404
+  const signedShot = pathname.match(/^\/api\/issues\/shot\/([\w-]{1,64})$/);
+  if (signedShot && req.method === 'GET') {
+    if (!checkRateLimit(`issueshot:${clientIp(req)}`, 60, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
+    const q = new URL(req.url, 'http://local').searchParams;
+    if (!IssueLog.shotLinkOk(await issueShotKey(), signedShot[1], q.get('exp') || '', q.get('sig') || '', nowMs())) return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
+    await issueTidy(); const shot = await pointStore.worldValue(`issueShot:${signedShot[1]}`);
+    if (typeof shot !== 'string') return sendError(res, 404, 'NOT_FOUND', '찾을 수 없습니다.');
+    const jpeg = Buffer.from(shot.replace(/^data:image\/jpeg;base64,/, ''), 'base64');
+    res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Content-Length': jpeg.length, 'Cache-Control': 'no-store, private', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex' });
+    return res.end(jpeg);
   }
   const shotOf = pathname.match(/^\/api\/admin\/issues\/([\w-]{1,64})\/shot$/);
   if (shotOf && req.method === 'GET') {
@@ -6971,12 +7014,12 @@ async function main() {
     const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
     if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
   }
-  // 문제 기록 2회차 (2026-10-21): once, the pictures of the records still open or being fixed into the log as [issue-shot]
-  // lines -- they were stored before the log carried pictures
-  if (!(await pointStore.worldValue('issueShotLog'))) {
-    const open = ((await pointStore.worldValue('issueLog')) || []).filter((i) => (i.hasShot || i.shot) && i.status !== 'done'); let shots = 0; // (an older record keeps its picture in itself until the day's tidy moves it)
-    for (const i of open) { const shot = i.shot || await pointStore.worldValue(`issueShot:${i.id}`).catch(() => null); if (!shot) continue; shots += 1; for (const line of IssueLog.shotLines(i.id, shot)) console.log(line); }
-    await pointStore.setWorldValue('issueShotLog', { at: nowMs(), shots }); console.log(`문제 기록 사진 소급: ${shots}장`);
+  // 문제 기록 2회차 (2026-10-21): once, a signed link to the picture of each record still open or being fixed, as an
+  // [issue-shot-link] line -- they were stored before the log carried links
+  if (!(await pointStore.worldValue('issueShotLinkLog'))) {
+    const open = ((await pointStore.worldValue('issueLog')) || []).filter((i) => (i.hasShot || i.shot) && i.status !== 'done'); // (an older record keeps its picture in itself until the tidy moves it -- the link's read tidies first)
+    for (const i of open) console.log(`[issue-shot-link] ${JSON.stringify({ id: i.id, shot: IssueLog.shotLink(await issueShotKey(), i.id, nowMs()) })}`);
+    await pointStore.setWorldValue('issueShotLinkLog', { at: nowMs(), links: open.length }); console.log(`문제 기록 사진 링크 소급: ${open.length}장`);
   }
   // 변신 옷 정리 (사용자 2026-10-21): the parts that came with the transformations go -- what each owner paid comes back,
   // once (가방 기록 「변신 옷 정리 환불」), worn ones leave their slots (the plain look); a transformation owned stays
@@ -7043,7 +7086,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.119 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.120 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

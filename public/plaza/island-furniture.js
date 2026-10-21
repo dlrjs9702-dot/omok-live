@@ -53,7 +53,7 @@
   const local = (x, z) => ({ lx: ROOM.x - x, lz: ROOM.z - z });
   const inRoom = (x, z, pad = 0) => Math.abs(x - ROOM.x) <= ROOM.w / 2 + pad && Math.abs(z - ROOM.z) <= ROOM.d / 2 + pad;
   // the lift on the left wall of each floor (assets 57 mall.elevator, its back on the wall, its front into the room)
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-12.4, 0]) }); // (2층; 1층's in island-store.js)
+  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (2층; 1층's in island-store.js)
   const ZONES = Object.freeze({ living: [-6.5, -4.4], bedroom: [-6.5, 4.6], kitchen: [3.5, -4.4], garden: [3.5, 4.6] });
   // the display: 3 plinths a zone, 3 places on the back wall for what hangs, 1 wide one for a wall tank (or a big piece)
   const SLOTS = Object.freeze([
@@ -65,7 +65,7 @@
   const CHECKOUT = Object.freeze({ lx: 12.2, lz: -1.5, yaw: 0, keeper: Object.freeze([12.2, -0.6, 0]) });
   const FIXTURES = Object.freeze([ // what is walked round (x, z centre, w, d): the plinths, the counter, the lift
     ...SLOTS.filter((s) => s.plinth !== false).map((s) => ({ x: s.lx, z: s.lz, w: 2.4, d: 2.4 })),
-    { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 1.9, d: 0.7 }, { x: LIFT.lx, z: LIFT.lz, w: 1.91, d: 2.1 },
+    { x: 8.6, z: 9.1, w: 4.3, d: 1.6 }, { x: CHECKOUT.lx, z: CHECKOUT.lz, w: 1.9, d: 0.7 }, { x: LIFT.lx + 0.955, z: LIFT.lz, w: 1.91, d: 2.1 } /* (the lift's body into the room, 2회차 8) */,
     ...BASE_SLOTS.map((s) => ({ x: s.lx, z: s.lz, w: 1.2, d: 1.2 })),
   ].map((f) => Object.freeze(f)));
   const REACH = 2.1; // a piece within this of me (to its plinth's middle) is the one SPACE buys

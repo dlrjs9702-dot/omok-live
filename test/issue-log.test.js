@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { tidy, logLine, shotLines } = require('../lib/issue-log');
+const { tidy, logLine, shotLink, shotLinkOk } = require('../lib/issue-log');
 
 const DAY = 86400e3; const now = Date.UTC(2026, 10, 1);
 
@@ -30,11 +30,12 @@ test('문제 기록 로그 한 줄: [issue] JSON, 사진·계정 id 없음, 줄�
   assert.ok(!line.includes('secret-account') && !line.includes('base64'));
 });
 
-test('문제 기록 사진 로그: [issue-shot] 8KB 조각, 이어 붙이면 원래 사진, 계정 정보 없음', () => {
-  const data = 'A'.repeat(20001); const lines = shotLines('rec-1', `data:image/jpeg;base64,${data}`);
-  assert.equal(lines.length, 3); assert.ok(lines.every((l) => l.startsWith('[issue-shot] ')));
-  const parts = lines.map((l) => JSON.parse(l.slice(13)));
-  assert.deepEqual(parts.map((p) => [p.id, p.part, p.of]), [['rec-1', 1, 3], ['rec-1', 2, 3], ['rec-1', 3, 3]]);
-  assert.equal(parts.map((p) => p.data).join(''), data); assert.ok(parts.every((p) => p.data.length <= 8000));
-  assert.deepEqual(shotLines('rec-2', null), []);
+test('문제 기록 사진 링크: 서버 키로 서명, 7일, 다른 키·바꾼 id·지난 시각·고친 서명은 거절', () => {
+  const key = 'k'.repeat(64); const now = Date.UTC(2026, 9, 21); const link = shotLink(key, 'rec-1', now);
+  const m = link.match(/^\/api\/issues\/shot\/rec-1\?exp=(\d+)&sig=([0-9a-f]{32})$/); assert.ok(m, link);
+  assert.equal(shotLinkOk(key, 'rec-1', m[1], m[2], now), true);
+  assert.equal(shotLinkOk(key, 'rec-1', m[1], m[2], now + 7 * DAY - 1000), true); assert.equal(shotLinkOk(key, 'rec-1', m[1], m[2], now + 7 * DAY + 1000), false);
+  assert.equal(shotLinkOk('x'.repeat(64), 'rec-1', m[1], m[2], now), false); assert.equal(shotLinkOk(key, 'rec-2', m[1], m[2], now), false);
+  assert.equal(shotLinkOk(key, 'rec-1', String(Number(m[1]) + 1), m[2], now), false); assert.equal(shotLinkOk(key, 'rec-1', m[1], m[2].replace(/.$/, (c) => (c === '0' ? '1' : '0')), now), false);
+  assert.equal(shotLinkOk(key, '../x', m[1], m[2], now), false); assert.ok(!logLine('add', { id: 'a', at: now, text: '' }, link).includes('base64'));
 });

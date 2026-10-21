@@ -395,7 +395,8 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     for (const side of [-1, 1]) for (let k = -2; k <= 2; k += 1) {
       const u = (k / 2) * (b.half - 0.2); mesh(keep(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 8)), post, side * (b.w / 2 - 0.1), deckAt({ b, u }) + 0.4, u, visual);
     }
-    for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, b.half * 2)), post, side * (b.w / 2 - 0.1), b.deck + 0.9, 0, visual); rail.castShadow = false; }
+    const r0 = deckAt({ b, u: -b.half }); const r1 = deckAt({ b, u: b.half }); // (2회차 4: a bridge whose ends meet different banks slopes, its rails with it)
+    for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, Math.hypot(b.half * 2, r1 - r0))), post, side * (b.w / 2 - 0.1), Math.max(b.deck, (r0 + r1) / 2) + 0.9, 0, visual); rail.rotation.x = -Math.atan2(r1 - r0, b.half * 2); rail.castShadow = false; }
     if (b.model) { // (달마루섬 윤슬다리: its own model, whose arched deck is the one walked on -- deckAt)
       const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = (b.half * 2) / 50; scene.add(h); assets?.attach(b.model, h, visual); continue;
     }

@@ -37,6 +37,11 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   if (isMobile) { await page.locator('#islandRunBtn').dispatchEvent('pointerup'); } else await page.keyboard.up('Shift');
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().speedNow())).toBe(9);
   expect(await page.evaluate(() => window.PlazaDebug().pace)).toBe('walk'); // (Shift on a bike only speeds up)
+  // on a slope both wheels stay on the ground, whichever way it faces (문제 기록 2회차 2: the front wheel went into it)
+  for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    await page.evaluate(async (yaw) => { await window.PlazaWarp(0.8, -33.9); window.PlazaDebug().faceYaw(yaw); }, yaw);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().bikeWheels()?.every((g) => Math.abs(g) < 0.06)), { message: String(yaw) }).toBe(true);
+  }
   // on a bridge it rides on (문제 기록 2회차 6)
   await page.evaluate(() => { const b = window.IslandTerrain.bridges[0]; return window.PlazaWarp(b.x, b.z); });
   expect(await page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(window.IslandTerrain.onBridge(d.x, d.z)); })).toBe(true);
