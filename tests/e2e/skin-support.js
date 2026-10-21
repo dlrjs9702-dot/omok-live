@@ -5,13 +5,15 @@ const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'playwright-test-
 let ipCounter = 0;
 const uniqueIp = () => `100.72.${process.pid % 250}.${(++ipCounter + Math.floor(Math.random() * 200)) % 250 + 1}`;
 
+// CI 3차 (my-home mobile 「socket hang up」): the server closes a connection idle 5 s (Node's keepAliveTimeout) and a request
+// sent on it at that moment is reset unread -- sent again once on a new one, as a browser does (maxRetries: ECONNRESET only)
 async function post(request, route, token, data) {
-  const response = await request.post(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, data: data ?? {} });
+  const response = await request.post(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, data: data ?? {}, maxRetries: 1 });
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
 async function get(request, route, token) {
-  const response = await request.get(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) } });
+  const response = await request.get(route, { headers: { 'X-Forwarded-For': uniqueIp(), ...(token ? { 'X-Session-Token': token } : {}) }, maxRetries: 1 });
   return { status: response.status(), data: await response.json().catch(() => ({})) };
 }
 
