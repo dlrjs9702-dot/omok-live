@@ -426,6 +426,26 @@
       "precompressed": true
     },
     {
+      "out": "characters/motions/FurnGrab.glb",
+      "src": "furn64:01. High/motions/FurnGrab.glb",
+      "sha256": "2cde8ed40a6fc1c178605557c0406e2066d33e6a9cb5ba08ca93a4cbae97fac7"
+    },
+    {
+      "out": "characters/motions/FurnPull.glb",
+      "src": "furn64:01. High/motions/FurnPull.glb",
+      "sha256": "d99e1c5aee4cd74ea396b270e5aff5170f3cd36929a9c8a76935eff2eb9ffb9f"
+    },
+    {
+      "out": "characters/motions/FurnPush.glb",
+      "src": "furn64:01. High/motions/FurnPush.glb",
+      "sha256": "d433530fb7ae51831942df224fc1f79c62b50787a5f31a9a5d601fe9b3363ed1"
+    },
+    {
+      "out": "characters/motions/FurnTurn.glb",
+      "src": "furn64:01. High/motions/FurnTurn.glb",
+      "sha256": "b102ad5dc12d73b24fabdbd50c324aea1c8099b48ccd1ec87eab45dd4c3cdbf7"
+    },
+    {
       "out": "characters/motions/CarryIdle.glb",
       "src": "motion36:motions/CarryIdle.glb",
       "sha256": "28e911640d2e02370f9739a0e231a9860360b266c4e22e50d865cfe4c434503f"
@@ -7584,6 +7604,7 @@
     "bike61": "61. Game Island bicycle 2026-10-20",
     "home58": "58. Game Island my home 2026-10-20",
     "insects62": "62. Game Island insect motions 2026-10-20",
-    "angular63": "63. Game Island angular nature 2026-10-20"
+    "angular63": "63. Game Island angular nature 2026-10-20",
+    "furn64": "64. Game Island furniture moves 2026-10-21"
   }
 }

@@ -1982,6 +1982,8 @@ body.touchIsland .islandCtl { display: flex; }
 .islandBikeBtn { right: 108px; bottom: 140px; width: 58px; height: 58px; font-size: 1.4rem; } /* 자전거 */
 .islandBikeBtn[aria-pressed="true"] { background: rgba(16, 185, 129, .75); }
 body.touchIsland .islandCtl.islandBikeBtn.hidden { display: none; }
+.islandTurnBtn { right: 108px; bottom: 210px; width: 58px; height: 58px; font-size: .85rem; background: rgba(37, 99, 235, .7); } /* 2회차 11: 잡은 가구 돌리기 */
+body.touchIsland .islandCtl.islandTurnBtn.hidden { display: none; }
 .islandRunBtn.on, .islandRunBtn:active { background: rgba(220, 38, 38, .75); }
 body.photoMode .islandCtl { visibility: hidden !important; }
 body.stickEdit .islandCtl { outline: 2px dashed #facc15; outline-offset: 3px; cursor: move; }

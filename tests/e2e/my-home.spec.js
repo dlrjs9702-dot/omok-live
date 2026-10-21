@@ -229,3 +229,33 @@ test('친구: 거절은 알리지 않음, 끊으면 양쪽에서, 50명까지, �
   let limited = false; for (let i = 0; i < 12 && !limited; i += 1) limited = (await ask(l1, l2)).status === 429;
   expect(limited).toBe(true);
 });
+
+// 문제 기록 2회차 11 (사용자 「꾸미기가 너무 어려워. 캐릭터로 직접 밀고 당기기, 돌리기」): before a piece of my house, held SPACE
+// (the phone: the 상호작용 button held) grabs it; forward pushes it on in 0.5 m steps, R (돌리기) turns it, SPACE lets go -- each step
+// the server's (the same checks as placing it)
+test('내 집 가구 직접 옮기기: 길게 눌러 잡고 밀기(0.5m 칸), 돌리기, 놓기 -- 서버에 그대로', async ({ browser, request, isMobile }) => {
+  test.setTimeout(400000);
+  const { a, page, through } = await twoPlayers(browser, request, isMobile, isMobile ? 'g' : 'h');
+  { const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); }
+  await through(page, 'townhall', '관공서 들어가기', 'townhall');
+  const lot = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.owner === null).id;
+  expect((await post(request, '/api/home/apply', a.token, { lot, roof: 'red' })).status).toBe(200);
+  const [sofa] = (await post(request, '/api/test/home/furniture', a.token, { ids: ['sofa__mint'] })).data.pieces;
+  await through(page, 'room:exit', '나가기', 'island');
+  await through(page, `home:${lot}`, '내 집 들어가기', 'home');
+  expect((await post(request, '/api/home/place', a.token, { uid: sofa.uid, x: 0, z: 0, rot: 0 })).status).toBe(200);
+  await through(page, 'home:exit', '나가기', 'island'); await through(page, `home:${lot}`, '내 집 들어가기', 'home'); // (in again: the room as the server has it)
+  const hold = async (ms) => { if (isMobile) { const b = page.locator('#islandActBtn'); await b.dispatchEvent('pointerdown', { pointerId: 1 }); await page.waitForTimeout(ms); await b.dispatchEvent('pointerup', { pointerId: 1 }); } else { await page.locator('#plazaStage').focus(); await page.keyboard.down('Space'); await page.waitForTimeout(ms); await page.keyboard.up('Space'); } };
+  // before it (its near side, 1 m off), facing it, the camera behind me (the arrows as I face)
+  const yaw = await page.evaluate((uid) => { const H = window.IslandHome; const d = window.PlazaDebug(); const inside = d.home(); const lotO = H.lotById(inside.lot); const w = H.world(lotO, 0, -1.6); const c = H.world(lotO, 0, 0); d.teleport(w.x, w.z); const y = Math.atan2(c.x - w.x, c.z - w.z); d.faceYaw(y); d.setCamYaw(y + Math.PI); return y; }, sofa.uid);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().grabCandidate())).toBe(sofa.uid);
+  await hold(700);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab()?.uid)).toBe(sofa.uid); await expect(page.locator('#plazaHint')).toContainText('가구 놓기');
+  const at = async () => (await get(request, '/api/home', a.token)).data.mine.pieces.find((p) => p.uid === sofa.uid);
+  await page.keyboard.down('ArrowUp'); await expect.poll(async () => { const p = await at(); return Math.abs(p.x) + Math.abs(p.z); }, { timeout: 15000 }).toBeGreaterThanOrEqual(0.5); await page.keyboard.up('ArrowUp');
+  const moved = await at(); expect([moved.x, moved.z].every((v) => Math.abs(v * 2 - Math.round(v * 2)) < 1e-6)).toBe(true); expect(moved.x === 0 || moved.z === 0).toBe(true); expect(moved.rot).toBe(0);
+  if (isMobile) await page.locator('#islandTurnBtn').tap(); else await page.keyboard.press('KeyR');
+  await expect.poll(async () => (await at()).rot, { timeout: 15000 }).toBe(1);
+  await hold(100); await expect.poll(() => page.evaluate(() => window.PlazaDebug().grab())).toBe(null);
+  void yaw; await expectNoScriptError(page);
+});
