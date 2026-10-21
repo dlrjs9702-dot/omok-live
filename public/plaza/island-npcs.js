@@ -415,7 +415,9 @@
           // b takes whatever a could not (a against a wall or a prop): the pair still ends SEP apart where there is room
           const left = SEP + 0.005 - Math.hypot(a.x - b.x, a.z - b.z);
           if (left > 0 && !b.pose.held) [b.x, b.z] = move(b.x, b.z, b.x - ux * left + rb[0], b.z - uz * left + rb[1]);
-          else if (left > 0 && !a.pose.held) [a.x,a.z] = move(a.x,a.z,a.x+ux*left,a.z+uz*left);
+          // and a takes what b could not in turn (b held, or b against a prop -- 문제 기록 2회차 15: 0.74 m beside one)
+          const rest = SEP + 0.005 - Math.hypot(a.x - b.x, a.z - b.z);
+          if (rest > 0 && !a.pose.held) [a.x, a.z] = move(a.x, a.z, a.x + ux * rest, a.z + uz * rest);
         }
       }
       for (const w of list) for (const o of people) { // 3) out of people's way
