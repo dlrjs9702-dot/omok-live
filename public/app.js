@@ -1704,7 +1704,9 @@
   const walkBtn = CONTROLS.walk.el; const runBtn = CONTROLS.run.el;
   const PACE_LABEL = { slow: '느리게', walk: '걷기', run: '걷기' };
   const showPace = () => { walkBtn.textContent = PACE_LABEL[plaza.controller?.walkPace?.()] || '걷기'; };
-  CONTROLS.act.el.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.act?.(); });
+  // (2회차 11: held before a piece of my house it grabs it -- the scene tells a hold from a tap)
+  CONTROLS.act.el.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); CONTROLS.act.el.setPointerCapture?.(event.pointerId); plaza.controller?.actDown?.(); });
+  for (const type of ['pointerup', 'pointercancel']) CONTROLS.act.el.addEventListener(type, () => plaza.controller?.actUp?.());
   walkBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); plaza.controller?.paceTap?.(); showPace(); });
   runBtn.addEventListener('pointerdown', (event) => { if (stickEditing()) return; event.preventDefault(); runBtn.setPointerCapture(event.pointerId); plaza.controller?.setRun?.(true); runBtn.classList.add('on'); });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) runBtn.addEventListener(type, () => { plaza.controller?.setRun?.(false); runBtn.classList.remove('on'); });
@@ -1832,7 +1834,7 @@
       });
       document.body.classList.remove('townhallRoom'); // a new island starts outside (v1.10.84)
       plaza.controller.onBike?.((on, why) => { bikeBtn.setAttribute('aria-pressed', String(on)); if (why) showToast(why, 3000); }); refreshBikes(); refreshHomes(); refreshInsects(); plaza.controller.onInsectScare?.((id) => api('/api/island/insect/scare', { method: 'POST', body: JSON.stringify({ id }) }).catch(() => {})); // (자전거; 묶음 4 집들; 묶음 5 곤충)
-      refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
+      wireHomeMoves(); refreshPlazaAvatar(skins); plaza.controller.setStatues?.(plazaStatues, plazaStatuesWeek); loadWeeds(); refreshIslandTime(); refreshIslandWeather(); refreshStars(); refreshContest(); refreshPlants(); refreshBirthday(); refreshMail(true); refreshGuide();
       syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); refreshFarm(); refreshErrands(); // v1.10.80, v1.10.91
     }).catch((error) => { plaza.loading = null; plaza.controller = null; plaza.failed = plazaFailure(error); syncPlaza(lobbyView.classList.contains('hidden') ? '' : 'lobby'); });
   }
@@ -2371,6 +2373,16 @@
     catch (error) { showToast(error.message); }
   }
   // 자전거 (docs/bicycle-20261020.md): the colours in my bag go to the island (B or 🚲 rides one); the button only with a bike
+  // 2회차 11 가구 직접 옮기기: each step the scene takes is kept by the server; refused, the piece goes back to where it was
+  const turnBtn = byId('islandTurnBtn');
+  turnBtn.addEventListener('click', () => { const why = plaza.controller?.grabTurn?.(); if (why) showToast(why); plazaStage.focus({ preventScroll: true }); });
+  function wireHomeMoves() {
+    plaza.controller?.onGrab?.((on) => { turnBtn.classList.toggle('hidden', !on); if (on) showToast(touchIsland ? '앞뒤로 밀고 당겨요 · 돌리기 단추로 돌려요 · 상호작용으로 놓아요' : '↑↓ 밀고 당기기 · R 돌리기 · SPACE 놓기'); });
+    plaza.controller?.onHomeMove?.(async (p) => {
+      try { const r = await api('/api/home/place', { method: 'POST', body: JSON.stringify({ uid: p.uid, x: p.x, z: p.z, rot: p.rot, ...(p.photo ? { photo: p.photo } : {}) }) }); homeInside = { ...homeInside, home: r.home }; }
+      catch (error) { showToast(error.message); plaza.controller?.grabEnd?.(); if (homeInside) showHome(homeInside); }
+    });
+  }
   const bikeBtn = byId('islandBikeBtn');
   const showBikes = (bag) => { const colors = (bag?.items || []).filter((e) => e.itemId.startsWith('bike_')).map((e) => e.itemId.slice(5)); plaza.controller?.setBikes?.(colors); bikeBtn.classList.toggle('hidden', !colors.length); plaza.controller?.setInsects?.(null, (bag?.items || []).some((e) => e.itemId === 'bugnet')); }; // (묶음 5: the net in the bag)
   async function refreshBikes() { try { showBikes(await api('/api/island/bag')); } catch {} }
