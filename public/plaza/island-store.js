@@ -34,7 +34,7 @@
     [-5.5, -7.6, 1.42, 0.72], [-1.9, -4.5, 0.97, 0.62], [-4.7, -4.6, 2.32, 0.82], [4.95, -5.4, 1.07, 1.22], [2.45, -5.4, 1.07, 1.22], [4.95, -7, 1.32, 0.52],
     [2.45, -7, 1.32, 0.52], [12.7, -4.9, 1.37, 1.27], [11.6, -7.1, 3.52, 0.82], [9.9, -4.6, 2.12, 0.82], [-11.1, 5.55, 2.32, 1.07], [-12.9, 4.5, 0.82, 0.92],
     [-9.45, 7.15, 0.92, 0.52], [-3.7, 5.4, 3.42, 0.97], [-3.7, 7.95, 4.62, 0.62], [2.55, 6.1, 2.12, 2.52], [5.3, 7, 1.12, 0.62], [9.75, 7.35, 2.52, 0.82],
-    [12.45, 7.35, 2.52, 0.82], [9.9, 4.55, 1.92, 1.52], [12.3, 4.7, 2.12, 0.82], [13.2, 0, 0.9, 2.2] /* (the 노점's stall) */, [-14.05, 0, 1.91, 2.1] /* (묶음 2: the lift to the 가구점) */,
+    [12.45, 7.35, 2.52, 0.82], [9.9, 4.55, 1.92, 1.52], [12.3, 4.7, 2.12, 0.82], [13.2, 0, 0.9, 2.2] /* (the 노점's stall) */, [-13.095, 0, 1.91, 2.1] /* (묶음 2: the lift to the 가구점 -- 문제 기록 2회차 8: its body, lx -14.05 to -12.14) */,
   ].map(([x, z, w, d]) => Object.freeze({ x, z, w, d })));
   // where each good stands in the 잡화 sector (assets 43 manifest.goodsSlots); seeds, the sapling and fertilizer wait for planting
   const SHELF = Object.freeze([
@@ -48,7 +48,7 @@
   ].map(([id, at]) => Object.freeze({ id, at: Object.freeze(at), yaw: 0, soon: false }))); // (B 45: the seeds, the sapling and fertilizer on sale)
   const REACH = 1.2; // a good within this of me (on the floor plan) is the one SPACE buys
   // 묶음 2 가구점: the lift on the left wall (assets 57 mall.elevator, its back on the wall) -- SPACE in front of it goes up
-  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-12.4, 0]) });
+  const LIFT = Object.freeze({ lx: -14.05, lz: 0, yaw: -Math.PI / 2, stand: Object.freeze([-11.5, 0]) }); // (stand: before its door, 2회차 8)
   // where one may stand: inside the walls (0.45 m off them), out of the furniture (0.35 m round it)
   function clamp(x, z) {
     const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);

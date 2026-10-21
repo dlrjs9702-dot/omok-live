@@ -101,12 +101,13 @@
     const fin = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d); const st = stageOf(stage); const HX = st.hx; const HZ = st.hz;
     const en = entryOf(stage); const e = world(lot, en[0], en[1]);
     let { lx, lz } = local(lot, fin(x, e.x), fin(z, e.z));
-    lx = Math.max(-HX + 0.35, Math.min(HX - 0.35, lx)); lz = Math.max(-HZ + 0.35, Math.min(HZ - 0.35, lz));
+    const W = 0.55; // (문제 기록 2회차 12: off the walls by the big head's radius -- 0.35 let it into them)
+    lx = Math.max(-HX + W, Math.min(HX - W, lx)); lz = Math.max(-HZ + W, Math.min(HZ - W, lz));
     const solid = [...pieces.filter((p) => !HUNG.has(shapeOf(p.id)) && !FLAT.has(shapeOf(p.id))).map(boxOf).filter(Boolean), ...st.fixed];
     const hit = (x, z) => solid.find((b) => x > b.x0 - 0.3 && x < b.x1 + 0.3 && z > b.z0 - 0.3 && z < b.z1 + 0.3);
     for (let pass = 0, b = hit(lx, lz); b && pass < 4; pass += 1, b = hit(lx, lz)) {
       const ways = [[b.x0 - 0.3, lz], [b.x1 + 0.3, lz], [lx, b.z0 - 0.3], [lx, b.z1 + 0.3]].sort((p, q) => Math.hypot(p[0] - lx, p[1] - lz) - Math.hypot(q[0] - lx, q[1] - lz));
-      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= HX - 0.35 && Math.abs(z) <= HZ - 0.35) || ways[0];
+      [lx, lz] = ways.find(([x, z]) => !hit(x, z) && Math.abs(x) <= HX - W && Math.abs(z) <= HZ - W) || ways[0];
     }
     return world(lot, lx, lz);
   }
