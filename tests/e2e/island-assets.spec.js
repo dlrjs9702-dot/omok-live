@@ -259,7 +259,7 @@ test('관공서 실물 High/Low: 기단 보정 뒤 주야간 재질 렌더링과
       await a.page.evaluate(on => window.PlazaDebug().halloween.set(on), night);
       await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().halloween.on())).toBe(night);
       await a.page.waitForTimeout(300); // compile/render the changed material rather than only inspect loader state
-      if (await a.page.evaluate(() => window.PlazaDebug().camera.inBuilding)) await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().camera.faded), { timeout: 3000 }).toBeGreaterThan(0); // (문제 기록 7: the hall fades)
+      expect(await a.page.evaluate(() => window.PlazaDebug().camera.faded)).toBe(0); // (문제 기록 2회차 1: out on the island the hall never fades)
     }
     expect(a.shaderErrors).toEqual([]); expect(a.errors).toEqual([]); await expectNoScriptError(a.page); await a.context.close();
   }

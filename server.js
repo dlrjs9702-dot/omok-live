@@ -954,7 +954,6 @@ const OPS_DEFAULTS = { signups: true, messenger: true }; let opsCache = null;
 let worldQueue = Promise.resolve();
 let issueTidyDay = null; // (문제 기록 저장 정리: the Seoul day the list was last tidied)
 const ISSUE_KINDS = ['bug', 'odd', 'idea']; const ISSUE_STATUS = ['open', 'doing', 'done']; const ISSUE_MAX = 500; // 관리자 「문제 기록」
-const ISSUE_DAY_MAX = 30; // (2026-10-20: an allowed account writes up to this many a day -- the administrator has no cap)
 const issueWriters = async () => (await pointStore.worldValue('issueWriters')) || []; // (the accounts the administrator lets write)
 const canWriteIssues = async (session) => session?.role === 'admin' || Boolean(session?.guestKeyId && (await issueWriters()).includes(session.guestKeyId));
 function worldEdit(fn) { const run = worldQueue.then(fn); worldQueue = run.catch(() => {}); return run; }
@@ -3541,7 +3540,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.118' });
+    return sendJson(res, 200, { ok: true, version: '1.10.119' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6192,12 +6191,12 @@ async function requestHandler(req, res) {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim();
     if (!text || [...text].length > 1000 || !ISSUE_KINDS.includes(body.kind)) return sendError(res, 400, 'BAD_ISSUE', '내용(1,000자까지)과 종류를 확인해 주세요.');
     if (list.length >= ISSUE_MAX) return sendError(res, 409, 'TOO_MANY_ISSUES', `문제 기록은 ${ISSUE_MAX}개까지입니다. 해결된 오래된 것을 지워 주세요.`);
-    if (by.id !== 'admin' && list.filter((i) => i.by?.id === by.id && kstDate(i.at) === kstDate(nowMs())).length >= ISSUE_DAY_MAX) return sendError(res, 429, 'ISSUE_DAY_LIMIT', `문제 기록은 하루 ${ISSUE_DAY_MAX}개까지 쓸 수 있어요.`);
+    // (2026-10-21: no day cap any more -- the 500 above, the tidy and the request rate limit stay)
     const shot = typeof body.shot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.shot) && body.shot.length <= 60000 ? body.shot : null;
     let ctx = body.ctx && typeof body.ctx === 'object' ? body.ctx : {}; if (JSON.stringify(ctx).length > 6000) ctx = { ...ctx, errors: [] }; if (JSON.stringify(ctx).length > 6000) ctx = {};
     const issue = { id: crypto.randomUUID(), at: nowMs(), version: SERVER_VERSION, kind: body.kind, status: 'open', text, ctx, hasShot: Boolean(shot), by };
     if (shot) await pointStore.setWorldValue(`issueShot:${issue.id}`, shot);
-    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue));
+    await pointStore.setWorldValue('issueLog', [issue, ...list]); console.log(IssueLog.logLine('add', issue)); for (const line of IssueLog.shotLines(issue.id, shot)) console.log(line);
     return sendJson(res, 201, { ok: true, id: issue.id });
   });
   // (2026-10-20) an allowed account: may I write, and its own records -- read and written here, never anyone else's
@@ -6972,6 +6971,13 @@ async function main() {
     const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
     if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
   }
+  // 문제 기록 2회차 (2026-10-21): once, the pictures of the records still open or being fixed into the log as [issue-shot]
+  // lines -- they were stored before the log carried pictures
+  if (!(await pointStore.worldValue('issueShotLog'))) {
+    const open = ((await pointStore.worldValue('issueLog')) || []).filter((i) => (i.hasShot || i.shot) && i.status !== 'done'); let shots = 0; // (an older record keeps its picture in itself until the day's tidy moves it)
+    for (const i of open) { const shot = i.shot || await pointStore.worldValue(`issueShot:${i.id}`).catch(() => null); if (!shot) continue; shots += 1; for (const line of IssueLog.shotLines(i.id, shot)) console.log(line); }
+    await pointStore.setWorldValue('issueShotLog', { at: nowMs(), shots }); console.log(`문제 기록 사진 소급: ${shots}장`);
+  }
   // 변신 옷 정리 (사용자 2026-10-21): the parts that came with the transformations go -- what each owner paid comes back,
   // once (가방 기록 「변신 옷 정리 환불」), worn ones leave their slots (the plain look); a transformation owned stays
   if (!(await pointStore.worldValue('outfitRetire'))) {
@@ -7037,7 +7043,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.118 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.119 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

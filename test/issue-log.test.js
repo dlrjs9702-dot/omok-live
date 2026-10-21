@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { tidy, logLine } = require('../lib/issue-log');
+const { tidy, logLine, shotLines } = require('../lib/issue-log');
 
 const DAY = 86400e3; const now = Date.UTC(2026, 10, 1);
 
@@ -28,4 +28,13 @@ test('문제 기록 로그 한 줄: [issue] JSON, 사진·계정 id 없음, 줄�
   assert.deepEqual([o.by, o.device, o.text, o.x, o.season, o.hasShot], ['건', 'phone 749x750', '첫 줄 둘째 줄', 1.5, 'winter', true]);
   assert.match(o.error, /reading 'name'/);
   assert.ok(!line.includes('secret-account') && !line.includes('base64'));
+});
+
+test('문제 기록 사진 로그: [issue-shot] 8KB 조각, 이어 붙이면 원래 사진, 계정 정보 없음', () => {
+  const data = 'A'.repeat(20001); const lines = shotLines('rec-1', `data:image/jpeg;base64,${data}`);
+  assert.equal(lines.length, 3); assert.ok(lines.every((l) => l.startsWith('[issue-shot] ')));
+  const parts = lines.map((l) => JSON.parse(l.slice(13)));
+  assert.deepEqual(parts.map((p) => [p.id, p.part, p.of]), [['rec-1', 1, 3], ['rec-1', 2, 3], ['rec-1', 3, 3]]);
+  assert.equal(parts.map((p) => p.data).join(''), data); assert.ok(parts.every((p) => p.data.length <= 8000));
+  assert.deepEqual(shotLines('rec-2', null), []);
 });

@@ -52,4 +52,7 @@ test('문제 기록 저장: 옛 기록 사진 옮기기, 해결 7일·30일 정�
   const lines = logs.split('\n').filter((l) => l.startsWith('[issue] ')).map((l) => JSON.parse(l.slice(8)));
   assert.deepEqual(lines.map((l) => [l.event, l.id === added.id ? 'new' : l.id]), [['expire', 'done40'], ['add', 'new'], ['status', 'open1'], ['delete', 'new']]);
   assert.equal(lines[1].text, '새 기록 둘째 줄'); assert.ok(!logs.includes('base64'));
+  // (2회차: the pictures in the log too -- the open ones once at the start, a new one when added)
+  const shots = logs.split('\n').filter((l) => l.startsWith('[issue-shot] ')).map((l) => JSON.parse(l.slice(13)));
+  assert.deepEqual(shots.map((p) => [p.id === added.id ? 'new' : p.id, p.part, p.of, p.data.length]), [['open1', 1, 1, 400], ['new', 1, 1, 400]]);
 });

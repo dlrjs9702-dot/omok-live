@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { shopper, post, adminToken, uniqueIp, intoMall, expectNoScriptError } = require('./skin-support');
 
 // 자전거 (gamecenter-notes docs/bicycle-20261020.md, assets 61): one in the bag rides by B (the phone's 🚲 button, shown
-// only with a bike); the others see it, in its colour; it gets off by itself indoors, on stairs and bridges, and among
+// only with a bike); the others see it, in its colour; it gets off by itself indoors, on stairs (not bridges, 2026-10-21), and among
 // people. PC and phone.
 async function apiGuest(request, label) { // a player without a browser (for a crowd)
   const issued = (await post(request, '/api/admin/keys', await adminToken(request), { label })).data;
@@ -30,6 +30,18 @@ test('자전거: B·🚲 단추로 타고 내리기, 다른 사람에게 보임,
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
   const myId = await page.evaluate(() => window.PlazaDebug().myId);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().othersBikes()[id] ?? null, myId), { timeout: 20000 }).toBe('red');
+  // 9 m/s, 12 while Shift is held (the phone: the 뛰기 button) -- 사용자 2026-10-21
+  expect(await page.evaluate(() => window.PlazaDebug().speedNow())).toBe(9);
+  if (isMobile) { await page.locator('#islandRunBtn').dispatchEvent('pointerdown'); } else { await page.locator('#plazaStage').focus(); await page.keyboard.down('Shift'); }
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().speedNow())).toBe(12);
+  if (isMobile) { await page.locator('#islandRunBtn').dispatchEvent('pointerup'); } else await page.keyboard.up('Shift');
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().speedNow())).toBe(9);
+  expect(await page.evaluate(() => window.PlazaDebug().pace)).toBe('walk'); // (Shift on a bike only speeds up)
+  // on a bridge it rides on (문제 기록 2회차 6)
+  await page.evaluate(() => { const b = window.IslandTerrain.bridges[0]; return window.PlazaWarp(b.x, b.z); });
+  expect(await page.evaluate(() => { const d = window.PlazaDebug(); return Boolean(window.IslandTerrain.onBridge(d.x, d.z)); })).toBe(true);
+  await page.waitForTimeout(800); expect(await page.evaluate(() => window.PlazaDebug().cycling)).toBe('red');
+  await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]);
   // off, and seen off
   await toggle();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().cycling)).toBe(null);

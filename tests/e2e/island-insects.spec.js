@@ -29,8 +29,15 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   expect((await post(request, '/api/island/insect/catch', a.token, { id: target.id })).data.error).toBe('TOO_FAR');
   // walked up to: SPACE catches it -- the bag, the 도감, gone on the other screen
   const spot = besides(target); await standAt(request, a, spot.x, spot.z);
-  await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [spot.x, spot.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 40000, intervals: [300] }).toContain(`잡기 · ${target.name}`);
-  const caught = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch')); await press();
+  // (CI: the insect flew or crawled out of reach between the hint read here and the tap -- on the phone the hint is read
+  // and tapped on the page at once)
+  const caught = page.waitForResponse((r) => r.url().includes('/api/island/insect/catch'));
+  if (isMobile) {
+    await expect.poll(() => page.evaluate(async ([x, z, text]) => { window.PlazaDebug().teleport(x, z); await new Promise((r) => setTimeout(r, 400)); const h = document.getElementById('plazaHint'); if (!h.textContent.includes(text)) return h.textContent; h.click(); return 'tapped'; }, [spot.x, spot.z, `잡기 · ${target.name}`]), { timeout: 40000, intervals: [300] }).toBe('tapped');
+  } else {
+    await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaDebug().teleport(x, z), [spot.x, spot.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 40000, intervals: [300] }).toContain(`잡기 · ${target.name}`);
+    await press();
+  }
   expect((await caught).status()).toBe(200);
   const itemId = `insect_${target.species}`;
   await expect.poll(async () => (await get(request, '/api/island/bag', a.token)).data.items.some((e) => e.itemId === itemId), { timeout: 10000 }).toBe(true);
