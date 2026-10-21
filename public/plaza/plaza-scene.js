@@ -2623,7 +2623,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // see-through); the camera keeps CAM_CLEAR over gentle ground only -- ground rising CAM_STEEP..+3 m above my feet
   // (a cliff, the ridge) lets go of it smoothly and the camera stays where it is, the ground seen through from inside
   const CAM_STEEP = 3;
-  const camFloor = (x, z, py, y) => { const g = heightAt(x, z) + CAM_CLEAR; if (g <= y) return y; const w = Math.max(0, Math.min(1, (py + CAM_STEEP + 3 - g) / 3)); return y + (g - y) * w; };
+  const camFloor = (x, z, py, y) => { const h = heightAt(x, z); const g = h + CAM_CLEAR; if (g <= y) return y; const w = Math.max(0, Math.min(1, (py + CAM_STEEP + 3 - h) / 3)); return y + (g - y) * w; }; // (the ground's own rise, not the camera's: it let go from 2 m up, behind the 백화점)
   // v1.10.62 확대·축소 (사용자 2026-10-11): how far the camera stands is the player's own choice -- the mouse wheel on a PC,
   // two fingers apart / together on a phone -- and nothing else changes it (it no longer comes in by a building: there it
   // rises over the walls at the same distance, so things keep their size). Kept per browser. A later interaction camera
@@ -2978,7 +2978,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     for (const k of Object.keys(eventDoors)) if (k.startsWith('insect:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null;
-    if (mySpace === 'island' && !best && !gather && !fishing) { const h = nearInsect(); if (h) { const p = h.c.root.position; eventDoors[`insect:${h.b.id}`] = insectNet ? { x: p.x, z: p.z, name: `잡기 · ${h.b.name}` } : { x: p.x, z: p.z, name: `${h.b.name} · 잠자리채가 있으면 잡을 수 있어요`, plain: true }; best = `insect:${h.b.id}`; } } // (묶음 5)
+    if (mySpace === 'island' && (!best || (insectNet && best === weedKey)) && !gather && !fishing) { const h = nearInsect(); if (h) { const p = h.c.root.position; eventDoors[`insect:${h.b.id}`] = insectNet ? { x: p.x, z: p.z, name: `잡기 · ${h.b.name}` } : { x: p.x, z: p.z, name: `${h.b.name} · 잠자리채가 있으면 잡을 수 있어요`, plain: true }; best = `insect:${h.b.id}`; } } // (묶음 5; with a net, a bug by me before a weed by me -- the weed stays, the bug flies off)
     // v1.10.44: a free seat right by me (SPACE · 앉기), or another player beside me (SPACE · 인사) when nothing else is near
     for (const k of Object.keys(eventDoors)) if (k.startsWith('seat:') || k.startsWith('player:') || k.startsWith('resident:')) delete eventDoors[k];
     if (best && !doorOf(best)) best = null; // the one picked above may have been last frame's seat or player
