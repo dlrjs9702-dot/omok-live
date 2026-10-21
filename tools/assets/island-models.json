@@ -1808,9 +1808,9 @@
     {
       "out": "characters/wear/outfit_sports.glb",
       "src": "slim49:01. High/wear/outfit_sports.glb",
-      "sha256": "e8fdbd19e39b40d9da316f6d2994a2b14cf03fb4b7f5a5463910ff571eab8f9b",
+      "sha256": "895d525d8b9517ae68c7e711c6f44c200a3bd114ca0de43dcae18f769e267c07",
       "lowSrc": "slim49:02. Low/wear/outfit_sports_low.glb",
-      "lowSha256": "1dff4f7e87b7ad8b69ecb47643e33d21fd4222da198e2cbfa2a85dea0409edff",
+      "lowSha256": "84c0e54be41a874becc10289fb9b6ee1762787dc236cd5c66c74dadb6f025697",
       "precompressed": true
     },
     {
@@ -2293,9 +2293,9 @@
     {
       "out": "characters/wear/outfit_suit.glb",
       "src": "slim49:01. High/wear/outfit_suit.glb",
-      "sha256": "d6e6fb14c4f81e32e9f411b4fc33057fd04c58c07ef6d320a8e0acf75a064154",
+      "sha256": "c6d718842b8befad4d7225d3bfe6e85a5c5c994b4dd11f2d92456e4c4e38e2bf",
       "lowSrc": "slim49:02. Low/wear/outfit_suit_low.glb",
-      "lowSha256": "0430eadac11f2ea7cd87238f77a5c962bae8c3c507463959c05be22cfa6e17e0",
+      "lowSha256": "01378621f07c21f304d8a045097213cee02b96650d12f00b4b74861f004d9d6e",
       "precompressed": true
     },
     {
