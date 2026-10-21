@@ -875,10 +875,10 @@
     {
       "out": "characters/wear/short_skirt.glb",
       "src": "slim49:01. High/wear/short_skirt.glb",
-      "sha256": "eaf1adb08425c1ca23d81b419dcb9c8883690b807578d66727985bd4ac3d78cc",
+      "sha256": "a8815ab755ed99a7d1e223b4a1e0a4435402e197813672eadbe0b02657e916ce",
       "precompressed": true,
       "lowSrc": "slim49:02. Low/wear/short_skirt_low.glb",
-      "lowSha256": "9cd1ce1b48f57d3d93beb70c06951508de32ffb6f734e37735444a049071a660"
+      "lowSha256": "a62c1dc0c40c5358b960d2c04213d01da91842d05ea7e561eb9a35d70c225761"
     },
     {
       "out": "gaps-v1/autumn/foundation_autumn.glb",
@@ -1838,9 +1838,9 @@
     {
       "out": "characters/wear/outfit_hanbok.glb",
       "src": "slim49:01. High/wear/outfit_hanbok.glb",
-      "sha256": "a77324a066e8f14de4431ca8cb15ef052867cd3c3440dd8901713225388e0317",
+      "sha256": "8ddfaa8ab8297c2d9ae93db15b31b9c59efb1e4d7bde6697dac6f953848c3a45",
       "lowSrc": "slim49:02. Low/wear/outfit_hanbok_low.glb",
-      "lowSha256": "ffecd28884d036d61eff04312d2acb03b8595b70ba2e0d4b57a11ccaf9ae5c31",
+      "lowSha256": "3c3595eebbf3216acf2c072cd847acceaa405d246028292e298da1b620ffe8ac",
       "precompressed": true
     },
     {

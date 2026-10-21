@@ -813,12 +813,24 @@ export function createIslandAssets({ registry, off = [], assetUrl = (path) => pa
       const carryClip = clips.find((clip) => clip.name === base.entry.animations?.carry);
       const carryArms = (carryClip?.tracks || []).filter((t) => /^(Shoulder|UpperArm|LowerArm|Hand)\.?[LR]\.quaternion$/.test(t.name))
         .map((t) => [bones.get(t.name.replace(/\.quaternion$/, '')), t.createInterpolant(), new THREE.Quaternion()]).filter(([bone]) => bone);
+      // 옷 뚫림 B (2026-10-21): in a long skirt or robe (fit.skirtArms) the upper arms turn out a little about the body's
+      // forward axis -- walking a swinging hand passed through the skirt, seated the hands on the knees sank into it
+      const SKIRT_SPREAD = { Walk: 4, SlowWalk: 4, Run: 4, SitDown: 12, SitIdle: 12 };
+      const skirtArms = parts.some((p) => p.entry.fit?.skirtArms) ? [['UpperArmL', -1], ['UpperArmR', 1]].map(([n, side]) => [bones.get(n) || bones.get(n.replace(/([LR])$/, '.$1')), side]).filter(([bone]) => bone) : [];
+      const pq = new THREE.Quaternion(); const turn = new THREE.Quaternion(); const forward = new THREE.Vector3(); const spreadKept = skirtArms.map(() => new THREE.Quaternion()); let spread = false;
       const play = anim.update.bind(anim); let laid = false;
       anim.update = (dt, speed) => {
         if (laid) { for (const [bone, , kept] of carryArms) bone.quaternion.copy(kept); laid = false; }
+        if (spread) { skirtArms.forEach(([bone], i) => bone.quaternion.copy(spreadKept[i])); spread = false; }
         play(dt, speed);
         const posed = ['Nod', 'Clap', 'Bow', 'PickFruit'].includes(anim.clip);
         if (c.carrying && !posed && carryArms.length) { for (const [bone, held, kept] of carryArms) { kept.copy(bone.quaternion); bone.quaternion.fromArray(held.evaluate(0)); } laid = true; }
+        const deg = !c.carrying && SKIRT_SPREAD[anim.clip];
+        if (deg && skirtArms.length) {
+          object.getWorldQuaternion(pq); forward.set(0, 0, 1).applyQuaternion(pq);
+          skirtArms.forEach(([bone, side], i) => { spreadKept[i].copy(bone.quaternion); bone.parent.updateWorldMatrix(true, false); bone.parent.getWorldQuaternion(pq); turn.setFromAxisAngle(forward, side * deg * Math.PI / 180); bone.quaternion.premultiply(pq.clone().invert().multiply(turn).multiply(pq)); });
+          spread = true;
+        }
       };
       c.tuckTail = (on) => { c.tailTucked = Boolean(on); for (const m of tails) m.geometry = on ? m.userData.sit : m.userData.stand; };
       c.tuckTail(c.tailTucked); // dressed while seated: tucked from the start

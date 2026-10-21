@@ -310,6 +310,8 @@
   for (const [slot, items] of Object.entries(X2?.X2_ITEMS || {})) for (const [, , file] of items) {
     REGISTRY[`wear.x2_${slot}_${file}`] = part(`x2_${slot}_${file}`, slot, X2_FIT(slot)); WARDROBE[`avatar_x2_${slot}_${file}`] = `wear.x2_${slot}_${file}`;
   }
+  // 옷 뚫림 B (2026-10-21): the long skirts and robes -- their wearers' arms turn out a little (asset-loader skirtArms)
+  for (const id of ['wear.outfit_dress', 'wear.outfit_hw_ghost', 'wear.outfit_hw_witch', 'wear.outfit_robe', 'wear.outfit_raincoat', ...['kite_festival', 'rain_gauge', 'noodle_chef', 'bamboo_weaver', 'moon_courier', 'reef_chemist', 'solstice_coat', 'tea_master'].map((f) => `wear.x2_outfit_${f}`)]) if (REGISTRY[id]) REGISTRY[id].fit = { ...REGISTRY[id].fit, skirtArms: true };
   // B 46 겨울 축제 의상: on the common rig like the others; the 산타 옷 wears its own body under it (as 포차코's outfit)
   for (const [slot, , , file] of X2?.WINTER_ITEMS || []) {
     const { dye, ...fit } = X2_FIT(slot); const key = file.slice(5);
