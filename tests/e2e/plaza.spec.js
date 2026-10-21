@@ -134,7 +134,7 @@ test('개인 정보: 섬에서 보유 외형을 해제하고 클래식 PC 출석
   test.setTimeout(90000); // (CI 2차: the island's start alone may take up to the 60 s waited for below)
   const a = await shopper(browser, request, '보유 외형', 100000);
   try {
-    await buyAndEquip(request, a, ['avatar_animal_cat_outfit']);
+    await buyAndEquip(request, a, ['avatar_x2_outfit_tidal_surveyor']);
     await expect(a.page.locator('#islandFacilityActions')).toBeVisible();
     await islandPage(a.page);
     await expect.poll(() => a.page.evaluate(() => Boolean(window.PlazaDebug?.()?.running)).catch(() => false), { timeout: 60000 }).toBe(true); await expect(a.page.locator('#plazaStage canvas.plazaCanvas')).toBeVisible(); // (CI 2차: the scene's own shown signal first)

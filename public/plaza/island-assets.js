@@ -293,15 +293,10 @@
     'prop.event.basket': prop('collection_basket'),
   });
 
-  // v1.10.49: the artist's animal parts use the existing body, fitting and ownership paths.
-  const ANIMALS = ['cat', 'dog', 'sheep', 'rabbit', 'bear', 'panda', 'fox', 'hamster', 'pig', 'cow'];
-  for (const animal of ANIMALS) for (const slot of ['outfit', 'hat', 'tail', 'shoes', 'necklace']) {
-    const id = `wear.animal_${animal}_${slot}`;
-    REGISTRY[id] = part(`animal_${animal}_${slot}`, slot, slot === 'outfit' ? { dye: 'main', replaces: ['top', 'bottom'] } : slot === 'hat' ? { cover: 1.95 } : slot === 'shoes' ? { replaces: ['shoes'] } : {});
-    WARDROBE[`avatar_animal_${animal}_${slot}`] = id;
-  }
+  // (변신 옷 정리 2026-10-21: the animal and character parts that came with the transformations are gone -- lib/skins.js
+  // RETIRED_PART_IDS; the transformations themselves stay, below)
   // v1.10.74 스킨 2배 (Codex 27, plaza/skins-x2.js): the same rig and fitting; each part's own `primary` dye material
-  // (only the original designs are dyeable, lib/skins.js DYEABLE); the character parts from their own folder wear-ip/
+  // (only the original designs are dyeable, lib/skins.js DYEABLE)
   const X2 = typeof module === 'object' && module.exports ? require('./skins-x2.js') : globalThis.SkinsX2;
   const TRANSFORMATIONS = typeof module === 'object' && module.exports ? require('./character-transformations.js') : globalThis.CharacterTransformations;
   for (const c of TRANSFORMATIONS?.characters || []) {
@@ -321,12 +316,6 @@
     REGISTRY[`wear.winter_${key}`] = { url: `${CH}/wear-winter/${file}.glb`, low: { url: `${CH}/wear-winter/${file}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_winter_${key}`] = `wear.winter_${key}`;
   }
   if (REGISTRY['wear.winter_outfit_santa']) REGISTRY['wear.winter_outfit_santa'].body = { url: `${CH}/wear-winter/body_winter_fitted.glb`, lowUrl: `${CH}/wear-winter/body_winter_fitted_low.glb` };
-  for (const [character, , , parts] of X2?.IP_ITEMS || []) for (const [slot] of parts) {
-    const id = `wear.ip_${character}_${slot}`; const { dye, ...fit } = X2_FIT(slot);
-    REGISTRY[id] = { url: `${CH}/wear-ip/${character}_${slot}.glb`, low: { url: `${CH}/wear-ip/${character}_${slot}_low.glb` }, fit: { slot, ...fit } }; WARDROBE[`avatar_ip_${character}_${slot}`] = id;
-  }
-  // v1.10.92 포차코 (assets 42): the hat covers no hair (cover 0), the outfit wears its own body under it
-  if (REGISTRY['wear.ip_pochacco_hat']) { REGISTRY['wear.ip_pochacco_hat'].fit = { slot: 'hat', cover: 0 }; REGISTRY['wear.ip_pochacco_outfit'].body = { url: `${CH}/wear-ip/pochacco_body.glb`, lowUrl: `${CH}/wear-ip/pochacco_body_low.glb` }; }
   // v1.10.91 변신 의상실 (assets 42): the booth with its mirror, and its keeper (the common rig)
   REGISTRY['character.transformer'] = { url: `${CH}/npc_transformer.glb`, low: { url: `${CH}/npc_transformer_low.glb` }, rotationY: Math.PI, motions: true };
   Object.assign(REGISTRY['character.base'].animations, { nod: 'Nod', clap: 'Clap', pickFruit: 'PickFruit' });
@@ -449,7 +438,7 @@
   // F1·F2 (assets 49·50, 2026-10-20): the bodies and all worn below the head -- clothes, shoes, necklaces, capes, tails --
   // made on the slim body itself (`baked`: asset-loader does not narrow them again, or the hips swell back); the head's
   // parts (hair, hats, face) and the IP sets are narrowed at run time as before (the head is not narrowed anyway)
-  const HEAD = /\/wear\/(hair|hat|eyes|nose|mouth|face_|cat_ears|x2_hair|x2_hat|animal_[a-z]+_hat)|\/wear-winter\/wear_hat|\/wear-ip\//;
+  const HEAD = /\/wear\/(hair|hat|eyes|nose|mouth|face_|cat_ears|x2_hair|x2_hat)|\/wear-winter\/wear_hat/;
   const body = REGISTRY['character.base']; body.baked = true; body.bare.baked = true;
   for (const e of Object.values(REGISTRY)) {
     if (typeof e.url === 'string' && /\/characters\/wear(-winter)?\//.test(e.url) && !HEAD.test(e.url)) e.baked = true;

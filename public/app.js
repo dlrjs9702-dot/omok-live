@@ -5102,6 +5102,7 @@
     if (item.reason === 'bank_withdraw') return '예금 찾기';
     if (item.reason === 'resident_tax') return '주민세'; // v1.10.86
     if (item.reason === 'ip_skin_refund') return 'IP 스킨 정리 환불'; // v1.10.90
+    if (item.reason === 'outfit_retire_refund') return '변신 옷 정리 환불'; // (2026-10-21)
     if (item.reason === 'island_buy') return '잡화점'; // v1.10.92
     if (item.reason === 'tax_payment') return '체납 세금 납부';
     if (item.reason === 'skin_gift') return item.memo || '스킨 선물'; // 3-1 (「선물 ○○ → △△」)
@@ -5671,7 +5672,7 @@
     dressStart('mine', myInfoSkins, typeof plaza.controller?.tryOn === 'function'); // (3-1: my character beside what I own)
     const families = myInfoSkins.catalog
       .map((family) => ({ ...family, skins: family.skins.filter((skin) => myInfoSkins.owned.has(skin.id)) }))
-      .filter((family) => family.skins.length);
+      .filter((family) => family.skins.length || (family.family === 'avatar' && [...myInfoSkins.owned].some((id) => id.startsWith('avatar_tf_')))); // (a transformation alone: its on/off is here -- 2026-10-21 its parts are gone)
     if (!families.length) {
       const empty = document.createElement('p');
       empty.className = 'emptyState';

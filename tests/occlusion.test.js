@@ -83,7 +83,7 @@ test('가림: 실제 압축 High/Low 리그·동물 의상의 경계 캐시와 �
   const { REGISTRY } = require('../public/plaza/island-assets');
   for (const low of [false, true]) {
     const root = new THREE.Group(); root.position.set(0, 1.4, 5); root.scale.setScalar(2.6);
-    for (const id of ['character.base', 'wear.animal_cat_outfit']) {
+    for (const id of ['character.base', 'wear.x2_outfit_tea_master']) {
       const entry = REGISTRY[id]; const bytes = fs.readFileSync(require('node:path').join(__dirname, '../public', low ? entry.low.url : entry.url));
       const model = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), ''); root.add(model.scene);
     }

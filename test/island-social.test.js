@@ -14,7 +14,7 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
   await req('/api/plaza/state', token, { ...T.SPAWN, yaw: 0, moving: false });
   const before = (await req('/api/skins', token)).data.balance;
   assert.equal((await req('/api/points/attendance', token, {})).data.error, 'TOO_FAR');
-  assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_animal_cat_outfit' })).data.error, 'TOO_FAR');
+  assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_x2_outfit_tea_master' })).data.error, 'TOO_FAR');
   assert.equal((await req('/api/skins', token)).data.balance, before, '거부한 요청은 지급·지출하지 않는다');
   assert.equal((await req('/api/skins/equip', token, { skinId: null, game: 'avatar', slot: 'outfit' })).status, 200, '개인 정보의 보유 외형 해제는 장소에 종속되지 않는다');
   await req('/api/plaza/leave', token, {});
@@ -30,7 +30,7 @@ test('섬 시설: 원거리 지급·구매는 거부하고 가까운 출석과 �
   assert.equal((await req('/api/island/store/enter', token, {})).status, 200);
   const shop = require('../public/plaza/island-store').sectorPoint('avatar');
   await req('/api/plaza/state', token, { ...shop, yaw: 0, moving: false });
-  assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_animal_cat_outfit' })).status, 200, '가까운 옷가게에서 기존 구매가 정상 실행된다');
+  assert.equal((await req('/api/skins/buy', token, { skinId: 'avatar_x2_outfit_tea_master' })).status, 200, '가까운 옷가게에서 기존 구매가 정상 실행된다');
   // (달마루섬 5단계) the 9th sector, 노점: the trader's buy-back there, not from the 옷가게
   await req('/api/test/island/give', token, { itemId: 'herb', qty: 2 });
   assert.equal((await req('/api/island/sell', token, { place: 'merchant', requestId: 'mall-sell-0001' })).data.error, 'TOO_FAR');

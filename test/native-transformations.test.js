@@ -11,7 +11,7 @@ const normalize = name => name.replace(/[. _]/g, '');
 test('완전 변신: 22종(v1.10.92 포차코)의 모든 필수 슬롯, 하나 해제/다른 캐릭터 혼합, 원래 성별·염색 유지', () => {
   assert.equal(transforms.characters.length, 22);
   for (const c of transforms.characters) {
-    const look = { gender:'female', skinColor:'#713f26', hairColor:'#e991bd', eyeColor:'#3179ad', dye:{unused:'#126f4e'}, ...c.items, transform:c.id }; // v1.10.91: the chosen transformation
+    const look = { gender:'female', skinColor:'#713f26', hairColor:'#e991bd', eyeColor:'#3179ad', dye:{unused:'#126f4e'}, transform:c.id }; // v1.10.91: the chosen transformation (2026-10-21: its parts are gone)
     const saved = JSON.stringify(look);
     assert.equal(transforms.match(look).id, c.id);
     assert.equal(assets.wardrobeOf(look).transformation, `character.transform.${c.id}.${c.defaultVariant}`);
@@ -25,11 +25,11 @@ test('완전 변신: 22종(v1.10.92 포차코)의 모든 필수 슬롯, 하나 �
     }
     assert.equal(transforms.modeOf(c, { transformationModes: { [c.id]: 'unknown' } }), c.defaultVariant);
     if (c.human) assert.equal(transforms.modeOf(c, { transformationModes: { [c.id]: 'native' } }), 'current');
-    // v1.10.91 (사용자 2026-10-18 A안): the parts alone never transform; the chosen transformation does, parts or not
-    const parts = { ...look }; delete parts.transform;
-    assert.equal(transforms.match(parts), null);
-    assert.equal(assets.wardrobeOf(parts).transformation, undefined);
-    for (const slot of Object.keys(c.items)) { const partial = { ...look }; delete partial[slot]; assert.equal(transforms.match(partial).id, c.id); }
+    // v1.10.91 (사용자 2026-10-18 A안): the chosen transformation transforms, nothing else
+    const plain = { ...look }; delete plain.transform;
+    assert.equal(transforms.match(plain), null);
+    assert.equal(assets.wardrobeOf(plain).transformation, undefined);
+    for (const id of Object.values(c.items)) assert.ok(!assets.WARDROBE?.[id] && !Object.keys(assets.REGISTRY).some((k) => k.endsWith(id.replace(/^avatar_/, ''))), `${id}: 옷 조각 없음`);
     assert.equal(JSON.stringify(look), saved);
   }
 });
@@ -56,7 +56,7 @@ test('실제 변신 로더: 두 체형·LOD·운반·좌석·소켓, 해제와 �
   try {
     const kuromi=transforms.find('kuromi');
     for (const mode of ['current', 'native']) {
-    const c=make(),choice={...kuromi.items,transform:kuromi.id,transformationModes:{kuromi:mode}};
+    const c=make(),choice={transform:kuromi.id,transformationModes:{kuromi:mode}};
     layer.wear(c,assets.wardrobeOf(choice));await wait(c);
     assert.equal(c.transformationMode,mode);assert.equal(c.nativeRig,kuromi.variants[mode].rig.id);
     assert.equal(c.body.visible,false,'ordinary face/body hidden');assert.equal(c.root.children.length,2,'complete exterior alone under root');
@@ -81,11 +81,11 @@ test('실제 변신 로더: 두 체형·LOD·운반·좌석·소켓, 해제와 �
     layer.wear(c,assets.wardrobeOf({gender:'female'}));await wait(c);assert.equal(c.transformation,null,'ordinary wardrobe restores');
     layer.release(c);
     }
-    const fallback=make();layer.wear(fallback,assets.wardrobeOf({...bad.items,transform:bad.id}));await wait(fallback);
+    const fallback=make();layer.wear(fallback,assets.wardrobeOf({transform:bad.id}));await wait(fallback);
     assert.equal(fallback.transformation,null);assert.equal(fallback.nativeRig,null);assert.equal(fallback.root.children.length,2,'only procedural body and one ordinary model remain');
     assert.ok(errors.some(e=>e.id==='character.transform.pikachu.native'&&e.message.includes('no skinned meshes')));
     const disabled=createIslandAssets({registry:assets.REGISTRY,off:['character.transform.kuromi']}),ordinary=make();
-    disabled.wear(ordinary,assets.wardrobeOf({...kuromi.items,transform:kuromi.id,transformationModes:{kuromi:'current'}}));await wait(ordinary);
+    disabled.wear(ordinary,assets.wardrobeOf({transform:kuromi.id,transformationModes:{kuromi:'current'}}));await wait(ordinary);
     assert.equal(ordinary.transformation,null,'legacy emergency id disables every body choice');disabled.release(ordinary);disabled.dispose();
   } finally {layer.dispose();GLTFLoader.prototype.loadAsync=original;}
 });

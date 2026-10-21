@@ -6972,6 +6972,12 @@ async function main() {
     const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
     if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
   }
+  // 변신 옷 정리 (사용자 2026-10-21): the parts that came with the transformations go -- what each owner paid comes back,
+  // once (가방 기록 「변신 옷 정리 환불」), worn ones leave their slots (the plain look); a transformation owned stays
+  if (!(await pointStore.worldValue('outfitRetire'))) {
+    const out = await pointStore.refundSkins(SkinCatalog.RETIRED_PART_IDS, 'outfit_retire_refund').catch((error) => { console.error('변신 옷 정리 실패:', error.message); return null; });
+    if (out) { await pointStore.setWorldValue('outfitRetire', { at: nowMs(), refunded: out.refunded.length }); console.log(`변신 옷 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }
+  }
   if (!SkinCatalog.IP_ON) { // v1.10.90 IP 스킨 정리: switched off -> what was paid for them goes back, once
     const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
     if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }

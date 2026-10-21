@@ -5,11 +5,11 @@ const { characters } = require('../../public/plaza/character-transformations');
 const { IP_GAME } = require('../../public/plaza/skins-x2');
 
 const native = id => characters.find(c => c.id === id);
-// v1.10.91 (사용자 2026-10-18 A안): a set's parts and, apart, its transformation (bought and chosen at the 변신 의상실)
+// v1.10.91 (사용자 2026-10-18 A안): the transformation, bought and chosen at the 변신 의상실 (2026-10-21: its parts are gone)
 const tfOf = id => `avatar_tf_${id.replace(/-/g, '_')}`;
-const withTf = id => [...Object.values(native(id).items), tfOf(id)];
+const withTf = id => [tfOf(id)];
 const used=new Set(['character.base',...['male','female'].flatMap(gender=>wardrobeOf({gender}).parts),
-  ...['kuromi','mymelody','animal-cat'].flatMap(id=>['character.transform.'+id,...['current','native'].map(mode=>`character.transform.${id}.${mode}`),...['male','female'].flatMap(gender=>wardrobeOf({gender,...native(id).items}).parts)])]);
+  ...['kuromi','mymelody','animal-cat'].flatMap(id=>['character.transform.'+id,...['current','native'].map(mode=>`character.transform.${id}.${mode}`)])]);
 const selected=Object.fromEntries(Object.entries(REGISTRY).map(([id,entry])=>[id,used.has(id)?entry:null]));
 function screenBrowser(browser, isMobile) {
   return { newContext: options => browser.newContext({ ...options, ...(isMobile ? devices['Pixel 5'] : {}) }) };
@@ -82,16 +82,16 @@ test('전신 변신: 두 체형·얼굴·관절, 원격 Low, 이동·앉기', as
   await expectNoScriptError(a.page);await a.context.close();expect(errors).toEqual([]);
 });
 
-test('전신 변신 복원: 부분 해제와 고양이 세트·여성 외형·재접속', async ({browser,request,isMobile},testInfo)=>{
+test('전신 변신 복원: 해제와 고양이 변신·여성 외형·재접속', async ({browser,request,isMobile},testInfo)=>{
   test.setTimeout(150000);
   const a=await nativeShopper(browser,request,'변신복원',isMobile),errors=[];
   a.page.on('pageerror',error=>errors.push(error.message));
   await buyAndEquip(request,a,withTf('kuromi'));
   for(const skinId of withTf('animal-cat'))expect((await post(request,'/api/skins/buy',a.token,{skinId})).status).toBe(200);
   await startIsland(a,'kuromi');
-  expect((await post(request, '/api/skins/equip', a.token, { game:'avatar', slot:'transform', skinId:null })).status).toBe(200); // the transformation off (the parts stay)
+  expect((await post(request, '/api/skins/equip', a.token, { game:'avatar', slot:'transform', skinId:null })).status).toBe(200); // the transformation off: the plain look
   await a.page.reload();
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout:60000 }).toEqual(expect.arrayContaining(['wear.ip_kuromi_outfit']));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout:60000 }).toEqual(expect.arrayContaining(['wear.face_eyes_cheeks']));
   expect(await a.page.evaluate(() => window.PlazaDebug().transformation)).toBeNull();
   for(const skinId of withTf('animal-cat'))expect((await post(request,'/api/skins/equip',a.token,{skinId})).status).toBe(200);
   await post(request,'/api/avatar/gender',a.token,{gender:'female'});
@@ -144,9 +144,6 @@ test('변신 체형 선택: 상점·내 정보, 저장·무료 변경·부분 �
   group=a.page.locator('#myInfoDialog').getByRole('group',{name:'쿠로미 체형'});
   await choose(group,'고유 체형');
   await expect(group.getByRole('button',{name:'고유 체형',exact:true})).toHaveAttribute('aria-pressed','true');
-  const hat=a.page.locator(`#myInfoSkinBody button[data-skin="${native('kuromi').items.hat}"]`);
-  await hat.click();await expect(group.getByRole('button',{name:'고유 체형',exact:true})).toHaveAttribute('aria-pressed','true'); // a part off: still transformed (v1.10.91)
-  await hat.click();
   expect((await post(request,'/api/skins/equip',a.token,{game:'avatar',slot:'transform',skinId:null})).status).toBe(200); // the transformation off, then on again: its body kept
   expect((await get(request,'/api/skins',a.token)).data.avatar.look.transform).toBeUndefined();
   expect((await post(request,'/api/skins/equip',a.token,{skinId:tfOf('kuromi')})).status).toBe(200);
