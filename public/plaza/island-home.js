@@ -12,7 +12,7 @@
   // 툇마루섬's twelve lots (dalmaru-island HOME_LOTS); each house faces the walk across the isle
   const ISLE = { x: 0, z: 143.29 };
   const LOTS = Object.freeze((T.HOME_LOTS || []).map((l) => [l.x, l.z])
-    .map(([x, z], i) => { const yaw = Math.atan2(x - ISLE.x, z - 140.5); return Object.freeze({ id: `lot${i + 1}`, n: i + 1, x, z, yaw }); })); // (yaw: the house's front, -Z, toward the walk across the isle at z 140.5)
+    .map(([x, z], i) => { const yaw = (T.HOME_LOTS[i].yaw ?? Math.atan2(x - ISLE.x, z - 140.5)); return Object.freeze({ id: `lot${i + 1}`, n: i + 1, x, z, yaw }); })); // (yaw: the house's front, -Z, square to its walk -- 2회차 15, dalmaru-island HOME_LOTS)
   const lotById = (id) => LOTS.find((l) => l.id === id) || null;
   // the house's door: 0.7 m in front of its steps (assets 58 seats kind door: the 오두막 -2.9, the 작은 집 -3.9, the 큰 집
   // -6.2 past its veranda) -- model -Z is the front

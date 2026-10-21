@@ -862,7 +862,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // 툇마루섬: the players' houses (묶음 4 내 집) -- the board at the way in says where one applies (assets: the notice board's look)
     const I = T.dalmaru.ISLE; const post = new THREE.Group(); mesh(new THREE.BoxGeometry(2.2, 1.2, 0.12), mat(0xe9d8b4), 0, 1.5, 0, post); for (const x of [-0.9, 0.9]) mesh(new THREE.BoxGeometry(0.12, 1.6, 0.12), mat(0x8a6a48), x, 0.8, 0, post);
-    const board = piece('dalmaru.isle_sign', I.x, heightAt(I.x, I.z - 4), I.z - 4, 0, post); sign('툇마루섬 · 집터는 관공서에서 신청', board, 2.7);
+    const board = piece('dalmaru.isle_sign', I.x - 4, heightAt(I.x - 4, I.z - 7.3), I.z - 7.3, 0, post); sign('툇마루섬 · 집터는 관공서에서 신청', board, 2.7); // (2회차 15: beside the trunk walk, clear of the cross walk)
     // 묶음 1 대청마당 바닥 (assets 59): the disc, ring and kerbs walked over, just above the paving (the kerbs one batch);
     // the channels and gardens walked round (dalmaru-island's pavingSolids)
     if (T.paving) {
