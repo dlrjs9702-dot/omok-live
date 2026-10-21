@@ -30,6 +30,9 @@ module.exports = defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    // CI 3차: failed and flaky tests, and the run's summary, as annotations on the part's check -- read through the checks
+    // API without downloading the logs, so the failures of many runs can be gathered
+    ...(process.env.GITHUB_ACTIONS ? [['github']] : []),
   ],
   use: {
     baseURL,
