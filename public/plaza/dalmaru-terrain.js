@@ -94,10 +94,27 @@
     let h = landHeight(x, z);
     const cut = (dist, depth, bank) => { if (dist < bank) h = lerp(Math.min(h, SEA - depth), h, smooth(-0.5, bank, dist)); };
     cut(riverDist(x, z), 0.9, 2.2); cut(lakeDist(x, z), 1.6, 3); cut(poolDist(x, z), 1.8, 2.5); cut(islePondDist(x, z), 0.8, 1.5);
+    for (const f of HEAD_PONDS) { const d = Math.hypot(x - f.x, z - f.z) - f.r; if (d < 1.2) h = lerp(Math.min(h, f.y - 0.6), h, smooth(-0.3, 1.2, d)); } // (2회차 18: the ponds over the falls)
     return h;
   }
   const heightAt = (x, z) => Math.max(ground(x, z), SEA);
-  const isWater = (x, z) => ground(x, z) < SEA;
+  // 문제 기록 2회차 18 (사용자 「폭포 위쪽엔 물이 없는데 물이 흐르는 게 이상해. 위에 작은 연못이라도 만들어 이어지게」): each fall
+  // from its pool up the face to the lip (the side the land is highest, where it reaches 0.6 m under that), and over the
+  // lip a small pond of its own height on the ridge the fall runs out of -- worked out before the ponds are dug
+  const HEAD_PONDS = [];
+  const FALLS = POOLS.map((p) => {
+    let a = 0; let top = -Infinity;
+    for (let k = 0; k < 72; k += 1) { const t = (k / 72) * Math.PI * 2; const h = heightAt(p.x + Math.cos(t) * (p.r + 4), p.z + Math.sin(t) * (p.r + 4)); if (h > top) { top = h; a = t; } }
+    const ux = Math.cos(a); const uz = Math.sin(a); let lip = p.r; while (lip < p.r + 4 && heightAt(p.x + ux * lip, p.z + uz * lip) < top - 0.6) lip += 0.25;
+    // (the spot whose rim stays highest, its edge at the lip -- 마루폭포's crest is narrow, a cliff 2 m to one side)
+    const r = 1.8; const rimOf = (x, z) => { let m = Infinity; for (let k = 0; k < 16; k += 1) { const t = (k / 16) * Math.PI * 2; m = Math.min(m, landHeight(x + Math.cos(t) * r, z + Math.sin(t) * r)); } return m; };
+    let best = null; const lx = p.x + ux * lip; const lz = p.z + uz * lip;
+    for (let al = r - 0.2; al <= r + 0.5; al += 0.35) for (let ac = -1.5; ac <= 1.5; ac += 0.5) { const x = lx + ux * al - uz * ac; const z = lz + uz * al + ux * ac; if (Math.hypot(x - lx, z - lz) > r + 0.5) continue; const rim = rimOf(x, z); if (!best || rim > best.rim) best = { x, z, rim }; }
+    return { pool: p, ux, uz, lip, top, pond: { x: best.x, z: best.z, r, y: best.rim - 0.12 } };
+  });
+  HEAD_PONDS.push(...FALLS.map((f) => f.pond));
+  const inHeadPond = (x, z) => HEAD_PONDS.some((f) => Math.hypot(x - f.x, z - f.z) < f.r + 0.3 && ground(x, z) < f.y);
+  const isWater = (x, z) => ground(x, z) < SEA || inHeadPond(x, z);
   // walkable: on land above the water, not on the cliff faces (too steep)
   function slopeAt(x, z) { const e = 1; return Math.hypot(ground(x + e, z) - ground(x - e, z), ground(x, z + e) - ground(x, z - e)) / (2 * e); }
   const walkable = (x, z) => !isWater(x, z) && slopeAt(x, z) < 0.9;
@@ -137,6 +154,6 @@
   const TRAIN = { r: 194, /* (묶음 5: out from the widened ridge coast, ~177) */ stations: { west: Math.PI - Math.atan2(TIP_Z, TIP_X), north: -Math.PI / 2, east: Math.atan2(TIP_Z, TIP_X), isle: Math.PI / 2 } };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루' };
 
-  return { CAPES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES,
+  return { CAPES, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap };
 }));

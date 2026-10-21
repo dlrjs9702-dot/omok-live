@@ -141,6 +141,7 @@
   // 문제 기록 15 「백화점이 떠 있어서 이상해. 절벽을 파고 들어가 절벽 안에 지었구나 싶게」: either side of each front the ridge
   // comes forward to its face, 5 m of cliff -- 관공서·백화점 stand in a cut in 영웅마루, not before it
   // (not on the side where 영웅마루's stairs come down by the 관공서 -- its foot stands there)
+  const stairsBand = (x, z) => { const ex = x - STAIRS.x; const ez = z - STAIRS.z; const u = ex * STAIRS.ux + ez * STAIRS.uz; const v = ex * STAIRS.nx + ez * STAIRS.nz; return u > -2.5 && u < STAIRS.len + 1 && Math.abs(v - 1.7) < STAIRS.w1 / 2 + 1.5; };
   const CUTS = Object.values(SPOTS).filter((s) => s.kind === 'facade').map((s) => { const ry = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const c = Math.cos(ry); const sn = Math.sin(ry);
     const foot = (u) => { const x = STAIRS.x + STAIRS.ux * u + STAIRS.nx * 1.7 - s.x; const z = STAIRS.z + STAIRS.uz * u + STAIRS.nz * 1.7 - s.z; return { lx: x * c - z * sn, lz: x * sn + z * c }; };
     const near = [0, 2, 4, 6].map(foot).filter((p) => Math.abs(p.lx) < FACADE.w / 2 + 8 && p.lz > -4 && p.lz < FACADE.d + 3);
@@ -148,7 +149,7 @@
   function land(x, z) {
     let h = D.landHeight(x, z);
     for (const k of CUTS) {
-      const dx = x - k.x; const dz = z - k.z; const lx = dx * k.c - dz * k.s; if (k.skip && Math.sign(lx) === k.skip) continue; const side = Math.abs(lx) - FACADE.w / 2; const lz = dx * k.s + dz * k.c;
+      const dx = x - k.x; const dz = z - k.z; const lx = dx * k.c - dz * k.s; if (k.skip && Math.sign(lx) === k.skip && stairsBand(x, z)) continue; const side = Math.abs(lx) - FACADE.w / 2; const lz = dx * k.s + dz * k.c; // (2회차 16: only the stairs' own way left uncut -- the 관공서 dug in as the 백화점)
       const edge = Math.max(0.3 - side, side - 5.3, lz - FACADE.d - 0.2, -3 - lz); if (edge < 1.2) h = Math.max(h, lerp(k.top, h, smooth(0, 1.2, edge)));
     }
     for (const p of PADS) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r + 5) h = lerp(p.h, h, smooth(p.r, p.r + 5, d)); }
@@ -158,7 +159,7 @@
     return h;
   }
   const ground = (x, z) => D.ground(x, z) + (land(x, z) - D.landHeight(x, z)); // (no pad or fill is near water)
-  const isWater = (x, z) => ground(x, z) < SEA;
+  const isWater = (x, z) => ground(x, z) < SEA || D.inHeadPond(x, z); // (2회차 18: the ponds over the falls are water too)
   const slopeAt = (x, z) => Math.hypot(ground(x + 1, z) - ground(x - 1, z), ground(x, z + 1) - ground(x, z - 1)) / 2;
 
   // ---- bridges: 윤슬다리 (its arched deck the model's), and a plain one wherever a walk crosses a river ----

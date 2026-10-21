@@ -647,10 +647,10 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const fallMat = keep(new THREE.MeshStandardMaterial({ color: 0xe6f6ff, map: fallTex, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.88, side: THREE.DoubleSide }));
     const sprayMat = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.35, depthWrite: false }));
     const puffGeo = keep(new THREE.SphereGeometry(0.7, 10, 8)); const ringGeo = keep(new THREE.RingGeometry(1.2, 2.6, 24).rotateX(-Math.PI / 2)); const SEA_Y = T.dalmaru.SEA;
-    for (const p of T.dalmaru.POOLS) {
-      let a = 0; let top = -Infinity;
-      for (let k = 0; k < 72; k += 1) { const t = (k / 72) * TAU; const h = heightAt(p.x + Math.cos(t) * (p.r + 4), p.z + Math.sin(t) * (p.r + 4)); if (h > top) { top = h; a = t; } }
-      const ux = Math.cos(a); const uz = Math.sin(a); const vx = -uz; const vz = ux; const hw = p.hw || 2.2; let lip = p.r; while (lip < p.r + 4 && heightAt(p.x + ux * lip, p.z + uz * lip) < top - 0.6) lip += 0.25; const foot = p.r - 1.2; const big = hw / 2.2; // (the sheet in front of the cliff, from where it has risen all the way -- from p.r + 3.4 it lay inside the steep face)
+    const pondMat = keep(new THREE.MeshStandardMaterial({ color: 0x7ec8e8, map: fallTex, roughness: 0.25, metalness: 0, transparent: true, opacity: 0.9 }));
+    for (const F of T.dalmaru.FALLS) { // (the fall's way and lip: dalmaru-terrain FALLS, the pond over it with them -- 2회차 18)
+      const p = F.pool; const { ux, uz, lip } = F; const top = F.pond.y - 0.03; const vx = -uz; /* (the sheet starts at the pond's water) */ const vz = ux; const hw = p.hw || 2.2; const foot = p.r - 1.2; const big = hw / 2.2;
+      const pond = new THREE.Mesh(keep(new THREE.CircleGeometry(F.pond.r + 0.25, 28).rotateX(-Math.PI / 2)), pondMat); pond.position.set(F.pond.x, F.pond.y, F.pond.z); pond.name = 'headPond'; scene.add(pond); // (the sheet in front of the cliff, from where it has risen all the way -- from p.r + 3.4 it lay inside the steep face)
       const pos = []; for (const [d, y] of [[foot, SEA_Y + 0.02], [lip, top + 0.05]]) for (const side of [-1, 1]) pos.push(p.x + ux * d + vx * hw * side, y, p.z + uz * d + vz * hw * side);
       const g = keep(new THREE.BufferGeometry()); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2)); g.setIndex([0, 1, 2, 2, 1, 3]); g.computeVertexNormals();
       const sheet = new THREE.Mesh(g, fallMat); sheet.name = 'waterfall'; scene.add(sheet);
