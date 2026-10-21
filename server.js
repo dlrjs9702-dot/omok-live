@@ -3541,7 +3541,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.117' });
+    return sendJson(res, 200, { ok: true, version: '1.10.118' });
   }
 
   // v1.10.14: the worker's rollback check (public/sw.js); 404 on deploys from before the resource cache
@@ -6972,6 +6972,12 @@ async function main() {
     const out = await pointStore.grantTransformations(sets).catch((error) => { console.error('변신 지급 실패:', error.message); return null; });
     if (out) { await pointStore.setWorldValue('transformGrant', { at: nowMs(), granted: out.granted.length }); console.log(`변신 지급(A안): ${out.granted.length}건`); }
   }
+  // 변신 옷 정리 (사용자 2026-10-21): the parts that came with the transformations go -- what each owner paid comes back,
+  // once (가방 기록 「변신 옷 정리 환불」), worn ones leave their slots (the plain look); a transformation owned stays
+  if (!(await pointStore.worldValue('outfitRetire'))) {
+    const out = await pointStore.refundSkins(SkinCatalog.RETIRED_PART_IDS, 'outfit_retire_refund').catch((error) => { console.error('변신 옷 정리 실패:', error.message); return null; });
+    if (out) { await pointStore.setWorldValue('outfitRetire', { at: nowMs(), refunded: out.refunded.length }); console.log(`변신 옷 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }
+  }
   if (!SkinCatalog.IP_ON) { // v1.10.90 IP 스킨 정리: switched off -> what was paid for them goes back, once
     const out = await pointStore.refundSkins(SkinCatalog.IP_SKIN_IDS).catch((error) => { console.error('IP 스킨 환불 실패:', error.message); return null; });
     if (out?.refunded.length) { console.log(`IP 스킨 정리 환불: ${out.refunded.length}건`); notifyPointsChanged([...new Set(out.refunded.map((r) => r.userId))]); }
@@ -7031,7 +7037,7 @@ async function main() {
   setInterval(() => tickDavinciRooms().catch(error => console.error('다빈치 코드 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickLiarRooms().catch(error => console.error('라이어 전적 처리 오류:', error)), 1000).unref();
   setInterval(() => tickIdleRooms().catch(error => console.error('자리비움 감지 처리 오류:', error)), AFK_TICK_MS).unref();
-  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.117 실행: http://${HOST}:${PORT}`));
+  server.listen(PORT, HOST, () => console.log(`게임 서버 v1.10.118 실행: http://${HOST}:${PORT}`));
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   if (process.env.NODE_ENV !== 'test') { collectTaxes(); setInterval(() => collectTaxes(), 5 * 60 * 1000).unref?.(); }

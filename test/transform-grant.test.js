@@ -5,7 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { JsonPointStore, PostgresPointStore } = require('../lib/point-store');
-const { skinById, transformationById, transformSkinId, avatarLookOf } = require('../lib/skins');
+const { transformationById, transformSkinId, avatarLookOf, RETIRED_PART_IDS } = require('../lib/skins');
 const { testDatabase } = require('../test-support/pg-database');
 
 // v1.10.91 변신 따로 판매 A안 (사용자 2026-10-18): whoever owns every part of a set gets its transformation free, once;
@@ -14,8 +14,10 @@ async function behaves(store) {
   const full = 'guest:00000000-0000-4000-8000-0000000000d1'; const worn = 'guest:00000000-0000-4000-8000-0000000000d2'; const part = 'guest:00000000-0000-4000-8000-0000000000d3';
   const kitty = transformationById('hellokitty').items;
   for (const u of [full, worn, part]) { await store.ensureAccount(u); await store.adminGrant({ grantId: `admin-grant:tf-${u.slice(-2)}`, userId: u, amount: 5_000_000, category: 'event', memo: '' }); }
-  for (const u of [full, worn]) for (const id of Object.values(kitty)) await store.buySkin({ userId: u, skinId: id, price: skinById(id).price, title: 'x' });
-  await store.buySkin({ userId: part, skinId: kitty.outfit, price: skinById(kitty.outfit).price, title: 'x' });
+  const PRICE = 200_000; // (the parts were sold then; 2026-10-21 they are not)
+  for (const u of [full, worn]) for (const id of Object.values(kitty)) await store.buySkin({ userId: u, skinId: id, price: PRICE, title: 'x' });
+  await store.buySkin({ userId: part, skinId: kitty.outfit, price: PRICE, title: 'x' });
+  await store.buySkin({ userId: part, skinId: 'avatar_hair_1', price: 50_000, title: 'x' }); await store.equipSkin({ userId: part, game: 'avatar', slot: 'hair', skinId: 'avatar_hair_1' });
   for (const [slot, id] of Object.entries(kitty)) await store.equipSkin({ userId: worn, game: 'avatar', slot, skinId: id });
   const balance = (await store.getAccount(full)).balance;
   const sets = [{ tf: transformSkinId('hellokitty'), items: kitty }, { tf: transformSkinId('animal-cat'), items: transformationById('animal-cat').items }];
@@ -28,6 +30,17 @@ async function behaves(store) {
   assert.ok(!(await store.skinState(part)).owned.includes(tf));
   assert.equal((await store.getAccount(full)).balance, balance, '무료');
   assert.deepEqual((await store.grantTransformations(sets)).granted, [], '한 번만');
+  // 변신 옷 정리 (2026-10-21): the parts go, each paid for back once (`outfit_retire_refund`); a transformation owned and worn stays
+  const before = Object.fromEntries(await Promise.all([full, worn, part].map(async (u) => [u, (await store.getAccount(u)).balance])));
+  const refund = await store.refundSkins(RETIRED_PART_IDS, 'outfit_retire_refund');
+  assert.equal(refund.refunded.length, 4 + 4 + 1);
+  for (const [u, n] of [[full, 4], [worn, 4], [part, 1]]) assert.equal((await store.getAccount(u)).balance, before[u] + n * PRICE, '산 값 그대로');
+  assert.ok(!(await store.skinState(worn)).owned.some((id) => RETIRED_PART_IDS.includes(id)));
+  const wornNow = (await store.skinState(worn)).equipped.avatar;
+  assert.equal(wornNow.transform, tf, '변신 권한·착용 그대로');
+  assert.ok(Object.values(kitty).every((id) => !Object.values(wornNow).includes(id)), '조각은 칸에서 빠짐');
+  assert.equal((await store.skinState(part)).equipped.avatar.hair, 'avatar_hair_1', '다른 옷은 그대로');
+  assert.deepEqual((await store.refundSkins(RETIRED_PART_IDS, 'outfit_retire_refund')).refunded, [], '한 번만');
 }
 
 test('변신 지급 A안 (JSON)', async () => {

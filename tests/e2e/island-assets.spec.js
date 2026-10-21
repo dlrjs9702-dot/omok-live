@@ -124,45 +124,47 @@ test('재생된 열매 취소: 새 세대 SPACE·Escape, 서버 자원 유지·�
   await expectNoScriptError(page);await who.context.close();
 });
 
-test('동물 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
+// (2026-10-21 변신 옷 정리: the animal parts are gone -- the same five-part wardrobe now with 스킨 2배 parts)
+test('5부위 의상: 남녀 구매·중복 미차감·5부위 착용, 원격 High/Low, 재접속·해제', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 300000 : 180000); // (CI 2차: two pages with every wardrobe model and two reloads -- about three minutes on the runner)
   const { REGISTRY, wardrobeOf } = require('../../public/plaza/island-assets');
-  const partIds = ['character.base', ...wardrobeOf({}).parts, ...wardrobeOf({gender:'female'}).parts,
-    ...['cat','fox'].flatMap(animal => ['outfit','hat','tail','shoes','necklace'].map(slot => `wear.animal_${animal}_${slot}`))];
+  const SLOTS = ['outfit', 'hat', 'tail', 'shoes', 'necklace'];
+  const SETS = { tide: ['tidal_surveyor', 'tide_compass', 'comet_stream', 'tidal_deck', 'tide_gauge'], coral: ['coral_diver', 'coral_tiara', 'kelp_fan', 'coral_fin', 'coral_branch'] };
+  const part = (set, slot) => `wear.x2_${slot}_${SETS[set][SLOTS.indexOf(slot)]}`; const skin = (set, slot) => `avatar_x2_${slot}_${SETS[set][SLOTS.indexOf(slot)]}`;
+  const partIds = ['character.base', ...wardrobeOf({}).parts, ...wardrobeOf({gender:'female'}).parts, ...Object.keys(SETS).flatMap((set) => SLOTS.map((slot) => part(set, slot)))];
   const models = Object.fromEntries(Object.keys(REGISTRY).map(id => [id, partIds.includes(id) ? REGISTRY[id] : null]));
-  const a = await shopper(browser, request, '동물고양이', 1000000, 'male');
-  const b = await shopper(browser, request, '동물여우', 1000000, 'female');
-  for (const [who, animal] of [[a, 'cat'], [b, 'fox']]) {
+  const a = await shopper(browser, request, '다섯부위가', 1000000, 'male');
+  const b = await shopper(browser, request, '다섯부위나', 1000000, 'female');
+  for (const [who, set] of [[a, 'tide'], [b, 'coral']]) {
     let lastBalance;
-    for (const slot of ['outfit', 'hat', 'tail', 'shoes', 'necklace']) {
-      const id = `avatar_animal_${animal}_${slot}`;
-      const bought = await post(request, '/api/skins/buy', who.token, { skinId: id });
+    for (const slot of SLOTS) {
+      const bought = await post(request, '/api/skins/buy', who.token, { skinId: skin(set, slot) });
       expect(bought.status).toBe(200); lastBalance = bought.data.balance;
-      expect((await post(request, '/api/skins/equip', who.token, { skinId: id })).status).toBe(200);
+      expect((await post(request, '/api/skins/equip', who.token, { skinId: skin(set, slot) })).status).toBe(200);
     }
-    const duplicate = await post(request, '/api/skins/buy', who.token, { skinId: `avatar_animal_${animal}_outfit` });
+    const duplicate = await post(request, '/api/skins/buy', who.token, { skinId: skin(set, 'outfit') });
     expect(duplicate.status).toBe(200); expect(duplicate.data.purchased).toBe(false); expect(duplicate.data.balance).toBe(lastBalance);
     await who.page.evaluate(registry => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testHalloween', 'off'); localStorage.setItem('gc.testIslandAssets',JSON.stringify(registry)); }, models);
     await who.page.reload();
-    const worn = ['outfit', 'hat', 'tail', 'shoes', 'necklace'].map((s) => `wear.animal_${animal}_${s}`);
+    const worn = SLOTS.map((slot) => part(set, slot));
     await expect.poll(() => who.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(worn));
-    const asset = await who.page.evaluate((part) => window.PlazaDebug().assets.wearing.find((w) => w.parts.includes(part)), worn[0]);
+    const asset = await who.page.evaluate((p) => window.PlazaDebug().assets.wearing.find((w) => w.parts.includes(p)), worn[0]);
     expect(asset.meshes.low).toBe(asset.meshes.high);
   }
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit'))), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => a.page.evaluate((p) => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes(p)), part('coral', 'outfit')), { timeout: 30000 }).toBe(true);
   await a.page.evaluate(() => window.PlazaDebug().holdQuality(0));
   // Use a known clear ground approach, and publish it before the local debug warp.
   const far = (await get(request,'/api/test/island/events',b.token)).data.events.find(e=>e.type==='berry' && Math.hypot(e.x,e.z)>50);
   await b.page.evaluate(at=>window.PlazaWarp(at.x,at.z),far); // re-enter there, rather than walking a segment through the other player
   const placed = await post(request,'/api/plaza/state',b.token,{...far,yaw:0,moving:false}); expect(placed.status).toBe(200);
   await b.page.evaluate(at=>window.PlazaDebug().teleport(at.x,at.z),placed.data);
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes('wear.animal_fox_outfit') && !w.high)), { timeout: 30000 }).toBe(true);
+  await expect.poll(() => a.page.evaluate((p) => window.PlazaDebug().assets.wearing.some((w) => w.parts.includes(p) && !w.high), part('coral', 'outfit')), { timeout: 30000 }).toBe(true);
   await a.page.reload();
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit', 'wear.animal_cat_hat']));
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining([part('tide', 'outfit'), part('tide', 'hat')]));
   expect((await post(request, '/api/skins/equip', a.token, { game: 'avatar', slot: 'hat', skinId: null })).status).toBe(200);
   await a.page.reload(); // API setup bypasses the shop handler's refreshPlazaAvatar.
-  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining(['wear.animal_cat_outfit']));
-  expect(await a.page.evaluate(() => window.PlazaDebug().wardrobe)).not.toContain('wear.animal_cat_hat');
+  await expect.poll(() => a.page.evaluate(() => window.PlazaDebug?.()?.wardrobe), { timeout: 90000 }).toEqual(expect.arrayContaining([part('tide', 'outfit')]));
+  expect(await a.page.evaluate(() => window.PlazaDebug().wardrobe)).not.toContain(part('tide', 'hat'));
   for (const who of [a, b]) { await expectNoScriptError(who.page); await who.context.close(); }
 });
 const { staticGlb, riggedGlb } = require('../../test-support/gltf-fixture.js');

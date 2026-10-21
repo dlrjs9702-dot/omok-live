@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
-const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf, avatarLookOf, transformationById } = require('../lib/skins');
+const { SKINS, TIERS, ACTIVE_FAMILIES, catalogView, skinById, familyOf, badgesOf, avatarLookOf, transformationById, RETIRED_PART_IDS } = require('../lib/skins');
 const SkinLooks = require('../public/skin-looks');
 
 // v1.7.30 skins: the catalog and looks (unit), then buying / equipping / sharing through the real server.
@@ -38,14 +38,14 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   // v1.10.35 경제 기준(통합): one price list for all of them, the older 16 too (일반 50,000 / 고급 100,000 / 희귀 200,000 /
   // 전설 400,000); the older 16 keep their ids
   const avatar = SKINS.filter(s => s.family === 'avatar' && s.slot !== 'transform'); // (v1.10.91: the transformations below)
-  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 12 + 1, 27 + 16 + 12 + 2, 13 + 8 + 5 + 1, 23 + 17 + 7, 23 + 17 + 5 + 1, 23 + 18 + 7 + 1] /* v1.10.92 + 포차코 의상·머리장식·꼬리·목걸이; B 46 + 겨울 의상·모자 둘·망토·부츠·목도리 */); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
+  assert.deepEqual(['hair', 'outfit', 'hat', 'cape', 'tail', 'shoes', 'necklace'].map(slot => avatar.filter(s => s.slot === slot).length), [17 + 17, 30 + 19 + 12 + 1 - 22, 27 + 16 + 12 + 2 - 22, 13 + 8 + 5 + 1 - 5, 23 + 17 + 7 - 17, 23 + 17 + 5 + 1 - 15, 23 + 18 + 7 + 1 - 17] /* v1.10.92 + 포차코 의상·머리장식·꼬리·목걸이; B 46 + 겨울 의상·모자 둘·망토·부츠·목도리 */); // v1.10.36: + 할로윈 27; v1.10.74: + 일반 112 + 캐릭터 44
   // v1.10.74: every character skin names its owner and is never common; IP_SKINS=off leaves all 44 out (lib/skins.js)
-  const ip = avatar.filter(s => s.ip);
-  assert.equal(ip.length, 48); assert.equal(SKINS.filter(s => s.ip).length, 48 + 12 + 33); // (v1.10.92 + 포차코) // 22 character game pairs + 11 themes; v1.10.91 + their 11 transformations
-  assert.ok(ip.every(s => ['산리오', 'DC', '마블', '포켓몬'].includes(s.ip) && s.tier !== 'common' && s.id.startsWith('avatar_ip_')));
+  // 변신 옷 정리 (2026-10-21): the parts of each transformation (IP 48, animals 50) are no longer sold or worn
+  assert.equal(avatar.filter(s => s.ip).length, 0); assert.equal(SKINS.filter(s => s.ip).length, 12 + 33); // 22 character game pairs + 11 themes, 12 transformations
+  assert.equal(RETIRED_PART_IDS.length, 98); assert.ok(RETIRED_PART_IDS.every((id) => !skinById(id)));
   // v1.10.91 변신 따로 판매 (사용자 2026-10-18): each of the 21 a `transform` item at its parts' price, out of the shops' catalog
   const tfs = SKINS.filter(s => s.slot === 'transform'); assert.equal(tfs.length, 22);
-  for (const tf of tfs) assert.equal(tf.price, Object.values(transformationById(tf.transform).items).reduce((n, id) => n + skinById(id).price, 0));
+  assert.deepEqual(tfs.map((tf) => tf.price), [...Array(5).fill(800000), 1000000, ...Array(6).fill(800000), ...Array(10).fill(350000)]); // (still the parts' price together)
   assert.ok(!catalogView().some(f => f.skins.some(s => s.slot === 'transform')));
   assert.equal(require('node:child_process').execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./lib/skins').SKINS.filter(s => s.ip || s.id.startsWith('avatar_ip_')).length))"], { env: { ...process.env, IP_SKINS: 'off' }, cwd: require('node:path').join(__dirname, '..') }).toString(), '0');
   const older = avatar.filter(s => Number(s.id.split('_').pop()) <= ({ hair: 6, outfit: 5, hat: 5 }[s.slot] || 0));
@@ -57,9 +57,6 @@ test('카탈로그: 티어별 가격·칸이 서버 정의에서만 오고, 오�
   for (const s of halloween) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => halloween.filter(s => s.tier === t).length), [5, 15, 5, 2]);
   const fresh = avatar.filter(s => !older.includes(s) && !halloween.includes(s) && !s.id.startsWith('avatar_animal_') && !s.id.startsWith('avatar_x2_') && !s.id.startsWith('avatar_winter_') && !s.ip); // v1.10.74 스킨 2배: below (B 46 겨울 의상: below)
-  const animals = avatar.filter(s => s.id.startsWith('avatar_animal_'));
-  assert.equal(animals.length, 50);
-  for (const s of animals) assert.equal(s.price, ['outfit', 'hat'].includes(s.slot) ? 100000 : 50000);
   assert.equal(fresh.length, 63);
   for (const s of fresh) assert.equal(s.price, PRICE[s.tier], s.id);
   assert.deepEqual(['common', 'premium', 'rare', 'legend'].map(t => fresh.filter(s => s.tier === t).length), [20, 21, 17, 5]);
@@ -182,10 +179,8 @@ test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·�
   assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'SKIN_NOT_OWNED');
   await fx.grant(a, 3_000_000);
   const character = require('../lib/skins').transformationById('kuromi');
-  // v1.10.91 (A안): the parts on are not a transformation; the transformation bought and chosen is
-  for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/buy', a.session, { skinId })).status, 200);
-  for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/equip', a.session, { skinId })).status, 200);
-  assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'SKIN_NOT_OWNED');
+  // v1.10.91 (A안): the transformation bought and chosen; 2026-10-21: its parts are not sold any more
+  for (const skinId of Object.values(character.items)) assert.equal((await fx.req('/api/skins/buy', a.session, { skinId })).status, 404);
   const tf = require('../lib/skins').transformSkinId('kuromi');
   assert.equal((await fx.req('/api/skins/buy', a.session, { skinId: tf })).status, 200);
   assert.equal((await fx.req('/api/avatar/transformation', a.session, body)).data.error, 'TRANSFORMATION_INCOMPLETE');
@@ -200,8 +195,6 @@ test('캐릭터 체형 API: 무료 저장·재로그인·전체 파츠 착용·�
   assert.equal((await fx.plaza(a.session)).players.find(p => p.id === pose.data.id).look.transformationModes.kuromi, 'current', '다음 위치 전송 전 광장에도 새 체형 공유');
   assert.equal((await fx.req('/api/points', a.session)).data.balance, balance);
   assert.deepEqual((await fx.req('/api/points/history', a.session)).data, history);
-  await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'hat' }); // a part off: still transformed
-  assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'current' })).status, 200);
   await fx.req('/api/skins/equip', a.session, { skinId: null, game: 'avatar', slot: 'transform' }); // the transformation off
   assert.equal((await fx.req('/api/avatar/transformation', a.session, { ...body, mode: 'native' })).status, 409);
   const session = await fx.relogin(a);
