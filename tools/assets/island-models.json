@@ -6555,8 +6555,6 @@
       "out": "furniture-v1/mall_floor2.glb",
       "src": "furniture57:01. High/mall_floor2__base.glb",
       "sha256": "b0331d72df2038cd56c15616183c76e00beed098fe5a98669f1517682f883558",
-      "lowSrc": "furniture57:02. Low/mall_floor2__base_low.glb",
-      "lowSha256": "dcdf5287a311f80d6f30885708dc811e25311a9fbc4ad360d7ed7fc7dc8d2078",
       "precompressed": true
     },
     {
@@ -6603,32 +6601,24 @@
       "out": "furniture-v1/shop_rug_zone__living.glb",
       "src": "furniture57:01. High/shop_rug_zone__living.glb",
       "sha256": "799c6ad4c2e1cb70667faf7b487af9c459b71919bfb4d642efa7284eb1c9e898",
-      "lowSrc": "furniture57:02. Low/shop_rug_zone__living_low.glb",
-      "lowSha256": "e9a73bc1002ef92e13a7059e9dd5f472513ff36b8eb2bfe0169db0ef1937845b",
       "precompressed": true
     },
     {
       "out": "furniture-v1/shop_rug_zone__bedroom.glb",
       "src": "furniture57:01. High/shop_rug_zone__bedroom.glb",
       "sha256": "670c61a5e2b9593922a04d270ed4dd6b548609e0c7d554ef840e1f0629486919",
-      "lowSrc": "furniture57:02. Low/shop_rug_zone__bedroom_low.glb",
-      "lowSha256": "cdf19a407d370c6e79ada3c8f0a8d0e632b15e81aa517eaf57bc1f2c39e3f0e9",
       "precompressed": true
     },
     {
       "out": "furniture-v1/shop_rug_zone__kitchen.glb",
       "src": "furniture57:01. High/shop_rug_zone__kitchen.glb",
       "sha256": "c667e349efacfcc0ea2254a6cd85c03896ec956ed243fe89a2ed38644b14d7ea",
-      "lowSrc": "furniture57:02. Low/shop_rug_zone__kitchen_low.glb",
-      "lowSha256": "c446e87c74dc8679d3c59e9ea686b649711b9519954dc2395b4de5d7cfc17017",
       "precompressed": true
     },
     {
       "out": "furniture-v1/shop_rug_zone__garden.glb",
       "src": "furniture57:01. High/shop_rug_zone__garden.glb",
       "sha256": "8acbb7257e064dd2803d9ecd959849366e9006245a6baaf945d34d1c90309481",
-      "lowSrc": "furniture57:02. Low/shop_rug_zone__garden_low.glb",
-      "lowSha256": "8fc135d93dc51948913082e01dbb0274f36585f9e29a6e497f938efc51235402",
       "precompressed": true
     },
     {
@@ -6683,8 +6673,6 @@
       "out": "petshop-v1/petshop_floor3.glb",
       "src": "petshop60:01. High/petshop_floor3__base.glb",
       "sha256": "359ee2f35ff4e882e730390b5d80807538a8d497014b5af9f3c35a0570051162",
-      "lowSrc": "petshop60:02. Low/petshop_floor3__base_low.glb",
-      "lowSha256": "bba478571f373f1d1deafcf0e8695296429f29ace76a68819c057d8a0ab3271b",
       "precompressed": true
     },
     {
@@ -6911,120 +6899,90 @@
       "out": "home-v1/home_floor_boards__birch.glb",
       "src": "home58:01. High/home_floor_boards__birch.glb",
       "sha256": "7b47aff0557134d99caf174c404b9ae4f8c007f6c12dd8e77a4e038e3e207aa5",
-      "lowSrc": "home58:02. Low/home_floor_boards__birch_low.glb",
-      "lowSha256": "b9ec38d057e770bbb95686c38eb69a3f61bda703ce8c41927ca54b3e18e784a3",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards__oak.glb",
       "src": "home58:01. High/home_floor_boards__oak.glb",
       "sha256": "f28bb0469f65826f4dd1f5ab9fa96f6272646571f7401153b2d0471b093fce1e",
-      "lowSrc": "home58:02. Low/home_floor_boards__oak_low.glb",
-      "lowSha256": "783d3d4b4c765b470c6ac93640dfde09f0a661fde8dd8b01432e7b0588d50ec8",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards__walnut.glb",
       "src": "home58:01. High/home_floor_boards__walnut.glb",
       "sha256": "165672d29d6efb73efde7719edb35f229135929bb4e32f28ed1939ae75187300",
-      "lowSrc": "home58:02. Low/home_floor_boards__walnut_low.glb",
-      "lowSha256": "ee71ca6950705f8c639bbf428ec069d24f530e05b9735e20e5ba2333cf34f583",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s1__birch.glb",
       "src": "home58:01. High/home_floor_boards_s1__birch.glb",
       "sha256": "eb588c3d135964f09f07010bc2b870e6e1ec2d0a9b40a4ac191f677c25cba4dc",
-      "lowSrc": "home58:02. Low/home_floor_boards_s1__birch_low.glb",
-      "lowSha256": "11f47262bcbc9b9c7322c459d630e0d52baf3454e518514d6993097a7f8987da",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s1__oak.glb",
       "src": "home58:01. High/home_floor_boards_s1__oak.glb",
       "sha256": "1e65fc14b8c9941fcc3653395f0d718fdcf6c414979c6513343fcbbd8297a456",
-      "lowSrc": "home58:02. Low/home_floor_boards_s1__oak_low.glb",
-      "lowSha256": "de345a1ebbc269353b63e1bc9f78b83f822b4fc3463f0687b72f8ecac5efc6ab",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s1__walnut.glb",
       "src": "home58:01. High/home_floor_boards_s1__walnut.glb",
       "sha256": "a1b44f663d18a35239e66bcd8ff51b07f3a8002cad6b1b2cc62131b32e2faf71",
-      "lowSrc": "home58:02. Low/home_floor_boards_s1__walnut_low.glb",
-      "lowSha256": "3e60c44edc5985ccfe118a9098726dff1ffd6ac58e93a0bc8c52d6db862983d8",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s3__birch.glb",
       "src": "home58:01. High/home_floor_boards_s3__birch.glb",
       "sha256": "364a88dabd976bde7890e13fb17eaa6ecf32f8839e9b01faa092d10ada13c605",
-      "lowSrc": "home58:02. Low/home_floor_boards_s3__birch_low.glb",
-      "lowSha256": "5db3c63df32e675351121bd3b4acd66266bdedaea6cc1774e8a775a5f53cb4c0",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s3__oak.glb",
       "src": "home58:01. High/home_floor_boards_s3__oak.glb",
       "sha256": "d3f8003ad86e306e23b0343b9b93744c9aa0108035f15dd91970d7de68026f9e",
-      "lowSrc": "home58:02. Low/home_floor_boards_s3__oak_low.glb",
-      "lowSha256": "e70d3414a9c9f7d43027a40f94d72f092f6d9545e9d5964e69b66bdf1c21117a",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_boards_s3__walnut.glb",
       "src": "home58:01. High/home_floor_boards_s3__walnut.glb",
       "sha256": "aed190ecc0089f26a17b8c286c21e78a957bce58cc6b7e37247dfe277f226882",
-      "lowSrc": "home58:02. Low/home_floor_boards_s3__walnut_low.glb",
-      "lowSha256": "9d68f2599d85c2e9ecf57c83b046d72c9f7423f253a48666eae5ea908a93c1e2",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles__mint.glb",
       "src": "home58:01. High/home_floor_tiles__mint.glb",
       "sha256": "17443633c67e8122e5e74435a69c4bd2eb1ba666970a7c3fc1164e82d495c58e",
-      "lowSrc": "home58:02. Low/home_floor_tiles__mint_low.glb",
-      "lowSha256": "aed4059b3fd888088bdd2409df6968443a80140853cc82a77c3c436b5b74eee3",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles__pink.glb",
       "src": "home58:01. High/home_floor_tiles__pink.glb",
       "sha256": "0aaa3876075a678afcf7334220f6f52d4055a8639914f23a20858803f539c3fa",
-      "lowSrc": "home58:02. Low/home_floor_tiles__pink_low.glb",
-      "lowSha256": "e602a4c029fcd22baa237a6f512c5976c8223dcc69cf9022271aa3cf792ad285",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles_s1__mint.glb",
       "src": "home58:01. High/home_floor_tiles_s1__mint.glb",
       "sha256": "9715dd07560ebf94f8a63e8c4a92cda6f40f27a8ee82d2ab191380755048c8a9",
-      "lowSrc": "home58:02. Low/home_floor_tiles_s1__mint_low.glb",
-      "lowSha256": "e1e63376ea6a7c52a0a65442ff0ec26def4028f3914cafccec063a9a5c63a1ff",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles_s1__pink.glb",
       "src": "home58:01. High/home_floor_tiles_s1__pink.glb",
       "sha256": "402737b16dece4f5a40832b79fef535029828705000f856c3f81225342a0393d",
-      "lowSrc": "home58:02. Low/home_floor_tiles_s1__pink_low.glb",
-      "lowSha256": "db65fd2d6ecab020dd6b067fc7048f571d57259edae8043e389f0843443a5a04",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles_s3__mint.glb",
       "src": "home58:01. High/home_floor_tiles_s3__mint.glb",
       "sha256": "5986495634b5094fd76fd0e71b90ec6c4affb57484e23507db96479904140ac5",
-      "lowSrc": "home58:02. Low/home_floor_tiles_s3__mint_low.glb",
-      "lowSha256": "1b8bc9df84c132ac7c9c551640288eb0cb94deadfa84f28ede53bd1a37877a80",
       "precompressed": true
     },
     {
       "out": "home-v1/home_floor_tiles_s3__pink.glb",
       "src": "home58:01. High/home_floor_tiles_s3__pink.glb",
       "sha256": "b8bf038fed25e020e7930c1fa8a94fc0053382fc03e3c695793eb0b92f8a382c",
-      "lowSrc": "home58:02. Low/home_floor_tiles_s3__pink_low.glb",
-      "lowSha256": "d8aff9fffd7970e9ed605973c9dea15c25975c36bc4e99cfef85c5405ab7f04f",
       "precompressed": true
     },
     {
