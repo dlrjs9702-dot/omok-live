@@ -52,7 +52,13 @@ test('문제 기록 저장: 옛 기록 사진 옮기기, 해결 7일·30일 정�
   const lines = logs.split('\n').filter((l) => l.startsWith('[issue] ')).map((l) => JSON.parse(l.slice(8)));
   assert.deepEqual(lines.map((l) => [l.event, l.id === added.id ? 'new' : l.id]), [['expire', 'done40'], ['add', 'new'], ['status', 'open1'], ['delete', 'new']]);
   assert.equal(lines[1].text, '새 기록 둘째 줄'); assert.ok(!logs.includes('base64'));
-  // (2회차: the pictures in the log too -- the open ones once at the start, a new one when added)
-  const shots = logs.split('\n').filter((l) => l.startsWith('[issue-shot] ')).map((l) => JSON.parse(l.slice(13)));
-  assert.deepEqual(shots.map((p) => [p.id === added.id ? 'new' : p.id, p.part, p.of, p.data.length]), [['open1', 1, 1, 400], ['new', 1, 1, 400]]);
+  // (2회차: a signed link to the picture -- the open ones once at the start, a new one in its add line; no sign-in, the
+  // JPEG; a changed, old or deleted one is a 404)
+  const links = logs.split('\n').filter((l) => l.startsWith('[issue-shot-link] ')).map((l) => JSON.parse(l.slice(18)));
+  assert.deepEqual(links.map((l) => l.id), ['open1']); assert.equal(lines[1].shot === null, false); assert.equal(lines[2].shot, null);
+  const jpeg = await fetch(base + links[0].shot); assert.equal(jpeg.status, 200); assert.equal(jpeg.headers.get('content-type'), 'image/jpeg'); assert.match(jpeg.headers.get('cache-control'), /no-store/);
+  assert.deepEqual(Buffer.from(await jpeg.arrayBuffer()), Buffer.from('A'.repeat(400), 'base64'));
+  assert.equal((await fetch(base + links[0].shot.replace(/sig=./, (s) => (s.endsWith('0') ? 'sig=1' : 'sig=0')))).status, 404);
+  assert.equal((await fetch(base + links[0].shot.replace(/exp=\d+/, 'exp=1000000000'))).status, 404);
+  assert.equal((await fetch(base + lines[1].shot)).status, 404, '지운 기록의 사진'); assert.equal((await fetch(base + '/api/issues/shot/open1')).status, 404);
 });
