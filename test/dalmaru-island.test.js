@@ -96,4 +96,3 @@ test('계절 구역마다 나무 종류(둥근·층층·키 큰·꽃)가 모두 
   for (const t of T.nature().trees) { if (H.some((h) => h.x === t.x && h.z === t.z)) continue; const z = T.seasonZoneAt(t.x, t.z); (by[z] ||= new Set()).add(T.treeKind(t)); }
   for (const z of [0, 1, 2, 3]) for (const k of ['round', 'tiered', 'tall', 'blossom']) assert.ok(by[z]?.has(k), `구역 ${z}: ${k}`);
 });
-
