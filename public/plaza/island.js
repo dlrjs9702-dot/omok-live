@@ -7,8 +7,28 @@ import * as THREE from '/vendor/three/three.module.js';
 
 // v1.10.7: the island's shape lives in island-terrain.js (loaded before the app; the server uses the same file).
 const T = globalThis.IslandTerrain;
-export const { coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, RESERVED_LOTS, STATUE_SPOTS, SPAWN, heightAt, walkable, ISLAND_RADIUS, nature } = T;
+export const { coastR, PLAZA_R, AREAS, SPOTS, COTTAGES, RESERVED_LOTS, STATUE_SPOTS, SPAWN, walkable, ISLAND_RADIUS, nature } = T;
 const { RIVER_WIDE, riverExtra, BUILDINGS, TAU, wrap, smooth, lerp, coastDist, cliffAt, PLAZA_H, POND, STREAMS, STREAM_HALF, streamCurves, walkCurves, streamDist, walkDist, PADS, land, ground, bridges, onBridge, deckAt, bayR, PIER, BREAKWATER } = T;
+
+// v1.10.73 길 3단계: 마을 길 (the hall, the shop street, and the climb and harbour walks within TOWN_R of the plaza),
+// 산책로 (the ring, those two walks beyond the town), 오솔길 (the nature area, the gazebo)
+const TOWN_R = 32;
+const tierAt = (wi, x, z) => walkCurves[wi].tier || (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
+const plazaDist = T.inPlaza ? (x, z) => { const P = T.dalmaru.PLAZA; return Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1); } : (x, z) => Math.hypot(x, z) - PLAZA_R; // (달마루섬: 대청마당 is a rectangle)
+const offPath = (x, z) => plazaDist(x, z) < 0.6 || (!T.inPlaza && Math.hypot(x, z + 44) < 9.4) || onBridge(x, z) || streamDist(x, z) < STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5);
+// (문제 기록 2회차 2 「자전거가 땅을 파고 들어가」: a 마을 길 is paved with 4 cm slabs laid 1 cm over the ground -- one stands on
+// them, the bike's wheels too, not 5 cm into them: the height everyone stands at (this module's heightAt) has the paving on)
+export const PAVE_TOP = 0.05; const PAVE_LIFT = 0.01;
+const paveSegs = []; walkCurves.forEach((w, wi) => { const half = Math.max(1, Math.round(w.w - 0.4)) / 2; for (let i = 1; i < w.pts.length; i += 1) { const [ax, az] = w.pts[i - 1]; const [bx, bz] = w.pts[i]; if (tierAt(wi, (ax + bx) / 2, (az + bz) / 2) === 'town') paveSegs.push({ ax, az, bx, bz, half }); } });
+export function paveLift(x, z) {
+  for (const s of paveSegs) {
+    if (x < Math.min(s.ax, s.bx) - s.half || x > Math.max(s.ax, s.bx) + s.half || z < Math.min(s.az, s.bz) - s.half || z > Math.max(s.az, s.bz) + s.half) continue;
+    const dx = s.bx - s.ax; const dz = s.bz - s.az; const t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (z - s.az) * dz) / (dx * dx + dz * dz || 1)));
+    if (Math.hypot(x - s.ax - dx * t, z - s.az - dz * t) <= s.half) return offPath(x, z) ? 0 : PAVE_TOP;
+  }
+  return 0;
+}
+export const heightAt = (x, z) => T.heightAt(x, z) + paveLift(x, z);
 
 // v1.10.13 환경 비주얼: one way to build the island's static things out of simple parts. Every part (a box, a cone, a
 // roof slab...) is placed and coloured, then all of a thing's parts become ONE geometry with vertex colours, drawn with
@@ -309,15 +329,11 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // ground (no flat board with a cut edge), with a faint mottling along it; the areas differ a little in colour --
   // pale paving to the hall, warm stone on the shop street, earth up the hill and in the woods, sand to the harbour.
   const paveMat = mat(0xf3e6c8);
-  // v1.10.73 길 3단계: 마을 길 (the hall, the shop street, and the climb and harbour walks within TOWN_R of the plaza),
-  // 산책로 (the ring, those two walks beyond the town), 오솔길 (the nature area, the gazebo) -- one colour each
-  const TOWN_R = 32;
-  const tierAt = (wi, x, z) => walkCurves[wi].tier || (wi <= 1 ? 'town' : wi <= 3 ? (Math.hypot(x, z) < TOWN_R ? 'town' : 'walk') : wi === 5 ? 'walk' : 'trail');
+  // (the three tiers -- tierAt above -- one colour each)
   const TIER_COLOR = { town: 0xe7e1d3, walk: 0xe6d8bd, trail: 0xcdb48c };
   const pathMat = keep(grained(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), true));
   const grassEdge = new THREE.Color(0xa7d483);
   const plazaPaving = new THREE.Color(0xf3e6c8);
-  const plazaDist = T.inPlaza ? (x, z) => { const P = T.dalmaru.PLAZA; return Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1); } : (x, z) => Math.hypot(x, z) - PLAZA_R; // (달마루섬: 대청마당 is a rectangle)
   const pathStrip = (pts, width, base) => {
     const v = []; const col = []; const idx = []; const gr = []; let along = 0; const c0 = new THREE.Color(base); const cm = new THREE.Color(); const ce = new THREE.Color(); const cols = 4;
     for (let i = 0; i < pts.length; i += 1) {
@@ -669,7 +685,6 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // marks the way in. Decoration only: nothing here is walked round (the kerbs' old rule).
   const pathParts = { slab: [], terrazzo: [], border: [], edge: [], step: [], disc: [], planter: [] };
   const opening = (wi, x, z, pad) => walkCurves.some((o, oi) => oi !== wi && o.pts.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < o.w / 2 + pad)); // another walk joins here
-  const offPath = (x, z) => plazaDist(x, z) < 0.6 || (!T.inPlaza && Math.hypot(x, z + 44) < 9.4) || onBridge(x, z) || streamDist(x, z) < STREAM_HALF + 0.5 || T.inTownhall(x, z, 0.5);
   // junctions: where one walk meets another outside the plaza (joins and crossings), one disc each
   walkCurves.forEach((w, wi) => w.pts.forEach(([x, z]) => {
     if (offPath(x, z) || pathParts.disc.some((d) => Math.hypot(d.x - x, d.z - z) < 7)) return;
@@ -717,7 +732,16 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     for (const side of [-1, 1]) { const o = w.w / 2 + 0.9; const px = x - dz * o * side; const pz = z + dx * o * side; if (walkable(px, pz)) pathParts.planter.push({ x: px, z: pz, r: -Math.atan2(dz, dx) }); }
   } });
   const onGround = (x, z) => T.meshGroundHeight(x, z);
-  const placeFlat = (lift) => (p) => setM(p.x, onGround(p.x, p.z) + lift, p.z, p.s ?? 1, 1, p.r);
+  // (문제 기록 2회차 3 「길이 군데군데 파인 곳이 많아」: laid flat at its middle's height, a 1 m slab on a slope had its
+  // uphill half under the grass -- each piece now leans with the ground under it, PAVE_LIFT over it)
+  const tilt = new THREE.Quaternion(); const yawQ = new THREE.Quaternion(); const nUp = new THREE.Vector3(); const Y = new THREE.Vector3(0, 1, 0);
+  // (a 5 m disc: its slope read 1 m apart, and raised by the most the ground rises over that plane within its round)
+  const placeFlat = (lift, { e = 0.5, round = 0 } = {}) => (p) => {
+    const g0 = onGround(p.x, p.z); const gx = (onGround(p.x + e, p.z) - onGround(p.x - e, p.z)) / (2 * e); const gz = (onGround(p.x, p.z + e) - onGround(p.x, p.z - e)) / (2 * e);
+    let over = 0; for (let k = 0; round && k < 32; k += 1) for (const f of [0.5, 1]) { const x = p.x + Math.cos((k / 32) * TAU) * round * f; const z = p.z + Math.sin((k / 32) * TAU) * round * f; over = Math.max(over, onGround(x, z) - g0 - gx * (x - p.x) - gz * (z - p.z)); }
+    tilt.setFromUnitVectors(Y, nUp.set(-gx, 1, -gz).normalize()); yawQ.setFromAxisAngle(Y, p.r ?? 0); q.copy(tilt).multiply(yawQ);
+    const s = p.s ?? 1; m4.compose(v3.set(p.x, g0 + PAVE_LIFT + lift + over, p.z), q, sc.set(s, 1, s));
+  };
   // Without a piece's model (switched off, not registered) nothing stands in: the walk strips above already show each
   // tier's colour, and thousands of merged stand-ins slowed the island's start on a software-rendered runner
   const none = keep(mergeColored([part(G.box, 0xe9e3d5, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })])); // under the ground
@@ -730,7 +754,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   lay('path.town.border.straight', pathParts.border, placeFlat(0));
   for (let k = 0; k < 2; k += 1) lay(`path.walk.edge.${'ac'[k]}`, pathParts.edge.filter((p) => p.v === k), placeFlat(0));
   for (let k = 0; k < 2; k += 1) lay(`path.trail.step.${'ab'[k]}`, pathParts.step.filter((p) => p.v === k), placeFlat(0));
-  const onDisc = (d) => setM(d.x, onGround(d.x, d.z) + 0.01, d.z, 1);
+  const onDisc = placeFlat(0.01, { e: 1, round: 2.5 });
   lay('path.junction.disc.town', pathParts.disc.filter((d) => d.town), onDisc);
   lay('path.junction.disc.walk', pathParts.disc.filter((d) => !d.town), onDisc);
   lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });

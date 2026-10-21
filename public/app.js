@@ -1882,6 +1882,9 @@
     if (ctx.screen === 'room' && state) ctx.room = { game: state.gameType || null, id: state.id || null, status: state.game?.status || null };
     const d = plaza.controller?.debug?.();
     if (ctx.screen === 'island' && d) { const T = globalThis.IslandTerrain; ctx.island = { x: +d.x.toFixed(1), z: +d.z.toFixed(1), space: d.space || 'island', season: T?.seasonAt?.(d.x, d.z, Date.now()) || null, time: d.time?.()?.phase || null, weather: d.weather?.()?.kind || null, quality: d.quality, camera: { yaw: +Number(d.camYaw).toFixed(2), pitch: +Number(d.camPitch).toFixed(2), zoom: +Number(d.zoom).toFixed(1) } }; } // (2회차: how it was looked at)
+    // (문제 기록 정리 2026-10-21: what the writer wears -- each slot's item, the transformation and how it is shown, and
+    // the parts the island actually put on -- so an outfit report is made again from the record)
+    if (plazaAvatar?.look) ctx.wear = { look: plazaAvatar.look, parts: Array.isArray(d?.wardrobe) ? d.wardrobe.slice(0, 20) : null, transformation: typeof d?.transformation === 'string' ? d.transformation : null };
     return ctx;
   }
   async function openIssue() {
