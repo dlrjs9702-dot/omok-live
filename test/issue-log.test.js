@@ -28,6 +28,15 @@ test('문제 기록 로그 한 줄: [issue] JSON, 사진·계정 id 없음, 줄�
   assert.deepEqual([o.by, o.device, o.text, o.x, o.season, o.hasShot], ['건', 'phone 749x750', '첫 줄 둘째 줄', 1.5, 'winter', true]);
   assert.match(o.error, /reading 'name'/);
   assert.ok(!line.includes('secret-account') && !line.includes('base64'));
+  assert.equal(o.wear, null);
+});
+
+// (문제 기록 정리 2026-10-21) the writer's outfit in the line: slot ids, the transformation and its mode, the parts put on
+test('문제 기록 로그 한 줄: 쓴 사람의 장착(옷 칸 id·변신·보이는 방식·입힌 부품)', () => {
+  const ctx = { screen: 'island', wear: { look: { gender: 'male', outfit: 'avatar_outfit_yellow', hat: 'avatar_hat_x', transform: 'cat', transformationModes: { cat: 'current' }, face: { eyes: 'a' }, dye: { avatar_outfit_yellow: '#fff' } },
+    parts: ['wear.basic_pants', 'wear.cat_head', 42], transformation: 'cat' } };
+  const o = JSON.parse(logLine('add', { id: 'w', at: now, text: '배가 옷을 뚫고', ctx }).slice(8));
+  assert.deepEqual(o.wear, { gender: 'male', outfit: 'avatar_outfit_yellow', hat: 'avatar_hat_x', transform: 'cat', modes: { cat: 'current' }, shown: 'cat', parts: ['wear.basic_pants', 'wear.cat_head'] });
 });
 
 test('문제 기록 사진 링크: 서버 키로 서명, 7일, 다른 키·바꾼 id·지난 시각·고친 서명은 거절', () => {
