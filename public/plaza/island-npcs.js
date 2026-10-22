@@ -29,7 +29,7 @@
   // v1.10.92 백화점: its 24 x 14 m body (and a margin) in its own frame, the front toward `face`
   const inMall = (s, x, z) => { const a = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const dx = x - s.x; const dz = z - s.z; const lx = Math.cos(a) * dx - Math.sin(a) * dz; const lz = Math.sin(a) * dx + Math.cos(a) * dz; return Math.abs(lx) < 12 + MARGIN && Math.abs(lz) < 7 + MARGIN; };
   const inFacade = (s, x, z) => { const a = Math.atan2(s.face[0] - s.x, s.face[1] - s.z); const dx = x - s.x; const dz = z - s.z; const lx = Math.cos(a) * dx - Math.sin(a) * dz; const lz = Math.sin(a) * dx + Math.cos(a) * dz; return Math.abs(lx) < T.FACADE.w / 2 + MARGIN && lz > -2 && lz < T.FACADE.d + MARGIN; };
-  const BUILDING_R = { cottage: 3.9, hall: 13, shop: 3.4, house: 3.4, office: 3.4, townhall: 3.4, tower: 3.5, gazebo: 3.2, board: 1.6, npc: 1.6, desk: 1.6, stall: 1.8, donation: 1.4, mapboard: 1.4 };
+  const BUILDING_R = { cottage: 3.9, jail: 5.6, hall: 13, shop: 3.4, house: 3.4, office: 3.4, townhall: 3.4, tower: 3.5, gazebo: 3.2, board: 1.6, npc: 1.6, desk: 1.6, stall: 1.8, donation: 1.4, mapboard: 1.4 };
 
   // On a bridge deck, with a little room (a bridge is a way over its stream).
   // the whole cell (its centre and corners) on the deck, so a path through it never clips the water at the side

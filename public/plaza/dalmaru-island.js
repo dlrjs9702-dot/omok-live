@@ -38,11 +38,12 @@
     store: { ...facade(PL.facadeMall), kind: 'facade' }, townhall: { ...facade(PL.facadeTownhall), kind: 'facade' },
     board: { ...row(0), kind: 'board' }, map: { ...row(1), kind: 'mapboard' }, attendance: { ...row(4), kind: 'npc' }, donate: { ...row(2), kind: 'donation' },
     chat: spot(PL.chat, 'gazebo'), climb: spot(PL.climb, 'tower'), admin: spot(PL.admin, 'office', { wall: 0xe4e7ec, roof: 0x7b8794 }),
+    jail: { ...PL.jail, face: [PL.jail.x, PL.jail.z + 10], kind: 'jail' }, // R4 구치소 (assets 67: 9.8 x 7.4 m; its door toward the camera -- the island's buildings never fade)
   };
   const FACADE = { w: 30, d: 4.6 }; // (assets 55 facade.*: 30 wide, 4.6 out from the cliff)
   function facilityDoor(id) {
     const s = SPOTS[id]; if (!s) return null;
-    const depth = { hall: 10, tower: 6.4, house: 2.7, office: 2.7, board: 0.3, donation: 0.9, mapboard: 0.3, gazebo: 2.4, npc: 0.9, stall: 1.3, desk: 1.2, facade: FACADE.d }[s.kind];
+    const depth = { hall: 10, tower: 6.4, house: 2.7, office: 2.7, board: 0.3, donation: 0.9, mapboard: 0.3, gazebo: 2.4, npc: 0.9, stall: 1.3, desk: 1.2, facade: FACADE.d, jail: 7.4 }[s.kind];
     const distance = s.kind === 'facade' ? FACADE.d + 1.6 : Math.max(1.4, depth / 2 + 1.3) + (s.kind === 'hall' ? 2.6 : 0);
     const dx = s.face[0] - s.x; const dz = s.face[1] - s.z; const l = Math.hypot(dx, dz) || 1;
     return { x: s.x + (dx / l) * distance, z: s.z + (dz / l) * distance };
@@ -112,6 +113,7 @@
     { tier: 'walk', w: 3, pts: [[-88, 140], [-80, 140], [-55, 140], [-30, 140], [-12, 141.5], [12, 141.5], [30, 140], [55, 140], [80, 140], [88, 140]] }, // 윤슬다리 · 툇마루섬 · 윤슬다리
     { tier: 'town', w: 3, pts: [[-44, -86], [-56, -93], thPt(0, 19.5), thPt(0, 15), doorPt('townhall')] }, // → 관공서, through the mayor's gate
     { tier: 'town', w: 3, pts: [thPt(0, 19.5), thPt(-11, 18.5), thPt(-17.5, 11)] }, // → round the yard, past the cliff front's corner
+    { tier: 'town', w: 2.4, pts: [doorPt('jail'), [-59.5, -70.2], [-58, -75.8], [-47, -76]] }, // (R4) → 구치소, off 관리실's walk (round its back)
     { tier: 'walk', w: 2.4, pts: [thPt(-17.5, 11), stairsAt(-0.4, 4.6), stairsAt(-0.4, 1.7)] }, /* (3회차 10: to the first step's foot, not on it) */ // → onto the ridge's stairs, from their open side by the foot
     { tier: 'town', w: 3, pts: [[44, -86], [56, -93], doorPt('store')] }, // → 백화점
     { tier: 'walk', w: 2.8, pts: [[-41, -59], LA, [(LA[0] + LB[0]) / 2, (LA[1] + LB[1]) / 2], LB, [-80, 16], [-84, 34], [-86, 40.5], [-87.1, 43.8]] }, // (묶음 5: on to the stepping stones' walk -- no end in the field) // 이웃골 → the west arm's shore

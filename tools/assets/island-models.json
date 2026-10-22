@@ -7545,6 +7545,7 @@
       "precompressed": true
     },
     {
+<<<<<<< HEAD
       "out": "characters/npc_walker_bomi.glb",
       "src": "walker51:01. High/npc_walker_bomi.glb",
       "sha256": "39cd3582ec7ff6df95743440bbe1b5141c6226d807e5c8e668bec1fb1c43e8d7",
@@ -7623,6 +7624,68 @@
       "lowSrc": "walker51:02. Low/npc_walker_garam_low.glb",
       "lowSha256": "f00d871825c4e64f4eabc0c1829f62919674c4f8188994c07a57a2977bdc058b",
       "precompressed": true
+=======
+      "out": "jail-v1/jail_exterior.glb",
+      "src": "jail67:01. High/jail_exterior.glb",
+      "sha256": "132f33cd84728efb420dc31df84644fb46f7d5e7199ffa7a4dc3f779c59f8acf",
+      "lowSrc": "jail67:02. Low/jail_exterior_low.glb",
+      "lowSha256": "20d524265dad1fa2d0c6db3880785dc0f467bbffc3df3dd949774ceec1dde2f4",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_room.glb",
+      "src": "jail67:01. High/jail_room.glb",
+      "sha256": "54cf64f5f0e1b69009ff15a217e33c7fcaf35cdf76dc722cdd0b8149b585ae33",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_cell.glb",
+      "src": "jail67:01. High/jail_cell.glb",
+      "sha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
+      "lowSrc": "jail67:02. Low/jail_cell_low.glb",
+      "lowSha256": "26970dd8abd670b78d5166e4bd6692ccd939116906fa6a8645335d763bc6438c",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_cell_door.glb",
+      "src": "jail67:01. High/jail_cell_door.glb",
+      "sha256": "78f98c3c5fcb5b253a655fd3de62b06a1ca9ff3b1f76021c1d65c595bc04142c",
+      "lowSrc": "jail67:02. Low/jail_cell_door_low.glb",
+      "lowSha256": "78f98c3c5fcb5b253a655fd3de62b06a1ca9ff3b1f76021c1d65c595bc04142c",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_desk.glb",
+      "src": "jail67:01. High/jail_desk.glb",
+      "sha256": "8e3a76db69430f5b8887ee47c13b8ce07a8e01695976cfada1c32a8d9b7a9ec8",
+      "lowSrc": "jail67:02. Low/jail_desk_low.glb",
+      "lowSha256": "f2136fe0a25d3e4a177439fffcc2a93a924d2a14b0a467cf430379c0309a43c5",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_bench.glb",
+      "src": "jail67:01. High/jail_bench.glb",
+      "sha256": "5f8e87a70be7b02ba426936dd55084763698d8296be64905a19555ea54607962",
+      "lowSrc": "jail67:02. Low/jail_bench_low.glb",
+      "lowSha256": "c16491d84842940150116250df4e457de25c32d809cd4daf80e0864b80cb4230",
+      "precompressed": true
+    },
+    {
+      "out": "jail-v1/jail_board.glb",
+      "src": "jail67:01. High/jail_board.glb",
+      "sha256": "f2392d5a46a2e0aeb6ee74615ac789f5a6a53dcbd56c27e58778650e0374af7d",
+      "lowSrc": "jail67:02. Low/jail_board_low.glb",
+      "lowSha256": "8e78d18ecd0798e022ffd2104b715edd156bd2781f7be1b031832a068d806632",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_warden.glb",
+      "src": "jail67:01. High/npc_warden.glb",
+      "sha256": "7215dd3d53788e06c2f24d7619d112c90e98139bc9e180925de7a0ddecabcdc3",
+      "lowSrc": "jail67:02. Low/npc_warden_low.glb",
+      "lowSha256": "7d6f0e6323ec276af6dfd7976ceaf3f0b2a7e963f67cf8443525eb6953dd8891",
+      "precompressed": false
+>>>>>>> aad5e06c (R4 구치소 반성문: 체납자는 철창 안에서 시작, 채팅 반성문 3문장, 지금 세금 내기)
     }
   ],
   "sources": {
@@ -7670,6 +7733,10 @@
     "swing66": "66. Game Island tool swing moves 2026-10-22",
     "ditto65": "65. Game Island ditto pet 2026-10-22",
     "npc52": "52. Game Island named npc refit 2026-10-18",
+<<<<<<< HEAD
     "walker51": "51. Game Island resident looks 2026-10-23"
+=======
+    "jail67": "67. Game Island jail 2026-10-22"
+>>>>>>> aad5e06c (R4 구치소 반성문: 체납자는 철창 안에서 시작, 채팅 반성문 3문장, 지금 세금 내기)
   }
 }

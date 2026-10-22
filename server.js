@@ -75,6 +75,7 @@ const IslandNpcs = require('./public/plaza/island-npcs');
 const IslandStore = require('./public/plaza/island-store'); // v1.10.92 잡화점
 const IslandFurniture = require('./public/plaza/island-furniture'); // 묶음 2 가구점 (백화점 2층)
 const IslandPetShop = require('./public/plaza/island-petshop'); // 묶음 2-2 펫샵 (백화점 3층)
+const IslandJail = require('./public/plaza/island-jail'); // R4 구치소
 const IslandHome = require('./public/plaza/island-home'); // 묶음 4 내 집
 const IslandFishing = require('./lib/island-fishing'); // v1.10.42 낚시·도감
 const { skinById, familyOf, catalogView, badgesOf, avatarLookOf, FAMILY_NAMES, SLOTS: SKIN_SLOTS, SURGERY_FEE, DYE_FEE, FACE_PARTS, FACE_LABELS, DYE_PALETTE, DYEABLE, BODY_DYES, SKIN_TONES, bodyDyeColor, faceDesign, dyeColor, transformationById, transformationModeAllowed } = require('./lib/skins');
@@ -1171,6 +1172,42 @@ function lookFor(account, equipped) {
   const dye = { ...(shown.look.dye || {}) }; delete dye[shown.look.outfit]; delete dye[PRISON_OUTFIT];
   return { look: { ...shown.look, outfit: PRISON_OUTFIT, top: undefined, bottom: undefined, dye, prisoner: true }, title: null, delinquent: true };
 }
+// R4 구치소 (gamecenter-notes IDEAS 「구치소 — 체납자 반성문」): one owing the 주민세 starts each visit to the island in the
+// cell until that Seoul day's essay is passed (questDoc 'jail' { day }) or all is paid; admins and an account's first day
+// are let be. The essay: the day's sentences, said by the warden, each typed into the island chat within 20 s (two for
+// one 친한 사이 with him). Anyone may come in and watch; the day's essays are on the board inside only.
+const jailInside = new Set(); // tokens in the 구치소's room
+const jailInmates = new Set(); // ... and of those, shut in the cell
+const jailFreed = new Set(); // ... or let out this visit (the cell open: walking out of it)
+const jailMode = (token) => (jailInmates.has(token) ? true : jailFreed.has(token) ? 'free' : false); // (IslandJail.clamp)
+const jailEssays = new Map(); // token -> { day, sentences, i, until }
+const jailLog = { day: null, list: [], passed: 0 }; // the day's essays as typed (ponytail: in memory, gone at a restart)
+const jailVeterans = new Set(); // (test only: accounts taken as past their first day)
+const JAIL_WARDEN = IslandCast.keeperN('warden');
+async function jailable(session, account) {
+  if (session.role === 'admin' || !(taxDebt.get(account) > 0)) return false;
+  const day = kstDate(nowMs()); const key = session.guestKeyId ? await accessStore.get(session.guestKeyId) : null;
+  if (!jailVeterans.has(account) && key?.createdAt && kstDate(Date.parse(key.createdAt)) === day) return false;
+  return (await pointStore.questDoc(account, 'jail')).doc.day !== day;
+}
+function jailLogNow(now = nowMs()) { const day = kstDate(now); if (jailLog.day !== day) Object.assign(jailLog, { day, list: [], passed: 0 }); return jailLog; }
+const essayView = (e, now = nowMs()) => ({ sentence: e.sentences[e.i], i: e.i, count: e.sentences.length, left: Math.max(0, e.until - now) });
+// what the warden answers a line an inmate typed in the island chat (null: no essay under way)
+async function jailTyped(session, text) {
+  const e = jailEssays.get(session.token); const now = nowMs(); const day = kstDate(now);
+  if (!e || !jailInmates.has(session.token) || e.day !== day) return null;
+  const account = pointAccountForSession(session); const log = jailLogNow(now);
+  log.list = [...log.list, { name: String(session.label || '게스트').slice(0, 24), text: String(text).slice(0, MAX_CHAT_LENGTH), at: now }].slice(-100);
+  if (now > e.until || !IslandJail.same(text, e.sentences[e.i])) { e.until = now + IslandJail.SECONDS * 1000; return { say: '다시.', ...essayView(e, now) }; }
+  e.i += 1;
+  if (e.i < e.sentences.length) { e.until = now + IslandJail.SECONDS * 1000; return { say: '좋습니다.', ...essayView(e, now) }; }
+  jailFree(session.token); log.passed += 1;
+  const level = await affinityLevelOf(account, JAIL_WARDEN);
+  await pointStore.questApply(account, 'jail', (d) => (d.day === day ? null : { doc: { day } }));
+  await pointStore.affinityAdd(account, day, [{ n: JAIL_WARDEN, delta: IslandCast.GAIN.story }]);
+  return { passed: true, say: IslandCast.keeperLine('warden', Math.random, level, String(session.label || '')) };
+}
+function jailFree(token) { if (jailInmates.delete(token)) jailFreed.add(token); jailEssays.delete(token); plazaDirty = true; }
 // B 47 생일: whose birthday it is today (not hidden), read from every account's 'birthday' doc -- again each Seoul day
 // and whenever one is set (ponytail: one read per account; a birthday index if the accounts grow into the hundreds)
 const birthdays = { day: null, today: new Map(), loading: null, gen: 0 };
@@ -1267,7 +1304,7 @@ function plazaSnapshot() {
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
   return { trainService: trainService(), players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home }) => ({ id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
-function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
+function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); homeInside.delete(token); jailInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 function prunePlazaPresence(now = nowMs()) {
   const liveLobby = new Set([...lobbyStreams].map(stream => stream.sessionToken));
   for (const [token, entry] of plazaPresence) {
@@ -4404,7 +4441,8 @@ async function requestHandler(req, res) {
     Object.assign(appendChatMessage(lobbySocial, session, text, chatIdFor(session)), chatAudience(session)); // v1.10.82
     trimLobbyMessages();
     broadcastLobby();
-    return sendJson(res, 200, { ok: true });
+    const jail = await jailTyped(session, text); // R4: the essay line, if one is under way
+    return sendJson(res, 200, { ok: true, ...(jail ? { jail } : {}) });
   }
 
   if (pathname === '/api/lobby/events' && req.method === 'GET') {
@@ -4472,8 +4510,15 @@ async function requestHandler(req, res) {
     trainService();
     const ride = trainRiders.get(session.token); // v1.10.47: on the train, I am where its seat is (the clock says), not where I say
     const platform = trainVisitors.get(session.token) || null;
+    // R4 구치소: a visit's first pose -- one owing the tax (not passed today) starts in the cell
+    if (!plazaPresence.has(session.token) && !ride && !jailInside.has(session.token) && await jailable(session, account)) { freeSeat(session.token); jailInside.add(session.token); jailInmates.add(session.token); }
     let spot;
-    if (ride) {
+    if (jailInside.has(session.token)) { // (as the 민원실 below; one shut in, in the cell)
+      const here = plazaPresence.get(session.token); const inmate = jailMode(session.token);
+      if (!here || !IslandJail.inJail(here.x, here.z, 2)) { const s = inmate === true ? IslandJail.CELL.stand : IslandJail.ROOM.entry; spot = IslandJail.world(s.lx, s.lz); } // (just put here)
+      else { spot = IslandJail.inJail(Number(body.x), Number(body.z), 2) ? IslandJail.clamp(body.x, body.z, inmate) : { x: here.x, z: here.z }; Object.assign(wanted, IslandJail.clamp(body.x, body.z, inmate)); }
+      plazaLastPos.set(session.token, IslandTerrain.facilityDoor('jail'));
+    } else if (ride) {
       const q = IslandTrain.seatAt(ride.id, ride.seat, trainNow()); spot = { x: Math.round(q.x * 100) / 100, z: Math.round(q.z * 100) / 100 };
       const from = IslandTrain.stationOf(ride.from).spot; plazaLastPos.set(session.token, { x: from.x, z: from.z }); notePlazaSpot(account, from.x, from.z); // a visit cut off mid-ride comes back at that stop
     } else if (homeInside.has(session.token)) { // 묶음 4 내 집: in the house's room, round its furniture
@@ -4506,7 +4551,7 @@ async function requestHandler(req, res) {
       spot = IslandTrain.platformClamp(platform.line, platform.station, wanted.x, wanted.z);
       const entry = IslandTrain.stationOf(platform.station).spot; plazaLastPos.set(session.token, entry); notePlazaSpot(account, entry.x, entry.z);
     } else {
-      const late = (IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) && plazaPresence.get(session.token)) || heldNewer(); // v1.10.84: a pose from the room after going out (CI 3차 검토: or from before the one I hold)
+      const late = ((IslandTerrain.inRoom(Number(body.x), Number(body.z), 2) || IslandJail.inJail(Number(body.x), Number(body.z), 2)) && plazaPresence.get(session.token)) || heldNewer(); // v1.10.84: a pose from the room after going out (CI 3차 검토: or from before the one I hold)
       spot = late ? { x: late.x, z: late.z } : collecting ? collecting.pos : plazaSeparate(session.token, wanted.x, wanted.z, plazaPresence.get(session.token) || plazaLastPos.get(session.token));
       if (IslandTerrain.inTownhallYard(spot.x, spot.z) && !passesGate(session)) spot = { ...TOWNHALL_GATE_OUT }; // v1.10.41: not let in yet
       plazaLastPos.set(session.token, spot);
@@ -4515,7 +4560,7 @@ async function requestHandler(req, res) {
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
     if (!petOf.has(account)) { petOf.set(account, null); pointStore.questDoc(account, 'pet').then(({ doc }) => { if (PET_KINDS.includes(doc.kind)) { petOf.set(account, petView(doc)); plazaDirty = true; } }).catch(() => petOf.delete(account)); }
-    const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
+    const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !jailInside.has(session.token) && !ride && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
     const held = heldNewer(); // (after the last await: where I am stays, answered as it is)
     if (held) spot = { x: held.x, z: held.z };
     else plazaPresence.set(session.token, {
@@ -4526,7 +4571,7 @@ async function requestHandler(req, res) {
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       home: homeInside.has(session.token) ? homeCache.get(homeInside.get(session.token))?.lot || null : null, // (묶음 4: which house, by its lot -- one sees the people in the same one)
-      space: homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
+      space: jailInside.has(session.token) ? 'jail' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
       // v1.10.44: what they are doing (sitting on the seat they hold, a wave or a cheer -- actN tells a new one)
       ...(() => { if (collecting) return { act: collecting.anim, actN: collecting.at, actAt: collecting.at, actMs: collecting.ms, actTarget: collecting.target || null, seat: null };
         const fishing = fishActOf(session.token, body.act) || showActOf(session.token, body.act); if (fishing) return { ...fishing, actN: Number.isSafeInteger(body.actN) ? body.actN : 0, seat: null }; // v1.10.89, v1.10.92 show
@@ -4538,7 +4583,7 @@ async function requestHandler(req, res) {
     const corrected = !ride && !held && (spot.x !== wanted.x || spot.z !== wanted.z);
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
-    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    return sendJson(res, 200, { ok: true, id: session.plazaId, x: spot.x, z: spot.z, corrected, jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -4650,6 +4695,49 @@ async function requestHandler(req, res) {
     plazaPresence.set(session.token, { ...at, x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100, space: entering ? 'store' : 'island', moving: false, at: nowMs(), act: null, seat: null });
     plazaDirty = true;
     return sendJson(res, 200, { ok: true, space: entering ? 'store' : 'island', x: Math.round(spot.x * 100) / 100, z: Math.round(spot.z * 100) / 100 });
+  }
+  // R4 구치소: in at its door (anyone), out at the room's (not while shut in the cell)
+  if ((pathname === '/api/island/jail/enter' || pathname === '/api/island/jail/leave') && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    const at = plazaPresence.get(session.token); if (!at) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+    const entering = pathname.endsWith('/enter'); const R = IslandJail.ROOM;
+    if (entering) {
+      const door = IslandTerrain.facilityDoor('jail');
+      if (jailInside.has(session.token) || storeInside.has(session.token) || townhallInside.has(session.token) || homeInside.has(session.token)) return sendError(res, 409, 'ALREADY_INSIDE', '이미 안에 있습니다.');
+      if (trainRiders.has(session.token) || trainVisitors.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) > 2.6) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      freeSeat(session.token); jailInside.add(session.token);
+    } else {
+      const exit = IslandJail.world(R.exit.lx, R.exit.lz);
+      if (jailInmates.has(session.token)) return sendError(res, 409, 'JAILED', '반성문을 마치거나 세금을 내야 나갈 수 있어요.');
+      if (!jailInside.has(session.token) || Math.hypot(at.x - exit.x, at.z - exit.z) > 2.4) return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.');
+      jailInside.delete(session.token); jailFreed.delete(session.token);
+    }
+    const spot = entering ? IslandJail.world(R.entry.lx, R.entry.lz) : IslandTerrain.facilityDoor('jail');
+    plazaPresence.set(session.token, { ...at, x: spot.x, z: spot.z, space: entering ? 'jail' : 'island', moving: false, at: nowMs(), act: null, seat: null });
+    plazaDirty = true;
+    return sendJson(res, 200, { ok: true, space: entering ? 'jail' : 'island', x: spot.x, z: spot.z });
+  }
+  // the warden's: my essay (where it is), today's board and passes; POST /start -- the sentence now, 20 s from now (again
+  // after the time ran out: the same one)
+  if (pathname === '/api/island/jail' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const account = pointAccountForSession(session); const log = jailLogNow(); const e = jailEssays.get(session.token);
+    return sendJson(res, 200, { ok: true, inmate: jailMode(session.token), essay: e ? essayView(e) : null, passed: log.passed, log: jailInside.has(session.token) ? log.list : [], debt: taxDebt.get(account) || 0, level: await affinityLevelOf(account, JAIL_WARDEN) });
+  }
+  if (pathname === '/api/island/jail/start' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return;
+    if (!jailInmates.has(session.token)) return sendError(res, 409, 'NOT_JAILED', '구경만 하세요.');
+    const now = nowMs(); const day = kstDate(now); let e = jailEssays.get(session.token);
+    if (!e || e.day !== day) { const close = (await affinityLevelOf(pointAccountForSession(session), JAIL_WARDEN)) >= 2; e = { day, sentences: IslandJail.sentencesOf(day, close ? 2 : 3), i: 0, until: 0 }; jailEssays.set(session.token, e); }
+    if (e.until <= now) e.until = now + IslandJail.SECONDS * 1000;
+    return sendJson(res, 200, { ok: true, ...essayView(e, now) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/jail' && req.method === 'POST') { // past the first day; owing (this account only: not a day's tax for all); the time up
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
+    if (body.veteran === true) jailVeterans.add(pointAccountForSession(session));
+    if (Number.isSafeInteger(body.debt)) { taxDebt.set(pointAccountForSession(session), body.debt); refreshTaxLooks(); }
+    const e = jailEssays.get(session.token); if (body.expire === true && e) e.until = nowMs() - 1;
+    return sendJson(res, 200, { ok: true });
   }
   // 묶음 2·2-2: the 백화점's lift -- from in front of the floor's own to the floor asked (1층 백화점, 2층 가구점, 3층 펫샵)
   if (pathname === '/api/island/lift' && req.method === 'POST') {
@@ -5224,11 +5312,13 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session);
     if (req.method === 'GET') { const v = await pointStore.bankView(account, nowMs()); return sendJson(res, 200, { ok: true, debt: taxDebt.get(account) || 0, rate: PointStore.TAX_RATE, minimum: PointStore.TAX_MIN, max: PointStore.TAX_DEBT_MAX, nextTax: PointStore.taxSplit(v.balance, v.deposit).tax }); }
     const at = plazaPresence.get(session.token); const R = IslandTerrain.TOWNHALL_ROOM; const w = IslandTerrain.roomWorld(R.tax.lx, R.tax.lz);
-    if (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
+    const jailed = jailInmates.has(session.token); // (R4: or 「지금 세금 내기」 from the cell)
+    if (!jailed && (!townhallInside.has(session.token) || !at || Math.hypot(at.x - w.x, at.z - w.z) > 1.8)) return sendError(res, 409, 'TOO_FAR', '관공서 안 세금 창구에서 납부해 주세요.');
     const body = await parseJson(req);
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(body.requestId)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const out = await pointStore.taxPay(account, body.requestId, nowMs());
     taxDebt.set(account, out.debt);
+    if (jailed && !(out.debt > 0)) jailFree(session.token); // all paid: the cell opens (some: the essay still)
     if (out.applied) { notifyPointsChanged([account]); refreshTaxLooks(); }
     return sendJson(res, 200, { ok: true, ...out });
   }
