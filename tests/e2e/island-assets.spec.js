@@ -9,14 +9,16 @@ test('채집 중 즉시 세션 종료: 잡초·열매 Promise 취소, 미지급�
     const who=await island(browser,request,`이탈${kind}`,{__only:true});const {page,token}=who;
     const target=kind==='weed' ? (await get(request,'/api/island/weeds',token)).data.weeds.map(([id,x,z])=>({id,x,z}))[0]
       : (await get(request,'/api/test/island/events',token)).data.events.find(e=>e.type==='berry' && e.state==='open');
-    const placed=await post(request,'/api/plaza/state',token,{x:target.x,z:target.z,yaw:0,moving:false});expect(placed.status).toBe(200);
-    await page.route('**/api/plaza/state',route=>route.continue({postData:JSON.stringify({...route.request().postDataJSON(),x:placed.data.x,z:placed.data.z})}));
-    await page.evaluate(p=>window.PlazaDebug().teleport(p.x,p.z),placed.data);
+    // the page warps there itself (no pose in flight, off the plaza first): a jump posted beside the page's own poses ran
+    // from the spawn, and the server stops a jump at whoever earlier tests left standing in its way
+    // -- and the server has me there (the page's first pose after it) before the action asks it
+    const posed=page.waitForResponse(r=>r.url().endsWith('/api/plaza/state') && Math.hypot((r.request().postDataJSON()?.x??1e9)-target.x,(r.request().postDataJSON()?.z??1e9)-target.z)<1 && r.status()===200);
+    await page.evaluate(p=>window.PlazaWarp(p.x,p.z),target); await posed;
     await expect(page.locator('#plazaHint')).toContainText(kind==='weed'?'잡초':'나무 열매');
     await page.clock.install();await page.clock.pauseAt(await page.evaluate(()=>Date.now()+10000)); // Browser clock; pause before starting the action, not at a host timestamp that can arrive in the past.
     const started=page.waitForResponse(r=>r.url().endsWith(`/api/island/${kind}/start`));
     const cancelled=page.waitForRequest(r=>r.url().endsWith(`/api/island/${kind}/cancel`),{timeout:10000});
-    await page.keyboard.press('Space');expect((await started).status()).toBe(200);
+    await page.keyboard.press('Space');const start=await started;expect(start.status(),await start.text()).toBe(200);
     await expect.poll(()=>page.evaluate(()=>window.PlazaDebug().gather?.kind)).toBe(kind);
     // An immediate session end bypasses the modal/frame cancellation path, exercising stop/dispose itself.
     await page.evaluate(()=>document.getElementById('logoutConfirmBtn').click());
@@ -475,10 +477,12 @@ test('자연물 묶음: 같은 모델 1회 다운로드로 수십 그루를 기�
 // zone's copies procedural; back to automatic, the day is the server clock's
 test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계방향으로 한 구역씩 이동, 파일 없는 계절은 코드 생성형', async ({ browser, request }) => {
   test.setTimeout(process.env.CI ? 120000 : 60000); /* (CI 2차: the island's start alone may take 60 s on the runner) */
-  const a = await island(browser, request, '계절', { __only: true, 'nature.rock.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } }); // the round-rock model alone (the whole registry is the next test's)
+  // one bush model alone (the whole registry is the next test's) -- bushes stand in every zone (3회차 8: the round rocks,
+  // only on settled ground now, are in two zones that do not touch, and one zone clockwise had nothing to compare)
+  const a = await island(browser, request, '계절', { __only: true, 'nature.bush.0': { seasons: { spring: BOX, winter: BOX2 }, scale: 0.6 } });
   const { page } = a;
   await page.evaluate(() => window.PlazaDebug().halloween.set(false)); // v1.10.41: rocks only -- October's decor would slow a software-rendered runner
-  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.rock.0');
+  const rock = async () => ((await debug(page)).assets.batches || []).find((b) => b.ids[0] === 'nature.bush.0');
   await expect.poll(async () => (await debug(page)).assets.loader, { timeout: 15000 }).toBe('ready');
   const expectDay = async (day) => {
     await page.evaluate((d) => window.PlazaDebug().setSeasonDay(d), day);
@@ -486,7 +490,7 @@ test('계절 구역: 구역마다 그날의 계절 파일, 다음 날은 시계�
     await expect.poll(async () => (await rock())?.placed).toBe(true);
     const zones = (await rock()).zones;
     const looks = await page.evaluate((d) => [-1, 0, 1, 2, 3].map((zone) => window.IslandTerrain.zoneSeason(zone, d) || window.AssetPipeline.NEUTRAL_LOOK), day);
-    expect(Object.keys(zones).length).toBeGreaterThanOrEqual(3); // rocks all round the island
+    expect(Object.keys(zones).length).toBeGreaterThanOrEqual(3); // bushes all round the island
     for (const [zone, z] of Object.entries(zones)) {
       expect(z.look).toBe(looks[Number(zone) + 1]);
       expect(z.url).toBe(z.look === 'spring' ? BOX : z.look === 'winter' ? BOX2 : null); // no file: procedural

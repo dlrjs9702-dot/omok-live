@@ -358,15 +358,17 @@
     }
     const bushes = [];
     for (let tries = 0; bushes.length < 520 && tries < 7000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (clearOf(x, z)) bushes.push({ x, z, s: 0.55 + rnd() * 0.6 }); }
-    const tufts = [];
-    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s: 0.6 + rnd() * 0.7 }); }
-    const rocks = [];
+    // (3회차 8) the tufts seeded on their own and numbered by their try (`i`, island-weeds `w<i>`), three draws a try taken
+    // or not: a tree or a flower placed otherwise above, or a walk laid across some, never moves or renumbers the rest
+    const tufts = []; seed = 0x7a1f5;
+    for (let tries = 0; tufts.length < 1400 && tries < 14000; tries += 1) { const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const s = 0.6 + rnd() * 0.7; if (walkable(x, z) && D.coastDist(x, z) > 7 && slopeAt(x, z) < 0.5 && walkDist(x, z) > 0.5 && !inPlaza(x, z, 1) && !nearKeeper(x, z)) tufts.push({ x, z, s, i: tries }); }
+    const rocks = []; seed = 0x40c5; // (3회차 8: on their own too, not after however many tufts were tried)
     for (let tries = 0; rocks.length < 160 && tries < 8000; tries += 1) {
       const x = (rnd() * 2 - 1) * R; const z = (rnd() * 2 - 1) * R; const cd = D.coastDist(x, z);
       if (cd > -1 && cd < 4 && !D.inBay(x, z) && !built(x, z) && !onBridge(x, z)) rocks.push({ x, z, s: 0.5 + rnd() * (D.ridgeAt(x, z) > 0.3 ? 1.6 : 0.8), r: rnd() * 6 });
     }
     // what the train's lifts keep clear is taken out after the seeded scenery, so nothing else moves -- the weeds are
-    // numbered by the tufts (island-weeds `w<index>`): the server and every screen must have the same ones
+    // numbered by the tufts (island-weeds `w<i>`): the server and every screen must have the same ones
     const blocked = (o, r) => natureBlocks.some((fn) => fn(o.x, o.z, r));
     const keptTrees = trees.filter((t) => !blocked(t, 1.5)); const keptBushes = bushes.filter((b) => !blocked(b, 0.8));
     // the walks' lamps (island-terrain's rule): beside the town walks and the 산책로 (not the 오솔길), every 14 points of
@@ -416,10 +418,19 @@
     ['west', { x: -120, z: 10, label: D.NAMES.west }], ['lake', { x: D.LAKE.x, z: D.LAKE.z, label: D.NAMES.lake }], ['east', { x: 115, z: 20, label: D.NAMES.east }],
     ['isle', { x: D.ISLE.x, z: D.ISLE.z, label: D.NAMES.isle }], ['bay', { x: 0, z: 60, label: D.NAMES.bay }], ['ridge', { x: 0, z: -146, label: D.NAMES.ridge }]]);
 
+  // (문제 기록 3회차 8 「있을 필요 없는 곳에도 돌·잡초, 하늘에 떠 있네」) where a small scattered piece -- a stone, a flower, a weed
+  // -- sits: the drawn ground within its 0.3 m round never more than 0.09 m below its middle (no edge of it hangs in the air),
+  // the formula's ground and the drawn one together (not a cliff's edge, where the 2 m mesh cuts the corner), and off the
+  // walks and stairs
+  function settledSpot(x, z) {
+    const h = meshGroundHeight(x, z); if (Math.abs(ground(x, z) - h) >= 0.15 || walkDist(x, z) <= 0.3 || onStairs(x, z)) return false;
+    for (let a = 0; a < 8; a += 1) if (h - meshGroundHeight(x + Math.cos(a * Math.PI / 4) * 0.3, z + Math.sin(a * Math.PI / 4) * 0.3) > 0.09) return false;
+    return true;
+  }
   return Object.freeze({
     ...C,
     MAP: 'dalmaru', HOME_LOTS, onLot, GROUND: { size: SIZE, seg: SEG }, PLAZA_C, inPlaza,
-    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, heightAt, walkable,
+    coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
     bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,

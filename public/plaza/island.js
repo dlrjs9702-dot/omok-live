@@ -358,7 +358,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     let run = []; let tier = null;
     const flush = () => { if (run.length > 1) pathStrip(run, tier === 'trail' ? w.w * 0.6 : w.w, TIER_COLOR[tier]); run = run.slice(-1); };
     for (const p of w.pts) {
-      if (onBridge(p[0], p[1]) || streamDist(p[0], p[1]) < STREAM_HALF + 0.4) { flush(); run = []; continue; }
+      // (문제 기록 3회차 19 「보이는 각도에 따라 흙이 보이기도 하고 아니기도」: a walk's band ran on under 대청마당's paving and the
+      // hall's yard, the two fighting for the same height -- it ends 0.2 m under their rim)
+      if (onBridge(p[0], p[1]) || streamDist(p[0], p[1]) < STREAM_HALF + 0.4 || plazaDist(p[0], p[1]) < -0.2 || T.inTownhall(p[0], p[1], -0.2)) { flush(); run = []; continue; }
       const t = tierAt(wi, p[0], p[1]); if (tier && t !== tier) flush(); tier = t; run.push(p);
     }
     flush();
@@ -511,6 +513,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // islanders' paths are unchanged.
   const hash = (x, z, k = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
   const natureMat = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  // (문제 기록 3회차 8: the scattered pieces on the ground as drawn -- the 2 m mesh, not the formula, which on the ridge's slopes
+  // stood metres off it -- and the small ones only where they sit: T.settledSpot)
+  const onMesh = (x, z) => T.meshGroundHeight(x, z); const settled = (p) => T.settledSpot(p.x, p.z);
   const SH = [0.72, 1.06]; // shaded underside, sunlit top
   const trunk = (h, r, color = 0x9b6b47) => part(new THREE.CylinderGeometry(r * 0.75, r, h, 7), color, 0, h / 2, 0, { shade: [0.75, 1] });
   const crown = (geo, color, x, y, z, s, sy = s) => part(geo, color, x, y, z, { sx: s, sy, sz: s, shade: SH });
@@ -540,7 +545,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     const geo = mergeColored(parts);
     for (const [list, target] of splits) {
       if (!list.length) continue;
-      instanced(geo, natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
+      instanced(geo, natureMat, list, (t) => setM(t.x, onMesh(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
         { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target });
     }
   });
@@ -549,7 +554,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const ANGULAR_STAND = { block: [trunk(1.6, 0.22), facet(BOX, 0x6fae4f, 0, 2.6, 0, 2.2, 1.9)], stack: [trunk(1.4, 0.2), facet(BOX, 0xc0504d, 0, 2.0, 0, 1.6, 0.9), facet(BOX, 0xd0645a, 0, 2.9, 0, 1.2, 0.9)], spire: [trunk(1.2, 0.18), facet(OCT, 0x4f8f5a, 0, 2.7, 0, 1.4, 3.2)] };
   for (const name of ANGULAR_TREES) {
     const list = trees.filter((t) => angularTree(t) === name && !globalThis.IslandTerrain.harvestTrees().some(h => h.x === t.x && h.z === t.z)); if (!list.length) continue;
-    instanced(mergeColored(ANGULAR_STAND[name]), natureMat, list, (t) => setM(t.x, ground(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
+    instanced(mergeColored(ANGULAR_STAND[name]), natureMat, list, (t) => setM(t.x, onMesh(t.x, t.z) - 0.05, t.z, t.s * (0.9 + hash(t.x, t.z, 1) * 0.2), t.s * (0.85 + hash(t.x, t.z, 2) * 0.35), hash(t.x, t.z, 3) * TAU),
       { cell: 60, color: (t, c) => c.setHSL(0.02 * (hash(t.x, t.z, 4) - 0.5), 0.12, 0.9 + hash(t.x, t.z, 5) * 0.14), target: [`angular.tree_${name}`] });
   }
   for (const t of globalThis.IslandTerrain.harvestTrees()) {
@@ -564,7 +569,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.29: each colour its own model (nature.flower.<colour>: tulip, daisy, wildflowers, lavender, poppy), never one
   // model tinted -- a tint would colour the leaves too. Without models the five lists bake together as one did.
   for (let k = 0; k < flowerColors.length; k += 1) {
-    instanced(bloom, natureMat, flowers.filter((f) => f.c === k), (f) => setM(f.x, ground(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]), target: [`nature.flower.${k}`, 'nature.flower'] });
+    instanced(bloom, natureMat, flowers.filter((f) => f.c === k && settled(f)), (f) => setM(f.x, onMesh(f.x, f.z), f.z, 0.8 + hash(f.x, f.z) * 0.5, undefined, hash(f.z, f.x) * TAU), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]), target: [`nature.flower.${k}`, 'nature.flower'] });
   }
   // Bushes: round clusters of a few blobs (two shapes), darker underneath, each tinted a little.
   const BUSH_KINDS = [
@@ -573,9 +578,9 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   ];
   const bushKind = (b) => { const h = hash(b.x, b.z, 6); return h < 0.34 ? 0 : h < 0.67 ? 1 : 2; }; // (묶음 5: the third the angular bush)
   instanced(mergeColored([facet(OCT, 0x6fae4f, 0, 0.5, 0, 1.3, 1.1), facet(BOX, 0x7cbc5c, 0.35, 0.35, 0.1, 0.7, 0.6)]), natureMat, bushes.filter((b) => bushKind(b) === 2),
-    (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: ['angular.bush'] });
+    (b) => setM(b.x, onMesh(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: ['angular.bush'] });
   BUSH_KINDS.forEach((parts, k) => instanced(mergeColored(parts), natureMat, bushes.filter((b) => bushKind(b) === k),
-    (b) => setM(b.x, ground(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: [`nature.bush.${k}`, 'nature.bush'] }));
+    (b) => setM(b.x, onMesh(b.x, b.z) - 0.04, b.z, b.s * 0.95, b.s * (0.8 + hash(b.x, b.z, 7) * 0.3), hash(b.x, b.z, 8) * TAU), { cell: 60, color: (b, c) => c.setHSL(0.02 * (hash(b.x, b.z, 9) - 0.5), 0.1, 0.88 + hash(b.x, b.z, 10) * 0.16), target: [`nature.bush.${k}`, 'nature.bush'] }));
   for (const b of bushes) solids.push({ nature: true, x: b.x, z: b.z, r: 0.75 * b.s });
   // Grass: small clumps of soft blades (not spikes), lighter at the tips.
   const blade = (rx, rz, h) => part(new THREE.ConeGeometry(0.05, h, 3, 1, true), 0x7cbf5c, Math.sin(rz) * h * 0.25, h / 2, -Math.sin(rx) * h * 0.25, { rx, rz, shade: [0.7, 1.15] });
@@ -594,15 +599,15 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   const inland = rocks.filter((r) => !shoreStones(r)); const crystals = new Set(inland.slice().sort((a, b) => hash(a.x, a.z, 43) - hash(b.x, b.z, 43)).slice(0, 3));
   const ANGULAR_ROCKS = ['rock_lump', 'rock_small', 'rock_block'];
   const angularRock = (r) => (crystals.has(r) ? 'rock_stack' : hash(r.x, r.z, 41) < 0.3 ? ANGULAR_ROCKS[Math.min(2, Math.floor(hash(r.x, r.z, 42) * 3))] : null);
-  for (const name of [...ANGULAR_ROCKS, 'rock_stack']) instanced(pebble, natureMat, inland.filter((r) => angularRock(r) === name), (r) => setM(r.x, ground(r.x, r.z) + (name === 'rock_stack' ? 0 : 0.1), r.z, r.s, r.s * 0.7, r.r),
+  for (const name of [...ANGULAR_ROCKS, 'rock_stack']) instanced(pebble, natureMat, inland.filter((r) => angularRock(r) === name && settled(r)), (r) => setM(r.x, onMesh(r.x, r.z) + (name === 'rock_stack' ? 0 : 0.1), r.z, r.s, r.s * 0.7, r.r),
     { cell: 60, color: (r, c) => c.set(name === 'rock_stack' ? 0x9b7fd6 : name === 'rock_block' ? 0xd99a9a : 0xb8b0a4), target: [`angular.${name}`] });
   for (let k = 0; k < 3; k += 1) {
-    instanced(pebble, natureMat, rocks.filter((r) => !shoreStones(r) && !angularRock(r) && Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
+    instanced(pebble, natureMat, rocks.filter((r) => settled(r) && !shoreStones(r) && !angularRock(r) && Math.min(2, Math.floor(hash(r.x, r.z, 17) * 3)) === k), (r) => setM(r.x, onMesh(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, r.r),
       { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: [`nature.rock.${k}`, 'nature.rock'] });
   }
-  instanced(pebble, natureMat, rocks.filter(shoreStones), (r) => setM(r.x, ground(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, -(Math.atan2(r.z, r.x) + Math.PI / 2)),
+  instanced(pebble, natureMat, rocks.filter(shoreStones), (r) => setM(r.x, onMesh(r.x, r.z) + 0.1, r.z, r.s, r.s * 0.7, -(Math.atan2(r.z, r.x) + Math.PI / 2)),
     { cell: 60, color: (r, c) => c.set(0xb8b0a4).offsetHSL(0, 0, (hash(r.x, r.z, 13) - 0.5) * 0.12), target: ['nature.shoreStones', 'nature.rock.1', 'nature.rock'] });
-  instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, ground(p.x, p.z) + 0.5, p.z, 1));
+  instanced(new THREE.CylinderGeometry(0.08, 0.1, 1, 6), post, posts, (p) => setM(p.x, onMesh(p.x, p.z) + 0.5, p.z, 1));
   // 묶음 5: reeds on the river's and the lake's banks (decoration -- nothing to walk round), cliff pieces on the cliff
   // edges facing the sea (walked round: there is no going over the edge anyway)
   const Dm = T.dalmaru;
@@ -616,7 +621,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       for (let rad = 60; rad < 200; rad += 1.5) { const x = Math.cos(a) * rad; const z = Math.sin(a) * rad; const cd = coastDist(x, z); if (cd > 1.2 && cd < 2.6 && cliffAt(x, z) > 0.7 && walkDist(x, z) > 3 && !cliffs.some((c) => Math.hypot(c.x - x, c.z - z) < 14)) { cliffs.push({ x, z, yaw: -a + Math.PI / 2, k: cliffs.length % 2 }); break; } }
     }
     const reedGeo = mergeColored([part(new THREE.CylinderGeometry(0.02, 0.03, 0.55, 4), 0x7a9a4a, 0, 0.27, 0), part(new THREE.CylinderGeometry(0.02, 0.03, 0.45, 4), 0x86a656, 0.08, 0.22, 0.04)]);
-    for (let k = 0; k < 4; k += 1) instanced(reedGeo, natureMat, reeds.filter((r) => r.k === k), (r) => setM(r.x, ground(r.x, r.z) - 0.02, r.z, 1, 1, hash(r.x, r.z, 48) * TAU), { shadow: false, cell: 60, target: [`angular.grass_${'abcd'[k]}`] });
+    for (let k = 0; k < 4; k += 1) instanced(reedGeo, natureMat, reeds.filter((r) => r.k === k), (r) => setM(r.x, onMesh(r.x, r.z) - 0.02, r.z, 1, 1, hash(r.x, r.z, 48) * TAU), { shadow: false, cell: 60, target: [`angular.grass_${'abcd'[k]}`] });
     for (let k = 0; k < 2; k += 1) instanced(mergeColored([facet(BOX, 0x8f8a7c, 0, 0.8, 0, 2.4, 1.6)]), natureMat, cliffs.filter((c) => c.k === k), (c) => setM(c.x, ground(c.x, c.z) - 0.2, c.z, 1, 1, c.yaw), { cell: 60, target: [`angular.cliff_${'ab'[k]}`] });
     for (const c of cliffs) solids.push({ nature: true, x: c.x, z: c.z, r: 1.2 });
   }
@@ -676,7 +681,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
   }
   instanced(new THREE.RingGeometry(0.85, 1.25, 16).rotateX(-Math.PI / 2), foam, bendRocks, (r) => setM(r.x, Math.max(-0.58, bedAt(r.x, r.z) - 0.45) + 0.02, r.z, r.s * 1.1, 1, r.x), { shadow: false, cell: 60 });
-  instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, ground(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
+  instanced(pebble, natureMat, edgeStones, (r) => setM(r.x, onMesh(r.x, r.z) + 0.02, r.z, r.s, r.s * 0.55, r.x * 3), { shadow: false, cell: 60, color: (r, c) => c.set(0xcfc6b6).offsetHSL(0, 0, (hash(r.x, r.z, 14) - 0.5) * 0.14) });
   // v1.10.73 마을 환경정비사업 ① 길 3단계 (IDEAS #future-path-tiers): laid along each walk's one centre line instead of the
   // random kerb tiles, pebbles and flowers -- 마을 길 (the hall, the shop street, and the walks within TOWN_R of the plaza):
   // marble slabs with a terrazzo slab here and there and a continuous marble border on both sides; 산책로 (the ring and
@@ -758,7 +763,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   lay('path.junction.disc.town', pathParts.disc.filter((d) => d.town), onDisc);
   lay('path.junction.disc.walk', pathParts.disc.filter((d) => !d.town), onDisc);
   lay('path.gate.planter', pathParts.planter.filter((p) => walkable(p.x, p.z) && !offPath(p.x, p.z) && !nearDisc(p.x, p.z, 3.4)), placeFlat(0), { shadow: true });
-  instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, ground(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
+  instanced(bloom, natureMat, edgeFlowers, (f) => setM(f.x, onMesh(f.x, f.z), f.z, 0.5, undefined, f.x), { shadow: false, cell: 60, color: (f, c) => c.set(flowerColors[f.c]) });
 
   const nm = new THREE.Matrix3(); const pv = new THREE.Vector3(); const nv = new THREE.Vector3();
   for (const [key, copies] of baked) {
@@ -785,7 +790,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
   // v1.10.29: placed on the ground (the pole and the bulb lifted in their geometry), so the lamp model (prop.lamp, the
   // plaza's too) can take their place
   const lampBulb = mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }); // v1.10.38: orange in October (plaza-scene)
-  instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, ground(p.x, p.z), p.z, 1),
+  instanced(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 8).translate(0, 1.3, 0), mat(0x4d6b5c), lampSpots, (p) => setM(p.x, onMesh(p.x, p.z), p.z, 1),
     { target: 'prop.lamp', extra: [[new THREE.SphereGeometry(0.24, 12, 9).translate(0, 2.72, 0), lampBulb, false]] });
   for (const p of lampSpots) solids.push({ nature: true, x: p.x, z: p.z, r: 0.3 }); // (instanced like the trees: mapCheck counts them as drawn)
   // v1.10.29 지면 레이어: low flat drifts of the zone's season -- spring petals, summer clover, autumn leaves, winter
@@ -804,7 +809,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
     }
     const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })]));
     spots.push(...edgeSeason);
-    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, p.s ?? 1, p.s ?? 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
+    LAYERS.forEach((v, k) => instanced(speck, natureMat, spots.filter((p) => p.v === k), (p) => setM(p.x, onMesh(p.x, p.z) + 0.005, p.z, p.s ?? 1, p.s ?? 1, p.r), { shadow: false, cell: 60, target: `deco.layer.${v}` }));
   }
   let coverCount = null;
   // v1.10.73 마을 환경정비사업 ② 땅 다듬기 (IDEAS #future-ground-cover): by quality tier -- 0 the ground's colours only
@@ -831,7 +836,7 @@ diffuseColor.rgb *= mix(vec3(1.0), gGrain, uGrain);
       else if (k < 0.52 && woods > 0.05) low.flowers.push({ x, z, r, s });
     }
     const speck = keep(mergeColored([part(G.box, 0x9fd67f, 0, -0.5, 0, { sx: 0.01, sy: 0.01, sz: 0.01 })])); // under the ground: nothing without a model
-    const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, ground(p.x, p.z) + 0.005, p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent });
+    const lay = (list, id, parent) => instanced(speck, natureMat, list, (p) => setM(p.x, onMesh(p.x, p.z) + 0.005, p.z, p.s, p.s, p.r), { shadow: false, cell: PATH_CELL, target: id, parent });
     lay(flat.season, 'ground.season', coverFlat); lay(flat.moss, 'ground.moss', coverFlat);
     lay(low.fern, 'ground.fern', coverLow); lay(low.shrub, 'ground.shrub', coverLow); lay(low.flowers, 'ground.flowers', coverLow);
     coverCount = { season: flat.season.length, moss: flat.moss.length, fern: low.fern.length, shrub: low.shrub.length, flowers: low.flowers.length };
